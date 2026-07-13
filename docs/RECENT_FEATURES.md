@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-03 (v2.630)
+last_updated: 2026-07-12 (v2.656)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -15,9 +15,9 @@ last_updated: 2026-07-03 (v2.630)
  version_range: "v2.581+ (reverse chronological)"
  
  key_sections:
-   - name: "Latest Version (v2.589)"
+   - name: "Latest Version (v2.656)"
      line: ~1944
-     description: "Bids → Labor — **Travel (Meals + Hotels) cost section with GSA per-diem lookup**. New amber **`Travel`** parameter box on the Labor tab between **Driving Cost Parameters** and **Estimator Cost Parameters** in [`src/pages/Bids.tsx`](../src/pages/Bids.tsx). Four editable inputs — **Travelers**, **Nights**, **Meals/day ($)**, **Hotel/night ($)** — plus a **ZIP** field and a **`Look up GSA per diem`** button. Cost formula is `travelCost = people × nights × (mealsRate + hotelRate)` (meals-days = nights, so a no-overnight job adds $0); a right-aligned summary renders `Meals: … = $X`, `Hotels: … = $Y`, `Travel total: $Z` with only the dollar amounts bold (matching the Driving/Estimator lines). **Persistence**: migration `20270603120000_cost_estimates_travel_and_gsa_per_diem_cache.sql` adds `travel_people int NOT NULL DEFAULT 1`, `travel_nights int NOT NULL DEFAULT 0`, `travel_meals_rate numeric`, `travel_hotel_rate numeric` to `cost_estimates`; the four values hydrate in `loadCostEstimate` and save in BOTH the explicit `saveCostEstimate` and the 1.5s debounced Labor autosave (with the new state added to the autosave dep array). **GSA lookup**: same migration creates `gsa_per_diem_cache (zip, year)` (RLS: `is_dev_or_master_or_assistant() OR is_estimator()`); new Edge Function [`supabase/functions/gsa-per-diem/index.ts`](../supabase/functions/gsa-per-diem/index.ts) (modeled on `geocode-one`, `verify_jwt = false` + in-handler JWT/role gate for dev/master_technician/assistant/estimator) checks the cache, else calls `https://api.gsa.gov/travel/perdiem/v2/rates/zip/{zip}/year/{year}` using the new **`GSA_API_KEY`** secret, returns `{ ok, meals_rate (M&IE), hotel_rate (max month lodging), city, state }`, and upserts the cache; non-CONUS ZIPs (`oconusInfo`) and missing keys return a friendly `{ ok:false }` envelope so the user just keeps the manual override. The client invokes via `supabase.functions.invoke('gsa-per-diem', { body: { zip } })`; the ZIP field is best-effort prefilled by regex-extracting a 5-digit ZIP from the bid customer's address (not persisted; resets per bid). **Full roll-up**: new top-level pure helper `computeTravelCost(ce)` is summed into every internal-cost total — the on-screen Pricing `Our cost breakdown` (`totalCost`, plus a new gated **Travel (meals + hotels)** `<tr>` beside Team Labor), the Pricing CSV `totalBidCost`, both cost-estimate HTML print builders (`laborCostWithDriving`/`grandTotal` + a `Travel:` line in detail and summary), both pricing-package HTML print exports (`totalCost`), and the jsPDF builder (a `Travel cost` line + `Travel` summary row). Also in this pass: the bottom **`TOTAL`** block on the Labor tab (previously trimmed to Driving/Estimator) was removed entirely, and the Driving/Estimator parameter summary lines were right-aligned with only the dollar amount bold. **Setup note**: `GSA_API_KEY` (free from api.data.gov) must be set via `supabase secrets set GSA_API_KEY=…` before the lookup returns rates; until then it reports `unconfigured` and manual entry still works. Verified: `npx supabase db push` clean, `npm run gen-types:linked` regenerated [`src/types/database.ts`](../src/types/database.ts), `npx tsc --noEmit` clean, zero new lints, function deployed, no new security advisors. Files: new [`supabase/migrations/20270603120000_cost_estimates_travel_and_gsa_per_diem_cache.sql`](../supabase/migrations/20270603120000_cost_estimates_travel_and_gsa_per_diem_cache.sql), new [`supabase/functions/gsa-per-diem/index.ts`](../supabase/functions/gsa-per-diem/index.ts); modified [`src/pages/Bids.tsx`](../src/pages/Bids.tsx), [`supabase/config.toml`](../supabase/config.toml); regenerated [`src/types/database.ts`](../src/types/database.ts). Out of scope: M&IE first/last-day 75% proration (flat per-night meals), seasonal lodging (uses the max month value), and a user-editable per-diem year selector."
+     description: "Bids → Labor — **Travel (Meals + Hotels) cost section with GSA per-diem lookup**. New amber **`Travel`** parameter box on the Labor tab between **Driving Cost Parameters** and **Estimator Cost Parameters** in [`src/pages/Bids.tsx`](../src/pages/Bids.tsx). Four editable inputs — **Travelers**, **Nights**, **Meals/day ($)**, **Hotel/night ($)** — plus a **ZIP** field and a **`Look up GSA per diem`** button. Cost formula is `travelCost = people × nights × (mealsRate + hotelRate)` (meals-days = nights, so a no-overnight job adds $0); a right-aligned summary renders `Meals: … = $X`, `Hotels: … = $Y`, `Travel total: $Z` with only the dollar amounts bold (matching the Driving/Estimator lines). **Persistence**: migration `20270603120000_cost_estimates_travel_and_gsa_per_diem_cache.sql` adds `travel_people int NOT NULL DEFAULT 1`, `travel_nights int NOT NULL DEFAULT 0`, `travel_meals_rate numeric`, `travel_hotel_rate numeric` to `cost_estimates`; the four values hydrate in `loadCostEstimate` and save in BOTH the explicit `saveCostEstimate` and the 1.5s debounced Labor autosave (with the new state added to the autosave dep array). **GSA lookup**: same migration creates `gsa_per_diem_cache (zip, year)` (RLS: `is_dev_or_master_or_assistant() OR is_estimator()`); new Edge Function [`supabase/functions/gsa-per-diem/index.ts`](../supabase/functions/gsa-per-diem/index.ts) (modeled on `geocode-one`, `verify_jwt = false` + in-handler JWT/role gate for dev/master_technician/assistant/estimator) checks the cache, else calls `https://api.gsa.gov/travel/perdiem/v2/rates/zip/{zip}/year/{year}` using the new **`GSA_API_KEY`** secret, returns `{ ok, meals_rate (M&IE), hotel_rate (max month lodging), city, state }`, and upserts the cache; non-CONUS ZIPs (`oconusInfo`) and missing keys return a friendly `{ ok:false }` envelope so the user just keeps the manual override. The client invokes via `supabase.functions.invoke('gsa-per-diem', { body: { zip } })`; the ZIP field is best-effort prefilled by regex-extracting a 5-digit ZIP from the bid customer's address (not persisted; resets per bid). **Full roll-up**: new top-level pure helper `computeTravelCost(ce)` is summed into every internal-cost total — the on-screen Pricing `Our cost breakdown` (`totalCost`, plus a new gated **Travel (meals + hotels)** `<tr>` beside Team Labor), the Pricing CSV `totalBidCost`, both cost-estimate HTML print builders (`laborCostWithDriving`/`grandTotal` + a `Travel:` line in detail and summary), both pricing-package HTML print exports (`totalCost`), and the jsPDF builder (a `Travel cost` line + `Travel` summary row). Also in this pass: the bottom **`TOTAL`** block on the Labor tab (previously trimmed to Driving/Estimator) was removed entirely, and the Driving/Estimator parameter summary lines were right-aligned with only the dollar amount bold. **Setup note**: `GSA_API_KEY` (free from api.data.gov) must be set via `supabase secrets set GSA_API_KEY=…` before the lookup returns rates; until then it reports `unconfigured` and manual entry still works. Verified: `npx supabase db push` clean, `npm run gen-types:linked` regenerated [`src/types/database.ts`](../src/types/database.ts), `npx tsc --noEmit` clean, zero new lints, function deployed, no new security advisors. Files: new [`supabase/archive/migrations-pre-baseline/20270603120000_cost_estimates_travel_and_gsa_per_diem_cache.sql`](../supabase/archive/migrations-pre-baseline/20270603120000_cost_estimates_travel_and_gsa_per_diem_cache.sql), new [`supabase/functions/gsa-per-diem/index.ts`](../supabase/functions/gsa-per-diem/index.ts); modified [`src/pages/Bids.tsx`](../src/pages/Bids.tsx), [`supabase/config.toml`](../supabase/config.toml); regenerated [`src/types/database.ts`](../src/types/database.ts). Out of scope: M&IE first/last-day 75% proration (flat per-night meals), seasonal lodging (uses the max month value), and a user-editable per-diem year selector."
    - name: "Previous Version (v2.588)"
      line: ~1944
      description: "Bids — **`Cost Estimate` tab renamed to `Labor`**. URL slug renamed `cost-estimate` -> `labor` across [`src/pages/Bids.tsx`](../src/pages/Bids.tsx) (the `activeTab` union type, the materials-model-switch `sourceTab` state + `openMaterialsModelSwitch` param types, `BIDS_TABS`, the `bidTabs` deep-link array, every `activeTab === 'cost-estimate'` check, the tab button's `setActiveTab`/`setSearchParams`/`tabStyle`, the `openMaterialsModelSwitch`/`selectBidAndSyncUrl`/`setActiveTab` call sites), [`src/lib/pinnedTabs.ts`](../src/lib/pinnedTabs.ts) (`PATH_TABS['/bids']`), and the `BidPreviewTabUrl` union in [`src/components/bids/BidPreviewModal.tsx`](../src/components/bids/BidPreviewModal.tsx). Back-compat: the Bids deep-link effect normalizes any incoming `?tab=cost-estimate` to `?tab=labor` (replace-nav) so old bookmarks/links still resolve, and `getPinned` migrates existing localStorage pins (`{path:'/bids', tab:'cost-estimate'}` -> `tab:'labor'`); existing Supabase `user_pinned_tabs` rows keep working via the URL alias (no SQL migration). All user-facing `Cost Estimate` strings became `Labor`: the tab button, the `Go to Cost Estimate` button (-> `Go to Labor`), the print/PDF page titles (`… — Labor`), and the helper/empty-state sentences (`…ensure Counts and Labor are set up/exist`; the margin-comparison empty state reworded to `Add fixtures in Counts and set up Labor first…`). Internal identifiers (`costEstimate*` state/refs, `CostEstimate` / `CostEstimateLaborRow` types, `selectedBidForCostEstimate`, `ensureCostEstimateForBid`) and the `cost_estimates` / `cost_estimate_labor_rows` DB tables are unchanged, so no DB / migration / type / RPC changes. Note: the tab still builds total internal cost (labor + materials + driving + estimator) and contains the `Labor Book` section; the rename is a label/slug change only. Follow-up: the Pricing `Our cost breakdown` footer gained two clickable, link-styled group sub-headers — **`Takeoffs`** (above the Materials row) and **`Labor`** (above the Manhours/Driving/Estimator/Team Labor rows) — each a full-width `<td colSpan={7}>` holding a `<button>` styled as a blue underlined link that calls `selectBidAndSyncUrl(selectedBidForPricing, 'takeoffs' | 'labor')` to switch tabs while keeping the same bid loaded; the component rows keep their `1.5rem` indent so they read as nested under each header. Follow-up: on the Labor tab the bottom **`TOTAL`** summary block was trimmed to show only **`Driving`** and **`Estimator`** — the `Materials with tax`, `Manhours`, `Labor total`, and `Grand total` rows were removed, along with the now-unused `totalMaterials` / `rate` / `laborCost` / `laborCostWithDriving` / `materialsWithTax` / `grandTotal` computations in that footer IIFE (the kept lines reuse the existing `totalHours` → `numTrips` → `drivingCost` and `estimatorCost` derivations unchanged). The companion print/PDF builders (which still emit the full `Labor total` / `Grand total` breakdown) are out of scope. Verified: `npx tsc --noEmit` clean (the `activeTab` + `BidPreviewTabUrl` union renames would surface any missed `'cost-estimate'` literal); zero new lints. Files: modified [`src/pages/Bids.tsx`](../src/pages/Bids.tsx), [`src/lib/pinnedTabs.ts`](../src/lib/pinnedTabs.ts), [`src/components/bids/BidPreviewModal.tsx`](../src/components/bids/BidPreviewModal.tsx)."
@@ -38,7 +38,7 @@ last_updated: 2026-07-03 (v2.630)
      description: "Materials → Supply Houses — **Show last payment** toggle. New per-user checkbox stacked directly below the existing **Show paid invoices** toggle in the page header; when on, reveals a new **Last Paid** column on the summary table between **Updated** and the actions column showing `MAX(paid_at)` per supply house as a relative phrase via `longTimeAgoPhrase` (matching the adjacent **Updated** column verbatim) with the full ISO timestamp in the `title` hover tooltip. Toggle defaults **off** so existing UI is unchanged on first load. Component-local state (not persisted), matching the existing `showPaidInvoices` sibling — explicit non-goal in this pass. Data path: [`loadSupplyHouseSummary`](../src/components/SupplyHousesTab.tsx) extends its existing `supply_house_invoices` projection from `(supply_house_id, amount, is_paid, updated_at)` to `(supply_house_id, amount, is_paid, updated_at, paid_at)`, adds a parallel `maxPaidByHouse: Map<string, string>` alongside the existing `maxUpdatedByHouse`, filters `inv.is_paid && inv.paid_at` (so unpaid rows with NULL `paid_at` don't poison the max), and folds `lastInvoicePaidAt: maxPaidByHouse.get(h.id) ?? null` into each `SupplyHouseSummaryRow`. Toggling the checkbox does not refetch — `paid_at` is always present in the loaded summary and the toggle only gates rendering. Expanded-detail row `colSpan` flexes from 5 to 6 when the toggle is on. Houses with zero paid invoices show `—`. No DB / migration / RPC / type-gen changes (the `paid_at` column + auto-stamp trigger landed in v2.582). Verified: `npx tsc --noEmit` clean; zero new lints on the touched file. Files: modified [`src/components/SupplyHousesTab.tsx`](../src/components/SupplyHousesTab.tsx). Out of scope: persisting either toggle to `localStorage`, making the column sortable, and re-sorting by Last Paid when toggled on."
    - name: "Previous Version (v2.582)"
      line: ~1944
-     description: "Materials → Supply Houses — **invoice paid-at timestamp**. New `paid_at TIMESTAMPTZ` column on `supply_house_invoices` plus a `BEFORE INSERT OR UPDATE` trigger (`sync_supply_house_invoice_paid_at` / `sync_supply_house_invoice_paid_at_trigger`) that auto-stamps `paid_at = now()` when `is_paid` flips false→true (and clears it on true→false). Trigger lives in [`supabase/migrations/20270602120000_supply_house_invoices_paid_at.sql`](../supabase/migrations/20270602120000_supply_house_invoices_paid_at.sql) with `SET search_path = public` per the project lint convention. All three UI write paths in [`src/components/SupplyHousesTab.tsx`](../src/components/SupplyHousesTab.tsx) — the per-row `toggleInvoicePaid` checkbox, the bulk `applyPayment` flow, and the edit-invoice `saveInvoice` form — keep their existing `UPDATE … SET is_paid` shape and just inherit the stamp from the trigger (no app-side `new Date().toISOString()` to remember in any call site; editing amount/link/etc. without flipping `is_paid` deliberately leaves `paid_at` untouched). Legacy rows backfilled best-effort via `UPDATE … SET paid_at = COALESCE(updated_at, created_at, NOW()) WHERE is_paid = true AND paid_at IS NULL;` (149 rows touched in prod). New index `idx_supply_house_invoices_paid_at`. UI surfaces it as a new **Paid On** column in the per–supply-house Invoices table (between Paid and Link), with `inv.paid_at ? new Date(inv.paid_at).toLocaleDateString() : '—'` and a `title` attribute carrying the full ISO timestamp for hover detail; the empty-state `colSpan` bumps from 9 to 10. The **Apply Payment** modal's per-invoice line now reads `Paid {MM/DD/YYYY}` (same `title` ISO tooltip) when `inv.is_paid` is true and `paid_at` is set. Types regenerated via `npm run gen-types:linked` so `Database['public']['Tables']['supply_house_invoices']` Row/Insert/Update each include `paid_at: string | null`. Trigger verified end-to-end via a transactional DO block (insert unpaid → null; flip to paid → stamped; amount-only update → unchanged; flip to unpaid → cleared; insert already-paid → auto-stamped). Out of scope: a 'Last Paid' aggregate column on the Supply Houses summary table, a user-editable paid-date input in the edit-invoice modal, and any filtering / sorting by paid date — all easy follow-ups now that the column exists. Verified: `npx supabase db push` clean, `npx tsc --noEmit` clean, zero new advisor warnings on the touched table / function. Files: new [`supabase/migrations/20270602120000_supply_house_invoices_paid_at.sql`](../supabase/migrations/20270602120000_supply_house_invoices_paid_at.sql); modified [`src/components/SupplyHousesTab.tsx`](../src/components/SupplyHousesTab.tsx); regenerated [`src/types/database.ts`](../src/types/database.ts)."
+     description: "Materials → Supply Houses — **invoice paid-at timestamp**. New `paid_at TIMESTAMPTZ` column on `supply_house_invoices` plus a `BEFORE INSERT OR UPDATE` trigger (`sync_supply_house_invoice_paid_at` / `sync_supply_house_invoice_paid_at_trigger`) that auto-stamps `paid_at = now()` when `is_paid` flips false→true (and clears it on true→false). Trigger lives in [`supabase/archive/migrations-pre-baseline/20270602120000_supply_house_invoices_paid_at.sql`](../supabase/archive/migrations-pre-baseline/20270602120000_supply_house_invoices_paid_at.sql) with `SET search_path = public` per the project lint convention. All three UI write paths in [`src/components/SupplyHousesTab.tsx`](../src/components/SupplyHousesTab.tsx) — the per-row `toggleInvoicePaid` checkbox, the bulk `applyPayment` flow, and the edit-invoice `saveInvoice` form — keep their existing `UPDATE … SET is_paid` shape and just inherit the stamp from the trigger (no app-side `new Date().toISOString()` to remember in any call site; editing amount/link/etc. without flipping `is_paid` deliberately leaves `paid_at` untouched). Legacy rows backfilled best-effort via `UPDATE … SET paid_at = COALESCE(updated_at, created_at, NOW()) WHERE is_paid = true AND paid_at IS NULL;` (149 rows touched in prod). New index `idx_supply_house_invoices_paid_at`. UI surfaces it as a new **Paid On** column in the per–supply-house Invoices table (between Paid and Link), with `inv.paid_at ? new Date(inv.paid_at).toLocaleDateString() : '—'` and a `title` attribute carrying the full ISO timestamp for hover detail; the empty-state `colSpan` bumps from 9 to 10. The **Apply Payment** modal's per-invoice line now reads `Paid {MM/DD/YYYY}` (same `title` ISO tooltip) when `inv.is_paid` is true and `paid_at` is set. Types regenerated via `npm run gen-types:linked` so `Database['public']['Tables']['supply_house_invoices']` Row/Insert/Update each include `paid_at: string | null`. Trigger verified end-to-end via a transactional DO block (insert unpaid → null; flip to paid → stamped; amount-only update → unchanged; flip to unpaid → cleared; insert already-paid → auto-stamped). Out of scope: a 'Last Paid' aggregate column on the Supply Houses summary table, a user-editable paid-date input in the edit-invoice modal, and any filtering / sorting by paid date — all easy follow-ups now that the column exists. Verified: `npx supabase db push` clean, `npx tsc --noEmit` clean, zero new advisor warnings on the touched table / function. Files: new [`supabase/archive/migrations-pre-baseline/20270602120000_supply_house_invoices_paid_at.sql`](../supabase/archive/migrations-pre-baseline/20270602120000_supply_house_invoices_paid_at.sql); modified [`src/components/SupplyHousesTab.tsx`](../src/components/SupplyHousesTab.tsx); regenerated [`src/types/database.ts`](../src/types/database.ts)."
    - name: "Previous Version (v2.581)"
      line: ~1944
      description: "Banking Mercury Accounting — **Approve by default** toggle. New per-user checkbox below the **Approve all (N)** button on the Accounting tab's Approvals section (defaults **off**: presence of `'1'` = on, anything else = off). When on, the existing `handleApproveAll` flow is auto-fired every time a new pending suggestion appears — closes the loop after v2.580 (rules auto-create suggestions; this auto-commits them). Internal Transfers conflicts (suggestions whose label is Internal Transfers and whose tx already has job splits in `mercury_transaction_splits`) are still skipped by `handleApproveAll` itself, so those persist in the pending list and surface for manual review. **Toast-spam-free residue handling**: the auto-approve effect derives a pre-filtered `autoApprovablePending` list (mirrors the conflict-skip predicate inside `handleApproveAll`) and only the filtered list goes into the signature. Once a load settles into a stable conflict-only set the signature shrinks to `''` and the gate's `pendingCount === 0` branch quiets the effect — so `handleApproveAll`'s `All pending suggestions would label a transaction with job splits as Internal Transfers. Clear the splits first.` toast never fires from auto-mode. New storage helpers `readAccountingApproveByDefault` / `writeAccountingApproveByDefault` in [`bankingDragSortStorage.ts`](../src/lib/bankingDragSortStorage.ts) under prefix `banking_accounting_approve_by_default_v1_`. New pure helper module [`accountingApproveByDefaultAutoTrigger.ts`](../src/lib/accountingApproveByDefaultAutoTrigger.ts) — `buildApproveByDefaultSignature(pending)` returns `pending.map(p => p.suggestionId).sort().join(',')` (sort independence keeps the signature stable across upstream re-orderings); `shouldAutoApproveAccountingSuggestions(state)` walks the gate set (`enabled`, `pendingLoading`, `approveAllBusy`, `pendingCount > 0`, `currentSignature !== lastSignature`). 11 unit tests in [`accountingApproveByDefaultAutoTrigger.test.ts`](../src/lib/accountingApproveByDefaultAutoTrigger.test.ts) cover sort independence, empty-list signature, single-id add/remove, every gate flip, and signature equality / inequality. State lifted to [`Banking.tsx`](../src/pages/Banking.tsx) alongside the v2.579/v2.580 lifts: `approveByDefault` boolean (hydrated per user via `useEffect` keyed on `user?.id`), `onApproveByDefaultChange` callback (state setter + `writeAccountingApproveByDefault`). Two new props on `BankingMercuryAccountingTabProps`: `approveByDefault`, `onApproveByDefaultChange`. New `<label>` checkbox in [`BankingMercuryAccountingTab.tsx`](../src/components/banking/BankingMercuryAccountingTab.tsx) inside the Approvals `<section>`, in a right-aligned flex row immediately below the green **Approve all (N)** button (same checkbox styling as the v2.580 toolbar — `display: flex; alignItems: center; gap: 8`, `title` attribute explains the conflict-skip behavior for hover discoverability). Auto-approve effect threads the gate predicate, signature ref `lastAutoApprovedSignatureRef`, and the new memoized `autoApprovablePending` filter (`isInternalTransfersLabel(label) && allocationsByTxId.get(txId).length > 0` → drop). Concurrent-click safety is free — `approveAllBusy` gates both the manual button and the effect, so a click during an in-flight auto-approve (or vice versa) returns early with no double approve. Tab gating is free — the effect lives inside `BankingMercuryAccountingTab`, which only mounts when `bankingView.mercuryTab === 'accounting'`. No DB / migration / RLS / RPC / Edge / type-gen changes — `bulk_approve_accounting_label_suggestions` and the chunked-insert math in `handleApproveAll` are untouched. Verified: `npx tsc --noEmit` clean; `npx vitest run` **1130 / 1130** pass (1119 pre-existing + 11 new); zero new lints on touched files. Files: new [`src/lib/accountingApproveByDefaultAutoTrigger.ts`](../src/lib/accountingApproveByDefaultAutoTrigger.ts), new [`src/lib/accountingApproveByDefaultAutoTrigger.test.ts`](../src/lib/accountingApproveByDefaultAutoTrigger.test.ts), modified [`src/lib/bankingDragSortStorage.ts`](../src/lib/bankingDragSortStorage.ts), [`src/pages/Banking.tsx`](../src/pages/Banking.tsx), [`src/components/banking/BankingMercuryAccountingTab.tsx`](../src/components/banking/BankingMercuryAccountingTab.tsx)."
@@ -1588,6 +1588,17 @@ when_to_read:
 ---
 
 ## Table of Contents
+**New:** [v2.641 — **Job Parts Tally** — **"Mark as payroll" + auto-mark rules (dev-only)**. Robert pays payroll on the company card; splitting those charges across jobs would double-count against clocked labor. A dev-only per-row **Mark payroll** toggle resolves a transaction (drops it from the unlinked queue) **without** any job allocation — so per-job spend is untouched. **Block+warn** if the tx already has job splits. A **Payroll rules** manager (counterparty / amount / bank-description criteria, reusing the banking match kernel) auto-marks matches — direct apply (manual mark/unmark always wins via a tombstone), with an **Apply now** button, an **auto-apply-on-load** toggle, and a live test-match count. A **Payroll: N · $X** chip gives a reconciliation surface vs the Payroll ledger. New tables `mercury_tally_payroll_flags` / `mercury_tally_payroll_rules` (dev-only RLS) + RPCs `set_tally_payroll_flag` / `bulk_apply_tally_payroll_rule_flags` enforcing the no-split invariant; migration `20260704140000` applied to prod. Pure kernel `tallyPayrollRules.ts` (4 tests)](#latest-updates-v2641)
+**New:** [v2.640 — **Jobs → Stages** — **"Follow cards I move" toggle**. New toolbar pill (after the ham-mode toggle, persisted in `localStorage['jobs-stages-follow-moves']`, default off): after any stage move — Waiting↔Working, Working↔Ready to Bill, Bill Customer, all send-backs incl. billed-invoice reverts — the destination section opens (if collapsed) and the page smooth-scrolls to the moved card, which flashes amber for ~2.6s (the invoice-focus idiom, cloned for jobs). One hook in `executeUpdateJobStatus` covers ham-mode and confirm-modal paths alike; job rows gained `data-stages-job-id` in both Stages renderers; scroll effect retries once at ~950ms for late-rendering rows. Mark Paid intentionally not followed (paid jobs leave the board). New kernel helper `stagesSectionKeyForJobStatus` (+1 test)](#latest-updates-v2640)
+**New:** [v2.639 — **Jobs** — **fix: "Create customer from job" minted assistant-mastered customers** (Taunya's P0001 "Job linked customer must belong to the job master" on job 886). [`JobFormModal.tsx`](../src/components/jobs/JobFormModal.tsx) set the new customer's `master_user_id` to the **creator** (an assistant), not the job's master — the v2.612 invariant trigger then rejected the link and every retry left an orphan duplicate (5× "Richard Visiko"). Client now resolves the JOB's master (`resolveEditJobMasterUserId`; new-job path maps assistants via `master_assistants`). **Prod healed** (migration `20260703150000` + surgery): 95 mis-mastered customers repointed to their master (cascade moved their **104 linked jobs** off Taunya to Malachi), 4 orphan duplicates deleted, job 886 linked; new backstop trigger `customers_master_role_check` requires `customers.master_user_id` to be a dev/master. All verified: 0 mis-mastered rows, 0 invariant violations](#latest-updates-v2639)
+**New:** [v2.638 — **Materials → Supply Houses** — **view toggles inline with the heading**: the `Show paid invoices` / `Show last payment` checkboxes moved from the standalone header row down into the same band as the `Supply Houses: $X` heading and `Summary | Aging map` pills (absolutely positioned right of the centered block). [`SupplyHousesTab.tsx`](../src/components/SupplyHousesTab.tsx) only](#latest-updates-v2638)
+**New:** [v2.637 — **Dashboard → Financials** — **AP supply rows show due date + allocated jobs inline**. The AP drill-down's date column is now headed **Due** and supply rows show the bill's `due_date` with a compact **`Nd`** past-due chip (orange <60d, red ≥60d) instead of the invoice date; each supply row also gets a muted second line listing its job allocations (`500 · Smith House (60%), …`) from the v2.635 `apBills` map. Payroll-due rows keep their period-end date under the same `Due` header; other cards keep `Date`. [`DashboardFinancialsSection.tsx`](../src/components/DashboardFinancialsSection.tsx) only](#latest-updates-v2637)
+**New:** [v2.636 — **Dashboard → Financials** — **AP drill-down grouped into Supplies / Payroll due / Upcoming payroll sections**. Previously payroll-due rows interleaved with ~130 supply rows by amount and the v2.629 "Upcoming payroll (estimate)" section sat invisibly at the very bottom — payroll was effectively unfindable. The AP modal now uses the same grey section headers as Not Billed Out: **Supplies — N bills · $X** (per-row "Supply invoice" sublabel dropped as redundant), **Payroll due — N items · $Y** (period sublabels kept), then the existing **Upcoming payroll (estimate) — N person-weeks · $Z**; footer stays `Total due`. Assistant's aggregate rows land in the same sections. Section-header machinery generalized (per-section noun + sublabel-hiding flag). [`DashboardFinancialsSection.tsx`](../src/components/DashboardFinancialsSection.tsx) only](#latest-updates-v2636)
+**New:** [v2.635 — **Dashboard → Financials** — **AP bill modal shows allocated jobs**. The v2.632 bill detail gains a **Job(s)** fact row: each `supply_house_invoice_job_allocations` entry renders as `500 · Smith House (60%)` (pct desc), clickable → **Job Detail** modal (both stacked modals close first); bills with no allocation show `—`. Hook fetches allocations per unpaid bill (chunked, best-effort) + labels for allocated jobs outside the status-filtered jobs fetch; 125 of 138 unpaid bills have job allocations in prod](#latest-updates-v2635)
+**New:** [v2.634 — **Materials → Supply Houses** — **fix: invoice/due dates displayed one day early**. Reported by Taunya ("I enter the 10th, it shows the 9th"): `invoice_date`/`due_date` are DATE-only strings and `new Date('2026-07-10')` parses as **UTC midnight** → renders as the previous day in US timezones. New `formatYmdLocal` (parses at local noon; non-YMD values fall back) replaces the three affected `toLocaleDateString()` call sites in [`SupplyHousesTab.tsx`](../src/components/SupplyHousesTab.tsx) (detail Date + Due columns, Apply Payment list date). **Stored data was always correct** — display-only; `Paid On` (real timestamp) unaffected; the aging buckets and Financials modals already used safe parsing](#latest-updates-v2634)
+**New:** [v2.633 — **Dashboard → Financials** — **"Financials" section title removed + tighter bottom gap**: the three cards now sit directly at the top of the dashboard without the `Financials` h2 (they're self-describing), and the section's bottom margin shrank 1.5rem → 0.5rem so the quick actions / Clock In row sits closer. [`DashboardFinancialsSection.tsx`](../src/components/DashboardFinancialsSection.tsx) only](#latest-updates-v2633)
+**New:** [v2.632 — **Dashboard → Financials** — **AP supply rows open a bill detail modal with attachment preview**. Supply-house rows in the Accounts Payable drill-down are now clickable (dotted-underline, like job rows) → **`ApBillModal`** (z 1110): supply house + amount header, fact rows (Invoice #, PO #, invoice date, due date with the orange/red **`Nd past due`** chip, amount), and at the bottom the **attached file previewed inline** via the Google Drive `/preview` embed (reuses `googleDrivePreviewEmbedUrl`) — collapsed to 300px with click-to-zoom / **Expand** button that widens the modal to ~1100px with a 68vh preview, plus an **Open in Drive ↗** link. Hook now fetches `due_date/link/invoice_number/purchase_order_number` and exposes an `apBills` map keyed by item key. Payroll and aggregate rows unchanged; 131/138 unpaid bills already have Drive links](#latest-updates-v2632)
+**New:** [v2.631 — **Materials → Supply Houses** — **AP aging map (`Summary | Aging map` toggle)**. New matrix view of unpaid dollars by days past due, computed from the already-recorded `supply_house_invoices.due_date`: rows = houses (total desc, click to open the house), columns **Current | 1–30 | 30–60 | 60–90 | 90+ | No due date | Total** with green→red heat cells and a column-totals footer — the hand-drawn AP aging sheet, live. Caption nudges when unpaid invoices lack a due date. Companions: unpaid invoice rows in the house detail get a red **`Nd past due`** chip, and Add Invoice **prefills the due date** from the house's `monthly_payment_day` (next occurrence, clamped to month length; editable). Pure kernel [`supplyHouseAging.ts`](../src/lib/supplyHouseAging.ts) (**6 tests**); no DB changes — 131 of 138 unpaid invoices already had due dates](#latest-updates-v2631)
 **New:** [v2.630 — **Ops** — **edge-function drift check (CI + local) after the Apply Discount incident**. Apply discount on a **Stripe-hosted** invoice failed for everyone ("Failed to send a request to the Edge Function") because `stripe-invoice-agreed-write-down` (v2.524) was never deployed — third stale-function incident (create-user, invite-user). Function **deployed to prod** (CORS preflight verified 200; the in-handler role gate already includes `assistant`, both write-down RPCs already existed). Prevention: new [`scripts/check-edge-function-drift.mjs`](../scripts/check-edge-function-drift.mjs) (`npm run check:edge-drift`) diffs `supabase/functions/*` against `supabase functions list` — repo-but-not-deployed **fails** with the exact deploy command; deployed-but-not-in-repo warns. New workflow [`edge-function-drift.yml`](../.github/workflows/edge-function-drift.yml): main pushes touching functions + daily cron + manual dispatch. **Setup: add the `SUPABASE_ACCESS_TOKEN` repo secret**](#latest-updates-v2630)
 **New:** [v2.629 — **Dashboard → Financials** — **AP shows upcoming payroll (due / upcoming split)**. The AP card sub-line becomes **`Supplies $X · Payroll: $Y due / $Z upcoming`**, where `$Z` is the Payroll ledger header's "upcoming" figure computed by the **same kernel** (`buildUpcomingPayrollSummary` — person-weeks with clocked time incl. pending but no pay report, hours × wage). The AP drill-down gains an **`Upcoming payroll (estimate)`** section after the due items (grey header with person-week count + subtotal; per person-week rows `Name · 6/28–7/4 · 12.3h (est.)`), excluded from the footer total, which relabels to **`Total due`**. **Assistants** get a single aggregate `Payroll — $Z` line (`redactUpcomingApSection`, same rule as v2.628). Hook fetches `users` + `people_pay_config` + bounded `clock_sessions` (best-effort — failures degrade to no upcoming section); new kernel mappers `buildUpcomingApSection`/`redactUpcomingApSection` (+4 tests)](#latest-updates-v2629)
 **New:** [v2.628 — **Dashboard → Financials** — **assistants see the payroll total, not per-person lines**. For role `assistant`, the Accounts Payable drill-down collapses all per-person pay-stub rows into one aggregate **`Payroll — $Y`** line (`N open pay stubs` sublabel, oldest period-end as the date); supplies stay itemized and the card totals / `Supplies $X · Payroll $Y` subtotals are unchanged. New pure kernel helper `redactApPayrollItems` (+2 tests) applied only when opening the AP modal as an assistant — mirrors the existing `canAccessPay: false` convention that hides the People → Payroll tab from assistants. Display rule, not a data barrier (RLS intentionally grants assistants-of-pay-approved-masters the rows for their other pay duties)](#latest-updates-v2628)
@@ -1705,7 +1716,7 @@ when_to_read:
 **New:** [v2.428 — **Dashboard** clock strip — **Mix** matches **Show all** / **Needs attention** height (**`stripClockedInChromeBtnLayout`**, shared **`scopeBtn`** typography) — **[`DashboardTeamActiveClockStrip.tsx`](../src/components/DashboardTeamActiveClockStrip.tsx)**](#latest-updates-v2428)
 **New:** [v2.427 — **Dashboard** — **Projects: Subscribed Stages** disclosure (chevron + expand/collapse); **Projects: Assigned Stages** **`aria-controls`** + **`dashboard-assigned-stages-panel`** region (**[`Dashboard.tsx`](../src/pages/Dashboard.tsx)**)](#latest-updates-v2427)
 **New:** [v2.426 — **Dashboard** **Clock In** / **Update Focus** / **Review before clock out** — job/bid **summary + Clear** only after **typed search** (`associationChipFromSearch`); **Missing reports from today (click to make report)**; shorter modal copy; retired **v2.416** checkbox from product — **[`ClockInOutButton.tsx`](../src/components/ClockInOutButton.tsx)**](#latest-updates-v2426)
-**New:** [v2.419 — **Salary sync** — **continuous** workday split in **My Time**: open **indexed** **`salary_schedule`** fragments (**`salary_segment_index`** 1..N) **close at **`t_end`** once **`p_now ≥ t_end`** (non-final, **`clocked_out_at IS NULL`**, **`clocked_in_at < t_end`**); **`salary_sync_one_user_clock_sessions`** — **[`20270516120000_salary_sync_close_continuous_fragments_at_t_end.sql`](../supabase/migrations/20270516120000_salary_sync_close_continuous_fragments_at_t_end.sql)**; docs — **`SALARY_CLOCK_SESSIONS.md`**, **`PROJECT_DOCUMENTATION.md`** (**`clock_sessions`**), **`GLOSSARY.md`**, **`MIGRATIONS.md`](#latest-updates-v2419)
+**New:** [v2.419 — **Salary sync** — **continuous** workday split in **My Time**: open **indexed** **`salary_schedule`** fragments (**`salary_segment_index`** 1..N) **close at **`t_end`** once **`p_now ≥ t_end`** (non-final, **`clocked_out_at IS NULL`**, **`clocked_in_at < t_end`**); **`salary_sync_one_user_clock_sessions`** — **[`20270516120000_salary_sync_close_continuous_fragments_at_t_end.sql`](../supabase/archive/migrations-pre-baseline/20270516120000_salary_sync_close_continuous_fragments_at_t_end.sql)**; docs — **`SALARY_CLOCK_SESSIONS.md`**, **`PROJECT_DOCUMENTATION.md`** (**`clock_sessions`**), **`GLOSSARY.md`**, **`MIGRATIONS.md`](#latest-updates-v2419)
 **New:** [v2.418 — **Reports** — superintendent **`reports`** anchor (**`superintendent_report_job_anchor_allowed`**, SECURITY DEFINER + **`row_security` off**, team-member branch); **`list_reports_with_job_info`** / **`list_reports_for_job_ledger`** parity; **`reported_at_lat/lng`** in list RPCs (**primary**, **superintendent**, **estimator**, **helpers**/**subcontractor** own rows); **`list_my_reports`** coords on own rows (**`20270511120000`** … **`20270515120000`**); **[`JobReportsModal`](../src/components/JobReportsModal.tsx)** — **`ReportDetailBody`** **`fieldLayout="inline"`**, **`ReportLocationMapsLink`** on collapsed row + detail (**[`ReportViewModal.tsx`](../src/components/ReportViewModal.tsx)**)](#latest-updates-v2418)
 **New:** [v2.417 — **Docs / operations** — **App crash triage for AI agents**: **`docs/runbooks/AGENT_APP_CRASH_INVESTIGATION.md`** (playbook), **`AGENTS.md`** table row, **`scripts/capture-supabase-incident.sh`**; **README** / **TROUBLESHOOTING** / **AI_CONTEXT** / **PROJECT_DOCUMENTATION** / **`SUPABASE_INCIDENT_RUNBOOK`** cross-links; **28P01** DB password note in runbook](#latest-updates-v2417)
 **New:** [v2.416 — **Checklist** **Manage** — **Search by title or assignee** (client-side); **People** **Users** — **email** / **phone** second line **≤640px** — **[`Checklist.tsx`](../src/pages/Checklist.tsx)**, **[`People.tsx`](../src/pages/People.tsx)**](#latest-updates-v2416)
@@ -1869,8 +1880,8 @@ when_to_read:
 18. [Latest Updates (v2.216)](#latest-updates-v2216) — **Auth** **`AuthProvider`** + **`useAuth`**; **Bids** workflow tabs **`B{num}`** + **`bidDisplayName`**; **My Time** **`can_edit_clock_sessions_for_user`** for **master / assistant / superintendent** ([**`20260401190823`**](../supabase/migrations/20260401190823_can_edit_clock_sessions_option_a_roles.sql)); **merge up/down** reducer fix ([`myTimeDayTimeline.ts`](../src/lib/myTimeDayTimeline.ts))
 19. [Latest Updates (v2.215)](#latest-updates-v2215) - **Banking** (dev-only): **`mercury_transactions`** ledger; **`sync-mercury-transactions`** + **`mercury-webhook`**; nav between **Jobs** and **Materials** ([`Banking.tsx`](../src/pages/Banking.tsx), [`EDGE_FUNCTIONS.md`](EDGE_FUNCTIONS.md))
 20. [Latest Updates (v2.214)](#latest-updates-v2214) - **Layout** header shared **height** (dispatch icons + **Bid**); **Dashboard** strip **Assign** **optimistic** job/bid + **`Promise.all`** in **`loadPending`**; **Calendar** bottom chips **centered** ([`Layout.tsx`](../src/components/Layout.tsx), [`AssignSessionJobPopover.tsx`](../src/components/clock-sessions/AssignSessionJobPopover.tsx), [`useDashboardMyTeamSectionState.ts`](../src/hooks/useDashboardMyTeamSectionState.ts), [`DashboardTeamActiveClockStrip.tsx`](../src/components/DashboardTeamActiveClockStrip.tsx), [`Calendar.tsx`](../src/pages/Calendar.tsx))
-21. [Latest Updates (v2.207)](#latest-updates-v2207) - People **Salaried workdays** bulk modal: **Bulk unpaid time off** (`pay_staff_bulk_insert_user_time_off`, [`payStaffBulkTimeOff.ts`](../src/lib/payStaffBulkTimeOff.ts)); [`SalariedWorkdaysBulkModal.tsx`](../src/components/people/SalariedWorkdaysBulkModal.tsx), [`People.tsx`](../src/pages/People.tsx), [`20270331192000_pay_staff_bulk_insert_user_time_off.sql`](../supabase/migrations/20270331192000_pay_staff_bulk_insert_user_time_off.sql)
-22. [Latest Updates (v2.206)](#latest-updates-v2206) - **Salaried workday** collapsible in Settings; **`people_pay_config`** self-read SELECT RLS; Dashboard **Currently In** corner toggles: removed **`stripScopeOverlay`** wrapper; [`Settings.tsx`](../src/pages/Settings.tsx), [`20270331160000_users_read_own_people_pay_config.sql`](../supabase/migrations/20270331160000_users_read_own_people_pay_config.sql), [`DashboardTeamActiveClockStrip.tsx`](../src/components/DashboardTeamActiveClockStrip.tsx)
+21. [Latest Updates (v2.207)](#latest-updates-v2207) - People **Salaried workdays** bulk modal: **Bulk unpaid time off** (`pay_staff_bulk_insert_user_time_off`, [`payStaffBulkTimeOff.ts`](../src/lib/payStaffBulkTimeOff.ts)); [`SalariedWorkdaysBulkModal.tsx`](../src/components/people/SalariedWorkdaysBulkModal.tsx), [`People.tsx`](../src/pages/People.tsx), [`20270331192000_pay_staff_bulk_insert_user_time_off.sql`](../supabase/archive/migrations-pre-baseline/20270331192000_pay_staff_bulk_insert_user_time_off.sql)
+22. [Latest Updates (v2.206)](#latest-updates-v2206) - **Salaried workday** collapsible in Settings; **`people_pay_config`** self-read SELECT RLS; Dashboard **Currently In** corner toggles: removed **`stripScopeOverlay`** wrapper; [`Settings.tsx`](../src/pages/Settings.tsx), [`20270331160000_users_read_own_people_pay_config.sql`](../supabase/archive/migrations-pre-baseline/20270331160000_users_read_own_people_pay_config.sql), [`DashboardTeamActiveClockStrip.tsx`](../src/components/DashboardTeamActiveClockStrip.tsx)
 23. [Latest Updates (v2.203)](#latest-updates-v2203) - Dashboard **Jobs worked today**: two-column table; **job link** + inline **`[ hours • people ]`** on line 1, **address** line 2; [`DashboardTeamActiveClockStrip.tsx`](../src/components/DashboardTeamActiveClockStrip.tsx)
 24. [Latest Updates (v2.202)](#latest-updates-v2202) - Dashboard **Jobs worked today**: strip subsection by **`job_ledger_id`**; total hours + people; **`jobsWorkedTodayStripRows`**; [`DashboardTeamActiveClockStrip.tsx`](../src/components/DashboardTeamActiveClockStrip.tsx), [`useDashboardMyTeamSectionState.ts`](../src/hooks/useDashboardMyTeamSectionState.ts)
 25. [Latest Updates (v2.200)](#latest-updates-v2200) - Dashboard **Clocked in today**: **optimistic** approved checkmark after successful **`approve_clock_sessions`** (before **`loadPending`**); [`DashboardTeamActiveClockStrip.tsx`](../src/components/DashboardTeamActiveClockStrip.tsx)
@@ -2006,6 +2017,307 @@ when_to_read:
 153. [Email Templates](#email-templates)
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
+---
+
+## Latest Updates (v2.656)
+
+### Jobs — Teams tab rebuilt as **Crew P&L** (2026-07-12, PR #233)
+Per-person P&L replacing the placeholder table. **Billing credit is hours-weighted** (job total × person's share of the job's clocked crew hours); equal split survives only as a **≈-marked estimate** for revenue jobs with no clocked hours (windowed by `last_work_date`). Identity resolves account users, crew `person_name`s, and sub-sheet free-text onto **roster people** (*unmatched* tag otherwise). Columns **Hours / Labor Cost / Billing / Profit / $-per-hr**, sortable + searchable; date presets (month/quarter/year/custom — labor filters by work date, billing follows in-range hours); row drill-down to per-job lines → Job Detail; totals = visible row sums (the old "matched jobs only" footer is gone). Kernel [`crewPnlSummary.ts`](../src/lib/crewPnlSummary.ts) (11 tests) + [`JobsCrewPnlTab.tsx`](../src/components/jobs/JobsCrewPnlTab.tsx); tab key stays `teams-summary`; dev-only. Guide `crew-pnl.md`.
+
+## Latest Updates (v2.655)
+
+### Jobs — Cost breakdown chart in Job Detail + Edit Job, horizontally scrollable (2026-07-12, PR #232)
+The Charges & Value timeline renders at the bottom of **Parts cost** in both modals via self-fetching [`JobChargesTimelineStandalone.tsx`](../src/components/jobs/JobChargesTimelineStandalone.tsx): materials snapshot lines (tally lines gain `createdAt`/`createdByName`), one-job reports, sub-labor by HCP #, and per-job team labor via new **`fetchTeamLaborBreakdownForJob`** ([`teamLabor.ts`](../src/utils/teamLabor.ts), jsonb-contains crew query, math parity with `loadTeamLaborData`) — no org-wide scans in modals. Shared renderer `JobChargesTimelineChartView`; the plot sits in an `overflow-x: auto` container (~56px per day bucket) so busy jobs **scroll left–right** everywhere, Job Summary included.
+
+## Latest Updates (v2.654)
+
+### Jobs — quick links + Stages info header atop Job Summary expansion (2026-07-12, PR #231)
+Expanded rows open with **Job Detail** / **Edit Job** buttons (both refresh the ledger on save) plus the Stages **Assigned / HCP / Last-Activity** info: crew names, effective job # + trade with `j:`/`b:` reference-date lines (shared `stagesJobReferenceDates` helpers), and the latest note/report preview (thread stats fetched for expanded ids only).
+
+## Latest Updates (v2.653)
+
+### Jobs — profit-oriented Charges & Value timeline + clarity pass (2026-07-12, PR #230)
+The money line flips to **PROFIT (payments − charges)**: charges step **down in red** with source icons, payments step **up in green** (💵); above the dashed **$0** reference line = money made; bold signed **end-of-line value labels** on the profit + blue value lines; x-axis padding + icon clamps stop edge clipping; y-domain hugs the data; caption split into a short color legend + muted glossary; tooltip footer **Cost / Paid / Profit / Value created**. Kernel renames: `profit`, `paymentRiseSegments`, `endProfit`.
+
+## Latest Updates (v2.652)
+
+### Users — archive fixes + **Merge users** (2026-07-12, PRs #225–#229)
+**archive-user** now answers "That user is already archived (May 21, 2026)." (409) instead of "User not found" (#225). People → Users roster **Archive** button shows for **devs on rows they didn't create** (RLS already allowed it; #226). **Merge users** in Active Accounts (#227–#228): pick keep + merge-away accounts (same role; absorbed archived or never signed in; live account survives), **Preview merge** dry-run shows per-table counts, commit reassigns everything via `merge_user_accounts` (dynamic FK sweep + coverage assert) and bans the absorbed login (Edge `merge-users`); kernel [`mergeUserAccounts.ts`](../src/lib/mergeUserAccounts.ts). Per-row **Archive** with an effects confirm (login banned · hidden from lists · nothing deleted · restorable; customer-count warning → Archive & Reassign) in the Edit actions (#229). Guides `merge-user-accounts.md`, `archive-user-accounts.md`.
+
+## Latest Updates (v2.651)
+
+### Prospects — access-granted estimators in Team activity (2026-07-12, PR #224)
+`loadProspectTeamActivity`'s roster now includes `role=estimator` users with `estimator_prospects_access` — their Marked/Updated activity was always recorded, just filtered out. Affects both the Quickfill Prospects chart and Prospects → Team (shared loader).
+
+## Latest Updates (v2.650)
+
+### Jobs — **Job Detail** button at the top of Edit Job (2026-07-12, PR #222)
+Edit mode's header (centered, where New Job shows Import) gains a blue **Job Detail** button that closes the form and opens Job Detail for the same job. New ref-based [`JobDetailOpenerBridgeContext`](../src/contexts/JobDetailOpenerBridgeContext.tsx) (mirrors `UpdateFocusOpenerBridge`) because the Edit Job singleton renders **above** `JobDetailModalProvider`.
+
+## Latest Updates (v2.649)
+
+### Quickfill — **Complete, no Total Bill** section (2026-07-12, PRs #220, #221, #223)
+New section (`complete-no-bill`, after Jobs Billing): **non-paid jobs resolved 100% complete** (same rule as the Job Summary % column, RPC `list_latest_report_completion_pct`) whose `revenue` is empty/$0, shown as an **inline card list** — job # · name · address, "Started ⟨first clock-in⟩ · N clock sessions · Xh Ym" (hover = every work date; kernel `buildJobClockSummaries`), **Job Detail** + **Edit job** buttons, and **Activity ▾** accordion embedding the Job-Detail feed (`JobThreadNotesPanel`, one expanded row at a time). Reuses the Jobs Billing min-HCP threshold; dev/master/assistant. Kernel [`quickfillCompleteNoBill.ts`](../src/lib/quickfillCompleteNoBill.ts).
+
+## Latest Updates (v2.648)
+
+### Jobs — payments as green movements on the Charges & Value timeline (2026-07-12, PR #219)
+`jobs_ledger_payments` (already on Job Summary rows) join the timeline: payment stretches render **green** with a 💵 marker via one thin `<Line>` per merged payment segment (function `dataKey` — recharts can't per-segment color one line); value-created line recolored **blue**; tooltip payment rows + running totals. (Line orientation later flipped to profit in v2.653.) Also **v2.647-adjacent**: source icons enlarged to 22px (PR #218).
+
+## Latest Updates (v2.647)
+
+### Jobs — Job Summary **%** column (2026-07-11/12, PRs #216–#217)
+New last column after Revenue before Overhead: **100% when all invoices are paid with a positive total** (fully collected = done) → else the **latest field report %** (server-side parse via new RPC `list_latest_report_completion_pct` — `reports.field_values` carries signature data-URLs, so no client JSON bulk-fetch) → else Edit Job `pct_complete` → "—". Kernel [`jobSummaryPercentComplete.ts`](../src/lib/jobSummaryPercentComplete.ts). Migration `20260711120000` applied via db push from the PR.
+
+## Latest Updates (v2.646)
+
+### Jobs — **Charges & Value timeline chart** in Job Summary expanded rows (2026-07-11, PR #215)
+First chart on the Jobs page (recharts): step chart of the six cost streams (team labor, sub labor, Mercury card, supply-house allocations, tally parts, other job charges) with per-source emoji icons, plus a value line stepping to (report completion % × job total) at each field report (🚩 = report without a %); "No date" bucket keeps totals reconciled with the row's cost columns. Pure kernel [`jobChargesTimeline.ts`](../src/lib/jobChargesTimeline.ts) + lazy per-expand reports fetch. Guide `job-charges-timeline.md`.
+
+## Latest Updates (v2.645)
+
+### Bids — cover letter fixes + org-editable defaults (2026-07-05/06, PRs #211–#214)
+Takeoff part pickers: dropdown **blur-race** fix (`onMouseDown` preventDefault on in-dropdown elements) + `PartFormModal` as leaf dialog (z 1300) (#211). `numberToWords` handles **$1M+** (Million/Billion scales) (#212). Cover letter closing adds a **building-permit line** (#213). **Closing + terms/exclusions org-editable** via `app_settings` in Settings → Templates & testing (dev) (#214).
+
+## Latest Updates (v2.644)
+
+### Tally — payroll rules + Mark payroll confirm (2026-07-04/05, PRs #206–#210)
+**Mark payroll** now confirms; **"Create rule…"** seeds the rules modal from the transaction (counterparty-contains — and description-contains — never amount); saving auto-runs apply; manual tombstones beat rules (migration `20260704140000`). Fixes: payroll-marked transactions count as **linked** in all unlinked counters (`20260709160000`), silent flag-merge failure, rule seed names from the bank description.
+
+## Latest Updates (v2.643)
+
+### Help — **/help** documentation page (2026-07-04/05, PRs #201–#205)
+Bundled markdown guides (`src/content/help/`, offline via SW) with search + role-aware visibility + header **?** icon; **guide feedback** form → `help_feedback` dev inbox with push (Edge `notify-help-feedback`, migration `20260709150000`); illustrated guides via mock-UI tokens (`{{button:…}}`, `{{chip:…}}`, `{{icon:…}}`, `:::example` panels — [`helpGuideIllustrations.ts`](../src/lib/helpGuideIllustrations.ts)); "How do I…" question-completion titles (validated in CI by `helpGuideContent.test.ts`); embedded screen recordings via `{{gif:…}}`. **New convention (CLAUDE.md): help guides ship with feature PRs.**
+
+## Latest Updates (v2.642)
+
+### Turnaway trip charges (2026-07-04, PRs #199–#200)
+Tech files **Turnaway** ("client not home" / "site not ready") from the Job Mode card → report + dispatch alert; office clicks **Create trip charge** on the dispatch item → `create_turnaway_trip_charge` RPC inserts a **non-primary ready-to-bill invoice** and bumps `jobs_ledger.revenue` (primary-RTB invariant preserved); per-reason default amounts in `app_settings`. Migrations `20260709120000`/`130000`. Guide `turnaway-trip-charges.md`.
+
+## Latest Updates (v2.641)
+
+**Date**: 2026-07-04
+
+### Bid Board — Customer review modal (PR #198)
+
+New button row above the Bid Board search (home for future board tools) with **Customer review**: per-customer section counts across the boards plus **estimating and job hours** via new RPC `list_customer_review_job_hours` (migration `20260704170000`, applied 2026-07-04). UI: [`BidBoardCustomerReviewModal.tsx`](../src/components/bids/BidBoardCustomerReviewModal.tsx); pure data prep in [`bidBoardCustomerReview.ts`](../src/lib/bidBoardCustomerReview.ts).
+
+### Job Parts Tally — "Mark as payroll" + auto-mark rules (dev-only)
+
+Robert sometimes pays **payroll with the company card**. Payroll cost already reaches per-job numbers via **clocked labor** (hours × wage), so splitting the card charge across jobs would **double-count**. But leaving it unassigned strands it in the "unlinked" queue. Fix: mark such transactions **payroll** — resolved (out of the queue) with **no job allocation**, so no job's spend moves.
+
+- **Per-row toggle** (dev-only, transactions tab): **Mark payroll** on an unassigned row → a **Payroll ✓** chip with **Unmark**. Marking is **blocked with a warning** if the transaction already has job splits (remove them first). Un-marking writes a tombstone so a rule can't silently re-mark it.
+- **Payroll rules** manager (toolbar, dev-only): create rules on **counterparty / amount / bank-description** (contains|equals) — reusing the banking accounting match kernel ([`accountingLabelRuleMatch.ts`](../src/lib/accountingLabelRuleMatch.ts)) with a live "matches N of M loaded" test count. **Apply payroll rules now** button + **Auto-apply on load** toggle (`localStorage['jobs-tally-payroll-autoapply']`). Direct auto-mark (no review queue); rules never touch a transaction with an existing manual decision or job splits (those are reported as skipped).
+- **Reconciliation chip**: `Payroll: N · $X` over the current scope — a glance-check against People → Payroll stub payments.
+- **Correctness by construction**: a payroll-flagged transaction is never written to `mercury_transaction_job_allocations`, so [`fetchMercuryJobAllocationsWithAttributionForJob`](../src/lib/fetchMercuryJobAllocationsWithAttributionForJob.ts) (per-job card spend) is unaffected. The RPCs enforce the flag↔splits mutual exclusion server-side.
+
+**Data**: new dev-only tables `mercury_tally_payroll_flags` (per-tx `is_payroll` + `source` manual/rule, with tombstones) and `mercury_tally_payroll_rules` (V1 criteria jsonb); RPCs `set_tally_payroll_flag(tx, bool)` (P0001 block when split) and `bulk_apply_tally_payroll_rule_flags(rows)` (insert source='rule' only where undecided + split-free). Migration `20260704140000_tally_payroll_flags_and_rules.sql` **applied to prod** via MCP after a `BEGIN…ROLLBACK` dry-run; `gen-types:linked` regenerated; no new security advisors.
+
+#### Verification
+
+`tsc -b` clean; `vitest run` **1810/1810** (4 new kernel tests: match→flag, decided-skip, split-conflict routing, disabled/empty rules); JobTally.tsx lint at its pre-existing 1-warning baseline. Prod: both RPCs present, block-invariant guard confirmed against a real allocated transaction.
+
+#### Files
+
+New: [`src/lib/tallyPayrollRules.ts`](../src/lib/tallyPayrollRules.ts) (+ test), [`src/components/tally/TallyPayrollRulesModal.tsx`](../src/components/tally/TallyPayrollRulesModal.tsx), [`supabase/migrations/20260704140000_tally_payroll_flags_and_rules.sql`](../supabase/migrations/20260704140000_tally_payroll_flags_and_rules.sql). Modified: [`src/pages/JobTally.tsx`](../src/pages/JobTally.tsx), [`src/lib/mercuryTxRowFromTally.ts`](../src/lib/mercuryTxRowFromTally.ts), [`src/types/database.ts`](../src/types/database.ts) (regenerated).
+
+---
+
+## Latest Updates (v2.640)
+
+**Date**: 2026-07-04
+
+### Jobs → Stages — "Follow cards I move" toggle
+
+When you move a card between stages, it silently jumps to another section and you lose it. New toolbar toggle — **`Follow cards I move`** (pill button after the ham-mode toggle; per-browser persisted via `localStorage['jobs-stages-follow-moves']`; default **off**) — makes the board follow your moves:
+
+- After a move, the **destination section opens** (if collapsed), the page **smooth-scrolls to the card** in its new home, and the row **flashes amber ~2.6s** (same styling as the existing invoice focus flash).
+- **Covered moves**: Waiting → Working, Working → Ready to Bill (incl. Stripe prep), Working → Waiting, Ready to Bill → Working, Billed → Ready to Bill (job- and invoice-level send-backs), and **Bill Customer** (follows into Billed) — in both ham-mode and confirmation-modal paths, because the hook lives in the central `executeUpdateJobStatus` pipeline (plus the revert + Bill Customer callbacks).
+- **Mark Paid is intentionally not followed** — paid jobs leave the visible board.
+- Mechanics: job rows in both Stages renderers gained `data-stages-job-id`; a cloned pair of the invoice focus/flash effects scrolls (250ms, one retry at ~950ms for rows that render late) and clears the flash; new kernel helper [`stagesSectionKeyForJobStatus`](../src/lib/jobsStagesBoard.ts) maps status → section (+1 test).
+
+#### Verification
+
+`tsc -b` clean; `vitest run` **1806/1806** (1 new); Jobs.tsx lint at its pre-existing 12-warning baseline (verified no new).
+
+#### Files
+
+Modified: [`src/pages/Jobs.tsx`](../src/pages/Jobs.tsx), [`src/lib/jobsStagesBoard.ts`](../src/lib/jobsStagesBoard.ts) (+ test). No DB changes.
+
+---
+
+## Latest Updates (v2.639)
+
+**Date**: 2026-07-03
+
+### Jobs — fix: "Create customer from job" minted assistant-mastered customers
+
+Taunya hit `Job linked customer must belong to the job master … Code: P0001` creating a customer from job 886, with duplicate "possible matches" she also couldn't link.
+
+**Root cause**: `handleCreateCustomerFromJob` in [`JobFormModal.tsx`](../src/components/jobs/JobFormModal.tsx) inserted the customer with `master_user_id: authUser.id` — the person clicking. For an assistant editing a master's job, that minted a customer mastered to the *assistant*; the job↔customer invariant backstop (migration `20260630200000`) then correctly rejected the link, and each retry left another orphan duplicate (five "Richard Visiko" rows by the time it was reported). Pre-invariant creations sailed through silently: **95 customers and their 104 consistently-linked jobs were "mastered" to assistants** (back to April 3).
+
+- **Client fix**: the created customer now takes the **job's** master — `resolveEditJobMasterUserId` (project's master else the job's) when editing; for a not-yet-saved job, the assistant's master via `master_assistants`, falling back to the creator only when they're the master themselves. Mirrors what `NewCustomerForm` already did correctly.
+- **Prod healed** (migration [`20260703150000_customers_master_role_heal_and_guard.sql`](../supabase/migrations/20260703150000_customers_master_role_heal_and_guard.sql), applied via MCP after a full `BEGIN…ROLLBACK` dry-run): all mis-mastered customers repointed (assistant's master via `master_assistants`, else the org's single master) — the #141 cascade triggers moved their **104 linked jobs** from Taunya to Malachi automatically; plus one-off surgery deleting the 4 reference-free Visiko orphans and linking job 886 to the healed keeper.
+- **New backstop**: `customers_master_role_check` trigger — `customers.master_user_id` must reference a `dev`/`master_technician`, so no path can mint assistant-mastered customers again (`NewCustomerForm`/Prospects flows already comply).
+- **Post-heal verification**: 0 customers mastered to non-masters, 0 assistant-mastered jobs, 0 job↔customer invariant violations, exactly 1 Richard Visiko, job 886's customer master = Malachi.
+
+#### Files
+
+Modified: [`src/components/jobs/JobFormModal.tsx`](../src/components/jobs/JobFormModal.tsx). New: [`supabase/migrations/20260703150000_customers_master_role_heal_and_guard.sql`](../supabase/migrations/20260703150000_customers_master_role_heal_and_guard.sql). `tsc -b` clean; `vitest run` 1805/1805; no new lints. See also [`MIGRATIONS.md`](MIGRATIONS.md).
+
+---
+
+## Latest Updates (v2.638)
+
+**Date**: 2026-07-03
+
+### Materials → Supply Houses — view toggles inline with the heading
+
+The `Show paid invoices` and `Show last payment` checkboxes no longer sit in their own header row above the section — they're now right-aligned within the same band as the centered `Supply Houses: $X` heading and the `Summary | Aging map` pills. The standalone header row remains only when the tab renders its `Supply Houses` page title (`showTitle`).
+
+#### Files
+
+Modified: [`src/components/SupplyHousesTab.tsx`](../src/components/SupplyHousesTab.tsx). `tsc -b` clean; no new lint warnings.
+
+---
+
+## Latest Updates (v2.637)
+
+**Date**: 2026-07-03
+
+### Dashboard → Financials — AP rows show due date + allocated jobs
+
+Each supply row in the Accounts Payable drill-down now carries the two facts you'd otherwise open the bill for:
+
+- **Due date instead of invoice date**: the date column is headed **`Due`** (AP only; other cards keep `Date`) and supply rows show `supply_house_invoices.due_date` with a compact **`Nd`** past-due chip — orange under 60 days, red at 60+ — matching the Supply Houses tab chips. Bills without a due date show `—`. Payroll-due rows keep their period-end date under the same header.
+- **Allocated jobs as a muted second line** under the supply-house name: `500 · Smith House (60%), 402 · Jones (40%)` — same `apBills` data (v2.635) that powers the bill modal, where the jobs remain clickable.
+
+#### Files
+
+Modified: [`src/components/DashboardFinancialsSection.tsx`](../src/components/DashboardFinancialsSection.tsx). `tsc -b` + kernel tests + eslint clean. No DB / hook changes.
+
+---
+
+## Latest Updates (v2.636)
+
+**Date**: 2026-07-03
+
+### Dashboard → Financials — AP drill-down grouped into sections
+
+Reported: "I see `Payroll: $4,949.48 due` on the card but can't find upcoming payroll in the AP ledger." The upcoming section (v2.629) *was* there — but rendered below ~130 supply rows, and the payroll-due rows were interleaved with supplies by amount, so neither read as a payroll figure. The AP drill-down now groups like Not Billed Out:
+
+- **Supplies — 131 bills · $54,363.28** (per-row `Supply invoice` sublabel dropped; the header says it)
+- **Payroll due — 7 items · $4,949.48** (per-person period sublabels kept; the assistant's single aggregate row lands here too)
+- **Upcoming payroll (estimate) — 15 person-weeks · $13,557.31** (unchanged v2.629 section, now visually consistent with the ones above)
+- Footer stays **`Total due`** (upcoming excluded, as before). Bill click-through, → dispatch, and all totals unchanged.
+
+Mechanically: the ItemsModal section machinery gained a per-section `noun` ("job"/"bill"/"item") and `hideSublabels` flag; AP partitions items by key prefix (`supply:` vs stub/aggregate).
+
+#### Files
+
+Modified: [`src/components/DashboardFinancialsSection.tsx`](../src/components/DashboardFinancialsSection.tsx). `tsc -b` + kernel tests + eslint clean. No DB changes.
+
+---
+
+## Latest Updates (v2.635)
+
+**Date**: 2026-07-03
+
+### Dashboard → Financials — AP bill modal shows allocated jobs
+
+Follow-up to v2.632: the Accounts Payable bill detail modal now shows **which jobs the bill is assigned to**, between the Amount fact and the attachment preview.
+
+- One line per `supply_house_invoice_job_allocations` entry — `500 · Smith House (60%)`, sorted by percent desc; a bill with no allocations shows `—`. In prod, 125 of 138 unpaid bills have allocations.
+- **Each job is clickable** → opens the **Job Detail** modal (the bill modal and items modal close first — the Job Detail backdrop stacks lower), consistent with job rows elsewhere in Financials.
+- Plumbing in [`useDashboardFinancials.ts`](../src/hooks/useDashboardFinancials.ts): chunked allocations fetch per unpaid bill (best-effort — failure just leaves the row as `—`), plus a label lookup for allocated jobs outside the hook's status-filtered jobs fetch (labels via the kernel's `financialJobLabel`, HCP → Click → name). `DashboardApBill` gains `jobs: Array<{jobId, label, pct}>`.
+
+#### Verification
+
+`tsc -b` clean; `vitest run` **1805/1805**; zero lint warnings on touched files.
+
+#### Files
+
+Modified: [`src/hooks/useDashboardFinancials.ts`](../src/hooks/useDashboardFinancials.ts), [`src/components/DashboardFinancialsSection.tsx`](../src/components/DashboardFinancialsSection.tsx). No DB changes.
+
+---
+
+## Latest Updates (v2.634)
+
+**Date**: 2026-07-03
+
+### Materials → Supply Houses — fix: dates displayed one day early
+
+Taunya reported entering a due date of the 10th and seeing the 9th. **Bug, not user error**: `invoice_date` and `due_date` are DATE-only columns (`YYYY-MM-DD`), and `new Date('2026-07-10')` parses as **UTC midnight** — 6–7pm the *previous* evening in America/Chicago — so `toLocaleDateString()` rendered every date one day early.
+
+- New local `formatYmdLocal(ymd)` in [`SupplyHousesTab.tsx`](../src/components/SupplyHousesTab.tsx): parses `YYYY-MM-DD` at **local noon** (the same idiom the Financials modals already use); non-YMD values fall back to normal parsing.
+- Replaced the three affected call sites: the invoice detail table's **Date** and **Due** columns, and the Apply Payment list's invoice date. `Paid On` uses a real timestamp and was always correct.
+- **Stored data was always right** — the `<input type="date">` writes the exact YMD string; only the display was off. Nothing needs re-entering. The aging map buckets compare YMD strings directly and were never affected.
+
+#### Files
+
+Modified: [`src/components/SupplyHousesTab.tsx`](../src/components/SupplyHousesTab.tsx). `tsc -b` clean; no new lint warnings.
+
+---
+
+## Latest Updates (v2.633)
+
+**Date**: 2026-07-03
+
+### Dashboard → Financials — section title removed + tighter bottom gap
+
+The `Financials` heading above the three cards is gone — the AR / AP / Not Billed Out cards sit directly at the top of the dashboard and describe themselves. Follow-up in the same version: the section's bottom margin shrank from `1.5rem` to `0.5rem`, pulling the quick-action buttons / **Clock In** row up closer to the cards.
+
+#### Files
+
+Modified: [`src/components/DashboardFinancialsSection.tsx`](../src/components/DashboardFinancialsSection.tsx). `tsc -b` + eslint clean.
+
+---
+
+## Latest Updates (v2.632)
+
+**Date**: 2026-07-03
+
+### Dashboard → Financials — AP bill detail modal with attachment preview
+
+Supply-house rows in the **Accounts Payable** drill-down are now clickable, opening a bill detail modal:
+
+- **Header**: `{Supply house} — ${amount}`; **fact rows**: Invoice #, Purchase Order #, Invoice date, Due date (with the same orange/red `Nd past due` chip as the Supply Houses tab, via `daysPastDue`), Amount.
+- **Attached file at the bottom**: the invoice's Drive link renders inline through the Google Drive `/preview` embed (reusing [`googleDrivePreviewEmbedUrl`](../src/lib/estimateCustomerAttachment.ts)) — collapsed to 300px with `pointer-events` off and a zoom-in cursor; **clicking it (or the Expand button) widens the modal to ~1100px with a 68vh preview**; Shrink restores. An **Open in Drive ↗** link is always available; non-Drive links fall back to that link, and bills without a link say so.
+- **Plumbing**: [`useDashboardFinancials.ts`](../src/hooks/useDashboardFinancials.ts) extends the supply select with `due_date, link, invoice_number, purchase_order_number` and exposes `apBills: Record<itemKey, DashboardApBill>`; [`DashboardFinancialsSection.tsx`](../src/components/DashboardFinancialsSection.tsx) adds the `onOpenApBill` row handler (AP modal only) + `ApBillModal` (z 1110 above the items modal at 1100). Payroll rows, the assistant's aggregate rows, and the upcoming section are unchanged (aggregates have non-`supply:` keys, so they're inherently not clickable).
+
+#### Verification
+
+`tsc -b` clean; `vitest run` **1805/1805**; zero lint warnings on touched files. Prod data check: 131 of 138 unpaid supply invoices carry a Drive link (the only host present), so nearly every row previews inline.
+
+#### Files
+
+Modified: [`src/hooks/useDashboardFinancials.ts`](../src/hooks/useDashboardFinancials.ts), [`src/components/DashboardFinancialsSection.tsx`](../src/components/DashboardFinancialsSection.tsx). No DB / migration / type changes.
+
+---
+
+## Latest Updates (v2.631)
+
+**Date**: 2026-07-03
+
+### Materials → Supply Houses — AP aging map
+
+The Supply Houses tab gains a **`Summary | Aging map`** toggle (pill buttons under the outstanding-total heading). The Aging map is the classic AP aging matrix — the hand-drawn sheet, computed live:
+
+- **Rows**: supply houses with an unpaid balance, largest first; clicking a row switches back to Summary with that house's detail expanded.
+- **Columns**: **Current** (not yet due) | **1–30** | **30–60** | **60–90** | **90+** (days past due, from `supply_house_invoices.due_date`) | **No due date** | **Total**, with green→amber→red heat-colored cells, hover tooltips on the headers, and a column-totals footer.
+- A caption above the table calls out unpaid invoices missing a due date (`N unpaid invoices have no due date — open the house and add one to place them`).
+- **Past-due chips**: in the expanded house detail, unpaid invoice rows show a red/orange **`42d past due`** badge next to the due date (orange < 60 days, red ≥ 60).
+- **Due-date prefill**: Add Invoice now prefills Due date with the next occurrence of the house's `monthly_payment_day` after today (clamped to month length — the 31st in February → Feb 28/29), still fully editable. Houses without a payment day behave as before.
+- **No DB changes** — `due_date` and `monthly_payment_day` already existed and were already being recorded (131 of 138 unpaid invoices had due dates at build time). Pure kernel [`supplyHouseAging.ts`](../src/lib/supplyHouseAging.ts): `daysPastDue` / `agingBucketFor` (30/60/90 cutoffs) / `buildSupplyHouseAgingMatrix` / `nextMonthlyPaymentDueYmd` — **6 unit tests** including bucket boundaries and leap-year clamping. Matrix cross-checked against prod SQL at build time (Texas Plumbing Supply $18,477.59 across four buckets; grand total matches the tab's outstanding header).
+
+#### Verification
+
+`tsc -b` clean; `vitest run` **1805/1805** (6 new); no new lint warnings (the tab's 1 pre-exists).
+
+#### Files
+
+New: [`src/lib/supplyHouseAging.ts`](../src/lib/supplyHouseAging.ts) (+ test). Modified: [`src/components/SupplyHousesTab.tsx`](../src/components/SupplyHousesTab.tsx). No DB / migration / type changes.
+
 ---
 
 ## Latest Updates (v2.630)
@@ -3103,7 +3415,7 @@ The per–supply-house Invoices table on **Materials → Supply Houses** used to
 #### What's new
 
 - **New column** `paid_at TIMESTAMPTZ` on `public.supply_house_invoices` (nullable; NULL means unpaid).
-- **Auto-sync trigger** `sync_supply_house_invoice_paid_at_trigger` (`BEFORE INSERT OR UPDATE`) defined in [`supabase/migrations/20270602120000_supply_house_invoices_paid_at.sql`](../supabase/migrations/20270602120000_supply_house_invoices_paid_at.sql). Function `public.sync_supply_house_invoice_paid_at` (with `SET search_path = public` per the project lint convention) implements:
+- **Auto-sync trigger** `sync_supply_house_invoice_paid_at_trigger` (`BEFORE INSERT OR UPDATE`) defined in [`supabase/archive/migrations-pre-baseline/20270602120000_supply_house_invoices_paid_at.sql`](../supabase/archive/migrations-pre-baseline/20270602120000_supply_house_invoices_paid_at.sql). Function `public.sync_supply_house_invoice_paid_at` (with `SET search_path = public` per the project lint convention) implements:
   - `INSERT` with `is_paid = true` and `paid_at IS NULL` → `paid_at = NOW()`.
   - `UPDATE` flipping `is_paid` false → true and `paid_at` not explicitly set → `paid_at = NOW()`.
   - `UPDATE` flipping `is_paid` true → false → `paid_at = NULL`.
@@ -3130,7 +3442,7 @@ The per–supply-house Invoices table on **Materials → Supply Houses** used to
 
 #### Files
 
-- New: [`supabase/migrations/20270602120000_supply_house_invoices_paid_at.sql`](../supabase/migrations/20270602120000_supply_house_invoices_paid_at.sql)
+- New: [`supabase/archive/migrations-pre-baseline/20270602120000_supply_house_invoices_paid_at.sql`](../supabase/archive/migrations-pre-baseline/20270602120000_supply_house_invoices_paid_at.sql)
 - Modified: [`src/components/SupplyHousesTab.tsx`](../src/components/SupplyHousesTab.tsx) (Paid On header + body cell, colSpan 9 → 10, Apply Payment modal Paid-label date)
 - Regenerated: [`src/types/database.ts`](../src/types/database.ts)
 
@@ -6829,7 +7141,7 @@ Two related fixes for the long-standing class of bugs where new times entered on
 ### Salary sync — drift repair + approved-but-open rows close at `t_end`
 
 - **Drift repair** — Migrations **`20270408153000`**, **`20270408162000`**, **`20270410130200`**, **`20270421130000`**, **`20270421140000`**, **`20270516120000`** were recorded in **`supabase_migrations.schema_migrations`** but the live **`salary_sync_one_user_clock_sessions`** body was an older version (no degenerate split-B remap, no indexed-fragment close at **`t_end`**, no work-date-or-clock-in-tz-date split overlap). Migration **[`20260515092032_salary_sync_close_at_t_end_including_approved_open.sql`](../supabase/migrations/20260515092032_salary_sync_close_at_t_end_including_approved_open.sql)** **`CREATE OR REPLACE`**s the function with the latest body.
-- **Tail consolidation** — Migration **[`20270601000000_salary_sync_consolidated_tail.sql`](../supabase/migrations/20270601000000_salary_sync_consolidated_tail.sql)** is **identical** to **`20260515092032`** but timestamped after every other salary migration. Without it, a future **`supabase db reset`** would replay the six `2027*` salary files **after** the 2026 drift-repair file and silently regress the function body to **`20270516120000`**'s snapshot (close, but missing the approved-but-open product change). With the tail in place, fresh-DB rebuilds always land on the same body the linked DB has. No-op on the linked DB beyond a single idempotent `CREATE OR REPLACE FUNCTION`.
+- **Tail consolidation** — Migration **[`20270601000000_salary_sync_consolidated_tail.sql`](../supabase/archive/migrations-pre-baseline/20270601000000_salary_sync_consolidated_tail.sql)** is **identical** to **`20260515092032`** but timestamped after every other salary migration. Without it, a future **`supabase db reset`** would replay the six `2027*` salary files **after** the 2026 drift-repair file and silently regress the function body to **`20270516120000`**'s snapshot (close, but missing the approved-but-open product change). With the tail in place, fresh-DB rebuilds always land on the same body the linked DB has. No-op on the linked DB beyond a single idempotent `CREATE OR REPLACE FUNCTION`.
 - **Continuous mode** — When **`p_now ≥ t_end`**, the function now closes:
   - the **canonical** **`salary_segment_index IS NULL`** row, **and**
   - any open **indexed** (**`salary_segment_index 1..N`** from My Time splits) **`salary_schedule`** rows where **`clocked_in_at < t_end`**
@@ -6890,7 +7202,7 @@ Two related fixes for the long-standing class of bugs where new times entered on
 ### **Edit Job** — **Outstanding billing** — **Discount**
 
 - **[`JobFormModal.tsx`](../src/components/jobs/JobFormModal.tsx)** — **Actions** row per **billed** line: **Discount** ( **`dev`** / **`master_technician`** / **`assistant`** / **`primary`**; disabled when open balance on the line is ~0). Opens **[`AgreedWriteDownModal.tsx`](../src/components/jobs/AgreedWriteDownModal.tsx)** (**new total**, **note** ≥ 3 chars). Success: **`refreshEditingJobAndHydratePayments`** + toast.
-- **Non-Stripe** — RPC **`apply_agreed_write_down_to_billed_invoice`** (**[`20270523140000_agreed_write_down_billed_invoice.sql`](../supabase/migrations/20270523140000_agreed_write_down_billed_invoice.sql)**): lowers **`jobs_ledger_invoices.amount`** with validation vs payments on the invoice; audit **`agreed_write_down_*`**; may mark invoice/job **paid** when **`payments_made >= revenue`**. Rejects rows with **`stripe_invoice_id`** (use Edge path).
+- **Non-Stripe** — RPC **`apply_agreed_write_down_to_billed_invoice`** (**[`20270523140000_agreed_write_down_billed_invoice.sql`](../supabase/archive/migrations-pre-baseline/20270523140000_agreed_write_down_billed_invoice.sql)**): lowers **`jobs_ledger_invoices.amount`** with validation vs payments on the invoice; audit **`agreed_write_down_*`**; may mark invoice/job **paid** when **`payments_made >= revenue`**. Rejects rows with **`stripe_invoice_id`** (use Edge path).
 - **Stripe-hosted** — Edge **`stripe-invoice-agreed-write-down`** (**[`EDGE_FUNCTIONS.md`](EDGE_FUNCTIONS.md)**): **`creditNotes.create`** for the concession, **`invoices.retrieve`**, then **`service_apply_agreed_write_down_from_stripe`** (service role) to align **`amount`** and audit (append credit note id to note). Rejects if Stripe invoice is already **paid**.
 - **Tests** — **[`agreedWriteDownBounds.ts`](../src/lib/agreedWriteDownBounds.ts)** (**[`agreedWriteDownBounds.test.ts`](../src/lib/agreedWriteDownBounds.test.ts)**).
 
@@ -6902,7 +7214,7 @@ Two related fixes for the long-standing class of bugs where new times entered on
 
 ### **Email schedule** — dev **Send to** (queue for others)
 
-- **`dev`** — **[`ScheduleDayEmailModal.tsx`](../src/components/ScheduleDayEmailModal.tsx)** **Send to** **`SearchableSelect`**: non-archived **`users`** (first 500 by name). Inserts **`schedule_day_email_requests`** with chosen **`recipient_user_id`**; **RLS** **[`20270523120000_dev_schedule_day_email_for_other.sql`](../supabase/migrations/20270523120000_dev_schedule_day_email_for_other.sql)** (**`schedule_day_email_requests_insert_dev_any_recipient`**, **`schedule_day_email_requests_select_dev`**). Master/assistant unchanged (self only).
+- **`dev`** — **[`ScheduleDayEmailModal.tsx`](../src/components/ScheduleDayEmailModal.tsx)** **Send to** **`SearchableSelect`**: non-archived **`users`** (first 500 by name). Inserts **`schedule_day_email_requests`** with chosen **`recipient_user_id`**; **RLS** **[`20270523120000_dev_schedule_day_email_for_other.sql`](../supabase/archive/migrations-pre-baseline/20270523120000_dev_schedule_day_email_for_other.sql)** (**`schedule_day_email_requests_insert_dev_any_recipient`**, **`schedule_day_email_requests_select_dev`**). Master/assistant unchanged (self only).
 
 ---
 
@@ -6912,7 +7224,7 @@ Two related fixes for the long-standing class of bugs where new times entered on
 
 ### Dashboard — **Email schedule** on **Clocked in today** strip
 
-- **[`DashboardTeamActiveClockStrip.tsx`](../src/components/DashboardTeamActiveClockStrip.tsx)** — When **`enableScheduleDayEmail`** (**[`Dashboard.tsx`](../src/pages/Dashboard.tsx)** mirrors **`showClockStripScopeToggle`** with **Mix**), **Email schedule** sits left of **Mix**. Opens **[`ScheduleDayEmailModal.tsx`](../src/components/ScheduleDayEmailModal.tsx)** (**Schedule** at a Central wall time, **Queue soon** for a due-now row). Inserts **`schedule_day_email_requests`** (**`20270522120000_schedule_day_email_requests_and_rpc.sql`**; one **pending** row per recipient + **`work_date`**). **[`list_job_schedule_blocks_for_schedule_email`](../supabase/migrations/20270522120000_schedule_day_email_requests_and_rpc.sql)** mirrors **`job_schedule_blocks`** SELECT for the recipient; **[`schedule-day-email-dispatch`](../supabase/functions/schedule-day-email-dispatch/index.ts)** pg_cron `*/15` + Resend. Distinct from **Jobs → Reports → Recurring Email Reports** (**`recurring-job-report-dispatch`**, activity digests).
+- **[`DashboardTeamActiveClockStrip.tsx`](../src/components/DashboardTeamActiveClockStrip.tsx)** — When **`enableScheduleDayEmail`** (**[`Dashboard.tsx`](../src/pages/Dashboard.tsx)** mirrors **`showClockStripScopeToggle`** with **Mix**), **Email schedule** sits left of **Mix**. Opens **[`ScheduleDayEmailModal.tsx`](../src/components/ScheduleDayEmailModal.tsx)** (**Schedule** at a Central wall time, **Queue soon** for a due-now row). Inserts **`schedule_day_email_requests`** (**`20270522120000_schedule_day_email_requests_and_rpc.sql`**; one **pending** row per recipient + **`work_date`**). **[`list_job_schedule_blocks_for_schedule_email`](../supabase/archive/migrations-pre-baseline/20270522120000_schedule_day_email_requests_and_rpc.sql)** mirrors **`job_schedule_blocks`** SELECT for the recipient; **[`schedule-day-email-dispatch`](../supabase/functions/schedule-day-email-dispatch/index.ts)** pg_cron `*/15` + Resend. Distinct from **Jobs → Reports → Recurring Email Reports** (**`recurring-job-report-dispatch`**, activity digests).
 
 ---
 
@@ -7746,7 +8058,7 @@ Two related fixes for the long-standing class of bugs where new times entered on
 ### **Map** + **Layout** — **estimator** access, quicker geocoding load, desktop layout, estimator **mobile Dashboard**
 
 - **Roles** — **[`layoutRouteAccess.ts`](../src/lib/layoutRouteAccess.ts)** **`estimatorAllowedPaths`** includes **`/map`**; **[`Map.tsx`](../src/pages/Map.tsx)** and **[`Layout.tsx`](../src/components/Layout.tsx)** **`canShowMapNav`** (**pin** desktop / narrow **gear**); Edge **`geocode-one`** / **`geocode-address-batch`** allow **`estimator`** (403 messages aligned).
-- **Database** — **[`20270520120000_address_geocodes_estimator_map_access.sql`](../supabase/migrations/20270520120000_address_geocodes_estimator_map_access.sql)** — **`address_geocodes`** SELECT/INSERT/UPDATE/DELETE for **`estimator`** with existing map roles (`MIGRATIONS.md`).
+- **Database** — **[`20270520120000_address_geocodes_estimator_map_access.sql`](../supabase/archive/migrations-pre-baseline/20270520120000_address_geocodes_estimator_map_access.sql)** — **`address_geocodes`** SELECT/INSERT/UPDATE/DELETE for **`estimator`** with existing map roles (`MIGRATIONS.md`).
 - **Load** — **[`useMapPageData.ts`](../src/hooks/useMapPageData.ts)** — clears **Loading…** after cache merge + **generation** guard on reload; invokes **`geocode-address-batch`** in chunks (≤20) for misses (not sequential **`geocode-one`** bulk); **`MapPageView`** **Resolving addresses…** (+ collapsible address list during resolution).
 - **UI** — **[`MapPageView.tsx`](../src/components/map/MapPageView.tsx)** — **scrollable entity table below** Leaflet column; **`MapEntityTable`** **`titleRight`** carries **Filter** beside the heading (**All visible layers** / filtered counts).
 - **Estimator narrow** — **[`Layout.tsx`](../src/components/Layout.tsx)** — **Dashboard** is **only** first row in **hamburger** on mobile for **estimator** (not duplicated in strip beside menu); desktop unchanged (`ACCESS_CONTROL.md` **Layout Behavior**).
@@ -7761,7 +8073,7 @@ Two related fixes for the long-standing class of bugs where new times entered on
 
 - **Header** — **[`headerTaskDispatchEstimatorEligible.ts`](../src/lib/headerTaskDispatchEstimatorEligible.ts)** gates **`Layout.tsx`** toolbar buttons: **Task Dispatch** and **Estimator Inbox** include **`isSubcontractorLikeRole`** (**subcontractor**, **helpers**) plus existing staff/estimator; **Task** (checklist add) adds **`primary`** and **`isSubcontractorLikeRole`** (same file).
 - **Modal** — **[`ChecklistAddModal.tsx`](../src/components/ChecklistAddModal.tsx)** **`canManage`** includes **subcontractor**, **helpers**, and **estimator** so the header **Task** button is not a no-op for field roles.
-- **Database** — **[`20270519120000_subcontractor_helpers_estimator_checklist_task_definitions.sql`](../supabase/migrations/20270519120000_subcontractor_helpers_estimator_checklist_task_definitions.sql)** adds **`can_define_task_style_checklist_items()`** and widens **`checklist_items`** / **`checklist_item_assignees`** / **`checklist_instance_assignees`** / **`checklist_instances`** policies only (ownership: **`created_by_user_id = auth.uid()`** for field roles; **`is_dev_or_master_or_assistant()`** unchanged elsewhere — Quickfill marks, tech tree, etc.).
+- **Database** — **[`20270519120000_subcontractor_helpers_estimator_checklist_task_definitions.sql`](../supabase/archive/migrations-pre-baseline/20270519120000_subcontractor_helpers_estimator_checklist_task_definitions.sql)** adds **`can_define_task_style_checklist_items()`** and widens **`checklist_items`** / **`checklist_item_assignees`** / **`checklist_instance_assignees`** / **`checklist_instances`** policies only (ownership: **`created_by_user_id = auth.uid()`** for field roles; **`is_dev_or_master_or_assistant()`** unchanged elsewhere — Quickfill marks, tech tree, etc.).
 - **Regression fix** — **[`20260501205038_fix_checklist_items_rls_recursion.sql`](../supabase/migrations/20260501205038_fix_checklist_items_rls_recursion.sql)** — **`checklist_item_created_by_auth_user(uuid)`** and **`checklist_instance_parent_item_created_by_auth_user(uuid)`** (**`SECURITY DEFINER`**, **`SET row_security = off`**) replace in-policy **`EXISTS (SELECT … FROM checklist_items …)`** on junction/instance paths so **estimators** (and other non-staff roles using **`can_define_task_style_checklist_items()`**) do not hit **infinite recursion detected in policy for relation "checklist_items"** when saving a task (e.g. from **Bids**). **`checklist_items`** SELECT policy orders **`created_by_user_id = auth.uid()`** before assignee **`EXISTS`** as a fast path.
 - **Docs** — **`ACCESS_CONTROL.md`** (Dashboard send vs inbox, Checklist RLS notes); **`MIGRATIONS.md`**; **`PROJECT_DOCUMENTATION.md`** / **`AI_CONTEXT.md`** / **`AGENTS.md`** cross-links.
 
@@ -7974,7 +8286,7 @@ Two related fixes for the long-standing class of bugs where new times entered on
 
 ### **Clock / Dispatch / Search** — **trade** pills on **job** rows in unified job/bid search
 
-- **Database** — **`search_jobs_ledger`**: **`service_type_name`** (LEFT JOIN **`service_types`**) — [**`20260430205318_search_jobs_ledger_service_type_name.sql`**](../supabase/migrations/20260430205318_search_jobs_ledger_service_type_name.sql). **`list_assigned_jobs_for_dashboard`**: **`service_type_name`** (scalar subquery; reapplies columns dropped by later RPC versions) — [**`20270518120000_list_assigned_jobs_service_type_name.sql`**](../supabase/migrations/20270518120000_list_assigned_jobs_service_type_name.sql).
+- **Database** — **`search_jobs_ledger`**: **`service_type_name`** (LEFT JOIN **`service_types`**) — [**`20260430205318_search_jobs_ledger_service_type_name.sql`**](../supabase/migrations/20260430205318_search_jobs_ledger_service_type_name.sql). **`list_assigned_jobs_for_dashboard`**: **`service_type_name`** (scalar subquery; reapplies columns dropped by later RPC versions) — [**`20270518120000_list_assigned_jobs_service_type_name.sql`**](../supabase/archive/migrations-pre-baseline/20270518120000_list_assigned_jobs_service_type_name.sql).
 - **Shared types** — **[`unifiedJobBidSearch.ts`](../src/utils/unifiedJobBidSearch.ts)**: **`JobSearchResult`**, job branch of **`UnifiedSearchResult`**, **`serviceTypeTagForUnifiedRow`** → same **`BID_SERVICE_TYPE_TAGS`** / **`getBidServiceTypeTag`** as bids; **`estimate`** rows return no pill.
 - **UI** — Pills on job + bid rows: **[`ClockInOutButton.tsx`](../src/components/ClockInOutButton.tsx)** (search lists + association chips; dashboard rows + **`jobs_ledger`** hydrate **`service_types(name)`**), **[`HeaderGlobalSearch.tsx`](../src/components/HeaderGlobalSearch.tsx)**, **[`ClockSessionStripActionsModal.tsx`](../src/components/ClockSessionStripActionsModal.tsx)**, **[`AssignSessionJobPopover.tsx`](../src/components/clock-sessions/AssignSessionJobPopover.tsx)**, **[`DispatchTaskModal.tsx`](../src/components/DispatchTaskModal.tsx)**, **[`EstimatorTaskModal.tsx`](../src/components/EstimatorTaskModal.tsx)**, **[`PeopleHoursDayAuditModal.tsx`](../src/components/PeopleHoursDayAuditModal.tsx)**. **`BidServiceTypeSearchToggles`** still affect **bid** RPC params only.
 - **Docs** — **`PROJECT_DOCUMENTATION.md`**, **`MIGRATIONS.md`**, **`AGENTS.md`**, **`AI_CONTEXT.md`**.
@@ -8153,7 +8465,7 @@ Two related fixes for the long-standing class of bugs where new times entered on
 ### **Salary sync** — close **continuous** split **`salary_schedule`** rows at **`t_end`**
 
 - **Problem**: With template **`mode = continuous`**, after **My Time** splits the single auto block into **indexed** **`salary_schedule`** segments (**`salary_segment_index`** 1..N), **`salary_sync`** no longer INSERTs the NULL-index row (**`20270402100000`**) — but prior logic did **not** set **`clocked_out_at`** on those fragments at the planned end of day, so a segment could stay **open**.
-- **Change**: **`salary_sync_one_user_clock_sessions`** — when **`v_mode = 'continuous'`** and **`p_now ≥ t_end`**, **`UPDATE`** open (**`clocked_out_at IS NULL`**), non-final indexed **`salary_schedule`** rows for that user/**`work_date`** with **`clocked_in_at < t_end`** to **`clocked_out_at = t_end`**, **before** the NULL-index canonical path — **[`20270516120000_salary_sync_close_continuous_fragments_at_t_end.sql`](../supabase/migrations/20270516120000_salary_sync_close_continuous_fragments_at_t_end.sql)**.
+- **Change**: **`salary_sync_one_user_clock_sessions`** — when **`v_mode = 'continuous'`** and **`p_now ≥ t_end`**, **`UPDATE`** open (**`clocked_out_at IS NULL`**), non-final indexed **`salary_schedule`** rows for that user/**`work_date`** with **`clocked_in_at < t_end`** to **`clocked_out_at = t_end`**, **before** the NULL-index canonical path — **[`20270516120000_salary_sync_close_continuous_fragments_at_t_end.sql`](../supabase/archive/migrations-pre-baseline/20270516120000_salary_sync_close_continuous_fragments_at_t_end.sql)**.
 - **Documentation**: **`SALARY_CLOCK_SESSIONS.md`** (Continuous template mode + migration index), **`PROJECT_DOCUMENTATION.md`** (`clock_sessions`), **`GLOSSARY.md`**, **`MIGRATIONS.md`**.
 
 ---
@@ -8164,9 +8476,9 @@ Two related fixes for the long-standing class of bugs where new times entered on
 
 ### **Reports** — superintendent anchor + list parity; coordinate visibility in RPCs; **View Reports** inline layout + Maps link
 
-- **Superintendent job anchor** — **`superintendent_report_job_anchor_allowed`** (**`SECURITY DEFINER`**, **`SET row_security = off`** inside so **`jobs_ledger`** reads in the helper are not masked by caller RLS): superintendent **`reports`** INSERT policy delegates to this helper instead of an inline **`jobs_ledger`** **`EXISTS`**. Team assignment branch (**`jobs_ledger_team_members`**) matches **`list_assigned_jobs_for_dashboard`** scope so anchors work when the job has **no** **`project_id`** but the superintendent is on the crew — **[`20270511120000_superintendent_reports_job_anchor_security_definer.sql`](../supabase/migrations/20270511120000_superintendent_reports_job_anchor_security_definer.sql)**, **[`20270512120000_superintendent_report_anchor_row_security_off.sql`](../supabase/migrations/20270512120000_superintendent_report_anchor_row_security_off.sql)**, **[`20270513120000_superintendent_report_anchor_team_assignment.sql`](../supabase/migrations/20270513120000_superintendent_report_anchor_team_assignment.sql)**.
-- **List RPC parity** — **`list_reports_with_job_info`** / **`list_reports_for_job_ledger`** superintendent filters use the same anchor helper so rows listed after save match INSERT rules (**empty modal after save** resolved) — **[`20270514120000_list_reports_rpc_superintendent_job_anchor.sql`](../supabase/migrations/20270514120000_list_reports_rpc_superintendent_job_anchor.sql)**.
-- **Coordinates in list outputs** — **`reported_at_lat`** / **`reported_at_lng`** returned for **primary**, **superintendent**, **estimator**, and for **helpers** / **subcontractor** on **their own** report rows (replacing earlier office-only NULL masking from **`20260415120006`** / **`20260415120007`**); **`list_my_reports`** returns coordinates on the viewer’s own rows — **[`20270515120000_report_list_rpc_include_coordinates.sql`](../supabase/migrations/20270515120000_report_list_rpc_include_coordinates.sql)**.
+- **Superintendent job anchor** — **`superintendent_report_job_anchor_allowed`** (**`SECURITY DEFINER`**, **`SET row_security = off`** inside so **`jobs_ledger`** reads in the helper are not masked by caller RLS): superintendent **`reports`** INSERT policy delegates to this helper instead of an inline **`jobs_ledger`** **`EXISTS`**. Team assignment branch (**`jobs_ledger_team_members`**) matches **`list_assigned_jobs_for_dashboard`** scope so anchors work when the job has **no** **`project_id`** but the superintendent is on the crew — **[`20270511120000_superintendent_reports_job_anchor_security_definer.sql`](../supabase/archive/migrations-pre-baseline/20270511120000_superintendent_reports_job_anchor_security_definer.sql)**, **[`20270512120000_superintendent_report_anchor_row_security_off.sql`](../supabase/archive/migrations-pre-baseline/20270512120000_superintendent_report_anchor_row_security_off.sql)**, **[`20270513120000_superintendent_report_anchor_team_assignment.sql`](../supabase/archive/migrations-pre-baseline/20270513120000_superintendent_report_anchor_team_assignment.sql)**.
+- **List RPC parity** — **`list_reports_with_job_info`** / **`list_reports_for_job_ledger`** superintendent filters use the same anchor helper so rows listed after save match INSERT rules (**empty modal after save** resolved) — **[`20270514120000_list_reports_rpc_superintendent_job_anchor.sql`](../supabase/archive/migrations-pre-baseline/20270514120000_list_reports_rpc_superintendent_job_anchor.sql)**.
+- **Coordinates in list outputs** — **`reported_at_lat`** / **`reported_at_lng`** returned for **primary**, **superintendent**, **estimator**, and for **helpers** / **subcontractor** on **their own** report rows (replacing earlier office-only NULL masking from **`20260415120006`** / **`20260415120007`**); **`list_my_reports`** returns coordinates on the viewer’s own rows — **[`20270515120000_report_list_rpc_include_coordinates.sql`](../supabase/archive/migrations-pre-baseline/20270515120000_report_list_rpc_include_coordinates.sql)**.
 - **UI** — **[`ReportViewModal.tsx`](../src/components/ReportViewModal.tsx)**: **`ReportLocationMapsLink`** opens Google Maps (**`aria-label`**); **`ReportDetailBody`** **`fieldLayout`** **`'stacked'`** (default) | **`'inline'`** — inline renders non-signature fields as **`Label — value`** on one line. **[`JobReportsModal.tsx`](../src/components/JobReportsModal.tsx)** passes **`fieldLayout="inline"`** for full-screen report detail and shows **`ReportLocationMapsLink`** on collapsed rows when coordinates exist.
 
 ---
@@ -8255,8 +8567,8 @@ Two related fixes for the long-standing class of bugs where new times entered on
 
 ### **Dashboard** — **Leave Report** schedule reminder — **`my_last_report_at`**; **`helpers`** and **Send to Billing**
 
-- **Schedule nag** ([`leaveReportScheduleReminder.ts`](../src/lib/leaveReportScheduleReminder.ts), **`shouldShowLeaveReportScheduleReminder`**) — After at least one **`job_schedule_block`** on **today** (company calendar TZ) for the job has **`time_end`** in the past, the **Leave Report** button (**[`DashboardLeaveReportButton`](../src/pages/Dashboard.tsx)**) may show a **yellow** **`faBell`** overlay (**centered** on the blue button, **`pointer-events: none`**). Nag is **suppressed** when the viewer has a **reports** row for that job with **`created_by_user_id = auth.uid()`** and **`created_at`** within the last **`LEAVE_REPORT_REMINDER_MY_REPORT_SILENCE_MS`** (**12** elapsed hours). Dashboard job rows carry **`my_last_report_at`** = max such timestamp from [**`20270507120000_dashboard_my_last_report_at.sql`**](../supabase/migrations/20270507120000_dashboard_my_last_report_at.sql) on **`list_assigned_jobs_for_dashboard`**, **`list_ready_to_bill_assigned_jobs_for_dashboard`**, and **`list_superintendent_jobs_for_dashboard`**.
-- **Helpers** (**`user_role` = `helpers`**): **Assigned Jobs** omits **Send to Billing**. Server: **`update_job_status`** denies **Working → ready_to_bill** for helpers on the plain team-member path — [**`20270506120000_update_job_status_disallow_helpers_send_to_billing.sql`**](../supabase/migrations/20270506120000_update_job_status_disallow_helpers_send_to_billing.sql). See **`[ACCESS_CONTROL.md](./ACCESS_CONTROL.md)`** **`### helpers (Helper)`**.
+- **Schedule nag** ([`leaveReportScheduleReminder.ts`](../src/lib/leaveReportScheduleReminder.ts), **`shouldShowLeaveReportScheduleReminder`**) — After at least one **`job_schedule_block`** on **today** (company calendar TZ) for the job has **`time_end`** in the past, the **Leave Report** button (**[`DashboardLeaveReportButton`](../src/pages/Dashboard.tsx)**) may show a **yellow** **`faBell`** overlay (**centered** on the blue button, **`pointer-events: none`**). Nag is **suppressed** when the viewer has a **reports** row for that job with **`created_by_user_id = auth.uid()`** and **`created_at`** within the last **`LEAVE_REPORT_REMINDER_MY_REPORT_SILENCE_MS`** (**12** elapsed hours). Dashboard job rows carry **`my_last_report_at`** = max such timestamp from [**`20270507120000_dashboard_my_last_report_at.sql`**](../supabase/archive/migrations-pre-baseline/20270507120000_dashboard_my_last_report_at.sql) on **`list_assigned_jobs_for_dashboard`**, **`list_ready_to_bill_assigned_jobs_for_dashboard`**, and **`list_superintendent_jobs_for_dashboard`**.
+- **Helpers** (**`user_role` = `helpers`**): **Assigned Jobs** omits **Send to Billing**. Server: **`update_job_status`** denies **Working → ready_to_bill** for helpers on the plain team-member path — [**`20270506120000_update_job_status_disallow_helpers_send_to_billing.sql`**](../supabase/archive/migrations-pre-baseline/20270506120000_update_job_status_disallow_helpers_send_to_billing.sql). See **`[ACCESS_CONTROL.md](./ACCESS_CONTROL.md)`** **`### helpers (Helper)`**.
 
 ---
 
@@ -8286,7 +8598,7 @@ On working-job cards (**`list_assigned_jobs_for_dashboard`** and the superintend
 
 ### **Checklist** — **Roadmap** — **multiple roadmaps** and **members** (viewer / editor)
 
-- **Schema** ([`20270427120000_checklist_tech_tree_multi_roadmap.sql`](../supabase/migrations/20270427120000_checklist_tech_tree_multi_roadmap.sql)): **`checklist_tech_tree_roadmaps`**; **`checklist_tech_tree_groups.roadmap_id`**; **`checklist_tech_tree_roadmap_members`** (`viewer` | `editor`). Existing data → one **Default** roadmap; all non-archived users get **viewer** on Default. RLS helpers: **`is_checklist_tech_tree_staff_or_primary`**, **`can_select_checklist_tech_tree_roadmap`**, **`can_edit_checklist_tech_tree_structure_for_roadmap`**, **`can_manage_checklist_tech_tree_roadmap_members`** — access is per roadmap (staff/primary bypass; others need a member row).
+- **Schema** ([`20270427120000_checklist_tech_tree_multi_roadmap.sql`](../supabase/archive/migrations-pre-baseline/20270427120000_checklist_tech_tree_multi_roadmap.sql)): **`checklist_tech_tree_roadmaps`**; **`checklist_tech_tree_groups.roadmap_id`**; **`checklist_tech_tree_roadmap_members`** (`viewer` | `editor`). Existing data → one **Default** roadmap; all non-archived users get **viewer** on Default. RLS helpers: **`is_checklist_tech_tree_staff_or_primary`**, **`can_select_checklist_tech_tree_roadmap`**, **`can_edit_checklist_tech_tree_structure_for_roadmap`**, **`can_manage_checklist_tech_tree_roadmap_members`** — access is per roadmap (staff/primary bypass; others need a member row).
 - **UI** ([`ChecklistTechTreeTab.tsx`](../src/components/checklist/ChecklistTechTreeTab.tsx), [`Checklist.tsx`](../src/pages/Checklist.tsx)): Bar **[`ChecklistTechTreeRoadmapBar`](../src/components/checklist/ChecklistTechTreeRoadmapBar.tsx)** — roadmap **select**, **New roadmap** (dev/master/assistant/primary), **Members**; deep link **`?tab=roadmap&roadmap=<uuid>`**. **[`ChecklistTechTreeRoadmapMembersModal`](../src/components/checklist/ChecklistTechTreeRoadmapMembersModal.tsx)** — list members, roles, add/remove (editors and staff manage). **Structural editing** (graph edits) for **staff/primary** or roadmap **editor** members (`canEditStructure`).
 - **Related**: v2.407 canvas icons and full-screen behavior unchanged aside from roadmap scoping.
 
@@ -8456,7 +8768,7 @@ On working-job cards (**`list_assigned_jobs_for_dashboard`** and the superintend
 
 ### **Jobs** — **Billing** — **Migrate and Delete** — **Ready to bill** source jobs
 
-- **[`20270425120000_allow_ready_to_bill_migrate_job_ledger_delete.sql`](../supabase/migrations/20270425120000_allow_ready_to_bill_migrate_job_ledger_delete.sql)**: **`CREATE OR REPLACE`** **`migrate_job_ledger_costs_and_delete`** — source job **`jobs_ledger.status`** may be **Working** or **Ready to bill** (all other billing guards unchanged: any invoice or payment row, `payments_made` nonzero, collect payment flow, etc.).
+- **[`20270425120000_allow_ready_to_bill_migrate_job_ledger_delete.sql`](../supabase/archive/migrations-pre-baseline/20270425120000_allow_ready_to_bill_migrate_job_ledger_delete.sql)**: **`CREATE OR REPLACE`** **`migrate_job_ledger_costs_and_delete`** — source job **`jobs_ledger.status`** may be **Working** or **Ready to bill** (all other billing guards unchanged: any invoice or payment row, `payments_made` nonzero, collect payment flow, etc.).
 - **[`JobFormModal.tsx`](../src/components/jobs/JobFormModal.tsx)**: **`billingBlockedForMigrate`** allows the same two statuses for the **Migrate and Delete** button.
 
 ---
@@ -8467,7 +8779,7 @@ On working-job cards (**`list_assigned_jobs_for_dashboard`** and the superintend
 
 ### **Jobs** — **Billing** — **Migrate and Delete** (duplicate / wrong job cleanup)
 
-- **`migrate_job_ledger_costs_and_delete`**: `SECURITY DEFINER` RPC ([`20270424120000_migrate_job_ledger_costs_and_delete.sql`](../supabase/migrations/20270424120000_migrate_job_ledger_costs_and_delete.sql)) moves tally parts, billed materials, supply and Mercury allocations (with merge), clock sessions, crew `people_crew_jobs` JSON (replace job id, merge pcts, renormalize), team members, fixtures, schedule blocks, reports, inspections, thread notes, status events, estimates / estimator / dispatch links, salary template overrides, Stripe OOB audit rows, then deletes the source `jobs_ledger` row. **Billing guard** on the source: status must be **Working** (v2.394 adds **Ready to bill**), no invoices, no payments, `payments_made` zero, no **Collect payment** flow row.
+- **`migrate_job_ledger_costs_and_delete`**: `SECURITY DEFINER` RPC ([`20270424120000_migrate_job_ledger_costs_and_delete.sql`](../supabase/archive/migrations-pre-baseline/20270424120000_migrate_job_ledger_costs_and_delete.sql)) moves tally parts, billed materials, supply and Mercury allocations (with merge), clock sessions, crew `people_crew_jobs` JSON (replace job id, merge pcts, renormalize), team members, fixtures, schedule blocks, reports, inspections, thread notes, status events, estimates / estimator / dispatch links, salary template overrides, Stripe OOB audit rows, then deletes the source `jobs_ledger` row. **Billing guard** on the source: status must be **Working** (v2.394 adds **Ready to bill**), no invoices, no payments, `payments_made` zero, no **Collect payment** flow row.
 - **[`JobFormModal.tsx`](../src/components/jobs/JobFormModal.tsx)**: red **Migrate and Delete** next to **Delete** when the job has migrateable cost signals and passes the guard; helper modal with **`search_jobs_ledger`** target picker and source vs target summaries; success path matches delete (refresh + close).
 
 ---
@@ -8539,7 +8851,7 @@ On working-job cards (**`list_assigned_jobs_for_dashboard`** and the superintend
 ### **Layout** — **header** **global** **search** (**dev** / **master** / **assistant**)
 
 - **[`HeaderGlobalSearch.tsx`](../src/components/HeaderGlobalSearch.tsx)** + **[`Layout.tsx`](../src/components/Layout.tsx)**: magnifying-glass control (mobile **strip** + desktop **toolbar**); full-nav overlay with **search** input and **Back**; debounced **`search_jobs_ledger`**, **`search_bids_for_clock`** (service-type rules aligned with **Clock In** / **Dispatch**), **`search_estimates_for_nav`**. Result pick → **job** / **bid** behavior as of **v2.387** (**Job Detail** + **Bid Preview**); **estimate** → **`/estimates/{estimate_number}`**. **`UnifiedSearchResult`** **`estimate`** branch in **[`unifiedJobBidSearch.ts`](../src/utils/unifiedJobBidSearch.ts)**; dashboard optimistic patch ignores **estimate** selections. **`appNavChrome`** wrapper: results panel **`position: absolute; top: 100%`** over **`appMain`** (shadow + **`--app-nav-pad-x`** inset). **Escape** closes like **Back** (**`keydown`** capture on **`window`**, **`preventDefault`** / **`stopPropagation`**). **⌘K** / **Ctrl+K** toggles open/close (skip open when focus is in another **`input`** / **`textarea`** / **`select`** / **`contenteditable`**).
-- **Database**: **[`20270423120000_search_estimates_for_nav.sql`](../supabase/migrations/20270423120000_search_estimates_for_nav.sql)** — **SECURITY INVOKER** (RLS), **E** prefix on quote #, **`GRANT`** **`authenticated`**.
+- **Database**: **[`20270423120000_search_estimates_for_nav.sql`](../supabase/archive/migrations-pre-baseline/20270423120000_search_estimates_for_nav.sql)** — **SECURITY INVOKER** (RLS), **E** prefix on quote #, **`GRANT`** **`authenticated`**.
 
 ---
 
@@ -9112,7 +9424,7 @@ On working-job cards (**`list_assigned_jobs_for_dashboard`** and the superintend
 - **[`CollectPaymentModal.tsx`](../src/components/jobs/CollectPaymentModal.tsx)** — Three-step wizard: certify or request correction; await dispatch (**Realtime** on flow row + refresh); Stripe Terminal via **`@stripe/terminal-js`** (**simulated** readers in dev). Depends on office **Stripe billed** invoice + dispatch approval.
 - **[`Dashboard.tsx`](../src/pages/Dashboard.tsx)** — Subcontractor **Collect Payment** button: amber **pending** after certify, **green / white** when **`ready_terminal`**; opens **`CollectPaymentModal`**; **`DashboardFieldCollectPaymentQueue`** for dev / master / assistant (**Approve for Terminal**).
 - **Edge** — **`terminal-connection-token`**, **`create-terminal-collect-payment-intent`** (removed in **v2.344**; use **`stripe-webhook`** **`invoice.paid`** + **`complete_job_collect_payment_flow_for_invoice`** for hosted invoice completion). [`stripe-webhook`](../supabase/functions/stripe-webhook/index.ts) may still handle legacy **`payment_intent.succeeded`** paths where applicable.
-- **Migration** — [`20270419120002_list_mercury_bank_payments_returned_column.sql`](../supabase/migrations/20270419120002_list_mercury_bank_payments_returned_column.sql): restores **`returned`** + **`includeHiddenArDeposits`** / legacy **`includeFullyApplied`** visibility on Mercury AR list/count (**`20270419120001`** had dropped them).
+- **Migration** — [`20270419120002_list_mercury_bank_payments_returned_column.sql`](../supabase/archive/migrations-pre-baseline/20270419120002_list_mercury_bank_payments_returned_column.sql): restores **`returned`** + **`includeHiddenArDeposits`** / legacy **`includeFullyApplied`** visibility on Mercury AR list/count (**`20270419120001`** had dropped them).
 
 ---
 
@@ -9821,7 +10133,7 @@ On working-job cards (**`list_assigned_jobs_for_dashboard`** and the superintend
 
 - **[`Banking.tsx`](../src/pages/Banking.tsx)** — **Row 1**: **Mercury** | **Stripe** (Stripe visible to **dev** only). **Row 2**: Mercury **Ledger** / **Sorting** (and Configuration where applicable); Stripe **Invoices** / **Data**. Query model: **`?product=mercury|stripe`** and **`?tab=…`** — Mercury uses **`ledger`** / **`sorting`**; Stripe uses **`invoices`** / **`data`**. Legacy **`?tab=sorting`** (no product) still opens Mercury **Sorting**. Master/assistant deep links with **`product=stripe`** are normalized to Mercury **Sorting**.
 - **[`BankingStripeInvoicesPanel.tsx`](../src/components/BankingStripeInvoicesPanel.tsx)** — Lists **`jobs_ledger_invoices`** with job embed (HCP, name, customer). **Seq** = per-job **`sequence_order`**. Rows with no **`stripe_invoice_id`** use a light red row background.
-- **[`BankingStripeWebhookEventsPanel.tsx`](../src/components/BankingStripeWebhookEventsPanel.tsx)** — Read-only grid of **`stripe_webhook_events`** (dev RLS). Populated by Edge **[`stripe-webhook`](../supabase/functions/stripe-webhook/index.ts)** dedupe insert (**[`20270410130300_stripe_webhook_events_dedupe.sql`](../supabase/migrations/20270410130300_stripe_webhook_events_dedupe.sql)**).
+- **[`BankingStripeWebhookEventsPanel.tsx`](../src/components/BankingStripeWebhookEventsPanel.tsx)** — Read-only grid of **`stripe_webhook_events`** (dev RLS). Populated by Edge **[`stripe-webhook`](../supabase/functions/stripe-webhook/index.ts)** dedupe insert (**[`20270410130300_stripe_webhook_events_dedupe.sql`](../supabase/archive/migrations-pre-baseline/20270410130300_stripe_webhook_events_dedupe.sql)**).
 - **[`Jobs.tsx`](../src/pages/Jobs.tsx)** — Main **`loadJobs`** effect depends on **`searchParams.get('customer')`** (**`customerParamForJobsReload`**) so unrelated query-string churn does not refetch the full jobs payload. **Stages** **Last activity** refreshes: **`refreshJobThreadStatsForJobIds`** is debounced (**`THREAD_STATS_STAGES_DEBOUNCE_MS` = 320**) to avoid overlapping **`jobs_ledger_thread_note_stats`** calls while typing search.
 - **[`useJobThreadNotes.ts`](../src/hooks/useJobThreadNotes.ts)** — Thread stats RPC calls split into chunks of **200** job IDs; **`threadStatsRefreshGenRef`** drops stale in-flight work when a newer refresh starts.
 
@@ -10206,10 +10518,10 @@ On working-job cards (**`list_assigned_jobs_for_dashboard`** and the superintend
 
 - **Draft Payroll**: Opening **Draft Payroll** seeds the pay period with the **prior** Sunday–Saturday week (**`en-CA`**) via **`getPriorWeekPayStubRangeEnCa()`** in **[`People.tsx`](../src/pages/People.tsx)**.
 - **Crew data for review**: While Draft Payroll is open, **`mergeCrewJobsForDateRange`** loads **`people_crew_jobs`** / **`people_crew_bids`** for that period and merges into **`crewJobsByDatePerson`**; **`draftPayrollCrewMergeFetchIdRef`** ignores stale async results.
-- **`employee_credit` on `person_offsets`**: Migration **[`20270408163000_person_offsets_employee_credit_type.sql`](../supabase/migrations/20270408163000_person_offsets_employee_credit_type.sql)** extends **`person_offsets.type`** with **`employee_credit`** (amount owed *to* the person, e.g. overpayment stored as a pending offset). **[`PersonOffsetFormModal.tsx`](../src/components/pay/PersonOffsetFormModal.tsx)**; **Offsets** tab + pay stub HTML in **[`People.tsx`](../src/pages/People.tsx)**; **[`PayStubLessModal.tsx`](../src/components/pay/PayStubLessModal.tsx)** lists **Employee credit** but does **not** offer **Apply** (credits are not **Less** deductions).
+- **`employee_credit` on `person_offsets`**: Migration **[`20270408163000_person_offsets_employee_credit_type.sql`](../supabase/archive/migrations-pre-baseline/20270408163000_person_offsets_employee_credit_type.sql)** extends **`person_offsets.type`** with **`employee_credit`** (amount owed *to* the person, e.g. overpayment stored as a pending offset). **[`PersonOffsetFormModal.tsx`](../src/components/pay/PersonOffsetFormModal.tsx)**; **Offsets** tab + pay stub HTML in **[`People.tsx`](../src/pages/People.tsx)**; **[`PayStubLessModal.tsx`](../src/components/pay/PayStubLessModal.tsx)** lists **Employee credit** but does **not** offer **Apply** (credits are not **Less** deductions).
 - **Record payment**: One **Amount paid** field; **Confirm** records **`min(parsed, remaining)`** (no error when the typed amount exceeds balance). When over, an optional block explains the excess and offers **Record employee credit…** into a pending **`person_offsets`** row.
-- **Jobs — Job Summary**: RPC **`get_invoice_allocation_lines_for_jobs`** (**[`20270408160000_invoice_allocation_lines_for_job_summary.sql`](../supabase/migrations/20270408160000_invoice_allocation_lines_for_job_summary.sql)**) returns per-invoice supply-house allocation lines for **Parts Cost** (visibility aligned with **`get_invoice_amounts_for_jobs`**); **[`Jobs.tsx`](../src/pages/Jobs.tsx)**.
-- **Stale tally (staff split save)**: **`replace_mercury_job_splits_for_linked_card_as_staff`** (**[`20270408161000_tally_staff_split_save_align_subcontractor_targets.sql`](../supabase/migrations/20270408161000_tally_staff_split_save_align_subcontractor_targets.sql)**) aligns saved splits with staff job search for subcontractor targets (full **`jobs_ledger`** visibility where search allows it, not **`jobs_ledger_team_members`** per row).
+- **Jobs — Job Summary**: RPC **`get_invoice_allocation_lines_for_jobs`** (**[`20270408160000_invoice_allocation_lines_for_job_summary.sql`](../supabase/archive/migrations-pre-baseline/20270408160000_invoice_allocation_lines_for_job_summary.sql)**) returns per-invoice supply-house allocation lines for **Parts Cost** (visibility aligned with **`get_invoice_amounts_for_jobs`**); **[`Jobs.tsx`](../src/pages/Jobs.tsx)**.
+- **Stale tally (staff split save)**: **`replace_mercury_job_splits_for_linked_card_as_staff`** (**[`20270408161000_tally_staff_split_save_align_subcontractor_targets.sql`](../supabase/archive/migrations-pre-baseline/20270408161000_tally_staff_split_save_align_subcontractor_targets.sql)**) aligns saved splits with staff job search for subcontractor targets (full **`jobs_ledger`** visibility where search allows it, not **`jobs_ledger_team_members`** per row).
 
 ---
 
@@ -10241,7 +10553,7 @@ On working-job cards (**`list_assigned_jobs_for_dashboard`** and the superintend
 
 ### Salary split sync: overlap guard uses `work_date` or clock-in civil date (template TZ)
 
-- **Database**: [`20270408153000_salary_sync_split_overlap_clock_in_tz_date.sql`](../supabase/migrations/20270408153000_salary_sync_split_overlap_clock_in_tz_date.sql) — **`salary_sync_one_user_clock_sessions`**: in **split** template mode, the **NOT EXISTS** overlap checks for canonical slots **1** and **2** treat a session as on the sync day when **`cs.work_date = p_work_date`** **or** **`(cs.clocked_in_at AT TIME ZONE tz)::date = p_work_date`** ( **`tz`** from effective template or day override), not **`work_date` alone**.
+- **Database**: [`20270408153000_salary_sync_split_overlap_clock_in_tz_date.sql`](../supabase/archive/migrations-pre-baseline/20270408153000_salary_sync_split_overlap_clock_in_tz_date.sql) — **`salary_sync_one_user_clock_sessions`**: in **split** template mode, the **NOT EXISTS** overlap checks for canonical slots **1** and **2** treat a session as on the sync day when **`cs.work_date = p_work_date`** **or** **`(cs.clocked_in_at AT TIME ZONE tz)::date = p_work_date`** ( **`tz`** from effective template or day override), not **`work_date` alone**.
 - **Why**: avoids a duplicate empty canonical **`salary_segment_index = 1`** row when a **`user_punch`** segment’s **`work_date`** differs from **`p_work_date`** but clock-in civil date in template TZ matches the sync day (overnight / boundary cases).
 - **Docs**: [`SALARY_CLOCK_SESSIONS.md`](SALARY_CLOCK_SESSIONS.md), [`MIGRATIONS.md`](MIGRATIONS.md)
 
@@ -10277,7 +10589,7 @@ On working-job cards (**`list_assigned_jobs_for_dashboard`** and the superintend
 
 ### Dashboard / Quickfill — stale tally follow-up: assistant scope (Option A)
 
-- **Database**: [`20270408151000_tally_staff_followup_assistant_adopted_masters_job_team.sql`](../supabase/migrations/20270408151000_tally_staff_followup_assistant_adopted_masters_job_team.sql) — **`staff_can_view_user_for_tally_followup`**: **assistant** limited to **`assistants_share_master`**, adopting **master**, or **`jobs_ledger`** team members on jobs for any adopted master (reverts Option B / **`20270408150000`** company-wide behavior)
+- **Database**: [`20270408151000_tally_staff_followup_assistant_adopted_masters_job_team.sql`](../supabase/archive/migrations-pre-baseline/20270408151000_tally_staff_followup_assistant_adopted_masters_job_team.sql) — **`staff_can_view_user_for_tally_followup`**: **assistant** limited to **`assistants_share_master`**, adopting **master**, or **`jobs_ledger`** team members on jobs for any adopted master (reverts Option B / **`20270408150000`** company-wide behavior)
 - **Docs**: [`ACCESS_CONTROL.md`](ACCESS_CONTROL.md), [`MIGRATIONS.md`](MIGRATIONS.md)
 
 ---
@@ -10288,7 +10600,7 @@ On working-job cards (**`list_assigned_jobs_for_dashboard`** and the superintend
 
 ### Dashboard / Quickfill — stale tally follow-up: assistants see all targets
 
-- **Database**: [`20270408150000_tally_staff_followup_assistant_any_target.sql`](../supabase/migrations/20270408150000_tally_staff_followup_assistant_any_target.sql) — **`staff_can_view_user_for_tally_followup`**: **`assistant`** matches **dev** (any **`p_target`**); **master_technician** rules unchanged
+- **Database**: [`20270408150000_tally_staff_followup_assistant_any_target.sql`](../supabase/archive/migrations-pre-baseline/20270408150000_tally_staff_followup_assistant_any_target.sql) — **`staff_can_view_user_for_tally_followup`**: **`assistant`** matches **dev** (any **`p_target`**); **master_technician** rules unchanged
 - **Docs**: [`ACCESS_CONTROL.md`](ACCESS_CONTROL.md) stale tally staff follow-up row
 - **Impact**: Assistants get the same company-wide stale Mercury follow-up list and staff assign eligibility as dev (downstream job/split validation unchanged)
 
@@ -10478,7 +10790,7 @@ On working-job cards (**`list_assigned_jobs_for_dashboard`** and the superintend
 
 ### Salaried sessions — split indexed slots + sync overlap guard
 
-- **Database**: [`20270403180000_salary_split_indexed_segments_overlap_sync_guard.sql`](../supabase/migrations/20270403180000_salary_split_indexed_segments_overlap_sync_guard.sql) — **`split_own_clock_session_segments`**, **`split_own_clock_session_cluster`**, **`leader_split_clock_session_segments`**, **`leader_split_clock_session_cluster`**: when the parent row is **`salary_schedule`** with **`salary_segment_index` 1 or 2** (an auto split slot), replacement segments are **`user_punch`** with **`salary_segment_index` null** so cron sync does not treat them as canonical template rows. A **continuous** `salary_schedule` parent (`NULL` index) still yields indexed **`salary_schedule`** children when split into multiple parts.
+- **Database**: [`20270403180000_salary_split_indexed_segments_overlap_sync_guard.sql`](../supabase/archive/migrations-pre-baseline/20270403180000_salary_split_indexed_segments_overlap_sync_guard.sql) — **`split_own_clock_session_segments`**, **`split_own_clock_session_cluster`**, **`leader_split_clock_session_segments`**, **`leader_split_clock_session_cluster`**: when the parent row is **`salary_schedule`** with **`salary_segment_index` 1 or 2** (an auto split slot), replacement segments are **`user_punch`** with **`salary_segment_index` null** so cron sync does not treat them as canonical template rows. A **continuous** `salary_schedule` parent (`NULL` index) still yields indexed **`salary_schedule`** children when split into multiple parts.
 - **`salary_sync_one_user_clock_sessions`**: in **split** template mode, before INSERT for canonical slot **1** or **2**, skip INSERT if **any** non-rejected/non-revoked session for that user/day **overlaps** the template window **`[t_start,t_end)`** or **`[t_start2,t_end2)`** (same half-open overlap test used for both slots).
 - **Documentation**: **[`SALARY_CLOCK_SESSIONS.md`](SALARY_CLOCK_SESSIONS.md)** — operator/AI runbook (tables, RPCs, guards, migrations, **`db push`** without Docker vs **`db pull`** shadow DB). Updates in [`PROJECT_DOCUMENTATION.md`](PROJECT_DOCUMENTATION.md) (`clock_sessions`), [`GLOSSARY.md`](GLOSSARY.md), [`MIGRATIONS.md`](MIGRATIONS.md), [`EDGE_FUNCTIONS.md`](EDGE_FUNCTIONS.md) (**sync-salary-sessions**).
 
@@ -10492,7 +10804,7 @@ On working-job cards (**`list_assigned_jobs_for_dashboard`** and the superintend
 
 - **Computed end times** ([`SalaryWorkScheduleSettings.tsx`](../src/components/SalaryWorkScheduleSettings.tsx), [`salaryScheduleEndTimeDisplay.ts`](../src/lib/salaryScheduleEndTimeDisplay.ts)): **Day end** (continuous 8h), **First Session End**, and **Second Session End** show the wall-clock end in the template timezone with **`(+1 day)`** when the block crosses midnight relative to the anchor work date (company calendar day for overrides).
 - **Split layout default**: Switching **8 hours straight** → **Two sessions** coerces the first block to **4 h** when it was still a full **8 h**, so the first segment end label is not stuck at “8h from start” until the user changes the dropdown (`SPLIT_FIRST_BLOCK_DEFAULT_MINUTES`; same behavior on **Custom schedule for this date** when Straight → Split).
-- **Database**: [`20270402100000_salary_sync_continuous_skip_insert_when_split_segments_exist.sql`](../supabase/migrations/20270402100000_salary_sync_continuous_skip_insert_when_split_segments_exist.sql) — **`salary_sync_one_user_clock_sessions`** skips the **continuous** auto-INSERT path when pending **`salary_schedule`** rows already exist with **`salary_segment_index IS NOT NULL`** (after a continuous row was split into segments), preventing a duplicate session at the day start on sync.
+- **Database**: [`20270402100000_salary_sync_continuous_skip_insert_when_split_segments_exist.sql`](../supabase/archive/migrations-pre-baseline/20270402100000_salary_sync_continuous_skip_insert_when_split_segments_exist.sql) — **`salary_sync_one_user_clock_sessions`** skips the **continuous** auto-INSERT path when pending **`salary_schedule`** rows already exist with **`salary_segment_index IS NOT NULL`** (after a continuous row was split into segments), preventing a duplicate session at the day start on sync.
 - **Migration history**: Three accidental **empty** CLI-generated files (`20260403062347`, `20260403062432`, `20260403062639`, same slug) were **reverted** on the linked project via **`supabase migration repair --status reverted`** and **removed** from the repo; the canonical migration is **`20270402100000`** (see [`MIGRATIONS.md`](MIGRATIONS.md)).
 
 ---
@@ -10755,7 +11067,7 @@ On working-job cards (**`list_assigned_jobs_for_dashboard`** and the superintend
 ### People — Writeups tab (HR-style forms)
 
 - **URL**: People → **Writeups**, or **`/people?tab=writeups`** (same access gate as **Contracts**). Legacy **`/people?tab=contracts&contracts_sub=writeups`** is replaced with **`tab=writeups`** ( **`contracts_sub`** removed).
-- **Data**: Migration **[`20270331193000_writeups_templates_and_submissions.sql`](../supabase/migrations/20270331193000_writeups_templates_and_submissions.sql)** — `writeup_templates` (JSON block schema), `writeups` (`subject_user_id`, `filled_by_user_id`, `status` draft/submitted, `disclosure` enum). RLS matches contract staff bundle; no subject SELECT in v1.
+- **Data**: Migration **[`20270331193000_writeups_templates_and_submissions.sql`](../supabase/archive/migrations-pre-baseline/20270331193000_writeups_templates_and_submissions.sql)** — `writeup_templates` (JSON block schema), `writeups` (`subject_user_id`, `filled_by_user_id`, `status` draft/submitted, `disclosure` enum). RLS matches contract staff bundle; no subject SELECT in v1.
 - **UI**: **[`WriteupsContractsSubTab.tsx`](../src/components/writeups/WriteupsContractsSubTab.tsx)** (list/filters), **[`WriteupTemplateManagerModal.tsx`](../src/components/writeups/WriteupTemplateManagerModal.tsx)**, **[`WriteupEditorModal.tsx`](../src/components/writeups/WriteupEditorModal.tsx)**; schema/validation **[`writeupTemplateSchema.ts`](../src/lib/writeupTemplateSchema.ts)**; wired in **[`People.tsx`](../src/pages/People.tsx)**.
 
 ---
@@ -10767,7 +11079,7 @@ On working-job cards (**`list_assigned_jobs_for_dashboard`** and the superintend
 ### Settings — Salaried workday UX; pay config self-read; clock strip overlays
 
 - **Salaried workday (collapsible)**: **[`Settings.tsx`](../src/pages/Settings.tsx)** wraps **[`SalaryWorkScheduleSettings`](../src/components/SalaryWorkScheduleSettings.tsx)** in a bordered panel with a header button (▼/▶), **`aria-expanded`** / **`aria-controls`**, default **expanded** (`salaryWorkdaySectionOpen`). Anchor remains **`#settings-salary-workday`**.
-- **`people_pay_config` RLS**: Migration **[`20270331160000_users_read_own_people_pay_config.sql`](../supabase/migrations/20270331160000_users_read_own_people_pay_config.sql)** adds **`Users can read own people pay config row`** — **`FOR SELECT`** when **`btrim(users.name) = btrim(person_name)`** for **`auth.uid()`** — so salaried **superintendent**, **primary**, etc. can load **`is_salary`** in Settings (not only pay masters / assistants / cost-matrix shared). **`DROP POLICY IF EXISTS`** before **`CREATE`** keeps re-apply idempotent.
+- **`people_pay_config` RLS**: Migration **[`20270331160000_users_read_own_people_pay_config.sql`](../supabase/archive/migrations-pre-baseline/20270331160000_users_read_own_people_pay_config.sql)** adds **`Users can read own people pay config row`** — **`FOR SELECT`** when **`btrim(users.name) = btrim(person_name)`** for **`auth.uid()`** — so salaried **superintendent**, **primary**, etc. can load **`is_salary`** in Settings (not only pay masters / assistants / cost-matrix shared). **`DROP POLICY IF EXISTS`** before **`CREATE`** keeps re-apply idempotent.
 - **Dashboard — Currently In corner controls**: **[`stripScopeOverlay`](../src/components/DashboardTeamActiveClockStrip.tsx)** keeps absolute positioning only; removed frosted **`background`**, **`padding`**, **`borderRadius`**, and **`boxShadow`** ring so **My team / Everyone** and **Needs attention / Show all** sit flush on the orange header without a nested frame.
 
 ---
@@ -10779,7 +11091,7 @@ On working-job cards (**`list_assigned_jobs_for_dashboard`** and the superintend
 ### Company calendar: America/Chicago
 
 - **Semantics**: `work_date` “today,” Dashboard **My Time** week range (`getDefaultWeekRange` / `getLastWeekRange`), `denverCalendarDayKey` and Denver-named formatters in [`dateUtils.ts`](../src/utils/dateUtils.ts) now use **`APP_CALENDAR_TZ` = `America/Chicago`** (matching server RPC week gates).
-- **Database**: [`20270331150000_company_calendar_america_chicago.sql`](../supabase/migrations/20270331150000_company_calendar_america_chicago.sql) — `UPDATE` salary template/override rows from Mountain default; `ALTER` default; salary override RLS “today”; replaced salary sync + `split_own_*` / `replace_own_*` / `leader_*` clock RPCs (`v_tz`).
+- **Database**: [`20270331150000_company_calendar_america_chicago.sql`](../supabase/archive/migrations-pre-baseline/20270331150000_company_calendar_america_chicago.sql) — `UPDATE` salary template/override rows from Mountain default; `ALTER` default; salary override RLS “today”; replaced salary sync + `split_own_*` / `replace_own_*` / `leader_*` clock RPCs (`v_tz`).
 - **Edge**: [`sync-salary-sessions`](../supabase/functions/sync-salary-sessions/index.ts) uses Chicago calendar date for `p_work_date`.
 - **Release note**: Near midnight, Mountain vs Central can shift which calendar day is “today” for clock and salary override rules compared to pre-migration Denver.
 
@@ -11042,7 +11354,7 @@ On working-job cards (**`list_assigned_jobs_for_dashboard`** and the superintend
 
 ### Workflow — Line item date and clipboard bulk import
 
-- **`item_date`** on [`workflow_step_line_items`](../src/types/database.ts): optional **Date** on Add/Edit Line Item; **Date** column in **Line Items For Office**; delete confirm shows date when set. Migration [`20270329210000_workflow_step_line_items_item_date.sql`](../supabase/migrations/20270329210000_workflow_step_line_items_item_date.sql).
+- **`item_date`** on [`workflow_step_line_items`](../src/types/database.ts): optional **Date** on Add/Edit Line Item; **Date** column in **Line Items For Office**; delete confirm shows date when set. Migration [`20270329210000_workflow_step_line_items_item_date.sql`](../supabase/archive/migrations-pre-baseline/20270329210000_workflow_step_line_items_item_date.sql).
 - **Bulk import (Add mode only)**: Header **clipboard** icon reads [`navigator.clipboard.readText()`](https://developer.mozilla.org/en-US/docs/Web/API/Clipboard_API), parses **tab-separated** lines (`M/D/YYYY`, memo, `$` amount) via [`parseWorkflowLineItemPaste`](../src/lib/parseWorkflowLineItemPaste.ts), **bulk insert** + refresh. Superintendents included in line-item reload after save/delete/bulk import (parity with [`loadLineItemsForSteps`](../src/pages/Workflow.tsx)).
 
 ---
@@ -11095,7 +11407,7 @@ On working-job cards (**`list_assigned_jobs_for_dashboard`** and the superintend
 
 ### People — Housing tab and pay reports
 
-- **Housing** tab after **Vehicles** (same pay gate: dev, pay-approved master, assistant-of): CRUD on `housing_units` (address; rent, utilities, insurance per week) and `housing_possessions` (user, start/end dates). [`src/pages/People.tsx`](../src/pages/People.tsx); migration [`20270329180000_housing_units_and_possessions.sql`](../supabase/migrations/20270329180000_housing_units_and_possessions.sql).
+- **Housing** tab after **Vehicles** (same pay gate: dev, pay-approved master, assistant-of): CRUD on `housing_units` (address; rent, utilities, insurance per week) and `housing_possessions` (user, start/end dates). [`src/pages/People.tsx`](../src/pages/People.tsx); migration [`20270329180000_housing_units_and_possessions.sql`](../supabase/archive/migrations-pre-baseline/20270329180000_housing_units_and_possessions.sql).
 - Pay stub HTML: **Housing** section after **Vehicles** when the person has an overlapping possession in the stub period (`getHousingForPersonInPeriod`, `buildPayStubHtml`).
 
 ---
@@ -11132,7 +11444,7 @@ On working-job cards (**`list_assigned_jobs_for_dashboard`** and the superintend
 - **Pay report HTML**: **Additional** (if any), then **Less** (if any), then **Net Pay** always; pending offsets unchanged after that block.
 - **Helpers**: [`stubNetPay(gross, less, additional?)`](../src/lib/payStubDeductions.ts), [`sumPayStubAdditionalAmounts`](../src/lib/payStubDeductions.ts).
 
-**Files**: [`supabase/migrations/20270329150000_pay_stub_additional_lines.sql`](../supabase/migrations/20270329150000_pay_stub_additional_lines.sql), [`supabase/migrations/20260420051645_pay_stub_additional_lines_source_clock_session.sql`](../supabase/migrations/20260420051645_pay_stub_additional_lines_source_clock_session.sql), [`src/pages/People.tsx`](../src/pages/People.tsx), [`src/components/pay/PayStubAdditionalModal.tsx`](../src/components/pay/PayStubAdditionalModal.tsx), [`src/lib/payStubPrevailingWageLine.ts`](../src/lib/payStubPrevailingWageLine.ts), [`src/components/pay/PayStubLessModal.tsx`](../src/components/pay/PayStubLessModal.tsx), [`src/lib/payStubDeductions.ts`](../src/lib/payStubDeductions.ts), [`src/types/database.ts`](../src/types/database.ts)
+**Files**: [`supabase/archive/migrations-pre-baseline/20270329150000_pay_stub_additional_lines.sql`](../supabase/archive/migrations-pre-baseline/20270329150000_pay_stub_additional_lines.sql), [`supabase/migrations/20260420051645_pay_stub_additional_lines_source_clock_session.sql`](../supabase/migrations/20260420051645_pay_stub_additional_lines_source_clock_session.sql), [`src/pages/People.tsx`](../src/pages/People.tsx), [`src/components/pay/PayStubAdditionalModal.tsx`](../src/components/pay/PayStubAdditionalModal.tsx), [`src/lib/payStubPrevailingWageLine.ts`](../src/lib/payStubPrevailingWageLine.ts), [`src/components/pay/PayStubLessModal.tsx`](../src/components/pay/PayStubLessModal.tsx), [`src/lib/payStubDeductions.ts`](../src/lib/payStubDeductions.ts), [`src/types/database.ts`](../src/types/database.ts)
 
 ---
 
@@ -11298,7 +11610,7 @@ On working-job cards (**`list_assigned_jobs_for_dashboard`** and the superintend
 
 - **Submit feedback**: [`submitTeamFeedback`](../src/lib/teamFeedback.ts) sets **`reviewer_user_id`** from **`supabase.auth.getUser()`** so inserts satisfy **`team_feedback_submissions_insert_own`** (`reviewer_user_id = auth.uid()`). **`upsertTeamFeedbackUserState`** after submit uses the same id for completion state.
 
-- **Migration** [`20270329140000_team_feedback_submissions_select_own.sql`](../supabase/migrations/20270329140000_team_feedback_submissions_select_own.sql): Policy **`team_feedback_submissions_select_own`** — authenticated users may **SELECT** rows where **`reviewer_user_id = auth.uid()`**. Fixes PostgREST **`insert().select('id')`** returning **403** for non-dev users (raw SELECT was previously dev-only).
+- **Migration** [`20270329140000_team_feedback_submissions_select_own.sql`](../supabase/archive/migrations-pre-baseline/20270329140000_team_feedback_submissions_select_own.sql): Policy **`team_feedback_submissions_select_own`** — authenticated users may **SELECT** rows where **`reviewer_user_id = auth.uid()`**. Fixes PostgREST **`insert().select('id')`** returning **403** for non-dev users (raw SELECT was previously dev-only).
 
 - **Raw submissions (dev)**: [`TeamFeedbackDevReports`](../src/components/team-feedback/TeamFeedbackDevReports.tsx) loads nested **`users`** (`name`, `email`) for reviewer and manager FKs; table shows display names; CSV export includes **`reviewer_name`** and **`manager_name`** (copy notes dev-only audit).
 
@@ -11310,7 +11622,7 @@ On working-job cards (**`list_assigned_jobs_for_dashboard`** and the superintend
 
 ### Team feedback — `list_feedback_peer_candidates` final migration
 
-- **Migration** [`20270329120000_list_feedback_peer_candidates_shared_labels_final.sql`](../supabase/migrations/20270329120000_list_feedback_peer_candidates_shared_labels_final.sql): Re-applies the shared-label **`list_feedback_peer_candidates`** body so it **wins** over later June 2026 migrations that had replaced it with roster/dev-resolution logic. Behavior matches v2.160 (label intersection, `shared_tag_count`, cap 5000).
+- **Migration** [`20270329120000_list_feedback_peer_candidates_shared_labels_final.sql`](../supabase/archive/migrations-pre-baseline/20270329120000_list_feedback_peer_candidates_shared_labels_final.sql): Re-applies the shared-label **`list_feedback_peer_candidates`** body so it **wins** over later June 2026 migrations that had replaced it with roster/dev-resolution logic. Behavior matches v2.160 (label intersection, `shared_tag_count`, cap 5000).
 
 ---
 
@@ -11349,7 +11661,7 @@ On working-job cards (**`list_assigned_jobs_for_dashboard`** and the superintend
 - **People → Users** (tags enabled): **Tag org (saved)** dropdown + **Clear override**; read-only **Signals** from `master_assistants`, `master_superintendents`, `master_primaries`, job team (`jobs_ledger` masters), and people-email roster match; warning when saved org matches no signal.
 - **`src/lib/tagOrg.ts`**: Batch overrides, signals, `upsertUserTagOrg` / `deleteUserTagOrg`; resolution = override first, else `resolveManagerUserIdForFeedback`.
 
-**Files**: [`supabase/migrations/20270328120000_user_tag_org.sql`](../supabase/migrations/20270328120000_user_tag_org.sql), [`src/lib/tagOrg.ts`](../src/lib/tagOrg.ts), [`src/pages/People.tsx`](../src/pages/People.tsx)
+**Files**: [`supabase/archive/migrations-pre-baseline/20270328120000_user_tag_org.sql`](../supabase/archive/migrations-pre-baseline/20270328120000_user_tag_org.sql), [`src/lib/tagOrg.ts`](../src/lib/tagOrg.ts), [`src/pages/People.tsx`](../src/pages/People.tsx)
 
 ---
 
@@ -11378,7 +11690,7 @@ On working-job cards (**`list_assigned_jobs_for_dashboard`** and the superintend
 - **People**: New **Activity** tab (`?tab=activity`) for **dev** always (includes grant/revoke UI for eligible users) and for **granted** assistant / master / primary. **Deep link** `?tab=activity` redirects to **Users** if not allowed.
 - **Settings**: Dev-only collapsible Activity section **removed**; use **People → Activity**.
 
-**Files**: [`supabase/migrations/20270327120000_user_app_activity_viewers.sql`](../supabase/migrations/20270327120000_user_app_activity_viewers.sql), [`src/pages/People.tsx`](../src/pages/People.tsx), [`src/components/people/PeopleAppActivityPanel.tsx`](../src/components/people/PeopleAppActivityPanel.tsx), [`src/utils/formatActiveSeconds.ts`](../src/utils/formatActiveSeconds.ts), [`src/utils/formatNotificationDatetime.ts`](../src/utils/formatNotificationDatetime.ts), [`src/pages/Settings.tsx`](../src/pages/Settings.tsx)
+**Files**: [`supabase/archive/migrations-pre-baseline/20270327120000_user_app_activity_viewers.sql`](../supabase/archive/migrations-pre-baseline/20270327120000_user_app_activity_viewers.sql), [`src/pages/People.tsx`](../src/pages/People.tsx), [`src/components/people/PeopleAppActivityPanel.tsx`](../src/components/people/PeopleAppActivityPanel.tsx), [`src/utils/formatActiveSeconds.ts`](../src/utils/formatActiveSeconds.ts), [`src/utils/formatNotificationDatetime.ts`](../src/utils/formatNotificationDatetime.ts), [`src/pages/Settings.tsx`](../src/pages/Settings.tsx)
 
 ---
 
@@ -11392,7 +11704,7 @@ On working-job cards (**`list_assigned_jobs_for_dashboard`** and the superintend
 - **Layout**: **`useAppActivityHeartbeat`** calls the RPC every **60s** while the tab is **visible** (first bump after the first interval).
 - **Settings**: Dev-only collapsible **Activity** lists **Name**, **Email**, **Last seen**, **Active (7d)** / **(30d)** (h:mm). **Superseded by v2.156** (People → Activity).
 
-**Files**: [`supabase/migrations/20270326120000_user_app_activity_daily.sql`](../supabase/migrations/20270326120000_user_app_activity_daily.sql), [`src/hooks/useAppActivityHeartbeat.ts`](../src/hooks/useAppActivityHeartbeat.ts), [`src/components/Layout.tsx`](../src/components/Layout.tsx), [`src/pages/Settings.tsx`](../src/pages/Settings.tsx)
+**Files**: [`supabase/archive/migrations-pre-baseline/20270326120000_user_app_activity_daily.sql`](../supabase/archive/migrations-pre-baseline/20270326120000_user_app_activity_daily.sql), [`src/hooks/useAppActivityHeartbeat.ts`](../src/hooks/useAppActivityHeartbeat.ts), [`src/components/Layout.tsx`](../src/components/Layout.tsx), [`src/pages/Settings.tsx`](../src/pages/Settings.tsx)
 
 ---
 
@@ -11539,7 +11851,7 @@ On working-job cards (**`list_assigned_jobs_for_dashboard`** and the superintend
 
 - **Change**: `list_assigned_jobs_for_dashboard` RPC now returns `last_report_at` (max `reports.created_at` for the job) for subcontractor Dashboard cards, showing "time since last report" (e.g. "Open 1 week").
 
-**Files**: `supabase/migrations/20270324120000_add_last_report_at_to_list_assigned_jobs.sql`
+**Files**: `supabase/archive/migrations-pre-baseline/20270324120000_add_last_report_at_to_list_assigned_jobs.sql`
 
 ---
 

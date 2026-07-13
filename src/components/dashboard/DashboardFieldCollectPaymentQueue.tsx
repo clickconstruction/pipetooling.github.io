@@ -178,20 +178,20 @@ function FieldQueueLineItemsSection({
       style={{
         marginTop: '0.75rem',
         paddingTop: '0.75rem',
-        borderTop: '1px solid #e5e7eb',
+        borderTop: '1px solid var(--border)',
       }}
     >
       {jobsLedgerInvoiceId ? (
         <>
           {loading ? (
-            <p style={{ color: '#6b7280', fontSize: '0.8125rem', margin: '0 0 0.5rem' }}>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.8125rem', margin: '0 0 0.5rem' }}>
               Loading invoice from Stripe…
             </p>
           ) : null}
           {error ? (
-            <p style={{ color: '#b45309', fontSize: '0.8125rem', margin: '0 0 0.5rem' }}>
+            <p style={{ color: 'var(--text-amber-700)', fontSize: '0.8125rem', margin: '0 0 0.5rem' }}>
               {error}
-              <span style={{ color: '#6b7280' }}> Saved total: {fallbackAmountLabel}.</span>
+              <span style={{ color: 'var(--text-muted)' }}> Saved total: {fallbackAmountLabel}.</span>
             </p>
           ) : null}
         </>
@@ -204,12 +204,12 @@ function FieldQueueLineItemsSection({
               fontWeight: 600,
               fontSize: '0.875rem',
               margin: '0 0 0.5rem',
-              color: '#374151',
+              color: 'var(--text-700)',
             }}
           >
             Line Items
           </p>
-          <p style={{ color: '#6b7280', fontSize: '0.8125rem', margin: 0 }}>No line items.</p>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.8125rem', margin: 0 }}>No line items.</p>
         </>
       ) : (
         <>
@@ -222,14 +222,14 @@ function FieldQueueLineItemsSection({
               }}
             >
               <thead>
-                <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
+                <tr style={{ borderBottom: '1px solid var(--border)' }}>
                   <th
                     style={{
                       textAlign: 'left',
                       padding: '0.5rem 8px 0.5rem 0',
                       fontSize: '0.875rem',
                       fontWeight: 600,
-                      color: '#374151',
+                      color: 'var(--text-700)',
                     }}
                   >
                     Line Items
@@ -240,7 +240,7 @@ function FieldQueueLineItemsSection({
                       padding: '0.5rem 6px',
                       fontSize: '0.75rem',
                       fontWeight: 600,
-                      color: '#6b7280',
+                      color: 'var(--text-muted)',
                     }}
                   >
                     Qty
@@ -251,7 +251,7 @@ function FieldQueueLineItemsSection({
                       padding: '0.5rem 6px',
                       fontSize: '0.75rem',
                       fontWeight: 600,
-                      color: '#6b7280',
+                      color: 'var(--text-muted)',
                     }}
                   >
                     Unit $
@@ -262,7 +262,7 @@ function FieldQueueLineItemsSection({
                       padding: '0.5rem 0 0.5rem 6px',
                       fontSize: '0.75rem',
                       fontWeight: 600,
-                      color: '#6b7280',
+                      color: 'var(--text-muted)',
                     }}
                   >
                     Total
@@ -278,14 +278,14 @@ function FieldQueueLineItemsSection({
                       style={{
                         borderTop: '1px solid #f3f4f6',
                         ...(unmatched
-                          ? { background: '#fef2f2', boxShadow: 'inset 3px 0 0 #fecaca' }
+                          ? { background: 'var(--bg-red-tint)', boxShadow: 'inset 3px 0 0 #fecaca' }
                           : {}),
                       }}
                     >
                       <td style={{ padding: 8, verticalAlign: 'top' }}>
                         <div style={{ fontWeight: 500 }}>{(row.name ?? '').trim()}</div>
                         {(row.line_description ?? '').trim() ? (
-                          <div style={{ fontSize: '0.75rem', color: '#4b5563', marginTop: 4 }}>
+                          <div style={{ fontSize: '0.75rem', color: 'var(--text-600)', marginTop: 4 }}>
                             {(row.line_description ?? '').trim()}
                           </div>
                         ) : null}
@@ -346,7 +346,7 @@ function FieldQueueLineItemsSection({
             }}
           >
             {showInvoiceLegend && hasUnmatchedInvoiceRows ? (
-              <span style={{ fontSize: '0.75rem', color: '#b91c1c', flex: '1 1 12rem', minWidth: 0 }}>
+              <span style={{ fontSize: '0.75rem', color: 'var(--text-red-700)', flex: '1 1 12rem', minWidth: 0 }}>
                 Items in red are not included on the selected invoice.
               </span>
             ) : null}
@@ -622,9 +622,9 @@ export default function DashboardFieldCollectPaymentQueue({
       {expanded && (
         <>
           {loading ? (
-            <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>Loading…</p>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0 }}>Loading…</p>
           ) : rows.length === 0 ? (
-            <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0 }}>
               No jobs pending approval from the field team.
             </p>
           ) : (
@@ -655,11 +655,11 @@ export default function DashboardFieldCollectPaymentQueue({
                   <div
                     key={r.id}
                     style={{
-                      border: '1px solid #e5e7eb',
+                      border: '1px solid var(--border)',
                       borderRadius: 8,
                       padding: '1rem',
                       marginBottom: '0.75rem',
-                      background: '#fff',
+                      background: 'var(--surface)',
                     }}
                   >
                     <div
@@ -704,7 +704,7 @@ export default function DashboardFieldCollectPaymentQueue({
                             background: 'none',
                             border: 'none',
                             cursor: 'pointer',
-                            color: '#374151',
+                            color: 'var(--text-700)',
                             display: 'inline-flex',
                             alignItems: 'center',
                             justifyContent: 'center',
@@ -739,7 +739,7 @@ export default function DashboardFieldCollectPaymentQueue({
                             background: 'none',
                             border: 'none',
                             cursor: 'pointer',
-                            color: '#374151',
+                            color: 'var(--text-700)',
                             display: 'inline-flex',
                             alignItems: 'center',
                             justifyContent: 'center',
@@ -771,9 +771,9 @@ export default function DashboardFieldCollectPaymentQueue({
                               flexShrink: 0,
                               padding: '0.35rem 0.75rem',
                               fontSize: '0.875rem',
-                              background: '#e5e7eb',
-                              color: '#374151',
-                              border: '1px solid #d1d5db',
+                              background: 'var(--bg-200)',
+                              color: 'var(--text-700)',
+                              border: '1px solid var(--border-strong)',
                               borderRadius: 4,
                               cursor: 'pointer',
                             }}
@@ -831,11 +831,11 @@ export default function DashboardFieldCollectPaymentQueue({
                         marginTop: '0.4rem',
                       }}
                     >
-                      <div style={{ fontSize: '0.8125rem', color: '#6b7280', minWidth: 0 }}>
+                      <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', minWidth: 0 }}>
                         {r.certify_mode === 'returned_from_terminal' ? (
                           <>
                             Sent back by{' '}
-                            <strong style={{ color: '#374151', fontWeight: 600 }}>
+                            <strong style={{ color: 'var(--text-700)', fontWeight: 600 }}>
                               {(r.initiated_by_user?.name ?? '').trim() || 'Team member'}
                             </strong>
                             :
@@ -855,7 +855,7 @@ export default function DashboardFieldCollectPaymentQueue({
                       <span
                         style={{
                           fontSize: '0.8125rem',
-                          color: '#6b7280',
+                          color: 'var(--text-muted)',
                           fontVariantNumeric: 'tabular-nums',
                           flexShrink: 0,
                         }}
@@ -874,7 +874,7 @@ export default function DashboardFieldCollectPaymentQueue({
                           fontSize: '0.8125rem',
                           margin: '0.5rem 0 0',
                           padding: '0.5rem',
-                          background: '#fffbeb',
+                          background: 'var(--bg-amber-tint)',
                           borderRadius: 6,
                           whiteSpace: 'pre-wrap',
                         }}
@@ -897,7 +897,7 @@ export default function DashboardFieldCollectPaymentQueue({
                         }}
                       >
                         {opts.length === 0 ? (
-                          <span style={{ fontSize: '0.8125rem', color: '#b45309' }}>
+                          <span style={{ fontSize: '0.8125rem', color: 'var(--text-amber-700)' }}>
                             No billed Stripe invoice on file for this job.
                           </span>
                         ) : (

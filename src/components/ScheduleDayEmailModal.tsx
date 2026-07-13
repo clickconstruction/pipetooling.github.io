@@ -260,7 +260,7 @@ export function ScheduleDayEmailModal({
         aria-modal
         aria-labelledby="schedule-day-email-title"
         style={{
-          background: '#fff',
+          background: 'var(--surface)',
           borderRadius: 8,
           maxWidth: isDev ? 480 : 420,
           width: '100%',
@@ -272,7 +272,7 @@ export function ScheduleDayEmailModal({
         <h2 id="schedule-day-email-title" style={{ margin: '0 0 0.5rem', fontSize: '1.05rem' }}>
           Email schedule
         </h2>
-        <p style={{ margin: '0 0 0.75rem', fontSize: '0.85rem', color: '#4b5563', lineHeight: 1.4 }}>
+        <p style={{ margin: '0 0 0.75rem', fontSize: '0.85rem', color: 'var(--text-600)', lineHeight: 1.4 }}>
           {isDev && recipientUserId !== authUserId ? (
             <>
               Send a copy of the dispatch schedule for <strong>{dateLabel}</strong> to the selected user’s
@@ -296,7 +296,7 @@ export function ScheduleDayEmailModal({
               Send to
             </span>
             {usersLoadError ? (
-              <p style={{ margin: 0, fontSize: '0.8rem', color: '#b91c1c' }}>{usersLoadError}</p>
+              <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-red-700)' }}>{usersLoadError}</p>
             ) : (
               <SearchableSelect
                 id="schedule-day-email-recipient"
@@ -309,7 +309,7 @@ export function ScheduleDayEmailModal({
                 portalZIndex={1400}
               />
             )}
-            <p style={{ margin: '0.35rem 0 0', fontSize: '0.7rem', color: '#6b7280' }}>
+            <p style={{ margin: '0.35rem 0 0', fontSize: '0.7rem', color: 'var(--text-muted)' }}>
               Non-archived users only (first {USER_PICK_LIMIT} by name).
             </p>
           </div>
@@ -331,13 +331,13 @@ export function ScheduleDayEmailModal({
             style={{
               fontSize: '0.95rem',
               padding: '0.35rem 0.5rem',
-              border: '1px solid #d1d5db',
+              border: '1px solid var(--border-strong)',
               borderRadius: 6,
             }}
           />
         </div>
         {error ? (
-          <p style={{ margin: '0 0 0.65rem', fontSize: '0.8rem', color: '#b91c1c' }}>{error}</p>
+          <p style={{ margin: '0 0 0.65rem', fontSize: '0.8rem', color: 'var(--text-red-700)' }}>{error}</p>
         ) : null}
         <div
           style={{
@@ -353,9 +353,9 @@ export function ScheduleDayEmailModal({
             style={{
               padding: '0.35rem 0.75rem',
               fontSize: '0.85rem',
-              border: '1px solid #d1d5db',
+              border: '1px solid var(--border-strong)',
               borderRadius: 6,
-              background: '#fff',
+              background: 'var(--surface)',
               cursor: busy ? 'not-allowed' : 'pointer',
             }}
             disabled={busy}
@@ -371,8 +371,8 @@ export function ScheduleDayEmailModal({
               fontSize: '0.85rem',
               border: '1px solid #93c5fd',
               borderRadius: 6,
-              background: '#eff6ff',
-              color: '#1d4ed8',
+              background: 'var(--bg-blue-tint)',
+              color: 'var(--text-blue-700)',
               cursor: busy ? 'not-allowed' : 'pointer',
             }}
             disabled={busy || (isDev && userOptions.length === 0)}

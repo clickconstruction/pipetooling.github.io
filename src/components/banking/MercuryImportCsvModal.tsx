@@ -137,7 +137,7 @@ export function MercuryImportCsvModal({ open, onClose, onSubmit }: MercuryImport
         aria-labelledby="mercury-import-csv-title"
         onMouseDown={(e) => e.stopPropagation()}
         style={{
-          background: '#fff',
+          background: 'var(--surface)',
           borderRadius: 10,
           maxWidth: 760,
           width: '100%',
@@ -151,7 +151,7 @@ export function MercuryImportCsvModal({ open, onClose, onSubmit }: MercuryImport
         <h2 id="mercury-import-csv-title" style={{ margin: '0 0 0.5rem', fontSize: '1.1rem', fontWeight: 700 }}>
           Import transactions (CSV)
         </h2>
-        <p style={{ margin: '0 0 1rem', fontSize: '0.8125rem', color: '#475569', lineHeight: 1.5 }}>
+        <p style={{ margin: '0 0 1rem', fontSize: '0.8125rem', color: 'var(--text-slate-600)', lineHeight: 1.5 }}>
           Upload a bank/QuickBooks register export for a closed or external account. Rows import as manual transactions
           under a new account that shows in the Ledger and can be labeled, attributed, and allocated like any other.
           Money out becomes a negative amount; re-importing the same rows is de-duplicated.
@@ -177,9 +177,9 @@ export function MercuryImportCsvModal({ open, onClose, onSubmit }: MercuryImport
             padding: '1rem',
             textAlign: 'center',
             cursor: 'pointer',
-            background: dragOver ? '#eff6ff' : '#f8fafc',
+            background: dragOver ? 'var(--bg-blue-tint)' : 'var(--bg-slate-tint)',
             fontSize: '0.85rem',
-            color: '#475569',
+            color: 'var(--text-slate-600)',
           }}
         >
           {fileName ? <strong>{fileName}</strong> : 'Drop a .csv here, or click to choose a file'}
@@ -199,7 +199,7 @@ export function MercuryImportCsvModal({ open, onClose, onSubmit }: MercuryImport
         {parseError ? (
           <p
             role="alert"
-            style={{ margin: '0.85rem 0 0', padding: '0.5rem 0.75rem', borderRadius: 6, background: '#fef2f2', border: '1px solid #fecaca', color: '#991b1b', fontSize: '0.8rem' }}
+            style={{ margin: '0.85rem 0 0', padding: '0.5rem 0.75rem', borderRadius: 6, background: 'var(--bg-red-tint)', border: '1px solid #fecaca', color: 'var(--text-red-800)', fontSize: '0.8rem' }}
           >
             {parseError}
           </p>
@@ -215,7 +215,7 @@ export function MercuryImportCsvModal({ open, onClose, onSubmit }: MercuryImport
                 onChange={(e) => setAccountName(e.target.value)}
                 disabled={submitting || !!result}
                 placeholder="e.g. Closed — Old Checking"
-                style={{ padding: '0.4rem 0.55rem', borderRadius: 6, border: '1px solid #e5e7eb', fontWeight: 400 }}
+                style={{ padding: '0.4rem 0.55rem', borderRadius: 6, border: '1px solid var(--border)', fontWeight: 400 }}
               />
             </label>
 
@@ -233,21 +233,21 @@ export function MercuryImportCsvModal({ open, onClose, onSubmit }: MercuryImport
                   {balanceMatch ? (
                     <span style={{ color: '#047857', fontWeight: 600 }}>✓ matches</span>
                   ) : (
-                    <span style={{ color: '#b45309', fontWeight: 600 }}>⚠ differs by {usd(parse.totalAmount - (parse.endingBalance ?? 0))}</span>
+                    <span style={{ color: 'var(--text-amber-700)', fontWeight: 600 }}>⚠ differs by {usd(parse.totalAmount - (parse.endingBalance ?? 0))}</span>
                   )}
                 </span>
               ) : null}
             </div>
 
             {parse.warnings.length > 0 ? (
-              <p style={{ margin: 0, fontSize: '0.75rem', color: '#64748b' }}>{parse.warnings.join(' ')}</p>
+              <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-slate-500)' }}>{parse.warnings.join(' ')}</p>
             ) : null}
 
             {/* Preview table */}
-            <div style={{ maxHeight: 280, overflow: 'auto', border: '1px solid #e5e7eb', borderRadius: 6 }}>
+            <div style={{ maxHeight: 280, overflow: 'auto', border: '1px solid var(--border)', borderRadius: 6 }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.78rem' }}>
                 <thead>
-                  <tr style={{ position: 'sticky', top: 0, background: '#f1f5f9' }}>
+                  <tr style={{ position: 'sticky', top: 0, background: 'var(--bg-slate-100)' }}>
                     <th style={thStyle}>Date</th>
                     <th style={thStyle}>Payee</th>
                     <th style={thStyle}>Memo</th>
@@ -259,7 +259,7 @@ export function MercuryImportCsvModal({ open, onClose, onSubmit }: MercuryImport
                   {rows.map((r, i) => (
                     <tr key={i} style={{ borderTop: '1px solid #f1f5f9' }}>
                       <td style={tdStyle}>{r.postedDate}</td>
-                      <td style={tdStyle}>{r.payee ?? <span style={{ color: '#9ca3af' }}>—</span>}</td>
+                      <td style={tdStyle}>{r.payee ?? <span style={{ color: 'var(--text-faint)' }}>—</span>}</td>
                       <td style={{ ...tdStyle, maxWidth: 240, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {r.memo ?? ''}
                       </td>
@@ -278,7 +278,7 @@ export function MercuryImportCsvModal({ open, onClose, onSubmit }: MercuryImport
         {result ? (
           <p
             role="status"
-            style={{ margin: '0.85rem 0 0', padding: '0.5rem 0.75rem', borderRadius: 6, background: '#ecfdf5', border: '1px solid #a7f3d0', color: '#065f46', fontSize: '0.82rem' }}
+            style={{ margin: '0.85rem 0 0', padding: '0.5rem 0.75rem', borderRadius: 6, background: 'var(--bg-emerald-tint)', border: '1px solid #a7f3d0', color: 'var(--text-emerald-800)', fontSize: '0.82rem' }}
           >
             Imported <strong>{result.inserted}</strong> transaction(s) into <strong>{result.accountName}</strong>
             {result.skipped > 0 ? ` (${result.skipped} duplicate(s) skipped)` : ''}. They now appear in the Banking Ledger.
@@ -288,7 +288,7 @@ export function MercuryImportCsvModal({ open, onClose, onSubmit }: MercuryImport
         {errorMsg ? (
           <p
             role="alert"
-            style={{ margin: '0.85rem 0 0', padding: '0.5rem 0.75rem', borderRadius: 6, background: '#fef2f2', border: '1px solid #fecaca', color: '#991b1b', fontSize: '0.8rem' }}
+            style={{ margin: '0.85rem 0 0', padding: '0.5rem 0.75rem', borderRadius: 6, background: 'var(--bg-red-tint)', border: '1px solid #fecaca', color: 'var(--text-red-800)', fontSize: '0.8rem' }}
           >
             {errorMsg}
           </p>
@@ -299,7 +299,7 @@ export function MercuryImportCsvModal({ open, onClose, onSubmit }: MercuryImport
             type="button"
             onClick={handleCancel}
             disabled={submitting}
-            style={{ padding: '0.5rem 1rem', background: 'white', color: '#111827', border: '1px solid #e5e7eb', borderRadius: 6, cursor: submitting ? 'not-allowed' : 'pointer', fontWeight: 500 }}
+            style={{ padding: '0.5rem 1rem', background: 'var(--surface)', color: 'var(--text-strong)', border: '1px solid var(--border)', borderRadius: 6, cursor: submitting ? 'not-allowed' : 'pointer', fontWeight: 500 }}
           >
             {result ? 'Close' : 'Cancel'}
           </button>
@@ -323,11 +323,11 @@ const thStyle: React.CSSProperties = {
   textAlign: 'left',
   padding: '0.4rem 0.55rem',
   fontWeight: 600,
-  color: '#475569',
+  color: 'var(--text-slate-600)',
   borderBottom: '1px solid #e2e8f0',
   whiteSpace: 'nowrap',
 }
 const tdStyle: React.CSSProperties = {
   padding: '0.35rem 0.55rem',
-  color: '#1f2937',
+  color: 'var(--text-gray-800)',
 }

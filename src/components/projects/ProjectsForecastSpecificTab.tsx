@@ -1260,7 +1260,7 @@ export function ProjectsForecastSpecificTab({
                 top: '100%',
                 left: 0,
                 marginTop: 4,
-                background: '#ffffff',
+                background: 'var(--surface)',
                 border: '1px solid #cbd5e1',
                 borderRadius: 6,
                 boxShadow: '0 6px 24px rgba(15, 23, 42, 0.12)',
@@ -1283,14 +1283,14 @@ export function ProjectsForecastSpecificTab({
                     textAlign: 'left',
                     padding: '0.5rem 0.7rem',
                     border: 'none',
-                    background: job.id === selectedJobId ? '#eff6ff' : '#ffffff',
-                    color: '#0f172a',
+                    background: job.id === selectedJobId ? 'var(--bg-blue-tint)' : 'var(--surface)',
+                    color: 'var(--text-slate-900)',
                     fontSize: '0.875rem',
                     cursor: 'pointer',
                   }}
                 >
                   <div style={{ fontWeight: 600 }}>{buildJobLabel(job, prefixMap)}</div>
-                  <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                     {job.project_name ?? '(no project name)'}
                     {job.job_address ? ` · ${job.job_address}` : ''}
                   </div>
@@ -1342,9 +1342,9 @@ export function ProjectsForecastSpecificTab({
               }
               style={{
                 ...forecastSecondaryButtonStyle,
-                background: dragEdit ? '#eff6ff' : '#ffffff',
+                background: dragEdit ? 'var(--bg-blue-tint)' : 'var(--surface)',
                 borderColor: dragEdit ? '#bfdbfe' : '#cbd5e1',
-                color: dragEdit ? '#1d4ed8' : '#374151',
+                color: dragEdit ? 'var(--text-blue-700)' : 'var(--text-700)',
                 opacity:
                   dragDisabledReason != null || dragSaving ? 0.55 : 1,
                 cursor:
@@ -1370,9 +1370,9 @@ export function ProjectsForecastSpecificTab({
             }
             style={{
               ...forecastSecondaryButtonStyle,
-              background: showDates ? '#eff6ff' : '#ffffff',
+              background: showDates ? 'var(--bg-blue-tint)' : 'var(--surface)',
               borderColor: showDates ? '#bfdbfe' : '#cbd5e1',
-              color: showDates ? '#1d4ed8' : '#374151',
+              color: showDates ? 'var(--text-blue-700)' : 'var(--text-700)',
               opacity: dragEdit ? 0.55 : 1,
               cursor: dragEdit ? 'not-allowed' : 'pointer',
             }}
@@ -1566,7 +1566,7 @@ function PercentColumnGutterHeader() {
         paddingRight: PERCENT_HEADER_RIGHT_PADDING_PX,
         fontSize: '0.75rem',
         fontWeight: 600,
-        color: '#6b7280',
+        color: 'var(--text-muted)',
       }}
       aria-hidden
     >
@@ -1682,7 +1682,7 @@ function StageGutterLabel({
         <span
           style={{
             fontWeight: 600,
-            color: '#0f172a',
+            color: 'var(--text-slate-900)',
             textDecoration: swatch.textDecoration,
             overflow: 'hidden',
             textOverflow: 'ellipsis',
@@ -1697,7 +1697,7 @@ function StageGutterLabel({
           <span
             style={{
               fontSize: '0.75rem',
-              color: '#2563eb',
+              color: 'var(--text-link)',
               textDecoration: 'underline',
               overflow: 'hidden',
               textOverflow: 'ellipsis',
@@ -1736,7 +1736,7 @@ function StageGutterLabel({
           gap: 2,
           flexShrink: 0,
           fontSize: '0.8125rem',
-          color: percentComplete == null ? '#94a3b8' : '#0f172a',
+          color: percentComplete == null ? 'var(--text-slate-400)' : 'var(--text-slate-900)',
         }}
       >
         {percentEditable ? (
@@ -1789,16 +1789,16 @@ function StageGutterLabel({
                 fontSize: '0.8125rem',
                 textAlign: 'right',
                 border: 'none',
-                borderBottom: '1px solid #d1d5db',
+                borderBottom: '1px solid var(--border-strong)',
                 borderRadius: 0,
                 background: 'transparent',
-                color: '#0f172a',
+                color: 'var(--text-slate-900)',
               }}
             />
-            <span style={{ color: '#6b7280', fontSize: '0.75rem' }}>%</span>
+            <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>%</span>
           </>
         ) : percentComplete == null ? null : (
-          <span style={{ color: '#0f172a' }}>{`${percentComplete}%`}</span>
+          <span style={{ color: 'var(--text-slate-900)' }}>{`${percentComplete}%`}</span>
         )}
       </div>
       ) : null}
@@ -1827,9 +1827,9 @@ function StageGutterLabel({
             width: 18,
             height: 18,
             borderRadius: '50%',
-            background: '#ffffff',
+            background: 'var(--surface)',
             border: `1px solid ${insertButtonDisabled ? '#cbd5e1' : '#2563eb'}`,
-            color: insertButtonDisabled ? '#94a3b8' : '#2563eb',
+            color: insertButtonDisabled ? 'var(--text-slate-400)' : 'var(--text-link)',
             fontSize: '0.875rem',
             fontWeight: 700,
             lineHeight: 1,

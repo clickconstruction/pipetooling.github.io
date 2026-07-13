@@ -54,6 +54,19 @@ export function useActiveAccountsManagement({ enabled, onDataChanged }: UseActiv
   const [deleteReassignSubmitting, setDeleteReassignSubmitting] = useState(false)
   const [deleteReassignError, setDeleteReassignError] = useState<string | null>(null)
   const [deleteReassignCustomerCount, setDeleteReassignCustomerCount] = useState<number>(0)
+  const [archiveConfirmUser, setArchiveConfirmUser] = useState<UserRow | null>(null)
+  const [archiveConfirmSubmitting, setArchiveConfirmSubmitting] = useState(false)
+  const [archiveConfirmError, setArchiveConfirmError] = useState<string | null>(null)
+  const [archiveConfirmCustomerCount, setArchiveConfirmCustomerCount] = useState<number | null>(null)
+  const [mergeOpen, setMergeOpen] = useState(false)
+  const [mergeSurvivorId, setMergeSurvivorId] = useState('')
+  const [mergeAbsorbedId, setMergeAbsorbedId] = useState('')
+  const [mergeError, setMergeError] = useState<string | null>(null)
+  const [mergeSubmitting, setMergeSubmitting] = useState(false)
+  const [mergePreview, setMergePreview] = useState<{
+    moved: Record<string, number>
+    warnings: string[]
+  } | null>(null)
   const [restoreSubmitting, setRestoreSubmitting] = useState(false)
   const [restoreError, setRestoreError] = useState<string | null>(null)
   const [restoringUserId, setRestoringUserId] = useState<string | null>(null)
@@ -86,7 +99,7 @@ export function useActiveAccountsManagement({ enabled, onDataChanged }: UseActiv
   async function loadUsers() {
     const { data: list, error: eList } = await supabase
       .from('users')
-      .select('id, email, name, role, last_sign_in_at, estimator_prospects_access, estimator_service_type_ids, primary_service_type_ids, superintendent_service_type_ids, subcontractor_service_type_ids, helpers_service_type_ids')
+      .select('id, email, name, role, last_sign_in_at, read_only, estimator_prospects_access, estimator_service_type_ids, primary_service_type_ids, superintendent_service_type_ids, subcontractor_service_type_ids, helpers_service_type_ids')
       .is('archived_at', null)
       .order('name')
     if (eList) setError(eList.message)
@@ -117,6 +130,18 @@ export function useActiveAccountsManagement({ enabled, onDataChanged }: UseActiv
       setError(e.message)
     } else {
       setUsers((prev) => prev.map((u) => (u.id === id ? { ...u, role } : u)))
+    }
+    setUpdatingId(null)
+  }
+
+  async function updateReadOnly(id: string, readOnly: boolean) {
+    setUpdatingId(id)
+    setError(null)
+    const { error: e } = await supabase.from('users').update({ read_only: readOnly }).eq('id', id)
+    if (e) {
+      setError(e.message)
+    } else {
+      setUsers((prev) => prev.map((u) => (u.id === id ? { ...u, read_only: readOnly } : u)))
     }
     setUpdatingId(null)
   }
@@ -727,10 +752,122 @@ export function useActiveAccountsManagement({ enabled, onDataChanged }: UseActiv
     if (!authUser?.id) return
     const { data } = await supabase
       .from('users')
-      .select('id, email, name, role, archived_at')
+      .select('id, email, name, role, archived_at, last_sign_in_at')
       .not('archived_at', 'is', null)
       .order('archived_at', { ascending: false })
     setArchivedUsers((data as UserRow[]) ?? [])
+  }
+
+  // ---- Per-row Archive with confirm (Edit mode → Archive; same archive-user fn as the dialog)
+  function openArchiveConfirm(u: UserRow) {
+    setArchiveConfirmUser(u)
+    setArchiveConfirmError(null)
+    setArchiveConfirmCustomerCount(null)
+    void (async () => {
+      const { count } = await supabase
+        .from('customers')
+        .select('id', { count: 'exact', head: true })
+        .eq('master_user_id', u.id)
+      setArchiveConfirmCustomerCount(count ?? 0)
+    })()
+  }
+
+  function closeArchiveConfirm() {
+    setArchiveConfirmUser(null)
+  }
+
+  async function handleArchiveConfirm() {
+    const u = archiveConfirmUser
+    if (!u) return
+    setArchiveConfirmError(null)
+    setArchiveConfirmSubmitting(true)
+    const { data, error: eFn } = await supabase.functions.invoke('archive-user', {
+      body: { email: (u.email ?? '').trim(), name: (u.name ?? '').trim() },
+    })
+    setArchiveConfirmSubmitting(false)
+    if (eFn) {
+      let msg = eFn.message
+      if (eFn instanceof FunctionsHttpError && eFn.context?.json) {
+        try {
+          const b = (await eFn.context.json()) as { error?: string } | null
+          if (b?.error) msg = b.error
+        } catch {
+          /* ignore */
+        }
+      }
+      setArchiveConfirmError(msg)
+      return
+    }
+    const err = (data as { error?: string } | null)?.error
+    if (err) {
+      setArchiveConfirmError(err)
+      return
+    }
+    showToast(`${u.name || u.email} archived.`, 'success')
+    setArchiveConfirmUser(null)
+    cancelEditUser()
+    await reloadAfterMutation()
+  }
+
+  // ---- Merge users (Active Accounts → Merge users; RPC merge_user_accounts via merge-users fn)
+  function openMerge() {
+    setMergeOpen(true)
+    setMergeSurvivorId('')
+    setMergeAbsorbedId('')
+    setMergeError(null)
+    setMergePreview(null)
+  }
+
+  function closeMerge() {
+    setMergeOpen(false)
+  }
+
+  async function runMerge(dryRun: boolean) {
+    if (!mergeSurvivorId || !mergeAbsorbedId) {
+      setMergeError('Pick both accounts.')
+      return
+    }
+    setMergeError(null)
+    setMergeSubmitting(true)
+    const { data, error: eFn } = await supabase.functions.invoke('merge-users', {
+      body: {
+        survivor_user_id: mergeSurvivorId,
+        absorbed_user_id: mergeAbsorbedId,
+        dry_run: dryRun,
+      },
+    })
+    setMergeSubmitting(false)
+    if (eFn) {
+      let msg = eFn.message
+      if (eFn instanceof FunctionsHttpError && eFn.context?.json) {
+        try {
+          const b = (await eFn.context.json()) as { error?: string } | null
+          if (b?.error) msg = b.error
+        } catch {
+          /* ignore */
+        }
+      }
+      setMergeError(msg)
+      return
+    }
+    const res = data as {
+      success?: boolean
+      error?: string
+      dry_run?: boolean
+      moved?: Record<string, number>
+      warnings?: string[]
+    } | null
+    if (!res?.success) {
+      setMergeError(res?.error || 'Merge failed.')
+      return
+    }
+    if (dryRun) {
+      setMergePreview({ moved: res.moved ?? {}, warnings: res.warnings ?? [] })
+      return
+    }
+    showToast('Accounts merged.', 'success')
+    setMergeOpen(false)
+    await reloadAfterMutation()
   }
 
   async function loadServiceTypes() {
@@ -873,6 +1010,7 @@ export function useActiveAccountsManagement({ enabled, onDataChanged }: UseActiv
     activeAccountsSectionOpen,
     setActiveAccountsSectionOpen,
     updateRole,
+    updateReadOnly,
     startEditUser,
     cancelEditUser,
     updateUserProfile,
@@ -887,6 +1025,26 @@ export function useActiveAccountsManagement({ enabled, onDataChanged }: UseActiv
     openArchive,
     closeArchive,
     handleArchive,
+    archiveConfirmUser,
+    archiveConfirmSubmitting,
+    archiveConfirmError,
+    archiveConfirmCustomerCount,
+    openArchiveConfirm,
+    closeArchiveConfirm,
+    handleArchiveConfirm,
+    mergeOpen,
+    mergeSurvivorId,
+    setMergeSurvivorId,
+    mergeAbsorbedId,
+    setMergeAbsorbedId,
+    mergeError,
+    setMergeError,
+    mergeSubmitting,
+    mergePreview,
+    setMergePreview,
+    openMerge,
+    closeMerge,
+    runMerge,
     openArchiveReassign,
     closeArchiveReassign,
     loadCustomerCount,

@@ -35,16 +35,16 @@ export function BidRfiTab({ bids, authUser, selectedBid, onSelectBid, onClose, o
           placeholder="Search bids (project name or GC/Builder)..."
           value={rfiSearchQuery}
           onChange={(e) => setRfiSearchQuery(e.target.value)}
-          style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, marginBottom: '1rem', boxSizing: 'border-box' }}
+          style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, marginBottom: '1rem', boxSizing: 'border-box' }}
         />
       )}
       {!selectedBid ? (
-        <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
+        <div style={{ border: '1px solid var(--border)', borderRadius: 4, overflow: 'hidden' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead style={{ background: '#f9fafb' }}>
+            <thead style={{ background: 'var(--bg-subtle)' }}>
               <tr>
-                <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Project Name</th>
-                <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Bid Date</th>
+                <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Project Name</th>
+                <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Bid Date</th>
               </tr>
             </thead>
             <tbody>
@@ -63,10 +63,10 @@ export function BidRfiTab({ bids, authUser, selectedBid, onSelectBid, onClose, o
                     onClick={() => onSelectBid(bid)}
                     style={{
                       cursor: 'pointer',
-                      borderBottom: '1px solid #e5e7eb',
+                      borderBottom: '1px solid var(--border)',
                     }}
-                    onMouseEnter={(e) => { e.currentTarget.style.background = '#f9fafb' }}
-                    onMouseLeave={(e) => { e.currentTarget.style.background = 'white' }}
+                    onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--bg-subtle)' }}
+                    onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--surface)' }}
                   >
                     <td style={{ padding: '0.75rem' }}>{bidDisplayName(bid) || '—'}</td>
                     <td style={{ padding: '0.75rem' }}>{formatDateYYMMDD(bid.bid_due_date)}</td>
@@ -81,7 +81,7 @@ export function BidRfiTab({ bids, authUser, selectedBid, onSelectBid, onClose, o
                 return name.includes(q) || cust.includes(q) || gc.includes(q)
               }).length === 0 && (
                 <tr>
-                  <td colSpan={2} style={{ padding: '2rem', textAlign: 'center', color: '#6b7280' }}>
+                  <td colSpan={2} style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
                     {bids.length === 0 ? 'No bids yet.' : 'No bids match your search.'}
                   </td>
                 </tr>
@@ -160,10 +160,10 @@ export function BidRfiTab({ bids, authUser, selectedBid, onSelectBid, onClose, o
         return (
           <div
             style={{
-              border: '1px solid #e5e7eb',
+              border: '1px solid var(--border)',
               borderRadius: 8,
               padding: '1.5rem 2rem',
-              background: 'white',
+              background: 'var(--surface)',
               marginBottom: '1.5rem',
               ...(narrowViewport640 ? { position: 'relative' } : {}),
             }}
@@ -190,7 +190,7 @@ export function BidRfiTab({ bids, authUser, selectedBid, onSelectBid, onClose, o
                   type="button"
                   onClick={() => onEditBid(bid)}
                   title="Edit bid"
-                  style={{ padding: '0.5rem 1rem', background: '#eff6ff', border: '1px solid #3b82f6', borderRadius: 4, color: '#1d4ed8', cursor: 'pointer' }}
+                  style={{ padding: '0.5rem 1rem', background: 'var(--bg-blue-tint)', border: '1px solid #3b82f6', borderRadius: 4, color: 'var(--text-blue-700)', cursor: 'pointer' }}
                 >
                   Edit bid
                 </button>
@@ -208,35 +208,35 @@ export function BidRfiTab({ bids, authUser, selectedBid, onSelectBid, onClose, o
               </div>
             </div>
             <div style={{ marginBottom: '1rem' }}>
-              <div style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '0.25rem' }}>Customer</div>
+              <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginBottom: '0.25rem' }}>Customer</div>
               <div>{customerName}</div>
               {addressLines(customerAddress).map((line, i) => (
-                <div key={i} style={{ color: '#6b7280' }}>{line}</div>
+                <div key={i} style={{ color: 'var(--text-muted)' }}>{line}</div>
               ))}
             </div>
             <div style={{ marginBottom: '1.5rem' }}>
-              <div style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '0.25rem' }}>Project</div>
+              <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginBottom: '0.25rem' }}>Project</div>
               <div>{projectNameVal}</div>
               {addressLines(projectAddressVal).map((line, i) => (
-                <div key={i} style={{ color: '#6b7280' }}>{line}</div>
+                <div key={i} style={{ color: 'var(--text-muted)' }}>{line}</div>
               ))}
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
               <div>
-                <span style={{ fontSize: '0.875rem', color: '#374151' }}>
+                <span style={{ fontSize: '0.875rem', color: 'var(--text-700)' }}>
                   Bid was submitted: {formatDateYYMMDD(bid.bid_date_sent)}
                   {bid.bid_date_sent && (
-                    <span style={{ marginLeft: '0.25rem', color: '#6b7280' }}>"{(bid.bid_date_sent as string).slice(0, 10)}"</span>
+                    <span style={{ marginLeft: '0.25rem', color: 'var(--text-muted)' }}>"{(bid.bid_date_sent as string).slice(0, 10)}"</span>
                   )}
                 </span>
               </div>
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                   <label style={{ fontSize: '0.875rem', whiteSpace: 'nowrap' }}>The bid was submitted to</label>
-                  <span style={{ flex: 1, padding: '0.5rem 0', fontSize: '0.875rem', color: '#374151' }}>
+                  <span style={{ flex: 1, padding: '0.5rem 0', fontSize: '0.875rem', color: 'var(--text-700)' }}>
                     {(bid as { submitted_to?: string | null }).submitted_to || '—'}
                   </span>
-                  <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>Edit bid to change</span>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Edit bid to change</span>
                 </div>
               </div>
               <div>
@@ -248,7 +248,7 @@ export function BidRfiTab({ bids, authUser, selectedBid, onSelectBid, onClose, o
                     value={form.contactPerson}
                     onChange={(e) => updateRfiForm({ contactPerson: e.target.value })}
                     placeholder="e.g. yourname@clickplumbing.com"
-                    style={{ flex: 1, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem', boxSizing: 'border-box' }}
+                    style={{ flex: 1, padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem', boxSizing: 'border-box' }}
                   />
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -258,7 +258,7 @@ export function BidRfiTab({ bids, authUser, selectedBid, onSelectBid, onClose, o
                     value={form.phoneEmail}
                     onChange={(e) => updateRfiForm({ phoneEmail: e.target.value })}
                     placeholder="e.g. 512 360 0599"
-                    style={{ flex: 1, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem', boxSizing: 'border-box' }}
+                    style={{ flex: 1, padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem', boxSizing: 'border-box' }}
                   />
                 </div>
               </div>
@@ -269,7 +269,7 @@ export function BidRfiTab({ bids, authUser, selectedBid, onSelectBid, onClose, o
                     type="date"
                     value={form.responseRequestDate}
                     onChange={(e) => updateRfiForm({ responseRequestDate: e.target.value })}
-                    style={{ flex: 1, maxWidth: 180, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem', boxSizing: 'border-box' }}
+                    style={{ flex: 1, maxWidth: 180, padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem', boxSizing: 'border-box' }}
                   />
                 </div>
               </div>
@@ -280,9 +280,9 @@ export function BidRfiTab({ bids, authUser, selectedBid, onSelectBid, onClose, o
                   onChange={(e) => updateRfiForm({ detailedDescription: e.target.value })}
                   placeholder="Be specific and concise. Include: Exact location (e.g. 2nd floor mechanical room, grid line B-4 to C-5); What the issue is; Reference contract documents; Why it's unclear/conflicting/missing; Your proposed solution or options (optional)."
                   rows={6}
-                  style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem', boxSizing: 'border-box', resize: 'vertical' }}
+                  style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem', boxSizing: 'border-box', resize: 'vertical' }}
                 />
-                <div style={{ marginTop: '0.75rem', padding: '0.75rem', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 4, fontSize: '0.8125rem', color: '#4b5563' }}>
+                <div style={{ marginTop: '0.75rem', padding: '0.75rem', background: 'var(--bg-subtle)', border: '1px solid var(--border)', borderRadius: 4, fontSize: '0.8125rem', color: 'var(--text-600)' }}>
                   <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', marginBottom: '0.5rem', cursor: 'pointer' }}>
                     <input type="checkbox" checked={form.checklistExactLocation ?? false} onChange={(e) => updateRfiForm({ checklistExactLocation: e.target.checked })} style={{ marginTop: 2 }} />
                     <span>Exact location (e.g., &quot;2nd floor mechanical room, grid line B-4 to C-5&quot;)</span>
@@ -312,9 +312,9 @@ export function BidRfiTab({ bids, authUser, selectedBid, onSelectBid, onClose, o
                   onChange={(e) => updateRfiForm({ impactStatement: e.target.value })}
                   placeholder="Note any potential delay, cost implication, or safety concern if not resolved quickly. Keep factual."
                   rows={3}
-                  style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem', boxSizing: 'border-box', resize: 'vertical' }}
+                  style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem', boxSizing: 'border-box', resize: 'vertical' }}
                 />
-                <div style={{ marginTop: '0.75rem', padding: '0.75rem', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 4, fontSize: '0.8125rem', color: '#4b5563' }}>
+                <div style={{ marginTop: '0.75rem', padding: '0.75rem', background: 'var(--bg-subtle)', border: '1px solid var(--border)', borderRadius: 4, fontSize: '0.8125rem', color: 'var(--text-600)' }}>
                   <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', cursor: 'pointer' }}>
                     <input type="checkbox" checked={form.checklistImpactStatement ?? false} onChange={(e) => updateRfiForm({ checklistImpactStatement: e.target.checked })} style={{ marginTop: 2 }} />
                     <span>Note any potential delay, cost implication, or safety concern if not resolved quickly (e.g., &quot;This issue is holding rough-in on floors 2–4; potential 5-day delay if not clarified by [date]&quot;). Avoid sounding like you&apos;re demanding a change—keep it factual.</span>
@@ -326,7 +326,7 @@ export function BidRfiTab({ bids, authUser, selectedBid, onSelectBid, onClose, o
               <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Combined document (copy to send)</label>
               <div
                 key={`combined-preview-rfi-${bid.id}-${bid.bid_date_sent ?? ''}-${(bid as { submitted_to?: string | null }).submitted_to ?? ''}-${form.contactPerson}-${form.phoneEmail}-${form.responseRequestDate}-${form.detailedDescription}-${form.impactStatement}`}
-                style={{ width: '100%', minHeight: 360, padding: '0.75rem', border: '1px solid #d1d5db', borderRadius: 4, fontFamily: 'inherit', fontSize: '0.875rem', boxSizing: 'border-box', whiteSpace: 'pre-wrap' }}
+                style={{ width: '100%', minHeight: 360, padding: '0.75rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontFamily: 'inherit', fontSize: '0.875rem', boxSizing: 'border-box', whiteSpace: 'pre-wrap' }}
                 // eslint-disable-next-line react/no-danger -- app-generated document HTML; user-entered fields are escaped by the tested rfi builder
                 dangerouslySetInnerHTML={{ __html: combinedHtml }}
               />
@@ -344,7 +344,7 @@ export function BidRfiTab({ bids, authUser, selectedBid, onSelectBid, onClose, o
                     copyToClipboard()
                     openInExternalBrowser(googleDocsCopyUrl)
                   }}
-                  style={{ padding: '0.5rem 1rem', background: '#f3f4f6', color: '#374151', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer', fontSize: 'inherit' }}
+                  style={{ padding: '0.5rem 1rem', background: 'var(--bg-muted)', color: 'var(--text-700)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer', fontSize: 'inherit' }}
                 >
                   Open in Google Docs
                 </button>

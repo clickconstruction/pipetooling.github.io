@@ -8,7 +8,7 @@ export const QUICKFILL_SECTION_BANNER_BOX_STYLE: CSSProperties = {
   fontSize: '0.875rem',
   fontWeight: 600,
   lineHeight: 1.45,
-  color: '#854d0e',
+  color: 'var(--text-yellow-800)',
   background: '#fef9c3',
   border: '1px solid #facc15',
   borderRadius: 8,

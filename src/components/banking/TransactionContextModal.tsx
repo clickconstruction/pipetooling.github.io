@@ -161,13 +161,13 @@ export function TransactionContextModal({ open, onClose, anchor, nicknameByAccou
       <>
         <td style={{ ...td, whiteSpace: 'nowrap' }}>{fmtDate(r.posted_at)}</td>
         <td style={td}>
-          {cp ? <span>{cp}</span> : !showBankDesc ? <span style={{ color: '#9ca3af' }}>—</span> : null}
+          {cp ? <span>{cp}</span> : !showBankDesc ? <span style={{ color: 'var(--text-faint)' }}>—</span> : null}
           {showBankDesc ? (
-            <span style={{ display: 'block', fontSize: '0.7rem', color: '#94a3b8', wordBreak: 'break-word' }}>{bankDesc}</span>
+            <span style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-slate-400)', wordBreak: 'break-word' }}>{bankDesc}</span>
           ) : null}
         </td>
-        <td style={{ ...td, fontSize: '0.75rem', color: '#64748b', whiteSpace: 'nowrap' }}>{acct(r.mercury_account_id, nicknameByAccount)}</td>
-        <td style={{ ...td, fontSize: '0.75rem', color: '#64748b', whiteSpace: 'nowrap' }}>{formatMercuryKind(r.kind)}</td>
+        <td style={{ ...td, fontSize: '0.75rem', color: 'var(--text-slate-500)', whiteSpace: 'nowrap' }}>{acct(r.mercury_account_id, nicknameByAccount)}</td>
+        <td style={{ ...td, fontSize: '0.75rem', color: 'var(--text-slate-500)', whiteSpace: 'nowrap' }}>{formatMercuryKind(r.kind)}</td>
         <td style={{ ...td, textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: amountColor(Number(r.amount)), fontWeight: 500, whiteSpace: 'nowrap' }}>
           {usd(Number(r.amount))}
         </td>
@@ -201,7 +201,7 @@ export function TransactionContextModal({ open, onClose, anchor, nicknameByAccou
       type="button"
       onClick={onClick}
       disabled={loading}
-      style={{ width: '100%', padding: '0.5rem', border: 'none', borderTop: '1px solid #f1f5f9', borderBottom: '1px solid #f1f5f9', background: '#f8fafc', color: '#2563eb', fontWeight: 600, fontSize: '0.8rem', cursor: loading ? 'wait' : 'pointer' }}
+      style={{ width: '100%', padding: '0.5rem', border: 'none', borderTop: '1px solid #f1f5f9', borderBottom: '1px solid #f1f5f9', background: 'var(--bg-slate-tint)', color: 'var(--text-link)', fontWeight: 600, fontSize: '0.8rem', cursor: loading ? 'wait' : 'pointer' }}
     >
       {loading ? 'Loading…' : label}
     </button>
@@ -220,25 +220,25 @@ export function TransactionContextModal({ open, onClose, anchor, nicknameByAccou
         aria-modal="true"
         aria-labelledby="tx-context-title"
         onMouseDown={(e) => e.stopPropagation()}
-        style={{ background: '#fff', borderRadius: 10, maxWidth: 760, width: '100%', maxHeight: 'min(90vh, 720px)', display: 'flex', flexDirection: 'column', boxShadow: '0 8px 32px rgba(0,0,0,0.15)', boxSizing: 'border-box' }}
+        style={{ background: 'var(--surface)', borderRadius: 10, maxWidth: 760, width: '100%', maxHeight: 'min(90vh, 720px)', display: 'flex', flexDirection: 'column', boxShadow: '0 8px 32px rgba(0,0,0,0.15)', boxSizing: 'border-box' }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', padding: '1rem 1.25rem', borderBottom: '1px solid #e5e7eb' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', padding: '1rem 1.25rem', borderBottom: '1px solid var(--border)' }}>
           <div>
             <h2 id="tx-context-title" style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700 }}>
               Around {fmtDate(anchor.posted_at)}
             </h2>
-            <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: 2 }}>Ledger transactions by date · all accounts · click a row to open it</div>
+            <div style={{ fontSize: '0.75rem', color: 'var(--text-slate-500)', marginTop: 2 }}>Ledger transactions by date · all accounts · click a row to open it</div>
           </div>
-          <button type="button" onClick={onClose} style={{ padding: '0.4rem 0.85rem', border: '1px solid #d1d5db', background: 'white', borderRadius: 6, cursor: 'pointer', fontSize: '0.875rem' }}>
+          <button type="button" onClick={onClose} style={{ padding: '0.4rem 0.85rem', border: '1px solid var(--border-strong)', background: 'var(--surface)', borderRadius: 6, cursor: 'pointer', fontSize: '0.875rem' }}>
             Close
           </button>
         </div>
 
         <div style={{ overflow: 'auto', flex: '1 1 auto' }}>
           {error ? (
-            <p role="alert" style={{ margin: '1rem', padding: '0.5rem 0.75rem', borderRadius: 6, background: '#fef2f2', border: '1px solid #fecaca', color: '#991b1b', fontSize: '0.8rem' }}>{error}</p>
+            <p role="alert" style={{ margin: '1rem', padding: '0.5rem 0.75rem', borderRadius: 6, background: 'var(--bg-red-tint)', border: '1px solid #fecaca', color: 'var(--text-red-800)', fontSize: '0.8rem' }}>{error}</p>
           ) : initialLoading ? (
-            <p style={{ margin: '1rem', fontSize: '0.85rem', color: '#6b7280' }}>Loading…</p>
+            <p style={{ margin: '1rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>Loading…</p>
           ) : (
             <>
               {hasMoreNewer ? moreBtn('↑ Show 20 newer', loadingNewer, () => void loadMoreNewer()) : null}
@@ -258,4 +258,4 @@ export function TransactionContextModal({ open, onClose, anchor, nicknameByAccou
   )
 }
 
-const td: CSSProperties = { padding: '0.4rem 0.65rem', borderBottom: '1px solid #f3f4f6', color: '#1f2937' }
+const td: CSSProperties = { padding: '0.4rem 0.65rem', borderBottom: '1px solid #f3f4f6', color: 'var(--text-gray-800)' }

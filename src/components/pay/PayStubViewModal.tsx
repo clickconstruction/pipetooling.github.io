@@ -51,7 +51,7 @@ export function PayStubViewModal({ title, html, zIndex, onClose }: PayStubViewMo
           if (e.key === 'Escape') onClose()
         }}
         style={{
-          background: 'white',
+          background: 'var(--surface)',
           borderRadius: 8,
           maxWidth: 900,
           width: '100%',
@@ -65,7 +65,7 @@ export function PayStubViewModal({ title, html, zIndex, onClose }: PayStubViewMo
         <div
           style={{
             padding: '0.75rem 1.25rem',
-            borderBottom: '1px solid #e5e7eb',
+            borderBottom: '1px solid var(--border)',
             display: 'flex',
             alignItems: 'center',
             gap: '0.5rem',
@@ -98,8 +98,8 @@ export function PayStubViewModal({ title, html, zIndex, onClose }: PayStubViewMo
             aria-label="Close"
             style={{
               padding: '0.4rem 0.7rem',
-              background: 'white',
-              border: '1px solid #d1d5db',
+              background: 'var(--surface)',
+              border: '1px solid var(--border-strong)',
               borderRadius: 4,
               cursor: 'pointer',
               fontSize: '0.875rem',
@@ -112,7 +112,7 @@ export function PayStubViewModal({ title, html, zIndex, onClose }: PayStubViewMo
           ref={iframeRef}
           title={title}
           srcDoc={html}
-          style={{ flex: 1, width: '100%', border: 'none', background: 'white' }}
+          style={{ flex: 1, width: '100%', border: 'none', background: 'var(--surface)' }}
         />
       </div>
     </div>

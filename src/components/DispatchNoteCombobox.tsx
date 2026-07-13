@@ -131,7 +131,7 @@ export function DispatchNoteCombobox({
           resize: 'vertical',
           padding: '0.35rem 0.5rem',
           borderRadius: 4,
-          border: '1px solid #d1d5db',
+          border: '1px solid var(--border-strong)',
           boxSizing: 'border-box',
           fontSize: '0.875rem',
           fontFamily: 'inherit',
@@ -153,8 +153,8 @@ export function DispatchNoteCombobox({
             listStyle: 'none',
             maxHeight: 220,
             overflowY: 'auto',
-            background: 'white',
-            border: '1px solid #d1d5db',
+            background: 'var(--surface)',
+            border: '1px solid var(--border-strong)',
             borderRadius: 4,
             boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
           }}
@@ -173,7 +173,7 @@ export function DispatchNoteCombobox({
                 fontSize: '0.8125rem',
                 cursor: 'pointer',
                 background: idx === activeIndex ? '#eff6ff' : undefined,
-                color: '#1f2937',
+                color: 'var(--text-gray-800)',
               }}
             >
               {p}

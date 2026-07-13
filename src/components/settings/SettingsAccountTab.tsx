@@ -91,13 +91,13 @@ export default function SettingsAccountTab({
     <>
 
 
-      <div style={{ marginBottom: '2rem', border: '1px solid #e5e7eb', borderRadius: 8, padding: '1rem', background: '#f9fafb' }}>
+      <div style={{ marginBottom: '2rem', border: '1px solid var(--border)', borderRadius: 8, padding: '1rem', background: 'var(--bg-subtle)' }}>
         <h2 style={{ fontSize: '1rem', marginTop: 0, marginBottom: '0.75rem', fontWeight: 600 }}>My Profile</h2>
-        <p style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '1rem' }}>
+        <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>
           Update your name, email, and phone. Your phone is used in prospect copy templates.
         </p>
         <form onSubmit={saveMyProfile}>
-          {myProfileError && <p style={{ color: '#b91c1c', marginBottom: '0.75rem', fontSize: '0.875rem' }}>{myProfileError}</p>}
+          {myProfileError && <p style={{ color: 'var(--text-red-700)', marginBottom: '0.75rem', fontSize: '0.875rem' }}>{myProfileError}</p>}
           <div style={{ marginBottom: '0.75rem' }}>
             <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500, fontSize: '0.875rem' }}>Name</label>
             <input
@@ -110,14 +110,14 @@ export default function SettingsAccountTab({
                 width: '100%',
                 maxWidth: 320,
                 padding: '0.5rem',
-                border: '1px solid #d1d5db',
+                border: '1px solid var(--border-strong)',
                 borderRadius: 4,
                 boxSizing: 'border-box',
-                ...(isSubcontractorLikeRole(myRole) && { background: '#f3f4f6', cursor: 'not-allowed' }),
+                ...(isSubcontractorLikeRole(myRole) && { background: 'var(--bg-muted)', cursor: 'not-allowed' }),
               }}
             />
             {isSubcontractorLikeRole(myRole) && (
-              <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.8125rem', color: '#6b7280' }}>
+              <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
                 Name is managed by admins. Contact a master or dev to change it.
               </p>
             )}
@@ -129,7 +129,7 @@ export default function SettingsAccountTab({
               value={myProfileEmail}
               onChange={(e) => setMyProfileEmail(e.target.value)}
               required
-              style={{ width: '100%', maxWidth: 320, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, boxSizing: 'border-box' }}
+              style={{ width: '100%', maxWidth: 320, padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, boxSizing: 'border-box' }}
             />
           </div>
           <div style={{ marginBottom: '1rem' }}>
@@ -139,7 +139,7 @@ export default function SettingsAccountTab({
               value={myProfilePhone}
               onChange={(e) => setMyProfilePhone(e.target.value)}
               placeholder="e.g. (555) 123-4567"
-              style={{ width: '100%', maxWidth: 320, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, boxSizing: 'border-box' }}
+              style={{ width: '100%', maxWidth: 320, padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, boxSizing: 'border-box' }}
             />
           </div>
           <button
@@ -153,9 +153,9 @@ export default function SettingsAccountTab({
       </div>
 
       {isIOSDevice() && (
-        <div style={{ marginBottom: '2rem', border: '1px solid #e5e7eb', borderRadius: 8, padding: '1rem' }}>
+        <div style={{ marginBottom: '2rem', border: '1px solid var(--border)', borderRadius: 8, padding: '1rem' }}>
           <h2 style={{ marginTop: 0, marginBottom: '0.5rem' }}>Quick-Add Task icon</h2>
-          <p style={{ margin: '0 0 0.75rem 0', fontSize: '0.875rem', color: '#6b7280' }}>
+          <p style={{ margin: '0 0 0.75rem 0', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
             Add a one-tap <strong>Add Task</strong> icon to your iPhone or iPad Home Screen that
             jumps straight to creating a checklist item.{' '}
             {isStandalonePwa() ? (
@@ -169,7 +169,7 @@ export default function SettingsAccountTab({
                     border: 'none',
                     padding: 0,
                     font: 'inherit',
-                    color: '#2563eb',
+                    color: 'var(--text-link)',
                     fontWeight: 500,
                     cursor: 'pointer',
                     textDecoration: 'underline',
@@ -182,7 +182,7 @@ export default function SettingsAccountTab({
             ) : (
               <>
                 Open{' '}
-                <a href="/task-install.html" style={{ color: '#2563eb', fontWeight: 500 }}>
+                <a href="/task-install.html" style={{ color: 'var(--text-link)', fontWeight: 500 }}>
                   Install Quick-Add Task icon
                 </a>{' '}
                 and follow the steps in Safari.
@@ -192,21 +192,21 @@ export default function SettingsAccountTab({
         </div>
       )}
 
-      <div style={{ marginBottom: '2rem', border: '1px solid #e5e7eb', borderRadius: 8, padding: '1rem' }}>
+      <div style={{ marginBottom: '2rem', border: '1px solid var(--border)', borderRadius: 8, padding: '1rem' }}>
         <h2 style={{ marginTop: 0, marginBottom: '0.5rem' }}>Push Notifications</h2>
-        <p style={{ margin: '0 0 1rem 0', fontSize: '0.875rem', color: '#6b7280' }}>
+        <p style={{ margin: '0 0 1rem 0', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
           Get browser notifications when a workflow stage is completed and it&apos;s your turn to pick up the task.
         </p>
         {!pushNotifications.supported && (
-          <p style={{ color: '#92400e', marginBottom: '0.75rem', fontSize: '0.875rem' }}>
+          <p style={{ color: 'var(--text-amber-800)', marginBottom: '0.75rem', fontSize: '0.875rem' }}>
             Push notifications require HTTPS (or localhost) and a supporting browser. Try the deployed app or use Chrome/Firefox on localhost.
           </p>
         )}
         {pushNotifications.supported && pushNotifications.error && (
-          <p style={{ color: '#b91c1c', marginBottom: '0.75rem', fontSize: '0.875rem' }}>{pushNotifications.error}</p>
+          <p style={{ color: 'var(--text-red-700)', marginBottom: '0.75rem', fontSize: '0.875rem' }}>{pushNotifications.error}</p>
         )}
         {pushNotifications.supported && !pushNotifications.vapidConfigured && (
-          <p style={{ color: '#92400e', marginBottom: '0.75rem', fontSize: '0.875rem' }}>
+          <p style={{ color: 'var(--text-amber-800)', marginBottom: '0.75rem', fontSize: '0.875rem' }}>
             Push notifications are not configured. Set VITE_VAPID_PUBLIC_KEY in your environment.
           </p>
         )}
@@ -215,7 +215,7 @@ export default function SettingsAccountTab({
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
               {pushNotifications.isSubscribed ? (
                 <>
-                  <span style={{ fontSize: '0.875rem', color: '#059669' }}>Enabled</span>
+                  <span style={{ fontSize: '0.875rem', color: 'var(--text-green-600)' }}>Enabled</span>
         <button
           type="button"
                     onClick={() => pushNotifications.disable()}
@@ -241,22 +241,22 @@ export default function SettingsAccountTab({
             type="button"
                 onClick={handleTestNotification}
                 disabled={!pushNotifications.isSubscribed || testNotificationSending || !pushNotifications.vapidConfigured}
-                style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer', background: 'white' }}
+                style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer', background: 'var(--surface)' }}
               >
                 {testNotificationSending ? 'Sending…' : 'Test notification'}
           </button>
               {!pushNotifications.isSubscribed && pushNotifications.vapidConfigured && (
-                <span style={{ fontSize: '0.8125rem', color: '#6b7280' }}>Enable push notifications first to test</span>
+                <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>Enable push notifications first to test</span>
               )}
             </div>
-            <p style={{ margin: '0 0 0.25rem 0', fontSize: '0.8125rem', color: '#6b7280' }}>
+            <p style={{ margin: '0 0 0.25rem 0', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
               Allow location for location-based reminders
             </p>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
               {locationPermission === 'granted' ? (
-                <span style={{ fontSize: '0.875rem', color: '#059669' }}>Location based reminders enabled</span>
+                <span style={{ fontSize: '0.875rem', color: 'var(--text-green-600)' }}>Location based reminders enabled</span>
               ) : locationPermission === 'denied' ? (
-                <span style={{ fontSize: '0.875rem', color: '#6b7280' }}>
+                <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>
                   Location based reminders disabled — enable in browser settings to allow location based reminders
                 </span>
               ) : (
@@ -264,17 +264,17 @@ export default function SettingsAccountTab({
                             type="button"
                   onClick={handleEnableLocation}
                   disabled={locationLoading}
-                  style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer', background: 'white' }}
+                  style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer', background: 'var(--surface)' }}
                           >
                   {locationLoading ? 'Requesting…' : 'Enable Location based Reminders'}
                           </button>
               )}
                         </div>
             {testNotificationSuccess && (
-              <p style={{ color: '#059669', margin: 0, fontSize: '0.875rem' }}>{testNotificationSuccess}</p>
+              <p style={{ color: 'var(--text-green-600)', margin: 0, fontSize: '0.875rem' }}>{testNotificationSuccess}</p>
             )}
             {testNotificationError && (
-              <p style={{ color: '#b91c1c', margin: 0, fontSize: '0.875rem' }}>{testNotificationError}</p>
+              <p style={{ color: 'var(--text-red-700)', margin: 0, fontSize: '0.875rem' }}>{testNotificationError}</p>
               )}
             </div>
           )}
@@ -327,8 +327,8 @@ export default function SettingsAccountTab({
                 style={{ width: '100%', maxWidth: 400 }}
               />
             </div>
-            {passwordChangeError && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{passwordChangeError}</p>}
-            {passwordChangeSuccess && <p style={{ color: '#059669', marginBottom: '1rem' }}>Password changed successfully!</p>}
+            {passwordChangeError && <p style={{ color: 'var(--text-red-700)', marginBottom: '1rem' }}>{passwordChangeError}</p>}
+            {passwordChangeSuccess && <p style={{ color: 'var(--text-green-600)', marginBottom: '1rem' }}>Password changed successfully!</p>}
             <div style={{ display: 'flex', gap: '0.5rem' }}>
               <button type="submit" disabled={passwordChangeSubmitting} style={{ padding: '0.5rem 1rem' }}>
                 {passwordChangeSubmitting ? 'Changing…' : 'Change password'}

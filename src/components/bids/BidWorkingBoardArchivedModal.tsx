@@ -170,7 +170,7 @@ export function BidWorkingBoardArchivedModal({
     >
       <div
         style={{
-          background: '#fff',
+          background: 'var(--surface)',
           borderRadius: 8,
           maxWidth: 560,
           width: '100%',
@@ -181,23 +181,23 @@ export function BidWorkingBoardArchivedModal({
           boxShadow: '0 10px 40px rgba(0,0,0,0.15)',
         }}
       >
-        <div style={{ padding: '1rem 1.25rem', borderBottom: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem' }}>
+        <div style={{ padding: '1rem 1.25rem', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem' }}>
           <h2 id="bid-working-archived-modal-title" style={{ margin: 0, fontSize: '1.125rem', fontWeight: 600 }}>
             Archived (Unsent/Working)
           </h2>
-          <button type="button" onClick={onClose} style={{ padding: '0.35rem 0.65rem', border: '1px solid #d1d5db', borderRadius: 4, background: '#f9fafb', cursor: 'pointer' }}>
+          <button type="button" onClick={onClose} style={{ padding: '0.35rem 0.65rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--bg-subtle)', cursor: 'pointer' }}>
             Close
           </button>
         </div>
         <div style={{ padding: '0.75rem 1.25rem 1.25rem', overflow: 'auto', flex: 1 }}>
-          <p style={{ margin: '0 0 0.75rem', fontSize: '0.875rem', color: '#6b7280' }}>
+          <p style={{ margin: '0 0 0.75rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
             {orgWideColumnLabels
               ? 'Bids hidden from Unsent/Working lists and clock quick picks. Column shows each team member\'s working-board column when available. Un-archive or send/decide the bid to clear archive.'
               : 'Bids hidden from your Working board and clock quick picks. Column placement is kept until you un-archive or the bid is sent or decided.'}
           </p>
-          {loadingPlacements ? <p style={{ fontSize: '0.875rem', color: '#6b7280' }}>Loading columns…</p> : null}
+          {loadingPlacements ? <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>Loading columns…</p> : null}
           {sortedBids.length === 0 ? (
-            <p style={{ margin: 0, fontSize: '0.875rem', color: '#6b7280' }}>No archived working bids.</p>
+            <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)' }}>No archived working bids.</p>
           ) : (
             <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
               {sortedBids.map((bid) => {
@@ -212,7 +212,7 @@ export function BidWorkingBoardArchivedModal({
                   <li
                     key={bid.id}
                     style={{
-                      border: '1px solid #e5e7eb',
+                      border: '1px solid var(--border)',
                       borderRadius: 6,
                       padding: '0.65rem 0.75rem',
                       display: 'flex',
@@ -224,10 +224,10 @@ export function BidWorkingBoardArchivedModal({
                   >
                     <div style={{ minWidth: 0, flex: '1 1 12rem' }}>
                       <div style={{ fontWeight: 600, fontSize: '0.875rem' }}>{bid.project_name?.trim() || '—'}</div>
-                      <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.2rem' }}>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>
                         {bidNum} · {cust}
                       </div>
-                      <div style={{ fontSize: '0.75rem', color: '#9ca3af', marginTop: '0.15rem' }}>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--text-faint)', marginTop: '0.15rem' }}>
                         Column: {columnLabel}
                       </div>
                     </div>
@@ -236,7 +236,7 @@ export function BidWorkingBoardArchivedModal({
                         <button
                           type="button"
                           onClick={() => onOpenPreviewBid(bid)}
-                          style={{ fontSize: '0.75rem', padding: '0.35rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 4, background: '#fff', cursor: 'pointer' }}
+                          style={{ fontSize: '0.75rem', padding: '0.35rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: 'pointer' }}
                         >
                           Preview
                         </button>

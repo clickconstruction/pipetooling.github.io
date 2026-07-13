@@ -135,12 +135,12 @@ function BidNotesEntryRow({
 
   const cardBorder: CSSProperties = {
     padding: '0.75rem',
-    borderBottom: isLastInList ? 'none' : '1px solid #e5e7eb',
+    borderBottom: isLastInList ? 'none' : '1px solid var(--border)',
   }
 
   if (editing) {
     return (
-      <article aria-label="Edit bid note" style={{ ...cardBorder, background: '#ffffff' }}>
+      <article aria-label="Edit bid note" style={{ ...cardBorder, background: 'var(--surface)' }}>
         <textarea
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
@@ -200,7 +200,7 @@ function BidNotesEntryRow({
             <button
               type="button"
               onClick={() => setEditing(false)}
-              style={{ padding: '0.25rem 0.5rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
+              style={{ padding: '0.25rem 0.5rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}
             >
               Cancel
             </button>
@@ -211,8 +211,8 @@ function BidNotesEntryRow({
               aria-label="Delete"
               style={{
                 padding: '0.25rem',
-                background: '#fee2e2',
-                color: '#991b1b',
+                background: 'var(--bg-red-100)',
+                color: 'var(--text-red-800)',
                 border: '1px solid #fca5a5',
                 borderRadius: 4,
                 cursor: 'pointer',
@@ -234,7 +234,7 @@ function BidNotesEntryRow({
   const ariaLabel = entry.occurred_at ? `Bid note ${formatCompactNoteDateTime(entry.occurred_at)}` : 'Bid note'
 
   return (
-    <article aria-label={ariaLabel} style={{ position: 'relative', ...cardBorder, background: '#ffffff' }}>
+    <article aria-label={ariaLabel} style={{ position: 'relative', ...cardBorder, background: 'var(--surface)' }}>
       <NoteCardFloatingEditButton onClick={() => setEditing(true)} />
       <div
         style={{
@@ -263,17 +263,17 @@ function BidNotesEntryRow({
             gap: '0.75rem 1rem',
             alignItems: 'center',
             fontSize: '0.875rem',
-            color: '#374151',
+            color: 'var(--text-700)',
           }}
         >
           {entry.contact_method?.trim() ? (
             <span>
-              <span style={{ color: '#6b7280', marginRight: '0.35rem' }}>Contact method</span>
+              <span style={{ color: 'var(--text-muted)', marginRight: '0.35rem' }}>Contact method</span>
               {entry.contact_method.trim()}
             </span>
           ) : null}
           <span>{entry.occurred_at ? formatCompactNoteDateTime(entry.occurred_at) : '—'}</span>
-          <span style={{ color: '#6b7280' }}>{noteByLineFromEmbed(entry.created_by_user)}</span>
+          <span style={{ color: 'var(--text-muted)' }}>{noteByLineFromEmbed(entry.created_by_user)}</span>
         </div>
       </div>
     </article>
@@ -330,7 +330,7 @@ function BidNotesNewRow({
   }
 
   return (
-    <article aria-label="New bid note" style={{ padding: '0.75rem', borderBottom: isLastInList ? 'none' : '1px solid #e5e7eb', background: '#fafafa' }}>
+    <article aria-label="New bid note" style={{ padding: '0.75rem', borderBottom: isLastInList ? 'none' : '1px solid var(--border)', background: 'var(--bg-page)' }}>
       <textarea
         value={notes}
         onChange={(e) => setNotes(e.target.value)}
@@ -395,7 +395,7 @@ function BidNotesNewRow({
           <button
             type="button"
             onClick={onCancel}
-            style={{ padding: '0.25rem 0.5rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
+            style={{ padding: '0.25rem 0.5rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}
           >
             Cancel
           </button>
@@ -449,12 +449,12 @@ export function BidNotesTable({
       {headingLabel ? (
         <div style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '0.5rem' }}>{headingLabel}</div>
       ) : null}
-      <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden', background: '#f9fafb' }}>
+      <div style={{ border: '1px solid var(--border)', borderRadius: 4, overflow: 'hidden', background: 'var(--bg-subtle)' }}>
         {loading && entries.length === 0 && !adding ? (
-          <div style={{ padding: '0.75rem', fontSize: '0.875rem', color: '#6b7280' }}>Loading…</div>
+          <div style={{ padding: '0.75rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>Loading…</div>
         ) : null}
         {!loading && entries.length === 0 && !adding ? (
-          <div style={{ padding: '0.75rem', fontSize: '0.875rem', color: '#6b7280' }}>No notes yet.</div>
+          <div style={{ padding: '0.75rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>No notes yet.</div>
         ) : null}
         {entries.map((entry, i) => (
           <BidNotesEntryRow

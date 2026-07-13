@@ -17,9 +17,9 @@ const baseChipStyle: CSSProperties = {
 
 function chipStyleForVariant(info: UserTimeOffCellInfo): CSSProperties {
   if (info.variant === 'not_coming_in') {
-    return { ...baseChipStyle, background: '#fee2e2', color: '#991b1b', borderColor: '#fca5a5' }
+    return { ...baseChipStyle, background: 'var(--bg-red-100)', color: 'var(--text-red-800)', borderColor: '#fca5a5' }
   }
-  return { ...baseChipStyle, background: '#fef3c7', color: '#92400e', borderColor: '#fcd34d' }
+  return { ...baseChipStyle, background: 'var(--bg-amber-100)', color: 'var(--text-amber-800)', borderColor: '#fcd34d' }
 }
 
 const buttonResetStyle: CSSProperties = {

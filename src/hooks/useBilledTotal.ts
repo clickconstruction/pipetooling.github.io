@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { withSupabaseRetry } from '../utils/errorHandling'
 
+// Intentionally ALL billed jobs, including those flagged into Collections — this total means
+// "billed and unpaid", unlike the Dashboard AR headline which excludes Collections (buildArBuckets).
 export function useBilledTotal(
   enabled: boolean,
   refreshKey?: number

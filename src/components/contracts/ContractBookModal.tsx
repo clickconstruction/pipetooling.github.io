@@ -39,8 +39,8 @@ const badgeStyle: CSSProperties = {
   fontSize: '0.7rem',
   padding: '0.15rem 0.4rem',
   borderRadius: 4,
-  backgroundColor: '#e5e7eb',
-  color: '#374151',
+  backgroundColor: 'var(--bg-200)',
+  color: 'var(--text-700)',
   fontWeight: 500,
 }
 
@@ -65,10 +65,10 @@ function BookBodyFormatToggle({
       padding: '0.25rem 0.55rem',
       fontSize: '0.75rem',
       fontWeight: 600,
-      border: '1px solid #d1d5db',
+      border: '1px solid var(--border-strong)',
       borderRadius: 6,
-      background: active ? '#eff6ff' : '#fff',
-      color: active ? '#1d4ed8' : '#374151',
+      background: active ? 'var(--bg-blue-tint)' : 'var(--surface)',
+      color: active ? 'var(--text-blue-700)' : 'var(--text-700)',
       cursor: disabled ? 'not-allowed' : 'pointer',
     }) as const
 
@@ -78,7 +78,7 @@ function BookBodyFormatToggle({
       aria-label="Library body format"
       style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', marginBottom: '0.35rem' }}
     >
-      <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>Format:</span>
+      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Format:</span>
       <button type="button" style={btn(value === 'html')} disabled={disabled} onClick={() => onChange('html')}>
         HTML
       </button>
@@ -390,7 +390,7 @@ export function ContractBookModal({
         aria-modal="true"
         aria-labelledby="contract-book-title"
         style={{
-          background: 'white',
+          background: 'var(--surface)',
           padding: '1.25rem',
           borderRadius: 8,
           minWidth: 320,
@@ -444,22 +444,22 @@ export function ContractBookModal({
               justifySelf: 'end',
               padding: '0.35rem 0.65rem',
               fontSize: '0.875rem',
-              border: '1px solid #d1d5db',
+              border: '1px solid var(--border-strong)',
               borderRadius: 6,
-              background: '#fff',
+              background: 'var(--surface)',
               cursor: busy ? 'not-allowed' : 'pointer',
             }}
           >
             Close
           </button>
         </div>
-        {error ? <p style={{ color: '#b91c1c', fontSize: '0.875rem', marginBottom: '0.75rem' }}>{error}</p> : null}
+        {error ? <p style={{ color: 'var(--text-red-700)', fontSize: '0.875rem', marginBottom: '0.75rem' }}>{error}</p> : null}
 
         {onPickEntry ? (
           <p
             style={{
               fontSize: '0.8125rem',
-              color: '#4b5563',
+              color: 'var(--text-600)',
               marginTop: 0,
               marginBottom: '0.75rem',
               lineHeight: 1.45,
@@ -470,7 +470,7 @@ export function ContractBookModal({
         ) : null}
 
         {templates.length === 0 ? (
-          <p style={{ color: '#6b7280', fontSize: '0.875rem', marginBottom: '0.75rem' }}>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', marginBottom: '0.75rem' }}>
             No contract templates yet. Create a template in <strong>Manage templates</strong> first, then you can add library entries here.
           </p>
         ) : null}
@@ -478,11 +478,11 @@ export function ContractBookModal({
         {templates.length > 0 && addPanelOpen ? (
           <div
             style={{
-              border: '1px solid #d1d5db',
+              border: '1px solid var(--border-strong)',
               borderRadius: 8,
               padding: '0.85rem',
               marginBottom: '1rem',
-              background: '#f9fafb',
+              background: 'var(--bg-subtle)',
             }}
           >
             <div style={{ fontWeight: 600, fontSize: '0.9rem', marginBottom: '0.65rem' }}>New library entry</div>
@@ -496,7 +496,7 @@ export function ContractBookModal({
                   style={{
                     width: '100%',
                     padding: '0.5rem',
-                    border: '1px solid #d1d5db',
+                    border: '1px solid var(--border-strong)',
                     borderRadius: 4,
                     boxSizing: 'border-box',
                     fontSize: '0.875rem',
@@ -520,7 +520,7 @@ export function ContractBookModal({
                   style={{
                     width: '100%',
                     padding: '0.5rem',
-                    border: '1px solid #d1d5db',
+                    border: '1px solid var(--border-strong)',
                     borderRadius: 4,
                     boxSizing: 'border-box',
                   }}
@@ -540,7 +540,7 @@ export function ContractBookModal({
                   style={{
                     width: '100%',
                     padding: '0.5rem',
-                    border: '1px solid #d1d5db',
+                    border: '1px solid var(--border-strong)',
                     borderRadius: 4,
                     boxSizing: 'border-box',
                     fontSize: '0.875rem',
@@ -555,7 +555,7 @@ export function ContractBookModal({
                   onChange={(e) => setAddTagsStr(e.target.value)}
                   disabled={addSaving}
                   placeholder="e.g. employment, NDA"
-                  style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, boxSizing: 'border-box' }}
+                  style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, boxSizing: 'border-box' }}
                 />
               </div>
               <div>
@@ -563,7 +563,7 @@ export function ContractBookModal({
                   Library body (optional)
                 </label>
                 <BookBodyFormatToggle value={addBookFormat} onChange={setAddBookFormat} disabled={addSaving} />
-                <p style={{ fontSize: '0.75rem', color: '#6b7280', margin: '0 0 0.35rem', lineHeight: 1.45 }}>
+                <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: '0 0 0.35rem', lineHeight: 1.45 }}>
                   <strong>HTML:</strong> rich text (sanitized). <strong>Plain:</strong> exact text including angle brackets.{' '}
                   <strong>Markdown:</strong> rendered on the signing page (then sanitized).
                 </p>
@@ -575,7 +575,7 @@ export function ContractBookModal({
                   style={{
                     width: '100%',
                     padding: '0.5rem',
-                    border: '1px solid #d1d5db',
+                    border: '1px solid var(--border-strong)',
                     borderRadius: 4,
                     resize: 'vertical',
                     fontFamily: 'inherit',
@@ -591,9 +591,9 @@ export function ContractBookModal({
                     disabled={addSaving}
                     style={{
                       padding: '0.4rem 0.85rem',
-                      border: '1px solid #d1d5db',
+                      border: '1px solid var(--border-strong)',
                       borderRadius: 6,
-                      background: '#fff',
+                      background: 'var(--surface)',
                       cursor: addSaving ? 'not-allowed' : 'pointer',
                     }}
                   >
@@ -625,7 +625,7 @@ export function ContractBookModal({
         ) : null}
 
         {templates.length > 0 && sortedRows.length === 0 ? (
-          <p style={{ color: '#6b7280', fontSize: '0.875rem', marginBottom: '0.75rem' }}>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', marginBottom: '0.75rem' }}>
             No library entries yet. Use <strong>Add Contract</strong> above, or add document names in Manage templates.
           </p>
         ) : null}
@@ -643,17 +643,17 @@ export function ContractBookModal({
                 <li
                   key={row.id}
                   style={{
-                    border: '1px solid #e5e7eb',
+                    border: '1px solid var(--border)',
                     borderRadius: 6,
                     padding: '0.75rem',
-                    background: isEditing ? '#f9fafb' : '#fff',
+                    background: isEditing ? 'var(--bg-subtle)' : 'var(--surface)',
                   }}
                 >
                   <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.5rem', marginBottom: '0.35rem' }}>
                     <strong style={{ fontSize: '0.9375rem' }}>{row.document_name}</strong>
                     <span style={badgeStyle}>{tname}</span>
                     {(row.tags ?? []).map((tag) => (
-                      <span key={tag} style={{ ...badgeStyle, backgroundColor: '#dbeafe', color: '#1e40af' }}>
+                      <span key={tag} style={{ ...badgeStyle, backgroundColor: 'var(--bg-blue-200)', color: 'var(--text-blue-800)' }}>
                         {tag}
                       </span>
                     ))}
@@ -663,8 +663,8 @@ export function ContractBookModal({
                           fontSize: '0.65rem',
                           padding: '0.1rem 0.35rem',
                           borderRadius: 4,
-                          backgroundColor: '#fef3c7',
-                          color: '#92400e',
+                          backgroundColor: 'var(--bg-amber-100)',
+                          color: 'var(--text-amber-800)',
                           fontWeight: 600,
                         }}
                       >
@@ -689,8 +689,8 @@ export function ContractBookModal({
                               fontWeight: 600,
                               border: 'none',
                               borderRadius: 6,
-                              background: hasLoadableContent ? '#7c3aed' : '#e5e7eb',
-                              color: hasLoadableContent ? '#fff' : '#9ca3af',
+                              background: hasLoadableContent ? '#7c3aed' : 'var(--bg-200)',
+                              color: hasLoadableContent ? '#fff' : 'var(--text-faint)',
                               cursor: hasLoadableContent ? 'pointer' : 'not-allowed',
                             }}
                           >
@@ -710,10 +710,10 @@ export function ContractBookModal({
                             padding: '0.25rem 0.55rem',
                             fontSize: '0.8125rem',
                             fontWeight: 600,
-                            border: '1px solid #d1d5db',
+                            border: '1px solid var(--border-strong)',
                             borderRadius: 6,
-                            background: '#fff',
-                            color: canPreview ? '#374151' : '#9ca3af',
+                            background: 'var(--surface)',
+                            color: canPreview ? 'var(--text-700)' : 'var(--text-faint)',
                             cursor: canPreview ? 'pointer' : 'not-allowed',
                           }}
                         >
@@ -729,9 +729,9 @@ export function ContractBookModal({
                             padding: '0.25rem 0.55rem',
                             fontSize: '0.8125rem',
                             fontWeight: 600,
-                            border: '1px solid #d1d5db',
+                            border: '1px solid var(--border-strong)',
                             borderRadius: 6,
-                            background: '#fff',
+                            background: 'var(--surface)',
                             cursor: 'pointer',
                           }}
                         >
@@ -744,9 +744,9 @@ export function ContractBookModal({
                             padding: '0.25rem 0.55rem',
                             fontSize: '0.8125rem',
                             fontWeight: 600,
-                            border: '1px solid #d1d5db',
+                            border: '1px solid var(--border-strong)',
                             borderRadius: 6,
-                            background: '#fff',
+                            background: 'var(--surface)',
                             cursor: 'pointer',
                           }}
                         >
@@ -764,7 +764,7 @@ export function ContractBookModal({
                       style={{
                         marginTop: '0.75rem',
                         paddingTop: '0.75rem',
-                        borderTop: '1px solid #e5e7eb',
+                        borderTop: '1px solid var(--border)',
                         maxHeight: 320,
                         overflow: 'auto',
                         fontSize: '0.875rem',
@@ -778,7 +778,7 @@ export function ContractBookModal({
                           scrollStyles={{ maxHeight: 280 }}
                         />
                       ) : (
-                        <p style={{ fontSize: '0.8125rem', color: '#9ca3af', margin: 0, fontStyle: 'italic' }}>
+                        <p style={{ fontSize: '0.8125rem', color: 'var(--text-faint)', margin: 0, fontStyle: 'italic' }}>
                           No library body yet
                         </p>
                       )}
@@ -798,7 +798,7 @@ export function ContractBookModal({
                           style={{
                             width: '100%',
                             padding: '0.5rem',
-                            border: '1px solid #d1d5db',
+                            border: '1px solid var(--border-strong)',
                             borderRadius: 4,
                             boxSizing: 'border-box',
                           }}
@@ -818,7 +818,7 @@ export function ContractBookModal({
                           style={{
                             width: '100%',
                             padding: '0.5rem',
-                            border: '1px solid #d1d5db',
+                            border: '1px solid var(--border-strong)',
                             borderRadius: 4,
                             boxSizing: 'border-box',
                             fontSize: '0.875rem',
@@ -832,7 +832,7 @@ export function ContractBookModal({
                           value={editTagsStr}
                           onChange={(e) => setEditTagsStr(e.target.value)}
                           placeholder="e.g. employment, NDA"
-                          style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, boxSizing: 'border-box' }}
+                          style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, boxSizing: 'border-box' }}
                         />
                       </div>
                       <div>
@@ -844,7 +844,7 @@ export function ContractBookModal({
                           onChange={setEditBookFormat}
                           disabled={saving}
                         />
-                        <p style={{ fontSize: '0.75rem', color: '#6b7280', margin: '0 0 0.35rem', lineHeight: 1.45 }}>
+                        <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: '0 0 0.35rem', lineHeight: 1.45 }}>
                           <strong>HTML:</strong> rich text (sanitized). <strong>Plain:</strong> exact text including angle brackets.{' '}
                           <strong>Markdown:</strong> rendered on the signing page (then sanitized).
                         </p>
@@ -855,7 +855,7 @@ export function ContractBookModal({
                           style={{
                             width: '100%',
                             padding: '0.5rem',
-                            border: '1px solid #d1d5db',
+                            border: '1px solid var(--border-strong)',
                             borderRadius: 4,
                             resize: 'vertical',
                             fontFamily: 'inherit',
@@ -871,9 +871,9 @@ export function ContractBookModal({
                             disabled={saving || deleting}
                             style={{
                               padding: '0.4rem 0.85rem',
-                              border: '1px solid #d1d5db',
+                              border: '1px solid var(--border-strong)',
                               borderRadius: 6,
-                              background: '#fff',
+                              background: 'var(--surface)',
                               cursor: saving || deleting ? 'not-allowed' : 'pointer',
                             }}
                           >
@@ -891,8 +891,8 @@ export function ContractBookModal({
                                 fontWeight: 600,
                                 border: '1px solid #fecaca',
                                 borderRadius: 6,
-                                background: '#fef2f2',
-                                color: '#b91c1c',
+                                background: 'var(--bg-red-tint)',
+                                color: 'var(--text-red-700)',
                                 cursor: saving || deleting ? 'not-allowed' : 'pointer',
                               }}
                             >
@@ -951,7 +951,7 @@ export function ContractBookModal({
             aria-labelledby="contract-book-delete-title"
             aria-describedby="contract-book-delete-desc"
             style={{
-              background: 'white',
+              background: 'var(--surface)',
               padding: '1.25rem',
               borderRadius: 8,
               maxWidth: 420,
@@ -965,7 +965,7 @@ export function ContractBookModal({
             </h4>
             <p
               id="contract-book-delete-desc"
-              style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#374151', lineHeight: 1.45 }}
+              style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: 'var(--text-700)', lineHeight: 1.45 }}
             >
               Delete <strong>{editingRow?.document_name ?? 'this entry'}</strong>? This cannot be undone.
             </p>
@@ -976,9 +976,9 @@ export function ContractBookModal({
                 disabled={deleting}
                 style={{
                   padding: '0.4rem 0.85rem',
-                  border: '1px solid #d1d5db',
+                  border: '1px solid var(--border-strong)',
                   borderRadius: 6,
-                  background: '#fff',
+                  background: 'var(--surface)',
                   cursor: deleting ? 'not-allowed' : 'pointer',
                 }}
               >

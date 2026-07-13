@@ -92,8 +92,8 @@ export default function AssignedStageCard({
             </span>
             {step.project_superintendent_names && (
               <>
-                <span style={{ color: '#9ca3af', fontSize: '0.8em' }} aria-hidden>·</span>
-                <span className="assignedStageCard-assignee" style={{ color: '#6b7280' }}>
+                <span style={{ color: 'var(--text-faint)', fontSize: '0.8em' }} aria-hidden>·</span>
+                <span className="assignedStageCard-assignee" style={{ color: 'var(--text-muted)' }}>
                   Superintendent: {step.project_superintendent_names}
                 </span>
               </>
@@ -199,7 +199,7 @@ export default function AssignedStageCard({
       <div className="assignedStageCard-actions">
         {(status === 'pending' || status === 'in_progress') && (
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
-            <span style={{ fontSize: '0.75rem', color: '#6b7280', fontWeight: 500 }}>Technician:</span>
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 500 }}>Technician:</span>
             {status === 'pending' && (
               <button
                 type="button"
@@ -223,8 +223,8 @@ export default function AssignedStageCard({
           </span>
         )}
         {(status === 'pending' || status === 'in_progress') && canApproveReject && (
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', marginLeft: 12, paddingLeft: 12, borderLeft: '1px solid #e5e7eb' }}>
-            <span style={{ fontSize: '0.75rem', color: '#6b7280', fontWeight: 500 }}>Office:</span>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', marginLeft: 12, paddingLeft: 12, borderLeft: '1px solid var(--border)' }}>
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 500 }}>Office:</span>
             <button
               type="button"
               onClick={onMarkApproved}
@@ -248,7 +248,7 @@ export default function AssignedStageCard({
                 type="button"
                 onClick={onSkip}
                 className="wf-btn-secondary"
-                style={{ color: '#92400e' }}
+                style={{ color: 'var(--text-amber-800)' }}
                 aria-label="Skip this stage"
               >
                 Skip

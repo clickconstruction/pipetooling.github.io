@@ -32,15 +32,15 @@ const DELETE_CONFIRM_Z_INDEX = 1300
 const INPUT_STYLE: CSSProperties = {
   width: '100%',
   padding: '0.5rem',
-  border: '1px solid #d1d5db',
+  border: '1px solid var(--border-strong)',
   borderRadius: 4,
   fontSize: '0.875rem',
   boxSizing: 'border-box',
 }
 const INPUT_DISABLED_STYLE: CSSProperties = {
   ...INPUT_STYLE,
-  background: '#f3f4f6',
-  color: '#4b5563',
+  background: 'var(--bg-muted)',
+  color: 'var(--text-600)',
   cursor: 'not-allowed',
 }
 const LABEL_STYLE: CSSProperties = {
@@ -51,12 +51,12 @@ const LABEL_STYLE: CSSProperties = {
 }
 const HELPER_STYLE: CSSProperties = {
   fontSize: '0.8125rem',
-  color: '#6b7280',
+  color: 'var(--text-muted)',
   marginTop: 4,
 }
 const WARNING_HELPER_STYLE: CSSProperties = {
   fontSize: '0.8125rem',
-  color: '#b45309',
+  color: 'var(--text-amber-700)',
   marginTop: 4,
 }
 const BUTTON_PRIMARY_STYLE: CSSProperties = {
@@ -71,17 +71,17 @@ const BUTTON_PRIMARY_STYLE: CSSProperties = {
 }
 const BUTTON_NEUTRAL_STYLE: CSSProperties = {
   padding: '0.5rem 1rem',
-  background: 'white',
-  color: '#374151',
-  border: '1px solid #d1d5db',
+  background: 'var(--surface)',
+  color: 'var(--text-700)',
+  border: '1px solid var(--border-strong)',
   borderRadius: 4,
   cursor: 'pointer',
   fontSize: '0.875rem',
 }
 const BUTTON_DANGER_OUTLINE_STYLE: CSSProperties = {
   padding: '0.5rem 1rem',
-  background: 'white',
-  color: '#b91c1c',
+  background: 'var(--surface)',
+  color: 'var(--text-red-700)',
   border: '1px solid #b91c1c',
   borderRadius: 4,
   cursor: 'pointer',
@@ -99,15 +99,15 @@ const BUTTON_DANGER_SOLID_STYLE: CSSProperties = {
 }
 const ERROR_BANNER_STYLE: CSSProperties = {
   padding: '0.5rem 0.75rem',
-  background: '#fef2f2',
+  background: 'var(--bg-red-tint)',
   border: '1px solid #fecaca',
   borderRadius: 4,
-  color: '#b91c1c',
+  color: 'var(--text-red-700)',
   fontSize: '0.875rem',
   margin: 0,
 }
 
-const REQUIRED_MARK = <span style={{ color: '#b91c1c' }}>*</span>
+const REQUIRED_MARK = <span style={{ color: 'var(--text-red-700)' }}>*</span>
 
 type Props = {
   projectId: string
@@ -505,7 +505,7 @@ export default function EditProjectForm({
             flexWrap: 'wrap',
             paddingTop: '0.75rem',
             marginTop: '0.5rem',
-            borderTop: '1px solid #e5e7eb',
+            borderTop: '1px solid var(--border)',
           }}
         >
           {canDelete && (
@@ -572,19 +572,19 @@ export default function EditProjectForm({
             aria-label="Delete project"
             onMouseDown={(e) => e.stopPropagation()}
             style={{
-              background: 'white',
+              background: 'var(--surface)',
               padding: '1.25rem 1.5rem',
               borderRadius: 8,
               minWidth: 320,
               maxWidth: 420,
               width: '100%',
-              border: '1px solid #e5e7eb',
+              border: '1px solid var(--border)',
               boxShadow: '0 20px 40px rgba(0,0,0,0.18)',
               boxSizing: 'border-box',
             }}
           >
             <h3 style={{ margin: '0 0 0.5rem', fontSize: '1.05rem' }}>Delete project</h3>
-            <p style={{ margin: '0 0 0.75rem', fontSize: '0.875rem', color: '#374151' }}>
+            <p style={{ margin: '0 0 0.75rem', fontSize: '0.875rem', color: 'var(--text-700)' }}>
               Type the project name <strong>{name}</strong> to confirm.
             </p>
             <input

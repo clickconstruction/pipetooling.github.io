@@ -42,7 +42,7 @@ const mapCanvasEnterFullscreenBareButtonStyle: CSSProperties = {
   borderRadius: 6,
   background: 'transparent',
   boxShadow: 'none',
-  color: '#475569',
+  color: 'var(--text-slate-600)',
   cursor: 'pointer',
 }
 

@@ -1,7 +1,11 @@
 import type { Database } from '../types/database'
 import { mercuryRowPassesSortingStartDate } from './bankingSortingConfig'
 
-export type TallyLinkedMercuryRow = Database['public']['Functions']['list_my_linked_mercury_transactions_for_tally']['Returns'][number]
+export type TallyLinkedMercuryRow =
+  Database['public']['Functions']['list_my_linked_mercury_transactions_for_tally']['Returns'][number] & {
+    /** Client-merged from mercury_tally_payroll_flags (dev-only "mark as payroll"); not from the RPC. */
+    is_payroll?: boolean
+  }
 type MercuryTxRow = Database['public']['Tables']['mercury_transactions']['Row']
 
 export type TallyJobSplitEntry = { jobId: string; label: string }
@@ -31,6 +35,7 @@ export function tallyUniqueJobSplitEntries(jobSplits: TallyLinkedMercuryRow['job
  */
 export function tallyRowIsResolved(row: TallyLinkedMercuryRow): boolean {
   return (
+    row.is_payroll === true ||
     tallyUniqueJobSplitEntries(row.job_splits).length > 0 ||
     !!row.jobs_summary?.trim() ||
     !!row.invoices_summary?.trim()

@@ -216,7 +216,7 @@ export function CopyDayJobMixModal({
         aria-modal
         aria-labelledby="copy-day-job-mix-title"
         style={{
-          background: 'white',
+          background: 'var(--surface)',
           borderRadius: 8,
           padding: '1.25rem',
           maxWidth: 720,
@@ -230,7 +230,7 @@ export function CopyDayJobMixModal({
         <h2 id="copy-day-job-mix-title" style={{ margin: '0 0 0.75rem 0', fontSize: '1.1rem' }}>
           {step === 'pick' ? 'Copy job time mix' : 'Confirm overwrite'}
         </h2>
-        <p style={{ margin: '0 0 1rem 0', fontSize: '0.875rem', color: '#374151', lineHeight: 1.5 }}>
+        <p style={{ margin: '0 0 1rem 0', fontSize: '0.875rem', color: 'var(--text-700)', lineHeight: 1.5 }}>
           Date <strong>{workDateYmd}</strong>. Template: <strong>{sourceDisplayName}</strong>
           {step === 'confirm' && targetRow ? (
             <>
@@ -241,7 +241,7 @@ export function CopyDayJobMixModal({
         </p>
 
         {error ? (
-          <p style={{ margin: '0 0 1rem 0', fontSize: '0.875rem', color: '#b91c1c' }}>{error}</p>
+          <p style={{ margin: '0 0 1rem 0', fontSize: '0.875rem', color: 'var(--text-red-700)' }}>{error}</p>
         ) : null}
 
         {step === 'pick' ? (
@@ -255,10 +255,10 @@ export function CopyDayJobMixModal({
               }}
             >
               <div>
-                <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '0.85rem', color: '#6b7280' }}>Template mix</h3>
+                <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '0.85rem', color: 'var(--text-muted)' }}>Template mix</h3>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
                   <thead>
-                    <tr style={{ borderBottom: '1px solid #e5e7eb', textAlign: 'left' }}>
+                    <tr style={{ borderBottom: '1px solid var(--border)', textAlign: 'left' }}>
                       <th style={{ padding: '0.35rem 0' }}>Job / bid</th>
                       <th style={{ padding: '0.35rem 0' }}>%</th>
                       <th style={{ padding: '0.35rem 0' }}>Time</th>
@@ -277,13 +277,13 @@ export function CopyDayJobMixModal({
                   </tbody>
                 </table>
                 {sourceTotal <= 0 ? (
-                  <p style={{ fontSize: '0.75rem', color: '#b45309', margin: '0.5rem 0 0' }}>
+                  <p style={{ fontSize: '0.75rem', color: 'var(--text-amber-700)', margin: '0.5rem 0 0' }}>
                     No recorded time for this template today.
                   </p>
                 ) : null}
               </div>
               <div>
-                <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '0.85rem', color: '#6b7280' }}>Target person</h3>
+                <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '0.85rem', color: 'var(--text-muted)' }}>Target person</h3>
                 <select
                   id="copy-mix-target"
                   aria-label="Choose person whose job and bid time mix will be updated"
@@ -294,7 +294,7 @@ export function CopyDayJobMixModal({
                     padding: '0.5rem',
                     fontSize: '0.875rem',
                     borderRadius: 4,
-                    border: '1px solid #d1d5db',
+                    border: '1px solid var(--border-strong)',
                     marginBottom: '0.75rem',
                   }}
                 >
@@ -306,13 +306,13 @@ export function CopyDayJobMixModal({
                   ))}
                 </select>
                 {targetCandidates.length === 0 ? (
-                  <p style={{ fontSize: '0.75rem', color: '#6b7280', margin: 0 }}>
+                  <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: 0 }}>
                     No one else has time on the clock today to receive this mix.
                   </p>
                 ) : null}
                 {targetPreviewMix.length > 0 ? (
                   <>
-                    <h4 style={{ margin: '0.75rem 0 0.35rem 0', fontSize: '0.78rem', color: '#6b7280' }}>
+                    <h4 style={{ margin: '0.75rem 0 0.35rem 0', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
                       Target current mix
                     </h4>
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.75rem' }}>
@@ -338,9 +338,9 @@ export function CopyDayJobMixModal({
                 onClick={resetAndClose}
                 style={{
                   padding: '0.5rem 0.85rem',
-                  border: '1px solid #d1d5db',
+                  border: '1px solid var(--border-strong)',
                   borderRadius: 4,
-                  background: 'white',
+                  background: 'var(--surface)',
                   cursor: busy ? 'not-allowed' : 'pointer',
                 }}
               >
@@ -365,7 +365,7 @@ export function CopyDayJobMixModal({
           </>
         ) : (
           <>
-            <p style={{ margin: '0 0 1rem 0', fontSize: '0.875rem', color: '#374151', lineHeight: 1.55 }}>
+            <p style={{ margin: '0 0 1rem 0', fontSize: '0.875rem', color: 'var(--text-700)', lineHeight: 1.55 }}>
               This will update <strong>{targetRow?.displayName}</strong>’s clock sessions on {workDateYmd} so time on
               each job or bid matches <strong>{sourceDisplayName}</strong>’s <strong>percent mix</strong>. Clock-in
               and clock-out times stay the same; sessions may be split or re-linked. Saved rows are recreated as
@@ -374,7 +374,7 @@ export function CopyDayJobMixModal({
               are approved again.
             </p>
             {targetHasApproved ? (
-              <p style={{ margin: '0 0 1rem 0', fontSize: '0.875rem', color: '#b45309' }}>
+              <p style={{ margin: '0 0 1rem 0', fontSize: '0.875rem', color: 'var(--text-amber-700)' }}>
                 Target has at least one approved session today.
               </p>
             ) : null}
@@ -388,9 +388,9 @@ export function CopyDayJobMixModal({
                 }}
                 style={{
                   padding: '0.5rem 0.85rem',
-                  border: '1px solid #d1d5db',
+                  border: '1px solid var(--border-strong)',
                   borderRadius: 4,
-                  background: 'white',
+                  background: 'var(--surface)',
                   cursor: busy ? 'not-allowed' : 'pointer',
                 }}
               >

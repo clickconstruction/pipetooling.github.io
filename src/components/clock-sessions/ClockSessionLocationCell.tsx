@@ -23,8 +23,8 @@ const RouteIcon = () => (
   </svg>
 )
 
-const linkStyleGps: CSSProperties = { color: '#2563eb', textDecoration: 'none' }
-const linkStyleIp: CSSProperties = { color: '#6b7280', textDecoration: 'none' }
+const linkStyleGps: CSSProperties = { color: 'var(--text-link)', textDecoration: 'none' }
+const linkStyleIp: CSSProperties = { color: 'var(--text-muted)', textDecoration: 'none' }
 
 function linkStyleForSource(source: string | null | undefined): CSSProperties {
   return source === 'ip' ? linkStyleIp : linkStyleGps

@@ -77,7 +77,7 @@ function LikertRow({
           fontSize: '0.875rem',
           fontWeight: 600,
           marginBottom: '0.35rem',
-          color: '#374151',
+          color: 'var(--text-700)',
           textAlign: 'left',
         }}
       >
@@ -101,8 +101,8 @@ function LikertRow({
               minWidth: 40,
               padding: '0.35rem 0.5rem',
               borderRadius: 6,
-              border: value === n ? '2px solid #ea580c' : '1px solid #d1d5db',
-              background: value === n ? '#fff7ed' : 'white',
+              border: value === n ? '2px solid #ea580c' : '1px solid var(--border-strong)',
+              background: value === n ? 'var(--bg-orange-tint)' : 'var(--surface)',
               cursor: disabled ? 'not-allowed' : 'pointer',
               fontWeight: value === n ? 700 : 500,
             }}
@@ -595,9 +595,9 @@ export default function TeamFeedbackWizard({
                   minWidth: 36,
                   padding: '0.35rem 0.5rem',
                   borderRadius: 6,
-                  border: '1px solid #d1d5db',
-                  background: 'white',
-                  color: '#374151',
+                  border: '1px solid var(--border-strong)',
+                  background: 'var(--surface)',
+                  color: 'var(--text-700)',
                   fontSize: '1.25rem',
                   lineHeight: 1,
                   cursor: 'pointer',
@@ -613,28 +613,28 @@ export default function TeamFeedbackWizard({
                 margin: '0 0 0.75rem',
                 padding: '0.5rem 0.65rem',
                 fontSize: '0.8125rem',
-                background: '#fff7ed',
+                background: 'var(--bg-orange-tint)',
                 border: '1px solid #fed7aa',
                 borderRadius: 6,
-                color: '#9a3412',
+                color: 'var(--text-orange-800)',
               }}
             >
               Preview — submissions disabled.
             </p>
           )}
           {!settingsLoaded && (
-            <p style={{ margin: 0, color: '#6b7280' }}>Loading…</p>
+            <p style={{ margin: 0, color: 'var(--text-muted)' }}>Loading…</p>
           )}
 
           {settingsLoaded && step === 'intro' && (
             <>
-              <h2 id="team-feedback-title" style={{ marginTop: 0, textAlign: 'center', color: '#1f2937' }}>
+              <h2 id="team-feedback-title" style={{ marginTop: 0, textAlign: 'center', color: 'var(--text-gray-800)' }}>
                 30sec Team Feedback
               </h2>
-              <p style={{ fontSize: '0.9375rem', color: '#4b5563', lineHeight: 1.5 }}>
+              <p style={{ fontSize: '0.9375rem', color: 'var(--text-600)', lineHeight: 1.5 }}>
                 {introCopy?.trim() || DEFAULT_TEAM_FEEDBACK_INTRO_COPY}
               </p>
-              <p style={{ fontSize: '0.8125rem', color: '#9ca3af', textAlign: 'center' }}>
+              <p style={{ fontSize: '0.8125rem', color: 'var(--text-faint)', textAlign: 'center' }}>
                 This window closes in 30 seconds if you take no action.
               </p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '1rem' }}>
@@ -686,14 +686,14 @@ export default function TeamFeedbackWizard({
                   style={{
                     padding: '0.5rem 1rem',
                     borderRadius: 8,
-                    border: '1px solid #d1d5db',
-                    background: 'white',
+                    border: '1px solid var(--border-strong)',
+                    background: 'var(--surface)',
                     cursor: 'pointer',
                   }}
                 >
                   Remind me in {SNOOZE_DAYS} days
                 </button>
-                <button type="button" onClick={() => void handleSkip('button')} style={{ padding: '0.5rem', border: 'none', background: 'transparent', color: '#6b7280', cursor: 'pointer' }}>
+                <button type="button" onClick={() => void handleSkip('button')} style={{ padding: '0.5rem', border: 'none', background: 'transparent', color: 'var(--text-muted)', cursor: 'pointer' }}>
                   Not now
                 </button>
               </div>
@@ -705,7 +705,7 @@ export default function TeamFeedbackWizard({
               <h2 id="team-feedback-title" style={{ marginTop: 0 }}>
                 {inclusionTitle}
               </h2>
-              <p style={{ margin: '0 0 0.75rem', fontSize: '0.875rem', color: '#6b7280', lineHeight: 1.45 }}>
+              <p style={{ margin: '0 0 0.75rem', fontSize: '0.875rem', color: 'var(--text-muted)', lineHeight: 1.45 }}>
                 {inclusionSubtitle}
               </p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
@@ -717,11 +717,11 @@ export default function TeamFeedbackWizard({
                     style={{
                       padding: '0.65rem 0.75rem',
                       borderRadius: 8,
-                      border: includeManagerRatings ? '2px solid #ea580c' : '1px solid #d1d5db',
-                      background: includeManagerRatings ? '#fff7ed' : 'white',
+                      border: includeManagerRatings ? '2px solid #ea580c' : '1px solid var(--border-strong)',
+                      background: includeManagerRatings ? 'var(--bg-orange-tint)' : 'var(--surface)',
                       fontWeight: 600,
                       fontSize: '0.875rem',
-                      color: '#374151',
+                      color: 'var(--text-700)',
                       textAlign: 'left',
                       cursor: 'pointer',
                     }}
@@ -737,11 +737,11 @@ export default function TeamFeedbackWizard({
                     style={{
                       padding: '0.65rem 0.75rem',
                       borderRadius: 8,
-                      border: includePeerRatings ? '2px solid #ea580c' : '1px solid #d1d5db',
-                      background: includePeerRatings ? '#fff7ed' : 'white',
+                      border: includePeerRatings ? '2px solid #ea580c' : '1px solid var(--border-strong)',
+                      background: includePeerRatings ? 'var(--bg-orange-tint)' : 'var(--surface)',
                       fontWeight: 600,
                       fontSize: '0.875rem',
-                      color: '#374151',
+                      color: 'var(--text-700)',
                       textAlign: 'left',
                       cursor: 'pointer',
                     }}
@@ -756,11 +756,11 @@ export default function TeamFeedbackWizard({
                   style={{
                     padding: '0.65rem 0.75rem',
                     borderRadius: 8,
-                    border: includeOpenComments ? '2px solid #ea580c' : '1px solid #d1d5db',
-                    background: includeOpenComments ? '#fff7ed' : 'white',
+                    border: includeOpenComments ? '2px solid #ea580c' : '1px solid var(--border-strong)',
+                    background: includeOpenComments ? 'var(--bg-orange-tint)' : 'var(--surface)',
                     fontWeight: 600,
                     fontSize: '0.875rem',
-                    color: '#374151',
+                    color: 'var(--text-700)',
                     textAlign: 'left',
                     cursor: 'pointer',
                   }}
@@ -769,7 +769,7 @@ export default function TeamFeedbackWizard({
                 </button>
               </div>
               <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem', justifyContent: 'flex-end' }}>
-                <button type="button" onClick={onClose} style={{ padding: '0.5rem 1rem', border: '1px solid #d1d5db', borderRadius: 6, background: 'white' }}>
+                <button type="button" onClick={onClose} style={{ padding: '0.5rem 1rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)' }}>
                   Cancel
                 </button>
                 <button
@@ -810,7 +810,7 @@ export default function TeamFeedbackWizard({
           {settingsLoaded && step === 'manager' && includeManagerRatings && managerEnabled && (
             <div>
               <h2 style={{ marginTop: 0, textAlign: 'center' }}>{managerStepHeading}</h2>
-              <p style={{ fontSize: '0.875rem', color: '#6b7280', textAlign: 'center' }}>
+              <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', textAlign: 'center' }}>
                 Cycle: {computeCyclePeriodStart(cadenceDays)} · 1 = low, 5 = high
               </p>
               {effectiveManagerLikert.map((label, i) => (
@@ -844,8 +844,8 @@ export default function TeamFeedbackWizard({
                         minWidth: 36,
                         padding: '0.35rem',
                         borderRadius: 6,
-                        border: overall === n ? '2px solid #ea580c' : '1px solid #d1d5db',
-                        background: overall === n ? '#fff7ed' : 'white',
+                        border: overall === n ? '2px solid #ea580c' : '1px solid var(--border-strong)',
+                        background: overall === n ? 'var(--bg-orange-tint)' : 'var(--surface)',
                         cursor: submitting ? 'not-allowed' : 'pointer',
                         fontWeight: overall === n ? 700 : 500,
                       }}
@@ -857,7 +857,7 @@ export default function TeamFeedbackWizard({
               </div>
               <div style={{ display: 'flex', justifyContent: 'center', gap: '0.75rem', flexWrap: 'wrap', marginTop: '1rem' }}>
                 {!skipIntro && shouldShowInclusionStep && (
-                  <button type="button" onClick={() => setStep('mode')} style={{ padding: '0.5rem 1rem', border: '1px solid #d1d5db', borderRadius: 6, background: 'white' }}>
+                  <button type="button" onClick={() => setStep('mode')} style={{ padding: '0.5rem 1rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)' }}>
                     Back
                   </button>
                 )}
@@ -899,7 +899,7 @@ export default function TeamFeedbackWizard({
                   onChange={(e) => setOpenFix(e.target.value)}
                   rows={3}
                   disabled={submitting}
-                  style={{ width: '100%', marginTop: '0.25rem', padding: '0.5rem', borderRadius: 6, border: '1px solid #d1d5db' }}
+                  style={{ width: '100%', marginTop: '0.25rem', padding: '0.5rem', borderRadius: 6, border: '1px solid var(--border-strong)' }}
                 />
               </label>
               <label style={{ display: 'block', marginBottom: '0.75rem' }}>
@@ -909,7 +909,7 @@ export default function TeamFeedbackWizard({
                   onChange={(e) => setOpenSafety(e.target.value)}
                   rows={2}
                   disabled={submitting}
-                  style={{ width: '100%', marginTop: '0.25rem', padding: '0.5rem', borderRadius: 6, border: '1px solid #d1d5db' }}
+                  style={{ width: '100%', marginTop: '0.25rem', padding: '0.5rem', borderRadius: 6, border: '1px solid var(--border-strong)' }}
                 />
               </label>
               <label style={{ display: 'block', marginBottom: '0.75rem' }}>
@@ -919,7 +919,7 @@ export default function TeamFeedbackWizard({
                   onChange={(e) => setOpenTraining(e.target.value)}
                   rows={2}
                   disabled={submitting}
-                  style={{ width: '100%', marginTop: '0.25rem', padding: '0.5rem', borderRadius: 6, border: '1px solid #d1d5db' }}
+                  style={{ width: '100%', marginTop: '0.25rem', padding: '0.5rem', borderRadius: 6, border: '1px solid var(--border-strong)' }}
                 />
               </label>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '1rem' }}>
@@ -933,7 +933,7 @@ export default function TeamFeedbackWizard({
                       else if (includeManagerRatings && managerEnabled) setStep('manager')
                       else if (shouldShowInclusionStep) setStep('mode')
                     }}
-                    style={{ padding: '0.5rem 1rem', border: '1px solid #d1d5db', borderRadius: 6, background: 'white' }}
+                    style={{ padding: '0.5rem 1rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)' }}
                   >
                     Back
                   </button>
@@ -963,12 +963,12 @@ export default function TeamFeedbackWizard({
               <h2 id="team-feedback-title" style={{ marginTop: 0, textAlign: 'center' }}>
                 {peerStepHeading}
               </h2>
-              <p style={{ fontSize: '0.875rem', color: '#6b7280', lineHeight: 1.45, textAlign: 'center' }}>
+              <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', lineHeight: 1.45, textAlign: 'center' }}>
                 Select 1–3 teammates you worked with recently
                 <br />
-                <span style={{ fontSize: '0.8125rem', color: '#9ca3af' }}>(optional but very helpful)</span>
+                <span style={{ fontSize: '0.8125rem', color: 'var(--text-faint)' }}>(optional but very helpful)</span>
               </p>
-              <p style={{ fontSize: '0.8125rem', color: '#9ca3af', marginTop: '-0.25rem', textAlign: 'center' }}>
+              <p style={{ fontSize: '0.8125rem', color: 'var(--text-faint)', marginTop: '-0.25rem', textAlign: 'center' }}>
                 1 = low, 5 = high
               </p>
               <PeerTeammatePicker
@@ -984,7 +984,7 @@ export default function TeamFeedbackWizard({
                 const row = peerScores[peerKey]
                 if (!row) return null
                 return (
-                  <div key={peerKey} style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: '0.75rem', marginBottom: '0.75rem' }}>
+                  <div key={peerKey} style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '0.75rem', marginBottom: '0.75rem' }}>
                     <div style={{ fontWeight: 600, marginBottom: '0.5rem' }}>{c?.peer_name ?? 'Peer'}</div>
                     {effectivePeerLikert.map((pl, i) => (
                       <LikertRow
@@ -1014,7 +1014,7 @@ export default function TeamFeedbackWizard({
                       else if (shouldShowInclusionStep) setStep('mode')
                       else if (!skipIntro) setStep('intro')
                     }}
-                    style={{ padding: '0.5rem 1rem', border: '1px solid #d1d5db', borderRadius: 6, background: 'white' }}
+                    style={{ padding: '0.5rem 1rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)' }}
                   >
                     Back
                   </button>
@@ -1047,7 +1047,7 @@ export default function TeamFeedbackWizard({
           {settingsLoaded && step === 'thanks' && (
             <>
               <h2 style={{ marginTop: 0, textAlign: 'center' }}>Thank you</h2>
-              <p style={{ textAlign: 'center', color: '#4b5563', lineHeight: 1.5 }}>
+              <p style={{ textAlign: 'center', color: 'var(--text-600)', lineHeight: 1.5 }}>
                 {thankYouCopy?.trim() || 'Your feedback was submitted. It helps the team improve.'}
               </p>
               <button

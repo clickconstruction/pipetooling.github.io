@@ -97,9 +97,64 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 ## Recent Migrations
 
-### May 2027
+> **Reading older entries:** filenames beginning **`2027…`** are **typo-dated** (the real work happened March–June 2026). All of them predate the **2026-06-04 baseline squash** — the files now live in [`supabase/archive/migrations-pre-baseline/`](../supabase/archive/migrations-pre-baseline/) and their schema is part of [`20250101000000_baseline.sql`](../supabase/migrations/20250101000000_baseline.sql). Entries below keep the original filenames so they match the archive. The prod ledger was fully reconciled on **2026-07-04** (backup: `supabase_migrations._schema_migrations_backup_20260704`); since then, migrations apply **only** via `supabase db push` (see `CLAUDE.md`).
 
-#### May 21, 2027
+### July 2026
+
+#### July 12, 2026
+
+**`20260712190000_merge_user_accounts.sql`** + **`20260712191500_merge_user_accounts_fix_text_append.sql`**
+- **Purpose**: **`merge_user_accounts(p_survivor, p_absorbed, p_dry_run)`** — dev-only SECURITY DEFINER merge of one user account into another: explicit handling for membership/unique tables (move-if-absent), additive activity aggregates, org pair tables (self-pair cleanup), label slug collisions, roster link, `estimates.accept_notify_user_ids` uuid[]; then a dynamic `pg_constraint` sweep of every remaining FK to `public/auth.users` and a coverage assert (zero leftover references or abort). `p_dry_run` executes fully and rolls back via sentinel, returning per-table counts (dialog preview). The `191500` follow-up fixes `text[] || 'literal'` array-literal parsing with `::text` casts.
+- **Impact**: Active Accounts → **Merge users** (via Edge `merge-users`, which also bans the absorbed login). Rules: same role; absorbed archived or never signed in; live account survives.
+- **Category**: Users / Admin / SECURITY DEFINER
+
+#### July 11, 2026
+
+**`20260711120000_list_latest_report_completion_pct.sql`**
+- **Purpose**: SECURITY INVOKER RPC `list_latest_report_completion_pct(p_job_ids)` — latest valid field-report completion % (0–100) per job, parsed server-side (`reports.field_values` also carries signature data-URLs; never bulk-fetch client-side). New key wins over legacy "Who was on the job?"; latest percent-bearing report wins.
+- **Impact**: Jobs → Job Summary **%** column and Quickfill **Complete, no Total Bill**.
+- **Category**: Jobs / Reports / RPC
+
+#### July 9, 2026
+
+**`20260709120000_turnaway_report_template.sql`** — Turnaway report template + dispatch plumbing for the tech-side "client not home / site not ready" flow (Job Mode).
+**`20260709130000_turnaway_trip_charge.sql`** — `create_turnaway_trip_charge(p_job_id, p_amount, p_reason, p_dispatch_request_id)`: inserts a **non-primary ready_to_bill** `jobs_ledger_invoices` row and bumps `jobs_ledger.revenue` by the same amount (keeps the primary-RTB invariant); per-reason defaults in `app_settings` (`trip_charge_client_not_home`, `trip_charge_site_not_ready`); idempotent per closed dispatch request.
+**`20260709150000_help_feedback.sql`** — `help_feedback` table (+ RLS) for /help guide feedback; dev inbox + push via Edge `notify-help-feedback`.
+**`20260709160000_payroll_counts_as_linked.sql`** — tally payroll-marked Mercury transactions count as linked in all unlinked counters.
+
+#### July 2–4, 2026
+
+**`20260702160000_modernize_handle_new_user.sql`** — `handle_new_user` (auth.users INSERT trigger) creates the `public.users` row; role from `raw_user_meta_data.invited_role` when modern, else `helpers`; idempotent vs edge-function upserts.
+**`20260703160000_sync_last_sign_in_from_auth.sql`** — `on_auth_user_signed_in` trigger copies `auth.users.last_sign_in_at` → `public.users.last_sign_in_at` (one-time backfill; powers Last login + merge/never-signed-in checks).
+**`20260703194625_drop_dead_salary_artifacts.sql`** — recovered file to match the prod ledger (PR #193).
+**`20260704120000_fix_users_update_policy_recursion.sql`** — users UPDATE policy recursion fix.
+**`20260704150000_job_collections_flag.sql`** + **`20260704160000_collections_flag_row_lock.sql`** — `jobs_ledger.collections_at/by/note` sticky flag (not a status; `status='billed' AND collections_at IS NOT NULL`), written only via `set_job_collections_flag()`; row-lock hardening.
+**`20260704170000_customer_review_job_hours.sql`** — `list_customer_review_job_hours` RPC for the Bid Board Customer review modal (per-customer estimating/job hours).
+
+### June 2026 (post-baseline)
+
+**`20260605001052_drop_mercury_transactions_realtime.sql`** — drop Realtime CDC on `mercury_transactions` (2026-06-05 connection-pool incident mitigation).
+**`20260608070012_add_count_tooling_plans_link_to_bids.sql`** — `bids.count_tooling_plans_link` (CountTooling source view-link captured by Counts import).
+**`20260608120000_allow_helpers_working_to_ready_to_bill.sql`** — status-transition allowance tweak for helpers.
+**`20260609120000_add_dual_rate_pay.sql`** — dual-rate pay support in pay config.
+**`20260610120000_bid_scoped_pricings.sql`** — `price_book_versions.bid_id` + `clone_price_book_version_to_bid` (multiple frozen price-book copies per bid).
+**`20260610170000_bid_versions_schema.sql`**, **`20260610180000_bid_version_rpcs.sql`**, **`20260610190000_bid_version_split_and_guards.sql`** — bid versions schema, RPCs, split + guards.
+**`20260611130000_pinned_tabs_sort_order.sql`** — `user_pinned_tabs` sort order (pinned pages sync + drag-reorder).
+**`20260616045050_add_recompute_people_hours_after_session_edit.sql`** — `recompute_people_hours_after_session_edit` RPC + 14-day backfill (Adjust-times resync; people_hours is incrementally maintained).
+**`20260618120000_bid_pricing_user_prefs.sql`** — per-user remembered-default price book (Pricing tab dropdown).
+**`20260618130000_hide_dev_tally_transactions.sql`** — `app_settings.hide_dev_tally_transactions` org flag read by the stale-tally follow-up RPC.
+**`20260619120000_guard_activity_events_on_job_delete.sql`** — job_activity_events guard on job delete.
+**`20260619130000_migrate_costs_allow_billed.sql`** — `migrate_job_ledger_costs_and_delete` 3-arg with `p_allow_billed` (2-arg dropped); reassign-costs-on-delete for billed jobs.
+**`20260619140000_add_jobs_ledger_click_number.sql`**, **`20260619150000_click_number_remaining_rpcs.sql`**, **`20260619160000_click_number_remaining_rpcs_2.sql`**, **`20260619170000_next_job_number_suggestion.sql`** — Job Click Number (`jobs_ledger.click_number`, HCP-wins display bake-in across RPCs, `next_job_number_suggestion()`).
+
+### Baseline (June 4, 2026)
+
+**`20250101000000_baseline.sql`** — 847 pre-June-2026 migrations squashed into a single baseline + seed. The originals (including every `2027…`-typo-named file) live in [`supabase/archive/migrations-pre-baseline/`](../supabase/archive/migrations-pre-baseline/).
+
+
+### May 2026 — "2027"-typo filenames (archived pre-baseline)
+
+#### May 21, 2026
 
 **`20270521120000_bid_count_row_submission_hides.sql`**
 - **Purpose**: **Bids** **Pricing** — sparse **`bid_count_row_submission_hides`** (**`bid_id`**, **`count_row_id`**, **`price_book_version_id`**, PK composite; index on **`bid_id`, `price_book_version_id`**). Row present ⇒ omit fixture from **Cover Letter** + **Approval** pricing-grid lists only; totals unchanged. **RLS**: **`can_access_bid_for_pricing(bid_id)`** for pricing-capable roles. **Backfill** from **`bid_pricing_assignments.omit_from_submission_documents`**, then clears that flag on assignments.
@@ -111,14 +166,14 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 - **Impact**: Duplicate-bid UX in **[`BidFormModal.tsx`](../src/components/bids/BidFormModal.tsx)** / related flows preserves per-version omit state; regenerate **`src/types/database.ts`**.
 - **Category**: Bids / Pricing / functions
 
-#### May 22, 2027
+#### May 22, 2026
 
 **`20270522120000_schedule_day_email_requests_and_rpc.sql`**
 - **Purpose**: **`schedule_day_email_requests`** (pending row per **`recipient_user_id`** + **`work_date`**, **`send_at`** UTC); **`can_access_project_row_for_user`**, **`list_job_schedule_blocks_for_schedule_email`** (mirrors **`job_schedule_blocks`** SELECT using viewer id); RLS (recipients see own rows; **INSERT** self-only for **master_technician**/**assistant** and base **dev** path — **dev → any non-archived recipient** added in **`20270523120000_dev_schedule_day_email_for_other.sql`**); pg_cron **`schedule-day-email-dispatch`** → Edge ([**`EDGE_FUNCTIONS.md`**](EDGE_FUNCTIONS.md)). **[`RECENT_FEATURES.md`](RECENT_FEATURES.md) v2.522**.
 - **Impact**: **[`DashboardTeamActiveClockStrip.tsx`](../src/components/DashboardTeamActiveClockStrip.tsx)**, **[`ScheduleDayEmailModal.tsx`](../src/components/ScheduleDayEmailModal.tsx)**; **`npm run gen-types:linked`** after **`db push`**.
 - **Category**: Dashboard / Schedule / Email / RLS
 
-#### May 23, 2027
+#### May 23, 2026
 
 **`20270523120000_dev_schedule_day_email_for_other.sql`**
 - **Purpose**: RLS — **`schedule_day_email_requests_insert_dev_any_recipient`** (**`is_dev()`** + non-archived **`recipient_user_id`**); **`schedule_day_email_requests_select_dev`**. **[`RECENT_FEATURES.md`](RECENT_FEATURES.md) v2.523**.
@@ -132,7 +187,19 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 ### July 2026
 
+#### July 4, 2026
+
+**`20260704140000_tally_payroll_flags_and_rules.sql`** _(applied to prod 2026-07-04 via Supabase MCP `apply_migration`, ahead of client; validated by full-transaction dry-run first)_
+- **Purpose**: **Job Parts Tally "mark as payroll" + auto-rules (dev-only).** New tables **`mercury_tally_payroll_flags`** (`mercury_transaction_id` PK, `is_payroll`, `source` manual/rule, `rule_id`; manual rows incl. false tombstones win over rules) and **`mercury_tally_payroll_rules`** (`name`, `criteria` jsonb V1, `enabled`, `sort_order`). Both dev-only RLS (`is_dev()`). RPCs (SECURITY DEFINER, `search_path=public`, dev-gated): **`set_tally_payroll_flag(uuid, bool)`** — RAISE P0001 when the tx has `mercury_transaction_job_allocations` (flag↔splits mutually exclusive → prevents double-counting payroll against clocked labor); **`bulk_apply_tally_payroll_rule_flags(jsonb)`** — insert `source='rule'` flags only where no flag row exists and no job allocations.
+- **Impact**: [`JobTally.tsx`](../src/pages/JobTally.tsx) per-row toggle + rules manager; [`tallyPayrollRules.ts`](../src/lib/tallyPayrollRules.ts) preflight; [`mercuryTxRowFromTally.ts`](../src/lib/mercuryTxRowFromTally.ts) `tallyRowIsResolved` honors `is_payroll`. `npm run gen-types:linked` run after apply; no new security advisors. **`RECENT_FEATURES.md` v2.641**.
+- **Category**: Tally / Banking / Payroll / RLS / RPC
+
 #### July 3, 2026
+
+**`20260703150000_customers_master_role_heal_and_guard.sql`** _(applied to prod 2026-07-03 via Supabase MCP `apply_migration`, ahead of client; validated by full-transaction dry-run first)_
+- **Purpose**: **Customers mastered to non-master users — heal + guard.** JobFormModal's "Create customer from job" inserted `master_user_id = auth user` (the assistant), so 95 customers + their 104 consistently-linked jobs were "mastered" to assistants (the 20260630200000 invariant made new links fail with P0001 and orphan duplicates). Heals by repointing each mis-mastered customer to the assistant's master (`master_assistants`, else the org's single `master_technician`) — the existing #141 cascade triggers move linked jobs/projects automatically. Adds **`customers_master_role_check`** BEFORE INSERT/UPDATE OF `master_user_id` trigger (SECURITY DEFINER, `search_path=public`): the master must be a `dev`/`master_technician`.
+- **Impact**: [`JobFormModal.tsx`](../src/components/jobs/JobFormModal.tsx) companion client fix (customer takes the job's master). One-off surgery alongside (not in-migration): deleted 4 reference-free duplicate "Richard Visiko" orphans, linked job 886 to the healed keeper. Post-heal: 0 mis-mastered customers, 0 assistant-mastered jobs, 0 invariant violations. No type regen (no schema change). **`RECENT_FEATURES.md` v2.639**.
+- **Category**: Customers / Jobs / Data healing / Triggers
 
 **`20260703130000_dispatch_realtime_publication.sql`** _(applied to prod 2026-07-03 via Supabase MCP `apply_migration`, ahead of client)_
 - **Purpose**: **Dispatch inbox live updates restored.** `dispatch_requests` and `dispatch_request_notes` were dropped from the **`supabase_realtime`** publication during the 2026-06-05 connection-incident cleanup, leaving the inbox's `postgres_changes` subscriptions connected but permanently silent — new requests/notes only appeared after a page reload. Idempotent `DO` block re-adds both tables (skips if already present). Both are low-volume (a handful of rows/day), so the connection-pool risk that motivated the trim doesn't apply.
@@ -943,9 +1010,9 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 - **Impact**: Review Hours modal "Mark as reviewed" checkbox; **Hours reviewed** ledger on **People → Hours**
 - **Category**: People / Pay
 
-### April 2027
+### April 2026 — "2027"-typo filenames (archived pre-baseline)
 
-#### April 3, 2027
+#### April 3, 2026
 
 **`20270403101000_salary_sync_cleanup_when_no_template.sql`**
 - **Purpose**: When **`salary_work_schedule_templates`** is absent for a user, delete **non-final** `clock_sessions` with **`origin = 'salary_schedule'`** for that `work_date` (same guard as PTO path)
@@ -966,7 +1033,7 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 - **Docs**: [`SALARY_CLOCK_SESSIONS.md`](SALARY_CLOCK_SESSIONS.md)
 - **Category**: People / Hours / Dashboard
 
-#### April 8, 2027
+#### April 8, 2026
 
 **`20270408150000_tally_staff_followup_assistant_any_target.sql`**
 - **Purpose**: Dashboard / Quickfill **stale tally staff follow-up** — **assistant** role sees **all** target users for Mercury stale-unlinked list and staff assign flows (same scope as **dev** via **`staff_can_view_user_for_tally_followup`**)
@@ -1010,7 +1077,7 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 - **Impact**: [`PersonOffsetFormModal.tsx`](../src/components/pay/PersonOffsetFormModal.tsx), [`People.tsx`](../src/pages/People.tsx) **Offsets** + pay HTML, [`PayStubLessModal.tsx`](../src/components/pay/PayStubLessModal.tsx) (**Employee credit** listed, **Apply** disabled); [`RECENT_FEATURES.md`](RECENT_FEATURES.md) v2.252
 - **Category**: People / Pay
 
-#### April 10, 2027
+#### April 10, 2026
 
 **`20270410120000_invoice_linked_payments_partial_mark_paid.sql`**
 - **Purpose**: **Partial invoice payments** — link **`jobs_ledger_payments`** rows to **`jobs_ledger_invoices`**; **`mark_invoice_paid`** accepts optional **`p_amount`**, **`p_paid_on`**, **`p_note`** (remaining balance when amount omitted); **`mark_job_paid`** same optional fields for whole-job billed payments; **`mark_invoice_paid_from_stripe`** applies **remainder** after prior **`invoice_id`** payments and sets **`invoice_id`** on insert (idempotent if already **paid**)
@@ -1030,7 +1097,7 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 - **Impact**: [`stripe-webhook`](../supabase/functions/stripe-webhook/index.ts); Banking **Stripe** → **Data** ([`BankingStripeWebhookEventsPanel.tsx`](../src/components/BankingStripeWebhookEventsPanel.tsx)); [`RECENT_FEATURES.md`](RECENT_FEATURES.md) v2.284
 - **Category**: Jobs / Billing / Dev tooling
 
-#### April 19, 2027
+#### April 19, 2026
 
 **`20270419120001_ar_bank_allocations_breakdown.sql`**
 - **Purpose**: **`list_ar_allocations_for_mercury_transaction`** ( **`jobs_ledger_payments`** linked to a Mercury row, with job/invoice labels); **`CREATE OR REPLACE`** **`list_mercury_transactions_for_bank_payments`** / **`count_mercury_transactions_for_bank_payments`** with **`includeFullyApplied`** only — inadvertently omitted **`returned`** and **`includeHiddenArDeposits`** (restored in **`20270419120002`**)
@@ -1043,7 +1110,7 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 - **Impact**: [`BankPaymentsModal.tsx`](../src/components/jobs/BankPaymentsModal.tsx); types **`returned`** on list returns
 - **Category**: Jobs / Banking / AR
 
-#### April 25, 2027
+#### April 25, 2026
 
 **`20270425120000_allow_ready_to_bill_migrate_job_ledger_delete.sql`**
 - **Purpose**: **`migrate_job_ledger_costs_and_delete`** — allow source **`jobs_ledger.status`** **`working`** or **`ready_to_bill`** (invoices, payments, `payments_made`, collect-payment flow guards unchanged; supersedes **Working**-only check from **`20270424120000_migrate_job_ledger_costs_and_delete.sql`**)
@@ -1063,9 +1130,9 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 - **Impact**: Roadmap tab picker and members UI; URL **`?tab=roadmap&roadmap=<uuid>`**
 - **Category**: Checklist
 
-### March 2027
+### March 2026 — "2027"-typo filenames (archived pre-baseline)
 
-#### March 31, 2027
+#### March 31, 2026
 
 **`20270331150000_company_calendar_america_chicago.sql`**
 - **Purpose**: Unify company calendar (`work_date` “today”, editable week gates, salary “today” RLS, template default timezone) on **America/Chicago**
@@ -1122,7 +1189,7 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 - **Impact**: Settings Salaried workday; Edge Function `sync-salary-sessions`; Dashboard On shift / Off shift
 - **Category**: People / Hours / Dashboard
 
-#### March 24, 2027
+#### March 24, 2026
 
 **`20270324120000_add_last_report_at_to_list_assigned_jobs.sql`**
 - **Purpose**: Add last report timestamp to subcontractor Assigned Jobs Dashboard cards
@@ -1130,7 +1197,7 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 - **Impact**: Subcontractor Dashboard Assigned Jobs cards show "Open X" (time since last report) for "time since last report" display
 - **Category**: Dashboard / Reports
 
-#### March 27, 2027
+#### March 27, 2026
 
 **`20270327120000_user_app_activity_viewers.sql`**
 - **Purpose**: Allow dev to grant assistant / master_technician / primary org-wide read on `user_app_activity_daily`
@@ -1156,7 +1223,7 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 - **Impact**: `src/lib/tagOrg.ts`; People → Users (dev) Tag org dropdown, signals, Clear override
 - **Category**: People / RLS
 
-#### March 29, 2027
+#### March 29, 2026
 
 **`20270329120000_list_feedback_peer_candidates_shared_labels_final.sql`**
 - **Purpose**: Authoritative **`list_feedback_peer_candidates`** implementation: peers sharing at least one **`label_id`** with the reviewer (`user_labels` for reviewer; peers via `user_labels` or `people_labels`). Supersedes roster-based definitions from **`20260628141000`**–**`20260628141700`** on databases that applied those migrations.

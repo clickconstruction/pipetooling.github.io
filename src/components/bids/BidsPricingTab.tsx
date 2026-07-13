@@ -961,7 +961,7 @@ export function BidsPricingTab({
               placeholder="Search bids (bid #, project name, or GC/Builder)..."
               value={pricingSearchQuery}
               onChange={(e) => setPricingSearchQuery(e.target.value)}
-              style={{ flex: 1, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, boxSizing: 'border-box' }}
+              style={{ flex: 1, padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, boxSizing: 'border-box' }}
             />
             <MyBidsToggle active={onlyMyBids} onChange={setOnlyMyBids} />
           </div>
@@ -969,10 +969,10 @@ export function BidsPricingTab({
         {selectedBidForPricing && (
           <div
             style={{
-              border: '1px solid #e5e7eb',
+              border: '1px solid var(--border)',
               borderRadius: 8,
               padding: '1.5rem 2rem',
-              background: 'white',
+              background: 'var(--surface)',
               marginBottom: '1.5rem',
               ...(narrowViewport640 ? { position: 'relative' } : {}),
             }}
@@ -1009,9 +1009,9 @@ export function BidsPricingTab({
                     style={{
                       padding: '0.5rem 1rem',
                       background:
-                        !selectedPricingVersionId || pricingCountRows.length === 0 || !pricingCostEstimate ? '#e5e7eb' : '#16a34a',
+                        !selectedPricingVersionId || pricingCountRows.length === 0 || !pricingCostEstimate ? 'var(--bg-200)' : '#16a34a',
                       color:
-                        !selectedPricingVersionId || pricingCountRows.length === 0 || !pricingCostEstimate ? '#9ca3af' : 'white',
+                        !selectedPricingVersionId || pricingCountRows.length === 0 || !pricingCostEstimate ? 'var(--text-faint)' : 'white',
                       border: 'none',
                       borderRadius: 4,
                       cursor:
@@ -1033,9 +1033,9 @@ export function BidsPricingTab({
                   style={{
                     padding: '0.5rem 1rem',
                     background:
-                      !selectedPricingVersionId || pricingCountRows.length === 0 || !pricingCostEstimate ? '#e5e7eb' : '#f3f4f6',
-                    color: '#111827',
-                    border: '1px solid #d1d5db',
+                      !selectedPricingVersionId || pricingCountRows.length === 0 || !pricingCostEstimate ? 'var(--bg-200)' : 'var(--bg-muted)',
+                    color: 'var(--text-strong)',
+                    border: '1px solid var(--border-strong)',
                     borderRadius: 4,
                     cursor:
                       !selectedPricingVersionId || pricingCountRows.length === 0 || !pricingCostEstimate ? 'not-allowed' : 'pointer',
@@ -1096,12 +1096,12 @@ export function BidsPricingTab({
                       style={{
                         padding: '0.35rem 0.75rem',
                         fontSize: '0.8125rem',
-                        border: '1px solid #d1d5db',
+                        border: '1px solid var(--border-strong)',
                         borderRadius: 4,
-                        background: pricingViewModel === 'cost' ? '#e5e7eb' : 'white',
+                        background: pricingViewModel === 'cost' ? 'var(--bg-200)' : 'var(--surface)',
                         cursor: 'pointer',
                         fontWeight: pricingViewModel === 'cost' ? 600 : 400,
-                        color: pricingViewModel === 'cost' ? '#111827' : '#6b7280',
+                        color: pricingViewModel === 'cost' ? 'var(--text-strong)' : 'var(--text-muted)',
                         boxShadow: pricingViewModel === 'cost' ? '0 0 0 2px #374151' : 'none',
                       }}
                     >
@@ -1113,12 +1113,12 @@ export function BidsPricingTab({
                       style={{
                         padding: '0.35rem 0.75rem',
                         fontSize: '0.8125rem',
-                        border: '1px solid #d1d5db',
+                        border: '1px solid var(--border-strong)',
                         borderRadius: 4,
-                        background: pricingViewModel === 'price' ? '#e5e7eb' : 'white',
+                        background: pricingViewModel === 'price' ? 'var(--bg-200)' : 'var(--surface)',
                         cursor: 'pointer',
                         fontWeight: pricingViewModel === 'price' ? 600 : 400,
-                        color: pricingViewModel === 'price' ? '#111827' : '#6b7280',
+                        color: pricingViewModel === 'price' ? 'var(--text-strong)' : 'var(--text-muted)',
                         boxShadow: pricingViewModel === 'price' ? '0 0 0 2px #374151' : 'none',
                       }}
                     >
@@ -1143,7 +1143,7 @@ export function BidsPricingTab({
                     onChange={(e) => {
                       if (e.target.value) void onSelectPriceBookTemplate(e.target.value)
                     }}
-                    style={{ padding: '0.35rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem', background: 'white', cursor: 'pointer' }}
+                    style={{ padding: '0.35rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem', background: 'var(--surface)', cursor: 'pointer' }}
                   >
                     {currentPriceBookTemplateId == null ? <option value="">Select a price book…</option> : null}
                     {templatePriceBookVersions.map((t) => (
@@ -1182,7 +1182,7 @@ export function BidsPricingTab({
               )}
             </div>
             {!pricingCostEstimate && pricingCountRows.length > 0 && (
-              <p style={{ marginBottom: '1rem', fontSize: '0.875rem', color: '#6b7280' }}>
+              <p style={{ marginBottom: '1rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
                 Add fixtures in Counts and set up Labor first to see margin comparison.{' '}
                 <button
                   type="button"
@@ -1288,22 +1288,22 @@ export function BidsPricingTab({
                 })
               return (
                 <>
-                <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'visible' }}>
+                <div style={{ border: '1px solid var(--border)', borderRadius: 4, overflow: 'visible' }}>
                   <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                    <thead style={{ background: '#f9fafb' }}>
+                    <thead style={{ background: 'var(--bg-subtle)' }}>
                       <tr>
-                        <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Fixture or Tie-in</th>
-                        <th style={{ padding: '0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Count</th>
-                        <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Price book entry</th>
-                        <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>{pricingViewModel === 'cost' ? 'Our cost' : 'Sale Price'}</th>
-                        <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Revenue</th>
-                        <th style={{ padding: '0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Margin/Total</th>
-                        <th style={{ width: 0, padding: 0, borderBottom: '1px solid #e5e7eb' }} />
+                        <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Fixture or Tie-in</th>
+                        <th style={{ padding: '0.75rem', textAlign: 'center', borderBottom: '1px solid var(--border)' }}>Count</th>
+                        <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Price book entry</th>
+                        <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid var(--border)' }}>{pricingViewModel === 'cost' ? 'Our cost' : 'Sale Price'}</th>
+                        <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid var(--border)' }}>Revenue</th>
+                        <th style={{ padding: '0.75rem', textAlign: 'center', borderBottom: '1px solid var(--border)' }}>Margin/Total</th>
+                        <th style={{ width: 0, padding: 0, borderBottom: '1px solid var(--border)' }} />
                       </tr>
                     </thead>
                     <tbody>
                       {rows.map((row) => (
-                        <tr key={row.countRow.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                        <tr key={row.countRow.id} style={{ borderBottom: '1px solid var(--border)' }}>
                           <td style={{ padding: '0.75rem' }}>{row.countRow.fixture ?? ''}</td>
                           <td style={{ padding: '0.75rem', textAlign: 'center' }}>{row.count}</td>
                           <td style={{ padding: '0.75rem', position: 'relative' }} onClick={(e) => e.stopPropagation()}>
@@ -1323,7 +1323,7 @@ export function BidsPricingTab({
                                 style={{ 
                                   width: '100%',
                                   padding: '0.35rem', 
-                                  border: '1px solid #d1d5db', 
+                                  border: '1px solid var(--border-strong)', 
                                   borderRadius: 4, 
                                   minWidth: '10rem',
                                   boxSizing: 'border-box',
@@ -1342,7 +1342,7 @@ export function BidsPricingTab({
                                       alignItems: 'center',
                                       gap: '0.25rem',
                                       fontSize: '0.75rem',
-                                      color: '#6b7280',
+                                      color: 'var(--text-muted)',
                                       cursor: 'pointer',
                                       whiteSpace: 'nowrap'
                                     }}
@@ -1374,7 +1374,7 @@ export function BidsPricingTab({
                                       background: 'none',
                                       border: 'none',
                                       cursor: 'pointer',
-                                      color: '#6b7280',
+                                      color: 'var(--text-muted)',
                                       fontSize: '1.25rem',
                                       lineHeight: 1,
                                       padding: 0
@@ -1396,8 +1396,8 @@ export function BidsPricingTab({
                                     top: '100%',
                                     left: 0,
                                     right: 0,
-                                    background: 'white',
-                                    border: '1px solid #d1d5db',
+                                    background: 'var(--surface)',
+                                    border: '1px solid var(--border-strong)',
                                     borderRadius: 4,
                                     marginTop: '0.25rem',
                                     maxHeight: '200px',
@@ -1422,16 +1422,16 @@ export function BidsPricingTab({
                                             padding: '0.5rem',
                                             cursor: 'pointer',
                                             borderBottom: '1px solid #f3f4f6',
-                                            background: row.entry?.id === e.id ? '#eff6ff' : 'white'
+                                            background: row.entry?.id === e.id ? 'var(--bg-blue-tint)' : 'var(--surface)'
                                           }}
-                                          onMouseEnter={(ev) => { ev.currentTarget.style.background = '#f9fafb' }}
+                                          onMouseEnter={(ev) => { ev.currentTarget.style.background = 'var(--bg-subtle)' }}
                                           onMouseLeave={(ev) => { ev.currentTarget.style.background = row.entry?.id === e.id ? '#eff6ff' : 'white' }}
                                         >
                                           {e.fixture_types?.name ?? ''}
                                         </div>
                                       ))
                                     ) : searchTerm ? (
-                                      <div style={{ padding: '0.75rem', textAlign: 'center', color: '#6b7280' }}>
+                                      <div style={{ padding: '0.75rem', textAlign: 'center', color: 'var(--text-muted)' }}>
                                         No matches for "{searchTerm}"
                                         <button
                                           type="button"
@@ -1461,7 +1461,7 @@ export function BidsPricingTab({
                                         </button>
                                       </div>
                                     ) : (
-                                      <div style={{ padding: '0.5rem', color: '#6b7280', textAlign: 'center' }}>
+                                      <div style={{ padding: '0.5rem', color: 'var(--text-muted)', textAlign: 'center' }}>
                                         Start typing to search...
                                       </div>
                                     )}
@@ -1512,7 +1512,7 @@ export function BidsPricingTab({
                                             border: 'none',
                                             background: 'transparent',
                                             cursor: 'pointer',
-                                            color: '#6b7280',
+                                            color: 'var(--text-muted)',
                                             lineHeight: 0,
                                             zIndex: 1,
                                           }}
@@ -1562,13 +1562,13 @@ export function BidsPricingTab({
                                           paddingBottom: '0.35rem',
                                           paddingRight: '0.5rem',
                                           paddingLeft: showGenerateUnitCostIcon ? '1.6rem' : '0.5rem',
-                                          border: '1px solid #d1d5db',
+                                          border: '1px solid var(--border-strong)',
                                           borderRadius: 4,
                                           textAlign: 'right',
                                           background:
                                             row.assignment?.unit_price_override != null || row.customPrice != null ?
                                               '#fef9c3'
-                                            : 'white',
+                                            : 'var(--surface)',
                                           fontSize: '0.875rem',
                                         }}
                                       />
@@ -1590,7 +1590,7 @@ export function BidsPricingTab({
                                         savingUnitPriceOverride === row.countRow.id ?
                                           'not-allowed'
                                         : 'pointer',
-                                      color: '#6b7280',
+                                      color: 'var(--text-muted)',
                                       fontSize: '0.75rem',
                                     }}
                                   >
@@ -1640,7 +1640,7 @@ export function BidsPricingTab({
                                       border: 'none',
                                       padding: 0,
                                       margin: 0,
-                                      color: '#dc2626',
+                                      color: 'var(--text-red-600)',
                                       cursor: 'pointer',
                                       lineHeight: 0,
                                     }}
@@ -1678,7 +1678,7 @@ export function BidsPricingTab({
                                     {row.margin != null ? `${row.margin.toFixed(1)}%` : '—'}
                                   </button>
                                 )}
-                                <span style={{ color: '#9ca3af' }}>/</span>
+                                <span style={{ color: 'var(--text-faint)' }}>/</span>
                                 {(() => {
                                   const pctDisplay =
                                     row.pctOfGrandTotal != null ? `${row.pctOfGrandTotal.toFixed(1)}%` : '—'
@@ -1717,7 +1717,7 @@ export function BidsPricingTab({
                                           cursor: 'pointer',
                                           font: 'inherit',
                                           color:
-                                            row.omitFromSubmissionDocuments ? '#2563eb' : '#374151',
+                                            row.omitFromSubmissionDocuments ? 'var(--text-link)' : 'var(--text-700)',
                                           lineHeight: 1.25,
                                         }}
                                         onMouseEnter={(e) => {
@@ -1779,9 +1779,9 @@ export function BidsPricingTab({
                           <td style={{ width: 0, padding: 0 }} />
                         </tr>
                       ))}
-                      <tr style={{ background: '#fffbeb' }}>
-                        <td colSpan={3} style={{ padding: '0.5rem 0.75rem', fontSize: '0.8125rem', fontWeight: 600, color: '#92400e' }}>Our cost breakdown</td>
-                        <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', fontSize: '0.8125rem', fontWeight: 600, color: '#92400e' }}>${formatCurrency(totalCost)}</td>
+                      <tr style={{ background: 'var(--bg-amber-tint)' }}>
+                        <td colSpan={3} style={{ padding: '0.5rem 0.75rem', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-amber-800)' }}>Our cost breakdown</td>
+                        <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-amber-800)' }}>${formatCurrency(totalCost)}</td>
                         <td colSpan={3} />
                       </tr>
                       <tr style={{ fontSize: '0.8125rem' }}>
@@ -1789,15 +1789,15 @@ export function BidsPricingTab({
                           <button
                             type="button"
                             onClick={() => { if (selectedBidForPricing) onNavigateBidToTab(selectedBidForPricing, 'takeoffs') }}
-                            style={{ background: 'none', border: 'none', padding: 0, color: '#2563eb', textDecoration: 'underline', cursor: 'pointer', fontSize: '0.8125rem', fontWeight: 600 }}
+                            style={{ background: 'none', border: 'none', padding: 0, color: 'var(--text-link)', textDecoration: 'underline', cursor: 'pointer', fontSize: '0.8125rem', fontWeight: 600 }}
                           >
                             Takeoffs
                           </button>
                         </td>
                       </tr>
-                      <tr style={{ fontSize: '0.8125rem', color: '#374151' }}>
+                      <tr style={{ fontSize: '0.8125rem', color: 'var(--text-700)' }}>
                         <td colSpan={3} style={{ padding: '0.4rem 0.75rem 0.4rem 1.5rem' }}>Materials</td>
-                        <td style={{ padding: '0.4rem 0.75rem', textAlign: 'right' }}>${formatCurrency(totalMaterials)} {totalCost > 0 ? <span style={{ color: '#6b7280' }}>{`| ${((totalMaterials / totalCost) * 100).toFixed(1)}%`}</span> : ''}</td>
+                        <td style={{ padding: '0.4rem 0.75rem', textAlign: 'right' }}>${formatCurrency(totalMaterials)} {totalCost > 0 ? <span style={{ color: 'var(--text-muted)' }}>{`| ${((totalMaterials / totalCost) * 100).toFixed(1)}%`}</span> : ''}</td>
                         <td colSpan={3} />
                       </tr>
                       <tr style={{ fontSize: '0.8125rem' }}>
@@ -1805,7 +1805,7 @@ export function BidsPricingTab({
                           <button
                             type="button"
                             onClick={() => { if (selectedBidForPricing) onNavigateBidToTab(selectedBidForPricing, 'labor') }}
-                            style={{ background: 'none', border: 'none', padding: 0, color: '#2563eb', textDecoration: 'underline', cursor: 'pointer', fontSize: '0.8125rem', fontWeight: 600 }}
+                            style={{ background: 'none', border: 'none', padding: 0, color: 'var(--text-link)', textDecoration: 'underline', cursor: 'pointer', fontSize: '0.8125rem', fontWeight: 600 }}
                           >
                             Labor
                           </button>
@@ -1813,16 +1813,16 @@ export function BidsPricingTab({
                       </tr>
                       {(() => {
                         const laborSubtotal = laborCost + drivingCost + travelCost + estimatorCost + teamLaborCost
-                        const pct = (v: number) => (totalCost > 0 ? <span style={{ color: '#6b7280' }}>{`| ${((v / totalCost) * 100).toFixed(1)}%`}</span> : '')
+                        const pct = (v: number) => (totalCost > 0 ? <span style={{ color: 'var(--text-muted)' }}>{`| ${((v / totalCost) * 100).toFixed(1)}%`}</span> : '')
                         const lineRow = (label: React.ReactNode, value: number) => (
-                          <tr style={{ fontSize: '0.8125rem', color: '#374151' }}>
+                          <tr style={{ fontSize: '0.8125rem', color: 'var(--text-700)' }}>
                             <td colSpan={3} style={{ padding: '0.4rem 0.75rem 0.4rem 1.5rem' }}>{label}</td>
                             <td style={{ padding: '0.4rem 0.75rem', textAlign: 'right' }}>${formatCurrency(value)} {pct(value)}</td>
                             <td colSpan={3} />
                           </tr>
                         )
                         const subtotalRow = (label: string, value: number) => (
-                          <tr style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#111827', background: '#f9fafb' }}>
+                          <tr style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-strong)', background: 'var(--bg-subtle)' }}>
                             <td colSpan={3} style={{ padding: '0.4rem 0.75rem 0.4rem 1rem' }}>{label}</td>
                             <td style={{ padding: '0.4rem 0.75rem', textAlign: 'right' }}>${formatCurrency(value)} {pct(value)}</td>
                             <td colSpan={3} />
@@ -1832,10 +1832,10 @@ export function BidsPricingTab({
                           <>
                             {lineRow('Manhours', laborCost)}
                             {lineRow(
-                              <>Vehicle Travel <span style={{ color: '#6b7280' }}>({numTrips.toFixed(1)} trips × ${ratePerMile.toFixed(2)}/mi × {distance.toFixed(0)} mi)</span></>,
+                              <>Vehicle Travel <span style={{ color: 'var(--text-muted)' }}>({numTrips.toFixed(1)} trips × ${ratePerMile.toFixed(2)}/mi × {distance.toFixed(0)} mi)</span></>,
                               drivingCost,
                             )}
-                            {lineRow(<>Lodging &amp; Meals <span style={{ color: '#6b7280' }}>(meals + hotels)</span></>, travelCost)}
+                            {lineRow(<>Lodging &amp; Meals <span style={{ color: 'var(--text-muted)' }}>(meals + hotels)</span></>, travelCost)}
                             {lineRow('Estimators Time', estimatorCost)}
                             {lineRow('Team Labor (clocked)', teamLaborCost)}
                             {subtotalRow('Labor subtotal', laborSubtotal)}
@@ -1847,7 +1847,7 @@ export function BidsPricingTab({
                           <button
                             type="button"
                             onClick={() => { if (selectedBidForPricing) onNavigateToLaborDirectCosts(selectedBidForPricing) }}
-                            style={{ background: 'none', border: 'none', padding: 0, color: '#2563eb', textDecoration: 'underline', cursor: 'pointer', fontSize: '0.8125rem', fontWeight: 600 }}
+                            style={{ background: 'none', border: 'none', padding: 0, color: 'var(--text-link)', textDecoration: 'underline', cursor: 'pointer', fontSize: '0.8125rem', fontWeight: 600 }}
                           >
                             Direct Costs
                           </button>
@@ -1855,9 +1855,9 @@ export function BidsPricingTab({
                       </tr>
                       {(() => {
                         const directCostsSubtotal = equipmentRentalCost + permitCost + subcontractorCost + wasteCost + otherCost
-                        const pct = (v: number) => (totalCost > 0 ? <span style={{ color: '#6b7280' }}>{`| ${((v / totalCost) * 100).toFixed(1)}%`}</span> : '')
+                        const pct = (v: number) => (totalCost > 0 ? <span style={{ color: 'var(--text-muted)' }}>{`| ${((v / totalCost) * 100).toFixed(1)}%`}</span> : '')
                         const lineRow = (label: React.ReactNode, value: number) => (
-                          <tr style={{ fontSize: '0.8125rem', color: '#374151' }}>
+                          <tr style={{ fontSize: '0.8125rem', color: 'var(--text-700)' }}>
                             <td colSpan={3} style={{ padding: '0.4rem 0.75rem 0.4rem 1.5rem' }}>{label}</td>
                             <td style={{ padding: '0.4rem 0.75rem', textAlign: 'right' }}>${formatCurrency(value)} {pct(value)}</td>
                             <td colSpan={3} />
@@ -1870,7 +1870,7 @@ export function BidsPricingTab({
                             {lineRow(<>Subcontractor Fees</>, subcontractorCost)}
                             {lineRow(<>Waste Disposal &amp; Site Cleanup</>, wasteCost)}
                             {lineRow(<>Other</>, otherCost)}
-                            <tr style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#111827', background: '#f9fafb' }}>
+                            <tr style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-strong)', background: 'var(--bg-subtle)' }}>
                               <td colSpan={3} style={{ padding: '0.4rem 0.75rem 0.4rem 1rem' }}>Direct Costs subtotal</td>
                               <td style={{ padding: '0.4rem 0.75rem', textAlign: 'right' }}>${formatCurrency(directCostsSubtotal)} {pct(directCostsSubtotal)}</td>
                               <td colSpan={3} />
@@ -1878,7 +1878,7 @@ export function BidsPricingTab({
                           </>
                         )
                       })()}
-                      <tr style={{ background: '#f9fafb', fontWeight: 600 }}>
+                      <tr style={{ background: 'var(--bg-subtle)', fontWeight: 600 }}>
                         <td style={{ padding: '0.75rem' }}>Total</td>
                         <td style={{ padding: '0.75rem', textAlign: 'center' }} />
                         <td style={{ padding: '0.75rem' }} />
@@ -1901,13 +1901,13 @@ export function BidsPricingTab({
                         <td style={{ width: 0, padding: 0 }} />
                       </tr>
                       {uncostedRevenueRows.length > 0 && (
-                        <tr style={{ background: '#fffbeb' }}>
+                        <tr style={{ background: 'var(--bg-amber-tint)' }}>
                           <td
                             colSpan={7}
                             style={{
                               padding: '0.6rem 0.75rem',
                               fontSize: '0.8125rem',
-                              color: '#92400e',
+                              color: 'var(--text-amber-800)',
                               borderTop: '1px solid #fde68a',
                               textAlign: 'center',
                             }}
@@ -1937,7 +1937,7 @@ export function BidsPricingTab({
             fontWeight: 700,
             letterSpacing: '0.05em',
             textTransform: 'uppercase',
-            color: '#9ca3af',
+            color: 'var(--text-faint)',
             margin: '0.75rem 0 0.25rem',
             textAlign: 'center',
           }
@@ -1946,7 +1946,7 @@ export function BidsPricingTab({
             ...lineStyle,
             fontWeight: 600,
             paddingTop: '0.4rem',
-            borderTop: '1px solid #e5e7eb',
+            borderTop: '1px solid var(--border)',
           }
           return (
             <div
@@ -1966,7 +1966,7 @@ export function BidsPricingTab({
             >
               <div
                 style={{
-                  background: 'white',
+                  background: 'var(--surface)',
                   borderRadius: 8,
                   padding: '1.5rem 2rem',
                   minWidth: 360,
@@ -1982,17 +1982,17 @@ export function BidsPricingTab({
                 <p style={sectionLabelStyle}>Revenue</p>
                 <div style={{ display: 'grid', gap: '0.35rem' }}>
                   <div style={lineStyle}>
-                    <span style={{ color: '#6b7280' }}>Sale Price {b.isFixedPrice ? '(fixed)' : '(per unit)'}</span>
+                    <span style={{ color: 'var(--text-muted)' }}>Sale Price {b.isFixedPrice ? '(fixed)' : '(per unit)'}</span>
                     <span>${formatCurrency(b.unitPrice)}</span>
                   </div>
                   {b.isFixedPrice ? (
                     <div style={lineStyle}>
-                      <span style={{ color: '#9ca3af', fontSize: '0.8125rem' }}>Fixed price — not multiplied by count</span>
+                      <span style={{ color: 'var(--text-faint)', fontSize: '0.8125rem' }}>Fixed price — not multiplied by count</span>
                       <span />
                     </div>
                   ) : (
                     <div style={lineStyle}>
-                      <span style={{ color: '#6b7280' }}>× Count</span>
+                      <span style={{ color: 'var(--text-muted)' }}>× Count</span>
                       <span>{b.count}</span>
                     </div>
                   )}
@@ -2005,19 +2005,19 @@ export function BidsPricingTab({
                 <p style={sectionLabelStyle}>Our cost</p>
                 <div style={{ display: 'grid', gap: '0.35rem' }}>
                   <div style={lineStyle}>
-                    <span style={{ color: '#6b7280' }}>
+                    <span style={{ color: 'var(--text-muted)' }}>
                       Materials {b.materialsFromTakeoff != null ? '(from Takeoffs)' : '(proportional)'}
                     </span>
                     <span>${formatCurrency(b.materialsBeforeTax)}</span>
                   </div>
                   {b.taxAmount > 0 && (
                     <div style={lineStyle}>
-                      <span style={{ color: '#6b7280' }}>Tax ({b.taxPercent}%)</span>
+                      <span style={{ color: 'var(--text-muted)' }}>Tax ({b.taxPercent}%)</span>
                       <span>${formatCurrency(b.taxAmount)}</span>
                     </div>
                   )}
                   <div style={lineStyle}>
-                    <span style={{ color: '#6b7280' }}>Labor</span>
+                    <span style={{ color: 'var(--text-muted)' }}>Labor</span>
                     <span>${formatCurrency(b.laborCost)}</span>
                   </div>
                   <div style={subtotalStyle}>
@@ -2029,7 +2029,7 @@ export function BidsPricingTab({
                 <p style={sectionLabelStyle}>Margin</p>
                 <div style={{ display: 'grid', gap: '0.35rem' }}>
                   <div style={lineStyle}>
-                    <span style={{ color: '#6b7280' }}>Profit (Revenue − Our cost)</span>
+                    <span style={{ color: 'var(--text-muted)' }}>Profit (Revenue − Our cost)</span>
                     <span style={{ color: profit < 0 ? '#dc2626' : undefined }}>${formatCurrency(profit)}</span>
                   </div>
                   <div style={{ ...subtotalStyle, fontSize: '1.0625rem' }}>
@@ -2043,11 +2043,11 @@ export function BidsPricingTab({
                     style={{
                       margin: '1rem 0 0',
                       padding: '0.6rem 0.75rem',
-                      background: '#fffbeb',
+                      background: 'var(--bg-amber-tint)',
                       border: '1px solid #fde68a',
                       borderRadius: 6,
                       fontSize: '0.8125rem',
-                      color: '#92400e',
+                      color: 'var(--text-amber-800)',
                     }}
                   >
                     This fixture has no Takeoffs cost, so the grid shows “—” for its margin. The figures
@@ -2084,12 +2084,12 @@ export function BidsPricingTab({
           />
         )}
         {!selectedBidForPricing && (
-          <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
+          <div style={{ border: '1px solid var(--border)', borderRadius: 4, overflow: 'hidden' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <thead style={{ background: '#f9fafb' }}>
+              <thead style={{ background: 'var(--bg-subtle)' }}>
                 <tr>
-                  <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Project</th>
-                  <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Bid Date</th>
+                  <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Project</th>
+                  <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Bid Date</th>
                 </tr>
               </thead>
               <tbody>
@@ -2099,7 +2099,7 @@ export function BidsPricingTab({
                     onClick={() => onSelectBid(bid)}
                     style={{
                       cursor: 'pointer',
-                      borderBottom: '1px solid #e5e7eb',
+                      borderBottom: '1px solid var(--border)',
                     }}
                   >
                     <td style={{ padding: '0.75rem' }}><BidProjectCell bid={bid} ledgerPrefixMap={ledgerPrefixMap} /></td>
@@ -2135,7 +2135,7 @@ export function BidsPricingTab({
             {priceBookSectionOpen && (
             <>
             {/* Toggle: edit this bid's Pricings vs the shared template catalog. */}
-            <div style={{ display: 'inline-flex', border: '1px solid #d1d5db', borderRadius: 6, overflow: 'hidden', marginBottom: '0.75rem' }}>
+            <div style={{ display: 'inline-flex', border: '1px solid var(--border-strong)', borderRadius: 6, overflow: 'hidden', marginBottom: '0.75rem' }}>
               {([['pricings', "This version's prices"], ['templates', 'Template library']] as const).map(([key, label]) => {
                 const active = (key === 'templates') === templatesMode
                 return (
@@ -2145,8 +2145,8 @@ export function BidsPricingTab({
                     onClick={() => setTemplatesMode(key === 'templates')}
                     style={{
                       padding: '0.35rem 0.75rem',
-                      background: active ? '#3b82f6' : 'white',
-                      color: active ? 'white' : '#374151',
+                      background: active ? '#3b82f6' : 'var(--surface)',
+                      color: active ? 'white' : 'var(--text-700)',
                       border: 'none',
                       cursor: 'pointer',
                       fontSize: '0.8125rem',
@@ -2168,8 +2168,8 @@ export function BidsPricingTab({
                       alignItems: 'center',
                       gap: '0.25rem',
                       padding: '0.35rem 0.5rem',
-                      background: panelVersionId === v.id ? '#dbeafe' : '#f3f4f6',
-                      border: panelVersionId === v.id ? '1px solid #3b82f6' : '1px solid #d1d5db',
+                      background: panelVersionId === v.id ? 'var(--bg-blue-200)' : 'var(--bg-muted)',
+                      border: panelVersionId === v.id ? '1px solid #3b82f6' : '1px solid var(--border-strong)',
                       borderRadius: 4,
                     }}
                   >
@@ -2191,7 +2191,7 @@ export function BidsPricingTab({
                   </span>
                 ))}
                 {panelVersions.length === 0 && (
-                  <span style={{ color: '#9ca3af', fontSize: '0.8125rem', alignSelf: 'center' }}>
+                  <span style={{ color: 'var(--text-faint)', fontSize: '0.8125rem', alignSelf: 'center' }}>
                     No templates for this service type yet.
                   </span>
                 )}
@@ -2204,12 +2204,12 @@ export function BidsPricingTab({
                 </button>
               </div>
             ) : isBidOwnedPricing ? (
-              <div style={{ marginBottom: '0.75rem', fontSize: '0.875rem', color: '#374151' }}>
+              <div style={{ marginBottom: '0.75rem', fontSize: '0.875rem', color: 'var(--text-700)' }}>
                 Editing prices for the active version.
               </div>
             ) : (
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem', position: 'relative' }} data-add-pricing-menu>
-                <span style={{ fontSize: '0.875rem', color: '#6b7280' }}>This version has no pricing yet.</span>
+                <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>This version has no pricing yet.</span>
                 <button
                   type="button"
                   onClick={() => setAddPricingMenuOpen((o) => !o)}
@@ -2218,11 +2218,11 @@ export function BidsPricingTab({
                   Set up pricing ▾
                 </button>
                 {addPricingMenuOpen && (
-                  <div style={{ position: 'absolute', top: '100%', left: 0, marginTop: 4, background: 'white', border: '1px solid #d1d5db', borderRadius: 6, boxShadow: '0 4px 12px rgba(0,0,0,0.12)', zIndex: 30, minWidth: '14rem', padding: '0.25rem', maxHeight: '60vh', overflowY: 'auto' }}>
+                  <div style={{ position: 'absolute', top: '100%', left: 0, marginTop: 4, background: 'var(--surface)', border: '1px solid var(--border-strong)', borderRadius: 6, boxShadow: '0 4px 12px rgba(0,0,0,0.12)', zIndex: 30, minWidth: '14rem', padding: '0.25rem', maxHeight: '60vh', overflowY: 'auto' }}>
                     <button type="button" onClick={openAddBlankPricing} style={addPricingMenuItemStyle}>Blank pricing</button>
                     {priceBookVersions.filter((p) => p.id !== selectedPricingVersionId).length > 0 && (
                       <div style={{ borderTop: '1px solid #f1f5f9', margin: '0.25rem 0', paddingTop: '0.25rem' }}>
-                        <div style={{ fontSize: '0.7rem', color: '#9ca3af', padding: '0.15rem 0.5rem' }}>Duplicate another version's pricing</div>
+                        <div style={{ fontSize: '0.7rem', color: 'var(--text-faint)', padding: '0.15rem 0.5rem' }}>Duplicate another version's pricing</div>
                         {priceBookVersions.filter((p) => p.id !== selectedPricingVersionId).map((p) => (
                           <button key={p.id} type="button" onClick={() => openClonePricing(p.id, p.name)} style={addPricingMenuItemStyle}>{p.name}</button>
                         ))}
@@ -2230,7 +2230,7 @@ export function BidsPricingTab({
                     )}
                     {templatePriceBookVersions.length > 0 && (
                       <div style={{ borderTop: '1px solid #f1f5f9', margin: '0.25rem 0', paddingTop: '0.25rem' }}>
-                        <div style={{ fontSize: '0.7rem', color: '#9ca3af', padding: '0.15rem 0.5rem' }}>From template</div>
+                        <div style={{ fontSize: '0.7rem', color: 'var(--text-faint)', padding: '0.15rem 0.5rem' }}>From template</div>
                         {templatePriceBookVersions.map((t) => (
                           <button key={t.id} type="button" onClick={() => openClonePricing(t.id, t.name)} style={addPricingMenuItemStyle}>{t.name}</button>
                         ))}
@@ -2251,22 +2251,22 @@ export function BidsPricingTab({
                   style={{ 
                     width: '100%', 
                     padding: '0.5rem', 
-                    border: '1px solid #d1d5db', 
+                    border: '1px solid var(--border-strong)', 
                     borderRadius: 4, 
                     marginBottom: '0.5rem', 
                     boxSizing: 'border-box' 
                   }}
                 />
-                <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
+                <div style={{ border: '1px solid var(--border)', borderRadius: 4, overflow: 'hidden' }}>
                   <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                    <thead style={{ background: '#f9fafb' }}>
+                    <thead style={{ background: 'var(--bg-subtle)' }}>
                       <tr>
-                        <th style={{ padding: '0.5rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Fixture / Tie-in</th>
-                        <th style={{ padding: '0.5rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Rough In</th>
-                        <th style={{ padding: '0.5rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Top Out</th>
-                        <th style={{ padding: '0.5rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Trim Set</th>
-                        <th style={{ padding: '0.5rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Total</th>
-                        <th style={{ padding: '0.5rem', width: 60, borderBottom: '1px solid #e5e7eb' }} />
+                        <th style={{ padding: '0.5rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Fixture / Tie-in</th>
+                        <th style={{ padding: '0.5rem', textAlign: 'right', borderBottom: '1px solid var(--border)' }}>Rough In</th>
+                        <th style={{ padding: '0.5rem', textAlign: 'right', borderBottom: '1px solid var(--border)' }}>Top Out</th>
+                        <th style={{ padding: '0.5rem', textAlign: 'right', borderBottom: '1px solid var(--border)' }}>Trim Set</th>
+                        <th style={{ padding: '0.5rem', textAlign: 'right', borderBottom: '1px solid var(--border)' }}>Total</th>
+                        <th style={{ padding: '0.5rem', width: 60, borderBottom: '1px solid var(--border)' }} />
                       </tr>
                     </thead>
                     <tbody>
@@ -2275,7 +2275,7 @@ export function BidsPricingTab({
                           (entry.fixture_types?.name ?? '').toLowerCase().includes(priceBookSearchQuery.toLowerCase())
                         )
                         .map((entry) => (
-                        <tr key={entry.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                        <tr key={entry.id} style={{ borderBottom: '1px solid var(--border)' }}>
                           <td style={{ padding: '0.5rem' }}>{entry.fixture_types?.name ?? ''}</td>
                           <td style={{ padding: '0.5rem', textAlign: 'right' }}>${formatCurrency(Number(entry.rough_in_price))}</td>
                           <td style={{ padding: '0.5rem', textAlign: 'right' }}>${formatCurrency(Number(entry.top_out_price))}</td>
@@ -2296,7 +2296,7 @@ export function BidsPricingTab({
                   <div style={{ 
                     textAlign: 'center', 
                     padding: '1rem', 
-                    color: '#6b7280' 
+                    color: 'var(--text-muted)' 
                   }}>
                     No entries match "{priceBookSearchQuery}"
                     <button
@@ -2353,7 +2353,7 @@ export function BidsPricingTab({
             onClick={closePricingVersionForm}
           >
             <div
-              style={{ background: 'white', borderRadius: 8, padding: '1.5rem', minWidth: 320, boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }}
+              style={{ background: 'var(--surface)', borderRadius: 8, padding: '1.5rem', minWidth: 320, boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }}
               onClick={(e) => e.stopPropagation()}
             >
               <h3 style={{ margin: '0 0 1rem' }}>{
@@ -2369,7 +2369,7 @@ export function BidsPricingTab({
                   type="text"
                   value={pricingVersionNameInput}
                   onChange={(e) => setPricingVersionNameInput(e.target.value)}
-                  style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, marginBottom: '1rem', boxSizing: 'border-box' }}
+                  style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, marginBottom: '1rem', boxSizing: 'border-box' }}
                   placeholder="e.g. 2025 Standard"
                 />
                 <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -2377,7 +2377,7 @@ export function BidsPricingTab({
                     <button
                       type="button"
                       onClick={() => openDeletePricingVersionModal(editingPricingVersion)}
-                      style={{ padding: '0.5rem 1rem', background: 'white', color: '#b91c1c', border: '1px solid #fecaca', borderRadius: 4, cursor: 'pointer' }}
+                      style={{ padding: '0.5rem 1rem', background: 'var(--surface)', color: 'var(--text-red-700)', border: '1px solid #fecaca', borderRadius: 4, cursor: 'pointer' }}
                     >
                       Delete version
                     </button>
@@ -2385,7 +2385,7 @@ export function BidsPricingTab({
                     <span />
                   )}
                   <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-                    <button type="button" onClick={closePricingVersionForm} style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
+                    <button type="button" onClick={closePricingVersionForm} style={{ padding: '0.5rem 1rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
                     <button type="submit" disabled={savingPricingVersion} style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>{savingPricingVersion ? 'Saving…' : 'Save'}</button>
                   </div>
                 </div>
@@ -2412,15 +2412,15 @@ export function BidsPricingTab({
             }}
           >
             <div
-              style={{ background: 'white', borderRadius: 8, padding: '1.5rem', minWidth: 360, maxWidth: '90vw', boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }}
+              style={{ background: 'var(--surface)', borderRadius: 8, padding: '1.5rem', minWidth: 360, maxWidth: '90vw', boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }}
               onClick={(e) => e.stopPropagation()}
             >
-              <h3 style={{ margin: '0 0 0.75rem', color: '#b91c1c' }}>Delete price book version</h3>
-              <p style={{ margin: '0 0 0.75rem', color: '#374151', fontSize: '0.9rem' }}>
+              <h3 style={{ margin: '0 0 0.75rem', color: 'var(--text-red-700)' }}>Delete price book version</h3>
+              <p style={{ margin: '0 0 0.75rem', color: 'var(--text-700)', fontSize: '0.9rem' }}>
                 This will permanently delete the price book version{' '}
                 <strong>{pricingVersionToDelete.name}</strong> and all entries it contains.
               </p>
-              <p style={{ margin: '0 0 0.5rem', color: '#4b5563', fontSize: '0.875rem' }}>
+              <p style={{ margin: '0 0 0.5rem', color: 'var(--text-600)', fontSize: '0.875rem' }}>
                 Type the name of this price book version to confirm:
               </p>
               <input
@@ -2433,7 +2433,7 @@ export function BidsPricingTab({
                 style={{
                   width: '100%',
                   padding: '0.5rem',
-                  border: '1px solid #d1d5db',
+                  border: '1px solid var(--border-strong)',
                   borderRadius: 4,
                   marginBottom: '0.5rem',
                   boxSizing: 'border-box',
@@ -2441,7 +2441,7 @@ export function BidsPricingTab({
                 placeholder={pricingVersionToDelete.name}
               />
               {deletePricingVersionError && (
-                <p style={{ margin: '0 0 0.5rem', color: '#b91c1c', fontSize: '0.875rem' }}>
+                <p style={{ margin: '0 0 0.5rem', color: 'var(--text-red-700)', fontSize: '0.875rem' }}>
                   {deletePricingVersionError}
                 </p>
               )}
@@ -2456,8 +2456,8 @@ export function BidsPricingTab({
                   }}
                   style={{
                     padding: '0.5rem 1rem',
-                    background: '#f3f4f6',
-                    border: '1px solid #d1d5db',
+                    background: 'var(--bg-muted)',
+                    border: '1px solid var(--border-strong)',
                     borderRadius: 4,
                     cursor: 'pointer',
                   }}
@@ -2470,8 +2470,8 @@ export function BidsPricingTab({
                   disabled={!deletePricingVersionNameInput.trim()}
                   style={{
                     padding: '0.5rem 1rem',
-                    background: deletePricingVersionNameInput.trim() ? '#b91c1c' : '#e5e7eb',
-                    color: deletePricingVersionNameInput.trim() ? 'white' : '#9ca3af',
+                    background: deletePricingVersionNameInput.trim() ? '#b91c1c' : 'var(--bg-200)',
+                    color: deletePricingVersionNameInput.trim() ? 'white' : 'var(--text-faint)',
                     border: 'none',
                     borderRadius: 4,
                     cursor: deletePricingVersionNameInput.trim() ? 'pointer' : 'not-allowed',
@@ -2497,12 +2497,12 @@ export function BidsPricingTab({
             onClick={closePricingEntryForm}
           >
             <div
-              style={{ background: 'white', borderRadius: 8, padding: '1.5rem', minWidth: 360, boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }}
+              style={{ background: 'var(--surface)', borderRadius: 8, padding: '1.5rem', minWidth: 360, boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }}
               onClick={(e) => e.stopPropagation()}
             >
               <h3 style={{ margin: '0 0 1rem' }}>{editingPricingEntry ? 'Edit entry' : 'New entry'}</h3>
               {error && (
-                <div style={{ marginBottom: '1rem', padding: '0.75rem', background: '#fee2e2', color: '#991b1b', borderRadius: 4, fontSize: '0.875rem' }}>
+                <div style={{ marginBottom: '1rem', padding: '0.75rem', background: 'var(--bg-red-100)', color: 'var(--text-red-800)', borderRadius: 4, fontSize: '0.875rem' }}>
                   {error}
                 </div>
               )}
@@ -2516,7 +2516,7 @@ export function BidsPricingTab({
                   required
                   placeholder="Type or select fixture type..."
                   autoComplete="off"
-                  style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, marginBottom: '0.75rem', boxSizing: 'border-box' }}
+                  style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, marginBottom: '0.75rem', boxSizing: 'border-box' }}
                 />
                 <datalist id="pricing-fixture-types">
                   {fixtureTypes.map(ft => (
@@ -2526,19 +2526,19 @@ export function BidsPricingTab({
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', marginBottom: '0.75rem' }}>
                   <div>
                     <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' }}>Rough In</label>
-                    <input type="number" inputMode="decimal" min={0} step={0.01} value={pricingEntryRoughIn} onChange={(e) => setPricingEntryRoughIn(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, boxSizing: 'border-box' }} />
+                    <input type="number" inputMode="decimal" min={0} step={0.01} value={pricingEntryRoughIn} onChange={(e) => setPricingEntryRoughIn(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, boxSizing: 'border-box' }} />
                   </div>
                   <div>
                     <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' }}>Top Out</label>
-                    <input type="number" inputMode="decimal" min={0} step={0.01} value={pricingEntryTopOut} onChange={(e) => setPricingEntryTopOut(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, boxSizing: 'border-box' }} />
+                    <input type="number" inputMode="decimal" min={0} step={0.01} value={pricingEntryTopOut} onChange={(e) => setPricingEntryTopOut(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, boxSizing: 'border-box' }} />
                   </div>
                   <div>
                     <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' }}>Trim Set</label>
-                    <input type="number" inputMode="decimal" min={0} step={0.01} value={pricingEntryTrimSet} onChange={(e) => setPricingEntryTrimSet(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, boxSizing: 'border-box' }} />
+                    <input type="number" inputMode="decimal" min={0} step={0.01} value={pricingEntryTrimSet} onChange={(e) => setPricingEntryTrimSet(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, boxSizing: 'border-box' }} />
                   </div>
                   <div>
                     <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' }}>Total (auto-calculated)</label>
-                    <input type="number" min={0} step={0.01} value={pricingEntryTotal} readOnly style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, boxSizing: 'border-box', background: '#f9fafb', cursor: 'not-allowed' }} />
+                    <input type="number" min={0} step={0.01} value={pricingEntryTotal} readOnly style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, boxSizing: 'border-box', background: 'var(--bg-subtle)', cursor: 'not-allowed' }} />
                   </div>
                 </div>
                 <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -2551,14 +2551,14 @@ export function BidsPricingTab({
                           await deletePricingEntry(editingPricingEntry)
                           closePricingEntryForm()
                         }}
-                        style={{ padding: '0.5rem 1rem', background: '#fef2f2', color: '#991b1b', border: '1px solid #fecaca', borderRadius: 4, cursor: 'pointer' }}
+                        style={{ padding: '0.5rem 1rem', background: 'var(--bg-red-tint)', color: 'var(--text-red-800)', border: '1px solid #fecaca', borderRadius: 4, cursor: 'pointer' }}
                       >
                         Delete
                       </button>
                     )}
                   </div>
                   <div style={{ display: 'flex', gap: '0.5rem' }}>
-                    <button type="button" onClick={closePricingEntryForm} style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
+                    <button type="button" onClick={closePricingEntryForm} style={{ padding: '0.5rem 1rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
                     <button type="submit" disabled={savingPricingEntry} style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>{savingPricingEntry ? 'Saving…' : 'Save'}</button>
                   </div>
                 </div>

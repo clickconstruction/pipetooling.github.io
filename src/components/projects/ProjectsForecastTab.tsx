@@ -215,7 +215,7 @@ export function ProjectsForecastTab({ customerId, myRole = null }: Props) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-      <div style={{ display: 'flex', gap: '0.25rem', borderBottom: '1px solid #e5e7eb' }}>
+      <div style={{ display: 'flex', gap: '0.25rem', borderBottom: '1px solid var(--border)' }}>
         <button
           type="button"
           style={pageUnderlineTabStyle(activeSub === 'specific')}
@@ -237,10 +237,10 @@ export function ProjectsForecastTab({ customerId, myRole = null }: Props) {
           role="alert"
           style={{
             padding: '0.5rem 0.75rem',
-            background: '#fef2f2',
+            background: 'var(--bg-red-tint)',
             border: '1px solid #fecaca',
             borderRadius: 6,
-            color: '#991b1b',
+            color: 'var(--text-red-800)',
             fontSize: '0.8125rem',
           }}
         >

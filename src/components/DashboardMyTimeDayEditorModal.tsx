@@ -387,6 +387,7 @@ export function DashboardMyTimeDayEditorModal({
   const salaryStripPrefetchDoneKeyRef = useRef<string | null>(null)
   const [salarySchedulePrefetchBusy, setSalarySchedulePrefetchBusy] = useState(false)
   const [stripEmptyDayHint, setStripEmptyDayHint] = useState<'time_off' | 'no_work' | null>(null)
+  const [stripTimeOffLabel, setStripTimeOffLabel] = useState<string>(UNPAID_TIME_OFF_LABEL)
   const [forceClockOutSession, setForceClockOutSession] = useState<DayEditorSession | null>(null)
   const [adjustTimesSession, setAdjustTimesSession] = useState<DayEditorSession | null>(null)
   const [addDisjointOpen, setAddDisjointOpen] = useState<{
@@ -734,6 +735,7 @@ export function DashboardMyTimeDayEditorModal({
         })
 
         if (resolution.kind === 'time_off') {
+          setStripTimeOffLabel(resolution.kindLabel)
           setStripEmptyDayHint('time_off')
           setSalarySchedulePrefetchBusy(false)
           return
@@ -1465,7 +1467,7 @@ export function DashboardMyTimeDayEditorModal({
         style={{
           display: 'inline-flex',
           flexShrink: 0,
-          border: '1px solid #d1d5db',
+          border: '1px solid var(--border-strong)',
           borderRadius: 6,
           overflow: 'hidden',
           fontSize: '0.75rem',
@@ -1479,8 +1481,8 @@ export function DashboardMyTimeDayEditorModal({
             border: 'none',
             margin: 0,
             padding: '0.35rem 0.65rem',
-            background: layoutMode === 'visual' ? '#eff6ff' : 'white',
-            color: layoutMode === 'visual' ? '#1d4ed8' : '#374151',
+            background: layoutMode === 'visual' ? 'var(--bg-blue-tint)' : 'var(--surface)',
+            color: layoutMode === 'visual' ? 'var(--text-blue-700)' : 'var(--text-700)',
             cursor: saving ? 'not-allowed' : 'pointer',
             fontWeight: layoutMode === 'visual' ? 600 : 400,
           }}
@@ -1493,11 +1495,11 @@ export function DashboardMyTimeDayEditorModal({
           disabled={saving}
           style={{
             border: 'none',
-            borderLeft: '1px solid #d1d5db',
+            borderLeft: '1px solid var(--border-strong)',
             margin: 0,
             padding: '0.35rem 0.65rem',
-            background: layoutMode === 'form' ? '#eff6ff' : 'white',
-            color: layoutMode === 'form' ? '#1d4ed8' : '#374151',
+            background: layoutMode === 'form' ? 'var(--bg-blue-tint)' : 'var(--surface)',
+            color: layoutMode === 'form' ? 'var(--text-blue-700)' : 'var(--text-700)',
             cursor: saving ? 'not-allowed' : 'pointer',
             fontWeight: layoutMode === 'form' ? 600 : 400,
           }}
@@ -2547,7 +2549,7 @@ export function DashboardMyTimeDayEditorModal({
     >
       <div
         style={{
-          background: 'white',
+          background: 'var(--surface)',
           padding: '1.5rem',
           borderRadius: 8,
           minWidth: 360,
@@ -2629,13 +2631,13 @@ export function DashboardMyTimeDayEditorModal({
         {sessionsSpanDenverSubtitle ? (
           <p
             id="dashboard-my-time-editor-subtitle"
-            style={{ margin: '0 0 0.5rem 0', fontSize: '0.8125rem', color: '#6b7280' }}
+            style={{ margin: '0 0 0.5rem 0', fontSize: '0.8125rem', color: 'var(--text-muted)' }}
           >
             {sessionsSpanDenverSubtitle}
           </p>
         ) : null}
         {!inSaveableRange ? (
-          <p style={{ margin: 0, fontSize: '0.875rem', color: '#6b7280' }}>
+          <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)' }}>
             {fenceOverridden
               ? 'This day is outside the pay period.'
               : 'Only this week and last week can be edited from the dashboard (America/Chicago week boundaries). For older days, use People → Hours.'}
@@ -2645,10 +2647,10 @@ export function DashboardMyTimeDayEditorModal({
             id="dashboard-my-time-prior-week-notice-desc"
             style={{ display: 'flex', flexDirection: 'column', gap: '1rem', maxWidth: 420 }}
           >
-            <p style={{ margin: 0, fontSize: '1rem', fontWeight: 600, color: '#111827' }}>
+            <p style={{ margin: 0, fontSize: '1rem', fontWeight: 600, color: 'var(--text-strong)' }}>
               {fenceOverridden ? 'Editing a payroll-period day' : 'Editing a prior week'}
             </p>
-            <p style={{ margin: 0, fontSize: '0.875rem', color: '#374151', lineHeight: 1.5 }}>
+            <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-700)', lineHeight: 1.5 }}>
               {fenceOverridden ? (
                 <>
                   You are about to change hours for{' '}
@@ -2671,8 +2673,8 @@ export function DashboardMyTimeDayEditorModal({
                 style={{
                   padding: '0.45rem 0.85rem',
                   borderRadius: 6,
-                  border: '1px solid #d1d5db',
-                  background: 'white',
+                  border: '1px solid var(--border-strong)',
+                  background: 'var(--surface)',
                   cursor: 'pointer',
                   fontSize: '0.875rem',
                 }}
@@ -2698,15 +2700,15 @@ export function DashboardMyTimeDayEditorModal({
             </div>
           </div>
         ) : sessionsFetchError ? (
-          <p style={{ margin: 0, fontSize: '0.875rem', color: '#b91c1c' }}>{sessionsFetchError}</p>
+          <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-red-700)' }}>{sessionsFetchError}</p>
         ) : pendingAuthForFetch ||
           (sessionsProp.length === 0 && sessionsLoading) ||
           (prefetchSalarySessionsWhenEmpty && salarySchedulePrefetchBusy) ? (
-          <p style={{ margin: 0, fontSize: '0.875rem', color: '#6b7280' }}>Loading sessions…</p>
+          <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)' }}>Loading sessions…</p>
         ) : resolvedSessions.length === 0 ? (
-          <p style={{ margin: 0, fontSize: '0.875rem', color: '#6b7280' }}>
+          <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)' }}>
             {stripEmptyDayHint === 'time_off'
-              ? `No sessions this day — ${UNPAID_TIME_OFF_LABEL}.`
+              ? `No sessions this day — ${stripTimeOffLabel}.`
               : stripEmptyDayHint === 'no_work'
                 ? 'No scheduled work this day (e.g. weekend or no shift blocks).'
                 : 'No sessions this day.'}
@@ -2719,8 +2721,8 @@ export function DashboardMyTimeDayEditorModal({
                 style={{
                   margin: '0 0 0.5rem 0',
                   fontSize: '0.8125rem',
-                  color: '#92400e',
-                  background: '#fffbeb',
+                  color: 'var(--text-amber-800)',
+                  background: 'var(--bg-amber-tint)',
                   border: '1px solid #fcd34d',
                   borderRadius: 6,
                   padding: '0.5rem 0.65rem',
@@ -2741,7 +2743,7 @@ export function DashboardMyTimeDayEditorModal({
                   margin: '0 0 0.5rem 0',
                 }}
               >
-                <p style={{ margin: 0, fontSize: '0.75rem', color: '#9ca3af', flex: 1, minWidth: 0 }}>
+                <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-faint)', flex: 1, minWidth: 0 }}>
                   {sortedSessions.length} session{sortedSessions.length === 1 ? '' : 's'}
                   {clockTimesReadOnly ? (
                     <>
@@ -2755,7 +2757,7 @@ export function DashboardMyTimeDayEditorModal({
                 {layoutModeToggleEl}
               </div>
             ) : (
-              <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.75rem', color: '#9ca3af' }}>
+              <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.75rem', color: 'var(--text-faint)' }}>
                 {sortedSessions.length} session{sortedSessions.length === 1 ? '' : 's'}
                 {clockTimesReadOnly ? (
                   <>
@@ -2776,7 +2778,7 @@ export function DashboardMyTimeDayEditorModal({
                 overflowY: 'auto',
                 minHeight: 260,
                 maxHeight: 'min(65vh, 640px)',
-                border: myTimeCompactLayout ? 'none' : '1px solid #e5e7eb',
+                border: myTimeCompactLayout ? 'none' : '1px solid var(--border)',
                 borderRadius: myTimeCompactLayout ? 0 : 8,
                 padding: myTimeCompactLayout ? 4 : 8,
                 display: 'flex',
@@ -2785,7 +2787,7 @@ export function DashboardMyTimeDayEditorModal({
               }}
             >
               {!editorInitialized ? (
-                <p style={{ margin: 0, fontSize: '0.875rem', color: '#6b7280' }}>Loading editor…</p>
+                <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)' }}>Loading editor…</p>
               ) : (
                 timelineItems.map((item: DayTimelineItem, idx: number) => {
                   if (item.type === 'gap') {
@@ -2799,9 +2801,9 @@ export function DashboardMyTimeDayEditorModal({
                           minHeight: 32,
                           padding: '0.35rem 0.5rem',
                           borderRadius: 6,
-                          background: 'repeating-linear-gradient(-45deg, #f3f4f6, #f3f4f6 8px, #fafafa 8px, #fafafa 16px)',
+                          background: 'repeating-linear-gradient(-45deg, var(--bg-muted), var(--bg-muted) 8px, var(--bg-page) 8px, var(--bg-page) 16px)',
                           fontSize: '0.75rem',
-                          color: '#6b7280',
+                          color: 'var(--text-muted)',
                           display: 'flex',
                           alignItems: 'center',
                         }}
@@ -2833,8 +2835,8 @@ export function DashboardMyTimeDayEditorModal({
                           role="status"
                           style={{
                             fontSize: '0.8125rem',
-                            color: '#92400e',
-                            background: '#fffbeb',
+                            color: 'var(--text-amber-800)',
+                            background: 'var(--bg-amber-tint)',
                             border: '1px solid #f59e0b',
                             borderRadius: 6,
                             padding: '0.45rem 0.6rem',
@@ -2964,7 +2966,7 @@ export function DashboardMyTimeDayEditorModal({
                       border: 'none',
                       background: 'transparent',
                       cursor: saving ? 'not-allowed' : 'pointer',
-                      color: '#9ca3af',
+                      color: 'var(--text-faint)',
                       fontSize: '1rem',
                       lineHeight: 1,
                     }}
@@ -2975,7 +2977,7 @@ export function DashboardMyTimeDayEditorModal({
               ) : null}
             </div>
 
-            {error && <p style={{ margin: '0.75rem 0 0', fontSize: '0.8125rem', color: '#dc2626' }}>{error}</p>}
+            {error && <p style={{ margin: '0.75rem 0 0', fontSize: '0.8125rem', color: 'var(--text-red-600)' }}>{error}</p>}
 
             <div
               style={{
@@ -3028,8 +3030,8 @@ export function DashboardMyTimeDayEditorModal({
                       fontWeight: 600,
                       border: '1px solid #b45309',
                       borderRadius: 6,
-                      background: '#fffbeb',
-                      color: '#b45309',
+                      background: 'var(--bg-amber-tint)',
+                      color: 'var(--text-amber-700)',
                       cursor:
                         !ncnsClickAllowed || saving || ncnsBusy || ncnsPrecloseOpenSessions != null
                           ? 'not-allowed'
@@ -3052,9 +3054,9 @@ export function DashboardMyTimeDayEditorModal({
                     disabled={saving}
                     style={{
                       padding: '0.5rem 1rem',
-                      border: '1px solid #d1d5db',
+                      border: '1px solid var(--border-strong)',
                       borderRadius: 4,
-                      background: 'white',
+                      background: 'var(--surface)',
                       cursor: saving ? 'not-allowed' : 'pointer',
                     }}
                   >
@@ -3141,8 +3143,8 @@ export function DashboardMyTimeDayEditorModal({
                     fontWeight: 600,
                     border: '1px solid #b45309',
                     borderRadius: 6,
-                    background: '#fffbeb',
-                    color: '#b45309',
+                    background: 'var(--bg-amber-tint)',
+                    color: 'var(--text-amber-700)',
                     cursor:
                       !ncnsClickAllowed || saving || ncnsBusy || ncnsPrecloseOpenSessions != null
                         ? 'not-allowed'
@@ -3160,9 +3162,9 @@ export function DashboardMyTimeDayEditorModal({
               onClick={onClose}
               style={{
                 padding: '0.5rem 1rem',
-                border: '1px solid #d1d5db',
+                border: '1px solid var(--border-strong)',
                 borderRadius: 4,
-                background: 'white',
+                background: 'var(--surface)',
                 cursor: 'pointer',
               }}
             >
@@ -3257,7 +3259,7 @@ export function DashboardMyTimeDayEditorModal({
           aria-modal
           aria-labelledby="ncns-preclose-dialog-title"
           style={{
-            background: 'white',
+            background: 'var(--surface)',
             borderRadius: 8,
             padding: '1.25rem',
             maxWidth: 420,
@@ -3274,8 +3276,8 @@ export function DashboardMyTimeDayEditorModal({
               style={{
                 margin: '0 0 1rem 0',
                 fontSize: '0.875rem',
-                color: '#92400e',
-                background: '#fffbeb',
+                color: 'var(--text-amber-800)',
+                background: 'var(--bg-amber-tint)',
                 border: '1px solid #fcd34d',
                 borderRadius: 6,
                 padding: '0.65rem 0.75rem',
@@ -3286,7 +3288,7 @@ export function DashboardMyTimeDayEditorModal({
               may require re-approval.
             </p>
           ) : null}
-          <p style={{ margin: '0 0 1rem 0', fontSize: '0.875rem', color: '#374151', lineHeight: 1.5 }}>
+          <p style={{ margin: '0 0 1rem 0', fontSize: '0.875rem', color: 'var(--text-700)', lineHeight: 1.5 }}>
             Clock out {ncnsPrecloseOpenSessions.length} open session
             {ncnsPrecloseOpenSessions.length === 1 ? '' : 's'} at the current time, then record no-call
             no-show? This changes their hours for today.
@@ -3297,8 +3299,8 @@ export function DashboardMyTimeDayEditorModal({
               style={{
                 margin: '0 0 0.75rem 0',
                 fontSize: '0.8125rem',
-                color: '#b91c1c',
-                background: '#fef2f2',
+                color: 'var(--text-red-700)',
+                background: 'var(--bg-red-tint)',
                 border: '1px solid #fecaca',
                 borderRadius: 6,
                 padding: '0.5rem 0.65rem',
@@ -3316,9 +3318,9 @@ export function DashboardMyTimeDayEditorModal({
               style={{
                 padding: '0.45rem 0.85rem',
                 fontSize: '0.875rem',
-                border: '1px solid #d1d5db',
+                border: '1px solid var(--border-strong)',
                 borderRadius: 6,
-                background: 'white',
+                background: 'var(--surface)',
                 cursor: ncnsBusy ? 'not-allowed' : 'pointer',
               }}
             >
@@ -3334,8 +3336,8 @@ export function DashboardMyTimeDayEditorModal({
                 fontWeight: 600,
                 border: '1px solid #b45309',
                 borderRadius: 6,
-                background: '#fffbeb',
-                color: '#b45309',
+                background: 'var(--bg-amber-tint)',
+                color: 'var(--text-amber-700)',
                 cursor: ncnsBusy ? 'not-allowed' : 'pointer',
               }}
             >
@@ -3365,7 +3367,7 @@ export function DashboardMyTimeDayEditorModal({
           aria-modal
           aria-labelledby="reject-session-dialog-title"
           style={{
-            background: 'white',
+            background: 'var(--surface)',
             borderRadius: 8,
             padding: '1.25rem',
             maxWidth: 420,
@@ -3381,7 +3383,7 @@ export function DashboardMyTimeDayEditorModal({
             style={{
               margin: '0 0 0.5rem 0',
               fontSize: '0.8125rem',
-              color: '#6b7280',
+              color: 'var(--text-muted)',
               fontVariantNumeric: 'tabular-nums',
             }}
           >
@@ -3391,7 +3393,7 @@ export function DashboardMyTimeDayEditorModal({
               : ''}
             {` · ${formatWorkDateYmdWeekdayLongFriendly(dateStr)}`}
           </p>
-          <p style={{ margin: '0 0 1rem 0', fontSize: '0.875rem', color: '#374151', lineHeight: 1.5 }}>
+          <p style={{ margin: '0 0 1rem 0', fontSize: '0.875rem', color: 'var(--text-700)', lineHeight: 1.5 }}>
             This session will no longer count toward hours until restored by staff.
           </p>
           {rejectSessionConfirm.approved_at != null ? (
@@ -3399,8 +3401,8 @@ export function DashboardMyTimeDayEditorModal({
               style={{
                 margin: '0 0 1rem 0',
                 fontSize: '0.875rem',
-                color: '#92400e',
-                background: '#fffbeb',
+                color: 'var(--text-amber-800)',
+                background: 'var(--bg-amber-tint)',
                 border: '1px solid #fcd34d',
                 borderRadius: 6,
                 padding: '0.65rem 0.75rem',
@@ -3417,8 +3419,8 @@ export function DashboardMyTimeDayEditorModal({
               style={{
                 margin: '0 0 0.75rem 0',
                 fontSize: '0.8125rem',
-                color: '#b91c1c',
-                background: '#fef2f2',
+                color: 'var(--text-red-700)',
+                background: 'var(--bg-red-tint)',
                 border: '1px solid #fecaca',
                 borderRadius: 6,
                 padding: '0.5rem 0.65rem',
@@ -3436,9 +3438,9 @@ export function DashboardMyTimeDayEditorModal({
               style={{
                 padding: '0.45rem 0.85rem',
                 fontSize: '0.875rem',
-                border: '1px solid #d1d5db',
+                border: '1px solid var(--border-strong)',
                 borderRadius: 6,
-                background: 'white',
+                background: 'var(--surface)',
                 cursor: rejectSessionBusyId != null ? 'not-allowed' : 'pointer',
               }}
             >
@@ -3454,8 +3456,8 @@ export function DashboardMyTimeDayEditorModal({
                 fontWeight: 600,
                 border: '1px solid #dc2626',
                 borderRadius: 6,
-                background: '#fef2f2',
-                color: '#b91c1c',
+                background: 'var(--bg-red-tint)',
+                color: 'var(--text-red-700)',
                 cursor: rejectSessionBusyId != null ? 'not-allowed' : 'pointer',
               }}
             >
@@ -3490,7 +3492,7 @@ export function DashboardMyTimeDayEditorModal({
           aria-modal
           aria-labelledby="ncns-dialog-title"
           style={{
-            background: 'white',
+            background: 'var(--surface)',
             borderRadius: 8,
             padding: '1.25rem',
             maxWidth: 420,
@@ -3504,7 +3506,7 @@ export function DashboardMyTimeDayEditorModal({
               <h3 id="ncns-dialog-title" style={{ margin: '0 0 0.75rem 0', fontSize: '1.05rem' }}>
                 Record no-call, no-show?
               </h3>
-              <p style={{ margin: '0 0 1rem 0', fontSize: '0.875rem', color: '#374151', lineHeight: 1.5 }}>
+              <p style={{ margin: '0 0 1rem 0', fontSize: '0.875rem', color: 'var(--text-700)', lineHeight: 1.5 }}>
                 This records a no-call, no-show for <strong>{modalTitlePerson}</strong> on{' '}
                 <strong>{formatWorkDateYmdWeekdayLongFriendly(dateStr)}</strong>. Every closed clock session for that
                 day will be rejected, an attendance incident will be saved, and time / payroll totals will reflect the
@@ -3512,7 +3514,7 @@ export function DashboardMyTimeDayEditorModal({
               </p>
               <label
                 htmlFor="ncns-details-simple"
-                style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: '#6b7280', marginBottom: 6 }}
+                style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: 6 }}
               >
                 Details (optional)
               </label>
@@ -3529,7 +3531,7 @@ export function DashboardMyTimeDayEditorModal({
                   marginBottom: '1rem',
                   fontSize: '0.875rem',
                   padding: '0.5rem 0.6rem',
-                  border: '1px solid #d1d5db',
+                  border: '1px solid var(--border-strong)',
                   borderRadius: 4,
                   resize: 'vertical',
                   fontFamily: 'inherit',
@@ -3543,8 +3545,8 @@ export function DashboardMyTimeDayEditorModal({
                   style={{
                     margin: '0 0 0.75rem 0',
                     fontSize: '0.8125rem',
-                    color: '#b91c1c',
-                    background: '#fef2f2',
+                    color: 'var(--text-red-700)',
+                    background: 'var(--bg-red-tint)',
                     border: '1px solid #fecaca',
                     borderRadius: 6,
                     padding: '0.5rem 0.65rem',
@@ -3565,9 +3567,9 @@ export function DashboardMyTimeDayEditorModal({
                   }}
                   style={{
                     padding: '0.5rem 0.85rem',
-                    border: '1px solid #d1d5db',
+                    border: '1px solid var(--border-strong)',
                     borderRadius: 4,
-                    background: 'white',
+                    background: 'var(--surface)',
                     cursor: ncnsBusy ? 'not-allowed' : 'pointer',
                   }}
                 >
@@ -3581,8 +3583,8 @@ export function DashboardMyTimeDayEditorModal({
                     padding: '0.5rem 0.85rem',
                     border: '1px solid #b45309',
                     borderRadius: 4,
-                    background: '#fffbeb',
-                    color: '#b45309',
+                    background: 'var(--bg-amber-tint)',
+                    color: 'var(--text-amber-700)',
                     fontWeight: 600,
                     cursor: ncnsBusy ? 'not-allowed' : 'pointer',
                   }}
@@ -3597,7 +3599,7 @@ export function DashboardMyTimeDayEditorModal({
               <h3 id="ncns-dialog-title" style={{ margin: '0 0 0.75rem 0', fontSize: '1.05rem' }}>
                 Approved time on this day
               </h3>
-              <p style={{ margin: '0 0 1rem 0', fontSize: '0.875rem', color: '#374151', lineHeight: 1.5 }}>
+              <p style={{ margin: '0 0 1rem 0', fontSize: '0.875rem', color: 'var(--text-700)', lineHeight: 1.5 }}>
                 Some time on this day was <strong>already approved</strong>. Recording a no-call, no-show will reject those
                 sessions and <strong>remove the approved hours from payroll totals</strong>. The person may experience
                 this as breaking <strong>trust</strong> if it is not discussed with them. Only continue if you accept
@@ -3614,9 +3616,9 @@ export function DashboardMyTimeDayEditorModal({
                   }}
                   style={{
                     padding: '0.5rem 0.85rem',
-                    border: '1px solid #d1d5db',
+                    border: '1px solid var(--border-strong)',
                     borderRadius: 4,
-                    background: 'white',
+                    background: 'var(--surface)',
                     cursor: ncnsBusy ? 'not-allowed' : 'pointer',
                   }}
                 >
@@ -3656,7 +3658,7 @@ export function DashboardMyTimeDayEditorModal({
                   alignItems: 'flex-start',
                   margin: '0 0 1rem 0',
                   fontSize: '0.875rem',
-                  color: '#374151',
+                  color: 'var(--text-700)',
                   lineHeight: 1.45,
                   cursor: ncnsBusy ? 'default' : 'pointer',
                 }}
@@ -3675,7 +3677,7 @@ export function DashboardMyTimeDayEditorModal({
               </label>
               <label
                 htmlFor="ncns-details-approved"
-                style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: '#6b7280', marginBottom: 6 }}
+                style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: 6 }}
               >
                 Details (optional)
               </label>
@@ -3692,7 +3694,7 @@ export function DashboardMyTimeDayEditorModal({
                   marginBottom: '1rem',
                   fontSize: '0.875rem',
                   padding: '0.5rem 0.6rem',
-                  border: '1px solid #d1d5db',
+                  border: '1px solid var(--border-strong)',
                   borderRadius: 4,
                   resize: 'vertical',
                   fontFamily: 'inherit',
@@ -3706,8 +3708,8 @@ export function DashboardMyTimeDayEditorModal({
                   style={{
                     margin: '0 0 0.75rem 0',
                     fontSize: '0.8125rem',
-                    color: '#b91c1c',
-                    background: '#fef2f2',
+                    color: 'var(--text-red-700)',
+                    background: 'var(--bg-red-tint)',
                     border: '1px solid #fecaca',
                     borderRadius: 6,
                     padding: '0.5rem 0.65rem',
@@ -3727,9 +3729,9 @@ export function DashboardMyTimeDayEditorModal({
                   }}
                   style={{
                     padding: '0.5rem 0.85rem',
-                    border: '1px solid #d1d5db',
+                    border: '1px solid var(--border-strong)',
                     borderRadius: 4,
-                    background: 'white',
+                    background: 'var(--surface)',
                     cursor: ncnsBusy ? 'not-allowed' : 'pointer',
                   }}
                 >
@@ -3743,8 +3745,8 @@ export function DashboardMyTimeDayEditorModal({
                     padding: '0.5rem 0.85rem',
                     border: '1px solid #b45309',
                     borderRadius: 4,
-                    background: ncnsPayrollAck ? '#fffbeb' : '#f3f4f6',
-                    color: '#b45309',
+                    background: ncnsPayrollAck ? 'var(--bg-amber-tint)' : 'var(--bg-muted)',
+                    color: 'var(--text-amber-700)',
                     fontWeight: 600,
                     cursor: ncnsBusy || !ncnsPayrollAck ? 'not-allowed' : 'pointer',
                     opacity: ncnsPayrollAck ? 1 : 0.6,
@@ -3781,13 +3783,13 @@ export function DashboardMyTimeDayEditorModal({
           aria-modal="true"
           aria-labelledby="mark-not-coming-in-confirm-title"
           style={{
-            background: 'white',
+            background: 'var(--surface)',
             borderRadius: 8,
             padding: '1.25rem',
             maxWidth: 440,
             width: '100%',
             boxShadow: '0 20px 40px rgba(0,0,0,0.15)',
-            border: '1px solid #e5e7eb',
+            border: '1px solid var(--border)',
           }}
           onMouseDown={(e) => e.stopPropagation()}
         >
@@ -3797,13 +3799,13 @@ export function DashboardMyTimeDayEditorModal({
               margin: '0 0 0.75rem 0',
               fontSize: '1.05rem',
               fontWeight: 600,
-              color: '#111827',
+              color: 'var(--text-strong)',
               lineHeight: 1.35,
             }}
           >
             Not coming in
           </h2>
-          <p style={{ margin: '0 0 1.25rem 0', fontSize: '0.875rem', color: '#374151', lineHeight: 1.5 }}>
+          <p style={{ margin: '0 0 1.25rem 0', fontSize: '0.875rem', color: 'var(--text-700)', lineHeight: 1.5 }}>
             Mark this person as not coming in on this day? This adds unpaid time off on the calendar. They can still
             clock in if plans change.
           </p>
@@ -3815,9 +3817,9 @@ export function DashboardMyTimeDayEditorModal({
               style={{
                 padding: '0.45rem 0.85rem',
                 fontSize: '0.875rem',
-                border: '1px solid #d1d5db',
+                border: '1px solid var(--border-strong)',
                 borderRadius: 6,
-                background: 'white',
+                background: 'var(--surface)',
                 cursor: markNotComingInBusy ? 'not-allowed' : 'pointer',
               }}
             >
@@ -3868,13 +3870,13 @@ export function DashboardMyTimeDayEditorModal({
           aria-labelledby="discard-changes-confirm-title"
           aria-describedby="discard-changes-confirm-desc"
           style={{
-            background: 'white',
+            background: 'var(--surface)',
             borderRadius: 8,
             padding: '1.25rem',
             maxWidth: 440,
             width: '100%',
             boxShadow: '0 20px 40px rgba(0,0,0,0.15)',
-            border: '1px solid #e5e7eb',
+            border: '1px solid var(--border)',
           }}
           onMouseDown={(e) => e.stopPropagation()}
         >
@@ -3884,7 +3886,7 @@ export function DashboardMyTimeDayEditorModal({
               margin: '0 0 0.75rem 0',
               fontSize: '1.05rem',
               fontWeight: 600,
-              color: '#111827',
+              color: 'var(--text-strong)',
               lineHeight: 1.35,
             }}
           >
@@ -3892,7 +3894,7 @@ export function DashboardMyTimeDayEditorModal({
           </h2>
           <p
             id="discard-changes-confirm-desc"
-            style={{ margin: '0 0 1.25rem 0', fontSize: '0.875rem', color: '#374151', lineHeight: 1.5 }}
+            style={{ margin: '0 0 1.25rem 0', fontSize: '0.875rem', color: 'var(--text-700)', lineHeight: 1.5 }}
           >
             You have unsaved changes to <strong>{modalTitlePerson}</strong>&rsquo;s time for{' '}
             <strong>{formatWorkDateYmdWeekdayLongFriendly(dateStr)}</strong>. Closing now will discard them.
@@ -3904,9 +3906,9 @@ export function DashboardMyTimeDayEditorModal({
               style={{
                 padding: '0.45rem 0.85rem',
                 fontSize: '0.875rem',
-                border: '1px solid #d1d5db',
+                border: '1px solid var(--border-strong)',
                 borderRadius: 6,
-                background: 'white',
+                background: 'var(--surface)',
                 cursor: 'pointer',
               }}
             >
@@ -3921,8 +3923,8 @@ export function DashboardMyTimeDayEditorModal({
                 fontWeight: 600,
                 border: '1px solid #dc2626',
                 borderRadius: 6,
-                background: '#fef2f2',
-                color: '#b91c1c',
+                background: 'var(--bg-red-tint)',
+                color: 'var(--text-red-700)',
                 cursor: 'pointer',
               }}
             >

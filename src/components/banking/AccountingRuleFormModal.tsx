@@ -315,13 +315,13 @@ export function AccountingRuleFormModal({
         aria-modal="true"
         onMouseDown={(e) => e.stopPropagation()}
         style={{
-          background: 'white',
+          background: 'var(--surface)',
           borderRadius: 8,
           maxWidth: 520,
           width: '100%',
           padding: '1.25rem',
           boxShadow: '0 20px 40px rgba(0,0,0,0.12)',
-          border: '1px solid #e5e7eb',
+          border: '1px solid var(--border)',
           boxSizing: 'border-box',
           maxHeight: '90vh',
           overflowY: 'auto',
@@ -355,7 +355,7 @@ export function AccountingRuleFormModal({
                 border: 'none',
                 borderRadius: 6,
                 cursor: controlsDisabled ? 'not-allowed' : 'pointer',
-                color: controlsDisabled ? '#9ca3af' : '#b91c1c',
+                color: controlsDisabled ? 'var(--text-faint)' : 'var(--text-red-700)',
               }}
             >
               <PayStubDeleteIcon color="currentColor" size={18} />
@@ -414,7 +414,7 @@ export function AccountingRuleFormModal({
               portalZIndex={1250}
             />
           </label>
-          <fieldset style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: '0.75rem' }}>
+          <fieldset style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '0.75rem' }}>
             <legend style={{ fontSize: '0.85rem', fontWeight: 600 }}>Amount (USD)</legend>
             <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
               <label style={{ flex: '1 1 6rem', fontSize: '0.8rem' }}>
@@ -439,7 +439,7 @@ export function AccountingRuleFormModal({
               </label>
             </div>
           </fieldset>
-          <fieldset style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: '0.75rem' }}>
+          <fieldset style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '0.75rem' }}>
             <legend style={{ fontSize: '0.85rem', fontWeight: 600 }}>Counterparty name</legend>
             <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'flex-end' }}>
               <select
@@ -473,7 +473,7 @@ export function AccountingRuleFormModal({
               />
             </div>
           </fieldset>
-          <fieldset style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: '0.75rem' }}>
+          <fieldset style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '0.75rem' }}>
             <legend style={{ fontSize: '0.85rem', fontWeight: 600 }}>Bank description</legend>
             <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'flex-end' }}>
               <select
@@ -509,11 +509,11 @@ export function AccountingRuleFormModal({
                 style={{
                   padding: '0.45rem 0.85rem',
                   fontWeight: 600,
-                  background: controlsDisabled ? '#e5e7eb' : '#f1f5f9',
+                  background: controlsDisabled ? 'var(--bg-200)' : 'var(--bg-slate-100)',
                   border: '1px solid #e2e8f0',
                   borderRadius: 6,
                   cursor: controlsDisabled ? 'not-allowed' : 'pointer',
-                  color: controlsDisabled ? '#64748b' : '#0f172a',
+                  color: controlsDisabled ? 'var(--text-slate-500)' : 'var(--text-slate-900)',
                 }}
               >
                 Test
@@ -537,8 +537,8 @@ export function AccountingRuleFormModal({
                 style={{
                   padding: '0.45rem 0.85rem',
                   fontWeight: 600,
-                  background: '#fff',
-                  border: '1px solid #e5e7eb',
+                  background: 'var(--surface)',
+                  border: '1px solid var(--border)',
                   borderRadius: 6,
                   cursor: controlsDisabled ? 'not-allowed' : 'pointer',
                 }}
@@ -552,8 +552,8 @@ export function AccountingRuleFormModal({
                 style={{
                   padding: '0.45rem 0.85rem',
                   fontWeight: 600,
-                  background: controlsDisabled ? '#e5e7eb' : '#fff',
-                  color: controlsDisabled ? '#64748b' : '#0f172a',
+                  background: controlsDisabled ? 'var(--bg-200)' : 'var(--surface)',
+                  color: controlsDisabled ? 'var(--text-slate-500)' : 'var(--text-slate-900)',
                   border: '1px solid #e2e8f0',
                   borderRadius: 6,
                   cursor: controlsDisabled ? 'not-allowed' : 'pointer',
@@ -612,14 +612,14 @@ export function AccountingRuleFormModal({
             aria-labelledby="rule-form-delete-confirm-title"
             onMouseDown={(e) => e.stopPropagation()}
             style={{
-              background: 'white',
+              background: 'var(--surface)',
               padding: '1.5rem',
               borderRadius: 8,
               minWidth: 360,
               maxWidth: 480,
               width: '100%',
               boxShadow: '0 20px 40px rgba(0,0,0,0.18)',
-              border: '1px solid #e5e7eb',
+              border: '1px solid var(--border)',
               boxSizing: 'border-box',
             }}
           >
@@ -632,7 +632,7 @@ export function AccountingRuleFormModal({
             <p style={{ margin: '0 0 0.5rem', fontSize: '0.875rem' }}>
               <strong>{form.name.trim() || '—'}</strong>
             </p>
-            <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#6b7280' }}>
+            <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
               Pending suggestions tied to this rule will be removed. This cannot be undone.
             </p>
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
@@ -644,9 +644,9 @@ export function AccountingRuleFormModal({
                 disabled={deleting}
                 style={{
                   padding: '0.5rem 1rem',
-                  background: 'white',
-                  color: '#111827',
-                  border: '1px solid #e5e7eb',
+                  background: 'var(--surface)',
+                  color: 'var(--text-strong)',
+                  border: '1px solid var(--border)',
                   borderRadius: 6,
                   cursor: deleting ? 'not-allowed' : 'pointer',
                   fontWeight: 500,

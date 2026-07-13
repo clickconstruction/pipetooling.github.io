@@ -26,7 +26,7 @@ export default function DashboardMyTeamPendingBanner({
         padding: '1rem 1.25rem',
         border: '1px solid #fcd34d',
         borderRadius: 8,
-        background: '#fffbeb',
+        background: 'var(--bg-amber-tint)',
         marginBottom: '1rem',
         cursor: 'pointer',
         textAlign: 'left',
@@ -53,8 +53,8 @@ export default function DashboardMyTeamPendingBanner({
         {pendingApprovalCount}
       </span>
       <div style={{ flex: '1 1 200px', minWidth: 0 }}>
-        <div style={{ fontWeight: 600, fontSize: '1rem', color: '#b45309' }}>Pending clock sessions</div>
-        <div style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: 2 }}>
+        <div style={{ fontWeight: 600, fontSize: '1rem', color: 'var(--text-amber-700)' }}>Pending clock sessions</div>
+        <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginTop: 2 }}>
           Approve or reject in the table below (same Start–End range).
         </div>
       </div>

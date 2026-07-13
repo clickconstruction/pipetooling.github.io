@@ -25,6 +25,7 @@ import PhysicalInvoiceFooterDevSettingsBlock from './PhysicalInvoiceFooterDevSet
 import BillCustomerMemoDevSettingsBlock from './BillCustomerMemoDevSettingsBlock'
 import MapDefaultViewSettingsBlock from './MapDefaultViewSettingsBlock'
 import PhysicalInvoiceIssuerDevSettingsBlock from './PhysicalInvoiceIssuerDevSettingsBlock'
+import BidCoverLetterDefaultsSettingsBlock from './BidCoverLetterDefaultsSettingsBlock'
 
 type TemplatesTabUserRow = { id: string; name: string; email: string; role: string }
 
@@ -223,20 +224,21 @@ export default function SettingsTemplatesTab({
           <PhysicalInvoiceIssuerDevSettingsBlock />
           <PhysicalInvoiceFooterDevSettingsBlock />
           <BillCustomerMemoDevSettingsBlock />
+          <BidCoverLetterDefaultsSettingsBlock />
           <MapDefaultViewSettingsBlock />
           <div
             style={{
               marginBottom: '1.5rem',
               padding: '1rem',
-              border: '1px solid #e5e7eb',
+              border: '1px solid var(--border)',
               borderRadius: 8,
-              background: '#fafafa',
+              background: 'var(--bg-page)',
             }}
           >
             <h3 style={{ margin: '0 0 0.5rem', fontSize: '1rem', fontWeight: 600 }}>
               Field collect payment — dispatch phone
             </h3>
-            <p style={{ margin: '0 0 0.75rem', color: '#6b7280', fontSize: '0.875rem', lineHeight: 1.5 }}>
+            <p style={{ margin: '0 0 0.75rem', color: 'var(--text-muted)', fontSize: '0.875rem', lineHeight: 1.5 }}>
               Shown to subcontractors on Collect Payment step 2 (Awaiting dispatch). E.164 or US digits; example:{' '}
               <code>+15123600599</code> or <code>512 360 0599</code>. Leave empty to use the app default.
             </p>
@@ -289,7 +291,7 @@ export default function SettingsTemplatesTab({
               </button>
             </div>
           </div>
-          <div style={{ marginBottom: '1.5rem', border: '1px solid #e5e7eb', borderRadius: 8 }}>
+          <div style={{ marginBottom: '1.5rem', border: '1px solid var(--border)', borderRadius: 8 }}>
             <button
               type="button"
               onClick={() => setTemplatesJobPartsTallySectionOpen((prev) => !prev)}
@@ -315,11 +317,11 @@ export default function SettingsTemplatesTab({
               <div
                 style={{
                   padding: '0 1rem 1rem 1rem',
-                  borderTop: '1px solid #e5e7eb',
-                  background: '#fafafa',
+                  borderTop: '1px solid var(--border)',
+                  background: 'var(--bg-page)',
                 }}
               >
-                <p style={{ margin: '0 0 0.75rem', color: '#6b7280', fontSize: '0.875rem', lineHeight: 1.5 }}>
+                <p style={{ margin: '0 0 0.75rem', color: 'var(--text-muted)', fontSize: '0.875rem', lineHeight: 1.5 }}>
                   Org-wide minimum posted date (Chicago calendar day). Transactions before this day are hidden on Job Parts
                   Tally for everyone. Leave empty to show all.
                 </p>
@@ -376,14 +378,14 @@ export default function SettingsTemplatesTab({
                   </button>
                 </div>
                 {jobTallyMinPostedYmdError ? (
-                  <p style={{ margin: '0.5rem 0 0', color: '#b91c1c', fontSize: '0.8125rem' }}>
+                  <p style={{ margin: '0.5rem 0 0', color: 'var(--text-red-700)', fontSize: '0.8125rem' }}>
                     {jobTallyMinPostedYmdError}
                   </p>
                 ) : null}
               </div>
             ) : null}
           </div>
-          <div style={{ marginBottom: '1.5rem', border: '1px solid #e5e7eb', borderRadius: 8 }}>
+          <div style={{ marginBottom: '1.5rem', border: '1px solid var(--border)', borderRadius: 8 }}>
             <button
               type="button"
               onClick={() => setTemplatesDeleteAllEstimatesSectionOpen((prev) => !prev)}
@@ -410,10 +412,10 @@ export default function SettingsTemplatesTab({
                 style={{
                   padding: '0 1rem 1rem 1rem',
                   borderTop: '1px solid #fecaca',
-                  background: '#fffbeb',
+                  background: 'var(--bg-amber-tint)',
                 }}
               >
-                <p style={{ margin: '0 0 0.75rem', color: '#78350f', fontSize: '0.875rem', lineHeight: 1.5 }}>
+                <p style={{ margin: '0 0 0.75rem', color: 'var(--text-amber-900)', fontSize: '0.875rem', lineHeight: 1.5 }}>
                   Permanently removes every estimate for your resolved org (all statuses). Jobs are not deleted. Related
                   thread notes and customer events are removed with each estimate. The next quote number is{' '}
                   <strong>1</strong> only if no estimate rows remain in the database after this; if other organizations still
@@ -458,7 +460,7 @@ export default function SettingsTemplatesTab({
                 aria-modal="true"
                 aria-labelledby="dev-reset-estimates-title"
                 style={{
-                  background: 'white',
+                  background: 'var(--surface)',
                   borderRadius: 8,
                   padding: '1.5rem',
                   maxWidth: '480px',
@@ -466,10 +468,10 @@ export default function SettingsTemplatesTab({
                   boxShadow: '0 10px 40px rgba(0,0,0,0.15)',
                 }}
               >
-                <h3 id="dev-reset-estimates-title" style={{ marginTop: 0, marginBottom: '0.75rem', color: '#991b1b' }}>
+                <h3 id="dev-reset-estimates-title" style={{ marginTop: 0, marginBottom: '0.75rem', color: 'var(--text-red-800)' }}>
                   Confirm delete all estimates
                 </h3>
-                <p style={{ margin: '0 0 0.75rem', color: '#374151', fontSize: '0.875rem', lineHeight: 1.5 }}>
+                <p style={{ margin: '0 0 0.75rem', color: 'var(--text-700)', fontSize: '0.875rem', lineHeight: 1.5 }}>
                   This cannot be undone. Type <strong>DELETE</strong> below to confirm.
                 </p>
                 <input
@@ -484,7 +486,7 @@ export default function SettingsTemplatesTab({
                     boxSizing: 'border-box',
                     padding: '0.5rem 0.75rem',
                     fontSize: '0.875rem',
-                    border: '1px solid #d1d5db',
+                    border: '1px solid var(--border-strong)',
                     borderRadius: 4,
                     marginBottom: '1rem',
                   }}
@@ -549,7 +551,7 @@ export default function SettingsTemplatesTab({
               </div>
             </div>
           ) : null}
-          <p style={{ marginTop: '2rem', marginBottom: '0.75rem', color: '#6b7280', fontSize: '0.875rem' }}>
+          <p style={{ marginTop: '2rem', marginBottom: '0.75rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>
             Choose who receives <strong>notification</strong> and <strong>email</strong> template tests (push goes to their devices; email goes to their account email).
           </p>
           <div style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
@@ -577,14 +579,14 @@ export default function SettingsTemplatesTab({
               ))}
             </select>
             {notificationTestSuccess && (
-              <span style={{ color: '#059669', fontSize: '0.875rem' }}>{notificationTestSuccess}</span>
+              <span style={{ color: 'var(--text-green-600)', fontSize: '0.875rem' }}>{notificationTestSuccess}</span>
             )}
             {notificationTestError && (
-              <span style={{ color: '#b91c1c', fontSize: '0.875rem' }}>{notificationTestError}</span>
+              <span style={{ color: 'var(--text-red-700)', fontSize: '0.875rem' }}>{notificationTestError}</span>
             )}
           </div>
 
-          <div style={{ marginTop: '2rem', marginBottom: '2rem', border: '1px solid #e5e7eb', borderRadius: 8 }}>
+          <div style={{ marginTop: '2rem', marginBottom: '2rem', border: '1px solid var(--border)', borderRadius: 8 }}>
             <button
               type="button"
               onClick={() => setWorkflowFnEmailSectionOpen((prev) => !prev)}
@@ -607,8 +609,8 @@ export default function SettingsTemplatesTab({
               Workflow email (Edge Function)
             </button>
             {workflowFnEmailSectionOpen && (
-              <div style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid #e5e7eb' }}>
-                <p style={{ margin: '0 0 0.75rem 0', color: '#6b7280', fontSize: '0.875rem' }}>
+              <div style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid var(--border)' }}>
+                <p style={{ margin: '0 0 0.75rem 0', color: 'var(--text-muted)', fontSize: '0.875rem' }}>
                   Calls <code style={{ fontSize: '0.8125rem' }}>send-workflow-notification</code> so the server loads{' '}
                   <code style={{ fontSize: '0.8125rem' }}>email_templates</code> by type and sends via Resend (not the{' '}
                   <code style={{ fontSize: '0.8125rem' }}>test-email</code> shortcut). Does not write{' '}
@@ -648,22 +650,22 @@ export default function SettingsTemplatesTab({
                   </button>
                 </div>
                 {!emailTemplates.some((t) => t.template_type === workflowFnTestTemplateType) && (
-                  <p style={{ margin: '0.5rem 0 0 0', color: '#b45309', fontSize: '0.8125rem' }}>
+                  <p style={{ margin: '0.5rem 0 0 0', color: 'var(--text-amber-700)', fontSize: '0.8125rem' }}>
                     Create this template under Email Templates below to enable the button.
                   </p>
                 )}
                 {workflowFnTestSuccess && (
-                  <p style={{ margin: '0.5rem 0 0 0', color: '#059669', fontSize: '0.875rem' }}>{workflowFnTestSuccess}</p>
+                  <p style={{ margin: '0.5rem 0 0 0', color: 'var(--text-green-600)', fontSize: '0.875rem' }}>{workflowFnTestSuccess}</p>
                 )}
                 {workflowFnTestError && (
-                  <p style={{ margin: '0.5rem 0 0 0', color: '#b91c1c', fontSize: '0.875rem' }}>{workflowFnTestError}</p>
+                  <p style={{ margin: '0.5rem 0 0 0', color: 'var(--text-red-700)', fontSize: '0.875rem' }}>{workflowFnTestError}</p>
                 )}
               </div>
             )}
           </div>
 
           {/* Notification Templates - collapsible, above Email Templates */}
-          <div style={{ marginTop: '2rem', marginBottom: '2rem', border: '1px solid #e5e7eb', borderRadius: 8 }}>
+          <div style={{ marginTop: '2rem', marginBottom: '2rem', border: '1px solid var(--border)', borderRadius: 8 }}>
             <button
               type="button"
               onClick={() => setNotificationTemplatesSectionOpen((prev) => !prev)}
@@ -686,8 +688,8 @@ export default function SettingsTemplatesTab({
               Notification Templates
             </button>
             {notificationTemplatesSectionOpen && (
-              <div style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid #e5e7eb' }}>
-                <p style={{ marginBottom: '1rem', color: '#6b7280', fontSize: '0.875rem' }}>
+              <div style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid var(--border)' }}>
+                <p style={{ marginBottom: '1rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>
                   Customize push notification title and body shown to users. Use variables like {NOTIFICATION_VARIABLE_HINT}.
                 </p>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
@@ -705,11 +707,11 @@ export default function SettingsTemplatesTab({
                   ].map(({ type, label, description }) => {
                     const template = notificationTemplates.find(t => t.template_type === type)
                     return (
-                      <div key={type} style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: '1rem' }}>
+                      <div key={type} style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '1rem' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
                           <div>
                             <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600 }}>{label}</h3>
-                            <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.875rem', color: '#6b7280' }}>{description}</p>
+                            <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.875rem', color: 'var(--text-muted)' }}>{description}</p>
                           </div>
                           <div style={{ display: 'flex', gap: '0.5rem' }}>
                             <button
@@ -731,7 +733,7 @@ export default function SettingsTemplatesTab({
                           </div>
                         </div>
                         {template && (
-                          <div style={{ marginTop: '0.75rem', fontSize: '0.875rem', color: '#6b7280' }}>
+                          <div style={{ marginTop: '0.75rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
                             <div><strong>Title:</strong> {template.push_title}</div>
                             <div style={{ marginTop: '0.25rem', whiteSpace: 'pre-wrap', maxHeight: '3rem', overflow: 'hidden' }}>
                               <strong>Body:</strong> {template.push_body.substring(0, 100)}{template.push_body.length > 100 ? '...' : ''}
@@ -752,7 +754,7 @@ export default function SettingsTemplatesTab({
           </div>
 
           {/* Email Templates - collapsible, collapsed by default */}
-          <div style={{ marginTop: '2rem', marginBottom: '2rem', border: '1px solid #e5e7eb', borderRadius: 8 }}>
+          <div style={{ marginTop: '2rem', marginBottom: '2rem', border: '1px solid var(--border)', borderRadius: 8 }}>
             <button
               type="button"
               onClick={() => setEmailTemplatesSectionOpen((prev) => !prev)}
@@ -775,15 +777,15 @@ export default function SettingsTemplatesTab({
               Email Templates
             </button>
             {emailTemplatesSectionOpen && (
-              <div style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid #e5e7eb' }}>
-                <p style={{ marginBottom: '0.5rem', color: '#dc2626', fontSize: '0.875rem', fontStyle: 'italic' }}>
+              <div style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid var(--border)' }}>
+                <p style={{ marginBottom: '0.5rem', color: 'var(--text-red-600)', fontSize: '0.875rem', fontStyle: 'italic' }}>
                   Note: Create an account · Forgot password? has been hidden on the sign in page.
                 </p>
-                <p style={{ marginBottom: '1rem', color: '#6b7280', fontSize: '0.875rem' }}>
+                <p style={{ marginBottom: '1rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>
                   Customize the content of emails sent to users. Use variables like {VARIABLE_HINT} in your templates.
                 </p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '0.875rem', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase' }}>User Management</h3>
+            <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase' }}>User Management</h3>
             {[
               { type: 'invitation' as const, label: 'Invitation Email', description: 'Sent when inviting a new user' },
               { type: 'sign_in' as const, label: 'Sign-In Email', description: 'Sent when requesting a sign-in link' },
@@ -791,11 +793,11 @@ export default function SettingsTemplatesTab({
             ].map(({ type, label, description }) => {
               const template = emailTemplates.find(t => t.template_type === type)
               return (
-                <div key={type} style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: '1rem' }}>
+                <div key={type} style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '1rem' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
                     <div>
                       <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600 }}>{label}</h3>
-                      <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.875rem', color: '#6b7280' }}>{description}</p>
+                      <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.875rem', color: 'var(--text-muted)' }}>{description}</p>
                     </div>
                     <div style={{ display: 'flex', gap: '0.5rem' }}>
                       {template && (
@@ -803,7 +805,7 @@ export default function SettingsTemplatesTab({
                           type="button"
                           onClick={() => openTestEmail(template)}
                           disabled={!templateTestTargetUserId}
-                          style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#f0f9ff', color: '#0369a1', border: '1px solid #bae6fd' }}
+                          style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'var(--bg-sky-tint)', color: 'var(--text-sky-700)', border: '1px solid #bae6fd' }}
                         >
                           Test
                         </button>
@@ -818,7 +820,7 @@ export default function SettingsTemplatesTab({
                     </div>
                   </div>
                   {template && (
-                    <div style={{ marginTop: '0.75rem', fontSize: '0.875rem', color: '#6b7280' }}>
+                    <div style={{ marginTop: '0.75rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
                       <div><strong>Subject:</strong> {template.subject}</div>
                       <div style={{ marginTop: '0.25rem', whiteSpace: 'pre-wrap', maxHeight: '3rem', overflow: 'hidden' }}>
                         <strong>Body:</strong> {template.body.substring(0, 100)}{template.body.length > 100 ? '...' : ''}
@@ -834,8 +836,8 @@ export default function SettingsTemplatesTab({
               )
             })}
             
-            <h3 style={{ margin: '1.5rem 0 0.5rem 0', fontSize: '0.875rem', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase' }}>Workflow Stage Notifications</h3>
-            <h4 style={{ margin: '0.5rem 0', fontSize: '0.875rem', fontWeight: 500, color: '#6b7280' }}>Notify Assigned Person</h4>
+            <h3 style={{ margin: '1.5rem 0 0.5rem 0', fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Workflow Stage Notifications</h3>
+            <h4 style={{ margin: '0.5rem 0', fontSize: '0.875rem', fontWeight: 500, color: 'var(--text-muted)' }}>Notify Assigned Person</h4>
             {[
               { type: 'stage_assigned_started' as const, label: 'Stage Started (Assigned)', description: 'Sent to assigned person when stage is started' },
               { type: 'stage_assigned_complete' as const, label: 'Stage Complete (Assigned)', description: 'Sent to assigned person when stage is completed' },
@@ -843,11 +845,11 @@ export default function SettingsTemplatesTab({
             ].map(({ type, label, description }) => {
               const template = emailTemplates.find(t => t.template_type === type)
               return (
-                <div key={type} style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: '1rem' }}>
+                <div key={type} style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '1rem' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
                     <div>
                       <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600 }}>{label}</h3>
-                      <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.875rem', color: '#6b7280' }}>{description}</p>
+                      <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.875rem', color: 'var(--text-muted)' }}>{description}</p>
                     </div>
                     <div style={{ display: 'flex', gap: '0.5rem' }}>
                       {template && (
@@ -855,7 +857,7 @@ export default function SettingsTemplatesTab({
                           type="button"
                           onClick={() => openTestEmail(template)}
                           disabled={!templateTestTargetUserId}
-                          style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#f0f9ff', color: '#0369a1', border: '1px solid #bae6fd' }}
+                          style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'var(--bg-sky-tint)', color: 'var(--text-sky-700)', border: '1px solid #bae6fd' }}
                         >
                           Test
                         </button>
@@ -870,7 +872,7 @@ export default function SettingsTemplatesTab({
                     </div>
                   </div>
                   {template && (
-                    <div style={{ marginTop: '0.75rem', fontSize: '0.875rem', color: '#6b7280' }}>
+                    <div style={{ marginTop: '0.75rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
                       <div><strong>Subject:</strong> {template.subject}</div>
                       <div style={{ marginTop: '0.25rem', whiteSpace: 'pre-wrap', maxHeight: '3rem', overflow: 'hidden' }}>
                         <strong>Body:</strong> {template.body.substring(0, 100)}{template.body.length > 100 ? '...' : ''}
@@ -886,7 +888,7 @@ export default function SettingsTemplatesTab({
               )
             })}
             
-            <h4 style={{ margin: '1rem 0 0.5rem 0', fontSize: '0.875rem', fontWeight: 500, color: '#6b7280' }}>Notify Me (Current User)</h4>
+            <h4 style={{ margin: '1rem 0 0.5rem 0', fontSize: '0.875rem', fontWeight: 500, color: 'var(--text-muted)' }}>Notify Me (Current User)</h4>
             {[
               { type: 'stage_me_started' as const, label: 'Stage Started (ME)', description: 'Sent to you when a subscribed stage is started' },
               { type: 'stage_me_complete' as const, label: 'Stage Complete (ME)', description: 'Sent to you when a subscribed stage is completed' },
@@ -894,11 +896,11 @@ export default function SettingsTemplatesTab({
             ].map(({ type, label, description }) => {
               const template = emailTemplates.find(t => t.template_type === type)
               return (
-                <div key={type} style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: '1rem' }}>
+                <div key={type} style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '1rem' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
                     <div>
                       <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600 }}>{label}</h3>
-                      <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.875rem', color: '#6b7280' }}>{description}</p>
+                      <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.875rem', color: 'var(--text-muted)' }}>{description}</p>
                     </div>
                     <div style={{ display: 'flex', gap: '0.5rem' }}>
                       {template && (
@@ -906,7 +908,7 @@ export default function SettingsTemplatesTab({
                           type="button"
                           onClick={() => openTestEmail(template)}
                           disabled={!templateTestTargetUserId}
-                          style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#f0f9ff', color: '#0369a1', border: '1px solid #bae6fd' }}
+                          style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'var(--bg-sky-tint)', color: 'var(--text-sky-700)', border: '1px solid #bae6fd' }}
                         >
                           Test
                         </button>
@@ -921,7 +923,7 @@ export default function SettingsTemplatesTab({
                     </div>
                   </div>
                   {template && (
-                    <div style={{ marginTop: '0.75rem', fontSize: '0.875rem', color: '#6b7280' }}>
+                    <div style={{ marginTop: '0.75rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
                       <div><strong>Subject:</strong> {template.subject}</div>
                       <div style={{ marginTop: '0.25rem', whiteSpace: 'pre-wrap', maxHeight: '3rem', overflow: 'hidden' }}>
                         <strong>Body:</strong> {template.body.substring(0, 100)}{template.body.length > 100 ? '...' : ''}
@@ -937,18 +939,18 @@ export default function SettingsTemplatesTab({
               )
             })}
             
-            <h4 style={{ margin: '1rem 0 0.5rem 0', fontSize: '0.875rem', fontWeight: 500, color: '#6b7280' }}>Cross-Step Notifications</h4>
+            <h4 style={{ margin: '1rem 0 0.5rem 0', fontSize: '0.875rem', fontWeight: 500, color: 'var(--text-muted)' }}>Cross-Step Notifications</h4>
             {[
               { type: 'stage_next_complete_or_approved' as const, label: 'Next Stage Ready', description: 'Sent to next stage assignee when current stage is completed or approved' },
               { type: 'stage_prior_rejected' as const, label: 'Prior work incomplete', description: 'Sent to prior stage assignee when their stage is marked incomplete' },
             ].map(({ type, label, description }) => {
               const template = emailTemplates.find(t => t.template_type === type)
               return (
-                <div key={type} style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: '1rem' }}>
+                <div key={type} style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '1rem' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
                     <div>
                       <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600 }}>{label}</h3>
-                      <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.875rem', color: '#6b7280' }}>{description}</p>
+                      <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.875rem', color: 'var(--text-muted)' }}>{description}</p>
                     </div>
                     <div style={{ display: 'flex', gap: '0.5rem' }}>
                       {template && (
@@ -956,7 +958,7 @@ export default function SettingsTemplatesTab({
                           type="button"
                           onClick={() => openTestEmail(template)}
                           disabled={!templateTestTargetUserId}
-                          style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#f0f9ff', color: '#0369a1', border: '1px solid #bae6fd' }}
+                          style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'var(--bg-sky-tint)', color: 'var(--text-sky-700)', border: '1px solid #bae6fd' }}
                         >
                           Test
                         </button>
@@ -971,7 +973,7 @@ export default function SettingsTemplatesTab({
                     </div>
                   </div>
                   {template && (
-                    <div style={{ marginTop: '0.75rem', fontSize: '0.875rem', color: '#6b7280' }}>
+                    <div style={{ marginTop: '0.75rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
                       <div><strong>Subject:</strong> {template.subject}</div>
                       <div style={{ marginTop: '0.25rem', whiteSpace: 'pre-wrap', maxHeight: '3rem', overflow: 'hidden' }}>
                         <strong>Body:</strong> {template.body.substring(0, 100)}{template.body.length > 100 ? '...' : ''}
@@ -993,7 +995,7 @@ export default function SettingsTemplatesTab({
 
           {editingTemplate && (
             <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
-              <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 500, maxWidth: '90vw', maxHeight: '90vh', overflow: 'auto' }}>
+              <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 500, maxWidth: '90vw', maxHeight: '90vh', overflow: 'auto' }}>
                 <h2 style={{ marginTop: 0 }}>
                   Edit {editingTemplate.template_type === 'invitation' ? 'Invitation' : 
                     editingTemplate.template_type === 'sign_in' ? 'Sign-In' : 
@@ -1021,7 +1023,7 @@ export default function SettingsTemplatesTab({
                       placeholder="e.g., Welcome to PipeTooling"
                       style={{ width: '100%', padding: '0.5rem' }}
                     />
-                    <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.8125rem', color: '#6b7280' }}>
+                    <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
                       Available variables: {
                         editingTemplate.template_type.startsWith('stage_') 
                           ? '{{name}}, {{email}}, {{project_name}}, {{stage_name}}, {{assigned_to_name}}, {{workflow_link}}, {{previous_stage_name}}, {{rejection_reason}}'
@@ -1041,7 +1043,7 @@ export default function SettingsTemplatesTab({
                       placeholder="e.g., Hi {{name}},&#10;&#10;You've been invited to join PipeTooling as a {{role}}. Click the link below to set up your account:&#10;&#10;{{link}}"
                       style={{ width: '100%', padding: '0.5rem', fontFamily: 'monospace', fontSize: '0.875rem' }}
                     />
-                    <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.8125rem', color: '#6b7280' }}>
+                    <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
                       Available variables: {
                         editingTemplate.template_type.startsWith('stage_') 
                           ? '{{name}}, {{email}}, {{project_name}}, {{stage_name}}, {{assigned_to_name}}, {{workflow_link}}, {{previous_stage_name}}, {{rejection_reason}}'
@@ -1049,7 +1051,7 @@ export default function SettingsTemplatesTab({
                       }
                     </p>
                   </div>
-                  {templateError && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{templateError}</p>}
+                  {templateError && <p style={{ color: 'var(--text-red-700)', marginBottom: '1rem' }}>{templateError}</p>}
                   <div style={{ display: 'flex', gap: 8 }}>
                     <button type="submit" disabled={templateSaving}>
                       {templateSaving ? 'Saving…' : 'Save template'}
@@ -1058,7 +1060,7 @@ export default function SettingsTemplatesTab({
                       type="button" 
                       onClick={testCurrentTemplate}
                       disabled={templateSaving || !templateSubject.trim() || !templateBody.trim() || !templateTestTargetUserId}
-                      style={{ background: '#f0f9ff', color: '#0369a1', border: '1px solid #bae6fd' }}
+                      style={{ background: 'var(--bg-sky-tint)', color: 'var(--text-sky-700)', border: '1px solid #bae6fd' }}
                     >
                       Test Email
                     </button>
@@ -1071,7 +1073,7 @@ export default function SettingsTemplatesTab({
 
           {editingNotificationTemplate && (
             <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
-              <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 500, maxWidth: '90vw', maxHeight: '90vh', overflow: 'auto' }}>
+              <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 500, maxWidth: '90vw', maxHeight: '90vh', overflow: 'auto' }}>
                 <h2 style={{ marginTop: 0 }}>
                   Edit Notification: {editingNotificationTemplate.template_type.replace(/_/g, ' ')}
                 </h2>
@@ -1101,11 +1103,11 @@ export default function SettingsTemplatesTab({
                       placeholder="e.g., {{assignee_name}} completed {{item_title}}"
                       style={{ width: '100%', padding: '0.5rem', fontFamily: 'monospace', fontSize: '0.875rem' }}
                     />
-                    <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.8125rem', color: '#6b7280' }}>
+                    <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
                       Variables: {NOTIFICATION_VARIABLE_HINT}
                     </p>
                   </div>
-                  {notificationTemplateError && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{notificationTemplateError}</p>}
+                  {notificationTemplateError && <p style={{ color: 'var(--text-red-700)', marginBottom: '1rem' }}>{notificationTemplateError}</p>}
                   <div style={{ display: 'flex', gap: 8 }}>
                     <button type="submit" disabled={notificationTemplateSaving}>
                       {notificationTemplateSaving ? 'Saving…' : 'Save'}
@@ -1128,17 +1130,17 @@ export default function SettingsTemplatesTab({
                 : testTargetEmail || '—'
             return (
             <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
-              <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 400 }}>
-                <p style={{ marginBottom: '1rem', fontSize: '0.875rem', color: '#6b7280' }}>
+              <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 400 }}>
+                <p style={{ marginBottom: '1rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
                   Send a test email to <strong>{testRecipientLabel}</strong> (the user selected under <strong>Test target</strong> above). Variables like {'{{name}}'}, {'{{email}}'}, and {'{{role}}'} use that user&apos;s data; other placeholders use sample values.
                 </p>
                 <form onSubmit={sendTestEmail}>
-                  <div style={{ marginBottom: '1rem', padding: '0.75rem', background: '#f9fafb', borderRadius: 4, fontSize: '0.875rem' }}>
+                  <div style={{ marginBottom: '1rem', padding: '0.75rem', background: 'var(--bg-subtle)', borderRadius: 4, fontSize: '0.875rem' }}>
                     <div><strong>Template:</strong> {testingTemplate.template_type}</div>
                     <div style={{ marginTop: '0.5rem' }}><strong>Subject:</strong> {testingTemplate.subject}</div>
                     <div style={{ marginTop: '0.5rem', whiteSpace: 'pre-wrap' }}><strong>Body Preview:</strong><br />{testingTemplate.body.substring(0, 200)}{testingTemplate.body.length > 200 ? '...' : ''}</div>
                   </div>
-                  {testError && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{testError}</p>}
+                  {testError && <p style={{ color: 'var(--text-red-700)', marginBottom: '1rem' }}>{testError}</p>}
                   <div style={{ display: 'flex', gap: 8 }}>
                     <button type="submit" disabled={testSending || !templateTestTargetUserId || !testTargetEmail}>
                       {testSending ? 'Sending…' : 'Send Test Email'}
@@ -1152,7 +1154,7 @@ export default function SettingsTemplatesTab({
           })()}
 
           {/* Dashboard: Report Review - collapsible, dev-only */}
-          <div style={{ marginTop: '2rem', marginBottom: '2rem', border: '1px solid #e5e7eb', borderRadius: 8 }}>
+          <div style={{ marginTop: '2rem', marginBottom: '2rem', border: '1px solid var(--border)', borderRadius: 8 }}>
             <button
               type="button"
               onClick={() => setReportSettingsSectionOpen((prev) => !prev)}
@@ -1175,31 +1177,31 @@ export default function SettingsTemplatesTab({
               Dashboard: Report Review
             </button>
             {reportSettingsSectionOpen && (
-              <div style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid #e5e7eb' }}>
+              <div style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid var(--border)' }}>
                 <form onSubmit={saveReportSettings}>
                   <div style={{ marginBottom: '1rem' }}>
                     <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Report edit window (days)</label>
-                    <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.8125rem', color: '#6b7280' }}>Days subcontractors and Helper users can edit their own reports after creation.</p>
-                    <input type="number" min={0} step={1} value={reportEditWindowDays} onChange={(e) => setReportEditWindowDays(e.target.value)} style={{ width: '6rem', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
+                    <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>Days subcontractors and Helper users can edit their own reports after creation.</p>
+                    <input type="number" min={0} step={1} value={reportEditWindowDays} onChange={(e) => setReportEditWindowDays(e.target.value)} style={{ width: '6rem', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }} />
                   </div>
                   <div style={{ marginBottom: '1rem' }}>
                     <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Field report visibility (months)</label>
-                    <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.8125rem', color: '#6b7280' }}>Months subcontractors and Helper users can see their own reports.</p>
-                    <input type="number" min={0} step={1} value={reportSubVisibilityMonths} onChange={(e) => setReportSubVisibilityMonths(e.target.value)} style={{ width: '6rem', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
+                    <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>Months subcontractors and Helper users can see their own reports.</p>
+                    <input type="number" min={0} step={1} value={reportSubVisibilityMonths} onChange={(e) => setReportSubVisibilityMonths(e.target.value)} style={{ width: '6rem', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }} />
                   </div>
                   <div style={{ marginBottom: '1rem' }}>
                     <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '0.875rem', fontWeight: 600 }}>Report-enabled users</h3>
-                    <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.8125rem', color: '#6b7280' }}>Subcontractors, Helper users, and primaries selected here can see the Recent Reports section on their Dashboard. Unselected users do not see Recent Reports. All users can create reports via the Job Report button.</p>
-                    <div style={{ maxHeight: 200, overflow: 'auto', border: '1px solid #e5e7eb', borderRadius: 4, padding: '0.5rem' }}>
+                    <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>Subcontractors, Helper users, and primaries selected here can see the Recent Reports section on their Dashboard. Unselected users do not see Recent Reports. All users can create reports via the Job Report button.</p>
+                    <div style={{ maxHeight: 200, overflow: 'auto', border: '1px solid var(--border)', borderRadius: 4, padding: '0.5rem' }}>
                       {users.filter((u) => u.role === 'subcontractor' || u.role === 'helpers' || u.role === 'primary').map((u) => (
                         <label key={u.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.25rem 0', cursor: 'pointer' }}>
                           <input type="checkbox" checked={reportEnabledUserIds.has(u.id)} onChange={() => toggleReportEnabledUser(u.id)} />
                           <span>{u.name || u.email}</span>
-                          <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>({u.role})</span>
+                          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>({u.role})</span>
                         </label>
                       ))}
                       {users.filter((u) => u.role === 'subcontractor' || u.role === 'helpers' || u.role === 'primary').length === 0 && (
-                        <p style={{ margin: 0, fontSize: '0.875rem', color: '#6b7280' }}>No subcontractors, Helper users, or primaries.</p>
+                        <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)' }}>No subcontractors, Helper users, or primaries.</p>
                       )}
                     </div>
                   </div>

@@ -54,10 +54,10 @@ export const AccountingApprovalCard = memo(function AccountingApprovalCard({
   return (
     <div
       style={{
-        border: '1px solid #e5e7eb',
+        border: '1px solid var(--border)',
         borderRadius: 8,
         padding: '0.75rem 1rem',
-        background: '#fff',
+        background: 'var(--surface)',
       }}
     >
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', alignItems: 'center' }}>
@@ -72,21 +72,21 @@ export const AccountingApprovalCard = memo(function AccountingApprovalCard({
               p.tx.source === 'manual' ? (
                 <span
                   title="Manually-entered transaction (not synced from Mercury)"
-                  style={{ fontSize: '0.62rem', fontWeight: 700, color: '#92400e', background: '#fef3c7', borderRadius: 999, padding: '1px 6px' }}
+                  style={{ fontSize: '0.62rem', fontWeight: 700, color: 'var(--text-amber-800)', background: 'var(--bg-amber-100)', borderRadius: 999, padding: '1px 6px' }}
                 >
                   ✎ Manual
                 </span>
               ) : (
                 <span
                   title="Synced from Mercury"
-                  style={{ fontSize: '0.62rem', fontWeight: 700, color: '#075985', background: '#e0f2fe', borderRadius: 999, padding: '1px 6px' }}
+                  style={{ fontSize: '0.62rem', fontWeight: 700, color: '#075985', background: 'var(--bg-sky-100)', borderRadius: 999, padding: '1px 6px' }}
                 >
                   Synced
                 </span>
               )
             ) : null}
           </div>
-          <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: 4 }}>
+          <div style={{ fontSize: '0.8rem', color: 'var(--text-slate-500)', marginTop: 4 }}>
             Rule:{' '}
             <button
               type="button"
@@ -98,7 +98,7 @@ export const AccountingApprovalCard = memo(function AccountingApprovalCard({
                 padding: 0,
                 border: 'none',
                 background: 'none',
-                color: '#2563eb',
+                color: 'var(--text-link)',
                 cursor: approveAllBusy || rulesLoading ? 'not-allowed' : 'pointer',
                 textDecoration: 'underline',
                 font: 'inherit',
@@ -111,12 +111,12 @@ export const AccountingApprovalCard = memo(function AccountingApprovalCard({
             {p.suggestedLabelName}
           </div>
           {debitCardLabel ? (
-            <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: 2 }}>
+            <div style={{ fontSize: '0.75rem', color: 'var(--text-slate-500)', marginTop: 2 }}>
               Card: {debitCardLabel}
             </div>
           ) : null}
           {p.tx ? (
-            <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: 2 }}>
+            <div style={{ fontSize: '0.75rem', color: 'var(--text-slate-400)', marginTop: 2 }}>
               Posted {formatBankingDate(p.tx.posted_at)} · Bank: {mercuryBankDescriptionFromRaw(p.tx.raw) ?? '—'}
             </div>
           ) : null}
@@ -159,8 +159,8 @@ export const AccountingApprovalCard = memo(function AccountingApprovalCard({
           style={{
             padding: '0.45rem 0.9rem',
             fontWeight: 600,
-            background: '#fff',
-            color: '#b91c1c',
+            background: 'var(--surface)',
+            color: 'var(--text-red-700)',
             border: '1px solid #fecaca',
             borderRadius: 6,
             cursor: approveAllBusy ? 'not-allowed' : 'pointer',

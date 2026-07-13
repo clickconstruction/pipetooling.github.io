@@ -301,6 +301,7 @@ export default function Bids() {
     accountManagerId,
     formServiceTypeId,
     bidDueDate,
+    bidDueTime,
     estimatedJobStartDate,
     designDrawingPlanDate,
     planPages,
@@ -1909,6 +1910,7 @@ export default function Bids() {
       estimator_id: estimatorId || null,
       account_manager_id: accountManagerId || null,
       bid_due_date: bidDueDate || null,
+      bid_due_time: bidDueDate && bidDueTime ? bidDueTime : null,
       estimated_job_start_date: estimatedJobStartDate.trim() ? estimatedJobStartDate : null,
       bid_date_sent: bidDateSent || null,
       submitted_to: submittedTo.trim() || null,
@@ -2013,6 +2015,7 @@ export default function Bids() {
       gc_contact_email: gcContactEmail.trim() || null,
       estimator_id: estimatorId || null,
       bid_due_date: bidDueDate || null,
+      bid_due_time: bidDueDate && bidDueTime ? bidDueTime : null,
       estimated_job_start_date: estimatedJobStartDate.trim() ? estimatedJobStartDate : null,
       bid_date_sent: bidDateSent || null,
       submitted_to: submittedTo.trim() || null,
@@ -2429,7 +2432,7 @@ export default function Bids() {
       `}</style>
       <div className="pageWrap" style={{ maxWidth: '1400px', margin: '0 auto' }}>
         {error && (
-          <div style={{ padding: '0.75rem', background: '#fee2e2', color: '#991b1b', borderRadius: 4, marginBottom: '1rem' }}>
+          <div style={{ padding: '0.75rem', background: 'var(--bg-red-100)', color: 'var(--text-red-800)', borderRadius: 4, marginBottom: '1rem' }}>
             {error}
           </div>
         )}
@@ -2455,7 +2458,7 @@ export default function Bids() {
           >
             <div
               style={{
-                background: 'white',
+                background: 'var(--surface)',
                 padding: '1.5rem',
                 borderRadius: 8,
                 maxWidth: 420,
@@ -2467,7 +2470,7 @@ export default function Bids() {
               <h3 id="materials-model-switch-title" style={{ margin: '0 0 0.75rem', fontSize: '1.05rem' }}>
                 Switch materials model?
               </h3>
-              <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#374151', lineHeight: 1.5 }}>
+              <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: 'var(--text-700)', lineHeight: 1.5 }}>
                 By Stage and Combined data are stored separately. Switching does not copy lines from the other mode.
               </p>
               <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
@@ -2477,8 +2480,8 @@ export default function Bids() {
                   onClick={() => setMaterialsModelSwitchModal({ open: false, next: null, sourceTab: null })}
                   style={{
                     padding: '0.4rem 0.85rem',
-                    background: '#f3f4f6',
-                    border: '1px solid #d1d5db',
+                    background: 'var(--bg-muted)',
+                    border: '1px solid var(--border-strong)',
                     borderRadius: 4,
                     cursor: materialsModelBusy ? 'wait' : 'pointer',
                     fontSize: '0.875rem',
@@ -2543,9 +2546,9 @@ export default function Bids() {
                 }}
                 style={{
                   padding: '0.5rem 1rem',
-                  border: selectedServiceTypeId === st.id ? '2px solid #3b82f6' : '1px solid #d1d5db',
-                  background: selectedServiceTypeId === st.id ? '#eff6ff' : 'white',
-                  color: selectedServiceTypeId === st.id ? '#3b82f6' : '#374151',
+                  border: selectedServiceTypeId === st.id ? '2px solid #3b82f6' : '1px solid var(--border-strong)',
+                  background: selectedServiceTypeId === st.id ? 'var(--bg-blue-tint)' : 'var(--surface)',
+                  color: selectedServiceTypeId === st.id ? 'var(--text-blue-500)' : 'var(--text-700)',
                   borderRadius: 6,
                   fontWeight: selectedServiceTypeId === st.id ? 600 : 400,
                   cursor: 'pointer',
@@ -2654,7 +2657,7 @@ export default function Bids() {
         </div>
       )}
 
-      <div style={{ borderBottom: '2px solid #e5e7eb', marginBottom: '2rem' }}>
+      <div style={{ borderBottom: '2px solid var(--border)', marginBottom: '2rem' }}>
         <div
           style={{
             display: 'grid',
@@ -2826,7 +2829,7 @@ export default function Bids() {
         )}
         {myRole !== 'superintendent' ? (
           <>
-            <span style={{ color: '#9ca3af', padding: '0 0.1rem', position: 'relative', top: '-1px', fontSize: '0.875rem' }}>|</span>
+            <span style={{ color: 'var(--text-faint)', padding: '0 0.1rem', position: 'relative', top: '-1px', fontSize: '0.875rem' }}>|</span>
             <button
               type="button"
               onClick={() => {
@@ -2843,7 +2846,7 @@ export default function Bids() {
             </button>
           </>
         ) : null}
-        <span style={{ color: '#9ca3af', padding: '0 0.1rem', position: 'relative', top: '-1px', fontSize: '0.875rem' }}>|</span>
+        <span style={{ color: 'var(--text-faint)', padding: '0 0.1rem', position: 'relative', top: '-1px', fontSize: '0.875rem' }}>|</span>
         <button
           type="button"
           onClick={() => {
@@ -2956,7 +2959,7 @@ export default function Bids() {
 
       {activeTab === 'working' && authUser?.id ? (
         <div>
-          <p style={{ margin: '0 0 0.75rem', color: '#6b7280', fontSize: '0.875rem' }}>
+          <p style={{ margin: '0 0 0.75rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>
             Drag unsent bids between columns. You see bids where you are Estimator or Account Man. New bids appear in Inbox until moved.
           </p>
           <BidsWorkingBoard
@@ -3434,7 +3437,7 @@ export default function Bids() {
             aria-modal="true"
             aria-labelledby="bid-sent-attest-title"
             style={{
-              background: 'white',
+              background: 'var(--surface)',
               padding: '1.5rem 2rem',
               borderRadius: 8,
               maxWidth: '520px',
@@ -3447,7 +3450,7 @@ export default function Bids() {
             <h2 id="bid-sent-attest-title" style={{ marginTop: 0, marginBottom: '0.75rem', fontSize: '1.125rem' }}>
               Confirm bid sent
             </h2>
-            <p style={{ margin: '0 0 1rem 0', fontSize: '0.875rem', color: '#6b7280' }}>
+            <p style={{ margin: '0 0 1rem 0', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
               Check each statement when it applies. You must confirm all three before the new sent date is applied.
             </p>
             {[
@@ -3476,7 +3479,7 @@ export default function Bids() {
                 label: 'I understand that lying about this will result in my suspension',
               },
             ].map((row) => (
-              <div key={row.key} style={{ marginBottom: '1rem', paddingBottom: '1rem', borderBottom: '1px solid #e5e7eb' }}>
+              <div key={row.key} style={{ marginBottom: '1rem', paddingBottom: '1rem', borderBottom: '1px solid var(--border)' }}>
                 <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', cursor: 'pointer', fontSize: '0.875rem' }}>
                   <input
                     type="checkbox"
@@ -3492,7 +3495,7 @@ export default function Bids() {
                   <span>{row.label}</span>
                 </label>
                 {row.checked && row.checkedAt && authUser?.id ? (
-                  <div style={{ marginLeft: '1.5rem', marginTop: '0.35rem', fontSize: '0.8125rem', color: '#374151' }}>
+                  <div style={{ marginLeft: '1.5rem', marginTop: '0.35rem', fontSize: '0.8125rem', color: 'var(--text-700)' }}>
                     {bidAttestationDisplayName(estimatorUsers, authUser.id)} ·{' '}
                     {new Date(row.checkedAt).toLocaleString(undefined, {
                       dateStyle: 'short',
@@ -3503,7 +3506,7 @@ export default function Bids() {
               </div>
             ))}
             <div style={{ marginTop: '1rem', marginBottom: '0.25rem' }}>
-              <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#374151', marginBottom: '0.35rem' }}>
+              <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-700)', marginBottom: '0.35rem' }}>
                 Adds to bid note:
               </div>
               <textarea
@@ -3516,7 +3519,7 @@ export default function Bids() {
                   boxSizing: 'border-box',
                   padding: '0.5rem',
                   fontSize: '0.875rem',
-                  border: '1px solid #d1d5db',
+                  border: '1px solid var(--border-strong)',
                   borderRadius: 4,
                   resize: 'vertical',
                   fontFamily: 'inherit',
@@ -3527,7 +3530,7 @@ export default function Bids() {
               <button
                 type="button"
                 onClick={cancelBidSentAttestationModal}
-                style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
+                style={{ padding: '0.5rem 1rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}
               >
                 Cancel
               </button>
@@ -3555,7 +3558,7 @@ export default function Bids() {
       {/* Delete bid confirmation modal */}
       {deleteBidModalOpen && editingBid && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100 }}>
-          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 320 }}>
+          <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 320 }}>
             <h2 style={{ marginTop: 0 }}>Delete bid</h2>
             <p style={{ marginBottom: '1rem' }}>
               {editingBid.project_name
@@ -3568,16 +3571,16 @@ export default function Bids() {
               onChange={(e) => { setDeleteConfirmProjectName(e.target.value); setError(null) }}
               placeholder={editingBid.project_name ? 'Project name' : 'No project name'}
               disabled={deletingBid}
-              style={{ width: '100%', padding: '0.5rem', marginBottom: '1rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+              style={{ width: '100%', padding: '0.5rem', marginBottom: '1rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
               autoComplete="off"
             />
-            {error && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{error}</p>}
+            {error && <p style={{ color: 'var(--text-red-700)', marginBottom: '1rem' }}>{error}</p>}
             <div style={{ display: 'flex', gap: 8 }}>
               <button
                 type="button"
                 onClick={deleteBid}
                 disabled={deletingBid || deleteConfirmProjectName.trim() !== (editingBid.project_name ?? '').trim()}
-                style={{ padding: '0.5rem 1rem', color: '#b91c1c', background: 'white', border: '1px solid #b91c1c', borderRadius: 4, cursor: deletingBid || deleteConfirmProjectName.trim() !== (editingBid.project_name ?? '').trim() ? 'not-allowed' : 'pointer' }}
+                style={{ padding: '0.5rem 1rem', color: 'var(--text-red-700)', background: 'var(--surface)', border: '1px solid #b91c1c', borderRadius: 4, cursor: deletingBid || deleteConfirmProjectName.trim() !== (editingBid.project_name ?? '').trim() ? 'not-allowed' : 'pointer' }}
               >
                 {deletingBid ? 'Deleting…' : 'Delete bid'}
               </button>
@@ -3585,7 +3588,7 @@ export default function Bids() {
                 type="button"
                 onClick={() => { setDeleteBidModalOpen(false); setDeleteConfirmProjectName(''); setError(null) }}
                 disabled={deletingBid}
-                style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: deletingBid ? 'not-allowed' : 'pointer' }}
+                style={{ padding: '0.5rem 1rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: deletingBid ? 'not-allowed' : 'pointer' }}
               >
                 Cancel
               </button>
@@ -3596,21 +3599,21 @@ export default function Bids() {
 
       {/* Notes quick-edit modal */}
       {notesModalBid && (
-        <ModalShell cardStyle={{ background: 'white', padding: '2rem', borderRadius: 8, maxWidth: '500px', width: '90%' }}>
+        <ModalShell cardStyle={{ background: 'var(--surface)', padding: '2rem', borderRadius: 8, maxWidth: '500px', width: '90%' }}>
             <h2 style={{ marginBottom: '1rem' }}>Notes – {bidDisplayName(notesModalBid) || 'Bid'}</h2>
             <textarea
               value={notesModalText}
               onChange={(e) => setNotesModalText(e.target.value)}
               placeholder="Add or edit notes…"
               rows={6}
-              style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, resize: 'vertical', boxSizing: 'border-box' }}
+              style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, resize: 'vertical', boxSizing: 'border-box' }}
               autoFocus
             />
             <div style={{ marginTop: '1rem', display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
               <button
                 type="button"
                 onClick={() => setNotesModalBid(null)}
-                style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
+                style={{ padding: '0.5rem 1rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}
               >
                 Cancel
               </button>
@@ -3674,7 +3677,7 @@ export default function Bids() {
         >
           <div
             style={{
-              background: 'white',
+              background: 'var(--surface)',
               padding: '1.5rem',
               borderRadius: 8,
               maxWidth: 700,
@@ -3695,7 +3698,7 @@ export default function Bids() {
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
               {evaluateChecklist.map((item) => (
-                <div key={item.id} style={{ border: '1px solid #e5e7eb', borderRadius: 6, padding: '0.75rem 1rem' }}>
+                <div key={item.id} style={{ border: '1px solid var(--border)', borderRadius: 6, padding: '0.75rem 1rem' }}>
                   <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem', fontWeight: 600 }}>
                     <input
                       type="checkbox"
@@ -3716,7 +3719,7 @@ export default function Bids() {
               <button
                 type="button"
                 onClick={() => { setEvaluateModalOpen(false); setEvaluateChecked({}) }}
-                style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
+                style={{ padding: '0.5rem 1rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}
               >
                 Close
               </button>
@@ -3728,7 +3731,7 @@ export default function Bids() {
       {/* Sent Bid Script modal */}
       {showSentBidScript && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100 }}>
-          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, maxWidth: 600, width: '90%', maxHeight: '80vh', overflowY: 'auto' }}>
+          <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, maxWidth: 600, width: '90%', maxHeight: '80vh', overflowY: 'auto' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
               <h3 style={{ margin: 0, fontSize: '1.1rem' }}>Sent Bid Script</h3>
               <button
@@ -3758,7 +3761,7 @@ export default function Bids() {
       {/* Bid Question Script modal */}
       {showBidQuestionScript && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100 }}>
-          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, maxWidth: 600, width: '90%', maxHeight: '80vh', overflowY: 'auto' }}>
+          <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, maxWidth: 600, width: '90%', maxHeight: '80vh', overflowY: 'auto' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
               <h3 style={{ margin: 0, fontSize: '1.1rem' }}>Bid Question Script</h3>
               <button

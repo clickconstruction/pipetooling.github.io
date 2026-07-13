@@ -122,7 +122,7 @@ export function JobFormImportEstimateOrBidModal({ open, onClose, zIndex, onSelec
         aria-modal="true"
         aria-labelledby={titleId}
         style={{
-          background: 'white',
+          background: 'var(--surface)',
           borderRadius: 8,
           padding: '1.25rem',
           maxWidth: 480,
@@ -144,7 +144,7 @@ export function JobFormImportEstimateOrBidModal({ open, onClose, zIndex, onSelec
             onClick={onClose}
             style={{
               border: 'none',
-              background: '#f3f4f6',
+              background: 'var(--bg-muted)',
               borderRadius: 6,
               padding: '0.35rem 0.65rem',
               cursor: 'pointer',
@@ -168,12 +168,12 @@ export function JobFormImportEstimateOrBidModal({ open, onClose, zIndex, onSelec
             boxSizing: 'border-box',
             padding: '0.5rem 0.65rem',
             fontSize: '1rem',
-            border: '1px solid #d1d5db',
+            border: '1px solid var(--border-strong)',
             borderRadius: 6,
           }}
         />
         {showHint ? (
-          <p style={{ margin: 0, fontSize: '0.8125rem', color: '#9ca3af' }}>Enter more characters to search.</p>
+          <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-faint)' }}>Enter more characters to search.</p>
         ) : null}
 
         <div
@@ -182,19 +182,19 @@ export function JobFormImportEstimateOrBidModal({ open, onClose, zIndex, onSelec
             flex: 1,
             minHeight: 120,
             overflow: 'auto',
-            border: '1px solid #e5e7eb',
+            border: '1px solid var(--border)',
             borderRadius: 6,
-            background: '#fafafa',
+            background: 'var(--bg-page)',
           }}
         >
           {loading ? (
-            <div style={{ padding: '1rem', fontSize: '0.875rem', color: '#6b7280' }}>Searching…</div>
+            <div style={{ padding: '1rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>Searching…</div>
           ) : query.trim().length < MIN_IMPORT_SEARCH_CHARS ? (
-            <div style={{ padding: '1rem', fontSize: '0.875rem', color: '#9ca3af' }}>
+            <div style={{ padding: '1rem', fontSize: '0.875rem', color: 'var(--text-faint)' }}>
               Enter at least {MIN_IMPORT_SEARCH_CHARS} characters to search estimates and bids.
             </div>
           ) : merged.length === 0 ? (
-            <div style={{ padding: '1rem', fontSize: '0.875rem', color: '#6b7280' }}>No matches.</div>
+            <div style={{ padding: '1rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>No matches.</div>
           ) : (
             <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
               {merged.map((item) => {
@@ -202,7 +202,7 @@ export function JobFormImportEstimateOrBidModal({ open, onClose, zIndex, onSelec
                   const e = item.row
                   const label = `#${e.estimate_number} · ${(e.title ?? '').trim() || '—'}`
                   return (
-                    <li key={`e-${e.id}`} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                    <li key={`e-${e.id}`} style={{ borderBottom: '1px solid var(--border)' }}>
                       <button
                         type="button"
                         onClick={() => {
@@ -214,16 +214,16 @@ export function JobFormImportEstimateOrBidModal({ open, onClose, zIndex, onSelec
                           textAlign: 'left',
                           padding: '0.65rem 0.75rem',
                           border: 'none',
-                          background: 'white',
+                          background: 'var(--surface)',
                           cursor: 'pointer',
                           font: 'inherit',
                         }}
                       >
-                        <div style={{ fontSize: '0.6875rem', fontWeight: 700, letterSpacing: '0.06em', color: '#6b7280' }}>
+                        <div style={{ fontSize: '0.6875rem', fontWeight: 700, letterSpacing: '0.06em', color: 'var(--text-muted)' }}>
                           ESTIMATE
                         </div>
                         <div style={{ fontWeight: 500, marginTop: 2 }}>{label}</div>
-                        <div style={{ fontSize: '0.8125rem', color: '#6b7280', marginTop: 2 }}>
+                        <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: 2 }}>
                           {e.customer_name || '—'}
                           {e.subtitle ? ` · ${e.subtitle}` : ''}
                         </div>
@@ -234,7 +234,7 @@ export function JobFormImportEstimateOrBidModal({ open, onClose, zIndex, onSelec
                 const b = item.row
                 const title = bidSearchRowTitle(b, prefixMap)
                 return (
-                  <li key={`b-${b.id}`} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                  <li key={`b-${b.id}`} style={{ borderBottom: '1px solid var(--border)' }}>
                     <button
                       type="button"
                       onClick={() => {
@@ -246,16 +246,16 @@ export function JobFormImportEstimateOrBidModal({ open, onClose, zIndex, onSelec
                         textAlign: 'left',
                         padding: '0.65rem 0.75rem',
                         border: 'none',
-                        background: 'white',
+                        background: 'var(--surface)',
                         cursor: 'pointer',
                         font: 'inherit',
                       }}
                     >
-                      <div style={{ fontSize: '0.6875rem', fontWeight: 700, letterSpacing: '0.06em', color: '#6b7280' }}>
+                      <div style={{ fontSize: '0.6875rem', fontWeight: 700, letterSpacing: '0.06em', color: 'var(--text-muted)' }}>
                         BID
                       </div>
                       <div style={{ fontWeight: 500, marginTop: 2 }}>{title}</div>
-                      <div style={{ fontSize: '0.8125rem', color: '#6b7280', marginTop: 2 }}>
+                      <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: 2 }}>
                         {(b.address ?? '').trim() || '—'} · {b.customer_name || '—'}
                       </div>
                     </button>

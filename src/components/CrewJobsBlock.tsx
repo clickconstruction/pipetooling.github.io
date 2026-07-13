@@ -636,7 +636,7 @@ export function CrewJobsBlock({
               d.setDate(d.getDate() - 1)
               setCrewJobsDate(d.toLocaleDateString('en-CA'))
             }}
-            style={{ padding: '0.35rem 0.75rem', border: '1px solid #d1d5db', borderRadius: 4, background: '#fff', cursor: 'pointer' }}
+            style={{ padding: '0.35rem 0.75rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: 'pointer' }}
           >
             ←
           </button>
@@ -644,7 +644,7 @@ export function CrewJobsBlock({
             type="date"
             value={crewJobsDate}
             onChange={(e) => setCrewJobsDate(e.target.value)}
-            style={{ padding: '0.35rem 0.5rem', fontSize: '0.9375rem', fontWeight: 500, border: '1px solid #d1d5db', borderRadius: 4, minWidth: 140 }}
+            style={{ padding: '0.35rem 0.5rem', fontSize: '0.9375rem', fontWeight: 500, border: '1px solid var(--border-strong)', borderRadius: 4, minWidth: 140 }}
           />
           {(() => {
             const { formatted, isTodayOrTomorrow } = formatDateWithRelativeLabel(crewJobsDate)
@@ -653,7 +653,7 @@ export function CrewJobsBlock({
                 style={{
                   fontSize: '0.9375rem',
                   fontWeight: 500,
-                  color: isTodayOrTomorrow ? '#b91c1c' : '#374151',
+                  color: isTodayOrTomorrow ? 'var(--text-red-700)' : 'var(--text-700)',
                 }}
               >
                 {formatted}
@@ -667,7 +667,7 @@ export function CrewJobsBlock({
               d.setDate(d.getDate() + 1)
               setCrewJobsDate(d.toLocaleDateString('en-CA'))
             }}
-            style={{ padding: '0.35rem 0.75rem', border: '1px solid #d1d5db', borderRadius: 4, background: '#fff', cursor: 'pointer' }}
+            style={{ padding: '0.35rem 0.75rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: 'pointer' }}
           >
             →
           </button>
@@ -678,17 +678,17 @@ export function CrewJobsBlock({
         </div>
       </div>
       {crewJobsLoading ? (
-        <p style={{ color: '#6b7280' }}>Loading…</p>
+        <p style={{ color: 'var(--text-muted)' }}>Loading…</p>
       ) : showPeopleForMatrix.length === 0 ? (
-        <p style={{ color: '#6b7280' }}>No people in Cost Matrix. Go to People → Pay and check Show in Cost Matrix.</p>
+        <p style={{ color: 'var(--text-muted)' }}>No people in Cost Matrix. Go to People → Pay and check Show in Cost Matrix.</p>
       ) : (
-        <div style={{ overflowX: 'auto', border: '1px solid #e5e7eb', borderRadius: 4, marginBottom: '1.5rem' }}>
+        <div style={{ overflowX: 'auto', border: '1px solid var(--border)', borderRadius: 4, marginBottom: '1.5rem' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
-            <thead style={{ background: '#f9fafb' }}>
+            <thead style={{ background: 'var(--bg-subtle)' }}>
               <tr>
-                <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Name</th>
-                <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Hours</th>
-                <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Assignments</th>
+                <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Name</th>
+                <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid var(--border)' }}>Hours</th>
+                <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Assignments</th>
               </tr>
             </thead>
             <tbody>
@@ -696,12 +696,12 @@ export function CrewJobsBlock({
                 const row = crewJobsData[personName] ?? { unifiedAssignments: [] }
                 const effectiveHours = effectiveHoursForCost(payConfig[personName], crewJobsDate, effectiveCrewHours[personName] ?? 0)
                 return (
-                  <tr key={personName} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                  <tr key={personName} style={{ borderBottom: '1px solid var(--border)' }}>
                     <td style={{ padding: '0.75rem' }}>{personName}</td>
-                    <td style={{ padding: '0.75rem', textAlign: 'right', color: '#6b7280' }}>
+                    <td style={{ padding: '0.75rem', textAlign: 'right', color: 'var(--text-muted)' }}>
                       {effectiveHours > 0 ? effectiveHours.toFixed(2) : '—'}
                     </td>
-                    <td style={{ padding: '0.75rem', background: !canEdit ? '#f3f4f6' : undefined }}>
+                    <td style={{ padding: '0.75rem', background: !canEdit ? 'var(--bg-muted)' : undefined }}>
                       {canEdit ? (
                         <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.35rem' }}>
                           {row.unifiedAssignments.map((a, idx) => {
@@ -716,7 +716,7 @@ export function CrewJobsBlock({
                                   alignItems: 'center',
                                   gap: '0.25rem',
                                   padding: '0.2rem 0.4rem',
-                                  background: '#f3f4f6',
+                                  background: 'var(--bg-muted)',
                                   borderRadius: 4,
                                   fontSize: '0.8125rem',
                                 }}
@@ -744,7 +744,7 @@ export function CrewJobsBlock({
                                     }
                                     saveCrewRow(personName, { ...row, unifiedAssignments: newAssignments })
                                   }}
-                                  style={{ width: 44, padding: '0.15rem', fontSize: '0.875rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                                  style={{ width: 44, padding: '0.15rem', fontSize: '0.875rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
                                 />
                                 %
                                 <button
@@ -768,7 +768,7 @@ export function CrewJobsBlock({
                                     border: 'none',
                                     background: 'none',
                                     cursor: 'pointer',
-                                    color: '#6b7280',
+                                    color: 'var(--text-muted)',
                                     fontSize: '0.875rem',
                                     lineHeight: 1,
                                   }}
@@ -788,9 +788,9 @@ export function CrewJobsBlock({
                             }}
                             style={{
                               padding: '0.2rem 0.5rem',
-                              border: '1px dashed #d1d5db',
+                              border: '1px dashed var(--border-strong)',
                               borderRadius: 4,
-                              background: '#fff',
+                              background: 'var(--surface)',
                               cursor: 'pointer',
                               fontSize: '0.875rem',
                             }}
@@ -799,7 +799,7 @@ export function CrewJobsBlock({
                           </button>
                         </div>
                       ) : (
-                        <span style={{ color: '#6b7280', fontSize: '0.8125rem' }}>
+                        <span style={{ color: 'var(--text-muted)', fontSize: '0.8125rem' }}>
                           {row.unifiedAssignments.length > 0
                             ? row.unifiedAssignments
                                 .map((a) => {
@@ -829,22 +829,22 @@ export function CrewJobsBlock({
           placeholder="Search HCP, job name, address…"
           value={teamLaborSearch}
           onChange={(e) => setTeamLaborSearch(e.target.value)}
-          style={{ width: '100%', maxWidth: 400, padding: '0.5rem 0.75rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem' }}
+          style={{ width: '100%', maxWidth: 400, padding: '0.5rem 0.75rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem' }}
         />
       </div>
       {teamLaborLoading ? (
-        <p style={{ color: '#6b7280' }}>Loading Team Job Labor…</p>
+        <p style={{ color: 'var(--text-muted)' }}>Loading Team Job Labor…</p>
       ) : (
-        <div style={{ overflowX: 'auto', border: '1px solid #e5e7eb', borderRadius: 4 }}>
+        <div style={{ overflowX: 'auto', border: '1px solid var(--border)', borderRadius: 4 }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
-            <thead style={{ background: '#f9fafb' }}>
+            <thead style={{ background: 'var(--bg-subtle)' }}>
               <tr>
-                <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>HCP</th>
-                <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Job</th>
-                <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>People</th>
-                <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Man Hours</th>
-                {!hideJobCostColumn && <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Job Cost</th>}
-                <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Approved sessions</th>
+                <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>HCP</th>
+                <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Job</th>
+                <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>People</th>
+                <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid var(--border)' }}>Man Hours</th>
+                {!hideJobCostColumn && <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid var(--border)' }}>Job Cost</th>}
+                <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid var(--border)' }}>Approved sessions</th>
               </tr>
             </thead>
             <tbody>
@@ -863,7 +863,7 @@ export function CrewJobsBlock({
                     key={r.jobId}
                     data-team-labor-job-id={r.jobId}
                     style={{
-                      borderBottom: '1px solid #e5e7eb',
+                      borderBottom: '1px solid var(--border)',
                       ...(r.jobId === teamLaborHighlightJobId
                         ? {
                             backgroundColor: '#fef9c3',
@@ -877,7 +877,7 @@ export function CrewJobsBlock({
                     <td style={{ padding: '0.75rem' }}>
                       <div>{r.jobName || '—'}</div>
                       {r.jobAddress && (
-                        <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.15rem' }}>{r.jobAddress}</div>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>{r.jobAddress}</div>
                       )}
                     </td>
                     <td style={{ padding: '0.75rem' }}>{r.people.join(', ') || '—'}</td>
@@ -890,7 +890,7 @@ export function CrewJobsBlock({
                           border: 'none',
                           padding: 0,
                           cursor: 'pointer',
-                          color: '#2563eb',
+                          color: 'var(--text-link)',
                           textDecoration: 'underline',
                           fontSize: 'inherit',
                         }}
@@ -908,7 +908,7 @@ export function CrewJobsBlock({
                             border: 'none',
                             padding: 0,
                             cursor: 'pointer',
-                            color: '#2563eb',
+                            color: 'var(--text-link)',
                             textDecoration: 'underline',
                             fontSize: 'inherit',
                           }}
@@ -931,7 +931,7 @@ export function CrewJobsBlock({
                           border: 'none',
                           padding: 0,
                           cursor: 'pointer',
-                          color: '#2563eb',
+                          color: 'var(--text-link)',
                           textDecoration: 'underline',
                           fontSize: 'inherit',
                         }}
@@ -944,7 +944,7 @@ export function CrewJobsBlock({
             </tbody>
           </table>
           {filteredTeamLaborData.length === 0 && (
-            <p style={{ padding: '1rem', color: '#6b7280', margin: 0 }}>
+            <p style={{ padding: '1rem', color: 'var(--text-muted)', margin: 0 }}>
               No team labor data yet. Add jobs or bids in Crew Jobs / Bids above.
             </p>
           )}
@@ -958,14 +958,14 @@ export function CrewJobsBlock({
       {showTitle && (
         <h2 style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: '0.75rem', textAlign: 'center' }}>Crew Jobs / Bids</h2>
       )}
-      {error && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{error}</p>}
+      {error && <p style={{ color: 'var(--text-red-700)', marginBottom: '1rem' }}>{error}</p>}
       {loading ? (
-        <p style={{ color: '#6b7280' }}>Loading…</p>
+        <p style={{ color: 'var(--text-muted)' }}>Loading…</p>
       ) : (
         <>
           {showCrewJobsSection &&
             (collapsibleCrewJobs ? (
-              <div style={{ marginBottom: '1rem', border: '1px solid #e5e7eb', borderRadius: '0.5rem' }}>
+              <div style={{ marginBottom: '1rem', border: '1px solid var(--border)', borderRadius: '0.5rem' }}>
                 <button
                   type="button"
                   onClick={() => setCrewJobsSectionOpen((prev) => !prev)}
@@ -1040,7 +1040,7 @@ export function CrewJobsBlock({
             zIndex: 1001,
           }}
         >
-          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 400, maxWidth: '90%' }}>
+          <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 400, maxWidth: '90%' }}>
             <h3 style={{ margin: '0 0 1rem 0', fontSize: '1.125rem' }}>Add job or bid for {crewJobSearchModal.personName}</h3>
             <input
               type="search"
@@ -1048,7 +1048,7 @@ export function CrewJobsBlock({
               value={crewJobSearchText}
               onChange={(e) => setCrewJobSearchText(e.target.value)}
               autoFocus
-              style={{ width: '100%', padding: '0.5rem 0.75rem', marginBottom: '1rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+              style={{ width: '100%', padding: '0.5rem 0.75rem', marginBottom: '1rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
             />
             <div style={{ maxHeight: 300, overflow: 'auto' }}>
               {crewJobSearchResults.map((item) => (
@@ -1083,7 +1083,7 @@ export function CrewJobsBlock({
                     padding: '0.5rem',
                     textAlign: 'left',
                     border: 'none',
-                    borderBottom: '1px solid #e5e7eb',
+                    borderBottom: '1px solid var(--border)',
                     background: 'none',
                     cursor: 'pointer',
                     fontSize: '0.875rem',
@@ -1103,7 +1103,7 @@ export function CrewJobsBlock({
                       : formatBidLedgerShortLine(prefixMap, item.service_type_id ?? null, item.bid_number, item.project_name)}
                   </div>
                   {(item.type === 'job' ? item.job_address : item.address) && (
-                    <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: 2 }}>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 2 }}>
                       {item.type === 'job' ? item.job_address : item.address}
                     </div>
                   )}
@@ -1139,7 +1139,7 @@ export function CrewJobsBlock({
         >
           <div
             style={{
-              background: 'white',
+              background: 'var(--surface)',
               padding: '1.5rem',
               borderRadius: 8,
               minWidth: breakdownModal.type === 'sessions' ? 480 : 360,
@@ -1154,26 +1154,26 @@ export function CrewJobsBlock({
             </h3>
             {breakdownModal.type === 'sessions' ? (
               <>
-                {approvedSessionsLoading && <p style={{ color: '#6b7280', margin: 0 }}>Loading…</p>}
+                {approvedSessionsLoading && <p style={{ color: 'var(--text-muted)', margin: 0 }}>Loading…</p>}
                 {!approvedSessionsLoading && approvedSessionsError && (
-                  <p style={{ color: '#b91c1c', margin: 0 }}>{approvedSessionsError}</p>
+                  <p style={{ color: 'var(--text-red-700)', margin: 0 }}>{approvedSessionsError}</p>
                 )}
                 {!approvedSessionsLoading && !approvedSessionsError && approvedSessionsState && (
                   <>
                     {approvedSessionsState.rows.length === 0 ? (
-                      <p style={{ color: '#6b7280', margin: 0 }}>No approved closed sessions for this job.</p>
+                      <p style={{ color: 'var(--text-muted)', margin: 0 }}>No approved closed sessions for this job.</p>
                     ) : (
                       <>
-                        <div style={{ maxHeight: '60vh', overflow: 'auto', border: '1px solid #e5e7eb', borderRadius: 4 }}>
+                        <div style={{ maxHeight: '60vh', overflow: 'auto', border: '1px solid var(--border)', borderRadius: 4 }}>
                           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
-                            <thead style={{ background: '#f9fafb', position: 'sticky', top: 0 }}>
+                            <thead style={{ background: 'var(--bg-subtle)', position: 'sticky', top: 0 }}>
                               <tr>
-                                <th style={{ padding: '0.5rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Work date</th>
-                                <th style={{ padding: '0.5rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Person</th>
-                                <th style={{ padding: '0.5rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>In</th>
-                                <th style={{ padding: '0.5rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Out</th>
-                                <th style={{ padding: '0.5rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Duration</th>
-                                <th style={{ padding: '0.5rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Notes</th>
+                                <th style={{ padding: '0.5rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Work date</th>
+                                <th style={{ padding: '0.5rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Person</th>
+                                <th style={{ padding: '0.5rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>In</th>
+                                <th style={{ padding: '0.5rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Out</th>
+                                <th style={{ padding: '0.5rem', textAlign: 'right', borderBottom: '1px solid var(--border)' }}>Duration</th>
+                                <th style={{ padding: '0.5rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Notes</th>
                               </tr>
                             </thead>
                             <tbody>
@@ -1182,7 +1182,7 @@ export function CrewJobsBlock({
                                 const preview =
                                   notes.length > NOTES_PREVIEW_MAX ? `${notes.slice(0, NOTES_PREVIEW_MAX)}…` : notes || '—'
                                 return (
-                                  <tr key={s.id} style={{ borderBottom: '1px solid #e5e7eb', verticalAlign: 'top' }}>
+                                  <tr key={s.id} style={{ borderBottom: '1px solid var(--border)', verticalAlign: 'top' }}>
                                     <td style={{ padding: '0.5rem', whiteSpace: 'nowrap' }}>{formatTeamLaborWorkDate(s.work_date)}</td>
                                     <td style={{ padding: '0.5rem' }}>{s.users?.name ?? '—'}</td>
                                     <td style={{ padding: '0.5rem', whiteSpace: 'nowrap' }}>{formatTeamLaborClockTime(s.clocked_in_at)}</td>
@@ -1203,7 +1203,7 @@ export function CrewJobsBlock({
                           </table>
                         </div>
                         {approvedSessionsState.truncated && (
-                          <p style={{ color: '#6b7280', fontSize: '0.8125rem', margin: '0.75rem 0 0 0' }}>
+                          <p style={{ color: 'var(--text-muted)', fontSize: '0.8125rem', margin: '0.75rem 0 0 0' }}>
                             List shows the first 100 sessions; more exist for this job.
                           </p>
                         )}
@@ -1215,7 +1215,7 @@ export function CrewJobsBlock({
             ) : (
               (() => {
                 const row = teamLaborData.find((r) => r.jobId === breakdownModal.jobId)
-                if (!row) return <p style={{ color: '#6b7280' }}>No data</p>
+                if (!row) return <p style={{ color: 'var(--text-muted)' }}>No data</p>
                 const items =
                   breakdownModal.type === 'hours'
                     ? row.breakdown.map((b) => ({ ...b, value: b.hours }))
@@ -1223,14 +1223,14 @@ export function CrewJobsBlock({
                 return (
                   <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
                     <thead>
-                      <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
+                      <tr style={{ borderBottom: '1px solid var(--border)' }}>
                         <th style={{ padding: '0.5rem', textAlign: 'left' }}>Person</th>
                         <th style={{ padding: '0.5rem', textAlign: 'right' }}>{breakdownModal.type === 'hours' ? 'Hours' : 'Cost'}</th>
                       </tr>
                     </thead>
                     <tbody>
                       {items.map((b) => (
-                        <tr key={b.personName} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                        <tr key={b.personName} style={{ borderBottom: '1px solid var(--border)' }}>
                           <td style={{ padding: '0.5rem' }}>{b.personName}</td>
                           <td style={{ padding: '0.5rem', textAlign: 'right' }}>
                             {breakdownModal.type === 'hours' ? b.value.toFixed(2) : `$${formatCurrency(b.value)}`}

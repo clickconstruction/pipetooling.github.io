@@ -953,7 +953,7 @@ export function BidsLaborTab({
             placeholder="Search bids (bid #, project name, or GC/Builder)..."
             value={costEstimateSearchQuery}
             onChange={(e) => setCostEstimateSearchQuery(e.target.value)}
-            style={{ flex: 1, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, boxSizing: 'border-box' }}
+            style={{ flex: 1, padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, boxSizing: 'border-box' }}
           />
           <MyBidsToggle active={onlyMyBids} onChange={setOnlyMyBids} />
         </div>
@@ -961,10 +961,10 @@ export function BidsLaborTab({
       {selectedBidForCostEstimate && (
         <div
           style={{
-            border: '1px solid #e5e7eb',
+            border: '1px solid var(--border)',
             borderRadius: 8,
             padding: '1.5rem 2rem',
-            background: 'white',
+            background: 'var(--surface)',
             marginBottom: '1.5rem',
             ...(narrowViewport640 ? { position: 'relative' } : {}),
           }}
@@ -1027,7 +1027,7 @@ export function BidsLaborTab({
                     fontSize: '0.875rem',
                     fontWeight: 500,
                     marginRight: '0.25rem',
-                    color: '#4b5563',
+                    color: 'var(--text-600)',
                     whiteSpace: 'nowrap',
                   }}
                 >
@@ -1039,12 +1039,12 @@ export function BidsLaborTab({
                   style={{
                     padding: '0.35rem 0.75rem',
                     fontSize: '0.8125rem',
-                    border: '1px solid #d1d5db',
+                    border: '1px solid var(--border-strong)',
                     borderRadius: 4,
-                    background: ceMaterialsModel === 'exact' ? '#e5e7eb' : 'white',
+                    background: ceMaterialsModel === 'exact' ? 'var(--bg-200)' : 'var(--surface)',
                     cursor: 'pointer',
                     fontWeight: ceMaterialsModel === 'exact' ? 600 : 400,
-                    color: ceMaterialsModel === 'exact' ? '#111827' : '#6b7280',
+                    color: ceMaterialsModel === 'exact' ? 'var(--text-strong)' : 'var(--text-muted)',
                     boxShadow: ceMaterialsModel === 'exact' ? '0 0 0 2px #374151' : 'none',
                   }}
                 >
@@ -1056,12 +1056,12 @@ export function BidsLaborTab({
                   style={{
                     padding: '0.35rem 0.75rem',
                     fontSize: '0.8125rem',
-                    border: '1px solid #d1d5db',
+                    border: '1px solid var(--border-strong)',
                     borderRadius: 4,
-                    background: ceMaterialsModel === 'rough' ? '#e5e7eb' : 'white',
+                    background: ceMaterialsModel === 'rough' ? 'var(--bg-200)' : 'var(--surface)',
                     cursor: 'pointer',
                     fontWeight: ceMaterialsModel === 'rough' ? 600 : 400,
-                    color: ceMaterialsModel === 'rough' ? '#111827' : '#6b7280',
+                    color: ceMaterialsModel === 'rough' ? 'var(--text-strong)' : 'var(--text-muted)',
                     boxShadow: ceMaterialsModel === 'rough' ? '0 0 0 2px #374151' : 'none',
                   }}
                 >
@@ -1071,7 +1071,7 @@ export function BidsLaborTab({
             )
           })()}
           {costEstimateCountRows.length === 0 ? (
-            <p style={{ color: '#6b7280', margin: 0 }}>Add fixtures in the Counts tab first.</p>
+            <p style={{ color: 'var(--text-muted)', margin: 0 }}>Add fixtures in the Counts tab first.</p>
           ) : (
             <>
               {/* Manhours section */}
@@ -1093,7 +1093,7 @@ export function BidsLaborTab({
                           }
                         }
                       }}
-                      style={{ padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, minWidth: '12rem' }}
+                      style={{ padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, minWidth: '12rem' }}
                     >
                       <option value="">— Use defaults —</option>
                       {laborBookVersions.map((v) => (
@@ -1120,29 +1120,29 @@ export function BidsLaborTab({
                         {applyingLaborBookHours ? 'Applying…' : 'Apply matching Labor Hours'}
                       </button>
                       {laborBookApplyMessage && (
-                        <span style={{ color: '#059669', fontSize: '0.875rem' }}>{laborBookApplyMessage}</span>
+                        <span style={{ color: 'var(--text-green-600)', fontSize: '0.875rem' }}>{laborBookApplyMessage}</span>
                       )}
                     </div>
                   )}
                 </div>
-                <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
+                <div style={{ border: '1px solid var(--border)', borderRadius: 4, overflow: 'hidden' }}>
                   <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                    <thead style={{ background: '#f9fafb' }}>
+                    <thead style={{ background: 'var(--bg-subtle)' }}>
                       <tr>
-                        <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Fixture or Tie-in</th>
-                        <th style={{ padding: '0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Count</th>
-                        <th style={{ padding: '0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>(hrs/unit)</th>
-                        <th style={{ padding: '0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Rough In</th>
-                        <th style={{ padding: '0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Top Out</th>
-                        <th style={{ padding: '0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Trim Set</th>
-                        <th style={{ padding: '0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Total hrs</th>
+                        <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Fixture or Tie-in</th>
+                        <th style={{ padding: '0.75rem', textAlign: 'center', borderBottom: '1px solid var(--border)' }}>Count</th>
+                        <th style={{ padding: '0.75rem', textAlign: 'center', borderBottom: '1px solid var(--border)' }}>(hrs/unit)</th>
+                        <th style={{ padding: '0.75rem', textAlign: 'center', borderBottom: '1px solid var(--border)' }}>Rough In</th>
+                        <th style={{ padding: '0.75rem', textAlign: 'center', borderBottom: '1px solid var(--border)' }}>Top Out</th>
+                        <th style={{ padding: '0.75rem', textAlign: 'center', borderBottom: '1px solid var(--border)' }}>Trim Set</th>
+                        <th style={{ padding: '0.75rem', textAlign: 'center', borderBottom: '1px solid var(--border)' }}>Total hrs</th>
                       </tr>
                     </thead>
                     <tbody>
                       {costEstimateLaborRows.map((row) => {
                         const totalHrs = laborRowHours(row)
                         return (
-                          <tr key={row.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                          <tr key={row.id} style={{ borderBottom: '1px solid var(--border)' }}>
                             <td style={{ padding: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                               <span>{row.fixture ?? ''}</span>
                               {missingLaborBookFixtures.has(row.fixture ?? '') && selectedLaborBookVersionId && (
@@ -1178,7 +1178,7 @@ export function BidsLaborTab({
                                   onChange={(e) => setCostEstimateLaborRow(row.id, { is_fixed: e.target.checked })}
                                   style={{ width: '0.875rem', height: '0.875rem', margin: 0 }}
                                 />
-                                <span style={{ color: '#6b7280' }}>fixed</span>
+                                <span style={{ color: 'var(--text-muted)' }}>fixed</span>
                               </label>
                             </td>
                             <td style={{ padding: '0.75rem', textAlign: 'center' }}>
@@ -1189,7 +1189,7 @@ export function BidsLaborTab({
                                 value={row.rough_in_hrs_per_unit}
                                 onChange={(e) => setCostEstimateLaborRow(row.id, { rough_in_hrs_per_unit: parseFloat(e.target.value) || 0 })}
                                 onWheel={(e) => e.currentTarget.blur()}
-                                style={{ width: '5rem', padding: '0.25rem', border: '1px solid #d1d5db', borderRadius: 4, textAlign: 'center' }}
+                                style={{ width: '5rem', padding: '0.25rem', border: '1px solid var(--border-strong)', borderRadius: 4, textAlign: 'center' }}
                               />
                             </td>
                             <td style={{ padding: '0.75rem', textAlign: 'center' }}>
@@ -1200,7 +1200,7 @@ export function BidsLaborTab({
                                 value={row.top_out_hrs_per_unit}
                                 onChange={(e) => setCostEstimateLaborRow(row.id, { top_out_hrs_per_unit: parseFloat(e.target.value) || 0 })}
                                 onWheel={(e) => e.currentTarget.blur()}
-                                style={{ width: '5rem', padding: '0.25rem', border: '1px solid #d1d5db', borderRadius: 4, textAlign: 'center' }}
+                                style={{ width: '5rem', padding: '0.25rem', border: '1px solid var(--border-strong)', borderRadius: 4, textAlign: 'center' }}
                               />
                             </td>
                             <td style={{ padding: '0.75rem', textAlign: 'center' }}>
@@ -1211,7 +1211,7 @@ export function BidsLaborTab({
                                 value={row.trim_set_hrs_per_unit}
                                 onChange={(e) => setCostEstimateLaborRow(row.id, { trim_set_hrs_per_unit: parseFloat(e.target.value) || 0 })}
                                 onWheel={(e) => e.currentTarget.blur()}
-                                style={{ width: '5rem', padding: '0.25rem', border: '1px solid #d1d5db', borderRadius: 4, textAlign: 'center' }}
+                                style={{ width: '5rem', padding: '0.25rem', border: '1px solid var(--border-strong)', borderRadius: 4, textAlign: 'center' }}
                               />
                             </td>
                             <td style={{ padding: '0.75rem', textAlign: 'center', fontWeight: 500 }}>{totalHrs.toFixed(2)}</td>
@@ -1224,7 +1224,7 @@ export function BidsLaborTab({
                         const totalTrim = costEstimateLaborRows.reduce((s, r) => s + laborRowTrim(r), 0)
                         const totalHours = totalRough + totalTop + totalTrim
                         return (
-                          <tr style={{ background: '#f9fafb', fontWeight: 600 }}>
+                          <tr style={{ background: 'var(--bg-subtle)', fontWeight: 600 }}>
                             <td style={{ padding: '0.75rem' }}>Totals</td>
                             <td style={{ padding: '0.75rem', textAlign: 'center' }} />
                             <td style={{ padding: '0.75rem', textAlign: 'center' }} />
@@ -1248,7 +1248,7 @@ export function BidsLaborTab({
                       value={laborRateInput}
                       onChange={(e) => setLaborRateInput(e.target.value)}
                       onWheel={(e) => e.currentTarget.blur()}
-                      style={{ width: '8rem', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                      style={{ width: '8rem', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
                     />
                   </div>
                   <div style={{ display: 'flex', gap: '0.5rem' }}>
@@ -1298,7 +1298,7 @@ export function BidsLaborTab({
                   )
                 })()}
                 {/* Driving Cost Section */}
-                <div style={{ marginTop: '1rem', padding: '0.75rem', background: '#fef3c7', borderRadius: 4, border: '1px solid #fde68a' }}>
+                <div style={{ marginTop: '1rem', padding: '0.75rem', background: 'var(--bg-amber-100)', borderRadius: 4, border: '1px solid #fde68a' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: vehicleTravelCollapsed ? 0 : '0.5rem', flexWrap: 'wrap', gap: '0.5rem' }}>
                     <button type="button" onClick={() => setVehicleTravelCollapsed((c) => !c)} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontSize: '0.875rem', fontWeight: 600 }}>
                       <span aria-hidden style={{ fontSize: '0.7rem' }}>{vehicleTravelCollapsed ? '▶' : '▼'}</span>
@@ -1311,7 +1311,7 @@ export function BidsLaborTab({
                       const numTrips = totalHours / (parseFloat(hoursPerTrip) || 2.0)
                       const drivingCost = numTrips * ratePerMile * distance
                       return (
-                        <span style={{ fontSize: '0.875rem', color: '#374151' }}>
+                        <span style={{ fontSize: '0.875rem', color: 'var(--text-700)' }}>
                           Driving cost: {numTrips.toFixed(1)} trips × ${ratePerMile.toFixed(2)}/mi × {distance.toFixed(0)}mi = <span style={{ fontWeight: 700 }}>${formatCurrency(drivingCost)}</span>
                         </span>
                       )
@@ -1335,7 +1335,7 @@ export function BidsLaborTab({
                             onChange={(e) => setCostEstimateDistanceInput(e.target.value)}
                             onWheel={(e) => e.currentTarget.blur()}
                             placeholder="—"
-                            style={{ width: '4rem', padding: '0.25rem 0.375rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem', textAlign: 'right' }}
+                            style={{ width: '4rem', padding: '0.25rem 0.375rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem', textAlign: 'right' }}
                           />
                           {' mi]'}
                         </span>
@@ -1343,12 +1343,12 @@ export function BidsLaborTab({
                           type="button"
                           onClick={updateBidDistanceFromCostEstimate}
                           disabled={updatingBidDistance}
-                          style={{ padding: '0.25rem 0.5rem', background: updatingBidDistance ? '#d1d5db' : '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: updatingBidDistance ? 'wait' : 'pointer', fontSize: '0.75rem', fontWeight: 500 }}
+                          style={{ padding: '0.25rem 0.5rem', background: updatingBidDistance ? '#d1d5db' : 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: updatingBidDistance ? 'wait' : 'pointer', fontSize: '0.75rem', fontWeight: 500 }}
                         >
                           {updatingBidDistance ? 'Updating…' : 'Update bid distance'}
                         </button>
                         {bidDistanceUpdateSuccess && (
-                          <span style={{ color: '#059669', fontSize: '0.75rem', fontWeight: 500 }}>✓ Distance updated</span>
+                          <span style={{ color: 'var(--text-green-600)', fontSize: '0.75rem', fontWeight: 500 }}>✓ Distance updated</span>
                         )}
                       </div>
                     )}
@@ -1365,7 +1365,7 @@ export function BidsLaborTab({
                         value={drivingCostRate}
                         onChange={(e) => setDrivingCostRate(e.target.value)}
                         onWheel={(e) => e.currentTarget.blur()}
-                        style={{ width: '6rem', padding: '0.375rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem' }}
+                        style={{ width: '6rem', padding: '0.375rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem' }}
                       />
                     </div>
                     <div>
@@ -1377,7 +1377,7 @@ export function BidsLaborTab({
                         value={hoursPerTrip}
                         onChange={(e) => setHoursPerTrip(e.target.value)}
                         onWheel={(e) => e.currentTarget.blur()}
-                        style={{ width: '6rem', padding: '0.375rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem' }}
+                        style={{ width: '6rem', padding: '0.375rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem' }}
                       />
                     </div>
                   </div>
@@ -1394,7 +1394,7 @@ export function BidsLaborTab({
 
                     return (
                       <>
-                        <p style={{ margin: '0 0 0.5rem', fontSize: '0.875rem', color: '#6b7280' }}>
+                        <p style={{ margin: '0 0 0.5rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
                           Distance to office: {distance > 0 ? `${distance.toFixed(1)} miles` : 'Not set'}
                         </p>
                         <p style={{ margin: 0, fontWeight: 400, fontSize: '0.875rem', textAlign: 'right' }}>
@@ -1408,7 +1408,7 @@ export function BidsLaborTab({
                 </div>
               </div>
               {/* Travel Cost Parameters */}
-              <div style={{ marginTop: '1rem', padding: '0.75rem', background: '#fef3c7', borderRadius: 4, border: '1px solid #fde68a' }}>
+              <div style={{ marginTop: '1rem', padding: '0.75rem', background: 'var(--bg-amber-100)', borderRadius: 4, border: '1px solid #fde68a' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: lodgingCollapsed ? 0 : '0.5rem', flexWrap: 'wrap', gap: '0.5rem' }}>
                   <button type="button" onClick={() => setLodgingCollapsed((c) => !c)} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontSize: '0.875rem', fontWeight: 600 }}>
                     <span aria-hidden style={{ fontSize: '0.7rem' }}>{lodgingCollapsed ? '▶' : '▼'}</span>
@@ -1421,7 +1421,7 @@ export function BidsLaborTab({
                     const hotelRate = parseFloat(travelHotelRate) || 0
                     const travelCost = people * nights * (mealsRate + hotelRate)
                     return (
-                      <span style={{ fontSize: '0.875rem', color: '#374151' }}>Travel total: <span style={{ fontWeight: 700 }}>${formatCurrency(travelCost)}</span></span>
+                      <span style={{ fontSize: '0.875rem', color: 'var(--text-700)' }}>Travel total: <span style={{ fontWeight: 700 }}>${formatCurrency(travelCost)}</span></span>
                     )
                   })()}
                 </div>
@@ -1437,7 +1437,7 @@ export function BidsLaborTab({
                       value={travelPeople}
                       onChange={(e) => setTravelPeople(e.target.value)}
                       onWheel={(e) => e.currentTarget.blur()}
-                      style={{ width: '5rem', padding: '0.375rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem' }}
+                      style={{ width: '5rem', padding: '0.375rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem' }}
                     />
                   </div>
                   <div>
@@ -1449,7 +1449,7 @@ export function BidsLaborTab({
                       value={travelNights}
                       onChange={(e) => setTravelNights(e.target.value)}
                       onWheel={(e) => e.currentTarget.blur()}
-                      style={{ width: '5rem', padding: '0.375rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem' }}
+                      style={{ width: '5rem', padding: '0.375rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem' }}
                     />
                   </div>
                   <div>
@@ -1462,7 +1462,7 @@ export function BidsLaborTab({
                       onChange={(e) => setTravelMealsRate(e.target.value)}
                       onWheel={(e) => e.currentTarget.blur()}
                       placeholder="—"
-                      style={{ width: '6rem', padding: '0.375rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem' }}
+                      style={{ width: '6rem', padding: '0.375rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem' }}
                     />
                   </div>
                   <div>
@@ -1475,7 +1475,7 @@ export function BidsLaborTab({
                       onChange={(e) => setTravelHotelRate(e.target.value)}
                       onWheel={(e) => e.currentTarget.blur()}
                       placeholder="—"
-                      style={{ width: '6rem', padding: '0.375rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem' }}
+                      style={{ width: '6rem', padding: '0.375rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem' }}
                     />
                   </div>
                 </div>
@@ -1488,18 +1488,18 @@ export function BidsLaborTab({
                     value={travelZip}
                     onChange={(e) => setTravelZip(e.target.value.replace(/[^0-9]/g, '').slice(0, 5))}
                     placeholder="78701"
-                    style={{ width: '5rem', padding: '0.375rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem' }}
+                    style={{ width: '5rem', padding: '0.375rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem' }}
                   />
                   <button
                     type="button"
                     onClick={handleTravelPerDiemLookup}
                     disabled={travelLookupStatus === 'loading'}
-                    style={{ padding: '0.375rem 0.625rem', background: travelLookupStatus === 'loading' ? '#d1d5db' : '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: travelLookupStatus === 'loading' ? 'wait' : 'pointer', fontSize: '0.75rem', fontWeight: 500 }}
+                    style={{ padding: '0.375rem 0.625rem', background: travelLookupStatus === 'loading' ? '#d1d5db' : 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: travelLookupStatus === 'loading' ? 'wait' : 'pointer', fontSize: '0.75rem', fontWeight: 500 }}
                   >
                     {travelLookupStatus === 'loading' ? 'Looking up…' : 'Look up GSA per diem'}
                   </button>
                   {travelLookupMessage && (
-                    <span style={{ fontSize: '0.75rem', color: travelLookupStatus === 'error' ? '#b45309' : '#059669' }}>{travelLookupMessage}</span>
+                    <span style={{ fontSize: '0.75rem', color: travelLookupStatus === 'error' ? 'var(--text-amber-700)' : 'var(--text-green-600)' }}>{travelLookupMessage}</span>
                   )}
                 </div>
                 {(() => {
@@ -1528,7 +1528,7 @@ export function BidsLaborTab({
                 )}
               </div>
               {/* Estimators Time */}
-              <div style={{ marginTop: '1rem', padding: '0.75rem', background: '#fef3c7', borderRadius: 4, border: '1px solid #fde68a' }}>
+              <div style={{ marginTop: '1rem', padding: '0.75rem', background: 'var(--bg-amber-100)', borderRadius: 4, border: '1px solid #fde68a' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: estimatorTimeCollapsed ? 0 : '0.5rem', flexWrap: 'wrap', gap: '0.5rem' }}>
                   <button type="button" onClick={() => setEstimatorTimeCollapsed((c) => !c)} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontSize: '0.875rem', fontWeight: 600 }}>
                     <span aria-hidden style={{ fontSize: '0.7rem' }}>{estimatorTimeCollapsed ? '▶' : '▼'}</span>
@@ -1540,7 +1540,7 @@ export function BidsLaborTab({
                       ? (estimatorCostFlatAmount.trim() !== '' ? parseFloat(estimatorCostFlatAmount) || 0 : 0)
                       : countRows * (parseFloat(estimatorCostPerCount) || 10)
                     return (
-                      <span style={{ fontSize: '0.875rem', color: '#374151' }}>
+                      <span style={{ fontSize: '0.875rem', color: 'var(--text-700)' }}>
                         Estimator cost: {estimatorCostUseFlat ? '' : `${countRows} Count Types × $${(parseFloat(estimatorCostPerCount) || 10).toFixed(2)} = `}<span style={{ fontWeight: 700 }}>${formatCurrency(estimatorCost)}</span>
                       </span>
                     )
@@ -1557,7 +1557,7 @@ export function BidsLaborTab({
                     />
                     Use flat amount
                   </label>
-                  <span style={{ color: '#9ca3af', fontSize: '0.875rem' }}>|</span>
+                  <span style={{ color: 'var(--text-faint)', fontSize: '0.875rem' }}>|</span>
                   {estimatorCostUseFlat ? (
                     <div>
                       <label style={{ marginRight: '0.5rem', fontSize: '0.875rem' }}>Flat amount ($)</label>
@@ -1568,7 +1568,7 @@ export function BidsLaborTab({
                         value={estimatorCostFlatAmount}
                         onChange={(e) => setEstimatorCostFlatAmount(e.target.value)}
                         onWheel={(e) => e.currentTarget.blur()}
-                        style={{ width: '6rem', padding: '0.375rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem' }}
+                        style={{ width: '6rem', padding: '0.375rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem' }}
                       />
                     </div>
                   ) : (
@@ -1581,7 +1581,7 @@ export function BidsLaborTab({
                         value={estimatorCostPerCount}
                         onChange={(e) => setEstimatorCostPerCount(e.target.value)}
                         onWheel={(e) => e.currentTarget.blur()}
-                        style={{ width: '6rem', padding: '0.375rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem' }}
+                        style={{ width: '6rem', padding: '0.375rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem' }}
                       />
                     </div>
                   )}
@@ -1602,7 +1602,7 @@ export function BidsLaborTab({
               </div>
                 <h3 id="labor-direct-costs" style={{ margin: '1.5rem 0 0.75rem', fontSize: '1rem', textAlign: 'center', scrollMarginTop: '1rem' }}>DIRECT COSTS</h3>
                 {/* Equipment and Tool Rental Section */}
-                <div style={{ marginTop: '1rem', padding: '0.75rem', background: '#fef3c7', borderRadius: 4, border: '1px solid #fde68a' }}>
+                <div style={{ marginTop: '1rem', padding: '0.75rem', background: 'var(--bg-amber-100)', borderRadius: 4, border: '1px solid #fde68a' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: equipmentRows.length > 0 ? '0.5rem' : 0, flexWrap: 'wrap', gap: '0.5rem' }}>
                     <h4 style={{ margin: 0, fontSize: '0.875rem', fontWeight: 600 }}>Equipment and Tool Rental</h4>
                     <button
@@ -1617,7 +1617,7 @@ export function BidsLaborTab({
                   {equipmentRows.length === 0 ? null : (
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
                       <thead>
-                        <tr style={{ textAlign: 'left', color: '#6b7280' }}>
+                        <tr style={{ textAlign: 'left', color: 'var(--text-muted)' }}>
                           <th style={{ padding: '0.25rem 0.5rem', fontWeight: 500 }}>Note</th>
                           <th style={{ padding: '0.25rem 0.5rem', fontWeight: 500, width: '6.5rem' }}>Rough In ($)</th>
                           <th style={{ padding: '0.25rem 0.5rem', fontWeight: 500, width: '6.5rem' }}>Top Out ($)</th>
@@ -1634,7 +1634,7 @@ export function BidsLaborTab({
                                 value={row.note ?? ''}
                                 onChange={(e) => updateEquipmentRow(row.id, { note: e.target.value })}
                                 placeholder="Description"
-                                style={{ width: '100%', padding: '0.375rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem' }}
+                                style={{ width: '100%', padding: '0.375rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem' }}
                               />
                             </td>
                             {(['rough_in', 'top_out', 'trim_set'] as const).map((stage) => (
@@ -1647,7 +1647,7 @@ export function BidsLaborTab({
                                   onChange={(e) => updateEquipmentRow(row.id, { [stage]: e.target.value === '' ? 0 : parseFloat(e.target.value) } as Partial<Pick<CostEstimateEquipmentRow, 'rough_in' | 'top_out' | 'trim_set'>>)}
                                   onWheel={(e) => e.currentTarget.blur()}
                                   placeholder="0.00"
-                                  style={{ width: '100%', padding: '0.375rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem', textAlign: 'right' }}
+                                  style={{ width: '100%', padding: '0.375rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem', textAlign: 'right' }}
                                 />
                               </td>
                             ))}
@@ -1657,7 +1657,7 @@ export function BidsLaborTab({
                                 onClick={() => void removeEquipmentRow(row.id)}
                                 title="Remove row"
                                 aria-label="Remove equipment row"
-                                style={{ background: 'none', border: 'none', color: '#b91c1c', cursor: 'pointer', fontSize: '1.1rem', lineHeight: 1 }}
+                                style={{ background: 'none', border: 'none', color: 'var(--text-red-700)', cursor: 'pointer', fontSize: '1.1rem', lineHeight: 1 }}
                               >
                                 ×
                               </button>
@@ -1674,7 +1674,7 @@ export function BidsLaborTab({
                   )}
                 </div>
                 {/* Permits, Inspections & Regulatory Fees Section */}
-                <div style={{ marginTop: '1rem', padding: '0.75rem', background: '#fef3c7', borderRadius: 4, border: '1px solid #fde68a' }}>
+                <div style={{ marginTop: '1rem', padding: '0.75rem', background: 'var(--bg-amber-100)', borderRadius: 4, border: '1px solid #fde68a' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: permitRows.length > 0 ? '0.5rem' : 0, flexWrap: 'wrap', gap: '0.5rem' }}>
                     <h4 style={{ margin: 0, fontSize: '0.875rem', fontWeight: 600 }}>Permits, Inspections, and Regulatory Fees</h4>
                     <button
@@ -1689,7 +1689,7 @@ export function BidsLaborTab({
                   {permitRows.length === 0 ? null : (
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
                       <thead>
-                        <tr style={{ textAlign: 'left', color: '#6b7280' }}>
+                        <tr style={{ textAlign: 'left', color: 'var(--text-muted)' }}>
                           <th style={{ padding: '0.25rem 0.5rem', fontWeight: 500 }}>Description</th>
                           <th style={{ padding: '0.25rem 0.5rem', fontWeight: 500, width: '6.5rem' }}>Rough In ($)</th>
                           <th style={{ padding: '0.25rem 0.5rem', fontWeight: 500, width: '6.5rem' }}>Top Out ($)</th>
@@ -1706,7 +1706,7 @@ export function BidsLaborTab({
                                 value={row.note ?? ''}
                                 onChange={(e) => updatePermitRow(row.id, { note: e.target.value })}
                                 placeholder="Description"
-                                style={{ width: '100%', padding: '0.375rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem' }}
+                                style={{ width: '100%', padding: '0.375rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem' }}
                               />
                             </td>
                             {(['rough_in', 'top_out', 'trim_set'] as const).map((stage) => (
@@ -1719,7 +1719,7 @@ export function BidsLaborTab({
                                   onChange={(e) => updatePermitRow(row.id, { [stage]: e.target.value === '' ? 0 : parseFloat(e.target.value) } as Partial<Pick<CostEstimatePermitRow, 'rough_in' | 'top_out' | 'trim_set'>>)}
                                   onWheel={(e) => e.currentTarget.blur()}
                                   placeholder="0.00"
-                                  style={{ width: '100%', padding: '0.375rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem', textAlign: 'right' }}
+                                  style={{ width: '100%', padding: '0.375rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem', textAlign: 'right' }}
                                 />
                               </td>
                             ))}
@@ -1729,7 +1729,7 @@ export function BidsLaborTab({
                                 onClick={() => void removePermitRow(row.id)}
                                 title="Remove row"
                                 aria-label="Remove permit row"
-                                style={{ background: 'none', border: 'none', color: '#b91c1c', cursor: 'pointer', fontSize: '1.1rem', lineHeight: 1 }}
+                                style={{ background: 'none', border: 'none', color: 'var(--text-red-700)', cursor: 'pointer', fontSize: '1.1rem', lineHeight: 1 }}
                               >
                                 ×
                               </button>
@@ -1746,7 +1746,7 @@ export function BidsLaborTab({
                   )}
                 </div>
                 {/* Subcontractor Fees Section */}
-                <div style={{ marginTop: '1rem', padding: '0.75rem', background: '#fef3c7', borderRadius: 4, border: '1px solid #fde68a' }}>
+                <div style={{ marginTop: '1rem', padding: '0.75rem', background: 'var(--bg-amber-100)', borderRadius: 4, border: '1px solid #fde68a' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: subcontractorRows.length > 0 ? '0.5rem' : 0, flexWrap: 'wrap', gap: '0.5rem' }}>
                     <h4 style={{ margin: 0, fontSize: '0.875rem', fontWeight: 600 }}>Subcontractor Fees</h4>
                     <button
@@ -1761,7 +1761,7 @@ export function BidsLaborTab({
                   {subcontractorRows.length === 0 ? null : (
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
                       <thead>
-                        <tr style={{ textAlign: 'left', color: '#6b7280' }}>
+                        <tr style={{ textAlign: 'left', color: 'var(--text-muted)' }}>
                           <th style={{ padding: '0.25rem 0.5rem', fontWeight: 500 }}>Description</th>
                           <th style={{ padding: '0.25rem 0.5rem', fontWeight: 500, width: '6.5rem' }}>Rough In ($)</th>
                           <th style={{ padding: '0.25rem 0.5rem', fontWeight: 500, width: '6.5rem' }}>Top Out ($)</th>
@@ -1778,7 +1778,7 @@ export function BidsLaborTab({
                                 value={row.note ?? ''}
                                 onChange={(e) => updateSubcontractorRow(row.id, { note: e.target.value })}
                                 placeholder="Description"
-                                style={{ width: '100%', padding: '0.375rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem' }}
+                                style={{ width: '100%', padding: '0.375rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem' }}
                               />
                             </td>
                             {(['rough_in', 'top_out', 'trim_set'] as const).map((stage) => (
@@ -1791,7 +1791,7 @@ export function BidsLaborTab({
                                   onChange={(e) => updateSubcontractorRow(row.id, { [stage]: e.target.value === '' ? 0 : parseFloat(e.target.value) } as Partial<Pick<CostEstimateSubcontractorRow, 'rough_in' | 'top_out' | 'trim_set'>>)}
                                   onWheel={(e) => e.currentTarget.blur()}
                                   placeholder="0.00"
-                                  style={{ width: '100%', padding: '0.375rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem', textAlign: 'right' }}
+                                  style={{ width: '100%', padding: '0.375rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem', textAlign: 'right' }}
                                 />
                               </td>
                             ))}
@@ -1801,7 +1801,7 @@ export function BidsLaborTab({
                                 onClick={() => void removeSubcontractorRow(row.id)}
                                 title="Remove row"
                                 aria-label="Remove subcontractor row"
-                                style={{ background: 'none', border: 'none', color: '#b91c1c', cursor: 'pointer', fontSize: '1.1rem', lineHeight: 1 }}
+                                style={{ background: 'none', border: 'none', color: 'var(--text-red-700)', cursor: 'pointer', fontSize: '1.1rem', lineHeight: 1 }}
                               >
                                 ×
                               </button>
@@ -1818,7 +1818,7 @@ export function BidsLaborTab({
                   )}
                 </div>
                 {/* Waste Disposal & Site Cleanup Section */}
-                <div style={{ marginTop: '1rem', padding: '0.75rem', background: '#fef3c7', borderRadius: 4, border: '1px solid #fde68a' }}>
+                <div style={{ marginTop: '1rem', padding: '0.75rem', background: 'var(--bg-amber-100)', borderRadius: 4, border: '1px solid #fde68a' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: wasteRows.length > 0 ? '0.5rem' : 0, flexWrap: 'wrap', gap: '0.5rem' }}>
                     <h4 style={{ margin: 0, fontSize: '0.875rem', fontWeight: 600 }}>Waste Disposal and Site Cleanup</h4>
                     <button
@@ -1833,7 +1833,7 @@ export function BidsLaborTab({
                   {wasteRows.length === 0 ? null : (
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
                       <thead>
-                        <tr style={{ textAlign: 'left', color: '#6b7280' }}>
+                        <tr style={{ textAlign: 'left', color: 'var(--text-muted)' }}>
                           <th style={{ padding: '0.25rem 0.5rem', fontWeight: 500 }}>Description</th>
                           <th style={{ padding: '0.25rem 0.5rem', fontWeight: 500, width: '6.5rem' }}>Rough In ($)</th>
                           <th style={{ padding: '0.25rem 0.5rem', fontWeight: 500, width: '6.5rem' }}>Top Out ($)</th>
@@ -1850,7 +1850,7 @@ export function BidsLaborTab({
                                 value={row.note ?? ''}
                                 onChange={(e) => updateWasteRow(row.id, { note: e.target.value })}
                                 placeholder="Description"
-                                style={{ width: '100%', padding: '0.375rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem' }}
+                                style={{ width: '100%', padding: '0.375rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem' }}
                               />
                             </td>
                             {(['rough_in', 'top_out', 'trim_set'] as const).map((stage) => (
@@ -1863,7 +1863,7 @@ export function BidsLaborTab({
                                   onChange={(e) => updateWasteRow(row.id, { [stage]: e.target.value === '' ? 0 : parseFloat(e.target.value) } as Partial<Pick<CostEstimateWasteRow, 'rough_in' | 'top_out' | 'trim_set'>>)}
                                   onWheel={(e) => e.currentTarget.blur()}
                                   placeholder="0.00"
-                                  style={{ width: '100%', padding: '0.375rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem', textAlign: 'right' }}
+                                  style={{ width: '100%', padding: '0.375rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem', textAlign: 'right' }}
                                 />
                               </td>
                             ))}
@@ -1873,7 +1873,7 @@ export function BidsLaborTab({
                                 onClick={() => void removeWasteRow(row.id)}
                                 title="Remove row"
                                 aria-label="Remove waste row"
-                                style={{ background: 'none', border: 'none', color: '#b91c1c', cursor: 'pointer', fontSize: '1.1rem', lineHeight: 1 }}
+                                style={{ background: 'none', border: 'none', color: 'var(--text-red-700)', cursor: 'pointer', fontSize: '1.1rem', lineHeight: 1 }}
                               >
                                 ×
                               </button>
@@ -1890,7 +1890,7 @@ export function BidsLaborTab({
                   )}
                 </div>
                 {/* Other Section */}
-                <div style={{ marginTop: '1rem', padding: '0.75rem', background: '#fef3c7', borderRadius: 4, border: '1px solid #fde68a' }}>
+                <div style={{ marginTop: '1rem', padding: '0.75rem', background: 'var(--bg-amber-100)', borderRadius: 4, border: '1px solid #fde68a' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: otherRows.length > 0 ? '0.5rem' : 0, flexWrap: 'wrap', gap: '0.5rem' }}>
                     <h4 style={{ margin: 0, fontSize: '0.875rem', fontWeight: 600 }}>Other</h4>
                     <button
@@ -1905,7 +1905,7 @@ export function BidsLaborTab({
                   {otherRows.length === 0 ? null : (
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
                       <thead>
-                        <tr style={{ textAlign: 'left', color: '#6b7280' }}>
+                        <tr style={{ textAlign: 'left', color: 'var(--text-muted)' }}>
                           <th style={{ padding: '0.25rem 0.5rem', fontWeight: 500 }}>Description</th>
                           <th style={{ padding: '0.25rem 0.5rem', fontWeight: 500, width: '6.5rem' }}>Rough In ($)</th>
                           <th style={{ padding: '0.25rem 0.5rem', fontWeight: 500, width: '6.5rem' }}>Top Out ($)</th>
@@ -1922,7 +1922,7 @@ export function BidsLaborTab({
                                 value={row.note ?? ''}
                                 onChange={(e) => updateOtherRow(row.id, { note: e.target.value })}
                                 placeholder="Description"
-                                style={{ width: '100%', padding: '0.375rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem' }}
+                                style={{ width: '100%', padding: '0.375rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem' }}
                               />
                             </td>
                             {(['rough_in', 'top_out', 'trim_set'] as const).map((stage) => (
@@ -1935,7 +1935,7 @@ export function BidsLaborTab({
                                   onChange={(e) => updateOtherRow(row.id, { [stage]: e.target.value === '' ? 0 : parseFloat(e.target.value) } as Partial<Pick<CostEstimateOtherRow, 'rough_in' | 'top_out' | 'trim_set'>>)}
                                   onWheel={(e) => e.currentTarget.blur()}
                                   placeholder="0.00"
-                                  style={{ width: '100%', padding: '0.375rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem', textAlign: 'right' }}
+                                  style={{ width: '100%', padding: '0.375rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem', textAlign: 'right' }}
                                 />
                               </td>
                             ))}
@@ -1945,7 +1945,7 @@ export function BidsLaborTab({
                                 onClick={() => void removeOtherRow(row.id)}
                                 title="Remove row"
                                 aria-label="Remove row"
-                                style={{ background: 'none', border: 'none', color: '#b91c1c', cursor: 'pointer', fontSize: '1.1rem', lineHeight: 1 }}
+                                style={{ background: 'none', border: 'none', color: 'var(--text-red-700)', cursor: 'pointer', fontSize: '1.1rem', lineHeight: 1 }}
                               >
                                 ×
                               </button>
@@ -1964,10 +1964,10 @@ export function BidsLaborTab({
               <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', alignItems: 'center', flexWrap: 'wrap' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                   {costEstimateAutosaveStatus === 'saving' && (
-                    <span style={{ fontSize: '0.875rem', color: '#6b7280' }}>Saving...</span>
+                    <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>Saving...</span>
                   )}
                   {costEstimateAutosaveStatus === 'saved' && (
-                    <span style={{ fontSize: '0.875rem', color: '#059669' }}>✓ Saved</span>
+                    <span style={{ fontSize: '0.875rem', color: 'var(--text-green-600)' }}>✓ Saved</span>
                   )}
                 </div>
               </div>
@@ -1976,12 +1976,12 @@ export function BidsLaborTab({
         </div>
       )}
       {!selectedBidForCostEstimate && (
-        <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
+        <div style={{ border: '1px solid var(--border)', borderRadius: 4, overflow: 'hidden' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead style={{ background: '#f9fafb' }}>
+            <thead style={{ background: 'var(--bg-subtle)' }}>
               <tr>
-                <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Project</th>
-                <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Bid Date</th>
+                <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Project</th>
+                <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Bid Date</th>
               </tr>
             </thead>
             <tbody>
@@ -1994,7 +1994,7 @@ export function BidsLaborTab({
                     onClick={() => onSelectBid(bid)}
                     style={{
                       cursor: 'pointer',
-                      borderBottom: '1px solid #e5e7eb',
+                      borderBottom: '1px solid var(--border)',
                       background: (sel?.id != null && sel.id === bid.id) ? '#eff6ff' : undefined,
                     }}
                   >
@@ -2040,8 +2040,8 @@ export function BidsLaborTab({
                   alignItems: 'center',
                   gap: '0.25rem',
                   padding: '0.35rem 0.5rem',
-                  background: laborBookEntriesVersionId === v.id ? '#dbeafe' : '#f3f4f6',
-                  border: laborBookEntriesVersionId === v.id ? '1px solid #3b82f6' : '1px solid #d1d5db',
+                  background: laborBookEntriesVersionId === v.id ? 'var(--bg-blue-200)' : 'var(--bg-muted)',
+                  border: laborBookEntriesVersionId === v.id ? '1px solid #3b82f6' : '1px solid var(--border-strong)',
                   borderRadius: 4,
                 }}
               >
@@ -2073,24 +2073,24 @@ export function BidsLaborTab({
           {laborBookEntriesVersionId && (
             <>
               <h4 style={{ margin: '0 0 0.5rem', fontSize: '0.9375rem' }}>Entries (hrs per stage)</h4>
-              <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
+              <div style={{ border: '1px solid var(--border)', borderRadius: 4, overflow: 'hidden' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                  <thead style={{ background: '#f9fafb' }}>
+                  <thead style={{ background: 'var(--bg-subtle)' }}>
                     <tr>
-                      <th style={{ padding: '0.5rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Fixture or Tie-in</th>
-                      <th style={{ padding: '0.5rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Rough In (hrs)</th>
-                      <th style={{ padding: '0.5rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Top Out (hrs)</th>
-                      <th style={{ padding: '0.5rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Trim Set (hrs)</th>
-                      <th style={{ padding: '0.5rem', width: 60, borderBottom: '1px solid #e5e7eb' }} />
+                      <th style={{ padding: '0.5rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Fixture or Tie-in</th>
+                      <th style={{ padding: '0.5rem', textAlign: 'right', borderBottom: '1px solid var(--border)' }}>Rough In (hrs)</th>
+                      <th style={{ padding: '0.5rem', textAlign: 'right', borderBottom: '1px solid var(--border)' }}>Top Out (hrs)</th>
+                      <th style={{ padding: '0.5rem', textAlign: 'right', borderBottom: '1px solid var(--border)' }}>Trim Set (hrs)</th>
+                      <th style={{ padding: '0.5rem', width: 60, borderBottom: '1px solid var(--border)' }} />
                     </tr>
                   </thead>
                   <tbody>
                     {laborBookEntries.map((entry) => (
-                      <tr key={entry.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                      <tr key={entry.id} style={{ borderBottom: '1px solid var(--border)' }}>
                         <td style={{ padding: '0.5rem' }}>
                           {entry.fixture_types?.name ?? ''}
                           {entry.alias_names?.length ? (
-                            <span style={{ fontSize: '0.75rem', color: '#6b7280', marginLeft: '0.25rem' }}>also: {entry.alias_names.join(', ')}</span>
+                            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginLeft: '0.25rem' }}>also: {entry.alias_names.join(', ')}</span>
                           ) : null}
                         </td>
                         <td style={{ padding: '0.5rem', textAlign: 'right' }}>{Number(entry.rough_in_hrs)}</td>
@@ -2131,7 +2131,7 @@ export function BidsLaborTab({
           onClick={closeLaborVersionForm}
         >
           <div
-            style={{ background: 'white', borderRadius: 8, padding: '1.5rem', minWidth: 320, boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }}
+            style={{ background: 'var(--surface)', borderRadius: 8, padding: '1.5rem', minWidth: 320, boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }}
             onClick={(e) => e.stopPropagation()}
           >
             <h3 style={{ margin: '0 0 1rem' }}>{editingLaborVersion ? 'Edit version' : 'New version'}</h3>
@@ -2141,7 +2141,7 @@ export function BidsLaborTab({
                 type="text"
                 value={laborVersionNameInput}
                 onChange={(e) => setLaborVersionNameInput(e.target.value)}
-                style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, marginBottom: '1rem', boxSizing: 'border-box' }}
+                style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, marginBottom: '1rem', boxSizing: 'border-box' }}
                 placeholder="e.g. Default"
               />
               <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -2154,14 +2154,14 @@ export function BidsLaborTab({
                         await deleteLaborVersion(editingLaborVersion)
                         closeLaborVersionForm()
                       }}
-                      style={{ padding: '0.5rem 1rem', background: '#fef2f2', color: '#991b1b', border: '1px solid #fecaca', borderRadius: 4, cursor: 'pointer' }}
+                      style={{ padding: '0.5rem 1rem', background: 'var(--bg-red-tint)', color: 'var(--text-red-800)', border: '1px solid #fecaca', borderRadius: 4, cursor: 'pointer' }}
                     >
                       Delete version
                     </button>
                   )}
                 </div>
                 <div style={{ display: 'flex', gap: '0.5rem' }}>
-                  <button type="button" onClick={closeLaborVersionForm} style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
+                  <button type="button" onClick={closeLaborVersionForm} style={{ padding: '0.5rem 1rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
                   <button type="submit" disabled={savingLaborVersion} style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>{savingLaborVersion ? 'Saving…' : 'Save'}</button>
                 </div>
               </div>
@@ -2183,12 +2183,12 @@ export function BidsLaborTab({
           onClick={closeLaborEntryForm}
         >
           <div
-            style={{ background: 'white', borderRadius: 8, padding: '1.5rem', minWidth: 360, boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }}
+            style={{ background: 'var(--surface)', borderRadius: 8, padding: '1.5rem', minWidth: 360, boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }}
             onClick={(e) => e.stopPropagation()}
           >
             <h3 style={{ margin: '0 0 1rem' }}>{editingLaborEntry ? 'Edit entry' : 'New entry'}</h3>
             {error && (
-              <div style={{ marginBottom: '1rem', padding: '0.75rem', background: '#fee2e2', color: '#991b1b', borderRadius: 4, fontSize: '0.875rem' }}>
+              <div style={{ marginBottom: '1rem', padding: '0.75rem', background: 'var(--bg-red-100)', color: 'var(--text-red-800)', borderRadius: 4, fontSize: '0.875rem' }}>
                 {error}
               </div>
             )}
@@ -2202,7 +2202,7 @@ export function BidsLaborTab({
                 required
                 placeholder="Type or select fixture type..."
                 autoComplete="off"
-                style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, marginBottom: '0.75rem', boxSizing: 'border-box' }}
+                style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, marginBottom: '0.75rem', boxSizing: 'border-box' }}
               />
               <datalist id="labor-fixture-types">
                 {fixtureTypes.map(ft => (
@@ -2214,22 +2214,22 @@ export function BidsLaborTab({
                 type="text"
                 value={laborEntryAliasNames}
                 onChange={(e) => setLaborEntryAliasNames(e.target.value)}
-                style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, marginBottom: '0.25rem', boxSizing: 'border-box' }}
+                style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, marginBottom: '0.25rem', boxSizing: 'border-box' }}
                 placeholder="e.g. WC, Commode"
               />
-              <p style={{ margin: '0 0 0.75rem', fontSize: '0.75rem', color: '#6b7280' }}>If any of these match a count row's Fixture or Tie-in, this labor rate is applied.</p>
+              <p style={{ margin: '0 0 0.75rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>If any of these match a count row's Fixture or Tie-in, this labor rate is applied.</p>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.5rem', marginBottom: '0.75rem' }}>
                 <div>
                   <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' }}>Rough In (hrs)</label>
-                  <input type="number" min={0} step={0.01} value={laborEntryRoughIn} onChange={(e) => setLaborEntryRoughIn(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, boxSizing: 'border-box' }} />
+                  <input type="number" min={0} step={0.01} value={laborEntryRoughIn} onChange={(e) => setLaborEntryRoughIn(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, boxSizing: 'border-box' }} />
                 </div>
                 <div>
                   <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' }}>Top Out (hrs)</label>
-                  <input type="number" min={0} step={0.01} value={laborEntryTopOut} onChange={(e) => setLaborEntryTopOut(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, boxSizing: 'border-box' }} />
+                  <input type="number" min={0} step={0.01} value={laborEntryTopOut} onChange={(e) => setLaborEntryTopOut(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, boxSizing: 'border-box' }} />
                 </div>
                 <div>
                   <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' }}>Trim Set (hrs)</label>
-                  <input type="number" min={0} step={0.01} value={laborEntryTrimSet} onChange={(e) => setLaborEntryTrimSet(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, boxSizing: 'border-box' }} />
+                  <input type="number" min={0} step={0.01} value={laborEntryTrimSet} onChange={(e) => setLaborEntryTrimSet(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, boxSizing: 'border-box' }} />
                 </div>
               </div>
               <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -2242,14 +2242,14 @@ export function BidsLaborTab({
                         await deleteLaborEntry(editingLaborEntry)
                         closeLaborEntryForm()
                       }}
-                      style={{ padding: '0.5rem 1rem', background: '#fef2f2', color: '#991b1b', border: '1px solid #fecaca', borderRadius: 4, cursor: 'pointer' }}
+                      style={{ padding: '0.5rem 1rem', background: 'var(--bg-red-tint)', color: 'var(--text-red-800)', border: '1px solid #fecaca', borderRadius: 4, cursor: 'pointer' }}
                     >
                       Delete
                     </button>
                   )}
                 </div>
                 <div style={{ display: 'flex', gap: '0.5rem' }}>
-                  <button type="button" onClick={closeLaborEntryForm} style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
+                  <button type="button" onClick={closeLaborEntryForm} style={{ padding: '0.5rem 1rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
                   <button type="submit" disabled={savingLaborEntry} style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>{savingLaborEntry ? 'Saving…' : 'Save'}</button>
                 </div>
               </div>
@@ -2272,7 +2272,7 @@ export function BidsLaborTab({
         >
           <div
             style={{
-              background: 'white',
+              background: 'var(--surface)',
               borderRadius: 8,
               padding: '1.5rem',
               maxWidth: 500,
@@ -2284,7 +2284,7 @@ export function BidsLaborTab({
             <h3 style={{ margin: '0 0 1rem', fontSize: '1rem' }}>
               Add "{addMissingFixtureName}" to Labor Book
             </h3>
-            <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#6b7280' }}>
+            <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
               Adding to: <strong>{laborBookVersions.find(v => v.id === selectedLaborBookVersionId)?.name || 'Unknown'}</strong>
             </p>
             <form onSubmit={saveMissingFixtureToLaborBook}>
@@ -2300,7 +2300,7 @@ export function BidsLaborTab({
                     value={addMissingFixtureRoughIn}
                     onChange={(e) => setAddMissingFixtureRoughIn(e.target.value)}
                     onWheel={(e) => e.currentTarget.blur()}
-                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                    style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
                     autoFocus
                   />
                 </div>
@@ -2315,7 +2315,7 @@ export function BidsLaborTab({
                     value={addMissingFixtureTopOut}
                     onChange={(e) => setAddMissingFixtureTopOut(e.target.value)}
                     onWheel={(e) => e.currentTarget.blur()}
-                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                    style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
                   />
                 </div>
                 <div>
@@ -2329,7 +2329,7 @@ export function BidsLaborTab({
                     value={addMissingFixtureTrimSet}
                     onChange={(e) => setAddMissingFixtureTrimSet(e.target.value)}
                     onWheel={(e) => e.currentTarget.blur()}
-                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                    style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
                   />
                 </div>
               </div>
@@ -2337,7 +2337,7 @@ export function BidsLaborTab({
                 <button
                   type="button"
                   onClick={() => setAddMissingFixtureModalOpen(false)}
-                  style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
+                  style={{ padding: '0.5rem 1rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}
                 >
                   Cancel
                 </button>

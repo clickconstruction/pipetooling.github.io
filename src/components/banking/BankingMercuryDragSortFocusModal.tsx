@@ -61,8 +61,8 @@ function FocusTransactionCard({ row }: { row: MercuryTxRow }) {
         maxWidth: 440,
         margin: '0 auto',
         padding: '1.25rem 1.35rem',
-        background: '#fff',
-        border: '1px solid #e5e7eb',
+        background: 'var(--surface)',
+        border: '1px solid var(--border)',
         borderRadius: 12,
         boxShadow:
           '0 10px 15px -3px rgb(0 0 0 / 0.08), 0 4px 6px -4px rgb(0 0 0 / 0.06)',
@@ -78,7 +78,7 @@ function FocusTransactionCard({ row }: { row: MercuryTxRow }) {
           gap: '0.75rem',
         }}
       >
-        <div style={{ fontWeight: 800, fontSize: '1.35rem', color: '#0f172a' }}>{formatUsd(Number(row.amount))}</div>
+        <div style={{ fontWeight: 800, fontSize: '1.35rem', color: 'var(--text-slate-900)' }}>{formatUsd(Number(row.amount))}</div>
         <div
           style={{
             display: 'flex',
@@ -87,7 +87,7 @@ function FocusTransactionCard({ row }: { row: MercuryTxRow }) {
             columnGap: '0.35rem',
             rowGap: '0.25rem',
             fontSize: '0.8125rem',
-            color: '#64748b',
+            color: 'var(--text-slate-500)',
           }}
         >
           <span>{formatBankingDate(row.posted_at)}</span>
@@ -110,7 +110,7 @@ function FocusTransactionCard({ row }: { row: MercuryTxRow }) {
           <span
             style={{
               fontSize: '0.8125rem',
-              color: '#64748b',
+              color: 'var(--text-slate-500)',
               lineHeight: 1.4,
             }}
             title={bankNote.length > 200 ? bankNote : undefined}
@@ -227,8 +227,8 @@ export default function BankingMercuryDragSortFocusModal({
             justifyContent: 'space-between',
             gap: '1rem',
             padding: '0.85rem 1.25rem',
-            background: '#fff',
-            borderBottom: '1px solid #e5e7eb',
+            background: 'var(--surface)',
+            borderBottom: '1px solid var(--border)',
             flexWrap: 'wrap',
           }}
         >
@@ -242,7 +242,7 @@ export default function BankingMercuryDragSortFocusModal({
               flex: '1 1 auto',
             }}
           >
-            <h2 id="mercury-drag-sort-focus-title" style={{ margin: 0, fontSize: '1.125rem', fontWeight: 700, color: '#0f172a' }}>
+            <h2 id="mercury-drag-sort-focus-title" style={{ margin: 0, fontSize: '1.125rem', fontWeight: 700, color: 'var(--text-slate-900)' }}>
               Quick label
             </h2>
             <button
@@ -254,7 +254,7 @@ export default function BankingMercuryDragSortFocusModal({
                 flexShrink: 0,
                 padding: '2px 6px',
                 fontSize: '0.75rem',
-                color: '#2563eb',
+                color: 'var(--text-link)',
                 border: 'none',
                 background: 'transparent',
                 cursor: 'pointer',
@@ -278,8 +278,8 @@ export default function BankingMercuryDragSortFocusModal({
               style={{
                 padding: '0.45rem 0.95rem',
                 borderRadius: 6,
-                border: '1px solid #d1d5db',
-                background: '#fff',
+                border: '1px solid var(--border-strong)',
+                background: 'var(--surface)',
                 cursor: undoDisabled ? 'not-allowed' : 'pointer',
                 fontSize: '0.875rem',
                 fontWeight: 600,
@@ -294,8 +294,8 @@ export default function BankingMercuryDragSortFocusModal({
               style={{
                 padding: '0.45rem 0.95rem',
                 borderRadius: 6,
-                border: '1px solid #d1d5db',
-                background: '#fff',
+                border: '1px solid var(--border-strong)',
+                background: 'var(--surface)',
                 cursor: 'pointer',
                 fontSize: '0.875rem',
                 fontWeight: 600,
@@ -312,7 +312,7 @@ export default function BankingMercuryDragSortFocusModal({
             minHeight: 0,
             overflow: 'auto',
             padding: '1rem 1rem 1.75rem',
-            background: '#f8fafc',
+            background: 'var(--bg-slate-tint)',
           }}
         >
           {!labelsLoading && (currentTx !== null || overlayDepartingTx !== null) ? (
@@ -339,7 +339,7 @@ export default function BankingMercuryDragSortFocusModal({
                   minWidth: 0,
                   textAlign: 'left',
                   fontSize: '0.875rem',
-                  color: '#475569',
+                  color: 'var(--text-slate-600)',
                 }}
               >
                 {progressText}
@@ -362,7 +362,7 @@ export default function BankingMercuryDragSortFocusModal({
                   style={{
                     width: '100%',
                     padding: '8px 10px',
-                    border: '1px solid #d1d5db',
+                    border: '1px solid var(--border-strong)',
                     borderRadius: 6,
                     boxSizing: 'border-box',
                     fontSize: '0.875rem',
@@ -373,13 +373,13 @@ export default function BankingMercuryDragSortFocusModal({
           ) : null}
 
           {labelsLoading ? (
-            <div style={{ textAlign: 'center', padding: '2rem', color: '#64748b' }}>Loading labels…</div>
+            <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-slate-500)' }}>Loading labels…</div>
           ) : currentTx === null && overlayDepartingTx === null ? (
             <div
               style={{
                 textAlign: 'center',
                 padding: '2.5rem 1rem',
-                color: '#64748b',
+                color: 'var(--text-slate-500)',
                 fontSize: '0.9375rem',
               }}
             >
@@ -439,7 +439,7 @@ export default function BankingMercuryDragSortFocusModal({
                 }}
               >
                 {filteredLabels.length === 0 ? (
-                  <span style={{ color: '#64748b', fontSize: '0.875rem' }}>No labels match this filter.</span>
+                  <span style={{ color: 'var(--text-slate-500)', fontSize: '0.875rem' }}>No labels match this filter.</span>
                 ) : (
                   filteredLabels.map((L) => {
                     const blocked = !currentTx || !!overlayDepartingTx

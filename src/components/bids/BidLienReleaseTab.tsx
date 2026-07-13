@@ -46,16 +46,16 @@ export function BidLienReleaseTab({ bids, selectedBid, onSelectBid, onClose, onE
           placeholder="Search bids (project name or GC/Builder)..."
           value={lienReleaseSearchQuery}
           onChange={(e) => setLienReleaseSearchQuery(e.target.value)}
-          style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, marginBottom: '1rem', boxSizing: 'border-box' }}
+          style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, marginBottom: '1rem', boxSizing: 'border-box' }}
         />
       )}
       {!selectedBid ? (
-        <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
+        <div style={{ border: '1px solid var(--border)', borderRadius: 4, overflow: 'hidden' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead style={{ background: '#f9fafb' }}>
+            <thead style={{ background: 'var(--bg-subtle)' }}>
               <tr>
-                <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Project Name</th>
-                <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Bid Date</th>
+                <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Project Name</th>
+                <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Bid Date</th>
               </tr>
             </thead>
             <tbody>
@@ -72,9 +72,9 @@ export function BidLienReleaseTab({ bids, selectedBid, onSelectBid, onClose, onE
                   <tr
                     key={bid.id}
                     onClick={() => onSelectBid(bid)}
-                    style={{ cursor: 'pointer', borderBottom: '1px solid #e5e7eb' }}
-                    onMouseEnter={(e) => { e.currentTarget.style.background = '#f9fafb' }}
-                    onMouseLeave={(e) => { e.currentTarget.style.background = 'white' }}
+                    style={{ cursor: 'pointer', borderBottom: '1px solid var(--border)' }}
+                    onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--bg-subtle)' }}
+                    onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--surface)' }}
                   >
                     <td style={{ padding: '0.75rem' }}>{bidDisplayName(bid) || '—'}</td>
                     <td style={{ padding: '0.75rem' }}>{formatDateYYMMDD(bid.bid_due_date)}</td>
@@ -89,7 +89,7 @@ export function BidLienReleaseTab({ bids, selectedBid, onSelectBid, onClose, onE
                 return name.includes(q) || cust.includes(q) || gc.includes(q)
               }).length === 0 && (
                 <tr>
-                  <td colSpan={2} style={{ padding: '2rem', textAlign: 'center', color: '#6b7280' }}>
+                  <td colSpan={2} style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
                     {bids.length === 0 ? 'No bids yet.' : 'No bids match your search.'}
                   </td>
                 </tr>
@@ -156,10 +156,10 @@ export function BidLienReleaseTab({ bids, selectedBid, onSelectBid, onClose, onE
         return (
           <div
             style={{
-              border: '1px solid #e5e7eb',
+              border: '1px solid var(--border)',
               borderRadius: 8,
               padding: '1.5rem 2rem',
-              background: 'white',
+              background: 'var(--surface)',
               marginBottom: '1.5rem',
               ...(narrowViewport640 ? { position: 'relative' } : {}),
             }}
@@ -182,7 +182,7 @@ export function BidLienReleaseTab({ bids, selectedBid, onSelectBid, onClose, onE
                 onOpenPreview={() => bidPreview?.openBidPreviewFromBid(bid)}
               />
               <div style={{ display: 'flex', gap: '0.5rem' }}>
-                <button type="button" onClick={() => onEditBid(bid)} style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}>Edit bid</button>
+                <button type="button" onClick={() => onEditBid(bid)} style={{ padding: '0.5rem 1rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}>Edit bid</button>
                 {!narrowViewport640 ? (
                   <button
                     type="button"
@@ -199,40 +199,40 @@ export function BidLienReleaseTab({ bids, selectedBid, onSelectBid, onClose, onE
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
               <div>
                 <label style={{ display: 'block', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}>Invoice Amount</label>
-                <input type="text" value={form.invoiceAmount} onChange={(e) => updateLienReleaseForm({ invoiceAmount: e.target.value })} placeholder="e.g. 10,000.00" style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem', boxSizing: 'border-box' }} />
+                <input type="text" value={form.invoiceAmount} onChange={(e) => updateLienReleaseForm({ invoiceAmount: e.target.value })} placeholder="e.g. 10,000.00" style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem', boxSizing: 'border-box' }} />
               </div>
               <div>
                 <label style={{ display: 'block', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}>Bid amount</label>
-                <input type="text" value={form.bidAmount} onChange={(e) => updateLienReleaseForm({ bidAmount: e.target.value })} placeholder="e.g. 100,000.00" style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem', boxSizing: 'border-box' }} />
+                <input type="text" value={form.bidAmount} onChange={(e) => updateLienReleaseForm({ bidAmount: e.target.value })} placeholder="e.g. 100,000.00" style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem', boxSizing: 'border-box' }} />
               </div>
               <div>
                 <label style={{ display: 'block', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}>Invoices to date</label>
-                <input type="text" value={form.invoicesToDate} onChange={(e) => updateLienReleaseForm({ invoicesToDate: e.target.value })} placeholder="e.g. 90,000.00" style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem', boxSizing: 'border-box' }} />
+                <input type="text" value={form.invoicesToDate} onChange={(e) => updateLienReleaseForm({ invoicesToDate: e.target.value })} placeholder="e.g. 90,000.00" style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem', boxSizing: 'border-box' }} />
               </div>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
               <div>
                 <label style={{ display: 'block', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}>Invoice Date</label>
-                <input type="date" value={form.invoiceDate} onChange={(e) => updateLienReleaseForm({ invoiceDate: e.target.value })} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem', boxSizing: 'border-box' }} />
+                <input type="date" value={form.invoiceDate} onChange={(e) => updateLienReleaseForm({ invoiceDate: e.target.value })} style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem', boxSizing: 'border-box' }} />
               </div>
               <div>
                 <label style={{ display: 'block', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}>Invoice Number</label>
-                <input type="text" value={form.invoiceNumber} onChange={(e) => updateLienReleaseForm({ invoiceNumber: e.target.value })} placeholder="e.g. 250 (Billed Dec 22nd 2025)" style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem', boxSizing: 'border-box' }} />
+                <input type="text" value={form.invoiceNumber} onChange={(e) => updateLienReleaseForm({ invoiceNumber: e.target.value })} placeholder="e.g. 250 (Billed Dec 22nd 2025)" style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem', boxSizing: 'border-box' }} />
               </div>
             </div>
-            <div style={{ marginBottom: '1rem', padding: '0.75rem', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 4 }}>
+            <div style={{ marginBottom: '1rem', padding: '0.75rem', background: 'var(--bg-subtle)', border: '1px solid var(--border)', borderRadius: 4 }}>
               <div style={{ fontWeight: 500, fontSize: '0.875rem', marginBottom: '0.25rem' }}>Project:</div>
-              <div style={{ fontSize: '0.875rem', color: '#374151' }}>{projectNameVal}</div>
-              <div style={{ fontSize: '0.875rem', color: '#6b7280', whiteSpace: 'pre-wrap' }}>{projectAddressVal || '—'}</div>
+              <div style={{ fontSize: '0.875rem', color: 'var(--text-700)' }}>{projectNameVal}</div>
+              <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)', whiteSpace: 'pre-wrap' }}>{projectAddressVal || '—'}</div>
             </div>
-            <div style={{ marginBottom: '1rem', padding: '0.75rem', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 4 }}>
+            <div style={{ marginBottom: '1rem', padding: '0.75rem', background: 'var(--bg-subtle)', border: '1px solid var(--border)', borderRadius: 4 }}>
               <div style={{ fontWeight: 500, fontSize: '0.875rem', marginBottom: '0.25rem' }}>Owner / Contracting Party:</div>
-              <div style={{ fontSize: '0.875rem', color: '#374151' }}>{customerName}</div>
-              <div style={{ fontSize: '0.875rem', color: '#6b7280', whiteSpace: 'pre-wrap' }}>{customerAddress || '—'}</div>
+              <div style={{ fontSize: '0.875rem', color: 'var(--text-700)' }}>{customerName}</div>
+              <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)', whiteSpace: 'pre-wrap' }}>{customerAddress || '—'}</div>
             </div>
             <div style={{ marginBottom: '1rem' }}>
               <label style={{ display: 'block', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}>CC</label>
-              <input type="text" value={form.cc} onChange={(e) => updateLienReleaseForm({ cc: e.target.value })} placeholder="Person, phone, email (optional)" style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem', boxSizing: 'border-box' }} />
+              <input type="text" value={form.cc} onChange={(e) => updateLienReleaseForm({ cc: e.target.value })} placeholder="Person, phone, email (optional)" style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem', boxSizing: 'border-box' }} />
             </div>
             <div style={{ marginBottom: '1rem' }}>
               <button
@@ -246,16 +246,16 @@ export function BidLienReleaseTab({ bids, selectedBid, onSelectBid, onClose, onE
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '0.5rem' }}>
                   <div>
                     <label style={{ display: 'block', marginBottom: 4, fontSize: '0.8125rem' }}>Company Address</label>
-                    <textarea value={form.companyAddress} onChange={(e) => updateLienReleaseForm({ companyAddress: e.target.value })} rows={2} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem', boxSizing: 'border-box', resize: 'vertical' }} />
+                    <textarea value={form.companyAddress} onChange={(e) => updateLienReleaseForm({ companyAddress: e.target.value })} rows={2} style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem', boxSizing: 'border-box', resize: 'vertical' }} />
                   </div>
                   <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
                     <div style={{ flex: 1, minWidth: 140 }}>
                       <label style={{ display: 'block', marginBottom: 4, fontSize: '0.8125rem' }}>Phone</label>
-                      <input type="text" value={form.companyPhone} onChange={(e) => updateLienReleaseForm({ companyPhone: e.target.value })} placeholder={LIEN_RELEASE_DEFAULT_COMPANY_PHONE} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem', boxSizing: 'border-box' }} />
+                      <input type="text" value={form.companyPhone} onChange={(e) => updateLienReleaseForm({ companyPhone: e.target.value })} placeholder={LIEN_RELEASE_DEFAULT_COMPANY_PHONE} style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem', boxSizing: 'border-box' }} />
                     </div>
                     <div style={{ flex: 1, minWidth: 200 }}>
                       <label style={{ display: 'block', marginBottom: 4, fontSize: '0.8125rem' }}>Email</label>
-                      <input type="text" value={form.companyEmail} onChange={(e) => updateLienReleaseForm({ companyEmail: e.target.value })} placeholder={LIEN_RELEASE_DEFAULT_COMPANY_EMAIL} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem', boxSizing: 'border-box' }} />
+                      <input type="text" value={form.companyEmail} onChange={(e) => updateLienReleaseForm({ companyEmail: e.target.value })} placeholder={LIEN_RELEASE_DEFAULT_COMPANY_EMAIL} style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem', boxSizing: 'border-box' }} />
                     </div>
                   </div>
                 </div>
@@ -272,12 +272,12 @@ export function BidLienReleaseTab({ bids, selectedBid, onSelectBid, onClose, onE
                       descriptionOfWork: `Plumbing services performed through approximately __% completion of the original base contract amount of $${bidAmtFmt}.`
                     })
                   }}
-                  style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
+                  style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}
                 >
                   Pre-fill
                 </button>
               </div>
-              <textarea value={form.descriptionOfWork} onChange={(e) => updateLienReleaseForm({ descriptionOfWork: e.target.value })} rows={4} placeholder="e.g. Plumbing services performed through approximately 95% completion of the original base contract amount of $121,000.00." style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem', boxSizing: 'border-box', resize: 'vertical' }} />
+              <textarea value={form.descriptionOfWork} onChange={(e) => updateLienReleaseForm({ descriptionOfWork: e.target.value })} rows={4} placeholder="e.g. Plumbing services performed through approximately 95% completion of the original base contract amount of $121,000.00." style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem', boxSizing: 'border-box', resize: 'vertical' }} />
             </div>
             <div style={{ marginBottom: '1rem' }}>
               <button type="button" onClick={() => setLienReleaseConditionalWaiverCollapsed((c) => !c)} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.25rem 0', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 500, fontSize: '0.875rem' }}>
@@ -285,8 +285,8 @@ export function BidLienReleaseTab({ bids, selectedBid, onSelectBid, onClose, onE
               </button>
               {!lienReleaseConditionalWaiverCollapsed && (
                 <div style={{ marginTop: '0.5rem' }}>
-                  <textarea value={form.conditionalWaiver} onChange={(e) => updateLienReleaseForm({ conditionalWaiver: e.target.value })} rows={5} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem', boxSizing: 'border-box', resize: 'vertical' }} />
-                  <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: 4 }}>Use {`{{finalInvoice}}`} and {`{{invoicesToDate}}`} as placeholders for amounts.</div>
+                  <textarea value={form.conditionalWaiver} onChange={(e) => updateLienReleaseForm({ conditionalWaiver: e.target.value })} rows={5} style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem', boxSizing: 'border-box', resize: 'vertical' }} />
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 4 }}>Use {`{{finalInvoice}}`} and {`{{invoicesToDate}}`} as placeholders for amounts.</div>
                 </div>
               )}
             </div>
@@ -296,8 +296,8 @@ export function BidLienReleaseTab({ bids, selectedBid, onSelectBid, onClose, onE
               </button>
               {!lienReleasePaymentTermsCollapsed && (
                 <div style={{ marginTop: '0.5rem' }}>
-                  <textarea value={form.paymentTerms} onChange={(e) => updateLienReleaseForm({ paymentTerms: e.target.value })} rows={4} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem', boxSizing: 'border-box', resize: 'vertical' }} />
-                  <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: 4 }}>Use {`{{finalInvoice}}`} and {`{{ownerName}}`} as placeholders.</div>
+                  <textarea value={form.paymentTerms} onChange={(e) => updateLienReleaseForm({ paymentTerms: e.target.value })} rows={4} style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem', boxSizing: 'border-box', resize: 'vertical' }} />
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 4 }}>Use {`{{finalInvoice}}`} and {`{{ownerName}}`} as placeholders.</div>
                 </div>
               )}
             </div>
@@ -307,17 +307,17 @@ export function BidLienReleaseTab({ bids, selectedBid, onSelectBid, onClose, onE
               </button>
               {!lienReleaseLienStatusCollapsed && (
                 <div style={{ marginTop: '0.5rem' }}>
-                  <input type="text" value={form.lienStatusPhone} onChange={(e) => updateLienReleaseForm({ lienStatusPhone: e.target.value })} placeholder={LIEN_RELEASE_DEFAULT_LIEN_PHONE} style={{ width: '100%', maxWidth: 220, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem', boxSizing: 'border-box' }} />
+                  <input type="text" value={form.lienStatusPhone} onChange={(e) => updateLienReleaseForm({ lienStatusPhone: e.target.value })} placeholder={LIEN_RELEASE_DEFAULT_LIEN_PHONE} style={{ width: '100%', maxWidth: 220, padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem', boxSizing: 'border-box' }} />
                 </div>
               )}
             </div>
             <div style={{ marginTop: '1.5rem', marginBottom: '1rem' }}>
               <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Combined document (copy to send)</label>
               {/* eslint-disable-next-line react/no-danger -- app-generated document HTML; user-entered fields are escaped by the tested lienRelease builder */}
-              <div key={`combined-preview-lr-${bid.id}-${form.invoiceAmount}-${form.bidAmount}-${form.invoicesToDate}-${form.cc}-${form.companyAddress}-${form.companyPhone}-${form.companyEmail}-${form.invoiceDate}-${form.invoiceNumber}-${form.descriptionOfWork}-${form.conditionalWaiver}-${form.paymentTerms}-${form.lienStatusPhone}`} style={{ width: '100%', minHeight: 360, padding: '0.75rem', border: '1px solid #d1d5db', borderRadius: 4, fontFamily: 'inherit', fontSize: '0.875rem', boxSizing: 'border-box', whiteSpace: 'pre-wrap' }} dangerouslySetInnerHTML={{ __html: combinedHtml }} />
+              <div key={`combined-preview-lr-${bid.id}-${form.invoiceAmount}-${form.bidAmount}-${form.invoicesToDate}-${form.cc}-${form.companyAddress}-${form.companyPhone}-${form.companyEmail}-${form.invoiceDate}-${form.invoiceNumber}-${form.descriptionOfWork}-${form.conditionalWaiver}-${form.paymentTerms}-${form.lienStatusPhone}`} style={{ width: '100%', minHeight: 360, padding: '0.75rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontFamily: 'inherit', fontSize: '0.875rem', boxSizing: 'border-box', whiteSpace: 'pre-wrap' }} dangerouslySetInnerHTML={{ __html: combinedHtml }} />
               <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
                 <button type="button" onClick={copyToClipboard} style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>{lienReleaseCopySuccess ? 'Copied!' : 'Copy to clipboard'}</button>
-                <button type="button" onClick={() => { copyToClipboard(); openInExternalBrowser(googleDocsCopyUrl) }} style={{ padding: '0.5rem 1rem', background: '#f3f4f6', color: '#374151', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer', fontSize: 'inherit' }}>Open in Google Docs</button>
+                <button type="button" onClick={() => { copyToClipboard(); openInExternalBrowser(googleDocsCopyUrl) }} style={{ padding: '0.5rem 1rem', background: 'var(--bg-muted)', color: 'var(--text-700)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer', fontSize: 'inherit' }}>Open in Google Docs</button>
               </div>
             </div>
           </div>

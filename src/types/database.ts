@@ -679,6 +679,7 @@ export type Database = {
           bid_date_sent_attested_at: string | null
           bid_date_sent_attested_by: string | null
           bid_due_date: string | null
+          bid_due_time: string | null
           bid_number: string | null
           bid_submission_link: string | null
           bid_value: number | null
@@ -731,6 +732,7 @@ export type Database = {
           bid_date_sent_attested_at?: string | null
           bid_date_sent_attested_by?: string | null
           bid_due_date?: string | null
+          bid_due_time?: string | null
           bid_number?: string | null
           bid_submission_link?: string | null
           bid_value?: number | null
@@ -783,6 +785,7 @@ export type Database = {
           bid_date_sent_attested_at?: string | null
           bid_date_sent_attested_by?: string | null
           bid_due_date?: string | null
+          bid_due_time?: string | null
           bid_number?: string | null
           bid_submission_link?: string | null
           bid_value?: number | null
@@ -3338,6 +3341,57 @@ export type Database = {
         }
         Relationships: []
       }
+      help_feedback: {
+        Row: {
+          body: string
+          closed_at: string | null
+          closed_by_user_id: string | null
+          closed_note: string | null
+          created_at: string
+          from_user_id: string
+          guide_slug: string
+          id: string
+          status: string
+        }
+        Insert: {
+          body: string
+          closed_at?: string | null
+          closed_by_user_id?: string | null
+          closed_note?: string | null
+          created_at?: string
+          from_user_id: string
+          guide_slug: string
+          id?: string
+          status?: string
+        }
+        Update: {
+          body?: string
+          closed_at?: string | null
+          closed_by_user_id?: string | null
+          closed_note?: string | null
+          created_at?: string
+          from_user_id?: string
+          guide_slug?: string
+          id?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "help_feedback_closed_by_user_id_fkey"
+            columns: ["closed_by_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "help_feedback_from_user_id_fkey"
+            columns: ["from_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       hours_days_correct: {
         Row: {
           marked_at: string | null
@@ -3869,6 +3923,9 @@ export type Database = {
         Row: {
           bid_id: string | null
           click_number: string
+          collections_at: string | null
+          collections_by: string | null
+          collections_note: string | null
           created_at: string | null
           customer_email: string | null
           customer_id: string | null
@@ -3895,6 +3952,9 @@ export type Database = {
         Insert: {
           bid_id?: string | null
           click_number?: string
+          collections_at?: string | null
+          collections_by?: string | null
+          collections_note?: string | null
           created_at?: string | null
           customer_email?: string | null
           customer_id?: string | null
@@ -3921,6 +3981,9 @@ export type Database = {
         Update: {
           bid_id?: string | null
           click_number?: string
+          collections_at?: string | null
+          collections_by?: string | null
+          collections_note?: string | null
           created_at?: string | null
           customer_email?: string | null
           customer_id?: string | null
@@ -5275,6 +5338,99 @@ export type Database = {
         }
         Relationships: []
       }
+      mercury_tally_payroll_flags: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          is_payroll: boolean
+          mercury_transaction_id: string
+          rule_id: string | null
+          source: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          is_payroll: boolean
+          mercury_transaction_id: string
+          rule_id?: string | null
+          source: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          is_payroll?: boolean
+          mercury_transaction_id?: string
+          rule_id?: string | null
+          source?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mercury_tally_payroll_flags_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mercury_tally_payroll_flags_mercury_transaction_id_fkey"
+            columns: ["mercury_transaction_id"]
+            isOneToOne: true
+            referencedRelation: "mercury_transactions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mercury_tally_payroll_flags_rule_id_fkey"
+            columns: ["rule_id"]
+            isOneToOne: false
+            referencedRelation: "mercury_tally_payroll_rules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mercury_tally_payroll_rules: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          criteria: Json
+          enabled: boolean
+          id: string
+          name: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          criteria?: Json
+          enabled?: boolean
+          id?: string
+          name: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          criteria?: Json
+          enabled?: boolean
+          id?: string
+          name?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mercury_tally_payroll_rules_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       mercury_tally_transaction_notes: {
         Row: {
           body: string
@@ -6116,12 +6272,14 @@ export type Database = {
           archived_at: string | null
           created_at: string | null
           email: string | null
+          end_date: string | null
           id: string
           kind: string
           master_user_id: string
           name: string
           notes: string | null
           phone: string | null
+          start_date: string | null
           updated_at: string | null
         }
         Insert: {
@@ -6129,12 +6287,14 @@ export type Database = {
           archived_at?: string | null
           created_at?: string | null
           email?: string | null
+          end_date?: string | null
           id?: string
           kind: string
           master_user_id: string
           name: string
           notes?: string | null
           phone?: string | null
+          start_date?: string | null
           updated_at?: string | null
         }
         Update: {
@@ -6142,12 +6302,14 @@ export type Database = {
           archived_at?: string | null
           created_at?: string | null
           email?: string | null
+          end_date?: string | null
           id?: string
           kind?: string
           master_user_id?: string
           name?: string
           notes?: string | null
           phone?: string | null
+          start_date?: string | null
           updated_at?: string | null
         }
         Relationships: [
@@ -9753,6 +9915,7 @@ export type Database = {
           notes: string | null
           phone: string | null
           primary_service_type_ids: string[] | null
+          read_only: boolean
           role: Database["public"]["Enums"]["user_role"]
           subcontractor_service_type_ids: string[] | null
           superintendent_service_type_ids: string[] | null
@@ -9771,6 +9934,7 @@ export type Database = {
           notes?: string | null
           phone?: string | null
           primary_service_type_ids?: string[] | null
+          read_only?: boolean
           role?: Database["public"]["Enums"]["user_role"]
           subcontractor_service_type_ids?: string[] | null
           superintendent_service_type_ids?: string[] | null
@@ -9789,6 +9953,7 @@ export type Database = {
           notes?: string | null
           phone?: string | null
           primary_service_type_ids?: string[] | null
+          read_only?: boolean
           role?: Database["public"]["Enums"]["user_role"]
           subcontractor_service_type_ids?: string[] | null
           superintendent_service_type_ids?: string[] | null
@@ -10302,6 +10467,7 @@ export type Database = {
         }
         Returns: Json
       }
+      apply_read_only_write_blocks: { Args: never; Returns: number }
       approve_clock_sessions: {
         Args: { p_session_ids: string[] }
         Returns: {
@@ -10334,6 +10500,10 @@ export type Database = {
       auto_clock_out_open_sessions_eod: { Args: never; Returns: undefined }
       backfill_mercury_auto_attributions_for_debit_card: {
         Args: { p_mercury_debit_card_id: string }
+        Returns: number
+      }
+      bulk_apply_tally_payroll_rule_flags: {
+        Args: { p_rows: Json }
         Returns: number
       }
       bulk_approve_accounting_label_suggestions: {
@@ -10514,6 +10684,15 @@ export type Database = {
           p_entry_data: Json
           p_items: Json
           p_page: string
+        }
+        Returns: Json
+      }
+      create_turnaway_trip_charge: {
+        Args: {
+          p_amount: number
+          p_dispatch_request_id?: string
+          p_job_id: string
+          p_reason: string
         }
         Returns: Json
       }
@@ -10891,6 +11070,7 @@ export type Database = {
       is_estimator_group_member: { Args: never; Returns: boolean }
       is_master_or_dev: { Args: never; Returns: boolean }
       is_pay_approved_master: { Args: never; Returns: boolean }
+      is_read_only: { Args: never; Returns: boolean }
       is_team_lead_for_member: {
         Args: { p_leader: string; p_member: string }
         Returns: boolean
@@ -10899,6 +11079,7 @@ export type Database = {
         Args: { p_person_name: string }
         Returns: boolean
       }
+      is_user_notes_editor: { Args: never; Returns: boolean }
       jobs_ledger_row_visible_for_tally_assign: {
         Args: { p_job_id: string; p_user_id: string }
         Returns: boolean
@@ -10996,6 +11177,14 @@ export type Database = {
           work_date: string
         }[]
       }
+      list_customer_review_job_hours: {
+        Args: never
+        Returns: {
+          customer_id: string
+          customer_name: string
+          hours: number
+        }[]
+      }
       list_feedback_peer_candidates: {
         Args: never
         Returns: {
@@ -11048,6 +11237,13 @@ export type Database = {
           id: string
           job_address: string
           job_name: string
+        }[]
+      }
+      list_latest_report_completion_pct: {
+        Args: { p_job_ids: string[] }
+        Returns: {
+          job_ledger_id: string
+          pct: number
         }[]
       }
       list_manual_bank_accounts: {
@@ -11552,6 +11748,14 @@ export type Database = {
         Args: { p_field_choices: Json; p_survivor: string; p_victim: string }
         Returns: Json
       }
+      merge_user_accounts: {
+        Args: {
+          p_absorbed_user_id: string
+          p_dry_run?: boolean
+          p_survivor_user_id: string
+        }
+        Returns: Json
+      }
       migrate_job_ledger_costs_and_delete: {
         Args: { p_allow_billed?: boolean; p_from: string; p_to: string }
         Returns: Json
@@ -11826,12 +12030,20 @@ export type Database = {
         }
         Returns: Json
       }
+      set_job_collections_flag: {
+        Args: { p_flagged: boolean; p_job_id: string; p_note?: string }
+        Returns: Json
+      }
       set_mercury_transaction_ar_returned: {
         Args: { p_mercury_transaction_id: string; p_returned: boolean }
         Returns: undefined
       }
       set_mercury_transaction_duplicate: {
         Args: { p_duplicate_id: string; p_keeper_id: string }
+        Returns: undefined
+      }
+      set_tally_payroll_flag: {
+        Args: { p_is_payroll: boolean; p_mercury_transaction_id: string }
         Returns: undefined
       }
       split_bid_into_versions: {

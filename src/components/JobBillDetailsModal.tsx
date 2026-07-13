@@ -133,7 +133,7 @@ export default function JobBillDetailsModal({ open, onClose, jobId, hcpNumber, j
     >
       <div
         style={{
-          background: 'white',
+          background: 'var(--surface)',
           borderRadius: 8,
           maxWidth: 720,
           width: '100%',
@@ -149,7 +149,7 @@ export default function JobBillDetailsModal({ open, onClose, jobId, hcpNumber, j
             justifyContent: 'space-between',
             alignItems: 'center',
             padding: '1rem 1.5rem',
-            borderBottom: '1px solid #e5e7eb',
+            borderBottom: '1px solid var(--border)',
           }}
         >
           <h2 style={{ margin: 0, fontSize: '1.125rem', fontWeight: 600 }}>Job Bill Details</h2>
@@ -164,9 +164,9 @@ export default function JobBillDetailsModal({ open, onClose, jobId, hcpNumber, j
                 style={{
                   padding: '0.35rem 0.75rem',
                   fontSize: '0.875rem',
-                  background: '#f3f4f6',
-                  color: '#374151',
-                  border: '1px solid #d1d5db',
+                  background: 'var(--bg-muted)',
+                  color: 'var(--text-700)',
+                  border: '1px solid var(--border-strong)',
                   borderRadius: 4,
                   cursor: 'pointer',
                 }}
@@ -184,9 +184,9 @@ export default function JobBillDetailsModal({ open, onClose, jobId, hcpNumber, j
                 style={{
                   padding: '0.35rem 0.75rem',
                   fontSize: '0.875rem',
-                  background: '#f3f4f6',
-                  color: '#374151',
-                  border: '1px solid #d1d5db',
+                  background: 'var(--bg-muted)',
+                  color: 'var(--text-700)',
+                  border: '1px solid var(--border-strong)',
                   borderRadius: 4,
                   cursor: 'pointer',
                 }}
@@ -204,9 +204,9 @@ export default function JobBillDetailsModal({ open, onClose, jobId, hcpNumber, j
                 style={{
                   padding: '0.35rem 0.75rem',
                   fontSize: '0.875rem',
-                  background: '#f3f4f6',
-                  color: '#374151',
-                  border: '1px solid #d1d5db',
+                  background: 'var(--bg-muted)',
+                  color: 'var(--text-700)',
+                  border: '1px solid var(--border-strong)',
                   borderRadius: 4,
                   cursor: 'pointer',
                 }}
@@ -222,7 +222,7 @@ export default function JobBillDetailsModal({ open, onClose, jobId, hcpNumber, j
               border: 'none',
               fontSize: '1.25rem',
               cursor: 'pointer',
-              color: '#6b7280',
+              color: 'var(--text-muted)',
               padding: '0.25rem',
             }}
           >
@@ -232,36 +232,36 @@ export default function JobBillDetailsModal({ open, onClose, jobId, hcpNumber, j
         </header>
         <div style={{ padding: '1.5rem' }}>
           {loading ? (
-            <p style={{ color: '#6b7280' }}>Loading…</p>
+            <p style={{ color: 'var(--text-muted)' }}>Loading…</p>
           ) : (
             <div style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
                 <thead>
                   <tr>
-                    <th style={{ textAlign: 'left', padding: '0.5rem 0.75rem', borderBottom: '2px solid #e5e7eb' }}>HCP #</th>
-                    <th style={{ textAlign: 'left', padding: '0.5rem 0.75rem', borderBottom: '2px solid #e5e7eb' }}>Name</th>
-                    <th style={{ textAlign: 'left', padding: '0.5rem 0.75rem', borderBottom: '2px solid #e5e7eb' }}>Address</th>
-                    <th style={{ textAlign: 'right', padding: '0.5rem 0.75rem', borderBottom: '2px solid #e5e7eb' }}>Labor Cost</th>
-                    <th style={{ textAlign: 'right', padding: '0.5rem 0.75rem', borderBottom: '2px solid #e5e7eb' }}>Parts Cost</th>
-                    <th style={{ textAlign: 'right', padding: '0.5rem 0.75rem', borderBottom: '2px solid #e5e7eb' }}>Total Bill</th>
-                    <th style={{ textAlign: 'right', padding: '0.5rem 0.75rem', borderBottom: '2px solid #e5e7eb' }}>Profit</th>
+                    <th style={{ textAlign: 'left', padding: '0.5rem 0.75rem', borderBottom: '2px solid var(--border)' }}>HCP #</th>
+                    <th style={{ textAlign: 'left', padding: '0.5rem 0.75rem', borderBottom: '2px solid var(--border)' }}>Name</th>
+                    <th style={{ textAlign: 'left', padding: '0.5rem 0.75rem', borderBottom: '2px solid var(--border)' }}>Address</th>
+                    <th style={{ textAlign: 'right', padding: '0.5rem 0.75rem', borderBottom: '2px solid var(--border)' }}>Labor Cost</th>
+                    <th style={{ textAlign: 'right', padding: '0.5rem 0.75rem', borderBottom: '2px solid var(--border)' }}>Parts Cost</th>
+                    <th style={{ textAlign: 'right', padding: '0.5rem 0.75rem', borderBottom: '2px solid var(--border)' }}>Total Bill</th>
+                    <th style={{ textAlign: 'right', padding: '0.5rem 0.75rem', borderBottom: '2px solid var(--border)' }}>Profit</th>
                   </tr>
                 </thead>
                 <tbody>
                   <tr>
-                    <td style={{ padding: '0.5rem 0.75rem', borderBottom: '1px solid #e5e7eb' }}>{hcpNumber || '—'}</td>
-                    <td style={{ padding: '0.5rem 0.75rem', borderBottom: '1px solid #e5e7eb' }}>{jobName || '—'}</td>
-                    <td style={{ padding: '0.5rem 0.75rem', borderBottom: '1px solid #e5e7eb' }}>{jobAddress || '—'}</td>
-                    <td style={{ padding: '0.5rem 0.75rem', borderBottom: '1px solid #e5e7eb', textAlign: 'right' }}>
+                    <td style={{ padding: '0.5rem 0.75rem', borderBottom: '1px solid var(--border)' }}>{hcpNumber || '—'}</td>
+                    <td style={{ padding: '0.5rem 0.75rem', borderBottom: '1px solid var(--border)' }}>{jobName || '—'}</td>
+                    <td style={{ padding: '0.5rem 0.75rem', borderBottom: '1px solid var(--border)' }}>{jobAddress || '—'}</td>
+                    <td style={{ padding: '0.5rem 0.75rem', borderBottom: '1px solid var(--border)', textAlign: 'right' }}>
                       {formatCurrency(laborCost)}
                     </td>
-                    <td style={{ padding: '0.5rem 0.75rem', borderBottom: '1px solid #e5e7eb', textAlign: 'right' }}>
+                    <td style={{ padding: '0.5rem 0.75rem', borderBottom: '1px solid var(--border)', textAlign: 'right' }}>
                       {formatCurrency(partsCost)}
                     </td>
-                    <td style={{ padding: '0.5rem 0.75rem', borderBottom: '1px solid #e5e7eb', textAlign: 'right' }}>
+                    <td style={{ padding: '0.5rem 0.75rem', borderBottom: '1px solid var(--border)', textAlign: 'right' }}>
                       {formatCurrency(totalBill)}
                     </td>
-                    <td style={{ padding: '0.5rem 0.75rem', borderBottom: '1px solid #e5e7eb', textAlign: 'right' }}>
+                    <td style={{ padding: '0.5rem 0.75rem', borderBottom: '1px solid var(--border)', textAlign: 'right' }}>
                       {formatCurrency(profit)}
                     </td>
                   </tr>

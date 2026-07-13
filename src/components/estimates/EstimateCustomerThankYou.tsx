@@ -24,8 +24,8 @@ export default function EstimateCustomerThankYou({
           style={{
             margin: '0 0 1rem',
             fontSize: '0.85rem',
-            color: '#6b7280',
-            background: '#f9fafb',
+            color: 'var(--text-muted)',
+            background: 'var(--bg-subtle)',
             padding: '0.5rem 0.75rem',
             borderRadius: 6,
           }}
@@ -41,7 +41,7 @@ export default function EstimateCustomerThankYou({
           textAlign: 'center',
         }}
       >
-        <h1 style={{ color: '#166534', margin: '0 0 0.75rem' }}>{title}</h1>
+        <h1 style={{ color: 'var(--text-green-800)', margin: '0 0 0.75rem' }}>{title}</h1>
         {showBody ? (
           <p style={{ margin: '0 0 1.25rem', lineHeight: 1.5 }}>{body}</p>
         ) : null}

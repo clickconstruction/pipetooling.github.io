@@ -195,7 +195,7 @@ export default function EstimateAcceptStaffPreview() {
   if (error) {
     return (
       <div style={pageShellStyle}>
-        <p style={{ color: '#b91c1c' }}>{error}</p>
+        <p style={{ color: 'var(--text-red-700)' }}>{error}</p>
         <p style={{ marginTop: '0.75rem' }}>
           <Link to="/estimates">← Estimates</Link>
         </p>

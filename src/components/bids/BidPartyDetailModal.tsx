@@ -36,7 +36,7 @@ export function BidPartyDetailModal({
   if (!open) return null
 
   return (
-    <ModalShell zIndex={990} cardStyle={{ background: 'white', padding: '2rem', borderRadius: 8, maxWidth: '500px', width: '90%' }}>
+    <ModalShell zIndex={990} cardStyle={{ background: 'var(--surface)', padding: '2rem', borderRadius: 8, maxWidth: '500px', width: '90%' }}>
       <h2 style={{ marginBottom: '1rem' }}>{name}</h2>
       <p style={{ margin: '0.25rem 0' }}><strong>Address:</strong> {address || '—'}</p>
       {contactRows.map((r) => (
@@ -59,12 +59,12 @@ export function BidPartyDetailModal({
         </ul>
       )}
       <p style={{ margin: '1rem 0 0.5rem', fontWeight: 600 }}>All bids</p>
-      <div style={{ maxHeight: 240, overflowY: 'auto', border: '1px solid #e5e7eb', borderRadius: 4 }}>
+      <div style={{ maxHeight: 240, overflowY: 'auto', border: '1px solid var(--border)', borderRadius: 4 }}>
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <thead style={{ background: '#f9fafb', position: 'sticky', top: 0 }}>
+          <thead style={{ background: 'var(--bg-subtle)', position: 'sticky', top: 0 }}>
             <tr>
-              <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Bid / Project</th>
-              <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Status</th>
+              <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Bid / Project</th>
+              <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Status</th>
             </tr>
           </thead>
           <tbody>
@@ -75,8 +75,8 @@ export function BidPartyDetailModal({
                   key={b.id}
                   onClick={onSelectBid ? () => onSelectBid(b) : undefined}
                   title={onSelectBid ? 'Open bid' : undefined}
-                  style={{ borderBottom: '1px solid #e5e7eb', cursor: onSelectBid ? 'pointer' : undefined }}
-                  onMouseEnter={onSelectBid ? (e) => { e.currentTarget.style.background = '#f9fafb' } : undefined}
+                  style={{ borderBottom: '1px solid var(--border)', cursor: onSelectBid ? 'pointer' : undefined }}
+                  onMouseEnter={onSelectBid ? (e) => { e.currentTarget.style.background = 'var(--bg-subtle)' } : undefined}
                   onMouseLeave={onSelectBid ? (e) => { e.currentTarget.style.background = '' } : undefined}
                 >
                   <td style={{ padding: '0.5rem 0.75rem' }}>{bidDisplayName(b) || b.id}</td>
@@ -86,7 +86,7 @@ export function BidPartyDetailModal({
           </tbody>
         </table>
       </div>
-      <button type="button" onClick={onClose} style={{ marginTop: '1rem', padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}>
+      <button type="button" onClick={onClose} style={{ marginTop: '1rem', padding: '0.5rem 1rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}>
         Close
       </button>
     </ModalShell>

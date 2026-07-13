@@ -168,7 +168,7 @@ export function BidsBuilderReviewTab({
         {customerContactPersons
           .filter((cp) => cp.customer_id === customer.id)
           .map((cp) => (
-            <div key={cp.id} style={{ border: '1px solid #e5e7eb', borderRadius: 6, padding: '0.5rem 0.75rem', marginBottom: '0.5rem' }}>
+            <div key={cp.id} style={{ border: '1px solid var(--border)', borderRadius: 6, padding: '0.5rem 0.75rem', marginBottom: '0.5rem' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.25rem' }}>
                 <div style={{ fontWeight: 500, fontSize: '0.875rem' }}>{cp.name}</div>
                 <div style={{ display: 'flex', gap: '0.25rem' }}>
@@ -184,7 +184,7 @@ export function BidsBuilderReviewTab({
                       setContactPersonNote(cp.note ?? '')
                     }}
                     title="Edit"
-                    style={{ padding: '0.125rem', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', color: '#6b7280' }}
+                    style={{ padding: '0.125rem', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', color: 'var(--text-muted)' }}
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="12" height="12" fill="currentColor"><path d="M416 128L512 224L192 544L96 544L96 448L416 128zM444 64L544 64L576 96L576 196L544 228L444 196L444 64zM128 480L176 480L496 160L448 112L128 432L128 480z" /></svg>
                   </button>
@@ -196,25 +196,25 @@ export function BidsBuilderReviewTab({
                       onReloadContactPersons()
                     }}
                     title="Delete"
-                    style={{ padding: '0.125rem', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', color: '#b91c1c' }}
+                    style={{ padding: '0.125rem', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', color: 'var(--text-red-700)' }}
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="12" height="12" fill="currentColor"><path d="M160 128H96V96H256V64H160V128zM288 64V96H544V128H480V512C480 547.3 451.3 576 416 576H224C188.7 576 160 547.3 160 512V128H96V512C96 569.4 142.6 616 200 616H440C497.4 616 544 569.4 544 512V128H288V64zM224 128H416V512H224V128zM288 192V480H352V192H288zM416 192V480H480V192H416z" /></svg>
                   </button>
                 </div>
               </div>
               {(cp.phone ?? '').split('\n').filter(Boolean).map((phone, i) => (
-                <a key={i} href={`tel:${phone}`} style={{ fontSize: '0.8125rem', color: '#2563eb', textDecoration: 'none', display: 'block' }}>{phone}</a>
+                <a key={i} href={`tel:${phone}`} style={{ fontSize: '0.8125rem', color: 'var(--text-link)', textDecoration: 'none', display: 'block' }}>{phone}</a>
               ))}
               {cp.email && (
-                <a href={`mailto:${cp.email}`} style={{ fontSize: '0.8125rem', color: '#2563eb', textDecoration: 'none', display: 'block' }}>{cp.email}</a>
+                <a href={`mailto:${cp.email}`} style={{ fontSize: '0.8125rem', color: 'var(--text-link)', textDecoration: 'none', display: 'block' }}>{cp.email}</a>
               )}
               {cp.note && (
-                <div style={{ fontSize: '0.8125rem', color: '#6b7280', marginTop: 4 }}>{cp.note}</div>
+                <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: 4 }}>{cp.note}</div>
               )}
             </div>
           ))}
         {customerContactPersons.filter((cp) => cp.customer_id === customer.id).length === 0 && (
-          <div style={{ fontSize: '0.8125rem', color: '#6b7280' }}>No contacts yet</div>
+          <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>No contacts yet</div>
         )}
       </div>
     )
@@ -245,16 +245,16 @@ export function BidsBuilderReviewTab({
             placeholder="Search builders..."
             value={builderReviewSearchQuery}
             onChange={(e) => setBuilderReviewSearchQuery(e.target.value)}
-            style={{ flex: 1, minWidth: 200, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, boxSizing: 'border-box' }}
+            style={{ flex: 1, minWidth: 200, padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, boxSizing: 'border-box' }}
           />
           <button
             type="button"
             onClick={() => setBuilderReviewSortOrder((prev) => (prev === 'oldest-first' ? 'newest-first' : 'oldest-first'))}
             style={{
               padding: '0.5rem 1rem',
-              border: '1px solid #d1d5db',
-              background: builderReviewSortOrder === 'oldest-first' ? '#f3f4f6' : '#eff6ff',
-              color: builderReviewSortOrder === 'oldest-first' ? '#374151' : '#3b82f6',
+              border: '1px solid var(--border-strong)',
+              background: builderReviewSortOrder === 'oldest-first' ? 'var(--bg-muted)' : 'var(--bg-blue-tint)',
+              color: builderReviewSortOrder === 'oldest-first' ? 'var(--text-700)' : 'var(--text-blue-500)',
               borderRadius: 4,
               cursor: 'pointer',
               fontWeight: 500,
@@ -265,19 +265,19 @@ export function BidsBuilderReviewTab({
           <button
             type="button"
             onClick={() => setBuilderReviewCardExpanded(Object.fromEntries(builderReviewCustomersFiltered.map((c) => [c.id, false])))}
-            style={{ padding: '0.5rem 1rem', border: '1px solid #d1d5db', background: '#f3f4f6', color: '#374151', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
+            style={{ padding: '0.5rem 1rem', border: '1px solid var(--border-strong)', background: 'var(--bg-muted)', color: 'var(--text-700)', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
           >
             Collapse all
           </button>
           <button
             type="button"
             onClick={() => setBuilderReviewCardExpanded({})}
-            style={{ padding: '0.5rem 1rem', border: '1px solid #d1d5db', background: '#f3f4f6', color: '#374151', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
+            style={{ padding: '0.5rem 1rem', border: '1px solid var(--border-strong)', background: 'var(--bg-muted)', color: 'var(--text-700)', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
           >
             Expand all
           </button>
         </div>
-        <p style={{ marginBottom: '1rem', color: '#6b7280', fontSize: '0.875rem' }}>
+        <p style={{ marginBottom: '1rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>
           Sorted by last contact. Add outreach not tied to bids via General contact. PIA = ignore when Oldest first.
         </p>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
@@ -325,7 +325,7 @@ export function BidsBuilderReviewTab({
                             <button
                               type="button"
                               onClick={() => onEditBid(bid)}
-                              style={{ background: 'none', border: 'none', color: '#3b82f6', cursor: 'pointer', textDecoration: 'underline', padding: 0, textAlign: 'left', fontSize: '0.875rem' }}
+                              style={{ background: 'none', border: 'none', color: 'var(--text-blue-500)', cursor: 'pointer', textDecoration: 'underline', padding: 0, textAlign: 'left', fontSize: '0.875rem' }}
                             >
                               {formatBidNameWithValue(bid)}
                             </button>
@@ -333,14 +333,14 @@ export function BidsBuilderReviewTab({
                               type="button"
                               onClick={() => onViewSubmissions(bid)}
                               title="View submissions"
-                              style={{ padding: '0.125rem', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', color: '#6b7280' }}
+                              style={{ padding: '0.125rem', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', color: 'var(--text-muted)' }}
                             >
                               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="16" height="16" fill="currentColor" aria-hidden="true">
                                 <path d="M480 272C480 317.9 465.1 360.3 440 394.7L566.6 521.4C579.1 533.9 579.1 554.2 566.6 566.7C554.1 579.2 533.8 579.2 521.3 566.7L394.7 440C360.3 465.1 317.9 480 272 480C157.1 480 64 386.9 64 272C64 157.1 157.1 64 272 64C386.9 64 480 157.1 480 272zM272 416C351.5 416 416 351.5 416 272C416 192.5 351.5 128 272 128C192.5 128 128 192.5 128 272C128 351.5 192.5 416 272 416z" />
                               </svg>
                             </button>
                             {' — '}
-                            <span style={{ fontSize: '0.875rem', color: '#6b7280' }}>
+                            <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>
                               due {formatDateYYMMDD(bid.bid_due_date)}, {getBidStatusLabel(bid)}
                             </span>
                           </li>
@@ -367,13 +367,13 @@ export function BidsBuilderReviewTab({
                 id={`builder-review-customer-${customer.id}`}
                 data-deeplink-gen={customer.id === deepLinkHighlightCustomerId ? deepLinkHighlightGen : undefined}
                 style={{
-                  border: '1px solid #e5e7eb',
+                  border: '1px solid var(--border)',
                   borderRadius: 8,
                   overflow: 'hidden',
-                  background: 'white',
+                  background: 'var(--surface)',
                   ...(customer.id === deepLinkHighlightCustomerId
                     ? {
-                        backgroundColor: '#fffbeb',
+                        backgroundColor: 'var(--bg-amber-tint)',
                         outline: '2px solid #d97706',
                         outlineOffset: -2,
                         transition: 'background-color 0.25s ease, outline-color 0.25s ease',
@@ -393,17 +393,17 @@ export function BidsBuilderReviewTab({
                     alignItems: 'center',
                     flexWrap: 'wrap',
                     gap: '0.5rem',
-                    background: '#f9fafb',
-                    borderBottom: isCardExpanded ? '1px solid #e5e7eb' : 'none',
+                    background: 'var(--bg-subtle)',
+                    borderBottom: isCardExpanded ? '1px solid var(--border)' : 'none',
                     cursor: 'pointer',
                   }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <span style={{ fontSize: '0.875rem', color: '#6b7280' }} aria-hidden>{isCardExpanded ? '\u25BC' : '\u25B6'}</span>
+                    <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }} aria-hidden>{isCardExpanded ? '\u25BC' : '\u25B6'}</span>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                       <div>
                         <strong>{customer.name}</strong>
-                        {customer.address && <span style={{ marginLeft: '0.5rem', color: '#6b7280', fontSize: '0.875rem' }}>{customer.address}</span>}
+                        {customer.address && <span style={{ marginLeft: '0.5rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>{customer.address}</span>}
                       </div>
                       {customer.address && (
                         <a
@@ -411,7 +411,7 @@ export function BidsBuilderReviewTab({
                           target="_blank"
                           rel="noopener noreferrer"
                           onClick={(e) => e.stopPropagation()}
-                          style={{ display: 'inline-flex', alignItems: 'center', color: '#2563eb', textDecoration: 'none', cursor: 'pointer' }}
+                          style={{ display: 'inline-flex', alignItems: 'center', color: 'var(--text-link)', textDecoration: 'none', cursor: 'pointer' }}
                           title={`View ${customer.address} on map`}
                         >
                           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" style={{ width: '16px', height: '16px', fill: 'currentColor' }}>
@@ -429,7 +429,7 @@ export function BidsBuilderReviewTab({
                               <a
                                 href={`tel:${phone}`}
                                 onClick={(e) => e.stopPropagation()}
-                                style={{ display: 'inline-flex', alignItems: 'center', color: '#2563eb', textDecoration: 'none', cursor: 'pointer' }}
+                                style={{ display: 'inline-flex', alignItems: 'center', color: 'var(--text-link)', textDecoration: 'none', cursor: 'pointer' }}
                                 title={`Call ${phone}`}
                               >
                                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" style={{ width: '16px', height: '16px', fill: 'currentColor' }}>
@@ -441,7 +441,7 @@ export function BidsBuilderReviewTab({
                               <a
                                 href={`mailto:${email}`}
                                 onClick={(e) => e.stopPropagation()}
-                                style={{ display: 'inline-flex', alignItems: 'center', color: '#2563eb', textDecoration: 'none', cursor: 'pointer' }}
+                                style={{ display: 'inline-flex', alignItems: 'center', color: 'var(--text-link)', textDecoration: 'none', cursor: 'pointer' }}
                                 title={`Email ${email}`}
                               >
                                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" style={{ width: '16px', height: '16px', fill: 'currentColor' }}>
@@ -474,7 +474,7 @@ export function BidsBuilderReviewTab({
                       />
                       PIA
                     </label>
-                    <span style={{ fontSize: '0.875rem', color: '#6b7280' }}>
+                    <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>
                       Last contact: {lastContact ? formatTimeSinceLastContact(lastContact) : '—'}
                     </span>
                     <button
@@ -533,7 +533,7 @@ export function BidsBuilderReviewTab({
                         </>
                       )}
                     </div>
-                    <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '0.5rem 1.25rem', borderTop: '1px solid #e5e7eb', background: '#fafafa' }}>
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '0.5rem 1.25rem', borderTop: '1px solid var(--border)', background: 'var(--bg-page)' }}>
                       <button
                         type="button"
                         onClick={(e) => {
@@ -548,9 +548,9 @@ export function BidsBuilderReviewTab({
                         style={{
                           padding: '0.35rem 0.75rem',
                           fontSize: '0.875rem',
-                          background: '#f3f4f6',
-                          color: '#374151',
-                          border: '1px solid #d1d5db',
+                          background: 'var(--bg-muted)',
+                          color: 'var(--text-700)',
+                          border: '1px solid var(--border-strong)',
                           borderRadius: 4,
                           fontWeight: 500,
                           cursor: 'pointer',
@@ -565,8 +565,8 @@ export function BidsBuilderReviewTab({
             )
           })}
           {builderReviewPiaCustomersExcluded.length > 0 && (
-            <div style={{ marginTop: '1.5rem', padding: '1rem', border: '1px solid #e5e7eb', borderRadius: 8, background: '#f9fafb' }}>
-              <div style={{ fontSize: '0.875rem', fontWeight: 600, color: '#6b7280', marginBottom: '0.75rem' }}>PIA (excluded from Oldest first)</div>
+            <div style={{ marginTop: '1.5rem', padding: '1rem', border: '1px solid var(--border)', borderRadius: 8, background: 'var(--bg-subtle)' }}>
+              <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '0.75rem' }}>PIA (excluded from Oldest first)</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                 {builderReviewPiaCustomersExcluded.map((customer) => (
                   <label key={customer.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.875rem' }}>
@@ -585,7 +585,7 @@ export function BidsBuilderReviewTab({
                       }}
                     />
                     {customer.name}
-                    {customer.address && <span style={{ color: '#6b7280' }}>{customer.address}</span>}
+                    {customer.address && <span style={{ color: 'var(--text-muted)' }}>{customer.address}</span>}
                   </label>
                 ))}
               </div>
@@ -595,7 +595,7 @@ export function BidsBuilderReviewTab({
       </div>
 
       {addContactPersonModalCustomer && (
-        <ModalShell zIndex={1001} cardStyle={{ background: 'white', padding: '1.5rem 2rem', borderRadius: 8, maxWidth: '500px', width: '90%' }}>
+        <ModalShell zIndex={1001} cardStyle={{ background: 'var(--surface)', padding: '1.5rem 2rem', borderRadius: 8, maxWidth: '500px', width: '90%' }}>
             <h2 style={{ marginTop: 0, marginBottom: '1rem' }}>
               {editingContactPerson ? 'Edit contact person' : 'Add contact person'} – {addContactPersonModalCustomer.name}
             </h2>
@@ -607,7 +607,7 @@ export function BidsBuilderReviewTab({
                 value={contactPersonName}
                 onChange={(e) => setContactPersonName(e.target.value)}
                 placeholder="Name"
-                style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
               />
             </div>
             <div style={{ marginBottom: '1rem' }}>
@@ -619,13 +619,13 @@ export function BidsBuilderReviewTab({
                     value={p}
                     onChange={(e) => setContactPersonPhones((prev) => prev.map((v, j) => (j === i ? e.target.value : v)))}
                     placeholder="Phone"
-                    style={{ flex: 1, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                    style={{ flex: 1, padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
                   />
                   <button
                     type="button"
                     onClick={() => setContactPersonPhones((prev) => (prev.length > 1 ? prev.filter((_, j) => j !== i) : prev))}
                     title="Remove phone"
-                    style={{ padding: '0.5rem', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 4, cursor: 'pointer', color: '#991b1b', flexShrink: 0 }}
+                    style={{ padding: '0.5rem', background: 'var(--bg-red-tint)', border: '1px solid #fecaca', borderRadius: 4, cursor: 'pointer', color: 'var(--text-red-800)', flexShrink: 0 }}
                   >
                     −
                   </button>
@@ -634,7 +634,7 @@ export function BidsBuilderReviewTab({
               <button
                 type="button"
                 onClick={() => setContactPersonPhones((prev) => [...prev, ''])}
-                style={{ marginTop: '0.35rem', padding: '0.25rem 0.5rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer', fontSize: '0.8125rem' }}
+                style={{ marginTop: '0.35rem', padding: '0.25rem 0.5rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer', fontSize: '0.8125rem' }}
               >
                 + Add phone
               </button>
@@ -647,7 +647,7 @@ export function BidsBuilderReviewTab({
                 value={contactPersonEmail}
                 onChange={(e) => setContactPersonEmail(e.target.value)}
                 placeholder="Email"
-                style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
               />
             </div>
             <div style={{ marginBottom: '1rem' }}>
@@ -658,7 +658,7 @@ export function BidsBuilderReviewTab({
                 onChange={(e) => setContactPersonNote(e.target.value)}
                 placeholder="Note"
                 rows={3}
-                style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, resize: 'vertical', boxSizing: 'border-box' }}
+                style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, resize: 'vertical', boxSizing: 'border-box' }}
               />
             </div>
             <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
@@ -672,7 +672,7 @@ export function BidsBuilderReviewTab({
                   setContactPersonEmail('')
                   setContactPersonNote('')
                 }}
-                style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
+                style={{ padding: '0.5rem 1rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}
               >
                 Cancel
               </button>

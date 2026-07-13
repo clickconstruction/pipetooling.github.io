@@ -42,7 +42,7 @@ function SortableJobBookRow({
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: r.id })
   const trStyle: CSSProperties = {
-    borderTop: '1px solid #e5e7eb',
+    borderTop: '1px solid var(--border)',
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isDragging ? 0.5 : 1,
@@ -139,7 +139,7 @@ function SortableJobBookRow({
               justifyContent: 'center',
               background: 'none',
               border: 'none',
-              color: '#6b7280',
+              color: 'var(--text-muted)',
               lineHeight: 0,
             }}
           >
@@ -161,7 +161,7 @@ function SortableJobBookRow({
               justifyContent: 'center',
               background: 'none',
               border: 'none',
-              color: '#b91c1c',
+              color: 'var(--text-red-700)',
               cursor: 'pointer',
               lineHeight: 0,
             }}
@@ -382,7 +382,7 @@ export default function JobBookEditorPanel({
 
   const tableHead = (
     <thead>
-      <tr style={{ background: '#f3f4f6', textAlign: 'left' }}>
+      <tr style={{ background: 'var(--bg-muted)', textAlign: 'left' }}>
         <th style={{ padding: 8 }}>Work</th>
         <th style={{ padding: 8, width: 120 }}>Cost ($)</th>
         <th
@@ -404,7 +404,7 @@ export default function JobBookEditorPanel({
   return (
     <>
       {showIntro ? (
-        <p style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '1rem', marginTop: '0.5rem' }}>
+        <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginBottom: '1rem', marginTop: '0.5rem' }}>
           Subcontractors can add these read-only lines to a job from <strong>Collect Payment</strong> when the job has no
           Specific Work yet. Leave <strong>Service type</strong> empty for lines that apply to every job; otherwise restrict
           the line to one type
@@ -412,7 +412,7 @@ export default function JobBookEditorPanel({
         </p>
       ) : null}
       {loading ? (
-        <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>Loading…</p>
+        <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Loading…</p>
       ) : (
         <>
           <div style={{ overflowX: 'auto' }}>
@@ -482,7 +482,7 @@ export default function JobBookEditorPanel({
             aria-modal="true"
             aria-labelledby={deleteConfirmTitleId}
             style={{
-              background: 'white',
+              background: 'var(--surface)',
               padding: '1.5rem',
               borderRadius: 8,
               minWidth: 320,
@@ -495,7 +495,7 @@ export default function JobBookEditorPanel({
             <h2 id={deleteConfirmTitleId} style={{ margin: '0 0 0.75rem', fontSize: '1.25rem' }}>
               Delete Job Book line?
             </h2>
-            <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#6b7280', lineHeight: 1.45 }}>
+            <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: 'var(--text-muted)', lineHeight: 1.45 }}>
               {pendingDeleteLabel ? (
                 <>
                   Remove <strong>{pendingDeleteLabel}</strong> from the catalog? This cannot be undone.
@@ -511,8 +511,8 @@ export default function JobBookEditorPanel({
                 disabled={deletingId != null}
                 style={{
                   padding: '0.5rem 1rem',
-                  border: '1px solid #d1d5db',
-                  background: 'white',
+                  border: '1px solid var(--border-strong)',
+                  background: 'var(--surface)',
                   borderRadius: 4,
                   cursor: deletingId != null ? 'not-allowed' : 'pointer',
                 }}

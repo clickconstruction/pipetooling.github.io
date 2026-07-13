@@ -306,11 +306,11 @@ function ProjectsForecastTimelineGridInner<TRow>(
         // labels float INSIDE each bar; here the gutter sits OUTSIDE the bars, so a left
         // full-bleed pulls the chip under/off the page's left edge and clips it.
         marginRight: 'calc(-1 * (var(--app-main-pad) + 1.25rem))',
-        borderTop: '1px solid #e5e7eb',
-        borderBottom: '1px solid #e5e7eb',
+        borderTop: '1px solid var(--border)',
+        borderBottom: '1px solid var(--border)',
         display: 'flex',
         alignItems: 'stretch',
-        background: '#ffffff',
+        background: 'var(--surface)',
       }}
     >
       {/* Sticky left gutter — kept OUTSIDE the horizontal scroller so it stays put while
@@ -322,8 +322,8 @@ function ProjectsForecastTimelineGridInner<TRow>(
             width: gutter,
             minWidth: gutter,
             maxWidth: gutter,
-            borderRight: '1px solid #e5e7eb',
-            background: '#ffffff',
+            borderRight: '1px solid var(--border)',
+            background: 'var(--surface)',
             display: 'flex',
             flexDirection: 'column',
           }}
@@ -334,8 +334,8 @@ function ProjectsForecastTimelineGridInner<TRow>(
           <div
             style={{
               height: FORECAST_HEADER_MONTH_H + FORECAST_HEADER_DAY_H,
-              borderBottom: '1px solid #e5e7eb',
-              background: '#f8fafc',
+              borderBottom: '1px solid var(--border)',
+              background: 'var(--bg-slate-tint)',
             }}
           >
             {gutterHeader ?? null}
@@ -353,7 +353,7 @@ function ProjectsForecastTimelineGridInner<TRow>(
                   padding: '0 8px',
                   borderBottom: '1px solid #f1f5f9',
                   fontSize: '0.8125rem',
-                  color: '#0f172a',
+                  color: 'var(--text-slate-900)',
                   overflow: 'hidden',
                   whiteSpace: 'nowrap',
                   textOverflow: 'ellipsis',
@@ -408,16 +408,16 @@ function ProjectsForecastTimelineGridInner<TRow>(
               title={panLeftLabel ?? 'Load 90 more days back'}
               style={{
                 flex: `0 0 ${PAN_PILLAR_W_PX}px`,
-                background: '#f8fafc',
+                background: 'var(--bg-slate-tint)',
                 border: 'none',
-                borderRight: '1px solid #e5e7eb',
+                borderRight: '1px solid var(--border)',
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 fontSize: '1.25rem',
                 fontWeight: 600,
-                color: '#475569',
+                color: 'var(--text-slate-600)',
                 padding: 0,
               }}
             >
@@ -442,8 +442,8 @@ function ProjectsForecastTimelineGridInner<TRow>(
               position: 'sticky',
               top: 0,
               zIndex: 3,
-              background: '#ffffff',
-              borderBottom: '1px solid #e5e7eb',
+              background: 'var(--surface)',
+              borderBottom: '1px solid var(--border)',
             }}
           >
             <div
@@ -453,7 +453,7 @@ function ProjectsForecastTimelineGridInner<TRow>(
                 height: FORECAST_HEADER_MONTH_H,
                 borderBottom: '1px solid #f1f5f9',
                 fontSize: '0.75rem',
-                color: '#374151',
+                color: 'var(--text-700)',
               }}
             >
               {monthRuns.map((run) => (
@@ -466,8 +466,8 @@ function ProjectsForecastTimelineGridInner<TRow>(
                     justifyContent: 'flex-start',
                     paddingLeft: 6,
                     fontWeight: 600,
-                    background: '#f8fafc',
-                    borderRight: '1px solid #e5e7eb',
+                    background: 'var(--bg-slate-tint)',
+                    borderRight: '1px solid var(--border)',
                     overflow: 'hidden',
                     whiteSpace: 'nowrap',
                   }}
@@ -482,7 +482,7 @@ function ProjectsForecastTimelineGridInner<TRow>(
                 gridTemplateColumns,
                 height: FORECAST_HEADER_DAY_H,
                 fontSize: '0.6875rem',
-                color: '#374151',
+                color: 'var(--text-700)',
               }}
             >
               {dayKeys.map((ymd, i) => {
@@ -498,8 +498,8 @@ function ProjectsForecastTimelineGridInner<TRow>(
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      background: isToday ? '#fff7ed' : weekend ? '#f1f5f9' : '#ffffff',
-                      color: isToday ? '#b45309' : weekend ? '#94a3b8' : '#374151',
+                      background: isToday ? '#fff7ed' : weekend ? 'var(--bg-slate-100)' : 'var(--surface)',
+                      color: isToday ? '#b45309' : weekend ? 'var(--text-slate-400)' : 'var(--text-700)',
                       fontWeight: digit?.isFirstOfMonth ? 700 : 400,
                       borderRight: '1px solid #f1f5f9',
                     }}
@@ -536,7 +536,7 @@ function ProjectsForecastTimelineGridInner<TRow>(
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                color: '#6b7280',
+                color: 'var(--text-muted)',
                 fontSize: '0.8125rem',
                 fontStyle: 'italic',
               }}
@@ -564,7 +564,7 @@ function ProjectsForecastTimelineGridInner<TRow>(
                       style={{
                         gridColumn: `${i + 1} / ${i + 2}`,
                         gridRow: 1,
-                        background: '#f8fafc',
+                        background: 'var(--bg-slate-tint)',
                       }}
                     />
                   ) : null,
@@ -586,16 +586,16 @@ function ProjectsForecastTimelineGridInner<TRow>(
               title={panRightLabel ?? 'Load 90 more days forward'}
               style={{
                 flex: `0 0 ${PAN_PILLAR_W_PX}px`,
-                background: '#f8fafc',
+                background: 'var(--bg-slate-tint)',
                 border: 'none',
-                borderLeft: '1px solid #e5e7eb',
+                borderLeft: '1px solid var(--border)',
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 fontSize: '1.25rem',
                 fontWeight: 600,
-                color: '#475569',
+                color: 'var(--text-slate-600)',
                 padding: 0,
               }}
             >

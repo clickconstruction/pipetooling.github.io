@@ -40,7 +40,7 @@ export function ReportTemplateSignatureField({
     canvas.width = w
     canvas.height = h
     const pad = new SignaturePad(canvas, {
-      backgroundColor: '#ffffff',
+      backgroundColor: 'var(--surface)',
       penColor: '#111827',
     })
     pad.addEventListener('endStroke', () => {
@@ -79,7 +79,7 @@ export function ReportTemplateSignatureField({
         </label>
         <div
           style={{
-            border: '1px solid #d1d5db',
+            border: '1px solid var(--border-strong)',
             borderRadius: 4,
             display: 'inline-block',
             maxWidth: '100%',
@@ -115,7 +115,7 @@ export function ReportTemplateSignatureField({
             seededRef.current = false
             onChange('')
           }}
-          style={{ padding: '0.35rem 0.65rem', fontSize: '0.8125rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer', flexShrink: 0 }}
+          style={{ padding: '0.35rem 0.65rem', fontSize: '0.8125rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer', flexShrink: 0 }}
         >
           Clear
         </button>
@@ -124,7 +124,7 @@ export function ReportTemplateSignatureField({
             style={{
               fontSize: '1rem',
               fontWeight: 500,
-              color: '#4b5563',
+              color: 'var(--text-600)',
               textAlign: 'right',
               minWidth: 0,
               flex: 1,

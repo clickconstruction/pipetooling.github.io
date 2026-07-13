@@ -65,7 +65,7 @@ export function MercuryCounterpartyFrequencyModal({
         aria-labelledby={titleId}
         onMouseDown={(e) => e.stopPropagation()}
         style={{
-          background: 'white',
+          background: 'var(--surface)',
           borderRadius: 8,
           maxWidth: 520,
           width: '100%',
@@ -74,7 +74,7 @@ export function MercuryCounterpartyFrequencyModal({
           flexDirection: 'column',
           padding: '1.25rem',
           boxShadow: '0 20px 40px rgba(0,0,0,0.12)',
-          border: '1px solid #e5e7eb',
+          border: '1px solid var(--border)',
           boxSizing: 'border-box',
         }}
       >
@@ -88,7 +88,7 @@ export function MercuryCounterpartyFrequencyModal({
             flexShrink: 0,
           }}
         >
-          <h2 id={titleId} style={{ margin: 0, fontSize: '1.125rem', fontWeight: 600, color: '#111827' }}>
+          <h2 id={titleId} style={{ margin: 0, fontSize: '1.125rem', fontWeight: 600, color: 'var(--text-strong)' }}>
             Counterparty frequency
           </h2>
           <button
@@ -97,32 +97,32 @@ export function MercuryCounterpartyFrequencyModal({
             style={{
               padding: '0.35rem 0.65rem',
               borderRadius: 6,
-              border: '1px solid #d1d5db',
-              background: '#fff',
+              border: '1px solid var(--border-strong)',
+              background: 'var(--surface)',
               fontSize: '0.875rem',
               fontWeight: 500,
-              color: '#374151',
+              color: 'var(--text-700)',
               cursor: 'pointer',
             }}
           >
             Close
           </button>
         </div>
-        <p style={{ margin: '0 0 0.75rem', fontSize: '0.875rem', color: '#6b7280', flexShrink: 0 }}>{scopeDescription}</p>
-        <div style={{ overflow: 'auto', flex: 1, minHeight: 0, border: '1px solid #e5e7eb', borderRadius: 6 }}>
+        <p style={{ margin: '0 0 0.75rem', fontSize: '0.875rem', color: 'var(--text-muted)', flexShrink: 0 }}>{scopeDescription}</p>
+        <div style={{ overflow: 'auto', flex: 1, minHeight: 0, border: '1px solid var(--border)', borderRadius: 6 }}>
           {rows.length === 0 ? (
-            <div style={{ padding: '1rem', fontSize: '0.875rem', color: '#6b7280' }}>
+            <div style={{ padding: '1rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
               No counterparty appears more than twice in this view.
             </div>
           ) : (
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
               <thead>
-                <tr style={{ background: '#f9fafb' }}>
+                <tr style={{ background: 'var(--bg-subtle)' }}>
                   <th
                     style={{
                       textAlign: 'left',
                       padding: '0.5rem 0.75rem',
-                      borderBottom: '1px solid #e5e7eb',
+                      borderBottom: '1px solid var(--border)',
                       fontWeight: 600,
                     }}
                   >
@@ -132,7 +132,7 @@ export function MercuryCounterpartyFrequencyModal({
                     style={{
                       textAlign: 'right',
                       padding: '0.5rem 0.75rem',
-                      borderBottom: '1px solid #e5e7eb',
+                      borderBottom: '1px solid var(--border)',
                       fontWeight: 600,
                       width: '5rem',
                     }}
@@ -172,7 +172,7 @@ function CounterpartyFrequencyRow({
     borderBottom: '1px solid #f3f4f6',
   }
   const trStyle: React.CSSProperties = interactive
-    ? { cursor: 'pointer', background: hovered ? '#f3f4f6' : 'transparent' }
+    ? { cursor: 'pointer', background: hovered ? 'var(--bg-muted)' : 'transparent' }
     : {}
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTableRowElement>) => {
     if (!onRowClick) return

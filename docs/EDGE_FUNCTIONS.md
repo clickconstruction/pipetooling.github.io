@@ -94,6 +94,9 @@ when_to_read:
    - [create-user](#create-user)
    - [invite-user](#invite-user)
    - [send-sign-in-email](#send-sign-in-email)
+   - [merge-users](#merge-users)
+   - [notify-help-feedback](#notify-help-feedback)
+   - [gsa-per-diem](#gsa-per-diem)
    - [archive-user](#archive-user)
    - [restore-user](#restore-user)
    - [login-as-user](#login-as-user)
@@ -250,7 +253,7 @@ const response = await supabase.functions.invoke('create-user', {
 **400 Bad Request** - Invalid role:
 ```json
 {
-  "error": "Invalid role. Must be one of: dev, master_technician, assistant, subcontractor, estimator"
+  "error": "Invalid role. Must be one of: dev, master_technician, assistant, subcontractor, helpers, estimator, primary, superintendent"
 }
 ```
 
@@ -373,6 +376,47 @@ interface SendSignInEmailRequest {
 
 ---
 
+### merge-users
+
+**Purpose**: Merge one user account into another (dev-only). Calls the `merge_user_accounts` RPC (migration `20260712190000` + `191500` fix) to reassign every reference from the absorbed account to the survivor — explicit handling for unique/membership tables, org pair tables, labels, roster link, `estimates.accept_notify_user_ids`, plus a dynamic FK sweep and a zero-leftovers coverage assert — then bans the absorbed login via the service role. Rules (validated in the RPC): both accounts same role; absorbed must be **archived or never signed in**; when one account is live it must be the survivor. Absorbed account keeps its email (tombstone) and stays restorable-in-name only — merges cannot be undone.
+
+**Endpoint**: `POST /functions/v1/merge-users`
+
+**Required Role**: `dev`
+
+**Required Secrets**: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`
+
+#### Request Parameters
+
+```typescript
+interface MergeUsersRequest {
+  survivor_user_id: string   // account to keep
+  absorbed_user_id: string   // account to merge away
+  dry_run?: boolean          // true = full merge executed + rolled back; returns per-table counts
+}
+```
+
+#### Response
+
+```typescript
+{ success: true, dry_run: boolean, moved: Record<string, number>, warnings: string[] }
+// or { error: string, code?: string } with 400/401/403/404/409/500
+```
+
+**Used by**: Active Accounts → **Merge users** dialog (Preview merge = `dry_run: true`, then Merge now). See `RECENT_FEATURES.md` v2.652; guide `merge-user-accounts.md`.
+
+### notify-help-feedback
+
+**Purpose**: Push + inbox notification to devs when a user submits feedback on a /help guide (`help_feedback` table, migration `20260709150000`).
+
+**Endpoint**: `POST /functions/v1/notify-help-feedback` (invoked by the help feedback form). See `RECENT_FEATURES.md` v2.643.
+
+### gsa-per-diem
+
+**Purpose**: GSA per-diem lookup for the Bids → Labor Travel section: checks the `gsa_per_diem_cache (zip, year)` table, else calls `api.gsa.gov/travel/perdiem/v2/rates/zip/{zip}/year/{year}` with the **`GSA_API_KEY`** secret and returns `{ ok, meals_rate, hotel_rate, city, state }` (friendly `{ ok:false }` for non-CONUS ZIPs / missing key). `verify_jwt = false` with an in-handler JWT/role gate (dev/master_technician/assistant/estimator). See `RECENT_FEATURES.md` v2.589.
+
+**Setup**: `supabase secrets set GSA_API_KEY=…` (free key from api.data.gov); until set, the lookup reports `unconfigured` and manual entry still works.
+
 ### archive-user
 
 **Purpose**: Archive users by email or name (dev-only operation). Archived users are hidden across the app and cannot sign in, but can be restored later.
@@ -402,6 +446,7 @@ interface ArchiveUserRequest {
 
 **Notes**: 
 - Must provide either `email` or `name` (email takes precedence if both provided)
+- Archiving an **already-archived** account returns **409** with `"That user is already archived (May 21, 2026)."` (second lookup without the archived filter; a genuinely unknown user still returns 404 `User not found`)
 - If `reassign_customers_to` is provided, all customers owned by the user will be reassigned to the specified master before archival
 - The new master must be a `dev` or `master_technician` role
 - Sets `archived_at` in `public.users` and `banned_until` in `auth.users` (user cannot sign in)
@@ -1976,7 +2021,7 @@ interface ReverseStripeInvoiceOobBody {
 
 ### stripe-invoice-agreed-write-down
 
-**Purpose**: Apply an **agreed discount** on a **billed** **Stripe-hosted** **`jobs_ledger_invoices`** row: validates the requested **new total** against Stripe **`amount_paid`** / **`amount_remaining`**, creates a Stripe **credit note** (**`reason: customer_request`**, metadata **`pipetooling_write_down`**), **retrieves** the invoice again, and calls RPC **`service_apply_agreed_write_down_from_stripe`** to set **`jobs_ledger_invoices.amount`** (and audit **`agreed_write_down_*`**) from **`(amount_paid + amount_remaining) / 100`**. Non-Stripe rows use **`apply_agreed_write_down_to_billed_invoice`** from the app instead.
+**Purpose**: Apply an **agreed discount** on a **billed** **Stripe-hosted** **`jobs_ledger_invoices`** row: validates the requested **new total** against Stripe **`amount_paid`** / **`amount_remaining`**, creates a Stripe **credit note** (**`reason: order_change`** — the only credit-note reason that fits an agreed discount; Stripe rejects `customer_request`, which is a *refund* reason — metadata **`pipetooling_write_down`**), **retrieves** the invoice again, and calls RPC **`service_apply_agreed_write_down_from_stripe`** to set **`jobs_ledger_invoices.amount`** (and audit **`agreed_write_down_*`**) from **`(amount_paid + amount_remaining) / 100`**. Non-Stripe rows use **`apply_agreed_write_down_to_billed_invoice`** from the app instead.
 
 **Endpoint**: `POST /functions/v1/stripe-invoice-agreed-write-down`
 
@@ -2272,7 +2317,7 @@ All Edge Functions return errors in consistent JSON format:
 { "error": "Missing required fields: email, password, and role" }
 
 // Invalid field value
-{ "error": "Invalid role. Must be one of: dev, master_technician, assistant, subcontractor, estimator" }
+{ "error": "Invalid role. Must be one of: dev, master_technician, assistant, subcontractor, helpers, estimator, primary, superintendent" }
 
 // Password validation
 { "error": "Password must be at least 6 characters" }

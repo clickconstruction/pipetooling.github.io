@@ -1,4 +1,4 @@
-/** User-facing copy for `geocode-one` Edge error codes. Shared by Map page, Settings, and modals. */
+/** User-facing copy for `geocode-one` / `geocode-address-batch` Edge error codes. Shared by Map page, Settings, and modals. */
 export function mapGeocodeErrorMessage(errorCode: string, detail?: string) {
   let base: string
   switch (errorCode) {
@@ -29,6 +29,9 @@ export function mapGeocodeErrorMessage(errorCode: string, detail?: string) {
       break
     case 'google_unconfigured':
       base = 'Google Geocoding is not configured (set GOOGLE_MAPS_API_KEY for Edge Functions)'
+      break
+    case 'census_upstream':
+      base = 'US Census geocoding service error'
       break
     default:
       base = errorCode

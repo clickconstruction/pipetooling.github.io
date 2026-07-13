@@ -38,15 +38,15 @@ const HOURS_DAY_CORRECT_BLOCK_TOAST =
 
 const navBtnStyle: CSSProperties = {
   padding: '0.35rem 0.65rem',
-  border: '1px solid #d1d5db',
+  border: '1px solid var(--border-strong)',
   borderRadius: 4,
-  background: 'white',
+  background: 'var(--surface)',
   cursor: 'pointer',
   fontSize: '0.875rem',
 }
 
 const navMobileSepStyle: CSSProperties = {
-  color: '#9ca3af',
+  color: 'var(--text-faint)',
   userSelect: 'none',
   fontSize: '0.875rem',
   padding: '0 0.15rem',
@@ -383,7 +383,7 @@ export function PeopleHoursDashboardClockStrip({ onSessionsChanged, addSessionPe
                     fontSize: '0.8125rem',
                     padding: '0.35rem 0.5rem',
                     borderColor: '#93c5fd',
-                    color: '#1d4ed8',
+                    color: 'var(--text-blue-700)',
                   }}
                   onClick={() => setSelectedYmd(todayDenver)}
                 >
@@ -418,7 +418,7 @@ export function PeopleHoursDashboardClockStrip({ onSessionsChanged, addSessionPe
           {selectedYmd !== todayDenver ? (
             <button
               type="button"
-              style={{ ...navBtnStyle, borderColor: '#93c5fd', color: '#1d4ed8' }}
+              style={{ ...navBtnStyle, borderColor: '#93c5fd', color: 'var(--text-blue-700)' }}
               onClick={() => setSelectedYmd(todayDenver)}
             >
               Today

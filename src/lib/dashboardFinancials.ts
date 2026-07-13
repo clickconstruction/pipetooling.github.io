@@ -27,6 +27,8 @@ export type FinancialItem = {
   jobId: string | null
   /** Job street address — shown on Not-billed rows; null elsewhere. */
   address: string | null
+  /** Stages % complete (jobs_ledger.pct_complete) — shown on Not-billed rows; null elsewhere or when unset. */
+  pctComplete?: number | null
 }
 
 export type FinancialBucket = {
@@ -48,6 +50,10 @@ export type FinancialJobRow = {
   payments_made: number | null
   last_bill_date: string | null
   last_work_date: string | null
+  /** Difficult-to-collect flag; in Collections = status='billed' AND collections_at set. */
+  collections_at?: string | null
+  /** Stages % complete (0–100), manually set on the Jobs Stages table. */
+  pct_complete?: number | null
 }
 
 export type FinancialInvoiceRow = {
@@ -108,12 +114,21 @@ function finishBucket(items: FinancialItem[]): FinancialBucket {
   }
 }
 
-/** AR: open remainders on billed invoices + billed jobs without billed invoice rows. */
-export function buildArBucket(
+/** In Collections = billed AND flagged (mirrors jobInCollections in jobsStagesBoard.ts). */
+function financialJobRowInCollections(job: Pick<FinancialJobRow, 'status' | 'collections_at'> | undefined): boolean {
+  return job != null && (job.status ?? '') === 'billed' && job.collections_at != null
+}
+
+/**
+ * AR split by the difficult-to-collect flag: `ar` is the headline (money realistically expected
+ * soon), `collections` is parked receivables. Items route by the parent job's flag, so
+ * ar.total + collections.total equals the pre-split AR total.
+ */
+export function buildArBuckets(
   jobs: FinancialJobRow[],
   invoices: FinancialInvoiceRow[],
   invoicePayments: FinancialInvoicePaymentRow[],
-): FinancialBucket {
+): { ar: FinancialBucket; collections: FinancialBucket } {
   const jobsById = new Map(jobs.map((j) => [j.id, j]))
   const appliedByInvoice = new Map<string, number>()
   for (const p of invoicePayments) {
@@ -122,12 +137,14 @@ export function buildArBucket(
   }
   const billedInvoices = invoices.filter((i) => i.status === 'billed')
   const jobIdsWithBilledInvoice = new Set(billedInvoices.map((i) => i.job_id))
-  const items: FinancialItem[] = []
+  const arItems: FinancialItem[] = []
+  const collectionsItems: FinancialItem[] = []
   for (const inv of billedInvoices) {
     const remaining = Math.max(0, Number(inv.amount ?? 0) - (appliedByInvoice.get(inv.id) ?? 0))
     if (remaining <= EPSILON) continue
     const job = jobsById.get(inv.job_id)
-    items.push({
+    const target = financialJobRowInCollections(job) ? collectionsItems : arItems
+    target.push({
       key: `inv:${inv.id}`,
       label: job ? financialJobLabel(job) : 'Unknown job',
       sublabel: 'Billed invoice',
@@ -142,7 +159,8 @@ export function buildArBucket(
     if (jobIdsWithBilledInvoice.has(job.id)) continue
     const remaining = Math.max(0, Number(job.revenue ?? 0) - Number(job.payments_made ?? 0))
     if (remaining <= EPSILON) continue
-    items.push({
+    const target = financialJobRowInCollections(job) ? collectionsItems : arItems
+    target.push({
       key: `job:${job.id}`,
       label: financialJobLabel(job),
       sublabel: 'Billed job (no invoice rows)',
@@ -152,7 +170,17 @@ export function buildArBucket(
       address: null,
     })
   }
-  return finishBucket(items)
+  return { ar: finishBucket(arItems), collections: finishBucket(collectionsItems) }
+}
+
+/** AR ignoring the collections split: open remainders on ALL billed invoices + invoice-less billed jobs. */
+export function buildArBucket(
+  jobs: FinancialJobRow[],
+  invoices: FinancialInvoiceRow[],
+  invoicePayments: FinancialInvoicePaymentRow[],
+): FinancialBucket {
+  const { ar, collections } = buildArBuckets(jobs, invoices, invoicePayments)
+  return finishBucket([...ar.items, ...collections.items])
 }
 
 /** AP: unpaid supply-house invoices + open payroll balances. */
@@ -293,6 +321,7 @@ export function buildUnbilledBucket(jobs: FinancialJobRow[], invoices: Financial
       dateYmd: job.last_work_date,
       jobId: job.id,
       address: (job.job_address ?? '').trim() || null,
+      pctComplete: job.pct_complete ?? null,
     })
   }
   return finishBucket(items)

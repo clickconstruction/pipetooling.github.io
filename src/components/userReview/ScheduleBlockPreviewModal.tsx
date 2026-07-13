@@ -55,7 +55,7 @@ export function ScheduleBlockPreviewModal({
         aria-modal="true"
         aria-labelledby="schedule-block-preview-title"
         style={{
-          background: '#fff',
+          background: 'var(--surface)',
           borderRadius: 8,
           padding: '1.25rem',
           maxWidth: 460,
@@ -75,7 +75,7 @@ export function ScheduleBlockPreviewModal({
               margin: 0,
               fontSize: '1.05rem',
               fontWeight: 600,
-              color: '#111827',
+              color: 'var(--text-strong)',
               flex: 1,
               minWidth: 0,
               overflow: 'hidden',
@@ -93,8 +93,8 @@ export function ScheduleBlockPreviewModal({
                 padding: '0.1rem 0.45rem',
                 fontSize: '0.7rem',
                 fontWeight: 600,
-                color: '#1d4ed8',
-                background: '#eff6ff',
+                color: 'var(--text-blue-700)',
+                background: 'var(--bg-blue-tint)',
                 border: '1px solid #bfdbfe',
                 borderRadius: 999,
                 whiteSpace: 'nowrap',
@@ -105,23 +105,23 @@ export function ScheduleBlockPreviewModal({
           ) : null}
         </div>
 
-        <div style={{ fontSize: '0.875rem', color: '#374151', display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
+        <div style={{ fontSize: '0.875rem', color: 'var(--text-700)', display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
           <div>
-            <span style={{ color: '#111827', fontWeight: 500 }}>{dayWeekday}</span>{' '}
-            <span style={{ color: '#6b7280' }}>· {dayMdY}</span>
+            <span style={{ color: 'var(--text-strong)', fontWeight: 500 }}>{dayWeekday}</span>{' '}
+            <span style={{ color: 'var(--text-muted)' }}>· {dayMdY}</span>
           </div>
-          <div style={{ fontVariantNumeric: 'tabular-nums', color: '#111827' }}>{timeRange}</div>
+          <div style={{ fontVariantNumeric: 'tabular-nums', color: 'var(--text-strong)' }}>{timeRange}</div>
         </div>
 
         <div>
-          <div style={{ fontSize: '0.75rem', color: '#6b7280', marginBottom: '0.25rem' }}>Note</div>
+          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.25rem' }}>Note</div>
           {note ? (
             <p
               style={{
                 margin: 0,
                 fontSize: '0.875rem',
                 lineHeight: 1.45,
-                color: '#111827',
+                color: 'var(--text-strong)',
                 whiteSpace: 'pre-wrap',
                 wordBreak: 'break-word',
               }}
@@ -129,7 +129,7 @@ export function ScheduleBlockPreviewModal({
               {note}
             </p>
           ) : (
-            <p style={{ margin: 0, fontSize: '0.875rem', color: '#9ca3af', fontStyle: 'italic' }}>
+            <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-faint)', fontStyle: 'italic' }}>
               No note
             </p>
           )}
@@ -142,11 +142,11 @@ export function ScheduleBlockPreviewModal({
             style={{
               padding: '0.4rem 0.85rem',
               fontSize: '0.875rem',
-              border: '1px solid #d1d5db',
+              border: '1px solid var(--border-strong)',
               borderRadius: 4,
-              background: '#fff',
+              background: 'var(--surface)',
               cursor: 'pointer',
-              color: '#374151',
+              color: 'var(--text-700)',
             }}
             aria-label="Close"
           >

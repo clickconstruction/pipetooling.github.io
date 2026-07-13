@@ -2,6 +2,12 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import type { CrewBidRow, CrewJobRow } from '../utils/teamLabor'
 import { withSupabaseRetry } from '../utils/errorHandling'
 import { computePayReportAssignmentsBreakdown } from './payReportAssignmentsBreakdown'
+import {
+  EMPTY_SALARIED_PAYROLL_WINDOW,
+  fetchSalariedPayrollWindows,
+  salariedDayCredit,
+  salariedDayCreditReasonLabel,
+} from './salariedPayrollDays'
 
 function getDaysInRange(start: string, end: string): string[] {
   const days: string[] = []
@@ -14,7 +20,12 @@ function getDaysInRange(start: string, end: string): string[] {
   return days
 }
 
-export type DraftPayrollBreakdownDayRow = { work_date: string; hours: number }
+export type DraftPayrollBreakdownDayRow = {
+  work_date: string
+  hours: number
+  /** Salaried only: why this day pays what it does when not a plain workday (e.g. 'unpaid time off'). */
+  salaryNote?: string | null
+}
 
 export type DraftPayrollBreakdownAssignmentRow = {
   date: string
@@ -26,6 +37,8 @@ export type DraftPayrollBreakdownAssignmentRow = {
    * breakdown didn't move" visibly reads as "those hours are pending approval". Always 0 for salary.
    */
   pendingHours: number
+  /** Salaried only: annotation when the day is not a plain 8 h workday (e.g. 'unpaid time off'). */
+  salaryNote?: string | null
 }
 
 /**
@@ -68,16 +81,20 @@ export async function fetchDraftPayrollPersonBreakdown(
     .sort((a, b) => a.work_date.localeCompare(b.work_date))
     .map((r) => ({ date: r.work_date, hours: r.hours }))
 
+  // Salaried: flat 8/0 adjusted for unpaid time off + employment window (mirrors generatePayStub).
+  const salaryWindow = args.isSalary
+    ? (await fetchSalariedPayrollWindows(supabase, [personName], start, end))[personName] ?? EMPTY_SALARIED_PAYROLL_WINDOW
+    : null
+
   const daysInRange = getDaysInRange(start, end)
   const dayRows: DraftPayrollBreakdownDayRow[] = []
   for (const d of daysInRange) {
-    const hrs = args.isSalary
-      ? (() => {
-          const day = new Date(d + 'T12:00:00').getDay()
-          return day >= 1 && day <= 5 ? 8 : 0
-        })()
-      : hoursRows.find((r) => r.date === d)?.hours ?? 0
-    dayRows.push({ work_date: d, hours: hrs })
+    if (salaryWindow) {
+      const credit = salariedDayCredit(d, salaryWindow)
+      dayRows.push({ work_date: d, hours: credit.hours, salaryNote: salariedDayCreditReasonLabel(credit.reason) })
+    } else {
+      dayRows.push({ work_date: d, hours: hoursRows.find((r) => r.date === d)?.hours ?? 0 })
+    }
   }
 
   const [crewData, crewBidsData] = await Promise.all([
@@ -199,10 +216,12 @@ export async function fetchDraftPayrollPersonBreakdown(
     }
   }
 
+  const salaryNoteByDate = new Map(dayRows.map((d) => [d.work_date, d.salaryNote ?? null]))
   const baseRows = computePayReportAssignmentsBreakdown(personName, dayRows, crewByDatePerson, crewBidsByDatePerson, jobsMap, bidsMap)
   const rows: DraftPayrollBreakdownAssignmentRow[] = baseRows.map((r) => ({
     ...r,
     pendingHours: pendingByDay[r.date] ?? 0,
+    salaryNote: salaryNoteByDate.get(r.date) ?? null,
   }))
   return { dayRows, rows }
 }

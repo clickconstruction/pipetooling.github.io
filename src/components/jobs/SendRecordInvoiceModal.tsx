@@ -99,7 +99,7 @@ const BILL_CUSTOMER_LEADING_LOWERCASE_HINT_EL_ID = 'bill-customer-leading-lowerc
 const billCustomerLeadingLowercaseHintParagraphStyle: CSSProperties = {
   margin: '0 0 0.5rem',
   fontSize: '0.8125rem',
-  color: '#b45309',
+  color: 'var(--text-amber-700)',
   lineHeight: 1.35,
 }
 
@@ -112,7 +112,7 @@ function billCustomerTopTabButtonStyle(active: boolean): CSSProperties {
     fontWeight: active ? 600 : 400,
     borderBottom: active ? '2px solid #3b82f6' : '2px solid transparent',
     marginBottom: -1,
-    color: active ? 'inherit' : '#6b7280',
+    color: active ? 'inherit' : 'var(--text-muted)',
   }
 }
 
@@ -122,17 +122,17 @@ const BILL_CUSTOMER_FIELD_LABEL_STYLE: CSSProperties = {
   marginBottom: 4,
   fontWeight: 500,
   fontSize: '0.875rem',
-  color: '#374151',
+  color: 'var(--text-700)',
 }
 
 const BILL_CUSTOMER_CONTROL_STYLE: CSSProperties = {
   width: '100%',
   padding: '0.5rem',
-  border: '1px solid #d1d5db',
+  border: '1px solid var(--border-strong)',
   borderRadius: 4,
   fontSize: '0.875rem',
   boxSizing: 'border-box',
-  background: '#fff',
+  background: 'var(--surface)',
 }
 
 const BILL_CUSTOMER_TEXTAREA_STYLE: CSSProperties = {
@@ -173,8 +173,8 @@ const BILL_CUSTOMER_MODIFICATIONS_STACK_STYLE: CSSProperties = {
 
 /** Stripe + Physical: gray card around invoice modification disclosures. */
 const BILL_CUSTOMER_INVOICE_MODIFICATIONS_SHELL_STYLE: CSSProperties = {
-  background: '#f9fafb',
-  border: '1px solid #e5e7eb',
+  background: 'var(--bg-subtle)',
+  border: '1px solid var(--border)',
   borderRadius: 8,
   padding: '0.75rem 1rem',
   marginBottom: '0.75rem',
@@ -183,14 +183,14 @@ const BILL_CUSTOMER_INVOICE_MODIFICATIONS_SHELL_STYLE: CSSProperties = {
 const BILL_CUSTOMER_INVOICE_MODIFICATIONS_TITLE_STYLE: CSSProperties = {
   fontSize: '0.875rem',
   fontWeight: 600,
-  color: '#111827',
+  color: 'var(--text-strong)',
   marginBottom: '0.35rem',
   textAlign: 'center',
 }
 
 const BILL_CUSTOMER_PHYSICAL_DATE_LINK_BUTTON_STYLE: CSSProperties = {
   fontSize: '0.875rem',
-  color: '#2563eb',
+  color: 'var(--text-link)',
   textDecoration: 'underline',
   textUnderlineOffset: '2px',
   background: 'none',
@@ -298,10 +298,10 @@ function BillCustomerMemoPresetRow({
             style={{
               padding: '0.25rem 0.5rem',
               fontSize: '0.75rem',
-              border: pressed ? '2px solid #2563eb' : '1px solid #d1d5db',
+              border: pressed ? '2px solid #2563eb' : '1px solid var(--border-strong)',
               borderRadius: 4,
-              background: pressed ? '#eff6ff' : '#f9fafb',
-              color: '#374151',
+              background: pressed ? 'var(--bg-blue-tint)' : 'var(--bg-subtle)',
+              color: 'var(--text-700)',
               cursor: 'pointer',
               fontWeight: pressed ? 600 : 500,
             }}
@@ -316,10 +316,10 @@ function BillCustomerMemoPresetRow({
         style={{
           padding: '0.25rem 0.5rem',
           fontSize: '0.75rem',
-          border: '1px solid #d1d5db',
+          border: '1px solid var(--border-strong)',
           borderRadius: 4,
-          background: '#fff',
-          color: '#6b7280',
+          background: 'var(--surface)',
+          color: 'var(--text-muted)',
           cursor: 'pointer',
         }}
       >
@@ -425,6 +425,8 @@ export default function SendRecordInvoiceModal({
   const kind = payload?.kind ?? 'job'
   const job = payload?.job ?? null
   const invoice = payload?.kind === 'invoice' ? payload.invoice : null
+  // A stored memo (e.g. Turnaway trip charges) beats the preset default on open.
+  const storedInvoiceMemo = (invoice?.stripe_invoice_memo ?? '').trim()
 
   const handleHostedStripeOobUnwindSuccess = useCallback(async () => {
     const invSnap = stripeSuccessInvoiceRef.current
@@ -475,7 +477,7 @@ export default function SendRecordInvoiceModal({
     const billCustomerOpenYmd = todayIsoDate()
     setSentDate(billCustomerOpenYmd)
     setStripeDueDate(billCustomerOpenYmd)
-    const memoDefault = getBillCustomerMemoDefaultOnOpen()
+    const memoDefault = storedInvoiceMemo || getBillCustomerMemoDefaultOnOpen()
     setExternalNote(memoDefault)
     setOutsideError(null)
     setOutsideSubmitting(false)
@@ -488,8 +490,12 @@ export default function SendRecordInvoiceModal({
     setEditDueDateOpen(false)
     setDraftDueYmd('')
     setDraftServiceYmd('')
-    // Empty until fixtures load: billable Specific Work must omit line_description for multi-line Stripe items.
-    setStripeLineDescription('')
+    // Empty until fixtures load: billable Specific Work must omit line_description for
+    // multi-line Stripe items. Exception: non-primary rows with a stored memo (standalone
+    // charges like Turnaway trip charges) pre-fill it, forcing one clean Stripe line.
+    setStripeLineDescription(
+      storedInvoiceMemo && invoice?.is_primary_rtb_bundle === false ? storedInvoiceMemo : '',
+    )
     setStripeMemo(memoDefault)
     setStripeInvoiceFooter(getStripeInvoiceFooterDefaultOnOpen())
     setStripeFooterSectionOpen(false)
@@ -528,7 +534,7 @@ export default function SendRecordInvoiceModal({
       setPhysicalInvoiceFooter(getPhysicalInvoiceFooterDefaultOnOpen())
       setStripeInvoiceFooter(getStripeInvoiceFooterDefaultOnOpen())
       setBillCustomerMemoPresetsGeneration((g) => g + 1)
-      const memoDefaultAfterFetch = getBillCustomerMemoDefaultOnOpen()
+      const memoDefaultAfterFetch = storedInvoiceMemo || getBillCustomerMemoDefaultOnOpen()
       setExternalNote(memoDefaultAfterFetch)
       setStripeMemo(memoDefaultAfterFetch)
     })()
@@ -1160,19 +1166,19 @@ export default function SendRecordInvoiceModal({
           zIndex: overlayZIndex,
         }}
       >
-        <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 420, maxWidth: 520, maxHeight: '90vh', overflow: 'auto' }}>
+        <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 420, maxWidth: 520, maxHeight: '90vh', overflow: 'auto' }}>
           <h2 style={{ margin: '0 0 0.5rem', fontSize: '1.25rem' }}>Bill Customer</h2>
-          <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#6b7280' }}>
+          <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
             {effectiveJobLedgerNumber(job.hcp_number, job.click_number) || '—'} · {job.job_name ?? '—'}
           </p>
-          <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#b91c1c' }}>
+          <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: 'var(--text-red-700)' }}>
             Link this job to a customer on the Jobs page before billing.
           </p>
           <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
             <button
               type="button"
               onClick={onClose}
-              style={{ padding: '0.5rem 1rem', border: '1px solid #d1d5db', background: 'white', borderRadius: 4, cursor: 'pointer' }}
+              style={{ padding: '0.5rem 1rem', border: '1px solid var(--border-strong)', background: 'var(--surface)', borderRadius: 4, cursor: 'pointer' }}
             >
               Close
             </button>
@@ -1265,7 +1271,7 @@ export default function SendRecordInvoiceModal({
           zIndex: overlayZIndex,
         }}
       >
-      <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 420, maxWidth: 520, maxHeight: '90vh', overflow: 'auto' }}>
+      <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 420, maxWidth: 520, maxHeight: '90vh', overflow: 'auto' }}>
         <div
           style={{
             display: 'flex',
@@ -1278,7 +1284,7 @@ export default function SendRecordInvoiceModal({
         >
           <div style={{ minWidth: 0, flex: '1 1 auto' }}>
             <h2 style={{ margin: '0 0 0.5rem', fontSize: '1.25rem' }}>Bill Customer</h2>
-            <p style={{ margin: 0, fontSize: '0.875rem', color: '#6b7280' }}>
+            <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)' }}>
               {effectiveJobLedgerNumber(job.hcp_number, job.click_number) || '—'} · {job.job_name ?? '—'}
               {invoice
                 ? ` · RTB $${Number(invoice.amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}`
@@ -1296,7 +1302,7 @@ export default function SendRecordInvoiceModal({
                 gap: '0.2rem',
                 fontSize: '0.8125rem',
                 fontWeight: 500,
-                color: '#374151',
+                color: 'var(--text-700)',
                 flex: '0 0 auto',
               }}
             >
@@ -1313,7 +1319,7 @@ export default function SendRecordInvoiceModal({
           )}
         </div>
 
-        <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem', borderBottom: '1px solid #e5e7eb', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem', borderBottom: '1px solid var(--border)', flexWrap: 'wrap' }}>
           <button type="button" onClick={() => setTab('stripe')} style={billCustomerTopTabButtonStyle(tab === 'stripe')}>
             Stripe bill
           </button>
@@ -1336,10 +1342,10 @@ export default function SendRecordInvoiceModal({
         {tab === 'housecallpro' && (
           <>
             {kind === 'job' && ensureLoading && (
-              <p style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '0.75rem' }}>Preparing billing line…</p>
+              <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginBottom: '0.75rem' }}>Preparing billing line…</p>
             )}
             {kind === 'job' && !ensureLoading && ensureError && (
-              <p style={{ color: '#b91c1c', fontSize: '0.875rem', marginBottom: '0.75rem' }}>{ensureError}</p>
+              <p style={{ color: 'var(--text-red-700)', fontSize: '0.875rem', marginBottom: '0.75rem' }}>{ensureError}</p>
             )}
             <div style={{ marginBottom: '0.75rem' }}>
               <label style={BILL_CUSTOMER_FIELD_LABEL_STYLE}>Date</label>
@@ -1364,7 +1370,7 @@ export default function SendRecordInvoiceModal({
                   style={{
                     fontWeight: 500,
                     fontSize: '0.875rem',
-                    color: '#374151',
+                    color: 'var(--text-700)',
                   }}
                 >
                   Memo
@@ -1373,7 +1379,7 @@ export default function SendRecordInvoiceModal({
               <span
                 style={{
                   fontSize: '0.75rem',
-                  color: '#6b7280',
+                  color: 'var(--text-muted)',
                   flexShrink: 0,
                 }}
               >
@@ -1387,7 +1393,7 @@ export default function SendRecordInvoiceModal({
               hidden={!memoSectionOpen}
               style={{ marginBottom: '0.75rem' }}
             >
-              <span style={{ ...BILL_CUSTOMER_FIELD_LABEL_STYLE, fontSize: '0.75rem', color: '#6b7280', fontWeight: 400 }}>
+              <span style={{ ...BILL_CUSTOMER_FIELD_LABEL_STYLE, fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 400 }}>
                 ({externalNote.length} / {BILL_CUSTOMER_MEMO_MAX_CHARS})
               </span>
               <BillCustomerMemoPresetRow
@@ -1402,9 +1408,9 @@ export default function SendRecordInvoiceModal({
                 style={{ ...BILL_CUSTOMER_TEXTAREA_STYLE, marginBottom: 0 }}
               />
             </div>
-            {outsideError && <p style={{ color: '#b91c1c', fontSize: '0.875rem' }}>{outsideError}</p>}
+            {outsideError && <p style={{ color: 'var(--text-red-700)', fontSize: '0.875rem' }}>{outsideError}</p>}
             <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.5rem' }}>
-              <button type="button" onClick={onClose} style={{ padding: '0.5rem 1rem', border: '1px solid #d1d5db', background: 'white', borderRadius: 4, cursor: 'pointer' }}>
+              <button type="button" onClick={onClose} style={{ padding: '0.5rem 1rem', border: '1px solid var(--border-strong)', background: 'var(--surface)', borderRadius: 4, cursor: 'pointer' }}>
                 Cancel
               </button>
               <button
@@ -1429,13 +1435,13 @@ export default function SendRecordInvoiceModal({
         {tab === 'physical' && (
           <>
             {kind === 'job' && ensureLoading && (
-              <p style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '0.75rem' }}>Preparing billing line…</p>
+              <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginBottom: '0.75rem' }}>Preparing billing line…</p>
             )}
             {kind === 'job' && !ensureLoading && ensureError && (
-              <p style={{ color: '#b91c1c', fontSize: '0.875rem', marginBottom: '0.75rem' }}>{ensureError}</p>
+              <p style={{ color: 'var(--text-red-700)', fontSize: '0.875rem', marginBottom: '0.75rem' }}>{ensureError}</p>
             )}
             {!(job.customer_email ?? '').trim() ? (
-              <p style={{ color: '#b91c1c', fontSize: '0.875rem', marginBottom: '0.75rem' }}>
+              <p style={{ color: 'var(--text-red-700)', fontSize: '0.875rem', marginBottom: '0.75rem' }}>
                 Customer email is required to send a physical invoice by email. Add it on Edit Job.
               </p>
             ) : null}
@@ -1463,7 +1469,7 @@ export default function SendRecordInvoiceModal({
                   style={{
                     fontWeight: 500,
                     fontSize: '0.875rem',
-                    color: '#374151',
+                    color: 'var(--text-700)',
                   }}
                 >
                   Line item override
@@ -1472,7 +1478,7 @@ export default function SendRecordInvoiceModal({
               <span
                 style={{
                   fontSize: '0.75rem',
-                  color: '#6b7280',
+                  color: 'var(--text-muted)',
                   flexShrink: 0,
                 }}
               >
@@ -1500,7 +1506,7 @@ export default function SendRecordInvoiceModal({
                   id="bill-customer-physical-line-on-bill-count"
                   style={{
                     fontSize: '0.72rem',
-                    color: '#6b7280',
+                    color: 'var(--text-muted)',
                     fontWeight: 400,
                     flex: '1 1 auto',
                     minWidth: 0,
@@ -1518,7 +1524,7 @@ export default function SendRecordInvoiceModal({
                     padding: 0,
                     border: 'none',
                     background: 'none',
-                    color: '#2563eb',
+                    color: 'var(--text-link)',
                     cursor: job ? 'pointer' : 'not-allowed',
                     fontSize: '0.8125rem',
                     textDecoration: 'underline',
@@ -1564,7 +1570,7 @@ export default function SendRecordInvoiceModal({
                   style={{
                     fontWeight: 500,
                     fontSize: '0.875rem',
-                    color: '#374151',
+                    color: 'var(--text-700)',
                   }}
                 >
                   Memo
@@ -1573,7 +1579,7 @@ export default function SendRecordInvoiceModal({
               <span
                 style={{
                   fontSize: '0.75rem',
-                  color: '#6b7280',
+                  color: 'var(--text-muted)',
                   flexShrink: 0,
                 }}
               >
@@ -1587,7 +1593,7 @@ export default function SendRecordInvoiceModal({
               hidden={!memoSectionOpen}
               style={{ marginBottom: 0 }}
             >
-              <span style={{ ...BILL_CUSTOMER_FIELD_LABEL_STYLE, fontSize: '0.75rem', color: '#6b7280', fontWeight: 400 }}>
+              <span style={{ ...BILL_CUSTOMER_FIELD_LABEL_STYLE, fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 400 }}>
                 ({externalNote.length} / {BILL_CUSTOMER_MEMO_MAX_CHARS})
               </span>
               <BillCustomerMemoPresetRow
@@ -1621,7 +1627,7 @@ export default function SendRecordInvoiceModal({
                   style={{
                     fontWeight: 500,
                     fontSize: '0.875rem',
-                    color: '#374151',
+                    color: 'var(--text-700)',
                   }}
                 >
                   Footer
@@ -1630,7 +1636,7 @@ export default function SendRecordInvoiceModal({
               <span
                 style={{
                   fontSize: '0.75rem',
-                  color: '#6b7280',
+                  color: 'var(--text-muted)',
                   flexShrink: 0,
                 }}
               >
@@ -1658,7 +1664,7 @@ export default function SendRecordInvoiceModal({
                   id="bill-customer-physical-invoice-footer-count"
                   style={{
                     fontSize: '0.72rem',
-                    color: '#6b7280',
+                    color: 'var(--text-muted)',
                     fontWeight: 400,
                     flex: '1 1 auto',
                     minWidth: 0,
@@ -1694,10 +1700,10 @@ export default function SendRecordInvoiceModal({
                         style={{
                           padding: '0.25rem 0.5rem',
                           fontSize: '0.75rem',
-                          border: pressed ? '2px solid #2563eb' : '1px solid #d1d5db',
+                          border: pressed ? '2px solid #2563eb' : '1px solid var(--border-strong)',
                           borderRadius: 4,
-                          background: pressed ? '#eff6ff' : '#f9fafb',
-                          color: '#374151',
+                          background: pressed ? 'var(--bg-blue-tint)' : 'var(--bg-subtle)',
+                          color: 'var(--text-700)',
                           cursor: 'pointer',
                           fontWeight: pressed ? 600 : 500,
                         }}
@@ -1777,8 +1783,8 @@ export default function SendRecordInvoiceModal({
                       style={{
                         padding: '0.25rem 0.5rem',
                         fontSize: '0.8125rem',
-                        border: '1px solid #d1d5db',
-                        background: '#f9fafb',
+                        border: '1px solid var(--border-strong)',
+                        background: 'var(--bg-subtle)',
                         borderRadius: 4,
                         cursor:
                           !physicalDocPreview || physicalPdfPreviewLoading ? 'not-allowed' : 'pointer',
@@ -1806,11 +1812,11 @@ export default function SendRecordInvoiceModal({
                 }
               />
             ) : (
-              <p style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '0.75rem' }}>
+              <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginBottom: '0.75rem' }}>
                 Enter a valid bill amount and dates to preview the PDF.
               </p>
             )}
-            {physicalError && <p style={{ color: '#b91c1c', fontSize: '0.875rem' }}>{physicalError}</p>}
+            {physicalError && <p style={{ color: 'var(--text-red-700)', fontSize: '0.875rem' }}>{physicalError}</p>}
             {lineLeadingLowercaseHint ? (
               <p
                 id={BILL_CUSTOMER_LEADING_LOWERCASE_HINT_EL_ID}
@@ -1827,7 +1833,7 @@ export default function SendRecordInvoiceModal({
               </p>
             ) : null}
             <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.5rem' }}>
-              <button type="button" onClick={onClose} style={{ padding: '0.5rem 1rem', border: '1px solid #d1d5db', background: 'white', borderRadius: 4, cursor: 'pointer' }}>
+              <button type="button" onClick={onClose} style={{ padding: '0.5rem 1rem', border: '1px solid var(--border-strong)', background: 'var(--surface)', borderRadius: 4, cursor: 'pointer' }}>
                 Cancel
               </button>
               <button
@@ -1853,10 +1859,10 @@ export default function SendRecordInvoiceModal({
         {tab === 'stripe' && (
           <div style={{ padding: '0.5rem 0' }}>
             {kind === 'job' && ensureLoading && (
-              <p style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '0.75rem' }}>Preparing billing line…</p>
+              <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginBottom: '0.75rem' }}>Preparing billing line…</p>
             )}
             {kind === 'job' && !ensureLoading && ensureError && (
-              <p style={{ color: '#b91c1c', fontSize: '0.875rem', marginBottom: '0.75rem' }}>{ensureError}</p>
+              <p style={{ color: 'var(--text-red-700)', fontSize: '0.875rem', marginBottom: '0.75rem' }}>{ensureError}</p>
             )}
             {stripeSuccessInvoice ? (
               <>
@@ -1881,7 +1887,7 @@ export default function SendRecordInvoiceModal({
                   {stripeResult.idempotent ? 'Stripe invoice already exists.' : 'Stripe invoice created.'}{' '}
                   {stripeResult.stripe_invoice_status ? `(${stripeResult.stripe_invoice_status})` : ''}
                 </p>
-                <p style={{ fontSize: '0.8125rem', color: '#b45309', marginBottom: '0.75rem' }}>
+                <p style={{ fontSize: '0.8125rem', color: 'var(--text-amber-700)', marginBottom: '0.75rem' }}>
                   Could not reload job details; showing summary from the server response.
                 </p>
                 <StripeInvoiceSharePanel
@@ -1907,7 +1913,7 @@ export default function SendRecordInvoiceModal({
                       style={{
                         fontSize: '0.75rem',
                         fontWeight: 600,
-                        color: '#374151',
+                        color: 'var(--text-700)',
                         margin: '0 0 0.35rem',
                       }}
                     >
@@ -1964,7 +1970,7 @@ export default function SendRecordInvoiceModal({
                         style={{
                           fontWeight: 500,
                           fontSize: '0.875rem',
-                          color: '#374151',
+                          color: 'var(--text-700)',
                         }}
                       >
                         Line item override
@@ -1973,7 +1979,7 @@ export default function SendRecordInvoiceModal({
                     <span
                       style={{
                         fontSize: '0.75rem',
-                        color: '#6b7280',
+                        color: 'var(--text-muted)',
                         flexShrink: 0,
                       }}
                     >
@@ -2001,7 +2007,7 @@ export default function SendRecordInvoiceModal({
                         id="bill-customer-stripe-line-on-bill-count"
                         style={{
                           fontSize: '0.72rem',
-                          color: '#6b7280',
+                          color: 'var(--text-muted)',
                           fontWeight: 400,
                           flex: '1 1 auto',
                           minWidth: 0,
@@ -2019,7 +2025,7 @@ export default function SendRecordInvoiceModal({
                           padding: 0,
                           border: 'none',
                           background: 'none',
-                          color: '#2563eb',
+                          color: 'var(--text-link)',
                           cursor: job ? 'pointer' : 'not-allowed',
                           fontSize: '0.8125rem',
                           textDecoration: 'underline',
@@ -2067,7 +2073,7 @@ export default function SendRecordInvoiceModal({
                         style={{
                           fontWeight: 500,
                           fontSize: '0.875rem',
-                          color: '#374151',
+                          color: 'var(--text-700)',
                         }}
                       >
                         Memo
@@ -2076,7 +2082,7 @@ export default function SendRecordInvoiceModal({
                     <span
                       style={{
                         fontSize: '0.75rem',
-                        color: '#6b7280',
+                        color: 'var(--text-muted)',
                         flexShrink: 0,
                       }}
                     >
@@ -2090,7 +2096,7 @@ export default function SendRecordInvoiceModal({
                     hidden={!memoSectionOpen}
                     style={{ marginBottom: 0 }}
                   >
-                    <span style={{ ...BILL_CUSTOMER_FIELD_LABEL_STYLE, fontSize: '0.75rem', color: '#6b7280', fontWeight: 400 }}>
+                    <span style={{ ...BILL_CUSTOMER_FIELD_LABEL_STYLE, fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 400 }}>
                       ({stripeMemo.length} / {BILL_CUSTOMER_MEMO_MAX_CHARS})
                     </span>
                     <BillCustomerMemoPresetRow
@@ -2124,7 +2130,7 @@ export default function SendRecordInvoiceModal({
                         style={{
                           fontWeight: 500,
                           fontSize: '0.875rem',
-                          color: '#374151',
+                          color: 'var(--text-700)',
                         }}
                       >
                         Footer
@@ -2133,7 +2139,7 @@ export default function SendRecordInvoiceModal({
                     <span
                       style={{
                         fontSize: '0.75rem',
-                        color: '#6b7280',
+                        color: 'var(--text-muted)',
                         flexShrink: 0,
                       }}
                     >
@@ -2161,7 +2167,7 @@ export default function SendRecordInvoiceModal({
                           id="bill-customer-stripe-invoice-footer-count"
                           style={{
                             fontSize: '0.72rem',
-                            color: '#6b7280',
+                            color: 'var(--text-muted)',
                             fontWeight: 400,
                             flex: '1 1 auto',
                             minWidth: 0,
@@ -2199,8 +2205,8 @@ export default function SendRecordInvoiceModal({
                                   ? '2px solid #2563eb'
                                   : '1px solid #d1d5db',
                               borderRadius: 4,
-                              background: activeStripeFooterPreset === 'plumbing' ? '#eff6ff' : '#f9fafb',
-                              color: '#374151',
+                              background: activeStripeFooterPreset === 'plumbing' ? 'var(--bg-blue-tint)' : 'var(--bg-subtle)',
+                              color: 'var(--text-700)',
                               cursor: 'pointer',
                               fontWeight: activeStripeFooterPreset === 'plumbing' ? 600 : 500,
                             }}
@@ -2228,8 +2234,8 @@ export default function SendRecordInvoiceModal({
                                   ? '2px solid #2563eb'
                                   : '1px solid #d1d5db',
                               borderRadius: 4,
-                              background: activeStripeFooterPreset === 'electrical' ? '#eff6ff' : '#f9fafb',
-                              color: '#374151',
+                              background: activeStripeFooterPreset === 'electrical' ? 'var(--bg-blue-tint)' : 'var(--bg-subtle)',
+                              color: 'var(--text-700)',
                               cursor: 'pointer',
                               fontWeight: activeStripeFooterPreset === 'electrical' ? 600 : 500,
                             }}
@@ -2291,7 +2297,7 @@ export default function SendRecordInvoiceModal({
                     stripeLineOverrideActive={stripeLineDescription.trim() !== ''}
                   />
                 ) : null}
-                {stripeError && <p style={{ color: '#b91c1c', fontSize: '0.875rem', marginBottom: '0.5rem' }}>{stripeError}</p>}
+                {stripeError && <p style={{ color: 'var(--text-red-700)', fontSize: '0.875rem', marginBottom: '0.5rem' }}>{stripeError}</p>}
                 {lineLeadingLowercaseHint ? (
                   <p
                     id={BILL_CUSTOMER_LEADING_LOWERCASE_HINT_EL_ID}
@@ -2310,7 +2316,7 @@ export default function SendRecordInvoiceModal({
                   <button
                     type="button"
                     onClick={onClose}
-                    style={{ padding: '0.5rem 1rem', border: '1px solid #d1d5db', background: 'white', borderRadius: 4, cursor: 'pointer' }}
+                    style={{ padding: '0.5rem 1rem', border: '1px solid var(--border-strong)', background: 'var(--surface)', borderRadius: 4, cursor: 'pointer' }}
                   >
                     Cancel
                   </button>
@@ -2358,7 +2364,7 @@ export default function SendRecordInvoiceModal({
           role="dialog"
           aria-labelledby="edit-bill-customer-dates-title"
           style={{
-            background: 'white',
+            background: 'var(--surface)',
             padding: '1.25rem',
             borderRadius: 8,
             minWidth: 280,
@@ -2398,7 +2404,7 @@ export default function SendRecordInvoiceModal({
             <button
               type="button"
               onClick={() => setEditDueDateOpen(false)}
-              style={{ padding: '0.5rem 1rem', border: '1px solid #d1d5db', background: 'white', borderRadius: 4, cursor: 'pointer' }}
+              style={{ padding: '0.5rem 1rem', border: '1px solid var(--border-strong)', background: 'var(--surface)', borderRadius: 4, cursor: 'pointer' }}
             >
               Cancel
             </button>

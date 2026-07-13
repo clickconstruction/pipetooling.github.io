@@ -63,7 +63,7 @@ export default function SettingsAccountSchedulingTab({
           style={{ marginBottom: '2rem', scrollMarginTop: '0.75rem' }}
         >
           {selfPaySalaryLoaded && selfIsSalariedInPayConfig && (
-            <div style={{ border: '1px solid #e5e7eb', borderRadius: 8, background: '#f9fafb' }}>
+            <div style={{ border: '1px solid var(--border)', borderRadius: 8, background: 'var(--bg-subtle)' }}>
               <button
                 type="button"
                 id="settings-salary-workday-heading"
@@ -82,7 +82,7 @@ export default function SettingsAccountSchedulingTab({
                   cursor: 'pointer',
                   fontSize: '1.125rem',
                   fontWeight: 600,
-                  color: '#111827',
+                  color: 'var(--text-strong)',
                   textAlign: 'left',
                 }}
               >
@@ -94,7 +94,7 @@ export default function SettingsAccountSchedulingTab({
               {salaryWorkdaySectionOpen && (
                 <div
                   id="settings-salary-workday-panel"
-                  style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid #e5e7eb' }}
+                  style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid var(--border)' }}
                 >
                   <SalaryWorkScheduleSettings
                     userId={authUser.id}
@@ -112,9 +112,9 @@ export default function SettingsAccountSchedulingTab({
             <div
               style={{
                 marginTop: selfPaySalaryLoaded && selfIsSalariedInPayConfig ? '1rem' : 0,
-                border: '1px solid #e5e7eb',
+                border: '1px solid var(--border)',
                 borderRadius: 8,
-                background: '#f9fafb',
+                background: 'var(--bg-subtle)',
                 maxHeight: 'min(70vh, 720px)',
                 display: 'flex',
                 flexDirection: 'column',
@@ -139,7 +139,7 @@ export default function SettingsAccountSchedulingTab({
                   cursor: 'pointer',
                   fontSize: '1.125rem',
                   fontWeight: 600,
-                  color: '#111827',
+                  color: 'var(--text-strong)',
                   textAlign: 'left',
                   flexShrink: 0,
                 }}
@@ -154,18 +154,18 @@ export default function SettingsAccountSchedulingTab({
                   id="settings-all-salaried-dev-panel"
                   style={{
                     padding: '0 1rem 1rem 1rem',
-                    borderTop: '1px solid #e5e7eb',
+                    borderTop: '1px solid var(--border)',
                     flex: 1,
                     minHeight: 0,
                     overflow: 'auto',
                   }}
                 >
-                  <p style={{ margin: '0 0 0.75rem', fontSize: '0.875rem', color: '#4b5563' }}>
+                  <p style={{ margin: '0 0 0.75rem', fontSize: '0.875rem', color: 'var(--text-600)' }}>
                     Edits apply to the <strong>selected</strong> user&apos;s workday template and day overrides, including salary
                     session sync — same as the salaried workday block above for your own account.
                   </p>
                   {devPayConfigLoading || devPayConfigForSalaried == null ? (
-                    <p style={{ margin: 0, fontSize: '0.875rem', color: '#6b7280' }}>Loading…</p>
+                    <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)' }}>Loading…</p>
                   ) : (
                     <div
                       style={{
@@ -181,13 +181,13 @@ export default function SettingsAccountSchedulingTab({
                           flex: allSalariedDevNarrowViewport ? '0 0 auto' : '0 0 220px',
                           maxHeight: allSalariedDevNarrowViewport ? 'min(40vh, 280px)' : 'none',
                           overflow: 'auto',
-                          border: '1px solid #e5e7eb',
+                          border: '1px solid var(--border)',
                           borderRadius: 6,
-                          background: '#fafafa',
+                          background: 'var(--bg-page)',
                         }}
                       >
                         {devSalariedPickerRows.length === 0 ? (
-                          <p style={{ margin: '0.75rem', fontSize: '0.875rem', color: '#6b7280' }}>
+                          <p style={{ margin: '0.75rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
                             No salaried people in pay config yet. Use the <strong>Pay</strong> tab to mark someone as Salary.
                           </p>
                         ) : (
@@ -215,8 +215,8 @@ export default function SettingsAccountSchedulingTab({
                                       padding: '0.45rem 0.65rem',
                                       border: 'none',
                                       borderBottom: '1px solid #f3f4f6',
-                                      background: active ? '#eff6ff' : 'transparent',
-                                      color: selectable ? (active ? '#1d4ed8' : '#111827') : '#9ca3af',
+                                      background: active ? 'var(--bg-blue-tint)' : 'transparent',
+                                      color: selectable ? (active ? 'var(--text-blue-700)' : 'var(--text-strong)') : '#9ca3af',
                                       cursor: selectable ? 'pointer' : 'not-allowed',
                                       fontSize: '0.875rem',
                                       fontWeight: active ? 600 : 400,
@@ -229,7 +229,7 @@ export default function SettingsAccountSchedulingTab({
                                           display: 'block',
                                           fontSize: '0.72rem',
                                           fontWeight: 400,
-                                          color: '#9ca3af',
+                                          color: 'var(--text-faint)',
                                           marginTop: 2,
                                         }}
                                       >
@@ -249,10 +249,10 @@ export default function SettingsAccountSchedulingTab({
                           minWidth: 0,
                           minHeight: 200,
                           overflow: 'auto',
-                          border: '1px solid #e5e7eb',
+                          border: '1px solid var(--border)',
                           borderRadius: 6,
                           padding: '0.75rem 1rem',
-                          background: 'white',
+                          background: 'var(--surface)',
                         }}
                       >
                         {devSalariedPickerRows.length === 0 ? null : devSalariedSelectedUserId &&
@@ -264,7 +264,7 @@ export default function SettingsAccountSchedulingTab({
                             canEditPastDayOverrides
                           />
                         ) : (
-                          <p style={{ margin: 0, fontSize: '0.875rem', color: '#6b7280' }}>
+                          <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)' }}>
                             Select someone with a matching login user to edit their salaried workday.
                           </p>
                         )}
@@ -282,7 +282,7 @@ export default function SettingsAccountSchedulingTab({
           aria-labelledby="settings-time-off-heading"
           style={{ marginBottom: '2rem', scrollMarginTop: '0.75rem' }}
         >
-          <div style={{ border: '1px solid #e5e7eb', borderRadius: 8, background: '#f9fafb' }}>
+          <div style={{ border: '1px solid var(--border)', borderRadius: 8, background: 'var(--bg-subtle)' }}>
             <button
               type="button"
               id="settings-time-off-heading"
@@ -301,7 +301,7 @@ export default function SettingsAccountSchedulingTab({
                 cursor: 'pointer',
                 fontSize: '1.125rem',
                 fontWeight: 600,
-                color: '#111827',
+                color: 'var(--text-strong)',
                 textAlign: 'left',
               }}
             >
@@ -311,7 +311,7 @@ export default function SettingsAccountSchedulingTab({
               Unpaid time off
             </button>
             {timeOffSectionOpen && (
-              <div id="settings-time-off-panel" style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid #e5e7eb' }}>
+              <div id="settings-time-off-panel" style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid var(--border)' }}>
                 <TimeOffSettings userId={authUser.id} />
               </div>
             )}

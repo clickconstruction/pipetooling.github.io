@@ -45,7 +45,7 @@ function MonthRow({ m }: { m: ReconMonth }) {
         style={{ borderTop: '1px solid #f1f5f9', cursor: canExpand ? 'pointer' : 'default' }}
       >
         <td style={{ padding: '0.4rem 0.6rem', whiteSpace: 'nowrap' }}>
-          {canExpand ? <span style={{ color: '#92400e', marginRight: 4 }}>{open ? '▼' : '▶'}</span> : null}
+          {canExpand ? <span style={{ color: 'var(--text-amber-800)', marginRight: 4 }}>{open ? '▼' : '▶'}</span> : null}
           {m.period}
         </td>
         <td style={{ padding: '0.4rem 0.6rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
@@ -56,26 +56,26 @@ function MonthRow({ m }: { m: ReconMonth }) {
             {status === 'ok' ? '✓ Reconciled' : `⚠ ${m.missingCount} missing`}
           </StatusPill>
         </td>
-        <td style={{ padding: '0.4rem 0.6rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: '#475569' }}>
+        <td style={{ padding: '0.4rem 0.6rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: 'var(--text-slate-600)' }}>
           {formatSignedUsd(m.endingBalance)}
         </td>
-        <td style={{ padding: '0.4rem 0.6rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: m.missingValue !== 0 ? '#b45309' : '#94a3b8' }}>
+        <td style={{ padding: '0.4rem 0.6rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: m.missingValue !== 0 ? 'var(--text-amber-700)' : 'var(--text-slate-400)' }}>
           {m.missingValue !== 0 ? formatSignedUsd(m.missingValue) : '—'}
         </td>
       </tr>
       {open && canExpand ? (
         <tr>
-          <td colSpan={5} style={{ padding: '0.25rem 0.6rem 0.6rem 1.5rem', background: '#fffbeb' }}>
-            <div style={{ fontSize: '0.75rem', color: '#92400e', marginBottom: 4 }}>
+          <td colSpan={5} style={{ padding: '0.25rem 0.6rem 0.6rem 1.5rem', background: 'var(--bg-amber-tint)' }}>
+            <div style={{ fontSize: '0.75rem', color: 'var(--text-amber-800)', marginBottom: 4 }}>
               Missing from your books ({m.missingCount.toLocaleString()}
               {m.missingCount > m.missingSample.length ? `, showing ${m.missingSample.length}` : ''}):
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
               {m.missingSample.map((t, i) => (
                 <div key={t.id ?? i} style={{ display: 'flex', gap: '0.6rem', fontSize: '0.78rem' }}>
-                  <span style={{ minWidth: '5.5rem', color: '#64748b' }}>{fmtDate(t.postedAt)}</span>
+                  <span style={{ minWidth: '5.5rem', color: 'var(--text-slate-500)' }}>{fmtDate(t.postedAt)}</span>
                   <span style={{ minWidth: '6rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{formatSignedUsd(t.amount)}</span>
-                  <span style={{ color: '#475569' }}>{t.counterpartyName ?? '—'}</span>
+                  <span style={{ color: 'var(--text-slate-600)' }}>{t.counterpartyName ?? '—'}</span>
                 </div>
               ))}
             </div>
@@ -90,7 +90,7 @@ function AccountCard({ a }: { a: ReconAccount }) {
   const summary = summarizeAccount(a)
   const cur = classifyCurrent(a.current)
   return (
-    <div style={{ border: '1px solid #e5e7eb', borderRadius: 8, background: '#fff', padding: '0.75rem 1rem', marginBottom: '1rem' }}>
+    <div style={{ border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)', padding: '0.75rem 1rem', marginBottom: '1rem' }}>
       <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', marginBottom: '0.5rem' }}>
         <div style={{ fontWeight: 700, fontSize: '1rem' }}>
           {a.name}
@@ -101,13 +101,13 @@ function AccountCard({ a }: { a: ReconAccount }) {
       </div>
 
       {/* Current (open-period) balance check */}
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1.25rem', alignItems: 'center', fontSize: '0.82rem', marginBottom: '0.6rem', padding: '0.45rem 0.6rem', background: '#f8fafc', borderRadius: 6 }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1.25rem', alignItems: 'center', fontSize: '0.82rem', marginBottom: '0.6rem', padding: '0.45rem 0.6rem', background: 'var(--bg-slate-tint)', borderRadius: 6 }}>
         <span>
-          <span style={{ color: '#64748b' }}>Mercury balance: </span>
+          <span style={{ color: 'var(--text-slate-500)' }}>Mercury balance: </span>
           <strong>{formatSignedUsd(a.currentBalance)}</strong>
         </span>
         <span>
-          <span style={{ color: '#64748b' }}>Books imply: </span>
+          <span style={{ color: 'var(--text-slate-500)' }}>Books imply: </span>
           {a.current.expectedCurrent === null ? '—' : <strong>{formatSignedUsd(a.current.expectedCurrent)}</strong>}
         </span>
         <span>
@@ -121,17 +121,17 @@ function AccountCard({ a }: { a: ReconAccount }) {
         </span>
       </div>
       {cur === 'drift' ? (
-        <div style={{ fontSize: '0.72rem', color: '#94a3b8', marginTop: -2, marginBottom: '0.5rem' }}>
+        <div style={{ fontSize: '0.72rem', color: 'var(--text-slate-400)', marginTop: -2, marginBottom: '0.5rem' }}>
           The open (un-statemented) month hasn't settled — in-flight transfers between accounts commonly move this until month close. Closed months below are the reliable check.
         </div>
       ) : null}
 
       {a.months.length === 0 ? (
-        <div style={{ fontSize: '0.82rem', color: '#94a3b8' }}>No statements in this range.</div>
+        <div style={{ fontSize: '0.82rem', color: 'var(--text-slate-400)' }}>No statements in this range.</div>
       ) : (
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
           <thead>
-            <tr style={{ textAlign: 'left', color: '#64748b', fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
+            <tr style={{ textAlign: 'left', color: 'var(--text-slate-500)', fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
               <th style={{ padding: '0.3rem 0.6rem', fontWeight: 600 }}>Statement</th>
               <th style={{ padding: '0.3rem 0.6rem', fontWeight: 600, textAlign: 'right' }}>Present</th>
               <th style={{ padding: '0.3rem 0.6rem', fontWeight: 600 }}>Status</th>
@@ -174,9 +174,9 @@ export function BankingMercuryReconciliationTab() {
     <div>
       <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
         <h2 style={{ fontSize: '1.1rem', fontWeight: 700, margin: 0 }}>Reconciliation</h2>
-        <label style={{ fontSize: '0.82rem', color: '#475569', display: 'flex', alignItems: 'center', gap: 6 }}>
+        <label style={{ fontSize: '0.82rem', color: 'var(--text-slate-600)', display: 'flex', alignItems: 'center', gap: 6 }}>
           Window
-          <select value={monthsBack} onChange={(e) => setMonthsBack(Number(e.target.value))} disabled={loading} style={{ padding: '0.3rem 0.5rem', borderRadius: 6, border: '1px solid #d1d5db' }}>
+          <select value={monthsBack} onChange={(e) => setMonthsBack(Number(e.target.value))} disabled={loading} style={{ padding: '0.3rem 0.5rem', borderRadius: 6, border: '1px solid var(--border-strong)' }}>
             {MONTHS_OPTIONS.map((n) => (
               <option key={n} value={n}>{n} months</option>
             ))}
@@ -191,11 +191,11 @@ export function BankingMercuryReconciliationTab() {
           {loading ? 'Reconciling…' : result ? 'Re-run' : 'Run reconciliation'}
         </button>
         {result ? (
-          <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>as of {new Date(result.generatedAt).toLocaleString()}</span>
+          <span style={{ fontSize: '0.75rem', color: 'var(--text-slate-400)' }}>as of {new Date(result.generatedAt).toLocaleString()}</span>
         ) : null}
       </div>
 
-      <p style={{ margin: '0 0 1rem', fontSize: '0.85rem', color: '#64748b' }}>
+      <p style={{ margin: '0 0 1rem', fontSize: '0.85rem', color: 'var(--text-slate-500)' }}>
         Checks each account against its Mercury bank statements (by transaction, so timezones can't fake a gap)
         and against the live balance for the open month. Manually-entered transactions have no bank statement and
         aren't reconciled here.
@@ -207,11 +207,11 @@ export function BankingMercuryReconciliationTab() {
             marginBottom: '1rem',
             padding: '0.6rem 0.9rem',
             borderRadius: 8,
-            background: summary.accountsWithIssues === 0 ? '#f0fdf4' : '#fffbeb',
+            background: summary.accountsWithIssues === 0 ? 'var(--bg-green-tint)' : 'var(--bg-amber-tint)',
             border: `1px solid ${summary.accountsWithIssues === 0 ? '#bbf7d0' : '#fde68a'}`,
             fontSize: '0.9rem',
             fontWeight: 600,
-            color: summary.accountsWithIssues === 0 ? '#166534' : '#92400e',
+            color: summary.accountsWithIssues === 0 ? 'var(--text-green-800)' : 'var(--text-amber-800)',
           }}
         >
           {summary.accountsWithIssues === 0
@@ -220,9 +220,9 @@ export function BankingMercuryReconciliationTab() {
         </div>
       ) : null}
 
-      {loading && !result ? <div style={{ color: '#64748b' }}>Fetching statements & balances from Mercury…</div> : null}
+      {loading && !result ? <div style={{ color: 'var(--text-slate-500)' }}>Fetching statements & balances from Mercury…</div> : null}
       {!loading && !result ? (
-        <div style={{ color: '#64748b', fontSize: '0.9rem' }}>Click “Run reconciliation” to compare your books against Mercury.</div>
+        <div style={{ color: 'var(--text-slate-500)', fontSize: '0.9rem' }}>Click “Run reconciliation” to compare your books against Mercury.</div>
       ) : null}
 
       {result?.accounts.map((a) => (

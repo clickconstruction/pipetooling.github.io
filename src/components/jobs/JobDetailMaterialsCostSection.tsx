@@ -61,11 +61,11 @@ export function JobDetailMaterialsCostSection({ loading, snapshot, canExpand, bi
 
   return (
     <div style={{ marginTop: '1rem' }}>
-      <div style={{ fontWeight: 600, fontSize: '0.9375rem', color: '#374151', marginBottom: '0.75rem' }}>Parts Cost</div>
+      <div style={{ fontWeight: 600, fontSize: '0.9375rem', color: 'var(--text-700)', marginBottom: '0.75rem' }}>Parts Cost</div>
       <div
         style={{
-          background: 'white',
-          border: '1px solid #e5e7eb',
+          background: 'var(--surface)',
+          border: '1px solid var(--border)',
           borderRadius: 8,
           boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
           overflow: 'hidden',
@@ -80,24 +80,24 @@ export function JobDetailMaterialsCostSection({ loading, snapshot, canExpand, bi
           expandable={canExpand}
         >
           {supplyInvoiceLines.length === 0 && supplyInvoiceTotal > 0 && !supplyInvoiceRpcFailed ? (
-            <p style={{ margin: 0, fontSize: '0.875rem', color: '#6b7280' }}>
+            <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)' }}>
               Allocated invoice total for this job; line detail is available to office roles in Materials.
             </p>
           ) : supplyInvoiceLines.length === 0 ? (
-            <p style={{ margin: 0, fontSize: '0.875rem', color: '#6b7280' }}>No supply house invoice allocations for this job.</p>
+            <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)' }}>No supply house invoice allocations for this job.</p>
           ) : (
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
-              <thead style={{ background: '#f9fafb' }}>
+              <thead style={{ background: 'var(--bg-subtle)' }}>
                 <tr>
-                  <th style={{ padding: '0.5rem 0.625rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb', fontWeight: 600 }}>Supply house</th>
-                  <th style={{ padding: '0.5rem 0.625rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb', fontWeight: 600 }}>Invoice</th>
-                  <th style={{ padding: '0.5rem 0.625rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb', fontWeight: 600 }}>Date</th>
-                  <th style={{ padding: '0.5rem 0.625rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb', fontWeight: 600 }}>Allocated</th>
+                  <th style={{ padding: '0.5rem 0.625rem', textAlign: 'left', borderBottom: '1px solid var(--border)', fontWeight: 600 }}>Supply house</th>
+                  <th style={{ padding: '0.5rem 0.625rem', textAlign: 'left', borderBottom: '1px solid var(--border)', fontWeight: 600 }}>Invoice</th>
+                  <th style={{ padding: '0.5rem 0.625rem', textAlign: 'left', borderBottom: '1px solid var(--border)', fontWeight: 600 }}>Date</th>
+                  <th style={{ padding: '0.5rem 0.625rem', textAlign: 'right', borderBottom: '1px solid var(--border)', fontWeight: 600 }}>Allocated</th>
                 </tr>
               </thead>
               <tbody>
                 {supplyInvoiceLines.map((ln, idx) => (
-                  <tr key={`${ln.invoiceNumber}-${ln.invoiceDate}-${idx}`} style={{ borderBottom: idx < supplyInvoiceLines.length - 1 ? '1px solid #e5e7eb' : 'none' }}>
+                  <tr key={`${ln.invoiceNumber}-${ln.invoiceDate}-${idx}`} style={{ borderBottom: idx < supplyInvoiceLines.length - 1 ? '1px solid var(--border)' : 'none' }}>
                     <td style={{ padding: '0.5rem 0.625rem' }}>{ln.supplyHouseName ?? '—'}</td>
                     <td style={{ padding: '0.5rem 0.625rem' }}>{ln.invoiceNumber}</td>
                     <td style={{ padding: '0.5rem 0.625rem' }}>{ln.invoiceDate || '—'}</td>
@@ -117,23 +117,23 @@ export function JobDetailMaterialsCostSection({ loading, snapshot, canExpand, bi
           expandable={canExpand}
         >
           {mercuryFetchFailed ? (
-            <p style={{ margin: 0, fontSize: '0.875rem', color: '#b91c1c' }}>Could not load card allocations.</p>
+            <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-red-700)' }}>Could not load card allocations.</p>
           ) : mercuryAllocLines.length === 0 ? (
-            <p style={{ margin: 0, fontSize: '0.875rem', color: '#6b7280' }}>No Mercury card splits for this job.</p>
+            <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)' }}>No Mercury card splits for this job.</p>
           ) : (
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
-              <thead style={{ background: '#f9fafb' }}>
+              <thead style={{ background: 'var(--bg-subtle)' }}>
                 <tr>
-                  <th style={{ padding: '0.5rem 0.625rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb', fontWeight: 600 }}>Posted</th>
-                  <th style={{ padding: '0.5rem 0.625rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb', fontWeight: 600 }}>Card</th>
-                  <th style={{ padding: '0.5rem 0.625rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb', fontWeight: 600 }}>Counterparty</th>
-                  <th style={{ padding: '0.5rem 0.625rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb', fontWeight: 600 }}>Amount</th>
-                  <th style={{ padding: '0.5rem 0.625rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb', fontWeight: 600 }}>Note</th>
+                  <th style={{ padding: '0.5rem 0.625rem', textAlign: 'left', borderBottom: '1px solid var(--border)', fontWeight: 600 }}>Posted</th>
+                  <th style={{ padding: '0.5rem 0.625rem', textAlign: 'left', borderBottom: '1px solid var(--border)', fontWeight: 600 }}>Card</th>
+                  <th style={{ padding: '0.5rem 0.625rem', textAlign: 'left', borderBottom: '1px solid var(--border)', fontWeight: 600 }}>Counterparty</th>
+                  <th style={{ padding: '0.5rem 0.625rem', textAlign: 'right', borderBottom: '1px solid var(--border)', fontWeight: 600 }}>Amount</th>
+                  <th style={{ padding: '0.5rem 0.625rem', textAlign: 'left', borderBottom: '1px solid var(--border)', fontWeight: 600 }}>Note</th>
                 </tr>
               </thead>
               <tbody>
                 {mercuryAllocLines.map((ln, idx) => (
-                  <tr key={ln.id} style={{ borderBottom: idx < mercuryAllocLines.length - 1 ? '1px solid #e5e7eb' : 'none' }}>
+                  <tr key={ln.id} style={{ borderBottom: idx < mercuryAllocLines.length - 1 ? '1px solid var(--border)' : 'none' }}>
                     <td style={{ padding: '0.5rem 0.625rem' }}>{formatMercuryCardChargesPostedDate(ln.postedAt)}</td>
                     <td
                       style={{
@@ -155,7 +155,7 @@ export function JobDetailMaterialsCostSection({ loading, snapshot, canExpand, bi
                     </td>
                     <td style={{ padding: '0.5rem 0.625rem' }}>{ln.counterpartyName ?? '—'}</td>
                     <td style={{ padding: '0.5rem 0.625rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{formatCurrency(Math.abs(ln.allocationAmount))}</td>
-                    <td style={{ padding: '0.5rem 0.625rem', color: '#4b5563' }}>{ln.note ?? '—'}</td>
+                    <td style={{ padding: '0.5rem 0.625rem', color: 'var(--text-600)' }}>{ln.note ?? '—'}</td>
                   </tr>
                 ))}
               </tbody>
@@ -171,21 +171,21 @@ export function JobDetailMaterialsCostSection({ loading, snapshot, canExpand, bi
           expandable={canExpand}
         >
           {tallyFetchFailed ? (
-            <p style={{ margin: 0, fontSize: '0.875rem', color: '#b91c1c' }}>Could not load tally parts.</p>
+            <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-red-700)' }}>Could not load tally parts.</p>
           ) : tallyPartLines.length === 0 ? (
-            <p style={{ margin: 0, fontSize: '0.875rem', color: '#6b7280' }}>No tally parts for this job.</p>
+            <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)' }}>No tally parts for this job.</p>
           ) : (
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
-              <thead style={{ background: '#f9fafb' }}>
+              <thead style={{ background: 'var(--bg-subtle)' }}>
                 <tr>
-                  <th style={{ padding: '0.5rem 0.625rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb', fontWeight: 600 }}>Description</th>
-                  <th style={{ padding: '0.5rem 0.625rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb', fontWeight: 600 }}>Qty</th>
-                  <th style={{ padding: '0.5rem 0.625rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb', fontWeight: 600 }}>Line total</th>
+                  <th style={{ padding: '0.5rem 0.625rem', textAlign: 'left', borderBottom: '1px solid var(--border)', fontWeight: 600 }}>Description</th>
+                  <th style={{ padding: '0.5rem 0.625rem', textAlign: 'center', borderBottom: '1px solid var(--border)', fontWeight: 600 }}>Qty</th>
+                  <th style={{ padding: '0.5rem 0.625rem', textAlign: 'right', borderBottom: '1px solid var(--border)', fontWeight: 600 }}>Line total</th>
                 </tr>
               </thead>
               <tbody>
                 {tallyPartLines.map((ln, idx) => (
-                  <tr key={ln.id} style={{ borderBottom: idx < tallyPartLines.length - 1 ? '1px solid #e5e7eb' : 'none' }}>
+                  <tr key={ln.id} style={{ borderBottom: idx < tallyPartLines.length - 1 ? '1px solid var(--border)' : 'none' }}>
                     <td style={{ padding: '0.5rem 0.625rem' }}>
                       {[ln.fixtureName, ln.partName].filter(Boolean).join(' · ') || '—'}
                     </td>
@@ -206,7 +206,7 @@ export function JobDetailMaterialsCostSection({ loading, snapshot, canExpand, bi
           expandable={canExpand}
         >
           {billedMaterials.length === 0 ? (
-            <p style={{ margin: 0, fontSize: '0.875rem', color: '#6b7280' }}>None</p>
+            <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)' }}>None</p>
           ) : (
             <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
               {billedMaterials.map((m) => (
@@ -214,14 +214,14 @@ export function JobDetailMaterialsCostSection({ loading, snapshot, canExpand, bi
                   key={m.id}
                   style={{
                     padding: '0.45rem 0.5rem',
-                    border: '1px solid #e5e7eb',
+                    border: '1px solid var(--border)',
                     borderRadius: 4,
                     marginBottom: 6,
                     fontSize: '0.875rem',
                   }}
                 >
                   <span style={{ fontWeight: 500 }}>{m.description || '—'}</span>
-                  <span style={{ color: '#6b7280', marginLeft: 8 }}>{formatCurrency(Number(m.amount ?? 0))}</span>
+                  <span style={{ color: 'var(--text-muted)', marginLeft: 8 }}>{formatCurrency(Number(m.amount ?? 0))}</span>
                 </li>
               ))}
             </ul>

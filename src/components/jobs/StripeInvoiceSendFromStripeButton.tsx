@@ -257,7 +257,7 @@ export function StripeInvoiceSendFromStripeButton({
     : {
         marginTop: compact ? '0.65rem' : '0.75rem',
         paddingTop: compact ? '0.65rem' : '0.75rem',
-        borderTop: '1px solid #e5e7eb',
+        borderTop: '1px solid var(--border)',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
@@ -298,13 +298,13 @@ export function StripeInvoiceSendFromStripeButton({
               aria-labelledby="stripe-send-invoice-confirm-title"
               onMouseDown={(e) => e.stopPropagation()}
               style={{
-                background: '#fff',
+                background: 'var(--surface)',
                 borderRadius: 8,
                 padding: '1.25rem',
                 maxWidth: 480,
                 width: '100%',
                 boxShadow: '0 10px 40px rgba(0,0,0,0.2)',
-                border: '1px solid #e5e7eb',
+                border: '1px solid var(--border)',
               }}
             >
               <h2
@@ -313,13 +313,13 @@ export function StripeInvoiceSendFromStripeButton({
                   margin: '0 0 0.75rem',
                   fontSize: '1rem',
                   fontWeight: 600,
-                  color: '#111827',
+                  color: 'var(--text-strong)',
                   lineHeight: 1.4,
                 }}
               >
                 Send Email invoice from Stripe?
               </h2>
-              <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#374151', lineHeight: 1.5 }}>
+              <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: 'var(--text-700)', lineHeight: 1.5 }}>
                 Have Stripe email this invoice to{' '}
                 <strong style={{ wordBreak: 'break-all' }}>{emailLine}</strong>? PipeTooling will not send the
                 email — Stripe will.
@@ -328,27 +328,27 @@ export function StripeInvoiceSendFromStripeButton({
                 style={{
                   margin: '0 0 1.25rem',
                   padding: '0.75rem',
-                  background: '#f9fafb',
+                  background: 'var(--bg-subtle)',
                   borderRadius: 6,
-                  border: '1px solid #e5e7eb',
+                  border: '1px solid var(--border)',
                 }}
               >
                 <div
                   style={{
                     fontSize: '0.75rem',
                     fontWeight: 600,
-                    color: '#374151',
+                    color: 'var(--text-700)',
                     marginBottom: '0.5rem',
                   }}
                 >
                   Most recent sends (PipeTooling)
                 </div>
                 {sendHistoryLoading ? (
-                  <div style={{ fontSize: '0.8125rem', color: '#6b7280' }}>Loading…</div>
+                  <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>Loading…</div>
                 ) : sendHistoryError ? (
-                  <div style={{ fontSize: '0.8125rem', color: '#b91c1c' }}>{sendHistoryError}</div>
+                  <div style={{ fontSize: '0.8125rem', color: 'var(--text-red-700)' }}>{sendHistoryError}</div>
                 ) : sendHistoryDisplayIso.length === 0 ? (
-                  <div style={{ fontSize: '0.8125rem', color: '#6b7280' }}>
+                  <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
                     No sends recorded yet. After you send, times appear here.
                   </div>
                 ) : (
@@ -357,7 +357,7 @@ export function StripeInvoiceSendFromStripeButton({
                       margin: 0,
                       paddingLeft: '1.1rem',
                       fontSize: '0.8125rem',
-                      color: '#374151',
+                      color: 'var(--text-700)',
                       lineHeight: 1.45,
                       maxHeight: '11rem',
                       overflowY: 'auto',
@@ -368,7 +368,7 @@ export function StripeInvoiceSendFromStripeButton({
                       return (
                         <li key={`${iso}-${idx}`} style={{ marginBottom: '0.25rem' }}>
                           {meta.weekdayTimeChicago}{' '}
-                          <span style={{ color: '#6b7280' }}>({meta.daysAgoLabel})</span>
+                          <span style={{ color: 'var(--text-muted)' }}>({meta.daysAgoLabel})</span>
                         </li>
                       )
                     })}
@@ -382,10 +382,10 @@ export function StripeInvoiceSendFromStripeButton({
                   style={{
                     padding: '0.5rem 0.85rem',
                     fontSize: '0.875rem',
-                    border: '1px solid #d1d5db',
+                    border: '1px solid var(--border-strong)',
                     borderRadius: 4,
-                    background: '#fff',
-                    color: '#374151',
+                    background: 'var(--surface)',
+                    color: 'var(--text-700)',
                     cursor: 'pointer',
                     fontWeight: 500,
                   }}
@@ -460,7 +460,7 @@ export function StripeInvoiceSendFromStripeButton({
           style={{
             margin: micro ? '0' : '0.45rem 0 0',
             fontSize: micro ? '0.625rem' : '0.75rem',
-            color: '#b91c1c',
+            color: 'var(--text-red-700)',
             textAlign: messageAlign,
             alignSelf: 'stretch',
             lineHeight: micro ? 1.35 : undefined,

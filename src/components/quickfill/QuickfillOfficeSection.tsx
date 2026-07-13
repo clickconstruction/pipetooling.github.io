@@ -121,10 +121,10 @@ function SortableOfficeChecklistRow({
           cursor: savingItems ? 'not-allowed' : 'grab',
           touchAction: 'none',
           padding: '0.25rem 0.45rem',
-          border: '1px solid #d1d5db',
+          border: '1px solid var(--border-strong)',
           borderRadius: 4,
-          background: '#fff',
-          color: '#64748b',
+          background: 'var(--surface)',
+          color: 'var(--text-slate-500)',
           fontSize: '0.75rem',
           lineHeight: 1,
           letterSpacing: '-0.05em',
@@ -155,8 +155,8 @@ function SortableOfficeChecklistRow({
           flexShrink: 0,
           padding: '0.2rem 0.45rem',
           fontSize: '0.75rem',
-          color: '#b91c1c',
-          background: '#fef2f2',
+          color: 'var(--text-red-700)',
+          background: 'var(--bg-red-tint)',
           border: '1px solid #fecaca',
           borderRadius: 4,
           cursor: savingItems ? 'not-allowed' : 'pointer',
@@ -425,11 +425,11 @@ export function QuickfillOfficeSection({ variant }: { variant: QuickfillOfficeSe
 
   return (
     <div>
-      <p style={{ margin: '0 0 0.75rem', fontSize: '0.875rem', color: '#4b5563', lineHeight: 1.45 }}>{intro}</p>
+      <p style={{ margin: '0 0 0.75rem', fontSize: '0.875rem', color: 'var(--text-600)', lineHeight: 1.45 }}>{intro}</p>
       {loading ? (
-        <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>Loading…</p>
+        <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Loading…</p>
       ) : items.length === 0 ? (
-        <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>
+        <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0 }}>
           {isDev && !devOfficeChecklistEditMode
             ? 'No tasks yet. Turn on Edit checklist below to add items.'
             : isDev
@@ -492,8 +492,8 @@ export function QuickfillOfficeSection({ variant }: { variant: QuickfillOfficeSe
                     flexShrink: 0,
                     padding: '0.2rem 0.45rem',
                     fontSize: '0.75rem',
-                    color: '#b91c1c',
-                    background: '#fef2f2',
+                    color: 'var(--text-red-700)',
+                    background: 'var(--bg-red-tint)',
                     border: '1px solid #fecaca',
                     borderRadius: 4,
                     cursor: savingItems ? 'not-allowed' : 'pointer',
@@ -511,12 +511,12 @@ export function QuickfillOfficeSection({ variant }: { variant: QuickfillOfficeSe
           style={{
             marginTop: '0.5rem',
             padding: '0.75rem',
-            background: '#f9fafb',
-            border: '1px solid #e5e7eb',
+            background: 'var(--bg-subtle)',
+            border: '1px solid var(--border)',
             borderRadius: 6,
           }}
         >
-          <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#374151', marginBottom: '0.35rem' }}>
+          <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-700)', marginBottom: '0.35rem' }}>
             Dev: add checklist item
           </div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center' }}>
@@ -530,7 +530,7 @@ export function QuickfillOfficeSection({ variant }: { variant: QuickfillOfficeSe
                 flex: '1 1 200px',
                 minWidth: 0,
                 padding: '0.4rem 0.5rem',
-                border: '1px solid #d1d5db',
+                border: '1px solid var(--border-strong)',
                 borderRadius: 4,
                 fontSize: '0.875rem',
               }}
@@ -548,8 +548,8 @@ export function QuickfillOfficeSection({ variant }: { variant: QuickfillOfficeSe
               style={{
                 padding: '0.4rem 0.75rem',
                 fontSize: '0.875rem',
-                background: savingItems || !newLabelDraft.trim() ? '#e5e7eb' : '#2563eb',
-                color: savingItems || !newLabelDraft.trim() ? '#9ca3af' : 'white',
+                background: savingItems || !newLabelDraft.trim() ? 'var(--bg-200)' : '#2563eb',
+                color: savingItems || !newLabelDraft.trim() ? 'var(--text-faint)' : 'white',
                 border: 'none',
                 borderRadius: 4,
                 cursor: savingItems || !newLabelDraft.trim() ? 'not-allowed' : 'pointer',
@@ -579,10 +579,10 @@ export function QuickfillOfficeSection({ variant }: { variant: QuickfillOfficeSe
             style={{
               padding: '0.4rem 0.75rem',
               fontSize: '0.8125rem',
-              border: devOfficeChecklistEditMode ? '1px solid #2563eb' : '1px solid #d1d5db',
+              border: devOfficeChecklistEditMode ? '1px solid #2563eb' : '1px solid var(--border-strong)',
               borderRadius: 4,
-              background: devOfficeChecklistEditMode ? '#eff6ff' : '#fff',
-              color: devOfficeChecklistEditMode ? '#1d4ed8' : '#374151',
+              background: devOfficeChecklistEditMode ? 'var(--bg-blue-tint)' : 'var(--surface)',
+              color: devOfficeChecklistEditMode ? 'var(--text-blue-700)' : 'var(--text-700)',
               cursor: 'pointer',
               fontWeight: devOfficeChecklistEditMode ? 600 : 400,
             }}

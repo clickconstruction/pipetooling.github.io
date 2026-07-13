@@ -122,7 +122,7 @@ export default function DocumentsJobBilledInvoiceModal({
     >
       <div
         style={{
-          background: 'white',
+          background: 'var(--surface)',
           padding: '1.5rem',
           borderRadius: 8,
           width: 'min(920px, 96vw)',
@@ -163,10 +163,10 @@ export default function DocumentsJobBilledInvoiceModal({
                 padding: '0.35rem 0.65rem',
                 fontSize: '0.75rem',
                 borderRadius: 4,
-                border: '1px solid #d1d5db',
-                background: 'white',
+                border: '1px solid var(--border-strong)',
+                background: 'var(--surface)',
                 cursor: 'pointer',
-                color: '#374151',
+                color: 'var(--text-700)',
                 fontWeight: 500,
               }}
             >
@@ -174,19 +174,19 @@ export default function DocumentsJobBilledInvoiceModal({
             </button>
           ) : null}
         </div>
-        <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#6b7280' }}>{subtitle}</p>
+        <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>{subtitle}</p>
 
-        {loading ? <p style={{ margin: '0 0 1rem', color: '#6b7280' }}>Loading job…</p> : null}
+        {loading ? <p style={{ margin: '0 0 1rem', color: 'var(--text-muted)' }}>Loading job…</p> : null}
         {loadError ? (
-          <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#b45309' }}>{loadError}</p>
+          <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: 'var(--text-amber-700)' }}>{loadError}</p>
         ) : null}
 
         {!loading && !loadError && invWithJob ? (
           <>
             <HostedStripeBillPanel invoice={invWithJob} />
-            <hr style={{ margin: '1.25rem 0', border: 'none', borderTop: '1px solid #e5e7eb' }} />
+            <hr style={{ margin: '1.25rem 0', border: 'none', borderTop: '1px solid var(--border)' }} />
             <h3 style={{ margin: '0 0 0.75rem', fontSize: '1rem', fontWeight: 600 }}>Invoice PDF (PipeTooling layout)</h3>
-            <p style={{ margin: '0 0 0.75rem', fontSize: '0.8125rem', color: '#6b7280' }}>
+            <p style={{ margin: '0 0 0.75rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
               Reconstructed from job data; may differ from the original Stripe or emailed PDF.
             </p>
             {physicalDoc ? (
@@ -202,10 +202,10 @@ export default function DocumentsJobBilledInvoiceModal({
                     style={{
                       padding: '0.5rem 1rem',
                       border: '1px solid #2563eb',
-                      background: 'white',
+                      background: 'var(--surface)',
                       borderRadius: 4,
                       cursor: pdfOpening ? 'wait' : 'pointer',
-                      color: '#1d4ed8',
+                      color: 'var(--text-blue-700)',
                       fontWeight: 500,
                       fontSize: '0.875rem',
                     }}
@@ -215,12 +215,12 @@ export default function DocumentsJobBilledInvoiceModal({
                 </div>
               </>
             ) : (
-              <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#6b7280' }}>
+              <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
                 PDF preview is not available for this invoice amount.
               </p>
             )}
             {pdfError ? (
-              <p style={{ margin: '0 0 0.75rem', fontSize: '0.8125rem', color: '#b45309' }}>{pdfError}</p>
+              <p style={{ margin: '0 0 0.75rem', fontSize: '0.8125rem', color: 'var(--text-amber-700)' }}>{pdfError}</p>
             ) : null}
           </>
         ) : null}
@@ -231,8 +231,8 @@ export default function DocumentsJobBilledInvoiceModal({
             onClick={onClose}
             style={{
               padding: '0.5rem 1rem',
-              border: '1px solid #d1d5db',
-              background: 'white',
+              border: '1px solid var(--border-strong)',
+              background: 'var(--surface)',
               borderRadius: 4,
               cursor: 'pointer',
               fontSize: '0.875rem',

@@ -15,8 +15,8 @@ export type NumericEntryPadProps = {
 const btnStyle: CSSProperties = {
   padding: '0.25rem 0.5rem',
   fontSize: '0.875rem',
-  background: '#f3f4f6',
-  border: '1px solid #d1d5db',
+  background: 'var(--bg-muted)',
+  border: '1px solid var(--border-strong)',
   borderRadius: 4,
   cursor: 'pointer',
 }

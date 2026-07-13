@@ -44,7 +44,7 @@ export function NcnsDetailModal({ open, row, onClose }: Props) {
         aria-modal
         aria-labelledby="ncns-detail-title"
         style={{
-          background: 'white',
+          background: 'var(--surface)',
           borderRadius: 8,
           padding: '1.25rem',
           maxWidth: 440,
@@ -56,32 +56,32 @@ export function NcnsDetailModal({ open, row, onClose }: Props) {
         <h3 id="ncns-detail-title" style={{ margin: '0 0 0.75rem 0', fontSize: '1.05rem' }}>
           No-call, no-show
         </h3>
-        <dl style={{ margin: 0, fontSize: '0.875rem', color: '#374151', display: 'grid', gap: '0.65rem' }}>
+        <dl style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-700)', display: 'grid', gap: '0.65rem' }}>
           <div>
-            <dt style={{ fontWeight: 600, color: '#6b7280', fontSize: '0.75rem' }}>Subject</dt>
+            <dt style={{ fontWeight: 600, color: 'var(--text-muted)', fontSize: '0.75rem' }}>Subject</dt>
             <dd style={{ margin: '0.15rem 0 0 0' }}>{row.subject_name}</dd>
           </div>
           <div>
-            <dt style={{ fontWeight: 600, color: '#6b7280', fontSize: '0.75rem' }}>Work date</dt>
+            <dt style={{ fontWeight: 600, color: 'var(--text-muted)', fontSize: '0.75rem' }}>Work date</dt>
             <dd style={{ margin: '0.15rem 0 0 0' }}>{formatWorkDateYmd(row.work_date)}</dd>
           </div>
           <div>
-            <dt style={{ fontWeight: 600, color: '#6b7280', fontSize: '0.75rem' }}>Recorded</dt>
+            <dt style={{ fontWeight: 600, color: 'var(--text-muted)', fontSize: '0.75rem' }}>Recorded</dt>
             <dd style={{ margin: '0.15rem 0 0 0' }}>{new Date(row.created_at).toLocaleString()}</dd>
           </div>
           <div>
-            <dt style={{ fontWeight: 600, color: '#6b7280', fontSize: '0.75rem' }}>Recorded by</dt>
+            <dt style={{ fontWeight: 600, color: 'var(--text-muted)', fontSize: '0.75rem' }}>Recorded by</dt>
             <dd style={{ margin: '0.15rem 0 0 0' }}>{row.author_name}</dd>
           </div>
           {row.source ? (
             <div>
-              <dt style={{ fontWeight: 600, color: '#6b7280', fontSize: '0.75rem' }}>Source</dt>
+              <dt style={{ fontWeight: 600, color: 'var(--text-muted)', fontSize: '0.75rem' }}>Source</dt>
               <dd style={{ margin: '0.15rem 0 0 0' }}>{row.source}</dd>
             </div>
           ) : null}
           {row.details && row.details.trim() !== '' ? (
             <div>
-              <dt style={{ fontWeight: 600, color: '#6b7280', fontSize: '0.75rem' }}>Details</dt>
+              <dt style={{ fontWeight: 600, color: 'var(--text-muted)', fontSize: '0.75rem' }}>Details</dt>
               <dd
                 style={{
                   margin: '0.15rem 0 0 0',
@@ -94,7 +94,7 @@ export function NcnsDetailModal({ open, row, onClose }: Props) {
             </div>
           ) : null}
           <div>
-            <dt style={{ fontWeight: 600, color: '#6b7280', fontSize: '0.75rem' }}>Payroll note</dt>
+            <dt style={{ fontWeight: 600, color: 'var(--text-muted)', fontSize: '0.75rem' }}>Payroll note</dt>
             <dd style={{ margin: '0.15rem 0 0 0' }}>
               {row.had_approved_sessions
                 ? 'This day included approved time; hours were removed from payroll totals when NCNS was recorded.'
@@ -108,9 +108,9 @@ export function NcnsDetailModal({ open, row, onClose }: Props) {
             onClick={onClose}
             style={{
               padding: '0.5rem 0.85rem',
-              border: '1px solid #d1d5db',
+              border: '1px solid var(--border-strong)',
               borderRadius: 4,
-              background: '#fff',
+              background: 'var(--surface)',
               cursor: 'pointer',
               fontSize: '0.875rem',
             }}

@@ -543,7 +543,7 @@ export default function RecurringEmailReportsModal({
         aria-modal="true"
         aria-labelledby="recurring-email-reports-heading"
         style={{
-          background: 'white',
+          background: 'var(--surface)',
           borderRadius: 10,
           maxWidth: 900,
           width: '100%',
@@ -563,8 +563,8 @@ export default function RecurringEmailReportsModal({
             onClick={onClose}
             style={{
               flexShrink: 0,
-              background: '#f3f4f6',
-              border: '1px solid #e5e7eb',
+              background: 'var(--bg-muted)',
+              border: '1px solid var(--border)',
               borderRadius: 6,
               cursor: 'pointer',
               padding: '0.35rem 0.6rem',
@@ -575,11 +575,11 @@ export default function RecurringEmailReportsModal({
         </div>
 
         {!canConfigure ? (
-          <p style={{ color: '#6b7280', marginTop: 12 }}>
+          <p style={{ color: 'var(--text-muted)', marginTop: 12 }}>
             Only dev, master technician, or assistant can configure recurring report emails.
           </p>
         ) : scopeMasterChoices.length === 0 ? (
-          <p style={{ color: '#6b7280', marginTop: 12 }}>Could not resolve a scope master account for schedules.</p>
+          <p style={{ color: 'var(--text-muted)', marginTop: 12 }}>Could not resolve a scope master account for schedules.</p>
         ) : (
           <>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'flex-end', marginBottom: 16 }}>
@@ -658,8 +658,8 @@ export default function RecurringEmailReportsModal({
                 style={{
                   padding: '0.45rem 0.75rem',
                   flexShrink: 0,
-                  background: '#f3f4f6',
-                  border: '1px solid #d1d5db',
+                  background: 'var(--bg-muted)',
+                  border: '1px solid var(--border-strong)',
                   borderRadius: 6,
                   cursor:
                     previewLoading || testSendLoading ? 'wait' : !scopeMasterId ? 'not-allowed' : 'pointer',
@@ -687,11 +687,11 @@ export default function RecurringEmailReportsModal({
             </div>
 
             {previewHtml ? (
-              <div style={{ marginBottom: 20, border: '1px solid #e5e7eb', borderRadius: 8, overflow: 'hidden' }}>
+              <div style={{ marginBottom: 20, border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
                 <iframe
                   title="Email preview"
                   sandbox=""
-                  style={{ width: '100%', minHeight: 280, border: 'none', background: '#fafafa' }}
+                  style={{ width: '100%', minHeight: 280, border: 'none', background: 'var(--bg-page)' }}
                   srcDoc={previewHtml}
                 />
               </div>
@@ -717,16 +717,16 @@ export default function RecurringEmailReportsModal({
             </div>
 
             {loading ? (
-              <p style={{ color: '#6b7280' }}>Loading…</p>
+              <p style={{ color: 'var(--text-muted)' }}>Loading…</p>
             ) : schedules.length === 0 ? (
-              <p style={{ color: '#6b7280' }}>No schedules yet.</p>
+              <p style={{ color: 'var(--text-muted)' }}>No schedules yet.</p>
             ) : (
               <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
                 {schedules.map((s) => (
                   <li
                     key={s.id}
                     style={{
-                      border: '1px solid #e5e7eb',
+                      border: '1px solid var(--border)',
                       borderRadius: 8,
                       padding: 12,
                       marginBottom: 10,
@@ -735,11 +735,11 @@ export default function RecurringEmailReportsModal({
                     <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
                       <div>
                         <strong>{s.name}</strong>{' '}
-                        <span style={{ color: '#6b7280', fontSize: '0.8125rem' }}>
+                        <span style={{ color: 'var(--text-muted)', fontSize: '0.8125rem' }}>
                           {s.enabled ? 'On' : 'Off'} · {fromPgTime(s.time_local ?? undefined)} ·{' '}
                           {(s.days_of_week ?? []).join(', ')} · {s.timezone}
                         </span>
-                        <div style={{ fontSize: '0.75rem', color: '#9ca3af', marginTop: 4 }}>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-faint)', marginTop: 4 }}>
                           {(recipientsBySchedule.get(s.id) ?? []).length} recipient(s)
                         </div>
                       </div>
@@ -749,8 +749,8 @@ export default function RecurringEmailReportsModal({
                           onClick={() => startEdit(s)}
                           style={{
                             padding: '0.35rem 0.6rem',
-                            background: '#f9fafb',
-                            border: '1px solid #e5e7eb',
+                            background: 'var(--bg-subtle)',
+                            border: '1px solid var(--border)',
                             borderRadius: 6,
                             cursor: 'pointer',
                             fontSize: '0.8125rem',
@@ -763,12 +763,12 @@ export default function RecurringEmailReportsModal({
                           onClick={() => void deleteSchedule(s.id)}
                           style={{
                             padding: '0.35rem 0.6rem',
-                            background: '#fef2f2',
+                            background: 'var(--bg-red-tint)',
                             border: '1px solid #fecaca',
                             borderRadius: 6,
                             cursor: 'pointer',
                             fontSize: '0.8125rem',
-                            color: '#b91c1c',
+                            color: 'var(--text-red-700)',
                           }}
                         >
                           Delete
@@ -787,7 +787,7 @@ export default function RecurringEmailReportsModal({
             style={{
               marginTop: 20,
               paddingTop: 16,
-              borderTop: '1px solid #e5e7eb',
+              borderTop: '1px solid var(--border)',
             }}
           >
             <h3 style={{ margin: '0 0 12px', fontSize: '1rem' }}>{draft.id ? 'Edit schedule' : 'New schedule'}</h3>
@@ -822,7 +822,7 @@ export default function RecurringEmailReportsModal({
             </div>
             <div style={{ marginTop: 12, fontSize: '0.8rem' }}>
               <strong>Days (0=Sun)</strong>{' '}
-              <span style={{ color: '#6b7280' }}>— picks which weekdays the email fires</span>
+              <span style={{ color: 'var(--text-muted)' }}>— picks which weekdays the email fires</span>
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 6 }}>
                 {WEEKDAYS.map((d) => (
                   <label key={d.bit} style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
@@ -845,8 +845,8 @@ export default function RecurringEmailReportsModal({
                   onClick={addRecipientDraft}
                   style={{
                     padding: '0.3rem 0.55rem',
-                    background: '#f3f4f6',
-                    border: '1px solid #d1d5db',
+                    background: 'var(--bg-muted)',
+                    border: '1px solid var(--border-strong)',
                     borderRadius: 6,
                     cursor: 'pointer',
                     fontSize: '0.8125rem',
@@ -856,7 +856,7 @@ export default function RecurringEmailReportsModal({
                 </button>
               </div>
               {draft.recipientDrafts.length === 0 ? (
-                <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>No recipients — add at least one to receive mail.</p>
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>No recipients — add at least one to receive mail.</p>
               ) : (
                 <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: 8, fontSize: '0.875rem' }}>
                   <colgroup>
@@ -870,29 +870,29 @@ export default function RecurringEmailReportsModal({
                     <tr>
                       <th
                         align="left"
-                        style={{ borderBottom: '1px solid #e5e7eb', padding: 6, whiteSpace: 'nowrap' }}
+                        style={{ borderBottom: '1px solid var(--border)', padding: 6, whiteSpace: 'nowrap' }}
                       >
                         User
                       </th>
                       <th
                         align="left"
-                        style={{ borderBottom: '1px solid #e5e7eb', padding: 6, whiteSpace: 'nowrap' }}
+                        style={{ borderBottom: '1px solid var(--border)', padding: 6, whiteSpace: 'nowrap' }}
                       >
                         Scope
                       </th>
                       <th
                         align="left"
-                        style={{ borderBottom: '1px solid #e5e7eb', padding: 6, whiteSpace: 'nowrap' }}
+                        style={{ borderBottom: '1px solid var(--border)', padding: 6, whiteSpace: 'nowrap' }}
                       >
                         Filter
                       </th>
                       <th
                         align="left"
-                        style={{ borderBottom: '1px solid #e5e7eb', padding: 6, whiteSpace: 'nowrap' }}
+                        style={{ borderBottom: '1px solid var(--border)', padding: 6, whiteSpace: 'nowrap' }}
                       >
                         Include costs
                       </th>
-                      <th style={{ borderBottom: '1px solid #e5e7eb', padding: 6, whiteSpace: 'nowrap' }} />
+                      <th style={{ borderBottom: '1px solid var(--border)', padding: 6, whiteSpace: 'nowrap' }} />
                     </tr>
                   </thead>
                   <tbody>
@@ -1018,7 +1018,7 @@ export default function RecurringEmailReportsModal({
                             style={{
                               background: 'none',
                               border: 'none',
-                              color: '#b91c1c',
+                              color: 'var(--text-red-700)',
                               cursor: 'pointer',
                             }}
                           >
@@ -1052,8 +1052,8 @@ export default function RecurringEmailReportsModal({
                 onClick={() => setDraft(null)}
                 style={{
                   padding: '0.5rem 0.9rem',
-                  background: '#f3f4f6',
-                  border: '1px solid #d1d5db',
+                  background: 'var(--bg-muted)',
+                  border: '1px solid var(--border-strong)',
                   borderRadius: 6,
                   cursor: 'pointer',
                 }}

@@ -5,6 +5,7 @@ import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
 import { useToastContext } from '../contexts/ToastContext'
 import { denverWorkDateToday, syncSalaryClockSessionsForUserDay } from '../lib/salaryScheduleSync'
 import { recordNotComingInSelf } from '../lib/notComingInTimeOff'
+import { timeOffKindLabel } from '../lib/resolveCalendarWorkday'
 
 type TimeOffRow = Database['public']['Tables']['user_time_off']['Row']
 
@@ -127,12 +128,12 @@ export function TimeOffSettings({ userId }: { userId: string }) {
   }
 
   if (loading) {
-    return <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>Loading time off…</p>
+    return <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Loading time off…</p>
   }
 
   return (
     <div style={{ marginBottom: '1rem' }}>
-      <p style={{ color: '#6b7280', fontSize: '0.875rem', marginTop: 0 }}>
+      <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', marginTop: 0 }}>
         Add planned <strong>unpaid</strong> time off using <strong>company calendar dates</strong> (Central). Salary
         auto-sessions are skipped on these days after sync.
       </p>
@@ -157,7 +158,7 @@ export function TimeOffSettings({ userId }: { userId: string }) {
       </div>
       <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 1rem 0' }}>
         {rows.length === 0 ? (
-          <li style={{ color: '#6b7280', fontSize: '0.875rem' }}>No entries yet.</li>
+          <li style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>No entries yet.</li>
         ) : (
           rows.map((r) => (
             <li
@@ -168,18 +169,18 @@ export function TimeOffSettings({ userId }: { userId: string }) {
                 justifyContent: 'space-between',
                 gap: '0.5rem',
                 padding: '0.5rem 0',
-                borderBottom: '1px solid #e5e7eb',
+                borderBottom: '1px solid var(--border)',
                 fontSize: '0.875rem',
               }}
             >
               <span>
-                <strong>Unpaid time off</strong> · <strong>{r.start_date}</strong> → <strong>{r.end_date}</strong>
+                <strong>{timeOffKindLabel(r.kind)}</strong> · <strong>{r.start_date}</strong> → <strong>{r.end_date}</strong>
                 {r.note ? ` — ${r.note}` : ''}
               </span>
               <button
                 type="button"
                 onClick={() => void handleDelete(r.id)}
-                style={{ padding: '0.25rem 0.5rem', fontSize: '0.8125rem', color: '#b91c1c', border: '1px solid #fecaca', borderRadius: 4, background: '#fff' }}
+                style={{ padding: '0.25rem 0.5rem', fontSize: '0.8125rem', color: 'var(--text-red-700)', border: '1px solid #fecaca', borderRadius: 4, background: 'var(--surface)' }}
               >
                 Remove
               </button>
@@ -187,7 +188,7 @@ export function TimeOffSettings({ userId }: { userId: string }) {
           ))
         )}
       </ul>
-      <form onSubmit={(e) => void handleAdd(e)} style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: '0.75rem', background: '#fafafa' }}>
+      <form onSubmit={(e) => void handleAdd(e)} style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '0.75rem', background: 'var(--bg-page)' }}>
         <div style={{ fontWeight: 600, marginBottom: '0.5rem' }}>Add range</div>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', alignItems: 'flex-end', marginBottom: '0.5rem' }}>
           <label>

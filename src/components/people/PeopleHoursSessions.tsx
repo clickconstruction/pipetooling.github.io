@@ -102,7 +102,7 @@ export function PeopleHoursSessions({
                 flex: '1 1 220px',
                 minWidth: 160,
                 padding: '0.35rem 0.5rem',
-                border: '1px solid #d1d5db',
+                border: '1px solid var(--border-strong)',
                 borderRadius: 4,
                 fontSize: '0.875rem',
               }}
@@ -113,9 +113,9 @@ export function PeopleHoursSessions({
                 onClick={() => setHoursClockSessionsSearch('')}
                 style={{
                   padding: '0.35rem 0.5rem',
-                  border: '1px solid #d1d5db',
+                  border: '1px solid var(--border-strong)',
                   borderRadius: 4,
-                  background: 'white',
+                  background: 'var(--surface)',
                   cursor: 'pointer',
                   fontSize: '0.875rem',
                 }}
@@ -130,13 +130,13 @@ export function PeopleHoursSessions({
                 style={{
                   marginLeft: 'auto',
                   padding: '0.35rem 0.65rem',
-                  border: '1px solid #d1d5db',
+                  border: '1px solid var(--border-strong)',
                   borderRadius: 4,
-                  background: '#f9fafb',
+                  background: 'var(--bg-subtle)',
                   cursor: 'pointer',
                   fontSize: '0.875rem',
                   fontWeight: 500,
-                  color: '#374151',
+                  color: 'var(--text-700)',
                   flexShrink: 0,
                 }}
               >
@@ -145,10 +145,10 @@ export function PeopleHoursSessions({
             ) : null}
           </div>
           {noClockSessionsMatchSearch ? (
-            <p style={{ margin: '0 0 0.75rem', fontSize: '0.875rem', color: '#6b7280' }}>No sessions match this search.</p>
+            <p style={{ margin: '0 0 0.75rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>No sessions match this search.</p>
           ) : null}
-          <div style={{ marginBottom: '0.75rem', border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
-            <div style={{ padding: '0.5rem 0.75rem', background: '#f9fafb', fontWeight: 600, fontSize: '0.875rem' }}>
+          <div style={{ marginBottom: '0.75rem', border: '1px solid var(--border)', borderRadius: 4, overflow: 'hidden' }}>
+            <div style={{ padding: '0.5rem 0.75rem', background: 'var(--bg-subtle)', fontWeight: 600, fontSize: '0.875rem' }}>
               {hoursClockSessionsSearching
                 ? `Active clock sessions (${activeClockSessionsFiltered.length} of ${activeClockSessions.length} matching)`
                 : `Active clock sessions (${activeClockSessions.length})`}
@@ -181,7 +181,7 @@ export function PeopleHoursSessions({
                         setEditClockSession(s)
                         setError(null)
                       }}
-                      style={{ padding: '0.2rem 0.5rem', fontSize: '0.8125rem', border: '1px solid #d1d5db', borderRadius: 4, background: 'white', cursor: 'pointer' }}
+                      style={{ padding: '0.2rem 0.5rem', fontSize: '0.8125rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: 'pointer' }}
                     >
                       Edit
                     </button>
@@ -197,7 +197,7 @@ export function PeopleHoursSessions({
                           reloadSessions()
                         }
                       }}
-                      style={{ padding: '0.2rem 0.5rem', fontSize: '0.8125rem', border: '1px solid #dc2626', borderRadius: 4, background: '#fef2f2', color: '#dc2626', cursor: 'pointer' }}
+                      style={{ padding: '0.2rem 0.5rem', fontSize: '0.8125rem', border: '1px solid #dc2626', borderRadius: 4, background: 'var(--bg-red-tint)', color: 'var(--text-red-600)', cursor: 'pointer' }}
                     >
                       Force clock out
                     </button>
@@ -206,8 +206,8 @@ export function PeopleHoursSessions({
               }}
             />
           </div>
-          <div style={{ marginBottom: '0.75rem', border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
-            <div style={{ padding: '0.5rem 0.75rem', background: '#f9fafb', fontWeight: 600, fontSize: '0.875rem' }}>
+          <div style={{ marginBottom: '0.75rem', border: '1px solid var(--border)', borderRadius: 4, overflow: 'hidden' }}>
+            <div style={{ padding: '0.5rem 0.75rem', background: 'var(--bg-subtle)', fontWeight: 600, fontSize: '0.875rem' }}>
               {hoursClockSessionsSearching
                 ? `Pending sessions (${pendingApprovalClockSessionsFiltered.length} of ${pendingApprovalClockSessions.length} matching)`
                 : `Pending sessions (${pendingApprovalClockSessions.length})`}
@@ -257,7 +257,7 @@ export function PeopleHoursSessions({
                       reloadSessions()
                       reloadHours()
                     }}
-                    style={{ padding: '0.2rem 0.5rem', fontSize: '0.8125rem', border: '1px solid #22c55e', borderRadius: 4, background: '#f0fdf4', color: '#16a34a', cursor: 'pointer' }}
+                    style={{ padding: '0.2rem 0.5rem', fontSize: '0.8125rem', border: '1px solid #22c55e', borderRadius: 4, background: 'var(--bg-green-tint)', color: '#16a34a', cursor: 'pointer' }}
                   >
                     Approve
                   </button>
@@ -269,7 +269,7 @@ export function PeopleHoursSessions({
                       if (error) setError(error.message)
                       else { showToast?.('Session rejected', 'success'); reloadSessions() }
                     }}
-                    style={{ padding: '0.2rem 0.5rem', fontSize: '0.8125rem', border: '1px solid #dc2626', borderRadius: 4, background: '#fef2f2', color: '#dc2626', cursor: 'pointer' }}
+                    style={{ padding: '0.2rem 0.5rem', fontSize: '0.8125rem', border: '1px solid #dc2626', borderRadius: 4, background: 'var(--bg-red-tint)', color: 'var(--text-red-600)', cursor: 'pointer' }}
                   >
                     Reject
                   </button>
@@ -278,7 +278,7 @@ export function PeopleHoursSessions({
                     onClick={() => {
                       setEditClockSession(s)
                     }}
-                    style={{ padding: '0.2rem 0.5rem', fontSize: '0.8125rem', border: '1px solid #d1d5db', borderRadius: 4, background: 'white', cursor: 'pointer' }}
+                    style={{ padding: '0.2rem 0.5rem', fontSize: '0.8125rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: 'pointer' }}
                   >
                     Edit
                   </button>
@@ -314,7 +314,7 @@ export function PeopleHoursSessions({
                   reloadSessions()
                   reloadHours()
                 }}
-                style={{ padding: '0.2rem 0.5rem', fontSize: '0.8125rem', border: '1px solid #f59e0b', borderRadius: 4, background: '#fffbeb', color: '#d97706', cursor: 'pointer' }}
+                style={{ padding: '0.2rem 0.5rem', fontSize: '0.8125rem', border: '1px solid #f59e0b', borderRadius: 4, background: 'var(--bg-amber-tint)', color: '#d97706', cursor: 'pointer' }}
               >
                 Revoke
               </button>

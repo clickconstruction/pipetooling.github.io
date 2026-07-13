@@ -24,6 +24,7 @@ export type JobActivityEventType =
   | 'field_edited'
   | 'job_combined'
   | 'job_separated'
+  | 'collections_change'
 
 export type JobActivityEvent = {
   /** Stable React key + dedupe key: `ev:status:<id>` (Phase 1) / `ev:<rowid>` (Phase 2). */
@@ -62,7 +63,7 @@ const DANGER_RED = { tagColor: '#b91c1c', borderColor: '#fca5a5' } as const
 const STATUS_AMBER = { tagColor: '#b45309', borderColor: '#fcd34d' } as const
 const CREW_INDIGO = { tagColor: '#4f46e5', borderColor: '#a5b4fc' } as const
 const WORK_TEAL = { tagColor: '#0f766e', borderColor: '#5eead4' } as const
-const EDIT_GRAY = { tagColor: '#6b7280', borderColor: '#d1d5db' } as const
+const EDIT_GRAY = { tagColor: '#6b7280', borderColor: 'var(--border-strong)' } as const
 const COMBINE_PURPLE = { tagColor: '#7c3aed', borderColor: '#c4b5fd' } as const
 
 export const JOB_ACTIVITY_EVENT_RENDER: Record<JobActivityEventType, EventRenderMeta> = {
@@ -81,6 +82,7 @@ export const JOB_ACTIVITY_EVENT_RENDER: Record<JobActivityEventType, EventRender
   field_edited: { tag: 'Edit', ...EDIT_GRAY, bucket: 'other' },
   job_combined: { tag: 'Combined', ...COMBINE_PURPLE, bucket: 'other' },
   job_separated: { tag: 'Separated', ...COMBINE_PURPLE, bucket: 'other' },
+  collections_change: { tag: 'Collections', ...DANGER_RED, bucket: 'billing' },
 }
 
 export function eventRenderMeta(type: JobActivityEventType): EventRenderMeta {

@@ -304,7 +304,7 @@ export function DraftPayrollModal({
       >
         <div
           style={{
-            background: 'white',
+            background: 'var(--surface)',
             padding: '1.5rem',
             borderRadius: 8,
             maxWidth: 600,
@@ -322,7 +322,7 @@ export function DraftPayrollModal({
                     alignItems: 'center',
                     gap: '0.35rem',
                     fontSize: '0.8125rem',
-                    color: '#374151',
+                    color: 'var(--text-700)',
                     cursor: 'pointer',
                     margin: 0,
                     whiteSpace: 'nowrap',
@@ -347,7 +347,7 @@ export function DraftPayrollModal({
                     cursor: 'pointer',
                     fontSize: '1.25rem',
                     lineHeight: 1,
-                    color: '#6b7280',
+                    color: 'var(--text-muted)',
                   }}
                   aria-label="Close"
                 >
@@ -366,7 +366,7 @@ export function DraftPayrollModal({
                   disabled={bulkGenerating}
                   style={{
                     padding: '2px 2px',
-                    border: '1px solid #d1d5db',
+                    border: '1px solid var(--border-strong)',
                     borderRadius: 4,
                     fontSize: '0.8125rem',
                     lineHeight: 1.3,
@@ -385,7 +385,7 @@ export function DraftPayrollModal({
                   disabled={bulkGenerating}
                   style={{
                     padding: '2px 2px',
-                    border: '1px solid #d1d5db',
+                    border: '1px solid var(--border-strong)',
                     borderRadius: 4,
                     fontSize: '0.8125rem',
                     lineHeight: 1.3,
@@ -401,8 +401,8 @@ export function DraftPayrollModal({
                 style={{
                   padding: '2px 8px',
                   fontSize: '0.8125rem',
-                  border: '1px solid #d1d5db',
-                  background: 'white',
+                  border: '1px solid var(--border-strong)',
+                  background: 'var(--surface)',
                   borderRadius: 4,
                   cursor: bulkGenerating ? 'not-allowed' : 'pointer',
                   lineHeight: 1.3,
@@ -418,8 +418,8 @@ export function DraftPayrollModal({
                 style={{
                   padding: '2px 8px',
                   fontSize: '0.8125rem',
-                  border: '1px solid #d1d5db',
-                  background: 'white',
+                  border: '1px solid var(--border-strong)',
+                  background: 'var(--surface)',
                   borderRadius: 4,
                   cursor: bulkGenerating ? 'not-allowed' : 'pointer',
                   lineHeight: 1.3,
@@ -431,10 +431,10 @@ export function DraftPayrollModal({
             </div>
           </div>
           {pendingLoading ? (
-            <p style={{ fontSize: '0.8125rem', color: '#6b7280', margin: '0 0 0.75rem', textAlign: 'center' }}>Checking pending approvals…</p>
+            <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', margin: '0 0 0.75rem', textAlign: 'center' }}>Checking pending approvals…</p>
           ) : null}
           {pendingError ? (
-            <p style={{ fontSize: '0.8125rem', color: '#b91c1c', margin: '0 0 0.75rem', textAlign: 'center' }}>{pendingError}</p>
+            <p style={{ fontSize: '0.8125rem', color: 'var(--text-red-700)', margin: '0 0 0.75rem', textAlign: 'center' }}>{pendingError}</p>
           ) : null}
           {!pendingLoading && pendingCount != null && pendingCount > 0 ? (
             <div
@@ -444,8 +444,8 @@ export function DraftPayrollModal({
                 padding: '0.6rem 0.75rem',
                 borderRadius: 6,
                 border: '1px solid #f59e0b',
-                background: '#fef3c7',
-                color: '#92400e',
+                background: 'var(--bg-amber-100)',
+                color: 'var(--text-amber-800)',
                 fontSize: '0.8125rem',
                 lineHeight: 1.4,
               }}
@@ -474,12 +474,12 @@ export function DraftPayrollModal({
             </div>
           ) : null}
           {peopleNames.length === 0 ? (
-            <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0 }}>
               No people with Show in Hours selected. In Hours, open People pay config and check Show in Hours for people to track.
             </p>
           ) : (
             <>
-              <div style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '0.5rem', textAlign: 'center' }}>
+              <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginBottom: '0.5rem', textAlign: 'center' }}>
                 {paidCount} of {peopleNames.length} paid · Total: ${formatCurrency(totalAmount)} | Left: ${formatCurrency(leftUnpaid)}
               </div>
               <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
@@ -510,23 +510,23 @@ export function DraftPayrollModal({
                     padding: '0.35rem 0.75rem',
                     fontSize: '0.8125rem',
                     fontWeight: 500,
-                    background: printDisabled ? '#f3f4f6' : 'white',
-                    color: printDisabled ? '#9ca3af' : '#374151',
-                    border: '1px solid #d1d5db',
+                    background: printDisabled ? 'var(--bg-muted)' : 'var(--surface)',
+                    color: printDisabled ? 'var(--text-faint)' : 'var(--text-700)',
+                    border: '1px solid var(--border-strong)',
                     borderRadius: 6,
                     cursor: printDisabled ? 'not-allowed' : 'pointer',
                   }}
                 >
                   Print
                 </button>
-                <span style={{ fontSize: '0.8125rem', color: '#6b7280', textAlign: 'center' }}>
+                <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', textAlign: 'center' }}>
                   {bulkMissingCount === 0 ? 'No one needs a report for this period.' : `${bulkMissingCount} with hours and no report yet`}
                 </span>
               </div>
               <div style={{ overflowX: 'auto', marginBottom: '1rem' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
                   <thead>
-                    <tr style={{ background: '#f9fafb', borderBottom: '1px solid #e5e7eb' }}>
+                    <tr style={{ background: 'var(--bg-subtle)', borderBottom: '1px solid var(--border)' }}>
                       <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', width: 36 }}>Paid</th>
                       <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left' }}>Person</th>
                       <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left' }}>Status</th>
@@ -538,7 +538,7 @@ export function DraftPayrollModal({
                   <tbody>
                     {filteredPeople.length === 0 && peopleNames.length > 0 ? (
                       <tr>
-                        <td colSpan={6} style={{ padding: '0.75rem', fontSize: '0.875rem', color: '#6b7280', textAlign: 'center' }}>
+                        <td colSpan={6} style={{ padding: '0.75rem', fontSize: '0.875rem', color: 'var(--text-muted)', textAlign: 'center' }}>
                           Everyone has 0 hours for this period. Enable <strong>Show 0 hours</strong> to list them.
                         </td>
                       </tr>
@@ -571,7 +571,7 @@ export function DraftPayrollModal({
                           : 'No hours'
                       const isGenerating = generatingPayStubPerson === person
                       return (
-                        <tr key={person} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                        <tr key={person} style={{ borderBottom: '1px solid var(--border)' }}>
                           <td style={{ padding: '0.5rem 0.75rem' }}>
                             {stub && !stubFullyPaid ? (
                               <input
@@ -582,11 +582,11 @@ export function DraftPayrollModal({
                                 title="Record payment"
                               />
                             ) : stub && stubFullyPaid ? (
-                              <span style={{ color: '#059669', fontSize: '0.875rem' }} title="Fully paid">
+                              <span style={{ color: 'var(--text-green-600)', fontSize: '0.875rem' }} title="Fully paid">
                                 {'\u2713'}
                               </span>
                             ) : (
-                              <span style={{ color: '#d1d5db' }}>—</span>
+                              <span style={{ color: 'var(--text-faint-300)' }}>—</span>
                             )}
                           </td>
                           <td style={{ padding: '0.5rem 0.75rem' }}>{person}</td>
@@ -644,7 +644,7 @@ export function DraftPayrollModal({
                                   border: 'none',
                                   background: 'none',
                                   cursor: 'pointer',
-                                  color: '#2563eb',
+                                  color: 'var(--text-link)',
                                   textDecoration: 'underline',
                                   fontSize: 'inherit',
                                   fontVariantNumeric: 'tabular-nums',
@@ -654,7 +654,7 @@ export function DraftPayrollModal({
                                 {hours.toFixed(2)}
                               </button>
                             ) : (
-                              <span style={{ fontVariantNumeric: 'tabular-nums', color: '#6b7280' }}>{hours.toFixed(2)}</span>
+                              <span style={{ fontVariantNumeric: 'tabular-nums', color: 'var(--text-muted)' }}>{hours.toFixed(2)}</span>
                             )}
                           </td>
                           <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>${formatCurrency(estGross)}</td>
@@ -691,13 +691,13 @@ export function DraftPayrollModal({
                                       background: 'none',
                                       border: 'none',
                                       borderRadius: 4,
-                                      color: deletingPayStubId === stub.id ? '#9ca3af' : '#dc2626',
+                                      color: deletingPayStubId === stub.id ? 'var(--text-faint)' : 'var(--text-red-600)',
                                       cursor: deletingPayStubId === stub.id ? 'not-allowed' : 'pointer',
                                       verticalAlign: 'middle',
                                     }}
                                   >
                                     {deletingPayStubId === stub.id ? (
-                                      <span style={{ fontSize: '0.75rem', lineHeight: 1, color: '#9ca3af' }}>…</span>
+                                      <span style={{ fontSize: '0.75rem', lineHeight: 1, color: 'var(--text-faint)' }}>…</span>
                                     ) : (
                                       <PayStubDeleteIcon color="currentColor" size={16} />
                                     )}
@@ -770,7 +770,7 @@ export function DraftPayrollModal({
         >
           <div
             style={{
-              background: 'white',
+              background: 'var(--surface)',
               padding: '1.25rem',
               borderRadius: 8,
               maxWidth: 420,
@@ -784,11 +784,11 @@ export function DraftPayrollModal({
             <h3 id="run-payroll-review-days-title" style={{ margin: '0 0 0.5rem 0', fontSize: '1.05rem' }}>
               Days needing attention
             </h3>
-            <p style={{ margin: '0 0 0.75rem 0', fontSize: '0.875rem', color: '#4b5563' }}>
+            <p style={{ margin: '0 0 0.75rem 0', fontSize: '0.875rem', color: 'var(--text-600)' }}>
               <strong>{reviewDaysDetail.personName}</strong>: on the <strong>Hours</strong> tab, mark or clear the <strong>Correct</strong> row for dates below, or assign work in{' '}
               <strong>Crew Jobs / Bids</strong> when hours have no job. Then return here.
             </p>
-            <ul style={{ margin: 0, paddingLeft: '1.25rem', fontSize: '0.875rem', color: '#111827', listStyle: 'disc' }}>
+            <ul style={{ margin: 0, paddingLeft: '1.25rem', fontSize: '0.875rem', color: 'var(--text-strong)', listStyle: 'disc' }}>
               {reviewDaysDetail.items.map((item) => (
                 <li key={`${item.workDate}-${item.issue}`} style={{ marginBottom: '0.35rem' }}>
                   <button
@@ -808,7 +808,7 @@ export function DraftPayrollModal({
                       border: 'none',
                       background: 'none',
                       cursor: 'pointer',
-                      color: '#2563eb',
+                      color: 'var(--text-link)',
                       textDecoration: 'underline',
                       font: 'inherit',
                       fontSize: 'inherit',
@@ -822,7 +822,7 @@ export function DraftPayrollModal({
                       year: 'numeric',
                     })}
                   </button>
-                  <span style={{ marginLeft: '0.35rem', fontSize: '0.8125rem', color: '#6b7280' }}>
+                  <span style={{ marginLeft: '0.35rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
                     {item.issue === 'not_correct' ? '— Not marked Correct' : '— No job assigned'}
                   </span>
                 </li>

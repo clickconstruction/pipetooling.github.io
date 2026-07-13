@@ -57,7 +57,7 @@ export default function BilledBillViewModal({
     >
       <div
         style={{
-          background: 'white',
+          background: 'var(--surface)',
           padding: '1.5rem',
           borderRadius: 8,
           minWidth: 420,
@@ -115,10 +115,10 @@ export default function BilledBillViewModal({
                   padding: '0.35rem 0.65rem',
                   fontSize: '0.75rem',
                   borderRadius: 4,
-                  border: '1px solid #d1d5db',
-                  background: 'white',
+                  border: '1px solid var(--border-strong)',
+                  background: 'var(--surface)',
                   cursor: 'pointer',
-                  color: '#374151',
+                  color: 'var(--text-700)',
                   fontWeight: 500,
                 }}
               >
@@ -127,7 +127,7 @@ export default function BilledBillViewModal({
             ) : null}
           </div>
         </div>
-        <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#6b7280' }}>{subtitle}</p>
+        <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>{subtitle}</p>
 
         <HostedStripeBillPanel
           invoice={invoice}

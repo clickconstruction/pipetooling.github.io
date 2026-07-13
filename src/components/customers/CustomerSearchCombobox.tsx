@@ -35,7 +35,7 @@ const inputStyle = (inputDisabled: boolean, withTrailingClear?: boolean): CSSPro
   padding: '0.5rem',
   paddingRight: withTrailingClear ? '2.35rem' : '0.5rem',
   boxSizing: 'border-box',
-  border: '1px solid #d1d5db',
+  border: '1px solid var(--border-strong)',
   borderRadius: 6,
   fontSize: '0.875rem',
   opacity: inputDisabled ? 0.65 : 1,
@@ -62,8 +62,8 @@ const panelStyle: CSSProperties = {
   marginTop: 2,
   maxHeight: 280,
   overflowY: 'auto',
-  background: 'white',
-  border: '1px solid #d1d5db',
+  background: 'var(--surface)',
+  border: '1px solid var(--border-strong)',
   borderRadius: 6,
   zIndex: 40,
   boxShadow: '0 1px 3px rgba(0,0,0,0.08), 0 4px 12px rgba(0,0,0,0.08)',
@@ -73,10 +73,10 @@ const smallSecondaryButtonStyle: CSSProperties = {
   padding: '0.35rem 0.65rem',
   fontSize: '0.8125rem',
   fontWeight: 500,
-  border: '1px solid #d1d5db',
+  border: '1px solid var(--border-strong)',
   borderRadius: 4,
-  background: '#f3f4f6',
-  color: '#374151',
+  background: 'var(--bg-muted)',
+  color: 'var(--text-700)',
   cursor: 'pointer',
 }
 
@@ -86,10 +86,10 @@ const footerCreateStyle: CSSProperties = {
   textAlign: 'left',
   padding: '0.65rem 0.75rem',
   border: 'none',
-  borderTop: '2px solid #e5e7eb',
-  background: '#fff7ed',
+  borderTop: '2px solid var(--border)',
+  background: 'var(--bg-orange-tint)',
   fontWeight: 600,
-  color: '#c2410c',
+  color: 'var(--text-orange-700)',
   cursor: 'pointer',
   fontSize: '0.875rem',
 }
@@ -295,7 +295,7 @@ export default function CustomerSearchCombobox({
               border: 'none',
               borderRadius: 6,
               background: 'transparent',
-              color: '#6b7280',
+              color: 'var(--text-muted)',
               cursor: 'pointer',
             }}
           >
@@ -305,7 +305,7 @@ export default function CustomerSearchCombobox({
         {open && !loading && (
           <div id={listboxId} role="listbox" style={panelStyle}>
           {filtered.length === 0 ? (
-            <div style={{ padding: '0.75rem', color: '#6b7280', fontSize: '0.875rem' }}>No matching customers.</div>
+            <div style={{ padding: '0.75rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>No matching customers.</div>
           ) : (
             filtered.map((c, index) => {
               const selected = valueId === c.id
@@ -366,8 +366,8 @@ export default function CustomerSearchCombobox({
                           fontWeight: 600,
                           padding: '2px 8px',
                           borderRadius: 9999,
-                          background: '#f3f4f6',
-                          color: '#4b5563',
+                          background: 'var(--bg-muted)',
+                          color: 'var(--text-600)',
                           flexShrink: 0,
                         }}
                       >
@@ -375,7 +375,7 @@ export default function CustomerSearchCombobox({
                       </span>
                     )}
                   </div>
-                  <div style={{ fontSize: '0.8125rem', color: '#6b7280' }}>{formatCustomerSecondaryLine(c)}</div>
+                  <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{formatCustomerSecondaryLine(c)}</div>
                 </button>
               )
             })
@@ -395,7 +395,7 @@ export default function CustomerSearchCombobox({
               style={{
                 ...footerCreateStyle,
                 ...(highlightIndex === optionCount && optionCount >= 0 ?
-                  { background: '#ffedd5' }
+                  { background: 'var(--bg-orange-100)' }
                 : {}),
               }}
             >

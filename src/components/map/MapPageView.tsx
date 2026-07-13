@@ -32,9 +32,11 @@ import {
   fetchMapDefaultViewFromAppSettings,
 } from '../../lib/mapDefaultViewSettings'
 import { mapEntityMatchesSearch } from '../../lib/map/mapEntitySearch'
+import { ALL_BID_STAGES_ON, mapEntityPassesLayerFilter } from '../../lib/map/mapLayerFilter'
+import type { SubmissionSectionKey } from '../../lib/bids/submissionSections'
 
 const openLinkLikeStyle: CSSProperties = {
-  color: '#2563eb',
+  color: 'var(--text-link)',
   background: 'none',
   border: 'none',
   padding: 0,
@@ -47,6 +49,180 @@ const KIND_COLOR: Record<MapPageEntity['kind'], string> = {
   job: '#2563eb',
   bid: '#ea580c',
   estimate: '#16a34a',
+}
+
+const KIND_LABEL: Record<MapPageEntity['kind'], string> = {
+  job: 'Jobs',
+  bid: 'Bids',
+  estimate: 'Estimates',
+}
+
+/** Color key overlaid on the map corner; layers toggled off in the header show dimmed. */
+function MapLegend({ show }: { show: Record<MapPageEntity['kind'], boolean> }) {
+  return (
+    <div
+      style={{
+        position: 'absolute',
+        top: 10,
+        right: 10,
+        zIndex: 1000,
+        pointerEvents: 'none',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '0.3rem',
+        padding: '0.45rem 0.7rem',
+        background: 'var(--surface)',
+        border: '1px solid var(--border)',
+        borderRadius: 8,
+        boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+        fontSize: '0.75rem',
+        fontWeight: 500,
+        lineHeight: 1.2,
+        color: 'var(--text-700)',
+      }}
+    >
+      {(Object.keys(KIND_LABEL) as MapPageEntity['kind'][]).map((kind) => (
+        <div
+          key={kind}
+          style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', opacity: show[kind] ? 1 : 0.35 }}
+        >
+          <span
+            aria-hidden="true"
+            style={{
+              width: 10,
+              height: 10,
+              borderRadius: '50%',
+              boxSizing: 'border-box',
+              background: KIND_COLOR[kind],
+              opacity: 0.85,
+            }}
+          />
+          {KIND_LABEL[kind]}
+        </div>
+      ))}
+    </div>
+  )
+}
+
+const KIND_PILL_ACTIVE: Record<MapPageEntity['kind'], { bg: string; text: string }> = {
+  job: { bg: 'var(--bg-blue-tint)', text: 'var(--text-blue-700)' },
+  bid: { bg: 'var(--bg-orange-tint)', text: 'var(--text-orange-700)' },
+  estimate: { bg: 'var(--bg-green-tint)', text: 'var(--text-green-600)' },
+}
+
+/** Header toggle for one map layer; the dot matches that kind's marker color. */
+function LayerPill({
+  kind,
+  label,
+  active,
+  onToggle,
+}: {
+  kind: MapPageEntity['kind']
+  label: string
+  active: boolean
+  onToggle: () => void
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-pressed={active}
+      title={active ? `Hide ${label.toLowerCase()}` : `Show ${label.toLowerCase()}`}
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: '0.4rem',
+        padding: '0.3rem 0.8rem',
+        borderRadius: 999,
+        border: `1px solid ${active ? KIND_COLOR[kind] : 'var(--border)'}`,
+        background: active ? KIND_PILL_ACTIVE[kind].bg : 'transparent',
+        color: active ? KIND_PILL_ACTIVE[kind].text : 'var(--text-muted)',
+        fontSize: '0.8125rem',
+        fontWeight: 600,
+        lineHeight: 1.2,
+        cursor: 'pointer',
+        transition: 'background 120ms ease, border-color 120ms ease, color 120ms ease',
+      }}
+    >
+      <span
+        aria-hidden="true"
+        style={{
+          width: 8,
+          height: 8,
+          borderRadius: '50%',
+          background: active ? KIND_COLOR[kind] : 'var(--text-faint-300)',
+          transition: 'background 120ms ease',
+        }}
+      />
+      {label}
+    </button>
+  )
+}
+
+/** Bid stage sub-filters; keys and meanings match the Bid Board sections (submissionSections kernel). */
+const BID_STAGE_META: { key: SubmissionSectionKey; label: string; title: string }[] = [
+  { key: 'unsent', label: 'Unsent', title: 'Unsent / Working Bids' },
+  { key: 'pending', label: 'Pending', title: 'Not yet won or lost' },
+  { key: 'won', label: 'Won', title: 'Won' },
+  { key: 'startedOrComplete', label: 'Started', title: 'Started or Complete' },
+  { key: 'lost', label: 'Lost', title: 'Lost' },
+]
+
+const BID_STAGE_TITLE: Record<SubmissionSectionKey, string> = Object.fromEntries(
+  BID_STAGE_META.map((m) => [m.key, m.title])
+) as Record<SubmissionSectionKey, string>
+
+/** Compact toggle for one bid stage; shown only while the Bids layer is on. */
+function BidStageChip({
+  label,
+  title,
+  active,
+  onToggle,
+}: {
+  label: string
+  title: string
+  active: boolean
+  onToggle: () => void
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-pressed={active}
+      title={title}
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        padding: '0.2rem 0.6rem',
+        borderRadius: 999,
+        border: `1px solid ${active ? KIND_COLOR.bid : 'var(--border)'}`,
+        background: active ? KIND_PILL_ACTIVE.bid.bg : 'transparent',
+        color: active ? KIND_PILL_ACTIVE.bid.text : 'var(--text-muted)',
+        fontSize: '0.75rem',
+        fontWeight: 500,
+        lineHeight: 1.2,
+        cursor: 'pointer',
+        transition: 'background 120ms ease, border-color 120ms ease, color 120ms ease',
+      }}
+    >
+      {label}
+    </button>
+  )
+}
+
+const headerToolbarButtonStyle: CSSProperties = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  gap: '0.4rem',
+  padding: '0.3rem 0.8rem',
+  borderRadius: 8,
+  border: '1px solid var(--border-strong)',
+  background: 'var(--surface)',
+  color: 'var(--text-700)',
+  fontSize: '0.8125rem',
+  fontWeight: 500,
+  lineHeight: 1.2,
+  cursor: 'pointer',
 }
 
 function FitBoundsToEntities({ points }: { points: [number, number][] }) {
@@ -178,7 +354,7 @@ function GeocodeProgressList({
         open={anyActive}
         style={{
           fontSize: '0.875rem',
-          color: '#374151',
+          color: 'var(--text-700)',
           margin: 0,
           minWidth: 'min(18rem, 100%)',
         }}
@@ -196,7 +372,11 @@ function GeocodeProgressList({
         >
         {rows.map((r) => {
           const icon = r.status === 'ok' ? '✓' : r.status === 'error' ? '✗' : r.status === 'in_progress' ? '…' : '·'
-          const hasEntity = entities.some((e) => e.addressKey === r.address_normalized)
+          const matched = entities.filter((e) => e.addressKey === r.address_normalized)
+          const hasEntity = matched.length > 0
+          // Job/bid/estimate numbers for this address; several entities can share one address.
+          const ids = [...new Set(matched.map((e) => e.sublabel.trim()).filter((s) => s.length > 0))]
+          const idPrefix = ids.slice(0, 3).join(', ') + (ids.length > 3 ? ` +${ids.length - 3} more` : '')
           return (
             <li
               key={r.address_normalized}
@@ -205,6 +385,9 @@ function GeocodeProgressList({
               <span aria-hidden="true" style={{ width: '0.9rem' }}>
                 {icon}
               </span>
+              {idPrefix.length > 0 ? (
+                <span style={{ fontWeight: 600, whiteSpace: 'nowrap' }}>{idPrefix}</span>
+              ) : null}
               <span style={{ minWidth: 0, wordBreak: 'break-word' }}>{r.addressLabel}</span>
               {hasEntity ? (
                 <button
@@ -216,7 +399,7 @@ function GeocodeProgressList({
                   Open
                 </button>
               ) : null}
-              {r.errorMessage ? <span style={{ color: '#b91c1c' }}>{r.errorMessage}</span> : null}
+              {r.errorMessage ? <span style={{ color: 'var(--text-red-700)' }}>{r.errorMessage}</span> : null}
             </li>
           )
         })}
@@ -272,7 +455,7 @@ function MapEntityTable({
       </div>
       <div
         style={{
-          border: '1px solid #e5e7eb',
+          border: '1px solid var(--border)',
           borderRadius: 4,
           maxHeight: 'min(50vh, 360px)',
           overflow: 'auto',
@@ -286,7 +469,7 @@ function MapEntityTable({
           }}
         >
           <thead>
-            <tr style={{ background: '#f9fafb' }}>
+            <tr style={{ background: 'var(--bg-subtle)' }}>
               <th style={{ textAlign: 'left', padding: '0.35rem 0.5rem' }}>Kind</th>
               <th style={{ textAlign: 'left', padding: '0.35rem 0.5rem' }}>Name</th>
               <th style={{ textAlign: 'left', padding: '0.35rem 0.5rem' }}>Address</th>
@@ -297,16 +480,16 @@ function MapEntityTable({
           <tbody>
             {rows.length === 0 ? (
               <tr>
-                <td colSpan={5} style={{ padding: '0.75rem', color: '#6b7280' }}>
+                <td colSpan={5} style={{ padding: '0.75rem', color: 'var(--text-muted)' }}>
                   {emptyHint}
                 </td>
               </tr>
             ) : (
               rows.map((r) => (
-                <tr key={`${r.kind}-${r.id}`} style={{ borderTop: '1px solid #e5e7eb' }}>
+                <tr key={`${r.kind}-${r.id}`} style={{ borderTop: '1px solid var(--border)' }}>
                   <td style={{ padding: '0.35rem 0.5rem', textTransform: 'capitalize' }}>{r.kind}</td>
                   <td style={{ padding: '0.35rem 0.5rem' }}>{r.tableLabel}</td>
-                  <td style={{ padding: '0.35rem 0.5rem', color: '#374151' }}>{r.addressLabel}</td>
+                  <td style={{ padding: '0.35rem 0.5rem', color: 'var(--text-700)' }}>{r.addressLabel}</td>
                   <td style={{ padding: '0.35rem 0.5rem' }}>{r.meta || '—'}</td>
                   <td style={{ padding: '0.35rem 0.5rem' }}>
                     {r.kind === 'job' && onOpenJob ? (
@@ -314,7 +497,7 @@ function MapEntityTable({
                         Open
                       </button>
                     ) : (
-                      <Link to={r.linkTo} style={{ color: '#2563eb' }}>
+                      <Link to={r.linkTo} style={{ color: 'var(--text-link)' }}>
                         Open
                       </Link>
                     )}
@@ -374,6 +557,7 @@ export function MapPageView() {
   const [showJobs, setShowJobs] = useState(true)
   const [showBids, setShowBids] = useState(true)
   const [showEst, setShowEst] = useState(true)
+  const [bidStages, setBidStages] = useState<Record<SubmissionSectionKey, boolean>>(ALL_BID_STAGES_ON)
   const [mapSearchQuery, setMapSearchQuery] = useState('')
   const [filterPoly, setFilterPoly] = useState<Feature<Polygon> | null>(null)
   const [clearDraw, setClearDraw] = useState(0)
@@ -415,13 +599,9 @@ export function MapPageView() {
   }, [])
 
   const visible = useMemo(() => {
-    return entities.filter(
-      (e) =>
-        (e.kind === 'job' && showJobs) ||
-        (e.kind === 'bid' && showBids) ||
-        (e.kind === 'estimate' && showEst)
-    )
-  }, [entities, showJobs, showBids, showEst])
+    const f = { showJobs, showBids, showEst, bidStages }
+    return entities.filter((e) => mapEntityPassesLayerFilter(e, f))
+  }, [entities, showJobs, showBids, showEst, bidStages])
 
   const mapSearchTrim = useMemo(() => mapSearchQuery.trim(), [mapSearchQuery])
 
@@ -460,38 +640,62 @@ export function MapPageView() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', padding: '1rem' }}>
-      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-start', gap: '0.75rem' }}>
-        <h1 style={{ margin: 0, fontSize: '1.25rem' }}>Map</h1>
-        <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.875rem' }}>
-          <input type="checkbox" checked={showJobs} onChange={() => setShowJobs((s) => !s)} />
-          Jobs
-        </label>
-        <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.875rem' }}>
-          <input type="checkbox" checked={showBids} onChange={() => setShowBids((s) => !s)} />
-          Bids
-        </label>
-        <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.875rem' }}>
-          <input type="checkbox" checked={showEst} onChange={() => setShowEst((s) => !s)} />
-          Estimates
-        </label>
+      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.5rem', rowGap: '0.6rem' }}>
+        <h1 style={{ margin: 0, marginRight: '0.25rem', fontSize: '1.25rem' }}>Map</h1>
+        <LayerPill kind="job" label="Jobs" active={showJobs} onToggle={() => setShowJobs((s) => !s)} />
+        <LayerPill kind="bid" label="Bids" active={showBids} onToggle={() => setShowBids((s) => !s)} />
+        {showBids ? (
+          <div role="group" aria-label="Bid stages" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
+            {BID_STAGE_META.map((m) => (
+              <BidStageChip
+                key={m.key}
+                label={m.label}
+                title={m.title}
+                active={bidStages[m.key]}
+                onToggle={() => setBidStages((prev) => ({ ...prev, [m.key]: !prev[m.key] }))}
+              />
+            ))}
+          </div>
+        ) : null}
+        <LayerPill kind="estimate" label="Estimates" active={showEst} onToggle={() => setShowEst((s) => !s)} />
         <GeocodeProgressList rows={geocodeAddressRows} entities={entities} onAddressOpen={onGeocodeAddressOpen} />
-        <button
-          type="button"
-          onClick={() => setClearDraw((c) => c + 1)}
-          style={{ padding: '0.25rem 0.5rem', fontSize: '0.875rem', cursor: 'pointer' }}
-        >
-          Clear draw
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            void reload()
-            loadMapDefaultView()
-          }}
-          style={{ padding: '0.25rem 0.5rem', fontSize: '0.875rem', cursor: 'pointer' }}
-        >
-          Reload data
-        </button>
+        <div style={{ display: 'inline-flex', gap: '0.5rem', marginLeft: 'auto' }}>
+          <button
+            type="button"
+            onClick={() => setClearDraw((c) => c + 1)}
+            disabled={!filterPoly}
+            title={filterPoly ? 'Remove the drawn area filter' : 'Draw an area on the map to filter first'}
+            style={{
+              ...headerToolbarButtonStyle,
+              opacity: filterPoly ? 1 : 0.45,
+              cursor: filterPoly ? 'pointer' : 'default',
+            }}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M18 6 6 18M6 6l12 12" />
+            </svg>
+            Clear draw
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              void reload()
+              loadMapDefaultView()
+            }}
+            disabled={loading}
+            style={{
+              ...headerToolbarButtonStyle,
+              opacity: loading ? 0.45 : 1,
+              cursor: loading ? 'default' : 'pointer',
+            }}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M21 12a9 9 0 1 1-2.64-6.36" />
+              <path d="M21 3v5h-5" />
+            </svg>
+            {loading ? 'Reloading…' : 'Reload data'}
+          </button>
+        </div>
       </div>
 
       <MapGeocodeReviewModal
@@ -518,7 +722,7 @@ export function MapPageView() {
         >
           <div
             style={{
-              background: 'white',
+              background: 'var(--surface)',
               padding: '1.25rem',
               borderRadius: 8,
               minWidth: 280,
@@ -531,10 +735,10 @@ export function MapPageView() {
             <h2 id="geocode-chooser-title" style={{ margin: '0 0 0.75rem 0', fontSize: '1.05rem' }}>
               Multiple records at this address
             </h2>
-            <p style={{ margin: '0 0 0.75rem 0', fontSize: '0.875rem', color: '#4b5563' }}>Choose which to open.</p>
+            <p style={{ margin: '0 0 0.75rem 0', fontSize: '0.875rem', color: 'var(--text-600)' }}>Choose which to open.</p>
             <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
               {geocodeChooserMatches.map((e) => (
-                <li key={`${e.kind}-${e.id}`} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                <li key={`${e.kind}-${e.id}`} style={{ borderBottom: '1px solid var(--border)' }}>
                   <button
                     type="button"
                     onClick={() => {
@@ -554,7 +758,7 @@ export function MapPageView() {
                   >
                     <span style={{ textTransform: 'capitalize', fontWeight: 600, marginRight: '0.35rem' }}>{e.kind}</span>
                     <span>{e.tableLabel}</span>
-                    {e.sublabel ? <span style={{ color: '#6b7280' }}>{` ${e.sublabel}`}</span> : null}
+                    {e.sublabel ? <span style={{ color: 'var(--text-muted)' }}>{` ${e.sublabel}`}</span> : null}
                   </button>
                 </li>
               ))}
@@ -571,11 +775,11 @@ export function MapPageView() {
       ) : null}
 
       {!loading && geocodeInProgress ? (
-        <p style={{ margin: 0, fontSize: '0.875rem', color: '#6b7280' }}>Resolving addresses…</p>
+        <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)' }}>Resolving addresses…</p>
       ) : null}
 
-      {error ? <p style={{ color: '#b91c1c', margin: 0 }}>{error}</p> : null}
-      {loading ? <p style={{ margin: 0, color: '#6b7280' }}>Loading…</p> : null}
+      {error ? <p style={{ color: 'var(--text-red-700)', margin: 0 }}>{error}</p> : null}
+      {loading ? <p style={{ margin: 0, color: 'var(--text-muted)' }}>Loading…</p> : null}
 
       <div
         style={{
@@ -587,7 +791,8 @@ export function MapPageView() {
           minWidth: 0,
         }}
       >
-        <div style={{ flex: '0 0 auto', minHeight: 360, minWidth: 0, border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
+        {/* isolation contains Leaflet's internal z-indexes (panes 200-700, controls 1000) so they can't paint over header dropdowns */}
+        <div style={{ position: 'relative', flex: '0 0 auto', minHeight: 360, minWidth: 0, border: '1px solid var(--border)', borderRadius: 4, overflow: 'hidden', isolation: 'isolate' }}>
           <MapContainer
             key={`${mapView.lat}-${mapView.lng}-${mapView.zoom}`}
             center={[mapView.lat, mapView.lng] as L.LatLngExpression}
@@ -611,9 +816,16 @@ export function MapPageView() {
               >
                 <Popup>
                   <div style={{ fontSize: '0.8rem' }}>
-                    <div style={{ fontWeight: 600, textTransform: 'capitalize' }}>{e.kind}</div>
+                    <div style={{ fontWeight: 600, textTransform: 'capitalize' }}>
+                      {e.kind}
+                      {e.kind === 'bid' && e.bidSection ? (
+                        <span style={{ fontWeight: 400, textTransform: 'none', color: 'var(--text-muted)' }}>
+                          {` — ${BID_STAGE_TITLE[e.bidSection]}`}
+                        </span>
+                      ) : null}
+                    </div>
                     <div>{e.tableLabel}</div>
-                    <div style={{ color: '#6b7280' }}>{e.addressLabel}</div>
+                    <div style={{ color: 'var(--text-muted)' }}>{e.addressLabel}</div>
                     {e.kind === 'job' && jobFormModal ? (
                       <button type="button" onClick={() => openJobOnMap(e.id)} style={openLinkLikeStyle}>
                         Open
@@ -626,6 +838,7 @@ export function MapPageView() {
               </CircleMarker>
             ))}
           </MapContainer>
+          <MapLegend show={{ job: showJobs, bid: showBids, estimate: showEst }} />
         </div>
         <div style={{ flex: '1 1 auto', minWidth: 0, width: '100%' }}>
           <MapEntityTable
@@ -633,7 +846,7 @@ export function MapPageView() {
             title={tableTitle}
             titleRight={
               <>
-                <label htmlFor="map-page-search" style={{ fontSize: '0.875rem', color: '#374151' }}>
+                <label htmlFor="map-page-search" style={{ fontSize: '0.875rem', color: 'var(--text-700)' }}>
                   Filter
                 </label>
                 <input
@@ -651,7 +864,7 @@ export function MapPageView() {
                     maxWidth: '100%',
                     padding: '0.35rem 0.5rem',
                     fontSize: '0.875rem',
-                    border: '1px solid #d1d5db',
+                    border: '1px solid var(--border-strong)',
                     borderRadius: 4,
                   }}
                 />
@@ -687,8 +900,8 @@ export function MapPageView() {
             cursor: 'pointer',
             fontSize: '0.875rem',
             padding: '0.35rem 0.6rem',
-            background: '#f3f4f6',
-            border: '1px solid #d1d5db',
+            background: 'var(--bg-muted)',
+            border: '1px solid var(--border-strong)',
             borderRadius: 4,
             listStyle: 'none',
             userSelect: 'none',
@@ -701,8 +914,8 @@ export function MapPageView() {
           style={{
             marginTop: 6,
             padding: '0.5rem',
-            background: 'white',
-            border: '1px solid #d1d5db',
+            background: 'var(--surface)',
+            border: '1px solid var(--border-strong)',
             borderRadius: 4,
             boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
           }}

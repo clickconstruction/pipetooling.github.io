@@ -881,8 +881,8 @@ export function HoursUnassignedModal({
   if (loading) {
     return (
       <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1001 }}>
-        <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 400 }}>
-          <p style={{ color: '#6b7280' }}>Loading…</p>
+        <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 400 }}>
+          <p style={{ color: 'var(--text-muted)' }}>Loading…</p>
         </div>
       </div>
     )
@@ -890,9 +890,9 @@ export function HoursUnassignedModal({
 
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1001 }}>
-      <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 400, maxWidth: '90%', maxHeight: '90vh', overflow: 'auto' }}>
+      <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 400, maxWidth: '90%', maxHeight: '90vh', overflow: 'auto' }}>
         <h3 style={{ margin: '0 0 1rem 0', fontSize: '1.125rem' }}>Assign {personName} to jobs or bids</h3>
-        <p style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '1rem' }}>
+        <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>
           {personName} has hours on Correct days but no assignments. Add jobs or bids for each day.
         </p>
         {unassignedDays.length === 0 ? (
@@ -904,7 +904,7 @@ export function HoursUnassignedModal({
               <select
                 value={effectiveSelectedDay}
                 onChange={(e) => setSelectedDay(e.target.value)}
-                style={{ padding: '0.5rem 0.75rem', minWidth: 180, border: '1px solid #d1d5db', borderRadius: 4 }}
+                style={{ padding: '0.5rem 0.75rem', minWidth: 180, border: '1px solid var(--border-strong)', borderRadius: 4 }}
               >
                 {unassignedDays.map((d) => (
                   <option key={d} value={d}>
@@ -917,31 +917,31 @@ export function HoursUnassignedModal({
               <div
                 style={{
                   marginBottom: '1rem',
-                  border: '1px solid #e5e7eb',
+                  border: '1px solid var(--border)',
                   borderRadius: 8,
                   padding: '0.75rem',
-                  background: '#f9fafb',
+                  background: 'var(--bg-subtle)',
                 }}
               >
-                <div style={{ fontSize: '0.875rem', fontWeight: 500, marginBottom: '0.5rem', color: '#111827' }}>
+                <div style={{ fontSize: '0.875rem', fontWeight: 500, marginBottom: '0.5rem', color: 'var(--text-strong)' }}>
                   Clock sessions this day
                 </div>
                 {sessionsUserMissing && (
-                  <p style={{ fontSize: '0.8125rem', color: '#6b7280', margin: 0 }}>
+                  <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', margin: 0 }}>
                     No login account linked to this name in Users — clock sessions cannot be shown.
                   </p>
                 )}
                 {sessionsFetchError && (
-                  <p style={{ fontSize: '0.8125rem', color: '#b91c1c', margin: 0 }}>{sessionsFetchError}</p>
+                  <p style={{ fontSize: '0.8125rem', color: 'var(--text-red-700)', margin: 0 }}>{sessionsFetchError}</p>
                 )}
                 {sessionsLoading && (
-                  <p style={{ fontSize: '0.875rem', color: '#6b7280', margin: 0 }}>Loading sessions…</p>
+                  <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', margin: 0 }}>Loading sessions…</p>
                 )}
                 {!sessionsLoading &&
                   !sessionsUserMissing &&
                   !sessionsFetchError &&
                   daySessions.length === 0 && (
-                    <p style={{ fontSize: '0.875rem', color: '#6b7280', margin: 0 }}>No clock sessions for this day.</p>
+                    <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', margin: 0 }}>No clock sessions for this day.</p>
                   )}
                 {!sessionsLoading && daySessions.length > 0 && (
                   <div
@@ -978,29 +978,29 @@ export function HoursUnassignedModal({
                           style={{
                             fontSize: '0.8125rem',
                             padding: '0.45rem 0.5rem',
-                            background: 'white',
-                            border: '1px solid #e5e7eb',
+                            background: 'var(--surface)',
+                            border: '1px solid var(--border)',
                             borderRadius: 6,
                             fontVariantNumeric: 'tabular-nums',
                           }}
                         >
                           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', alignItems: 'baseline', marginBottom: notesRaw ? '0.25rem' : 0 }}>
-                            <span style={{ color: '#374151' }}>
+                            <span style={{ color: 'var(--text-700)' }}>
                               {tIn.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}
                               {' → '}
                               {tOut
                                 ? tOut.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })
                                 : 'Open'}
                             </span>
-                            <span style={{ color: '#6b7280' }}>({formatHmsTotal(durSec)})</span>
+                            <span style={{ color: 'var(--text-muted)' }}>({formatHmsTotal(durSec)})</span>
                             {linkLabel && (
-                              <span style={{ color: '#1d4ed8', fontWeight: 500 }} title={linkLabel}>
+                              <span style={{ color: 'var(--text-blue-700)', fontWeight: 500 }} title={linkLabel}>
                                 {linkLabel}
                               </span>
                             )}
                           </div>
                           {notesRaw ? (
-                            <div style={{ color: '#4b5563' }} title={notesRaw}>
+                            <div style={{ color: 'var(--text-600)' }} title={notesRaw}>
                               {notesDisplay || '—'}
                             </div>
                           ) : null}
@@ -1017,16 +1017,16 @@ export function HoursUnassignedModal({
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
                     <label style={{ fontSize: '0.875rem' }}>Common Jobs</label>
                         {canEditCrewJobs && !commonJobsEditMode && (
-                          <button type="button" onClick={() => setCommonJobsEditMode(true)} style={{ padding: 0, border: 'none', background: 'none', cursor: 'pointer', fontSize: '0.8125rem', color: '#6b7280' }}>Edit</button>
+                          <button type="button" onClick={() => setCommonJobsEditMode(true)} style={{ padding: 0, border: 'none', background: 'none', cursor: 'pointer', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>Edit</button>
                         )}
                         {canEditCrewJobs && commonJobsEditMode && (
-                          <button type="button" onClick={() => setCommonJobsEditMode(false)} style={{ padding: 0, border: 'none', background: 'none', cursor: 'pointer', fontSize: '0.8125rem', color: '#6b7280' }}>Done</button>
+                          <button type="button" onClick={() => setCommonJobsEditMode(false)} style={{ padding: 0, border: 'none', background: 'none', cursor: 'pointer', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>Done</button>
                         )}
                       </div>
                       {!commonJobsEditMode ? (
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem' }}>
                           {commonJobs.length === 0 ? (
-                            <span style={{ fontSize: '0.875rem', color: '#6b7280' }}>No common jobs</span>
+                            <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>No common jobs</span>
                           ) : (
                             commonJobs.map((j) => {
                               const disabled = draftRow.unifiedAssignments.some((a) => a.type === 'job' && a.id === j.job_id)
@@ -1045,7 +1045,7 @@ export function HoursUnassignedModal({
                                       service_type_id: j.service_type_id ?? null,
                                     })
                                   }
-                                  style={{ padding: '0.25rem 0.5rem', fontSize: '0.8125rem', background: disabled ? '#f9fafb' : '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? 0.6 : 1 }}
+                                  style={{ padding: '0.25rem 0.5rem', fontSize: '0.8125rem', background: disabled ? 'var(--bg-subtle)' : 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? 0.6 : 1 }}
                                 >
                                   {formatJobLedgerShortLine(prefixMap, j.service_type_id ?? null, j.hcp_number, j.job_name, j.click_number)}
                                 </button>
@@ -1056,11 +1056,11 @@ export function HoursUnassignedModal({
                       ) : (
                         <div style={{ marginBottom: '0.5rem' }}>
                           {commonJobs.length === 0 ? (
-                            <span style={{ fontSize: '0.875rem', color: '#6b7280' }}>Add jobs to get started</span>
+                            <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>Add jobs to get started</span>
                           ) : (
                             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', marginBottom: '0.5rem' }}>
                               {commonJobs.map((j) => (
-                                <span key={j.id} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', padding: '0.2rem 0.4rem', background: '#f3f4f6', borderRadius: 4, fontSize: '0.8125rem' }}>
+                                <span key={j.id} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', padding: '0.2rem 0.4rem', background: 'var(--bg-muted)', borderRadius: 4, fontSize: '0.8125rem' }}>
                                   <span>{formatJobLedgerShortLine(prefixMap, j.service_type_id ?? null, j.hcp_number, j.job_name, j.click_number)}</span>
                                   <button
                                     type="button"
@@ -1074,7 +1074,7 @@ export function HoursUnassignedModal({
                                       )
                                       setCommonJobs((prev) => prev.filter((x) => x.id !== j.id))
                                     }}
-                                    style={{ padding: '0.1rem 0.25rem', border: 'none', background: 'none', cursor: 'pointer', color: '#6b7280', fontSize: '0.875rem', lineHeight: 1 }}
+                                    style={{ padding: '0.1rem 0.25rem', border: 'none', background: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontSize: '0.875rem', lineHeight: 1 }}
                                     title="Remove from common jobs"
                                   >
                                     ×
@@ -1084,13 +1084,13 @@ export function HoursUnassignedModal({
                             </div>
                           )}
                           {commonJobsError && (
-                            <div style={{ fontSize: '0.8125rem', color: '#dc2626', marginBottom: '0.5rem' }}>{commonJobsError}</div>
+                            <div style={{ fontSize: '0.8125rem', color: 'var(--text-red-600)', marginBottom: '0.5rem' }}>{commonJobsError}</div>
                           )}
                           {!commonJobsSearchOpen ? (
                             <button
                               type="button"
                               onClick={() => { setCommonJobsSearchOpen(true); setCommonJobsSearchText(''); setCommonJobsSearchResults([]); setCommonJobsError(null) }}
-                              style={{ padding: '0.2rem 0.5rem', border: '1px dashed #d1d5db', borderRadius: 4, background: '#fff', cursor: 'pointer', fontSize: '0.875rem' }}
+                              style={{ padding: '0.2rem 0.5rem', border: '1px dashed var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: 'pointer', fontSize: '0.875rem' }}
                             >
                               Add job
                             </button>
@@ -1102,7 +1102,7 @@ export function HoursUnassignedModal({
                                 value={commonJobsSearchText}
                                 onChange={(e) => setCommonJobsSearchText(e.target.value)}
                                 autoFocus
-                                style={{ width: '100%', padding: '0.5rem 0.75rem', marginBottom: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                                style={{ width: '100%', padding: '0.5rem 0.75rem', marginBottom: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
                               />
                               <div style={{ maxHeight: 200, overflow: 'auto', marginBottom: '0.5rem' }}>
                                 {commonJobsSearchResults.map((j) => (
@@ -1143,12 +1143,12 @@ export function HoursUnassignedModal({
                                       setCommonJobsSearchText('')
                                       setCommonJobsSearchResults([])
                                     }}
-                                    style={{ display: 'block', width: '100%', padding: '0.5rem', textAlign: 'left', border: 'none', borderBottom: '1px solid #e5e7eb', background: 'none', cursor: 'pointer', fontSize: '0.875rem' }}
+                                    style={{ display: 'block', width: '100%', padding: '0.5rem', textAlign: 'left', border: 'none', borderBottom: '1px solid var(--border)', background: 'none', cursor: 'pointer', fontSize: '0.875rem' }}
                                   >
                                     <div style={{ fontWeight: 500 }}>
                                       {formatJobLedgerShortLine(prefixMap, j.service_type_id ?? null, j.hcp_number, j.job_name, j.click_number)}
                                     </div>
-                                    {j.job_address && <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: 2 }}>{j.job_address}</div>}
+                                    {j.job_address && <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 2 }}>{j.job_address}</div>}
                                   </button>
                                 ))}
                               </div>
@@ -1162,13 +1162,13 @@ export function HoursUnassignedModal({
                     </div>
                     <div style={{ marginBottom: '1rem' }}>
                       <label style={{ fontSize: '0.875rem', display: 'block', marginBottom: '0.35rem' }}>Recent jobs & bids</label>
-                      <p style={{ fontSize: '0.75rem', color: '#6b7280', margin: '0 0 0.35rem 0' }}>From past clock sessions and crew assignments for this person (dates in this Hours range).</p>
+                      <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: '0 0 0.35rem 0' }}>From past clock sessions and crew assignments for this person (dates in this Hours range).</p>
                       {recentQuickPicksLoading ? (
-                        <span style={{ fontSize: '0.875rem', color: '#6b7280' }}>Loading…</span>
+                        <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>Loading…</span>
                       ) : recentQuickPicksError ? (
-                        <span style={{ fontSize: '0.8125rem', color: '#dc2626' }}>{recentQuickPicksError}</span>
+                        <span style={{ fontSize: '0.8125rem', color: 'var(--text-red-600)' }}>{recentQuickPicksError}</span>
                       ) : recentQuickPicks.length === 0 ? (
-                        <span style={{ fontSize: '0.875rem', color: '#6b7280' }}>No recent linked jobs or bids</span>
+                        <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>No recent linked jobs or bids</span>
                       ) : (
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem' }}>
                           {recentQuickPicks.map((item) => {
@@ -1200,7 +1200,7 @@ export function HoursUnassignedModal({
                                         },
                                   )
                                 }
-                                style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', padding: '0.25rem 0.5rem', fontSize: '0.8125rem', background: disabled ? '#f9fafb' : '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? 0.6 : 1 }}
+                                style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', padding: '0.25rem 0.5rem', fontSize: '0.8125rem', background: disabled ? 'var(--bg-subtle)' : 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? 0.6 : 1 }}
                               >
                                 {serviceTag ? (
                                   <span style={{ padding: '0.1rem 0.35rem', fontSize: '0.6875rem', fontWeight: 500, background: serviceTag.color, color: '#fff', borderRadius: 4 }}>
@@ -1238,7 +1238,7 @@ export function HoursUnassignedModal({
                           const details = a.type === 'job' ? crewJobDetailsMap[a.id] : crewBidDetailsMap[a.id]
                           const label = formatAssignmentLabel(a.type, details, prefixMap) || a.id.slice(0, 8)
                           return (
-                            <span key={getAssignmentKey(a)} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', padding: '0.2rem 0.4rem', background: '#f3f4f6', borderRadius: 4, fontSize: '0.8125rem' }}>
+                            <span key={getAssignmentKey(a)} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', padding: '0.2rem 0.4rem', background: 'var(--bg-muted)', borderRadius: 4, fontSize: '0.8125rem' }}>
                               <span>{label}</span>
                               <input
                                 type="number"
@@ -1262,7 +1262,7 @@ export function HoursUnassignedModal({
                                   }
                                   setDraft({ ...draftRow, unifiedAssignments: newAssignments })
                                 }}
-                                style={{ width: 44, padding: '0.15rem', fontSize: '0.875rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                                style={{ width: 44, padding: '0.15rem', fontSize: '0.875rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
                               />
                               %
                               <button
@@ -1281,7 +1281,7 @@ export function HoursUnassignedModal({
                                   }))
                                   setDraft({ ...draftRow, unifiedAssignments: newAssignments })
                                 }}
-                                style={{ padding: '0.1rem 0.25rem', border: 'none', background: 'none', cursor: 'pointer', color: '#6b7280', fontSize: '0.875rem', lineHeight: 1 }}
+                                style={{ padding: '0.1rem 0.25rem', border: 'none', background: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontSize: '0.875rem', lineHeight: 1 }}
                                 title="Remove"
                               >
                                 ×
@@ -1293,7 +1293,7 @@ export function HoursUnassignedModal({
                           <button
                             type="button"
                             onClick={() => { setJobSearchOpen(true); setJobSearchText(''); setJobSearchResults([]) }}
-                            style={{ padding: '0.2rem 0.5rem', border: '1px dashed #d1d5db', borderRadius: 4, background: '#fff', cursor: 'pointer', fontSize: '0.875rem' }}
+                            style={{ padding: '0.2rem 0.5rem', border: '1px dashed var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: 'pointer', fontSize: '0.875rem' }}
                           >
                             +
                           </button>
@@ -1305,7 +1305,7 @@ export function HoursUnassignedModal({
                               value={jobSearchText}
                               onChange={(e) => setJobSearchText(e.target.value)}
                               autoFocus
-                              style={{ width: '100%', padding: '0.5rem 0.75rem', marginBottom: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                              style={{ width: '100%', padding: '0.5rem 0.75rem', marginBottom: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
                             />
                             <div style={{ maxHeight: 200, overflow: 'auto', marginBottom: '0.5rem' }}>
                               {jobSearchResults.map((item) => (
@@ -1336,7 +1336,7 @@ export function HoursUnassignedModal({
                                     setJobSearchText('')
                                     setJobSearchResults([])
                                   }}
-                                  style={{ display: 'block', width: '100%', padding: '0.5rem', textAlign: 'left', border: 'none', borderBottom: '1px solid #e5e7eb', background: 'none', cursor: 'pointer', fontSize: '0.875rem' }}
+                                  style={{ display: 'block', width: '100%', padding: '0.5rem', textAlign: 'left', border: 'none', borderBottom: '1px solid var(--border)', background: 'none', cursor: 'pointer', fontSize: '0.875rem' }}
                                 >
                                   <div style={{ fontWeight: 500, display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
                                     {item.type === 'bid' && (() => {
@@ -1363,7 +1363,7 @@ export function HoursUnassignedModal({
                                         )}
                                   </div>
                                   {(item.type === 'job' ? item.job_address : item.address) && (
-                                    <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: 2 }}>
+                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 2 }}>
                                       {item.type === 'job' ? item.job_address : item.address}
                                     </div>
                                   )}
@@ -1381,7 +1381,7 @@ export function HoursUnassignedModal({
             )}
           </>
         )}
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid #e5e7eb' }}>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--border)' }}>
           {unassignedDays.length > 0 && effectiveSelectedDay && (
             <button
               type="button"
@@ -1403,7 +1403,7 @@ export function HoursUnassignedModal({
               setCommonJobsSearchResults([])
               onClose()
             }}
-            style={{ padding: '0.5rem 1rem', border: '1px solid #d1d5db', borderRadius: 4, background: 'white', cursor: 'pointer', fontSize: '0.875rem' }}
+            style={{ padding: '0.5rem 1rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: 'pointer', fontSize: '0.875rem' }}
           >
             Close
           </button>

@@ -271,7 +271,7 @@ export function BankingMercuryUserReviewLedgerModal({
         aria-labelledby={titleId}
         onMouseDown={(e) => e.stopPropagation()}
         style={{
-          background: 'white',
+          background: 'var(--surface)',
           borderRadius: 8,
           maxWidth: 980,
           width: '100%',
@@ -280,7 +280,7 @@ export function BankingMercuryUserReviewLedgerModal({
           flexDirection: 'column',
           padding: '1.25rem',
           boxShadow: '0 20px 40px rgba(0,0,0,0.12)',
-          border: '1px solid #e5e7eb',
+          border: '1px solid var(--border)',
           boxSizing: 'border-box',
         }}
       >
@@ -297,11 +297,11 @@ export function BankingMercuryUserReviewLedgerModal({
           <div>
             <h2
               id={titleId}
-              style={{ margin: 0, fontSize: '1.125rem', fontWeight: 600, color: '#111827' }}
+              style={{ margin: 0, fontSize: '1.125rem', fontWeight: 600, color: 'var(--text-strong)' }}
             >
-              {rowName} <span style={{ color: '#6b7280', fontWeight: 400 }}>·</span> {columnName}
+              {rowName} <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>·</span> {columnName}
             </h2>
-            <div style={{ marginTop: '0.25rem', fontSize: '0.8125rem', color: '#6b7280' }}>
+            <div style={{ marginTop: '0.25rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
               {rows.length.toLocaleString()} transaction{rows.length === 1 ? '' : 's'}
               {' · '}
               <span style={{ color: amountColor(totalAmount), fontWeight: 500 }}>
@@ -315,11 +315,11 @@ export function BankingMercuryUserReviewLedgerModal({
             style={{
               padding: '0.35rem 0.65rem',
               borderRadius: 6,
-              border: '1px solid #d1d5db',
-              background: '#fff',
+              border: '1px solid var(--border-strong)',
+              background: 'var(--surface)',
               fontSize: '0.875rem',
               fontWeight: 500,
-              color: '#374151',
+              color: 'var(--text-700)',
               cursor: 'pointer',
               flexShrink: 0,
             }}
@@ -329,7 +329,7 @@ export function BankingMercuryUserReviewLedgerModal({
         </div>
 
         <div style={{ marginBottom: '0.65rem', flexShrink: 0 }}>
-          <label htmlFor={searchInputId} style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.75rem', fontWeight: 500, color: '#374151' }}>
+          <label htmlFor={searchInputId} style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.75rem', fontWeight: 500, color: 'var(--text-700)' }}>
             Search transactions
           </label>
           <input
@@ -342,14 +342,14 @@ export function BankingMercuryUserReviewLedgerModal({
               width: '100%',
               padding: '0.45rem 0.65rem',
               borderRadius: 6,
-              border: '1px solid #d1d5db',
+              border: '1px solid var(--border-strong)',
               fontSize: '0.875rem',
-              color: '#111827',
+              color: 'var(--text-strong)',
               boxSizing: 'border-box',
             }}
           />
           {query.trim() !== '' ? (
-            <div style={{ marginTop: '0.35rem', fontSize: '0.75rem', color: '#6b7280' }}>
+            <div style={{ marginTop: '0.35rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
               Filtered: {filteredRows.length.toLocaleString()} of {rows.length.toLocaleString()}
               {' · '}
               <span style={{ color: amountColor(filteredTotalAmount), fontWeight: 500 }}>
@@ -368,13 +368,13 @@ export function BankingMercuryUserReviewLedgerModal({
             flexWrap: 'wrap',
             marginBottom: '0.65rem',
             padding: '0.5rem 0.65rem',
-            background: '#f9fafb',
-            border: '1px solid #e5e7eb',
+            background: 'var(--bg-subtle)',
+            border: '1px solid var(--border)',
             borderRadius: 6,
             flexShrink: 0,
           }}
         >
-          <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#374151' }}>
+          <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-700)' }}>
             Assign all shown
           </span>
           <div style={{ minWidth: 220, flex: '0 1 280px' }}>
@@ -412,9 +412,9 @@ export function BankingMercuryUserReviewLedgerModal({
             style={{
               padding: '0.4rem 0.5rem',
               borderRadius: 6,
-              border: '1px solid #d1d5db',
-              background: '#fff',
-              color: '#b91c1c',
+              border: '1px solid var(--border-strong)',
+              background: 'var(--surface)',
+              color: 'var(--text-red-700)',
               fontSize: '0.75rem',
               fontWeight: 500,
               cursor: bulkBusy || filteredRows.length === 0 ? 'default' : 'pointer',
@@ -429,12 +429,12 @@ export function BankingMercuryUserReviewLedgerModal({
             flex: 1,
             minHeight: 0,
             overflowY: 'auto',
-            border: '1px solid #e5e7eb',
+            border: '1px solid var(--border)',
             borderRadius: 6,
           }}
         >
           {filteredRows.length === 0 ? (
-            <div style={{ padding: '1.5rem', textAlign: 'center', color: '#6b7280', fontSize: '0.875rem' }}>
+            <div style={{ padding: '1.5rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.875rem' }}>
               {rows.length === 0 ? 'No transactions in this cell.' : 'No transactions match this search.'}
             </div>
           ) : (
@@ -449,9 +449,9 @@ export function BankingMercuryUserReviewLedgerModal({
                 style={{
                   position: 'sticky',
                   top: 0,
-                  background: '#f9fafb',
+                  background: 'var(--bg-subtle)',
                   zIndex: 1,
-                  borderBottom: '1px solid #e5e7eb',
+                  borderBottom: '1px solid var(--border)',
                 }}
               >
                 <tr>
@@ -484,7 +484,7 @@ export function BankingMercuryUserReviewLedgerModal({
                             title="View transaction detail"
                             style={{
                               fontWeight: 500,
-                              color: '#1d4ed8',
+                              color: 'var(--text-blue-700)',
                               background: 'none',
                               border: 'none',
                               padding: 0,
@@ -497,18 +497,18 @@ export function BankingMercuryUserReviewLedgerModal({
                             {r.counterparty_name?.trim() ?? '—'}
                           </button>
                         ) : (
-                          <div style={{ fontWeight: 500, color: '#111827' }}>
+                          <div style={{ fontWeight: 500, color: 'var(--text-strong)' }}>
                             {r.counterparty_name?.trim() ?? '—'}
                           </div>
                         )}
-                        <div style={{ fontSize: '0.7rem', color: '#9ca3af', marginTop: '0.125rem' }}>
+                        <div style={{ fontSize: '0.7rem', color: 'var(--text-faint)', marginTop: '0.125rem' }}>
                           {kind} · {idDisplay}
                         </div>
                         {bankDescription ? (
                           <div
                             style={{
                               fontSize: '0.7rem',
-                              color: '#6b7280',
+                              color: 'var(--text-muted)',
                               marginTop: '0.125rem',
                               whiteSpace: 'normal',
                               wordBreak: 'break-word',
@@ -542,7 +542,7 @@ export function BankingMercuryUserReviewLedgerModal({
                           disabled={saving || bulkBusy}
                         />
                         {saving ? (
-                          <div style={{ fontSize: '0.7rem', color: '#6b7280', marginTop: '0.2rem' }}>
+                          <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>
                             Saving…
                           </div>
                         ) : null}
@@ -564,7 +564,7 @@ const cellHeaderStyle = {
   textAlign: 'left',
   fontWeight: 600,
   fontSize: '0.75rem',
-  color: '#374151',
+  color: 'var(--text-700)',
   textTransform: 'uppercase',
   letterSpacing: '0.04em',
 } as const

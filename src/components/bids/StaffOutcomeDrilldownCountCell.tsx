@@ -32,7 +32,7 @@ export function StaffOutcomeDrilldownCountCell({
           margin: 0,
           border: 'none',
           background: 'none',
-          color: '#3b82f6',
+          color: 'var(--text-blue-500)',
           cursor: 'pointer',
           font: 'inherit',
           textDecoration: 'underline',

@@ -1,0 +1,45 @@
+name: Migration drift
+
+# CI deploys only the client; DB migrations are applied manually with `supabase db push`.
+# This job fails loudly when the remote migration ledger and supabase/migrations/ disagree
+# (renumbered versions, orphans applied from unmerged branches, duplicate version numbers) —
+# the drift class that blocked db push until the 2026-07-04 reconciliation.
+#
+# Push runs treat not-yet-applied migrations as a warning (the merge lands moments before the
+# manual db push); the daily cron runs strict, so a migration merged but never pushed goes red.
+#
+# Requires the SUPABASE_ACCESS_TOKEN repo secret (personal access token from
+# https://supabase.com/dashboard/account/tokens) — shared with edge-function-drift.yml.
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'supabase/migrations/**'
+      - 'scripts/check-migration-drift.mjs'
+      - '.github/workflows/migration-drift.yml'
+  schedule:
+    # Daily at 15:10 UTC (~9-10am Chicago), just after the edge-function drift check.
+    - cron: '10 15 * * *'
+  workflow_dispatch:
+
+jobs:
+  drift:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      # No `supabase link` needed: with SUPABASE_ACCESS_TOKEN set, the script queries the
+      # migration ledger via the Management API instead of a direct DB connection.
+      - name: Check migration drift
+        run: node scripts/check-migration-drift.mjs
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          STRICT_PENDING: ${{ github.event_name == 'schedule' && '1' || '' }}

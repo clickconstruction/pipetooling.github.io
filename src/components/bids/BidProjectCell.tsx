@@ -16,7 +16,7 @@ export function BidProjectCell({ bid, ledgerPrefixMap }: { bid: BidWithBuilder; 
       {num ? (
         <>
           <BidBoardBidNumberMark bidPrefix={resolveBidLedgerPrefix(bid.service_type_id, ledgerPrefixMap)} bidNumber={num} />
-          <span style={{ color: '#9ca3af' }}>|</span>
+          <span style={{ color: 'var(--text-faint)' }}>|</span>
         </>
       ) : null}
       <span>{name}</span>

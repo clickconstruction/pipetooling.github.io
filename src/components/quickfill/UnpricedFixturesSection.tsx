@@ -50,7 +50,7 @@ export function UnpricedFixturesSection() {
       style={{
         marginBottom: '1.5rem',
         padding: '1rem 1.25rem',
-        background: '#fef2f2',
+        background: 'var(--bg-red-tint)',
         border: '1px solid #fecaca',
         borderRadius: 8,
         display: 'flex',
@@ -59,7 +59,7 @@ export function UnpricedFixturesSection() {
         gap: '0.75rem',
       }}
     >
-      <span style={{ fontSize: '0.9375rem', fontWeight: 500, color: '#991b1b' }}>
+      <span style={{ fontSize: '0.9375rem', fontWeight: 500, color: 'var(--text-red-800)' }}>
         {count} job{count !== 1 ? 's' : ''} with unpriced fixtures
       </span>
       <Link

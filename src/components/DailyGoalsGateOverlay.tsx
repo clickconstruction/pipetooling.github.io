@@ -42,7 +42,7 @@ export default function DailyGoalsGateOverlay() {
         position: 'fixed',
         inset: 0,
         zIndex: 100000,
-        background: '#f9fafb',
+        background: 'var(--bg-subtle)',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
@@ -55,11 +55,11 @@ export default function DailyGoalsGateOverlay() {
       <div style={{ maxWidth: 520, width: '100%', marginTop: 'clamp(1rem, 8vh, 3rem)' }}>
         <h1
           id="daily-goals-title"
-          style={{ fontSize: '1.35rem', fontWeight: 700, marginBottom: '0.75rem', color: '#111827' }}
+          style={{ fontSize: '1.35rem', fontWeight: 700, marginBottom: '0.75rem', color: 'var(--text-strong)' }}
         >
           My Roles Goals
         </h1>
-        <p style={{ fontSize: '0.9375rem', color: '#4b5563', marginBottom: '1.25rem', lineHeight: 1.5 }}>
+        <p style={{ fontSize: '0.9375rem', color: 'var(--text-600)', marginBottom: '1.25rem', lineHeight: 1.5 }}>
           Check each item before continuing. You won&apos;t see this again until tomorrow after your first clock-in.
         </p>
         <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
@@ -72,8 +72,8 @@ export default function DailyGoalsGateOverlay() {
                   gap: '0.75rem',
                   cursor: 'pointer',
                   padding: '0.85rem 1rem',
-                  background: 'white',
-                  border: '1px solid #e5e7eb',
+                  background: 'var(--surface)',
+                  border: '1px solid var(--border)',
                   borderRadius: 8,
                   minHeight: 52,
                   boxSizing: 'border-box',
@@ -91,7 +91,7 @@ export default function DailyGoalsGateOverlay() {
                     cursor: 'pointer',
                   }}
                 />
-                <span style={{ fontSize: '1rem', lineHeight: 1.45, color: '#111827' }}>{g.body}</span>
+                <span style={{ fontSize: '1rem', lineHeight: 1.45, color: 'var(--text-strong)' }}>{g.body}</span>
               </label>
             </li>
           ))}

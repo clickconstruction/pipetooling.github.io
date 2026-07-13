@@ -7,7 +7,7 @@ import { isSubcontractorLikeRole } from './subcontractorLikeRole'
  *
  * If you change allowed paths in Layout, update this file the same way.
  */
-const SUBCONTRACTOR_PATHS = ['/', '/dashboard', '/calendar', '/checklist', '/settings', '/tally'] as const
+const SUBCONTRACTOR_PATHS = ['/', '/dashboard', '/calendar', '/checklist', '/settings', '/tally', '/help'] as const
 
 const PRIMARY_PATHS = [
   '/dashboard',
@@ -20,6 +20,7 @@ const PRIMARY_PATHS = [
   '/checklist',
   '/settings',
   '/tally',
+  '/help',
 ] as const
 
 const SUPERINTENDENT_PATHS = [
@@ -36,6 +37,7 @@ const SUPERINTENDENT_PATHS = [
   '/checklist',
   '/settings',
   '/tally',
+  '/help',
 ] as const
 
 function estimatorAllowedPaths(estimatorProspectsAccess: boolean): string[] {
@@ -53,6 +55,7 @@ function estimatorAllowedPaths(estimatorProspectsAccess: boolean): string[] {
     '/people',
     '/settings',
     '/tally',
+    '/help',
   ]
 }
 

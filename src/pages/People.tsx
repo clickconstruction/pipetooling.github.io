@@ -3,6 +3,7 @@ import { effectiveHoursForCost, effectiveHoursForDisplay, canEditRecordedHours }
 import { type TeamSummaryInlineHandle } from '../components/people/teamSummary/TeamSummaryInline'
 import type { TeamSummaryRow } from '../components/people/teamSummary/types'
 import { WriteupsContractsSubTab } from '../components/writeups/WriteupsContractsSubTab'
+import PeopleEmploymentTab from '../components/people/PeopleEmploymentTab'
 import PeopleVehiclesTab from '../components/people/PeopleVehiclesTab'
 import PeopleHousingTab from '../components/people/PeopleHousingTab'
 import PeopleLicensesTab from '../components/people/PeopleLicensesTab'
@@ -110,6 +111,12 @@ import { PeoplePayConfigModal } from '../components/people/PeoplePayConfigModal'
 import { SalariedWorkdaysBulkModal } from '../components/people/SalariedWorkdaysBulkModal'
 import { buildPeopleHoursManualDraftSession, isDraftPeopleHoursSessionId } from '../lib/peopleHoursManualDraftSession'
 import {
+  EMPTY_SALARIED_PAYROLL_WINDOW,
+  fetchSalariedPayrollWindows,
+  salariedHoursForDay,
+  type SalariedPayrollWindow,
+} from '../lib/salariedPayrollDays'
+import {
   buildJobBidLabelMapsFromClockRows,
   collectPeopleHoursDaySessionsForScale,
   scaleClosedSessionsToTargetHours,
@@ -194,7 +201,7 @@ const tabStyle = (active: boolean) => ({
   border: 'none',
   background: 'none',
   borderBottom: active ? '2px solid #3b82f6' : '2px solid transparent',
-  color: active ? '#3b82f6' : '#6b7280',
+  color: active ? 'var(--text-blue-500)' : 'var(--text-muted)',
   fontWeight: active ? 600 : 400,
   cursor: 'pointer' as const,
 })
@@ -207,6 +214,7 @@ type PeopleTab =
   | 'users'
   | 'teams'
   | 'overhead'
+  | 'employment'
   | 'pay_stubs'
   | 'hours'
   | 'offsets'
@@ -714,6 +722,7 @@ export default function People() {
       tab === 'users' ||
       tab === 'teams' ||
       tab === 'overhead' ||
+      tab === 'employment' ||
       tab === 'pay_stubs' ||
       tab === 'hours' ||
       tab === 'vehicles' ||
@@ -753,6 +762,15 @@ export default function People() {
         setActiveTab('users')
         return
       }
+      if (tab === 'employment' && !canAccessPay) {
+        setSearchParams((p) => {
+          const next = new URLSearchParams(p)
+          next.set('tab', 'users')
+          return next
+        }, { replace: true })
+        setActiveTab('users')
+        return
+      }
       if (tab === 'writeups' && !canAccessContracts) {
         setSearchParams((p) => {
           const next = new URLSearchParams(p)
@@ -770,7 +788,7 @@ export default function People() {
         return next
       }, { replace: true })
     }
-  }, [searchParams, activityAccessResolved, canSeeActivityTab, canAccessContracts, canAccessTeamsTab, canAccessOverheadTab, setSearchParams])
+  }, [searchParams, activityAccessResolved, canSeeActivityTab, canAccessContracts, canAccessTeamsTab, canAccessOverheadTab, canAccessPay, setSearchParams])
 
   useEffect(() => {
     if (searchParams.get('tab') !== 'contracts') return
@@ -1518,6 +1536,11 @@ export default function People() {
       }
     }
 
+    // Salaried: unpaid time off + employment window adjust the flat 8/0 credit.
+    const salaryWindow = isSalary
+      ? (await fetchSalariedPayrollWindows(supabase, [personName], start, end))[personName] ?? EMPTY_SALARIED_PAYROLL_WINDOW
+      : null
+
     const dayRows: Array<{
       work_date: string
       hours: number
@@ -1529,11 +1552,8 @@ export default function People() {
       job_rate: number | null
     }> = []
     for (const d of daysInRange) {
-      const hrs = isSalary
-        ? (() => {
-            const day = new Date(d + 'T12:00:00').getDay()
-            return day >= 1 && day <= 5 ? 8 : 0
-          })()
+      const hrs = salaryWindow
+        ? salariedHoursForDay(d, salaryWindow)
         : hoursRows.find((r) => r.date === d)?.hours ?? 0
       const sp = splitByDate?.get(d) ?? null
       if (sp) {
@@ -2282,6 +2302,17 @@ export default function People() {
     return () => clearTimeout(t)
   }, [activeTab, canOpenHoursTab, canAccessHours, canAccessPay, canViewCostMatrixShared, hoursDateStart, hoursDateEnd])
 
+  // Employment tab reads payConfig + template indicators; load them here since the
+  // hours-tab load cycle (the usual owner) may never have run this session.
+  useEffect(() => {
+    if (activeTab !== 'employment' || !canAccessPay) return
+    const t = setTimeout(() => {
+      void loadPayConfig()
+      void loadPayConfigSalaryTemplateIndicators()
+    }, 80)
+    return () => clearTimeout(t)
+  }, [activeTab, canAccessPay])
+
   useEffect(() => {
     if (activeTab === 'pay_stubs' && canAccessPay && payStubPeriodStart <= payStubPeriodEnd) {
       const t = setTimeout(() => {
@@ -2619,6 +2650,46 @@ export default function People() {
     return wage * hrs
   }
 
+  // Draft Payroll preview must match generatePayStub: salaried hours are the flat 8/0
+  // adjusted for unpaid time off + employment window (cost matrix / grids stay flat 8/0).
+  const [draftPayrollSalaryWindows, setDraftPayrollSalaryWindows] = useState<Record<string, SalariedPayrollWindow>>({})
+
+  useEffect(() => {
+    if (!draftPayrollModalOpen || !canAccessPay) return
+    const salariedNames = Object.keys(payConfig).filter((n) => payConfig[n]?.is_salary)
+    if (salariedNames.length === 0) {
+      setDraftPayrollSalaryWindows({})
+      return
+    }
+    let cancelled = false
+    void fetchSalariedPayrollWindows(supabase, salariedNames, payStubPeriodStart, payStubPeriodEnd)
+      .then((map) => {
+        if (!cancelled) setDraftPayrollSalaryWindows(map)
+      })
+      .catch(() => {
+        if (!cancelled) setDraftPayrollSalaryWindows({})
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [draftPayrollModalOpen, canAccessPay, payStubPeriodStart, payStubPeriodEnd, payConfig])
+
+  function getPayrollEffectiveHours(personName: string, workDate: string): number {
+    const cfg = payConfig[personName]
+    if (cfg?.is_salary) {
+      return salariedHoursForDay(
+        workDate,
+        draftPayrollSalaryWindows[personName.trim()] ?? EMPTY_SALARIED_PAYROLL_WINDOW,
+      )
+    }
+    return getHoursForPersonDate(personName, workDate)
+  }
+
+  function getPayrollCostForPersonDate(personName: string, workDate: string): number {
+    const wage = payConfig[personName]?.hourly_wage ?? 0
+    return wage * getPayrollEffectiveHours(personName, workDate)
+  }
+
   function getCostForPersonDateMatrix(personName: string, workDate: string): number {
     if (!showMaxHours) return getCostForPersonDate(personName, workDate)
     const cfg = payConfig[personName]
@@ -2916,7 +2987,7 @@ export default function People() {
   return (
     <div>
       {hoursGridFirstColMeasurer}
-      <div style={{ display: 'flex', alignItems: 'center', borderBottom: '1px solid #e5e7eb', marginBottom: '1.5rem', overflow: 'hidden' }}>
+      <div style={{ display: 'flex', alignItems: 'center', borderBottom: '1px solid var(--border)', marginBottom: '1.5rem', overflow: 'hidden' }}>
         <div style={{ flex: 1, minWidth: 0, overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 0, width: 'max-content' }}>
         {isDev && (
@@ -2986,7 +3057,7 @@ export default function People() {
             aria-hidden
             style={{
               flexShrink: 0,
-              color: '#d1d5db',
+              color: 'var(--text-faint-300)',
               fontWeight: 400,
               padding: '0 0.35rem',
               userSelect: 'none',
@@ -2995,6 +3066,22 @@ export default function People() {
             |
           </span>
         ) : null}
+        {canAccessPay && (
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab('employment')
+              setSearchParams((p) => {
+                const next = new URLSearchParams(p)
+                next.set('tab', 'employment')
+                return next
+              })
+            }}
+            style={tabStyle(activeTab === 'employment')}
+          >
+            Employment
+          </button>
+        )}
         {canOpenHoursTab && (
           <button
             type="button"
@@ -3080,7 +3167,7 @@ export default function People() {
             aria-hidden
             style={{
               flexShrink: 0,
-              color: '#d1d5db',
+              color: 'var(--text-faint-300)',
               fontWeight: 400,
               padding: '0 0.35rem',
               userSelect: 'none',
@@ -3171,7 +3258,7 @@ export default function People() {
         )}
           </div>
         </div>
-        <h1 style={{ flexShrink: 0, margin: 0, marginLeft: '0.5rem', fontSize: '1.5rem', fontWeight: 700, color: '#111827' }}>People</h1>
+        <h1 style={{ flexShrink: 0, margin: 0, marginLeft: '0.5rem', fontSize: '1.5rem', fontWeight: 700, color: 'var(--text-strong)' }}>People</h1>
       </div>
 
       {activeTab === 'users' && (
@@ -3268,16 +3355,16 @@ export default function People() {
 
       {payStubDeleteConfirm && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: Z_PEOPLE_PAY_MODAL_NESTED }}>
-          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 320, maxWidth: 400 }}>
+          <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 320, maxWidth: 400 }}>
             <h2 style={{ margin: '0 0 1rem', fontSize: '1.25rem' }}>Are you sure?</h2>
-            <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#6b7280' }}>
+            <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
               Delete this pay report for {payStubDeleteConfirm.person_name} ({new Date(payStubDeleteConfirm.period_start + 'T12:00:00').toLocaleDateString()} – {new Date(payStubDeleteConfirm.period_end + 'T12:00:00').toLocaleDateString()})? This cannot be undone.
             </p>
             <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
               <button
                 type="button"
                 onClick={() => setPayStubDeleteConfirm(null)}
-                style={{ padding: '0.5rem 1rem', border: '1px solid #d1d5db', background: 'white', borderRadius: 4, cursor: 'pointer' }}
+                style={{ padding: '0.5rem 1rem', border: '1px solid var(--border-strong)', background: 'var(--surface)', borderRadius: 4, cursor: 'pointer' }}
               >
                 Cancel
               </button>
@@ -3303,9 +3390,9 @@ export default function People() {
 
       {payStubMarkPaidTarget && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: Z_PEOPLE_PAY_MODAL_NESTED }}>
-          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 320, maxWidth: 440, width: '100%' }}>
+          <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 320, maxWidth: 440, width: '100%' }}>
             <h2 style={{ margin: '0 0 0.75rem', fontSize: '1.25rem' }}>Record payment</h2>
-            <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#6b7280' }}>
+            <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
               {payStubMarkPaidTarget.person_name} · Gross ${formatCurrency(payStubMarkPaidTarget.gross_pay)}
               {` · Net Pay $${formatCurrency(
                 stubNetPay(
@@ -3334,10 +3421,10 @@ export default function People() {
                 value={payStubMarkPaidAmount}
                 onChange={(e) => setPayStubMarkPaidAmount(e.target.value)}
                 placeholder="0.00"
-                style={{ padding: '0.35rem', border: '1px solid #d1d5db', borderRadius: 4, width: '100%', maxWidth: 200 }}
+                style={{ padding: '0.35rem', border: '1px solid var(--border-strong)', borderRadius: 4, width: '100%', maxWidth: 200 }}
               />
             </label>
-            <p style={{ margin: '0 0 0.75rem', fontSize: '0.8125rem', color: '#6b7280', lineHeight: 1.4 }}>
+            <p style={{ margin: '0 0 0.75rem', fontSize: '0.8125rem', color: 'var(--text-muted)', lineHeight: 1.4 }}>
               <strong>Confirm</strong> records up to the <strong>remaining balance</strong> shown above from this amount (partial payments allowed). If you paid more than the remainder, use <strong>Record employee credit…</strong> below; it opens <strong>Add offset</strong> on top of this dialog so you can save the excess without leaving this flow.
             </p>
             <label style={{ display: 'block', marginBottom: '0.75rem', fontSize: '0.875rem' }}>
@@ -3346,7 +3433,7 @@ export default function People() {
                 type="date"
                 value={payStubMarkPaidDate}
                 onChange={(e) => setPayStubMarkPaidDate(e.target.value)}
-                style={{ padding: '0.35rem', border: '1px solid #d1d5db', borderRadius: 4, width: '100%', maxWidth: 200 }}
+                style={{ padding: '0.35rem', border: '1px solid var(--border-strong)', borderRadius: 4, width: '100%', maxWidth: 200 }}
               />
             </label>
             <label style={{ display: 'block', marginBottom: '1rem', fontSize: '0.875rem' }}>
@@ -3356,7 +3443,7 @@ export default function People() {
                 onChange={(e) => setPayStubMarkPaidNote(e.target.value)}
                 rows={3}
                 placeholder="e.g. check #, Venmo, GL code…"
-                style={{ padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, width: '100%', fontFamily: 'inherit', fontSize: '0.875rem', resize: 'vertical' }}
+                style={{ padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, width: '100%', fontFamily: 'inherit', fontSize: '0.875rem', resize: 'vertical' }}
               />
             </label>
             {(() => {
@@ -3378,7 +3465,7 @@ export default function People() {
                   style={{
                     marginBottom: '0.75rem',
                     padding: '0.75rem',
-                    background: '#f8fafc',
+                    background: 'var(--bg-slate-tint)',
                     border: '1px solid #e2e8f0',
                     borderRadius: 6,
                   }}
@@ -3413,7 +3500,7 @@ export default function People() {
                 type="button"
                 onClick={closePayStubMarkPaidModal}
                 disabled={markingPayStubId === payStubMarkPaidTarget.id}
-                style={{ padding: '0.5rem 1rem', border: '1px solid #d1d5db', background: 'white', borderRadius: 4, cursor: markingPayStubId === payStubMarkPaidTarget.id ? 'not-allowed' : 'pointer' }}
+                style={{ padding: '0.5rem 1rem', border: '1px solid var(--border-strong)', background: 'var(--surface)', borderRadius: 4, cursor: markingPayStubId === payStubMarkPaidTarget.id ? 'not-allowed' : 'pointer' }}
               >
                 Cancel
               </button>
@@ -3467,8 +3554,8 @@ export default function People() {
           payStubPaymentsByStubId={payStubPaymentsByStubId}
           payStubDeductionsByStubId={payStubDeductionsByStubId}
           payStubAdditionalByStubId={payStubAdditionalByStubId}
-          getCostForPersonDate={getCostForPersonDate}
-          getEffectiveHours={getEffectiveHours}
+          getCostForPersonDate={getPayrollCostForPersonDate}
+          getEffectiveHours={getPayrollEffectiveHours}
           getRunPayrollReviewDayItems={getRunPayrollReviewDayItems}
           onBulkGenerateRemaining={bulkGenerateMissingPayStubsInModal}
           onGenerateReport={async (person) => {
@@ -3512,10 +3599,10 @@ export default function People() {
         <>
         <div>
           {hoursTabLoading ? (
-            <p style={{ color: '#6b7280' }}>Loading…</p>
+            <p style={{ color: 'var(--text-muted)' }}>Loading…</p>
           ) : (
           <>
-          {error && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{error}</p>}
+          {error && <p style={{ color: 'var(--text-red-700)', marginBottom: '1rem' }}>{error}</p>}
           {canAccessPay ? (
             <>
               <div
@@ -3539,15 +3626,15 @@ export default function People() {
                     onClick={() => setReviewHoursModalOpen(true)}
                     style={{
                       padding: '0.35rem 0.75rem',
-                      border: '1px solid #d1d5db',
+                      border: '1px solid var(--border-strong)',
                       borderRadius: 4,
-                      background: 'white',
+                      background: 'var(--surface)',
                       cursor: 'pointer',
                       fontSize: '0.875rem',
                       fontWeight: 500,
                     }}
                   >
-                    Review Hours <span style={{ color: '#059669' }}>✓</span>
+                    Review Hours <span style={{ color: 'var(--text-green-600)' }}>✓</span>
                   </button>
                   <button
                     type="button"
@@ -3556,9 +3643,9 @@ export default function People() {
                       padding: '0.45rem 0.85rem',
                       margin: 0,
                       marginLeft: 'auto',
-                      border: '1px solid #d1d5db',
+                      border: '1px solid var(--border-strong)',
                       borderRadius: 4,
-                      background: '#f9fafb',
+                      background: 'var(--bg-subtle)',
                       cursor: 'pointer',
                       fontSize: '0.9375rem',
                       fontWeight: 600,
@@ -3614,44 +3701,44 @@ export default function People() {
             }}
           >
             {canAccessHours ? (
-              <button type="button" onClick={() => jumpToHoursTabSection('clockStrip')} style={{ padding: '0.25rem 0.55rem', border: '1px solid #d1d5db', borderRadius: 4, background: '#f3f4f6', cursor: 'pointer', fontSize: '0.8125rem' }}>
+              <button type="button" onClick={() => jumpToHoursTabSection('clockStrip')} style={{ padding: '0.25rem 0.55rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--bg-muted)', cursor: 'pointer', fontSize: '0.8125rem' }}>
                 Clock strip
               </button>
             ) : null}
             <button
               type="button"
               onClick={() => jumpToHoursTabSection('week')}
-              style={{ padding: '0.25rem 0.55rem', border: '1px solid #d1d5db', borderRadius: 4, background: '#f3f4f6', cursor: 'pointer', fontSize: '0.8125rem' }}
+              style={{ padding: '0.25rem 0.55rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--bg-muted)', cursor: 'pointer', fontSize: '0.8125rem' }}
             >
               Week
             </button>
             {canAccessHours ? (
-              <button type="button" onClick={() => jumpToHoursTabSection('grid')} style={{ padding: '0.25rem 0.55rem', border: '1px solid #d1d5db', borderRadius: 4, background: '#f3f4f6', cursor: 'pointer', fontSize: '0.8125rem' }}>
+              <button type="button" onClick={() => jumpToHoursTabSection('grid')} style={{ padding: '0.25rem 0.55rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--bg-muted)', cursor: 'pointer', fontSize: '0.8125rem' }}>
                 Hours grid
               </button>
             ) : null}
             {canAccessHours ? (
-              <button type="button" onClick={() => jumpToHoursTabSection('sessions')} style={{ padding: '0.25rem 0.55rem', border: '1px solid #d1d5db', borderRadius: 4, background: '#f3f4f6', cursor: 'pointer', fontSize: '0.8125rem' }}>
+              <button type="button" onClick={() => jumpToHoursTabSection('sessions')} style={{ padding: '0.25rem 0.55rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--bg-muted)', cursor: 'pointer', fontSize: '0.8125rem' }}>
                 Sessions
               </button>
             ) : null}
             {canAccessPay || canViewCostMatrixShared ? (
-              <button type="button" onClick={() => jumpToHoursTabSection('dueSummaries')} style={{ padding: '0.25rem 0.55rem', border: '1px solid #d1d5db', borderRadius: 4, background: '#f3f4f6', cursor: 'pointer', fontSize: '0.8125rem' }}>
+              <button type="button" onClick={() => jumpToHoursTabSection('dueSummaries')} style={{ padding: '0.25rem 0.55rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--bg-muted)', cursor: 'pointer', fontSize: '0.8125rem' }}>
                 Due totals
               </button>
             ) : null}
             {canAccessPay || canViewCostMatrixShared ? (
-              <button type="button" onClick={() => jumpToHoursTabSection('costMatrix')} style={{ padding: '0.25rem 0.55rem', border: '1px solid #d1d5db', borderRadius: 4, background: '#f3f4f6', cursor: 'pointer', fontSize: '0.8125rem' }}>
+              <button type="button" onClick={() => jumpToHoursTabSection('costMatrix')} style={{ padding: '0.25rem 0.55rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--bg-muted)', cursor: 'pointer', fontSize: '0.8125rem' }}>
                 Cost matrix
               </button>
             ) : null}
             {canAccessPay || canViewCostMatrixShared ? (
-              <button type="button" onClick={() => jumpToHoursTabSection('teams')} style={{ padding: '0.25rem 0.55rem', border: '1px solid #d1d5db', borderRadius: 4, background: '#f3f4f6', cursor: 'pointer', fontSize: '0.8125rem' }}>
+              <button type="button" onClick={() => jumpToHoursTabSection('teams')} style={{ padding: '0.25rem 0.55rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--bg-muted)', cursor: 'pointer', fontSize: '0.8125rem' }}>
                 Teams
               </button>
             ) : null}
             {isDev || canAccessPay ? (
-              <button type="button" onClick={() => jumpToHoursTabSection('sharing')} style={{ padding: '0.25rem 0.55rem', border: '1px solid #d1d5db', borderRadius: 4, background: '#f3f4f6', cursor: 'pointer', fontSize: '0.8125rem' }}>
+              <button type="button" onClick={() => jumpToHoursTabSection('sharing')} style={{ padding: '0.25rem 0.55rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--bg-muted)', cursor: 'pointer', fontSize: '0.8125rem' }}>
                 Sharing / tags
               </button>
             ) : null}
@@ -3697,7 +3784,7 @@ export default function People() {
             {hoursTabSectionsOpen.grid ? (
             <>
           {showPeopleForHours.length === 0 ? (
-            <p style={{ color: '#6b7280' }}>No people with Show in Hours selected. In Hours, open People pay config and check Show in Hours for people to track.</p>
+            <p style={{ color: 'var(--text-muted)' }}>No people with Show in Hours selected. In Hours, open People pay config and check Show in Hours for people to track.</p>
           ) : (
             <>
               <PeopleHoursGridJobHighlight
@@ -3705,7 +3792,7 @@ export default function People() {
                 setSelectedJobHighlight={setSelectedJobHighlight}
               />
               {selectedJobHighlight && jobHighlightPeople.size === 0 ? (
-                <p style={{ fontSize: '0.875rem', color: '#6b7280', margin: '0 0 0.5rem 0' }}>
+                <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', margin: '0 0 0.5rem 0' }}>
                   No one in this list has that job on crew assignments this week.
                 </p>
               ) : null}
@@ -3781,7 +3868,7 @@ export default function People() {
           {(canAccessPay || canViewCostMatrixShared) && (
           <div style={HOURS_TAB_SECTIONS_STACK}>
             <>
-            {error && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{error}</p>}
+            {error && <p style={{ color: 'var(--text-red-700)', marginBottom: '1rem' }}>{error}</p>}
             <PeopleHoursDueSummaries
               open={hoursTabSectionsOpen.dueSummaries}
               onToggle={() => setHoursTabSectionsOpen((p) => ({ ...p, dueSummaries: !p.dueSummaries }))}
@@ -3853,8 +3940,8 @@ export default function People() {
               getCostForPersonDateTeams={getCostForPersonDateTeams}
             />
             {canAccessPay && mergeDuplicates.length > 0 && (
-            <section style={{ marginBottom: '1rem', padding: '0.75rem', background: '#fef3c7', border: '1px solid #f59e0b', borderRadius: 4 }}>
-              <p style={{ margin: '0 0 0.5rem 0', fontWeight: 600, color: '#92400e' }}>
+            <section style={{ marginBottom: '1rem', padding: '0.75rem', background: 'var(--bg-amber-100)', border: '1px solid #f59e0b', borderRadius: 4 }}>
+              <p style={{ margin: '0 0 0.5rem 0', fontWeight: 600, color: 'var(--text-amber-800)' }}>
                 Found {mergeDuplicates.length} duplicate{mergeDuplicates.length !== 1 ? 's' : ''}: person name vs user. Merge to consolidate.
               </p>
               <ul style={{ margin: 0, paddingLeft: '1.25rem' }}>
@@ -3906,6 +3993,21 @@ export default function People() {
           />
         ) : null}
         </>
+      )}
+
+      {activeTab === 'employment' && canAccessPay && (
+        <PeopleEmploymentTab
+          users={users}
+          payConfig={payConfig}
+          payConfigDraft={payConfigDraft}
+          payConfigOfficeWageDraft={payConfigOfficeWageDraft}
+          payConfigSaving={payConfigSaving}
+          isDev={isDev}
+          salaryTemplateByPersonName={salaryTemplateByPersonName}
+          onUpsertPayConfig={upsertPayConfig}
+          onHourlyWageChange={updatePayConfigHourlyWage}
+          onOfficeHourlyWageChange={updatePayConfigOfficeHourlyWage}
+        />
       )}
 
       {activeTab === 'vehicles' && canAccessPay && (
@@ -3970,7 +4072,7 @@ export default function People() {
       {activeTab === 'activity' && (
         <div>
           {!activityAccessResolved ? (
-            <p style={{ color: '#6b7280' }}>Loading…</p>
+            <p style={{ color: 'var(--text-muted)' }}>Loading…</p>
           ) : canSeeActivityTab ? (
             <PeopleAppActivityPanel
               enabled={activityAccessResolved && canSeeActivityTab}
@@ -4015,7 +4117,7 @@ export default function People() {
 
       {formOpen && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
-          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 320 }}>
+          <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 320 }}>
             <h2 style={{ marginTop: 0 }}>{editing ? 'Edit person' : `Add ${KIND_LABELS[kind].slice(0, -1)}`}</h2>
             <form onSubmit={handleSave}>
               {!editing && (
@@ -4055,7 +4157,7 @@ export default function People() {
 
       {inviteConfirm && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
-          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 320 }}>
+          <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 320 }}>
             <p style={{ marginBottom: '1rem' }}>They&apos;ll get an email to set their own password.</p>
             <div style={{ display: 'flex', gap: 8 }}>
               <button type="button" onClick={confirmAndInvite} style={{ padding: '0.5rem 1rem' }}>Send invite</button>
@@ -4067,9 +4169,9 @@ export default function People() {
 
       {editingUserNote && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1001 }}>
-          <div style={{ background: 'white', padding: '1rem 2rem 2rem', borderRadius: 8, maxWidth: 500, width: '90%' }}>
+          <div style={{ background: 'var(--surface)', padding: '1rem 2rem 2rem', borderRadius: 8, maxWidth: 500, width: '90%' }}>
             <h3 style={{ margin: '0 0 0.25rem 0', fontSize: '1.125rem' }}>Full name, title, and phone</h3>
-            <p style={{ margin: '0 0 1rem 0', fontSize: '0.875rem', color: '#6b7280' }}>{editingUserNote.name}</p>
+            <p style={{ margin: '0 0 1rem 0', fontSize: '0.875rem', color: 'var(--text-muted)' }}>{editingUserNote.name}</p>
             <label
               style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.35rem' }}
               htmlFor="editing-user-full-name-title"

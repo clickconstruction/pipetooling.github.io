@@ -209,11 +209,11 @@ function BankingNicknamesMenu({
     padding: '0.5rem 0.75rem',
     textAlign: 'left',
     border: 'none',
-    borderBottom: '1px solid #e5e7eb',
-    background: 'white',
+    borderBottom: '1px solid var(--border)',
+    background: 'var(--surface)',
     cursor: 'pointer',
     fontSize: '0.875rem',
-    color: '#111827',
+    color: 'var(--text-strong)',
   }
 
   return (
@@ -227,8 +227,8 @@ function BankingNicknamesMenu({
         style={{
           padding: '0.5rem 1rem',
           borderRadius: 4,
-          border: '1px solid #d1d5db',
-          background: 'white',
+          border: '1px solid var(--border-strong)',
+          background: 'var(--surface)',
           cursor: 'pointer',
           fontSize: '0.875rem',
         }}
@@ -245,8 +245,8 @@ function BankingNicknamesMenu({
             left: 0,
             marginTop: 4,
             minWidth: '12.5rem',
-            background: 'white',
-            border: '1px solid #e5e7eb',
+            background: 'var(--surface)',
+            border: '1px solid var(--border)',
             borderRadius: 4,
             boxShadow: '0 4px 6px rgba(0,0,0,0.08)',
             zIndex: 40,
@@ -338,11 +338,11 @@ function BankingLedgerAdvancedMenu({
     padding: '0.5rem 0.75rem',
     textAlign: 'left',
     border: 'none',
-    borderBottom: '1px solid #e5e7eb',
-    background: 'white',
+    borderBottom: '1px solid var(--border)',
+    background: 'var(--surface)',
     cursor: 'pointer',
     fontSize: '0.875rem',
-    color: '#111827',
+    color: 'var(--text-strong)',
   }
 
   return (
@@ -356,8 +356,8 @@ function BankingLedgerAdvancedMenu({
         style={{
           padding: '0.5rem 1rem',
           borderRadius: 4,
-          border: '1px solid #d1d5db',
-          background: 'white',
+          border: '1px solid var(--border-strong)',
+          background: 'var(--surface)',
           cursor: 'pointer',
           fontSize: '0.875rem',
           fontWeight: 500,
@@ -376,8 +376,8 @@ function BankingLedgerAdvancedMenu({
             left: 0,
             marginTop: 4,
             minWidth: '14rem',
-            background: 'white',
-            border: '1px solid #e5e7eb',
+            background: 'var(--surface)',
+            border: '1px solid var(--border)',
             borderRadius: 4,
             boxShadow: '0 4px 6px rgba(0,0,0,0.08)',
             zIndex: 40,
@@ -394,8 +394,8 @@ function BankingLedgerAdvancedMenu({
             }}
             style={{
               ...itemStyle,
-              background: syncing ? '#f3f4f6' : '#2563eb',
-              color: syncing ? '#9ca3af' : 'white',
+              background: syncing ? 'var(--bg-muted)' : '#2563eb',
+              color: syncing ? 'var(--text-faint)' : 'white',
               fontWeight: 600,
               cursor: syncing ? 'not-allowed' : 'pointer',
             }}
@@ -545,7 +545,7 @@ function formatMercuryCategory(cat: MercuryTxRow['mercury_category']): string {
 }
 
 const bankingAllocMuted: CSSProperties = {
-  color: '#64748b',
+  color: 'var(--text-slate-500)',
   fontSize: '0.8125rem',
 }
 
@@ -555,7 +555,7 @@ const bankingAllocLinkButtonStyle: CSSProperties = {
   padding: '4px 10px',
   borderRadius: 8,
   border: '1px solid #e2e8f0',
-  background: '#fff',
+  background: 'var(--surface)',
   color: '#334155',
   cursor: 'pointer',
   fontFamily: 'inherit',
@@ -582,7 +582,7 @@ function SortTh({
       onClick={() => onSort(column)}
       style={{
         padding: '0.5rem 0.75rem',
-        borderBottom: '1px solid #e5e7eb',
+        borderBottom: '1px solid var(--border)',
         cursor: 'pointer',
         userSelect: 'none',
         whiteSpace: 'nowrap',
@@ -607,14 +607,14 @@ function TransactionDetailPanel({ r }: { r: MercuryTxRow }) {
       : '—'
 
   const mono: CSSProperties = { fontFamily: 'monospace', fontSize: '0.8125rem', wordBreak: 'break-all' }
-  const labelStyle: CSSProperties = { color: '#6b7280', fontWeight: 500 }
+  const labelStyle: CSSProperties = { color: 'var(--text-muted)', fontWeight: 500 }
 
   return (
     <div
       style={{
         padding: '0.75rem 1rem',
-        background: '#fafafa',
-        borderTop: '1px solid #e5e7eb',
+        background: 'var(--bg-page)',
+        borderTop: '1px solid var(--border)',
       }}
     >
       <div
@@ -679,8 +679,8 @@ function TransactionDetailPanel({ r }: { r: MercuryTxRow }) {
           overflow: 'auto',
           fontSize: '0.75rem',
           lineHeight: 1.4,
-          background: '#fff',
-          border: '1px solid #e5e7eb',
+          background: 'var(--surface)',
+          border: '1px solid var(--border)',
           borderRadius: 4,
           ...mono,
         }}
@@ -765,7 +765,7 @@ function BankingMercuryTable({
       <>
         <td style={{ padding: pad, borderBottom: mainBb, fontSize: '0.8125rem', maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis' }}>
           {personLabel ? (
-            <span style={{ fontWeight: 500, color: '#0f172a' }} title={personLabel}>
+            <span style={{ fontWeight: 500, color: 'var(--text-slate-900)' }} title={personLabel}>
               {personLabel}
             </span>
           ) : (
@@ -782,7 +782,7 @@ function BankingMercuryTable({
             return (
               <span style={{ display: 'inline-flex', alignItems: 'center', flexWrap: 'wrap', gap: '0.4rem' }}>
                 {hasJobs ? (
-                  <span style={{ color: '#0f172a', fontWeight: 500 }}>{summary}</span>
+                  <span style={{ color: 'var(--text-slate-900)', fontWeight: 500 }}>{summary}</span>
                 ) : (
                   <span style={bankingAllocMuted}>Not split</span>
                 )}
@@ -807,38 +807,38 @@ function BankingMercuryTable({
 
   const allocationThPair = showAllocations ? (
     <>
-      <th style={{ padding: '0.5rem 0.75rem', borderBottom: '1px solid #e5e7eb' }}>Person</th>
-      <th style={{ padding: '0.5rem 0.75rem', borderBottom: '1px solid #e5e7eb' }}>Jobs</th>
+      <th style={{ padding: '0.5rem 0.75rem', borderBottom: '1px solid var(--border)' }}>Person</th>
+      <th style={{ padding: '0.5rem 0.75rem', borderBottom: '1px solid var(--border)' }}>Jobs</th>
     </>
   ) : null
 
   return (
-    <div style={{ overflowX: 'auto', border: '1px solid #e5e7eb', borderRadius: 4 }}>
+    <div style={{ overflowX: 'auto', border: '1px solid var(--border)', borderRadius: 4 }}>
       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
         <thead>
-          <tr style={{ background: '#f9fafb', textAlign: 'left' }}>
-            <th style={{ padding: '0.5rem 0.35rem', borderBottom: '1px solid #e5e7eb', width: '2.25rem' }} aria-label="Expand row" />
+          <tr style={{ background: 'var(--bg-subtle)', textAlign: 'left' }}>
+            <th style={{ padding: '0.5rem 0.35rem', borderBottom: '1px solid var(--border)', width: '2.25rem' }} aria-label="Expand row" />
             <SortTh label="Posted" column="posted_at" sort={sort} onSort={onSortColumn} />
-            <th style={{ padding: '0.5rem 0.75rem', borderBottom: '1px solid #e5e7eb' }}>Amount</th>
+            <th style={{ padding: '0.5rem 0.75rem', borderBottom: '1px solid var(--border)' }}>Amount</th>
             {hideKindColumn ? null : (
-              <th style={{ padding: '0.5rem 0.75rem', borderBottom: '1px solid #e5e7eb' }}>Kind</th>
+              <th style={{ padding: '0.5rem 0.75rem', borderBottom: '1px solid var(--border)' }}>Kind</th>
             )}
             {debitAndAccountAfterAmount ? (
               <>
-                <th style={{ padding: '0.5rem 0.75rem', borderBottom: '1px solid #e5e7eb' }}>Debit card</th>
+                <th style={{ padding: '0.5rem 0.75rem', borderBottom: '1px solid var(--border)' }}>Debit card</th>
                 <SortTh label="Account" column="mercury_account_id" sort={sort} onSort={onSortColumn} />
               </>
             ) : null}
-            <th style={{ padding: '0.5rem 0.75rem', borderBottom: '1px solid #e5e7eb' }}>
+            <th style={{ padding: '0.5rem 0.75rem', borderBottom: '1px solid var(--border)' }}>
               {counterpartyNoteCombined ? 'Counterparty / Note' : 'Counterparty'}
             </th>
             {showAllocations && allocationsAfterCounterparty ? allocationThPair : null}
             {counterpartyNoteCombined ? null : (
-              <th style={{ padding: '0.5rem 0.75rem', borderBottom: '1px solid #e5e7eb' }}>Note</th>
+              <th style={{ padding: '0.5rem 0.75rem', borderBottom: '1px solid var(--border)' }}>Note</th>
             )}
             {debitAndAccountAfterAmount ? null : (
               <>
-                <th style={{ padding: '0.5rem 0.75rem', borderBottom: '1px solid #e5e7eb' }}>Debit card</th>
+                <th style={{ padding: '0.5rem 0.75rem', borderBottom: '1px solid var(--border)' }}>Debit card</th>
                 <SortTh label="Account" column="mercury_account_id" sort={sort} onSort={onSortColumn} />
               </>
             )}
@@ -894,7 +894,7 @@ function BankingMercuryTable({
                         background: 'transparent',
                         cursor: 'pointer',
                         borderRadius: 4,
-                        color: '#374151',
+                        color: 'var(--text-700)',
                       }}
                     >
                       <span aria-hidden style={{ fontSize: '0.65rem' }}>{expanded ? '▼' : '▶'}</span>
@@ -910,8 +910,8 @@ function BankingMercuryTable({
                           marginTop: 2,
                           fontSize: '0.62rem',
                           fontWeight: 700,
-                          color: '#92400e',
-                          background: '#fef3c7',
+                          color: 'var(--text-amber-800)',
+                          background: 'var(--bg-amber-100)',
                           borderRadius: 999,
                           padding: '1px 6px',
                           textDecoration: 'none',
@@ -945,7 +945,7 @@ function BankingMercuryTable({
                           margin: 0,
                           fontSize: '0.72rem',
                           fontWeight: 600,
-                          color: '#94a3b8',
+                          color: 'var(--text-slate-400)',
                           border: 'none',
                           background: 'transparent',
                           cursor: 'pointer',
@@ -993,7 +993,7 @@ function BankingMercuryTable({
                           if (nt === '') return null
                           return (
                             <span
-                              style={{ fontSize: '0.75rem', color: '#64748b', wordBreak: 'break-word', lineHeight: 1.35 }}
+                              style={{ fontSize: '0.75rem', color: 'var(--text-slate-500)', wordBreak: 'break-word', lineHeight: 1.35 }}
                               title={nt}
                             >
                               {nt}
@@ -1089,7 +1089,7 @@ function BankingMercuryTable({
           })}
         </tbody>
       </table>
-      {displayRows.length === 0 && <div style={{ padding: '1.5rem', color: '#6b7280' }}>{emptyMessage}</div>}
+      {displayRows.length === 0 && <div style={{ padding: '1.5rem', color: 'var(--text-muted)' }}>{emptyMessage}</div>}
     </div>
   )
 }
@@ -2253,7 +2253,7 @@ export default function Banking() {
       <div
         style={{
           marginBottom: '1.5rem',
-          borderBottom: '1px solid #e5e7eb',
+          borderBottom: '1px solid var(--border)',
           paddingBottom: '1rem',
         }}
       >
@@ -2306,7 +2306,7 @@ export default function Banking() {
                 marginLeft: '0.5rem',
                 fontSize: '1.5rem',
                 fontWeight: 700,
-                color: '#111827',
+                color: 'var(--text-strong)',
               }}
             >
               Banking
@@ -2442,7 +2442,7 @@ export default function Banking() {
                 marginLeft: '0.5rem',
                 fontSize: '1.5rem',
                 fontWeight: 700,
-                color: '#111827',
+                color: 'var(--text-strong)',
               }}
             >
               Banking
@@ -2461,8 +2461,8 @@ export default function Banking() {
                 gap: '0.65rem',
                 maxWidth: 'min(calc(100vw - 2rem), 28rem)',
                 padding: '0.5rem 0.65rem',
-                background: '#fff',
-                border: '1px solid #e5e7eb',
+                background: 'var(--surface)',
+                border: '1px solid var(--border)',
                 borderRadius: 8,
                 boxShadow: '0 4px 6px -1px rgba(0,0,0,0.08), 0 2px 4px -2px rgba(0,0,0,0.06)',
               }}
@@ -2475,8 +2475,8 @@ export default function Banking() {
                     padding: '0.5rem 1rem',
                     borderRadius: 4,
                     border: '1px solid #1d4ed8',
-                    background: '#eff6ff',
-                    color: '#1d4ed8',
+                    background: 'var(--bg-blue-tint)',
+                    color: 'var(--text-blue-700)',
                     cursor: 'pointer',
                     fontWeight: 600,
                     fontSize: '0.875rem',
@@ -2495,7 +2495,7 @@ export default function Banking() {
                       padding: '0.5rem 1rem',
                       borderRadius: 4,
                       border: '1px solid #059669',
-                      background: '#ecfdf5',
+                      background: 'var(--bg-emerald-tint)',
                       color: '#047857',
                       cursor: 'pointer',
                       fontWeight: 600,
@@ -2526,7 +2526,7 @@ export default function Banking() {
             <p
               style={{
                 margin: '0 0 0.85rem',
-                color: '#4b5563',
+                color: 'var(--text-600)',
                 maxWidth: 720,
                 fontSize: '0.9375rem',
               }}
@@ -2561,7 +2561,7 @@ export default function Banking() {
                   autoComplete="off"
                   placeholder="Counterparty, memo, id, job, person…"
                   aria-label="Search transactions"
-                  style={{ width: '100%', minWidth: 0, padding: '6px 8px', border: '1px solid #d1d5db', borderRadius: 4, boxSizing: 'border-box' }}
+                  style={{ width: '100%', minWidth: 0, padding: '6px 8px', border: '1px solid var(--border-strong)', borderRadius: 4, boxSizing: 'border-box' }}
                 />
               </label>
               <div
@@ -2599,8 +2599,8 @@ export default function Banking() {
                   style={{
                     padding: '0.5rem 1rem',
                     borderRadius: 4,
-                    border: '1px solid #d1d5db',
-                    background: 'white',
+                    border: '1px solid var(--border-strong)',
+                    background: 'var(--surface)',
                     cursor: loading ? 'wait' : 'pointer',
                     flexShrink: 0,
                   }}
@@ -2616,10 +2616,10 @@ export default function Banking() {
               style={{
                 marginBottom: '1rem',
                 padding: '0.75rem 1rem',
-                background: '#fef2f2',
+                background: 'var(--bg-red-tint)',
                 border: '1px solid #fecaca',
                 borderRadius: 4,
-                color: '#991b1b',
+                color: 'var(--text-red-800)',
               }}
             >
               {error}
@@ -2628,21 +2628,21 @@ export default function Banking() {
 
           <div style={{ display: 'flex', flexWrap: 'wrap', marginBottom: '1rem', alignItems: 'center', gap: '0.75rem 1.25rem' }}>
             <div
-              style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.75rem 1.25rem', fontSize: '0.875rem', color: '#6b7280' }}
+              style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.75rem 1.25rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}
             >
               <span
                 title="Rows in this list with no person or user linked (Person column shows Unassigned)."
                 style={{ whiteSpace: 'nowrap' }}
               >
                 Without person:{' '}
-                <strong style={{ color: '#0f172a', fontWeight: 600 }}>{sortingUnmatchedCounts.withoutPerson}</strong>
+                <strong style={{ color: 'var(--text-slate-900)', fontWeight: 600 }}>{sortingUnmatchedCounts.withoutPerson}</strong>
               </span>
               <span
                 title="Rows in this list with no job allocations (Jobs column shows Not split)."
                 style={{ whiteSpace: 'nowrap' }}
               >
                 Not split to jobs:{' '}
-                <strong style={{ color: '#0f172a', fontWeight: 600 }}>{sortingUnmatchedCounts.withoutJobSplit}</strong>
+                <strong style={{ color: 'var(--text-slate-900)', fontWeight: 600 }}>{sortingUnmatchedCounts.withoutJobSplit}</strong>
               </span>
             </div>
             <div style={{ marginLeft: 'auto', fontWeight: 600 }}>
@@ -2650,7 +2650,7 @@ export default function Banking() {
               {rowsTruncated ? (
                 <span
                   title={`Only the newest ${MERCURY_TRANSACTIONS_BANKING_LIST_LIMIT.toLocaleString()} transactions are loaded. Older transactions are not shown here.`}
-                  style={{ marginLeft: '0.5rem', fontWeight: 600, color: '#b45309' }}
+                  style={{ marginLeft: '0.5rem', fontWeight: 600, color: 'var(--text-amber-700)' }}
                 >
                   ⚠ capped at {MERCURY_TRANSACTIONS_BANKING_LIST_LIMIT.toLocaleString()}
                 </span>
@@ -2856,10 +2856,10 @@ export default function Banking() {
               style={{
                 marginBottom: '1rem',
                 padding: '0.75rem 1rem',
-                background: '#fef2f2',
+                background: 'var(--bg-red-tint)',
                 border: '1px solid #fecaca',
                 borderRadius: 4,
-                color: '#991b1b',
+                color: 'var(--text-red-800)',
               }}
             >
               {error}
@@ -2876,9 +2876,9 @@ export default function Banking() {
                 maxWidth: 220,
                 padding: '3px 6px',
                 fontSize: '0.8125rem',
-                color: '#64748b',
-                backgroundColor: '#f9fafb',
-                border: '1px solid #e5e7eb',
+                color: 'var(--text-slate-500)',
+                backgroundColor: 'var(--bg-subtle)',
+                border: '1px solid var(--border)',
                 borderRadius: 4,
               }}
             >
@@ -2898,9 +2898,9 @@ export default function Banking() {
                 maxWidth: 168,
                 padding: '3px 6px',
                 fontSize: '0.8125rem',
-                color: '#64748b',
-                backgroundColor: '#f9fafb',
-                border: '1px solid #e5e7eb',
+                color: 'var(--text-slate-500)',
+                backgroundColor: 'var(--bg-subtle)',
+                border: '1px solid var(--border)',
                 borderRadius: 4,
               }}
             >
@@ -2912,7 +2912,7 @@ export default function Banking() {
               ))}
             </select>
             <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-              <span style={{ fontSize: '0.875rem', color: '#6b7280' }}>Search transactions</span>
+              <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>Search transactions</span>
               <input
                 type="search"
                 value={bankingSearchText}
@@ -2920,7 +2920,7 @@ export default function Banking() {
                 autoComplete="off"
                 placeholder="Counterparty, memo, id, job, person…"
                 aria-label="Search transactions"
-                style={{ minWidth: 280, padding: '6px 8px', border: '1px solid #d1d5db', borderRadius: 4 }}
+                style={{ minWidth: 280, padding: '6px 8px', border: '1px solid var(--border-strong)', borderRadius: 4 }}
               />
             </label>
             <div style={{ marginLeft: 'auto', fontWeight: 600 }}>
@@ -2928,7 +2928,7 @@ export default function Banking() {
               {rowsTruncated ? (
                 <span
                   title={`Only the newest ${MERCURY_TRANSACTIONS_BANKING_LIST_LIMIT.toLocaleString()} transactions are loaded. Older transactions are not shown here.`}
-                  style={{ marginLeft: '0.5rem', fontWeight: 600, color: '#b45309' }}
+                  style={{ marginLeft: '0.5rem', fontWeight: 600, color: 'var(--text-amber-700)' }}
                 >
                   ⚠ capped at {MERCURY_TRANSACTIONS_BANKING_LIST_LIMIT.toLocaleString()}
                 </span>

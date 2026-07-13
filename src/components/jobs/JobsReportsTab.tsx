@@ -342,7 +342,7 @@ export default function JobsReportsTab({
   return (
     <>
       <div>
-        {error && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{error}</p>}
+        {error && <p style={{ color: 'var(--text-red-700)', marginBottom: '1rem' }}>{error}</p>}
         <div style={{ marginBottom: '1rem', display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
           <button
             type="button"
@@ -357,11 +357,11 @@ export default function JobsReportsTab({
               onClick={() => setRecurringEmailReportsModalOpen(true)}
               style={{
                 padding: '0.5rem 1rem',
-                background: '#f3f4f6',
-                border: '1px solid #d1d5db',
+                background: 'var(--bg-muted)',
+                border: '1px solid var(--border-strong)',
                 borderRadius: 4,
                 cursor: 'pointer',
-                color: '#111827',
+                color: 'var(--text-strong)',
               }}
             >
               Recurring Email Reports
@@ -373,7 +373,7 @@ export default function JobsReportsTab({
               onClick={openReportTemplatesModal}
               title="Manage templates"
               aria-label="Manage report templates"
-              style={{ padding: '0.5rem 1rem', background: '#f3f4f6', color: '#374151', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
+              style={{ padding: '0.5rem 1rem', background: 'var(--bg-muted)', color: 'var(--text-700)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}
             >
               Templates
             </button>
@@ -383,20 +383,20 @@ export default function JobsReportsTab({
             placeholder={reportsViewMode === 'person' ? 'Search by job, HCP, or person' : 'Search by job name, HCP, or address'}
             value={reportsSearch}
             onChange={(e) => setReportsSearch(e.target.value)}
-            style={{ padding: '0.5rem 0.75rem', border: '1px solid #d1d5db', borderRadius: 4, minWidth: 200 }}
+            style={{ padding: '0.5rem 0.75rem', border: '1px solid var(--border-strong)', borderRadius: 4, minWidth: 200 }}
           />
-          <div style={{ display: 'flex', gap: 0, border: '1px solid #d1d5db', borderRadius: 4, overflow: 'hidden', marginLeft: 'auto' }}>
+          <div style={{ display: 'flex', gap: 0, border: '1px solid var(--border-strong)', borderRadius: 4, overflow: 'hidden', marginLeft: 'auto' }}>
             <button
               type="button"
               onClick={() => setReportsViewMode('job')}
-              style={{ padding: '0.5rem 0.75rem', background: reportsViewMode === 'job' ? '#3b82f6' : '#f9fafb', color: reportsViewMode === 'job' ? 'white' : '#374151', border: 'none', cursor: 'pointer', fontSize: '0.875rem' }}
+              style={{ padding: '0.5rem 0.75rem', background: reportsViewMode === 'job' ? '#3b82f6' : 'var(--bg-subtle)', color: reportsViewMode === 'job' ? 'white' : 'var(--text-700)', border: 'none', cursor: 'pointer', fontSize: '0.875rem' }}
             >
               By Job
             </button>
             <button
               type="button"
               onClick={() => setReportsViewMode('person')}
-              style={{ padding: '0.5rem 0.75rem', background: reportsViewMode === 'person' ? '#3b82f6' : '#f9fafb', color: reportsViewMode === 'person' ? 'white' : '#374151', border: 'none', cursor: 'pointer', fontSize: '0.875rem' }}
+              style={{ padding: '0.5rem 0.75rem', background: reportsViewMode === 'person' ? '#3b82f6' : 'var(--bg-subtle)', color: reportsViewMode === 'person' ? 'white' : 'var(--text-700)', border: 'none', cursor: 'pointer', fontSize: '0.875rem' }}
             >
               By Person
             </button>
@@ -404,30 +404,30 @@ export default function JobsReportsTab({
         </div>
         {reportTemplatesModalOpen && (
           <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
-            <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, maxWidth: 400, width: '90%', maxHeight: '90vh', overflow: 'auto' }}>
+            <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, maxWidth: 400, width: '90%', maxHeight: '90vh', overflow: 'auto' }}>
               {templateFormOpen ? (
                 <>
                   <h3 style={{ margin: '0 0 1rem 0' }}>{editingReportTemplateId ? 'Edit template' : 'Add template'}</h3>
                   <form onSubmit={saveTemplate}>
                     <div style={{ marginBottom: '0.75rem' }}>
                       <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Template name *</label>
-                      <input type="text" value={newTemplateName} onChange={(e) => setNewTemplateName(e.target.value)} required placeholder="e.g. Walk Report" style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
+                      <input type="text" value={newTemplateName} onChange={(e) => setNewTemplateName(e.target.value)} required placeholder="e.g. Walk Report" style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }} />
                     </div>
                     <div style={{ marginBottom: '0.75rem' }}>
                       <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Field labels</label>
                       {newTemplateFields.map((val, i) => (
                         <div key={i} style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                          <input type="text" value={val} onChange={(e) => setNewTemplateFields((prev) => { const n = [...prev]; n[i] = e.target.value; return n })} placeholder="e.g. What is the status?" style={{ flex: 1, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
-                          <button type="button" onClick={() => setNewTemplateFields((prev) => prev.filter((_, j) => j !== i))} style={{ padding: '0.5rem', background: '#fee2e2', color: '#991b1b', border: 'none', borderRadius: 4, cursor: 'pointer' }}>Remove</button>
+                          <input type="text" value={val} onChange={(e) => setNewTemplateFields((prev) => { const n = [...prev]; n[i] = e.target.value; return n })} placeholder="e.g. What is the status?" style={{ flex: 1, padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }} />
+                          <button type="button" onClick={() => setNewTemplateFields((prev) => prev.filter((_, j) => j !== i))} style={{ padding: '0.5rem', background: 'var(--bg-red-100)', color: 'var(--text-red-800)', border: 'none', borderRadius: 4, cursor: 'pointer' }}>Remove</button>
                         </div>
                       ))}
-                      <button type="button" onClick={() => setNewTemplateFields((prev) => [...prev, ''])} style={{ marginTop: '0.25rem', padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}>Add field</button>
+                      <button type="button" onClick={() => setNewTemplateFields((prev) => [...prev, ''])} style={{ marginTop: '0.25rem', padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}>Add field</button>
                     </div>
                     <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'space-between', flexWrap: 'wrap' }}>
                       <div style={{ display: 'flex', gap: '0.5rem' }}>
-                        <button type="button" onClick={closeTemplateForm} style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
+                        <button type="button" onClick={closeTemplateForm} style={{ padding: '0.5rem 1rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
                         {editingReportTemplateId && (
-                          <button type="button" onClick={() => editingReportTemplateId && deleteReportTemplate(editingReportTemplateId)} disabled={!!templateDeletingId} style={{ padding: '0.5rem 1rem', background: '#fee2e2', color: '#991b1b', border: 'none', borderRadius: 4, cursor: templateDeletingId ? 'not-allowed' : 'pointer' }}>{templateDeletingId ? '…' : 'Delete'}</button>
+                          <button type="button" onClick={() => editingReportTemplateId && deleteReportTemplate(editingReportTemplateId)} disabled={!!templateDeletingId} style={{ padding: '0.5rem 1rem', background: 'var(--bg-red-100)', color: 'var(--text-red-800)', border: 'none', borderRadius: 4, cursor: templateDeletingId ? 'not-allowed' : 'pointer' }}>{templateDeletingId ? '…' : 'Delete'}</button>
                         )}
                       </div>
                       <button type="submit" disabled={templateSaving || !newTemplateName.trim()} style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: templateSaving ? 'not-allowed' : 'pointer' }}>{templateSaving ? 'Saving…' : 'Save'}</button>
@@ -438,24 +438,24 @@ export default function JobsReportsTab({
                 <>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
                     <h3 style={{ margin: 0 }}>Report Templates</h3>
-                    <button type="button" onClick={() => setReportTemplatesModalOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.25rem', color: '#6b7280' }} aria-label="Close">×</button>
+                    <button type="button" onClick={() => setReportTemplatesModalOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.25rem', color: 'var(--text-muted)' }} aria-label="Close">×</button>
                   </div>
                   <button type="button" onClick={openAddTemplate} style={{ width: '100%', marginBottom: '1rem', padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>Add template</button>
                   {reportTemplatesLoading ? (
-                    <p style={{ color: '#6b7280' }}>Loading templates…</p>
+                    <p style={{ color: 'var(--text-muted)' }}>Loading templates…</p>
                   ) : reportTemplatesList.length === 0 ? (
-                    <p style={{ color: '#6b7280' }}>No templates yet.</p>
+                    <p style={{ color: 'var(--text-muted)' }}>No templates yet.</p>
                   ) : (
                     <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
                       {reportTemplatesList.map((t) => (
-                        <li key={t.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem 0', borderBottom: '1px solid #e5e7eb' }}>
+                        <li key={t.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem 0', borderBottom: '1px solid var(--border)' }}>
                           <span>{t.name}</span>
                           {t.app_managed ? (
-                            <span style={{ fontSize: '0.8125rem', color: '#6b7280' }} title="Built-in template">
+                            <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }} title="Built-in template">
                               Built-in
                             </span>
                           ) : (
-                            <button type="button" onClick={() => openEditReportTemplate(t)} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}>
+                            <button type="button" onClick={() => openEditReportTemplate(t)} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}>
                               Edit
                             </button>
                           )}
@@ -469,7 +469,7 @@ export default function JobsReportsTab({
           </div>
         )}
         {reportsLoading ? (
-          <p style={{ color: '#6b7280' }}>Loading reports…</p>
+          <p style={{ color: 'var(--text-muted)' }}>Loading reports…</p>
         ) : (
           (() => {
             const q = reportsSearch.trim().toLowerCase()
@@ -494,7 +494,7 @@ export default function JobsReportsTab({
                 .filter(({ reps }) => reps.length > 0)
                 .sort((a, b) => new Date(b.reps[0]!.created_at).getTime() - new Date(a.reps[0]!.created_at).getTime())
               if (personGroups.length === 0) {
-                return <p style={{ color: '#6b7280' }}>No reports yet. Click New report to add one.</p>
+                return <p style={{ color: 'var(--text-muted)' }}>No reports yet. Click New report to add one.</p>
               }
               return (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
@@ -503,7 +503,7 @@ export default function JobsReportsTab({
                     const displayName = person.created_by_name || 'Unknown'
                     const isExpanded = reportsExpandedPersons.has(key)
                     return (
-                      <div key={key} style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
+                      <div key={key} style={{ border: '1px solid var(--border)', borderRadius: 4, overflow: 'hidden' }}>
                         <button
                           type="button"
                           onClick={() =>
@@ -521,7 +521,7 @@ export default function JobsReportsTab({
                             display: 'flex',
                             alignItems: 'center',
                             gap: '0.5rem',
-                            background: '#f9fafb',
+                            background: 'var(--bg-subtle)',
                             border: 'none',
                             cursor: 'pointer',
                             textAlign: 'left',
@@ -549,20 +549,20 @@ export default function JobsReportsTab({
                               whiteSpace: 'nowrap',
                             }}
                           >
-                            <span style={{ color: '#6b7280', fontVariantNumeric: 'tabular-nums' }}>
+                            <span style={{ color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>
                               {reps.length} report{reps.length !== 1 ? 's' : ''}
                             </span>
                             <span style={{ transform: isExpanded ? 'rotate(180deg)' : 'none', flexShrink: 0 }}>▼</span>
                           </span>
                         </button>
                         {isExpanded && (
-                          <div style={{ padding: '0.5rem 1rem', borderTop: '1px solid #e5e7eb' }}>
+                          <div style={{ padding: '0.5rem 1rem', borderTop: '1px solid var(--border)' }}>
                             {reps.map((r) => (
                               <div key={r.id} style={{ padding: '0.75rem 0', borderBottom: '1px solid #f3f4f6' }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
                                   <div>
                                     <span style={{ fontWeight: 600 }}>{displayReportTemplateName(r.template_name, authRole)}</span>
-                                    <span style={{ fontSize: '0.8125rem', color: '#6b7280', marginLeft: '0.5rem' }}>
+                                    <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginLeft: '0.5rem' }}>
                                       {new Date(r.created_at).toLocaleString()} · {r.job_display_name || 'Unknown job'}
                                       {r.job_hcp_number ? ` (HCP: ${r.job_hcp_number})` : ''}
                                     </span>
@@ -574,7 +574,7 @@ export default function JobsReportsTab({
                                       disabled={reportsDeletingId === r.id}
                                       title="Delete"
                                       aria-label="Delete"
-                                      style={{ padding: '0.25rem', cursor: reportsDeletingId === r.id ? 'not-allowed' : 'pointer', background: 'none', border: 'none', color: '#dc2626', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+                                      style={{ padding: '0.25rem', cursor: reportsDeletingId === r.id ? 'not-allowed' : 'pointer', background: 'none', border: 'none', color: 'var(--text-red-600)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
                                     >
                                       {reportsDeletingId === r.id ? '…' : 'Delete'}
                                     </button>
@@ -585,7 +585,7 @@ export default function JobsReportsTab({
                                     {Object.entries(r.field_values).map(([label, val]) =>
                                       val ? (
                                         <div key={label} style={{ marginBottom: '0.25rem' }}>
-                                          <span style={{ color: '#6b7280' }}>{label}:</span> {formatReportFieldValueInlineList(val)}
+                                          <span style={{ color: 'var(--text-muted)' }}>{label}:</span> {formatReportFieldValueInlineList(val)}
                                         </div>
                                       ) : null
                                     )}
@@ -613,7 +613,7 @@ export default function JobsReportsTab({
               .filter(({ reps }) => reps.length > 0)
               .sort((a, b) => new Date(b.reps[0]!.created_at).getTime() - new Date(a.reps[0]!.created_at).getTime())
             if (jobGroups.length === 0) {
-              return <p style={{ color: '#6b7280' }}>No reports yet. Click New report to add one.</p>
+              return <p style={{ color: 'var(--text-muted)' }}>No reports yet. Click New report to add one.</p>
             }
             return (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
@@ -623,8 +623,8 @@ export default function JobsReportsTab({
                   const hcp = job.job_hcp_number ? ` (HCP: ${job.job_hcp_number})` : ''
                   const isExpanded = reportsExpandedJobs.has(key)
                   return (
-                    <div key={key} style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', background: '#f9fafb' }}>
+                    <div key={key} style={{ border: '1px solid var(--border)', borderRadius: 4, overflow: 'hidden' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', background: 'var(--bg-subtle)' }}>
                         {job.job_ledger_id ? (
                           <div style={{ display: 'flex', gap: 4, alignItems: 'center', flexShrink: 0, paddingLeft: '0.5rem' }}>
                             {(() => {
@@ -664,7 +664,7 @@ export default function JobsReportsTab({
                                     }
                                     style={{
                                       ...iconBtnBase,
-                                      color: drive ? '#2563eb' : '#dc2626',
+                                      color: drive ? 'var(--text-link)' : 'var(--text-red-600)',
                                     }}
                                   >
                                     <Folder size={18} strokeWidth={2} aria-hidden />
@@ -688,7 +688,7 @@ export default function JobsReportsTab({
                                     }
                                     style={{
                                       ...iconBtnBase,
-                                      color: jpics ? '#2563eb' : '#dc2626',
+                                      color: jpics ? 'var(--text-link)' : 'var(--text-red-600)',
                                     }}
                                   >
                                     <Images size={18} strokeWidth={2} aria-hidden />
@@ -708,7 +708,7 @@ export default function JobsReportsTab({
                                     aria-label="Edit job"
                                     style={{
                                       ...iconBtnBase,
-                                      color: '#2563eb',
+                                      color: 'var(--text-link)',
                                     }}
                                   >
                                     <Pencil size={18} strokeWidth={2} aria-hidden />
@@ -729,7 +729,7 @@ export default function JobsReportsTab({
                                     aria-label={`Job preview — ${displayName}`}
                                     style={{
                                       ...iconBtnBase,
-                                      color: '#2563eb',
+                                      color: 'var(--text-link)',
                                     }}
                                   >
                                     <PanelRightOpen size={18} strokeWidth={2} aria-hidden />
@@ -785,7 +785,7 @@ export default function JobsReportsTab({
                               whiteSpace: 'nowrap',
                             }}
                           >
-                            <span style={{ color: '#6b7280', fontVariantNumeric: 'tabular-nums' }}>
+                            <span style={{ color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>
                               {reps.length} report{reps.length !== 1 ? 's' : ''}
                             </span>
                             <span style={{ transform: isExpanded ? 'rotate(180deg)' : 'none', flexShrink: 0 }}>▼</span>
@@ -793,13 +793,13 @@ export default function JobsReportsTab({
                         </button>
                       </div>
                       {isExpanded && (
-                        <div style={{ padding: '0.5rem 1rem', borderTop: '1px solid #e5e7eb' }}>
+                        <div style={{ padding: '0.5rem 1rem', borderTop: '1px solid var(--border)' }}>
                           {reps.map((r) => (
                             <div key={r.id} style={{ padding: '0.75rem 0', borderBottom: '1px solid #f3f4f6' }}>
                               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
                                 <div>
                                   <span style={{ fontWeight: 600 }}>{displayReportTemplateName(r.template_name, authRole)}</span>
-                                  <span style={{ fontSize: '0.8125rem', color: '#6b7280', marginLeft: '0.5rem' }}>
+                                  <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginLeft: '0.5rem' }}>
                                     {new Date(r.created_at).toLocaleString()} · {r.created_by_name}
                                   </span>
                                 </div>
@@ -810,7 +810,7 @@ export default function JobsReportsTab({
                                     disabled={reportsDeletingId === r.id}
                                     title="Delete"
                                     aria-label="Delete"
-                                    style={{ padding: '0.25rem', cursor: reportsDeletingId === r.id ? 'not-allowed' : 'pointer', background: 'none', border: 'none', color: '#dc2626', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+                                    style={{ padding: '0.25rem', cursor: reportsDeletingId === r.id ? 'not-allowed' : 'pointer', background: 'none', border: 'none', color: 'var(--text-red-600)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
                                   >
                                     {reportsDeletingId === r.id ? '…' : 'Delete'}
                                   </button>
@@ -821,7 +821,7 @@ export default function JobsReportsTab({
                                   {Object.entries(r.field_values).map(([label, val]) =>
                                     val ? (
                                       <div key={label} style={{ marginBottom: '0.25rem' }}>
-                                        <span style={{ color: '#6b7280' }}>{label}:</span> {formatReportFieldValueInlineList(val)}
+                                        <span style={{ color: 'var(--text-muted)' }}>{label}:</span> {formatReportFieldValueInlineList(val)}
                                       </div>
                                     ) : null
                                   )}

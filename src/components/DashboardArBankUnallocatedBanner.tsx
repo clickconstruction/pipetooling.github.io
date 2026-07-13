@@ -23,7 +23,7 @@ export default function DashboardArBankUnallocatedBanner({ count, loading, onGoT
         padding: '1rem 1.25rem',
         border: '1px solid #93c5fd',
         borderRadius: 8,
-        background: '#eff6ff',
+        background: 'var(--bg-blue-tint)',
         marginBottom: '1rem',
         cursor: 'pointer',
         textAlign: 'left',
@@ -50,8 +50,8 @@ export default function DashboardArBankUnallocatedBanner({ count, loading, onGoT
         {count > 99 ? '99+' : count}
       </span>
       <div style={{ flex: '1 1 200px', minWidth: 0 }}>
-        <div style={{ fontWeight: 600, fontSize: '1rem', color: '#1d4ed8' }}>Unallocated bank deposits</div>
-        <div style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: 2 }}>
+        <div style={{ fontWeight: 600, fontSize: '1rem', color: 'var(--text-blue-700)' }}>Unallocated bank deposits</div>
+        <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginTop: 2 }}>
           {count === 1
             ? 'One Mercury transaction still has balance to apply — '
             : `${count} Mercury transactions still have balance to apply — `}

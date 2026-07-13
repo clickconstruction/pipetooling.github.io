@@ -19,6 +19,39 @@ Salaried users get **auto materialized** `clock_sessions` rows with `origin = 's
 
 ---
 
+## Payroll & cost hours (the flat 8/0 rule + payroll adjustments)
+
+The materialized `salary_schedule` sessions above drive the **calendar/On-Shift display**. They do **not** drive payroll math. The per-person flags live on `people_pay_config`:
+
+- **`is_salary`** — the flag. Payroll/costing uses the flat 8/0 credit (8 h weekdays, 0 weekends).
+- **`record_hours_but_salary`** — lets a salaried person still **log** hours that show on the Hours surfaces; **costing stays on the flat 8/0** regardless.
+
+There is **no** stored salary amount or per-person daily-hours override; the 8 h/day is fixed
+(pay = `hourly_wage` × credited hours).
+
+**Two rule tiers since 2026-07-13 (Employment tab series, PRs #266–#272):**
+
+1. **Cost/display surfaces** (Hours grid, cost matrix, Due summaries, CrewJobsBlock,
+   `teamLabor.ts`, `get_man_hours_by_job()` RPC, unassigned-field-time) — the plain flat 8/0,
+   currently **re-derived inline per surface** (a shared `salariedEffectiveHours.ts` kernel exists
+   only on the open PR #182 branch — until that merges, do not assume it is importable).
+2. **Payroll surfaces** (pay-stub generation, Draft Payroll preview + person-hours drilldown) —
+   flat 8/0 **adjusted** by the unit-tested kernel
+   [`src/lib/salariedPayrollDays.ts`](../src/lib/salariedPayrollDays.ts):
+   - **Unpaid `user_time_off` weekdays pay 0**; **paid** time off keeps the 8 h (paid kind is
+     salaried-only; unpaid wins when ranges overlap). Both kinds still delete the day's
+     `salary_schedule` sessions (the sync's time-off check ignores `kind`).
+   - The **employment window** (`people.start_date` / `end_date`, inclusive) clamps the credit —
+     no pay before the start date or after the end date.
+   - Legacy stub **view/print fallbacks** (stubs with no `pay_stub_days` rows) intentionally keep
+     the unadjusted flat rule: they must display what was actually paid.
+
+Pay staff manage all of this (pay flags, employment dates, workday template, paid/unpaid time
+off) from **People → Employment**; see `src/components/people/PeopleEmploymentTab.tsx` and the
+`manage-employment` help guide.
+
+---
+
 ## `clock_sessions` fields (salary-specific)
 
 | Column | Meaning |
@@ -34,7 +67,7 @@ Partial unique indexes enforce one continuous row per user/day and one row per (
 
 - **`salary_work_schedule_templates`** — per-user default: continuous vs split, segment start times and durations, jobs/bids, `exclude_weekends`, timezone default.
 - **`salary_work_schedule_day_overrides`** — optional row per `(user_id, work_date)`. A day override is **meaningful** when `mode` or `segment_a_start_local` is set (used to allow weekend work when `exclude_weekends` is true).
-- **`user_time_off`** — unpaid inclusive ranges; sync **DELETE**s non-final **`salary_schedule`** rows for that **`work_date`** and **returns**. **Current deployed body**: it does **not** then set **`clocked_out_at`** on **`user_punch`** rows (contrast **`20270331180000`**-era docs). Operators should treat lingering opens separately if needed.
+- **`user_time_off`** — inclusive ranges, `kind` = **`unpaid`** or **`paid`** (since `20260713120000`; paid is salaried-only by product decision). Sync **ignores `kind`**: any row **DELETE**s non-final **`salary_schedule`** rows for that **`work_date`** and **returns**. The paid/unpaid distinction is payroll-only (see the payroll section above). **Current deployed body**: it does **not** then set **`clocked_out_at`** on **`user_punch`** rows (contrast **`20270331180000`**-era docs). Operators should treat lingering opens separately if needed.
 
 Resolution order for calendar display: **time off → weekend exclusion (when template says weekdays-only and override not meaningful) → day override → template**.
 

@@ -146,7 +146,7 @@ export default function EstimateSentDocumentModal({ open, onClose, estimateId }:
           maxWidth: 720,
           maxHeight: 'min(92vh, 900px)',
           overflow: 'auto',
-          background: 'white',
+          background: 'var(--surface)',
           borderRadius: 8,
           boxShadow: '0 16px 48px rgba(0,0,0,0.2)',
           display: 'flex',
@@ -162,10 +162,10 @@ export default function EstimateSentDocumentModal({ open, onClose, estimateId }:
             gap: '0.75rem',
             flexWrap: 'wrap',
             padding: '1rem 1.25rem',
-            borderBottom: '1px solid #e5e7eb',
+            borderBottom: '1px solid var(--border)',
             position: 'sticky',
             top: 0,
-            background: 'white',
+            background: 'var(--surface)',
             zIndex: 1,
           }}
         >
@@ -187,9 +187,9 @@ export default function EstimateSentDocumentModal({ open, onClose, estimateId }:
         </div>
 
         <div style={{ padding: '1rem 1.25rem 1.5rem' }}>
-          {loading ? <p style={{ margin: 0, color: '#6b7280' }}>Loading…</p> : null}
+          {loading ? <p style={{ margin: 0, color: 'var(--text-muted)' }}>Loading…</p> : null}
           {error ? (
-            <p style={{ margin: 0, color: '#b91c1c' }} role="alert">
+            <p style={{ margin: 0, color: 'var(--text-red-700)' }} role="alert">
               {error}
             </p>
           ) : null}
@@ -197,10 +197,10 @@ export default function EstimateSentDocumentModal({ open, onClose, estimateId }:
             <div
               style={{
                 fontFamily: 'system-ui, sans-serif',
-                border: '1px solid #e5e7eb',
+                border: '1px solid var(--border)',
                 borderRadius: 8,
                 padding: '1rem',
-                background: '#fafafa',
+                background: 'var(--bg-page)',
               }}
             >
               <EstimateAcceptBody

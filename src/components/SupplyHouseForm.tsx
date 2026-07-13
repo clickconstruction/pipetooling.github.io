@@ -35,7 +35,7 @@ interface SupplyHouseFormProps {
   variant?: 'modal' | 'inline'
 }
 
-const fieldStyles = { width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 } as const
+const fieldStyles = { width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 } as const
 const labelStyles = { display: 'block', marginBottom: '0.25rem', fontWeight: 500 } as const
 const rowStyles = { marginBottom: '0.75rem' } as const
 
@@ -87,7 +87,7 @@ export function SupplyHouseForm({
   }
 
   const formContent = (
-    <form onSubmit={handleSubmit} style={variant === 'inline' ? { marginBottom: '1.5rem', padding: '1rem', background: '#f9fafb', borderRadius: 4 } : undefined}>
+    <form onSubmit={handleSubmit} style={variant === 'inline' ? { marginBottom: '1.5rem', padding: '1rem', background: 'var(--bg-subtle)', borderRadius: 4 } : undefined}>
       <h3 style={{ margin: variant === 'inline' ? 0 : undefined, marginBottom: '1rem' }}>{editingSupplyHouse ? 'Edit Supply House' : 'Add Supply House'}</h3>
       <div style={rowStyles}>
         <label style={labelStyles}>Name *</label>
@@ -128,7 +128,7 @@ export function SupplyHouseForm({
           style={fieldStyles}
         />
         {websiteUrlError ? (
-          <p style={{ margin: '0.35rem 0 0', fontSize: '0.8125rem', color: '#b91c1c' }}>{websiteUrlError}</p>
+          <p style={{ margin: '0.35rem 0 0', fontSize: '0.8125rem', color: 'var(--text-red-700)' }}>{websiteUrlError}</p>
         ) : null}
       </div>
       <div style={rowStyles}>
@@ -152,7 +152,7 @@ export function SupplyHouseForm({
           <button
             type="button"
             onClick={onDelete}
-            style={{ padding: '0.5rem 1rem', background: '#fee2e2', color: '#991b1b', border: '1px solid #fca5a5', borderRadius: 4, cursor: 'pointer' }}
+            style={{ padding: '0.5rem 1rem', background: 'var(--bg-red-100)', color: 'var(--text-red-800)', border: '1px solid #fca5a5', borderRadius: 4, cursor: 'pointer' }}
           >
             Delete
           </button>
@@ -170,7 +170,7 @@ export function SupplyHouseForm({
           <button
             type="button"
             onClick={onClose}
-            style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
+            style={{ padding: '0.5rem 1rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}
           >
             Cancel
           </button>
@@ -182,7 +182,7 @@ export function SupplyHouseForm({
   if (variant === 'modal') {
     return (
       <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
-        <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, maxWidth: 480, width: '90%' }}>
+        <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, maxWidth: 480, width: '90%' }}>
           {formContent}
         </div>
       </div>

@@ -157,10 +157,10 @@ export default function AddInspectionModal({ open, onClose, onSaved, authUserId 
 
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 65 }}>
-      <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 400, maxWidth: 560, maxHeight: '90vh', overflow: 'auto' }}>
+      <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 400, maxWidth: 560, maxHeight: '90vh', overflow: 'auto' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
           <h2 style={{ margin: 0 }}>Add inspection</h2>
-          <button type="button" onClick={handleClose} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.25rem', color: '#6b7280' }} aria-label="Close">×</button>
+          <button type="button" onClick={handleClose} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.25rem', color: 'var(--text-muted)' }} aria-label="Close">×</button>
         </div>
 
         <form onSubmit={handleSubmit}>
@@ -181,30 +181,30 @@ export default function AddInspectionModal({ open, onClose, onSaved, authUserId 
                       setJobSearchText('')
                     }
                   }}
-                  style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', border: searchMode === 'last' ? '2px solid #3b82f6' : '1px solid #d1d5db', background: searchMode === 'last' ? '#eff6ff' : 'white', borderRadius: 4, cursor: 'pointer' }}
+                  style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', border: searchMode === 'last' ? '2px solid #3b82f6' : '1px solid var(--border-strong)', background: searchMode === 'last' ? 'var(--bg-blue-tint)' : 'var(--surface)', borderRadius: 4, cursor: 'pointer' }}
                 >
                   Same job as last inspection
                 </button>
               )}
             </div>
             {selectedJob && (
-              <p style={{ margin: 0, padding: '0.5rem', background: '#f3f4f6', borderRadius: 4 }}>Selected: {selectedJob.display_name} (HCP: {selectedJob.hcp_number || '—'}){selectedJob.address ? `  -  ${selectedJob.address}` : ''}</p>
+              <p style={{ margin: 0, padding: '0.5rem', background: 'var(--bg-muted)', borderRadius: 4 }}>Selected: {selectedJob.display_name} (HCP: {selectedJob.hcp_number || '—'}){selectedJob.address ? `  -  ${selectedJob.address}` : ''}</p>
             )}
             <input
               type="text"
               value={jobSearchText}
               onChange={(e) => { setJobSearchText(e.target.value); setSearchMode('search'); setSelectedJob(null) }}
               placeholder="Search by HCP #, project name, or address"
-              style={{ width: '100%', padding: '0.5rem', marginTop: '0.5rem', marginBottom: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+              style={{ width: '100%', padding: '0.5rem', marginTop: '0.5rem', marginBottom: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
             />
             {searchMode === 'search' && searchResults.length > 0 && (
-              <div style={{ maxHeight: 160, overflow: 'auto', border: '1px solid #e5e7eb', borderRadius: 4 }}>
+              <div style={{ maxHeight: 160, overflow: 'auto', border: '1px solid var(--border)', borderRadius: 4 }}>
                 {searchResults.map((r) => (
                   <button
                     key={`${r.source}-${r.id}`}
                     type="button"
                     onClick={() => { setSelectedJob(r); setSearchResults([]) }}
-                    style={{ display: 'block', width: '100%', padding: '0.5rem 0.75rem', textAlign: 'left', border: 'none', background: selectedJob?.id === r.id ? '#eff6ff' : 'white', cursor: 'pointer', borderBottom: '1px solid #e5e7eb' }}
+                    style={{ display: 'block', width: '100%', padding: '0.5rem 0.75rem', textAlign: 'left', border: 'none', background: selectedJob?.id === r.id ? 'var(--bg-blue-tint)' : 'var(--surface)', cursor: 'pointer', borderBottom: '1px solid var(--border)' }}
                   >
                     {r.display_name} {r.hcp_number ? `(HCP: ${r.hcp_number})` : ''}{r.address ? `  -  ${r.address}` : ''}
                   </button>
@@ -220,7 +220,7 @@ export default function AddInspectionModal({ open, onClose, onSaved, authUserId 
               value={address}
               onChange={(e) => setAddress(e.target.value)}
               placeholder="Inspection address"
-              style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+              style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
             />
           </div>
 
@@ -229,7 +229,7 @@ export default function AddInspectionModal({ open, onClose, onSaved, authUserId 
             <select
               value={inspectionType}
               onChange={(e) => setInspectionType(e.target.value)}
-              style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+              style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
               disabled={inspectionTypes.length === 0}
             >
               {inspectionTypes.length === 0 ? (
@@ -248,14 +248,14 @@ export default function AddInspectionModal({ open, onClose, onSaved, authUserId 
               type="date"
               value={scheduledDate}
               onChange={(e) => setScheduledDate(e.target.value)}
-              style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+              style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
             />
           </div>
 
-          {error && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{error}</p>}
+          {error && <p style={{ color: 'var(--text-red-700)', marginBottom: '1rem' }}>{error}</p>}
 
           <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-            <button type="button" onClick={handleClose} style={{ padding: '0.5rem 1rem', border: '1px solid #d1d5db', background: 'white', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
+            <button type="button" onClick={handleClose} style={{ padding: '0.5rem 1rem', border: '1px solid var(--border-strong)', background: 'var(--surface)', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
             <button type="submit" disabled={!canSubmit || saving} title={!canSubmit ? `Required: ${missingFields.join(', ')}` : undefined} style={{ padding: '0.5rem 1rem', background: canSubmit && !saving ? '#2563eb' : '#9ca3af', color: 'white', border: 'none', borderRadius: 4, cursor: canSubmit && !saving ? 'pointer' : 'not-allowed' }}>{saving ? 'Saving…' : 'Add inspection'}</button>
             {!canSubmit && !saving && missingFields.length > 0 && (
               <span style={{ fontSize: '0.8rem', color: '#FF6600', marginLeft: '0.5rem', display: 'inline-block' }}>

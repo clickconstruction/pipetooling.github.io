@@ -22,6 +22,7 @@ const ALL_TYPES: JobActivityEventType[] = [
   'field_edited',
   'job_combined',
   'job_separated',
+  'collections_change',
 ]
 
 describe('JOB_ACTIVITY_EVENT_RENDER', () => {
@@ -32,7 +33,7 @@ describe('JOB_ACTIVITY_EVENT_RENDER', () => {
       expect(meta.tag.length).toBeGreaterThan(0)
       expect(['status', 'billing', 'crew', 'other']).toContain(meta.bucket)
       expect(meta.tagColor).toMatch(/^#/)
-      expect(meta.borderColor).toMatch(/^#/)
+      expect(meta.borderColor).toMatch(/^(#|var\()/)
     }
   })
 
@@ -46,5 +47,6 @@ describe('JOB_ACTIVITY_EVENT_RENDER', () => {
     expect(bucketForEvent('invoice_sent')).toBe('billing')
     expect(bucketForEvent('crew_added')).toBe('crew')
     expect(bucketForEvent('field_edited')).toBe('other')
+    expect(bucketForEvent('collections_change')).toBe('billing')
   })
 })

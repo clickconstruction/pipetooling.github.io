@@ -153,12 +153,12 @@ export function PeopleHoursPendingCellPopover({
         left: pos?.left ?? -9999,
         width: POPOVER_WIDTH,
         zIndex: 50,
-        background: 'white',
+        background: 'var(--surface)',
         border: '1px solid #f59e0b',
         borderRadius: 8,
         boxShadow: '0 12px 28px rgba(0,0,0,0.18)',
         fontSize: '0.8125rem',
-        color: '#111827',
+        color: 'var(--text-strong)',
         padding: '0.5rem 0.6rem 0.6rem',
         visibility: pos ? 'visible' : 'hidden',
       }}
@@ -185,7 +185,7 @@ export function PeopleHoursPendingCellPopover({
             border: 'none',
             background: 'none',
             cursor: 'pointer',
-            color: '#6b7280',
+            color: 'var(--text-muted)',
             fontSize: '1rem',
             lineHeight: 1,
             padding: '0 0.15rem',
@@ -230,13 +230,13 @@ export function PeopleHoursPendingCellPopover({
                   {formatDenverTimeOnly(inMs)}
                   {' – '}
                   {s.clocked_out_at ? formatDenverTimeOnly(outMs) : '—'}
-                  <span style={{ color: '#6b7280', marginLeft: '0.35rem' }}>
+                  <span style={{ color: 'var(--text-muted)', marginLeft: '0.35rem' }}>
                     {dur.toFixed(2)}h
                   </span>
                 </div>
                 <div
                   style={{
-                    color: '#374151',
+                    color: 'var(--text-700)',
                     fontSize: '0.75rem',
                     whiteSpace: 'nowrap',
                     overflow: 'hidden',
@@ -259,8 +259,8 @@ export function PeopleHoursPendingCellPopover({
                     padding: '0.15rem 0.45rem',
                     border: '1px solid',
                     borderColor: confirming ? '#dc2626' : '#fca5a5',
-                    background: confirming ? '#fee2e2' : '#fef2f2',
-                    color: '#b91c1c',
+                    background: confirming ? 'var(--bg-red-100)' : 'var(--bg-red-tint)',
+                    color: 'var(--text-red-700)',
                     borderRadius: 4,
                     fontSize: '0.75rem',
                     cursor: rejecting || busyApprove ? 'not-allowed' : 'pointer',
@@ -274,7 +274,7 @@ export function PeopleHoursPendingCellPopover({
           )
         })}
       </ul>
-      <div style={{ margin: '0.5rem 0 0.6rem', color: '#374151', lineHeight: 1.35 }}>
+      <div style={{ margin: '0.5rem 0 0.6rem', color: 'var(--text-700)', lineHeight: 1.35 }}>
         Approving adds <strong>{entry.pendingHours.toFixed(2)} h</strong> to payroll for this day
         {entry.peopleHoursValue > 0 ? (
           <>
@@ -295,9 +295,9 @@ export function PeopleHoursPendingCellPopover({
           style={{
             padding: '0.3rem 0.6rem',
             fontSize: '0.8125rem',
-            border: '1px solid #d1d5db',
-            background: 'white',
-            color: '#374151',
+            border: '1px solid var(--border-strong)',
+            background: 'var(--surface)',
+            color: 'var(--text-700)',
             borderRadius: 4,
             cursor: 'pointer',
           }}

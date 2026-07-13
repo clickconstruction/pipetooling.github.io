@@ -53,13 +53,13 @@ const FORM_ROW_GRID: CSSProperties = {
   rowGap: 6,
   alignItems: 'center',
   fontSize: '0.75rem',
-  color: '#6b7280',
+  color: 'var(--text-muted)',
 }
 
 const FORM_LABEL_CELL: CSSProperties = {
   fontSize: '0.68rem',
   fontWeight: 500,
-  color: '#6b7280',
+  color: 'var(--text-muted)',
   textAlign: 'right',
   paddingRight: 6,
   lineHeight: 1.25,
@@ -67,7 +67,7 @@ const FORM_LABEL_CELL: CSSProperties = {
 
 /** Same typography as time-range text (right column meta, e.g. duration). */
 const FORM_SPAN_VALUE_TEXT: CSSProperties = {
-  color: '#374151',
+  color: 'var(--text-700)',
   fontVariantNumeric: 'tabular-nums',
   fontSize: '0.75rem',
   minWidth: 0,
@@ -75,7 +75,7 @@ const FORM_SPAN_VALUE_TEXT: CSSProperties = {
 
 const DATETIME_INPUT_STYLE: CSSProperties = {
   padding: '0.2rem 0.35rem',
-  border: '1px solid #d1d5db',
+  border: '1px solid var(--border-strong)',
   borderRadius: 4,
   fontSize: '0.75rem',
 }
@@ -207,7 +207,7 @@ export function MyTimeDayClusterForm({
         style={{
           fontSize: '0.68rem',
           fontWeight: 500,
-          color: '#6b7280',
+          color: 'var(--text-muted)',
           lineHeight: 1.15,
           textAlign: 'left',
         }}
@@ -226,7 +226,7 @@ export function MyTimeDayClusterForm({
         <span
           style={{
             fontSize: '0.65rem',
-            color: '#9ca3af',
+            color: 'var(--text-faint)',
             fontVariantNumeric: 'tabular-nums',
             lineHeight: 1.15,
             textAlign: 'left',
@@ -251,7 +251,7 @@ export function MyTimeDayClusterForm({
               border: 'none',
               background: 'transparent',
               cursor: saving ? 'not-allowed' : 'pointer',
-              color: '#6b7280',
+              color: 'var(--text-muted)',
               lineHeight: 0,
               verticalAlign: 'middle',
             }}
@@ -484,9 +484,9 @@ export function MyTimeDayClusterForm({
                               lineHeight: 1.2,
                               padding: '2px 6px',
                               borderRadius: 4,
-                              border: '1px solid #e5e7eb',
-                              background: '#f9fafb',
-                              color: '#374151',
+                              border: '1px solid var(--border)',
+                              background: 'var(--bg-subtle)',
+                              color: 'var(--text-700)',
                               flex: '1 1 auto',
                               minWidth: 0,
                               maxWidth: '100%',
@@ -510,8 +510,8 @@ export function MyTimeDayClusterForm({
                               fontSize: '0.68rem',
                               border: '1px solid #3b82f6',
                               borderRadius: 4,
-                              background: '#eff6ff',
-                              color: '#2563eb',
+                              background: 'var(--bg-blue-tint)',
+                              color: 'var(--text-link)',
                               cursor: 'pointer',
                             }}
                           >
@@ -536,7 +536,7 @@ export function MyTimeDayClusterForm({
                             style={{
                               fontSize: '0.62rem',
                               fontWeight: 600,
-                              color: '#92400e',
+                              color: 'var(--text-amber-800)',
                               lineHeight: 1.2,
                               textAlign: formStackLayout ? 'left' : 'center',
                             }}
@@ -564,8 +564,8 @@ export function MyTimeDayClusterForm({
                                   padding: '2px 6px',
                                   borderRadius: 4,
                                   border: '1px solid #f59e0b',
-                                  background: '#fffbeb',
-                                  color: '#92400e',
+                                  background: 'var(--bg-amber-tint)',
+                                  color: 'var(--text-amber-800)',
                                   maxWidth: '100%',
                                   minWidth: 0,
                                   overflow: 'hidden',
@@ -596,9 +596,9 @@ export function MyTimeDayClusterForm({
                               lineHeight: 1.2,
                               padding: '2px 6px',
                               borderRadius: 4,
-                              border: '1px solid #e5e7eb',
-                              background: '#f9fafb',
-                              color: '#374151',
+                              border: '1px solid var(--border)',
+                              background: 'var(--bg-subtle)',
+                              color: 'var(--text-700)',
                               flex: 1,
                               minWidth: 0,
                               overflow: 'hidden',
@@ -638,9 +638,9 @@ export function MyTimeDayClusterForm({
                                 lineHeight: 1.2,
                                 padding: '2px 6px',
                                 borderRadius: 4,
-                                border: '1px solid #e5e7eb',
-                                background: '#f9fafb',
-                                color: '#374151',
+                                border: '1px solid var(--border)',
+                                background: 'var(--bg-subtle)',
+                                color: 'var(--text-700)',
                                 maxWidth: '100%',
                                 minWidth: 0,
                                 overflow: 'hidden',
@@ -682,9 +682,9 @@ export function MyTimeDayClusterForm({
                           flexShrink: 0,
                           padding: '0.2rem 0.5rem',
                           fontSize: '0.75rem',
-                          border: '1px solid #d1d5db',
+                          border: '1px solid var(--border-strong)',
                           borderRadius: 4,
-                          background: 'white',
+                          background: 'var(--surface)',
                           cursor: saving ? 'not-allowed' : 'pointer',
                         }}
                       >
@@ -706,7 +706,7 @@ export function MyTimeDayClusterForm({
                               border: 'none',
                               background: 'transparent',
                               cursor: saving || segmentRejectDisabled ? 'not-allowed' : 'pointer',
-                              color: '#9ca3af',
+                              color: 'var(--text-faint)',
                               fontSize: '1rem',
                               lineHeight: 1,
                             }}
@@ -726,7 +726,7 @@ export function MyTimeDayClusterForm({
                               border: 'none',
                               background: 'transparent',
                               cursor: saving ? 'not-allowed' : 'pointer',
-                              color: '#9ca3af',
+                              color: 'var(--text-faint)',
                               fontSize: '1.25rem',
                               lineHeight: 1,
                             }}
@@ -774,10 +774,10 @@ export function MyTimeDayClusterForm({
                               style={{
                                 padding: '1px 6px',
                                 fontSize: '0.68rem',
-                                border: '1px solid #d1d5db',
+                                border: '1px solid var(--border-strong)',
                                 borderRadius: 4,
-                                background: 'white',
-                                color: '#6b7280',
+                                background: 'var(--surface)',
+                                color: 'var(--text-muted)',
                                 cursor: mergeUpBlockTitle ? 'not-allowed' : 'pointer',
                                 opacity: mergeUpBlockTitle ? 0.55 : 1,
                               }}
@@ -815,10 +815,10 @@ export function MyTimeDayClusterForm({
                               style={{
                                 padding: '1px 6px',
                                 fontSize: '0.68rem',
-                                border: '1px solid #d1d5db',
+                                border: '1px solid var(--border-strong)',
                                 borderRadius: 4,
-                                background: 'white',
-                                color: '#6b7280',
+                                background: 'var(--surface)',
+                                color: 'var(--text-muted)',
                                 cursor: mergeDownBlockTitle ? 'not-allowed' : 'pointer',
                                 opacity: mergeDownBlockTitle ? 0.55 : 1,
                               }}
@@ -842,7 +842,7 @@ export function MyTimeDayClusterForm({
                           border: 'none',
                           background: 'transparent',
                           cursor: segmentRejectDisabled ? 'not-allowed' : 'pointer',
-                          color: '#9ca3af',
+                          color: 'var(--text-faint)',
                           fontSize: '1rem',
                           lineHeight: 1,
                         }}
@@ -909,7 +909,7 @@ export function MyTimeDayClusterForm({
                   flex: 1,
                   minHeight: 44,
                   padding: '0.35rem 0.5rem',
-                  border: '1px solid #d1d5db',
+                  border: '1px solid var(--border-strong)',
                   borderRadius: 4,
                   fontSize: '0.8125rem',
                   resize: 'vertical',

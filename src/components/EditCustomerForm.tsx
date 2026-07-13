@@ -484,7 +484,7 @@ export default function EditCustomerForm({ customerId, onSaved, onCancel, onDele
             value={googleDriveLink}
             onChange={(e) => setGoogleDriveLink(e.target.value)}
             placeholder="https://drive.google.com/..."
-            style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem' }}
+            style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem' }}
           />
           <a
             href={JOB_FOLDERS_DRIVE_URL}
@@ -494,7 +494,7 @@ export default function EditCustomerForm({ customerId, onSaved, onCancel, onDele
               e.preventDefault()
               openInExternalBrowser(JOB_FOLDERS_DRIVE_URL)
             }}
-            style={{ fontSize: '0.8125rem', color: '#2563eb', marginTop: 4, display: 'inline-block' }}
+            style={{ fontSize: '0.8125rem', color: 'var(--text-link)', marginTop: 4, display: 'inline-block' }}
           >
             customer and job folders
           </a>
@@ -512,7 +512,7 @@ export default function EditCustomerForm({ customerId, onSaved, onCancel, onDele
             value={jobPicturesLink}
             onChange={(e) => setJobPicturesLink(e.target.value)}
             placeholder="https://drive.google.com/..."
-            style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem' }}
+            style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem' }}
           />
           <a
             href={JOB_FOLDERS_DRIVE_URL}
@@ -522,7 +522,7 @@ export default function EditCustomerForm({ customerId, onSaved, onCancel, onDele
               e.preventDefault()
               openInExternalBrowser(JOB_FOLDERS_DRIVE_URL)
             }}
-            style={{ fontSize: '0.8125rem', color: '#2563eb', marginTop: 4, display: 'inline-block' }}
+            style={{ fontSize: '0.8125rem', color: 'var(--text-link)', marginTop: 4, display: 'inline-block' }}
           >
             customer and job folders
           </a>
@@ -573,10 +573,10 @@ export default function EditCustomerForm({ customerId, onSaved, onCancel, onDele
                 flex: 1,
                 padding: '0.5rem 0.75rem',
                 fontSize: '0.875rem',
-                border: '1px solid #d1d5db',
+                border: '1px solid var(--border-strong)',
                 borderRadius: '4px 0 0 4px',
-                background: customerType === 'residential' ? '#3b82f6' : 'white',
-                color: customerType === 'residential' ? 'white' : '#374151',
+                background: customerType === 'residential' ? '#3b82f6' : 'var(--surface)',
+                color: customerType === 'residential' ? 'white' : 'var(--text-700)',
                 cursor: 'pointer',
               }}
             >
@@ -589,10 +589,10 @@ export default function EditCustomerForm({ customerId, onSaved, onCancel, onDele
                 flex: 1,
                 padding: '0.5rem 0.75rem',
                 fontSize: '0.875rem',
-                border: '1px solid #d1d5db',
+                border: '1px solid var(--border-strong)',
                 borderRadius: '0 4px 4px 0',
-                background: customerType === 'commercial' ? '#3b82f6' : 'white',
-                color: customerType === 'commercial' ? 'white' : '#374151',
+                background: customerType === 'commercial' ? '#3b82f6' : 'var(--surface)',
+                color: customerType === 'commercial' ? 'white' : 'var(--text-700)',
                 cursor: 'pointer',
               }}
             >
@@ -613,7 +613,7 @@ export default function EditCustomerForm({ customerId, onSaved, onCancel, onDele
                   cursor: 'pointer',
                   fontSize: '1rem',
                   lineHeight: 1,
-                  color: '#374151',
+                  color: 'var(--text-700)',
                 }}
                 aria-expanded={advancedExpanded}
               >
@@ -623,7 +623,7 @@ export default function EditCustomerForm({ customerId, onSaved, onCancel, onDele
                 Advanced
               </span>
               {!advancedExpanded && masterUserId && (
-                <span style={{ fontSize: '0.875rem', color: '#6b7280' }}>
+                <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>
                   (Customer Master:{' '}
                   {availableMasters.find((m) => m.id === masterUserId)?.name ??
                     availableMasters.find((m) => m.id === masterUserId)?.email ??
@@ -633,14 +633,14 @@ export default function EditCustomerForm({ customerId, onSaved, onCancel, onDele
               )}
             </div>
             {advancedExpanded && (
-              <div style={{ paddingLeft: '1.25rem', borderLeft: '2px solid #e5e7eb' }}>
+              <div style={{ paddingLeft: '1.25rem', borderLeft: '2px solid var(--border)' }}>
                 <label htmlFor="edit-master" style={{ display: 'block', marginBottom: 4 }}>
                   Customer Master
                 </label>
                 {mastersLoading ? (
-                  <p style={{ fontSize: '0.875rem', color: '#6b7280' }}>Loading masters...</p>
+                  <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>Loading masters...</p>
                 ) : (myRole === 'assistant' || myRole === 'dev') && availableMasters.length === 0 ? (
-                  <p style={{ fontSize: '0.875rem', color: '#b91c1c' }}>
+                  <p style={{ fontSize: '0.875rem', color: 'var(--text-red-700)' }}>
                     {myRole === 'assistant'
                       ? 'No masters have adopted you yet. Ask a master to adopt you in Settings.'
                       : 'No masters found.'}
@@ -661,7 +661,7 @@ export default function EditCustomerForm({ customerId, onSaved, onCancel, onDele
                         </option>
                       ))}
                     </select>
-                    <div style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: 2 }}>
+                    <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginTop: 2 }}>
                       {myRole === 'master_technician'
                         ? 'You are automatically assigned as the customer owner.'
                         : 'Select which master this customer belongs to.'}
@@ -672,7 +672,7 @@ export default function EditCustomerForm({ customerId, onSaved, onCancel, onDele
             )}
           </div>
         )}
-        {error && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{error}</p>}
+        {error && <p style={{ color: 'var(--text-red-700)', marginBottom: '1rem' }}>{error}</p>}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem' }}>
           <div style={{ display: 'flex', gap: '0.5rem' }}>
             <button
@@ -696,11 +696,11 @@ export default function EditCustomerForm({ customerId, onSaved, onCancel, onDele
               onClick={onCancel}
               style={{
                 padding: '0.5rem 1rem',
-                background: '#f3f4f6',
-                border: '1px solid #d1d5db',
+                background: 'var(--bg-muted)',
+                border: '1px solid var(--border-strong)',
                 borderRadius: 4,
                 cursor: 'pointer',
-                color: '#374151',
+                color: 'var(--text-700)',
                 fontWeight: 500,
               }}
             >
@@ -718,7 +718,7 @@ export default function EditCustomerForm({ customerId, onSaved, onCancel, onDele
               title="Delete customer"
               style={{
                 padding: '0.5rem',
-                color: '#b91c1c',
+                color: 'var(--text-red-700)',
                 background: 'none',
                 border: 'none',
                 cursor: 'pointer',
@@ -735,7 +735,7 @@ export default function EditCustomerForm({ customerId, onSaved, onCancel, onDele
       </form>
 
       {showMergeUi && (
-        <div style={{ marginTop: '1.25rem', paddingTop: '1rem', borderTop: '1px solid #e5e7eb' }}>
+        <div style={{ marginTop: '1.25rem', paddingTop: '1rem', borderTop: '1px solid var(--border)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: mergeExpanded ? 8 : 0 }}>
             <button
               type="button"
@@ -747,7 +747,7 @@ export default function EditCustomerForm({ customerId, onSaved, onCancel, onDele
                 cursor: 'pointer',
                 fontSize: '1rem',
                 lineHeight: 1,
-                color: '#374151',
+                color: 'var(--text-700)',
               }}
               aria-expanded={mergeExpanded}
             >
@@ -759,7 +759,7 @@ export default function EditCustomerForm({ customerId, onSaved, onCancel, onDele
           </div>
           {mergeExpanded && (
             <div style={{ fontSize: '0.875rem', maxWidth: 520 }}>
-              <p style={{ color: '#6b7280', marginTop: 0, marginBottom: '0.75rem' }}>
+              <p style={{ color: 'var(--text-muted)', marginTop: 0, marginBottom: '0.75rem' }}>
                 All bids, jobs, estimates, and projects linked to the other customer move to this one. Then the other
                 customer is removed. Choose which values to keep for each field.
               </p>
@@ -782,18 +782,18 @@ export default function EditCustomerForm({ customerId, onSaved, onCancel, onDele
                 placeholder="Search to merge into this customer…"
                 aria-label="Search customer to merge"
               />
-              {mergePreviewLoading && <p style={{ color: '#6b7280', marginTop: 8 }}>Loading preview…</p>}
-              {mergePreviewError && <p style={{ color: '#b91c1c', marginTop: 8 }}>{mergePreviewError}</p>}
+              {mergePreviewLoading && <p style={{ color: 'var(--text-muted)', marginTop: 8 }}>Loading preview…</p>}
+              {mergePreviewError && <p style={{ color: 'var(--text-red-700)', marginTop: 8 }}>{mergePreviewError}</p>}
               {mergePreview && (
                 <div style={{ marginTop: '0.75rem' }}>
                   {mergePreview.stripe_blocked && (
-                    <p style={{ color: '#b91c1c', marginBottom: 8 }}>
+                    <p style={{ color: 'var(--text-red-700)', marginBottom: 8 }}>
                       Both customers have different Stripe IDs. Resolve in Stripe before merging.
                     </p>
                   )}
                   <div
                     style={{
-                      background: '#f9fafb',
+                      background: 'var(--bg-subtle)',
                       padding: '0.5rem 0.75rem',
                       borderRadius: 6,
                       marginBottom: '0.75rem',
@@ -909,7 +909,7 @@ export default function EditCustomerForm({ customerId, onSaved, onCancel, onDele
 
       {deleteOpen && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100 }}>
-          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 320 }}>
+          <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 320 }}>
             <h2 style={{ marginTop: 0 }}>Delete customer</h2>
             <p style={{ marginBottom: '1rem' }}>
               Type the customer name <strong>{name}</strong> to confirm.
@@ -926,7 +926,7 @@ export default function EditCustomerForm({ customerId, onSaved, onCancel, onDele
               style={{ width: '100%', padding: '0.5rem', marginBottom: '1rem' }}
               autoComplete="off"
             />
-            {error && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{error}</p>}
+            {error && <p style={{ color: 'var(--text-red-700)', marginBottom: '1rem' }}>{error}</p>}
             <div style={{ display: 'flex', gap: 8 }}>
               <button
                 type="button"
@@ -952,8 +952,8 @@ export default function EditCustomerForm({ customerId, onSaved, onCancel, onDele
                 disabled={deleting || deleteConfirm.trim() !== name.trim()}
                 style={{
                   padding: '0.5rem 1rem',
-                  color: '#b91c1c',
-                  background: 'white',
+                  color: 'var(--text-red-700)',
+                  background: 'var(--surface)',
                   border: '1px solid #b91c1c',
                   borderRadius: 4,
                   cursor: deleting ? 'not-allowed' : 'pointer',
@@ -971,8 +971,8 @@ export default function EditCustomerForm({ customerId, onSaved, onCancel, onDele
                 disabled={deleting}
                 style={{
                   padding: '0.5rem 1rem',
-                  background: '#f3f4f6',
-                  border: '1px solid #d1d5db',
+                  background: 'var(--bg-muted)',
+                  border: '1px solid var(--border-strong)',
                   borderRadius: 4,
                   cursor: deleting ? 'not-allowed' : 'pointer',
                 }}
@@ -986,7 +986,7 @@ export default function EditCustomerForm({ customerId, onSaved, onCancel, onDele
 
       {mergeConfirmOpen && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1110 }}>
-          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 320, maxWidth: 420 }}>
+          <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 320, maxWidth: 420 }}>
             <h2 style={{ marginTop: 0 }}>Confirm merge</h2>
             <p style={{ marginBottom: '1rem' }}>
               This cannot be undone. The customer <strong>{victimRow?.name ?? '—'}</strong> will be removed and all its
@@ -1028,8 +1028,8 @@ export default function EditCustomerForm({ customerId, onSaved, onCancel, onDele
                 disabled={merging}
                 style={{
                   padding: '0.5rem 1rem',
-                  background: '#f3f4f6',
-                  border: '1px solid #d1d5db',
+                  background: 'var(--bg-muted)',
+                  border: '1px solid var(--border-strong)',
                   borderRadius: 4,
                   cursor: merging ? 'not-allowed' : 'pointer',
                 }}
@@ -1070,15 +1070,15 @@ function MergeFieldRow({
         paddingBottom: 8,
       }}
     >
-      <span style={{ fontWeight: 500, color: '#374151' }}>{label}</span>
+      <span style={{ fontWeight: 500, color: 'var(--text-700)' }}>{label}</span>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
         <label style={{ display: 'flex', alignItems: 'flex-start', gap: 6, cursor: 'pointer' }}>
           <input type="radio" name={fieldId} checked={selected === 'survivor'} onChange={() => onChange('survivor')} />
-          <span style={{ color: '#4b5563', wordBreak: 'break-word' }}>{survivorValue}</span>
+          <span style={{ color: 'var(--text-600)', wordBreak: 'break-word' }}>{survivorValue}</span>
         </label>
         <label style={{ display: 'flex', alignItems: 'flex-start', gap: 6, cursor: 'pointer' }}>
           <input type="radio" name={fieldId} checked={selected === 'victim'} onChange={() => onChange('victim')} />
-          <span style={{ color: '#4b5563', wordBreak: 'break-word' }}>{victimValue}</span>
+          <span style={{ color: 'var(--text-600)', wordBreak: 'break-word' }}>{victimValue}</span>
         </label>
       </div>
     </div>

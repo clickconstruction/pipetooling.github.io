@@ -148,6 +148,80 @@ export async function loadTeamLaborData(
   })
 }
 
+/**
+ * One-job variant of `loadTeamLaborData`'s allocation for modal surfaces — crew days that
+ * include the job (jsonb containment), hours only for those person-days, pay config only for
+ * those people. The math MUST stay in parity with `loadTeamLaborData` above: salaried = 8h
+ * Mon–Fri, hourly = people_hours, each crew day split by assignment pct.
+ */
+export async function fetchTeamLaborBreakdownForJob(
+  supabase: SupabaseClient,
+  jobId: string,
+): Promise<TeamLaborBreakdownEntry[]> {
+  const crewRes = await supabase
+    .from('people_crew_jobs')
+    .select('work_date, person_name, job_assignments')
+    .contains('job_assignments', JSON.stringify([{ job_id: jobId }]))
+  const crewRows = (crewRes.data ?? []) as Array<{
+    work_date: string
+    person_name: string
+    job_assignments: CrewJobAssignment[]
+  }>
+  if (crewRows.length === 0) return []
+  const persons = [...new Set(crewRows.map((r) => r.person_name))]
+  const dates = [...new Set(crewRows.map((r) => r.work_date))]
+  const [hoursRes, configRes] = await Promise.all([
+    supabase
+      .from('people_hours')
+      .select('person_name, work_date, hours')
+      .in('person_name', persons)
+      .in('work_date', dates),
+    supabase.from('people_pay_config').select('person_name, hourly_wage, is_salary').in('person_name', persons),
+  ])
+  const hoursMap: Record<string, number> = {}
+  for (const h of (hoursRes.data ?? []) as Array<{ person_name: string; work_date: string; hours: number }>) {
+    hoursMap[`${h.person_name}:${h.work_date}`] = h.hours
+  }
+  const configMap: Record<string, { hourly_wage: number; is_salary: boolean }> = {}
+  for (const c of (configRes.data ?? []) as Array<{
+    person_name: string
+    hourly_wage: number | null
+    is_salary: boolean
+  }>) {
+    configMap[c.person_name] = { hourly_wage: c.hourly_wage ?? 0, is_salary: c.is_salary ?? false }
+  }
+  /** personName -> workDate -> allocated hours/cost */
+  const byPersonDate: Record<string, Record<string, { hours: number; cost: number }>> = {}
+  for (const r of crewRows) {
+    const assignments = Array.isArray(r.job_assignments) ? r.job_assignments : []
+    const cfg = configMap[r.person_name]
+    const day = new Date(r.work_date + 'T12:00:00').getDay()
+    const hours = cfg?.is_salary ? (day >= 1 && day <= 5 ? 8 : 0) : (hoursMap[`${r.person_name}:${r.work_date}`] ?? 0)
+    const rate = cfg?.hourly_wage ?? 0
+    for (const a of assignments) {
+      if (a.job_id !== jobId) continue
+      const pctHrs = hours * (a.pct / 100)
+      const costPart = pctHrs * rate
+      if (!byPersonDate[r.person_name]) byPersonDate[r.person_name] = {}
+      const byDate = byPersonDate[r.person_name]!
+      const prev = byDate[r.work_date] ?? { hours: 0, cost: 0 }
+      byDate[r.work_date] = { hours: prev.hours + pctHrs, cost: prev.cost + costPart }
+    }
+  }
+  return Object.keys(byPersonDate).map((personName) => {
+    const dateMap = byPersonDate[personName]!
+    const byWorkDate = Object.keys(dateMap)
+      .sort()
+      .map((wd) => ({ workDate: wd, hours: dateMap[wd]!.hours, cost: dateMap[wd]!.cost }))
+    return {
+      personName,
+      hours: byWorkDate.reduce((s, d) => s + d.hours, 0),
+      cost: byWorkDate.reduce((s, d) => s + d.cost, 0),
+      byWorkDate,
+    }
+  })
+}
+
 export async function loadTeamLaborDataForBids(
   supabase: SupabaseClient
 ): Promise<TeamLaborBidRow[]> {

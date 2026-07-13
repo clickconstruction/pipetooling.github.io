@@ -12,7 +12,7 @@ const plusCopyMenuItemStyle: CSSProperties = {
   padding: '0.28rem 0.4rem',
   fontSize: '0.65rem',
   border: 'none',
-  background: '#fff',
+  background: 'var(--surface)',
   color: '#1e3a8a',
   cursor: 'pointer',
   textAlign: 'left',
@@ -137,7 +137,7 @@ export function ScheduleDispatchPlusCopyMenu({
         minWidth: MIN_MENU_WIDTH,
         borderRadius: 4,
         border: '1px solid #93c5fd',
-        background: '#f8fafc',
+        background: 'var(--bg-slate-tint)',
         boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
         overflow: 'hidden',
       }}

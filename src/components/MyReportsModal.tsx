@@ -114,7 +114,7 @@ export default function MyReportsModal({
     >
       <div
         style={{
-          background: 'white',
+          background: 'var(--surface)',
           padding: '1.5rem',
           borderRadius: 8,
           minWidth: 360,
@@ -132,7 +132,7 @@ export default function MyReportsModal({
           <button
             type="button"
             onClick={onClose}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.5rem', color: '#6b7280', lineHeight: 1 }}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.5rem', color: 'var(--text-muted)', lineHeight: 1 }}
             aria-label="Close"
           >
             ×
@@ -144,12 +144,12 @@ export default function MyReportsModal({
           placeholder="Search by job or contents"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          style={{ width: '100%', padding: '0.5rem', marginBottom: '1rem', border: '1px solid #d1d5db', borderRadius: 4, flexShrink: 0 }}
+          style={{ width: '100%', padding: '0.5rem', marginBottom: '1rem', border: '1px solid var(--border-strong)', borderRadius: 4, flexShrink: 0 }}
         />
 
         <div style={{ flex: 1, overflow: 'auto', minHeight: 0 }}>
           {jobsWithReports.length === 0 ? (
-            <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>
               {search.trim() ? 'No reports match your search.' : 'No reports yet.'}
             </p>
           ) : (
@@ -165,9 +165,9 @@ export default function MyReportsModal({
                         width: '100%',
                         padding: '0.5rem 0.75rem',
                         textAlign: 'left',
-                        border: '1px solid #e5e7eb',
+                        border: '1px solid var(--border)',
                         borderRadius: 8,
-                        background: isExpanded ? '#f9fafb' : '#fff',
+                        background: isExpanded ? 'var(--bg-subtle)' : 'var(--surface)',
                         cursor: 'pointer',
                         display: 'flex',
                         justifyContent: 'space-between',
@@ -176,13 +176,13 @@ export default function MyReportsModal({
                       }}
                     >
                       <span style={{ fontWeight: 500 }}>{jobDisplayName}</span>
-                      <span style={{ color: '#6b7280', fontSize: '0.8125rem' }}>
+                      <span style={{ color: 'var(--text-muted)', fontSize: '0.8125rem' }}>
                         {jobReports.length} report{jobReports.length !== 1 ? 's' : ''}
                         <span style={{ marginLeft: '0.5rem' }}>{isExpanded ? '▼' : '▶'}</span>
                       </span>
                     </button>
                     {isExpanded && (
-                      <ul style={{ listStyle: 'none', padding: '0.5rem 0 0 1rem', margin: 0, borderLeft: '2px solid #e5e7eb', marginLeft: '0.75rem' }}>
+                      <ul style={{ listStyle: 'none', padding: '0.5rem 0 0 1rem', margin: 0, borderLeft: '2px solid var(--border)', marginLeft: '0.75rem' }}>
                         {jobReports.map((r) => {
                           const isWithinEditWindow = new Date(r.created_at).getTime() >= Date.now() - editWindowMs
                           return (
@@ -190,9 +190,9 @@ export default function MyReportsModal({
                               <div
                                 style={{
                                   padding: '0.5rem 0.75rem',
-                                  border: '1px solid #e5e7eb',
+                                  border: '1px solid var(--border)',
                                   borderRadius: 6,
-                                  background: '#fff',
+                                  background: 'var(--surface)',
                                   cursor: 'pointer',
                                   display: 'flex',
                                   alignItems: 'center',
@@ -204,7 +204,7 @@ export default function MyReportsModal({
                                   onClick={() => onViewReport(r)}
                                 >
                                   <span style={{ fontWeight: 500 }}>{displayReportTemplateName(r.template_name, viewerRole)}</span>
-                                  <div style={{ fontSize: '0.8125rem', color: '#6b7280', marginTop: '0.25rem' }}>
+                                  <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
                                     {new Date(r.created_at).toLocaleString()}
                                   </div>
                                 </div>

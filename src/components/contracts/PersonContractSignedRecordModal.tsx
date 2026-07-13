@@ -164,7 +164,7 @@ export function PersonContractSignedRecordModal({
           maxWidth: 720,
           maxHeight: 'min(92vh, 900px)',
           overflow: 'auto',
-          background: 'white',
+          background: 'var(--surface)',
           borderRadius: 8,
           boxShadow: '0 16px 48px rgba(0,0,0,0.2)',
           display: 'flex',
@@ -180,10 +180,10 @@ export function PersonContractSignedRecordModal({
             gap: '0.75rem',
             flexWrap: 'wrap',
             padding: '1rem 1.25rem',
-            borderBottom: '1px solid #e5e7eb',
+            borderBottom: '1px solid var(--border)',
             position: 'sticky',
             top: 0,
-            background: 'white',
+            background: 'var(--surface)',
             zIndex: 1,
           }}
         >
@@ -192,7 +192,7 @@ export function PersonContractSignedRecordModal({
               Signed contract
             </h2>
             {row && row.status === 'signed' ? (
-              <p style={{ margin: '0.35rem 0 0', fontSize: '0.85rem', color: '#6b7280' }}>
+              <p style={{ margin: '0.35rem 0 0', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
                 {row.signer_printed_name?.trim() ? (
                   <>
                     <strong>Signed as:</strong> {row.signer_printed_name.trim()}
@@ -226,9 +226,9 @@ export function PersonContractSignedRecordModal({
         </div>
 
         <div style={{ padding: '1rem 1.25rem 1.5rem' }}>
-          {loading ? <p style={{ margin: 0, color: '#6b7280' }}>Loading…</p> : null}
+          {loading ? <p style={{ margin: 0, color: 'var(--text-muted)' }}>Loading…</p> : null}
           {error ? (
-            <p style={{ margin: 0, color: '#b91c1c' }} role="alert">
+            <p style={{ margin: 0, color: 'var(--text-red-700)' }} role="alert">
               {error}
             </p>
           ) : null}
@@ -236,10 +236,10 @@ export function PersonContractSignedRecordModal({
             <div
               style={{
                 fontFamily: 'system-ui, sans-serif',
-                border: '1px solid #e5e7eb',
+                border: '1px solid var(--border)',
                 borderRadius: 8,
                 padding: '1rem',
-                background: '#fafafa',
+                background: 'var(--bg-page)',
               }}
             >
               {row.document_name ? (
@@ -250,7 +250,7 @@ export function PersonContractSignedRecordModal({
               <p
                 style={{
                   fontSize: '0.95rem',
-                  color: '#374151',
+                  color: 'var(--text-700)',
                   marginTop: 0,
                   marginBottom: '1rem',
                 }}
@@ -264,7 +264,7 @@ export function PersonContractSignedRecordModal({
                     href={canonical}
                     target="_blank"
                     rel="noopener noreferrer"
-                    style={{ color: '#2563eb', fontWeight: 600 }}
+                    style={{ color: 'var(--text-link)', fontWeight: 600 }}
                   >
                     Open full document
                   </a>
@@ -277,7 +277,7 @@ export function PersonContractSignedRecordModal({
                     href={refUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    style={{ color: '#2563eb', fontWeight: 600 }}
+                    style={{ color: 'var(--text-link)', fontWeight: 600 }}
                   >
                     Reference link
                   </a>
@@ -289,10 +289,10 @@ export function PersonContractSignedRecordModal({
                   style={{
                     maxHeight: 'min(50vh, 420px)',
                     overflow: 'auto',
-                    border: '1px solid #e5e7eb',
+                    border: '1px solid var(--border)',
                     borderRadius: 8,
                     padding: '1rem',
-                    background: '#f9fafb',
+                    background: 'var(--bg-subtle)',
                     fontSize: '0.9rem',
                     marginBottom: '0.75rem',
                   }}
@@ -302,7 +302,7 @@ export function PersonContractSignedRecordModal({
               ) : null}
 
               {!hasRenderableSigningBody && !canonical && !refUrl ? (
-                <p style={{ color: '#6b7280', marginBottom: '0.75rem' }}>
+                <p style={{ color: 'var(--text-muted)', marginBottom: '0.75rem' }}>
                   No document content was stored for this contract.
                 </p>
               ) : null}
@@ -318,12 +318,12 @@ export function PersonContractSignedRecordModal({
                         display: 'block',
                         maxWidth: 400,
                         width: '100%',
-                        border: '1px solid #e5e7eb',
+                        border: '1px solid var(--border)',
                         borderRadius: 6,
                       }}
                     />
                   ) : (
-                    <p style={{ fontSize: '0.9rem', color: '#6b7280', margin: 0 }}>
+                    <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', margin: 0 }}>
                       Loading signature…
                     </p>
                   )
@@ -336,7 +336,7 @@ export function PersonContractSignedRecordModal({
                     />
                   </div>
                 ) : (
-                  <p style={{ fontSize: '0.9rem', color: '#6b7280', margin: 0 }}>
+                  <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', margin: 0 }}>
                     No signature image or typed name on file.
                   </p>
                 )}
