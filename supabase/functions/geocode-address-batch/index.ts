@@ -1,6 +1,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { geocodeWithGoogle } from '../_shared/googleGeocode.ts'
+import { geocodeWithCensus } from '../_shared/censusGeocode.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -14,6 +15,10 @@ const MIN_KEY_LEN = 3
 
 function normalizeKey(address: string): string {
   return address.trim().replace(/\s+/g, ' ').toLowerCase()
+}
+
+function appendDetail(base: string | undefined, extra: string): string {
+  return base ? `${base}; ${extra}` : extra
 }
 
 function jsonResponse(status: number, body: Record<string, unknown>) {
@@ -203,11 +208,51 @@ serve(async (req) => {
     } else if (failure) {
       failure = {
         ...failure,
-        detail: failure.detail ? `${failure.detail}; Google fallback not configured` : 'Google fallback not configured',
+        detail: appendDetail(failure.detail, 'Google fallback not configured'),
       }
     }
 
-    failures.push({ address_normalized: key, ...(failure ?? { error_code: 'not_found' }) })
+    // Third-tier fallback: US Census geocoder (free, no key, US addresses only).
+    let c: Awaited<ReturnType<typeof geocodeWithCensus>>
+    try {
+      c = await geocodeWithCensus(display)
+    } catch {
+      c = { ok: false, error: 'census_upstream', detail: 'US Census geocoder request failed' }
+    }
+    if (c.ok) {
+      const { error: upErr } = await supabase.from('address_geocodes').upsert(
+        {
+          address_normalized: key,
+          lat: c.lat,
+          lng: c.lng,
+          geocoded_at: new Date().toISOString(),
+          geocode_error: null,
+        },
+        { onConflict: 'address_normalized' }
+      )
+      if (upErr) {
+        return jsonResponse(500, { error: upErr.message })
+      }
+      results.push({ address_normalized: key, lat: c.lat, lng: c.lng })
+      continue
+    }
+    // Keep the earlier (more actionable) failure code; note the Census outcome in the detail.
+    if (failure) {
+      failure = {
+        ...failure,
+        detail: appendDetail(
+          failure.detail,
+          c.error === 'census_upstream' ? `US Census: ${c.detail ?? 'service error'}` : 'no match from US Census'
+        ),
+      }
+    } else {
+      failure =
+        c.error === 'census_upstream'
+          ? { error_code: 'census_upstream', detail: c.detail }
+          : { error_code: 'not_found', detail: 'No match from US Census' }
+    }
+
+    failures.push({ address_normalized: key, ...failure })
   }
 
   return new Response(JSON.stringify({ results, failures }), {
