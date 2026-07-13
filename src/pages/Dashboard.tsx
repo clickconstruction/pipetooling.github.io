@@ -4644,6 +4644,7 @@ export default function Dashboard() {
           onFieldReportSaved={() => void refreshDashboardAssignedJobLists()}
         />
       )}
+      {tallyAndPinnedBlock}
       {authUser?.id && teamFeedbackHomeEnabled && (
         <div style={{ marginBottom: '1rem' }}>
           <button
@@ -4680,7 +4681,6 @@ export default function Dashboard() {
         onClose={() => setContractSigningPromptOpen(false)}
         onOpenSigningPage={openContractSigningPageForDoc}
       />
-      {role === 'assistant' && tallyAndPinnedBlock}
       {role === 'assistant' && authUser?.id && showClockActivityStrip && (
         <DashboardTeamActiveClockStrip
           sessions={sessionsForStrip}
@@ -5129,7 +5129,6 @@ export default function Dashboard() {
           </BillingPipelineCard>
         </>
       )}
-      {role !== 'assistant' && tallyAndPinnedBlock}
       {role !== 'assistant' && authUser?.id && showClockActivityStrip && (
         <DashboardTeamActiveClockStrip
           sessions={sessionsForStrip}
