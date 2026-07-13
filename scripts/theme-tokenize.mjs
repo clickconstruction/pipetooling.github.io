@@ -42,6 +42,7 @@ const TEXT = {
   '#059669': 'var(--text-green-600)',
   '#b45309': 'var(--text-amber-700)',
   '#92400e': 'var(--text-amber-800)',
+  '#c2410c': 'var(--text-orange-700)',
 }
 
 const BG = {
@@ -59,6 +60,7 @@ const BG = {
   '#fecaca': 'var(--bg-red-200)',
   '#fffbeb': 'var(--bg-amber-tint)',
   '#fef3c7': 'var(--bg-amber-100)',
+  '#fff7ed': 'var(--bg-orange-tint)',
   '#f0fdf4': 'var(--bg-green-tint)',
   '#dcfce7': 'var(--bg-green-100)',
   '#f8fafc': 'var(--bg-slate-tint)',
@@ -69,6 +71,7 @@ const BORDER = {
   '#e5e7eb': 'var(--border)',
   '#d1d5db': 'var(--border-strong)',
   '#9ca3af': 'var(--border-400)',
+  '#fdba74': 'var(--border-orange)',
 }
 
 const TEXT_PROPS = /^(color|caretColor|WebkitTextFillColor)$/

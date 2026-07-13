@@ -249,7 +249,7 @@ export default function PeerTeammatePicker({
                 gap: '0.35rem',
                 padding: '0.25rem 0.5rem',
                 borderRadius: 999,
-                background: '#fff7ed',
+                background: 'var(--bg-orange-tint)',
                 border: '1px solid #fed7aa',
                 fontSize: '0.875rem',
                 color: '#9a3412',
@@ -268,7 +268,7 @@ export default function PeerTeammatePicker({
                   padding: 0,
                   lineHeight: 1,
                   fontSize: '1rem',
-                  color: '#c2410c',
+                  color: 'var(--text-orange-700)',
                 }}
               >
                 ×

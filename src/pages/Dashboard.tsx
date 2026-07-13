@@ -4679,8 +4679,8 @@ export default function Dashboard() {
               fontWeight: 600,
               border: '2px solid #ea580c',
               borderRadius: 8,
-              background: '#fff7ed',
-              color: '#c2410c',
+              background: 'var(--bg-orange-tint)',
+              color: 'var(--text-orange-700)',
               cursor: 'pointer',
             }}
           >

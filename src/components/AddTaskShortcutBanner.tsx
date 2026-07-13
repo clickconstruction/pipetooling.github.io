@@ -26,8 +26,8 @@ export default function AddTaskShortcutBanner({ role }: { role: UserRole | null 
         alignItems: 'center',
         gap: '0.6rem',
         padding: '0.5rem 0.85rem',
-        background: '#fff7ed',
-        borderBottom: '1px solid #fdba74',
+        background: 'var(--bg-orange-tint)',
+        borderBottom: '1px solid var(--border-orange)',
         color: '#7c2d12',
         fontSize: '0.875rem',
       }}

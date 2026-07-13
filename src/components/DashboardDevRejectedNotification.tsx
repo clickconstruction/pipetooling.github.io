@@ -48,7 +48,7 @@ export default function DashboardDevRejectedNotification() {
           padding: '1rem 1.25rem',
           border: '1px solid #fecaca',
           borderRadius: 8,
-          background: '#fff7ed',
+          background: 'var(--bg-orange-tint)',
         }}
       >
         <span

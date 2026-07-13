@@ -21,9 +21,9 @@ export default function DashboardLostBidsMissingReasonBanner({ count, loading, o
         gap: '1rem',
         width: '100%',
         padding: '1rem 1.25rem',
-        border: '1px solid #fdba74',
+        border: '1px solid var(--border-orange)',
         borderRadius: 8,
-        background: '#fff7ed',
+        background: 'var(--bg-orange-tint)',
         marginBottom: '1rem',
         cursor: 'pointer',
         textAlign: 'left',
@@ -50,7 +50,7 @@ export default function DashboardLostBidsMissingReasonBanner({ count, loading, o
         {count > 99 ? '99+' : count}
       </span>
       <div style={{ flex: '1 1 200px', minWidth: 0 }}>
-        <div style={{ fontWeight: 600, fontSize: '1rem', color: '#c2410c' }}>Lost bids need a reason</div>
+        <div style={{ fontWeight: 600, fontSize: '1rem', color: 'var(--text-orange-700)' }}>Lost bids need a reason</div>
         <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginTop: 2 }}>
           {count === 1
             ? 'One lost bid you work on has no “Reason for loss” — '

@@ -1297,11 +1297,11 @@ export default function Calendar() {
                           style={{
                             fontSize: '0.75rem',
                             padding: '2px 4px',
-                            background: '#fff7ed',
+                            background: 'var(--bg-orange-tint)',
                             color: '#9a3412',
                             borderRadius: 3,
                             fontWeight: 600,
-                            border: '1px solid #fdba74',
+                            border: '1px solid var(--border-orange)',
                           }}
                           title={ncnsCalendarChipTitle(ncns)}
                         >
@@ -1619,10 +1619,10 @@ export default function Calendar() {
                             style={{
                               display: 'block',
                               padding: '0.5rem 0.75rem',
-                              background: '#fff7ed',
+                              background: 'var(--bg-orange-tint)',
                               color: '#9a3412',
                               borderRadius: 4,
-                              border: '1px solid #fdba74',
+                              border: '1px solid var(--border-orange)',
                             }}
                           >
                             <div style={{ fontWeight: 600 }}>No-call, no-show</div>
