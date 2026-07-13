@@ -1174,7 +1174,7 @@ export default function Dashboard() {
   } | null>(null)
   const [viewBillDetailsJob, setViewBillDetailsJob] = useState<{ id: string; hcpNumber: string; jobName: string; jobAddress: string; revenue: number | null } | null>(null)
   const [dashboardButtonVisibility, setDashboardButtonVisibility] = useState<Record<string, boolean> | null>(null)
-  const [quickButtonsPlacement, setQuickButtonsPlacement] = useState<'top' | 'with_pins'>('top')
+  const [quickButtonsPlacement, setQuickButtonsPlacement] = useState<'top' | 'with_pins'>('with_pins')
   const [readyForBillingJob, setReadyForBillingJob] = useState<{ id: string; hcpNumber: string; jobName: string } | null>(null)
   const [readyForBillingChecked1, setReadyForBillingChecked1] = useState(false)
   const [readyForBillingChecked2, setReadyForBillingChecked2] = useState(false)
@@ -1843,9 +1843,10 @@ export default function Dashboard() {
         )
         if (cancelled) return
         const p = (row as { quick_buttons_placement?: string } | null)?.quick_buttons_placement
-        setQuickButtonsPlacement(p === 'with_pins' ? 'with_pins' : 'top')
+        // Default is with_pins (one row, uniform height); an explicit 'top' choice is honored.
+        setQuickButtonsPlacement(p === 'top' ? 'top' : 'with_pins')
       } catch {
-        if (!cancelled) setQuickButtonsPlacement('top')
+        if (!cancelled) setQuickButtonsPlacement('with_pins')
       }
     })()
     return () => {

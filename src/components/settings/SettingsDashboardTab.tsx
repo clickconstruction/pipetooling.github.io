@@ -485,7 +485,7 @@ export default function SettingsDashboardTab({
                       }}
                       disabled={dashboardQuickButtonsPlacementSaving}
                     />
-                    With pinned tabs
+                    With pinned tabs (default)
                   </label>
                 </div>
               </div>
