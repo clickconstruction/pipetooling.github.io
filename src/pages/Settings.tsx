@@ -351,7 +351,7 @@ export default function Settings() {
     builder_review: true,
   })
   const [dashboardButtonsSaving, setDashboardButtonsSaving] = useState(false)
-  const [dashboardQuickButtonsPlacement, setDashboardQuickButtonsPlacement] = useState<'top' | 'with_pins'>('top')
+  const [dashboardQuickButtonsPlacement, setDashboardQuickButtonsPlacement] = useState<'top' | 'with_pins'>('with_pins')
   const [dashboardQuickButtonsPlacementSaving, setDashboardQuickButtonsPlacementSaving] = useState(false)
   const [goalPickerUsers, setGoalPickerUsers] = useState<Array<{ id: string; name: string | null; email: string | null }>>([])
   const [dailyGoalsTargetUserId, setDailyGoalsTargetUserId] = useState('')
@@ -889,7 +889,8 @@ export default function Settings() {
       }
       setDashboardButtons(map)
       const placement = (dashPref as { quick_buttons_placement?: string } | null)?.quick_buttons_placement
-      setDashboardQuickButtonsPlacement(placement === 'with_pins' ? 'with_pins' : 'top')
+      // Default is with_pins (matches Dashboard); an explicit 'top' row is honored.
+      setDashboardQuickButtonsPlacement(placement === 'top' ? 'top' : 'with_pins')
 
       // Load report templates and report notification preferences
       const [templatesRes, prefsRes] = await Promise.all([
