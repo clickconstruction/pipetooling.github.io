@@ -52,7 +52,6 @@ export type ClockSessionRow = {
   origin?: string
   salary_segment_index?: number | null
   /** Split/cluster RPCs from indexed salary_schedule → user_punch; salary_sync may clock out at block end */
-  salary_split_derived?: boolean | null
   job_ledger_id: string | null
   bid_id: string | null
   clock_in_lat: number | null

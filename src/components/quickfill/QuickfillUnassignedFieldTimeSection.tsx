@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
+import type { PayConfigRow as PayConfigRowFull } from '../../types/peoplePayConfig'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
 import { useRealtimeChannel } from '../../hooks/useRealtimeChannel'
@@ -23,14 +24,8 @@ import {
 import { PeopleHoursDayAuditModal } from '../PeopleHoursDayAuditModal'
 import { useToastContext } from '../../contexts/ToastContext'
 
-type PayConfigRow = {
-  person_name: string
-  hourly_wage: number | null
-  is_salary: boolean
-  show_in_hours: boolean
-  show_in_cost_matrix: boolean
-  record_hours_but_salary: boolean
-}
+/** Narrow view of the canonical pay-config row (single source of truth for field types). */
+type PayConfigRow = Pick<PayConfigRowFull, 'person_name' | 'hourly_wage' | 'is_salary' | 'show_in_hours' | 'show_in_cost_matrix' | 'record_hours_but_salary'>
 
 type CrewJobsRow = {
   work_date: string

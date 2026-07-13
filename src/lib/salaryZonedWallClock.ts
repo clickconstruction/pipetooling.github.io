@@ -43,7 +43,10 @@ export function salaryZonedWallClockToUtcMs(
   }
 
   const anchor = Date.UTC(y, mo - 1, d, 0, 0, 0)
-  for (let deltaMin = -420; deltaMin <= 1500; deltaMin++) {
+  // Scan must cover every real UTC offset (-12h..+14h) for any wall time in the day:
+  // the previous -420..1500 window could not represent e.g. 20:01+ in America/Chicago
+  // (CDT 21:00 = UTC midnight + 26h), silently returning null for late-evening segments.
+  for (let deltaMin = -840; deltaMin <= 2160; deltaMin++) {
     const ms = anchor + deltaMin * 60 * 1000
     if (matches(ms)) return ms
   }
