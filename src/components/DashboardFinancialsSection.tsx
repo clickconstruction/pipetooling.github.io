@@ -873,6 +873,9 @@ export default function DashboardFinancialsSection() {
                 display: 'flex',
                 flexDirection: 'column',
                 gap: '0.25rem',
+                // Buttons don't inherit text color; without this the unstyled
+                // amount renders UA-black on the dark surface.
+                color: 'inherit',
               }}
             >
               <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-muted)' }}>{CARD_META[key].title}</span>
