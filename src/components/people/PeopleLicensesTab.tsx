@@ -216,25 +216,25 @@ export default function PeopleLicensesTab({ people, users }: PeopleLicensesTabPr
     <>
       <div>
         <h2 style={{ margin: '0 0 1rem 0', fontSize: '1.25rem', fontWeight: 600 }}>Licenses</h2>
-        {licensesError && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{licensesError}</p>}
+        {licensesError && <p style={{ color: 'var(--text-red-700)', marginBottom: '1rem' }}>{licensesError}</p>}
         {licensesLoading ? (
-          <p style={{ color: '#6b7280' }}>Loading…</p>
+          <p style={{ color: 'var(--text-muted)' }}>Loading…</p>
         ) : (
           <>
-            <section style={{ marginBottom: '1.5rem', padding: '1rem', background: '#fffbeb', borderRadius: 6, border: '1px solid #fde68a' }}>
+            <section style={{ marginBottom: '1.5rem', padding: '1rem', background: 'var(--bg-amber-tint)', borderRadius: 6, border: '1px solid #fde68a' }}>
               <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1rem', fontWeight: 600 }}>Licenses expiring in the next 30 days</h3>
               {licensesExpiringSoon.length === 0 ? (
-                <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>No licenses expiring in the next 30 days.</p>
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0 }}>No licenses expiring in the next 30 days.</p>
               ) : (
                 <div style={{ overflowX: 'auto' }}>
                   <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
                     <thead>
                       <tr>
-                        <th style={{ padding: '0.5rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Person</th>
-                        <th style={{ padding: '0.5rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>License and #</th>
-                        <th style={{ padding: '0.5rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Date of Expiry</th>
-                        <th style={{ padding: '0.5rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Cost to Company</th>
-                        <th style={{ padding: '0.5rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Days left</th>
+                        <th style={{ padding: '0.5rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Person</th>
+                        <th style={{ padding: '0.5rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>License and #</th>
+                        <th style={{ padding: '0.5rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Date of Expiry</th>
+                        <th style={{ padding: '0.5rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Cost to Company</th>
+                        <th style={{ padding: '0.5rem', textAlign: 'right', borderBottom: '1px solid var(--border)' }}>Days left</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -243,7 +243,7 @@ export default function PeopleLicensesTab({ people, users }: PeopleLicensesTabPr
                         const expiry = new Date(l.date_of_expiry + 'T12:00:00')
                         const daysLeft = Math.ceil((expiry.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
                         return (
-                          <tr key={l.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                          <tr key={l.id} style={{ borderBottom: '1px solid var(--border)' }}>
                             <td style={{ padding: '0.5rem' }}>{l.person_name}</td>
                             <td style={{ padding: '0.5rem' }}>{l.license_type}</td>
                             <td style={{ padding: '0.5rem' }}>{l.date_of_expiry}</td>
@@ -257,12 +257,12 @@ export default function PeopleLicensesTab({ people, users }: PeopleLicensesTabPr
                 </div>
               )}
             </section>
-            <div style={{ overflowX: 'auto', border: '1px solid #e5e7eb', borderRadius: 4 }}>
+            <div style={{ overflowX: 'auto', border: '1px solid var(--border)', borderRadius: 4 }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
-                <thead style={{ background: '#f9fafb' }}>
+                <thead style={{ background: 'var(--bg-subtle)' }}>
                   <tr>
-                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Person</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb', width: 1 }}></th>
+                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Person</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid var(--border)', width: 1 }}></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -271,7 +271,7 @@ export default function PeopleLicensesTab({ people, users }: PeopleLicensesTabPr
                     if (personNames.length === 0) {
                       return (
                         <tr>
-                          <td colSpan={2} style={{ padding: '1rem', color: '#6b7280' }}>No people in roster. Add people in Users tab first.</td>
+                          <td colSpan={2} style={{ padding: '1rem', color: 'var(--text-muted)' }}>No people in roster. Add people in Users tab first.</td>
                         </tr>
                       )
                     }
@@ -282,16 +282,16 @@ export default function PeopleLicensesTab({ people, users }: PeopleLicensesTabPr
                         <Fragment key={personName}>
                           <tr
                             style={{
-                              borderBottom: '1px solid #e5e7eb',
+                              borderBottom: '1px solid var(--border)',
                               cursor: 'pointer',
-                              background: isExpanded ? '#f0f9ff' : undefined,
+                              background: isExpanded ? 'var(--bg-sky-tint)' : undefined,
                             }}
                             onClick={() => setSelectedLicensePersonName((prev) => (prev === personName ? null : personName))}
                           >
                             <td style={{ padding: '0.75rem' }}>
                               {personName}
                               {personLicenses.length > 0 && (
-                                <span style={{ marginLeft: '0.5rem', color: '#6b7280', fontSize: '0.8125rem' }}>
+                                <span style={{ marginLeft: '0.5rem', color: 'var(--text-muted)', fontSize: '0.8125rem' }}>
                                   {personLicenses.map((l) => l.license_type).join(', ')}
                                 </span>
                               )}
@@ -313,11 +313,11 @@ export default function PeopleLicensesTab({ people, users }: PeopleLicensesTabPr
                           </tr>
                           {isExpanded && (
                             <tr>
-                              <td colSpan={2} style={{ padding: '1rem', background: '#f9fafb', borderBottom: '1px solid #e5e7eb' }}>
+                              <td colSpan={2} style={{ padding: '1rem', background: 'var(--bg-subtle)', borderBottom: '1px solid var(--border)' }}>
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                                   <div>
                                     {personLicenses.length === 0 ? (
-                                      <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>No licenses.</p>
+                                      <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0 }}>No licenses.</p>
                                     ) : (
                                       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
                                         <thead>
@@ -334,7 +334,7 @@ export default function PeopleLicensesTab({ people, users }: PeopleLicensesTabPr
                                             const costLines = l.person_license_cost_lines ?? []
                                             return (
                                               <Fragment key={l.id}>
-                                                <tr style={{ borderTop: '1px solid #e5e7eb' }}>
+                                                <tr style={{ borderTop: '1px solid var(--border)' }}>
                                                   <td style={{ padding: '0.5rem' }}>{l.license_type}</td>
                                                   <td style={{ padding: '0.5rem' }}>{l.note || '—'}</td>
                                                   <td style={{ padding: '0.5rem' }}>{l.date_of_expiry}</td>
@@ -350,17 +350,17 @@ export default function PeopleLicensesTab({ people, users }: PeopleLicensesTabPr
                                                             onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); setExpandedCostLinesLicenseId((prev) => (prev === l.id ? null : l.id)) } }}
                                                             style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}
                                                           >
-                                                            <span style={{ fontSize: '0.75em', color: '#6b7280' }}>{expandedCostLinesLicenseId === l.id ? '▾' : '▸'}</span>
+                                                            <span style={{ fontSize: '0.75em', color: 'var(--text-muted)' }}>{expandedCostLinesLicenseId === l.id ? '▾' : '▸'}</span>
                                                             {costLinesTotal(costLines) > 0 ? `$${costLinesTotal(costLines).toLocaleString('en-US', { minimumFractionDigits: 2 })}` : '—'}
                                                             {costLines.length > 1 && (
-                                                              <span style={{ color: '#9ca3af', fontSize: '0.75rem' }}>({costLines.length} lines)</span>
+                                                              <span style={{ color: 'var(--text-faint)', fontSize: '0.75rem' }}>({costLines.length} lines)</span>
                                                             )}
                                                           </div>
                                                         ) : null}
                                                         <button type="button" onClick={(e) => { e.stopPropagation(); openCostLineForm(l.id) }} style={{ padding: '0.15rem 0.35rem', fontSize: '0.7rem', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer' }}>+ Add Cost</button>
                                                       </div>
                                                       {expandedCostLinesLicenseId === l.id && costLines.length > 0 && (
-                                                        <div style={{ marginTop: '0.5rem', padding: '0.5rem', background: '#f9fafb', borderRadius: 4, borderLeft: '3px solid #e5e7eb' }}>
+                                                        <div style={{ marginTop: '0.5rem', padding: '0.5rem', background: 'var(--bg-subtle)', borderRadius: 4, borderLeft: '3px solid var(--border)' }}>
                                                           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.75rem' }}>
                                                             <tbody>
                                                               {costLines.map((cl) => (
@@ -370,7 +370,7 @@ export default function PeopleLicensesTab({ people, users }: PeopleLicensesTabPr
                                                                   <td style={{ padding: '0.2rem 0.35rem 0 0' }}>{cl.date}</td>
                                                                   <td style={{ padding: '0.2rem 0' }}>
                                                                     <button type="button" onClick={(e) => { e.stopPropagation(); openCostLineForm(l.id, cl) }} style={{ marginRight: '0.2rem', padding: '0.1rem 0.3rem', fontSize: '0.7rem' }}>Edit</button>
-                                                                    <button type="button" onClick={(e) => { e.stopPropagation(); deleteCostLine(cl) }} style={{ padding: '0.1rem 0.3rem', fontSize: '0.7rem', color: '#b91c1c' }}>Delete</button>
+                                                                    <button type="button" onClick={(e) => { e.stopPropagation(); deleteCostLine(cl) }} style={{ padding: '0.1rem 0.3rem', fontSize: '0.7rem', color: 'var(--text-red-700)' }}>Delete</button>
                                                                   </td>
                                                                 </tr>
                                                               ))}
@@ -397,7 +397,7 @@ export default function PeopleLicensesTab({ people, users }: PeopleLicensesTabPr
                                                         e.stopPropagation()
                                                         deleteLicense(l)
                                                       }}
-                                                      style={{ padding: '0.2rem 0.4rem', fontSize: '0.75rem', color: '#b91c1c' }}
+                                                      style={{ padding: '0.2rem 0.4rem', fontSize: '0.75rem', color: 'var(--text-red-700)' }}
                                                     >
                                                       Delete
                                                     </button>
@@ -427,7 +427,7 @@ export default function PeopleLicensesTab({ people, users }: PeopleLicensesTabPr
 
       {licenseFormOpen && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
-          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 320 }}>
+          <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 320 }}>
             <h2 style={{ marginTop: 0 }}>{editingLicense ? 'Edit license' : 'Add license'}</h2>
             <div style={{ marginBottom: '1rem' }}>
               <label style={{ display: 'block', marginBottom: 4 }}>Person *</label>
@@ -460,7 +460,7 @@ export default function PeopleLicensesTab({ people, users }: PeopleLicensesTabPr
 
       {costLineFormOpen && costLineLicenseId && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
-          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 320 }}>
+          <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 320 }}>
             <h2 style={{ marginTop: 0 }}>{editingCostLine ? 'Edit cost line' : 'Add cost line'}</h2>
             <div style={{ marginBottom: '1rem' }}>
               <label style={{ display: 'block', marginBottom: 4 }}>Amount ($) *</label>

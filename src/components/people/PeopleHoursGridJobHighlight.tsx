@@ -40,7 +40,7 @@ export function PeopleHoursGridJobHighlight({
       style={{ marginBottom: '0.5rem', display: 'flex', flexWrap: 'wrap', alignItems: 'flex-start', gap: '0.5rem' }}
       title="Highlights people whose crew row lists this job (assignments on that person’s row only, not crew-lead inheritance)."
     >
-      <span style={{ fontSize: '0.875rem', color: '#374151', fontWeight: 500, paddingTop: '0.35rem', flexShrink: 0 }}>Highlight by job</span>
+      <span style={{ fontSize: '0.875rem', color: 'var(--text-700)', fontWeight: 500, paddingTop: '0.35rem', flexShrink: 0 }}>Highlight by job</span>
       <div style={{ position: 'relative', flex: '1 1 220px', minWidth: 180, maxWidth: 400 }}>
         <input
           type="search"
@@ -59,7 +59,7 @@ export function PeopleHoursGridJobHighlight({
           style={{
             width: '100%',
             padding: '0.35rem 0.5rem',
-            border: '1px solid #d1d5db',
+            border: '1px solid var(--border-strong)',
             borderRadius: 4,
             fontSize: '0.875rem',
             boxSizing: 'border-box',
@@ -76,8 +76,8 @@ export function PeopleHoursGridJobHighlight({
               marginTop: 2,
               maxHeight: 220,
               overflowY: 'auto',
-              background: 'white',
-              border: '1px solid #e5e7eb',
+              background: 'var(--surface)',
+              border: '1px solid var(--border)',
               borderRadius: 6,
               boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
             }}
@@ -109,7 +109,7 @@ export function PeopleHoursGridJobHighlight({
                   J{effectiveJobLedgerNumber(j.hcp_number, j.click_number) || '—'} · {j.job_name || '—'}
                 </div>
                 {j.job_address ? (
-                  <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: 2 }}>{j.job_address}</div>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 2 }}>{j.job_address}</div>
                 ) : null}
               </button>
             ))}
@@ -123,7 +123,7 @@ export function PeopleHoursGridJobHighlight({
             alignItems: 'center',
             gap: '0.35rem',
             padding: '0.3rem 0.55rem',
-            background: '#eff6ff',
+            background: 'var(--bg-blue-tint)',
             border: '1px solid #93c5fd',
             borderRadius: 6,
             fontSize: '0.8125rem',
@@ -142,7 +142,7 @@ export function PeopleHoursGridJobHighlight({
               border: 'none',
               background: 'none',
               cursor: 'pointer',
-              color: '#64748b',
+              color: 'var(--text-slate-500)',
               fontSize: '1.125rem',
               lineHeight: 1,
             }}

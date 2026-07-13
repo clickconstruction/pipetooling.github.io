@@ -238,10 +238,10 @@ export default function PeopleContractsTab({ people, users, canDeletePeopleContr
       padding: '0.25rem 0.55rem',
       fontSize: '0.75rem',
       fontWeight: 600,
-      border: '1px solid #d1d5db',
+      border: '1px solid var(--border-strong)',
       borderRadius: 6,
-      background: active ? '#eff6ff' : '#fff',
-      color: active ? '#1d4ed8' : '#374151',
+      background: active ? 'var(--bg-blue-tint)' : 'var(--surface)',
+      color: active ? 'var(--text-blue-700)' : 'var(--text-700)',
       cursor: 'pointer',
     }) as const
 
@@ -271,7 +271,7 @@ export default function PeopleContractsTab({ people, users, canDeletePeopleContr
                 marginTop: 6,
               }}
             >
-              <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>Format:</span>
+              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Format:</span>
               <button
                 type="button"
                 style={contractBodyFormatBtn(contractDocumentFormSigningBodyFormat === 'html')}
@@ -317,7 +317,7 @@ export default function PeopleContractsTab({ people, users, canDeletePeopleContr
             <ContractBookIcon />
           </button>
         </div>
-        <p style={{ fontSize: '0.75rem', color: '#6b7280', margin: '0 0 0.35rem', lineHeight: 1.45 }}>
+        <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: '0 0 0.35rem', lineHeight: 1.45 }}>
           <strong>HTML:</strong> rich text (sanitized). <strong>Plain:</strong> exact text including angle brackets.{' '}
           <strong>Markdown:</strong> rendered on the signing page (then sanitized).
         </p>
@@ -326,7 +326,7 @@ export default function PeopleContractsTab({ people, users, canDeletePeopleContr
           onChange={(e) => setContractDocumentFormSigningBodyHtml(e.target.value)}
           placeholder="Optional. Shown on the public signing page."
           rows={6}
-          style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, resize: 'vertical', fontFamily: 'inherit' }}
+          style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, resize: 'vertical', fontFamily: 'inherit' }}
         />
       </div>
     ),
@@ -349,7 +349,7 @@ export default function PeopleContractsTab({ people, users, canDeletePeopleContr
               flex: 1,
               minWidth: 0,
               padding: '0.5rem',
-              border: '1px solid #d1d5db',
+              border: '1px solid var(--border-strong)',
               borderRadius: 4,
               boxSizing: 'border-box',
             }}
@@ -363,11 +363,11 @@ export default function PeopleContractsTab({ people, users, canDeletePeopleContr
               padding: '0.4rem 0.65rem',
               fontSize: '0.8125rem',
               fontWeight: 600,
-              border: '1px solid #d1d5db',
+              border: '1px solid var(--border-strong)',
               borderRadius: 6,
               background:
-                canonicalUrlIsCheckable && canonicalUrlCheckStatus !== 'loading' ? '#3b82f6' : '#f9fafb',
-              color: canonicalUrlIsCheckable && canonicalUrlCheckStatus !== 'loading' ? '#fff' : '#9ca3af',
+                canonicalUrlIsCheckable && canonicalUrlCheckStatus !== 'loading' ? '#3b82f6' : 'var(--bg-subtle)',
+              color: canonicalUrlIsCheckable && canonicalUrlCheckStatus !== 'loading' ? '#fff' : 'var(--text-faint)',
               cursor:
                 canonicalUrlIsCheckable && canonicalUrlCheckStatus !== 'loading' ? 'pointer' : 'not-allowed',
               opacity: canonicalUrlIsCheckable ? 1 : 0.65,
@@ -376,7 +376,7 @@ export default function PeopleContractsTab({ people, users, canDeletePeopleContr
             {canonicalUrlCheckStatus === 'loading' ? 'Checking…' : 'Check link'}
           </button>
         </div>
-        <span style={{ display: 'block', fontSize: '0.75rem', color: '#6b7280', marginTop: '0.35rem' }}>
+        <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.35rem' }}>
           Drive or Docs URLs only. Does not block saving — hints only.
         </span>
         {canonicalUrlCheckStatus === 'success' && canonicalUrlCheckMessage ? (
@@ -390,13 +390,13 @@ export default function PeopleContractsTab({ people, users, canDeletePeopleContr
         {canonicalUrlCheckStatus === 'warn' && canonicalUrlCheckMessage ? (
           <p
             role="status"
-            style={{ margin: '0.5rem 0 0', fontSize: '0.85rem', color: '#b45309', lineHeight: 1.45 }}
+            style={{ margin: '0.5rem 0 0', fontSize: '0.85rem', color: 'var(--text-amber-700)', lineHeight: 1.45 }}
           >
             {canonicalUrlCheckMessage}
           </p>
         ) : null}
         {canonicalUrlCheckStatus === 'error' && canonicalUrlCheckMessage ? (
-          <p role="alert" style={{ margin: '0.5rem 0 0', fontSize: '0.85rem', color: '#b91c1c', lineHeight: 1.45 }}>
+          <p role="alert" style={{ margin: '0.5rem 0 0', fontSize: '0.85rem', color: 'var(--text-red-700)', lineHeight: 1.45 }}>
             {canonicalUrlCheckMessage}
           </p>
         ) : null}
@@ -1425,19 +1425,19 @@ export default function PeopleContractsTab({ people, users, canDeletePeopleContr
               <button
                 type="button"
                 onClick={() => setContractsTemplateModalOpen(true)}
-                style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', border: '1px solid #d1d5db', borderRadius: 6, background: '#fff', cursor: 'pointer' }}
+                style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', cursor: 'pointer' }}
               >
                 Manage templates
               </button>
             </div>
           </div>
-          {contractsError && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{contractsError}</p>}
+          {contractsError && <p style={{ color: 'var(--text-red-700)', marginBottom: '1rem' }}>{contractsError}</p>}
           {contractsLoading ? (
-            <p style={{ color: '#6b7280' }}>Loading…</p>
+            <p style={{ color: 'var(--text-muted)' }}>Loading…</p>
           ) : (
             <>
               <div style={{ marginBottom: '0.75rem' }}>
-                <label htmlFor={contractsTabSearchInputId} style={{ display: 'block', fontSize: '0.8125rem', marginBottom: '0.35rem', color: '#374151' }}>
+                <label htmlFor={contractsTabSearchInputId} style={{ display: 'block', fontSize: '0.8125rem', marginBottom: '0.35rem', color: 'var(--text-700)' }}>
                   Search people and contracts
                 </label>
                 <input
@@ -1452,7 +1452,7 @@ export default function PeopleContractsTab({ people, users, canDeletePeopleContr
                     width: '100%',
                     boxSizing: 'border-box',
                     padding: '0.5rem 0.65rem',
-                    border: '1px solid #d1d5db',
+                    border: '1px solid var(--border-strong)',
                     borderRadius: 6,
                     fontSize: '0.875rem',
                   }}
@@ -1465,9 +1465,9 @@ export default function PeopleContractsTab({ people, users, canDeletePeopleContr
                   style={{
                     marginBottom: '0.75rem',
                     padding: '0.5rem 0.75rem',
-                    border: '1px solid #e5e7eb',
+                    border: '1px solid var(--border)',
                     borderRadius: 6,
-                    background: '#fafafa',
+                    background: 'var(--bg-page)',
                     maxHeight: 200,
                     overflowY: 'auto',
                     fontSize: '0.8125rem',
@@ -1476,20 +1476,20 @@ export default function PeopleContractsTab({ people, users, canDeletePeopleContr
                   {contractDocumentSearchLines.map((line) => (
                     <div
                       key={`${line.personName}-${line.document_name}`}
-                      style={{ padding: '0.2rem 0', color: '#374151' }}
+                      style={{ padding: '0.2rem 0', color: 'var(--text-700)' }}
                     >
                       {line.personName} — {line.document_name} — {line.status}
                     </div>
                   ))}
                 </div>
               ) : null}
-              <div style={{ overflowX: 'auto', border: '1px solid #e5e7eb', borderRadius: 4 }}>
+              <div style={{ overflowX: 'auto', border: '1px solid var(--border)', borderRadius: 4 }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
-                  <thead style={{ background: '#f9fafb' }}>
+                  <thead style={{ background: 'var(--bg-subtle)' }}>
                     <tr>
-                      <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Person</th>
-                      <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb', width: 48 }}>Status</th>
-                      <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb', width: 1 }}></th>
+                      <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Person</th>
+                      <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)', width: 48 }}>Status</th>
+                      <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid var(--border)', width: 1 }}></th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1497,14 +1497,14 @@ export default function PeopleContractsTab({ people, users, canDeletePeopleContr
                       if (contractsPersonNamesSorted.length === 0) {
                         return (
                           <tr>
-                            <td colSpan={3} style={{ padding: '1rem', color: '#6b7280' }}>No people in roster. Add people in Users tab first.</td>
+                            <td colSpan={3} style={{ padding: '1rem', color: 'var(--text-muted)' }}>No people in roster. Add people in Users tab first.</td>
                           </tr>
                         )
                       }
                       if (contractsPersonNamesFiltered.length === 0 && contractsSearchNormalized) {
                         return (
                           <tr>
-                            <td colSpan={3} style={{ padding: '1rem', color: '#6b7280' }}>No matches.</td>
+                            <td colSpan={3} style={{ padding: '1rem', color: 'var(--text-muted)' }}>No matches.</td>
                           </tr>
                         )
                       }
@@ -1517,9 +1517,9 @@ export default function PeopleContractsTab({ people, users, canDeletePeopleContr
                           <Fragment key={personName}>
                             <tr
                               style={{
-                                borderBottom: '1px solid #e5e7eb',
+                                borderBottom: '1px solid var(--border)',
                                 cursor: 'pointer',
-                                background: isExpanded ? '#f0f9ff' : undefined,
+                                background: isExpanded ? 'var(--bg-sky-tint)' : undefined,
                               }}
                               onClick={() => setSelectedContractsPersonName((prev) => (prev === personName ? null : personName))}
                             >
@@ -1566,7 +1566,7 @@ export default function PeopleContractsTab({ people, users, canDeletePeopleContr
                             </tr>
                             {isExpanded && (
                               <tr>
-                                <td colSpan={3} style={{ padding: '1rem', background: '#f9fafb', borderBottom: '1px solid #e5e7eb' }}>
+                                <td colSpan={3} style={{ padding: '1rem', background: 'var(--bg-subtle)', borderBottom: '1px solid var(--border)' }}>
                                   <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                                     <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                                       <button
@@ -1603,13 +1603,13 @@ export default function PeopleContractsTab({ people, users, canDeletePeopleContr
                                           setContractDocumentAddTab('request_signature')
                                           setContractDocumentModalOpen(true)
                                         }}
-                                        style={{ padding: '0.25rem 0.5rem', fontSize: '0.8125rem', border: '1px solid #d1d5db', borderRadius: 4, background: '#fff', cursor: 'pointer' }}
+                                        style={{ padding: '0.25rem 0.5rem', fontSize: '0.8125rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: 'pointer' }}
                                       >
                                         + Add document
                                       </button>
                                     </div>
                                     {docs.length === 0 ? (
-                                      <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>No documents. Assign a template or add a document.</p>
+                                      <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0 }}>No documents. Assign a template or add a document.</p>
                                     ) : (
                                       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
                                         <thead>
@@ -1630,7 +1630,7 @@ export default function PeopleContractsTab({ people, users, canDeletePeopleContr
                                             return (
                                             <tr
                                               key={`${document_name}-${lineageId ?? 'none'}-${doc?.id ?? 'pending'}`}
-                                              style={{ borderBottom: '1px solid #e5e7eb' }}
+                                              style={{ borderBottom: '1px solid var(--border)' }}
                                             >
                                               <td style={{ padding: '0.5rem' }}>
                                                 {templateNames.length > 0 && (
@@ -1642,8 +1642,8 @@ export default function PeopleContractsTab({ people, users, canDeletePeopleContr
                                                           fontSize: '0.7rem',
                                                           padding: '0.1rem 0.3rem',
                                                           borderRadius: 4,
-                                                          backgroundColor: '#e5e7eb',
-                                                          color: '#374151',
+                                                          backgroundColor: 'var(--bg-200)',
+                                                          color: 'var(--text-700)',
                                                         }}
                                                       >
                                                         {n}
@@ -1677,24 +1677,24 @@ export default function PeopleContractsTab({ people, users, canDeletePeopleContr
                                                       fontSize: '0.65rem',
                                                       padding: '0.1rem 0.3rem',
                                                       borderRadius: 4,
-                                                      backgroundColor: '#fef3c7',
-                                                      color: '#92400e',
+                                                      backgroundColor: 'var(--bg-amber-100)',
+                                                      color: 'var(--text-amber-800)',
                                                     }}
                                                   >
                                                     Link
                                                   </span>
                                                 ) : null}
                                               </td>
-                                              <td style={{ padding: '0.5rem', color: '#6b7280', whiteSpace: 'nowrap' }}>
+                                              <td style={{ padding: '0.5rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
                                                 {doc ? doc.lineage_version : '—'}
                                               </td>
-                                              <td style={{ padding: '0.5rem', whiteSpace: 'nowrap', color: '#4b5563' }}>
+                                              <td style={{ padding: '0.5rem', whiteSpace: 'nowrap', color: 'var(--text-600)' }}>
                                                 {bookLastEditedAt ? formatContractBookLastEditedCalendarDate(bookLastEditedAt) : '—'}
                                               </td>
                                               <td style={{ padding: '0.5rem' }}>{doc?.status ?? 'unsent'}</td>
                                               <td style={{ padding: '0.5rem' }}>
                                                 {doc?.url ? (
-                                                  <a href={doc.url} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} style={{ color: '#2563eb', textDecoration: 'underline' }}>
+                                                  <a href={doc.url} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} style={{ color: 'var(--text-link)', textDecoration: 'underline' }}>
                                                     Link
                                                   </a>
                                                 ) : (
@@ -1797,9 +1797,9 @@ export default function PeopleContractsTab({ people, users, canDeletePeopleContr
                                                           padding: '0.15rem 0.35rem',
                                                           fontSize: '1rem',
                                                           lineHeight: 1,
-                                                          border: '1px solid #d1d5db',
+                                                          border: '1px solid var(--border-strong)',
                                                           borderRadius: 4,
-                                                          background: '#fff',
+                                                          background: 'var(--surface)',
                                                           cursor: 'pointer',
                                                         }}
                                                       >
@@ -1815,8 +1815,8 @@ export default function PeopleContractsTab({ people, users, canDeletePeopleContr
                                                             marginTop: 2,
                                                             zIndex: 20,
                                                             minWidth: 140,
-                                                            background: '#fff',
-                                                            border: '1px solid #e5e7eb',
+                                                            background: 'var(--surface)',
+                                                            border: '1px solid var(--border)',
                                                             borderRadius: 6,
                                                             boxShadow: '0 4px 12px rgba(0,0,0,0.12)',
                                                             padding: '0.25rem 0',
@@ -1839,7 +1839,7 @@ export default function PeopleContractsTab({ people, users, canDeletePeopleContr
                                                               border: 'none',
                                                               background: 'transparent',
                                                               cursor: 'pointer',
-                                                              color: '#111827',
+                                                              color: 'var(--text-strong)',
                                                               textAlign: 'left',
                                                             }}
                                                           >
@@ -1865,7 +1865,7 @@ export default function PeopleContractsTab({ people, users, canDeletePeopleContr
                                                                 border: 'none',
                                                                 background: 'transparent',
                                                                 cursor: 'pointer',
-                                                                color: '#b91c1c',
+                                                                color: 'var(--text-red-700)',
                                                                 textAlign: 'left',
                                                               }}
                                                             >
@@ -1913,19 +1913,19 @@ export default function PeopleContractsTab({ people, users, canDeletePeopleContr
 
       {contractsTemplateModalOpen && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
-          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 420, maxWidth: '90vw', maxHeight: '85vh', overflow: 'auto' }}>
+          <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 420, maxWidth: '90vw', maxHeight: '85vh', overflow: 'auto' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
               <h3 style={{ margin: 0, fontSize: '1.125rem' }}>Manage templates</h3>
               <button
                 type="button"
                 onClick={() => setContractsTemplateModalOpen(false)}
-                style={{ padding: '0.25rem', border: 'none', background: 'none', cursor: 'pointer', fontSize: '1.25rem', lineHeight: 1, color: '#6b7280' }}
+                style={{ padding: '0.25rem', border: 'none', background: 'none', cursor: 'pointer', fontSize: '1.25rem', lineHeight: 1, color: 'var(--text-muted)' }}
                 aria-label="Close"
               >
                 ×
               </button>
             </div>
-            {contractsError && <p style={{ color: '#b91c1c', marginBottom: '0.75rem', fontSize: '0.875rem' }}>{contractsError}</p>}
+            {contractsError && <p style={{ color: 'var(--text-red-700)', marginBottom: '0.75rem', fontSize: '0.875rem' }}>{contractsError}</p>}
             {templateFormMode !== 'none' ? (
               <div style={{ marginBottom: '1rem' }}>
                 <h4 style={{ margin: '0 0 0.75rem', fontSize: '1rem' }}>{editingContractTemplate ? 'Edit template' : 'New template'}</h4>
@@ -1937,20 +1937,20 @@ export default function PeopleContractsTab({ people, users, canDeletePeopleContr
                       value={templateFormName}
                       onChange={(e) => setTemplateFormName(e.target.value)}
                       placeholder="e.g. Farm Work"
-                      style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                      style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
                     />
                   </div>
                   <div>
                     <label style={{ display: 'block', fontSize: '0.8125rem', marginBottom: '0.25rem' }}>Documents</label>
-                    <p style={{ margin: '0 0 0.5rem', fontSize: '0.75rem', color: '#6b7280', lineHeight: 1.45 }}>
+                    <p style={{ margin: '0 0 0.5rem', fontSize: '0.75rem', color: 'var(--text-muted)', lineHeight: 1.45 }}>
                       Only library entries from <strong>Contract Book</strong> can be attached. Create or edit them there, then pick each one below.
                     </p>
                     <div style={{ marginBottom: '0.5rem' }}>
-                      <label htmlFor={templateBookPickerLabelId} style={{ display: 'block', fontSize: '0.75rem', color: '#6b7280', marginBottom: '0.25rem' }}>
+                      <label htmlFor={templateBookPickerLabelId} style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.25rem' }}>
                         Add from Contract Book
                       </label>
                       {contractTemplateDocuments.length === 0 ? (
-                        <p style={{ margin: 0, fontSize: '0.8125rem', color: '#6b7280' }}>
+                        <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
                           No library entries yet. Open <strong>Contract Book</strong> on the Contracts tab and add at least one contract under a template, then return here.
                         </p>
                       ) : (
@@ -1986,7 +1986,7 @@ export default function PeopleContractsTab({ people, users, canDeletePeopleContr
                             portalZIndex={1200}
                           />
                           {templateBookPickerOptions.length === 0 ? (
-                            <p style={{ margin: '0.35rem 0 0', fontSize: '0.75rem', color: '#6b7280' }}>
+                            <p style={{ margin: '0.35rem 0 0', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                               Every library document name is already attached to this template.
                             </p>
                           ) : null}
@@ -2007,7 +2007,7 @@ export default function PeopleContractsTab({ people, users, canDeletePeopleContr
                                 return next
                               })
                             }}
-                            style={{ padding: '0.1rem 0.35rem', fontSize: '0.75rem', color: '#b91c1c', border: 'none', background: 'none', cursor: 'pointer' }}
+                            style={{ padding: '0.1rem 0.35rem', fontSize: '0.75rem', color: 'var(--text-red-700)', border: 'none', background: 'none', cursor: 'pointer' }}
                           >
                             Remove
                           </button>
@@ -2027,7 +2027,7 @@ export default function PeopleContractsTab({ people, users, canDeletePeopleContr
                     <button
                       type="button"
                       onClick={closeTemplateForm}
-                      style={{ padding: '0.5rem 1rem', border: '1px solid #d1d5db', borderRadius: 6, background: '#fff', cursor: 'pointer' }}
+                      style={{ padding: '0.5rem 1rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', cursor: 'pointer' }}
                     >
                       Cancel
                     </button>
@@ -2047,13 +2047,13 @@ export default function PeopleContractsTab({ people, users, canDeletePeopleContr
                 </button>
               </div>
               {contractTemplates.length === 0 ? (
-                <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>No templates yet. Create one to assign to people.</p>
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0 }}>No templates yet. Create one to assign to people.</p>
               ) : (
                 <ul style={{ margin: 0, paddingLeft: '1.25rem', listStyle: 'none' }}>
                   {contractTemplates.map((t) => {
                     const docs = contractTemplateDocuments.filter((d) => d.template_id === t.id).map((d) => d.document_name).sort()
                     return (
-                      <li key={t.id} style={{ marginBottom: '0.5rem', padding: '0.5rem', background: '#f9fafb', borderRadius: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.75rem' }}>
+                      <li key={t.id} style={{ marginBottom: '0.5rem', padding: '0.5rem', background: 'var(--bg-subtle)', borderRadius: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.75rem' }}>
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <strong>{t.name}</strong>
                           {docs.length > 0 ? (
@@ -2063,7 +2063,7 @@ export default function PeopleContractsTab({ people, users, canDeletePeopleContr
                                 paddingLeft: '1.25rem',
                                 listStyle: 'disc',
                                 listStylePosition: 'outside',
-                                color: '#6b7280',
+                                color: 'var(--text-muted)',
                                 fontSize: '0.8125rem',
                               }}
                             >
@@ -2079,7 +2079,7 @@ export default function PeopleContractsTab({ people, users, canDeletePeopleContr
                           <button
                             type="button"
                             onClick={() => openTemplateForm(t)}
-                            style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', border: '1px solid #d1d5db', borderRadius: 4, background: '#fff', cursor: 'pointer' }}
+                            style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: 'pointer' }}
                           >
                             Edit
                           </button>
@@ -2087,7 +2087,7 @@ export default function PeopleContractsTab({ people, users, canDeletePeopleContr
                             <button
                               type="button"
                               onClick={() => deleteContractTemplate(t)}
-                              style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', color: '#b91c1c', border: '1px solid #fecaca', borderRadius: 4, background: '#fff', cursor: 'pointer' }}
+                              style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', color: 'var(--text-red-700)', border: '1px solid #fecaca', borderRadius: 4, background: 'var(--surface)', cursor: 'pointer' }}
                             >
                               Delete
                             </button>
@@ -2105,9 +2105,9 @@ export default function PeopleContractsTab({ people, users, canDeletePeopleContr
 
       {contractsAssignModalOpen && selectedContractsPersonName && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
-          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 360, maxWidth: 'min(92vw, 520px)', width: '100%' }}>
+          <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 360, maxWidth: 'min(92vw, 520px)', width: '100%' }}>
             <h3 style={{ margin: '0 0 1rem', fontSize: '1.125rem' }}>Assign template to {selectedContractsPersonName}</h3>
-            {contractsError && <p style={{ color: '#b91c1c', marginBottom: '0.75rem', fontSize: '0.875rem' }}>{contractsError}</p>}
+            {contractsError && <p style={{ color: 'var(--text-red-700)', marginBottom: '0.75rem', fontSize: '0.875rem' }}>{contractsError}</p>}
             {(() => {
               const assignedRows = personContractAssignments
                 .filter((a) => a.person_name === selectedContractsPersonName)
@@ -2120,7 +2120,7 @@ export default function PeopleContractsTab({ people, users, canDeletePeopleContr
               return (
                 <div style={{ marginBottom: '1rem' }}>
                   <p style={{ fontSize: '0.8125rem', fontWeight: 600, margin: '0 0 0.35rem' }}>Assigned templates</p>
-                  <p style={{ fontSize: '0.75rem', color: '#6b7280', margin: '0 0 0.5rem', lineHeight: 1.45 }}>
+                  <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: '0 0 0.5rem', lineHeight: 1.45 }}>
                     Signed or in-progress documents stay on file; only empty placeholders are removed.
                   </p>
                   <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
@@ -2137,7 +2137,7 @@ export default function PeopleContractsTab({ people, users, canDeletePeopleContr
                             justifyContent: 'space-between',
                             gap: '0.5rem',
                             padding: '0.45rem 0.65rem',
-                            border: '1px solid #e5e7eb',
+                            border: '1px solid var(--border)',
                             borderRadius: 6,
                             fontSize: '0.875rem',
                           }}
@@ -2160,8 +2160,8 @@ export default function PeopleContractsTab({ people, users, canDeletePeopleContr
                                 fontWeight: 600,
                                 border: '1px solid #fecaca',
                                 borderRadius: 6,
-                                background: '#fef2f2',
-                                color: '#b91c1c',
+                                background: 'var(--bg-red-tint)',
+                                color: 'var(--text-red-700)',
                                 cursor:
                                   assignTemplateSaving || assignTemplateUnassigningTemplateId !== null
                                     ? 'not-allowed'
@@ -2180,7 +2180,7 @@ export default function PeopleContractsTab({ people, users, canDeletePeopleContr
               )
             })()}
             {contractTemplates.length === 0 ? (
-              <p style={{ color: '#6b7280', fontSize: '0.875rem', marginBottom: '1rem' }}>No templates. Create one in Manage templates first.</p>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', marginBottom: '1rem' }}>No templates. Create one in Manage templates first.</p>
             ) : (
               <div style={{ marginBottom: '1rem' }}>
                 <label htmlFor={assignTemplateSearchInputId} style={{ display: 'block', fontSize: '0.8125rem', marginBottom: '0.35rem' }}>
@@ -2197,7 +2197,7 @@ export default function PeopleContractsTab({ people, users, canDeletePeopleContr
                   style={{
                     width: '100%',
                     padding: '0.5rem',
-                    border: '1px solid #d1d5db',
+                    border: '1px solid var(--border-strong)',
                     borderRadius: 4,
                     marginBottom: '0.65rem',
                     boxSizing: 'border-box',
@@ -2212,13 +2212,13 @@ export default function PeopleContractsTab({ people, users, canDeletePeopleContr
                   style={{
                     maxHeight: 280,
                     overflowY: 'auto',
-                    border: '1px solid #e5e7eb',
+                    border: '1px solid var(--border)',
                     borderRadius: 6,
                     padding: '0.35rem',
                   }}
                 >
                   {filteredAssignContractTemplates.length === 0 ? (
-                    <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: '0.5rem 0.35rem' }}>No templates match your search.</p>
+                    <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: '0.5rem 0.35rem' }}>No templates match your search.</p>
                   ) : (
                     filteredAssignContractTemplates.map((t) => {
                       const alreadyAssigned = personContractAssignments.some(
@@ -2254,7 +2254,7 @@ export default function PeopleContractsTab({ people, users, canDeletePeopleContr
                                 ? 'not-allowed'
                                 : 'pointer',
                             opacity: alreadyAssigned || assignTemplateUnassigningTemplateId !== null ? 0.55 : 1,
-                            background: selected ? '#eff6ff' : alreadyAssigned ? '#f9fafb' : 'transparent',
+                            background: selected ? '#eff6ff' : alreadyAssigned ? 'var(--bg-subtle)' : 'transparent',
                             border: selected ? '1px solid #93c5fd' : '1px solid transparent',
                             marginBottom: 2,
                             fontSize: '0.875rem',
@@ -2263,7 +2263,7 @@ export default function PeopleContractsTab({ people, users, canDeletePeopleContr
                           <span style={{ fontWeight: 600 }}>{t.name}</span>
                           {docLabel}
                           {alreadyAssigned ? (
-                            <span style={{ color: '#6b7280', fontWeight: 400 }}> — already assigned (use Unassign above)</span>
+                            <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}> — already assigned (use Unassign above)</span>
                           ) : null}
                         </div>
                       )
@@ -2305,9 +2305,9 @@ export default function PeopleContractsTab({ people, users, canDeletePeopleContr
                 disabled={assignTemplateSaving || assignTemplateUnassigningTemplateId !== null}
                 style={{
                   padding: '0.5rem 1rem',
-                  border: '1px solid #d1d5db',
+                  border: '1px solid var(--border-strong)',
                   borderRadius: 6,
-                  background: '#fff',
+                  background: 'var(--surface)',
                   cursor:
                     assignTemplateSaving || assignTemplateUnassigningTemplateId !== null ? 'not-allowed' : 'pointer',
                 }}
@@ -2321,10 +2321,10 @@ export default function PeopleContractsTab({ people, users, canDeletePeopleContr
 
       {contractDocumentModalOpen && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
-          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 360, maxWidth: 'min(92vw, 520px)', maxHeight: '90vh', overflow: 'auto' }}>
+          <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 360, maxWidth: 'min(92vw, 520px)', maxHeight: '90vh', overflow: 'auto' }}>
             <h3 style={{ margin: '0 0 1rem', fontSize: '1.125rem' }}>{editingContractDocument ? 'Edit document' : 'Add document'}</h3>
             {contractsError ? (
-              <p style={{ color: '#b91c1c', fontSize: '0.875rem', margin: '0 0 0.75rem' }}>{contractsError}</p>
+              <p style={{ color: 'var(--text-red-700)', fontSize: '0.875rem', margin: '0 0 0.75rem' }}>{contractsError}</p>
             ) : null}
             {!editingContractDocument ? (
               <div
@@ -2348,10 +2348,10 @@ export default function PeopleContractsTab({ people, users, canDeletePeopleContr
                     padding: '0.4rem 0.75rem',
                     fontSize: '0.875rem',
                     fontWeight: 600,
-                    border: '1px solid #d1d5db',
+                    border: '1px solid var(--border-strong)',
                     borderRadius: 6,
-                    background: contractDocumentAddTab === 'upload_signed' ? '#eff6ff' : '#fff',
-                    color: contractDocumentAddTab === 'upload_signed' ? '#1d4ed8' : '#374151',
+                    background: contractDocumentAddTab === 'upload_signed' ? 'var(--bg-blue-tint)' : 'var(--surface)',
+                    color: contractDocumentAddTab === 'upload_signed' ? 'var(--text-blue-700)' : 'var(--text-700)',
                     cursor: 'pointer',
                   }}
                 >
@@ -2372,10 +2372,10 @@ export default function PeopleContractsTab({ people, users, canDeletePeopleContr
                     padding: '0.4rem 0.75rem',
                     fontSize: '0.875rem',
                     fontWeight: 600,
-                    border: '1px solid #d1d5db',
+                    border: '1px solid var(--border-strong)',
                     borderRadius: 6,
-                    background: contractDocumentAddTab === 'request_signature' ? '#eff6ff' : '#fff',
-                    color: contractDocumentAddTab === 'request_signature' ? '#1d4ed8' : '#374151',
+                    background: contractDocumentAddTab === 'request_signature' ? 'var(--bg-blue-tint)' : 'var(--surface)',
+                    color: contractDocumentAddTab === 'request_signature' ? 'var(--text-blue-700)' : 'var(--text-700)',
                     cursor: 'pointer',
                   }}
                 >
@@ -2387,7 +2387,7 @@ export default function PeopleContractsTab({ people, users, canDeletePeopleContr
               <div>
                 <label style={{ display: 'block', fontSize: '0.8125rem', marginBottom: '0.25rem' }}>
                   Person
-                  <span aria-hidden="true" style={{ color: '#b91c1c' }}>
+                  <span aria-hidden="true" style={{ color: 'var(--text-red-700)' }}>
                     {' '}
                     *
                   </span>
@@ -2399,13 +2399,13 @@ export default function PeopleContractsTab({ people, users, canDeletePeopleContr
                   readOnly
                   disabled
                   aria-required
-                  style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, background: '#f9fafb' }}
+                  style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--bg-subtle)' }}
                 />
               </div>
               <div>
                 <label style={{ display: 'block', fontSize: '0.8125rem', marginBottom: '0.25rem' }}>
                   Document name
-                  <span aria-hidden="true" style={{ color: '#b91c1c' }}>
+                  <span aria-hidden="true" style={{ color: 'var(--text-red-700)' }}>
                     {' '}
                     *
                   </span>
@@ -2419,7 +2419,7 @@ export default function PeopleContractsTab({ people, users, canDeletePeopleContr
                   disabled={!!editingContractDocument}
                   required={!editingContractDocument}
                   aria-required={!editingContractDocument}
-                  style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, background: editingContractDocument ? '#f9fafb' : undefined }}
+                  style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: editingContractDocument ? 'var(--bg-subtle)' : undefined }}
                 />
               </div>
               {(editingContractDocument ||
@@ -2431,7 +2431,7 @@ export default function PeopleContractsTab({ people, users, canDeletePeopleContr
                   <select
                     value={contractDocumentFormAppliedTemplateDocId}
                     onChange={(e) => setContractDocumentFormAppliedTemplateDocId(e.target.value)}
-                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                    style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
                   >
                     <option value="">Automatic (latest edit among assigned templates)</option>
                     {listAppliedContractBookVersionOptions(
@@ -2443,7 +2443,7 @@ export default function PeopleContractsTab({ people, users, canDeletePeopleContr
                       </option>
                     ))}
                   </select>
-                  <p style={{ fontSize: '0.75rem', color: '#6b7280', margin: '0.35rem 0 0', lineHeight: 1.45 }}>
+                  <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: '0.35rem 0 0', lineHeight: 1.45 }}>
                     Pins which Contract Book row sets the &quot;Applied version&quot; date for this person. Leave automatic
                     when any assigned template&apos;s copy is fine.
                   </p>
@@ -2453,7 +2453,7 @@ export default function PeopleContractsTab({ people, users, canDeletePeopleContr
                 <>
                   <div
                     style={{
-                      border: '1px solid #e5e7eb',
+                      border: '1px solid var(--border)',
                       borderRadius: 6,
                       overflow: 'hidden',
                       marginBottom: '0.35rem',
@@ -2471,16 +2471,16 @@ export default function PeopleContractsTab({ people, users, canDeletePeopleContr
                         gap: '0.5rem',
                         padding: '0.5rem 0.65rem',
                         border: 'none',
-                        background: '#f9fafb',
+                        background: 'var(--bg-subtle)',
                         cursor: 'pointer',
                         textAlign: 'left',
                         fontSize: '0.8125rem',
                         fontWeight: 600,
-                        color: '#111827',
+                        color: 'var(--text-strong)',
                       }}
                     >
                       <span>Contract text</span>
-                      <span style={{ fontSize: '0.75rem', color: '#6b7280' }} aria-hidden>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }} aria-hidden>
                         {contractEditModalContractTextExpanded ? '▾' : '▸'}
                       </span>
                     </button>
@@ -2488,7 +2488,7 @@ export default function PeopleContractsTab({ people, users, canDeletePeopleContr
                   </div>
                   <div
                     style={{
-                      border: '1px solid #e5e7eb',
+                      border: '1px solid var(--border)',
                       borderRadius: 6,
                       overflow: 'hidden',
                       marginBottom: '0.35rem',
@@ -2506,16 +2506,16 @@ export default function PeopleContractsTab({ people, users, canDeletePeopleContr
                         gap: '0.5rem',
                         padding: '0.5rem 0.65rem',
                         border: 'none',
-                        background: '#f9fafb',
+                        background: 'var(--bg-subtle)',
                         cursor: 'pointer',
                         textAlign: 'left',
                         fontSize: '0.8125rem',
                         fontWeight: 600,
-                        color: '#111827',
+                        color: 'var(--text-strong)',
                       }}
                     >
                       <span>Canonical document URL (Doc / PDF)</span>
-                      <span style={{ fontSize: '0.75rem', color: '#6b7280' }} aria-hidden>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }} aria-hidden>
                         {contractEditModalCanonicalExpanded ? '▾' : '▸'}
                       </span>
                     </button>
@@ -2530,10 +2530,10 @@ export default function PeopleContractsTab({ people, users, canDeletePeopleContr
                       value={contractDocumentFormUrl}
                       onChange={(e) => setContractDocumentFormUrl(e.target.value)}
                       placeholder="Optional link to a signed copy or other reference"
-                      style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                      style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
                     />
                   </div>
-                  <p style={{ fontSize: '0.75rem', color: '#6b7280', margin: 0, lineHeight: 1.45 }}>
+                  <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: 0, lineHeight: 1.45 }}>
                     To use <strong>Send for signature</strong>, fill at least one of: contract text, canonical URL, or signed/reference link (not required to save).
                   </p>
                   <div>
@@ -2541,7 +2541,7 @@ export default function PeopleContractsTab({ people, users, canDeletePeopleContr
                     <select
                       value={contractDocumentFormStatus}
                       onChange={(e) => setContractDocumentFormStatus(e.target.value as 'unsent' | 'sent' | 'signed')}
-                      style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                      style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
                     >
                       <option value="unsent">Unsent</option>
                       <option value="sent">Sent</option>
@@ -2575,7 +2575,7 @@ export default function PeopleContractsTab({ people, users, canDeletePeopleContr
                       type="date"
                       value={contractDocumentFormSignedAt}
                       onChange={(e) => setContractDocumentFormSignedAt(e.target.value)}
-                      style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                      style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
                     />
                   </div>
                   <div>
@@ -2584,7 +2584,7 @@ export default function PeopleContractsTab({ people, users, canDeletePeopleContr
                       value={contractDocumentFormNote}
                       onChange={(e) => setContractDocumentFormNote(e.target.value)}
                       rows={2}
-                      style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, resize: 'vertical' }}
+                      style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, resize: 'vertical' }}
                     />
                   </div>
                 </>
@@ -2595,7 +2595,7 @@ export default function PeopleContractsTab({ people, users, canDeletePeopleContr
                     aria-labelledby={`${contractAddDocTabBaseId}-tab-upload`}
                   >
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                      <p style={{ fontSize: '0.8125rem', color: '#4b5563', margin: 0, lineHeight: 1.45 }}>
+                      <p style={{ fontSize: '0.8125rem', color: 'var(--text-600)', margin: 0, lineHeight: 1.45 }}>
                         Use this when you already have a signed copy (link to PDF or Drive). Add signed date and note as needed.
                       </p>
                       <div>
@@ -2607,7 +2607,7 @@ export default function PeopleContractsTab({ people, users, canDeletePeopleContr
                           value={contractDocumentFormUrl}
                           onChange={(e) => setContractDocumentFormUrl(e.target.value)}
                           placeholder="Optional link to a signed copy or other reference"
-                          style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                          style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
                         />
                       </div>
                       <div>
@@ -2616,7 +2616,7 @@ export default function PeopleContractsTab({ people, users, canDeletePeopleContr
                           type="date"
                           value={contractDocumentFormSignedAt}
                           onChange={(e) => setContractDocumentFormSignedAt(e.target.value)}
-                          style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                          style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
                         />
                       </div>
                       <div>
@@ -2625,7 +2625,7 @@ export default function PeopleContractsTab({ people, users, canDeletePeopleContr
                           value={contractDocumentFormNote}
                           onChange={(e) => setContractDocumentFormNote(e.target.value)}
                           rows={2}
-                          style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, resize: 'vertical' }}
+                          style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, resize: 'vertical' }}
                         />
                       </div>
                     </div>
@@ -2637,7 +2637,7 @@ export default function PeopleContractsTab({ people, users, canDeletePeopleContr
                     aria-labelledby={`${contractAddDocTabBaseId}-tab-request`}
                   >
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                      <p style={{ fontSize: '0.8125rem', color: '#4b5563', margin: 0, lineHeight: 1.45 }}>
+                      <p style={{ fontSize: '0.8125rem', color: 'var(--text-600)', margin: 0, lineHeight: 1.45 }}>
                         Prepare what appears on the public signing page. Use <strong>Send</strong> below to save and open the email step, or <strong>Save</strong> and use <strong>Send</strong> on the document row later.
                       </p>
                       {contractDocModalContractTextField}
@@ -2684,7 +2684,7 @@ export default function PeopleContractsTab({ people, users, canDeletePeopleContr
                     setContractDocumentDeleteConfirmOpen(false)
                     setContractDocumentDeleteTarget(null)
                   }}
-                  style={{ padding: '0.5rem 1rem', border: '1px solid #d1d5db', borderRadius: 6, background: '#fff', cursor: 'pointer' }}
+                  style={{ padding: '0.5rem 1rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', cursor: 'pointer' }}
                 >
                   Cancel
                 </button>
@@ -2703,8 +2703,8 @@ export default function PeopleContractsTab({ people, users, canDeletePeopleContr
                       padding: '0.5rem 1rem',
                       border: '1px solid #fecaca',
                       borderRadius: 6,
-                      background: '#fef2f2',
-                      color: '#b91c1c',
+                      background: 'var(--bg-red-tint)',
+                      color: 'var(--text-red-700)',
                       cursor:
                         contractDocumentFormSaving || contractDocumentDeleting ? 'not-allowed' : 'pointer',
                     }}
@@ -2772,7 +2772,7 @@ export default function PeopleContractsTab({ people, users, canDeletePeopleContr
               aria-labelledby="contract-delete-confirm-title"
               onClick={(e) => e.stopPropagation()}
               style={{
-                background: 'white',
+                background: 'var(--surface)',
                 padding: '1.5rem',
                 borderRadius: 8,
                 minWidth: 320,
@@ -2782,13 +2782,13 @@ export default function PeopleContractsTab({ people, users, canDeletePeopleContr
               <h3 id="contract-delete-confirm-title" style={{ margin: '0 0 0.75rem', fontSize: '1.125rem' }}>
                 Delete document?
               </h3>
-              <p style={{ fontSize: '0.875rem', color: '#4b5563', margin: '0 0 1rem', lineHeight: 1.45 }}>
+              <p style={{ fontSize: '0.875rem', color: 'var(--text-600)', margin: '0 0 1rem', lineHeight: 1.45 }}>
                 This removes <strong>{contractDocumentDeleteTarget.document_name}</strong> for{' '}
                 <strong>{contractDocumentDeleteTarget.person_name}</strong>. This cannot be undone.
               </p>
               {(contractDocumentDeleteTarget.status === 'sent' ||
                 contractDocumentDeleteTarget.status === 'signed') && (
-                <p style={{ fontSize: '0.875rem', color: '#4b5563', margin: '0 0 1rem', lineHeight: 1.45 }}>
+                <p style={{ fontSize: '0.875rem', color: 'var(--text-600)', margin: '0 0 1rem', lineHeight: 1.45 }}>
                   <strong>Note:</strong> This removes the contract record from PipeTooling, including any stored
                   signature. Email or files saved outside this app are not affected.
                 </p>
@@ -2803,9 +2803,9 @@ export default function PeopleContractsTab({ people, users, canDeletePeopleContr
                   disabled={contractDocumentDeleting}
                   style={{
                     padding: '0.5rem 1rem',
-                    border: '1px solid #d1d5db',
+                    border: '1px solid var(--border-strong)',
                     borderRadius: 6,
-                    background: '#fff',
+                    background: 'var(--surface)',
                     cursor: contractDocumentDeleting ? 'not-allowed' : 'pointer',
                   }}
                 >
@@ -2851,9 +2851,9 @@ export default function PeopleContractsTab({ people, users, canDeletePeopleContr
 
       {contractSendModalOpen && contractSendDocId && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 11 }}>
-          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 320, maxWidth: '90vw' }}>
+          <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 320, maxWidth: '90vw' }}>
             <h3 style={{ margin: '0 0 0.75rem', fontSize: '1.125rem' }}>Send for signature</h3>
-            {contractsError ? <p style={{ color: '#b91c1c', fontSize: '0.875rem' }}>{contractsError}</p> : null}
+            {contractsError ? <p style={{ color: 'var(--text-red-700)', fontSize: '0.875rem' }}>{contractsError}</p> : null}
             <label style={{ display: 'block', marginTop: '0.75rem', fontSize: '0.8125rem' }}>
               <span style={{ fontWeight: 600 }}>Signer email</span>
               <input
@@ -2861,7 +2861,7 @@ export default function PeopleContractsTab({ people, users, canDeletePeopleContr
                 value={contractSendEmail}
                 onChange={(e) => setContractSendEmail(e.target.value)}
                 placeholder="name@example.com"
-                style={{ display: 'block', width: '100%', marginTop: '0.25rem', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, boxSizing: 'border-box', fontWeight: 400 }}
+                style={{ display: 'block', width: '100%', marginTop: '0.25rem', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, boxSizing: 'border-box', fontWeight: 400 }}
               />
             </label>
             <label style={{ display: 'block', marginTop: '0.75rem', fontSize: '0.8125rem' }}>
@@ -2872,7 +2872,7 @@ export default function PeopleContractsTab({ people, users, canDeletePeopleContr
                 onChange={(e) => setContractSendSubject(e.target.value)}
                 placeholder="Default: Sign contract: …"
                 maxLength={200}
-                style={{ display: 'block', width: '100%', marginTop: '0.25rem', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, boxSizing: 'border-box', fontWeight: 400 }}
+                style={{ display: 'block', width: '100%', marginTop: '0.25rem', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, boxSizing: 'border-box', fontWeight: 400 }}
               />
             </label>
             <label style={{ display: 'block', marginTop: '0.75rem', fontSize: '0.8125rem' }}>
@@ -2888,7 +2888,7 @@ export default function PeopleContractsTab({ people, users, canDeletePeopleContr
                   width: '100%',
                   marginTop: '0.25rem',
                   padding: '0.5rem',
-                  border: '1px solid #d1d5db',
+                  border: '1px solid var(--border-strong)',
                   borderRadius: 4,
                   boxSizing: 'border-box',
                   resize: 'vertical',
@@ -2897,14 +2897,14 @@ export default function PeopleContractsTab({ people, users, canDeletePeopleContr
                 }}
               />
             </label>
-            <p style={{ fontSize: '0.75rem', color: '#6b7280', margin: '0.5rem 0 0' }}>
+            <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: '0.5rem 0 0' }}>
               The email always includes the document name and a link to the signing page after your message.
             </p>
             {contractSendEmailPreview ? (
               <div style={{ marginTop: '0.75rem' }}>
                 <div style={{ fontSize: '0.8125rem', fontWeight: 600, marginBottom: '0.35rem' }}>Email preview</div>
                 {contractSendEmailPreview.kind === 'missing' ? (
-                  <p style={{ fontSize: '0.8125rem', color: '#6b7280', margin: 0 }}>Unable to load preview.</p>
+                  <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', margin: 0 }}>Unable to load preview.</p>
                 ) : (
                   <>
                     <div style={{ fontSize: '0.8125rem', marginBottom: '0.35rem', lineHeight: 1.45 }}>
@@ -2913,20 +2913,20 @@ export default function PeopleContractsTab({ people, users, canDeletePeopleContr
                     </div>
                     <div
                       style={{
-                        border: '1px solid #e5e7eb',
+                        border: '1px solid var(--border)',
                         borderRadius: 6,
                         padding: '0.75rem',
                         maxHeight: 220,
                         overflow: 'auto',
                         fontSize: '0.875rem',
                         lineHeight: 1.5,
-                        background: '#fafafa',
-                        color: '#111827',
+                        background: 'var(--bg-page)',
+                        color: 'var(--text-strong)',
                       }}
                       // eslint-disable-next-line react/no-danger -- app-generated contract email-preview HTML; values are escaped by the tested contractSendEmailPreview builder
                       dangerouslySetInnerHTML={{ __html: contractSendEmailPreview.htmlBody }}
                     />
-                    <p style={{ fontSize: '0.75rem', color: '#6b7280', margin: '0.35rem 0 0' }}>
+                    <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: '0.35rem 0 0' }}>
                       The signing link is generated when you send.
                     </p>
                   </>
@@ -2953,7 +2953,7 @@ export default function PeopleContractsTab({ people, users, canDeletePeopleContr
                   setContractSendIntro('')
                   setContractsError(null)
                 }}
-                style={{ padding: '0.5rem 1rem', border: '1px solid #d1d5db', borderRadius: 6, background: '#fff', cursor: 'pointer' }}
+                style={{ padding: '0.5rem 1rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', cursor: 'pointer' }}
               >
                 Cancel
               </button>

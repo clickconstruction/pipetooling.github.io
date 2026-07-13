@@ -73,7 +73,7 @@ export function PeopleHoursBulkApprovePendingModal({
     >
       <div
         style={{
-          background: 'white',
+          background: 'var(--surface)',
           borderRadius: 8,
           padding: '1rem 1.1rem',
           width: 'min(560px, 92vw)',
@@ -105,14 +105,14 @@ export function PeopleHoursBulkApprovePendingModal({
               cursor: 'pointer',
               fontSize: '1.25rem',
               lineHeight: 1,
-              color: '#6b7280',
+              color: 'var(--text-muted)',
               padding: '0 0.15rem',
             }}
           >
             ×
           </button>
         </div>
-        <p style={{ margin: '0 0 0.6rem', color: '#374151', fontSize: '0.875rem', lineHeight: 1.4 }}>
+        <p style={{ margin: '0 0 0.6rem', color: 'var(--text-700)', fontSize: '0.875rem', lineHeight: 1.4 }}>
           <strong>{summary.totalSessions}</strong> closed clock session
           {summary.totalSessions === 1 ? '' : 's'} across{' '}
           <strong>{summary.peopleCount}</strong>{' '}
@@ -123,7 +123,7 @@ export function PeopleHoursBulkApprovePendingModal({
         </p>
         <div
           style={{
-            border: '1px solid #e5e7eb',
+            border: '1px solid var(--border)',
             borderRadius: 6,
             overflow: 'auto',
             flex: 1,
@@ -131,18 +131,18 @@ export function PeopleHoursBulkApprovePendingModal({
           }}
         >
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
-            <thead style={{ background: '#f9fafb', position: 'sticky', top: 0, zIndex: 1 }}>
+            <thead style={{ background: 'var(--bg-subtle)', position: 'sticky', top: 0, zIndex: 1 }}>
               <tr>
-                <th style={{ padding: '0.4rem 0.6rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>
+                <th style={{ padding: '0.4rem 0.6rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>
                   Day
                 </th>
-                <th style={{ padding: '0.4rem 0.6rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>
+                <th style={{ padding: '0.4rem 0.6rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>
                   Person
                 </th>
-                <th style={{ padding: '0.4rem 0.6rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>
+                <th style={{ padding: '0.4rem 0.6rem', textAlign: 'right', borderBottom: '1px solid var(--border)' }}>
                   Sessions
                 </th>
-                <th style={{ padding: '0.4rem 0.6rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>
+                <th style={{ padding: '0.4rem 0.6rem', textAlign: 'right', borderBottom: '1px solid var(--border)' }}>
                   Adds
                 </th>
               </tr>
@@ -208,9 +208,9 @@ export function PeopleHoursBulkApprovePendingModal({
             style={{
               padding: '0.4rem 0.8rem',
               fontSize: '0.875rem',
-              border: '1px solid #d1d5db',
-              background: 'white',
-              color: '#374151',
+              border: '1px solid var(--border-strong)',
+              background: 'var(--surface)',
+              color: 'var(--text-700)',
               borderRadius: 4,
               cursor: busy ? 'not-allowed' : 'pointer',
             }}

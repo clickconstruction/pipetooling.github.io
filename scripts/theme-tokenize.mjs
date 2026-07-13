@@ -48,6 +48,7 @@ const BG = {
   '#f3f4f6': 'var(--bg-muted)',
   '#e5e7eb': 'var(--bg-200)',
   '#eff6ff': 'var(--bg-blue-tint)',
+  '#f0f9ff': 'var(--bg-sky-tint)',
   '#fef2f2': 'var(--bg-red-tint)',
   '#fee2e2': 'var(--bg-red-100)',
   '#fecaca': 'var(--bg-red-200)',

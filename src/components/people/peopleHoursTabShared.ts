@@ -4,10 +4,10 @@ export const HOURS_TAB_SECTION_ANCHOR_STYLE: CSSProperties = { scrollMarginTop: 
 
 export const HOURS_TAB_SECTION_SHELL: CSSProperties = {
   ...HOURS_TAB_SECTION_ANCHOR_STYLE,
-  border: '1px solid #e5e7eb',
+  border: '1px solid var(--border)',
   borderRadius: 8,
   padding: '0.65rem 0.85rem',
-  background: '#fafafa',
+  background: 'var(--bg-page)',
   boxSizing: 'border-box',
 }
 
@@ -17,13 +17,13 @@ export const HOURS_TAB_SECTION_TOGGLE_BTN: CSSProperties = {
   alignItems: 'center',
   gap: '0.4rem',
   padding: '0.35rem 0.55rem',
-  border: '1px solid #d1d5db',
+  border: '1px solid var(--border-strong)',
   borderRadius: 6,
-  background: '#ffffff',
+  background: 'var(--surface)',
   cursor: 'pointer',
   fontSize: '0.875rem',
   fontWeight: 600,
-  color: '#111827',
+  color: 'var(--text-strong)',
   fontFamily: 'inherit',
   lineHeight: 1.25,
   textAlign: 'left',
@@ -31,7 +31,7 @@ export const HOURS_TAB_SECTION_TOGGLE_BTN: CSSProperties = {
 
 export const HOURS_TAB_SECTION_CHEVRON: CSSProperties = {
   fontSize: '0.65rem',
-  color: '#6b7280',
+  color: 'var(--text-muted)',
   flexShrink: 0,
   lineHeight: 1,
 }

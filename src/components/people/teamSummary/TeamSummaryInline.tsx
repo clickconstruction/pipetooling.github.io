@@ -319,7 +319,7 @@ export function TeamSummaryInline(props: {
             <tr>
               <th
                 aria-label="Rank"
-                style={{ textAlign: 'center', verticalAlign: 'middle', color: '#6b7280', width: '1%' }}
+                style={{ textAlign: 'center', verticalAlign: 'middle', color: 'var(--text-muted)', width: '1%' }}
               >
                 #
               </th>
@@ -405,7 +405,7 @@ export function TeamSummaryInline(props: {
             top: 4,
             right: 4,
             fontSize: '0.75rem',
-            color: '#6b7280',
+            color: 'var(--text-muted)',
             background: 'rgba(255,255,255,0.85)',
             padding: '0.15rem 0.4rem',
             borderRadius: 4,
@@ -493,7 +493,7 @@ function Row(props: {
     : 'Click for breakdown'
   return (
     <tr className={isSelected ? 'selected-person' : undefined}>
-      <td style={{ textAlign: 'center', color: '#6b7280', fontVariantNumeric: 'tabular-nums' }}>{rank}</td>
+      <td style={{ textAlign: 'center', color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>{rank}</td>
       <td>
         <NameCell name={r.name} isSelected={isSelected} onToggle={onTogglePerson} />
       </td>
@@ -523,7 +523,7 @@ function Row(props: {
           title="Click for overhead-labor breakdown"
           content={fmtMoney(r.overheadLaborCost)}
           colored={false}
-          extraStyle={{ color: '#b91c1c' }}
+          extraStyle={{ color: 'var(--text-red-700)' }}
           onOpen={onOpenDrilldown}
         />
       )}
@@ -535,7 +535,7 @@ function Row(props: {
           title="Click for overhead-burden breakdown"
           content={fmtMoney(r.overheadBurden)}
           colored={false}
-          extraStyle={{ color: '#b91c1c' }}
+          extraStyle={{ color: 'var(--text-red-700)' }}
           onOpen={onOpenDrilldown}
         />
       )}
@@ -554,7 +554,7 @@ function Row(props: {
         idx={r.idx}
         ariaLabel={`Gross revenue breakdown for ${r.name}: ${fmtMoney(r.gross)}`}
         content={fmtMoney(r.gross)}
-        extraStyle={r.gross < 0 ? { color: '#b91c1c' } : undefined}
+        extraStyle={r.gross < 0 ? { color: 'var(--text-red-700)' } : undefined}
         onOpen={onOpenDrilldown}
       />
       <ClickCell
@@ -562,7 +562,7 @@ function Row(props: {
         idx={r.idx}
         ariaLabel={`Net revenue breakdown for ${r.name}: ${fmtMoney(r.net)}`}
         content={fmtMoney(r.net)}
-        extraStyle={r.net < 0 ? { color: '#b91c1c' } : undefined}
+        extraStyle={r.net < 0 ? { color: 'var(--text-red-700)' } : undefined}
         onOpen={onOpenDrilldown}
       />
       {r.profitAfterOverhead == null ? <DashTd /> : (
@@ -571,7 +571,7 @@ function Row(props: {
           idx={r.idx}
           ariaLabel={`Profit after overhead breakdown for ${r.name}: ${fmtMoney(r.profitAfterOverhead)}`}
           content={fmtMoney(r.profitAfterOverhead)}
-          extraStyle={r.profitAfterOverhead < 0 ? { color: '#b91c1c' } : undefined}
+          extraStyle={r.profitAfterOverhead < 0 ? { color: 'var(--text-red-700)' } : undefined}
           onOpen={onOpenDrilldown}
         />
       )}
@@ -581,7 +581,7 @@ function Row(props: {
           idx={r.idx}
           ariaLabel={`Gross revenue per hour breakdown for ${r.name}: ${fmtMoney(r.revPerHour)} per hour`}
           content={fmtMoney(r.revPerHour)}
-          extraStyle={r.revPerHour < 0 ? { color: '#b91c1c' } : undefined}
+          extraStyle={r.revPerHour < 0 ? { color: 'var(--text-red-700)' } : undefined}
           onOpen={onOpenDrilldown}
         />
       ) : (
@@ -593,7 +593,7 @@ function Row(props: {
           idx={r.idx}
           ariaLabel={`Net revenue per hour breakdown for ${r.name}: ${fmtMoney(r.netPerHour)} per hour`}
           content={fmtMoney(r.netPerHour)}
-          extraStyle={r.netPerHour < 0 ? { color: '#b91c1c' } : undefined}
+          extraStyle={r.netPerHour < 0 ? { color: 'var(--text-red-700)' } : undefined}
           onOpen={onOpenDrilldown}
         />
       ) : (
@@ -605,7 +605,7 @@ function Row(props: {
           idx={r.idx}
           ariaLabel={`Profit per hour after overhead breakdown for ${r.name}: ${fmtMoney(r.profitPerHourAfterOverhead)} per hour`}
           content={fmtMoney(r.profitPerHourAfterOverhead)}
-          extraStyle={r.profitPerHourAfterOverhead < 0 ? { color: '#b91c1c' } : undefined}
+          extraStyle={r.profitPerHourAfterOverhead < 0 ? { color: 'var(--text-red-700)' } : undefined}
           onOpen={onOpenDrilldown}
         />
       ) : (
@@ -645,7 +645,7 @@ const CELL_STYLE_BASE: CSSProperties = {
 const CELL_STYLE_DASH: CSSProperties = {
   padding: '0.4rem 0.75rem',
   textAlign: 'center',
-  color: '#9ca3af',
+  color: 'var(--text-faint)',
 }
 
 function DashTd() {
@@ -666,7 +666,7 @@ function ClickCell(props: {
   const style: CSSProperties = {
     ...CELL_STYLE_BASE,
     cursor: 'pointer',
-    color: colored === false ? undefined : '#2563eb',
+    color: colored === false ? undefined : 'var(--text-link)',
     textDecoration: 'underline dotted',
     textUnderlineOffset: '2px',
     ...extraStyle,
@@ -707,31 +707,31 @@ function FooterRow(props: {
   const tdStyle: CSSProperties = { padding: '0.5rem 0.75rem' }
   const baseNum: CSSProperties = { padding: '0.4rem 0.75rem', textAlign: 'center', fontVariantNumeric: 'tabular-nums' }
   return (
-    <tr style={{ fontWeight: 600, background: '#f9fafb' }}>
+    <tr style={{ fontWeight: 600, background: 'var(--bg-subtle)' }}>
       <td />
       <td style={tdStyle}>{label}</td>
       <td style={baseNum}>{fmtH(totals.hours)}</td>
       <td style={baseNum}>{fmtH(totals.overheadHours)}</td>
-      <td style={{ ...baseNum, ...(totals.overheadLaborCost < 0 ? { color: '#b91c1c' } : {}) }}>
+      <td style={{ ...baseNum, ...(totals.overheadLaborCost < 0 ? { color: 'var(--text-red-700)' } : {}) }}>
         {fmtMoney(totals.overheadLaborCost)}
       </td>
       {totals.overheadBurden == null ? <DashTd /> : (
-        <td style={{ ...baseNum, ...(totals.overheadBurden < 0 ? { color: '#b91c1c' } : {}) }}>{fmtMoney(totals.overheadBurden)}</td>
+        <td style={{ ...baseNum, ...(totals.overheadBurden < 0 ? { color: 'var(--text-red-700)' } : {}) }}>{fmtMoney(totals.overheadBurden)}</td>
       )}
       <td style={baseNum}>{fmtH(totals.fieldHours)}</td>
-      <td style={{ ...baseNum, ...(totals.gross < 0 ? { color: '#b91c1c' } : {}) }}>{fmtMoney(totals.gross)}</td>
-      <td style={{ ...baseNum, ...(totals.net < 0 ? { color: '#b91c1c' } : {}) }}>{fmtMoney(totals.net)}</td>
+      <td style={{ ...baseNum, ...(totals.gross < 0 ? { color: 'var(--text-red-700)' } : {}) }}>{fmtMoney(totals.gross)}</td>
+      <td style={{ ...baseNum, ...(totals.net < 0 ? { color: 'var(--text-red-700)' } : {}) }}>{fmtMoney(totals.net)}</td>
       {totals.profit == null ? <DashTd /> : (
-        <td style={{ ...baseNum, ...(totals.profit < 0 ? { color: '#b91c1c' } : {}) }}>{fmtMoney(totals.profit)}</td>
+        <td style={{ ...baseNum, ...(totals.profit < 0 ? { color: 'var(--text-red-700)' } : {}) }}>{fmtMoney(totals.profit)}</td>
       )}
       {totals.hours > 0 ? (
-        <td style={{ ...baseNum, ...(teamGrossPerHr < 0 ? { color: '#b91c1c' } : {}) }}>{fmtMoney(teamGrossPerHr)}</td>
+        <td style={{ ...baseNum, ...(teamGrossPerHr < 0 ? { color: 'var(--text-red-700)' } : {}) }}>{fmtMoney(teamGrossPerHr)}</td>
       ) : <DashTd />}
       {totals.hours > 0 ? (
-        <td style={{ ...baseNum, ...(teamNetPerHr < 0 ? { color: '#b91c1c' } : {}) }}>{fmtMoney(teamNetPerHr)}</td>
+        <td style={{ ...baseNum, ...(teamNetPerHr < 0 ? { color: 'var(--text-red-700)' } : {}) }}>{fmtMoney(teamNetPerHr)}</td>
       ) : <DashTd />}
       {totals.hours > 0 && teamProfitPerHr != null ? (
-        <td style={{ ...baseNum, ...(teamProfitPerHr < 0 ? { color: '#b91c1c' } : {}) }}>{fmtMoney(teamProfitPerHr)}</td>
+        <td style={{ ...baseNum, ...(teamProfitPerHr < 0 ? { color: 'var(--text-red-700)' } : {}) }}>{fmtMoney(teamProfitPerHr)}</td>
       ) : <DashTd />}
     </tr>
   )

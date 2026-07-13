@@ -219,20 +219,20 @@ export default function PeopleHousingTab({ users }: PeopleHousingTabProps) {
             + Add housing
           </button>
         </div>
-        {housingError && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{housingError}</p>}
+        {housingError && <p style={{ color: 'var(--text-red-700)', marginBottom: '1rem' }}>{housingError}</p>}
         {housingLoading ? (
-          <p style={{ color: '#6b7280' }}>Loading…</p>
+          <p style={{ color: 'var(--text-muted)' }}>Loading…</p>
         ) : (
-          <div style={{ overflowX: 'auto', border: '1px solid #e5e7eb', borderRadius: 4 }}>
+          <div style={{ overflowX: 'auto', border: '1px solid var(--border)', borderRadius: 4 }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
-              <thead style={{ background: '#f9fafb' }}>
+              <thead style={{ background: 'var(--bg-subtle)' }}>
                 <tr>
-                  <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Address</th>
-                  <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Rent/wk</th>
-                  <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Utilities/wk</th>
-                  <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Insurance/wk</th>
-                  <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Assigned to</th>
-                  <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Actions</th>
+                  <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Address</th>
+                  <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid var(--border)' }}>Rent/wk</th>
+                  <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid var(--border)' }}>Utilities/wk</th>
+                  <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid var(--border)' }}>Insurance/wk</th>
+                  <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Assigned to</th>
+                  <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -240,9 +240,9 @@ export default function PeopleHousingTab({ users }: PeopleHousingTabProps) {
                   <Fragment key={hu.id}>
                     <tr
                       style={{
-                        borderBottom: '1px solid #e5e7eb',
+                        borderBottom: '1px solid var(--border)',
                         cursor: 'pointer',
-                        background: selectedHousingId === hu.id ? '#f0fdf4' : undefined,
+                        background: selectedHousingId === hu.id ? 'var(--bg-green-tint)' : undefined,
                       }}
                       onClick={() => setSelectedHousingId((prev) => (prev === hu.id ? null : hu.id))}
                     >
@@ -255,14 +255,14 @@ export default function PeopleHousingTab({ users }: PeopleHousingTabProps) {
                         <button type="button" onClick={() => openHousingForm(hu)} style={{ marginRight: '0.5rem', padding: '0.25rem 0.5rem', fontSize: '0.8125rem' }}>
                           Edit
                         </button>
-                        <button type="button" onClick={() => void deleteHousingUnit(hu)} style={{ padding: '0.25rem 0.5rem', fontSize: '0.8125rem', color: '#b91c1c' }}>
+                        <button type="button" onClick={() => void deleteHousingUnit(hu)} style={{ padding: '0.25rem 0.5rem', fontSize: '0.8125rem', color: 'var(--text-red-700)' }}>
                           Delete
                         </button>
                       </td>
                     </tr>
                     {selectedHousingId === hu.id && (
                       <tr key={`${hu.id}-detail`}>
-                        <td colSpan={6} style={{ padding: '1rem', background: '#f9fafb', borderBottom: '1px solid #e5e7eb' }}>
+                        <td colSpan={6} style={{ padding: '1rem', background: 'var(--bg-subtle)', borderBottom: '1px solid var(--border)' }}>
                           <div>
                             <h4 style={{ margin: '0 0 0.5rem 0', fontSize: '0.9375rem' }}>Assignments</h4>
                             <button
@@ -290,7 +290,7 @@ export default function PeopleHousingTab({ users }: PeopleHousingTabProps) {
                                 {housingPossessions.map((p) => {
                                   const u = users.find((x) => x.id === p.user_id)
                                   return (
-                                    <tr key={p.id} style={{ borderTop: '1px solid #e5e7eb' }}>
+                                    <tr key={p.id} style={{ borderTop: '1px solid var(--border)' }}>
                                       <td style={{ padding: '0.5rem' }}>{u?.name ?? p.user_id.slice(0, 8)}</td>
                                       <td style={{ padding: '0.5rem' }}>{p.start_date}</td>
                                       <td style={{ padding: '0.5rem' }}>{p.end_date ?? '—'}</td>
@@ -298,7 +298,7 @@ export default function PeopleHousingTab({ users }: PeopleHousingTabProps) {
                                         <button
                                           type="button"
                                           onClick={() => void deleteHousingPossession(p)}
-                                          style={{ padding: 0, background: 'none', border: 'none', color: '#b91c1c', cursor: 'pointer', fontSize: '0.75rem' }}
+                                          style={{ padding: 0, background: 'none', border: 'none', color: 'var(--text-red-700)', cursor: 'pointer', fontSize: '0.75rem' }}
                                         >
                                           ×
                                         </button>
@@ -316,25 +316,25 @@ export default function PeopleHousingTab({ users }: PeopleHousingTabProps) {
                 ))}
               </tbody>
               {housingUnits.length > 0 && (
-                <tfoot style={{ background: '#f9fafb', fontWeight: 600 }}>
+                <tfoot style={{ background: 'var(--bg-subtle)', fontWeight: 600 }}>
                   <tr>
-                    <td style={{ padding: '0.75rem', borderTop: '1px solid #e5e7eb' }}>Total</td>
-                    <td style={{ padding: '0.75rem', textAlign: 'right', borderTop: '1px solid #e5e7eb' }}>
+                    <td style={{ padding: '0.75rem', borderTop: '1px solid var(--border)' }}>Total</td>
+                    <td style={{ padding: '0.75rem', textAlign: 'right', borderTop: '1px solid var(--border)' }}>
                       ${formatCurrency(housingUnits.reduce((s, u) => s + (u.rent_per_week ?? 0), 0))}
                     </td>
-                    <td style={{ padding: '0.75rem', textAlign: 'right', borderTop: '1px solid #e5e7eb' }}>
+                    <td style={{ padding: '0.75rem', textAlign: 'right', borderTop: '1px solid var(--border)' }}>
                       ${formatCurrency(housingUnits.reduce((s, u) => s + (u.utilities_per_week ?? 0), 0))}
                     </td>
-                    <td style={{ padding: '0.75rem', textAlign: 'right', borderTop: '1px solid #e5e7eb' }}>
+                    <td style={{ padding: '0.75rem', textAlign: 'right', borderTop: '1px solid var(--border)' }}>
                       ${formatCurrency(housingUnits.reduce((s, u) => s + (u.insurance_per_week ?? 0), 0))}
                     </td>
-                    <td colSpan={2} style={{ padding: '0.75rem', borderTop: '1px solid #e5e7eb' }} />
+                    <td colSpan={2} style={{ padding: '0.75rem', borderTop: '1px solid var(--border)' }} />
                   </tr>
                 </tfoot>
               )}
             </table>
             {housingUnits.length === 0 && (
-              <p style={{ padding: '1rem', color: '#6b7280', margin: 0 }}>No housing yet. Add a unit to assign people and show costs on pay reports.</p>
+              <p style={{ padding: '1rem', color: 'var(--text-muted)', margin: 0 }}>No housing yet. Add a unit to assign people and show costs on pay reports.</p>
             )}
           </div>
         )}
@@ -342,7 +342,7 @@ export default function PeopleHousingTab({ users }: PeopleHousingTabProps) {
 
       {housingFormOpen && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
-          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 320, maxWidth: 480 }}>
+          <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 320, maxWidth: 480 }}>
             <h3 style={{ marginTop: 0 }}>{editingHousingUnit ? 'Edit housing' : 'Add housing'}</h3>
             <div style={{ marginBottom: '1rem' }}>
               <label style={{ display: 'block', marginBottom: 4 }}>Address *</label>
@@ -374,7 +374,7 @@ export default function PeopleHousingTab({ users }: PeopleHousingTabProps) {
 
       {housingPossessionFormOpen && selectedHousingId && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
-          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 280 }}>
+          <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 280 }}>
             <h3 style={{ marginTop: 0 }}>Assign housing to user</h3>
             <div style={{ marginBottom: '1rem' }}>
               <label style={{ display: 'block', marginBottom: 4 }}>User *</label>

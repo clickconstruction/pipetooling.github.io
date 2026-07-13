@@ -177,7 +177,7 @@ export function PeopleUsersTab({
         key={item.source === 'user' ? `user-${item.id}` : `people-${item.id}`}
         style={{
           padding: '0.5rem 0',
-          borderBottom: '1px solid #e5e7eb',
+          borderBottom: '1px solid var(--border)',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: narrowViewport ? 'flex-start' : 'center',
@@ -308,7 +308,7 @@ export function PeopleUsersTab({
             <span style={{ fontWeight: 500 }}>{item.name}</span>
             {isExternalSubRoster &&
               (activeProjectCount === 0 ? (
-                <span style={{ fontSize: '0.875rem', color: '#6b7280', marginLeft: '0.5rem' }}>0 active</span>
+                <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginLeft: '0.5rem' }}>0 active</span>
               ) : (
                 <button
                   type="button"
@@ -330,7 +330,7 @@ export function PeopleUsersTab({
                     cursor: 'pointer',
                     font: 'inherit',
                     fontSize: '0.875rem',
-                    color: '#6b7280',
+                    color: 'var(--text-muted)',
                     textDecoration: 'underline',
                   }}
                 >
@@ -338,25 +338,25 @@ export function PeopleUsersTab({
                 </button>
               ))}
             {item.source === 'user' && (
-              <span style={{ fontSize: '0.875rem', color: '#6b7280', marginLeft: '0.35rem' }}>(account)</span>
+              <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginLeft: '0.35rem' }}>(account)</span>
             )}
             {(item.email || item.phone) && (
               <span style={usersTabContactRowStyle(narrowViewport)}>
                 {item.email && (
-                  <a href={`mailto:${item.email}`} style={{ color: '#2563eb', textDecoration: 'underline' }}>
+                  <a href={`mailto:${item.email}`} style={{ color: 'var(--text-link)', textDecoration: 'underline' }}>
                     {item.email}
                   </a>
                 )}
                 {item.email && item.phone && ' \u00B7 '}
                 {item.phone && (
-                  <a href={`tel:${item.phone}`} style={{ color: '#2563eb', textDecoration: 'underline' }}>
+                  <a href={`tel:${item.phone}`} style={{ color: 'var(--text-link)', textDecoration: 'underline' }}>
                     {item.phone}
                   </a>
                 )}
               </span>
             )}
             {item.source === 'user' && 'notes' in item && item.notes && (
-              <span style={{ fontSize: '0.875rem', color: '#6b7280', marginLeft: '0.35rem' }}>— {item.notes}</span>
+              <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginLeft: '0.35rem' }}>— {item.notes}</span>
             )}
           </div>
           {(() => {
@@ -369,12 +369,12 @@ export function PeopleUsersTab({
                 activeProjectRows.length > 0
               ) {
                 return (
-                  <div style={{ fontSize: '0.8125rem', color: '#6b7280', marginTop: '0.25rem' }}>
+                  <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
                     Active projects:{' '}
                     {activeProjectRows.map((row, i) => (
                       <span key={row.id}>
                         {i > 0 ? ', ' : null}
-                        <Link to={`/workflows/${row.id}`} style={{ color: '#2563eb', textDecoration: 'underline' }}>
+                        <Link to={`/workflows/${row.id}`} style={{ color: 'var(--text-link)', textDecoration: 'underline' }}>
                           {row.name}
                         </Link>
                       </span>
@@ -385,12 +385,12 @@ export function PeopleUsersTab({
               return null
             }
             return activeProjectRows && activeProjectRows.length > 0 ? (
-              <div style={{ fontSize: '0.8125rem', color: '#6b7280', marginTop: '0.25rem' }}>
+              <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
                 Active projects:{' '}
                 {activeProjectRows.map((row, i) => (
                   <span key={row.id}>
                     {i > 0 ? ', ' : null}
-                    <Link to={`/workflows/${row.id}`} style={{ color: '#2563eb', textDecoration: 'underline' }}>
+                    <Link to={`/workflows/${row.id}`} style={{ color: 'var(--text-link)', textDecoration: 'underline' }}>
                       {row.name}
                     </Link>
                   </span>
@@ -432,13 +432,13 @@ export function PeopleUsersTab({
                 type="button"
                 onClick={() => archivePerson(item.id)}
                 disabled={archivingId === item.id}
-                style={{ padding: '2px 6px', fontSize: '0.8125rem', color: '#b91c1c' }}
+                style={{ padding: '2px 6px', fontSize: '0.8125rem', color: 'var(--text-red-700)' }}
               >
                 {archivingId === item.id ? '...' : 'Archive'}
               </button>
             )}
             {item.master_user_id !== authUserId && (
-              <span style={{ fontSize: '0.8125rem', color: '#6b7280' }}>
+              <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
                 Created by {creatorNames[item.master_user_id] ?? 'Unknown'}
               </span>
             )}
@@ -470,7 +470,7 @@ export function PeopleUsersTab({
 
   return (
     <>
-      {error && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{error}</p>}
+      {error && <p style={{ color: 'var(--text-red-700)', marginBottom: '1rem' }}>{error}</p>}
       <div style={{ marginBottom: '1.25rem', width: '100%', display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
         <input
           type="search"
@@ -483,7 +483,7 @@ export function PeopleUsersTab({
             padding: '0.3rem 0.65rem',
             fontSize: '0.875rem',
             lineHeight: 1.35,
-            border: '1px solid #d1d5db',
+            border: '1px solid var(--border-strong)',
             borderRadius: 6,
             boxSizing: 'border-box',
           }}
@@ -500,7 +500,7 @@ export function PeopleUsersTab({
         )}
       </div>
       {usersTabSearchShowsNoSections ? (
-        <p role="status" style={{ color: '#6b7280', fontSize: '0.875rem', margin: '0 0 1rem 0' }}>
+        <p role="status" style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: '0 0 1rem 0' }}>
           No matches.
         </p>
       ) : null}
@@ -514,7 +514,7 @@ export function PeopleUsersTab({
               {(() => {
                 const devUsersAll = users.filter((u) => u.role === 'dev')
                 if (devUsersAll.length === 0) {
-                  return <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>None yet.</p>
+                  return <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0 }}>None yet.</p>
                 }
                 const devUsersFiltered = usersTabSearchQ
                   ? devUsersAll.filter((u) => usersTabRowMatchesSearch(u, usersTabSearchQ))
@@ -530,7 +530,7 @@ export function PeopleUsersTab({
                             key={u.id}
                             style={{
                               padding: '0.5rem 0',
-                              borderBottom: '1px solid #e5e7eb',
+                              borderBottom: '1px solid var(--border)',
                               display: 'flex',
                               justifyContent: 'space-between',
                               alignItems: narrowViewport ? 'flex-start' : 'center',
@@ -591,24 +591,24 @@ export function PeopleUsersTab({
                                   </svg>
                                 )}
                                 <span style={{ fontWeight: 500 }}>{u.name}</span>
-                                <span style={{ fontSize: '0.875rem', color: '#6b7280', marginLeft: '0.35rem' }}>(account)</span>
+                                <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginLeft: '0.35rem' }}>(account)</span>
                                 {(u.email || u.phone) && (
                                   <span style={usersTabContactRowStyle(narrowViewport)}>
                                     {u.email && (
-                                      <a href={`mailto:${u.email}`} style={{ color: '#2563eb', textDecoration: 'underline' }}>
+                                      <a href={`mailto:${u.email}`} style={{ color: 'var(--text-link)', textDecoration: 'underline' }}>
                                         {u.email}
                                       </a>
                                     )}
                                     {u.email && u.phone && ' \u00B7 '}
                                     {u.phone && (
-                                      <a href={`tel:${u.phone}`} style={{ color: '#2563eb', textDecoration: 'underline' }}>
+                                      <a href={`tel:${u.phone}`} style={{ color: 'var(--text-link)', textDecoration: 'underline' }}>
                                         {u.phone}
                                       </a>
                                     )}
                                   </span>
                                 )}
                                 {u.notes && (
-                                  <span style={{ fontSize: '0.875rem', color: '#6b7280', marginLeft: '0.35rem' }}>— {u.notes}</span>
+                                  <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginLeft: '0.35rem' }}>— {u.notes}</span>
                                 )}
                               </div>
                               {isDev && usersTabTags.showUsersTabTags && (
@@ -660,7 +660,7 @@ export function PeopleUsersTab({
                 if (k === 'sub') {
                   const subItems = byKind('sub')
                   if (subItems.length === 0) {
-                    return <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>None yet.</p>
+                    return <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0 }}>None yet.</p>
                   }
                   const withAccount = subItems.filter((i) => i.source === 'user')
                   const external = subItems.filter((i) => i.source === 'people')
@@ -699,7 +699,7 @@ export function PeopleUsersTab({
                 if (k === 'helper') {
                   const helperItems = byKind('helper')
                   if (helperItems.length === 0) {
-                    return <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>None yet.</p>
+                    return <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0 }}>None yet.</p>
                   }
                   const withAccount = helperItems.filter((i) => i.source === 'user')
                   const external = helperItems.filter((i) => i.source === 'people')
@@ -737,7 +737,7 @@ export function PeopleUsersTab({
                 }
                 const kindItems = byKind(k)
                 if (kindItems.length === 0) {
-                  return <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>None yet.</p>
+                  return <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0 }}>None yet.</p>
                 }
                 const kindItemsF = usersTabSearchQ
                   ? kindItems.filter((i) => usersTabRowMatchesSearch(i, usersTabSearchQ))
@@ -780,12 +780,12 @@ export function PeopleUsersTab({
         {archivedSectionOpen && (
           <div style={{ padding: '0 1rem 1rem 1rem' }}>
             {archivedPeople.length === 0 ? (
-              <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>No archived people.</p>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>No archived people.</p>
             ) : (
               <div style={{ overflowX: 'auto' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                   <thead>
-                    <tr style={{ borderBottom: '2px solid #e5e7eb', textAlign: 'left' }}>
+                    <tr style={{ borderBottom: '2px solid var(--border)', textAlign: 'left' }}>
                       <th style={{ padding: '0.5rem 0.75rem' }}>Name</th>
                       <th style={{ padding: '0.5rem 0.75rem' }}>Email</th>
                       <th style={{ padding: '0.5rem 0.75rem' }}>Archived</th>
@@ -794,7 +794,7 @@ export function PeopleUsersTab({
                   </thead>
                   <tbody>
                     {archivedPeople.map((p) => (
-                      <tr key={p.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                      <tr key={p.id} style={{ borderBottom: '1px solid var(--border)' }}>
                         <td style={{ padding: '0.5rem 0.75rem' }}>{p.name}</td>
                         <td style={{ padding: '0.5rem 0.75rem' }}>{p.email ?? '—'}</td>
                         <td style={{ padding: '0.5rem 0.75rem', fontSize: '0.875rem' }}>
@@ -840,7 +840,7 @@ export function PeopleUsersTab({
                 alignItems: 'center',
                 gap: '0.35rem',
                 fontSize: '0.875rem',
-                color: '#374151',
+                color: 'var(--text-700)',
                 fontWeight: 500,
               }}
             >
@@ -858,7 +858,7 @@ export function PeopleUsersTab({
                   alignItems: 'center',
                   gap: '0.35rem',
                   fontSize: '0.875rem',
-                  color: '#374151',
+                  color: 'var(--text-700)',
                   fontWeight: 500,
                 }}
               >
@@ -880,18 +880,18 @@ export function PeopleUsersTab({
                 maxWidth: '56rem',
               }}
             >
-              <h3 style={{ fontSize: '0.9375rem', fontWeight: 600, color: '#111827', marginBottom: '0.5rem' }}>
+              <h3 style={{ fontSize: '0.9375rem', fontWeight: 600, color: 'var(--text-strong)', marginBottom: '0.5rem' }}>
                 Label catalog
               </h3>
               {usersTabTags.usersTabLabelUsageLoading ? (
-                <p style={{ fontSize: '0.8125rem', color: '#6b7280' }}>Loading label usage…</p>
+                <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>Loading label usage…</p>
               ) : usersTabTags.usersTabLabels.length === 0 ? (
-                <p style={{ fontSize: '0.8125rem', color: '#6b7280' }}>No labels loaded yet.</p>
+                <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>No labels loaded yet.</p>
               ) : (
-                <div style={{ overflowX: 'auto', border: '1px solid #e5e7eb', borderRadius: 8 }}>
+                <div style={{ overflowX: 'auto', border: '1px solid var(--border)', borderRadius: 8 }}>
                   <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
                     <thead>
-                      <tr style={{ backgroundColor: '#f9fafb', borderBottom: '1px solid #e5e7eb', textAlign: 'left' }}>
+                      <tr style={{ backgroundColor: 'var(--bg-subtle)', borderBottom: '1px solid var(--border)', textAlign: 'left' }}>
                         <th style={{ padding: '0.5rem 0.75rem' }}>Tag</th>
                         <th style={{ padding: '0.5rem 0.75rem' }}>Master</th>
                         <th style={{ padding: '0.5rem 0.75rem' }}>People</th>
@@ -910,7 +910,7 @@ export function PeopleUsersTab({
                           return (
                             <tr key={row.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
                               <td style={{ padding: '0.45rem 0.75rem' }}>{row.name}</td>
-                              <td style={{ padding: '0.45rem 0.75rem', color: '#4b5563' }}>{masterDisp}</td>
+                              <td style={{ padding: '0.45rem 0.75rem', color: 'var(--text-600)' }}>{masterDisp}</td>
                               <td style={{ padding: '0.45rem 0.75rem' }}>{usage.people}</td>
                               <td style={{ padding: '0.45rem 0.75rem' }}>{usage.users}</td>
                               <td style={{ padding: '0.45rem 0.75rem' }}>{total}</td>

@@ -229,12 +229,12 @@ export default function PeopleTeamsTab({ authUserId, authUserRole }: PeopleTeams
   }
 
   if (loading) {
-    return <p style={{ color: '#6b7280' }}>Loading…</p>
+    return <p style={{ color: 'var(--text-muted)' }}>Loading…</p>
   }
 
   return (
     <div>
-      <p style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '1rem', marginTop: 0 }}>
+      <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginBottom: '1rem', marginTop: 0 }}>
         Link a leader to a member for team hours sharing—the leader can approve that member&apos;s hours from Dashboard →
         My Team. Any account role can be leader or member. A member can have more than one leader. The member list skips
         people already linked to the leader you pick.
@@ -249,7 +249,7 @@ export default function PeopleTeamsTab({ authUserId, authUserRole }: PeopleTeams
               setGlobalLeaderId(e.target.value)
               setGlobalMemberId('')
             }}
-            style={{ padding: '0.35rem 0.5rem', maxWidth: 320, width: '100%', minWidth: 200, border: '1px solid #d1d5db' }}
+            style={{ padding: '0.35rem 0.5rem', maxWidth: 320, width: '100%', minWidth: 200, border: '1px solid var(--border-strong)' }}
           >
             <option value="">Select user…</option>
             {pickerUsers.map((u) => (
@@ -272,16 +272,16 @@ export default function PeopleTeamsTab({ authUserId, authUserRole }: PeopleTeams
               minWidth: 200,
               ...(globalMemberPickerDisabled
                 ? {
-                    background: '#f3f4f6',
-                    color: '#9ca3af',
+                    background: 'var(--bg-muted)',
+                    color: 'var(--text-faint)',
                     cursor: 'not-allowed',
-                    border: '1px solid #e5e7eb',
+                    border: '1px solid var(--border)',
                   }
                 : {
-                    background: 'white',
+                    background: 'var(--surface)',
                     color: 'inherit',
                     cursor: 'pointer',
-                    border: '1px solid #d1d5db',
+                    border: '1px solid var(--border-strong)',
                   }),
             }}
           >
@@ -324,7 +324,7 @@ export default function PeopleTeamsTab({ authUserId, authUserRole }: PeopleTeams
             maxWidth: 420,
             padding: '0.5rem 0.75rem',
             fontSize: '0.875rem',
-            border: '1px solid #d1d5db',
+            border: '1px solid var(--border-strong)',
             borderRadius: 4,
             boxSizing: 'border-box',
           }}
@@ -332,9 +332,9 @@ export default function PeopleTeamsTab({ authUserId, authUserRole }: PeopleTeams
       </div>
 
       {assignments.length === 0 ? (
-        <p style={{ fontSize: '0.875rem', color: '#6b7280', margin: 0 }}>No assignments yet.</p>
+        <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', margin: 0 }}>No assignments yet.</p>
       ) : filteredLeaderIds.length === 0 ? (
-        <p style={{ fontSize: '0.875rem', color: '#6b7280', margin: 0 }}>No assignments match your search.</p>
+        <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', margin: 0 }}>No assignments match your search.</p>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           {filteredLeaderIds.map((leaderId) => {
@@ -347,17 +347,17 @@ export default function PeopleTeamsTab({ authUserId, authUserRole }: PeopleTeams
               <div
                 key={leaderId}
                 style={{
-                  border: '1px solid #e5e7eb',
+                  border: '1px solid var(--border)',
                   borderRadius: 8,
-                  background: '#fafafa',
+                  background: 'var(--bg-page)',
                   overflow: 'hidden',
                 }}
               >
                 <div
                   style={{
                     padding: '0.65rem 1rem',
-                    background: '#f3f4f6',
-                    borderBottom: '1px solid #e5e7eb',
+                    background: 'var(--bg-muted)',
+                    borderBottom: '1px solid var(--border)',
                     display: 'flex',
                     flexWrap: 'wrap',
                     alignItems: 'center',
@@ -369,7 +369,7 @@ export default function PeopleTeamsTab({ authUserId, authUserRole }: PeopleTeams
                     style={{
                       fontWeight: 600,
                       fontSize: '0.9375rem',
-                      color: '#111827',
+                      color: 'var(--text-strong)',
                       flex: '1 1 auto',
                       minWidth: 0,
                     }}
@@ -386,7 +386,7 @@ export default function PeopleTeamsTab({ authUserId, authUserRole }: PeopleTeams
                       justifyContent: 'flex-end',
                     }}
                   >
-                    <span style={{ fontSize: '0.8125rem', fontWeight: 500, color: '#374151' }}>Add member</span>
+                    <span style={{ fontSize: '0.8125rem', fontWeight: 500, color: 'var(--text-700)' }}>Add member</span>
                     <select
                       value={perPick}
                       disabled={perDisabled}
@@ -399,9 +399,9 @@ export default function PeopleTeamsTab({ authUserId, authUserRole }: PeopleTeams
                         fontSize: '0.8125rem',
                         maxWidth: 220,
                         minWidth: 140,
-                        border: '1px solid #d1d5db',
+                        border: '1px solid var(--border-strong)',
                         borderRadius: 4,
-                        background: perDisabled ? '#f3f4f6' : 'white',
+                        background: perDisabled ? 'var(--bg-muted)' : 'var(--surface)',
                       }}
                     >
                       <option value="">
@@ -437,17 +437,17 @@ export default function PeopleTeamsTab({ authUserId, authUserRole }: PeopleTeams
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
                       <thead>
                         <tr style={{ textAlign: 'left' }}>
-                          <th style={{ padding: '0.35rem 0.5rem', fontWeight: 600, borderBottom: '1px solid #e5e7eb' }}>
+                          <th style={{ padding: '0.35rem 0.5rem', fontWeight: 600, borderBottom: '1px solid var(--border)' }}>
                             Member
                           </th>
-                          <th style={{ padding: '0.35rem 0.5rem', fontWeight: 600, borderBottom: '1px solid #e5e7eb' }}>
+                          <th style={{ padding: '0.35rem 0.5rem', fontWeight: 600, borderBottom: '1px solid var(--border)' }}>
                             Leader dashboard
                           </th>
                           <th
                             style={{
                               padding: '0.35rem 0.5rem',
                               fontWeight: 600,
-                              borderBottom: '1px solid #e5e7eb',
+                              borderBottom: '1px solid var(--border)',
                               width: 88,
                             }}
                           />
@@ -478,9 +478,9 @@ export default function PeopleTeamsTab({ authUserId, authUserRole }: PeopleTeams
                                   maxWidth: 200,
                                   padding: '0.35rem 0.5rem',
                                   fontSize: '0.8125rem',
-                                  border: '1px solid #d1d5db',
+                                  border: '1px solid var(--border-strong)',
                                   borderRadius: 4,
-                                  background: !isDev ? '#f3f4f6' : 'white',
+                                  background: !isDev ? 'var(--bg-muted)' : 'var(--surface)',
                                   cursor: !isDev ? 'not-allowed' : 'pointer',
                                 }}
                               >
@@ -488,7 +488,7 @@ export default function PeopleTeamsTab({ authUserId, authUserRole }: PeopleTeams
                                 <option value="strip_only">Clock strip only</option>
                               </select>
                               {!isDev ? (
-                                <div style={{ fontSize: '0.7rem', color: '#9ca3af', marginTop: 4 }}>Dev only</div>
+                                <div style={{ fontSize: '0.7rem', color: 'var(--text-faint)', marginTop: 4 }}>Dev only</div>
                               ) : null}
                             </td>
                             <td style={{ padding: '0.5rem 0.5rem' }}>
@@ -499,7 +499,7 @@ export default function PeopleTeamsTab({ authUserId, authUserRole }: PeopleTeams
                                 style={{
                                   padding: '0.25rem 0.5rem',
                                   fontSize: '0.8125rem',
-                                  color: '#b91c1c',
+                                  color: 'var(--text-red-700)',
                                   background: 'none',
                                   border: '1px solid #fecaca',
                                   borderRadius: 4,
