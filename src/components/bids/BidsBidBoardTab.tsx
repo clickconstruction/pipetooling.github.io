@@ -12,6 +12,7 @@ import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
 import { formatAddressWithoutZip } from '../../lib/bids/bidContactInfo'
 import { addressLines } from '../../lib/bidDocuments/htmlDoc'
 import { formatBidValueShort, formatShortDate, formatDateYYMMDDParts } from '../../lib/bids/bidFormatting'
+import { formatBidDueTime } from '../../lib/bids/formatBidDueTime'
 import { getSubmissionSectionKey, type SubmissionSectionKey } from '../../lib/bids/submissionSections'
 import { computeBidBoardStaffOutcomeStatsByRole } from '../../lib/bids/bidBoardStaffOutcomes'
 import { buildBidBoardWeeklySentSummaries } from '../../lib/bidBoardWeeklySentStats'
@@ -555,10 +556,12 @@ export function BidsBidBoardTab({
         <td style={{ padding: '0.0625rem', textAlign: 'center', fontSize: '0.6875rem', lineHeight: 1.35 }}>
           {(() => {
             const parts = formatDateYYMMDDParts(bid.bid_due_date)
+            const dueTime = formatBidDueTime(bid.bid_due_time)
             return parts ? (
               <div style={{ lineHeight: 1.25 }}>
                 <div>{parts.date}</div>
                 <div>{parts.bracket}</div>
+                {dueTime ? <div style={{ color: 'var(--text-muted)' }}>{dueTime}</div> : null}
               </div>
             ) : '—'
           })()}
