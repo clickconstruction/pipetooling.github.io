@@ -11077,9 +11077,9 @@ export type Database = {
             Returns: string
           }
       is_assistant: { Args: never; Returns: boolean }
-      is_assistant_of_pay_approved_master: { Args: never; Returns: boolean }
       is_bid_pricing_user: { Args: never; Returns: boolean }
       is_checklist_tech_tree_staff_or_primary: { Args: never; Returns: boolean }
+      is_controller: { Args: never; Returns: boolean }
       is_cost_matrix_shared_with_current_user: { Args: never; Returns: boolean }
       is_dev: { Args: never; Returns: boolean }
       is_dev_or_master_or_assistant: { Args: never; Returns: boolean }

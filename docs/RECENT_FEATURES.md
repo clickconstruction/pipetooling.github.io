@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-14 (v2.662)
+last_updated: 2026-07-14 (v2.663)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -15,8 +15,11 @@ last_updated: 2026-07-14 (v2.662)
  version_range: "v2.581+ (reverse chronological)"
  
  key_sections:
-   - name: "Latest Version (v2.662)"
+   - name: "Latest Version (v2.663)"
      line: ~2022
+     description: "Controller payroll-capability sweep (Phase 3 fix-up): every policy/function still gating on is_pay_approved_master() directly now uses has_payroll_access(), closing the gap where a controller could read pay stubs but not wages/cost-matrix tables. Role-simulated verification: 21 wage rows + 218 pay stubs readable, clock powers intact, is_dev false."
+   - name: "Previous Version (v2.662)"
+     line: ~2032
      description: "New controller role (Phase 3): acts like an assistant everywhere (DB is_assistant() and client isAssistantLike() are assistant-LIKE; ~230 role-gate conversions across ~70 files) plus dev-level financial visibility — has_payroll_access(), People Payroll/Hours, cost matrix, unredacted dashboards, Job Summary labor/profit. Not dev admin. Enum + capabilities migrations; create-user/invite-user accept controller (redeploy required)."
    - name: "Previous Version (v2.661)"
      line: ~2032
@@ -2036,6 +2039,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.663)
+
+### Roles — controller payroll-capability sweep (fix-up) + post-apply type regen (2026-07-14, PR #313)
+Verifying v2.662 with a role-simulated controller caught a gap: pre-capability policies still gated on `is_pay_approved_master()` directly (the `people_pay_config` manage policy, the cost-matrix/teams family, `people_hours_display_order`, clock-session pay branches), so a controller could read pay stubs but **not wages**. [`20260714230000`](../supabase/migrations/20260714230000_controller_payroll_capability_sweep.sql) sweeps `is_pay_approved_master` → `has_payroll_access` across every policy (public + storage) and function body (recursion-guarded), asserts zero leftovers, and is verified by rolled-back simulation: controller reads 21 wage rows + 218 pay stubs, keeps clock powers, `is_dev()` stays false. Also: `database.ts` regenerated post-apply (drops `is_assistant_of_pay_approved_master`, adds `is_controller`).
 
 ## Latest Updates (v2.662)
 
