@@ -859,10 +859,12 @@ export default function DashboardFinancialsSection() {
           key: 'ap',
           bucket: data.ap,
           // Whole dollars: these are glance figures; the drill-down modal has cents.
+          // Team = payroll due + estimated upcoming ("$due+upcoming") on one line.
           extraLines: [
             `Supply Houses: $${roundDollars(data.ap.supplyTotal)}`,
-            `Payroll: $${roundDollars(data.ap.payrollTotal)} due`,
-            ...(data.apUpcoming.count > 0 ? [`($${roundDollars(data.apUpcoming.total)} upcoming)`] : []),
+            `Team: $${roundDollars(data.ap.payrollTotal)}${
+              data.apUpcoming.count > 0 ? `+${roundDollars(data.apUpcoming.total)}` : ''
+            }`,
           ],
         },
         { key: 'unbilled', bucket: data.unbilled, oldestAsDaysAgo: true },
