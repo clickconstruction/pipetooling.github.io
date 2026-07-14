@@ -309,10 +309,14 @@ button:focus-visible {
 
 .appMain {
   padding: var(--app-main-pad);
+  /* Tight top: page content (tab bars, toolbars) sits close under the header chrome. */
+  padding-top: 0.5rem;
 }
 
 .pageWrap {
   padding: var(--page-wrap-pad);
+  /* .appMain already provides the small gap below the header. */
+  padding-top: 0;
 }
 
 /* Prospects Convert tab: modern card layout */

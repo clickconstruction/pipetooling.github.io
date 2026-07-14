@@ -1271,7 +1271,6 @@ export default function Layout() {
           display: 'flex',
           flexDirection: 'column',
           flex: 1,
-          ...(location.pathname === '/banking' ? { paddingTop: '0.25rem' } : {}),
         }}
       >
         <div
