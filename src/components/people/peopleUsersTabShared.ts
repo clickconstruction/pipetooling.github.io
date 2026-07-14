@@ -4,6 +4,7 @@ import type { Person, PersonKind, UserRow } from '../../hooks/usePeopleRoster'
 export const KINDS: PersonKind[] = [
   'master_technician',
   'assistant',
+  'controller',
   'primary',
   'estimator',
   'superintendent',
@@ -13,6 +14,7 @@ export const KINDS: PersonKind[] = [
 
 export const KIND_LABELS: Record<PersonKind, string> = {
   assistant: 'Assistants',
+  controller: 'Controllers',
   master_technician: 'Master Technicians',
   sub: 'Subcontractors',
   helper: 'Helper',
@@ -23,6 +25,7 @@ export const KIND_LABELS: Record<PersonKind, string> = {
 
 export const KIND_TO_USER_ROLE: Record<PersonKind, string> = {
   assistant: 'assistant',
+  controller: 'controller',
   master_technician: 'master_technician',
   sub: 'subcontractor',
   helper: 'helpers',
@@ -37,6 +40,7 @@ export type UsersTabSection = { type: 'personKind'; kind: PersonKind } | { type:
 export const USERS_TAB_SECTIONS: UsersTabSection[] = [
   { type: 'personKind', kind: 'master_technician' },
   { type: 'personKind', kind: 'assistant' },
+  { type: 'personKind', kind: 'controller' },
   { type: 'personKind', kind: 'primary' },
   { type: 'personKind', kind: 'estimator' },
   { type: 'personKind', kind: 'superintendent' },

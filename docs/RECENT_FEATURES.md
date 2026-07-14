@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-14 (v2.663)
+last_updated: 2026-07-14 (v2.664)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -15,8 +15,11 @@ last_updated: 2026-07-14 (v2.663)
  version_range: "v2.581+ (reverse chronological)"
  
  key_sections:
-   - name: "Latest Version (v2.663)"
+   - name: "Latest Version (v2.664)"
      line: ~2022
+     description: "Controller users now render on People → Users (own Controllers section after Assistants) and in Quickfill Schedule role grouping — multi-user UI test caught that the PersonKind chain lacked controller, so such users vanished from the roster entirely."
+   - name: "Previous Version (v2.663)"
+     line: ~2030
      description: "Controller payroll-capability sweep (Phase 3 fix-up): every policy/function still gating on is_pay_approved_master() directly now uses has_payroll_access(), closing the gap where a controller could read pay stubs but not wages/cost-matrix tables. Role-simulated verification: 21 wage rows + 218 pay stubs readable, clock powers intact, is_dev false."
    - name: "Previous Version (v2.662)"
      line: ~2032
@@ -2039,6 +2042,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.664)
+
+### People — controller users render on the Users roster (2026-07-14, PR #314)
+Live multi-user testing of v2.662 (dev imitation as assistant/controller) caught that a controller user **disappeared from People → Users entirely**: the tab renders only known `PersonKind` sections and `controller` mapped to none (the fetches already included the role). Added `controller` through the kind chain — [`usePeopleRoster`](../src/hooks/usePeopleRoster.ts) `PersonKind`, [`peopleUsersTabShared`](../src/components/people/peopleUsersTabShared.ts) `KINDS`/`KIND_LABELS` ("Controllers")/`KIND_TO_USER_ROLE`/`USERS_TAB_SECTIONS` (after Assistants), and [`usersTabRosterRoleSections`](../src/lib/usersTabRosterRoleSections.ts) (Quickfill Schedule grouping). Verified live: Controllers section renders with the imitate controls, and the full role battery passed — dev (12 per-person payroll rows), assistant ×2 (aggregate-only totals, 0/1-own wage rows, 0 stubs, Hours rosters intact, no Payroll tab), controller (21 wage rows, 218 stubs, per-person AP drill-down, Payroll tab + ledger, zero dev-admin controls).
 
 ## Latest Updates (v2.663)
 
