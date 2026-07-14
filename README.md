@@ -75,10 +75,10 @@ gh pr merge --squash --delete-branch   # once "checks" is green
 
 **Key Constraints to Remember**:
 - Never edit existing migrations (append-only)
-- Every new table needs RLS policies for all 6 roles
+- Every new table needs RLS policies for all 9 roles
 - Update TypeScript types after schema changes: `supabase gen types typescript --local > src/types/database.ts`
 - TypeScript strict mode: No `any` types, handle null/undefined
-- Test RLS for all roles: dev, master, assistant, subcontractor, estimator, primary
+- Test RLS for all roles: dev, master, assistant, controller, subcontractor, helpers, estimator, primary, superintendent
 
 ---
 
@@ -140,7 +140,7 @@ The app uses strict TypeScript (`strict`, `noUncheckedIndexedAccess`). Supabase 
 - People roster (with or without user accounts)
 - Workflow templates
 - **Calendar view** (Central Time, two-line display)
-- **Role-based access control** (Dev, Master, Assistant, Subcontractor, Estimator, Primary)
+- **Role-based access control** (Dev, Master, Assistant, Controller, Subcontractor, Helpers, Estimator, Primary, Superintendent)
   - Assistants/subcontractors only see assigned stages
   - Estimators: Materials and Bids only; can see and add customers from Bids (no access to /customers or /projects)
   - Primaries: Materials and Jobs (Reports + Billing); can add materials to jobs

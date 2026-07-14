@@ -17,7 +17,7 @@ key_sections:
   - name: "User Roles"
     line: ~18
     anchor: "#user-roles"
-    description: "Detailed breakdown of all 8 roles"
+    description: "Detailed breakdown of all 9 roles"
   - name: "Page Access Matrix"
     line: ~232
     anchor: "#page-access-matrix"
@@ -249,8 +249,8 @@ Pipetooling implements comprehensive role-based access control (RBAC) using eigh
 - Jobs page — Stages tab: Billed Awaiting Payment, Total by Name modal; **Combine / Separate** (toolbar **right**) — same **dev** / **master_technician** / **assistant** gate as **Job Book** (**v2.516**)
 - Jobs page — Labor tab: Add labor jobs per person
 - Jobs page — Sub Sheet Ledger tab: View labor jobs (own and shared); Edit/Delete own jobs; shared jobs show "Created by [name]"
-- **Hours** tab (if master is Pay Approved): Timesheet, sessions, and grid; **Review Hours** / **Hours reviewed** when applicable; when dev shared Cost matrix: view-only **Cost matrix** and **Teams** — no **People** pay config, no add/edit teams
-- Payroll tab (if master is Pay Approved): Ledger (with name search), generators, **Print**; **View** from bulk **Generate Pay Reports** modal; dev-only stub delete icon; **Draft Payroll** UX as in **`RECENT_FEATURES`** **v2.514**
+- **Hours** tab (**all** assistants since **v2.661** — pay-master adoption confers nothing): timesheet, sessions, grid, **Hours reviewed** / day-correct markers; rosters and salaried-hours flags come from the wage-free **`list_people_pay_flags()`** RPC. **Never any wage data**: `people_pay_config` wage columns, pay stubs, and `person_offsets` are RLS-blocked for assistants (**v2.660**), and the **cost matrix can no longer be shared with assistants** (grantee trigger — dev/master/controller only)
+- **No Payroll tab** (**v2.660**): assistants have no pay-stub access at the UI or DB level. The Dashboard AP card shows them **org-level totals only** via **`get_dashboard_payroll_totals()`** (one aggregate row, never per-person)
 - **People → Teams** (`?tab=teams`): manage **`team_leader_assignments`** (same as Settings **Team Hours Sharing**); per-link **Leader dashboard** — **dev-only**
 
 **Bids**:
@@ -504,6 +504,17 @@ Pipetooling implements comprehensive role-based access control (RBAC) using eigh
 **Layout Behavior**:
 - Navigation shows: Dashboard, Projects, Workflow, Jobs, Bids, Materials, Calendar, Checklist, Settings, Tally
 - Attempts to access blocked pages redirect to `/dashboard`
+
+### controller (Controller)
+
+**Purpose**: Bookkeeper/financial controller — process wages without dev keys (v2.662, Phase 3 of the pay-visibility overhaul)
+
+**Access**:
+- **Everything an assistant can do** — the DB's `is_assistant()` and client's `isAssistantLike()` are assistant-LIKE (`assistant` OR `controller`), so every assistant capability (clock cards, hours, crew grids, dispatch, contracts, licenses, vehicles, housing, write-ups) applies automatically
+- **Plus the full payroll principal** via `has_payroll_access()` (v2.663 sweep): `people_pay_config` wages (read/write), the entire pay-stub family, `person_offsets`, People → **Payroll** / **Employment** / **Pay Stubs** tabs with pay-config editing, cost matrix + teams (valid share grantee), unredacted Dashboard financials, Jobs → Job Summary **Team Labor**/profit, Job Detail profit band and Cost breakdown team labor, Projects day-modal team labor
+- **Not dev admin**: no user management / Active Accounts, no imitation, no backups, no dev-only deletes, `is_dev()` stays false
+
+**Matrices below**: read the **assistant** column for a controller, then add the pay/financial surfaces above — controller is not broken out as its own column.
 
 ---
 

@@ -253,7 +253,7 @@ const response = await supabase.functions.invoke('create-user', {
 **400 Bad Request** - Invalid role:
 ```json
 {
-  "error": "Invalid role. Must be one of: dev, master_technician, assistant, subcontractor, helpers, estimator, primary, superintendent"
+  "error": "Invalid role. Must be one of: dev, master_technician, assistant, subcontractor, helpers, estimator, primary, superintendent, controller"
 }
 ```
 
@@ -2317,7 +2317,7 @@ All Edge Functions return errors in consistent JSON format:
 { "error": "Missing required fields: email, password, and role" }
 
 // Invalid field value
-{ "error": "Invalid role. Must be one of: dev, master_technician, assistant, subcontractor, helpers, estimator, primary, superintendent" }
+{ "error": "Invalid role. Must be one of: dev, master_technician, assistant, subcontractor, helpers, estimator, primary, superintendent, controller" }
 
 // Password validation
 { "error": "Password must be at least 6 characters" }
