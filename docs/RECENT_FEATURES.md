@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-14 (v2.668)
+last_updated: 2026-07-14 (v2.669)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -15,9 +15,9 @@ last_updated: 2026-07-14 (v2.668)
  version_range: "v2.581+ (reverse chronological)"
  
  key_sections:
-   - name: "Latest Version (v2.668)"
+   - name: "Latest Version (v2.669)"
      line: ~2022
-     description: "App-wide tab restyle: selected tab is a filled blue box with white bold text (was a bottom underline)."
+     description: "Dashboard Financials: AR and Not Billed footers match AP's 'N <noun>s, oldest: M/D (Xd)' form."
    - name: "Previous Version (v2.664)"
      line: ~2030
      description: "Controller users now render on People → Users (own Controllers section after Assistants) and in Quickfill Schedule role grouping — multi-user UI test caught that the PersonKind chain lacked controller, so such users vanished from the roster entirely."
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.669)
+
+### Dashboard — all three Financials card footers share one format (2026-07-14)
+Accounts Receivable and Not Billed Out adopt the AP footer form introduced in v2.667: `45 items · oldest 4/22/25` → **`45 invoices, oldest: 4/22 (448d)`** and `8 items · oldest 60 days ago` → **`8 jobs, oldest: 5/15 (60d)`**. Per-card nouns name what the rows actually are — **invoices** (AR: billed invoices + billed jobs without invoice rows), **bills** (AP: supply bills + open pay stubs), **jobs** (Not Billed Out) — and every card uses `oldestShortWithAge` (month/day + age in days; age suffix omitted for today/future). The v2.667 per-card `footer` override and the old `oldestAsDaysAgo`/`daysAgoLabel` path are removed in favor of the single shared line — [`DashboardFinancialsSection.tsx`](../src/components/DashboardFinancialsSection.tsx) only.
 
 ## Latest Updates (v2.668)
 
