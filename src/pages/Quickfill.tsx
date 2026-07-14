@@ -6,6 +6,7 @@ import { CSS } from '@dnd-kit/utilities'
 import DashboardArBankUnallocatedBanner from '../components/DashboardArBankUnallocatedBanner'
 import { SectionDock } from '../components/SectionDock'
 import { markStampInitial, markStampTime } from '../lib/quickfillMarkStamp'
+import { useNarrowViewport640 } from '../hooks/useNarrowViewport640'
 import DashboardTallyStaleStaffBanner from '../components/DashboardTallyStaleStaffBanner'
 import { DashboardStaleTallyStaffFollowUpModal } from '../components/DashboardStaleTallyStaffFollowUpModal'
 import { BilledAwaitingPaymentSection } from '../components/quickfill/BilledAwaitingPaymentSection'
@@ -1621,6 +1622,125 @@ function QuickfillSectionWrapper({
 }) {
   const metric = useQuickfillSectionMetric(sectionId)
   const outstandingLabel = metric.loading ? '…' : metric.count !== null ? `${metric.count} open` : '—'
+  const narrow = useNarrowViewport640()
+
+  // Desktop: a marked-complete section shrinks to one slim strip (title + stamp +
+  // controls) instead of the full header row plus banner. Narrow keeps the
+  // wrapping two-row layout.
+  if (collapsed && !narrow) {
+    return (
+      <div
+        id={id}
+        style={{
+          marginBottom: '0.6rem',
+          ...(withTopDivider ? { borderTop: '2px solid #94a3b8', paddingTop: '0.6rem' } : {}),
+        }}
+      >
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.6rem',
+            padding: '0.3rem 0.75rem',
+            background: 'var(--bg-green-tint)',
+            border: '1px solid #bbf7d0',
+            borderRadius: 6,
+            fontSize: '0.8125rem',
+            color: 'var(--text-green-800)',
+          }}
+        >
+          <span aria-hidden>✓</span>
+          <h2
+            style={{
+              margin: 0,
+              fontSize: '0.9375rem',
+              fontWeight: 600,
+              color: 'var(--text-700)',
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+            }}
+          >
+            {label}
+          </h2>
+          {showOutstandingInHeader && !metric.loading && metric.count !== null && metric.count > 0 ? (
+            metric.onOutstandingClick ? (
+              <button
+                type="button"
+                onClick={() => metric.onOutstandingClick?.()}
+                title="Show breakdown by day"
+                aria-label={`Show pending approvals by day, ${metric.count} open`}
+                style={{
+                  fontSize: '0.75rem',
+                  color: 'var(--text-blue-700)',
+                  fontWeight: 600,
+                  background: 'none',
+                  border: 'none',
+                  padding: 0,
+                  cursor: 'pointer',
+                  textDecoration: 'underline',
+                  textUnderlineOffset: '2px',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {outstandingLabel}
+              </button>
+            ) : (
+              <span style={{ fontSize: '0.75rem', color: 'var(--text-slate-600)', fontWeight: 600, whiteSpace: 'nowrap' }}>
+                {outstandingLabel}
+              </span>
+            )
+          ) : null}
+          <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            Marked {mark ? formatTime(mark.marked_at) : ''}
+            {mark?.marked_by_name ? ` by ${mark.marked_by_name}` : ''} · Reloads in{' '}
+            {mark ? `${hoursUntilExpand(mark.marked_at)}h` : '12h'}
+          </span>
+          <span style={{ flex: 1 }} />
+          {showMarkHistoryButton ? (
+            <button
+              type="button"
+              onClick={onOpenHistory}
+              title="Mark history"
+              aria-label={`Mark history for ${label}`}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '0.25rem',
+                borderRadius: 6,
+                border: '1px solid #cbd5e1',
+                background: 'var(--bg-slate-tint)',
+                color: '#334155',
+                cursor: 'pointer',
+                lineHeight: 0,
+                flexShrink: 0,
+              }}
+            >
+              <QuickfillSectionHistoryIcon />
+            </button>
+          ) : null}
+          <button
+            type="button"
+            onClick={onOpenNow}
+            style={{
+              padding: '0.2rem 0.6rem',
+              borderRadius: 6,
+              background: 'var(--surface)',
+              border: '1px solid #22c55e',
+              color: 'var(--text-green-800)',
+              cursor: 'pointer',
+              fontSize: '0.75rem',
+              fontWeight: 500,
+              flexShrink: 0,
+            }}
+          >
+            Open now
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div
