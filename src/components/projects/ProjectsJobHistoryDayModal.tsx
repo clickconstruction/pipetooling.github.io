@@ -727,22 +727,25 @@ export function ProjectsJobHistoryDayModal({
                   overflow: 'hidden',
                 }}
               >
-                <DayCostRow
-                  rowKey="labor"
-                  label="Team labor"
-                  value={formatUsd(dayCosts.laborUsd)}
-                  note={
-                    dayCosts.laborMissingWageNames.length > 0
-                      ? `No hourly wage configured for ${dayCosts.laborMissingWageNames.join(', ')}`
-                      : null
-                  }
-                  approximate={dayCosts.laborIncomplete}
-                  expanded={expandedCostRows.has('labor')}
-                  onToggle={toggleCostRow}
-                  detailCount={dayCosts.laborLines.length}
-                  emptyMessage="No clock sessions for this day."
-                  detail={<DayLaborDetail lines={dayCosts.laborLines} />}
-                />
+                {/* Team labor $ derives from wages — masters/devs only (pay lockdown v2.660). */}
+                {userRole === 'dev' || userRole === 'master_technician' ? (
+                  <DayCostRow
+                    rowKey="labor"
+                    label="Team labor"
+                    value={formatUsd(dayCosts.laborUsd)}
+                    note={
+                      dayCosts.laborMissingWageNames.length > 0
+                        ? `No hourly wage configured for ${dayCosts.laborMissingWageNames.join(', ')}`
+                        : null
+                    }
+                    approximate={dayCosts.laborIncomplete}
+                    expanded={expandedCostRows.has('labor')}
+                    onToggle={toggleCostRow}
+                    detailCount={dayCosts.laborLines.length}
+                    emptyMessage="No clock sessions for this day."
+                    detail={<DayLaborDetail lines={dayCosts.laborLines} />}
+                  />
+                ) : null}
                 <DayCostRow
                   rowKey="mercury"
                   label="Card charges"
@@ -774,10 +777,16 @@ export function ProjectsJobHistoryDayModal({
                     background: 'var(--bg-slate-tint)',
                   }}
                 >
-                  <span style={{ fontWeight: 600, color: 'var(--text-slate-900)' }}>Total</span>
+                  <span style={{ fontWeight: 600, color: 'var(--text-slate-900)' }}>
+                    {userRole === 'dev' || userRole === 'master_technician' ? 'Total' : 'Total (excl. team labor)'}
+                  </span>
                   <strong style={{ fontVariantNumeric: 'tabular-nums', fontSize: '1rem' }}>
                     {dayCosts.laborIncomplete ? '≥ ' : ''}
-                    {formatUsd(dayCosts.totalUsd)}
+                    {formatUsd(
+                      userRole === 'dev' || userRole === 'master_technician'
+                        ? dayCosts.totalUsd
+                        : dayCosts.totalUsd - dayCosts.laborUsd,
+                    )}
                   </strong>
                 </div>
               </div>

@@ -70,22 +70,34 @@ export function usePayConfig(deps: UsePayConfigDeps): UsePayConfigResult {
 
   const loadPayConfig = useCallback(async () => {
     if (!canAccessPay && !canAccessHours && !canViewCostMatrixShared) return
-    const { data, error } = await supabase
-      .from('people_pay_config')
-      .select('person_name, person_id, hourly_wage, office_hourly_wage, is_salary, show_in_hours, show_in_cost_matrix, record_hours_but_salary')
+    // Hours-only viewers (assistants) can't SELECT people_pay_config since the pay lockdown
+    // (v2.660) — they load the non-wage flags via the RPC instead. Wage fields stay null,
+    // which is fine: every wage-editing surface is canAccessPay-gated.
+    const wageAccess = canAccessPay || canViewCostMatrixShared
+    const { data, error } = wageAccess
+      ? await supabase
+          .from('people_pay_config')
+          .select('person_name, person_id, hourly_wage, office_hourly_wage, is_salary, show_in_hours, show_in_cost_matrix, record_hours_but_salary')
+      : await supabase.rpc('list_people_pay_flags')
     if (error) {
       setError(error.message)
       return
     }
-    // Temporary: log for assistants when RLS may be blocking
-    if (!canAccessPay && !canViewCostMatrixShared && (data ?? []).length === 0) {
-      console.warn('loadPayConfig: assistant got empty data', { error, rowCount: (data ?? []).length })
-    }
     const map: Record<string, PayConfigRow> = {}
     const persistedSalary: Record<string, { is_salary: boolean }> = {}
-    for (const r of (data ?? []) as PayConfigRow[]) {
+    for (const raw of (data ?? []) as Array<Partial<PayConfigRow> & { person_name: string }>) {
+      const r: PayConfigRow = {
+        person_name: raw.person_name,
+        person_id: raw.person_id ?? null,
+        hourly_wage: raw.hourly_wage ?? null,
+        office_hourly_wage: raw.office_hourly_wage ?? null,
+        is_salary: !!raw.is_salary,
+        show_in_hours: !!raw.show_in_hours,
+        show_in_cost_matrix: !!raw.show_in_cost_matrix,
+        record_hours_but_salary: !!raw.record_hours_but_salary,
+      }
       map[r.person_name] = r
-      persistedSalary[r.person_name] = { is_salary: !!r.is_salary }
+      persistedSalary[r.person_name] = { is_salary: r.is_salary }
     }
     lastPersistedPayConfigRef.current = persistedSalary
     setPayConfig(map)

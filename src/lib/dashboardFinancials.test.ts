@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import {
   buildApBucket,
+  buildApBucketFromAggregates,
   buildArBucket,
   buildArBuckets,
   buildUnbilledBucket,
   buildUpcomingApSection,
+  upcomingApSectionFromAggregates,
   financialJobLabel,
   redactApPayrollItems,
   redactUpcomingApSection,
@@ -91,6 +93,48 @@ describe('buildApBucket', () => {
     expect(bucket.total).toBeCloseTo(750)
     expect(bucket.count).toBe(2)
     expect(bucket.oldestDateYmd).toBe('2026-06-15')
+  })
+})
+
+describe('buildApBucketFromAggregates', () => {
+  it('appends one aggregate payroll line from RPC totals (assistant path)', () => {
+    const bucket = buildApBucketFromAggregates(
+      [{ id: 's1', amount: 250, invoice_date: '2026-06-15', supply_houses: { name: 'Ferguson' } }],
+      { dueTotal: 500, dueCount: 3 },
+    )
+    expect(bucket.supplyTotal).toBeCloseTo(250)
+    expect(bucket.payrollTotal).toBeCloseTo(500)
+    expect(bucket.total).toBeCloseTo(750)
+    const agg = bucket.items.find((i) => i.key === 'payroll:aggregate')
+    expect(agg?.amount).toBeCloseTo(500)
+    expect(agg?.sublabel).toBe('3 open pay stubs')
+  })
+
+  it('omits the payroll line when due total is zero', () => {
+    const bucket = buildApBucketFromAggregates(
+      [{ id: 's1', amount: 250, invoice_date: '2026-06-15', supply_houses: { name: 'Ferguson' } }],
+      { dueTotal: 0, dueCount: 0 },
+    )
+    expect(bucket.payrollTotal).toBeCloseTo(0)
+    expect(bucket.items.some((i) => i.key === 'payroll:aggregate')).toBe(false)
+  })
+})
+
+describe('upcomingApSectionFromAggregates', () => {
+  it('builds a single aggregate person-week line from RPC totals', () => {
+    const section = upcomingApSectionFromAggregates({ upcomingTotal: 1234.56, upcomingCount: 4 })
+    expect(section.total).toBeCloseTo(1234.56)
+    expect(section.count).toBe(4)
+    expect(section.items).toHaveLength(1)
+    expect(section.items[0]?.sublabel).toBe('4 person-weeks')
+  })
+
+  it('is empty when there are no upcoming person-weeks', () => {
+    expect(upcomingApSectionFromAggregates({ upcomingTotal: 0, upcomingCount: 0 })).toEqual({
+      total: 0,
+      count: 0,
+      items: [],
+    })
   })
 })
 

@@ -101,6 +101,13 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 ### July 2026
 
+#### July 14, 2026
+
+**`20260714120000_assistant_pay_lockdown.sql`** _(applied via `supabase db push` after the client PR merged)_
+- **Purpose**: **Assistant pay lockdown (Phase 1 of the pay-visibility overhaul).** Assistants must never be able to read what an individual makes, pay-linked or not. (1) New **`has_payroll_access()`** capability fn (dev + pay-approved masters; the planned `controller` role joins here). (2) `people_pay_config` loses the blanket assistant SELECT policy (own-row / cost-matrix-share / pay-master policies remain). (3) `pay_stubs` / `pay_stub_days` / `pay_stub_payments` / `pay_stub_deductions` / `pay_stub_additional_lines` policies rewritten onto `has_payroll_access()` — previously `is_assistant_of_pay_approved_master()` gave a pay-linked assistant full read/write via the API even though the Payroll tab was hidden; `person_offsets` (readable by ALL assistants before) also moves to `has_payroll_access()`. (4) `hours_reviewed` / `hours_days_correct` writes → pay masters + all assistants (clock management, not pay). (5) New **`list_people_pay_flags()`** SECURITY DEFINER RPC (staff-gated; non-wage columns only) keeps Hours/Quickfill/Crew rosters + salaried-hours logic working. (6) New **`get_dashboard_payroll_totals()`** SECURITY DEFINER RPC — org-level due + upcoming aggregates for the Dashboard AP card (assistants keep totals, never per-person rows); SQL mirrors `stubNetPay`/`buildApBucket`/`buildUpcomingPayrollSummary` (parity-verified against the live client: due exact to the cent, upcoming within open-session drift). (7) **`get_man_hours_by_job()`** recreated SECURITY DEFINER (hours only) so salaried credit survives. (8) `cost_matrix_teams_shares` BEFORE INSERT/UPDATE trigger: grantees must be dev/master.
+- **Impact**: Client companion in the same PR: `usePayConfig` / Quickfill Hours / Unassigned-field-time / CrewJobsBlock / HoursUnassignedModal / `salaryPayConfigGate` / `teamLabor` read flags via the RPC (wage columns dropped from their selects); `useDashboardFinancials` assistant path uses the totals RPC; Job Summary Team-Labor/profit cells and the Projects day-modal Team-labor row are dev/master-only. Types hand-added to `database.ts` (regen after apply). **`RECENT_FEATURES.md` v2.660**.
+- **Category**: Payroll / RLS / RPC / Security
+
 #### July 12, 2026
 
 **`20260712190000_merge_user_accounts.sql`** + **`20260712191500_merge_user_accounts_fix_text_append.sql`**

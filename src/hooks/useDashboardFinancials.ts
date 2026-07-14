@@ -10,9 +10,11 @@ import {
 } from '../lib/upcomingPayrollSummary'
 import {
   buildApBucket,
+  buildApBucketFromAggregates,
   buildArBuckets,
   buildUnbilledBucket,
   buildUpcomingApSection,
+  upcomingApSectionFromAggregates,
   financialJobLabel,
   type FinancialBucket,
   type FinancialInvoicePaymentRow,
@@ -67,7 +69,15 @@ async function chunked<T>(ids: string[], fetchChunk: (chunk: string[]) => Promis
  * for privileged roles; all math lives in the pure dashboardFinancials kernel so the cards match
  * Jobs Stages / Supply Houses / the Payroll ledger.
  */
-export function useDashboardFinancials(enabled: boolean, refreshKey?: number): {
+export function useDashboardFinancials(
+  enabled: boolean,
+  refreshKey?: number,
+  /**
+   * Assistants can't read pay_stubs/people_pay_config since the pay lockdown (v2.660) —
+   * they get org-level aggregates from get_dashboard_payroll_totals instead of per-person rows.
+   */
+  viewerRole?: string | null,
+): {
   data: DashboardFinancials | null
   loading: boolean
   error: string | null
@@ -86,11 +96,12 @@ export function useDashboardFinancials(enabled: boolean, refreshKey?: number): {
     let cancelled = false
     setLoading(true)
     setError(null)
+    const assistantAggregates = viewerRole === 'assistant'
     void (async () => {
       try {
         // Upcoming-payroll inputs are best-effort: a failure there degrades to an empty
         // "upcoming" section (Payroll-ledger precedent) instead of failing the whole load.
-        const [jobsRes, invoicesRes, supplyRes, stubsRes, usersRes, payConfigRes] = await Promise.all([
+        const [jobsRes, invoicesRes, supplyRes, stubsRes, usersRes, payConfigRes, payrollTotalsRes] = await Promise.all([
           withSupabaseRetry(
             async () =>
               await supabase
@@ -115,21 +126,44 @@ export function useDashboardFinancials(enabled: boolean, refreshKey?: number): {
                 .eq('is_paid', false),
             'dashboard financials supply invoices',
           ),
-          withSupabaseRetry(
-            async () =>
-              await supabase
-                .from('pay_stubs')
-                .select('id, person_name, period_start, period_end, gross_pay'),
-            'dashboard financials pay stubs',
-          ),
-          withSupabaseRetry(
-            async () => await supabase.from('users').select('id, name'),
-            'dashboard financials users',
-          ).catch(() => null),
-          withSupabaseRetry(
-            async () => await supabase.from('people_pay_config').select('person_name, hourly_wage'),
-            'dashboard financials pay config',
-          ).catch(() => null),
+          assistantAggregates
+            ? Promise.resolve(null)
+            : withSupabaseRetry(
+                async () =>
+                  await supabase
+                    .from('pay_stubs')
+                    .select('id, person_name, period_start, period_end, gross_pay'),
+                'dashboard financials pay stubs',
+              ),
+          assistantAggregates
+            ? Promise.resolve(null)
+            : withSupabaseRetry(
+                async () => await supabase.from('users').select('id, name'),
+                'dashboard financials users',
+              ).catch(() => null),
+          assistantAggregates
+            ? Promise.resolve(null)
+            : withSupabaseRetry(
+                async () => await supabase.from('people_pay_config').select('person_name, hourly_wage'),
+                'dashboard financials pay config',
+              ).catch(() => null),
+          // Assistant path: org-level payroll aggregates (never per-person rows).
+          assistantAggregates
+            ? withSupabaseRetry(
+                async () => await supabase.rpc('get_dashboard_payroll_totals'),
+                'dashboard financials payroll totals',
+              )
+                .then(
+                  (t) =>
+                    t as {
+                      payroll_due_total: number
+                      payroll_due_count: number
+                      upcoming_total: number
+                      upcoming_person_week_count: number
+                    } | null,
+                )
+                .catch(() => null)
+            : Promise.resolve(null),
         ])
         if (cancelled) return
 
@@ -308,8 +342,18 @@ export function useDashboardFinancials(enabled: boolean, refreshKey?: number): {
         setData({
           ar: arBuckets.ar,
           arCollections: arBuckets.collections,
-          ap: buildApBucket(supplyInvoices, payrollStubs),
-          apUpcoming: buildUpcomingApSection(upcomingSummary.lines),
+          ap: assistantAggregates
+            ? buildApBucketFromAggregates(supplyInvoices, {
+                dueTotal: Number(payrollTotalsRes?.payroll_due_total ?? 0),
+                dueCount: Number(payrollTotalsRes?.payroll_due_count ?? 0),
+              })
+            : buildApBucket(supplyInvoices, payrollStubs),
+          apUpcoming: assistantAggregates
+            ? upcomingApSectionFromAggregates({
+                upcomingTotal: Number(payrollTotalsRes?.upcoming_total ?? 0),
+                upcomingCount: Number(payrollTotalsRes?.upcoming_person_week_count ?? 0),
+              })
+            : buildUpcomingApSection(upcomingSummary.lines),
           apBills,
           unbilled: buildUnbilledBucket(jobs, invoices),
         })
@@ -322,7 +366,7 @@ export function useDashboardFinancials(enabled: boolean, refreshKey?: number): {
     return () => {
       cancelled = true
     }
-  }, [enabled, refreshKey])
+  }, [enabled, refreshKey, viewerRole])
 
   return { data, loading, error }
 }

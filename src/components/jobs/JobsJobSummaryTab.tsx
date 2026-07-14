@@ -394,6 +394,9 @@ export type JobsJobSummaryTabProps = {
   printCostBreakdownJobId: string | null
   setPrintCostBreakdownJobId: (v: string | null) => void
   canAccessBankingForParts: boolean
+  /** Team Labor $ and profit derive from wages — masters/devs only (pay lockdown v2.660);
+   * other viewers see '—' so a wage-less $0 never masquerades as a real figure. */
+  showTeamLaborAndProfit: boolean
   nicknameByDebitCard: Record<string, string>
   tallyPartsLoading: boolean
   laborJobsLoading: boolean
@@ -448,6 +451,7 @@ export default function JobsJobSummaryTab({
   printCostBreakdownJobId,
   setPrintCostBreakdownJobId,
   canAccessBankingForParts,
+  showTeamLaborAndProfit,
   nicknameByDebitCard,
   tallyPartsLoading,
   laborJobsLoading,
@@ -592,7 +596,7 @@ export default function JobsJobSummaryTab({
                             <td style={{ padding: '0.75rem' }}>{job.job_name ?? '—'}</td>
                             <td style={{ padding: '0.75rem' }}>{job.job_address ?? '—'}</td>
                             <td style={{ padding: '0.75rem', textAlign: 'right' }}>
-                              {teamLaborCost === 0 ? '—' : `$${formatCurrency(teamLaborCost)}`}
+                              {!showTeamLaborAndProfit || teamLaborCost === 0 ? '—' : `$${formatCurrency(teamLaborCost)}`}
                             </td>
                             <td style={{ padding: '0.75rem', textAlign: 'right' }}>
                               {subLaborCost === 0 ? '—' : `$${formatCurrency(subLaborCost)}`}
@@ -608,10 +612,10 @@ export default function JobsJobSummaryTab({
                                 padding: '0.75rem',
                                 textAlign: 'right',
                                 fontWeight: 500,
-                                color: profit >= 0 ? undefined : '#b91c1c',
+                                color: showTeamLaborAndProfit && profit < 0 ? '#b91c1c' : undefined,
                               }}
                             >
-                              ${formatCurrency(profit)}
+                              {showTeamLaborAndProfit ? `$${formatCurrency(profit)}` : '—'}
                             </td>
                             <td style={{ padding: '0.75rem', textAlign: 'right', color: 'var(--text-700)' }}>
                               {formatJobSummaryPercentComplete(

@@ -36,16 +36,43 @@ export type TeamLaborBidRow = {
   breakdown: Array<{ personName: string; hours: number; cost: number }>
 }
 
+/**
+ * Pay-config map for labor math. `is_salary` comes from the list_people_pay_flags RPC (readable
+ * by all staff since the v2.660 pay lockdown) so salaried HOURS stay correct for every viewer;
+ * `hourly_wage` comes from a direct select that RLS empties for assistants, so labor DOLLARS
+ * read $0 for them by design (surfaces that would show those dollars are role-gated anyway).
+ */
+async function fetchLaborPayConfigMap(
+  supabase: SupabaseClient,
+  personNames?: string[],
+): Promise<Record<string, { hourly_wage: number; is_salary: boolean }>> {
+  const wageQuery = supabase.from('people_pay_config').select('person_name, hourly_wage')
+  const [flagsRes, wageRes] = await Promise.all([
+    supabase.rpc('list_people_pay_flags'),
+    personNames ? wageQuery.in('person_name', personNames) : wageQuery,
+  ])
+  const map: Record<string, { hourly_wage: number; is_salary: boolean }> = {}
+  for (const f of (flagsRes.data ?? []) as Array<{ person_name: string; is_salary: boolean | null }>) {
+    map[f.person_name] = { hourly_wage: 0, is_salary: f.is_salary ?? false }
+  }
+  for (const w of (wageRes.data ?? []) as Array<{ person_name: string; hourly_wage: number | null }>) {
+    const cur = map[w.person_name] ?? { hourly_wage: 0, is_salary: false }
+    cur.hourly_wage = w.hourly_wage ?? 0
+    map[w.person_name] = cur
+  }
+  return map
+}
+
 export async function loadTeamLaborData(
   supabase: SupabaseClient
 ): Promise<TeamLaborRow[]> {
   const twoYearsAgo = new Date()
   twoYearsAgo.setFullYear(twoYearsAgo.getFullYear() - 2)
   const startDate = twoYearsAgo.toLocaleDateString('en-CA')
-  const [crewRes, hoursRes, configRes] = await Promise.all([
+  const [crewRes, hoursRes, configMap] = await Promise.all([
     supabase.from('people_crew_jobs').select('work_date, person_name, job_assignments'),
     supabase.from('people_hours').select('person_name, work_date, hours').gte('work_date', startDate),
-    supabase.from('people_pay_config').select('person_name, hourly_wage, is_salary'),
+    fetchLaborPayConfigMap(supabase),
   ])
   const crewRows = (crewRes.data ?? []) as Array<{
     work_date: string
@@ -53,15 +80,6 @@ export async function loadTeamLaborData(
     job_assignments: CrewJobAssignment[]
   }>
   const hoursRows = (hoursRes.data ?? []) as Array<{ person_name: string; work_date: string; hours: number }>
-  const configRows = (configRes.data ?? []) as Array<{
-    person_name: string
-    hourly_wage: number | null
-    is_salary: boolean
-  }>
-  const configMap: Record<string, { hourly_wage: number; is_salary: boolean }> = {}
-  for (const c of configRows) {
-    configMap[c.person_name] = { hourly_wage: c.hourly_wage ?? 0, is_salary: c.is_salary ?? false }
-  }
   const hoursMap: Record<string, number> = {}
   for (const h of hoursRows) {
     hoursMap[`${h.person_name}:${h.work_date}`] = h.hours
@@ -176,20 +194,13 @@ export async function fetchTeamLaborBreakdownForJob(
       .select('person_name, work_date, hours')
       .in('person_name', persons)
       .in('work_date', dates),
-    supabase.from('people_pay_config').select('person_name, hourly_wage, is_salary').in('person_name', persons),
+    fetchLaborPayConfigMap(supabase, persons),
   ])
   const hoursMap: Record<string, number> = {}
   for (const h of (hoursRes.data ?? []) as Array<{ person_name: string; work_date: string; hours: number }>) {
     hoursMap[`${h.person_name}:${h.work_date}`] = h.hours
   }
-  const configMap: Record<string, { hourly_wage: number; is_salary: boolean }> = {}
-  for (const c of (configRes.data ?? []) as Array<{
-    person_name: string
-    hourly_wage: number | null
-    is_salary: boolean
-  }>) {
-    configMap[c.person_name] = { hourly_wage: c.hourly_wage ?? 0, is_salary: c.is_salary ?? false }
-  }
+  const configMap = configRes
   /** personName -> workDate -> allocated hours/cost */
   const byPersonDate: Record<string, Record<string, { hours: number; cost: number }>> = {}
   for (const r of crewRows) {
@@ -228,10 +239,10 @@ export async function loadTeamLaborDataForBids(
   const twoYearsAgo = new Date()
   twoYearsAgo.setFullYear(twoYearsAgo.getFullYear() - 2)
   const startDate = twoYearsAgo.toLocaleDateString('en-CA')
-  const [crewRes, hoursRes, configRes] = await Promise.all([
+  const [crewRes, hoursRes, configMap] = await Promise.all([
     supabase.from('people_crew_bids').select('work_date, person_name, bid_assignments'),
     supabase.from('people_hours').select('person_name, work_date, hours').gte('work_date', startDate),
-    supabase.from('people_pay_config').select('person_name, hourly_wage, is_salary'),
+    fetchLaborPayConfigMap(supabase),
   ])
   const crewRows = (crewRes.data ?? []) as Array<{
     work_date: string
@@ -239,15 +250,6 @@ export async function loadTeamLaborDataForBids(
     bid_assignments: CrewBidAssignment[]
   }>
   const hoursRows = (hoursRes.data ?? []) as Array<{ person_name: string; work_date: string; hours: number }>
-  const configRows = (configRes.data ?? []) as Array<{
-    person_name: string
-    hourly_wage: number | null
-    is_salary: boolean
-  }>
-  const configMap: Record<string, { hourly_wage: number; is_salary: boolean }> = {}
-  for (const c of configRows) {
-    configMap[c.person_name] = { hourly_wage: c.hourly_wage ?? 0, is_salary: c.is_salary ?? false }
-  }
   const hoursMap: Record<string, number> = {}
   for (const h of hoursRows) {
     hoursMap[`${h.person_name}:${h.work_date}`] = h.hours
