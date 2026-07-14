@@ -18,7 +18,7 @@ interface InviteUserRequest {
   service_type_ids?: string[]
 }
 
-const VALID_ROLES = ['dev', 'master_technician', 'assistant', 'subcontractor', 'helpers', 'estimator', 'primary', 'superintendent']
+const VALID_ROLES = ['dev', 'master_technician', 'assistant', 'subcontractor', 'helpers', 'estimator', 'primary', 'superintendent', 'controller']
 
 const DEFAULT_REDIRECT = 'https://pipetooling.com/accept-invite'
 const ALLOWED_REDIRECT = /^(https:\/\/pipetooling\.com\/|http:\/\/localhost:5(173|175)\/)/

@@ -77,7 +77,7 @@ export function usePeopleRoster(
     deps.setError(null)
     const [peopleRes, usersRes, meRes] = await Promise.all([
       supabase.from('people').select('id, master_user_id, kind, name, email, phone, notes').is('archived_at', null).order('kind').order('name'),
-      supabase.from('users').select('id, email, name, role, notes, phone').is('archived_at', null).in('role', ['assistant', 'master_technician', 'subcontractor', 'helpers', 'estimator', 'primary', 'superintendent']),
+      supabase.from('users').select('id, email, name, role, notes, phone').is('archived_at', null).in('role', ['assistant', 'master_technician', 'subcontractor', 'helpers', 'estimator', 'primary', 'superintendent', 'controller' as 'assistant']),
       supabase.from('users').select('role').eq('id', authUserId).single(),
     ])
     if (peopleRes.error) deps.setError(peopleRes.error.message)
@@ -193,7 +193,7 @@ export function usePeopleRoster(
     }
 
     const canCreatePeopleInRoster =
-      deps.authUserRole !== null && ['dev', 'master_technician', 'assistant'].includes(deps.authUserRole)
+      deps.authUserRole !== null && ['dev', 'master_technician', 'assistant', 'controller'].includes(deps.authUserRole)
     if (!editing && !canCreatePeopleInRoster) {
       deps.setError('You do not have permission to add people to the roster.')
       setSaving(false)

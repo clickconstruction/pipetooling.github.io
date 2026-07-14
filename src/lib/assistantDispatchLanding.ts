@@ -6,6 +6,8 @@
  * be on the home landing (`/` or `/dashboard`). The home-path guard is what keeps it from
  * pulling someone off a deep link or a page they were mid-task on.
  */
+import { isAssistantLike } from './subcontractorLikeRole'
+
 export const AWAY_THRESHOLD_MS = 60 * 60 * 1000 // ~1 hour
 
 export const DISPATCH_PATH = '/schedule-dispatch'
@@ -19,7 +21,7 @@ export function shouldLandOnDispatch(input: {
   awayMs: number
 }): boolean {
   return (
-    input.role === 'assistant' &&
+    isAssistantLike(input.role) &&
     input.isMobile &&
     HOME_PATHS.has(input.pathname) &&
     input.awayMs >= AWAY_THRESHOLD_MS

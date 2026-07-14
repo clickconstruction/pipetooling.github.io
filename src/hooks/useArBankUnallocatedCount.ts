@@ -2,21 +2,22 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { BANKING_SORTING_CONFIG_VERSION, resolveBankPaymentsSortingConfigForAr } from '../lib/bankingSortingConfig'
 import { withSupabaseRetry } from '../utils/errorHandling'
+import { isAssistantLike } from '../lib/subcontractorLikeRole'
 
 export function canRoleUseArBankCount(role: string | null): boolean {
   return (
-    role === 'dev' || role === 'master_technician' || role === 'assistant' || role === 'primary'
+    role === 'dev' || role === 'master_technician' || isAssistantLike(role) || role === 'primary'
   )
 }
 
 /** Dashboard / Quickfill unallocated-deposits banner, `/accounts-receivable` — staff only; `primary` uses Jobs Stages modal + count via {@link canRoleUseArBankCount}. */
 export function canRoleSeeArBankUnallocatedOrgNudge(role: string | null): boolean {
-  return role === 'dev' || role === 'master_technician' || role === 'assistant'
+  return role === 'dev' || role === 'master_technician' || isAssistantLike(role)
 }
 
 /** Dashboard tally-row Unallocated bank deposits banner only. Quickfill, `/accounts-receivable`, and Jobs deep links use {@link canRoleSeeArBankUnallocatedOrgNudge}. */
 export function canRoleSeeArBankUnallocatedDashboardBanner(role: string | null): boolean {
-  return role === 'dev' || role === 'assistant'
+  return role === 'dev' || isAssistantLike(role)
 }
 
 /**

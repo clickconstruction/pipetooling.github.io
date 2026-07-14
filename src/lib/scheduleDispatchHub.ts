@@ -75,6 +75,8 @@ export async function fetchTeamMemberUserIdsForJobIds(
 
 const USERS_TAB_BASE_ROLES: readonly SupabaseUserRole[] = [
   'assistant',
+  // 'controller' is live in the DB enum but the generated types are stale.
+  'controller' as SupabaseUserRole,
   'master_technician',
   'subcontractor',
   'helpers',

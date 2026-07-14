@@ -71,7 +71,7 @@ import {
 import { ESTIMATE_PUBLIC_TERMS_BODY_APP_KEY } from '../lib/estimatePublicTerms'
 import type { EstimateCatalogLineItem } from '../lib/estimateLineItemCatalog'
 import { catalogDbRowsToLineItems, fetchEstimateCatalogLive, replaceEstimateCatalogFromPayload } from '../lib/estimateCatalogApi'
-import { isSubcontractorLikeRole } from '../lib/subcontractorLikeRole'
+import { isAssistantLike, isSubcontractorLikeRole } from '../lib/subcontractorLikeRole'
 
 type UserRole =
   | 'dev'
@@ -877,7 +877,7 @@ export default function Settings() {
     }
     
     // Load dashboard button visibility for dev, master, assistant
-    if (role === 'dev' || role === 'master_technician' || role === 'assistant') {
+    if (role === 'dev' || role === 'master_technician' || isAssistantLike(role)) {
       const [{ data: btnRows }, { data: dashPref }] = await Promise.all([
         supabase.from('user_dashboard_buttons').select('button_key, visible').eq('user_id', authUser.id),
         supabase.from('user_dashboard_preferences').select('quick_buttons_placement').eq('user_id', authUser.id).maybeSingle(),
@@ -1186,7 +1186,7 @@ export default function Settings() {
     if (myRole !== 'dev') return
     setJobOwnerOverridesSaving(true)
     try {
-      const creators = users.filter((u) => ['dev', 'master_technician', 'assistant'].includes(u.role))
+      const creators = users.filter((u) => ['dev', 'master_technician', 'assistant', 'controller'].includes(u.role))
       for (const u of creators) {
         const key = `job_owner_override_${u.id}`
         const selected = jobOwnerOverrideByUserId[u.id]
@@ -1384,7 +1384,7 @@ export default function Settings() {
 
   async function saveReportNotificationPreferences(e: React.FormEvent) {
     e.preventDefault()
-    if (!authUser?.id || (myRole !== 'dev' && myRole !== 'master_technician' && myRole !== 'assistant')) return
+    if (!authUser?.id || (myRole !== 'dev' && myRole !== 'master_technician' && !isAssistantLike(myRole))) return
     setReportNotificationSaving(true)
     const currentIds = reportNotificationTemplateIds
     const { data: existing } = await supabase
@@ -1511,7 +1511,7 @@ export default function Settings() {
     const { data: assistantsData, error: assistantsErr } = await supabase
       .from('users')
       .select('id, email, name, role')
-      .eq('role', 'assistant')
+      .in('role', ['assistant', 'controller' as 'assistant'])
       .order('name')
     
     if (assistantsErr) {
@@ -3483,7 +3483,7 @@ export default function Settings() {
   const showMyReports =
     myRole === 'dev' ||
     myRole === 'master_technician' ||
-    myRole === 'assistant' ||
+    isAssistantLike(myRole) ||
     myRole === 'primary' ||
     isSubcontractorLikeRole(myRole)
 

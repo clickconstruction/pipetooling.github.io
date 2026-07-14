@@ -12,6 +12,7 @@ import {
 } from '../lib/customerContactDisplay'
 import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
 import { openInExternalBrowser } from '../lib/openInExternalBrowser'
+import { isAssistantLike } from '../lib/subcontractorLikeRole'
 
 type CustomerRow = Database['public']['Tables']['customers']['Row']
 
@@ -190,10 +191,10 @@ export default function EditCustomerForm({ customerId, onSaved, onCancel, onDele
   }, [user?.id])
 
   useEffect(() => {
-    if (!user?.id || (myRole !== 'assistant' && myRole !== 'dev' && myRole !== 'master_technician')) return
+    if (!user?.id || (!isAssistantLike(myRole) && myRole !== 'dev' && myRole !== 'master_technician')) return
     setMastersLoading(true)
     ;(async () => {
-      if (myRole === 'assistant') {
+      if (isAssistantLike(myRole)) {
         const { data: adoptions, error: adoptionsErr } = await supabase
           .from('master_assistants')
           .select('master_id')
@@ -239,7 +240,7 @@ export default function EditCustomerForm({ customerId, onSaved, onCancel, onDele
   useEffect(() => {
     if (
       !mergeExpanded ||
-      (myRole !== 'dev' && myRole !== 'master_technician' && myRole !== 'assistant')
+      (myRole !== 'dev' && myRole !== 'master_technician' && !isAssistantLike(myRole))
     )
       return
     setMergeCustomersLoading(true)
@@ -443,7 +444,7 @@ export default function EditCustomerForm({ customerId, onSaved, onCancel, onDele
 
   if (fetching) return <p>Loading…</p>
 
-  const showMergeUi = myRole === 'dev' || myRole === 'master_technician' || myRole === 'assistant'
+  const showMergeUi = myRole === 'dev' || myRole === 'master_technician' || isAssistantLike(myRole)
 
   return (
     <div>
@@ -600,7 +601,7 @@ export default function EditCustomerForm({ customerId, onSaved, onCancel, onDele
             </button>
           </div>
         </div>
-        {(myRole === 'assistant' || myRole === 'dev' || myRole === 'master_technician') && (
+        {(isAssistantLike(myRole) || myRole === 'dev' || myRole === 'master_technician') && (
           <div style={{ marginBottom: '1rem' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: advancedExpanded ? 4 : 0 }}>
               <button
@@ -639,9 +640,9 @@ export default function EditCustomerForm({ customerId, onSaved, onCancel, onDele
                 </label>
                 {mastersLoading ? (
                   <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>Loading masters...</p>
-                ) : (myRole === 'assistant' || myRole === 'dev') && availableMasters.length === 0 ? (
+                ) : (isAssistantLike(myRole) || myRole === 'dev') && availableMasters.length === 0 ? (
                   <p style={{ fontSize: '0.875rem', color: 'var(--text-red-700)' }}>
-                    {myRole === 'assistant'
+                    {isAssistantLike(myRole)
                       ? 'No masters have adopted you yet. Ask a master to adopt you in Settings.'
                       : 'No masters found.'}
                   </p>

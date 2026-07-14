@@ -7,6 +7,7 @@ import { DispatchInboxSection } from '../DispatchInboxSection'
 import { DispatchDismissedItemsModal } from '../DispatchDismissedItemsModal'
 import { EstimatorInboxSection } from '../EstimatorInboxSection'
 import { HelpFeedbackInboxSection } from '../HelpFeedbackInboxSection'
+import { isAssistantLike } from '../../lib/subcontractorLikeRole'
 
 /**
  * Checklist Review tab: one dispatch card, one estimator card (open rows first,
@@ -56,7 +57,7 @@ export function ChecklistReviewInboxes() {
 
   const jobFormModal = useJobFormModal()
 
-  if (role === 'assistant') return null
+  if (isAssistantLike(role)) return null
   if (!dispatchInboxEligible && !estimatorInboxEligible && role !== 'dev') return null
 
   const dispatchOpenRows = dispatchRequests.filter((r) => r.status === 'open')

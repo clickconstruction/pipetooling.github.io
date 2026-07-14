@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
+import { isAssistantLike } from '../lib/subcontractorLikeRole'
 import NewCustomerForm from '../components/NewCustomerForm'
 import type { Database } from '../types/database'
 import type { Json } from '../types/database'
@@ -66,10 +67,10 @@ export default function CustomerForm() {
 
   // Load masters for edit form dropdown
   useEffect(() => {
-    if (!user?.id || (myRole !== 'assistant' && myRole !== 'dev' && myRole !== 'master_technician')) return
+    if (!user?.id || (!isAssistantLike(myRole) && myRole !== 'dev' && myRole !== 'master_technician')) return
     setMastersLoading(true)
     ;(async () => {
-      if (myRole === 'assistant') {
+      if (isAssistantLike(myRole)) {
         const { data: adoptions, error: adoptionsErr } = await supabase
           .from('master_assistants')
           .select('master_id')
@@ -218,14 +219,14 @@ export default function CustomerForm() {
             style={{ width: '100%', padding: '0.5rem' }}
           />
         </div>
-        {(myRole === 'assistant' || myRole === 'dev' || myRole === 'master_technician') && (
+        {(isAssistantLike(myRole) || myRole === 'dev' || myRole === 'master_technician') && (
           <div style={{ marginBottom: '1rem' }}>
             <label htmlFor="master" style={{ display: 'block', marginBottom: 4 }}>Customer Master</label>
             {mastersLoading ? (
               <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>Loading masters...</p>
-            ) : (myRole === 'assistant' || myRole === 'dev') && availableMasters.length === 0 ? (
+            ) : (isAssistantLike(myRole) || myRole === 'dev') && availableMasters.length === 0 ? (
               <p style={{ fontSize: '0.875rem', color: 'var(--text-red-700)' }}>
-                {myRole === 'assistant'
+                {isAssistantLike(myRole)
                   ? 'No masters have adopted you yet. Ask a master to adopt you in Settings.'
                   : 'No masters found.'}
               </p>

@@ -1,5 +1,5 @@
 import type { UserRole } from '../hooks/useAuth'
-import { isSubcontractorLikeRole } from './subcontractorLikeRole'
+import { isAssistantLike, isSubcontractorLikeRole } from './subcontractorLikeRole'
 
 /** Header Task Dispatch icon (send dispatch request). */
 export function showTaskDispatchButton(role: UserRole | null): boolean {
@@ -7,7 +7,7 @@ export function showTaskDispatchButton(role: UserRole | null): boolean {
   return (
     role === 'dev' ||
     role === 'master_technician' ||
-    role === 'assistant' ||
+    isAssistantLike(role) ||
     role === 'estimator' ||
     isSubcontractorLikeRole(role)
   )
@@ -24,7 +24,7 @@ export function showHeaderTaskChecklistButton(role: UserRole | null): boolean {
   return (
     role === 'dev' ||
     role === 'master_technician' ||
-    role === 'assistant' ||
+    isAssistantLike(role) ||
     role === 'primary' ||
     role === 'estimator' ||
     isSubcontractorLikeRole(role)

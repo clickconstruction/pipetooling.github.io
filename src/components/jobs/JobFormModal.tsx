@@ -79,7 +79,7 @@ import {
 } from '../../lib/stripeInvoiceLineDescription'
 import { SearchableSelect } from '../SearchableSelect'
 import type { UserRole } from '../../hooks/useAuth'
-import { fieldRoleServiceTypeIdsForUser, isSubcontractorLikeRole } from '../../lib/subcontractorLikeRole'
+import { fieldRoleServiceTypeIdsForUser, isAssistantLike, isSubcontractorLikeRole } from '../../lib/subcontractorLikeRole'
 import { showJobCostBreakdownTeamLabor } from '../../lib/jobDetailModalRole'
 
 type EstimatesRow = Database['public']['Tables']['estimates']['Row']
@@ -296,7 +296,7 @@ function mercuryLinkedPaymentRow(row: PaymentRow): boolean {
 
 /** Same roles as Accounts Receivable bank payment apply. */
 function canUnlinkMercuryPayment(role: string | null): boolean {
-  return role === 'dev' || role === 'master_technician' || role === 'assistant' || role === 'primary'
+  return role === 'dev' || role === 'master_technician' || isAssistantLike(role) || role === 'primary'
 }
 
 function paymentRowLinkedToInvoice(row: PaymentRow): boolean {
@@ -774,7 +774,7 @@ export default function JobFormModal({
     () =>
       authRole === 'dev' ||
       authRole === 'master_technician' ||
-      authRole === 'assistant' ||
+      isAssistantLike(authRole) ||
       authRole === 'primary',
     [authRole],
   )
@@ -956,7 +956,7 @@ export default function JobFormModal({
   )
 
   const canLinkTeamLaborOnJobs = useMemo(
-    () => authRole !== 'assistant' && authRole !== 'superintendent' && authRole !== 'primary',
+    () => !isAssistantLike(authRole) && authRole !== 'superintendent' && authRole !== 'primary',
     [authRole],
   )
 
@@ -1431,7 +1431,7 @@ export default function JobFormModal({
           const { data: usersRes } = await supabase
             .from('users')
             .select('id, name, email, role')
-            .in('role', ['assistant', 'master_technician', 'subcontractor', 'helpers', 'estimator', 'primary', 'superintendent'])
+            .in('role', ['assistant', 'master_technician', 'subcontractor', 'helpers', 'estimator', 'primary', 'superintendent', 'controller' as Database['public']['Enums']['user_role']])
             .order('name')
           let usersList = (usersRes as UserRow[]) ?? []
           if (meRole === 'dev') {

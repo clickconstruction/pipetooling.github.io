@@ -728,7 +728,7 @@ export function ProjectsJobHistoryDayModal({
                 }}
               >
                 {/* Team labor $ derives from wages — masters/devs only (pay lockdown v2.660). */}
-                {userRole === 'dev' || userRole === 'master_technician' ? (
+                {userRole === 'dev' || userRole === 'master_technician' || userRole === 'controller' ? (
                   <DayCostRow
                     rowKey="labor"
                     label="Team labor"
@@ -778,12 +778,12 @@ export function ProjectsJobHistoryDayModal({
                   }}
                 >
                   <span style={{ fontWeight: 600, color: 'var(--text-slate-900)' }}>
-                    {userRole === 'dev' || userRole === 'master_technician' ? 'Total' : 'Total (excl. team labor)'}
+                    {userRole === 'dev' || userRole === 'master_technician' || userRole === 'controller' ? 'Total' : 'Total (excl. team labor)'}
                   </span>
                   <strong style={{ fontVariantNumeric: 'tabular-nums', fontSize: '1rem' }}>
                     {dayCosts.laborIncomplete ? '≥ ' : ''}
                     {formatUsd(
-                      userRole === 'dev' || userRole === 'master_technician'
+                      userRole === 'dev' || userRole === 'master_technician' || userRole === 'controller'
                         ? dayCosts.totalUsd
                         : dayCosts.totalUsd - dayCosts.laborUsd,
                     )}

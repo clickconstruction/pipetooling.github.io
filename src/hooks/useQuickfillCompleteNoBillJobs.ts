@@ -11,7 +11,7 @@ import {
 } from '../lib/quickfillCompleteNoBill'
 import type { JobWithDetails } from '../types/jobWithDetails'
 
-const ROLES = new Set<string>(['dev', 'master_technician', 'assistant'])
+const ROLES = new Set<string>(['dev', 'master_technician', 'assistant', 'controller'])
 
 /** Quickfill "Complete, no Total Bill": non-paid jobs resolved 100% complete with no
  * `revenue` set. Jobs come from the shared list cache; the latest report % per candidate

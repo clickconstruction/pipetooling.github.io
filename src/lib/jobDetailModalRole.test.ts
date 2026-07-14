@@ -2,9 +2,10 @@ import { describe, expect, it } from 'vitest'
 import { showJobCostBreakdownTeamLabor, showJobDetailProfitSection } from './jobDetailModalRole'
 
 describe('showJobCostBreakdownTeamLabor', () => {
-  it('allows devs and master technicians', () => {
+  it('allows devs, master technicians, and controllers', () => {
     expect(showJobCostBreakdownTeamLabor('dev')).toBe(true)
     expect(showJobCostBreakdownTeamLabor('master_technician')).toBe(true)
+    expect(showJobCostBreakdownTeamLabor('controller')).toBe(true)
   })
 
   it('denies every other role (wage-derivation risk)', () => {

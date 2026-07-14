@@ -3,6 +3,7 @@ import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { addExpandedPartsToPO, expandTemplate } from '../lib/materialPOUtils'
 import { useAuth } from '../hooks/useAuth'
+import { isAssistantLike } from '../lib/subcontractorLikeRole'
 import { Database } from '../types/database'
 import { withSupabaseRetry, formatErrorMessage } from '../utils/errorHandling'
 import { useToastContext } from '../contexts/ToastContext'
@@ -368,7 +369,7 @@ export default function Materials() {
     } else {
       setSuperintendentServiceTypeIds(null)
     }
-    if (role !== 'dev' && role !== 'master_technician' && role !== 'assistant' && role !== 'estimator' && role !== 'primary' && role !== 'superintendent') {
+    if (role !== 'dev' && role !== 'master_technician' && !isAssistantLike(role) && role !== 'estimator' && role !== 'primary' && role !== 'superintendent') {
       setLoading(false)
       return
     }
@@ -469,7 +470,7 @@ export default function Materials() {
 
   const loadPoGeneratorLedger = useCallback(async () => {
     if (!selectedServiceTypeId) return
-    if (myRole !== 'dev' && myRole !== 'master_technician' && myRole !== 'assistant') return
+    if (myRole !== 'dev' && myRole !== 'master_technician' && !isAssistantLike(myRole)) return
     setPoGenLedgerLoading(true)
     try {
       const rows = await withSupabaseRetry(
@@ -1076,7 +1077,7 @@ export default function Materials() {
   }, [searchParams, setSearchParams])
 
   useEffect(() => {
-    if (myRole === 'dev' || myRole === 'master_technician' || myRole === 'assistant' || myRole === 'estimator' || myRole === 'primary' || myRole === 'superintendent') {
+    if (myRole === 'dev' || myRole === 'master_technician' || isAssistantLike(myRole) || myRole === 'estimator' || myRole === 'primary' || myRole === 'superintendent') {
       const loadInitial = async () => {
         try {
           setPartsPage(0)
@@ -1100,7 +1101,7 @@ export default function Materials() {
 
   // Reload data when service type or loadAllMode changes
   useEffect(() => {
-    if (selectedServiceTypeId && (myRole === 'dev' || myRole === 'master_technician' || myRole === 'assistant' || myRole === 'estimator' || myRole === 'primary' || myRole === 'superintendent')) {
+    if (selectedServiceTypeId && (myRole === 'dev' || myRole === 'master_technician' || isAssistantLike(myRole) || myRole === 'estimator' || myRole === 'primary' || myRole === 'superintendent')) {
       setFilterPartTypeId('')
       setFilterManufacturer('')
       const loadForServiceType = async () => {
@@ -1251,7 +1252,7 @@ export default function Materials() {
   useEffect(() => {
     if (activeTab !== 'po-generator') return
     if (!selectedServiceTypeId) return
-    if (myRole !== 'dev' && myRole !== 'master_technician' && myRole !== 'assistant') return
+    if (myRole !== 'dev' && myRole !== 'master_technician' && !isAssistantLike(myRole)) return
     void loadPoGeneratorLedger()
   }, [activeTab, selectedServiceTypeId, myRole, loadPoGeneratorLedger])
 
@@ -1412,7 +1413,7 @@ export default function Materials() {
     return <div style={{ padding: '2rem', textAlign: 'center' }}>Loading…</div>
   }
 
-  if (myRole !== 'dev' && myRole !== 'master_technician' && myRole !== 'assistant' && myRole !== 'estimator' && myRole !== 'primary' && myRole !== 'superintendent') {
+  if (myRole !== 'dev' && myRole !== 'master_technician' && !isAssistantLike(myRole) && myRole !== 'estimator' && myRole !== 'primary' && myRole !== 'superintendent') {
     return <div style={{ padding: '2rem', textAlign: 'center' }}>Access denied. Only devs, masters, assistants, estimators, primaries, and superintendents can access materials.</div>
   }
 
@@ -6026,7 +6027,7 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
       )}
 
       {/* PO Generator Tab */}
-      {activeTab === 'po-generator' && (myRole === 'dev' || myRole === 'master_technician' || myRole === 'assistant') && (
+      {activeTab === 'po-generator' && (myRole === 'dev' || myRole === 'master_technician' || isAssistantLike(myRole)) && (
         <div>
           <div
             style={{
@@ -6437,7 +6438,7 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
       )}
 
       {/* Supply Houses Tab */}
-      {activeTab === 'supply-houses' && (myRole === 'dev' || myRole === 'master_technician' || myRole === 'assistant') && (
+      {activeTab === 'supply-houses' && (myRole === 'dev' || myRole === 'master_technician' || isAssistantLike(myRole)) && (
         <SupplyHousesTab
           supplyHouses={supplyHouses}
           onSupplyHousesChange={loadSupplyHouses}

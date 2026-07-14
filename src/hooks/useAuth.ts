@@ -25,6 +25,7 @@ export type UserRole =
   | 'estimator'
   | 'primary'
   | 'superintendent'
+  | 'controller'
 
 interface UseAuthReturn {
   user: User | null

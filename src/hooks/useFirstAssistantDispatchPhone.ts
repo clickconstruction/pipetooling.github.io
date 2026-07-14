@@ -25,7 +25,8 @@ export function useFirstAssistantDispatchPhone(enabled: boolean): ParsedPhone | 
         const { data, error } = await supabase
           .from('users')
           .select('phone')
-          .eq('role', 'assistant')
+          // 'controller' is live in the DB enum but the generated types are stale.
+          .in('role', ['assistant', 'controller' as 'assistant'])
           .is('archived_at', null)
           .not('phone', 'is', null)
           .order('name', { ascending: true })

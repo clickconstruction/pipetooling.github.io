@@ -12313,6 +12313,7 @@ export type Database = {
         | "primary"
         | "superintendent"
         | "helpers"
+        | "controller"
       workflow_status: "draft" | "active" | "completed"
       writeup_disclosure: "discussed_with_subject" | "withheld_from_subject"
     }
@@ -12473,6 +12474,7 @@ export const Constants = {
         "primary",
         "superintendent",
         "helpers",
+        "controller",
       ],
       workflow_status: ["draft", "active", "completed"],
       writeup_disclosure: ["discussed_with_subject", "withheld_from_subject"],

@@ -45,6 +45,7 @@ import {
 import { pageUnderlineTabStyle } from '../lib/pageUnderlineTabStyle'
 import { openInExternalBrowser } from '../lib/openInExternalBrowser'
 import { useAuth } from '../hooks/useAuth'
+import { isAssistantLike } from '../lib/subcontractorLikeRole'
 import { useMatchMedia } from '../hooks/useMatchMedia'
 import { useSendBackCollectPaymentFlowNotice } from '../hooks/useSendBackCollectPaymentFlowNotice'
 import { useMercuryLedgerNicknames } from '../hooks/useMercuryLedgerNicknames'
@@ -299,7 +300,7 @@ export default function Jobs() {
     () =>
       authRole === 'dev' ||
       authRole === 'master_technician' ||
-      authRole === 'assistant' ||
+      isAssistantLike(authRole) ||
       authRole === 'superintendent',
     [authRole],
   )
@@ -495,10 +496,10 @@ export default function Jobs() {
     () =>
       authRole === 'dev' ||
       authRole === 'master_technician' ||
-      authRole === 'assistant' ||
+      isAssistantLike(authRole) ||
       myRole === 'dev' ||
       myRole === 'master_technician' ||
-      myRole === 'assistant',
+      isAssistantLike(myRole),
     [authRole, myRole],
   )
 
@@ -983,7 +984,7 @@ export default function Jobs() {
     const can =
       authRole === 'dev' ||
       authRole === 'master_technician' ||
-      authRole === 'assistant' ||
+      isAssistantLike(authRole) ||
       authRole === 'primary'
     if (!can) return 'Only dev, master, assistant, and primary can record payments'
     const hasUnalloc =
@@ -1311,7 +1312,7 @@ export default function Jobs() {
   async function loadUsers() {
     if (!authUser?.id) return
     const [usersRes, meRes] = await Promise.all([
-      supabase.from('users').select('id, name, email, role, notes').in('role', ['assistant', 'master_technician', 'subcontractor', 'helpers', 'estimator', 'primary', 'superintendent']).order('name'),
+      supabase.from('users').select('id, name, email, role, notes').in('role', ['assistant', 'controller' as 'assistant', 'master_technician', 'subcontractor', 'helpers', 'estimator', 'primary', 'superintendent']).order('name'),
       supabase.from('users').select('role').eq('id', authUser.id).single(),
     ])
     let usersList = (usersRes.data as UserRow[]) ?? []
@@ -1396,7 +1397,7 @@ export default function Jobs() {
 
   function byKind(k: PersonKind): ({ source: 'user'; id: string; name: string; email: string | null } | ({ source: 'people' } & Person))[] {
     const userRole = KIND_TO_USER_ROLE[k]
-    const fromUsers = users.filter((u) => u.role === userRole).map((u) => ({ source: 'user' as const, id: u.id, name: u.name, email: u.email }))
+    const fromUsers = users.filter((u) => (k === 'assistant' ? isAssistantLike(u.role) : u.role === userRole)).map((u) => ({ source: 'user' as const, id: u.id, name: u.name, email: u.email }))
     const fromPeople = people.filter((p) => p.kind === k && !isAlreadyUser(p.email)).map((p) => ({ source: 'people' as const, ...p }))
     return [...fromUsers, ...fromPeople].sort((a, b) => a.name.localeCompare(b.name))
   }
@@ -3236,7 +3237,7 @@ ${totalsHtml}
       return
     }
     // Redirect masters/assistants away from Teams tab
-    const isMasterOrAssistant = authRole === 'master_technician' || authRole === 'assistant' || myRole === 'master_technician' || myRole === 'assistant'
+    const isMasterOrAssistant = authRole === 'master_technician' || isAssistantLike(authRole) || myRole === 'master_technician' || isAssistantLike(myRole)
     if (isMasterOrAssistant && tab === 'teams-summary') {
       setActiveTab('reports')
       setSearchParams((p) => {
@@ -4562,9 +4563,9 @@ ${totalsHtml}
   const isSuperintendent = authRole === 'superintendent' || myRole === 'superintendent'
   const showStagesAndBillingTabs = showPrimaryRestrictedTabs && !isSuperintendent
   const showTeamsTab = showPrimaryRestrictedTabs &&
-    authRole !== 'master_technician' && authRole !== 'assistant' &&
+    authRole !== 'master_technician' && !isAssistantLike(authRole) &&
     authRole !== 'superintendent' && myRole !== 'superintendent' &&
-    myRole !== 'master_technician' && myRole !== 'assistant'
+    myRole !== 'master_technician' && !isAssistantLike(myRole)
   const showTeamLaborTab = authRole !== 'assistant' && myRole !== 'assistant' &&
     authRole !== 'superintendent' && myRole !== 'superintendent'
   const showSuperintendentExtraTabs = !isSuperintendent
@@ -4817,7 +4818,7 @@ ${totalsHtml}
               }
               style={{ flex: 1, padding: '0.5rem 0.75rem', border: '1px solid var(--border-strong)', borderRadius: 4, boxSizing: 'border-box' }}
             />
-            {(['dev', 'master_technician', 'assistant'] as const).some(
+            {(['dev', 'master_technician', 'assistant', 'controller'] as const).some(
               (r) => r === authRole || r === myRole,
             ) ? (
               <button
@@ -4891,7 +4892,7 @@ ${totalsHtml}
                 <span>and session notes</span>
               </span>
             ) : null}
-            {(['dev', 'assistant'] as const).includes((authRole || myRole) as 'dev' | 'assistant') && (
+            {(['dev', 'assistant', 'controller'] as const).includes((authRole || myRole) as 'dev' | 'assistant' | 'controller') && (
               <button
                 type="button"
                 onClick={toggleStagesHamMode}
@@ -4974,7 +4975,7 @@ ${totalsHtml}
                 />
               </svg>
             </button>
-            {(['dev', 'master_technician', 'assistant'] as const).some(
+            {(['dev', 'master_technician', 'assistant', 'controller'] as const).some(
               (r) => r === authRole || r === myRole,
             ) ? (
               <button
@@ -7482,7 +7483,7 @@ ${totalsHtml}
             const collectionsTotal = collectionsRows.reduce((s, r) => s + stageRowBilledRemainingAmount(r), 0)
             // Server RPC is authoritative; this only controls button visibility (same office pool as other stage moves).
             const canManageCollections =
-              authRole === 'dev' || authRole === 'master_technician' || authRole === 'assistant'
+              authRole === 'dev' || authRole === 'master_technician' || isAssistantLike(authRole)
             return (
               <>
                 <div id="stages-waiting" style={{ margin: '1.5rem 0 0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
@@ -7635,7 +7636,7 @@ ${totalsHtml}
                         !(
                           authRole === 'dev' ||
                           authRole === 'master_technician' ||
-                          authRole === 'assistant' ||
+                          isAssistantLike(authRole) ||
                           authRole === 'primary'
                         )
                       }
@@ -7654,7 +7655,7 @@ ${totalsHtml}
                           !(
                             authRole === 'dev' ||
                             authRole === 'master_technician' ||
-                            authRole === 'assistant' ||
+                            isAssistantLike(authRole) ||
                             authRole === 'primary'
                           )
                             ? 'var(--bg-muted)'
@@ -7663,7 +7664,7 @@ ${totalsHtml}
                           !(
                             authRole === 'dev' ||
                             authRole === 'master_technician' ||
-                            authRole === 'assistant' ||
+                            isAssistantLike(authRole) ||
                             authRole === 'primary'
                           )
                             ? 'not-allowed'
@@ -8555,7 +8556,7 @@ ${totalsHtml}
           printCostBreakdownJobId={printCostBreakdownJobId}
           setPrintCostBreakdownJobId={setPrintCostBreakdownJobId}
           canAccessBankingForParts={canAccessBankingForParts}
-          showTeamLaborAndProfit={authRole === 'dev' || authRole === 'master_technician'}
+          showTeamLaborAndProfit={authRole === 'dev' || authRole === 'master_technician' || authRole === 'controller'}
           nicknameByDebitCard={nicknameByDebitCard}
           tallyPartsLoading={tallyPartsLoading}
           laborJobsLoading={laborJobsLoading}

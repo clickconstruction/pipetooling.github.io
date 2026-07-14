@@ -207,7 +207,7 @@ export default function PeopleAppActivityPanel({ enabled, isDev, users, authUser
                 </thead>
                 <tbody>
                   {users
-                    .filter((u) => ['assistant', 'master_technician', 'primary'].includes(u.role))
+                    .filter((u) => ['assistant', 'master_technician', 'primary', 'controller'].includes(u.role))
                     .sort((a, b) => (a.name ?? '').localeCompare(b.name ?? ''))
                     .map((u) => {
                       const granted = activityViewerGrantSet.has(u.id)
@@ -303,7 +303,7 @@ export default function PeopleAppActivityPanel({ enabled, isDev, users, authUser
                     })}
                 </tbody>
               </table>
-              {users.filter((u) => ['assistant', 'master_technician', 'primary'].includes(u.role)).length === 0 && (
+              {users.filter((u) => ['assistant', 'master_technician', 'primary', 'controller'].includes(u.role)).length === 0 && (
                 <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0 }}>No eligible users loaded.</p>
               )}
             </div>

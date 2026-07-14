@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { withSupabaseRetry } from '../utils/errorHandling'
 import { useAuth } from './useAuth'
+import { isAssistantLike } from '../lib/subcontractorLikeRole'
 
 /**
  * Distinct people + transaction row counts for stale unlinked linked-card Mercury tally
@@ -23,7 +24,7 @@ export function useStaleTallyStaffFollowUp(minAgeDays: number): {
       setTransactionCount(null)
       return
     }
-    if (role !== 'dev' && role !== 'master_technician' && role !== 'assistant') {
+    if (role !== 'dev' && role !== 'master_technician' && !isAssistantLike(role)) {
       setPeopleCount(0)
       setTransactionCount(0)
       return

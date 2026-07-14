@@ -1,6 +1,7 @@
 import { supabase } from './supabase'
 import type { Database } from '../types/database'
 import { withSupabaseRetry } from '../utils/errorHandling'
+import { isAssistantLike } from './subcontractorLikeRole'
 
 export type TeamFeedbackSource = 'clock_out_prompt' | 'home_button' | 'comment_only'
 
@@ -193,7 +194,7 @@ export async function resolveManagerUserIdForFeedback(userId: string): Promise<s
   if (!me) return null
   const role = (me as { role: string }).role
   if (role === 'master_technician' || role === 'dev') return userId
-  if (role === 'assistant') {
+  if (isAssistantLike(role)) {
     const adoptions = await withSupabaseRetry(
       async () => supabase.from('master_assistants').select('master_id').eq('assistant_id', userId).limit(1),
       'resolveManager master_assistants'

@@ -8,7 +8,7 @@ import { useToastContext } from '../contexts/ToastContext'
 import { useEditProjectModal } from '../contexts/EditProjectModalContext'
 import { useJobThreadNotes } from '../hooks/useJobThreadNotes'
 import { JobThreadNotesPanel } from '../components/JobThreadNotesPanel'
-import { isSubcontractorLikeRole } from '../lib/subcontractorLikeRole'
+import { isAssistantLike, isSubcontractorLikeRole } from '../lib/subcontractorLikeRole'
 import { formatProjectNumberLabel } from '../lib/projectNumberLabel'
 import { toDatetimeLocal, fromDatetimeLocal } from '../utils/datetimeLocal'
 import { APP_CALENDAR_TZ } from '../utils/dateUtils'
@@ -259,10 +259,10 @@ export default function Workflow() {
   const [projectionsLedgerExpanded, setProjectionsLedgerExpanded] = useState(false)
   const [projectJobs, setProjectJobs] = useState<Array<{ id: string; hcp_number: string; job_name: string; status: string }>>([])
 
-  const canManageStages = userRole === 'dev' || userRole === 'master_technician' || userRole === 'assistant' || userRole === 'superintendent'
+  const canManageStages = userRole === 'dev' || userRole === 'master_technician' || isAssistantLike(userRole) || userRole === 'superintendent'
   const isDevOrMaster = userRole === 'dev' || userRole === 'master_technician'
-  const canSeePrivateNotesAndApprove = userRole === 'dev' || userRole === 'master_technician' || userRole === 'assistant' || userRole === 'superintendent'
-  const canAssignSuperintendents = userRole === 'dev' || userRole === 'master_technician' || userRole === 'assistant'
+  const canSeePrivateNotesAndApprove = userRole === 'dev' || userRole === 'master_technician' || isAssistantLike(userRole) || userRole === 'superintendent'
+  const canAssignSuperintendents = userRole === 'dev' || userRole === 'master_technician' || isAssistantLike(userRole)
 
   function isRowDefaultCollapsed(step: Step): boolean {
     return step.status === 'completed' || step.status === 'approved' || step.status === 'skipped' || step.status === 'pending'
@@ -727,7 +727,7 @@ export default function Workflow() {
     } else {
       setAddingPOToStep(null)
       await refreshSteps()
-      if (steps.length > 0 && (userRole === 'dev' || userRole === 'master_technician' || userRole === 'assistant' || userRole === 'superintendent')) {
+      if (steps.length > 0 && (userRole === 'dev' || userRole === 'master_technician' || isAssistantLike(userRole) || userRole === 'superintendent')) {
         const stepIds = steps.map(s => s.id)
         await loadLineItemsForSteps(stepIds)
       }
@@ -769,7 +769,7 @@ export default function Workflow() {
       setAddingInvoiceToStep(null)
       setInvoiceSearchText('')
       await refreshSteps()
-      if (steps.length > 0 && (userRole === 'dev' || userRole === 'master_technician' || userRole === 'assistant' || userRole === 'superintendent')) {
+      if (steps.length > 0 && (userRole === 'dev' || userRole === 'master_technician' || isAssistantLike(userRole) || userRole === 'superintendent')) {
         const stepIds = steps.map(s => s.id)
         await loadLineItemsForSteps(stepIds)
       }
@@ -777,7 +777,7 @@ export default function Workflow() {
   }
 
   async function loadLineItemsForSteps(stepIds: string[]) {
-    if (userRole !== 'dev' && userRole !== 'master_technician' && userRole !== 'assistant' && userRole !== 'superintendent') return
+    if (userRole !== 'dev' && userRole !== 'master_technician' && !isAssistantLike(userRole) && userRole !== 'superintendent') return
     if (stepIds.length === 0) {
       setLineItems({})
       return
@@ -865,7 +865,7 @@ export default function Workflow() {
 
   // Load line items when steps and userRole are available (staggered to reduce concurrent DB load)
   useEffect(() => {
-    if (steps.length > 0 && (userRole === 'dev' || userRole === 'master_technician' || userRole === 'assistant' || userRole === 'superintendent')) {
+    if (steps.length > 0 && (userRole === 'dev' || userRole === 'master_technician' || isAssistantLike(userRole) || userRole === 'superintendent')) {
       const stepIds = steps.map(s => s.id)
       const t = setTimeout(() => loadLineItemsForSteps(stepIds), 50)
       return () => clearTimeout(t)
@@ -2100,7 +2100,7 @@ export default function Workflow() {
     // Reload line items to ensure UI updates for assistants
     if (
       steps.length > 0 &&
-      (userRole === 'dev' || userRole === 'master_technician' || userRole === 'assistant' || userRole === 'superintendent')
+      (userRole === 'dev' || userRole === 'master_technician' || isAssistantLike(userRole) || userRole === 'superintendent')
     ) {
       const stepIds = steps.map(s => s.id)
       await loadLineItemsForSteps(stepIds)
@@ -2131,7 +2131,7 @@ export default function Workflow() {
     await refreshSteps()
     if (
       steps.length > 0 &&
-      (userRole === 'dev' || userRole === 'master_technician' || userRole === 'assistant' || userRole === 'superintendent')
+      (userRole === 'dev' || userRole === 'master_technician' || isAssistantLike(userRole) || userRole === 'superintendent')
     ) {
       await loadLineItemsForSteps(steps.map((s) => s.id))
     }
@@ -2164,7 +2164,7 @@ export default function Workflow() {
       // Reload line items to ensure UI updates for assistants
       if (
         steps.length > 0 &&
-        (userRole === 'dev' || userRole === 'master_technician' || userRole === 'assistant' || userRole === 'superintendent')
+        (userRole === 'dev' || userRole === 'master_technician' || isAssistantLike(userRole) || userRole === 'superintendent')
       ) {
         const stepIds = steps.map(s => s.id)
         await loadLineItemsForSteps(stepIds)

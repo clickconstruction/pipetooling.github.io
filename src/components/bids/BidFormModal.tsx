@@ -13,6 +13,7 @@ import {
 } from '../../lib/bidDateSentDisplay'
 import { getBidServiceTypeTag } from '../../utils/unifiedJobBidSearch'
 import { useJobFormModal } from '../../contexts/JobFormModalContext'
+import { isAssistantLike } from '../../lib/subcontractorLikeRole'
 
 type Bid = Database['public']['Tables']['bids']['Row']
 type Customer = Database['public']['Tables']['customers']['Row']
@@ -408,7 +409,7 @@ export function BidFormModal(props: BidFormModalProps) {
                   <input
                     type="text"
                     value={editingBid ? bidNumber : ''}
-                    onChange={(e) => { if (editingBid && (myRole === 'dev' || myRole === 'master_technician' || myRole === 'assistant')) { setBidNumber(e.target.value); setError(null) } }}
+                    onChange={(e) => { if (editingBid && (myRole === 'dev' || myRole === 'master_technician' || isAssistantLike(myRole))) { setBidNumber(e.target.value); setError(null) } }}
                     placeholder={editingBid ? 'e.g. 456' : 'Auto'}
                     readOnly={!editingBid || myRole === 'estimator' || myRole === 'primary'}
                     disabled={!editingBid || myRole === 'estimator' || myRole === 'primary'}
@@ -720,7 +721,7 @@ export function BidFormModal(props: BidFormModalProps) {
                       boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
                     }}
                   >
-                    {(myRole === 'dev' || myRole === 'master_technician' || myRole === 'assistant' || myRole === 'estimator') && (
+                    {(myRole === 'dev' || myRole === 'master_technician' || isAssistantLike(myRole) || myRole === 'estimator') && (
                       <div
                         onClick={() => {
                           openNewCustomerModal?.({

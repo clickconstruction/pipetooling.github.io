@@ -10,6 +10,7 @@ import {
 import { upsertBidNotesReadWatermark } from '../lib/userBidNotesReadState'
 import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
 import { useAuth } from '../hooks/useAuth'
+import { isAssistantLike } from '../lib/subcontractorLikeRole'
 import { useWorkingBoardInboxCount } from '../hooks/useWorkingBoardInboxCount'
 import { useNarrowViewport640 } from '../hooks/useNarrowViewport640'
 import { useBidPricingEngine } from '../hooks/useBidPricingEngine'
@@ -71,7 +72,7 @@ type GcBuilder = Database['public']['Tables']['bids_gc_builders']['Row']
 type Customer = Database['public']['Tables']['customers']['Row']
 type CustomerContact = Database['public']['Tables']['customer_contacts']['Row']
 type CustomerContactPerson = Database['public']['Tables']['customer_contact_persons']['Row']
-type UserRole = 'dev' | 'master_technician' | 'assistant' | 'estimator' | 'primary' | 'superintendent'
+type UserRole = 'dev' | 'master_technician' | 'assistant' | 'controller' | 'estimator' | 'primary' | 'superintendent'
 
 const BID_DATE_SENT_ATTESTATION_NULLS: Record<
   | 'bid_date_sent_attested_at'
@@ -356,7 +357,7 @@ export default function Bids() {
     () =>
       myRole === 'dev' ||
       myRole === 'master_technician' ||
-      myRole === 'assistant' ||
+      isAssistantLike(myRole) ||
       myRole === 'primary' ||
       myRole === 'estimator',
     [myRole],
@@ -732,7 +733,7 @@ export default function Bids() {
     } else {
       setSuperintendentServiceTypeIds(null)
     }
-    if (role !== 'dev' && role !== 'master_technician' && role !== 'assistant' && role !== 'estimator' && role !== 'primary' && role !== 'superintendent') {
+    if (role !== 'dev' && role !== 'master_technician' && !isAssistantLike(role) && role !== 'estimator' && role !== 'primary' && role !== 'superintendent') {
       setLoading(false)
       return
     }
@@ -1365,7 +1366,7 @@ export default function Bids() {
   }, [location.search, bids, serviceTypes.length, selectedServiceTypeId, setSearchParams])
 
   useEffect(() => {
-    if (myRole === 'dev' || myRole === 'master_technician' || myRole === 'assistant' || myRole === 'estimator' || myRole === 'primary' || myRole === 'superintendent') {
+    if (myRole === 'dev' || myRole === 'master_technician' || isAssistantLike(myRole) || myRole === 'estimator' || myRole === 'primary' || myRole === 'superintendent') {
       const load = async () => {
         try {
           // Load service types first
@@ -1381,7 +1382,7 @@ export default function Bids() {
   
   // Reload data when service type changes (skip when Builder Review is active; that tab loads all data)
   useEffect(() => {
-    if (selectedServiceTypeId && activeTab !== 'builder-review' && (myRole === 'dev' || myRole === 'master_technician' || myRole === 'assistant' || myRole === 'estimator' || myRole === 'primary' || myRole === 'superintendent')) {
+    if (selectedServiceTypeId && activeTab !== 'builder-review' && (myRole === 'dev' || myRole === 'master_technician' || isAssistantLike(myRole) || myRole === 'estimator' || myRole === 'primary' || myRole === 'superintendent')) {
       const t = setTimeout(async () => {
         await Promise.all([loadCustomers(), loadBids(selectedServiceTypeId), loadCustomerContacts(), loadCustomerContactPersons(), loadEstimatorUsers(), loadFixtureTypes(), loadTakeoffBookVersions(), loadLaborBookVersions(), loadTemplatePriceBookVersions(), loadMaterialTemplates()])
       }, 80)
@@ -1391,7 +1392,7 @@ export default function Bids() {
 
   // Load all customers and bids when Builder Review tab is active (no service type filter)
   useEffect(() => {
-    if (activeTab === 'builder-review' && (myRole === 'dev' || myRole === 'master_technician' || myRole === 'assistant' || myRole === 'estimator' || myRole === 'primary' || myRole === 'superintendent')) {
+    if (activeTab === 'builder-review' && (myRole === 'dev' || myRole === 'master_technician' || isAssistantLike(myRole) || myRole === 'estimator' || myRole === 'primary' || myRole === 'superintendent')) {
       const t = setTimeout(async () => {
         await Promise.all([
           loadCustomers(),
@@ -1901,7 +1902,7 @@ export default function Bids() {
       plan_pages: planPages.trim() || null,
       customer_id: gcCustomerId || null,
       gc_builder_id: null,
-      ...(editingBid && (myRole === 'dev' || myRole === 'master_technician' || myRole === 'assistant') ? { bid_number: bidNumber.trim() || null } : {}),
+      ...(editingBid && (myRole === 'dev' || myRole === 'master_technician' || isAssistantLike(myRole)) ? { bid_number: bidNumber.trim() || null } : {}),
       project_name: projectName.trim() || null,
       address: address.trim() || null,
       gc_contact_name: gcContactName.trim() || null,
@@ -2007,7 +2008,7 @@ export default function Bids() {
       plan_pages: planPages.trim() || null,
       customer_id: gcCustomerId || null,
       gc_builder_id: null,
-      ...(editingBid && (myRole === 'dev' || myRole === 'master_technician' || myRole === 'assistant') ? { bid_number: bidNumber.trim() || null } : {}),
+      ...(editingBid && (myRole === 'dev' || myRole === 'master_technician' || isAssistantLike(myRole)) ? { bid_number: bidNumber.trim() || null } : {}),
       project_name: projectName.trim() || null,
       address: address.trim() || null,
       gc_contact_name: gcContactName.trim() || null,
@@ -2357,7 +2358,7 @@ export default function Bids() {
   const canPackageAndSendBidPricing =
     myRole === 'dev' ||
     myRole === 'master_technician' ||
-    myRole === 'assistant' ||
+    isAssistantLike(myRole) ||
     myRole === 'estimator'
 
   function getGcBuilderPhone(): string {
@@ -2411,7 +2412,7 @@ export default function Bids() {
     )
   }
 
-  if (myRole !== 'dev' && myRole !== 'master_technician' && myRole !== 'assistant' && myRole !== 'estimator' && myRole !== 'primary' && myRole !== 'superintendent') {
+  if (myRole !== 'dev' && myRole !== 'master_technician' && myRole !== 'assistant' && myRole !== 'controller' && myRole !== 'estimator' && myRole !== 'primary' && myRole !== 'superintendent') {
     return (
       <div style={{ padding: '2rem' }}>
         <p>You do not have access to Bids.</p>
@@ -2993,7 +2994,7 @@ export default function Bids() {
       {activeTab === 'estimators' && (
         <BidsEstimatorsTab
           active={activeTab === 'estimators'}
-          viewerRole={myRole}
+          viewerRole={myRole === 'controller' ? 'assistant' : myRole}
           onOpenBidPreview={(bidId) => {
             const b = bids.find((x) => x.id === bidId)
             if (b) bidPreview?.openBidPreviewFromBid(b)
@@ -3384,7 +3385,7 @@ export default function Bids() {
         saveBid={saveBid}
         form={bidForm}
         estimatorUsers={estimatorUsers}
-        myRole={myRole}
+        myRole={myRole === 'controller' ? 'assistant' : myRole}
         visibleServiceTypes={visibleServiceTypes}
         bidDateSent={bidDateSent}
         handleBidDateSentInputChange={handleBidDateSentInputChange}

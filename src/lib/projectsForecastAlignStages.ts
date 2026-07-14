@@ -253,6 +253,7 @@ export const ALIGN_EDITOR_ROLES = new Set<string>([
   'master_technician',
   'assistant',
   'superintendent',
+  'controller',
 ])
 
 export function canAlignStages(role: string | null | undefined): boolean {

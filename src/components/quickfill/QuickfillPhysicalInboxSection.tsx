@@ -5,6 +5,7 @@ import { useAuth } from '../../hooks/useAuth'
 import { useChecklistAddModal } from '../../contexts/ChecklistAddModalContext'
 import { useDispatchTaskModal } from '../../contexts/DispatchTaskModalContext'
 import { useEstimatorTaskModal } from '../../contexts/EstimatorTaskModalContext'
+import { isAssistantLike } from '../../lib/subcontractorLikeRole'
 
 const NOTE_MAX_CHARS = 10_000
 
@@ -44,9 +45,9 @@ export function QuickfillPhysicalInboxSection({ markButtonPalette, onConfirmMark
   const [inboxNote, setInboxNote] = useState('')
 
   const showDispatchEstimator =
-    role === 'dev' || role === 'master_technician' || role === 'assistant' || role === 'estimator'
+    role === 'dev' || role === 'master_technician' || isAssistantLike(role) || role === 'estimator'
   const showTask =
-    role === 'dev' || role === 'master_technician' || role === 'assistant' || role === 'primary' || role === 'estimator'
+    role === 'dev' || role === 'master_technician' || isAssistantLike(role) || role === 'primary' || role === 'estimator'
 
   const itemsNotedCount = useMemo(() => {
     return inboxNote.split(/\r?\n/).filter((line) => line.trim().length > 0).length

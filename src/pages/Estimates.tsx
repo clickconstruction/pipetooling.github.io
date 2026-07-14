@@ -13,6 +13,7 @@ import {
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
+import { isAssistantLike } from '../lib/subcontractorLikeRole'
 import { useNarrowViewport640 } from '../hooks/useNarrowViewport640'
 import type { UserRole } from '../hooks/useAuth'
 import type { Tables } from '../types/database'
@@ -114,6 +115,7 @@ const ESTIMATE_CATALOG_EDITOR_ROLES = new Set<UserRole>([
   'dev',
   'master_technician',
   'assistant',
+  'controller',
   'estimator',
   'primary',
   'superintendent',
@@ -663,7 +665,7 @@ async function resolveMasterUserId(
   role: UserRole | null,
 ): Promise<string | null> {
   if (role === 'dev' || role === 'master_technician') return userId
-  if (role === 'assistant') {
+  if (isAssistantLike(role)) {
     const { data } = await supabase
       .from('master_assistants')
       .select('master_id')
@@ -2142,6 +2144,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
                 .select('id, name, email, role')
                 .in('role', [
                   'assistant',
+                  'controller' as 'assistant',
                   'master_technician',
                   'subcontractor',
                   'helpers',
@@ -2531,7 +2534,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
     for (const opt of others) {
       const r = opt.role
       if (r === 'master_technician') masters.push(opt)
-      else if (r === 'assistant') assistants.push(opt)
+      else if (isAssistantLike(r)) assistants.push(opt)
       else if (r === 'superintendent') supers.push(opt)
       else rest.push(opt)
     }

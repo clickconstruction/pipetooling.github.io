@@ -54,6 +54,7 @@ import { formatBidLedgerShortLine } from '../../lib/ledgerDisplayPrefixes'
 import { QUICKFILL_SECTION_BANNER_BOX_STYLE } from '../../lib/quickfillSectionBannerStyle'
 import { groupRosterUsersByAuthRoleSection } from '../../lib/usersTabRosterRoleSections'
 import { blocksToSegments } from '../../lib/quickfillScheduleSegments'
+import { isAssistantLike } from '../../lib/subcontractorLikeRole'
 import {
   QuickfillScheduleUserRow,
   QUICKFILL_SCHEDULE_ADD_COL_WIDTH,
@@ -96,7 +97,7 @@ export function QuickfillScheduleSection({
   const ledgerPrefixMap = useLedgerPrefixMap()
   const canEditSchedule = role != null && CAN_USE_SCHEDULE_DISPATCH_EDIT_ROLES.has(role)
   const showClockStripScopeToggle =
-    role === 'dev' || role === 'master_technician' || role === 'assistant'
+    role === 'dev' || role === 'master_technician' || isAssistantLike(role)
   const showStripSubjectMyTimeEditor = showClockStripScopeToggle || role === 'superintendent'
   const [scheduleMyTimeEditor, setScheduleMyTimeEditor] = useState<{
     subjectUserId: string
@@ -146,7 +147,7 @@ export function QuickfillScheduleSection({
     if (!hideAssistantsEstimators) return sortedUsers
     return sortedUsers.filter(({ id }) => {
       const r = roleByUserId.get(id)
-      return r !== 'assistant' && r !== 'estimator'
+      return !isAssistantLike(r) && r !== 'estimator'
     })
   }, [sortedUsers, hideAssistantsEstimators, roleByUserId])
 

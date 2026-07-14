@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-14 (v2.661)
+last_updated: 2026-07-14 (v2.662)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -15,8 +15,11 @@ last_updated: 2026-07-14 (v2.661)
  version_range: "v2.581+ (reverse chronological)"
  
  key_sections:
-   - name: "Latest Version (v2.661)"
+   - name: "Latest Version (v2.662)"
      line: ~2022
+     description: "New controller role (Phase 3): acts like an assistant everywhere (DB is_assistant() and client isAssistantLike() are assistant-LIKE; ~230 role-gate conversions across ~70 files) plus dev-level financial visibility — has_payroll_access(), People Payroll/Hours, cost matrix, unredacted dashboards, Job Summary labor/profit. Not dev admin. Enum + capabilities migrations; create-user/invite-user accept controller (redeploy required)."
+   - name: "Previous Version (v2.661)"
+     line: ~2032
      description: "Phase 2 of the pay-visibility overhaul: is_assistant_of_pay_approved_master() dissolved — every assistant gets the identical clock-management toolset (clock sessions, crew, hours, attendance, write-ups, contracts, licenses, vehicles, housing, week-fence bypass) via is_assistant(); pay stays locked per v2.660; master_assistants is now pure team structure."
    - name: "Previous Version (v2.660)"
      line: ~2032
@@ -2033,6 +2036,15 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.662)
+
+### Roles — new `controller`: acts like an assistant, sees like a dev on money (2026-07-14, PR #312)
+Phase 3 of the pay-visibility overhaul. A bookkeeper/financial-controller role for when someone who is not a dev must process wages — the durable answer to "assistants never see pay".
+- **DB** ([`20260714210000`](../supabase/migrations/20260714210000_add_user_role_controller.sql) enum + [`20260714213000`](../supabase/migrations/20260714213000_controller_capabilities.sql) capabilities): **`is_controller()`**; **`is_assistant()` redefined assistant-LIKE** (`role IN ('assistant','controller')`) so every assistant grant consolidated in Phases 1–2 (clock sessions, crew, hours, attendance, write-ups, contracts, licenses, vehicles, housing, week-fence bypass) extends to controller via one function edit; **`has_payroll_access()`** gains controller (wages, pay-stub family, `person_offsets`); users-visibility policy, `list_people_pay_flags` / `get_man_hours_by_job` gates, cost-matrix grantee trigger, and `handle_new_user` invite list each add `'controller'`.
+- **Client**: new [`isAssistantLike()`](../src/lib/subcontractorLikeRole.ts) mirrors the DB helper; **~230 viewer-gate conversions across ~70 files** (Dashboard 33, Jobs 15, Layout 12, Banking 12, Workflow 10, quickfill/hooks/lib sweep) — role labels, pickers, and the v2.660 pay-redaction paths stay strictly-assistant, so a controller takes the FULL dashboard-financials path (unredacted). [`usePeopleAccess`](../src/hooks/usePeopleAccess.ts): controller gets `canAccessPay` + Hours/Licenses/Contracts (`isDev` stays false — no user management, impersonation, backups, or dev deletes). Wage gates (`showJobDetailProfitSection`, `showJobCostBreakdownTeamLabor`, Job Summary `showTeamLaborAndProfit`, Projects day-modal) include controller. `ROLES` picker offers Controller; `UserRole` + `database.ts` enum extended.
+- **Edge**: `create-user` / `invite-user` `validRoles` gain `'controller'` — **both must be redeployed** (CI does not deploy edge functions).
+- **Known follow-ups**: controller users bucket under "Other" on People→Users roster sections; Employment tab `ROLE_TO_KIND` omits controller; six `as`-casts removable after the post-apply type regen.
 
 ## Latest Updates (v2.661)
 
