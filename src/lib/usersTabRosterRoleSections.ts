@@ -6,6 +6,7 @@
 export const AUTH_USER_ROLE_SECTION_ORDER = [
   'master_technician',
   'assistant',
+  'controller',
   'primary',
   'estimator',
   'superintendent',
@@ -19,6 +20,7 @@ export type AuthUserRoleSectionKey = (typeof AUTH_USER_ROLE_SECTION_ORDER)[numbe
 export const AUTH_USER_ROLE_SECTION_LABEL: Record<AuthUserRoleSectionKey, string> = {
   master_technician: 'Master Technicians',
   assistant: 'Assistants',
+  controller: 'Controllers',
   primary: 'Primaries',
   estimator: 'Estimators',
   superintendent: 'Superintendents',

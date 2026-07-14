@@ -27,6 +27,7 @@ export type PersonKind =
   | 'estimator'
   | 'primary'
   | 'superintendent'
+  | 'controller'
 
 /**
  * Page-owned dependencies the roster loaders/handlers reach into. These live on
