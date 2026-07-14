@@ -7,6 +7,7 @@ import { useJobDetailModal } from '../../contexts/JobDetailModalContext'
 import { formatCurrency } from '../../lib/format'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import type { Database } from '../../types/database'
+import { isAssistantLike } from '../../lib/subcontractorLikeRole'
 
 type LedgerPaymentPick = Pick<
   Database['public']['Tables']['jobs_ledger_payments']['Row'],
@@ -136,7 +137,7 @@ export function BilledAwaitingPaymentSection() {
     return () => { cancelled = true }
   }, [authUser?.id])
 
-  const canAccess = role === 'dev' || role === 'master_technician' || role === 'assistant'
+  const canAccess = role === 'dev' || role === 'master_technician' || isAssistantLike(role)
   const jobDetailModal = useJobDetailModal()
   useReportQuickfillSectionMetric(
     'billed-awaiting',

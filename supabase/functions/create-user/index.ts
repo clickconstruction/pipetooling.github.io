@@ -86,7 +86,7 @@ serve(async (req) => {
     }
 
     // Validate role
-    const validRoles = ['dev', 'master_technician', 'assistant', 'subcontractor', 'helpers', 'estimator', 'primary', 'superintendent']
+    const validRoles = ['dev', 'master_technician', 'assistant', 'subcontractor', 'helpers', 'estimator', 'primary', 'superintendent', 'controller']
     if (!validRoles.includes(role)) {
       return new Response(
         JSON.stringify({ error: `Invalid role. Must be one of: ${validRoles.join(', ')}` }),

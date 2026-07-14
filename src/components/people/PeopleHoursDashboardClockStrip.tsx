@@ -32,6 +32,7 @@ import {
   PeopleHoursClockStripMiniCalendar,
 } from './PeopleHoursClockStripMiniCalendar'
 import { shiftWorkDateYmd } from '../../lib/peopleHoursClockStripSelectedDay'
+import { isAssistantLike } from '../../lib/subcontractorLikeRole'
 
 const HOURS_DAY_CORRECT_BLOCK_TOAST =
   'This day is marked correct in People → Hours. Unmark it there to edit time from the Dashboard.'
@@ -63,7 +64,7 @@ export function PeopleHoursDashboardClockStrip({ onSessionsChanged, addSessionPe
   const narrowViewport640 = useNarrowViewport640()
   const { showToast } = useToastContext()
   const showClockStripScopeToggle =
-    role === 'dev' || role === 'master_technician' || role === 'assistant'
+    role === 'dev' || role === 'master_technician' || isAssistantLike(role)
   const showStripSubjectMyTimeEditor =
     showClockStripScopeToggle || role === 'superintendent'
 

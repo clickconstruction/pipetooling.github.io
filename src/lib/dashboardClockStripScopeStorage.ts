@@ -1,9 +1,10 @@
 import type { UserRole } from '../hooks/useAuth'
+import { isAssistantLike } from './subcontractorLikeRole'
 
 export const DASHBOARD_CLOCK_STRIP_SCOPE_KEY = 'dashboard_clock_strip_scope'
 
 export function stripScopeEligible(role: UserRole | null): boolean {
-  return role === 'dev' || role === 'master_technician' || role === 'assistant'
+  return role === 'dev' || role === 'master_technician' || isAssistantLike(role)
 }
 
 /** Explicit stored preference wins; missing key defaults org-wide for dev/master/assistant. */

@@ -1,7 +1,8 @@
 import { supabase } from './supabase'
 import { withSupabaseRetry } from '../utils/errorHandling'
 
-const OFFSET_USER_ROLES = ['assistant', 'master_technician', 'subcontractor', 'helpers', 'estimator', 'primary', 'superintendent'] as const
+// 'controller' is live in the DB enum but the generated types are stale, hence the cast.
+const OFFSET_USER_ROLES = ['assistant', 'master_technician', 'subcontractor', 'helpers', 'estimator', 'primary', 'superintendent', 'controller' as 'assistant'] as const
 
 export type FetchOffsetPersonNameOptionsArgs = {
   authUserId: string

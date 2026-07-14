@@ -7,7 +7,7 @@ import { useMatchMedia } from '../hooks/useMatchMedia'
 import type { Database } from '../types/database'
 import { withSupabaseRetry } from '../utils/errorHandling'
 import { APP_CALENDAR_TZ } from '../utils/dateUtils'
-import { isSubcontractorLikeRole } from '../lib/subcontractorLikeRole'
+import { isAssistantLike, isSubcontractorLikeRole } from '../lib/subcontractorLikeRole'
 import { aggregateCalendarClockedHoursByDate } from '../lib/calendarClockedHoursByDate'
 import { CLOCK_SESSION_CALENDAR_SELECT } from '../lib/clockSessionSelect'
 import {
@@ -619,7 +619,7 @@ export default function Calendar() {
 
   async function loadBids(userRole: UserRole | null, estServiceTypeIds: string[] | null) {
     // Only show bids for users who can access the Bids page
-    if (userRole !== 'dev' && userRole !== 'master_technician' && userRole !== 'assistant' && userRole !== 'estimator') {
+    if (userRole !== 'dev' && userRole !== 'master_technician' && !isAssistantLike(userRole) && userRole !== 'estimator') {
       setBids([])
       return
     }
@@ -659,7 +659,7 @@ export default function Calendar() {
   }
 
   async function loadProspectCallbacks(userRole: UserRole | null) {
-    if (userRole !== 'dev' && userRole !== 'master_technician' && userRole !== 'assistant') {
+    if (userRole !== 'dev' && userRole !== 'master_technician' && !isAssistantLike(userRole)) {
       setProspectCallbacks([])
       return
     }

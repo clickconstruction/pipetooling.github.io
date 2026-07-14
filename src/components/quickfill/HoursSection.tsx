@@ -21,6 +21,7 @@ import {
 import type { ClockSessionRow } from '../../types/clockSessions'
 import { mergeToUnified, type UnifiedAssignment } from '../../utils/crewAssignments'
 import { useLedgerPrefixMap } from '../../contexts/LedgerDisplayPrefixContext'
+import { isAssistantLike } from '../../lib/subcontractorLikeRole'
 
 /** Narrow view of the canonical pay-config row (single source of truth for field types). */
 type PayConfigRow = Pick<PayConfigRowFull, 'person_name' | 'is_salary' | 'show_in_hours' | 'show_in_cost_matrix' | 'record_hours_but_salary'>
@@ -159,7 +160,7 @@ export function HoursSection() {
       setCanAccessHours(true)
       return
     }
-    if (role === 'assistant') {
+    if (isAssistantLike(role)) {
       setCanAccessHours(true)
       return
     }

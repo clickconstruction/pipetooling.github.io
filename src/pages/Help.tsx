@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
+import { isAssistantLike } from '../lib/subcontractorLikeRole'
 import { HELP_GUIDES } from '../lib/helpGuideRegistry'
 import {
   groupGuidesByCategory,
@@ -58,7 +59,7 @@ export default function Help() {
 
   // Office roles already see everything; the toggle only matters for scoped roles.
   const seesAllByDefault =
-    role === null || role === 'dev' || role === 'master_technician' || role === 'assistant'
+    role === null || role === 'dev' || role === 'master_technician' || isAssistantLike(role)
   const visibleGuides = useMemo(
     () =>
       showAll || seesAllByDefault

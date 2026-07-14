@@ -4,6 +4,7 @@ import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
 import { useReportQuickfillSectionMetric } from '../../contexts/QuickfillSectionMetricsContext'
 import type { Database } from '../../types/database'
+import { isAssistantLike } from '../../lib/subcontractorLikeRole'
 
 type JobsLedgerRow = Database['public']['Tables']['jobs_ledger']['Row']
 type JobsLedgerMaterial = Database['public']['Tables']['jobs_ledger_materials']['Row']
@@ -102,7 +103,7 @@ export function JobsBillingReminderSection({ minHcpNumber }: { minHcpNumber: num
     }
   }, [authUser?.id, minHcpNumber])
 
-  const canAccess = role === 'dev' || role === 'master_technician' || role === 'assistant'
+  const canAccess = role === 'dev' || role === 'master_technician' || isAssistantLike(role)
   const jobBillingOutstanding =
     counts == null ? null : counts.specificWork + counts.billedMaterials + counts.totalBill
   useReportQuickfillSectionMetric(

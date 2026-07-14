@@ -12,6 +12,7 @@ import {
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
+import { isAssistantLike } from '../lib/subcontractorLikeRole'
 import { useMercuryOrgNotesByTxId } from '../hooks/useMercuryOrgNotesByTxId'
 import { useToastContext } from '../contexts/ToastContext'
 import { withSupabaseRetry } from '../utils/errorHandling'
@@ -117,7 +118,7 @@ type BankingPageRole =
   | null
 
 function parseBankingView(params: URLSearchParams, role: BankingPageRole): BankingView {
-  if (role === 'assistant' || role === 'master_technician') {
+  if (isAssistantLike(role) || role === 'master_technician') {
     const tabRaw = params.get('tab')
     const mercuryTab: MercuryBankingTab =
       tabRaw === 'drag_sort'
@@ -1188,7 +1189,7 @@ export default function Banking() {
   const [approveByDefault, setApproveByDefault] = useState(false)
 
   const isDevBanking = myRole === 'dev'
-  const canAccessBanking = myRole === 'dev' || myRole === 'assistant' || myRole === 'master_technician'
+  const canAccessBanking = myRole === 'dev' || isAssistantLike(myRole) || myRole === 'master_technician'
 
   const bankingView = useMemo(() => parseBankingView(searchParams, myRole), [searchParams, myRole])
 
@@ -1264,7 +1265,7 @@ export default function Banking() {
       setSortingConfig(loadBankingSortingConfig(user.id))
       return
     }
-    if (myRole === 'assistant' || myRole === 'master_technician') {
+    if (isAssistantLike(myRole) || myRole === 'master_technician') {
       setSortingConfig(defaultBankingSortingConfig())
     }
   }, [user?.id, myRole])
@@ -1368,13 +1369,13 @@ export default function Banking() {
   }, [user?.id])
 
   useEffect(() => {
-    if (myRole && myRole !== 'dev' && myRole !== 'assistant' && myRole !== 'master_technician') {
+    if (myRole && myRole !== 'dev' && !isAssistantLike(myRole) && myRole !== 'master_technician') {
       navigate('/dashboard', { replace: true })
     }
   }, [myRole, navigate])
 
   useEffect(() => {
-    if (myRole !== 'master_technician' && myRole !== 'assistant') return
+    if (myRole !== 'master_technician' && !isAssistantLike(myRole)) return
     const product = searchParams.get('product')
     const tab = searchParams.get('tab')
     if (
@@ -1425,7 +1426,7 @@ export default function Banking() {
   }, [myRole, searchParams, setSearchParams])
 
   const loadAllRows = useCallback(async (options?: { silent?: boolean }) => {
-    if (myRole !== 'dev' && myRole !== 'assistant' && myRole !== 'master_technician') return
+    if (myRole !== 'dev' && !isAssistantLike(myRole) && myRole !== 'master_technician') return
     const silent = options?.silent === true
     const seq = ++listLoadSeqRef.current
     if (!silent) {
@@ -1465,7 +1466,7 @@ export default function Banking() {
   // RPC has no cap; PostgREST's project-level row cap still applies as the
   // ultimate ceiling, same as before.
   const loadUnlabeledRows = useCallback(async (options?: { silent?: boolean }) => {
-    if (myRole !== 'dev' && myRole !== 'assistant' && myRole !== 'master_technician') return
+    if (myRole !== 'dev' && !isAssistantLike(myRole) && myRole !== 'master_technician') return
     const silent = options?.silent === true
     const seq = ++listLoadSeqRef.current
     if (!silent) {
@@ -1501,7 +1502,7 @@ export default function Banking() {
   // list with the newest ACCOUNTING_LABELED_PAGE_SIZE rows and arms the cursor
   // so `loadLabeledNextPage` can keyset-scroll older rows.
   const loadLabeledFirstPage = useCallback(async (options?: { silent?: boolean }) => {
-    if (myRole !== 'dev' && myRole !== 'assistant' && myRole !== 'master_technician') return
+    if (myRole !== 'dev' && !isAssistantLike(myRole) && myRole !== 'master_technician') return
     const silent = options?.silent === true
     const seq = ++listLoadSeqRef.current
     labeledLoadingMoreRef.current = false
@@ -1549,7 +1550,7 @@ export default function Banking() {
   // Next keyset page for the "show labeled" view: appends older rows (id-deduped)
   // and advances the cursor. No-op unless a cursor is armed and more remain.
   const loadLabeledNextPage = useCallback(async () => {
-    if (myRole !== 'dev' && myRole !== 'assistant' && myRole !== 'master_technician') return
+    if (myRole !== 'dev' && !isAssistantLike(myRole) && myRole !== 'master_technician') return
     if (labeledLoadingMoreRef.current || !labeledHasMore || !labeledCursor) return
     // Snapshot the active-load token. If a first-page / realtime refresh fires
     // while this page is in flight, it bumps the token and we drop this
@@ -1617,7 +1618,7 @@ export default function Banking() {
   )
 
   const loadNicknames = useCallback(async () => {
-    if (myRole !== 'dev' && myRole !== 'assistant' && myRole !== 'master_technician') return
+    if (myRole !== 'dev' && !isAssistantLike(myRole) && myRole !== 'master_technician') return
     try {
       const data = await withSupabaseRetry(async () => {
         return supabase.from('mercury_account_nicknames').select('mercury_account_id, nickname')
@@ -1632,7 +1633,7 @@ export default function Banking() {
   }, [myRole, showToast])
 
   const loadDebitCardNicknames = useCallback(async () => {
-    if (myRole !== 'dev' && myRole !== 'assistant' && myRole !== 'master_technician') return
+    if (myRole !== 'dev' && !isAssistantLike(myRole) && myRole !== 'master_technician') return
     try {
       const data = await withSupabaseRetry(async () => {
         return supabase.from('mercury_debit_card_nicknames').select('mercury_debit_card_id, nickname')
@@ -1675,7 +1676,7 @@ export default function Banking() {
   // RPC. First mount fires once because the dispatcher identity is stable
   // across that initial paint.
   useEffect(() => {
-    if (myRole !== 'dev' && myRole !== 'assistant' && myRole !== 'master_technician') return
+    if (myRole !== 'dev' && !isAssistantLike(myRole) && myRole !== 'master_technician') return
     // Wait until the per-user Accounting prefs are hydrated so the dispatcher
     // picks the right loader on the first fetch (no default-vs-stored flash).
     if (!accountingPrefsHydrated) return

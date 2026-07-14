@@ -38,6 +38,7 @@ import { useMercuryLedgerNicknames } from '../../hooks/useMercuryLedgerNicknames
 import { APP_CALENDAR_TZ, denverCalendarDayKey, formatWorkDateYmdFriendly } from '../../utils/dateUtils'
 import { withSupabaseRetry } from '../../utils/errorHandling'
 import type { Database } from '../../types/database'
+import { isAssistantLike } from '../../lib/subcontractorLikeRole'
 
 type MercuryCandidate =
   Database['public']['Functions']['list_mercury_transactions_for_bank_payments']['Returns'][number]
@@ -87,7 +88,7 @@ const BANK_PAYMENTS_SUMMARY_CARD_STYLE: CSSProperties = {
 }
 
 function canRoleApplyBankPayments(role: string | null): boolean {
-  return role === 'dev' || role === 'master_technician' || role === 'assistant' || role === 'primary'
+  return role === 'dev' || role === 'master_technician' || isAssistantLike(role) || role === 'primary'
 }
 
 function KindBadgePill({

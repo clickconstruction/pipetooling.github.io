@@ -6,6 +6,7 @@ import { getAccessTokenForEdgeFunctions } from '../../lib/supabaseAccessTokenFor
 import { withSupabaseRetry } from '../../utils/errorHandling'
 import { useToastContext } from '../../contexts/ToastContext'
 import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
+import { isAssistantLike } from '../../lib/subcontractorLikeRole'
 
 function calendarDayKeyWithZone(ms: number, timeZone: string): string {
   const zone = timeZone.trim() || APP_CALENDAR_TZ
@@ -518,7 +519,7 @@ export default function RecurringEmailReportsModal({
   if (!open) return null
 
   const canConfigure =
-    authRole === 'dev' || authRole === 'master_technician' || authRole === 'assistant'
+    authRole === 'dev' || authRole === 'master_technician' || isAssistantLike(authRole)
 
   return (
     <div

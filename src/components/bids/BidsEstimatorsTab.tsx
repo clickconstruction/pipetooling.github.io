@@ -32,6 +32,7 @@ import {
 } from '../../lib/ledgerDisplayPrefixes'
 import type { Database } from '../../types/database'
 import { BidsEstimatorsExtraUsersModal } from './BidsEstimatorsExtraUsersModal'
+import { isAssistantLike } from '../../lib/subcontractorLikeRole'
 
 type UserRow = Pick<
   Database['public']['Tables']['users']['Row'],
@@ -108,7 +109,7 @@ const thEstimator: CSSProperties = {
 const todayCellBg: CSSProperties = { background: 'var(--bg-amber-tint)' }
 
 function canManageColumns(role: Database['public']['Enums']['user_role'] | null): boolean {
-  return role === 'dev' || role === 'master_technician' || role === 'assistant'
+  return role === 'dev' || role === 'master_technician' || isAssistantLike(role)
 }
 
 export function BidsEstimatorsTab({

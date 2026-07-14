@@ -22,6 +22,7 @@ import { recordNotComingInForUserAsStaff } from '../../lib/notComingInTimeOff'
 import { formatScheduleDispatchHubJobTitle } from '../../lib/scheduleDispatchHub'
 import type { JobScheduleBlockRow } from '../../lib/jobScheduleBlocks'
 import { formatRangeCompact } from '../../lib/userReviewRangeLabel'
+import { isAssistantLike } from '../../lib/subcontractorLikeRole'
 import {
   companyWeekStartSundayContaining,
   denverCalendarDayKey,
@@ -84,7 +85,7 @@ export function UserWeekScheduleSection({
   const narrow = useNarrowViewport640()
 
   const showClockStripScopeToggle =
-    role === 'dev' || role === 'master_technician' || role === 'assistant'
+    role === 'dev' || role === 'master_technician' || isAssistantLike(role)
   const showStripSubjectMyTimeEditor =
     showClockStripScopeToggle || role === 'superintendent'
 

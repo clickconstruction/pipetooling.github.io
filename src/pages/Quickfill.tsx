@@ -43,6 +43,7 @@ import {
 import { useToastContext } from '../contexts/ToastContext'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
+import { isAssistantLike } from '../lib/subcontractorLikeRole'
 import { useDispatchInbox } from '../hooks/useDispatchInbox'
 import { useQuickfillCompleteNoBillJobs } from '../hooks/useQuickfillCompleteNoBillJobs'
 import { useQuickfillStagesJobsWithoutCustomer } from '../hooks/useQuickfillStagesJobsWithoutCustomer'
@@ -602,7 +603,7 @@ function QuickfillPage() {
   // for these roles so the page does not jump down when the stale-tally / AR-bank
   // counts finish resolving. Inner banners self-hide when their counts are 0.
   const warningsSectionEligible = useMemo(() => {
-    return role === 'dev' || role === 'master_technician' || role === 'assistant'
+    return role === 'dev' || role === 'master_technician' || isAssistantLike(role)
   }, [role])
 
   const canAccessProspects = useMemo(
@@ -610,7 +611,7 @@ function QuickfillPage() {
       Boolean(
         authUser &&
           role &&
-          (['dev', 'master_technician', 'assistant'].includes(role) || (role === 'estimator' && estimatorProspectsAccess)),
+          (['dev', 'master_technician', 'assistant', 'controller'].includes(role) || (role === 'estimator' && estimatorProspectsAccess)),
       ),
     [authUser, role, estimatorProspectsAccess],
   )
@@ -629,7 +630,7 @@ function QuickfillPage() {
       if (!isSectionVisible(sectionId)) return false
       if (sectionId === 'warnings') return warningsSectionEligible
       if (sectionId === 'unpriced-fixtures') {
-        return role === 'dev' || role === 'master_technician' || role === 'assistant'
+        return role === 'dev' || role === 'master_technician' || isAssistantLike(role)
       }
       if (sectionId === 'no-customer-stages') return quickfillNoCustomerStages.fetchEnabled
       if (sectionId === 'complete-no-bill') return quickfillCompleteNoBill.fetchEnabled
@@ -639,10 +640,10 @@ function QuickfillPage() {
       }
       if (sectionId === 'prospects') return canAccessProspects
       if (sectionId === 'difficult-people') {
-        return role === 'dev' || role === 'master_technician' || role === 'assistant'
+        return role === 'dev' || role === 'master_technician' || isAssistantLike(role)
       }
       if (sectionId === 'unassigned-field-time') {
-        return role === 'dev' || role === 'master_technician' || role === 'assistant'
+        return role === 'dev' || role === 'master_technician' || isAssistantLike(role)
       }
       return true
     },
@@ -1195,7 +1196,7 @@ function QuickfillPage() {
                   : undefined
               }
               onCreateTripCharge={
-                role === 'dev' || role === 'master_technician' || role === 'assistant'
+                role === 'dev' || role === 'master_technician' || isAssistantLike(role)
                   ? (args) => setTripChargeTarget(args)
                   : undefined
               }

@@ -24,6 +24,7 @@ import {
   stripeModeForBillingFromRole,
 } from '../../lib/voidStripeInvoiceForRevert'
 import { syncJobToReadyToBillIfNoBilledInvoicesRemain } from '../../lib/syncJobToReadyToBillIfNoBilledInvoicesRemain'
+import { isAssistantLike } from '../../lib/subcontractorLikeRole'
 
 type JobsLedgerInvoice = Database['public']['Tables']['jobs_ledger_invoices']['Row']
 type JobsLedgerPayment = Database['public']['Tables']['jobs_ledger_payments']['Row']
@@ -217,13 +218,13 @@ export function HostedStripeBillPanel({
     isStripeHosted &&
     (authRole === 'dev' ||
       authRole === 'master_technician' ||
-      authRole === 'assistant' ||
+      isAssistantLike(authRole) ||
       authRole === 'primary')
 
   const canRoleVoidStripeHosted =
     authRole === 'dev' ||
     authRole === 'master_technician' ||
-    authRole === 'assistant' ||
+    isAssistantLike(authRole) ||
     authRole === 'primary'
 
   const voidStripeHostedFooterEligible =

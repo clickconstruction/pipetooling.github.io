@@ -125,7 +125,8 @@ export function useActiveAccountsManagement({ enabled, onDataChanged }: UseActiv
   async function updateRole(id: string, role: UserRole) {
     setUpdatingId(id)
     setError(null)
-    const { error: e } = await supabase.from('users').update({ role }).eq('id', id)
+    // 'controller' is live in the DB enum but the generated types are stale, hence the cast.
+    const { error: e } = await supabase.from('users').update({ role: role as Exclude<UserRole, 'controller'> }).eq('id', id)
     if (e) {
       setError(e.message)
     } else {

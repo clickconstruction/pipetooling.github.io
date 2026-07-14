@@ -8,6 +8,7 @@ import type { PayConfigRow } from '../../types/peoplePayConfig'
 import type { SalariedWorkdayPickerRow } from '../../lib/buildSalariedWorkdayPickerRows'
 import { SalaryWorkScheduleSettings } from '../SalaryWorkScheduleSettings'
 import { TimeOffSettings } from '../TimeOffSettings'
+import { isAssistantLike } from '../../lib/subcontractorLikeRole'
 
 type SettingsAccountSchedulingTabProps = {
   allSalariedDevNarrowViewport: boolean
@@ -100,7 +101,7 @@ export default function SettingsAccountSchedulingTab({
                     userId={authUser.id}
                     userPayName={myProfileName.trim()}
                     canEditPastDayOverrides={
-                      myRole === 'dev' || myRole === 'master_technician' || myRole === 'assistant'
+                      myRole === 'dev' || myRole === 'master_technician' || isAssistantLike(myRole)
                     }
                   />
                 </div>

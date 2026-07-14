@@ -42,7 +42,7 @@ import { useAppActivityHeartbeat } from '../hooks/useAppActivityHeartbeat'
 import { appActivityPageKey } from '../lib/appActivityPage'
 import { hardReloadFromRoot } from '../lib/hardReload'
 import { prefetchDashboardPhase1 } from '../lib/dashboardPrefetch'
-import { isSubcontractorLikeRole } from '../lib/subcontractorLikeRole'
+import { isAssistantLike, isSubcontractorLikeRole } from '../lib/subcontractorLikeRole'
 import { canLeaveJobFieldReport } from '../lib/canLeaveJobFieldReport'
 import { useJobModeEnabled } from '../hooks/useJobModeEnabled'
 import {
@@ -140,7 +140,7 @@ export default function Layout() {
     }
   }, [checklistAddModal, location.search, location.pathname, navigate])
   const headerSearchEligible =
-    role === 'dev' || role === 'master_technician' || role === 'assistant'
+    role === 'dev' || role === 'master_technician' || isAssistantLike(role)
   const navSearchOverlayBg = impersonating && isMobile ? '#fef3c7' : 'var(--chrome-bg)'
 
   const scheduleDashboardPrefetch = useCallback(() => {
@@ -285,14 +285,14 @@ export default function Layout() {
       role === 'primary' ||
       role === 'dev' ||
       role === 'master_technician' ||
-      role === 'assistant' ||
+      isAssistantLike(role) ||
       role === 'superintendent')
 
   const canShowChecklistNav =
     role === null ||
     role === 'dev' ||
     role === 'master_technician' ||
-    role === 'assistant' ||
+    isAssistantLike(role) ||
     role === 'estimator' ||
     role === 'primary' ||
     role === 'superintendent' ||
@@ -301,7 +301,7 @@ export default function Layout() {
   const canShowMapNav =
     role === 'dev' ||
     role === 'master_technician' ||
-    role === 'assistant' ||
+    isAssistantLike(role) ||
     role === 'estimator'
 
   const dashboardIcon = (
@@ -378,7 +378,7 @@ export default function Layout() {
             {dashboardIcon}
           </NavLink>
         ) : null}
-        {(role === 'dev' || role === 'assistant') && (
+        {(role === 'dev' || isAssistantLike(role)) && (
           <NavLink to="/quickfill" style={iconLinkStyle} title="Quickfill" aria-label="Quickfill">
             {quickfillIcon}
           </NavLink>
@@ -474,7 +474,7 @@ export default function Layout() {
     }
     return (
       <>
-        {!excludeHeaderLinks && (role === 'dev' || role === 'master_technician' || role === 'assistant') && (
+        {!excludeHeaderLinks && (role === 'dev' || role === 'master_technician' || isAssistantLike(role)) && (
           <NavLink to="/quickfill" style={({ isActive }) => ({ ...linkStyle({ isActive }), display: onNavClick ? 'flex' : 'inline-flex', alignItems: 'center', ...(onNavClick && { width: '100%', boxSizing: 'border-box' }) })} onClick={onNavClick} title="Quickfill" aria-label="Quickfill">
             {quickfillIcon}
           </NavLink>
@@ -499,18 +499,18 @@ export default function Layout() {
         )}
         {!isSubcontractorLikeRole(role) && (
           <>
-            {(role === 'dev' || role === 'master_technician' || role === 'assistant') && (
+            {(role === 'dev' || role === 'master_technician' || isAssistantLike(role)) && (
               <>
                 <NavLink to="/estimates" style={linkStyle} onClick={onNavClick}>Estimates</NavLink>
                 <NavLink to="/jobs" style={linkStyle} onClick={onNavClick}>Jobs</NavLink>
               </>
             )}
-            {(role === 'dev' || role === 'master_technician' || role === 'assistant' || role === 'superintendent') && (
+            {(role === 'dev' || role === 'master_technician' || isAssistantLike(role) || role === 'superintendent') && (
               <NavLink
                 to="/schedule-dispatch"
                 style={({ isActive }) => ({
                   ...linkStyle({ isActive }),
-                  ...(role === 'assistant' ? { fontWeight: 700 } : {}),
+                  ...(isAssistantLike(role) ? { fontWeight: 700 } : {}),
                 })}
                 onClick={onNavClick}
                 title="Dispatch"
@@ -519,7 +519,7 @@ export default function Layout() {
                 Dispatch
               </NavLink>
             )}
-            {(role === 'dev' || role === 'master_technician' || role === 'assistant') && (
+            {(role === 'dev' || role === 'master_technician' || isAssistantLike(role)) && (
               <>
                 <NavLink to="/projects" style={linkStyle} onClick={onNavClick}>Projects</NavLink>
                 <NavLink to="/bids" style={linkStyle} onClick={onNavClick}>Bids</NavLink>
@@ -1009,7 +1009,7 @@ export default function Layout() {
                   role === null ||
                   role === 'dev' ||
                   role === 'master_technician' ||
-                  role === 'assistant') && (
+                  isAssistantLike(role)) && (
                   <NavLink
                     to="/documents"
                     onClick={() => setGearOpen(false)}
@@ -1097,7 +1097,7 @@ export default function Layout() {
                     Map
                   </NavLink>
                 )}
-                {(role === 'dev' || role === 'assistant' || role === 'master_technician') && (
+                {(role === 'dev' || isAssistantLike(role) || role === 'master_technician') && (
                   <NavLink
                     to="/banking"
                     onClick={() => setGearOpen(false)}

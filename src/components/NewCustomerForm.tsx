@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import type { Database } from '../types/database'
+import { isAssistantLike } from '../lib/subcontractorLikeRole'
 
 type CustomerRow = Database['public']['Tables']['customers']['Row']
 type UserRole = 'dev' | 'master_technician' | 'assistant' | 'subcontractor' | 'helpers' | 'estimator'
@@ -130,10 +131,10 @@ export default function NewCustomerForm({ showQuickFill = false, onCreated, onCa
   }, [user?.id])
 
   useEffect(() => {
-    if (!user?.id || (myRole !== 'assistant' && myRole !== 'dev' && myRole !== 'master_technician' && myRole !== 'estimator')) return
+    if (!user?.id || (!isAssistantLike(myRole) && myRole !== 'dev' && myRole !== 'master_technician' && myRole !== 'estimator')) return
     setMastersLoading(true)
     ;(async () => {
-      if (myRole === 'assistant') {
+      if (isAssistantLike(myRole)) {
         const { data: adoptions, error: adoptionsErr } = await supabase
           .from('master_assistants')
           .select('master_id')
@@ -204,7 +205,7 @@ export default function NewCustomerForm({ showQuickFill = false, onCreated, onCa
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError(null)
-    if ((myRole === 'assistant' || myRole === 'dev' || myRole === 'estimator') && !masterUserId) {
+    if ((isAssistantLike(myRole) || myRole === 'dev' || myRole === 'estimator') && !masterUserId) {
       setError('Please select a customer owner (master).')
       return
     }
@@ -255,7 +256,7 @@ export default function NewCustomerForm({ showQuickFill = false, onCreated, onCa
   const title = mode === 'modal' ? 'Add customer' : 'New customer'
 
   const missingFields: string[] = []
-  if ((myRole === 'assistant' || myRole === 'dev' || myRole === 'estimator') && !masterUserId) missingFields.push('Master')
+  if ((isAssistantLike(myRole) || myRole === 'dev' || myRole === 'estimator') && !masterUserId) missingFields.push('Master')
   const canSubmit = missingFields.length === 0
 
   return (
@@ -378,7 +379,7 @@ export default function NewCustomerForm({ showQuickFill = false, onCreated, onCa
             style={{ width: '100%', padding: '0.5rem' }}
           />
         </div>
-        {(myRole === 'assistant' || myRole === 'dev' || myRole === 'master_technician' || myRole === 'estimator') && (
+        {(isAssistantLike(myRole) || myRole === 'dev' || myRole === 'master_technician' || myRole === 'estimator') && (
           <div style={{ marginBottom: '1rem' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: 4 }}>
               <button
@@ -398,7 +399,7 @@ export default function NewCustomerForm({ showQuickFill = false, onCreated, onCa
                 {customerMasterExpanded ? '\u25BC' : '\u25B6'}
               </button>
               <label htmlFor="ncf-master" style={{ marginBottom: 0, cursor: 'pointer' }} onClick={() => setCustomerMasterExpanded((e) => !e)}>
-                Customer Master {(myRole === 'assistant' || myRole === 'dev' || myRole === 'estimator') ? '*' : ''}
+                Customer Master {(isAssistantLike(myRole) || myRole === 'dev' || myRole === 'estimator') ? '*' : ''}
               </label>
               {masterUserId && !customerMasterExpanded && (
                 <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>
@@ -410,9 +411,9 @@ export default function NewCustomerForm({ showQuickFill = false, onCreated, onCa
               <>
                 {mastersLoading ? (
                   <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>Loading masters...</p>
-                ) : (myRole === 'assistant' || myRole === 'dev' || myRole === 'estimator') && availableMasters.length === 0 ? (
+                ) : (isAssistantLike(myRole) || myRole === 'dev' || myRole === 'estimator') && availableMasters.length === 0 ? (
                   <p style={{ fontSize: '0.875rem', color: 'var(--text-red-700)' }}>
-                    {myRole === 'assistant'
+                    {isAssistantLike(myRole)
                       ? 'No masters have adopted you yet. Ask a master to adopt you in Settings.'
                       : 'No masters found.'}
                   </p>
@@ -422,7 +423,7 @@ export default function NewCustomerForm({ showQuickFill = false, onCreated, onCa
                       id="ncf-master"
                       value={masterUserId}
                       onChange={(e) => setMasterUserId(e.target.value)}
-                      required={myRole === 'assistant' || myRole === 'dev' || myRole === 'estimator'}
+                      required={isAssistantLike(myRole) || myRole === 'dev' || myRole === 'estimator'}
                       disabled={myRole === 'master_technician'}
                       style={{ width: '100%', padding: '0.5rem' }}
                     >

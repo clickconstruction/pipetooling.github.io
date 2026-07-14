@@ -5,6 +5,7 @@ import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy } 
 import { CSS } from '@dnd-kit/utilities'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
+import { isAssistantLike } from '../lib/subcontractorLikeRole'
 import { useChecklistAddModal } from '../contexts/ChecklistAddModalContext'
 import { ChecklistItemEditModal } from '../components/ChecklistItemEditModal'
 import ChecklistItemMuteModal from '../components/ChecklistItemMuteModal'
@@ -85,7 +86,7 @@ export default function Checklist() {
       setActiveTab(tab)
     } else if (!tab && role !== null) {
       const defaultTab =
-        role === 'dev' || role === 'master_technician' || role === 'assistant' ? 'review' : 'today'
+        role === 'dev' || role === 'master_technician' || isAssistantLike(role) ? 'review' : 'today'
       setSearchParams((p) => {
         const next = new URLSearchParams(p)
         next.set('tab', defaultTab)
@@ -94,10 +95,10 @@ export default function Checklist() {
     }
   }, [searchParams, role])
 
-  const canManageChecklists = role === 'dev' || role === 'master_technician' || role === 'assistant'
+  const canManageChecklists = role === 'dev' || role === 'master_technician' || isAssistantLike(role)
   /** Matches is_dev_or_master_or_assistant() in DB (includes primary) for roadmap structure + staff overrides */
   const canEditTechTree =
-    role === 'dev' || role === 'master_technician' || role === 'assistant' || role === 'primary'
+    role === 'dev' || role === 'master_technician' || isAssistantLike(role) || role === 'primary'
   const [editItemId, setEditItemId] = useState<string | null>(null)
 
   const onRoadmapUrlParamChange = useCallback(

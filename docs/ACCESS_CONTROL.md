@@ -72,15 +72,16 @@ when_to_read:
 
 Pipetooling implements comprehensive role-based access control (RBAC) using eight distinct user roles, each with specific permissions tailored to their responsibilities.
 
-### Eight User Roles
+### Nine User Roles
 1. **dev** - System administrators with full access
 2. **master_technician** - Project managers and business owners
-3. **assistant** - Support staff working under masters
+3. **assistant** - Support staff working under masters. Manages clock cards, hours, crew, contracts, licenses — but **can never read individual pay** (wages, pay stubs; DB-enforced since v2.660). Being adopted by a pay-approved master confers no extra powers (v2.661).
 4. **subcontractor** - External workers assigned to specific tasks
 5. **helpers** - Field workers with **the same app routing, RLS parity, and Clock/Dispatch service-type rules as subcontractors**; scoped via `helpers_service_type_ids` (same semantics as `subcontractor_service_type_ids`)
 6. **estimator** - Bid estimation specialists
 7. **primary** - Materials and job reports specialist (Reports and Billing tabs on Jobs; Bids full access; Dashboard with Recent Reports and Send task)
 8. **superintendent** - Run jobs, manage subcontractors, draft bids (assigned projects only; no People page)
+9. **controller** - Bookkeeper/financial controller (v2.662): **acts like an assistant everywhere** (client `isAssistantLike()`, DB `is_assistant()` are assistant-LIKE) **plus dev-level financial visibility** — Payroll tab, wages/pay stubs (`has_payroll_access()`), cost matrix, Job Summary labor/profit, Cost breakdown team labor. Not dev admin (no user management, impersonation, backups, deletes).
 
 **Adding a new role?** See [ADDING_A_NEW_ROLE.md](./ADDING_A_NEW_ROLE.md) for a step-by-step guide.
 

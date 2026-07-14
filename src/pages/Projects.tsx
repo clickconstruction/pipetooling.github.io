@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
+import { isAssistantLike } from '../lib/subcontractorLikeRole'
 import { useNarrowViewport640 } from '../hooks/useNarrowViewport640'
 import { useNewProjectModal } from '../contexts/NewProjectModalContext'
 import { useEditProjectModal } from '../contexts/EditProjectModalContext'
@@ -99,7 +100,7 @@ export default function Projects() {
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<Set<ProjectStatus>>(new Set())
 
-  const canAssignSuperintendents = myRole === 'dev' || myRole === 'master_technician' || myRole === 'assistant'
+  const canAssignSuperintendents = myRole === 'dev' || myRole === 'master_technician' || isAssistantLike(myRole)
   const narrow = useNarrowViewport640()
 
   const visibleProjects = useMemo(() => {
@@ -391,7 +392,7 @@ export default function Projects() {
     <>
       {(() => {
         const showStaffActions =
-          myRole === 'dev' || myRole === 'master_technician' || myRole === 'assistant'
+          myRole === 'dev' || myRole === 'master_technician' || isAssistantLike(myRole)
         const showSearchInput = projects.length > 0
         if (!showStaffActions && !showSearchInput) return null
         return (

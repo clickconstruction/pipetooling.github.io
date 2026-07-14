@@ -37,6 +37,16 @@ export function usePeopleAccess(authUserId: string | undefined) {
         setCanSeePushStatus(true)
         return
       }
+      if (role === 'controller') {
+        // Assistant-like + dev-level financial visibility (v2.662): full pay/hours access,
+        // but not dev admin (isDev stays false).
+        setCanAccessPay(true)
+        setCanAccessHours(true)
+        setCanAccessLicenses(true)
+        setCanAccessContracts(true)
+        setCanSeePushStatus(true)
+        return
+      }
       if (role === 'assistant') {
         setCanAccessHours(true)
         setCanAccessLicenses(true)

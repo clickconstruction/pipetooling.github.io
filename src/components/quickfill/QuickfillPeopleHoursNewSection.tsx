@@ -17,6 +17,7 @@ import { syncSalaryClockSessionsForUserDay } from '../../lib/salaryScheduleSync'
 import { recordNotComingInForUserAsStaff } from '../../lib/notComingInTimeOff'
 import type { ClockSessionRow, DashboardStripSession } from '../../types/clockSessions'
 import { shiftWorkDateYmd } from '../../lib/peopleHoursClockStripSelectedDay'
+import { isAssistantLike } from '../../lib/subcontractorLikeRole'
 import {
   buildPeopleHoursClockStripMiniCalendarYmds,
   pendingWorkDateRangeFromMiniCalendarYmds,
@@ -109,7 +110,7 @@ export function QuickfillPeopleHoursNewSection() {
   }, [])
 
   const showClockStripScopeToggle =
-    role === 'dev' || role === 'master_technician' || role === 'assistant'
+    role === 'dev' || role === 'master_technician' || isAssistantLike(role)
   const showStripSubjectMyTimeEditor = showClockStripScopeToggle || role === 'superintendent'
   const orgWideStripEnabled = showClockStripScopeToggle && clockStripScope === 'everyone'
 

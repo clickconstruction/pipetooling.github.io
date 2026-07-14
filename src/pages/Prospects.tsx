@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams, useLocation, Link } from 'react-router-do
 import { supabase } from '../lib/supabase'
 import { loadProspectTeamActivity, type ProspectTeamRow } from '../lib/prospectTeamActivity'
 import { useAuth } from '../hooks/useAuth'
+import { isAssistantLike } from '../lib/subcontractorLikeRole'
 import { useToastContext } from '../contexts/ToastContext'
 import NewCustomerForm, { type NewCustomerFormPayload } from '../components/NewCustomerForm'
 
@@ -347,7 +348,7 @@ export default function Prospects() {
   // Team tab state (dev and assistant) - last 30 days
   const [teamDataByDate, setTeamDataByDate] = useState<Record<string, ProspectTeamRow[]>>({})
   const [teamLoading, setTeamLoading] = useState(false)
-  const canAccessTeamTab = authRole === 'dev' || authRole === 'assistant'
+  const canAccessTeamTab = authRole === 'dev' || isAssistantLike(authRole)
 
   useEffect(() => {
     const params = new URLSearchParams(location.search)
@@ -1411,7 +1412,7 @@ export default function Prospects() {
   async function getEffectiveMasterId(): Promise<string | null> {
     if (!authUser?.id) return null
     if (authRole === 'dev' || authRole === 'master_technician') return authUser.id
-    if (authRole === 'assistant') {
+    if (isAssistantLike(authRole)) {
       const { data: adoptions } = await supabase
         .from('master_assistants')
         .select('master_id')
@@ -1507,7 +1508,7 @@ export default function Prospects() {
   const canAccessFollowUp =
     authUser &&
     authRole &&
-    (['dev', 'master_technician', 'assistant'].includes(authRole) ||
+    (['dev', 'master_technician', 'assistant', 'controller'].includes(authRole) ||
       (authRole === 'estimator' && estimatorProspectsAccess))
 
   if (authLoading) {

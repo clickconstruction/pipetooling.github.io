@@ -4,7 +4,7 @@ import { withSupabaseRetry } from '../utils/errorHandling'
 import type { Database } from '../types/database'
 import { useAuth, type UserRole } from './useAuth'
 
-const NICKNAME_ROLES: UserRole[] = ['dev', 'master_technician', 'assistant']
+const NICKNAME_ROLES: UserRole[] = ['dev', 'master_technician', 'assistant', 'controller']
 
 function canLoadNicknames(role: UserRole | null): boolean {
   return role !== null && NICKNAME_ROLES.includes(role)

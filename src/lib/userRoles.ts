@@ -11,4 +11,5 @@ export const ROLES: UserRole[] = [
   'estimator',
   'primary',
   'superintendent',
+  'controller',
 ]

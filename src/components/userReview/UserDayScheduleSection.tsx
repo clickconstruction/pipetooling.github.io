@@ -43,6 +43,7 @@ import {
 import { DashboardMyTimeDayEditorModal } from '../DashboardMyTimeDayEditorModal'
 import { ScheduleBlockPreviewModal } from './ScheduleBlockPreviewModal'
 import type { JobScheduleBlockRow } from '../../lib/jobScheduleBlocks'
+import { isAssistantLike } from '../../lib/subcontractorLikeRole'
 import {
   APP_CALENDAR_TZ,
   companyWeekStartSundayContaining,
@@ -173,7 +174,7 @@ export function UserDayScheduleSection({
 
   const canEditSchedule = role != null && CAN_USE_SCHEDULE_DISPATCH_EDIT_ROLES.has(role)
   const showClockStripScopeToggle =
-    role === 'dev' || role === 'master_technician' || role === 'assistant'
+    role === 'dev' || role === 'master_technician' || isAssistantLike(role)
   const showStripSubjectMyTimeEditor = showClockStripScopeToggle || role === 'superintendent'
 
   const [scheduleMyTimeEditor, setScheduleMyTimeEditor] = useState<{

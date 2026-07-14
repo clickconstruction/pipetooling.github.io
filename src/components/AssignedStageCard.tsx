@@ -13,7 +13,7 @@ import {
 } from 'lucide-react'
 import type { Database } from '../types/database'
 import type { UserRole } from '../hooks/useAuth'
-import { isSubcontractorLikeRole } from '../lib/subcontractorLikeRole'
+import { isAssistantLike, isSubcontractorLikeRole } from '../lib/subcontractorLikeRole'
 
 type Step = Database['public']['Tables']['project_workflow_steps']['Row']
 export type AssignedStep = Step & {
@@ -74,7 +74,7 @@ export default function AssignedStageCard({
 }: AssignedStageCardProps) {
   const status = (step.status ?? 'pending') as StepStatus
   const d = daysOpen(step.started_at, step.ended_at)
-  const canApproveReject = role === 'dev' || role === 'master_technician' || role === 'assistant' || role === 'superintendent'
+  const canApproveReject = role === 'dev' || role === 'master_technician' || isAssistantLike(role) || role === 'superintendent'
 
   return (
     <div className={`assignedStageCard assignedStageCard--${status}`}>

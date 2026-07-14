@@ -4,4 +4,5 @@ export const CAN_USE_SCHEDULE_DISPATCH_EDIT_ROLES = new Set([
   'master_technician',
   'assistant',
   'superintendent',
+  'controller',
 ])

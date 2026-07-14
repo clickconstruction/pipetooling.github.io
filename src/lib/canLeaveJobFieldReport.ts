@@ -1,4 +1,5 @@
 import type { UserRole } from '../hooks/useAuth'
+import { isAssistantLike } from './subcontractorLikeRole'
 
 /** Same rule as Dashboard “Leave Report” / field report flows. */
 export function canLeaveJobFieldReport(role: UserRole | string | null | undefined): boolean {
@@ -8,7 +9,7 @@ export function canLeaveJobFieldReport(role: UserRole | string | null | undefine
     role === 'helpers' ||
     role === 'dev' ||
     role === 'master_technician' ||
-    role === 'assistant' ||
+    isAssistantLike(role) ||
     role === 'primary' ||
     role === 'superintendent' ||
     role === 'estimator'

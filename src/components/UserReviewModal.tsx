@@ -22,12 +22,13 @@ const PRINT_BODY_CLASS = 'printing-user-review'
 const PRINT_SCOPE_CLASS = 'user-review-modal-print-scope'
 const PRINT_STYLE_ID = 'user-review-modal-print-style'
 
-const BANKING_ROLES = new Set(['dev', 'master_technician', 'assistant'])
+const BANKING_ROLES = new Set(['dev', 'master_technician', 'assistant', 'controller'])
 const SWITCH_SUBJECT_ROLES = new Set([
   'dev',
   'master_technician',
   'assistant',
   'superintendent',
+  'controller',
 ])
 
 const PRINT_STYLE_CSS = `

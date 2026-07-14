@@ -6,6 +6,7 @@ import { type Dispatch, type FormEvent, type SetStateAction } from 'react'
 import type { PersonRow, UserRow } from '../../types/settingsRows'
 import TeamFeedbackDevSettingsBlock from '../team-feedback/TeamFeedbackDevSettingsBlock'
 import ActiveAccountsPanel from './ActiveAccountsPanel'
+import { isAssistantLike } from '../../lib/subcontractorLikeRole'
 
 type PageAccessRow = {
   page: string
@@ -243,7 +244,7 @@ export default function SettingsPeopleTab({
                 )}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', maxWidth: 480 }}>
                   {users
-                    .filter((u) => u.role === 'assistant' || u.role === 'estimator')
+                    .filter((u) => isAssistantLike(u.role) || u.role === 'estimator')
                     .map((u) => {
                       const checked = dispatchMemberIds.has(u.id)
                       return (
@@ -269,7 +270,7 @@ export default function SettingsPeopleTab({
                         </label>
                       )
                     })}
-                  {users.filter((u) => u.role === 'assistant' || u.role === 'estimator').length === 0 && (
+                  {users.filter((u) => isAssistantLike(u.role) || u.role === 'estimator').length === 0 && (
                     <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>No assistant or estimator accounts in the system.</p>
                   )}
                 </div>
@@ -315,7 +316,7 @@ export default function SettingsPeopleTab({
                 )}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', maxWidth: 480 }}>
                   {users
-                    .filter((u) => u.role === 'assistant' || u.role === 'estimator')
+                    .filter((u) => isAssistantLike(u.role) || u.role === 'estimator')
                     .map((u) => {
                       const checked = estimatorMemberIds.has(u.id)
                       return (
@@ -341,7 +342,7 @@ export default function SettingsPeopleTab({
                         </label>
                       )
                     })}
-                  {users.filter((u) => u.role === 'assistant' || u.role === 'estimator').length === 0 && (
+                  {users.filter((u) => isAssistantLike(u.role) || u.role === 'estimator').length === 0 && (
                     <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>No assistant or estimator accounts in the system.</p>
                   )}
                 </div>

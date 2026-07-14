@@ -22,6 +22,7 @@ import {
 import { getBidServiceTypeTag } from '../utils/unifiedJobBidSearch'
 import { useLedgerPrefixMap } from '../contexts/LedgerDisplayPrefixContext'
 import { formatBidLedgerShortLine, formatJobLedgerShortLine } from '../lib/ledgerDisplayPrefixes'
+import { isAssistantLike } from '../lib/subcontractorLikeRole'
 
 const NOTES_PREVIEW_MAX = 80
 
@@ -266,7 +267,7 @@ export function CrewJobsBlock({
       let canAccessPay = false
       if (role === 'dev') canAccessPay = true
       else if (role === 'master_technician' && approvedIds.has(authUser.id)) canAccessPay = true
-      else if (role === 'assistant') canAccessPay = true
+      else if (isAssistantLike(role)) canAccessPay = true
       setCanAccess(canAccessPay || canViewCostMatrixShared)
     } finally {
       setCrewPayAccessResolved(true)

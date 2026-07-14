@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
 import { useReportQuickfillSectionMetric } from '../../contexts/QuickfillSectionMetricsContext'
+import { isAssistantLike } from '../../lib/subcontractorLikeRole'
 
 type Prospect = {
   id: string
@@ -55,7 +56,7 @@ export function CantReachSection() {
   const [saving, setSaving] = useState(false)
   const [isOpen, setIsOpen] = useState(true)
 
-  const canAccess = role === 'dev' || role === 'master_technician' || role === 'assistant'
+  const canAccess = role === 'dev' || role === 'master_technician' || isAssistantLike(role)
 
   async function loadCantReach() {
     if (!authUser?.id) return

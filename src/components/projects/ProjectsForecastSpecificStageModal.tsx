@@ -76,6 +76,7 @@ const EDITOR_ROLES = new Set([
   'master_technician',
   'assistant',
   'superintendent',
+  'controller',
 ])
 
 function canEditExpectedDates(role: string | null): boolean {

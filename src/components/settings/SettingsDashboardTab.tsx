@@ -28,6 +28,7 @@ import type { UserRow } from '../../types/settingsRows'
 import type { ReportForEdit } from '../ReportEditModal'
 import type { ReportForMyReports } from '../MyReportsModal'
 import JobBookSettingsSection from './JobBookSettingsSection'
+import { isAssistantLike } from '../../lib/subcontractorLikeRole'
 
 type NotificationHistoryRow = Database['public']['Tables']['notification_history']['Row']
 type TeamLeaderAssignment = {
@@ -385,7 +386,7 @@ export default function SettingsDashboardTab({
   return (
     <>
 
-      {(myRole === 'dev' || myRole === 'master_technician' || myRole === 'assistant') && (
+      {(myRole === 'dev' || myRole === 'master_technician' || isAssistantLike(myRole)) && (
         <div style={{ marginBottom: '2rem', border: '1px solid var(--border)', borderRadius: 8, background: 'var(--bg-subtle)' }}>
           <button
             type="button"
@@ -1023,7 +1024,7 @@ export default function SettingsDashboardTab({
         </div>
       )}
 
-      {(myRole === 'dev' || myRole === 'master_technician' || myRole === 'assistant') && (
+      {(myRole === 'dev' || myRole === 'master_technician' || isAssistantLike(myRole)) && (
         <div style={{ marginBottom: '2rem', border: '1px solid var(--border)', borderRadius: 8, background: 'var(--bg-subtle)' }}>
           <button
             type="button"
@@ -1129,11 +1130,11 @@ export default function SettingsDashboardTab({
         </div>
       )}
 
-      {(myRole === 'dev' || myRole === 'master_technician' || myRole === 'assistant') && (
+      {(myRole === 'dev' || myRole === 'master_technician' || isAssistantLike(myRole)) && (
         <JobBookSettingsSection onDbError={(msg) => setError(msg)} />
       )}
 
-      {(myRole === 'dev' || myRole === 'master_technician' || myRole === 'assistant') && (
+      {(myRole === 'dev' || myRole === 'master_technician' || isAssistantLike(myRole)) && (
         <div style={{ marginBottom: '2rem', border: '1px solid var(--border)', borderRadius: 8, background: 'var(--bg-subtle)' }}>
           <button
             type="button"
@@ -1513,7 +1514,7 @@ export default function SettingsDashboardTab({
         </div>
       )}
 
-      {(myRole === 'dev' || myRole === 'master_technician' || myRole === 'assistant') && (
+      {(myRole === 'dev' || myRole === 'master_technician' || isAssistantLike(myRole)) && (
         <div style={{ marginBottom: '2rem', border: '1px solid var(--border)', borderRadius: 8 }}>
           <button
             type="button"

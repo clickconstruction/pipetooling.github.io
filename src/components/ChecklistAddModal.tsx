@@ -7,6 +7,7 @@ import { getNextDisplayOrders } from '../utils/checklistOrder'
 import { SearchableMultiSelect } from './SearchableMultiSelect'
 import { SearchableSelect } from './SearchableSelect'
 import { syncChecklistTitleTextareaHeight } from '../lib/syncChecklistTitleTextareaHeight'
+import { isAssistantLike } from '../lib/subcontractorLikeRole'
 
 const FALLBACK_ASSIGNEE_EMAIL = 'taunya@clickplumbing.com'
 
@@ -105,7 +106,7 @@ export default function ChecklistAddModal({
     () =>
       role === 'dev' ||
       role === 'master_technician' ||
-      role === 'assistant' ||
+      isAssistantLike(role) ||
       role === 'primary' ||
       role === 'estimator' ||
       role === 'subcontractor' ||

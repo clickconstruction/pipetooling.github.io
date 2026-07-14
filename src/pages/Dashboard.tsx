@@ -34,7 +34,7 @@ import {
 } from '../lib/updateJobStatusClientFeedback'
 import { useAuth } from '../hooks/useAuth'
 import { useDocumentVisibility } from '../hooks/useDocumentVisibility'
-import { isSubcontractorLikeRole } from '../lib/subcontractorLikeRole'
+import { isAssistantLike, isSubcontractorLikeRole } from '../lib/subcontractorLikeRole'
 import { useJobModeEnabled } from '../hooks/useJobModeEnabled'
 import DashboardJobModeCard from '../components/jobMode/DashboardJobModeCard'
 import TurnawayModal from '../components/jobMode/TurnawayModal'
@@ -875,7 +875,7 @@ export default function Dashboard() {
   const { showToast } = useToastContext()
   const jobFormModal = useJobFormModal()
   const showClockStripScopeToggle =
-    role === 'dev' || role === 'master_technician' || role === 'assistant'
+    role === 'dev' || role === 'master_technician' || isAssistantLike(role)
   const showStripSubjectMyTimeEditor =
     showClockStripScopeToggle || role === 'superintendent'
   const pendingClockBannerAtMyTeamTop = Boolean(authUser?.id && !showClockStripScopeToggle)
@@ -1820,7 +1820,7 @@ export default function Dashboard() {
   }, [authUser?.id])
 
   useEffect(() => {
-    if (!authUser?.id || (role !== 'dev' && role !== 'master_technician' && role !== 'assistant')) {
+    if (!authUser?.id || (role !== 'dev' && role !== 'master_technician' && !isAssistantLike(role))) {
       setDashboardButtonVisibility(null)
       return
     }
@@ -1839,7 +1839,7 @@ export default function Dashboard() {
   }, [authUser?.id, role])
 
   useEffect(() => {
-    if (!authUser?.id || (role !== 'dev' && role !== 'master_technician' && role !== 'assistant')) {
+    if (!authUser?.id || (role !== 'dev' && role !== 'master_technician' && !isAssistantLike(role))) {
       setQuickButtonsPlacement('top')
       return
     }
@@ -1940,7 +1940,7 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (!authUser?.id) return
-    const showRecent = role === 'dev' || role === 'master_technician' || role === 'assistant' || role === 'primary'
+    const showRecent = role === 'dev' || role === 'master_technician' || isAssistantLike(role) || role === 'primary'
     if (!showRecent) return
     setRecentReportsLoading(true)
     const load = async () => {
@@ -1980,7 +1980,7 @@ export default function Dashboard() {
   }, [authUser?.id, role, isReportEnabledOnlyUser])
 
   useEffect(() => {
-    const showUpcomingInspections = role === 'dev' || role === 'master_technician' || role === 'assistant' || role === 'primary'
+    const showUpcomingInspections = role === 'dev' || role === 'master_technician' || isAssistantLike(role) || role === 'primary'
     if (!authUser?.id || !showUpcomingInspections) return
     setUpcomingInspectionsLoading(true)
     const today = new Date()
@@ -2008,7 +2008,7 @@ export default function Dashboard() {
     const hasBidsAccess =
       role === 'dev' ||
       role === 'master_technician' ||
-      role === 'assistant' ||
+      isAssistantLike(role) ||
       role === 'estimator' ||
       role === 'primary' ||
       role === 'superintendent'
@@ -2259,7 +2259,7 @@ export default function Dashboard() {
     const hasBidsAccess =
       role === 'dev' ||
       role === 'master_technician' ||
-      role === 'assistant' ||
+      isAssistantLike(role) ||
       role === 'estimator' ||
       role === 'primary' ||
       role === 'superintendent'
@@ -2391,7 +2391,7 @@ export default function Dashboard() {
   }, [myBids])
 
   const dashboardReportsEnabled =
-    role === 'dev' || role === 'master_technician' || role === 'assistant' || role === 'primary'
+    role === 'dev' || role === 'master_technician' || isAssistantLike(role) || role === 'primary'
   const dashboardReportsFilters = useMemo(
     () => [{ event: '*' as const, schema: 'public', table: 'reports' }],
     [],
@@ -2913,7 +2913,7 @@ export default function Dashboard() {
   }, [authUser?.id, role])
 
   useEffect(() => {
-    if (!authUser?.id || (role !== 'dev' && role !== 'master_technician' && role !== 'assistant')) return
+    if (!authUser?.id || (role !== 'dev' && role !== 'master_technician' && !isAssistantLike(role))) return
     setReadyToBillLoading(true)
     Promise.all([
       supabase
@@ -2936,7 +2936,7 @@ export default function Dashboard() {
   }, [authUser?.id, role])
 
   useEffect(() => {
-    if (!authUser?.id || (role !== 'dev' && role !== 'master_technician' && role !== 'assistant')) return
+    if (!authUser?.id || (role !== 'dev' && role !== 'master_technician' && !isAssistantLike(role))) return
     setWaitingForPaymentLoading(true)
     Promise.all([
       supabase
@@ -3031,7 +3031,7 @@ export default function Dashboard() {
   }
 
   async function refreshInvoices() {
-    if (role !== 'dev' && role !== 'master_technician' && role !== 'assistant') return
+    if (role !== 'dev' && role !== 'master_technician' && !isAssistantLike(role)) return
     const emptyPay = new Map<string, JobsLedgerPaymentRow[]>()
     const fetchInvoiceRows = async (status: string) => {
       const { data } = await supabase
@@ -4355,11 +4355,11 @@ export default function Dashboard() {
     setAssignedStagesExpanded(hasInProgress)
   }, [assignedLoading, assignedSteps])
 
-  const showSubscribed = role === 'dev' || role === 'master_technician' || role === 'assistant'
-  const showRecent = role === 'dev' || role === 'master_technician' || role === 'assistant' || role === 'primary'
-  const showFinancials = role === 'dev' || role === 'master_technician' || role === 'assistant'
+  const showSubscribed = role === 'dev' || role === 'master_technician' || isAssistantLike(role)
+  const showRecent = role === 'dev' || role === 'master_technician' || isAssistantLike(role) || role === 'primary'
+  const showFinancials = role === 'dev' || role === 'master_technician' || isAssistantLike(role)
 
-  const showDashboardQuickButtons = role === 'dev' || role === 'master_technician' || role === 'assistant'
+  const showDashboardQuickButtons = role === 'dev' || role === 'master_technician' || isAssistantLike(role)
   const quickActionLinkStyle: CSSProperties = {
     padding: '0.75rem 1.25rem',
     background: '#3b82f6',
@@ -4441,7 +4441,7 @@ export default function Dashboard() {
           )
         }}
       />
-      {(role === 'dev' || role === 'master_technician' || role === 'assistant') && (
+      {(role === 'dev' || role === 'master_technician' || isAssistantLike(role)) && (
         <DashboardTallyStaleStaffBanner
           peopleCount={typeof tallyStaffStalePeopleCount === 'number' ? tallyStaffStalePeopleCount : 0}
           transactionCount={typeof tallyStaffStaleTxCount === 'number' ? tallyStaffStaleTxCount : 0}
@@ -4651,14 +4651,14 @@ export default function Dashboard() {
     {
       id: 'dash-billing',
       label: 'Billing',
-      visible: role === 'assistant' || role === 'dev' || role === 'master_technician',
+      visible: isAssistantLike(role) || role === 'dev' || role === 'master_technician',
     },
     { id: 'dash-my-inbox', label: 'My Inbox', visible: userLoading || showChecklist },
     {
       id: 'dash-bids',
       label: 'Bids',
       visible:
-        (role === 'dev' || role === 'master_technician' || role === 'assistant' || role === 'estimator' || role === 'primary') &&
+        (role === 'dev' || role === 'master_technician' || isAssistantLike(role) || role === 'estimator' || role === 'primary') &&
         (myBidsLoading || myBids.some((b) => !hiddenBidIds.has(b.id))),
     },
     { id: 'dash-reports', label: 'Reports', visible: showRecent },
@@ -4726,10 +4726,10 @@ export default function Dashboard() {
         onClose={() => setContractSigningPromptOpen(false)}
         onOpenSigningPage={openContractSigningPageForDoc}
       />
-      {role === 'assistant' && authUser?.id && showClockActivityStrip && (
+      {isAssistantLike(role) && authUser?.id && showClockActivityStrip && (
         <div id="dash-clocked-in" aria-hidden="true" style={dockAnchorStyle} />
       )}
-      {role === 'assistant' && authUser?.id && showClockActivityStrip && (
+      {isAssistantLike(role) && authUser?.id && showClockActivityStrip && (
         <DashboardTeamActiveClockStrip
           sessions={sessionsForStrip}
           hoursTodayByUserId={hoursTodayForStrip}
@@ -4766,14 +4766,14 @@ export default function Dashboard() {
           clockStripWorkDateYmd={myTeam.clockStripWorkDateYmd}
         />
       )}
-      {role === 'assistant' && authUser?.id && (
+      {isAssistantLike(role) && authUser?.id && (
         <DashboardMyTeamPendingBanner
           pendingApprovalCount={myTeam.pendingApprovalCount}
           loadingSessions={myTeam.loadingSessions}
           onGoToPendingSessions={goToPendingSessionsInMyTeam}
         />
       )}
-      {role === 'assistant' && (
+      {isAssistantLike(role) && (
         <>
           {/* Inboxes first: processing dispatch/estimator requests is the assistant's primary queue. */}
           {authUser?.id && (dispatchInboxEligible || estimatorInboxEligible) && (
@@ -5177,10 +5177,10 @@ export default function Dashboard() {
           </BillingPipelineCard>
         </>
       )}
-      {role !== 'assistant' && authUser?.id && showClockActivityStrip && (
+      {!isAssistantLike(role) && authUser?.id && showClockActivityStrip && (
         <div id="dash-clocked-in" aria-hidden="true" style={dockAnchorStyle} />
       )}
-      {role !== 'assistant' && authUser?.id && showClockActivityStrip && (
+      {!isAssistantLike(role) && authUser?.id && showClockActivityStrip && (
         <DashboardTeamActiveClockStrip
           sessions={sessionsForStrip}
           hoursTodayByUserId={hoursTodayForStrip}
@@ -5274,10 +5274,10 @@ export default function Dashboard() {
           }}
         />
       )}
-      {authUser?.id && (dispatchInboxEligible || estimatorInboxEligible) && role !== 'assistant' && (
+      {authUser?.id && (dispatchInboxEligible || estimatorInboxEligible) && !isAssistantLike(role) && (
         <div id="dash-teams-inbox" aria-hidden="true" style={dockAnchorStyle} />
       )}
-      {authUser?.id && dispatchInboxEligible && role !== 'assistant' && (
+      {authUser?.id && dispatchInboxEligible && !isAssistantLike(role) && (
         <DispatchInboxSection
           sectionOpen={dispatchRequestsOpen}
           onToggleSection={() => setDispatchRequestsOpen((o) => !o)}
@@ -5308,7 +5308,7 @@ export default function Dashboard() {
           }
         />
       )}
-      {authUser?.id && estimatorInboxEligible && role !== 'assistant' && (
+      {authUser?.id && estimatorInboxEligible && !isAssistantLike(role) && (
         <EstimatorInboxSection
           sectionOpen={estimatorRequestsOpen}
           onToggleSection={() => setEstimatorRequestsOpen((o) => !o)}
@@ -6089,7 +6089,7 @@ export default function Dashboard() {
           )}
         </div>
       )}
-      {(role === 'dev' || role === 'master_technician' || role === 'assistant' || role === 'estimator' || role === 'primary') && (myBidsLoading || myBids.some((b) => !hiddenBidIds.has(b.id))) && (
+      {(role === 'dev' || role === 'master_technician' || isAssistantLike(role) || role === 'estimator' || role === 'primary') && (myBidsLoading || myBids.some((b) => !hiddenBidIds.has(b.id))) && (
         <div id="dash-bids" style={{ marginBottom: '1rem', scrollMarginTop: 8 }}>
           <div
             style={{
@@ -7556,7 +7556,7 @@ export default function Dashboard() {
                           )}
                         </div>
                       )}
-                      {(role === 'dev' || role === 'master_technician' || role === 'assistant' || role === 'primary') && (
+                      {(role === 'dev' || role === 'master_technician' || isAssistantLike(role) || role === 'primary') && (
                         <>
                           <button
                             type="button"
@@ -7856,7 +7856,7 @@ export default function Dashboard() {
                           )}
                         </div>
                       )}
-                      {(role === 'dev' || role === 'master_technician' || role === 'assistant' || role === 'primary') && (
+                      {(role === 'dev' || role === 'master_technician' || isAssistantLike(role) || role === 'primary') && (
                         <>
                           <button
                             type="button"
@@ -8026,7 +8026,7 @@ export default function Dashboard() {
         </div>
       )}
 
-      {(role === 'dev' || role === 'master_technician' || role === 'assistant' || role === 'primary') && dashboardButtonVisibility?.inspections !== false && (upcomingInspectionsLoading || upcomingInspections.length > 0) && (
+      {(role === 'dev' || role === 'master_technician' || isAssistantLike(role) || role === 'primary') && dashboardButtonVisibility?.inspections !== false && (upcomingInspectionsLoading || upcomingInspections.length > 0) && (
         <div style={{ marginTop: '2rem', marginBottom: '1rem' }}>
           <h2 style={{ fontSize: '1.125rem', marginBottom: '0.5rem' }}>Upcoming inspection (3 days)</h2>
           {upcomingInspectionsLoading ? (
@@ -8524,7 +8524,7 @@ export default function Dashboard() {
         authUserId={authUser?.id ?? null}
         userRole={role}
       />
-      {(role === 'dev' || role === 'master_technician' || role === 'assistant') && (
+      {(role === 'dev' || role === 'master_technician' || isAssistantLike(role)) && (
         <DashboardStaleTallyStaffFollowUpModal
           open={tallyStaffFollowUpModalOpen}
           onClose={() => setTallyStaffFollowUpModalOpen(false)}

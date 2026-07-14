@@ -102,7 +102,7 @@ export default function SettingsJobsTab({
                   </thead>
                   <tbody>
                     {users
-                      .filter((u) => ['dev', 'master_technician', 'assistant'].includes(u.role))
+                      .filter((u) => ['dev', 'master_technician', 'assistant', 'controller'].includes(u.role))
                       .map((u) => (
                         <tr key={u.id} style={{ borderBottom: '1px solid var(--border)' }}>
                           <td style={{ padding: '0.5rem 0.75rem' }}>{u.name || u.email}</td>
@@ -120,7 +120,7 @@ export default function SettingsJobsTab({
                             >
                               <option value="">Self</option>
                               {users
-                                .filter((o) => ['master_technician', 'assistant'].includes(o.role) && o.id !== u.id)
+                                .filter((o) => ['master_technician', 'assistant', 'controller'].includes(o.role) && o.id !== u.id)
                                 .map((o) => (
                                   <option key={o.id} value={o.id}>
                                     {o.name || o.email}
@@ -144,7 +144,7 @@ export default function SettingsJobsTab({
                               >
                                 <option value="">—</option>
                                 {users
-                                  .filter((o) => ['master_technician', 'assistant'].includes(o.role) && o.id !== u.id)
+                                  .filter((o) => ['master_technician', 'assistant', 'controller'].includes(o.role) && o.id !== u.id)
                                   .map((o) => (
                                     <option key={o.id} value={o.id}>
                                       {o.name || o.email}

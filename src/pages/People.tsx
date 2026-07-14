@@ -91,6 +91,7 @@ import {
   rollupContractSigningStatusByPersonName,
 } from '../lib/contractSigningRollup'
 import { useAuth } from '../hooks/useAuth'
+import { isAssistantLike } from '../lib/subcontractorLikeRole'
 import { useDocumentVisibility } from '../hooks/useDocumentVisibility'
 import { useHoursGridFirstColWidthPx } from '../hooks/useHoursGridFirstColWidthPx'
 import { useNarrowViewport640 } from '../hooks/useNarrowViewport640'
@@ -567,7 +568,7 @@ export default function People() {
     authUserRole,
   }
   const canAccessTeamsTab =
-    authRole !== null && ['dev', 'master_technician', 'assistant'].includes(authRole)
+    authRole !== null && ['dev', 'master_technician', 'assistant', 'controller'].includes(authRole)
   const canAccessOverheadTab =
     authRole !== null && ['dev', 'master_technician'].includes(authRole)
   const canDeletePeopleContracts =
@@ -939,7 +940,7 @@ export default function People() {
     }
   }, [authUser?.id])
 
-  const canEditCrewJobs = canAccessPay || (authUserRole === 'assistant' && canAccessHours)
+  const canEditCrewJobs = canAccessPay || (isAssistantLike(authUserRole) && canAccessHours)
 
   const openHoursMyTimeFromSession = useCallback((s: ClockSessionRow) => {
     if (!s.user_id?.trim()) return
@@ -961,7 +962,7 @@ export default function People() {
   }, [users])
 
   const hoursAllowNcnsFromMyTime =
-    isDev || authUserRole === 'master_technician' || authUserRole === 'assistant'
+    isDev || authUserRole === 'master_technician' || isAssistantLike(authUserRole)
 
   useEffect(() => {
     if (!canSeePushStatus) return
@@ -1068,7 +1069,7 @@ export default function People() {
       .from('users')
       .select('id, email, name')
       .is('archived_at', null)
-      .in('role', ['assistant', 'master_technician', 'subcontractor', 'helpers', 'estimator', 'primary', 'superintendent'])
+      .in('role', ['assistant', 'controller' as 'assistant', 'master_technician', 'subcontractor', 'helpers', 'estimator', 'primary', 'superintendent'])
     const usersAfterInvite = (usersData ?? []) as Array<{ id: string; email: string | null; name: string }>
     const dups = findPersonUserDuplicates(people, usersAfterInvite, payConfig)
     const invitedDup = dups.find((d) => d.email.toLowerCase() === p.email?.trim().toLowerCase())
@@ -2136,7 +2137,7 @@ export default function People() {
   async function loadCostMatrixShares() {
     if (!isDev) return
     const [candidatesRes, sharesRes] = await Promise.all([
-      supabase.from('users').select('id, name, email, role').is('archived_at', null).in('role', ['master_technician', 'assistant', 'dev']).order('name'),
+      supabase.from('users').select('id, name, email, role').is('archived_at', null).in('role', ['master_technician', 'assistant', 'controller' as 'assistant', 'dev']).order('name'),
       supabase.from('cost_matrix_teams_shares').select('shared_with_user_id'),
     ])
     if (candidatesRes.data) setCostMatrixShareCandidates(candidatesRes.data as Array<{ id: string; name: string; email: string | null; role: string }>)
@@ -2969,7 +2970,7 @@ export default function People() {
     return hoursDays.some((d) => isCorrectDayMissingJob(personName, d))
   }
 
-  const canEditUserNotes = authUserRole !== null && ['dev', 'master_technician', 'assistant'].includes(authUserRole)
+  const canEditUserNotes = authUserRole !== null && ['dev', 'master_technician', 'assistant', 'controller'].includes(authUserRole)
   const canCreatePeopleInRoster = canEditUserNotes
   const showSalariedWorkdaysHoursButton = canEditUserNotes && activeTab === 'hours' && canAccessHours
 

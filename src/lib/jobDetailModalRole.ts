@@ -25,14 +25,14 @@ export function showJobDetailJobTotal(role: string | null): boolean {
   return !isSubcontractorLikeRole(role as UserRole)
 }
 
-/** Job Detail profit band (sub labor cost, tally parts cost, profit) — masters and devs only. */
+/** Job Detail profit band (sub labor cost, tally parts cost, profit) — masters, devs, controllers. */
 export function showJobDetailProfitSection(role: string | null): boolean {
-  return role === 'dev' || role === 'master_technician'
+  return role === 'dev' || role === 'master_technician' || role === 'controller'
 }
 
-/** Cost breakdown team-labor stream (per-person hours × hourly wage) — masters and devs only.
+/** Cost breakdown team-labor stream (per-person hours × hourly wage) — masters, devs, controllers.
  * Anyone else could divide the charted dollars by hours they already see elsewhere and derive
- * employee pay rates. UI layer only — `people_pay_config` RLS still grants assistants SELECT. */
+ * employee pay rates. RLS backs this since v2.660 (assistants cannot SELECT wages). */
 export function showJobCostBreakdownTeamLabor(role: string | null): boolean {
-  return role === 'dev' || role === 'master_technician'
+  return role === 'dev' || role === 'master_technician' || role === 'controller'
 }

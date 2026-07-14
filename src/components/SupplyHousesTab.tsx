@@ -17,6 +17,7 @@ import {
 import { SupplyHouseForm } from './SupplyHouseForm'
 import { SupplyHouseWebsiteLink } from './SupplyHouseWebsiteLink'
 import type { Database } from '../types/database'
+import { isAssistantLike } from '../lib/subcontractorLikeRole'
 
 type SupplyHouse = Database['public']['Tables']['supply_houses']['Row']
 type SupplyHouseInvoice = Database['public']['Tables']['supply_house_invoices']['Row']
@@ -329,7 +330,7 @@ export function SupplyHousesTab({
     })
   }, [invoiceJobAllocations, invoiceJobDetailsMap])
 
-  const canAccess = myRole === 'dev' || myRole === 'master_technician' || myRole === 'assistant'
+  const canAccess = myRole === 'dev' || myRole === 'master_technician' || isAssistantLike(myRole)
   if (!canAccess) return null
 
   function closeSupplyHouseForm() {

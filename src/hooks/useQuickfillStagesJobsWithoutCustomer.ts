@@ -6,7 +6,7 @@ import {
   buildStagesWorkingJobsWithoutPicturesList,
 } from '../lib/jobsStagesBoard'
 
-const ROLES = new Set<string>(['dev', 'master_technician', 'assistant'])
+const ROLES = new Set<string>(['dev', 'master_technician', 'assistant', 'controller'])
 
 export function useQuickfillStagesJobsWithoutCustomer(): {
   jobsWithoutCustomer: ReturnType<typeof buildStagesJobsWithoutCustomerList>

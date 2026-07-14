@@ -23,6 +23,7 @@ import {
 } from '../../utils/crewAssignments'
 import { PeopleHoursDayAuditModal } from '../PeopleHoursDayAuditModal'
 import { useToastContext } from '../../contexts/ToastContext'
+import { isAssistantLike } from '../../lib/subcontractorLikeRole'
 
 /** Narrow view of the canonical pay-config row (single source of truth for field types). */
 type PayConfigRow = Pick<PayConfigRowFull, 'person_name' | 'is_salary' | 'show_in_hours' | 'show_in_cost_matrix' | 'record_hours_but_salary'>
@@ -265,7 +266,7 @@ export function QuickfillUnassignedFieldTimeSection() {
       )
       const allowed =
         role === 'dev' ||
-        role === 'assistant' ||
+        isAssistantLike(role) ||
         (role === 'master_technician' && approvedIds.has(authUser.id))
       setCanAccess(allowed)
     } catch (e) {

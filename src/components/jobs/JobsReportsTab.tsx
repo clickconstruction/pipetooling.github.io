@@ -11,6 +11,7 @@ import type { JobWithDetails } from '../../types/jobWithDetails'
 import type { OpenEditJobOptions } from '../../contexts/JobFormModalContext'
 import type { useJobDetailModal } from '../../contexts/JobDetailModalContext'
 import type { useToastContext } from '../../contexts/ToastContext'
+import { isAssistantLike } from '../../lib/subcontractorLikeRole'
 
 const JOBS_REPORTS_TAB_TOAST_NO_CUSTOMER_FILES =
   "Customer Files isn't linked for this job yet. Contact Dispatch to have it added."
@@ -99,7 +100,7 @@ export default function JobsReportsTab({
     readonly { id: string; label: string }[]
   >([])
 
-  const canManageTemplates = myRole === 'dev' || myRole === 'master_technician' || myRole === 'assistant'
+  const canManageTemplates = myRole === 'dev' || myRole === 'master_technician' || isAssistantLike(myRole)
 
   async function loadReports() {
     if (!authUserId) return
@@ -143,7 +144,7 @@ export default function JobsReportsTab({
       setScopeMastersForRecurringReports([])
       return
     }
-    if (!(authRole === 'dev' || authRole === 'master_technician' || authRole === 'assistant')) {
+    if (!(authRole === 'dev' || authRole === 'master_technician' || isAssistantLike(authRole))) {
       setScopeMastersForRecurringReports([])
       return
     }
@@ -156,7 +157,7 @@ export default function JobsReportsTab({
     }
 
     async function load() {
-      if (authRole === 'assistant') {
+      if (isAssistantLike(authRole)) {
         const { data: maps, error } = await supabase
           .from('master_assistants')
           .select('master_id')

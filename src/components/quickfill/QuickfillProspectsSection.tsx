@@ -6,6 +6,7 @@ import { loadProspectWarmthCounts, type ProspectWarmthCounts } from '../../lib/p
 import { useAuth } from '../../hooks/useAuth'
 import { useReportQuickfillSectionMetric } from '../../contexts/QuickfillSectionMetricsContext'
 import { ProspectTeamActivityLineChart } from './ProspectTeamActivityLineChart'
+import { isAssistantLike } from '../../lib/subcontractorLikeRole'
 
 const ROW_STYLE: CSSProperties = {
   display: 'flex',
@@ -51,8 +52,8 @@ export function QuickfillProspectsSection() {
   const canAccess =
     authUser != null &&
     role != null &&
-    (role === 'dev' || role === 'master_technician' || role === 'assistant' || (role === 'estimator' && estimatorProspectsAccess))
-  const canAccessTeam = role != null && (role === 'dev' || role === 'master_technician' || role === 'assistant')
+    (role === 'dev' || role === 'master_technician' || isAssistantLike(role) || (role === 'estimator' && estimatorProspectsAccess))
+  const canAccessTeam = role != null && (role === 'dev' || role === 'master_technician' || isAssistantLike(role))
 
   const [warmth, setWarmth] = useState<ProspectWarmthCounts | null>(null)
   const [warmthLoading, setWarmthLoading] = useState(true)

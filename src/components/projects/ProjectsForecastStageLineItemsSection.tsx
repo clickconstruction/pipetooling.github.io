@@ -53,7 +53,7 @@ import {
   type PODetail,
 } from '../../lib/projectsForecastStageLineItems'
 
-const EDITOR_ROLES = new Set(['dev', 'master_technician', 'assistant', 'superintendent'])
+const EDITOR_ROLES = new Set(['dev', 'master_technician', 'assistant', 'superintendent', 'controller'])
 const POPULATED_PICKER_ROLES = new Set(['dev', 'master_technician'])
 
 type EditingState = {

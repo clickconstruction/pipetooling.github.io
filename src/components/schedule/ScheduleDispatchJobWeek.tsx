@@ -30,7 +30,7 @@ import { ScheduleDispatchUndoNotComingInModal } from './ScheduleDispatchUndoNotC
 import { executeScheduleDispatchBlockReassign } from '../../lib/scheduleDispatchDragEnd'
 import { insertScheduleDispatchCopiedLeg } from '../../lib/scheduleDispatchMirrorInsert'
 import { fetchSalariedUserIdSetFromUserIds } from '../../lib/salaryPayConfigGate'
-import { isSubcontractorLikeRole } from '../../lib/subcontractorLikeRole'
+import { isAssistantLike, isSubcontractorLikeRole } from '../../lib/subcontractorLikeRole'
 import { ScheduleDispatchAddBlockModal } from './ScheduleDispatchAddBlockModal'
 import { ScheduleDispatchBlockNoteModal } from './ScheduleDispatchBlockNoteModal'
 import { PreviewJobModal } from '../calendar/PreviewJobModal'
@@ -77,7 +77,7 @@ function readScheduleDispatchHideWeekend(): boolean {
 }
 
 /** Matches RLS on jobs_ledger_team_members INSERT (no superintendent). */
-const CAN_ADD_TO_JOB_ROSTER = new Set(['dev', 'master_technician', 'assistant'])
+const CAN_ADD_TO_JOB_ROSTER = new Set(['dev', 'master_technician', 'assistant', 'controller'])
 
 type ScheduleDispatchBlockModalState =
   | { kind: 'add'; assigneeUserId: string; workDate: string; jobId: string }
@@ -910,7 +910,7 @@ export function ScheduleDispatchJobWeek() {
     <>
     <div style={{ padding: '1rem 1.25rem', maxWidth: '100%' }}>
       <div style={{ marginBottom: '1rem' }}>
-        <h1 style={{ fontSize: '1.25rem', margin: '0 0 0.35rem', fontWeight: role === 'assistant' ? 700 : 400 }}>
+        <h1 style={{ fontSize: '1.25rem', margin: '0 0 0.35rem', fontWeight: isAssistantLike(role) ? 700 : 400 }}>
           Dispatch
         </h1>
         <div style={{ marginBottom: 6 }}>

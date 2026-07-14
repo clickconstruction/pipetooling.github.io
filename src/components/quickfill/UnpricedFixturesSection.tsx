@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
+import { isAssistantLike } from '../../lib/subcontractorLikeRole'
 
 export function UnpricedFixturesSection() {
   const { user: authUser, role } = useAuth()
@@ -38,7 +39,7 @@ export function UnpricedFixturesSection() {
     }
   }, [authUser?.id])
 
-  const canAccess = role === 'dev' || role === 'master_technician' || role === 'assistant'
+  const canAccess = role === 'dev' || role === 'master_technician' || isAssistantLike(role)
   if (!canAccess) return null
 
   if (loading) return null
