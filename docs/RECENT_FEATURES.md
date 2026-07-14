@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-14 (v2.660)
+last_updated: 2026-07-14 (v2.661)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -15,8 +15,11 @@ last_updated: 2026-07-14 (v2.660)
  version_range: "v2.581+ (reverse chronological)"
  
  key_sections:
-   - name: "Latest Version (v2.660)"
+   - name: "Latest Version (v2.661)"
      line: ~2022
+     description: "Phase 2 of the pay-visibility overhaul: is_assistant_of_pay_approved_master() dissolved — every assistant gets the identical clock-management toolset (clock sessions, crew, hours, attendance, write-ups, contracts, licenses, vehicles, housing, week-fence bypass) via is_assistant(); pay stays locked per v2.660; master_assistants is now pure team structure."
+   - name: "Previous Version (v2.660)"
+     line: ~2032
      description: "Assistant pay lockdown (Phase 1): assistants — pay-linked or not — can no longer read wages or pay stubs at the DB level (people_pay_config assistant SELECT dropped; pay-stub family onto new has_payroll_access()); new list_people_pay_flags() + get_dashboard_payroll_totals() SECURITY DEFINER RPCs keep Hours/Quickfill/Crew rosters and AP-card org totals working; Job Summary labor/profit and Projects day-modal team labor now dev/master-only; cost-matrix shares restricted to dev/master grantees."
    - name: "Previous Version (v2.659)"
      line: ~2030
@@ -2030,6 +2033,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.661)
+
+### Security — pay-linkage dissolved: being under a pay-approved master no longer changes what an assistant can do (2026-07-14, PR #311)
+Phase 2 of the pay-visibility overhaul. With pay locked down in v2.660, `is_assistant_of_pay_approved_master()` had become a pure operational gate — it decided which assistants could manage clock sessions, crew grids, hours, attendance incidents, write-ups, contracts, licenses, vehicles, and housing (Taunya could; Grace could not). Migration [`20260714200000_dissolve_assistant_pay_linkage.sql`](../supabase/migrations/20260714200000_dissolve_assistant_pay_linkage.sql) rewrites every policy (~25 tables incl. `storage.objects`) and all 14 clock/HR functions onto **`is_assistant()`** via generic pg_policies / pg_get_functiondef rewriters, asserts zero leftover references in-migration, then **drops the function** — `master_assistants` is pure team structure from here on. The week-fence bypass becomes `is_pay_approved_master() OR is_assistant()` (assistants do historical clock-card corrections). Verified by rolled-back prod dry-run with role simulation: Grace's `can_edit_clock_sessions_for_user` flips false→true, licenses/write-ups become visible, and her pay-config/pay-stub reads stay at **0 rows**. No client changes. Phase 3 (the `controller` role) is next.
 
 ## Latest Updates (v2.660)
 
