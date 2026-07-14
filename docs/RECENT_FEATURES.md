@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-14 (v2.657)
+last_updated: 2026-07-14 (v2.658)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -15,8 +15,11 @@ last_updated: 2026-07-14 (v2.657)
  version_range: "v2.581+ (reverse chronological)"
  
  key_sections:
-   - name: "Latest Version (v2.657)"
+   - name: "Latest Version (v2.658)"
      line: ~2022
+     description: "Job Detail / Edit Job — Cost breakdown team-labor stream gated to devs + masters (showJobCostBreakdownTeamLabor; per-person hours x wage let other roles derive employee pay rates — UI layer of a two-layer fix, people_pay_config RLS audit tracked separately); Billing Pipeline Job detail / Edit job icon buttons lose their border (keep the 36px hit area)."
+   - name: "Previous Version (v2.657)"
+     line: ~2026
      description: "Dashboard & Job Detail — billing pipeline UX pass: Financials cards read top-down; Bill Customer + Open age go side-by-side in a measured container-query band; the dashboard View Details button + JobBillDetailsModal are removed in favor of Job Detail, which gains a dev/master-only Profit band (sub labor via laborJobSubCost, tally parts, revenue, profit); the Job detail / Edit job icon toolbar becomes full-size bordered buttons on desktop."
    - name: "Previous Version (v2.656)"
      line: ~1944
@@ -2021,6 +2024,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.658)
+
+### Job Detail / Edit Job — Cost breakdown team labor gated to masters + devs; borderless pipeline icon buttons (2026-07-14, PR #306)
+The Cost breakdown timeline charted per-person, per-day **team labor** events (`Name — team labor (6.5h)` + dollars) for every role that sees the materials section — one division away from an employee's hourly wage, a morale risk if an assistant does the math. New gate **`showJobCostBreakdownTeamLabor`** in [`jobDetailModalRole.ts`](../src/lib/jobDetailModalRole.ts) (dev + master_technician only, 3 tests in [`jobDetailModalRole.test.ts`](../src/lib/jobDetailModalRole.test.ts)); [`JobChargesTimelineStandalone`](../src/components/jobs/JobChargesTimelineStandalone.tsx) takes a required **`includeTeamLabor`** prop and when false **never runs `fetchTeamLaborBreakdownForJob`** — wage-derived dollars don't reach the browser from this surface (materials, tally parts, supply invoices, sub-labor books, reports, and payments still chart). Both callers wired: Job Detail ([`DetailJobModal.tsx`](../src/components/jobs/DetailJobModal.tsx)) and Edit Job ([`JobFormModal.tsx`](../src/components/jobs/JobFormModal.tsx)). **This is the UI layer only**: the `people_pay_config` RLS policy "Assistants can read people pay config for Hours tab" still lets assistants SELECT raw `hourly_wage` via the API — tightening that (data layer) is tracked as a follow-up requiring an assistant-Hours-flow audit. Also in this pass: the Billing Pipeline **Job detail / Edit job icon buttons drop their border and background** (kept the 22px icons, side-by-side desktop layout, and ~36px padded hit area; mobile unchanged).
 
 ## Latest Updates (v2.657)
 

@@ -29,3 +29,10 @@ export function showJobDetailJobTotal(role: string | null): boolean {
 export function showJobDetailProfitSection(role: string | null): boolean {
   return role === 'dev' || role === 'master_technician'
 }
+
+/** Cost breakdown team-labor stream (per-person hours × hourly wage) — masters and devs only.
+ * Anyone else could divide the charted dollars by hours they already see elsewhere and derive
+ * employee pay rates. UI layer only — `people_pay_config` RLS still grants assistants SELECT. */
+export function showJobCostBreakdownTeamLabor(role: string | null): boolean {
+  return role === 'dev' || role === 'master_technician'
+}

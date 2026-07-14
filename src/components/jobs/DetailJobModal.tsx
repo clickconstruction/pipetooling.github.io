@@ -18,6 +18,7 @@ import { JobDetailCompletenessRow } from './JobDetailCompletenessRow'
 import {
   canExpandJobDetailMaterials,
   isStaffFullJobLedgerDetailRole,
+  showJobCostBreakdownTeamLabor,
   showJobDetailJobTotal,
   showJobDetailProfitSection,
 } from '../../lib/jobDetailModalRole'
@@ -1250,7 +1251,7 @@ export default function DetailJobModal({
                   canExpand={canExpandJobDetailMaterials(authRole)}
                   billedMaterials={fullJob.materials ?? []}
                 />
-                <JobChargesTimelineStandalone job={fullJob} />
+                <JobChargesTimelineStandalone job={fullJob} includeTeamLabor={showJobCostBreakdownTeamLabor(authRole)} />
               </>
             ) : null}
 

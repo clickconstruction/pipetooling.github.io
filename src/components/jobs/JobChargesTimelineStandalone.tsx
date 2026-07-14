@@ -26,7 +26,15 @@ type LoadState =
   | { kind: 'error' }
   | { kind: 'ready'; data: JobChargesTimelineData; cardChargesExcluded: boolean }
 
-export default function JobChargesTimelineStandalone({ job }: { job: JobWithDetails }) {
+export default function JobChargesTimelineStandalone({
+  job,
+  includeTeamLabor,
+}: {
+  job: JobWithDetails
+  /** Gate per-person hours × wage events (see `showJobCostBreakdownTeamLabor`) — when false
+   * the team-labor fetch never runs, so wage-derived dollars don't reach the browser here. */
+  includeTeamLabor: boolean
+}) {
   const [state, setState] = useState<LoadState>({ kind: 'loading' })
 
   useEffect(() => {
@@ -40,7 +48,9 @@ export default function JobChargesTimelineStandalone({ job }: { job: JobWithDeta
 
         const [snapshot, teamBreakdown, reportsRes, settingsRes, laborJobsRes] = await Promise.all([
           fetchJobMaterialsCostSnapshot(job.id),
-          fetchTeamLaborBreakdownForJob(supabase, job.id).catch(() => []),
+          includeTeamLabor
+            ? fetchTeamLaborBreakdownForJob(supabase, job.id).catch(() => [])
+            : Promise.resolve([]),
           supabase
             .from('reports')
             .select('id, created_at, field_values, users!reports_created_by_user_id_fkey(name)')
@@ -165,7 +175,7 @@ export default function JobChargesTimelineStandalone({ job }: { job: JobWithDeta
     return () => {
       cancelled = true
     }
-  }, [job.id]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [job.id, includeTeamLabor]) // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div style={{ marginTop: '1rem' }}>
