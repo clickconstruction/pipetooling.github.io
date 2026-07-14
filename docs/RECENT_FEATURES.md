@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-14 (v2.664)
+last_updated: 2026-07-14 (v2.665)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -15,8 +15,11 @@ last_updated: 2026-07-14 (v2.664)
  version_range: "v2.581+ (reverse chronological)"
  
  key_sections:
-   - name: "Latest Version (v2.664)"
+   - name: "Latest Version (v2.665)"
      line: ~2022
+     description: "Docs catch-up for the pay-visibility overhaul + controller role: role counts 6/8 → 9 across README/AGENTS/AI_CONTEXT, ACCESS_CONTROL controller section + rewritten assistant pay bullets, GLOSSARY payroll-access entry, EDGE_FUNCTIONS validRoles, ADDING_A_NEW_ROLE controller worked example."
+   - name: "Previous Version (v2.664)"
+     line: ~2030
      description: "Controller users now render on People → Users (own Controllers section after Assistants) and in Quickfill Schedule role grouping — multi-user UI test caught that the PersonKind chain lacked controller, so such users vanished from the roster entirely."
    - name: "Previous Version (v2.663)"
      line: ~2030
@@ -2042,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.665)
+
+### Docs — catch-up for the pay-visibility overhaul and controller role (2026-07-14, PR #315)
+Documentation sweep for v2.657–v2.664 (no code changes). Role counts and lists **6/8 → 9** with controller added: [`README.md`](../README.md) (RLS rules, test-roles list, features), [`AGENTS.md`](../AGENTS.md) (quick orientation, golden rules), [`AI_CONTEXT.md`](AI_CONTEXT.md). [`ACCESS_CONTROL.md`](ACCESS_CONTROL.md): new **`### controller`** detail section (assistant-everywhere + `has_payroll_access()`, not dev admin; matrices note — read the assistant column, add pay surfaces) and the assistant section's stale pay bullets rewritten for the lockdown era ("Hours tab if master is Pay Approved" → all assistants, wage-free flags RPC; "Payroll tab (if master is Pay Approved)" → no Payroll tab, aggregate totals only; cost matrix no longer assistant-shareable). [`GLOSSARY.md`](GLOSSARY.md): new **Payroll access (`has_payroll_access()`)** entry (holders, the never-assistants rule, don't reintroduce `is_pay_approved_master()` in policies). [`EDGE_FUNCTIONS.md`](EDGE_FUNCTIONS.md): both create-user/invite-user invalid-role examples gain `controller`. [`ADDING_A_NEW_ROLE.md`](ADDING_A_NEW_ROLE.md): controller (v2.662) added as the most-recent worked example — capability-function pattern, two-migration enum rule, `PersonKind` roster-chain gotcha (v2.664), Edge `validRoles` redeploys. MIGRATIONS.md and RECENT_FEATURES were already current from the shipping PRs.
 
 ## Latest Updates (v2.664)
 

@@ -11,7 +11,7 @@
 - **Domain**: Commercial/residential plumbing project management + bid estimation
 - **Stack**: React + TypeScript + Supabase (PostgreSQL + Auth + RLS + Edge Functions)
 - **Deployment**: GitHub Pages (static hosting)
-- **Users**: 8 roles with complex access control (dev, master, assistant, subcontractor, **helpers** / UI **Helper**, estimator, primary, superintendent)
+- **Users**: 9 roles with complex access control (dev, master, assistant, **controller** — assistant-like + payroll access (v2.662), subcontractor, **helpers** / UI **Helper**, estimator, primary, superintendent)
 - **4 Major Systems** (+ significant subsystems):
   1. Projects/Workflows (ongoing work tracking; **HCP** labels use **trade-specific** **`ledger_job_prefix`** from **Settings** → Service types — **v2.432**, [`ledgerDisplayPrefixes.ts`](../src/lib/ledgerDisplayPrefixes.ts))
   2. Bids (estimation system: Bid Board, Builder Review, Unsent/Working Kanban, Bid Costs, **Estimators** (cross-bid clock pivot — **v2.531** / **v2.534**), Counts, Takeoff, Cost Estimate, Pricing, Cover Letter, Submission, RFI, Change Order, Lien Release; **trade-specific ledger prefixes** for bid # from **`service_types.ledger_bid_prefix`** with client **[`ledgerDisplayPrefixes.ts`](../src/lib/ledgerDisplayPrefixes.ts)** + **[`LedgerDisplayPrefixContext`](../src/contexts/LedgerDisplayPrefixContext.tsx)** — **RECENT_FEATURES** **v2.432**)
@@ -192,7 +192,7 @@ pipetooling.github.io/
 2. **Write SQL**: CREATE TABLE + RLS policies + constraints + foreign keys
 3. **Apply locally**: `supabase migration up`
 4. **Update types**: `npm run gen-types:local` (or `--linked` variant if no local DB; see **`AGENTS.md`**)
-5. **Test RLS**: Verify policies work for all 6 roles
+5. **Test RLS**: Verify policies work for all 9 roles
 6. **Document**: Add to `PROJECT_DOCUMENTATION.md` and `MIGRATIONS.md`; salaried auto-session / sync / split behavior → also **`SALARY_CLOCK_SESSIONS.md`**
 
 ### Adding a New Page/Route

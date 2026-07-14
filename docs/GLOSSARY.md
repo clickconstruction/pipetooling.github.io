@@ -521,6 +521,12 @@ Bookkeeper/financial-controller role added in **v2.662** (Phase 3 of the pay-vis
 
 **See**: `ACCESS_CONTROL.md` → Nine User Roles; `MIGRATIONS.md` → `20260714210000` / `20260714213000`; `RECENT_FEATURES.md` → v2.662
 
+## Payroll access (`has_payroll_access()`)
+
+The single DB capability that gates **individual pay data** — `people_pay_config` wages, the pay-stub family (`pay_stubs` + days/payments/deductions/additional lines), `person_offsets`, cost matrix/teams — since the 2026-07-14 pay-visibility overhaul (v2.660–v2.663). Holders: **devs**, **pay-approved masters** (`pay_approved_masters`), and **controllers**. **Assistants never hold it** — pay-master adoption confers nothing (v2.661 dissolved `is_assistant_of_pay_approved_master()`); their surfaces use the wage-free `list_people_pay_flags()` RPC and the aggregate `get_dashboard_payroll_totals()` instead. Client mirror: `usePeopleAccess().canAccessPay`. Never gate pay data on `is_assistant()` (it is assistant-LIKE and includes controller) and never reintroduce direct `is_pay_approved_master()` policy checks — v2.663 swept them all onto `has_payroll_access()`.
+
+**See**: `MIGRATIONS.md` → `20260714120000`, `20260714200000`, `20260714230000`; `ACCESS_CONTROL.md` → assistant / controller sections
+
 ## Checklist
 
 ### Checklist Items / Checklist Instances

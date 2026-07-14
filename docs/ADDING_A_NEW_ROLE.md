@@ -4,6 +4,8 @@
 
 **Related**: [ACCESS_CONTROL.md](./ACCESS_CONTROL.md) — Role permissions matrix; [supabase/archive/README.md](../supabase/archive/README.md) — Migration reference.
 
+> **Most recent worked example — `controller` (v2.662, 2026-07-14)**: enum migration [`20260714210000_add_user_role_controller.sql`](../supabase/migrations/20260714210000_add_user_role_controller.sql) (enum ADD VALUE must be its own migration — the value can't be added and used in one transaction) + capabilities migration [`20260714213000_controller_capabilities.sql`](../supabase/migrations/20260714213000_controller_capabilities.sql). Prefer extending the **capability functions** (`has_payroll_access()`, assistant-LIKE `is_assistant()`, client `isAssistantLike()`) over per-policy edits — controller landed in ~3 DB function edits instead of ~75 policy rewrites, plus the client role-gate sweep. Also update: `database.ts` user_role enum, `usePeopleAccess`, the `ROLES` picker, `PersonKind` roster chain (`peopleUsersTabShared`, `usersTabRosterRoleSections` — v2.664 learned this the hard way: users with an unmapped role silently vanish from People → Users), and the `create-user`/`invite-user` Edge functions' `validRoles` (redeploy both).
+
 ---
 
 ## Pre-flight Checklist
