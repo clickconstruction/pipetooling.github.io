@@ -8555,6 +8555,7 @@ ${totalsHtml}
           printCostBreakdownJobId={printCostBreakdownJobId}
           setPrintCostBreakdownJobId={setPrintCostBreakdownJobId}
           canAccessBankingForParts={canAccessBankingForParts}
+          showTeamLaborAndProfit={authRole === 'dev' || authRole === 'master_technician'}
           nicknameByDebitCard={nicknameByDebitCard}
           tallyPartsLoading={tallyPartsLoading}
           laborJobsLoading={laborJobsLoading}

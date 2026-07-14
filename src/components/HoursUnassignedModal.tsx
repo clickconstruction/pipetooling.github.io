@@ -225,7 +225,7 @@ export function HoursUnassignedModal({
       const [correctRes, hoursRes, configRes, jobsRes, bidsRes] = await Promise.all([
         supabase.from('hours_days_correct').select('work_date').gte('work_date', hoursDateStart).lte('work_date', hoursDateEnd),
         supabase.from('people_hours').select('person_name, work_date, hours').eq('person_name', personName).gte('work_date', hoursDateStart).lte('work_date', hoursDateEnd),
-        supabase.from('people_pay_config').select('person_name, is_salary, show_in_cost_matrix, record_hours_but_salary'),
+        supabase.rpc('list_people_pay_flags'),
         supabase.from('people_crew_jobs').select('work_date, person_name, job_assignments').gte('work_date', hoursDateStart).lte('work_date', hoursDateEnd),
         supabase.from('people_crew_bids').select('work_date, person_name, bid_assignments').gte('work_date', hoursDateStart).lte('work_date', hoursDateEnd),
       ])

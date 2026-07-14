@@ -25,7 +25,7 @@ import { PeopleHoursDayAuditModal } from '../PeopleHoursDayAuditModal'
 import { useToastContext } from '../../contexts/ToastContext'
 
 /** Narrow view of the canonical pay-config row (single source of truth for field types). */
-type PayConfigRow = Pick<PayConfigRowFull, 'person_name' | 'hourly_wage' | 'is_salary' | 'show_in_hours' | 'show_in_cost_matrix' | 'record_hours_but_salary'>
+type PayConfigRow = Pick<PayConfigRowFull, 'person_name' | 'is_salary' | 'show_in_hours' | 'show_in_cost_matrix' | 'record_hours_but_salary'>
 
 type CrewJobsRow = {
   work_date: string
@@ -289,9 +289,8 @@ export function QuickfillUnassignedFieldTimeSection() {
       // computes dayHoursRaw straight from approved clock sessions, so manual
       // grid overrides and pending sessions can't influence what surfaces.
       const [payRes, crewJobsRes, crewBidsRes, sessionsRes, officeId] = await Promise.all([
-        supabase
-          .from('people_pay_config')
-          .select('person_name, hourly_wage, is_salary, show_in_hours, show_in_cost_matrix, record_hours_but_salary'),
+        // RPC (non-wage flags only): assistants can't SELECT people_pay_config since the pay lockdown (v2.660).
+        supabase.rpc('list_people_pay_flags'),
         supabase
           .from('people_crew_jobs')
           .select('work_date, person_name, job_assignments')

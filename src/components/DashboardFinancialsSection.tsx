@@ -834,8 +834,8 @@ function ItemsModal({
 
 /** Dashboard "Financials" one-pager: AR / AP / Not billed cards with drill-down modals. */
 export default function DashboardFinancialsSection() {
-  const { data, loading, error } = useDashboardFinancials(true)
   const { role } = useAuth()
+  const { data, loading, error } = useDashboardFinancials(true, undefined, role)
   const [openCard, setOpenCard] = useState<CardKey | null>(null)
   const [dispatchItem, setDispatchItem] = useState<FinancialItem | null>(null)
   const [apBill, setApBill] = useState<DashboardApBill | null>(null)

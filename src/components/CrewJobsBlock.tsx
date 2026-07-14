@@ -62,7 +62,7 @@ function formatTeamLaborWorkDate(ymd: string | null): string {
 }
 
 /** Narrow view of the canonical pay-config row (single source of truth for field types). */
-type PayConfigRow = Pick<PayConfigRowFull, 'person_name' | 'hourly_wage' | 'is_salary' | 'show_in_hours' | 'show_in_cost_matrix'>
+type PayConfigRow = Pick<PayConfigRowFull, 'person_name' | 'is_salary' | 'show_in_hours' | 'show_in_cost_matrix'>
 
 type CrewRow = { unifiedAssignments: UnifiedAssignment[] }
 
@@ -274,9 +274,8 @@ export function CrewJobsBlock({
   }
 
   async function loadPayConfig() {
-    const { data, error: err } = await supabase
-      .from('people_pay_config')
-      .select('person_name, hourly_wage, is_salary, show_in_hours, show_in_cost_matrix')
+    // RPC (non-wage flags only): assistants can't SELECT people_pay_config since the pay lockdown (v2.660).
+    const { data, error: err } = await supabase.rpc('list_people_pay_flags')
     if (err) {
       setError(err.message)
       return

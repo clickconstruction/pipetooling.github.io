@@ -252,6 +252,52 @@ export function buildUpcomingApSection(lines: UpcomingPayrollLine[]): UpcomingPa
   }
 }
 
+/**
+ * Assistant path (post pay-lockdown, v2.660): the AP bucket built from the
+ * get_dashboard_payroll_totals RPC aggregates — per-person stub rows are never
+ * fetched, so there is nothing to redact. Shape matches redactApPayrollItems output.
+ */
+export function buildApBucketFromAggregates(
+  supplyInvoices: FinancialSupplyInvoiceRow[],
+  totals: { dueTotal: number; dueCount: number },
+): FinancialBucket & { supplyTotal: number; payrollTotal: number } {
+  const base = buildApBucket(supplyInvoices, [])
+  if (totals.dueTotal <= EPSILON) return base
+  const aggregate: FinancialItem = {
+    key: 'payroll:aggregate',
+    label: 'Payroll',
+    sublabel: `${totals.dueCount} open pay stub${totals.dueCount === 1 ? '' : 's'}`,
+    amount: totals.dueTotal,
+    dateYmd: null,
+    jobId: null,
+    address: null,
+  }
+  return { ...finishBucket([...base.items, aggregate]), supplyTotal: base.supplyTotal, payrollTotal: totals.dueTotal }
+}
+
+/** Assistant path: upcoming-payroll section from RPC aggregates (shape matches redactUpcomingApSection). */
+export function upcomingApSectionFromAggregates(totals: {
+  upcomingTotal: number
+  upcomingCount: number
+}): UpcomingPayrollApSection {
+  if (totals.upcomingCount === 0 || totals.upcomingTotal <= EPSILON) return { total: 0, count: 0, items: [] }
+  return {
+    total: totals.upcomingTotal,
+    count: totals.upcomingCount,
+    items: [
+      {
+        key: 'upcoming:aggregate',
+        label: 'Payroll',
+        sublabel: `${totals.upcomingCount} person-week${totals.upcomingCount === 1 ? '' : 's'}`,
+        amount: totals.upcomingTotal,
+        dateYmd: null,
+        jobId: null,
+        address: null,
+      },
+    ],
+  }
+}
+
 /** Assistant view: one aggregate upcoming-payroll line — no per-person amounts. */
 export function redactUpcomingApSection(section: UpcomingPayrollApSection): UpcomingPayrollApSection {
   if (section.items.length === 0) return section

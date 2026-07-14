@@ -10976,6 +10976,10 @@ export type Database = {
           job_name: string
         }[]
       }
+      get_dashboard_payroll_totals: {
+        Args: never
+        Returns: Json
+      }
       get_man_hours_by_job: {
         Args: never
         Returns: {
@@ -11405,6 +11409,17 @@ export type Database = {
           posted_at: string
           raw: Json
           tally_user_note: string
+        }[]
+      }
+      list_people_pay_flags: {
+        Args: never
+        Returns: {
+          is_salary: boolean
+          person_id: string
+          person_name: string
+          record_hours_but_salary: boolean
+          show_in_cost_matrix: boolean
+          show_in_hours: boolean
         }[]
       }
       list_user_display_names: {

@@ -40,7 +40,7 @@ export async function fetchSalariedUserIdSetFromUserIds(
 
   const payRows = await withSupabaseRetry(
     async () =>
-      supabase.from('people_pay_config').select('person_name, is_salary').in('person_name', names),
+      supabase.rpc('list_people_pay_flags'),
     'people_pay_config is_salary for salary gate row',
   )
 

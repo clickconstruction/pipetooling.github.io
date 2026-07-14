@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-14 (v2.659)
+last_updated: 2026-07-14 (v2.660)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -15,8 +15,11 @@ last_updated: 2026-07-14 (v2.659)
  version_range: "v2.581+ (reverse chronological)"
  
  key_sections:
-   - name: "Latest Version (v2.659)"
+   - name: "Latest Version (v2.660)"
      line: ~2022
+     description: "Assistant pay lockdown (Phase 1): assistants — pay-linked or not — can no longer read wages or pay stubs at the DB level (people_pay_config assistant SELECT dropped; pay-stub family onto new has_payroll_access()); new list_people_pay_flags() + get_dashboard_payroll_totals() SECURITY DEFINER RPCs keep Hours/Quickfill/Crew rosters and AP-card org totals working; Job Summary labor/profit and Projects day-modal team labor now dev/master-only; cost-matrix shares restricted to dev/master grantees."
+   - name: "Previous Version (v2.659)"
+     line: ~2030
      description: "Job Detail — Assigned Team no longer shows raw UUIDs for archived users: the users RLS hides archived rows from non-dev viewers, so the team_members name embed came back null; missing names now resolve through the RPC-backed fetchUserNamesForIds (list_user_display_names)."
    - name: "Previous Version (v2.658)"
      line: ~2028
@@ -2027,6 +2030,15 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.660)
+
+### Security — assistant pay lockdown: assistants can never read individual pay (2026-07-14, PR #308)
+Phase 1 of the pay-visibility overhaul (decisions 2026-07-14: totals-yes / hours-markers-all-assistants / matrix-shares-masters-only). Principle: assistants manage clock cards and hours; **what an individual makes is never readable by an assistant**, pay-linked or not. Previously the UI hid the Payroll tab but the DB did not: `is_assistant_of_pay_approved_master()` gave a pay-linked assistant full **read/write** on the pay-stub family via the API, `people_pay_config` granted ALL assistants wage SELECT, and `person_offsets` was assistant-readable.
+- **Migration [`20260714120000_assistant_pay_lockdown.sql`](../supabase/migrations/20260714120000_assistant_pay_lockdown.sql)** — see `MIGRATIONS.md` for the 8-part breakdown (capability fn **`has_payroll_access()`**, policy rewrites, **`list_people_pay_flags()`**, **`get_dashboard_payroll_totals()`**, definer **`get_man_hours_by_job`**, cost-matrix grantee trigger).
+- **Client**: flag consumers ([`usePayConfig`](../src/hooks/usePayConfig.ts), Quickfill [`HoursSection`](../src/components/quickfill/HoursSection.tsx) + [`QuickfillUnassignedFieldTimeSection`](../src/components/quickfill/QuickfillUnassignedFieldTimeSection.tsx), [`CrewJobsBlock`](../src/components/CrewJobsBlock.tsx), [`HoursUnassignedModal`](../src/components/HoursUnassignedModal.tsx), [`salaryPayConfigGate`](../src/lib/salaryPayConfigGate.ts)) load non-wage flags via the RPC; [`teamLabor.ts`](../src/utils/teamLabor.ts) splits flags (RPC) from wages (direct select — empty for assistants, so salaried HOURS stay correct while labor DOLLARS read $0); [`useDashboardFinancials`](../src/hooks/useDashboardFinancials.ts) assistant path skips every per-person payroll fetch and renders the AP card from **`get_dashboard_payroll_totals()`** aggregates (new kernel fns `buildApBucketFromAggregates` / `upcomingApSectionFromAggregates`, 4 tests); Jobs → Job Summary **Team Labor** and **profit** cells render `—` for non-dev/master ([`JobsJobSummaryTab`](../src/components/jobs/JobsJobSummaryTab.tsx) `showTeamLaborAndProfit`); Projects → Job History day modal hides the **Team labor** row and re-labels the total `Total (excl. team labor)` for non-dev/master.
+- **Parity-verified before shipping**: RPC due total matched the live client to the cent ($8,562.99); upcoming matched within open-session time drift (8 open sessions). Taunya (pay-linked assistant) and Grace (non-linked) land on identical capability sets.
+- Phases 2 (dissolve pay-linkage meaning for assistants) and 3 (**controller** role: assistant powers + dev-level financial visibility) tracked next.
 
 ## Latest Updates (v2.659)
 
