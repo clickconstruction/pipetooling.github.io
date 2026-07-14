@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-14 (v2.669)
+last_updated: 2026-07-14 (v2.670)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -15,9 +15,9 @@ last_updated: 2026-07-14 (v2.669)
  version_range: "v2.581+ (reverse chronological)"
  
  key_sections:
-   - name: "Latest Version (v2.669)"
+   - name: "Latest Version (v2.670)"
      line: ~2022
-     description: "Dashboard Financials: AR and Not Billed footers match AP's 'N <noun>s, oldest: M/D (Xd)' form."
+     description: "App-wide: page content (tab bars) sits much closer under the header — .appMain top padding 1.5rem → 0.5rem, .pageWrap top padding 2rem → 0."
    - name: "Previous Version (v2.664)"
      line: ~2030
      description: "Controller users now render on People → Users (own Controllers section after Assistants) and in Quickfill Schedule role grouping — multi-user UI test caught that the PersonKind chain lacked controller, so such users vanished from the roster entirely."
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.670)
+
+### UI — page content sits much closer under the header, app-wide (2026-07-14)
+The vertical gap between the header chrome and the start of page content (typically the tab bar) shrinks from up to ~3.5rem to a uniform **0.5rem**: [`index.css`](../src/index.css) `.appMain` gains `padding-top: 0.5rem` (side/bottom padding unchanged at `--app-main-pad`) and `.pageWrap` (Materials, Bids) gains `padding-top: 0` since `.appMain` already provides the gap. The Banking-only inline `paddingTop: '0.25rem'` special case in [`Layout.tsx`](../src/components/Layout.tsx) is removed — Banking now uses the same 0.5rem as every other page. Mobile was already tight (`--app-main-pad` 0.5rem); `.pageWrap` pages lose their extra 0.5rem mobile top padding for consistency.
 
 ## Latest Updates (v2.669)
 
