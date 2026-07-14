@@ -8,6 +8,7 @@ import {
   googleStreetViewPanoUrl,
 } from '../../lib/fetchStreetViewPreview'
 import { fetchJobWithDetailsById } from '../../lib/fetchJobWithDetailsById'
+import { fetchUserNamesForIds } from '../../lib/scheduleDispatchHub'
 import {
   formatJobDetailModalDateFromYmd,
   formatJobDetailModalDateTitleFromYmd,
@@ -459,6 +460,26 @@ export default function DetailJobModal({
   const [scheduleTimeSectionOpen, setScheduleTimeSectionOpen] = useState(false)
   const [jobDetailScheduleSessionsFilter, setJobDetailScheduleSessionsFilter] = useState('')
   const [reportsModalOpen, setReportsModalOpen] = useState(false)
+  // Archived users are hidden by the users RLS for non-dev viewers, so the team_members
+  // embed comes back with a null name and the list showed raw UUIDs. Resolve those via
+  // the RPC-backed helper (list_user_display_names), which can name archived users.
+  const [teamMemberNameFallback, setTeamMemberNameFallback] = useState<Map<string, string>>(new Map())
+  useEffect(() => {
+    const missing = (fullJob?.team_members ?? [])
+      .filter((tm) => !(tm.users?.name ?? '').trim())
+      .map((tm) => tm.user_id)
+    if (missing.length === 0) {
+      setTeamMemberNameFallback(new Map())
+      return
+    }
+    let cancelled = false
+    void fetchUserNamesForIds(missing).then(({ data }) => {
+      if (!cancelled) setTeamMemberNameFallback(data)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [fullJob])
 
   const loadDetail = useCallback(async () => {
     if (!open || !jobId) return
@@ -1139,7 +1160,7 @@ export default function DetailJobModal({
                 <ul style={{ margin: 0, paddingLeft: '1.1rem', fontSize: '0.875rem' }}>
                   {fullJob.team_members.map((tm) => (
                     <li key={tm.id} style={{ marginBottom: 4 }}>
-                      {tm.users?.name?.trim() || tm.user_id}
+                      {tm.users?.name?.trim() || teamMemberNameFallback.get(tm.user_id) || '…'}
                     </li>
                   ))}
                 </ul>

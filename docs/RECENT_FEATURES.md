@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-14 (v2.658)
+last_updated: 2026-07-14 (v2.659)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -15,8 +15,11 @@ last_updated: 2026-07-14 (v2.658)
  version_range: "v2.581+ (reverse chronological)"
  
  key_sections:
-   - name: "Latest Version (v2.658)"
+   - name: "Latest Version (v2.659)"
      line: ~2022
+     description: "Job Detail — Assigned Team no longer shows raw UUIDs for archived users: the users RLS hides archived rows from non-dev viewers, so the team_members name embed came back null; missing names now resolve through the RPC-backed fetchUserNamesForIds (list_user_display_names)."
+   - name: "Previous Version (v2.658)"
+     line: ~2028
      description: "Job Detail / Edit Job — Cost breakdown team-labor stream gated to devs + masters (showJobCostBreakdownTeamLabor; per-person hours x wage let other roles derive employee pay rates — UI layer of a two-layer fix, people_pay_config RLS audit tracked separately); Billing Pipeline Job detail / Edit job icon buttons lose their border (keep the 36px hit area)."
    - name: "Previous Version (v2.657)"
      line: ~2026
@@ -2024,6 +2027,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.659)
+
+### Job Detail — Assigned Team resolves archived users' names instead of showing raw UUIDs (2026-07-14, PR #307)
+Reported on job 258: five team members rendered as raw UUIDs between the named ones. The `users` RLS SELECT policy hides **archived** rows from every viewer except devs (`archived_at IS NULL OR is_dev()`), so the `team_members` embed's `users(name)` came back null for archived people (Mike Z, Juan, Chelsea, Jesse, Mario) and the list fell back to `tm.user_id`. [`DetailJobModal.tsx`](../src/components/jobs/DetailJobModal.tsx) now collects team members whose embedded name is missing and resolves them via the existing RPC-backed [`fetchUserNamesForIds`](../src/lib/scheduleDispatchHub.ts) (`list_user_display_names` — built for exactly this RLS gap in dispatch); render order: embedded name → RPC fallback → `…` placeholder while loading. Verified live in an assistant session on job 258: all nine names, zero UUIDs. No other raw-`user_id` display fallbacks exist in the codebase (grepped). No DB changes.
 
 ## Latest Updates (v2.658)
 
