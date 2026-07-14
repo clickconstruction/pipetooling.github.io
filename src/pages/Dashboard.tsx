@@ -832,9 +832,8 @@ function ReadyToBillJobIconToolbar({
       }
     : {
         padding: '0.45rem',
-        background: 'var(--surface)',
-        border: '1px solid var(--border-strong)',
-        borderRadius: 6,
+        background: 'none',
+        border: 'none',
         cursor: 'pointer',
         color: 'var(--text-700)',
         display: 'inline-flex',

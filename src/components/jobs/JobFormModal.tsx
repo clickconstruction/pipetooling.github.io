@@ -80,6 +80,7 @@ import {
 import { SearchableSelect } from '../SearchableSelect'
 import type { UserRole } from '../../hooks/useAuth'
 import { fieldRoleServiceTypeIdsForUser, isSubcontractorLikeRole } from '../../lib/subcontractorLikeRole'
+import { showJobCostBreakdownTeamLabor } from '../../lib/jobDetailModalRole'
 
 type EstimatesRow = Database['public']['Tables']['estimates']['Row']
 type JobFormServiceType = { id: string; name: string; color: string | null }
@@ -6146,7 +6147,7 @@ export default function JobFormModal({
                   </tbody>
                 </table>
               </MaterialsCostAccordionRow>
-              {editing ? <JobChargesTimelineStandalone job={editing} /> : null}
+              {editing ? <JobChargesTimelineStandalone job={editing} includeTeamLabor={showJobCostBreakdownTeamLabor(authRole)} /> : null}
           </div>
         </div>
         <div
