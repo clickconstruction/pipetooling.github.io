@@ -9,6 +9,9 @@ import type { CSSProperties, ReactNode } from 'react'
 export function BillingPipelineCard({ children }: { children: ReactNode }) {
   return (
     <div
+      // billingPipelineCard declares the container that drives the
+      // .billingPipelineActionAgePair width band in index.css.
+      className="billingPipelineCard"
       style={{
         border: '1px solid var(--border)',
         borderRadius: 8,

@@ -893,7 +893,11 @@ export default function DashboardFinancialsSection() {
                 display: 'flex',
                 flexWrap: 'wrap',
                 justifyContent: 'space-between',
-                alignItems: 'flex-end',
+                // Top-aligned so all three card titles read on one line even when the
+                // grid stretches shorter cards to the tallest card's height (alignContent
+                // covers the wrapped two-row case at narrow widths).
+                alignItems: 'flex-start',
+                alignContent: 'flex-start',
                 columnGap: '0.75rem',
                 rowGap: '0.25rem',
                 // Buttons don't inherit text color; without this the unstyled

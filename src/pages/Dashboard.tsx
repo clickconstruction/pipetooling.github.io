@@ -42,7 +42,6 @@ import { useSendBackCollectPaymentFlowNotice } from '../hooks/useSendBackCollect
 import NewReportModal from '../components/NewReportModal'
 import JobReportsModal from '../components/JobReportsModal'
 import AdditionalReportModal from '../components/AdditionalReportModal'
-import JobBillDetailsModal from '../components/JobBillDetailsModal'
 import type { DetailJobModalAssignedJobRow } from '../components/jobs/DetailJobModal'
 import CollectPaymentModal from '../components/jobs/CollectPaymentModal'
 import {
@@ -816,18 +815,35 @@ function ReadyToBillJobIconToolbar({
   onOpenDetail: (a: { jobId: string; hcpNumber: string; jobName: string; jobAddress: string }) => void
 }) {
   const safeName = (jobName ?? '').trim() || 'Job'
-  const iconBtn: CSSProperties = {
-    padding: '0.25rem',
-    background: 'none',
-    border: 'none',
-    cursor: 'pointer',
-    color: 'var(--text-700)',
-    display: 'inline-flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-  }
+  // Desktop gets full-size bordered buttons (easier to recognize and hit);
+  // mobile keeps the compact bare icons so pipeline cards stay short.
+  const isMobile = useIsMobile()
+  const iconSize = isMobile ? 16 : 22
+  const iconBtn: CSSProperties = isMobile
+    ? {
+        padding: '0.25rem',
+        background: 'none',
+        border: 'none',
+        cursor: 'pointer',
+        color: 'var(--text-700)',
+        display: 'inline-flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+      }
+    : {
+        padding: '0.45rem',
+        background: 'var(--surface)',
+        border: '1px solid var(--border-strong)',
+        borderRadius: 6,
+        cursor: 'pointer',
+        color: 'var(--text-700)',
+        display: 'inline-flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+      }
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', alignItems: 'center' }}>
+    // Row on desktop keeps the taller buttons from stretching short pipeline cards.
+    <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: isMobile ? '0.25rem' : '0.35rem', alignItems: 'center' }}>
       <button
         type="button"
         onClick={() => onOpenDetail({ jobId, hcpNumber, jobName, jobAddress })}
@@ -835,13 +851,13 @@ function ReadyToBillJobIconToolbar({
         aria-label={`Open job detail for ${safeName}`}
         style={iconBtn}
       >
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="16" height="16" fill="currentColor" aria-hidden="true">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={iconSize} height={iconSize} fill="currentColor" aria-hidden="true">
           <path d="M264 112L376 112C380.4 112 384 115.6 384 120L384 160L256 160L256 120C256 115.6 259.6 112 264 112zM208 120L208 160L128 160C92.7 160 64 188.7 64 224L64 320L576 320L576 224C576 188.7 547.3 160 512 160L432 160L432 120C432 89.1 406.9 64 376 64L264 64C233.1 64 208 89.1 208 120zM576 368L384 368L384 384C384 401.7 369.7 416 352 416L288 416C270.3 416 256 401.7 256 384L256 368L64 368L64 480C64 515.3 92.7 544 128 544L512 544C547.3 544 576 515.3 576 480L576 368z" />
         </svg>
       </button>
       {jobFormModalAvailable ? (
-        <button type="button" onClick={() => onEditJob(jobId)} title="Edit" aria-label="Edit" style={iconBtn}>
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="16" height="16" fill="currentColor" aria-hidden="true">
+        <button type="button" onClick={() => onEditJob(jobId)} title="Edit job" aria-label={`Edit job ${safeName}`} style={iconBtn}>
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={iconSize} height={iconSize} fill="currentColor" aria-hidden="true">
             <path d="M128.1 64C92.8 64 64.1 92.7 64.1 128L64.1 512C64.1 547.3 92.8 576 128.1 576L274.3 576L285.2 521.5C289.5 499.8 300.2 479.9 315.8 464.3L448 332.1L448 234.6C448 217.6 441.3 201.3 429.3 189.3L322.8 82.7C310.8 70.7 294.5 64 277.6 64L128.1 64zM389.6 240L296.1 240C282.8 240 272.1 229.3 272.1 216L272.1 122.5L389.6 240zM332.3 530.9L320.4 590.5C320.2 591.4 320.1 592.4 320.1 593.4C320.1 601.4 326.6 608 334.7 608C335.7 608 336.6 607.9 337.6 607.7L397.2 595.8C409.6 593.3 421 587.2 429.9 578.3L548.8 459.4L468.8 379.4L349.9 498.3C341 507.2 334.9 518.6 332.4 531zM600.1 407.9C622.2 385.8 622.2 350 600.1 327.9C578 305.8 542.2 305.8 520.1 327.9L491.3 356.7L571.3 436.7L600.1 407.9z" />
           </svg>
         </button>
@@ -1172,7 +1188,6 @@ export default function Dashboard() {
     jobName: string
     buttonVariant?: string | null
   } | null>(null)
-  const [viewBillDetailsJob, setViewBillDetailsJob] = useState<{ id: string; hcpNumber: string; jobName: string; jobAddress: string; revenue: number | null } | null>(null)
   const [dashboardButtonVisibility, setDashboardButtonVisibility] = useState<Record<string, boolean> | null>(null)
   const [quickButtonsPlacement, setQuickButtonsPlacement] = useState<'top' | 'with_pins'>('with_pins')
   const [readyForBillingJob, setReadyForBillingJob] = useState<{ id: string; hcpNumber: string; jobName: string } | null>(null)
@@ -4923,10 +4938,9 @@ export default function Dashboard() {
                               onEditJob={openReadyToBillEditJob}
                               onOpenDetail={openReadyToBillDetailJobModal}
                             />
-                            <button type="button" onClick={() => setViewBillDetailsJob({ id: inv.job_id, hcpNumber: inv.hcp_number ?? '—', jobName: inv.job_name ?? '—', jobAddress: inv.job_address ?? '—', revenue: inv.amount })} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: 'var(--text-link)', border: 'none', cursor: 'pointer', textDecoration: 'none' }}>View<br />Details</button>
                             <button type="button" onClick={() => setViewReportsJob({ id: inv.job_id, hcpNumber: inv.hcp_number ?? '—', jobName: inv.job_name ?? '—', jobAddress: inv.job_address ?? '—' })} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: 'var(--text-link)', border: '1px solid #2563eb', borderRadius: 4, cursor: 'pointer' }}>View<br />Reports</button>
                             <button type="button" onClick={() => { setSendBackChecked(false); setSendBackInvoice({ inv, action: 'delete' }) }} disabled={invoiceStatusUpdatingId === inv.id} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: 'var(--text-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: invoiceStatusUpdatingId === inv.id ? 'not-allowed' : 'pointer' }}>Delete<br />draft bill</button>
-                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.2rem' }}>
+                            <div className="billingPipelineActionAgePair">
                               <button type="button" onClick={() => {
                                 if (!dashboardJobHasCustomerForBilling(inv.customer_id)) {
                                   showToast?.('Link this job to a customer before billing.', 'error')
@@ -4999,13 +5013,12 @@ export default function Dashboard() {
                             onEditJob={openReadyToBillEditJob}
                             onOpenDetail={openReadyToBillDetailJobModal}
                           />
-                          <button type="button" onClick={() => setViewBillDetailsJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', jobAddress: j.job_address ?? '—', revenue: j.revenue })} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: 'var(--text-link)', border: 'none', cursor: 'pointer', textDecoration: 'none' }}>View<br />Details</button>
                           <button type="button" onClick={() => setViewReportsJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', jobAddress: j.job_address ?? '—' })} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: 'var(--text-link)', border: '1px solid #2563eb', borderRadius: 4, cursor: 'pointer' }}>View<br />Reports</button>
                           <button type="button" onClick={() => { setSendBackChecked(false); setSendBackJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', toStatus: 'working', rtbDraftCount: countDashboardRtbDraftsForJob(j.id, readyToBillInvoices) }) }} disabled={jobStatusUpdatingId === j.id} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: 'var(--text-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: jobStatusUpdatingId === j.id ? 'not-allowed' : 'pointer' }} aria-label="Send back">Send<br />Back</button>
                           {bundleInv != null && (
                             <button type="button" onClick={() => { setSendBackChecked(false); setSendBackInvoice({ inv: bundleInv, action: 'delete' }) }} disabled={invoiceStatusUpdatingId === bundleInv.id} title="Remove this billing line (partial invoice row)" style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: 'var(--text-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: invoiceStatusUpdatingId === bundleInv.id ? 'not-allowed' : 'pointer' }}>Delete<br />draft bill</button>
                           )}
-                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.2rem' }}>
+                          <div className="billingPipelineActionAgePair">
                             {bundleInv != null ? (
                               <button type="button" onClick={() => {
                                 if (!dashboardJobHasCustomerForBilling(bundleInv.customer_id)) {
@@ -5102,10 +5115,9 @@ export default function Dashboard() {
                               )}
                             </div>
                           )}
-                            <button type="button" onClick={() => setViewBillDetailsJob({ id: inv.job_id, hcpNumber: inv.hcp_number ?? '—', jobName: inv.job_name ?? '—', jobAddress: inv.job_address ?? '—', revenue: inv.amount })} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: 'var(--text-link)', border: 'none', cursor: 'pointer', textDecoration: 'none' }}>View<br />Details</button>
                           <button type="button" onClick={() => setViewReportsJob({ id: inv.job_id, hcpNumber: inv.hcp_number ?? '—', jobName: inv.job_name ?? '—', jobAddress: inv.job_address ?? '—' })} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: 'var(--text-link)', border: '1px solid #2563eb', borderRadius: 4, cursor: 'pointer' }}>View<br />Reports</button>
                           <button type="button" onClick={() => { setSendBackChecked(false); setSendBackInvoice({ inv, action: 'revert' }) }} disabled={invoiceStatusUpdatingId === inv.id} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: 'var(--text-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: invoiceStatusUpdatingId === inv.id ? 'not-allowed' : 'pointer' }}>Send<br />back</button>
-                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.2rem' }}>
+                          <div className="billingPipelineActionAgePair">
                             <button type="button" onClick={() => setMarkPaidInvoice(inv)} disabled={invoiceStatusUpdatingId === inv.id} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#16a34a', color: 'white', border: 'none', borderRadius: 4, cursor: invoiceStatusUpdatingId === inv.id ? 'not-allowed' : 'pointer' }}>{invoiceStatusUpdatingId === inv.id ? '…' : 'Mark Paid'}</button>
                             {inv.open_since_at && <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', textAlign: 'center' }} title="Time open">Open {formatTimeSince(inv.open_since_at)}</span>}
                           </div>
@@ -5145,10 +5157,9 @@ export default function Dashboard() {
                                 )}
                               </div>
                             )}
-                          <button type="button" onClick={() => setViewBillDetailsJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', jobAddress: j.job_address ?? '—', revenue: j.revenue })} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: 'var(--text-link)', border: 'none', cursor: 'pointer', textDecoration: 'none' }}>View<br />Details</button>
                             <button type="button" onClick={() => setViewReportsJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', jobAddress: j.job_address ?? '—' })} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: 'var(--text-link)', border: '1px solid #2563eb', borderRadius: 4, cursor: 'pointer' }}>View<br />Reports</button>
                             <button type="button" onClick={() => { setSendBackChecked(false); setSendBackJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', toStatus: 'ready_to_bill', rtbDraftCount: 0 }) }} disabled={jobStatusUpdatingId === j.id} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: 'var(--text-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: jobStatusUpdatingId === j.id ? 'not-allowed' : 'pointer' }}>Send<br />back</button>
-                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.2rem' }}>
+                            <div className="billingPipelineActionAgePair">
                               <button type="button" onClick={() => setMarkPaidJob(j)} disabled={jobStatusUpdatingId === j.id} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: jobStatusUpdatingId === j.id ? 'not-allowed' : 'pointer' }}>{jobStatusUpdatingId === j.id ? '…' : 'Mark Paid'}</button>
                               {j.created_at && <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', textAlign: 'center' }} title="Time since job created">Open {formatTimeSince(j.created_at)}</span>}
                             </div>
@@ -5432,10 +5443,9 @@ export default function Dashboard() {
                               onEditJob={openReadyToBillEditJob}
                               onOpenDetail={openReadyToBillDetailJobModal}
                             />
-                            <button type="button" onClick={() => setViewBillDetailsJob({ id: inv.job_id, hcpNumber: inv.hcp_number ?? '—', jobName: inv.job_name ?? '—', jobAddress: inv.job_address ?? '—', revenue: inv.amount })} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: 'var(--text-link)', border: 'none', cursor: 'pointer', textDecoration: 'none' }}>View<br />Details</button>
                           <button type="button" onClick={() => setViewReportsJob({ id: inv.job_id, hcpNumber: inv.hcp_number ?? '—', jobName: inv.job_name ?? '—', jobAddress: inv.job_address ?? '—' })} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: 'var(--text-link)', border: '1px solid #2563eb', borderRadius: 4, cursor: 'pointer' }}>View<br />Reports</button>
                           <button type="button" onClick={() => { setSendBackChecked(false); setSendBackInvoice({ inv, action: 'delete' }) }} disabled={invoiceStatusUpdatingId === inv.id} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: 'var(--text-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: invoiceStatusUpdatingId === inv.id ? 'not-allowed' : 'pointer' }}>Delete<br />draft bill</button>
-                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.2rem' }}>
+                          <div className="billingPipelineActionAgePair">
                             <button type="button" onClick={() => {
                                 if (!dashboardJobHasCustomerForBilling(inv.customer_id)) {
                                   showToast?.('Link this job to a customer before billing.', 'error')
@@ -5508,13 +5518,12 @@ export default function Dashboard() {
                             onEditJob={openReadyToBillEditJob}
                             onOpenDetail={openReadyToBillDetailJobModal}
                           />
-                          <button type="button" onClick={() => setViewBillDetailsJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', jobAddress: j.job_address ?? '—', revenue: j.revenue })} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: 'var(--text-link)', border: 'none', cursor: 'pointer', textDecoration: 'none' }}>View<br />Details</button>
                         <button type="button" onClick={() => setViewReportsJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', jobAddress: j.job_address ?? '—' })} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: 'var(--text-link)', border: '1px solid #2563eb', borderRadius: 4, cursor: 'pointer' }}>View<br />Reports</button>
                         <button type="button" onClick={() => { setSendBackChecked(false); setSendBackJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', toStatus: 'working', rtbDraftCount: countDashboardRtbDraftsForJob(j.id, readyToBillInvoices) }) }} disabled={jobStatusUpdatingId === j.id} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: 'var(--text-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: jobStatusUpdatingId === j.id ? 'not-allowed' : 'pointer' }} aria-label="Send back">Send<br />Back</button>
                         {bundleInv != null && (
                           <button type="button" onClick={() => { setSendBackChecked(false); setSendBackInvoice({ inv: bundleInv, action: 'delete' }) }} disabled={invoiceStatusUpdatingId === bundleInv.id} title="Remove this billing line (partial invoice row)" style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: 'var(--text-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: invoiceStatusUpdatingId === bundleInv.id ? 'not-allowed' : 'pointer' }}>Delete<br />draft bill</button>
                         )}
-                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.2rem' }}>
+                        <div className="billingPipelineActionAgePair">
                           {bundleInv != null ? (
                             <button type="button" onClick={() => {
                                 if (!dashboardJobHasCustomerForBilling(bundleInv.customer_id)) {
@@ -5611,10 +5620,9 @@ export default function Dashboard() {
                               )}
                             </div>
                           )}
-                            <button type="button" onClick={() => setViewBillDetailsJob({ id: inv.job_id, hcpNumber: inv.hcp_number ?? '—', jobName: inv.job_name ?? '—', jobAddress: inv.job_address ?? '—', revenue: inv.amount })} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: 'var(--text-link)', border: 'none', cursor: 'pointer', textDecoration: 'none' }}>View<br />Details</button>
                           <button type="button" onClick={() => setViewReportsJob({ id: inv.job_id, hcpNumber: inv.hcp_number ?? '—', jobName: inv.job_name ?? '—', jobAddress: inv.job_address ?? '—' })} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: 'var(--text-link)', border: '1px solid #2563eb', borderRadius: 4, cursor: 'pointer' }}>View<br />Reports</button>
                           <button type="button" onClick={() => { setSendBackChecked(false); setSendBackInvoice({ inv, action: 'revert' }) }} disabled={invoiceStatusUpdatingId === inv.id} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: 'var(--text-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: invoiceStatusUpdatingId === inv.id ? 'not-allowed' : 'pointer' }}>Send<br />back</button>
-                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.2rem' }}>
+                          <div className="billingPipelineActionAgePair">
                             <button type="button" onClick={() => setMarkPaidInvoice(inv)} disabled={invoiceStatusUpdatingId === inv.id} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#16a34a', color: 'white', border: 'none', borderRadius: 4, cursor: invoiceStatusUpdatingId === inv.id ? 'not-allowed' : 'pointer' }}>{invoiceStatusUpdatingId === inv.id ? '…' : 'Mark Paid'}</button>
                             {inv.open_since_at && <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', textAlign: 'center' }} title="Time open">Open {formatTimeSince(inv.open_since_at)}</span>}
                           </div>
@@ -5654,10 +5662,9 @@ export default function Dashboard() {
                             )}
                           </div>
                         )}
-                          <button type="button" onClick={() => setViewBillDetailsJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', jobAddress: j.job_address ?? '—', revenue: j.revenue })} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: 'var(--text-link)', border: 'none', cursor: 'pointer', textDecoration: 'none' }}>View<br />Details</button>
                         <button type="button" onClick={() => setViewReportsJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', jobAddress: j.job_address ?? '—' })} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: 'var(--text-link)', border: '1px solid #2563eb', borderRadius: 4, cursor: 'pointer' }}>View<br />Reports</button>
                         <button type="button" onClick={() => { setSendBackChecked(false); setSendBackJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', toStatus: 'ready_to_bill', rtbDraftCount: 0 }) }} disabled={jobStatusUpdatingId === j.id} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: 'var(--text-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: jobStatusUpdatingId === j.id ? 'not-allowed' : 'pointer' }}>Send<br />back</button>
-                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.2rem' }}>
+                        <div className="billingPipelineActionAgePair">
                           <button type="button" onClick={() => setMarkPaidJob(j)} disabled={jobStatusUpdatingId === j.id} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: jobStatusUpdatingId === j.id ? 'not-allowed' : 'pointer' }}>{jobStatusUpdatingId === j.id ? '…' : 'Mark Paid'}</button>
                           {j.created_at && <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', textAlign: 'center' }} title="Time since job created">Open {formatTimeSince(j.created_at)}</span>}
                         </div>
@@ -7554,13 +7561,6 @@ export default function Dashboard() {
                         <>
                           <button
                             type="button"
-                            onClick={() => setViewBillDetailsJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', jobAddress: j.job_address ?? '—', revenue: j.revenue })}
-                            style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: 'var(--text-link)', border: 'none', cursor: 'pointer', textDecoration: 'none' }}
-                          >
-                            View<br />Details
-                          </button>
-                          <button
-                            type="button"
                             onClick={() => setViewReportsJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', jobAddress: j.job_address ?? '—' })}
                             style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: 'var(--text-link)', border: '1px solid #2563eb', borderRadius: 4, cursor: 'pointer' }}
                           >
@@ -7859,13 +7859,6 @@ export default function Dashboard() {
                       )}
                       {(role === 'dev' || role === 'master_technician' || role === 'assistant' || role === 'primary') && (
                         <>
-                          <button
-                            type="button"
-                            onClick={() => setViewBillDetailsJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', jobAddress: j.job_address ?? '—', revenue: j.revenue })}
-                            style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: 'var(--text-link)', border: 'none', cursor: 'pointer', textDecoration: 'none' }}
-                          >
-                            View<br />Details
-                          </button>
                           <button
                             type="button"
                             onClick={() => setViewReportsJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', jobAddress: j.job_address ?? '—' })}
@@ -8887,29 +8880,6 @@ export default function Dashboard() {
             </div>
           </div>
         </div>
-      )}
-      {viewBillDetailsJob && (
-        <JobBillDetailsModal
-          open={!!viewBillDetailsJob}
-          onClose={() => setViewBillDetailsJob(null)}
-          jobId={viewBillDetailsJob.id}
-          hcpNumber={viewBillDetailsJob.hcpNumber}
-          jobName={viewBillDetailsJob.jobName}
-          jobAddress={viewBillDetailsJob.jobAddress}
-          revenue={viewBillDetailsJob.revenue}
-          onEditJob={(jobId) => {
-            setViewBillDetailsJob(null)
-            navigate(`/jobs?edit=${jobId}`)
-          }}
-          onEditJobLabor={(hcpNumber) => {
-            setViewBillDetailsJob(null)
-            navigate(`/jobs?editLabor=${encodeURIComponent(hcpNumber)}`)
-          }}
-          onEditParts={(jobId) => {
-            setViewBillDetailsJob(null)
-            navigate(`/jobs?editParts=${jobId}`)
-          }}
-        />
       )}
     </div>
   )
