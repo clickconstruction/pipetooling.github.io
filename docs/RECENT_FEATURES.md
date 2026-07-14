@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-14 (v2.665)
+last_updated: 2026-07-14 (v2.666)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -15,9 +15,9 @@ last_updated: 2026-07-14 (v2.665)
  version_range: "v2.581+ (reverse chronological)"
  
  key_sections:
-   - name: "Latest Version (v2.665)"
+   - name: "Latest Version (v2.666)"
      line: ~2022
-     description: "Docs catch-up for the pay-visibility overhaul + controller role: role counts 6/8 → 9 across README/AGENTS/AI_CONTEXT, ACCESS_CONTROL controller section + rewritten assistant pay bullets, GLOSSARY payroll-access entry, EDGE_FUNCTIONS validRoles, ADDING_A_NEW_ROLE controller worked example."
+     description: "Dashboard AP card: the two payroll sub-lines collapse to one — Team: $due+upcoming."
    - name: "Previous Version (v2.664)"
      line: ~2030
      description: "Controller users now render on People → Users (own Controllers section after Assistants) and in Quickfill Schedule role grouping — multi-user UI test caught that the PersonKind chain lacked controller, so such users vanished from the roster entirely."
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.666)
+
+### Dashboard — AP card payroll sub-lines become one "Team" line (2026-07-14)
+The Accounts Payable card's two payroll glance lines ("Payroll: $8,563 due" / "($11,124 upcoming)") collapse into one: **`Team: $8,563+11,124`** — remaining balance on issued pay stubs, plus the estimated gross for worked-but-unstubbed weeks when there is any (the `+…` part is omitted at zero upcoming person-weeks). Same numbers, same sources (`buildApBucket` net-due / `get_dashboard_payroll_totals()` aggregates for assistants / `buildUpcomingPayrollSummary` estimate), one line — [`DashboardFinancialsSection.tsx`](../src/components/DashboardFinancialsSection.tsx) card `extraLines` only; the AP drill-down modal still says "Payroll" and itemizes per stub (per-person for payroll-access holders, aggregate for assistants). Supply Houses line unchanged.
 
 ## Latest Updates (v2.665)
 
