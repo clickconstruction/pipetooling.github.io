@@ -1802,3 +1802,29 @@ body.my-time-boundary-dragging {
 :root[data-theme='dark'] .leaflet-container {
   background: #111827;
 }
+
+/* Billing Pipeline: the "Bill Customer" / "Mark Paid" button with its "Open 2 weeks"
+   age label. Stacked by default. In the mid-width band below — where the action row
+   has already wrapped under the job name/address — laying the pair side-by-side
+   removes the age label's line and shortens most cards. Outside the band the wider
+   inline pair steals width from the name/address column, which wraps instead and
+   makes cards TALLER (measured live 2026-07 across 17 Ready-to-Bill cards), so the
+   band is deliberately narrow. Thresholds are content-box widths of the pipeline
+   card (border-box 600-810px minus 2x1rem padding and 1px borders). */
+.billingPipelineCard {
+  container: billing-pipeline / inline-size;
+}
+
+.billingPipelineActionAgePair {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+}
+
+@container billing-pipeline (min-width: 566px) and (max-width: 776px) {
+  .billingPipelineActionAgePair {
+    flex-direction: row;
+    gap: 0.5rem;
+  }
+}

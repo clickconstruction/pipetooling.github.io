@@ -19,7 +19,10 @@ import {
   canExpandJobDetailMaterials,
   isStaffFullJobLedgerDetailRole,
   showJobDetailJobTotal,
+  showJobDetailProfitSection,
 } from '../../lib/jobDetailModalRole'
+import { buildJobProfitSummary } from '../../lib/jobs/jobProfitSummary'
+import { tallyPartsTotalFromLines } from '../../lib/fetchJobMaterialsCostSnapshot'
 import {
   scheduleFormatDateLongNoWeekday,
   scheduleFormatWeekdayOnly,
@@ -34,11 +37,13 @@ import { useAuth, type UserRole } from '../../hooks/useAuth'
 import { useBodyScrollLock } from '../../hooks/useBodyScrollLock'
 import { useNarrowViewport640 } from '../../hooks/useNarrowViewport640'
 import { useJobMaterialsCostSnapshot } from '../../hooks/useJobMaterialsCostSnapshot'
+import { useJobDetailSubLaborCost } from '../../hooks/useJobDetailSubLaborCost'
 import { useJobDetailScheduleAndSessions } from '../../hooks/useJobDetailScheduleAndSessions'
 import { useJobClockSessionBounds } from '../../hooks/useJobClockSessionBounds'
 import { useJobThreadNotesForModal } from '../../hooks/useJobThreadNotesForModal'
 import { formatClockSessionTimestampPartsChicago } from '../../lib/formatClockSessionTimestamp'
 import { JobDetailMaterialsCostSection } from './JobDetailMaterialsCostSection'
+import { JobDetailProfitSection } from './JobDetailProfitSection'
 import JobChargesTimelineStandalone from './JobChargesTimelineStandalone'
 import { JobDetailScheduleSessionsSection } from './JobDetailScheduleSessionsSection'
 import { JobLedgerStatusPipeline } from './JobLedgerStatusPipeline'
@@ -565,6 +570,29 @@ export default function DetailJobModal({
     showMaterialsCostSection,
     materialsCostRefreshKey,
   )
+
+  // Profit band (masters/devs): sub labor from the labor books, parts from the
+  // materials snapshot's tally lines, revenue from the full job row.
+  const showProfitSection = useMemo(
+    () => Boolean(open && jobId && showJobDetailProfitSection(authRole) && fullJob != null),
+    [open, jobId, authRole, fullJob],
+  )
+  const {
+    loading: profitLaborLoading,
+    data: profitLaborData,
+    failed: profitLaborFailed,
+  } = useJobDetailSubLaborCost(showProfitSection, fullJob?.hcp_number ?? null)
+  const profitSummary = useMemo(() => {
+    if (!showProfitSection || fullJob == null || profitLaborData == null || materialsSnapshot == null) return null
+    if (materialsSnapshot.tallyFetchFailed) return null
+    return buildJobProfitSummary({
+      revenue: fullJob.revenue != null ? Number(fullJob.revenue) : null,
+      tallyPartsTotal: tallyPartsTotalFromLines(materialsSnapshot.tallyPartLines),
+      laborJobs: profitLaborData.laborJobs,
+      mileageCost: profitLaborData.mileageCost,
+      timePerMile: profitLaborData.timePerMile,
+    })
+  }, [showProfitSection, fullJob, profitLaborData, materialsSnapshot])
 
   const scheduleSessionsEnabled = Boolean(open && jobId && fullJob && scheduleTimeSectionOpen)
   const {
@@ -1224,6 +1252,14 @@ export default function DetailJobModal({
                 />
                 <JobChargesTimelineStandalone job={fullJob} />
               </>
+            ) : null}
+
+            {showProfitSection ? (
+              <JobDetailProfitSection
+                loading={profitLaborLoading || materialsSnapshotLoading}
+                failed={profitLaborFailed || materialsSnapshot?.tallyFetchFailed === true}
+                summary={profitSummary}
+              />
             ) : null}
 
             <div style={{ marginTop: '1rem' }}>
