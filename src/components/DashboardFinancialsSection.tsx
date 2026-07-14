@@ -63,6 +63,15 @@ function daysAgoLabel(ymd: string): string {
   return days === 1 ? '1 day ago' : `${days.toLocaleString('en-US')} days ago`
 }
 
+/** "2/26 (95d)" — month/day of the oldest item plus its age in days (date only when not past). */
+function oldestShortWithAge(ymd: string): string {
+  const d = new Date(ymd + 'T12:00:00')
+  if (Number.isNaN(d.getTime())) return '—'
+  const md = `${d.getMonth() + 1}/${d.getDate()}`
+  const days = daysPastDue(ymd, new Date().toLocaleDateString('en-CA'))
+  return Number.isFinite(days) && days > 0 ? `${md} (${days}d)` : md
+}
+
 /** AP bill detail — invoice facts plus an expandable Google Drive preview of the attached file. */
 function ApBillModal({
   bill,
@@ -842,7 +851,8 @@ export default function DashboardFinancialsSection() {
   const jobDetailModal = useJobDetailModal()
 
   // extraLines render as a second column beside the total (not a run-on subtitle line).
-  const cards: Array<{ key: CardKey; bucket: FinancialBucket; extraLines?: string[]; oldestAsDaysAgo?: boolean }> = data
+  // footer overrides the default "N items · oldest …" line under the amount.
+  const cards: Array<{ key: CardKey; bucket: FinancialBucket; extraLines?: string[]; oldestAsDaysAgo?: boolean; footer?: string }> = data
     ? [
         {
           key: 'ar',
@@ -866,6 +876,9 @@ export default function DashboardFinancialsSection() {
               data.apUpcoming.count > 0 ? `+${roundDollars(data.apUpcoming.total)}` : ''
             }`,
           ],
+          footer: `${data.ap.count} bill${data.ap.count === 1 ? '' : 's'}${
+            data.ap.oldestDateYmd ? `, oldest: ${oldestShortWithAge(data.ap.oldestDateYmd)}` : ''
+          }`,
         },
         { key: 'unbilled', bucket: data.unbilled, oldestAsDaysAgo: true },
       ]
@@ -879,7 +892,7 @@ export default function DashboardFinancialsSection() {
         <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.875rem' }}>Loading…</p>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '0.75rem' }}>
-          {cards.map(({ key, bucket, extraLines, oldestAsDaysAgo }) => (
+          {cards.map(({ key, bucket, extraLines, oldestAsDaysAgo, footer }) => (
             <button
               key={key}
               type="button"
@@ -916,10 +929,12 @@ export default function DashboardFinancialsSection() {
                   {formatMoneyShortK(bucket.total)}
                 </span>
                 <span style={{ fontSize: '0.75rem', color: 'var(--text-faint)' }}>
-                  {bucket.count} item{bucket.count === 1 ? '' : 's'}
-                  {bucket.oldestDateYmd
-                    ? ` · oldest ${oldestAsDaysAgo ? daysAgoLabel(bucket.oldestDateYmd) : shortDate(bucket.oldestDateYmd)}`
-                    : ''}
+                  {footer ??
+                    `${bucket.count} item${bucket.count === 1 ? '' : 's'}${
+                      bucket.oldestDateYmd
+                        ? ` · oldest ${oldestAsDaysAgo ? daysAgoLabel(bucket.oldestDateYmd) : shortDate(bucket.oldestDateYmd)}`
+                        : ''
+                    }`}
                 </span>
               </span>
               {extraLines && extraLines.length > 0 ? (

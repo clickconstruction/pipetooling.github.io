@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-14 (v2.666)
+last_updated: 2026-07-14 (v2.667)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -15,9 +15,9 @@ last_updated: 2026-07-14 (v2.666)
  version_range: "v2.581+ (reverse chronological)"
  
  key_sections:
-   - name: "Latest Version (v2.666)"
+   - name: "Latest Version (v2.667)"
      line: ~2022
-     description: "Dashboard AP card: the two payroll sub-lines collapse to one — Team: $due+upcoming."
+     description: "Dashboard AP card footer: '140 bills, oldest: 2/26 (95d)' — bills wording, month/day, age in days."
    - name: "Previous Version (v2.664)"
      line: ~2030
      description: "Controller users now render on People → Users (own Controllers section after Assistants) and in Quickfill Schedule role grouping — multi-user UI test caught that the PersonKind chain lacked controller, so such users vanished from the roster entirely."
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.667)
+
+### Dashboard — AP card footer reads "140 bills, oldest: 2/26 (95d)" (2026-07-14)
+The Accounts Payable card's line under the amount changes from `140 items · oldest 2/26/26` to **`140 bills, oldest: 2/26 (95d)`** — "bills" instead of "items", month/day without the year, and the oldest item's age in days appended (`(95d)`; the age suffix is omitted for today/future dates). AP only — the AR card keeps `items · oldest M/D/YY` and Not Billed Out keeps its `days ago` form. New `oldestShortWithAge` helper + per-card `footer` override in [`DashboardFinancialsSection.tsx`](../src/components/DashboardFinancialsSection.tsx); the count is unchanged (supply bills + open pay stubs — the aggregate payroll row for assistants).
 
 ## Latest Updates (v2.666)
 
