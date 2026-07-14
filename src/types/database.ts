@@ -4025,6 +4025,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "jobs_ledger_completeness_marked_by_fkey"
+            columns: ["completeness_marked_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "jobs_ledger_customer_id_fkey"
             columns: ["customer_id"]
             isOneToOne: false
@@ -10868,6 +10875,7 @@ export type Database = {
         Args: { p_job_id: string }
         Returns: Json
       }
+      get_dashboard_payroll_totals: { Args: never; Returns: Json }
       get_invoice_allocation_lines_for_jobs: {
         Args: { p_job_ids: string[] }
         Returns: {
@@ -10976,10 +10984,6 @@ export type Database = {
           job_name: string
         }[]
       }
-      get_dashboard_payroll_totals: {
-        Args: never
-        Returns: Json
-      }
       get_man_hours_by_job: {
         Args: never
         Returns: {
@@ -11032,6 +11036,7 @@ export type Database = {
           total_parts: number
         }[]
       }
+      has_payroll_access: { Args: never; Returns: boolean }
       humanize_job_status: { Args: { p: string }; Returns: string }
       insert_accounting_label_suggestion_service: {
         Args: { p_rows: Json }
@@ -11411,25 +11416,6 @@ export type Database = {
           tally_user_note: string
         }[]
       }
-      list_people_pay_flags: {
-        Args: never
-        Returns: {
-          is_salary: boolean
-          person_id: string
-          person_name: string
-          record_hours_but_salary: boolean
-          show_in_cost_matrix: boolean
-          show_in_hours: boolean
-        }[]
-      }
-      list_user_display_names: {
-        Args: { p_user_ids: string[] }
-        Returns: {
-          archived_at: string | null
-          id: string
-          name: string | null
-        }[]
-      }
       list_my_reports: {
         Args: never
         Returns: {
@@ -11455,6 +11441,17 @@ export type Database = {
         Returns: {
           id: string
           name: string
+        }[]
+      }
+      list_people_pay_flags: {
+        Args: never
+        Returns: {
+          is_salary: boolean
+          person_id: string
+          person_name: string
+          record_hours_but_salary: boolean
+          show_in_cost_matrix: boolean
+          show_in_hours: boolean
         }[]
       }
       list_people_with_kind_for_banking_attribution: {
@@ -11673,6 +11670,14 @@ export type Database = {
           isOneToOne: false
           isSetofReturn: true
         }
+      }
+      list_user_display_names: {
+        Args: { p_user_ids: string[] }
+        Returns: {
+          archived_at: string
+          id: string
+          name: string
+        }[]
       }
       list_user_mercury_review_window: {
         Args: {
