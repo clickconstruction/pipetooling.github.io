@@ -42,7 +42,7 @@ import {
   stagesJobLevelStripeEmailedHintInvoice,
   sumInvoiceAppliedFromJobPayments,
 } from '../lib/jobs/invoiceBilling'
-import { pageUnderlineTabStyle } from '../lib/pageUnderlineTabStyle'
+import { pageTabStyle } from '../lib/pageTabStyle'
 import { openInExternalBrowser } from '../lib/openInExternalBrowser'
 import { useAuth } from '../hooks/useAuth'
 import { isAssistantLike } from '../lib/subcontractorLikeRole'
@@ -4586,7 +4586,7 @@ ${totalsHtml}
                 return next
               })
             }}
-            style={pageUnderlineTabStyle(activeTab === 'teams-summary')}
+            style={pageTabStyle(activeTab === 'teams-summary')}
           >
             Crew P&L
           </button>
@@ -4601,7 +4601,7 @@ ${totalsHtml}
                 return next
               })
             }}
-            style={pageUnderlineTabStyle(activeTab === 'reports')}
+            style={pageTabStyle(activeTab === 'reports')}
           >
             Reports
           </button>
@@ -4616,7 +4616,7 @@ ${totalsHtml}
                 return next
               })
             }}
-            style={pageUnderlineTabStyle(activeTab === 'stages')}
+            style={pageTabStyle(activeTab === 'stages')}
           >
             Stages
           </button>
@@ -4636,7 +4636,7 @@ ${totalsHtml}
                   return next
                 })
               }}
-              style={pageUnderlineTabStyle(activeTab === 'billing')}
+              style={pageTabStyle(activeTab === 'billing')}
             >
               Billing
             </button>
@@ -4653,7 +4653,7 @@ ${totalsHtml}
                 return next
               })
             }}
-            style={pageUnderlineTabStyle(activeTab === 'combined-labor')}
+            style={pageTabStyle(activeTab === 'combined-labor')}
           >
             Team Labor
           </button>
@@ -4668,7 +4668,7 @@ ${totalsHtml}
                 return next
               })
             }}
-            style={pageUnderlineTabStyle(activeTab === 'sub_sheet_ledger')}
+            style={pageTabStyle(activeTab === 'sub_sheet_ledger')}
           >
             Sub Labor
           </button>
@@ -4683,7 +4683,7 @@ ${totalsHtml}
                 return next
               })
             }}
-            style={pageUnderlineTabStyle(activeTab === 'parts')}
+            style={pageTabStyle(activeTab === 'parts')}
           >
             Parts
           </button>
@@ -4701,7 +4701,7 @@ ${totalsHtml}
                 return next
               })
             }}
-            style={pageUnderlineTabStyle(activeTab === 'job-summary')}
+            style={pageTabStyle(activeTab === 'job-summary')}
           >
             Job Summary
           </button>
@@ -4719,7 +4719,7 @@ ${totalsHtml}
                 return next
               })
             }}
-            style={pageUnderlineTabStyle(activeTab === 'inspections')}
+            style={pageTabStyle(activeTab === 'inspections')}
           >
             Inspections
           </button>

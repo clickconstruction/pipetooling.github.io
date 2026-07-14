@@ -54,7 +54,7 @@ import {
 import { countSortingUnmatched, filterMercuryRowsForSorting } from '../lib/bankingSortingCounts'
 import { shortUuidPrefix } from '../lib/shortUuidPrefix'
 import { fetchAllAttributions, fetchAllJobAllocations } from '../lib/fetchMercuryRelationsByTxIds'
-import { pageUnderlineTabStyle } from '../lib/pageUnderlineTabStyle'
+import { pageTabStyle } from '../lib/pageTabStyle'
 import {
   MercuryTransactionAllocationsModal,
   type MercuryAllocSavedDetail,
@@ -2284,7 +2284,7 @@ export default function Banking() {
                   aria-selected={bankingView.product === 'mercury'}
                   id="banking-product-mercury"
                   onClick={() => setBankingProduct('mercury')}
-                  style={pageUnderlineTabStyle(bankingView.product === 'mercury')}
+                  style={pageTabStyle(bankingView.product === 'mercury')}
                 >
                   Mercury
                 </button>
@@ -2294,7 +2294,7 @@ export default function Banking() {
                   aria-selected={bankingView.product === 'stripe'}
                   id="banking-product-stripe"
                   onClick={() => setBankingProduct('stripe')}
-                  style={pageUnderlineTabStyle(bankingView.product === 'stripe')}
+                  style={pageTabStyle(bankingView.product === 'stripe')}
                 >
                   Stripe
                 </button>
@@ -2342,7 +2342,7 @@ export default function Banking() {
                         aria-selected={bankingView.mercuryTab === 'ledger'}
                         id="banking-tab-ledger"
                         onClick={() => setMercurySubTab('ledger')}
-                        style={pageUnderlineTabStyle(bankingView.mercuryTab === 'ledger')}
+                        style={pageTabStyle(bankingView.mercuryTab === 'ledger')}
                       >
                         Ledger
                       </button>
@@ -2353,7 +2353,7 @@ export default function Banking() {
                       aria-selected={bankingView.mercuryTab === 'sorting'}
                       id="banking-tab-sorting"
                       onClick={() => setMercurySubTab('sorting')}
-                      style={pageUnderlineTabStyle(bankingView.mercuryTab === 'sorting')}
+                      style={pageTabStyle(bankingView.mercuryTab === 'sorting')}
                     >
                       User Sort
                     </button>
@@ -2363,7 +2363,7 @@ export default function Banking() {
                       aria-selected={bankingView.mercuryTab === 'drag_sort'}
                       id="banking-tab-drag-sort"
                       onClick={() => setMercurySubTab('drag_sort')}
-                      style={pageUnderlineTabStyle(bankingView.mercuryTab === 'drag_sort')}
+                      style={pageTabStyle(bankingView.mercuryTab === 'drag_sort')}
                     >
                       Drag Sort
                     </button>
@@ -2373,7 +2373,7 @@ export default function Banking() {
                       aria-selected={bankingView.mercuryTab === 'accounting'}
                       id="banking-tab-accounting"
                       onClick={() => setMercurySubTab('accounting')}
-                      style={pageUnderlineTabStyle(bankingView.mercuryTab === 'accounting')}
+                      style={pageTabStyle(bankingView.mercuryTab === 'accounting')}
                     >
                       Accounting
                     </button>
@@ -2383,7 +2383,7 @@ export default function Banking() {
                       aria-selected={bankingView.mercuryTab === 'user_review'}
                       id="banking-tab-user-review"
                       onClick={() => setMercurySubTab('user_review')}
-                      style={pageUnderlineTabStyle(bankingView.mercuryTab === 'user_review')}
+                      style={pageTabStyle(bankingView.mercuryTab === 'user_review')}
                     >
                       User Review
                     </button>
@@ -2393,7 +2393,7 @@ export default function Banking() {
                       aria-selected={bankingView.mercuryTab === 'category_review'}
                       id="banking-tab-category-review"
                       onClick={() => setMercurySubTab('category_review')}
-                      style={pageUnderlineTabStyle(bankingView.mercuryTab === 'category_review')}
+                      style={pageTabStyle(bankingView.mercuryTab === 'category_review')}
                     >
                       Category Review
                     </button>
@@ -2403,7 +2403,7 @@ export default function Banking() {
                       aria-selected={bankingView.mercuryTab === 'reconciliation'}
                       id="banking-tab-reconciliation"
                       onClick={() => setMercurySubTab('reconciliation')}
-                      style={pageUnderlineTabStyle(bankingView.mercuryTab === 'reconciliation')}
+                      style={pageTabStyle(bankingView.mercuryTab === 'reconciliation')}
                     >
                       Reconciliation
                     </button>
@@ -2416,7 +2416,7 @@ export default function Banking() {
                       aria-selected={bankingView.stripeTab === 'invoices'}
                       id="banking-tab-stripe-invoices"
                       onClick={() => setStripeSubTab('invoices')}
-                      style={pageUnderlineTabStyle(bankingView.stripeTab === 'invoices')}
+                      style={pageTabStyle(bankingView.stripeTab === 'invoices')}
                     >
                       Invoices
                     </button>
@@ -2426,7 +2426,7 @@ export default function Banking() {
                       aria-selected={bankingView.stripeTab === 'data'}
                       id="banking-tab-stripe-data"
                       onClick={() => setStripeSubTab('data')}
-                      style={pageUnderlineTabStyle(bankingView.stripeTab === 'data')}
+                      style={pageTabStyle(bankingView.stripeTab === 'data')}
                     >
                       Data
                     </button>

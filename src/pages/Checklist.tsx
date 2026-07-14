@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo, Fragment, type CSSProperties, type PointerEvent } from 'react'
+import { pageTabStyle } from '../lib/pageTabStyle'
 import { useSearchParams } from 'react-router-dom'
 import { DndContext, closestCenter, type DragEndEvent, PointerSensor, useSensor, useSensors } from '@dnd-kit/core'
 import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
@@ -44,15 +45,7 @@ type ChecklistInstance = {
   } | null
 }
 
-const tabStyle = (active: boolean) => ({
-  padding: '0.75rem 1.5rem',
-  border: 'none' as const,
-  background: 'none' as const,
-  borderBottom: active ? '2px solid #3b82f6' : '2px solid transparent',
-  color: active ? 'var(--text-blue-500)' : 'var(--text-muted)',
-  fontWeight: active ? 600 : 400,
-  cursor: 'pointer' as const,
-})
+const tabStyle = pageTabStyle
 
 function toLocalDateString(d: Date): string {
   const y = d.getFullYear()

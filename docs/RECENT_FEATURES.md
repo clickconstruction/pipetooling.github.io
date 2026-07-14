@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-14 (v2.667)
+last_updated: 2026-07-14 (v2.668)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -15,9 +15,9 @@ last_updated: 2026-07-14 (v2.667)
  version_range: "v2.581+ (reverse chronological)"
  
  key_sections:
-   - name: "Latest Version (v2.667)"
+   - name: "Latest Version (v2.668)"
      line: ~2022
-     description: "Dashboard AP card footer: '140 bills, oldest: 2/26 (95d)' — bills wording, month/day, age in days."
+     description: "App-wide tab restyle: selected tab is a filled blue box with white bold text (was a bottom underline)."
    - name: "Previous Version (v2.664)"
      line: ~2030
      description: "Controller users now render on People → Users (own Controllers section after Assistants) and in Quickfill Schedule role grouping — multi-user UI test caught that the PersonKind chain lacked controller, so such users vanished from the roster entirely."
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.668)
+
+### UI — selected tabs are filled blue boxes with inverted text, app-wide (2026-07-14)
+Every underline-style tab bar switches its selected state from a blue bottom border + blue text to a **filled blue box (`#3b82f6`, 6px radius) with white bold text**; inactive tabs are unchanged (muted text, no box). The shared helper is renamed [`pageTabStyle`](../src/lib/pageTabStyle.ts) (was `pageUnderlineTabStyle`) and now also backs the previously-duplicated local copies: People, Checklist (aliases), Prospects, JobTally (size overrides), Materials (six inline blocks → helper calls), and Bids ([`bidStyles.ts`](../src/lib/bids/bidStyles.ts) `tabStyle` spreads it; safety-orange highlighted tabs become an orange box with white text when active). Converted in place with the same look: Send/Record Invoice modal top tabs, Schedule Dispatch hub People/Jobs/Day tabs, Jobs Combine/Separate modal tabs (these previously used `#2563eb` underlines — now the standard blue box). Existing helper consumers (Jobs, Estimates, Banking, Projects, Documents, Settings, Projects Forecast, Banking sorting modal) pick the style up automatically. Not touched: SectionDock pills (already a box pattern), focus outlines, and selection-border cards.
 
 ## Latest Updates (v2.667)
 

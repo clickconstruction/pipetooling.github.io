@@ -1,4 +1,5 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { pageTabStyle } from '../lib/pageTabStyle'
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { addExpandedPartsToPO, expandTemplate } from '../lib/materialPOUtils'
@@ -3002,16 +3003,7 @@ export default function Materials() {
                 return next
               })
             }}
-            style={{
-              padding: '0.75rem 1.5rem',
-              border: 'none',
-              background: 'none',
-              borderBottom: activeTab === 'supply-houses' ? '2px solid #3b82f6' : '2px solid transparent',
-              color: activeTab === 'supply-houses' ? 'var(--text-blue-500)' : 'var(--text-muted)',
-              fontWeight: activeTab === 'supply-houses' ? 600 : 400,
-              cursor: 'pointer',
-              flexShrink: 0,
-            }}
+            style={pageTabStyle(activeTab === 'supply-houses')}
           >
             Supply Houses
           </button>
@@ -3025,16 +3017,7 @@ export default function Materials() {
                 return next
               })
             }}
-            style={{
-              padding: '0.75rem 1.5rem',
-              border: 'none',
-              background: 'none',
-              borderBottom: activeTab === 'po-generator' ? '2px solid #3b82f6' : '2px solid transparent',
-              color: activeTab === 'po-generator' ? 'var(--text-blue-500)' : 'var(--text-muted)',
-              fontWeight: activeTab === 'po-generator' ? 600 : 400,
-              cursor: 'pointer',
-              flexShrink: 0,
-            }}
+            style={pageTabStyle(activeTab === 'po-generator')}
           >
             PO Generator
           </button>
@@ -3051,16 +3034,7 @@ export default function Materials() {
               return next
             })
           }}
-          style={{
-            padding: '0.75rem 1.5rem',
-            border: 'none',
-            background: 'none',
-            borderBottom: activeTab === 'parts-book' ? '2px solid #3b82f6' : '2px solid transparent',
-            color: activeTab === 'parts-book' ? 'var(--text-blue-500)' : 'var(--text-muted)',
-            fontWeight: activeTab === 'parts-book' ? 600 : 400,
-            cursor: 'pointer',
-            flexShrink: 0,
-          }}
+          style={pageTabStyle(activeTab === 'parts-book')}
         >
           Parts Book
         </button>
@@ -3074,16 +3048,7 @@ export default function Materials() {
               return next
             })
           }}
-          style={{
-            padding: '0.75rem 1.5rem',
-            border: 'none',
-            background: 'none',
-            borderBottom: activeTab === 'assembly-book' ? '2px solid #3b82f6' : '2px solid transparent',
-            color: activeTab === 'assembly-book' ? 'var(--text-blue-500)' : 'var(--text-muted)',
-            fontWeight: activeTab === 'assembly-book' ? 600 : 400,
-            cursor: 'pointer',
-            flexShrink: 0,
-          }}
+          style={pageTabStyle(activeTab === 'assembly-book')}
         >
           Assembly Book
         </button>
@@ -3099,16 +3064,7 @@ export default function Materials() {
                 return next
               })
             }}
-            style={{
-              padding: '0.75rem 1.5rem',
-              border: 'none',
-              background: 'none',
-              borderBottom: activeTab === 'templates-po' ? '2px solid #3b82f6' : '2px solid transparent',
-              color: activeTab === 'templates-po' ? 'var(--text-blue-500)' : 'var(--text-muted)',
-              fontWeight: activeTab === 'templates-po' ? 600 : 400,
-              cursor: 'pointer',
-              flexShrink: 0,
-            }}
+            style={pageTabStyle(activeTab === 'templates-po')}
           >
             Assemblies & Purchase Orders
           </button>
@@ -3122,16 +3078,7 @@ export default function Materials() {
                 return next
               })
             }}
-            style={{
-              padding: '0.75rem 1.5rem',
-              border: 'none',
-              background: 'none',
-              borderBottom: activeTab === 'purchase-orders' ? '2px solid #3b82f6' : '2px solid transparent',
-              color: activeTab === 'purchase-orders' ? 'var(--text-blue-500)' : 'var(--text-muted)',
-              fontWeight: activeTab === 'purchase-orders' ? 600 : 400,
-              cursor: 'pointer',
-              flexShrink: 0,
-            }}
+            style={pageTabStyle(activeTab === 'purchase-orders')}
           >
             Purchase Orders
           </button>

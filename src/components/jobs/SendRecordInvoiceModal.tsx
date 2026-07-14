@@ -107,12 +107,11 @@ function billCustomerTopTabButtonStyle(active: boolean): CSSProperties {
   return {
     padding: '0.5rem 0.75rem',
     border: 'none',
-    background: 'none',
+    background: active ? '#3b82f6' : 'none',
+    borderRadius: 6,
     cursor: 'pointer',
-    fontWeight: active ? 600 : 400,
-    borderBottom: active ? '2px solid #3b82f6' : '2px solid transparent',
-    marginBottom: -1,
-    color: active ? 'inherit' : 'var(--text-muted)',
+    fontWeight: active ? 700 : 400,
+    color: active ? 'white' : 'var(--text-muted)',
   }
 }
 

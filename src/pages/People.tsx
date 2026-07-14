@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
+import { pageTabStyle } from '../lib/pageTabStyle'
 import { effectiveHoursForCost, effectiveHoursForDisplay, canEditRecordedHours } from '../lib/salariedEffectiveHours'
 import { type TeamSummaryInlineHandle } from '../components/people/teamSummary/TeamSummaryInline'
 import type { TeamSummaryRow } from '../components/people/teamSummary/types'
@@ -197,15 +198,7 @@ const HOURS_TAB_SECTIONS_STACK: CSSProperties = {
   gap: HOURS_TAB_SECTIONS_STACK_GAP,
 }
 
-const tabStyle = (active: boolean) => ({
-  padding: '0.75rem 1.5rem',
-  border: 'none',
-  background: 'none',
-  borderBottom: active ? '2px solid #3b82f6' : '2px solid transparent',
-  color: active ? 'var(--text-blue-500)' : 'var(--text-muted)',
-  fontWeight: active ? 600 : 400,
-  cursor: 'pointer' as const,
-})
+const tabStyle = pageTabStyle
 
 /** Active project rows for People Users tab “Active projects” line (workflow links use project id). */
 type PersonActiveProject = { id: string; name: string }

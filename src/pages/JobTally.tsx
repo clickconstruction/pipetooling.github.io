@@ -1,4 +1,5 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
+import { pageTabStyle } from '../lib/pageTabStyle'
 import { Link, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
@@ -220,14 +221,9 @@ function TallySortTh({
 }
 
 const tabStyle = (active: boolean) => ({
+  ...pageTabStyle(active),
   padding: '0.75rem 1rem',
   minHeight: TOUCH_MIN,
-  border: 'none' as const,
-  background: 'none' as const,
-  borderBottom: active ? '2px solid #3b82f6' : '2px solid transparent',
-  color: active ? 'var(--text-blue-500)' : 'var(--text-muted)',
-  fontWeight: active ? 600 : 400,
-  cursor: 'pointer' as const,
   fontSize: '0.875rem',
 })
 

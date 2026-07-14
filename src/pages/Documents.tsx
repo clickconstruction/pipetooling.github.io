@@ -5,7 +5,7 @@ import { useAuth } from '../hooks/useAuth'
 import type { Tables } from '../types/database'
 import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
 import { useToastContext } from '../contexts/ToastContext'
-import { pageUnderlineTabStyle } from '../lib/pageUnderlineTabStyle'
+import { pageTabStyle } from '../lib/pageTabStyle'
 import { getBidServiceTypeTag } from '../utils/unifiedJobBidSearch'
 import CustomerAcceptanceRecordModal from '../components/estimates/CustomerAcceptanceRecordModal'
 import EstimateSentDocumentModal from '../components/estimates/EstimateSentDocumentModal'
@@ -1509,40 +1509,40 @@ export default function Documents() {
       <div style={{ display: 'flex', gap: '0.25rem', marginBottom: '0.75rem', flexWrap: 'wrap' }}>
         <button
           type="button"
-          style={pageUnderlineTabStyle(documentsTab === 'search')}
+          style={pageTabStyle(documentsTab === 'search')}
           onClick={() => setDocumentsTab('search')}
         >
           Search
         </button>
         <button
           type="button"
-          style={pageUnderlineTabStyle(documentsTab === 'estimates')}
+          style={pageTabStyle(documentsTab === 'estimates')}
           onClick={() => setDocumentsTab('estimates')}
         >
           Estimates
         </button>
         <button
           type="button"
-          style={pageUnderlineTabStyle(documentsTab === 'bid-proposals')}
+          style={pageTabStyle(documentsTab === 'bid-proposals')}
           onClick={() => setDocumentsTab('bid-proposals')}
         >
           Bid proposals
         </button>
         <button
           type="button"
-          style={pageUnderlineTabStyle(documentsTab === 'jobs')}
+          style={pageTabStyle(documentsTab === 'jobs')}
           onClick={() => setDocumentsTab('jobs')}
         >
           Jobs
         </button>
         <button
           type="button"
-          style={pageUnderlineTabStyle(documentsTab === 'supply-invoices')}
+          style={pageTabStyle(documentsTab === 'supply-invoices')}
           onClick={() => setDocumentsTab('supply-invoices')}
         >
           Supply invoices
         </button>
-        <button type="button" style={pageUnderlineTabStyle(documentsTab === 'upload')} onClick={() => setDocumentsTab('upload')}>
+        <button type="button" style={pageTabStyle(documentsTab === 'upload')} onClick={() => setDocumentsTab('upload')}>
           Upload
         </button>
       </div>

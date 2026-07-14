@@ -29,7 +29,7 @@ import SettingsAdvancedTab from '../components/settings/SettingsAdvancedTab'
 import SettingsDataTab from '../components/settings/SettingsDataTab'
 import SettingsJobsTab from '../components/settings/SettingsJobsTab'
 import TeamFeedbackMasterAggregates from '../components/team-feedback/TeamFeedbackMasterAggregates'
-import { pageUnderlineTabStyle } from '../lib/pageUnderlineTabStyle'
+import { pageTabStyle } from '../lib/pageTabStyle'
 import type { Database } from '../types/database'
 import {
   APP_SETTINGS_KEY_FIELD_DISPATCH_PHONE,
@@ -172,7 +172,7 @@ function SettingsTabBar({
           role="tab"
           aria-selected={activeId === g.id}
           onClick={() => onSelect(g.id)}
-          style={pageUnderlineTabStyle(activeId === g.id)}
+          style={pageTabStyle(activeId === g.id)}
         >
           {g.label}
         </button>
