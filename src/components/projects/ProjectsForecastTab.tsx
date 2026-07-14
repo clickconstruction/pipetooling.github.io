@@ -28,7 +28,7 @@ import {
   type ForecastStage,
   type ForecastWorkflowMap,
 } from '../../lib/projectsForecastData'
-import { pageUnderlineTabStyle } from '../../lib/pageUnderlineTabStyle'
+import { pageTabStyle } from '../../lib/pageTabStyle'
 import { ProjectsForecastSpecificTab } from './ProjectsForecastSpecificTab'
 import { ProjectsForecastAllStagesTab } from './ProjectsForecastAllStagesTab'
 
@@ -218,14 +218,14 @@ export function ProjectsForecastTab({ customerId, myRole = null }: Props) {
       <div style={{ display: 'flex', gap: '0.25rem', borderBottom: '1px solid var(--border)' }}>
         <button
           type="button"
-          style={pageUnderlineTabStyle(activeSub === 'specific')}
+          style={pageTabStyle(activeSub === 'specific')}
           onClick={() => setActiveSub('specific')}
         >
           Specific
         </button>
         <button
           type="button"
-          style={pageUnderlineTabStyle(activeSub === 'all-stages')}
+          style={pageTabStyle(activeSub === 'all-stages')}
           onClick={() => setActiveSub('all-stages')}
         >
           All Stages

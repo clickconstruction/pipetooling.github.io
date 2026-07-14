@@ -626,13 +626,12 @@ export default function JobsCombineSeparateModal({ open, onClose, onAfterSuccess
                 disabled={overlayBusy}
                 style={{
                   padding: '0.5rem 0.75rem',
-                  marginBottom: -1,
                   border: 'none',
-                  borderBottom: activeTab === 'combine' ? '2px solid #2563eb' : '2px solid transparent',
-                  background: 'none',
+                  background: activeTab === 'combine' ? '#3b82f6' : 'none',
+                  borderRadius: 6,
                   cursor: overlayBusy ? 'not-allowed' : 'pointer',
-                  fontWeight: activeTab === 'combine' ? 600 : 400,
-                  color: activeTab === 'combine' ? 'var(--text-blue-700)' : 'var(--text-muted)',
+                  fontWeight: activeTab === 'combine' ? 700 : 400,
+                  color: activeTab === 'combine' ? 'white' : 'var(--text-muted)',
                   fontSize: '0.875rem',
                 }}
               >
@@ -646,13 +645,12 @@ export default function JobsCombineSeparateModal({ open, onClose, onAfterSuccess
                 disabled={overlayBusy}
                 style={{
                   padding: '0.5rem 0.75rem',
-                  marginBottom: -1,
                   border: 'none',
-                  borderBottom: activeTab === 'separate' ? '2px solid #2563eb' : '2px solid transparent',
-                  background: 'none',
+                  background: activeTab === 'separate' ? '#3b82f6' : 'none',
+                  borderRadius: 6,
                   cursor: overlayBusy ? 'not-allowed' : 'pointer',
-                  fontWeight: activeTab === 'separate' ? 600 : 400,
-                  color: activeTab === 'separate' ? 'var(--text-blue-700)' : 'var(--text-muted)',
+                  fontWeight: activeTab === 'separate' ? 700 : 400,
+                  color: activeTab === 'separate' ? 'white' : 'var(--text-muted)',
                   fontSize: '0.875rem',
                 }}
               >

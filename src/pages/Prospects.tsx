@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { pageTabStyle } from '../lib/pageTabStyle'
 import { useNavigate, useSearchParams, useLocation, Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { loadProspectTeamActivity, type ProspectTeamRow } from '../lib/prospectTeamActivity'
@@ -81,13 +82,8 @@ const PROSPECTS_TABS: ProspectsTab[] = ['follow-up', 'prospect-list', 'convert',
 const DIDNT_ANSWER_MOVE_NEXT_KEY = (userId: string) => `prospects_didnt_answer_move_next_${userId}`
 
 const tabStyle = (active: boolean) => ({
+  ...pageTabStyle(active),
   padding: '0.5rem 0.6rem',
-  border: 'none',
-  background: 'none',
-  borderBottom: active ? '2px solid #3b82f6' : '2px solid transparent',
-  color: active ? 'var(--text-blue-500)' : 'var(--text-muted)',
-  fontWeight: active ? 600 : 400,
-  cursor: 'pointer' as const,
   fontSize: '0.9375rem',
 })
 

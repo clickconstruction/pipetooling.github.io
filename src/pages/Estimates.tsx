@@ -100,7 +100,7 @@ import {
   parseCustomerAttachmentSent,
   type CustomerAttachmentPayload,
 } from '../lib/estimateCustomerAttachment'
-import { pageUnderlineTabStyle } from '../lib/pageUnderlineTabStyle'
+import { pageTabStyle } from '../lib/pageTabStyle'
 import { JobThreadNotesPanel, type JobThreadNoteRow } from '../components/JobThreadNotesPanel'
 import { getDispatchNoteDisplayMeta } from '../utils/dispatchNoteDisplay'
 import { useEstimateThreadNotes, type EstimateThreadNoteStats } from '../hooks/useEstimateThreadNotes'
@@ -1717,7 +1717,7 @@ function EstimateList() {
           aria-selected={listTab === 'followup'}
           id="estimates-tab-stages"
           onClick={() => setListTab('followup')}
-          style={pageUnderlineTabStyle(listTab === 'followup')}
+          style={pageTabStyle(listTab === 'followup')}
         >
           Stages
         </button>
@@ -1727,7 +1727,7 @@ function EstimateList() {
           aria-selected={listTab === 'all'}
           id="estimates-tab-ledger"
           onClick={() => setListTab('all')}
-          style={pageUnderlineTabStyle(listTab === 'all')}
+          style={pageTabStyle(listTab === 'all')}
         >
           Ledger
         </button>

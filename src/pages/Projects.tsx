@@ -8,7 +8,7 @@ import { useNewProjectModal } from '../contexts/NewProjectModalContext'
 import { useEditProjectModal } from '../contexts/EditProjectModalContext'
 import { withSupabaseRetry } from '../utils/errorHandling'
 import { formatProjectNumberLabel } from '../lib/projectNumberLabel'
-import { pageUnderlineTabStyle } from '../lib/pageUnderlineTabStyle'
+import { pageTabStyle } from '../lib/pageTabStyle'
 import { ProjectsJobHistoryTab } from '../components/projects/ProjectsJobHistoryTab'
 import { ProjectsForecastTab } from '../components/projects/ProjectsForecastTab'
 import { RemoveProjectSuperintendentConfirmModal } from '../components/projects/RemoveProjectSuperintendentConfirmModal'
@@ -823,21 +823,21 @@ export default function Projects() {
       <div style={{ display: 'flex', gap: '0.25rem', marginBottom: '0.75rem', flexWrap: 'wrap' }}>
         <button
           type="button"
-          style={pageUnderlineTabStyle(activeTab === 'stages')}
+          style={pageTabStyle(activeTab === 'stages')}
           onClick={() => setActiveTab('stages')}
         >
           Stages
         </button>
         <button
           type="button"
-          style={pageUnderlineTabStyle(activeTab === 'job-history')}
+          style={pageTabStyle(activeTab === 'job-history')}
           onClick={() => setActiveTab('job-history')}
         >
           Job History
         </button>
         <button
           type="button"
-          style={pageUnderlineTabStyle(activeTab === 'forecast')}
+          style={pageTabStyle(activeTab === 'forecast')}
           onClick={() => setActiveTab('forecast')}
         >
           Forecast

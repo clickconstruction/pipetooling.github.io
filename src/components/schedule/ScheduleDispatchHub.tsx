@@ -2228,12 +2228,11 @@ export function ScheduleDispatchHub({
               padding: '0.5rem 0.9rem',
               fontSize: '0.875rem',
               border: 'none',
-              borderBottom: hubTab === 'people' ? '2px solid #2563eb' : '2px solid transparent',
-              marginBottom: -3,
-              background: 'none',
+              background: hubTab === 'people' ? '#3b82f6' : 'none',
+              borderRadius: 6,
               cursor: 'pointer',
-              color: hubTab === 'people' ? 'var(--text-blue-700)' : 'var(--text-muted)',
-              fontWeight: hubTab === 'people' ? 600 : 400,
+              color: hubTab === 'people' ? 'white' : 'var(--text-muted)',
+              fontWeight: hubTab === 'people' ? 700 : 400,
             }}
           >
             People
@@ -2247,12 +2246,11 @@ export function ScheduleDispatchHub({
               padding: '0.5rem 0.9rem',
               fontSize: '0.875rem',
               border: 'none',
-              borderBottom: hubTab === 'jobs' ? '2px solid #2563eb' : '2px solid transparent',
-              marginBottom: -3,
-              background: 'none',
+              background: hubTab === 'jobs' ? '#3b82f6' : 'none',
+              borderRadius: 6,
               cursor: 'pointer',
-              color: hubTab === 'jobs' ? 'var(--text-blue-700)' : 'var(--text-muted)',
-              fontWeight: hubTab === 'jobs' ? 600 : 400,
+              color: hubTab === 'jobs' ? 'white' : 'var(--text-muted)',
+              fontWeight: hubTab === 'jobs' ? 700 : 400,
             }}
           >
             Jobs
@@ -2266,12 +2264,11 @@ export function ScheduleDispatchHub({
               padding: '0.5rem 0.9rem',
               fontSize: '0.875rem',
               border: 'none',
-              borderBottom: hubTab === 'day' ? '2px solid #2563eb' : '2px solid transparent',
-              marginBottom: -3,
-              background: 'none',
+              background: hubTab === 'day' ? '#3b82f6' : 'none',
+              borderRadius: 6,
               cursor: 'pointer',
-              color: hubTab === 'day' ? 'var(--text-blue-700)' : 'var(--text-muted)',
-              fontWeight: hubTab === 'day' ? 600 : 400,
+              color: hubTab === 'day' ? 'white' : 'var(--text-muted)',
+              fontWeight: hubTab === 'day' ? 700 : 400,
             }}
           >
             Day

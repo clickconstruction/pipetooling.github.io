@@ -12,7 +12,7 @@ import {
   type MercuryKindBadge,
 } from '../lib/bankPaymentsKindBadges'
 import { formatMercuryKind } from '../lib/mercuryKindLabels'
-import { pageUnderlineTabStyle } from '../lib/pageUnderlineTabStyle'
+import { pageTabStyle } from '../lib/pageTabStyle'
 import { formatWorkDateYmdFriendly } from '../utils/dateUtils'
 
 export type BankingSortingConfigModalProps = {
@@ -344,7 +344,7 @@ export function BankingSortingConfigModal({
             aria-controls={panelIds.kinds}
             tabIndex={activeSection === 'kinds' ? 0 : -1}
             onClick={() => setActiveSection('kinds')}
-            style={pageUnderlineTabStyle(activeSection === 'kinds')}
+            style={pageTabStyle(activeSection === 'kinds')}
           >
             Kinds
           </button>
@@ -356,7 +356,7 @@ export function BankingSortingConfigModal({
             aria-controls={panelIds.accounts}
             tabIndex={activeSection === 'accounts' ? 0 : -1}
             onClick={() => setActiveSection('accounts')}
-            style={pageUnderlineTabStyle(activeSection === 'accounts')}
+            style={pageTabStyle(activeSection === 'accounts')}
           >
             Accounts
           </button>
@@ -368,7 +368,7 @@ export function BankingSortingConfigModal({
             aria-controls={panelIds.debit}
             tabIndex={activeSection === 'debit' ? 0 : -1}
             onClick={() => setActiveSection('debit')}
-            style={pageUnderlineTabStyle(activeSection === 'debit')}
+            style={pageTabStyle(activeSection === 'debit')}
           >
             Debit cards
           </button>
@@ -381,7 +381,7 @@ export function BankingSortingConfigModal({
               aria-controls={panelIds.exclusions}
               tabIndex={activeSection === 'exclusions' ? 0 : -1}
               onClick={() => setActiveSection('exclusions')}
-              style={pageUnderlineTabStyle(activeSection === 'exclusions')}
+              style={pageTabStyle(activeSection === 'exclusions')}
             >
               Exclusions
             </button>
