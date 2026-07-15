@@ -8,7 +8,9 @@
  *          reduce invoice.amount], plus billed jobs with no billed invoice rows:
  *          max(0, revenue − payments_made). Mirrors useBilledTotal.
  * - AP   = unpaid supply-house invoices + open payroll balances
- *          (stubNetPay(gross, less, additional) − payments). Mirrors the Payroll ledger summary.
+ *          (stubNetPay(gross, less, additional) − payments) + estimated upcoming payroll for
+ *          worked-but-unreported weeks (folded in via mergeUpcomingIntoAp). Mirrors the Payroll
+ *          ledger summary (due + upcoming).
  * - Not billed = working / ready_to_bill jobs: max(0, (revenue − payments_made) − Σ billed
  *          invoice amounts). Ready-to-Bill draft lines are NOT subtracted — they aren't on a
  *          customer invoice yet. Mirrors the Stages gross/alloc basis (jobsStagesBoard.ts).
@@ -253,7 +255,7 @@ function shortMd(ymd: string): string {
   return `${Number(m)}/${Number(d)}`
 }
 
-/** "Upcoming payroll" extra section for the AP drill-down — estimate, not part of the due total. */
+/** "Upcoming payroll" section for the AP drill-down — estimate; merged into the AP total via mergeUpcomingIntoAp. */
 export type UpcomingPayrollApSection = { total: number; count: number; items: FinancialItem[] }
 
 /**
@@ -274,6 +276,23 @@ export function buildUpcomingApSection(lines: UpcomingPayrollLine[]): UpcomingPa
     total: items.reduce((s, i) => s + i.amount, 0),
     count: items.length,
     items,
+  }
+}
+
+/**
+ * Fold the estimated upcoming payroll into the AP bucket so the headline total, count, and
+ * oldest hint cover ALL team labor owed — not just weeks with a pay report made. The upcoming
+ * items keep their `upcoming:` key prefix so the drill-down can still render them as their own
+ * "(estimate)" section; `upcomingTotal` carries the estimate subtotal for the card's Team line.
+ */
+export function mergeUpcomingIntoAp<
+  T extends FinancialBucket & { supplyTotal: number; payrollTotal: number; subLaborTotal: number },
+>(ap: T, upcoming: UpcomingPayrollApSection): T & { upcomingTotal: number } {
+  if (upcoming.count === 0 || upcoming.total <= EPSILON) return { ...ap, upcomingTotal: 0 }
+  return {
+    ...ap,
+    ...finishBucket([...ap.items, ...upcoming.items]),
+    upcomingTotal: upcoming.total,
   }
 }
 
@@ -350,30 +369,46 @@ export function redactUpcomingApSection(section: UpcomingPayrollApSection): Upco
 }
 
 /**
- * Assistant view of the AP drill-down: collapse per-person payroll rows into one aggregate
- * "Payroll" line (individual pay amounts are private; the outstanding total is not).
- * Totals and subtotals are unchanged by construction.
+ * Assistant view of the AP drill-down: collapse per-person payroll rows — open pay stubs AND
+ * merged-in upcoming estimate lines — into aggregate "Payroll" lines (individual pay amounts
+ * are private; the outstanding totals are not). Totals and subtotals are unchanged by
+ * construction; extra fields (subLaborTotal, upcomingTotal) pass through.
  */
-export function redactApPayrollItems(
-  ap: FinancialBucket & { supplyTotal: number; payrollTotal: number },
-): FinancialBucket & { supplyTotal: number; payrollTotal: number } {
+export function redactApPayrollItems<T extends FinancialBucket & { supplyTotal: number; payrollTotal: number }>(
+  ap: T,
+): T {
   const stubItems = ap.items.filter((i) => i.key.startsWith('stub:'))
-  if (stubItems.length === 0) return ap
-  let oldest: string | null = null
-  for (const i of stubItems) {
-    if (i.dateYmd && (oldest === null || i.dateYmd < oldest)) oldest = i.dateYmd
+  const upcomingItems = ap.items.filter((i) => i.key.startsWith('upcoming:') && i.key !== 'upcoming:aggregate')
+  if (stubItems.length === 0 && upcomingItems.length === 0) return ap
+  const aggregates: FinancialItem[] = []
+  if (stubItems.length > 0) {
+    let oldest: string | null = null
+    for (const i of stubItems) {
+      if (i.dateYmd && (oldest === null || i.dateYmd < oldest)) oldest = i.dateYmd
+    }
+    aggregates.push({
+      key: 'payroll:aggregate',
+      label: 'Payroll',
+      sublabel: `${stubItems.length} open pay stub${stubItems.length === 1 ? '' : 's'}`,
+      amount: ap.payrollTotal,
+      dateYmd: oldest,
+      jobId: null,
+      address: null,
+    })
   }
-  const aggregate: FinancialItem = {
-    key: 'payroll:aggregate',
-    label: 'Payroll',
-    sublabel: `${stubItems.length} open pay stub${stubItems.length === 1 ? '' : 's'}`,
-    amount: ap.payrollTotal,
-    dateYmd: oldest,
-    jobId: null,
-    address: null,
+  if (upcomingItems.length > 0) {
+    aggregates.push({
+      key: 'upcoming:aggregate',
+      label: 'Payroll',
+      sublabel: `${upcomingItems.length} person-week${upcomingItems.length === 1 ? '' : 's'} (est.)`,
+      amount: upcomingItems.reduce((s, i) => s + i.amount, 0),
+      dateYmd: null,
+      jobId: null,
+      address: null,
+    })
   }
-  const rest = ap.items.filter((i) => !i.key.startsWith('stub:'))
-  return { ...finishBucket([...rest, aggregate]), supplyTotal: ap.supplyTotal, payrollTotal: ap.payrollTotal }
+  const rest = ap.items.filter((i) => !i.key.startsWith('stub:') && !i.key.startsWith('upcoming:'))
+  return { ...ap, ...finishBucket([...rest, ...aggregates]) }
 }
 
 /** Not billed out: working / ready_to_bill jobs' revenue not yet on a billed customer invoice. */

@@ -15,6 +15,7 @@ import {
   buildArBuckets,
   buildUnbilledBucket,
   buildUpcomingApSection,
+  mergeUpcomingIntoAp,
   upcomingApSectionFromAggregates,
   financialJobLabel,
   type FinancialBucket,
@@ -47,7 +48,8 @@ export type DashboardFinancials = {
   ar: FinancialBucket
   /** Parked receivables: billed jobs flagged difficult to collect. ar + arCollections = all billed-unpaid. */
   arCollections: FinancialBucket
-  ap: FinancialBucket & { supplyTotal: number; payrollTotal: number; subLaborTotal: number }
+  /** Includes the estimated upcoming payroll (mergeUpcomingIntoAp) — all team labor owed, not just stubbed weeks. */
+  ap: FinancialBucket & { supplyTotal: number; payrollTotal: number; subLaborTotal: number; upcomingTotal: number }
   /** Estimated payroll for worked-but-unreported weeks — same kernel as the Payroll ledger header. */
   apUpcoming: UpcomingPayrollApSection
   /** Keyed by AP item key. */
@@ -342,25 +344,29 @@ export function useDashboardFinancials(
         })
 
         const arBuckets = buildArBuckets(jobs, invoices, invoicePayments)
+        const apBase = assistantAggregates
+          ? buildApBucketFromAggregates(
+              supplyInvoices,
+              {
+                dueTotal: Number(payrollTotalsRes?.payroll_due_total ?? 0),
+                dueCount: Number(payrollTotalsRes?.payroll_due_count ?? 0),
+              },
+              subLaborRows,
+            )
+          : buildApBucket(supplyInvoices, payrollStubs, subLaborRows)
+        const apUpcoming = assistantAggregates
+          ? upcomingApSectionFromAggregates({
+              upcomingTotal: Number(payrollTotalsRes?.upcoming_total ?? 0),
+              upcomingCount: Number(payrollTotalsRes?.upcoming_person_week_count ?? 0),
+            })
+          : buildUpcomingApSection(upcomingSummary.lines)
         setData({
           ar: arBuckets.ar,
           arCollections: arBuckets.collections,
-          ap: assistantAggregates
-            ? buildApBucketFromAggregates(
-                supplyInvoices,
-                {
-                  dueTotal: Number(payrollTotalsRes?.payroll_due_total ?? 0),
-                  dueCount: Number(payrollTotalsRes?.payroll_due_count ?? 0),
-                },
-                subLaborRows,
-              )
-            : buildApBucket(supplyInvoices, payrollStubs, subLaborRows),
-          apUpcoming: assistantAggregates
-            ? upcomingApSectionFromAggregates({
-                upcomingTotal: Number(payrollTotalsRes?.upcoming_total ?? 0),
-                upcomingCount: Number(payrollTotalsRes?.upcoming_person_week_count ?? 0),
-              })
-            : buildUpcomingApSection(upcomingSummary.lines),
+          // All team labor owed counts toward AP — stubbed weeks at net-pay remainder plus the
+          // estimated upcoming weeks (the drill-down still breaks the estimate out on its own line).
+          ap: mergeUpcomingIntoAp(apBase, apUpcoming),
+          apUpcoming,
           apBills,
           unbilled: buildUnbilledBucket(jobs, invoices),
         })

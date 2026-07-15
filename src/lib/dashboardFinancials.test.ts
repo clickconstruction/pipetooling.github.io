@@ -6,6 +6,7 @@ import {
   buildArBuckets,
   buildUnbilledBucket,
   buildUpcomingApSection,
+  mergeUpcomingIntoAp,
   upcomingApSectionFromAggregates,
   financialJobLabel,
   redactApPayrollItems,
@@ -167,6 +168,54 @@ describe('upcomingApSectionFromAggregates', () => {
   })
 })
 
+describe('mergeUpcomingIntoAp', () => {
+  it('folds the upcoming estimate into total, count, and items; subtotals preserved', () => {
+    const ap = buildApBucket(
+      [{ id: 's1', amount: 250, invoice_date: '2026-06-15', supply_houses: { name: 'Ferguson' } }],
+      [{ id: 'p1', person_name: 'Taunya', period_start: '2026-06-21', period_end: '2026-06-27', netPay: 900, paidSum: 400 }],
+      [{ id: 'sl1', assignedToName: 'Ram Crew', address: null, jobNumber: null, createdYmd: '2026-05-01', balance: 1200 }],
+    )
+    const upcoming = buildUpcomingApSection([
+      { personName: 'Bryan', weekStartYmd: '2026-06-28', weekEndYmd: '2026-07-04', hours: 8, estimatedGrossDollars: 200 },
+      { personName: 'Taunya', weekStartYmd: '2026-06-28', weekEndYmd: '2026-07-04', hours: 10, estimatedGrossDollars: 350 },
+    ])
+    const merged = mergeUpcomingIntoAp(ap, upcoming)
+    expect(merged.total).toBeCloseTo(250 + 500 + 1200 + 550)
+    expect(merged.count).toBe(5)
+    expect(merged.upcomingTotal).toBeCloseTo(550)
+    expect(merged.supplyTotal).toBeCloseTo(250)
+    expect(merged.payrollTotal).toBeCloseTo(500)
+    expect(merged.subLaborTotal).toBeCloseTo(1200)
+    expect(merged.items.filter((i) => i.key.startsWith('upcoming:'))).toHaveLength(2)
+    expect(merged.oldestDateYmd).toBe('2026-05-01') // recent week ends never beat the oldest bill
+  })
+
+  it('merges the assistant aggregate paths too', () => {
+    const merged = mergeUpcomingIntoAp(
+      buildApBucketFromAggregates(
+        [{ id: 's1', amount: 250, invoice_date: '2026-06-15', supply_houses: { name: 'Ferguson' } }],
+        { dueTotal: 500, dueCount: 3 },
+      ),
+      upcomingApSectionFromAggregates({ upcomingTotal: 550, upcomingCount: 2 }),
+    )
+    expect(merged.total).toBeCloseTo(250 + 500 + 550)
+    expect(merged.upcomingTotal).toBeCloseTo(550)
+    expect(merged.items.find((i) => i.key === 'upcoming:aggregate')?.amount).toBeCloseTo(550)
+  })
+
+  it('adds upcomingTotal 0 and leaves the bucket untouched when the estimate is empty', () => {
+    const ap = buildApBucket(
+      [{ id: 's1', amount: 250, invoice_date: '2026-06-15', supply_houses: { name: 'Ferguson' } }],
+      [],
+    )
+    const merged = mergeUpcomingIntoAp(ap, buildUpcomingApSection([]))
+    expect(merged.upcomingTotal).toBe(0)
+    expect(merged.total).toBeCloseTo(ap.total)
+    expect(merged.count).toBe(ap.count)
+    expect(merged.items).toEqual(ap.items)
+  })
+})
+
 describe('redactApPayrollItems', () => {
   it('collapses per-person stub rows into one aggregate line, totals unchanged', () => {
     const ap = buildApBucket(
@@ -190,12 +239,40 @@ describe('redactApPayrollItems', () => {
     expect(redacted.count).toBe(2) // supply line + aggregate
   })
 
+  it('collapses merged-in per-person upcoming rows into their own aggregate', () => {
+    const merged = mergeUpcomingIntoAp(
+      buildApBucket(
+        [{ id: 's1', amount: 250, invoice_date: '2026-06-15', supply_houses: { name: 'Ferguson' } }],
+        [{ id: 'p1', person_name: 'Taunya', period_start: '2026-06-21', period_end: '2026-06-27', netPay: 900, paidSum: 400 }],
+      ),
+      buildUpcomingApSection([
+        { personName: 'Bryan', weekStartYmd: '2026-06-28', weekEndYmd: '2026-07-04', hours: 8, estimatedGrossDollars: 200 },
+        { personName: 'Taunya', weekStartYmd: '2026-06-28', weekEndYmd: '2026-07-04', hours: 10, estimatedGrossDollars: 350 },
+      ]),
+    )
+    const redacted = redactApPayrollItems(merged)
+    expect(redacted.items.some((i) => i.key.startsWith('stub:'))).toBe(false)
+    expect(redacted.items.filter((i) => i.key.startsWith('upcoming:'))).toEqual([
+      expect.objectContaining({ key: 'upcoming:aggregate', label: 'Payroll', sublabel: '2 person-weeks (est.)', amount: 550 }),
+    ])
+    expect(redacted.total).toBeCloseTo(merged.total)
+    expect(redacted.upcomingTotal).toBeCloseTo(550) // extra fields pass through
+  })
+
   it('passes a payroll-free bucket through unchanged', () => {
     const ap = buildApBucket(
       [{ id: 's1', amount: 250, invoice_date: '2026-06-15', supply_houses: { name: 'Ferguson' } }],
       [],
     )
     expect(redactApPayrollItems(ap)).toBe(ap)
+  })
+
+  it('leaves an already-aggregated bucket (assistant path) alone', () => {
+    const merged = mergeUpcomingIntoAp(
+      buildApBucketFromAggregates([], { dueTotal: 500, dueCount: 3 }),
+      upcomingApSectionFromAggregates({ upcomingTotal: 550, upcomingCount: 2 }),
+    )
+    expect(redactApPayrollItems(merged)).toBe(merged)
   })
 })
 

@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-15 (v2.679)
+last_updated: 2026-07-15 (v2.680)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.680)
+
+### Dashboard — Accounts Payable includes estimated upcoming payroll: all team labor owed (2026-07-15)
+The AP Financials card counted team labor only for weeks with a pay report made; the clocked-but-unstubbed **Upcoming payroll (estimate)** rendered as a side section excluded from the headline (card read `$85.3k` with `Team: $8,563+12,388`, the `+12,388` uncounted). New [`mergeUpcomingIntoAp`](../src/lib/dashboardFinancials.ts) folds the upcoming section into the AP bucket — headline total, item count, and drill-down footer (now **"Total (incl. estimate)"**) — on both viewer paths (per-person rows and the assistant RPC-aggregate path), with the estimate subtotal on a new `upcomingTotal` field; the drill-down still breaks the estimate out as its own collapsible section, and `redactApPayrollItems` now also collapses merged-in per-person upcoming rows into an aggregate for assistants. The card `Team: $due+est` split line is unchanged. Kernel tests cover the merge and redaction.
 
 ## Latest Updates (v2.679)
 
