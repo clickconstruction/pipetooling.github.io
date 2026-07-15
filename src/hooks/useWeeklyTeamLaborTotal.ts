@@ -3,7 +3,7 @@ import type { PayConfigRow as PayConfigRowFull } from '../types/peoplePayConfig'
 import { supabase } from '../lib/supabase'
 
 /** Narrow view of the canonical pay-config row (single source of truth for field types). */
-type PayConfigRow = Pick<PayConfigRowFull, 'person_name' | 'hourly_wage' | 'is_salary' | 'show_in_cost_matrix' | 'record_hours_but_salary'>
+type PayConfigRow = Pick<PayConfigRowFull, 'person_name' | 'hourly_wage' | 'is_salary' | 'show_in_hours' | 'record_hours_but_salary'>
 
 type HoursRow = { person_name: string; work_date: string; hours: number }
 
@@ -33,8 +33,8 @@ function getDaysInRange(start: string, end: string): string[] {
 
 /**
  * Current-week internal team labor total: people_hours × wages (salaried = flat 8/0) for
- * everyone flagged `show_in_cost_matrix` (legacy column name — the merged "Include in Hours
- * & crew costing" knob writes it). Shown on the Dashboard "Internal Team" pin card and in
+ * everyone flagged `show_in_hours` (the "Include in Hours & crew costing" knob).
+ * Shown on the Dashboard "Internal Team" pin card and in
  * Settings → Dashboard. Formerly `useCostMatrixTotal`, renamed in cost-matrix retirement phase 2.
  */
 export function useWeeklyTeamLaborTotal(enabled: boolean): { total: number | null; loading: boolean } {
@@ -56,7 +56,7 @@ export function useWeeklyTeamLaborTotal(enabled: boolean): { total: number | nul
     const days = getDaysInRange(start, end)
 
     Promise.all([
-      supabase.from('people_pay_config').select('person_name, hourly_wage, is_salary, show_in_cost_matrix, record_hours_but_salary'),
+      supabase.from('people_pay_config').select('person_name, hourly_wage, is_salary, show_in_hours, record_hours_but_salary'),
       supabase.from('people_hours').select('person_name, work_date, hours').gte('work_date', start).lte('work_date', end),
       supabase.from('people_hours_display_order').select('person_name, sequence_order'),
     ])
@@ -73,7 +73,7 @@ export function useWeeklyTeamLaborTotal(enabled: boolean): { total: number | nul
         for (const r of orderData) orderMap[r.person_name] = r.sequence_order
 
         const showPeople = Object.keys(configMap)
-          .filter((n) => configMap[n]?.show_in_cost_matrix ?? false)
+          .filter((n) => configMap[n]?.show_in_hours ?? false)
           .sort((a, b) => {
             const orderA = orderMap[a] ?? 999999
             const orderB = orderMap[b] ?? 999999

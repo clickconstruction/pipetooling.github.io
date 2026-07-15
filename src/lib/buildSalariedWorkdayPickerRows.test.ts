@@ -8,7 +8,6 @@ function cfg(personName: string, isSalary: boolean): PayConfigRow {
     hourly_wage: null,
     is_salary: isSalary,
     show_in_hours: false,
-    show_in_cost_matrix: false,
     record_hours_but_salary: false,
   }
 }

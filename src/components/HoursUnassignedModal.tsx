@@ -18,7 +18,7 @@ import { formatBidLedgerShortLine, formatJobLedgerShortLine } from '../lib/ledge
 type CrewRow = { unifiedAssignments: UnifiedAssignment[] }
 type HoursRow = { person_name: string; work_date: string; hours: number }
 /** Narrow view of the canonical pay-config row (single source of truth for field types). */
-type PayConfigRow = Pick<PayConfigRowFull, 'person_name' | 'is_salary' | 'show_in_cost_matrix' | 'record_hours_but_salary'>
+type PayConfigRow = Pick<PayConfigRowFull, 'person_name' | 'is_salary' | 'record_hours_but_salary'>
 
 type ClockSessionRow = {
   id: string

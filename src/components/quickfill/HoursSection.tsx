@@ -24,7 +24,7 @@ import { useLedgerPrefixMap } from '../../contexts/LedgerDisplayPrefixContext'
 import { isAssistantLike } from '../../lib/subcontractorLikeRole'
 
 /** Narrow view of the canonical pay-config row (single source of truth for field types). */
-type PayConfigRow = Pick<PayConfigRowFull, 'person_name' | 'is_salary' | 'show_in_hours' | 'show_in_cost_matrix' | 'record_hours_but_salary'>
+type PayConfigRow = Pick<PayConfigRowFull, 'person_name' | 'is_salary' | 'show_in_hours' | 'record_hours_but_salary'>
 type HoursRow = { person_name: string; work_date: string; hours: number }
 type CrewRow = { unifiedAssignments: UnifiedAssignment[] }
 
