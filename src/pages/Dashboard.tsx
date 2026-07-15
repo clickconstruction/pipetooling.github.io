@@ -4893,7 +4893,7 @@ export default function Dashboard() {
                               })()}
                             </div>
                           </div>
-                          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                             {(inv.google_drive_link?.trim() || inv.job_plans_link?.trim()) && (
                               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
                                 {inv.google_drive_link?.trim() && (
@@ -4986,7 +4986,7 @@ export default function Dashboard() {
                             <div style={{ fontSize: '0.875rem', marginTop: 4 }}>Remaining: ${remaining.toLocaleString('en-US', { minimumFractionDigits: 2 })}</div>
                           )}
                         </div>
-                        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                           {(j.google_drive_link?.trim() || j.job_plans_link?.trim()) && (
                             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
                               {j.google_drive_link?.trim() && (
@@ -5097,7 +5097,7 @@ export default function Dashboard() {
                             })()}
                           </div>
                         </div>
-                        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                           {(inv.google_drive_link?.trim() || inv.job_plans_link?.trim()) && (
                             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
                               {inv.google_drive_link?.trim() && (
@@ -5139,7 +5139,7 @@ export default function Dashboard() {
                             </div>
                             <div style={{ fontSize: '0.875rem', marginTop: 4 }}>Remaining: ${remaining.toLocaleString('en-US', { minimumFractionDigits: 2 })}</div>
                           </div>
-                          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                             {(j.google_drive_link?.trim() || j.job_plans_link?.trim()) && (
                               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
                                 {j.google_drive_link?.trim() && (
@@ -5396,7 +5396,7 @@ export default function Dashboard() {
                             })()}
                           </div>
                         </div>
-                        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                           {(inv.google_drive_link?.trim() || inv.job_plans_link?.trim()) && (
                             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
                               {inv.google_drive_link?.trim() && (
@@ -5489,7 +5489,7 @@ export default function Dashboard() {
                           <div style={{ fontSize: '0.875rem', marginTop: 4 }}>Remaining: ${remaining.toLocaleString('en-US', { minimumFractionDigits: 2 })}</div>
                         )}
                       </div>
-                      <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                      <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                         {(j.google_drive_link?.trim() || j.job_plans_link?.trim()) && (
                           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
                             {j.google_drive_link?.trim() && (
@@ -5600,7 +5600,7 @@ export default function Dashboard() {
                             })()}
                           </div>
                         </div>
-                        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                           {(inv.google_drive_link?.trim() || inv.job_plans_link?.trim()) && (
                             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
                               {inv.google_drive_link?.trim() && (
@@ -5642,7 +5642,7 @@ export default function Dashboard() {
                         </div>
                         <div style={{ fontSize: '0.875rem', marginTop: 4 }}>Remaining: ${remaining.toLocaleString('en-US', { minimumFractionDigits: 2 })}</div>
                       </div>
-                      <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                      <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                         {(j.google_drive_link?.trim() || j.job_plans_link?.trim()) && (
                           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
                             {j.google_drive_link?.trim() && (
