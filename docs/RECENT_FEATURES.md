@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-15 (v2.681)
+last_updated: 2026-07-15 (v2.682)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.682)
+
+### Dashboard — AR Collections count reads "bills" (2026-07-15)
+The Accounts Receivable card's Collections line (`$19,657 (3 items)`) and the AR drill-down's Collections section header now count **bills** instead of the generic "items" — parked difficult-to-collect receivables are customer bills. [`DashboardFinancialsSection.tsx`](../src/components/DashboardFinancialsSection.tsx).
 
 ## Latest Updates (v2.681)
 

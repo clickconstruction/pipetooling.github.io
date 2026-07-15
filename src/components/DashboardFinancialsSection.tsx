@@ -447,7 +447,7 @@ function ItemsModal({
           ? [
               { title: null, items: bucket.items },
               // Parked receivables — its own collapsible section, outside the headline total.
-              { title: 'Collections', items: arCollectionsSection.items, noun: 'item' },
+              { title: 'Collections', items: arCollectionsSection.items, noun: 'bill' },
             ]
           : [{ title: null, items: bucket.items }]
   // AR: sortable by date or amount via the column headers; null = incoming order (amount desc).
@@ -856,7 +856,7 @@ export default function DashboardFinancialsSection() {
             data.arCollections.count > 0
               ? [
                   'Collections:',
-                  `$${roundDollars(data.arCollections.total)} (${data.arCollections.count} item${data.arCollections.count === 1 ? '' : 's'})`,
+                  `$${roundDollars(data.arCollections.total)} (${data.arCollections.count} bill${data.arCollections.count === 1 ? '' : 's'})`,
                 ]
               : undefined,
         },
