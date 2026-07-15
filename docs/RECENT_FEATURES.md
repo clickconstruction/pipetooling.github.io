@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-15 (v2.684)
+last_updated: 2026-07-15 (v2.685)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.685)
+
+### Dashboard — AR Collections reads as one line (2026-07-15)
+The AR card's Collections figure was two stacked spans (`Collections:` / `$19,657 (3 bills)`) — fine as a right-hand column, awkward once the column wraps under the invoice-count footer at narrow widths. Now a single `Collections: $19,657 (3 bills)` line (the AP card's `Label: $value` form) in both states. [`DashboardFinancialsSection.tsx`](../src/components/DashboardFinancialsSection.tsx).
 
 ## Latest Updates (v2.684)
 
