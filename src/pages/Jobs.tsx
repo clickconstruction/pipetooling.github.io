@@ -54,6 +54,7 @@ import type { TallyPartRow } from '../types/tallyPart'
 import { useToastContext } from '../contexts/ToastContext'
 import { withSupabaseRetry } from '../utils/errorHandling'
 import { laborItemsSubtotal, lineLaborCost } from '../lib/peopleLaborJobItemLineCost'
+import { buildSubLaborOutstandingByPerson, subLaborJobMatchesSearch } from '../lib/subLaborOutstanding'
 import { laborJobSubCost } from '../lib/jobs/subLaborCost'
 import { buildClickToolingUrl, formatAddressTwoLines, resolvedLaborInvoiceLink } from '../lib/jobs/jobAddressUrls'
 import JobsCrewPnlTab from '../components/jobs/JobsCrewPnlTab'
@@ -4280,30 +4281,14 @@ ${totalsHtml}
     mercuryCardChargesByJobId,
   ])
 
-  const subLaborDueTotal = useMemo(() => {
-    const q = subLaborSearch.trim().toLowerCase()
-    const filtered = laborJobs.filter((job) => {
-      if (!q) return true
-      const contractor = (job.assigned_to_name ?? '').toLowerCase()
-      const hcp = (job.job_number ?? '').toLowerCase()
-      const addr = (job.address ?? '').toLowerCase()
-      const jobName = laborJobNamesByHcp[(job.job_number ?? '').trim().toLowerCase()]?.toLowerCase() ?? ''
-      return contractor.includes(q) || hcp.includes(q) || addr.includes(q) || jobName.includes(q)
-    })
-    return filtered.reduce((sum, job) => {
-      const jobRate = job.labor_rate ?? 0
-      const laborTotal = laborItemsSubtotal(job.items, jobRate)
-      let totalCost = laborTotal
-      const jobPayments = job.payments ?? []
-      const paid = jobPayments.filter((p) => Number(p.amount) >= 0).reduce((s, p) => s + Number(p.amount), 0)
-      const backcharges = jobPayments.filter((p) => Number(p.amount) < 0).reduce((s, p) => s + Math.abs(Number(p.amount)), 0)
-      if (totalCost === 0 && (paid > 0 || backcharges > 0)) {
-        totalCost = paid + backcharges
-      }
-      const balance = totalCost - paid - backcharges
-      return sum + (balance > 0 ? balance : 0)
-    }, 0)
-  }, [laborJobs, subLaborSearch, laborJobNamesByHcp])
+  const subLaborOutstandingByPerson = useMemo(
+    () =>
+      buildSubLaborOutstandingByPerson(
+        laborJobs.filter((job) => subLaborJobMatchesSearch(job, subLaborSearch, laborJobNamesByHcp)),
+      ),
+    [laborJobs, subLaborSearch, laborJobNamesByHcp],
+  )
+  const subLaborDueTotal = subLaborOutstandingByPerson.totalOutstanding
 
   function refreshCustomersAfterJobFormSave() {
     void (async () => {
@@ -8218,6 +8203,7 @@ ${totalsHtml}
           laborJobsLoading={laborJobsLoading}
           laborJobNamesByHcp={laborJobNamesByHcp}
           subLaborDueTotal={subLaborDueTotal}
+          subLaborOutstandingByPerson={subLaborOutstandingByPerson}
           myRole={myRole}
           onNewLaborJob={openNewLaborJob}
           onEditLaborJob={openEditLaborJob}

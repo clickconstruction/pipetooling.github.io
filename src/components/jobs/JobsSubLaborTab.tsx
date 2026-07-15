@@ -1,7 +1,12 @@
 import { useState } from 'react'
 import { formatCurrency } from '../../lib/jobs/jobFormatting'
-import { laborItemsSubtotal, lineLaborCost } from '../../lib/peopleLaborJobItemLineCost'
+import { lineLaborCost } from '../../lib/peopleLaborJobItemLineCost'
 import { normalizeUrl } from '../../lib/projectsForecastStageLineItems'
+import {
+  subLaborJobBalance,
+  subLaborJobMatchesSearch,
+  type SubLaborOutstandingByPerson,
+} from '../../lib/subLaborOutstanding'
 import type {
   LaborJob,
   SubLaborBackchargeTarget,
@@ -16,6 +21,7 @@ export type JobsSubLaborTabProps = {
   laborJobsLoading: boolean
   laborJobNamesByHcp: Record<string, string>
   subLaborDueTotal: number
+  subLaborOutstandingByPerson: SubLaborOutstandingByPerson
   myRole: string | null
   onNewLaborJob: () => void
   onEditLaborJob: (job: LaborJob) => void
@@ -39,6 +45,7 @@ export default function JobsSubLaborTab({
   laborJobsLoading,
   laborJobNamesByHcp,
   subLaborDueTotal,
+  subLaborOutstandingByPerson,
   myRole,
   onNewLaborJob,
   onEditLaborJob,
@@ -50,6 +57,14 @@ export default function JobsSubLaborTab({
   onOpenBackcharge,
 }: JobsSubLaborTabProps) {
   const [expandedSubLaborJobIds, setExpandedSubLaborJobIds] = useState<Set<string>>(new Set())
+  const [showAllOutstanding, setShowAllOutstanding] = useState(false)
+
+  const outstandingRows = subLaborOutstandingByPerson.rows
+  const OUTSTANDING_PREVIEW = 8
+  const visibleOutstandingRows =
+    showAllOutstanding || outstandingRows.length <= OUTSTANDING_PREVIEW
+      ? outstandingRows
+      : outstandingRows.slice(0, OUTSTANDING_PREVIEW)
 
   return (
     <div>
@@ -91,6 +106,71 @@ export default function JobsSubLaborTab({
           Sub Labor Due: ${formatCurrency(subLaborDueTotal)}
         </div>
       </div>
+      {!laborJobsLoading && laborJobs.length > 0 && (
+        <div style={{ marginBottom: '1.25rem' }}>
+          <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '0.4rem' }}>
+            Outstanding by contractor
+          </div>
+          {outstandingRows.length === 0 ? (
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0 }}>All contractors are paid up.</p>
+          ) : (
+            <div style={{ border: '1px solid var(--border)', borderRadius: 4, overflow: 'auto', WebkitOverflowScrolling: 'touch', minWidth: 0 }}>
+              <table style={{ width: '100%', minWidth: 460, borderCollapse: 'collapse', fontSize: '0.875rem', fontVariantNumeric: 'tabular-nums' }}>
+                <thead style={{ background: 'var(--bg-subtle)' }}>
+                  <tr>
+                    <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Contractor</th>
+                    <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderBottom: '1px solid var(--border)' }}>Total cost</th>
+                    <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderBottom: '1px solid var(--border)' }}>Paid</th>
+                    <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderBottom: '1px solid var(--border)' }}>Outstanding</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {visibleOutstandingRows.map((row) => (
+                    <tr key={row.key} style={{ borderBottom: '1px solid var(--border)' }}>
+                      <td style={{ padding: '0.5rem 0.75rem' }}>
+                        {row.name.trim() || <span style={{ color: 'var(--text-muted)' }}>(No name)</span>}
+                        <span style={{ marginLeft: '0.4rem', fontSize: '0.75rem', color: 'var(--text-faint)' }}>
+                          {row.jobCount} job{row.jobCount === 1 ? '' : 's'}
+                        </span>
+                      </td>
+                      <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }} title={`$${formatCurrency(row.totalCost)}`}>
+                        ${formatCurrency(row.totalCost)}
+                      </td>
+                      <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }} title={`$${formatCurrency(row.paid)}`}>
+                        ${formatCurrency(row.paid)}
+                      </td>
+                      <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', fontWeight: 600, color: 'var(--text-red-700)' }} title={`$${formatCurrency(row.outstanding)}`}>
+                        ${formatCurrency(row.outstanding)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot>
+                  <tr style={{ background: 'var(--bg-subtle)', fontWeight: 700 }}>
+                    <td style={{ padding: '0.5rem 0.75rem' }}>
+                      Total
+                      {outstandingRows.length > OUTSTANDING_PREVIEW ? (
+                        <button
+                          type="button"
+                          onClick={() => setShowAllOutstanding((s) => !s)}
+                          style={{ marginLeft: '0.5rem', padding: 0, background: 'none', border: 'none', color: 'var(--text-link)', cursor: 'pointer', fontSize: '0.8125rem', fontWeight: 600 }}
+                        >
+                          {showAllOutstanding ? 'Show less' : `Show all (${outstandingRows.length})`}
+                        </button>
+                      ) : null}
+                    </td>
+                    <td style={{ padding: '0.5rem 0.75rem' }} />
+                    <td style={{ padding: '0.5rem 0.75rem' }} />
+                    <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', color: 'var(--text-red-700)' }} title={`$${formatCurrency(subLaborOutstandingByPerson.totalOutstanding)}`}>
+                      ${formatCurrency(subLaborOutstandingByPerson.totalOutstanding)}
+                    </td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
       {laborJobsLoading ? (
         <p style={{ color: 'var(--text-muted)' }}>Loading sub sheet ledger…</p>
       ) : laborJobs.length === 0 ? (
@@ -112,26 +192,10 @@ export default function JobsSubLaborTab({
             </thead>
             <tbody>
               {laborJobs
-                .filter((job) => {
-                  const q = subLaborSearch.trim().toLowerCase()
-                  if (!q) return true
-                  const contractor = (job.assigned_to_name ?? '').toLowerCase()
-                  const hcp = (job.job_number ?? '').toLowerCase()
-                  const addr = (job.address ?? '').toLowerCase()
-                  const jobName = laborJobNamesByHcp[(job.job_number ?? '').trim().toLowerCase()]?.toLowerCase() ?? ''
-                  return contractor.includes(q) || hcp.includes(q) || addr.includes(q) || jobName.includes(q)
-                })
+                .filter((job) => subLaborJobMatchesSearch(job, subLaborSearch, laborJobNamesByHcp))
                 .flatMap((job) => {
                 const jobRate = job.labor_rate ?? 0
-                const laborTotal = laborItemsSubtotal(job.items, jobRate)
-                let totalCost = laborTotal
-                const jobPayments = job.payments ?? []
-                const paid = jobPayments.filter((p) => Number(p.amount) >= 0).reduce((s, p) => s + Number(p.amount), 0)
-                const backcharges = jobPayments.filter((p) => Number(p.amount) < 0).reduce((s, p) => s + Math.abs(Number(p.amount)), 0)
-                if (totalCost === 0 && (paid > 0 || backcharges > 0)) {
-                  totalCost = paid + backcharges
-                }
-                const balance = totalCost - paid - backcharges
+                const { totalCost, paid, backcharges, balance } = subLaborJobBalance(job)
                 const dateInputValue = job.job_date ?? (job.created_at ? job.created_at.slice(0, 10) : '')
                 const expanded = expandedSubLaborJobIds.has(job.id)
                 const toggle = () => {

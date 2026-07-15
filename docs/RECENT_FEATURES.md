@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-15 (v2.687)
+last_updated: 2026-07-15 (v2.688)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,13 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.688)
+
+### Jobs → Sub Labor — "Outstanding by contractor" summary at the top of the tab (2026-07-15)
+The Sub Labor (Sub Sheet Ledger) tab showed only a single grand-total `Sub Labor Due: $X`; there was no way to see how much is owed to each contractor without scanning every row. A compact ranked table now sits above the ledger — one row per contractor with a positive balance, sorted highest-owed first, with **Total cost / Paid / Outstanding** columns (scoped to that contractor's unpaid jobs, so each row reads `Total − Paid = Outstanding`) and a bold totals row that always equals the toolbar's `Sub Labor Due`. It follows the search box, collapses to the top 8 with a Show-all toggle, groups blank names under `(No name)`, and floors over-paid jobs per-job (a credit never nets against another job's debt). [`JobsSubLaborTab.tsx`](../src/components/jobs/JobsSubLaborTab.tsx), computed in [`Jobs.tsx`](../src/pages/Jobs.tsx).
+
+The per-job balance formula and the search predicate — previously duplicated verbatim in the tab's row render and the `subLaborDueTotal` memo — were extracted into a tested pure kernel [`subLaborOutstanding.ts`](../src/lib/subLaborOutstanding.ts) (`subLaborJobBalance`, `subLaborJobMatchesSearch`, `buildSubLaborOutstandingByPerson`), so the new summary and the existing total can no longer drift. New help guide `sub-labor-outstanding.md`.
 
 ## Latest Updates (v2.687)
 
