@@ -25,7 +25,7 @@ const CARD_META: Record<CardKey, { title: string; hint: string; linkTo: string; 
   },
   ap: {
     title: 'Accounts Payable',
-    hint: 'Unpaid supply-house invoices plus open payroll balances — money we owe.',
+    hint: 'Unpaid supply-house invoices, sub labor, and all team labor owed — open pay stubs plus estimated unreported weeks.',
     linkTo: '/materials?tab=supply-houses',
     linkLabel: 'Open Supply Houses',
   },
@@ -400,7 +400,7 @@ function ItemsModal({
   onOpenJob: ((item: FinancialItem) => void) | null
   /** Not-billed rows only: "→" opens the send-to-Dispatch composer. */
   onSendToDispatch: ((item: FinancialItem) => void) | null
-  /** AP only: estimated upcoming payroll — listed after the due items, excluded from the footer total. */
+  /** AP only: estimated upcoming payroll — its own section after the due items; included in the footer total (the bucket merges it in). */
   upcomingSection: UpcomingPayrollApSection | null
   /** AP supply rows: opens the bill detail modal (invoice facts + attachment preview). */
   onOpenApBill: ((item: FinancialItem) => void) | null
@@ -430,7 +430,8 @@ function ItemsModal({
             [
               {
                 title: 'Payroll due',
-                items: bucket.items.filter((i) => !i.key.startsWith('supply:')),
+                // Merged-in upcoming items render in their own "(estimate)" section below.
+                items: bucket.items.filter((i) => !i.key.startsWith('supply:') && !i.key.startsWith('upcoming:')),
                 hideSublabels: false,
                 noun: 'item',
               },
@@ -816,7 +817,7 @@ function ItemsModal({
               <tr style={{ borderTop: '2px solid var(--border)', fontWeight: 600 }}>
                 <td style={{ padding: '0.5rem 0.65rem' }} colSpan={showPctComplete ? 3 : 2}>
                   {upcomingSection && upcomingSection.count > 0
-                    ? 'Total due'
+                    ? 'Total (incl. estimate)'
                     : sections.some((s) => s.title === 'Collections')
                       ? 'Total (excl. Collections)'
                       : 'Total'}
