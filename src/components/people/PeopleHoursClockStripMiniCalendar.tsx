@@ -60,12 +60,14 @@ function miniDayPickerButtonStyle(isToday: boolean, isSelected: boolean, isWeeke
     color: 'var(--text-strong)',
   }
 
+  // Theme tokens, not pastels: light-mode literals here were unreadable against
+  // dark-mode text tokens (light-on-light chips).
   const neutralWeekend: CSSProperties =
     !isWeekend
       ? {}
       : {
           borderColor: 'var(--border)',
-          background: '#faf5ff',
+          background: 'var(--bg-muted)',
         }
 
   if (isToday && isSelected) {
@@ -81,14 +83,14 @@ function miniDayPickerButtonStyle(isToday: boolean, isSelected: boolean, isWeeke
     return {
       ...base,
       borderColor: '#93c5fd',
-      background: isWeekend ? '#eef2ff' : 'var(--bg-blue-tint)',
+      background: 'var(--bg-blue-tint)',
     }
   }
   if (isSelected) {
     return {
       ...base,
       border: '2px solid #2563eb',
-      background: '#bfdbfe',
+      background: 'var(--bg-blue-200)',
       fontWeight: 600,
     }
   }
@@ -188,7 +190,7 @@ export function PeopleHoursClockStripMiniCalendar({
                 textAlign: 'center',
                 fontSize: '0.72rem',
                 fontWeight: countsLoading ? 500 : n > 0 ? 700 : 600,
-                color: countsLoading ? '#9ca3af' : n > 0 ? 'var(--text-amber-700)' : 'var(--text-700)',
+                color: countsLoading ? 'var(--text-muted)' : n > 0 ? 'var(--text-amber-700)' : 'var(--text-700)',
                 lineHeight: 1.2,
                 fontFamily: 'inherit',
                 fontVariantNumeric: 'tabular-nums',

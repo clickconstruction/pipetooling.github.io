@@ -6615,7 +6615,6 @@ export type Database = {
           person_id: string | null
           person_name: string
           record_hours_but_salary: boolean
-          show_in_cost_matrix: boolean
           show_in_hours: boolean
         }
         Insert: {
@@ -6625,7 +6624,6 @@ export type Database = {
           person_id?: string | null
           person_name: string
           record_hours_but_salary?: boolean
-          show_in_cost_matrix?: boolean
           show_in_hours?: boolean
         }
         Update: {
@@ -6635,7 +6633,6 @@ export type Database = {
           person_id?: string | null
           person_name?: string
           record_hours_but_salary?: boolean
-          show_in_cost_matrix?: boolean
           show_in_hours?: boolean
         }
         Relationships: [
@@ -11388,7 +11385,6 @@ export type Database = {
           person_id: string
           person_name: string
           record_hours_but_salary: boolean
-          show_in_cost_matrix: boolean
           show_in_hours: boolean
         }[]
       }

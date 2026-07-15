@@ -4740,8 +4740,6 @@ export default function Dashboard() {
           jobsWorkedTodayJobLedgerIdsWithReport={myTeam.jobsWorkedTodayJobLedgerIdsWithReport}
           showScopeToggle={showClockStripScopeToggle}
           clockStripScope={clockStripScope}
-          clockStripNarrowScopeLabel={showClockStripScopeToggle ? 'Everyone' : undefined}
-          clockStripWideScopeLabel={showClockStripScopeToggle ? 'Organization' : undefined}
           onClockStripScopeChange={setClockStripScopePersist}
           showJobBidColumn={showClockStripScopeToggle}
           onJobBidSaved={(patch) => {
@@ -5191,8 +5189,6 @@ export default function Dashboard() {
           jobsWorkedTodayJobLedgerIdsWithReport={myTeam.jobsWorkedTodayJobLedgerIdsWithReport}
           showScopeToggle={showClockStripScopeToggle}
           clockStripScope={clockStripScope}
-          clockStripNarrowScopeLabel={showClockStripScopeToggle ? 'Everyone' : undefined}
-          clockStripWideScopeLabel={showClockStripScopeToggle ? 'Organization' : undefined}
           onClockStripScopeChange={setClockStripScopePersist}
           showJobBidColumn={showClockStripScopeToggle}
           onJobBidSaved={(patch) => {

@@ -175,6 +175,8 @@ button:focus-visible {
   --text-amber-700: #b45309;
   --text-amber-800: #92400e;
   --text-amber-900: #78350f;
+  /* Theme-invariant (no dark override): dark text for fixed amber badge/pill backgrounds. */
+  --text-on-amber-solid: #78350f;
   --text-yellow-800: #854d0e;
   --text-orange-700: #c2410c;
   --text-orange-800: #9a3412;

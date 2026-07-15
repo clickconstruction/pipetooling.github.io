@@ -81,8 +81,10 @@ export function PeopleHoursGrid({
     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem', tableLayout: 'fixed' }}>
       <colgroup>
         <col style={{ width: hoursGridFirstColW }} />
+        {/* 88 = the 72px cell input + 0.5rem td padding per side; narrower and the input
+            overflows the fixed-layout cell, so highlight rings render offset to the left. */}
         {hoursDays.map((d) => (
-          <col key={d} style={{ width: 72 }} />
+          <col key={d} style={{ width: 88 }} />
         ))}
         <col style={{ width: 90 }} />
         <col style={{ width: 90 }} />
@@ -190,12 +192,14 @@ export function PeopleHoursGrid({
                   position: 'sticky',
                   left: 0,
                   zIndex: 2,
+                  // Opaque theme tokens: the cell is sticky, so translucent washes let scrolled
+                  // columns bleed through, and literal white hid names entirely in dark mode.
                   background:
                     hoursFlashPersonName === personName
-                      ? 'rgba(254, 243, 199, 0.35)'
+                      ? 'var(--bg-amber-100)'
                       : jobHighlightPeople.has(personName)
-                        ? 'rgba(219, 234, 254, 0.75)'
-                        : 'white',
+                        ? 'var(--bg-blue-200)'
+                        : 'var(--surface)',
                   boxShadow: '4px 0 8px -4px rgba(0, 0, 0, 0.08)',
                   maxWidth: hoursGridFirstColW,
                   minWidth: 0,
@@ -405,7 +409,9 @@ export function PeopleHoursGrid({
                           padding: '0 5px',
                           border: '1px solid rgba(217,119,6,0.55)',
                           background: '#fbbf24',
-                          color: 'var(--text-amber-900)',
+                          // Theme-invariant dark-on-amber: the pill background never changes with
+                          // the theme, so --text-amber-900 went light-on-amber in dark mode.
+                          color: 'var(--text-on-amber-solid)',
                           borderRadius: 9999,
                           fontSize: '0.7rem',
                           fontWeight: 700,

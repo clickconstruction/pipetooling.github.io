@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-15 (v2.675)
+last_updated: 2026-07-15 (v2.676)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.676)
+
+### People/Dashboard — Hours dark-mode & clock-strip polish; post-drop types regen (2026-07-15)
+Seven fixes across the Hours tab and the shared clock strip, most of them pre-token-sweep light-mode literals that were unreadable in dark mode. **Mini-calendar day chips** ([`PeopleHoursClockStripMiniCalendar.tsx`](../src/components/people/PeopleHoursClockStripMiniCalendar.tsx)): weekend/selected/today pastels (`#faf5ff`/`#bfdbfe`/`#eef2ff`) → `--bg-muted`/`--bg-blue-200`/`--bg-blue-tint`. **Scope toggle renamed** "Everyone | Organization" → **"My Team | Company"** via the [`DashboardTeamActiveClockStrip`](../src/components/DashboardTeamActiveClockStrip.tsx) defaults (per-mount overrides deleted), which also unifies Quickfill's strip that had been showing the old "My team | Everyone" defaults. **Mix button** is icon-only (tooltip + aria labels unchanged). **Hours grid highlight geometry**: day columns 72→88px so the fixed-layout cell fits its 72px input + padding — highlight rings/tints no longer render offset 8px left of the input. **Sticky Person column** (`'white'` + translucent washes → opaque `--surface`/`--bg-amber-100`/`--bg-blue-200`): names visible in dark mode, no more scrolled-content bleed-through. **Pending badge** text uses new theme-invariant `--text-on-amber-solid` (dark-on-amber in both themes; `--text-amber-900` flipped light in dark mode). **Collapsible section headers** ([`CollapsibleSection.tsx`](../src/components/CollapsibleSection.tsx), Approved/Rejected/Pending Sessions): `#f9fafb` → `--bg-subtle`. Also: `database.ts` regenerated from prod after migration `20260715120000` (zero `show_in_cost_matrix` references remain).
 
 ## Latest Updates (v2.675)
 

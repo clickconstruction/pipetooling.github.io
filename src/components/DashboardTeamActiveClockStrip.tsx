@@ -701,8 +701,8 @@ export function DashboardTeamActiveClockStrip({
   jobsWorkedTodayRows = [],
   showScopeToggle = false,
   clockStripScope = 'team',
-  clockStripNarrowScopeLabel = 'My team',
-  clockStripWideScopeLabel = 'Everyone',
+  clockStripNarrowScopeLabel = 'My Team',
+  clockStripWideScopeLabel = 'Company',
   onClockStripScopeChange,
   showJobBidColumn = false,
   onJobBidSaved,
@@ -729,9 +729,9 @@ export function DashboardTeamActiveClockStrip({
   jobsWorkedTodayRows?: readonly JobsWorkedTodayStripRow[]
   showScopeToggle?: boolean
   clockStripScope?: 'team' | 'everyone'
-  /** Left control (`team` scope); default "My team". */
+  /** Left control (`team` scope: My Team links + self); default "My Team". */
   clockStripNarrowScopeLabel?: string
-  /** Right control (`everyone` scope); default "Everyone". */
+  /** Right control (`everyone` scope: org-wide); default "Company". */
   clockStripWideScopeLabel?: string
   onClockStripScopeChange?: (scope: 'team' | 'everyone') => void
   showJobBidColumn?: boolean
@@ -1243,11 +1243,9 @@ export function DashboardTeamActiveClockStrip({
           style={{
             ...scopeBtn(copyDayJobMixMode),
             ...stripClockedInChromeBtnLayout,
-            gap: 4,
           }}
         >
           <CopyDayJobMixIcon active={copyDayJobMixMode} />
-          <span>Mix</span>
         </button>
       ) : null}
       {showClockedInTodayToggle ? (
