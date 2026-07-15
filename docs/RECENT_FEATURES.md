@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-15 (v2.683)
+last_updated: 2026-07-15 (v2.684)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.684)
+
+### Dashboard — Billing Pipeline job icons sit closer together (2026-07-15)
+The Job detail / Edit job icon pair on Billing Pipeline rows (`ReadyToBillJobIconToolbar`) dropped its flex gap (0.35rem desktop / 0.25rem mobile) — the buttons' own padding already separates the glyphs (~14px) and keeps the 36px hit targets apart. [`Dashboard.tsx`](../src/pages/Dashboard.tsx).
 
 ## Latest Updates (v2.683)
 
