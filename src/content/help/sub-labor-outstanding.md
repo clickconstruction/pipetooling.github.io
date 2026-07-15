@@ -11,11 +11,11 @@ keywords: sub labor, sub sheet ledger, outstanding, owed, contractor, backcharge
 Above the ledger, a compact table ranks every contractor you still owe money to, biggest balance first:
 
 :::example Outstanding by contractor
-| Contractor | Total cost | Paid | Outstanding |
+| Total cost | Paid | Outstanding | Contractor |
 | --- | --- | --- | --- |
-| Ryan (Garner HVAC) | $6,251.52 | $0.00 | $6,251.52 |
-| Edgar | $8,500.00 | $4,500.00 | $4,000.00 |
-| **Total** | | | **$20,551.52** |
+| $6,251.52 | $0.00 | $6,251.52 | Ryan (Garner HVAC) |
+| $8,500.00 | $4,500.00 | $4,000.00 | Edgar |
+| | | **$20,551.52** | **Total** |
 :::
 
 - **Total cost / Paid / Outstanding** are summed across only that contractor's **unpaid** jobs, so each row reads simply as *Total cost − Paid = Outstanding*. Fully paid jobs don't clutter the numbers.
@@ -25,7 +25,11 @@ Above the ledger, a compact table ranks every contractor you still owe money to,
 
 ## It follows your search
 
-Type in the {{chip:gray|Search contractor, HCP, address…}} box and both the summary and the ledger below narrow together — so searching a contractor turns the summary into just their balance.
+Type in the {{chip:gray|Search contractor, HCP, address…}} box (below the summary, above the ledger) and both the summary and the ledger narrow together — so searching a contractor turns the summary into just their balance.
+
+## Only show due
+
+The ledger opens with **☑ Only show due** ticked, so you only see jobs that still owe money — the red "$X due" rows. Fully paid and over-paid jobs are hidden until you untick it to browse the whole ledger. When a search leaves nothing owed, the ledger reads **No payments due.**
 
 ## Long lists
 

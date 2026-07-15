@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-15 (v2.688)
+last_updated: 2026-07-15 (v2.689)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,15 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.689)
+
+### Jobs → Sub Labor — layout pass + "Only show due" default filter (2026-07-15)
+A round of layout refinements to the Sub Labor tab, all in [`JobsSubLaborTab.tsx`](../src/components/jobs/JobsSubLaborTab.tsx):
+- **Ledger:** `Total cost` moved to the second column (right after Contractor).
+- **"Outstanding by contractor" summary:** columns regrouped to **Total cost · Paid · Outstanding · Contractor** — the three money figures sit together, Outstanding immediately left of the contractor name — and the table sizes to its content (was stretched full-width) so the numbers read close together.
+- **Search box:** moved out of the top toolbar to its own full-width row below the summary and above the ledger.
+- **"Only show due" checkbox** (next to the search box, **ticked by default**): hides everything except jobs that still owe money (the red "$X due" rows), so the tab opens showing only outstanding work; untick to see the full ledger. Empty result reads "No payments due." The balance is computed once per job into a shared visible-rows list that both the filter and the row render reuse. Help guide `sub-labor-outstanding.md` updated.
 
 ## Latest Updates (v2.688)
 
