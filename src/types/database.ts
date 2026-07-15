@@ -2187,41 +2187,6 @@ export type Database = {
           },
         ]
       }
-      cost_matrix_tag_colors: {
-        Row: {
-          color: string
-          tag: string
-        }
-        Insert: {
-          color?: string
-          tag: string
-        }
-        Update: {
-          color?: string
-          tag?: string
-        }
-        Relationships: []
-      }
-      cost_matrix_teams_shares: {
-        Row: {
-          shared_with_user_id: string
-        }
-        Insert: {
-          shared_with_user_id: string
-        }
-        Update: {
-          shared_with_user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "cost_matrix_teams_shares_shared_with_user_id_fkey"
-            columns: ["shared_with_user_id"]
-            isOneToOne: true
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       counts_fixture_group_items: {
         Row: {
           created_at: string | null
@@ -6341,32 +6306,6 @@ export type Database = {
             columns: ["master_user_id"]
             isOneToOne: false
             referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      people_cost_matrix_tags: {
-        Row: {
-          person_id: string | null
-          person_name: string
-          tags: string
-        }
-        Insert: {
-          person_id?: string | null
-          person_name: string
-          tags?: string
-        }
-        Update: {
-          person_id?: string | null
-          person_name?: string
-          tags?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "people_cost_matrix_tags_person_id_fkey"
-            columns: ["person_id"]
-            isOneToOne: false
-            referencedRelation: "people"
             referencedColumns: ["id"]
           },
         ]
@@ -11080,7 +11019,6 @@ export type Database = {
       is_bid_pricing_user: { Args: never; Returns: boolean }
       is_checklist_tech_tree_staff_or_primary: { Args: never; Returns: boolean }
       is_controller: { Args: never; Returns: boolean }
-      is_cost_matrix_shared_with_current_user: { Args: never; Returns: boolean }
       is_dev: { Args: never; Returns: boolean }
       is_dev_or_master_or_assistant: { Args: never; Returns: boolean }
       is_dispatch_group_member: { Args: never; Returns: boolean }
