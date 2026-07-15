@@ -103,9 +103,15 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 #### July 15, 2026
 
+**`20260715120000_drop_show_in_cost_matrix.sql`** _(applied via `supabase db push` after the v2.675 client deploy)_
+- **Purpose**: **Cost-matrix retirement phase 5.** Drops `people_pay_config.show_in_cost_matrix` after proving it dead: identical to `show_in_hours` for all rows, dual-written since v2.673, unreferenced by the v2.675 client. Recreates `list_people_pay_flags()` without the column (DROP + CREATE, `RETURNS TABLE` shape change; body otherwise per `20260714213000`) before the column drop so no broken window exists.
+- **Impact**: None functionally — the "Include in Hours & crew costing" knob is now backed solely by `show_in_hours`. Stale clients that still `.select()` the column 400 on pay-config loads until the `autoUpdate` service worker refreshes them (minutes-scale).
+- **Category**: Cleanup / Schema
+
+
 **`20260715090000_retire_cost_matrix_shares_and_tags.sql`** _(pending — apply via `supabase db push` AFTER the v2.674 client deploys)_
 - **Purpose**: **Cost-matrix retirement (phase 4, DB half).** Strips the `is_cost_matrix_shared_with_current_user()` term from every RLS policy that carried it: recreates `people_hours` / `people_crew_jobs` / `people_crew_bids` "select access" and `common_jobs` read (renamed "Pay access can read common jobs") with bodies identical to their current post-sweep definitions (`has_payroll_access() OR is_assistant()` [+ team-lead where present]) minus the share term; drops the standalone shared-user SELECT policies on `people_pay_config` / `people_teams` / `people_team_members`; drops tables `cost_matrix_teams_shares`, `people_cost_matrix_tags`, `cost_matrix_tag_colors` (their policies + the v2.660 grantee trigger die with them); drops `is_cost_matrix_shared_with_current_user()` and `cost_matrix_share_grantee_role_check()`.
-- **Impact**: Access only narrows, and only for share holders — the sole existing share belonged to a pay-approved master whose access comes from pay approval. "View costs without pay admin" is the **controller** role's job now. ~20 tag rows discarded (confirmed unused). `people_pay_config.show_in_cost_matrix` **stays** (the merged v2.673 checkbox writes it); a later cleanup migration may fold it into `show_in_hours`.
+- **Impact**: Access only narrows, and only for share holders — the sole existing share belonged to a pay-approved master whose access comes from pay approval. "View costs without pay admin" is the **controller** role's job now. ~20 tag rows discarded (confirmed unused). `people_pay_config.show_in_cost_matrix` stayed through v2.674 and was dropped by `20260715120000` (phase 5).
 - **Category**: RLS / Cleanup / Feature retirement
 
 #### July 14, 2026

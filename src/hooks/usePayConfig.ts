@@ -75,7 +75,7 @@ export function usePayConfig(deps: UsePayConfigDeps): UsePayConfigResult {
     const { data, error } = wageAccess
       ? await supabase
           .from('people_pay_config')
-          .select('person_name, person_id, hourly_wage, office_hourly_wage, is_salary, show_in_hours, show_in_cost_matrix, record_hours_but_salary')
+          .select('person_name, person_id, hourly_wage, office_hourly_wage, is_salary, show_in_hours, record_hours_but_salary')
       : await supabase.rpc('list_people_pay_flags')
     if (error) {
       setError(error.message)
@@ -91,7 +91,6 @@ export function usePayConfig(deps: UsePayConfigDeps): UsePayConfigResult {
         office_hourly_wage: raw.office_hourly_wage ?? null,
         is_salary: !!raw.is_salary,
         show_in_hours: !!raw.show_in_hours,
-        show_in_cost_matrix: !!raw.show_in_cost_matrix,
         record_hours_but_salary: !!raw.record_hours_but_salary,
       }
       map[r.person_name] = r
@@ -153,7 +152,6 @@ export function usePayConfig(deps: UsePayConfigDeps): UsePayConfigResult {
         office_hourly_wage: null,
         is_salary: false,
         show_in_hours: false,
-        show_in_cost_matrix: false,
         record_hours_but_salary: false,
       }
     const full = {
@@ -163,7 +161,6 @@ export function usePayConfig(deps: UsePayConfigDeps): UsePayConfigResult {
       office_hourly_wage: row.office_hourly_wage ?? cur.office_hourly_wage ?? null,
       is_salary: row.is_salary ?? cur.is_salary,
       show_in_hours: row.show_in_hours ?? cur.show_in_hours,
-      show_in_cost_matrix: row.show_in_cost_matrix ?? cur.show_in_cost_matrix,
       record_hours_but_salary: row.record_hours_but_salary ?? cur.record_hours_but_salary,
     }
     setPayConfig((prev) => ({ ...prev, [personName]: full }))
@@ -235,7 +232,6 @@ export function usePayConfig(deps: UsePayConfigDeps): UsePayConfigResult {
         office_hourly_wage: null,
         is_salary: false,
         show_in_hours: false,
-        show_in_cost_matrix: false,
         record_hours_but_salary: false,
       }
     const parsed = rawValue === '' ? null : parseFloat(rawValue) || null
@@ -276,7 +272,6 @@ export function usePayConfig(deps: UsePayConfigDeps): UsePayConfigResult {
         office_hourly_wage: null,
         is_salary: false,
         show_in_hours: false,
-        show_in_cost_matrix: false,
         record_hours_but_salary: false,
       }
     const parsed = rawValue === '' ? null : parseFloat(rawValue) || null

@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-15 (v2.674)
+last_updated: 2026-07-15 (v2.675)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.675)
+
+### People — cost-matrix retirement phase 5: `show_in_cost_matrix` column dropped (2026-07-15)
+The soak was replaced with proof: all 21 prod rows had `show_in_cost_matrix` ≡ `show_in_hours`, and every writer has written both since v2.673 — so the column carried no information. Every remaining reader now uses `show_in_hours` (CrewJobsBlock roster, [`useWeeklyTeamLaborTotal`](../src/hooks/useWeeklyTeamLaborTotal.ts), People.tsx costing roster, Settings pay-config loads), the merged "Include in Hours & crew costing" checkbox writes only `show_in_hours`, and the column is gone from `PayConfigRow` and every `.select()`. Migration `20260715120000` (apply AFTER this client deploys) recreates `list_people_pay_flags()` without the column (DROP + CREATE — RETURNS TABLE changes shape) and drops it from `people_pay_config`. The new client works against both pre- and post-drop schemas; stale bundles self-replace via the `autoUpdate` service worker.
 
 ## Latest Updates (v2.674)
 

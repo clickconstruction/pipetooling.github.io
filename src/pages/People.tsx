@@ -2582,7 +2582,7 @@ export default function People() {
     [showPeopleForHours, users],
   )
   const showPeopleForMatrixBase = Object.keys(payConfig)
-    .filter((n) => (payConfig[n]?.show_in_cost_matrix ?? false) && !archivedUserNames.has(n.trim()))
+    .filter((n) => (payConfig[n]?.show_in_hours ?? false) && !archivedUserNames.has(n.trim()))
     .sort((a, b) => {
       const orderA = hoursDisplayOrder[a] ?? 999999
       const orderB = hoursDisplayOrder[b] ?? 999999

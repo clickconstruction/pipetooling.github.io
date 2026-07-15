@@ -45,7 +45,6 @@ function PayConfigRowTr({
     office_hourly_wage: null,
     is_salary: false,
     show_in_hours: false,
-    show_in_cost_matrix: false,
     record_hours_but_salary: false,
   }
   return (
@@ -116,12 +115,8 @@ function PayConfigRowTr({
       <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center' }}>
         <input
           type="checkbox"
-          checked={c.show_in_hours || c.show_in_cost_matrix}
-          onChange={(e) =>
-            // One visibility knob (cost-matrix retirement phase 1): the legacy
-            // show_in_hours / show_in_cost_matrix columns always move together now.
-            onUpsertPayConfig(n, { show_in_hours: e.target.checked, show_in_cost_matrix: e.target.checked })
-          }
+          checked={c.show_in_hours}
+          onChange={(e) => onUpsertPayConfig(n, { show_in_hours: e.target.checked })}
           disabled={payConfigSaving}
         />
       </td>

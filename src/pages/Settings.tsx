@@ -3714,7 +3714,7 @@ export default function Settings() {
             supabase
               .from('people_pay_config')
               .select(
-                'person_name, hourly_wage, is_salary, show_in_hours, show_in_cost_matrix, record_hours_but_salary',
+                'person_name, hourly_wage, is_salary, show_in_hours, record_hours_but_salary',
               ),
           'settings dev all salaried pay config',
         )
@@ -3877,7 +3877,7 @@ export default function Settings() {
     try {
       const { data } = await supabase
         .from('people_pay_config')
-        .select('person_name, person_id, hourly_wage, is_salary, show_in_hours, show_in_cost_matrix, record_hours_but_salary')
+        .select('person_name, person_id, hourly_wage, is_salary, show_in_hours, record_hours_but_salary')
       const payConfig: Record<string, PayConfigRowForMerge> = {}
       for (const r of (data ?? []) as PayConfigRowForMerge[]) {
         payConfig[r.person_name] = r
@@ -3913,7 +3913,7 @@ export default function Settings() {
     try {
       const { data } = await supabase
         .from('people_pay_config')
-        .select('person_name, person_id, hourly_wage, is_salary, show_in_hours, show_in_cost_matrix, record_hours_but_salary')
+        .select('person_name, person_id, hourly_wage, is_salary, show_in_hours, record_hours_but_salary')
       const payConfig: Record<string, PayConfigRowForMerge> = {}
       for (const r of (data ?? []) as PayConfigRowForMerge[]) {
         payConfig[r.person_name] = r

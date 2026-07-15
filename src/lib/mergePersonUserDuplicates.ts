@@ -11,7 +11,6 @@ export type PayConfigRowForMerge = {
   hourly_wage: number | null
   is_salary: boolean
   show_in_hours: boolean
-  show_in_cost_matrix: boolean
   record_hours_but_salary: boolean
 }
 
@@ -148,7 +147,6 @@ export async function mergePersonIntoUser(
     hourly_wage: userConfig?.hourly_wage ?? personConfig?.hourly_wage ?? null,
     is_salary: userConfig?.is_salary ?? personConfig?.is_salary ?? false,
     show_in_hours: userConfig?.show_in_hours ?? personConfig?.show_in_hours ?? false,
-    show_in_cost_matrix: userConfig?.show_in_cost_matrix ?? personConfig?.show_in_cost_matrix ?? false,
     record_hours_but_salary: userConfig?.record_hours_but_salary ?? personConfig?.record_hours_but_salary ?? false,
   }
 
