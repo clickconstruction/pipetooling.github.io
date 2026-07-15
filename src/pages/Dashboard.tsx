@@ -843,7 +843,8 @@ function ReadyToBillJobIconToolbar({
       }
   return (
     // Row on desktop keeps the taller buttons from stretching short pipeline cards.
-    <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: isMobile ? '0.25rem' : '0.35rem', alignItems: 'center' }}>
+    // No gap — the buttons' own padding already separates the glyphs and keeps hit targets apart.
+    <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', alignItems: 'center' }}>
       <button
         type="button"
         onClick={() => onOpenDetail({ jobId, hcpNumber, jobName, jobAddress })}
