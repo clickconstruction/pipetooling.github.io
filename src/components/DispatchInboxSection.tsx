@@ -282,6 +282,22 @@ export function DispatchInboxSection({
                       }}
                     >
                     <div
+                      // Whole collapsed row toggles the thread; the guard lets clicks on links
+                      // and action buttons (Dismiss, Add Pictures, Trip Charge) through untouched.
+                      role="button"
+                      tabIndex={0}
+                      aria-expanded={expanded}
+                      onKeyDown={(e) => {
+                        if ((e.target as HTMLElement).closest('a, button, input, textarea, select')) return
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault()
+                          onToggleExpandRequest(req.id)
+                        }
+                      }}
+                      onClick={(e) => {
+                        if ((e.target as HTMLElement).closest('a, button, input, textarea, select')) return
+                        onToggleExpandRequest(req.id)
+                      }}
                       style={
                         narrow
                           ? {
@@ -289,43 +305,30 @@ export function DispatchInboxSection({
                               flexDirection: 'column',
                               alignItems: 'stretch',
                               gap: '0.5rem',
+                              cursor: 'pointer',
                             }
                           : {
                               display: 'flex',
                               flexWrap: 'wrap',
                               alignItems: 'flex-start',
                               gap: '0.5rem',
+                              cursor: 'pointer',
                             }
                       }
                     >
                       <div
-                        role="button"
-                        tabIndex={0}
-                        aria-expanded={expanded}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter' || e.key === ' ') {
-                            e.preventDefault()
-                            onToggleExpandRequest(req.id)
-                          }
-                        }}
-                        onClick={(e) => {
-                          if ((e.target as HTMLElement).closest('a')) return
-                          onToggleExpandRequest(req.id)
-                        }}
                         style={
                           narrow
                             ? {
                                 flex: 'none',
                                 minWidth: 0,
                                 width: '100%',
-                                cursor: 'pointer',
                                 textAlign: 'left',
                                 paddingRight: 0,
                               }
                             : {
                                 flex: 1,
                                 minWidth: 200,
-                                cursor: 'pointer',
                                 textAlign: 'left',
                                 paddingRight: '0.5rem',
                               }
@@ -409,7 +412,7 @@ export function DispatchInboxSection({
                               {dismissBtn}
                               {noteCount > 0 ? (
                                 <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textAlign: 'right' }}>
-                                  Expand for thread
+                                  Click to expand thread
                                 </div>
                               ) : null}
                             </div>
@@ -429,7 +432,7 @@ export function DispatchInboxSection({
                               <>
                                 <div style={{ display: 'contents' }}>{dismissBtn}</div>
                                 {noteCount > 0 ? (
-                                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Expand for thread</div>
+                                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Click to expand thread</div>
                                 ) : null}
                               </>
                             ) : null}
