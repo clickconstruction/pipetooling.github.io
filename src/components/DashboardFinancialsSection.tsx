@@ -852,11 +852,12 @@ export default function DashboardFinancialsSection() {
           key: 'ar',
           bucket: data.ar,
           itemNoun: 'invoice',
+          // One line (matches the AP card's "Label: $value" form) so it reads the same
+          // beside the total and when it wraps under the invoice-count footer.
           extraLines:
             data.arCollections.count > 0
               ? [
-                  'Collections:',
-                  `$${roundDollars(data.arCollections.total)} (${data.arCollections.count} bill${data.arCollections.count === 1 ? '' : 's'})`,
+                  `Collections: $${roundDollars(data.arCollections.total)} (${data.arCollections.count} bill${data.arCollections.count === 1 ? '' : 's'})`,
                 ]
               : undefined,
         },
