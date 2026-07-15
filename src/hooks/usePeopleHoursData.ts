@@ -21,7 +21,6 @@ export interface PeopleHoursRealtimeCallbacks {
 export interface UsePeopleHoursDataDeps {
   canAccessHours: boolean
   canAccessPay: boolean
-  canViewCostMatrixShared: boolean
   /** Ledger display-prefix map (3rd arg of clockSessionMatchesSearch) for the filtered selectors. */
   prefixMap: Parameters<typeof clockSessionMatchesSearch>[2]
   /** Live roster ref (people) for person-id resolution in saveHours. */
@@ -75,7 +74,6 @@ export function usePeopleHoursData(deps: UsePeopleHoursDataDeps): UsePeopleHours
   const {
     canAccessHours,
     canAccessPay,
-    canViewCostMatrixShared,
     prefixMap,
     peopleRosterRef,
     authUser,
@@ -128,7 +126,7 @@ export function usePeopleHoursData(deps: UsePeopleHoursDataDeps): UsePeopleHours
     rejectedClockSessionsFiltered.length === 0
 
   async function loadPeopleHours(start: string, end: string) {
-    if (!canAccessHours && !canAccessPay && !canViewCostMatrixShared) return
+    if (!canAccessHours && !canAccessPay) return
     const { data, error } = await supabase
       .from('people_hours')
       .select('person_name, person_id, work_date, hours')
@@ -219,7 +217,7 @@ export function usePeopleHoursData(deps: UsePeopleHoursDataDeps): UsePeopleHours
   // Realtime: live people_hours + clock_sessions changes on the Hours/Pay Stubs tabs.
   const peopleHoursClockRealtimeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   useEffect(() => {
-    const hasAccess = canAccessHours || canAccessPay || canViewCostMatrixShared
+    const hasAccess = canAccessHours || canAccessPay
     const isRelevantTab = activeTab === 'hours' || activeTab === 'pay_stubs'
     if (!hasAccess || !isRelevantTab) return
 
@@ -267,7 +265,6 @@ export function usePeopleHoursData(deps: UsePeopleHoursDataDeps): UsePeopleHours
     activeTab,
     canAccessHours,
     canAccessPay,
-    canViewCostMatrixShared,
     hoursDateStart,
     hoursDateEnd,
     isDocVisible,

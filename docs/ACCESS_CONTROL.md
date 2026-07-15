@@ -81,7 +81,7 @@ Pipetooling implements comprehensive role-based access control (RBAC) using eigh
 6. **estimator** - Bid estimation specialists
 7. **primary** - Materials and job reports specialist (Reports and Billing tabs on Jobs; Bids full access; Dashboard with Recent Reports and Send task)
 8. **superintendent** - Run jobs, manage subcontractors, draft bids (assigned projects only; no People page)
-9. **controller** - Bookkeeper/financial controller (v2.662): **acts like an assistant everywhere** (client `isAssistantLike()`, DB `is_assistant()` are assistant-LIKE) **plus dev-level financial visibility** — Payroll tab, wages/pay stubs (`has_payroll_access()`), cost matrix, Job Summary labor/profit, Cost breakdown team labor. Not dev admin (no user management, impersonation, backups, deletes).
+9. **controller** - Bookkeeper/financial controller (v2.662): **acts like an assistant everywhere** (client `isAssistantLike()`, DB `is_assistant()` are assistant-LIKE) **plus dev-level financial visibility** — Payroll tab, wages/pay stubs (`has_payroll_access()`), team labor totals, Job Summary labor/profit, Cost breakdown team labor. Not dev admin (no user management, impersonation, backups, deletes).
 
 **Adding a new role?** See [ADDING_A_NEW_ROLE.md](./ADDING_A_NEW_ROLE.md) for a step-by-step guide.
 
@@ -178,7 +178,7 @@ Pipetooling implements comprehensive role-based access control (RBAC) using eigh
 - Jobs page — Labor tab: Add labor jobs per person (fixture rows, job #, date, labor rate)
 - Jobs page — Sub Sheet Ledger tab: View all labor jobs; Edit and Delete (own jobs); shared jobs show "Created by [name]"
 - Jobs page — **Reports tab** — **Recurring Email Reports**: same as dev (schedules, recipients, optional **include costs** in digest emails)
-- **Hours** tab (dev, Pay Approved Masters, and all assistants — assistants see hours/rosters but **no wage data**; pay-config flags arrive via `list_people_pay_flags()`, wage columns are RLS-blocked for them since v2.660): Shared **week / date range**; **section jump** row; **Dashboard**-style clock strip; pending / approved / rejected sessions; timesheet grid; **Review Hours & pay config** (modal + **Hours reviewed** ledger + pay settings for dev and Pay Approved Masters); **Due by Trade / Team**; **Cost matrix** and **Teams**; **Share Cost Matrix and Teams** and **Tag colors** at bottom (dev, **Settings → People & accounts** → Sharing and Adoption — dev can grant view-only matrix/Teams to selected masters or assistants). Legacy **`?tab=pay`** opens **Hours**. Cost matrix date headers on two lines (Mon / 2/16) on mobile.
+- **Hours** tab (dev, Pay Approved Masters, and all assistants — assistants see hours/rosters but **no wage data**; pay-config flags arrive via `list_people_pay_flags()`, wage columns are RLS-blocked for them since v2.660): Shared **week / date range**; **section jump** row; **Dashboard**-style clock strip; pending / approved / rejected sessions; timesheet grid; **Review Hours & pay config** (modal + **Hours reviewed** ledger + pay settings for dev and Pay Approved Masters); **Due by Team**; **Teams**. Legacy **`?tab=pay`** opens **Hours**. (The **Cost matrix** grid, trade tags, and the **Share Cost Matrix and Teams** view-grant retired in v2.673–v2.674 — “see costs without pay admin” is the controller role now.)
 - Payroll tab (dev and Pay Approved Masters only — assistants have no pay-stub access at the UI **or** DB level since v2.660; the Dashboard AP card shows them org-level totals via `get_dashboard_payroll_totals()`): Ledger of generated pay stubs with **Search** by person name; **Paid to date** / **Balance** from **`pay_stub_payments`**; **Record payment** (partial installments); **Generate Pay Reports** bulk modal (includes **Partial** / fully paid counts) and single-person generator; **Print** from ledger row; **View** (HTML preview) from bulk modal only; dev-only delete via red trash icon; **Draft Payroll** — **Cash Due**, clickable **Hours** breakdown (**v2.514**, **`RECENT_FEATURES.md`**), grey row **View**, optional dev stub delete in modal
 - **People → Teams** (`?tab=teams`): manage **`team_leader_assignments`** (leader→member links for Dashboard **My Team**); same capabilities as Settings **Team Hours Sharing**; per-link **Leader dashboard** visibility (**full** vs **strip only**) — **dev-only**
 - **People → Overhead** (`?tab=overhead`): daily **approved, closed** clock labor $ on the configured **office** job (**`app_settings`**) + **bid** time; dev sets office **`jobs_ledger`** id
@@ -197,10 +197,10 @@ Pipetooling implements comprehensive role-based access control (RBAC) using eigh
 - View price history
 
 **Settings**:
-- **People & accounts** (in-page jump `settings-people`): Adopt/unadopt assistants, primaries, superintendents; share/unshare with other masters; view adopted assistants and shared masters; (dev) Share Cost Matrix and Teams inside **Sharing and Adoption**
+- **People & accounts** (in-page jump `settings-people`): Adopt/unadopt assistants, primaries, superintendents; share/unshare with other masters; view adopted assistants and shared masters
 - Change own password
 - No user management
-- (Dev only) Pin Billed Awaiting Payment, Supply Houses AP, Sub Labor Due, Cost matrix to masters/devs dashboards (**Dashboard & alerts** → Dashboard Page Pins)
+- (Dev only) Pin Billed Awaiting Payment, Supply Houses AP, Sub Labor Due, Internal Team labor to masters/devs dashboards (**Dashboard & alerts** → Dashboard Page Pins)
 
 **Edge Functions**:
 - Can call `login-as-user` (impersonate assistants/subs; cannot impersonate devs)
@@ -213,7 +213,7 @@ Pipetooling implements comprehensive role-based access control (RBAC) using eigh
 
 **Access**:
 - Dashboard, Customers, Projects, People, Jobs, Calendar, Bids, Materials, Prospects
-- **Settings** (via gear menu): Change password, push notifications, Dashboard buttons, **Dashboard Page Pins** (Page pins card only—manage own pins, Clear all, Remove per pin), **Team Hours Sharing** (leader → member links for My Team; same data as **People → Teams**). Does NOT see dev-only sections (Pin Billed, Cost matrix, Supply Houses AP, Sub Labor Due, user management, email templates, etc.). The PAGE_ACCESS table in Settings is a reference display; assistants can navigate to Settings.
+- **Settings** (via gear menu): Change password, push notifications, Dashboard buttons, **Dashboard Page Pins** (Page pins card only—manage own pins, Clear all, Remove per pin), **Team Hours Sharing** (leader → member links for My Team; same data as **People → Teams**). Does NOT see dev-only sections (Pin Billed, Internal Team labor, Supply Houses AP, Sub Labor Due, user management, email templates, etc.). The PAGE_ACCESS table in Settings is a reference display; assistants can navigate to Settings.
 - **Blocked**: Templates
 
 **Permissions**:
@@ -249,7 +249,7 @@ Pipetooling implements comprehensive role-based access control (RBAC) using eigh
 - Jobs page — Stages tab: Billed Awaiting Payment, Total by Name modal; **Combine / Separate** (toolbar **right**) — same **dev** / **master_technician** / **assistant** gate as **Job Book** (**v2.516**)
 - Jobs page — Labor tab: Add labor jobs per person
 - Jobs page — Sub Sheet Ledger tab: View labor jobs (own and shared); Edit/Delete own jobs; shared jobs show "Created by [name]"
-- **Hours** tab (**all** assistants since **v2.661** — pay-master adoption confers nothing): timesheet, sessions, grid, **Hours reviewed** / day-correct markers; rosters and salaried-hours flags come from the wage-free **`list_people_pay_flags()`** RPC. **Never any wage data**: `people_pay_config` wage columns, pay stubs, and `person_offsets` are RLS-blocked for assistants (**v2.660**), and the **cost matrix can no longer be shared with assistants** (grantee trigger — dev/master/controller only)
+- **Hours** tab (**all** assistants since **v2.661** — pay-master adoption confers nothing): timesheet, sessions, grid, **Hours reviewed** / day-correct markers; rosters and salaried-hours flags come from the wage-free **`list_people_pay_flags()`** RPC. **Never any wage data**: `people_pay_config` wage columns, pay stubs, and `person_offsets` are RLS-blocked for assistants (**v2.660**), (the cost-matrix view-share mechanism retired entirely in v2.674)
 - **No Payroll tab** (**v2.660**): assistants have no pay-stub access at the UI or DB level. The Dashboard AP card shows them **org-level totals only** via **`get_dashboard_payroll_totals()`** (one aggregate row, never per-person)
 - **People → Teams** (`?tab=teams`): manage **`team_leader_assignments`** (same as Settings **Team Hours Sharing**); per-link **Leader dashboard** — **dev-only**
 
@@ -511,7 +511,7 @@ Pipetooling implements comprehensive role-based access control (RBAC) using eigh
 
 **Access**:
 - **Everything an assistant can do** — the DB's `is_assistant()` and client's `isAssistantLike()` are assistant-LIKE (`assistant` OR `controller`), so every assistant capability (clock cards, hours, crew grids, dispatch, contracts, licenses, vehicles, housing, write-ups) applies automatically
-- **Plus the full payroll principal** via `has_payroll_access()` (v2.663 sweep): `people_pay_config` wages (read/write), the entire pay-stub family, `person_offsets`, People → **Payroll** / **Employment** / **Pay Stubs** tabs with pay-config editing, cost matrix + teams (valid share grantee), unredacted Dashboard financials, Jobs → Job Summary **Team Labor**/profit, Job Detail profit band and Cost breakdown team labor, Projects day-modal team labor
+- **Plus the full payroll principal** via `has_payroll_access()` (v2.663 sweep): `people_pay_config` wages (read/write), the entire pay-stub family, `person_offsets`, People → **Payroll** / **Employment** / **Pay Stubs** tabs with pay-config editing, Hours-tab teams/due totals, unredacted Dashboard financials, Jobs → Job Summary **Team Labor**/profit, Job Detail profit band and Cost breakdown team labor, Projects day-modal team labor
 - **Not dev admin**: no user management / Active Accounts, no imitation, no backups, no dev-only deletes, `is_dev()` stays false
 
 **Matrices below**: read the **assistant** column for a controller, then add the pay/financial surfaces above — controller is not broken out as its own column.
@@ -622,7 +622,7 @@ Mercury **Person** attribution (job splits modal): staff use **`list_users_for_b
 
 | Feature | dev | master | assistant | sub | estimator | primary | superintendent |
 |---------|-----|--------|-----------|-----|-----------|---------|----------------|
-| People & accounts (`#settings-people`): adoption, master sharing, primaries/superintendents, Share Cost Matrix and Teams (dev); dev-only user tools and Task Dispatch above sharing | ✅ | ✅ (sharing block only) | ❌ | ❌ | ❌ | ❌ | ❌ |
+| People & accounts (`#settings-people`): adoption, master sharing, primaries/superintendents; dev-only user tools and Task Dispatch above sharing | ✅ | ✅ (sharing block only) | ❌ | ❌ | ❌ | ❌ | ❌ |
 | Team Hours Sharing (leader → member links for My Team; **Settings → Dashboard & alerts** and **People → Teams** `?tab=teams`); **Leader dashboard** column (full vs strip only) **editable dev-only** | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
 | **Job Book** (`job_book_entries`): **SELECT** all **authenticated** (e.g. **Collect Payment** Step 1 catalog); **INSERT/UPDATE/DELETE** **dev** / **master_technician** / **assistant** only (**Settings → Job Book**) | ✅ | ✅ | ✅ | ✅ read | ✅ read | ✅ read | ✅ read |
 
@@ -657,7 +657,7 @@ Mercury **Person** attribution (job splits modal): staff use **`list_users_for_b
 | Jobs — Labor tab: Add jobs | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
 | Jobs — Sub Sheet Ledger: View jobs | ✅ | ✅ Own + shared | ✅ Own + shared | ❌ | ❌ | ❌ | ✅ Adopted |
 | Jobs — Sub Sheet Ledger: Edit/delete jobs | ✅ | ✅ Own | ✅ Own | ❌ | ❌ | ❌ | ❌ |
-| Hours tab (timesheet; Review Hours, pay config, Due summaries, cost matrix, teams, sharing — former Pay merged — see `PROJECT_DOCUMENTATION.md` §5) | ✅ | ✅ If Pay Approved or shared (matrix/teams view-only when shared) | ✅ If master Pay Approved (timesheet); view-only matrix/teams if dev shared | ❌ | ❌ | ❌ | ❌ |
+| Hours tab (timesheet; Review Hours, pay config, Due by Team, teams — former Pay merged — see `PROJECT_DOCUMENTATION.md` §5) | ✅ | ✅ If Pay Approved | ✅ (hours/rosters, no wage data) | ❌ | ❌ | ❌ | ❌ |
 | Payroll tab (ledger, generators, print; view in bulk modal; Draft Payroll drilldown/print v2.514) | ✅ | ✅ If Pay Approved | ✅ If master Pay Approved | ❌ | ❌ | ❌ | ❌ |
 | Vehicles tab (fleet CRUD, odometer, possessions) | ✅ | ✅ If Pay Approved | ✅ If master Pay Approved | ❌ | ❌ | ❌ | ❌ |
 | Housing tab (units CRUD, weekly rent/utilities/insurance, possessions) | ✅ | ✅ If Pay Approved | ✅ If master Pay Approved | ❌ | ❌ | ❌ | ❌ |

@@ -9,7 +9,6 @@ import type { Person, UserRow } from './usePeopleRoster'
 export interface UsePayConfigDeps {
   canAccessPay: boolean
   canAccessHours: boolean
-  canViewCostMatrixShared: boolean
   setError: (msg: string) => void
   showToast: (message: string, kind?: 'success' | 'error' | 'info') => void
   /** Live roster ref (people) for person-id resolution. */
@@ -44,7 +43,6 @@ export function usePayConfig(deps: UsePayConfigDeps): UsePayConfigResult {
   const {
     canAccessPay,
     canAccessHours,
-    canViewCostMatrixShared,
     setError,
     showToast,
     peopleRosterRef,
@@ -69,11 +67,11 @@ export function usePayConfig(deps: UsePayConfigDeps): UsePayConfigResult {
   const [salaryTemplateByPersonName, setSalaryTemplateByPersonName] = useState<Record<string, boolean>>({})
 
   const loadPayConfig = useCallback(async () => {
-    if (!canAccessPay && !canAccessHours && !canViewCostMatrixShared) return
+    if (!canAccessPay && !canAccessHours) return
     // Hours-only viewers (assistants) can't SELECT people_pay_config since the pay lockdown
     // (v2.660) — they load the non-wage flags via the RPC instead. Wage fields stay null,
     // which is fine: every wage-editing surface is canAccessPay-gated.
-    const wageAccess = canAccessPay || canViewCostMatrixShared
+    const wageAccess = canAccessPay
     const { data, error } = wageAccess
       ? await supabase
           .from('people_pay_config')
@@ -102,7 +100,7 @@ export function usePayConfig(deps: UsePayConfigDeps): UsePayConfigResult {
     lastPersistedPayConfigRef.current = persistedSalary
     setPayConfig(map)
     setPayConfigDraft({})
-  }, [canAccessPay, canAccessHours, canViewCostMatrixShared, setError])
+  }, [canAccessPay, canAccessHours, setError])
 
   const loadPayConfigSalaryTemplateIndicators = useCallback(async () => {
     const nameSet = new Set<string>()

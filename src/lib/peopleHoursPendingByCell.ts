@@ -208,22 +208,3 @@ export function sumClosedPendingClockHoursForCell(
   return sum
 }
 
-/**
- * Per-work-date count of clock sessions awaiting action on the cost matrix "Unapproved" row.
- *
- * Excludes rejected and revoked sessions so a revoked session does not keep the column count
- * high after the hours are reversed. Counts both open and closed sessions otherwise (matches
- * prior behavior; revoke only ever fires on closed rows so this only filters the closed bucket).
- */
-export function pendingUnapprovedCountsByWorkDate(
-  pendingClockSessions: readonly ClockSessionRow[],
-): Record<string, number> {
-  const counts: Record<string, number> = {}
-  for (const s of pendingClockSessions) {
-    if (s.rejected_at || s.revoked_at) continue
-    const wd = s.work_date
-    if (!wd) continue
-    counts[wd] = (counts[wd] ?? 0) + 1
-  }
-  return counts
-}

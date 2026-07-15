@@ -11,7 +11,7 @@ import {
   impersonationSignedInAsDescription,
 } from '../lib/impersonationUiLabels'
 import { getMergedFilteredPins, getUsersWithPin, type PinnedItem } from '../lib/pinnedTabs'
-import { useCostMatrixTotal } from '../hooks/useCostMatrixTotal'
+import { useWeeklyTeamLaborTotal } from '../hooks/useWeeklyTeamLaborTotal'
 import { fetchSubLaborDueTotal } from '../hooks/useSubLaborDueTotal'
 import { usePushNotifications } from '../hooks/usePushNotifications'
 import { useToastContext } from '../contexts/ToastContext'
@@ -3590,7 +3590,7 @@ export default function Settings() {
     return () => window.removeEventListener('pipetooling-pins-changed', onPinsChanged)
   }, [loadMyPins])
 
-  const { total: costMatrixTotal } = useCostMatrixTotal(myRole === 'dev')
+  const { total: costMatrixTotal } = useWeeklyTeamLaborTotal(myRole === 'dev')
 
   // Default template test target (notifications + email): current user if in list, else first user
   useEffect(() => {

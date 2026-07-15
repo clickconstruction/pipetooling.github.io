@@ -14,7 +14,6 @@ export interface PeopleHoursTeamsProps {
   open: boolean
   onToggle: () => void
   canAccessPay: boolean
-  canViewCostMatrixShared: boolean
   teamPeriodStart: string
   setTeamPeriodStart: (v: string) => void
   teamPeriodEnd: string
@@ -39,7 +38,6 @@ export function PeopleHoursTeams({
   open,
   onToggle,
   canAccessPay,
-  canViewCostMatrixShared,
   teamPeriodStart,
   setTeamPeriodStart,
   teamPeriodEnd,
@@ -91,11 +89,11 @@ export function PeopleHoursTeams({
               )}
             </div>
             <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', marginBottom: '0.35rem' }}>
-              {canViewCostMatrixShared && !canAccessPay ? 'Teams and combined cost for a date range.' : 'Add people to teams to see combined cost for a date range (default: last 7 days).'}
+              Add people to teams to see combined cost for a date range (default: last 7 days).
             </p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
               {teamsFiltered.map((team) => {
-                const teamsReadOnly = canViewCostMatrixShared && !canAccessPay
+                const teamsReadOnly = !canAccessPay
                 const costForRange = (start: string, end: string) =>
                   team.members.reduce((sum, p) => sum + getDaysInRange(start, end).reduce((s, d) => s + getCostForPersonDateTeams(p, d), 0), 0)
                 const today = new Date().toLocaleDateString('en-CA')

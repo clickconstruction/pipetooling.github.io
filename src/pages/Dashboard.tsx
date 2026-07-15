@@ -63,7 +63,7 @@ import { useJobFormModal } from '../contexts/JobFormModalContext'
 import { useBidPreview } from '../contexts/BidPreviewModalContext'
 import { useJobDetailModal } from '../contexts/JobDetailModalContext'
 import { useEditProjectModal } from '../contexts/EditProjectModalContext'
-import { useCostMatrixTotal } from '../hooks/useCostMatrixTotal'
+import { useWeeklyTeamLaborTotal } from '../hooks/useWeeklyTeamLaborTotal'
 import { useBilledTotal } from '../hooks/useBilledTotal'
 import { useHoursAwaitingApprovalCount } from '../hooks/useHoursAwaitingApprovalCount'
 import { useSupplyHousesAPTotal } from '../hooks/useSupplyHousesAPTotal'
@@ -1507,7 +1507,7 @@ export default function Dashboard() {
     transactionCount: tallyStaffStaleTxCount,
     refetch: refetchStaleTallyStaffFollowUp,
   } = useStaleTallyStaffFollowUp(TALLY_STALE_MIN_AGE_DAYS)
-  const { total: costMatrixTotal } = useCostMatrixTotal(hasCostMatrixPin)
+  const { total: costMatrixTotal } = useWeeklyTeamLaborTotal(hasCostMatrixPin)
   const { count: billedCount, total: billedTotal } = useBilledTotal(hasBilledPin, financialRefreshKey)
   const { count: hoursAwaitingCount } = useHoursAwaitingApprovalCount(isDev, financialRefreshKey)
   const { total: supplyHousesAPTotal } = useSupplyHousesAPTotal(hasSupplyHousesAPPin, financialRefreshKey)
@@ -4548,7 +4548,7 @@ export default function Dashboard() {
               const to = item.tab
                 ? isSubLaborDue
                   ? '/jobs?tab=sub_sheet_ledger'
-                  : `${item.path}?tab=${encodeURIComponent(isBilled ? 'stages' : item.tab)}${isCostMatrix ? '#cost-matrix' : ''}${isBilled ? '&showBilledTotalByName=true' : ''}`
+                  : `${item.path}?tab=${encodeURIComponent(isBilled ? 'stages' : item.tab)}${isBilled ? '&showBilledTotalByName=true' : ''}`
                 : item.path
               const displayLabel = isCostMatrix
                 ? (costMatrixTotal != null ? `Internal Team: $${Math.round(costMatrixTotal).toLocaleString('en-US')}` : item.label)

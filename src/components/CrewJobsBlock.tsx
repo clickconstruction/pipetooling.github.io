@@ -255,20 +255,17 @@ export function CrewJobsBlock({
       return
     }
     try {
-      const [meRes, approvedRes, sharesRes] = await Promise.all([
+      const [meRes, approvedRes] = await Promise.all([
         supabase.from('users').select('role').eq('id', authUser.id).single(),
         supabase.from('pay_approved_masters').select('master_id'),
-        supabase.from('cost_matrix_teams_shares').select('shared_with_user_id').eq('shared_with_user_id', authUser.id).maybeSingle(),
       ])
       const role = (meRes.data as { role?: string } | null)?.role ?? null
       const approvedIds = new Set((approvedRes.data ?? []).map((r: { master_id: string }) => r.master_id))
-      const hasCostMatrixShare = !!sharesRes.data
-      const canViewCostMatrixShared = hasCostMatrixShare
       let canAccessPay = false
       if (role === 'dev') canAccessPay = true
       else if (role === 'master_technician' && approvedIds.has(authUser.id)) canAccessPay = true
       else if (isAssistantLike(role)) canAccessPay = true
-      setCanAccess(canAccessPay || canViewCostMatrixShared)
+      setCanAccess(canAccessPay)
     } finally {
       setCrewPayAccessResolved(true)
     }

@@ -8,6 +8,18 @@ import type { PersonKind } from '../../hooks/usePeopleRoster'
 import { SalaryWorkScheduleSettings } from '../SalaryWorkScheduleSettings'
 import { denverWorkDateToday, syncSalaryClockSessionsForUserDay } from '../../lib/salaryScheduleSync'
 import { timeOffKindLabel } from '../../lib/resolveCalendarWorkday'
+import { CalendarDays, Banknote } from 'lucide-react'
+import { EmploymentMonthScheduleModal } from './EmploymentMonthScheduleModal'
+import { EmploymentPayHistoryModal } from './EmploymentPayHistoryModal'
+import type { PayStubRow } from './PeoplePayStubsTab'
+import { computeEmploymentStubTotals } from '../../lib/employmentPayTotals'
+import {
+  buildUpcomingPayrollSummary,
+  upcomingPayrollFetchStartYmd,
+  type UpcomingClockSessionRow,
+} from '../../lib/upcomingPayrollSummary'
+import { localYmdFromDate } from '../../lib/payStubPayments'
+import { formatCurrency } from '../../lib/format'
 
 type EmploymentPersonRow = {
   id: string
@@ -58,11 +70,12 @@ export type PeopleEmploymentTabProps = {
   payConfigDraft: Record<string, string>
   payConfigOfficeWageDraft: Record<string, string>
   payConfigSaving: boolean
-  isDev: boolean
   salaryTemplateByPersonName: Record<string, boolean>
   onUpsertPayConfig: (personName: string, patch: Partial<PayConfigRow>) => void
   onHourlyWageChange: (personName: string, rawValue: string) => void
   onOfficeHourlyWageChange: (personName: string, rawValue: string) => void
+  /** Opens the parent-owned pay-report view modal for a stub (People.tsx `viewPayStubInModal`). */
+  onViewPayReport: (stub: PayStubRow) => void
 }
 
 const DEFAULT_PAY_CONFIG: Omit<PayConfigRow, 'person_name'> = {
@@ -114,11 +127,11 @@ export default function PeopleEmploymentTab({
   payConfigDraft,
   payConfigOfficeWageDraft,
   payConfigSaving,
-  isDev,
   salaryTemplateByPersonName,
   onUpsertPayConfig,
   onHourlyWageChange,
   onOfficeHourlyWageChange,
+  onViewPayReport,
 }: PeopleEmploymentTabProps) {
   const { showToast } = useToastContext()
   const [rows, setRows] = useState<EmploymentPersonRow[]>([])
@@ -126,6 +139,17 @@ export default function PeopleEmploymentTab({
   const [loadError, setLoadError] = useState<string | null>(null)
   const [selectedKey, setSelectedKey] = useState<string | null>(null)
   const [archivedOpen, setArchivedOpen] = useState(false)
+  const [scheduleOpen, setScheduleOpen] = useState(false)
+  const [payHistoryOpen, setPayHistoryOpen] = useState(false)
+  /** Person name pending the "turn off Salaried" confirmation modal. */
+  const [salaryOffConfirm, setSalaryOffConfirm] = useState<string | null>(null)
+  const [payTotals, setPayTotals] = useState<{
+    paid: number
+    due: number
+    upcoming: number
+    avgPerWeek: number | null
+  } | null>(null)
+  const [payTotalsLoading, setPayTotalsLoading] = useState(false)
   const [search, setSearch] = useState('')
   const [draftStart, setDraftStart] = useState('')
   const [draftEnd, setDraftEnd] = useState('')
@@ -212,6 +236,12 @@ export default function PeopleEmploymentTab({
     setDraftEnd(selected?.end_date ?? '')
   }, [selected])
 
+  useEffect(() => {
+    setScheduleOpen(false)
+    setPayHistoryOpen(false)
+    setSalaryOffConfirm(null)
+  }, [selectedKey])
+
   const searchLower = search.trim().toLowerCase()
   const matches = useCallback(
     (e: EmploymentEntry) => searchLower === '' || e.name.toLowerCase().includes(searchLower),
@@ -219,6 +249,10 @@ export default function PeopleEmploymentTab({
   )
   const activeEntries = entries.filter((e) => !e.archived_at).filter(matches)
   const archivedEntries = entries.filter((e) => e.archived_at).filter(matches)
+  const salariedActive = activeEntries.filter((e) => !!payConfig[e.name]?.is_salary)
+  const hourlyActive = activeEntries.filter((e) => !payConfig[e.name]?.is_salary)
+  // Group only when the roster actually has salaried people; keep grouping stable while searching.
+  const groupRoster = entries.some((e) => !e.archived_at && payConfig[e.name]?.is_salary)
 
   const datesDirty = selected != null && ((selected.start_date ?? '') !== draftStart || (selected.end_date ?? '') !== draftEnd)
 
@@ -267,6 +301,95 @@ export default function PeopleEmploymentTab({
     }
     void loadTimeOff(timeOffUserId)
   }, [timeOffUserId, loadTimeOff])
+
+  // Paid / Due / Upcoming header totals — same math as useDashboardFinancials, scoped to one person.
+  const selectedName = selected?.name.trim() ?? null
+  const selectedUserId = selected?.userId ?? null
+  const selectedWage = Number(payConfig[selected?.name ?? '']?.hourly_wage ?? 0)
+  useEffect(() => {
+    if (!selectedName) {
+      setPayTotals(null)
+      return
+    }
+    const name = selectedName
+    let cancelled = false
+    async function load() {
+      setPayTotalsLoading(true)
+      try {
+        const stubs = ((await withSupabaseRetry(
+          async () =>
+            supabase.from('pay_stubs').select('id, period_start, period_end, gross_pay').eq('person_name', name),
+          'employment pay totals stubs',
+        )) ?? []) as Array<{ id: string; period_start: string; period_end: string; gross_pay: number | null }>
+        const stubIds = stubs.map((s) => s.id)
+        const [payments, deductions, additionalLines] =
+          stubIds.length === 0
+            ? [[], [], []]
+            : await Promise.all([
+                withSupabaseRetry(
+                  async () => supabase.from('pay_stub_payments').select('pay_stub_id, amount').in('pay_stub_id', stubIds),
+                  'employment pay totals payments',
+                ).then((d) => (d ?? []) as Array<{ pay_stub_id: string; amount: number | null }>),
+                withSupabaseRetry(
+                  async () => supabase.from('pay_stub_deductions').select('pay_stub_id, amount').in('pay_stub_id', stubIds),
+                  'employment pay totals deductions',
+                ).then((d) => (d ?? []) as Array<{ pay_stub_id: string; amount: number | null }>),
+                withSupabaseRetry(
+                  async () =>
+                    supabase.from('pay_stub_additional_lines').select('pay_stub_id, line_total').in('pay_stub_id', stubIds),
+                  'employment pay totals additional lines',
+                ).then((d) => (d ?? []) as Array<{ pay_stub_id: string; line_total: number | null }>),
+              ])
+        const totals = computeEmploymentStubTotals({ stubs, payments, deductions, additionalLines })
+
+        let upcoming = 0
+        if (selectedUserId) {
+          const todayYmd = localYmdFromDate(new Date())
+          let lastEnd: string | null = null
+          for (const s of stubs) if (lastEnd === null || s.period_end > lastEnd) lastEnd = s.period_end
+          const fetchStart = upcomingPayrollFetchStartYmd({
+            personNames: [name],
+            lastStubEndByPerson: lastEnd ? { [name]: lastEnd } : {},
+            todayYmd,
+          })
+          const sessions = ((await withSupabaseRetry(
+            async () =>
+              supabase
+                .from('clock_sessions')
+                .select('user_id, work_date, clocked_in_at, clocked_out_at')
+                .eq('user_id', selectedUserId)
+                .gte('work_date', fetchStart)
+                .is('rejected_at', null)
+                .is('revoked_at', null),
+            'employment pay totals upcoming sessions',
+          )) ?? []) as UpcomingClockSessionRow[]
+          upcoming = buildUpcomingPayrollSummary({
+            personNames: [name],
+            userIdByPersonName: { [name]: selectedUserId },
+            hourlyWageByPersonName: { [name]: selectedWage },
+            stubsByPerson: { [name]: stubs },
+            sessions,
+            todayYmd,
+            nowMs: Date.now(),
+          }).estimatedGrossDollars
+        }
+
+        if (!cancelled)
+          setPayTotals({ paid: totals.paidTotal, due: totals.dueTotal, upcoming, avgPerWeek: totals.avgPaidPerWeek })
+      } catch (e) {
+        if (!cancelled) {
+          setPayTotals(null)
+          showToast(formatErrorMessage(e, 'Failed to load pay totals'), 'error')
+        }
+      } finally {
+        if (!cancelled) setPayTotalsLoading(false)
+      }
+    }
+    void load()
+    return () => {
+      cancelled = true
+    }
+  }, [selectedName, selectedUserId, selectedWage, showToast])
 
   async function syncSelectedForToday(uid: string) {
     const today = denverWorkDateToday()
@@ -369,15 +492,22 @@ export default function PeopleEmploymentTab({
     }
   }
 
-  function renderChips(e: EmploymentEntry) {
+  function renderChips(e: EmploymentEntry, inSalariedGroup = false) {
     const cfg = payConfig[e.name]
     const health = entryLinkHealth(e, users)
     return (
       <span style={{ display: 'inline-flex', gap: '0.3rem', flexWrap: 'wrap' }}>
         {cfg?.is_salary ? (
-          <span style={chipStyle('var(--text-blue-700)', 'var(--bg-blue-50)')}>
-            Salaried{salaryTemplateByPersonName[e.name] ? '' : ' · no workday template'}
-          </span>
+          // Inside the Salaried group the label is redundant — surface only the template warning.
+          inSalariedGroup ? (
+            salaryTemplateByPersonName[e.name] ? null : (
+              <span style={chipStyle('var(--text-amber-800)', 'var(--bg-amber-100)')}>no workday template</span>
+            )
+          ) : (
+            <span style={chipStyle('var(--text-blue-700)', 'var(--bg-blue-50)')}>
+              Salaried{salaryTemplateByPersonName[e.name] ? '' : ' · no workday template'}
+            </span>
+          )
         ) : null}
         {cfg?.is_salary && cfg?.record_hours_but_salary ? (
           <span style={chipStyle('var(--text-muted)', 'var(--bg-page)')}>records hours</span>
@@ -394,7 +524,95 @@ export default function PeopleEmploymentTab({
     )
   }
 
-  function renderRow(e: EmploymentEntry) {
+  function renderSalarySwitch(on: boolean, disabled: boolean, onToggle: () => void) {
+    return (
+      <button
+        type="button"
+        role="switch"
+        aria-checked={on}
+        aria-label="Salaried"
+        disabled={disabled}
+        onClick={onToggle}
+        style={{
+          position: 'relative',
+          width: 36,
+          height: 20,
+          borderRadius: 999,
+          border: 'none',
+          padding: 0,
+          background: on ? '#2563eb' : 'var(--border-strong)',
+          cursor: disabled ? 'wait' : 'pointer',
+          transition: 'background 0.15s ease',
+          flexShrink: 0,
+          marginTop: 1,
+        }}
+      >
+        <span
+          aria-hidden
+          style={{
+            position: 'absolute',
+            top: 2,
+            left: on ? 18 : 2,
+            width: 16,
+            height: 16,
+            borderRadius: '50%',
+            background: 'var(--surface)',
+            boxShadow: '0 1px 2px rgba(0,0,0,0.35)',
+            transition: 'left 0.15s ease',
+          }}
+        />
+      </button>
+    )
+  }
+
+  function renderPayTotalStat(label: string, display: string | null, title: string, color: string, subline?: string | null) {
+    return (
+      <span
+        title={title}
+        style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.05rem', cursor: 'help' }}
+      >
+        <span
+          style={{
+            fontSize: '0.6875rem',
+            fontWeight: 700,
+            letterSpacing: '0.07em',
+            textTransform: 'uppercase',
+            color: 'var(--text-muted)',
+          }}
+        >
+          {label}
+        </span>
+        <span style={{ fontSize: '0.95rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums', color }}>
+          {payTotalsLoading ? '…' : display ?? '—'}
+        </span>
+        {!payTotalsLoading && subline ? (
+          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>
+            {subline}
+          </span>
+        ) : null}
+      </span>
+    )
+  }
+
+  function renderGroupHeader(label: string, count: number, first: boolean) {
+    return (
+      <li
+        style={{
+          fontSize: '0.6875rem',
+          fontWeight: 700,
+          letterSpacing: '0.07em',
+          textTransform: 'uppercase',
+          color: 'var(--text-muted)',
+          padding: '0 0.1rem',
+          marginTop: first ? 0 : '0.5rem',
+        }}
+      >
+        {label} <span style={{ fontWeight: 400 }}>({count})</span>
+      </li>
+    )
+  }
+
+  function renderRow(e: EmploymentEntry, inSalariedGroup = false) {
     const isSelected = e.key === selectedKey
     return (
       <li key={e.key}>
@@ -421,7 +639,7 @@ export default function PeopleEmploymentTab({
               {kindLabel(e.kind)}
             </span>
           </span>
-          {renderChips(e)}
+          {renderChips(e, inSalariedGroup)}
         </button>
       </li>
     )
@@ -441,7 +659,18 @@ export default function PeopleEmploymentTab({
           style={{ width: '100%', padding: '0.4rem 0.6rem', marginBottom: '0.6rem', border: '1px solid var(--border)', borderRadius: 6, background: 'var(--surface)', color: 'var(--text)' }}
         />
         <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-          {activeEntries.length === 0 ? <li style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>No matching people.</li> : activeEntries.map(renderRow)}
+          {activeEntries.length === 0 ? (
+            <li style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>No matching people.</li>
+          ) : groupRoster ? (
+            <>
+              {salariedActive.length > 0 ? renderGroupHeader('Salaried', salariedActive.length, true) : null}
+              {salariedActive.map((e) => renderRow(e, true))}
+              {hourlyActive.length > 0 ? renderGroupHeader('Hourly', hourlyActive.length, salariedActive.length === 0) : null}
+              {hourlyActive.map((e) => renderRow(e))}
+            </>
+          ) : (
+            activeEntries.map((e) => renderRow(e))
+          )}
         </ul>
         {archivedEntries.length > 0 ? (
           <div style={{ marginTop: '0.75rem' }}>
@@ -454,7 +683,7 @@ export default function PeopleEmploymentTab({
             </button>
             {archivedOpen ? (
               <ul style={{ listStyle: 'none', padding: 0, margin: '0.4rem 0 0 0', display: 'flex', flexDirection: 'column', gap: '0.4rem', opacity: 0.75 }}>
-                {archivedEntries.map(renderRow)}
+                {archivedEntries.map((e) => renderRow(e))}
               </ul>
             ) : null}
           </div>
@@ -466,18 +695,98 @@ export default function PeopleEmploymentTab({
           <p style={{ color: 'var(--text-muted)' }}>Select a person to manage their employment details.</p>
         ) : (
           <div style={{ border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)', padding: '0.9rem' }}>
-            <h3 style={{ margin: '0 0 0.15rem 0' }}>{selected.name}</h3>
-            <p style={{ margin: '0 0 0.75rem 0', color: 'var(--text-muted)', fontSize: '0.875rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.5rem 1.25rem', flexWrap: 'wrap', marginBottom: '0.75rem' }}>
+            <div style={{ minWidth: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap', marginBottom: '0.15rem' }}>
+              <h3 style={{ margin: 0 }}>{selected.name}</h3>
+              <button
+                type="button"
+                onClick={() => setScheduleOpen(true)}
+                disabled={!selected.userId}
+                title={
+                  selected.userId
+                    ? `View ${selected.name}'s schedule for the coming month`
+                    : 'No login user — schedules exist only for people with an account'
+                }
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.35rem',
+                  padding: '0.25rem 0.55rem',
+                  fontSize: '0.8125rem',
+                  border: '1px solid ' + (selected.userId ? '#2563eb' : 'var(--border)'),
+                  borderRadius: 4,
+                  background: selected.userId ? 'var(--bg-blue-tint)' : 'var(--bg-muted)',
+                  color: selected.userId ? 'var(--text-blue-700)' : 'var(--text-faint)',
+                  cursor: selected.userId ? 'pointer' : 'default',
+                }}
+              >
+                <CalendarDays size={14} strokeWidth={2.25} aria-hidden />
+                Schedule
+              </button>
+              <button
+                type="button"
+                onClick={() => setPayHistoryOpen(true)}
+                title={`Payments recorded for ${selected.name}`}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.35rem',
+                  padding: '0.25rem 0.55rem',
+                  fontSize: '0.8125rem',
+                  border: '1px solid #2563eb',
+                  borderRadius: 4,
+                  background: 'var(--bg-blue-tint)',
+                  color: 'var(--text-blue-700)',
+                  cursor: 'pointer',
+                }}
+              >
+                <Banknote size={14} strokeWidth={2.25} aria-hidden />
+                Pay history
+              </button>
+            </div>
+            <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.875rem' }}>
               {kindLabel(selected.kind)}
               {selected.archived_at ? ' · archived' : ''}
               {payConfig[selected.name]?.is_salary ? ' · salaried' : ''}
             </p>
+            </div>
+            <div style={{ display: 'flex', gap: '1.25rem', marginLeft: 'auto', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+              {renderPayTotalStat(
+                'Avg',
+                payTotals?.avgPerWeek != null ? `$${Math.round(payTotals.avgPerWeek).toLocaleString('en-US')}/wk` : null,
+                'Average paid per week — total paid ÷ weeks with at least one recorded payment; × 52 for the yearly figure',
+                'var(--text-strong)',
+                payTotals?.avgPerWeek != null
+                  ? `or $${Math.round(payTotals.avgPerWeek * 52).toLocaleString('en-US')}/yr`
+                  : null,
+              )}
+              {renderPayTotalStat(
+                'Paid',
+                payTotals != null ? `$${formatCurrency(payTotals.paid)}` : null,
+                'All payments ever recorded against this person’s pay reports',
+                'var(--text-strong)',
+              )}
+              {renderPayTotalStat(
+                'Due',
+                payTotals != null ? `$${formatCurrency(payTotals.due)}` : null,
+                'Generated pay reports not yet fully paid',
+                (payTotals?.due ?? 0) > 0 ? '#ea580c' : 'var(--text-strong)',
+              )}
+              {renderPayTotalStat(
+                'Upcoming',
+                payTotals != null ? `$${formatCurrency(payTotals.upcoming)}` : null,
+                'Estimated pay for hours worked since the last pay report — no report generated yet',
+                'var(--text-700)',
+              )}
+            </div>
+            </div>
 
             <div style={{ border: '1px solid var(--border)', borderRadius: 8, background: 'var(--bg-page)', padding: '0.75rem' }}>
               <div style={{ fontWeight: 600, marginBottom: '0.2rem' }}>Employment dates</div>
               <p style={{ margin: '0 0 0.6rem 0', color: 'var(--text-muted)', fontSize: '0.8125rem' }}>
-                Company-calendar dates, inclusive. Leave end date empty while the person still works here. Salaried
-                payroll credit will be limited to this window.
+                Leave end date empty while the person still works here. Salaried payroll credit will be limited to
+                this window.
               </p>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', alignItems: 'flex-end' }}>
                 <label>
@@ -560,17 +869,14 @@ export default function PeopleEmploymentTab({
                         />
                       </label>
                     </div>
-                    <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.45rem', marginBottom: '0.45rem', fontSize: '0.875rem' }}>
-                      <input
-                        type="checkbox"
-                        checked={cfg.is_salary}
-                        onChange={(e) => onUpsertPayConfig(selected.name, { is_salary: e.target.checked })}
-                        disabled={payConfigSaving}
-                        style={{ marginTop: 2 }}
-                      />
+                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.45rem', marginBottom: '0.45rem', fontSize: '0.875rem' }}>
+                      {renderSalarySwitch(cfg.is_salary, payConfigSaving, () => {
+                        if (cfg.is_salary) setSalaryOffConfirm(selected.name)
+                        else onUpsertPayConfig(selected.name, { is_salary: true })
+                      })}
                       <span>
                         <strong>Salaried</strong> — credited 8 hours on weekdays, 0 on weekends, on all pay and cost
-                        screens. Checking this also starts today&rsquo;s scheduled sessions once a workday template exists.
+                        screens. Turning this on also starts today&rsquo;s scheduled sessions once a workday template exists.
                         {!cfg.is_salary && salaryTemplateByPersonName[selected.name] ? (
                           <span style={{ display: 'block', color: 'var(--text-amber-800)', marginTop: '0.2rem' }}>
                             A salaried workday template still exists for this person — schedule-driven sessions may
@@ -578,47 +884,42 @@ export default function PeopleEmploymentTab({
                           </span>
                         ) : null}
                       </span>
-                    </label>
-                    <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.45rem', marginBottom: '0.45rem', fontSize: '0.875rem', opacity: cfg.is_salary ? 1 : 0.55 }}>
-                      <input
-                        type="checkbox"
-                        checked={cfg.record_hours_but_salary}
-                        onChange={(e) => onUpsertPayConfig(selected.name, { record_hours_but_salary: e.target.checked })}
-                        disabled={payConfigSaving || !cfg.is_salary}
-                        title={!cfg.is_salary ? 'Only applies when Salaried is checked' : undefined}
-                        style={{ marginTop: 2 }}
-                      />
-                      <span>
-                        <strong>Record hours anyway</strong> — their logged hours show on the Hours grids for
-                        record-keeping, but pay still uses the flat salary day.
-                      </span>
-                    </label>
-                    <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.45rem', fontSize: '0.875rem' }}>
-                      <input
-                        type="checkbox"
-                        checked={cfg.show_in_cost_matrix}
-                        onChange={(e) => onUpsertPayConfig(selected.name, { show_in_cost_matrix: e.target.checked })}
-                        disabled={payConfigSaving}
-                        style={{ marginTop: 2 }}
-                      />
-                      <span>
-                        <strong>Show in Cost Matrix</strong> — include this person in the cost matrix and team totals.
-                      </span>
-                    </label>
-                    {isDev ? (
-                      <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.45rem', marginTop: '0.45rem', fontSize: '0.875rem' }}>
+                    </div>
+                    {cfg.is_salary ? (
+                      <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.45rem', marginBottom: '0.45rem', fontSize: '0.875rem' }}>
                         <input
                           type="checkbox"
-                          checked={cfg.show_in_hours}
-                          onChange={(e) => onUpsertPayConfig(selected.name, { show_in_hours: e.target.checked })}
+                          checked={cfg.record_hours_but_salary}
+                          onChange={(e) => onUpsertPayConfig(selected.name, { record_hours_but_salary: e.target.checked })}
                           disabled={payConfigSaving}
                           style={{ marginTop: 2 }}
                         />
                         <span>
-                          <strong>Show in Hours</strong> (dev) — include this person on the Hours tab.
+                          <strong>Record hours anyway</strong> — their logged hours show on the Hours grids for
+                          record-keeping, but pay still uses the flat salary day.
                         </span>
                       </label>
                     ) : null}
+                    <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.45rem', fontSize: '0.875rem' }}>
+                      <input
+                        type="checkbox"
+                        checked={cfg.show_in_hours || cfg.show_in_cost_matrix}
+                        onChange={(e) =>
+                          // One visibility knob (cost-matrix retirement phase 1): the legacy
+                          // show_in_hours / show_in_cost_matrix columns always move together now.
+                          onUpsertPayConfig(selected.name, {
+                            show_in_hours: e.target.checked,
+                            show_in_cost_matrix: e.target.checked,
+                          })
+                        }
+                        disabled={payConfigSaving}
+                        style={{ marginTop: 2 }}
+                      />
+                      <span>
+                        <strong>Include in Hours &amp; crew costing</strong> — show this person on the Hours tab and in
+                        crew-costing rosters and team labor totals.
+                      </span>
+                    </label>
                   </div>
 
                   {cfg.is_salary ? (
@@ -755,6 +1056,105 @@ export default function PeopleEmploymentTab({
           </div>
         )}
       </div>
+
+      {scheduleOpen && selected?.userId ? (
+        <EmploymentMonthScheduleModal
+          userId={selected.userId}
+          displayName={selected.name}
+          onClose={() => setScheduleOpen(false)}
+        />
+      ) : null}
+
+      {payHistoryOpen && selected ? (
+        <EmploymentPayHistoryModal
+          personName={selected.name}
+          onClose={() => setPayHistoryOpen(false)}
+          onOpenPayReport={onViewPayReport}
+        />
+      ) : null}
+
+      {salaryOffConfirm != null ? (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 1200,
+            background: 'rgba(0,0,0,0.45)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '1rem',
+            boxSizing: 'border-box',
+          }}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="salary-off-confirm-title"
+          onClick={() => setSalaryOffConfirm(null)}
+        >
+          <div
+            style={{
+              background: 'var(--surface)',
+              borderRadius: 8,
+              width: 'min(94vw, 460px)',
+              padding: '1rem 1.1rem',
+              boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 id="salary-off-confirm-title" style={{ margin: '0 0 0.5rem 0', color: 'var(--text-strong)' }}>
+              Turn off Salaried for {salaryOffConfirm}?
+            </h3>
+            <ul style={{ margin: '0 0 0.6rem 0', paddingLeft: '1.1rem', fontSize: '0.875rem', color: 'var(--text-700)', display: 'grid', gap: '0.35rem' }}>
+              {salaryTemplateByPersonName[salaryOffConfirm] ? (
+                <li>
+                  Their salaried workday template and every per-day override are{' '}
+                  <strong style={{ color: 'var(--text-red-600)' }}>permanently deleted</strong> — turning Salaried back on will
+                  not restore them; the schedule must be rebuilt by hand.
+                </li>
+              ) : null}
+              <li>Today&rsquo;s auto-generated schedule sessions are removed and no future ones are created; their dashboard returns to manual clock in/out.</li>
+              <li>Pay and cost math switches to logged hours × hourly wage.</li>
+              <li>Past pay reports, payments, and clock history are not affected.</li>
+            </ul>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
+              <button
+                type="button"
+                onClick={() => setSalaryOffConfirm(null)}
+                style={{
+                  padding: '0.35rem 0.7rem',
+                  fontSize: '0.875rem',
+                  border: '1px solid var(--border-strong)',
+                  borderRadius: 4,
+                  background: 'var(--surface)',
+                  color: 'var(--text-700)',
+                  cursor: 'pointer',
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  onUpsertPayConfig(salaryOffConfirm, { is_salary: false })
+                  setSalaryOffConfirm(null)
+                }}
+                style={{
+                  padding: '0.35rem 0.7rem',
+                  fontSize: '0.875rem',
+                  fontWeight: 600,
+                  border: 'none',
+                  borderRadius: 4,
+                  background: '#dc2626',
+                  color: 'white',
+                  cursor: 'pointer',
+                }}
+              >
+                Turn off Salaried
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   )
 }

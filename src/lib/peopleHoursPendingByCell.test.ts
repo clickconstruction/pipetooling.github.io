@@ -3,7 +3,6 @@ import type { ClockSessionRow } from '../types/clockSessions'
 import {
   buildPeopleHoursPendingByCellMap,
   pendingByCellKey,
-  pendingUnapprovedCountsByWorkDate,
   personPendingExcessHours,
   summarizePeopleHoursPendingByCell,
   sumClosedPendingClockHoursForCell,
@@ -381,87 +380,3 @@ describe('sumClosedPendingClockHoursForCell', () => {
   })
 })
 
-describe('pendingUnapprovedCountsByWorkDate', () => {
-  it('counts truly pending sessions per work_date', () => {
-    const sessions: ClockSessionRow[] = [
-      row({
-        id: 'p1',
-        user_id: ALEX_ID,
-        work_date: '2026-05-11',
-        clocked_in_at: '2026-05-11T13:00:00Z',
-        clocked_out_at: '2026-05-11T15:00:00Z',
-      }),
-      row({
-        id: 'p2',
-        user_id: BLAKE_ID,
-        work_date: '2026-05-11',
-        clocked_in_at: '2026-05-11T13:00:00Z',
-        clocked_out_at: '2026-05-11T16:00:00Z',
-      }),
-      row({
-        id: 'p3-open',
-        user_id: ALEX_ID,
-        work_date: '2026-05-12',
-        clocked_in_at: '2026-05-12T13:00:00Z',
-        clocked_out_at: null,
-      }),
-    ]
-    expect(pendingUnapprovedCountsByWorkDate(sessions)).toEqual({
-      '2026-05-11': 2,
-      '2026-05-12': 1,
-    })
-  })
-
-  it('excludes revoked and rejected sessions so revocation drops the column count', () => {
-    const sessions: ClockSessionRow[] = [
-      row({
-        id: 'pending',
-        user_id: ALEX_ID,
-        work_date: '2026-05-12',
-        clocked_in_at: '2026-05-12T13:00:00Z',
-        clocked_out_at: '2026-05-12T15:00:00Z',
-      }),
-      row({
-        id: 'revoked',
-        user_id: ALEX_ID,
-        work_date: '2026-05-12',
-        clocked_in_at: '2026-05-12T16:00:00Z',
-        clocked_out_at: '2026-05-12T18:00:00Z',
-        revoked_at: '2026-05-12T19:00:00Z',
-      }),
-      row({
-        id: 'rejected',
-        user_id: BLAKE_ID,
-        work_date: '2026-05-12',
-        clocked_in_at: '2026-05-12T13:00:00Z',
-        clocked_out_at: '2026-05-12T15:00:00Z',
-        rejected_at: '2026-05-12T16:00:00Z',
-      }),
-    ]
-    expect(pendingUnapprovedCountsByWorkDate(sessions)).toEqual({ '2026-05-12': 1 })
-  })
-
-  it('skips rows without a work_date', () => {
-    const sessions: ClockSessionRow[] = [
-      row({
-        id: 'no-date',
-        user_id: ALEX_ID,
-        work_date: '',
-        clocked_in_at: '2026-05-12T13:00:00Z',
-        clocked_out_at: '2026-05-12T15:00:00Z',
-      }),
-      row({
-        id: 'good',
-        user_id: ALEX_ID,
-        work_date: '2026-05-13',
-        clocked_in_at: '2026-05-13T13:00:00Z',
-        clocked_out_at: '2026-05-13T15:00:00Z',
-      }),
-    ]
-    expect(pendingUnapprovedCountsByWorkDate(sessions)).toEqual({ '2026-05-13': 1 })
-  })
-
-  it('returns an empty object for an empty input', () => {
-    expect(pendingUnapprovedCountsByWorkDate([])).toEqual({})
-  })
-})

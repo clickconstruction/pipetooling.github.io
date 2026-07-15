@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-15 (v2.671)
+last_updated: 2026-07-15 (v2.674)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,21 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.674)
+
+### People — cost matrix retired: matrix grid, trade tags, and view-sharing removed (2026-07-15)
+Phases 3–4 of the cost-matrix retirement. The **Cost matrix** section on People → Hours is gone ([`PeopleCostMatrix.tsx`](../src/components/people/PeopleCostMatrix.tsx) deleted), along with per-person **trade tags** everywhere they surfaced: the **Due by Trade** block and its tag-ledger drilldown in [`PeopleHoursDueSummaries.tsx`](../src/components/people/PeopleHoursDueSummaries.tsx) (section renamed **Due by Team**, now with an empty-state hint), the **Sharing / tags** section ([`PeopleHoursSharing.tsx`](../src/components/people/PeopleHoursSharing.tsx) deleted), and the tag rename hop in `cascadePersonName.ts`. The **view-share mechanism** is fully retired: `canViewCostMatrixShared` removed from `usePeopleAccess` / `usePayConfig` / `usePeopleHoursData` / `CrewJobsBlock` / `PeopleHoursTeams` — "see costs without pay admin" is now the **controller** role's job (v2.662). Migration `20260715090000` (apply AFTER this client deploys) strips the shared-with term from the `people_hours` / `people_crew_jobs` / `people_crew_bids` / `common_jobs` / `people_pay_config` / `people_teams` / `people_team_members` RLS policies (bodies otherwise identical — access only narrows) and drops `cost_matrix_teams_shares`, `people_cost_matrix_tags`, `cost_matrix_tag_colors`, and both helper functions. The Dashboard "Internal Team" pin now lands on the Hours tab without the dead `#cost-matrix` anchor.
+
+## Latest Updates (v2.673)
+
+### People — one visibility knob; the weekly team-labor total sheds its matrix name (2026-07-15)
+Phases 1–2 of the cost-matrix retirement. **"Show in Cost Matrix"** and the dev-only **"Show in Hours"** merge into a single **"Include in Hours & crew costing"** checkbox (Employment tab Pay setup + the Hours-tab pay-config modal, now one column) that reads as checked if either legacy `people_pay_config` column is set and always writes both — they were already identical for every person, so behavior is unchanged; the merged knob is editable by anyone on those pay surfaces (the old dev-gate died with the merge, and the now-unused `isDev` prop left both components). `useCostMatrixTotal` → [`useWeeklyTeamLaborTotal`](../src/hooks/useWeeklyTeamLaborTotal.ts) (same math: current-week `people_hours` × wages, salaried 8/0), and Settings copy becomes "Pin **Internal Team labor** to Dashboard" — the Dashboard card already said "Internal Team: $X" and is untouched.
+
+## Latest Updates (v2.672)
+
+### People — Employment tab command center: grouped roster, schedule + pay-history modals, pay stats, safer Salaried toggle (2026-07-15)
+Six upgrades to People → Employment ([`PeopleEmploymentTab.tsx`](../src/components/people/PeopleEmploymentTab.tsx)). **Roster groups**: the left list splits into **Salaried (N)** / **Hourly (N)** sections (grouping only when someone is salaried); inside the Salaried group the redundant blue chip gives way to an amber **no workday template** warning. **Schedule button** next to the selected name opens a near-fullscreen month view ([`EmploymentMonthScheduleModal.tsx`](../src/components/people/EmploymentMonthScheduleModal.tsx)) hosting the User Review modal's `UserMonthScheduleSection`, anchored to the **coming** month with ±30-day paging; disabled for roster rows with no login user. **Pay history button** opens payment installments (`pay_stub_payments`) newest-first with date / amount / memo and a per-row **Pay report** button that stacks the full report view above; the window starts at 90 days and a bottom button extends **+90 days** per click ([`EmploymentPayHistoryModal.tsx`](../src/components/people/EmploymentPayHistoryModal.tsx)). **Header pay stats** (right of the name): **Avg** ($/wk + or $/yr — total paid ÷ distinct pay-weeks with ≥1 payment; same-week stubs count once), **Paid** (all-time installments), **Due** (Σ max(0, stub net − payments), orange when nonzero), **Upcoming** (unstubbed weeks via `buildUpcomingPayrollSummary`) — stub math in the new tested kernel [`employmentPayTotals.ts`](../src/lib/employmentPayTotals.ts) (7 tests), mirroring `useDashboardFinancials`. **Salaried is a slider switch** whose OFF direction opens a red-confirm modal spelling out the irreversible template/override deletion before anything saves (ON stays immediate); **Record hours anyway** now renders only for salaried people. Employment-dates helper copy trimmed.
 
 ## Latest Updates (v2.671)
 
