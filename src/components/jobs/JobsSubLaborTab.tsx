@@ -58,6 +58,7 @@ export default function JobsSubLaborTab({
 }: JobsSubLaborTabProps) {
   const [expandedSubLaborJobIds, setExpandedSubLaborJobIds] = useState<Set<string>>(new Set())
   const [showAllOutstanding, setShowAllOutstanding] = useState(false)
+  const [showOnlyDue, setShowOnlyDue] = useState(true)
 
   const outstandingRows = subLaborOutstandingByPerson.rows
   const OUTSTANDING_PREVIEW = 8
@@ -66,18 +67,18 @@ export default function JobsSubLaborTab({
       ? outstandingRows
       : outstandingRows.slice(0, OUTSTANDING_PREVIEW)
 
+  // Ledger rows: search filter + optional "only due" filter, each paired with its
+  // computed balance so the row render reuses it rather than recomputing.
+  const visibleLedgerJobs = laborJobs
+    .filter((job) => subLaborJobMatchesSearch(job, subLaborSearch, laborJobNamesByHcp))
+    .map((job) => ({ job, ...subLaborJobBalance(job) }))
+    .filter((row) => !showOnlyDue || row.balance > 0)
+
   return (
     <div>
       {error && <p style={{ color: 'var(--text-red-700)', marginBottom: '1rem' }}>{error}</p>}
       <div style={{ marginBottom: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
-        <input
-          type="search"
-          placeholder="Search contractor, HCP, address…"
-          value={subLaborSearch}
-          onChange={(e) => onSubLaborSearchChange(e.target.value)}
-          style={{ flex: '1 1 200px', minWidth: 200, maxWidth: 400, padding: '0.5rem 0.75rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem' }}
-        />
         <button
           type="button"
           onClick={onNewLaborJob}
@@ -114,25 +115,19 @@ export default function JobsSubLaborTab({
           {outstandingRows.length === 0 ? (
             <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0 }}>All contractors are paid up.</p>
           ) : (
-            <div style={{ border: '1px solid var(--border)', borderRadius: 4, overflow: 'auto', WebkitOverflowScrolling: 'touch', minWidth: 0 }}>
-              <table style={{ width: '100%', minWidth: 460, borderCollapse: 'collapse', fontSize: '0.875rem', fontVariantNumeric: 'tabular-nums' }}>
+            <div style={{ border: '1px solid var(--border)', borderRadius: 4, overflow: 'auto', WebkitOverflowScrolling: 'touch', width: 'fit-content', maxWidth: '100%' }}>
+              <table style={{ borderCollapse: 'collapse', fontSize: '0.875rem', fontVariantNumeric: 'tabular-nums' }}>
                 <thead style={{ background: 'var(--bg-subtle)' }}>
                   <tr>
-                    <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Contractor</th>
                     <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderBottom: '1px solid var(--border)' }}>Total cost</th>
                     <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderBottom: '1px solid var(--border)' }}>Paid</th>
                     <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderBottom: '1px solid var(--border)' }}>Outstanding</th>
+                    <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Contractor</th>
                   </tr>
                 </thead>
                 <tbody>
                   {visibleOutstandingRows.map((row) => (
                     <tr key={row.key} style={{ borderBottom: '1px solid var(--border)' }}>
-                      <td style={{ padding: '0.5rem 0.75rem' }}>
-                        {row.name.trim() || <span style={{ color: 'var(--text-muted)' }}>(No name)</span>}
-                        <span style={{ marginLeft: '0.4rem', fontSize: '0.75rem', color: 'var(--text-faint)' }}>
-                          {row.jobCount} job{row.jobCount === 1 ? '' : 's'}
-                        </span>
-                      </td>
                       <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }} title={`$${formatCurrency(row.totalCost)}`}>
                         ${formatCurrency(row.totalCost)}
                       </td>
@@ -142,11 +137,22 @@ export default function JobsSubLaborTab({
                       <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', fontWeight: 600, color: 'var(--text-red-700)' }} title={`$${formatCurrency(row.outstanding)}`}>
                         ${formatCurrency(row.outstanding)}
                       </td>
+                      <td style={{ padding: '0.5rem 0.75rem' }}>
+                        {row.name.trim() || <span style={{ color: 'var(--text-muted)' }}>(No name)</span>}
+                        <span style={{ marginLeft: '0.4rem', fontSize: '0.75rem', color: 'var(--text-faint)' }}>
+                          {row.jobCount} job{row.jobCount === 1 ? '' : 's'}
+                        </span>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
                 <tfoot>
                   <tr style={{ background: 'var(--bg-subtle)', fontWeight: 700 }}>
+                    <td style={{ padding: '0.5rem 0.75rem' }} />
+                    <td style={{ padding: '0.5rem 0.75rem' }} />
+                    <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', color: 'var(--text-red-700)' }} title={`$${formatCurrency(subLaborOutstandingByPerson.totalOutstanding)}`}>
+                      ${formatCurrency(subLaborOutstandingByPerson.totalOutstanding)}
+                    </td>
                     <td style={{ padding: '0.5rem 0.75rem' }}>
                       Total
                       {outstandingRows.length > OUTSTANDING_PREVIEW ? (
@@ -159,11 +165,6 @@ export default function JobsSubLaborTab({
                         </button>
                       ) : null}
                     </td>
-                    <td style={{ padding: '0.5rem 0.75rem' }} />
-                    <td style={{ padding: '0.5rem 0.75rem' }} />
-                    <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', color: 'var(--text-red-700)' }} title={`$${formatCurrency(subLaborOutstandingByPerson.totalOutstanding)}`}>
-                      ${formatCurrency(subLaborOutstandingByPerson.totalOutstanding)}
-                    </td>
                   </tr>
                 </tfoot>
               </table>
@@ -171,10 +172,29 @@ export default function JobsSubLaborTab({
           )}
         </div>
       )}
+      <div style={{ marginBottom: '1rem', display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.75rem' }}>
+        <input
+          type="search"
+          placeholder="Search contractor, HCP, address…"
+          value={subLaborSearch}
+          onChange={(e) => onSubLaborSearchChange(e.target.value)}
+          style={{ flex: '1 1 240px', minWidth: 0, padding: '0.5rem 0.75rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem', boxSizing: 'border-box' }}
+        />
+        <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.875rem', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+          <input
+            type="checkbox"
+            checked={showOnlyDue}
+            onChange={(e) => setShowOnlyDue(e.target.checked)}
+          />
+          Only show due
+        </label>
+      </div>
       {laborJobsLoading ? (
         <p style={{ color: 'var(--text-muted)' }}>Loading sub sheet ledger…</p>
       ) : laborJobs.length === 0 ? (
         <p style={{ color: 'var(--text-muted)' }}>No jobs yet. Click New Sub Labor to add one.</p>
+      ) : visibleLedgerJobs.length === 0 ? (
+        <p style={{ color: 'var(--text-muted)' }}>{showOnlyDue ? 'No payments due.' : 'No matching jobs.'}</p>
       ) : (
         <div style={{ border: '1px solid var(--border)', borderRadius: 4, overflow: 'auto', WebkitOverflowScrolling: 'touch', minWidth: 0 }}>
           <table style={{ width: '100%', minWidth: 700, borderCollapse: 'collapse', fontSize: '0.875rem' }}>
@@ -182,8 +202,8 @@ export default function JobsSubLaborTab({
               <tr>
                 <th style={{ padding: '0.75rem', width: 32, borderBottom: '1px solid var(--border)' }} />
                 <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Contractor</th>
-                <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Job</th>
                 <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid var(--border)' }}>Total cost</th>
+                <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Job</th>
                 <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid var(--border)' }}>Due</th>
                 <th style={{ padding: '0.75rem', textAlign: 'center', borderBottom: '1px solid var(--border)' }}>Sub Sheet</th>
                 <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Date</th>
@@ -191,11 +211,9 @@ export default function JobsSubLaborTab({
               </tr>
             </thead>
             <tbody>
-              {laborJobs
-                .filter((job) => subLaborJobMatchesSearch(job, subLaborSearch, laborJobNamesByHcp))
-                .flatMap((job) => {
+              {visibleLedgerJobs
+                .flatMap(({ job, totalCost, paid, backcharges, balance }) => {
                 const jobRate = job.labor_rate ?? 0
-                const { totalCost, paid, backcharges, balance } = subLaborJobBalance(job)
                 const dateInputValue = job.job_date ?? (job.created_at ? job.created_at.slice(0, 10) : '')
                 const expanded = expandedSubLaborJobIds.has(job.id)
                 const toggle = () => {
@@ -214,6 +232,7 @@ export default function JobsSubLaborTab({
                   >
                     <td style={{ padding: '0.75rem', width: 32 }}>{expanded ? '▼' : '▶'}</td>
                     <td style={{ padding: '0.75rem' }}>{job.assigned_to_name}</td>
+                    <td style={{ padding: '0.75rem', textAlign: 'right' }}>{totalCost > 0 ? `$${formatCurrency(totalCost)}` : '—'}</td>
                     <td style={{ padding: '0.75rem', maxWidth: 220 }}>
                       <div style={{ lineHeight: 1.4 }}>
                         <div style={{ fontWeight: 500 }}>
@@ -240,7 +259,6 @@ export default function JobsSubLaborTab({
                         </div>
                       </div>
                     </td>
-                    <td style={{ padding: '0.75rem', textAlign: 'right' }}>{totalCost > 0 ? `$${formatCurrency(totalCost)}` : '—'}</td>
                     <td style={{ padding: '0.75rem', textAlign: 'right', fontSize: '0.8125rem' }}>
                       {totalCost > 0 ? (
                         balance > 0 ? (
