@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-14 (v2.670)
+last_updated: 2026-07-15 (v2.671)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.671)
+
+### People — Teams tab: archived users resolve by name, roles shown, archived leaders collapse (2026-07-15)
+Fixes raw UUIDs on People → Teams: assignments referencing **archived** users (the tab loaded only active users for label resolution) now resolve from the full user list with an **"(archived)"** suffix ([`PeopleTeamsTab.tsx`](../src/components/people/PeopleTeamsTab.tsx)). Every leader header, member row, and picker option also shows the person's **role** ("Name — Role"; singular labels incl. `subcontractor`). Teams led by an archived user move to a collapsed **"▸ Archived leaders (N)"** section at the bottom (dimmed when expanded, still removable); archived members under active leaders stay inline. Search spans both sections, with a "No active-leader assignments match your search" note when only archived teams match. Pickers still offer active users only.
 
 ## Latest Updates (v2.670)
 
