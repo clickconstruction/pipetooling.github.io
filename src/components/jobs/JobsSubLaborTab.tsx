@@ -205,7 +205,7 @@ export default function JobsSubLaborTab({
                 <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid var(--border)' }}>Total cost</th>
                 <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Job</th>
                 <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid var(--border)' }}>Due</th>
-                <th style={{ padding: '0.75rem', textAlign: 'center', borderBottom: '1px solid var(--border)' }}>Sub Sheet</th>
+                <th style={{ padding: '0.75rem', width: 80, borderBottom: '1px solid var(--border)' }} />
                 <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Date</th>
                 <th style={{ padding: '0.75rem', width: 80, borderBottom: '1px solid var(--border)' }} />
               </tr>
@@ -270,10 +270,15 @@ export default function JobsSubLaborTab({
                         )
                       ) : '—'}
                     </td>
-                    <td style={{ padding: '0.75rem', textAlign: 'center' }} onClick={(e) => e.stopPropagation()}>
-                      <button type="button" onClick={() => onPrintJobSubSheet(job)} style={{ padding: '0.25rem 0.5rem', background: '#6b7280', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.8125rem' }}>
-                        Print
-                      </button>
+                    <td style={{ padding: '0.75rem', verticalAlign: 'middle' }} onClick={(e) => e.stopPropagation()}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', alignItems: 'stretch' }}>
+                        <button type="button" onClick={() => onEditLaborJob(job)} style={{ padding: '0.25rem 0.5rem', background: 'var(--bg-200)', color: 'var(--text-700)', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.8125rem' }}>
+                          Edit
+                        </button>
+                        <button type="button" onClick={() => onPrintJobSubSheet(job)} style={{ padding: '0.25rem 0.5rem', background: '#0ea5e9', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.8125rem' }}>
+                          Print
+                        </button>
+                      </div>
                     </td>
                     <td style={{ padding: '0.75rem' }} onClick={(e) => e.stopPropagation()}>
                       <input
@@ -298,9 +303,6 @@ export default function JobsSubLaborTab({
                           style={{ padding: '0.25rem 0.5rem', background: '#dc2626', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.8125rem' }}
                         >
                           Backcharge
-                        </button>
-                        <button type="button" onClick={() => onEditLaborJob(job)} style={{ padding: '0.25rem 0.5rem', background: 'var(--bg-200)', color: 'var(--text-700)', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.8125rem' }}>
-                          Edit
                         </button>
                       </div>
                     </td>

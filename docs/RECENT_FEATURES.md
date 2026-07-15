@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-15 (v2.689)
+last_updated: 2026-07-15 (v2.690)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.690)
+
+### Jobs → Sub Labor — Edit + Print grouped in one column (2026-07-15)
+On the ledger, the Edit button moved out of the far-right money-actions column to join Print in what was the "Sub Sheet" column (header cleared), stacked **Edit over Print**. The money actions (Payment / Backcharge) now keep their own column, separating "manage this job" from money movements. The Print button is now light blue (was gray) to stand apart from the green Payment / red Backcharge buttons. [`JobsSubLaborTab.tsx`](../src/components/jobs/JobsSubLaborTab.tsx).
 
 ## Latest Updates (v2.689)
 
