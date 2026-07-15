@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-15 (v2.686)
+last_updated: 2026-07-15 (v2.687)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,17 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.687)
+
+### Dashboard — Team inboxes grouped into one "Teams Inbox" card; row + empty-state polish (2026-07-15)
+The Help feedback, Dispatch, and Estimator inboxes were three separate stacked cards; they now sit inside one bordered **Teams Inbox** [`DashboardGroupCard`](../src/components/dashboard/DashboardGroupCard.tsx) (matching the Billing Pipeline card), carrying the existing `dash-teams-inbox` section-dock anchor. Several row-level refinements landed with it, in both [`DispatchInboxSection`](../src/components/DispatchInboxSection.tsx) and [`EstimatorInboxSection`](../src/components/EstimatorInboxSection.tsx):
+- **Title-first rows**: the request title leads; the `▶ From <sender> · <date> · <thread>` meta drops below it (was meta-first).
+- **Compact meta line**: one line reads `From Robert · 5/15/26 (61d) · 1 message, 1d ago` — short date + abbreviated ages (`61d`, `1d ago`, `today`), full timestamp on hover. New `formatDispatchNoteDaysAgoShort` / `…ShortPhrase` helpers in [`dispatchNoteDisplay.ts`](../src/utils/dispatchNoteDisplay.ts) (with tests); also fixed a latent `en-CA` small-ICU date-parsing bug there (`format` → `formatToParts`) that returned `NaN` days on some runtimes.
+- **Slim empty state**: an inbox with no rows compresses to a single muted line (`Dispatch inbox — empty`, with `View dismissed…` kept) at every viewport (previously desktop-only).
+- **Dismiss affordance for closed items**: a full-height green **✓ Dismiss** rail on the left of closed rows on desktop (>640px), and a full-width green **✓ Dismiss** bar across the card bottom on narrow viewports — signalling "done, ready to archive".
+
+Help guide `dashboard-section-bar.md` updated (Teams Inbox chip now points at the grouped card).
 
 ## Latest Updates (v2.686)
 

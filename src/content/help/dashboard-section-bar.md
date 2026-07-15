@@ -23,7 +23,7 @@ The bar stays out of the way on phones and tablets ({{icon:help|gear}} it's desk
 | --- | --- |
 | Notifications | Financial cards and alerts at the top |
 | ClockedIn | Team clock activity strip |
-| Teams Inbox | Dispatch and Estimator inboxes |
+| Teams Inbox | The **Teams Inbox** card — Help feedback, Dispatch, and Estimator inboxes grouped together |
 | Billing | Billing Pipeline card |
 | My Inbox | My Inbox card (Due Today / Overdue / Recently Completed Tasks) |
 | Bids | My Bids |

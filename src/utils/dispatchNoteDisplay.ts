@@ -10,9 +10,16 @@ function calendarDayInChicago(isoUtc: string, now: Date = new Date()): { note: s
     month: '2-digit',
     day: '2-digit',
   })
+  // formatToParts, not format: small-ICU runtimes render en-CA as MM/DD/YYYY,
+  // which would silently parse to NaN downstream.
+  const ymd = (d: Date): string => {
+    const parts = dtf.formatToParts(d)
+    const get = (type: Intl.DateTimeFormatPartTypes) => parts.find((p) => p.type === type)?.value ?? ''
+    return `${get('year')}-${get('month')}-${get('day')}`
+  }
   return {
-    note: dtf.format(new Date(isoUtc)),
-    today: dtf.format(now),
+    note: ymd(new Date(isoUtc)),
+    today: ymd(now),
   }
 }
 
@@ -37,6 +44,18 @@ export function formatDispatchNoteDaysAgoLabel(isoUtc: string, now: Date = new D
   if (n === 0) return 'Today'
   if (n === 1) return '1 day ago'
   return `${n} days ago`
+}
+
+/** Compact age: "today", "1d", "61d" — for tight scan lines. */
+export function formatDispatchNoteDaysAgoShort(isoUtc: string, now: Date = new Date()): string {
+  const n = dispatchNoteDaysAgoInChicago(isoUtc, now)
+  return n === 0 ? 'today' : `${n}d`
+}
+
+/** Compact age phrase: "today", "1d ago", "61d ago" — for tight scan lines. */
+export function formatDispatchNoteDaysAgoShortPhrase(isoUtc: string, now: Date = new Date()): string {
+  const n = dispatchNoteDaysAgoInChicago(isoUtc, now)
+  return n === 0 ? 'today' : `${n}d ago`
 }
 
 /** e.g. "Monday, 3:45 PM" in America/Chicago */

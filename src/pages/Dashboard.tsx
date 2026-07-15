@@ -4781,54 +4781,55 @@ export default function Dashboard() {
         <>
           {/* Inboxes first: processing dispatch/estimator requests is the assistant's primary queue. */}
           {authUser?.id && (dispatchInboxEligible || estimatorInboxEligible) && (
-            <div id="dash-teams-inbox" aria-hidden="true" style={dockAnchorStyle} />
-          )}
-          {authUser?.id && dispatchInboxEligible && (
-            <DispatchInboxSection
-              sectionOpen={dispatchRequestsOpen}
-              onToggleSection={() => setDispatchRequestsOpen((o) => !o)}
-              requests={dispatchRequests}
-              loading={dispatchRequestsLoading}
-              expandedRequestId={expandedDispatchRequestId}
-              onToggleExpandRequest={toggleExpandDispatchRequest}
-              notesByRequestId={dispatchThreadNotesByRequestId}
-              notesLoadingRequestId={dispatchNotesLoadingRequestId}
-              noteSubmitRequestId={dispatchNoteSubmitRequestId}
-              canAddNotes={dispatchInboxEligible}
-              dispatchRequestDismissingId={dispatchRequestDismissingId}
-              noteDraft={dispatchNoteDraft}
-              onNoteDraftChange={setDispatchNoteDraft}
-              onSubmitNote={submitDispatchNote}
-              onSubmitNoteAndClose={submitDispatchNoteAndClose}
-              onDismiss={dismissDispatchRequest}
-              onOpenDismissedArchive={() => setDispatchDismissedModalOpen(true)}
-              onLinkJobPictures={
-                jobFormModal
-                  ? (jobId) => jobFormModal.openEditJob(jobId, { jobPicturesLinkHighlight: true })
-                  : undefined
-              }
-              onCreateTripCharge={(args) => setTripChargeTarget(args)}
-            />
-          )}
-          {authUser?.id && estimatorInboxEligible && (
-            <EstimatorInboxSection
-              sectionOpen={estimatorRequestsOpen}
-              onToggleSection={() => setEstimatorRequestsOpen((o) => !o)}
-              requests={estimatorRequests}
-              loading={estimatorRequestsLoading}
-              expandedRequestId={expandedEstimatorRequestId}
-              onToggleExpandRequest={toggleExpandEstimatorRequest}
-              notesByRequestId={estimatorThreadNotesByRequestId}
-              notesLoadingRequestId={estimatorNotesLoadingRequestId}
-              noteSubmitRequestId={estimatorNoteSubmitRequestId}
-              canAddNotes={estimatorInboxEligible}
-              estimatorRequestDismissingId={estimatorRequestDismissingId}
-              noteDraft={estimatorNoteDraft}
-              onNoteDraftChange={setEstimatorNoteDraft}
-              onSubmitNote={submitEstimatorNote}
-              onSubmitNoteAndClose={submitEstimatorNoteAndClose}
-              onDismiss={dismissEstimatorRequest}
-            />
+            <DashboardGroupCard id="dash-teams-inbox" title="Teams Inbox">
+              {dispatchInboxEligible && (
+                <DispatchInboxSection
+                  sectionOpen={dispatchRequestsOpen}
+                  onToggleSection={() => setDispatchRequestsOpen((o) => !o)}
+                  requests={dispatchRequests}
+                  loading={dispatchRequestsLoading}
+                  expandedRequestId={expandedDispatchRequestId}
+                  onToggleExpandRequest={toggleExpandDispatchRequest}
+                  notesByRequestId={dispatchThreadNotesByRequestId}
+                  notesLoadingRequestId={dispatchNotesLoadingRequestId}
+                  noteSubmitRequestId={dispatchNoteSubmitRequestId}
+                  canAddNotes={dispatchInboxEligible}
+                  dispatchRequestDismissingId={dispatchRequestDismissingId}
+                  noteDraft={dispatchNoteDraft}
+                  onNoteDraftChange={setDispatchNoteDraft}
+                  onSubmitNote={submitDispatchNote}
+                  onSubmitNoteAndClose={submitDispatchNoteAndClose}
+                  onDismiss={dismissDispatchRequest}
+                  onOpenDismissedArchive={() => setDispatchDismissedModalOpen(true)}
+                  onLinkJobPictures={
+                    jobFormModal
+                      ? (jobId) => jobFormModal.openEditJob(jobId, { jobPicturesLinkHighlight: true })
+                      : undefined
+                  }
+                  onCreateTripCharge={(args) => setTripChargeTarget(args)}
+                />
+              )}
+              {estimatorInboxEligible && (
+                <EstimatorInboxSection
+                  sectionOpen={estimatorRequestsOpen}
+                  onToggleSection={() => setEstimatorRequestsOpen((o) => !o)}
+                  requests={estimatorRequests}
+                  loading={estimatorRequestsLoading}
+                  expandedRequestId={expandedEstimatorRequestId}
+                  onToggleExpandRequest={toggleExpandEstimatorRequest}
+                  notesByRequestId={estimatorThreadNotesByRequestId}
+                  notesLoadingRequestId={estimatorNotesLoadingRequestId}
+                  noteSubmitRequestId={estimatorNoteSubmitRequestId}
+                  canAddNotes={estimatorInboxEligible}
+                  estimatorRequestDismissingId={estimatorRequestDismissingId}
+                  noteDraft={estimatorNoteDraft}
+                  onNoteDraftChange={setEstimatorNoteDraft}
+                  onSubmitNote={submitEstimatorNote}
+                  onSubmitNoteAndClose={submitEstimatorNoteAndClose}
+                  onDismiss={dismissEstimatorRequest}
+                />
+              )}
+            </DashboardGroupCard>
           )}
           <div id="dash-billing" aria-hidden="true" style={dockAnchorStyle} />
           <BillingPipelineCard>
@@ -5258,7 +5259,6 @@ export default function Dashboard() {
         />
       )}
       {isDev && authUser?.id && <DashboardDevRejectedNotification />}
-      {isDev && authUser?.id && <HelpFeedbackInboxSection />}
       {authUser?.id && dispatchInboxEligible && (
         <DispatchDismissedItemsModal
           open={dispatchDismissedModalOpen}
@@ -5277,9 +5277,9 @@ export default function Dashboard() {
         />
       )}
       {authUser?.id && (dispatchInboxEligible || estimatorInboxEligible) && !isAssistantLike(role) && (
-        <div id="dash-teams-inbox" aria-hidden="true" style={dockAnchorStyle} />
-      )}
-      {authUser?.id && dispatchInboxEligible && !isAssistantLike(role) && (
+        <DashboardGroupCard id="dash-teams-inbox" title="Teams Inbox">
+          {isDev && <HelpFeedbackInboxSection />}
+          {dispatchInboxEligible && (
         <DispatchInboxSection
           sectionOpen={dispatchRequestsOpen}
           onToggleSection={() => setDispatchRequestsOpen((o) => !o)}
@@ -5309,8 +5309,8 @@ export default function Dashboard() {
               : undefined
           }
         />
-      )}
-      {authUser?.id && estimatorInboxEligible && !isAssistantLike(role) && (
+          )}
+          {estimatorInboxEligible && (
         <EstimatorInboxSection
           sectionOpen={estimatorRequestsOpen}
           onToggleSection={() => setEstimatorRequestsOpen((o) => !o)}
@@ -5329,6 +5329,8 @@ export default function Dashboard() {
           onSubmitNoteAndClose={submitEstimatorNoteAndClose}
           onDismiss={dismissEstimatorRequest}
         />
+          )}
+        </DashboardGroupCard>
       )}
       {(role === 'dev' || role === 'master_technician') && (
         <div id="dash-billing" aria-hidden="true" style={dockAnchorStyle} />
