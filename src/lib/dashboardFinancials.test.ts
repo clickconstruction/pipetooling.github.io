@@ -94,6 +94,35 @@ describe('buildApBucket', () => {
     expect(bucket.count).toBe(2)
     expect(bucket.oldestDateYmd).toBe('2026-06-15')
   })
+
+  it('includes outstanding sub-labor balances in items, total, count, and oldest', () => {
+    const bucket = buildApBucket(
+      [{ id: 's1', amount: 250, invoice_date: '2026-06-15', supply_houses: { name: 'Ferguson' } }],
+      [{ id: 'p1', person_name: 'Taunya', period_start: '2026-06-21', period_end: '2026-06-27', netPay: 900, paidSum: 400 }],
+      [
+        { id: 'sl1', assignedToName: 'Ram Crew', address: '123 Main St', jobNumber: '812', createdYmd: '2026-05-01', balance: 1200 },
+        { id: 'sl2', assignedToName: null, address: null, jobNumber: null, createdYmd: null, balance: 0 }, // settled -> dropped
+      ],
+    )
+    expect(bucket.subLaborTotal).toBeCloseTo(1200)
+    expect(bucket.total).toBeCloseTo(250 + 500 + 1200)
+    expect(bucket.count).toBe(3)
+    expect(bucket.oldestDateYmd).toBe('2026-05-01')
+    const row = bucket.items.find((i) => i.key === 'sublabor:sl1')
+    expect(row?.label).toBe('Ram Crew')
+    expect(row?.sublabel).toBe('Sub labor · #812')
+    expect(row?.address).toBe('123 Main St')
+  })
+
+  it('sub labor rides the aggregates path too (assistant view)', () => {
+    const bucket = buildApBucketFromAggregates(
+      [{ id: 's1', amount: 250, invoice_date: '2026-06-15', supply_houses: { name: 'Ferguson' } }],
+      { dueTotal: 500, dueCount: 3 },
+      [{ id: 'sl1', assignedToName: 'Ram Crew', address: null, jobNumber: null, createdYmd: '2026-05-01', balance: 1200 }],
+    )
+    expect(bucket.subLaborTotal).toBeCloseTo(1200)
+    expect(bucket.total).toBeCloseTo(250 + 500 + 1200)
+  })
 })
 
 describe('buildApBucketFromAggregates', () => {

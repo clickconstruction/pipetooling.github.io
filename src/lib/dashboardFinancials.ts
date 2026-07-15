@@ -184,10 +184,21 @@ export function buildArBucket(
 }
 
 /** AP: unpaid supply-house invoices + open payroll balances. */
+/** One outstanding sub-labor job balance (Jobs → Sub Labor); mirrors SubLaborDueJobRow. */
+export type FinancialSubLaborJobRow = {
+  id: string
+  assignedToName: string | null
+  address: string | null
+  jobNumber: string | null
+  createdYmd: string | null
+  balance: number
+}
+
 export function buildApBucket(
   supplyInvoices: FinancialSupplyInvoiceRow[],
   payrollStubs: FinancialPayrollStubRow[],
-): FinancialBucket & { supplyTotal: number; payrollTotal: number } {
+  subLaborJobs: FinancialSubLaborJobRow[] = [],
+): FinancialBucket & { supplyTotal: number; payrollTotal: number; subLaborTotal: number } {
   const items: FinancialItem[] = []
   let supplyTotal = 0
   for (const inv of supplyInvoices) {
@@ -219,7 +230,21 @@ export function buildApBucket(
       address: null,
     })
   }
-  return { ...finishBucket(items), supplyTotal, payrollTotal }
+  let subLaborTotal = 0
+  for (const job of subLaborJobs) {
+    if (job.balance <= EPSILON) continue
+    subLaborTotal += job.balance
+    items.push({
+      key: `sublabor:${job.id}`,
+      label: (job.assignedToName ?? '').trim() || 'Sub labor',
+      sublabel: `Sub labor${job.jobNumber ? ` · #${job.jobNumber}` : ''}`,
+      amount: job.balance,
+      dateYmd: job.createdYmd,
+      jobId: null,
+      address: job.address,
+    })
+  }
+  return { ...finishBucket(items), supplyTotal, payrollTotal, subLaborTotal }
 }
 
 /** m/d without year, from a YYYY-MM-DD string (no Date/ICU involvement). */
@@ -260,8 +285,9 @@ export function buildUpcomingApSection(lines: UpcomingPayrollLine[]): UpcomingPa
 export function buildApBucketFromAggregates(
   supplyInvoices: FinancialSupplyInvoiceRow[],
   totals: { dueTotal: number; dueCount: number },
-): FinancialBucket & { supplyTotal: number; payrollTotal: number } {
-  const base = buildApBucket(supplyInvoices, [])
+  subLaborJobs: FinancialSubLaborJobRow[] = [],
+): FinancialBucket & { supplyTotal: number; payrollTotal: number; subLaborTotal: number } {
+  const base = buildApBucket(supplyInvoices, [], subLaborJobs)
   if (totals.dueTotal <= EPSILON) return base
   const aggregate: FinancialItem = {
     key: 'payroll:aggregate',
@@ -272,7 +298,12 @@ export function buildApBucketFromAggregates(
     jobId: null,
     address: null,
   }
-  return { ...finishBucket([...base.items, aggregate]), supplyTotal: base.supplyTotal, payrollTotal: totals.dueTotal }
+  return {
+    ...finishBucket([...base.items, aggregate]),
+    supplyTotal: base.supplyTotal,
+    payrollTotal: totals.dueTotal,
+    subLaborTotal: base.subLaborTotal,
+  }
 }
 
 /** Assistant path: upcoming-payroll section from RPC aggregates (shape matches redactUpcomingApSection). */

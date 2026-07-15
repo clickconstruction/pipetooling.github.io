@@ -87,7 +87,7 @@ const SECTIONS: { id: string; sectionId: string; label: string }[] = [
     sectionId: 'tomorrow-schedule',
     label: "Tomorrow's Schedule (Dispatch hub)",
   },
-  { id: 'quickfill-email-inbox', sectionId: 'email-inbox', label: 'Email' },
+  { id: 'quickfill-email-inbox', sectionId: 'email-inbox', label: 'Email Inbox' },
   { id: 'quickfill-email-next-actions', sectionId: 'email-next-actions', label: 'Email: Next Actions' },
   { id: 'quickfill-email-follow-up', sectionId: 'email-follow-up', label: 'Email: Follow Up' },
   { id: 'quickfill-texts', sectionId: 'texts', label: 'Texts' },
@@ -1259,7 +1259,7 @@ function QuickfillPage() {
             omitDefaultMarkButton
             onMarkUpToDate={() => undefined}
             onOpenNow={() => setForceExpandedSections((s) => new Set([...s, 'email-inbox']))}
-            onOpenHistory={() => setMarkHistoryModal({ sectionId: 'email-inbox', label: 'Email' })}
+            onOpenHistory={() => setMarkHistoryModal({ sectionId: 'email-inbox', label: 'Email Inbox' })}
           >
             <QuickfillEmailInboxSection
               metricSectionId="email-inbox"
