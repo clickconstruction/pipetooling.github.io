@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-15 (v2.680)
+last_updated: 2026-07-15 (v2.681)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.681)
+
+### Dashboard — "My Inbox" card groups Due Today / Overdue / Recently Completed Tasks (2026-07-15)
+The three personal checklist sections now read as one unit, matching the Billing Pipeline treatment: a bordered **My Inbox** card (new reusable [`DashboardGroupCard`](../src/components/dashboard/DashboardGroupCard.tsx)) wraps **Due Today** (was "Checklist: Due Today"), **Overdue** (was "Checklist: Outstanding" — renamed so the past-due `T+N` items read as an inbox demanding action), and the dev-only **Recently Completed Tasks** block (moved up from below the bids sections). The section-dock's existing **My Inbox** chip now anchors to the card and shows whenever the card renders (previously only when something was due today). New help guide `dashboard-my-inbox.md`; `dashboard-section-bar.md` chip table updated.
 
 ## Latest Updates (v2.680)
 

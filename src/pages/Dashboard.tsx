@@ -51,6 +51,7 @@ import {
 } from '../lib/dashboardClockStripScopeStorage'
 import DashboardFieldCollectPaymentQueue from '../components/dashboard/DashboardFieldCollectPaymentQueue'
 import { BillingPipelineCard, BillingPipelineStage } from '../components/dashboard/BillingPipelineCard'
+import { DashboardGroupCard } from '../components/dashboard/DashboardGroupCard'
 import { SectionDock } from '../components/SectionDock'
 import ReportEditModal, { type ReportForEdit } from '../components/ReportEditModal'
 import ChecklistItemMuteModal from '../components/ChecklistItemMuteModal'
@@ -4336,6 +4337,8 @@ export default function Dashboard() {
   }
 
   const showChecklist = checklistLoading || todayChecklist.length > 0
+  /** My Inbox card: Due Today / Overdue / Recently Completed Tasks (dev) grouped as one unit. */
+  const showMyInboxCard = userLoading || showChecklist || outstandingLoading || outstandingItems.length > 0 || isDev
   const showAssigned = assignedLoading || assignedSteps.length > 0
 
   const activeAssignedSteps = useMemo(
@@ -4653,7 +4656,7 @@ export default function Dashboard() {
       label: 'Billing',
       visible: isAssistantLike(role) || role === 'dev' || role === 'master_technician',
     },
-    { id: 'dash-my-inbox', label: 'My Inbox', visible: userLoading || showChecklist },
+    { id: 'dash-my-inbox', label: 'My Inbox', visible: showMyInboxCard },
     {
       id: 'dash-bids',
       label: 'Bids',
@@ -5678,10 +5681,12 @@ export default function Dashboard() {
         </BillingPipelineCard>
       )}
 
-      {(userLoading || showChecklist) && (
-        <div id="dash-my-inbox" style={{ marginTop: '1.5rem', marginBottom: '2rem', scrollMarginTop: 8 }}>
+      {showMyInboxCard && (
+        <DashboardGroupCard id="dash-my-inbox" title="My Inbox">
+        {(userLoading || showChecklist) && (
+        <div style={{ marginBottom: '1rem' }}>
           <h2 style={{ fontSize: '1.125rem', marginBottom: '0.75rem' }}>
-            Checklist: Due Today
+            Due Today
             <Link to="/checklist" style={{ marginLeft: '0.5rem', fontSize: '0.875rem', fontWeight: 400, color: 'var(--text-link)' }}>
               View all →
             </Link>
@@ -5767,9 +5772,9 @@ export default function Dashboard() {
         </div>
       )}
       {(outstandingLoading || outstandingItems.length > 0) && (
-        <div style={{ marginTop: '1.5rem', marginBottom: '2rem' }}>
+        <div style={{ marginBottom: '1rem' }}>
           <h2 style={{ fontSize: '1.125rem', marginBottom: '0.75rem' }}>
-            Checklist: Outstanding
+            Overdue
             <Link to="/checklist?tab=review" style={{ marginLeft: '0.5rem', fontSize: '0.875rem', fontWeight: 400, color: 'var(--text-link)' }}>
               View all →
             </Link>
@@ -5835,6 +5840,355 @@ export default function Dashboard() {
             </ul>
           ) : null}
         </div>
+      )}
+      {isDev && (
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem', marginBottom: completedItemsOpen ? '0.75rem' : 0 }}>
+            <h2
+              style={{
+                fontSize: '1.125rem',
+                margin: 0,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+              }}
+              onClick={() => setCompletedItemsOpen((o) => !o)}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => e.key === 'Enter' && setCompletedItemsOpen((o) => !o)}
+            >
+              {completedItemsOpen ? '▼' : '▶'} Recently Completed Tasks
+              {(() => {
+                const visibleItems = completedItems.filter((inst) => !ignoredItemIds.has(inst.checklist_item_id))
+                const n = visibleItems.filter((inst) => !readInstanceIds.has(inst.id)).length
+                return n > 0 ? <span style={{ fontWeight: 600, color: 'var(--text-link)' }}>{' - '}{n} UNREAD</span> : null
+              })()}
+            </h2>
+          </div>
+          {completedItemsOpen && (
+            <>
+              {completedItemsLoading ? (
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0 }}>Loading…</p>
+              ) : completedItems.length === 0 ? (
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0 }}>No completed items in the last 7 days.</p>
+              ) : (
+                (() => {
+                  const visibleItems = completedItems.filter((inst) => !ignoredItemIds.has(inst.checklist_item_id))
+                  const ignoredItems = completedItems.filter((inst) => ignoredItemIds.has(inst.checklist_item_id))
+                  const byCompleter = new Map<string, ChecklistInstance[]>()
+                  visibleItems.forEach((inst) => {
+                    const cid = inst.completed_by_user_id ?? 'unknown'
+                    if (!byCompleter.has(cid)) byCompleter.set(cid, [])
+                    byCompleter.get(cid)!.push(inst)
+                  })
+                  const getUserName = (id: string | null) => {
+                    if (!id) return 'Unknown'
+                    return completedItemsUserMap.get(id) ?? id.slice(0, 8) + '…'
+                  }
+                  return (
+                    <>
+                    <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                      {Array.from(byCompleter.entries()).map(([completerId, items]) => {
+                        const isExpanded = expandedCompleterIds.has(completerId)
+                        const completerName = getUserName(completerId === 'unknown' ? null : completerId)
+                        const unreadCount = items.filter((inst) => !readInstanceIds.has(inst.id)).length
+                        return (
+                          <li key={completerId} style={{ marginBottom: '0.5rem' }}>
+                            <div
+                              role="button"
+                              tabIndex={0}
+                              onClick={() => setExpandedCompleterIds((prev) => {
+                                const next = new Set(prev)
+                                if (next.has(completerId)) next.delete(completerId)
+                                else next.add(completerId)
+                                return next
+                              })}
+                              onKeyDown={(e) => e.key === 'Enter' && setExpandedCompleterIds((prev) => {
+                                const next = new Set(prev)
+                                if (next.has(completerId)) next.delete(completerId)
+                                else next.add(completerId)
+                                return next
+                              })}
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '0.5rem',
+                                padding: '0.5rem 0.75rem',
+                                border: '1px solid var(--border)',
+                                borderRadius: 8,
+                                cursor: 'pointer',
+                                background: 'var(--bg-subtle)',
+                              }}
+                            >
+                              <span style={{ fontSize: '0.875rem', minWidth: 16 }}>{isExpanded ? '▼' : '▶'}</span>
+                              <span style={{ fontWeight: 500 }}>{completerName}</span>
+                              <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>({items.length} item{items.length !== 1 ? 's' : ''}{unreadCount > 0 ? ` · ${unreadCount} unread` : ''})</span>
+                            </div>
+                            {isExpanded && (
+                              <ul style={{ listStyle: 'none', padding: '0.5rem 0 0 1.5rem', margin: 0 }}>
+                                {items.map((inst) => {
+                                  const title = (inst.checklist_items as { title: string; links?: string[] | null } | null)?.title ?? 'Untitled'
+                                  const links = (inst.checklist_items as { title: string; links?: string[] | null } | null)?.links
+                                  const isRead = readInstanceIds.has(inst.id)
+                                  const assigneeName = (inst.checklist_instance_assignees ?? [])
+                                    .map((a) => getUserName(a.user_id))
+                                    .filter(Boolean)
+                                    .join(', ') || '—'
+                                  return (
+                                    <li
+                                      key={inst.id}
+                                      style={{
+                                        display: 'flex',
+                                        flexDirection: isMobile ? 'column' : 'row',
+                                        alignItems: isMobile ? 'stretch' : 'center',
+                                        gap: isMobile ? '0.5rem' : '0.75rem',
+                                        padding: '0.5rem 0.75rem',
+                                        border: '1px solid var(--border)',
+                                        borderRadius: 8,
+                                        marginTop: '0.5rem',
+                                        background: isRead ? 'var(--surface)' : 'var(--bg-sky-tint)',
+                                      }}
+                                    >
+                                      {!isMobile && (
+                                        <button
+                                          type="button"
+                                          title="Ignore"
+                                          onClick={(e) => { e.stopPropagation(); ignoreTaskType(inst.checklist_item_id) }}
+                                          disabled={!!ignoringItemId}
+                                          style={{ padding: '0.35rem 0.75rem', fontSize: '0.8125rem', fontWeight: 500, borderRadius: 6, background: 'transparent', color: 'var(--text-muted)', border: 'none', cursor: ignoringItemId ? 'not-allowed' : 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+                                        >
+                                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={16} height={16} fill="currentColor" aria-hidden><path d="M73 39.1C63.6 29.7 48.4 29.7 39.1 39.1C29.8 48.5 29.7 63.7 39 73.1L567 601.1C576.4 610.5 591.6 610.5 600.9 601.1C610.2 591.7 610.3 576.5 600.9 567.2L513.1 479.4C530.6 476.1 543.9 460.7 543.9 442.3C543.9 435.6 542.1 429 538.8 423.3L517 385.7C498 353.1 488 316.1 488 278.4L488 263.9C488 179.3 425.4 109.2 344 97.6L344 87.9C344 74.6 333.3 63.9 320 63.9C306.7 63.9 296 74.6 296 87.9L296 97.6C253.8 103.6 216.6 125.4 190.6 156.7L73 39.1zM224.8 190.9C246.7 162.4 281.2 144 320 144C386.3 144 440 197.7 440 264L440 278.5C440 324.7 452.3 370 475.5 409.9L488.4 432L465.8 432L224.7 190.9zM164.5 409.9C184 376.5 195.8 339.2 199.1 300.9L152.4 254.2C152.2 257.5 152.1 260.8 152.1 264.1L152.1 278.6C152.1 316.3 142.1 353.3 123.1 385.9L101.1 423.2C97.7 429 96 435.5 96 442.2C96 463.1 112.9 480 133.8 480L378.2 480L330.2 432L151.6 432L164.5 409.9zM252.1 528C262 556 288.7 576 320 576C351.3 576 378 556 387.9 528L252.1 528z"/></svg>
+                                        </button>
+                                      )}
+                                      <span style={{ width: isMobile ? '100%' : undefined, flex: isMobile ? undefined : 1, fontWeight: 500, minWidth: 0 }}><ChecklistTitleWithLinks title={title} links={links} /></span>
+                                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center', flex: isMobile ? undefined : 1, minWidth: 0 }}>
+                                        {isMobile && (
+                                          <button
+                                            type="button"
+                                            title="Ignore"
+                                            onClick={(e) => { e.stopPropagation(); ignoreTaskType(inst.checklist_item_id) }}
+                                            disabled={!!ignoringItemId}
+                                            style={{ padding: '0.35rem 0.75rem', fontSize: '0.8125rem', fontWeight: 500, borderRadius: 6, background: 'transparent', color: 'var(--text-muted)', border: 'none', cursor: ignoringItemId ? 'not-allowed' : 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                                          >
+                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={16} height={16} fill="currentColor" aria-hidden><path d="M73 39.1C63.6 29.7 48.4 29.7 39.1 39.1C29.8 48.5 29.7 63.7 39 73.1L567 601.1C576.4 610.5 591.6 610.5 600.9 601.1C610.2 591.7 610.3 576.5 600.9 567.2L513.1 479.4C530.6 476.1 543.9 460.7 543.9 442.3C543.9 435.6 542.1 429 538.8 423.3L517 385.7C498 353.1 488 316.1 488 278.4L488 263.9C488 179.3 425.4 109.2 344 97.6L344 87.9C344 74.6 333.3 63.9 320 63.9C306.7 63.9 296 74.6 296 87.9L296 97.6C253.8 103.6 216.6 125.4 190.6 156.7L73 39.1zM224.8 190.9C246.7 162.4 281.2 144 320 144C386.3 144 440 197.7 440 264L440 278.5C440 324.7 452.3 370 475.5 409.9L488.4 432L465.8 432L224.7 190.9zM164.5 409.9C184 376.5 195.8 339.2 199.1 300.9L152.4 254.2C152.2 257.5 152.1 260.8 152.1 264.1L152.1 278.6C152.1 316.3 142.1 353.3 123.1 385.9L101.1 423.2C97.7 429 96 435.5 96 442.2C96 463.1 112.9 480 133.8 480L378.2 480L330.2 432L151.6 432L164.5 409.9zM252.1 528C262 556 288.7 576 320 576C351.3 576 378 556 387.9 528L252.1 528z"/></svg>
+                                          </button>
+                                        )}
+                                        {isMobile ? (
+                                          <span style={{ display: 'flex', flexDirection: 'column', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                                            <span style={{ display: 'block' }}>{inst.completed_at && new Date(inst.completed_at).toLocaleDateString()}</span>
+                                            <span style={{ display: 'block' }}>{inst.completed_at && new Date(inst.completed_at).toLocaleTimeString()}</span>
+                                          </span>
+                                        ) : (
+                                          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                                            {inst.completed_at && new Date(inst.completed_at).toLocaleString()}
+                                          </span>
+                                        )}
+                                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>→ {assigneeName}</span>
+                                        {!isMobile && (
+                                          <button
+                                            type="button"
+                                            title="Re-send"
+                                            onClick={(e) => { e.stopPropagation(); openFwd(inst) }}
+                                            style={{ padding: '0.35rem 0.75rem', fontSize: '0.8125rem', fontWeight: 500, borderRadius: 6, cursor: 'pointer', background: 'transparent', color: 'var(--text-blue-500)', border: 'none', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                                          >
+                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={16} height={16} fill="currentColor" aria-hidden><path d="M371.8 82.4C359.8 87.4 352 99 352 112L352 192L240 192C142.8 192 64 270.8 64 368C64 481.3 145.5 531.9 164.2 542.1C166.7 543.5 169.5 544 172.3 544C183.2 544 192 535.1 192 524.3C192 516.8 187.7 509.9 182.2 504.8C172.8 496 160 478.4 160 448.1C160 395.1 203 352.1 256 352.1L352 352.1L352 432.1C352 445 359.8 456.7 371.8 461.7C383.8 466.7 397.5 463.9 406.7 454.8L566.7 294.8C579.2 282.3 579.2 262 566.7 249.5L406.7 89.5C397.5 80.3 383.8 77.6 371.8 82.6z"/></svg>
+                                          </button>
+                                        )}
+                                        {isMobile && (
+                                          <button
+                                            type="button"
+                                            title="Re-send"
+                                            onClick={(e) => { e.stopPropagation(); openFwd(inst) }}
+                                            style={{ padding: '0.35rem 0.75rem', fontSize: '0.8125rem', fontWeight: 500, borderRadius: 6, cursor: 'pointer', background: 'transparent', color: 'var(--text-blue-500)', border: 'none', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                                          >
+                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={16} height={16} fill="currentColor" aria-hidden><path d="M371.8 82.4C359.8 87.4 352 99 352 112L352 192L240 192C142.8 192 64 270.8 64 368C64 481.3 145.5 531.9 164.2 542.1C166.7 543.5 169.5 544 172.3 544C183.2 544 192 535.1 192 524.3C192 516.8 187.7 509.9 182.2 504.8C172.8 496 160 478.4 160 448.1C160 395.1 203 352.1 256 352.1L352 352.1L352 432.1C352 445 359.8 456.7 371.8 461.7C383.8 466.7 397.5 463.9 406.7 454.8L566.7 294.8C579.2 282.3 579.2 262 566.7 249.5L406.7 89.5C397.5 80.3 383.8 77.6 371.8 82.6z"/></svg>
+                                          </button>
+                                        )}
+                                        <span style={{ marginLeft: 'auto' }}>
+                                          {!isRead && (
+                                            <button
+                                              type="button"
+                                              title="Mark as read"
+                                              onClick={() => markCompletedItemAsRead(inst)}
+                                              disabled={!!markingReadId}
+                                              style={{ padding: '0.35rem 0.75rem', fontSize: '0.8125rem', fontWeight: 500, borderRadius: 6, background: 'transparent', color: 'var(--text-link)', border: '1px solid #93c5fd', cursor: markingReadId ? 'not-allowed' : 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                                            >
+                                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={16} height={16} fill="currentColor" aria-hidden><path d="M125.4 128C91.5 128 64 155.5 64 189.4C64 190.3 64 191.1 64.1 192L64 192L64 448C64 483.3 92.7 512 128 512L512 512C547.3 512 576 483.3 576 448L576 192L575.9 192C575.9 191.1 576 190.3 576 189.4C576 155.5 548.5 128 514.6 128L125.4 128zM528 256.3L528 448C528 456.8 520.8 464 512 464L128 464C119.2 464 112 456.8 112 448L112 256.3L266.8 373.7C298.2 397.6 341.7 397.6 373.2 373.7L528 256.3zM112 189.4C112 182 118 176 125.4 176L514.6 176C522 176 528 182 528 189.4C528 193.6 526 197.6 522.7 200.1L344.2 335.5C329.9 346.3 310.1 346.3 295.8 335.5L117.3 200.1C114 197.6 112 193.6 112 189.4z"/></svg>
+                                            </button>
+                                          )}
+                                          {isRead && (
+                                            <button
+                                              type="button"
+                                              title="Mark as unread"
+                                              onClick={() => markCompletedItemAsUnread(inst)}
+                                              disabled={!!markingUnreadId}
+                                              style={{ padding: '0.35rem 0.75rem', fontSize: '0.8125rem', fontWeight: 500, borderRadius: 6, background: 'transparent', color: 'var(--text-muted)', border: 'none', cursor: markingUnreadId ? 'not-allowed' : 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                                            >
+                                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={16} height={16} fill="currentColor" aria-hidden><path d="M576 480C576 515.3 547.5 544 512.1 544L128 544C92.6 544 64 515.3 64 480L64 228C64.1 212.5 71.8 198 84.5 189.2L270 61.3C300.1 40.6 339.8 40.6 369.9 61.3L555.5 189.2C568.3 198 575.9 212.5 576 228L576 480zM128 496L512.1 496C520.9 496 528 488.9 528 480L528 288.3L373.2 405.7C341.8 429.6 298.3 429.6 266.8 405.7L112 288.3L112 480C112 488.9 119.2 496 128 496zM527.6 228.4L342.7 100.8C329 91.4 311 91.4 297.3 100.8L112.4 228.4L295.8 367.5C310.1 378.3 329.9 378.3 344.2 367.5L527.6 228.4z"/></svg>
+                                            </button>
+                                          )}
+                                        </span>
+                                      </div>
+                                    </li>
+                                  )
+                                })}
+                              </ul>
+                            )}
+                          </li>
+                        )
+                      })}
+                    </ul>
+                    {ignoredItems.length > 0 && (
+                      <div style={{ marginTop: '1rem' }}>
+                        <div
+                          role="button"
+                          tabIndex={0}
+                          onClick={() => setIgnoredSectionOpen((o) => !o)}
+                          onKeyDown={(e) => e.key === 'Enter' && setIgnoredSectionOpen((o) => !o)}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.5rem',
+                            cursor: 'pointer',
+                            fontSize: '0.9375rem',
+                            color: 'var(--text-faint)',
+                            marginBottom: ignoredSectionOpen ? '0.5rem' : 0,
+                          }}
+                        >
+                          <span style={{ minWidth: 16 }}>{ignoredSectionOpen ? '▼' : '▶'}</span>
+                          Ignored ({ignoredItems.length})
+                        </div>
+                        {ignoredSectionOpen && (
+                          (() => {
+                            const byCompleterIgnored = new Map<string, ChecklistInstance[]>()
+                            ignoredItems.forEach((inst) => {
+                              const cid = inst.completed_by_user_id ?? 'unknown'
+                              if (!byCompleterIgnored.has(cid)) byCompleterIgnored.set(cid, [])
+                              byCompleterIgnored.get(cid)!.push(inst)
+                            })
+                            const getUserNameIgnored = (id: string | null) => {
+                              if (!id) return 'Unknown'
+                              return completedItemsUserMap.get(id) ?? id.slice(0, 8) + '…'
+                            }
+                            return (
+                              <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                                {Array.from(byCompleterIgnored.entries()).map(([completerId, items]) => {
+                                  const isExpanded = expandedCompleterIds.has(completerId)
+                                  const completerName = getUserNameIgnored(completerId === 'unknown' ? null : completerId)
+                                  return (
+                                    <li key={`ignored-${completerId}`} style={{ marginBottom: '0.5rem' }}>
+                                      <div
+                                        role="button"
+                                        tabIndex={0}
+                                        onClick={() => setExpandedCompleterIds((prev) => {
+                                          const next = new Set(prev)
+                                          if (next.has(completerId)) next.delete(completerId)
+                                          else next.add(completerId)
+                                          return next
+                                        })}
+                                        onKeyDown={(e) => e.key === 'Enter' && setExpandedCompleterIds((prev) => {
+                                          const next = new Set(prev)
+                                          if (next.has(completerId)) next.delete(completerId)
+                                          else next.add(completerId)
+                                          return next
+                                        })}
+                                        style={{
+                                          display: 'flex',
+                                          alignItems: 'center',
+                                          gap: '0.5rem',
+                                          padding: '0.5rem 0.75rem',
+                                          border: '1px solid var(--border)',
+                                          borderRadius: 8,
+                                          cursor: 'pointer',
+                                          background: 'var(--bg-subtle)',
+                                        }}
+                                      >
+                                        <span style={{ fontSize: '0.875rem', minWidth: 16 }}>{isExpanded ? '▼' : '▶'}</span>
+                                        <span style={{ fontWeight: 500 }}>{completerName}</span>
+                                        <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>({items.length} item{items.length !== 1 ? 's' : ''})</span>
+                                      </div>
+                                      {isExpanded && (
+                                        <ul style={{ listStyle: 'none', padding: '0.5rem 0 0 1.5rem', margin: 0 }}>
+                                          {items.map((inst) => {
+                                            const title = (inst.checklist_items as { title: string; links?: string[] | null } | null)?.title ?? 'Untitled'
+                                            const links = (inst.checklist_items as { title: string; links?: string[] | null } | null)?.links
+                                            const assigneeName = (inst.checklist_instance_assignees ?? [])
+                                              .map((a) => getUserNameIgnored(a.user_id))
+                                              .filter(Boolean)
+                                              .join(', ') || '—'
+                                            return (
+                                              <li
+                                                key={inst.id}
+                                                style={{
+                                                  display: 'flex',
+                                                  flexDirection: isMobile ? 'column' : 'row',
+                                                  alignItems: isMobile ? 'stretch' : 'center',
+                                                  gap: isMobile ? '0.5rem' : '0.75rem',
+                                                  padding: '0.5rem 0.75rem',
+                                                  border: '1px solid var(--border)',
+                                                  borderRadius: 8,
+                                                  marginTop: '0.5rem',
+                                                  background: 'var(--surface)',
+                                                }}
+                                              >
+                                                {!isMobile && (
+                                                  <button
+                                                    type="button"
+                                                    onClick={(e) => { e.stopPropagation(); unignoreTaskType(inst.checklist_item_id) }}
+                                                    disabled={!!ignoringItemId}
+                                                    style={{ padding: '0.35rem 0.75rem', fontSize: '0.8125rem', fontWeight: 500, borderRadius: 6, background: 'transparent', color: 'var(--text-link)', border: '1px solid #93c5fd', cursor: ignoringItemId ? 'not-allowed' : 'pointer', flexShrink: 0 }}
+                                                  >
+                                                    Un-ignore
+                                                  </button>
+                                                )}
+                                                <span style={{ width: isMobile ? '100%' : undefined, flex: isMobile ? undefined : 1, fontWeight: 500, minWidth: 0 }}><ChecklistTitleWithLinks title={title} links={links} /></span>
+                                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center' }}>
+                                                  {isMobile ? (
+                                                    <span style={{ display: 'flex', flexDirection: 'column', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                                                      <span style={{ display: 'block' }}>{inst.completed_at && new Date(inst.completed_at).toLocaleDateString()}</span>
+                                                      <span style={{ display: 'block' }}>{inst.completed_at && new Date(inst.completed_at).toLocaleTimeString()}</span>
+                                                    </span>
+                                                  ) : (
+                                                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                                                      {inst.completed_at && new Date(inst.completed_at).toLocaleString()}
+                                                    </span>
+                                                  )}
+                                                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>→ {assigneeName}</span>
+                                                  {isMobile && (
+                                                    <button
+                                                      type="button"
+                                                      onClick={(e) => { e.stopPropagation(); unignoreTaskType(inst.checklist_item_id) }}
+                                                      disabled={!!ignoringItemId}
+                                                      style={{ padding: '0.35rem 0.75rem', fontSize: '0.8125rem', fontWeight: 500, borderRadius: 6, background: 'transparent', color: 'var(--text-link)', border: '1px solid #93c5fd', cursor: ignoringItemId ? 'not-allowed' : 'pointer' }}
+                                                    >
+                                                      Un-ignore
+                                                    </button>
+                                                  )}
+                                                </div>
+                                              </li>
+                                            )
+                                          })}
+                                        </ul>
+                                      )}
+                                    </li>
+                                  )
+                                })}
+                              </ul>
+                            )
+                          })()
+                        )}
+                      </div>
+                    )}
+                    </>
+                  )
+                })()
+              )}
+            </>
+          )}
+        </div>
+      )}
+        </DashboardGroupCard>
       )}
       {isSubcontractorLikeRole(role) && (
         <div style={{ marginTop: '1.5rem', marginBottom: '2rem' }}>
@@ -6765,353 +7119,6 @@ export default function Dashboard() {
         })()}
       </>
           ))}
-        </div>
-      )}
-      {isDev && (
-        <div style={{ marginTop: '2rem', marginBottom: '1rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem', marginBottom: completedItemsOpen ? '0.75rem' : 0 }}>
-            <h2
-              style={{
-                fontSize: '1.125rem',
-                margin: 0,
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.5rem',
-              }}
-              onClick={() => setCompletedItemsOpen((o) => !o)}
-              role="button"
-              tabIndex={0}
-              onKeyDown={(e) => e.key === 'Enter' && setCompletedItemsOpen((o) => !o)}
-            >
-              {completedItemsOpen ? '▼' : '▶'} Recently Completed Tasks
-              {(() => {
-                const visibleItems = completedItems.filter((inst) => !ignoredItemIds.has(inst.checklist_item_id))
-                const n = visibleItems.filter((inst) => !readInstanceIds.has(inst.id)).length
-                return n > 0 ? <span style={{ fontWeight: 600, color: 'var(--text-link)' }}>{' - '}{n} UNREAD</span> : null
-              })()}
-            </h2>
-          </div>
-          {completedItemsOpen && (
-            <>
-              {completedItemsLoading ? (
-                <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0 }}>Loading…</p>
-              ) : completedItems.length === 0 ? (
-                <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0 }}>No completed items in the last 7 days.</p>
-              ) : (
-                (() => {
-                  const visibleItems = completedItems.filter((inst) => !ignoredItemIds.has(inst.checklist_item_id))
-                  const ignoredItems = completedItems.filter((inst) => ignoredItemIds.has(inst.checklist_item_id))
-                  const byCompleter = new Map<string, ChecklistInstance[]>()
-                  visibleItems.forEach((inst) => {
-                    const cid = inst.completed_by_user_id ?? 'unknown'
-                    if (!byCompleter.has(cid)) byCompleter.set(cid, [])
-                    byCompleter.get(cid)!.push(inst)
-                  })
-                  const getUserName = (id: string | null) => {
-                    if (!id) return 'Unknown'
-                    return completedItemsUserMap.get(id) ?? id.slice(0, 8) + '…'
-                  }
-                  return (
-                    <>
-                    <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-                      {Array.from(byCompleter.entries()).map(([completerId, items]) => {
-                        const isExpanded = expandedCompleterIds.has(completerId)
-                        const completerName = getUserName(completerId === 'unknown' ? null : completerId)
-                        const unreadCount = items.filter((inst) => !readInstanceIds.has(inst.id)).length
-                        return (
-                          <li key={completerId} style={{ marginBottom: '0.5rem' }}>
-                            <div
-                              role="button"
-                              tabIndex={0}
-                              onClick={() => setExpandedCompleterIds((prev) => {
-                                const next = new Set(prev)
-                                if (next.has(completerId)) next.delete(completerId)
-                                else next.add(completerId)
-                                return next
-                              })}
-                              onKeyDown={(e) => e.key === 'Enter' && setExpandedCompleterIds((prev) => {
-                                const next = new Set(prev)
-                                if (next.has(completerId)) next.delete(completerId)
-                                else next.add(completerId)
-                                return next
-                              })}
-                              style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '0.5rem',
-                                padding: '0.5rem 0.75rem',
-                                border: '1px solid var(--border)',
-                                borderRadius: 8,
-                                cursor: 'pointer',
-                                background: 'var(--bg-subtle)',
-                              }}
-                            >
-                              <span style={{ fontSize: '0.875rem', minWidth: 16 }}>{isExpanded ? '▼' : '▶'}</span>
-                              <span style={{ fontWeight: 500 }}>{completerName}</span>
-                              <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>({items.length} item{items.length !== 1 ? 's' : ''}{unreadCount > 0 ? ` · ${unreadCount} unread` : ''})</span>
-                            </div>
-                            {isExpanded && (
-                              <ul style={{ listStyle: 'none', padding: '0.5rem 0 0 1.5rem', margin: 0 }}>
-                                {items.map((inst) => {
-                                  const title = (inst.checklist_items as { title: string; links?: string[] | null } | null)?.title ?? 'Untitled'
-                                  const links = (inst.checklist_items as { title: string; links?: string[] | null } | null)?.links
-                                  const isRead = readInstanceIds.has(inst.id)
-                                  const assigneeName = (inst.checklist_instance_assignees ?? [])
-                                    .map((a) => getUserName(a.user_id))
-                                    .filter(Boolean)
-                                    .join(', ') || '—'
-                                  return (
-                                    <li
-                                      key={inst.id}
-                                      style={{
-                                        display: 'flex',
-                                        flexDirection: isMobile ? 'column' : 'row',
-                                        alignItems: isMobile ? 'stretch' : 'center',
-                                        gap: isMobile ? '0.5rem' : '0.75rem',
-                                        padding: '0.5rem 0.75rem',
-                                        border: '1px solid var(--border)',
-                                        borderRadius: 8,
-                                        marginTop: '0.5rem',
-                                        background: isRead ? 'var(--surface)' : 'var(--bg-sky-tint)',
-                                      }}
-                                    >
-                                      {!isMobile && (
-                                        <button
-                                          type="button"
-                                          title="Ignore"
-                                          onClick={(e) => { e.stopPropagation(); ignoreTaskType(inst.checklist_item_id) }}
-                                          disabled={!!ignoringItemId}
-                                          style={{ padding: '0.35rem 0.75rem', fontSize: '0.8125rem', fontWeight: 500, borderRadius: 6, background: 'transparent', color: 'var(--text-muted)', border: 'none', cursor: ignoringItemId ? 'not-allowed' : 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
-                                        >
-                                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={16} height={16} fill="currentColor" aria-hidden><path d="M73 39.1C63.6 29.7 48.4 29.7 39.1 39.1C29.8 48.5 29.7 63.7 39 73.1L567 601.1C576.4 610.5 591.6 610.5 600.9 601.1C610.2 591.7 610.3 576.5 600.9 567.2L513.1 479.4C530.6 476.1 543.9 460.7 543.9 442.3C543.9 435.6 542.1 429 538.8 423.3L517 385.7C498 353.1 488 316.1 488 278.4L488 263.9C488 179.3 425.4 109.2 344 97.6L344 87.9C344 74.6 333.3 63.9 320 63.9C306.7 63.9 296 74.6 296 87.9L296 97.6C253.8 103.6 216.6 125.4 190.6 156.7L73 39.1zM224.8 190.9C246.7 162.4 281.2 144 320 144C386.3 144 440 197.7 440 264L440 278.5C440 324.7 452.3 370 475.5 409.9L488.4 432L465.8 432L224.7 190.9zM164.5 409.9C184 376.5 195.8 339.2 199.1 300.9L152.4 254.2C152.2 257.5 152.1 260.8 152.1 264.1L152.1 278.6C152.1 316.3 142.1 353.3 123.1 385.9L101.1 423.2C97.7 429 96 435.5 96 442.2C96 463.1 112.9 480 133.8 480L378.2 480L330.2 432L151.6 432L164.5 409.9zM252.1 528C262 556 288.7 576 320 576C351.3 576 378 556 387.9 528L252.1 528z"/></svg>
-                                        </button>
-                                      )}
-                                      <span style={{ width: isMobile ? '100%' : undefined, flex: isMobile ? undefined : 1, fontWeight: 500, minWidth: 0 }}><ChecklistTitleWithLinks title={title} links={links} /></span>
-                                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center', flex: isMobile ? undefined : 1, minWidth: 0 }}>
-                                        {isMobile && (
-                                          <button
-                                            type="button"
-                                            title="Ignore"
-                                            onClick={(e) => { e.stopPropagation(); ignoreTaskType(inst.checklist_item_id) }}
-                                            disabled={!!ignoringItemId}
-                                            style={{ padding: '0.35rem 0.75rem', fontSize: '0.8125rem', fontWeight: 500, borderRadius: 6, background: 'transparent', color: 'var(--text-muted)', border: 'none', cursor: ignoringItemId ? 'not-allowed' : 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
-                                          >
-                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={16} height={16} fill="currentColor" aria-hidden><path d="M73 39.1C63.6 29.7 48.4 29.7 39.1 39.1C29.8 48.5 29.7 63.7 39 73.1L567 601.1C576.4 610.5 591.6 610.5 600.9 601.1C610.2 591.7 610.3 576.5 600.9 567.2L513.1 479.4C530.6 476.1 543.9 460.7 543.9 442.3C543.9 435.6 542.1 429 538.8 423.3L517 385.7C498 353.1 488 316.1 488 278.4L488 263.9C488 179.3 425.4 109.2 344 97.6L344 87.9C344 74.6 333.3 63.9 320 63.9C306.7 63.9 296 74.6 296 87.9L296 97.6C253.8 103.6 216.6 125.4 190.6 156.7L73 39.1zM224.8 190.9C246.7 162.4 281.2 144 320 144C386.3 144 440 197.7 440 264L440 278.5C440 324.7 452.3 370 475.5 409.9L488.4 432L465.8 432L224.7 190.9zM164.5 409.9C184 376.5 195.8 339.2 199.1 300.9L152.4 254.2C152.2 257.5 152.1 260.8 152.1 264.1L152.1 278.6C152.1 316.3 142.1 353.3 123.1 385.9L101.1 423.2C97.7 429 96 435.5 96 442.2C96 463.1 112.9 480 133.8 480L378.2 480L330.2 432L151.6 432L164.5 409.9zM252.1 528C262 556 288.7 576 320 576C351.3 576 378 556 387.9 528L252.1 528z"/></svg>
-                                          </button>
-                                        )}
-                                        {isMobile ? (
-                                          <span style={{ display: 'flex', flexDirection: 'column', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                                            <span style={{ display: 'block' }}>{inst.completed_at && new Date(inst.completed_at).toLocaleDateString()}</span>
-                                            <span style={{ display: 'block' }}>{inst.completed_at && new Date(inst.completed_at).toLocaleTimeString()}</span>
-                                          </span>
-                                        ) : (
-                                          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                                            {inst.completed_at && new Date(inst.completed_at).toLocaleString()}
-                                          </span>
-                                        )}
-                                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>→ {assigneeName}</span>
-                                        {!isMobile && (
-                                          <button
-                                            type="button"
-                                            title="Re-send"
-                                            onClick={(e) => { e.stopPropagation(); openFwd(inst) }}
-                                            style={{ padding: '0.35rem 0.75rem', fontSize: '0.8125rem', fontWeight: 500, borderRadius: 6, cursor: 'pointer', background: 'transparent', color: 'var(--text-blue-500)', border: 'none', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
-                                          >
-                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={16} height={16} fill="currentColor" aria-hidden><path d="M371.8 82.4C359.8 87.4 352 99 352 112L352 192L240 192C142.8 192 64 270.8 64 368C64 481.3 145.5 531.9 164.2 542.1C166.7 543.5 169.5 544 172.3 544C183.2 544 192 535.1 192 524.3C192 516.8 187.7 509.9 182.2 504.8C172.8 496 160 478.4 160 448.1C160 395.1 203 352.1 256 352.1L352 352.1L352 432.1C352 445 359.8 456.7 371.8 461.7C383.8 466.7 397.5 463.9 406.7 454.8L566.7 294.8C579.2 282.3 579.2 262 566.7 249.5L406.7 89.5C397.5 80.3 383.8 77.6 371.8 82.6z"/></svg>
-                                          </button>
-                                        )}
-                                        {isMobile && (
-                                          <button
-                                            type="button"
-                                            title="Re-send"
-                                            onClick={(e) => { e.stopPropagation(); openFwd(inst) }}
-                                            style={{ padding: '0.35rem 0.75rem', fontSize: '0.8125rem', fontWeight: 500, borderRadius: 6, cursor: 'pointer', background: 'transparent', color: 'var(--text-blue-500)', border: 'none', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
-                                          >
-                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={16} height={16} fill="currentColor" aria-hidden><path d="M371.8 82.4C359.8 87.4 352 99 352 112L352 192L240 192C142.8 192 64 270.8 64 368C64 481.3 145.5 531.9 164.2 542.1C166.7 543.5 169.5 544 172.3 544C183.2 544 192 535.1 192 524.3C192 516.8 187.7 509.9 182.2 504.8C172.8 496 160 478.4 160 448.1C160 395.1 203 352.1 256 352.1L352 352.1L352 432.1C352 445 359.8 456.7 371.8 461.7C383.8 466.7 397.5 463.9 406.7 454.8L566.7 294.8C579.2 282.3 579.2 262 566.7 249.5L406.7 89.5C397.5 80.3 383.8 77.6 371.8 82.6z"/></svg>
-                                          </button>
-                                        )}
-                                        <span style={{ marginLeft: 'auto' }}>
-                                          {!isRead && (
-                                            <button
-                                              type="button"
-                                              title="Mark as read"
-                                              onClick={() => markCompletedItemAsRead(inst)}
-                                              disabled={!!markingReadId}
-                                              style={{ padding: '0.35rem 0.75rem', fontSize: '0.8125rem', fontWeight: 500, borderRadius: 6, background: 'transparent', color: 'var(--text-link)', border: '1px solid #93c5fd', cursor: markingReadId ? 'not-allowed' : 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
-                                            >
-                                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={16} height={16} fill="currentColor" aria-hidden><path d="M125.4 128C91.5 128 64 155.5 64 189.4C64 190.3 64 191.1 64.1 192L64 192L64 448C64 483.3 92.7 512 128 512L512 512C547.3 512 576 483.3 576 448L576 192L575.9 192C575.9 191.1 576 190.3 576 189.4C576 155.5 548.5 128 514.6 128L125.4 128zM528 256.3L528 448C528 456.8 520.8 464 512 464L128 464C119.2 464 112 456.8 112 448L112 256.3L266.8 373.7C298.2 397.6 341.7 397.6 373.2 373.7L528 256.3zM112 189.4C112 182 118 176 125.4 176L514.6 176C522 176 528 182 528 189.4C528 193.6 526 197.6 522.7 200.1L344.2 335.5C329.9 346.3 310.1 346.3 295.8 335.5L117.3 200.1C114 197.6 112 193.6 112 189.4z"/></svg>
-                                            </button>
-                                          )}
-                                          {isRead && (
-                                            <button
-                                              type="button"
-                                              title="Mark as unread"
-                                              onClick={() => markCompletedItemAsUnread(inst)}
-                                              disabled={!!markingUnreadId}
-                                              style={{ padding: '0.35rem 0.75rem', fontSize: '0.8125rem', fontWeight: 500, borderRadius: 6, background: 'transparent', color: 'var(--text-muted)', border: 'none', cursor: markingUnreadId ? 'not-allowed' : 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
-                                            >
-                                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={16} height={16} fill="currentColor" aria-hidden><path d="M576 480C576 515.3 547.5 544 512.1 544L128 544C92.6 544 64 515.3 64 480L64 228C64.1 212.5 71.8 198 84.5 189.2L270 61.3C300.1 40.6 339.8 40.6 369.9 61.3L555.5 189.2C568.3 198 575.9 212.5 576 228L576 480zM128 496L512.1 496C520.9 496 528 488.9 528 480L528 288.3L373.2 405.7C341.8 429.6 298.3 429.6 266.8 405.7L112 288.3L112 480C112 488.9 119.2 496 128 496zM527.6 228.4L342.7 100.8C329 91.4 311 91.4 297.3 100.8L112.4 228.4L295.8 367.5C310.1 378.3 329.9 378.3 344.2 367.5L527.6 228.4z"/></svg>
-                                            </button>
-                                          )}
-                                        </span>
-                                      </div>
-                                    </li>
-                                  )
-                                })}
-                              </ul>
-                            )}
-                          </li>
-                        )
-                      })}
-                    </ul>
-                    {ignoredItems.length > 0 && (
-                      <div style={{ marginTop: '1rem' }}>
-                        <div
-                          role="button"
-                          tabIndex={0}
-                          onClick={() => setIgnoredSectionOpen((o) => !o)}
-                          onKeyDown={(e) => e.key === 'Enter' && setIgnoredSectionOpen((o) => !o)}
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '0.5rem',
-                            cursor: 'pointer',
-                            fontSize: '0.9375rem',
-                            color: 'var(--text-faint)',
-                            marginBottom: ignoredSectionOpen ? '0.5rem' : 0,
-                          }}
-                        >
-                          <span style={{ minWidth: 16 }}>{ignoredSectionOpen ? '▼' : '▶'}</span>
-                          Ignored ({ignoredItems.length})
-                        </div>
-                        {ignoredSectionOpen && (
-                          (() => {
-                            const byCompleterIgnored = new Map<string, ChecklistInstance[]>()
-                            ignoredItems.forEach((inst) => {
-                              const cid = inst.completed_by_user_id ?? 'unknown'
-                              if (!byCompleterIgnored.has(cid)) byCompleterIgnored.set(cid, [])
-                              byCompleterIgnored.get(cid)!.push(inst)
-                            })
-                            const getUserNameIgnored = (id: string | null) => {
-                              if (!id) return 'Unknown'
-                              return completedItemsUserMap.get(id) ?? id.slice(0, 8) + '…'
-                            }
-                            return (
-                              <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-                                {Array.from(byCompleterIgnored.entries()).map(([completerId, items]) => {
-                                  const isExpanded = expandedCompleterIds.has(completerId)
-                                  const completerName = getUserNameIgnored(completerId === 'unknown' ? null : completerId)
-                                  return (
-                                    <li key={`ignored-${completerId}`} style={{ marginBottom: '0.5rem' }}>
-                                      <div
-                                        role="button"
-                                        tabIndex={0}
-                                        onClick={() => setExpandedCompleterIds((prev) => {
-                                          const next = new Set(prev)
-                                          if (next.has(completerId)) next.delete(completerId)
-                                          else next.add(completerId)
-                                          return next
-                                        })}
-                                        onKeyDown={(e) => e.key === 'Enter' && setExpandedCompleterIds((prev) => {
-                                          const next = new Set(prev)
-                                          if (next.has(completerId)) next.delete(completerId)
-                                          else next.add(completerId)
-                                          return next
-                                        })}
-                                        style={{
-                                          display: 'flex',
-                                          alignItems: 'center',
-                                          gap: '0.5rem',
-                                          padding: '0.5rem 0.75rem',
-                                          border: '1px solid var(--border)',
-                                          borderRadius: 8,
-                                          cursor: 'pointer',
-                                          background: 'var(--bg-subtle)',
-                                        }}
-                                      >
-                                        <span style={{ fontSize: '0.875rem', minWidth: 16 }}>{isExpanded ? '▼' : '▶'}</span>
-                                        <span style={{ fontWeight: 500 }}>{completerName}</span>
-                                        <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>({items.length} item{items.length !== 1 ? 's' : ''})</span>
-                                      </div>
-                                      {isExpanded && (
-                                        <ul style={{ listStyle: 'none', padding: '0.5rem 0 0 1.5rem', margin: 0 }}>
-                                          {items.map((inst) => {
-                                            const title = (inst.checklist_items as { title: string; links?: string[] | null } | null)?.title ?? 'Untitled'
-                                            const links = (inst.checklist_items as { title: string; links?: string[] | null } | null)?.links
-                                            const assigneeName = (inst.checklist_instance_assignees ?? [])
-                                              .map((a) => getUserNameIgnored(a.user_id))
-                                              .filter(Boolean)
-                                              .join(', ') || '—'
-                                            return (
-                                              <li
-                                                key={inst.id}
-                                                style={{
-                                                  display: 'flex',
-                                                  flexDirection: isMobile ? 'column' : 'row',
-                                                  alignItems: isMobile ? 'stretch' : 'center',
-                                                  gap: isMobile ? '0.5rem' : '0.75rem',
-                                                  padding: '0.5rem 0.75rem',
-                                                  border: '1px solid var(--border)',
-                                                  borderRadius: 8,
-                                                  marginTop: '0.5rem',
-                                                  background: 'var(--surface)',
-                                                }}
-                                              >
-                                                {!isMobile && (
-                                                  <button
-                                                    type="button"
-                                                    onClick={(e) => { e.stopPropagation(); unignoreTaskType(inst.checklist_item_id) }}
-                                                    disabled={!!ignoringItemId}
-                                                    style={{ padding: '0.35rem 0.75rem', fontSize: '0.8125rem', fontWeight: 500, borderRadius: 6, background: 'transparent', color: 'var(--text-link)', border: '1px solid #93c5fd', cursor: ignoringItemId ? 'not-allowed' : 'pointer', flexShrink: 0 }}
-                                                  >
-                                                    Un-ignore
-                                                  </button>
-                                                )}
-                                                <span style={{ width: isMobile ? '100%' : undefined, flex: isMobile ? undefined : 1, fontWeight: 500, minWidth: 0 }}><ChecklistTitleWithLinks title={title} links={links} /></span>
-                                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center' }}>
-                                                  {isMobile ? (
-                                                    <span style={{ display: 'flex', flexDirection: 'column', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                                                      <span style={{ display: 'block' }}>{inst.completed_at && new Date(inst.completed_at).toLocaleDateString()}</span>
-                                                      <span style={{ display: 'block' }}>{inst.completed_at && new Date(inst.completed_at).toLocaleTimeString()}</span>
-                                                    </span>
-                                                  ) : (
-                                                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                                                      {inst.completed_at && new Date(inst.completed_at).toLocaleString()}
-                                                    </span>
-                                                  )}
-                                                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>→ {assigneeName}</span>
-                                                  {isMobile && (
-                                                    <button
-                                                      type="button"
-                                                      onClick={(e) => { e.stopPropagation(); unignoreTaskType(inst.checklist_item_id) }}
-                                                      disabled={!!ignoringItemId}
-                                                      style={{ padding: '0.35rem 0.75rem', fontSize: '0.8125rem', fontWeight: 500, borderRadius: 6, background: 'transparent', color: 'var(--text-link)', border: '1px solid #93c5fd', cursor: ignoringItemId ? 'not-allowed' : 'pointer' }}
-                                                    >
-                                                      Un-ignore
-                                                    </button>
-                                                  )}
-                                                </div>
-                                              </li>
-                                            )
-                                          })}
-                                        </ul>
-                                      )}
-                                    </li>
-                                  )
-                                })}
-                              </ul>
-                            )
-                          })()
-                        )}
-                      </div>
-                    )}
-                    </>
-                  )
-                })()
-              )}
-            </>
-          )}
         </div>
       )}
       {showRecent && (
