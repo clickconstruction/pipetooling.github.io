@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-15 (v2.677)
+last_updated: 2026-07-15 (v2.678)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.678)
+
+### Dashboard — Accounts Payable now includes Sub Labor from jobs; Quickfill "Email" → "Email Inbox" (2026-07-15)
+The AP Financials card folds **outstanding sub-labor balances** (Jobs → Sub Labor: labor items × rate − payments − backcharges, per `people_labor_jobs`) into the headline total, the bill count/oldest footer, and the drill-down list (rows labeled `Sub labor · #N` with the assignee and address), plus a new **`Sub Labor: $X`** line between Supply Houses and Team. The per-job math moved to a shared [`fetchSubLaborDueJobRows`](../src/hooks/useSubLaborDueTotal.ts) (the Sub Labor Due pin total and `fetchSubLaborDueTotal` now derive from it — one source of truth), and [`buildApBucket`](../src/lib/dashboardFinancials.ts)/`buildApBucketFromAggregates` take the rows on both viewer paths (best-effort: fetch failure degrades to $0, not a failed card). Also: the Quickfill section-dock chip and mark-history label **"Email" → "Email Inbox"**.
 
 ## Latest Updates (v2.677)
 

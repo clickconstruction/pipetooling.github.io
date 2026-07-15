@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { withSupabaseRetry } from '../utils/errorHandling'
 import { stubNetPay } from '../lib/payStubDeductions'
+import { fetchSubLaborDueJobRows } from './useSubLaborDueTotal'
 import { localYmdFromDate } from '../lib/payStubPayments'
 import {
   buildUpcomingPayrollSummary,
@@ -46,7 +47,7 @@ export type DashboardFinancials = {
   ar: FinancialBucket
   /** Parked receivables: billed jobs flagged difficult to collect. ar + arCollections = all billed-unpaid. */
   arCollections: FinancialBucket
-  ap: FinancialBucket & { supplyTotal: number; payrollTotal: number }
+  ap: FinancialBucket & { supplyTotal: number; payrollTotal: number; subLaborTotal: number }
   /** Estimated payroll for worked-but-unreported weeks — same kernel as the Payroll ledger header. */
   apUpcoming: UpcomingPayrollApSection
   /** Keyed by AP item key. */
@@ -101,7 +102,7 @@ export function useDashboardFinancials(
       try {
         // Upcoming-payroll inputs are best-effort: a failure there degrades to an empty
         // "upcoming" section (Payroll-ledger precedent) instead of failing the whole load.
-        const [jobsRes, invoicesRes, supplyRes, stubsRes, usersRes, payConfigRes, payrollTotalsRes] = await Promise.all([
+        const [jobsRes, invoicesRes, supplyRes, stubsRes, usersRes, payConfigRes, payrollTotalsRes, subLaborRows] = await Promise.all([
           withSupabaseRetry(
             async () =>
               await supabase
@@ -164,6 +165,8 @@ export function useDashboardFinancials(
                 )
                 .catch(() => null)
             : Promise.resolve(null),
+          // Sub-labor balances are best-effort too — RLS or errors degrade to $0, not a failed load.
+          fetchSubLaborDueJobRows().catch(() => []),
         ])
         if (cancelled) return
 
@@ -343,11 +346,15 @@ export function useDashboardFinancials(
           ar: arBuckets.ar,
           arCollections: arBuckets.collections,
           ap: assistantAggregates
-            ? buildApBucketFromAggregates(supplyInvoices, {
-                dueTotal: Number(payrollTotalsRes?.payroll_due_total ?? 0),
-                dueCount: Number(payrollTotalsRes?.payroll_due_count ?? 0),
-              })
-            : buildApBucket(supplyInvoices, payrollStubs),
+            ? buildApBucketFromAggregates(
+                supplyInvoices,
+                {
+                  dueTotal: Number(payrollTotalsRes?.payroll_due_total ?? 0),
+                  dueCount: Number(payrollTotalsRes?.payroll_due_count ?? 0),
+                },
+                subLaborRows,
+              )
+            : buildApBucket(supplyInvoices, payrollStubs, subLaborRows),
           apUpcoming: assistantAggregates
             ? upcomingApSectionFromAggregates({
                 upcomingTotal: Number(payrollTotalsRes?.upcoming_total ?? 0),

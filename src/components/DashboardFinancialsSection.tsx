@@ -867,6 +867,7 @@ export default function DashboardFinancialsSection() {
           // Team = payroll due + estimated upcoming ("$due+upcoming") on one line.
           extraLines: [
             `Supply Houses: $${roundDollars(data.ap.supplyTotal)}`,
+            `Sub Labor: $${roundDollars(data.ap.subLaborTotal)}`,
             `Team: $${roundDollars(data.ap.payrollTotal)}${
               data.apUpcoming.count > 0 ? `+${roundDollars(data.apUpcoming.total)}` : ''
             }`,
