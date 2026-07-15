@@ -76,13 +76,14 @@ const Z_PEOPLE_PAY_MODAL = 1100
  * start (e.g. `6/21–27`, cross-month `6/28–7/4`), plus the ISO week number — anchored at
  * periodStart+4 (midweek) like the Draft Payroll print header — e.g. `6/21–27 (w26)`.
  */
-function ledgerPayPeriodShortLabel(periodStartYmd: string, periodEndYmd: string): string {
+function ledgerPayPeriodShortLabel(periodStartYmd: string, periodEndYmd: string, includeWeek = true): string {
   const start = new Date(periodStartYmd + 'T12:00:00')
   const end = new Date(periodEndYmd + 'T12:00:00')
   const startLabel = `${start.getMonth() + 1}/${start.getDate()}`
   const endLabel = start.getMonth() === end.getMonth() && start.getFullYear() === end.getFullYear()
     ? `${end.getDate()}`
     : `${end.getMonth() + 1}/${end.getDate()}`
+  if (!includeWeek) return `${startLabel}–${endLabel}`
   const weekNum = isoWeekNumberFromGregorianYmd(ymdAddDays(periodStartYmd, 4))
   return `${startLabel}–${endLabel}${weekNum === null ? '' : ` (w${weekNum})`}`
 }
@@ -164,6 +165,7 @@ export default function PeoplePayStubsTab({
   const [payStubNoteDetail, setPayStubNoteDetail] = useState<PayStubRow | null>(null)
   const [deletingPayStubPaymentId, setDeletingPayStubPaymentId] = useState<string | null>(null)
   const [ledgerPersonSearch, setLedgerPersonSearch] = useState('')
+  const [showWeekNumber, setShowWeekNumber] = useState(false)
   const [payStubCalendarPerson, setPayStubCalendarPerson] = useState<string | null>(null)
   const [payStubCalendarYear, setPayStubCalendarYear] = useState(() => new Date().getFullYear())
   const [payStubCalendarData, setPayStubCalendarData] = useState<{ earnedByDate: Record<string, number>; paidByDate: Record<string, number> } | null>(null)
@@ -576,7 +578,33 @@ export default function PeoplePayStubsTab({
                     <thead>
                       <tr style={{ background: 'var(--bg-subtle)', borderBottom: '1px solid var(--border)' }}>
                         <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left' }}>Person</th>
-                        <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left' }}>Period</th>
+                        <th style={{ padding: 0, textAlign: 'center' }}>
+                          <button
+                            type="button"
+                            onClick={() => setShowWeekNumber((v) => !v)}
+                            aria-pressed={showWeekNumber}
+                            title={showWeekNumber ? 'Hide week number' : 'Show week number'}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              gap: '0.3rem',
+                              width: '100%',
+                              padding: '0.5rem 0.75rem',
+                              background: 'none',
+                              border: 'none',
+                              font: 'inherit',
+                              fontWeight: 'inherit',
+                              color: 'inherit',
+                              cursor: 'pointer',
+                            }}
+                          >
+                            Period
+                            <span aria-hidden style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                              {showWeekNumber ? '(w#) ▾' : '(w#) ▸'}
+                            </span>
+                          </button>
+                        </th>
                         <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>Hours</th>
                         <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>Gross Pay</th>
                         <th
@@ -591,7 +619,7 @@ export default function PeoplePayStubsTab({
                         {/* width 1% + nowrap = shrink-to-fit; leftover table width flows to the text columns instead */}
                         <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', width: '1%', whiteSpace: 'nowrap' }}>Payment</th>
                         <th
-                          style={{ padding: '0.5rem 0.4rem', textAlign: 'left', whiteSpace: 'nowrap' }}
+                          style={{ padding: '0.5rem 0.4rem', textAlign: 'center', whiteSpace: 'nowrap' }}
                           title="Created date - date of the most recent payment - days between period end and the last payment (amber = no payment yet; days outstanding so far)."
                         >
                           Created | Paid | Delay
@@ -631,13 +659,14 @@ export default function PeoplePayStubsTab({
                                 textDecoration: 'underline',
                                 fontSize: 'inherit',
                                 fontFamily: 'inherit',
+                                textAlign: 'left',
                               }}
                             >
                               {stub.person_name}
                             </button>
                           </td>
-                          <td style={{ padding: '0.5rem 0.75rem' }}>
-                            {ledgerPayPeriodShortLabel(stub.period_start, stub.period_end)}
+                          <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center' }}>
+                            {ledgerPayPeriodShortLabel(stub.period_start, stub.period_end, showWeekNumber)}
                           </td>
                           <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>{stub.hours_total.toFixed(2)}</td>
                           <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>${formatCurrency(stub.gross_pay)}</td>
@@ -800,7 +829,7 @@ export default function PeoplePayStubsTab({
                               </button>
                             </span>
                           </td>
-                          <td style={{ padding: '0.5rem 0.4rem', whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>
+                          <td style={{ padding: '0.5rem 0.4rem', textAlign: 'center', whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>
                             {stub.created_at ? (
                               <span title={`Created ${new Date(stub.created_at).toLocaleDateString()}`}>
                                 {shortMonthDay(stub.created_at)}
@@ -821,7 +850,7 @@ export default function PeoplePayStubsTab({
                               <span title="Days between period end and the last payment.">{paymentDelay.days}d</span>
                             ) : paymentDelay.kind === 'outstanding' ? (
                               <span style={{ color: 'var(--text-amber-700)' }} title="No payment yet — days since period end.">
-                                {paymentDelay.days}d…
+                                {paymentDelay.days}d
                               </span>
                             ) : (
                               '—'

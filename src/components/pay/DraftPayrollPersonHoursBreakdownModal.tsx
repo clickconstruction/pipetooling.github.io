@@ -5,7 +5,20 @@ import {
   fetchDraftPayrollPersonBreakdown,
   type DraftPayrollBreakdownAssignmentRow,
 } from '../../lib/draftPayrollPersonBreakdown'
+import { formatClockSessionTimestampPartsChicago } from '../../lib/formatClockSessionTimestamp'
 import { formatErrorMessage } from '../../utils/errorHandling'
+
+/** Chicago wall-clock time in the compact "8:05am" style. */
+function shortClockTime(iso: string): string {
+  const parts = formatClockSessionTimestampPartsChicago(iso)
+  return parts ? parts.time.replace(/\s+/g, '').toLowerCase() : ''
+}
+
+/** "8:05am–5:00pm" (open session → "8:05am–"); null when the day has no sessions. */
+function dayClockSpan(firstIn: string | null | undefined, lastOut: string | null | undefined): string | null {
+  if (!firstIn) return null
+  return `${shortClockTime(firstIn)}–${lastOut ? shortClockTime(lastOut) : ''}`
+}
 
 export type DraftPayrollPersonHoursBreakdownModalProps = {
   open: boolean
@@ -147,7 +160,7 @@ export function DraftPayrollPersonHoursBreakdownModal({
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
                 <thead>
                   <tr style={{ background: 'var(--bg-subtle)', borderBottom: '1px solid var(--border)' }}>
-                    <th style={{ padding: '0.5rem 0.65rem', textAlign: 'left' }}>Date</th>
+                    <th style={{ padding: '0.5rem 0.65rem', textAlign: 'left' }}>Date &amp; Time</th>
                     <th style={{ padding: '0.5rem 0.65rem', textAlign: 'right' }}>Hours</th>
                     <th style={{ padding: '0.5rem 0.65rem', textAlign: 'right' }}>Cash Due</th>
                     <th style={{ padding: '0.5rem 0.65rem', textAlign: 'left' }}>Jobs / bids</th>
@@ -161,15 +174,20 @@ export function DraftPayrollPersonHoursBreakdownModal({
                           <button
                             type="button"
                             onClick={() => onOpenDayEditor(r.date)}
-                            title="Open My Time for this day"
+                            title={`Open My Time for ${personName} on ${r.date}`}
                             aria-label={`Open My Time for ${personName} on ${r.date}`}
                             style={dayLinkButtonStyle}
                           >
-                            {r.date}
+                            {r.date.slice(5)}
                           </button>
                         ) : (
-                          r.date
+                          <span title={r.date}>{r.date.slice(5)}</span>
                         )}
+                        {dayClockSpan(r.firstClockIn, r.lastClockOut) ? (
+                          <span style={{ marginLeft: '0.4rem', color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>
+                            {dayClockSpan(r.firstClockIn, r.lastClockOut)}
+                          </span>
+                        ) : null}
                       </td>
                       <td style={{ padding: '0.45rem 0.65rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
                         {r.hours.toFixed(2)}

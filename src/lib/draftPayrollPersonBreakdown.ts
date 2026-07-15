@@ -39,6 +39,35 @@ export type DraftPayrollBreakdownAssignmentRow = {
   pendingHours: number
   /** Salaried only: annotation when the day is not a plain 8 h workday (e.g. 'unpaid time off'). */
   salaryNote?: string | null
+  /** Earliest clock-in ISO across this day's real (non-rejected/revoked) sessions; null if none. */
+  firstClockIn?: string | null
+  /** Latest clock-out ISO across this day's sessions; null if none closed / no sessions. */
+  lastClockOut?: string | null
+}
+
+/**
+ * Per work_date, the earliest clock-in and latest clock-out across the given sessions.
+ * Pure — the caller passes the person's real (non-rejected/revoked) sessions in range.
+ * Open sessions (no clock-out) still set `firstIn` but leave `lastOut` null.
+ */
+export function firstLastClockByDay(
+  sessions: Array<{ work_date: string; clocked_in_at: string; clocked_out_at: string | null }>,
+): Record<string, { firstIn: string; lastOut: string | null }> {
+  const byDay: Record<string, { firstIn: string; lastOut: string | null }> = {}
+  const t = (iso: string) => new Date(iso).getTime()
+  for (const s of sessions) {
+    if (!s.clocked_in_at || !Number.isFinite(t(s.clocked_in_at))) continue
+    const cur = byDay[s.work_date]
+    if (!cur) {
+      byDay[s.work_date] = { firstIn: s.clocked_in_at, lastOut: s.clocked_out_at ?? null }
+      continue
+    }
+    if (t(s.clocked_in_at) < t(cur.firstIn)) cur.firstIn = s.clocked_in_at
+    if (s.clocked_out_at && (cur.lastOut === null || t(s.clocked_out_at) > t(cur.lastOut))) {
+      cur.lastOut = s.clocked_out_at
+    }
+  }
+  return byDay
 }
 
 /**
@@ -187,6 +216,7 @@ export async function fetchDraftPayrollPersonBreakdown(
   // clock_sessions is user_id-keyed while payroll is person_name-keyed: resolve via the same
   // trimmed-name match the rest of the app uses, then sum closed unapproved sessions in range.
   let pendingByDay: Record<string, number> = {}
+  let firstLastByDay: Record<string, { firstIn: string; lastOut: string | null }> = {}
   if (!args.isSalary) {
     const usersData = await withSupabaseRetry(
       () => supabase.from('users').select('id, name'),
@@ -196,23 +226,28 @@ export async function fetchDraftPayrollPersonBreakdown(
       (u) => (u.name ?? '').trim() === personName,
     )?.id
     if (userId) {
-      const pendingData = await withSupabaseRetry(
+      // All real (non-rejected/revoked) sessions in range — approved and pending alike. One read
+      // feeds both the pending-hours annotation (approved_at null subset) and the day clock span.
+      const sessionData = await withSupabaseRetry(
         () =>
           supabase
             .from('clock_sessions')
-            .select('work_date, clocked_in_at, clocked_out_at')
+            .select('work_date, clocked_in_at, clocked_out_at, approved_at')
             .eq('user_id', userId)
             .gte('work_date', start)
             .lte('work_date', end)
-            .is('approved_at', null)
             .is('rejected_at', null)
-            .is('revoked_at', null)
-            .not('clocked_out_at', 'is', null),
-        'draft payroll breakdown pending clock sessions',
+            .is('revoked_at', null),
+        'draft payroll breakdown clock sessions',
       )
-      pendingByDay = sumPendingClockHoursByDay(
-        (pendingData ?? []) as Array<{ work_date: string; clocked_in_at: string; clocked_out_at: string | null }>,
-      )
+      const sessions = (sessionData ?? []) as Array<{
+        work_date: string
+        clocked_in_at: string
+        clocked_out_at: string | null
+        approved_at: string | null
+      }>
+      pendingByDay = sumPendingClockHoursByDay(sessions.filter((s) => s.approved_at === null))
+      firstLastByDay = firstLastClockByDay(sessions)
     }
   }
 
@@ -222,6 +257,8 @@ export async function fetchDraftPayrollPersonBreakdown(
     ...r,
     pendingHours: pendingByDay[r.date] ?? 0,
     salaryNote: salaryNoteByDate.get(r.date) ?? null,
+    firstClockIn: firstLastByDay[r.date]?.firstIn ?? null,
+    lastClockOut: firstLastByDay[r.date]?.lastOut ?? null,
   }))
   return { dayRows, rows }
 }

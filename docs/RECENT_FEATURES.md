@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-15 (v2.691)
+last_updated: 2026-07-15 (v2.692)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,17 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.692)
+
+### People → Payroll — reject now resyncs payroll hours (bug fix) (2026-07-15)
+Rejecting a clock session from the My Time day editor set `rejected_at` with a raw update but never subtracted the hours from `people_hours` (which is maintained incrementally — approve adds, reject/revoke subtracts). So an already-approved session that was later rejected left its hours frozen in payroll totals, and the Draft Payroll / Hours breakdown kept showing them. `confirmRejectSession` now calls `recompute_people_hours_after_session_edit` right after the reject — the same resync the Adjust-times save path uses — so the day's payroll hours drop to the true approved-and-not-rejected sum. Fixes stale Hours / Cash Due everywhere the shared day editor is used (People → Hours, dashboard, the breakdown). [`DashboardMyTimeDayEditorModal.tsx`](../src/components/DashboardMyTimeDayEditorModal.tsx). (One pre-existing stale `people_hours` row was corrected directly in prod.)
+
+### Draft Payroll → Hours breakdown — "Date & Time" column (2026-07-15)
+The breakdown's first column is now **Date & Time**: each day shows the short date (`07-05`) plus that day's clock span — earliest clock-in to latest clock-out, e.g. `6:40am–11:00am` — in Chicago business time. Days with no clock sessions (salaried synthetic days, manual entries) show just the date. The kernel [`draftPayrollPersonBreakdown.ts`](../src/lib/draftPayrollPersonBreakdown.ts) gains a pure `firstLastClockByDay` helper (+ tests) and now retains the session timestamps it already reads (widened to approved + pending, from one query) instead of summing them away. [`DraftPayrollPersonHoursBreakdownModal.tsx`](../src/components/pay/DraftPayrollPersonHoursBreakdownModal.tsx).
+
+### People → Payroll ledger — column layout polish (2026-07-15)
+Several refinements to the pay-stubs ledger ([`PeoplePayStubsTab.tsx`](../src/components/people/PeoplePayStubsTab.tsx)): the **Period** column header is a toggle that shows/hides the ISO week (`6/28–7/4` by default, `6/28–7/4 (w27)` when clicked) and is centered; the **Created \| Paid \| Delay** column is centered and its unpaid marker dropped the trailing `…` (amber `11d` alone signals still-accruing); and Person names left-align when they wrap to two lines.
 
 ## Latest Updates (v2.691)
 
