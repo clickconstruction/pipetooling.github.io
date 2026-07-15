@@ -74,8 +74,6 @@ moment.
   deletes the person's workday schedule — turning it back on does not restore the schedule.
 - **Record hours anyway** — shown for salaried people only: their logged hours appear on the Hours
   grids for record-keeping, but pay stays on the flat salary day.
-- **Include in Hours & crew costing** — show the person on the Hours tab and in crew-costing
-  rosters and team labor totals.
 
 :::example Switching someone to salaried
 Check {{chip:blue|Salaried}}, then set up their **Salaried workday** card below (start time, one

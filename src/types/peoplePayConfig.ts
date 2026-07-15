@@ -6,6 +6,5 @@ export type PayConfigRow = {
   /** Optional second hourly rate for office/bid/unassigned time. NULL = single rate (hourly_wage everywhere). Ignored when is_salary. */
   office_hourly_wage?: number | null
   is_salary: boolean
-  show_in_hours: boolean
   record_hours_but_salary: boolean
 }

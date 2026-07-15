@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-15 (v2.676)
+last_updated: 2026-07-15 (v2.677)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.677)
+
+### People — "Include in Hours & crew costing" retired: everyone with a pay config is in (2026-07-15)
+The checkbox is gone from the Employment tab's Pay setup and the Hours-tab pay-config modal (now a 5-column table). Every non-archived person with a `people_pay_config` row now appears on the Hours grid, Quickfill hours sections, Crew Jobs / Bids rosters, the Teams pickers, and counts in the weekly Internal Team labor total — the roster filters keep only the archived-user exclusion. The unassigned-field-time kernel ([`peopleHoursUnallocatedRows.ts`](../src/lib/peopleHoursUnallocatedRows.ts)) likewise stops skipping flag-off people (it still skips people with no pay-config row). `show_in_hours` is removed from `PayConfigRow` and every `.select()`; the DB column and its `list_people_pay_flags()` field remain but are inert (a later cleanup migration can drop them). Net visible change in current data: one subcontractor row (no wage, no hours) joins the rosters; the other previously-excluded person is archived and stays hidden. To remove someone from these surfaces now: archive them.
 
 ## Latest Updates (v2.676)
 

@@ -63,7 +63,7 @@ function formatTeamLaborWorkDate(ymd: string | null): string {
 }
 
 /** Narrow view of the canonical pay-config row (single source of truth for field types). */
-type PayConfigRow = Pick<PayConfigRowFull, 'person_name' | 'is_salary' | 'show_in_hours'>
+type PayConfigRow = Pick<PayConfigRowFull, 'person_name' | 'is_salary'>
 
 type CrewRow = { unifiedAssignments: UnifiedAssignment[] }
 
@@ -157,7 +157,6 @@ export function CrewJobsBlock({
   const showPeopleForMatrix = useMemo(() => {
     if (peopleProp && peopleProp.length > 0) return peopleProp
     return Object.keys(payConfig)
-      .filter((n) => payConfig[n]?.show_in_hours ?? false)
       .sort((a, b) => {
         const orderA = hoursDisplayOrder[a] ?? 999999
         const orderB = hoursDisplayOrder[b] ?? 999999

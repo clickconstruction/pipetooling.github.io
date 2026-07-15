@@ -44,7 +44,6 @@ function PayConfigRowTr({
     hourly_wage: null,
     office_hourly_wage: null,
     is_salary: false,
-    show_in_hours: false,
     record_hours_but_salary: false,
   }
   return (
@@ -110,14 +109,6 @@ function PayConfigRowTr({
           onChange={(e) => onUpsertPayConfig(n, { record_hours_but_salary: e.target.checked })}
           disabled={payConfigSaving || !c.is_salary}
           title={!c.is_salary ? 'Only applies when Salary is checked' : undefined}
-        />
-      </td>
-      <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center' }}>
-        <input
-          type="checkbox"
-          checked={c.show_in_hours}
-          onChange={(e) => onUpsertPayConfig(n, { show_in_hours: e.target.checked })}
-          disabled={payConfigSaving}
         />
       </td>
     </tr>
@@ -234,7 +225,7 @@ export function PeoplePayConfigModal({
           </button>
         </div>
         <p id="people-pay-config-modal-desc" style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: '0 0 0.75rem', flexShrink: 0 }}>
-          Set hourly wage, Salary (8 hrs/day), and Include in Hours &amp; crew costing (Hours tab, crew rosters, team labor totals).
+          Set hourly wage and Salary (8 hrs/day). Everyone here appears on the Hours tab and in crew costing; archive a user to remove them.
         </p>
         <label htmlFor="people-pay-config-modal-name-filter" style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 500, color: 'var(--text-700)', marginBottom: '0.35rem', flexShrink: 0 }}>
           Filter by name
@@ -269,13 +260,12 @@ export function PeoplePayConfigModal({
                 <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderBottom: '1px solid var(--border)' }} title="Optional second rate for office/bid/unassigned time. Blank = same as hourly wage.">Office wage ($)</th>
                 <th style={{ padding: '0.5rem 0.75rem', textAlign: 'center', borderBottom: '1px solid var(--border)' }}>Salary</th>
                 <th style={{ padding: '0.5rem 0.75rem', textAlign: 'center', borderBottom: '1px solid var(--border)' }} title="Record hours for tracking (salary still used for pay)">Record hours</th>
-                <th style={{ padding: '0.5rem 0.75rem', textAlign: 'center', borderBottom: '1px solid var(--border)' }} title="Show on the Hours tab and in crew-costing rosters and team labor totals">Include in Hours &amp; crew costing</th>
               </tr>
             </thead>
             <tbody>
               {sectionBlocks.length === 0 ? (
                 <tr>
-                  <td colSpan={6} style={{ padding: '0.75rem', color: 'var(--text-muted)' }}>
+                  <td colSpan={5} style={{ padding: '0.75rem', color: 'var(--text-muted)' }}>
                     {emptyMessage}
                   </td>
                 </tr>
@@ -284,7 +274,7 @@ export function PeoplePayConfigModal({
                   <Fragment key={section.label}>
                     <tr style={{ background: 'var(--bg-muted)' }}>
                       <td
-                        colSpan={7}
+                        colSpan={6}
                         style={{
                           padding: '0.5rem 0.75rem',
                           fontWeight: 600,
