@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-15 (v2.678)
+last_updated: 2026-07-15 (v2.679)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.679)
+
+### Dashboard — Billing Pipeline action clusters right-align (2026-07-15)
+The right-hand action column on every Billing Pipeline row (Ready to Bill and Billed Waiting for Payment, both invoice-draft and job rows) now sets `justifyContent: 'flex-end'`, so when the buttons wrap at narrow widths each row (job detail/edit icons · View Reports · Send Back/Delete draft bill, then Bill Customer · Open N weeks) hugs the right edge instead of left-aligning — matching the Field approval stage's existing alignment. 8 clusters in [`Dashboard.tsx`](../src/pages/Dashboard.tsx).
 
 ## Latest Updates (v2.678)
 
