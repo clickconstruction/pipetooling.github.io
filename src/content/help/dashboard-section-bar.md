@@ -25,7 +25,7 @@ The bar stays out of the way on phones and tablets ({{icon:help|gear}} it's desk
 | ClockedIn | Team clock activity strip |
 | Teams Inbox | Dispatch and Estimator inboxes |
 | Billing | Billing Pipeline card |
-| My Inbox | Checklist: Due Today |
+| My Inbox | My Inbox card (Due Today / Overdue / Recently Completed Tasks) |
 | Bids | My Bids |
 | Reports | Recent Reports |
 | Me | My Time |
