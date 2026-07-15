@@ -24,7 +24,7 @@ import { useLedgerPrefixMap } from '../../contexts/LedgerDisplayPrefixContext'
 import { isAssistantLike } from '../../lib/subcontractorLikeRole'
 
 /** Narrow view of the canonical pay-config row (single source of truth for field types). */
-type PayConfigRow = Pick<PayConfigRowFull, 'person_name' | 'is_salary' | 'show_in_hours' | 'record_hours_but_salary'>
+type PayConfigRow = Pick<PayConfigRowFull, 'person_name' | 'is_salary' | 'record_hours_but_salary'>
 type HoursRow = { person_name: string; work_date: string; hours: number }
 type CrewRow = { unifiedAssignments: UnifiedAssignment[] }
 
@@ -274,7 +274,6 @@ export function HoursSection() {
 
   async function moveHoursRow(personName: string, direction: 'up' | 'down') {
     const showPeople = Object.keys(payConfig)
-      .filter((n) => payConfig[n]?.show_in_hours ?? false)
       .sort((a, b) => {
         const orderA = hoursDisplayOrder[a] ?? 999999
         const orderB = hoursDisplayOrder[b] ?? 999999
@@ -391,7 +390,6 @@ export function HoursSection() {
   )
 
   const showPeopleForHours = Object.keys(payConfig)
-    .filter((n) => payConfig[n]?.show_in_hours ?? false)
     .sort((a, b) => {
       const orderA = hoursDisplayOrder[a] ?? 999999
       const orderB = hoursDisplayOrder[b] ?? 999999

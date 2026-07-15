@@ -82,7 +82,6 @@ const DEFAULT_PAY_CONFIG: Omit<PayConfigRow, 'person_name'> = {
   hourly_wage: null,
   office_hourly_wage: null,
   is_salary: false,
-  show_in_hours: false,
   record_hours_but_salary: false,
 }
 
@@ -899,19 +898,6 @@ export default function PeopleEmploymentTab({
                         </span>
                       </label>
                     ) : null}
-                    <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.45rem', fontSize: '0.875rem' }}>
-                      <input
-                        type="checkbox"
-                        checked={cfg.show_in_hours}
-                        onChange={(e) => onUpsertPayConfig(selected.name, { show_in_hours: e.target.checked })}
-                        disabled={payConfigSaving}
-                        style={{ marginTop: 2 }}
-                      />
-                      <span>
-                        <strong>Include in Hours &amp; crew costing</strong> — show this person on the Hours tab and in
-                        crew-costing rosters and team labor totals.
-                      </span>
-                    </label>
                   </div>
 
                   {cfg.is_salary ? (

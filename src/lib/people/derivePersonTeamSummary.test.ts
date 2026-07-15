@@ -48,7 +48,6 @@ function hourlyPayConfig(name: string, wage: number): Record<string, PayConfigRo
       person_name: name,
       hourly_wage: wage,
       is_salary: false,
-      show_in_hours: true,
       record_hours_but_salary: false,
     },
   }

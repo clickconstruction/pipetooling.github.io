@@ -85,7 +85,6 @@ export type PeopleHoursUnallocatedSummary = {
 export type PeopleHoursUnallocatedPayConfigInput = {
   person_name: string
   is_salary: boolean
-  show_in_hours: boolean
   /** Salary people who still record hours (still salary for "8h on weekday" rule). */
   record_hours_but_salary?: boolean
 }
@@ -189,7 +188,6 @@ export function shouldSkipPersonForUnallocated(
   cfg: PeopleHoursUnallocatedPayConfigInput | undefined,
 ): boolean {
   if (!cfg) return true
-  if (!cfg.show_in_hours) return true
   return false
 }
 

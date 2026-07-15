@@ -64,10 +64,10 @@ function fieldSession(args: {
 }
 
 const PAY_CONFIG: PeopleHoursUnallocatedPayConfigInput[] = [
-  { person_name: 'Alex', is_salary: true, show_in_hours: true },
-  { person_name: 'Blake', is_salary: false, show_in_hours: true },
-  { person_name: 'Sally', is_salary: true, show_in_hours: true },
-  { person_name: 'HiddenHal', is_salary: true, show_in_hours: false },
+  { person_name: 'Alex', is_salary: true },
+  { person_name: 'Blake', is_salary: false },
+  { person_name: 'Sally', is_salary: true },
+  { person_name: 'HiddenHal', is_salary: true },
 ]
 
 const WORK_DATES = ['2026-05-11', '2026-05-12', '2026-05-13'] // Mon, Tue, Wed
@@ -420,9 +420,10 @@ describe('computeUnallocatedFieldRows', () => {
     expect(rows.find((r) => r.personName === 'Blake')).toBeUndefined()
   })
 
-  it('skips people whose show_in_hours is false', () => {
+  it('includes everyone with a pay-config row; skips people without one (include flag retired v2.677)', () => {
     const sessions: OverheadClockSessionRow[] = [
       fieldSession({ id: 'hh-field', userId: HIDDEN_ID, userName: 'HiddenHal', workDate: '2026-05-12', hours: 8 }),
+      fieldSession({ id: 'nc-field', userId: 'no-config-uid', userName: 'NoConfigNed', workDate: '2026-05-12', hours: 8 }),
     ]
     const rows = computeUnallocatedFieldRows({
       payConfig: PAY_CONFIG,
@@ -432,7 +433,8 @@ describe('computeUnallocatedFieldRows', () => {
       workDates: WORK_DATES,
       thresholdHours: 0.5,
     })
-    expect(rows.find((r) => r.personName === 'HiddenHal')).toBeUndefined()
+    expect(rows.find((r) => r.personName === 'HiddenHal')).toBeDefined()
+    expect(rows.find((r) => r.personName === 'NoConfigNed')).toBeUndefined()
   })
 
   it('counts sub-labor hours as allocated and reduces unallocated', () => {

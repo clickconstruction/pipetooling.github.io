@@ -26,7 +26,7 @@ import { useToastContext } from '../../contexts/ToastContext'
 import { isAssistantLike } from '../../lib/subcontractorLikeRole'
 
 /** Narrow view of the canonical pay-config row (single source of truth for field types). */
-type PayConfigRow = Pick<PayConfigRowFull, 'person_name' | 'is_salary' | 'show_in_hours' | 'record_hours_but_salary'>
+type PayConfigRow = Pick<PayConfigRowFull, 'person_name' | 'is_salary' | 'record_hours_but_salary'>
 
 type CrewJobsRow = {
   work_date: string
@@ -426,7 +426,6 @@ export function QuickfillUnassignedFieldTimeSection() {
       payConfig.map((c) => ({
         person_name: c.person_name,
         is_salary: !!c.is_salary,
-        show_in_hours: !!c.show_in_hours,
         record_hours_but_salary: !!c.record_hours_but_salary,
       })),
     [payConfig],
