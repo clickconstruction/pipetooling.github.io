@@ -11,7 +11,6 @@ export type PeoplePayConfigModalProps = {
   payConfigDraft: Record<string, string>
   payConfigOfficeWageDraft: Record<string, string>
   payConfigSaving: boolean
-  isDev: boolean
   /** Roster name → user still has salary_work_schedule_templates (materialized schedule). */
   salaryTemplateByPersonName: Record<string, boolean>
   onUpsertPayConfig: (personName: string, patch: Partial<PayConfigRow>) => void
@@ -25,7 +24,6 @@ function PayConfigRowTr({
   payConfigDraft,
   payConfigOfficeWageDraft,
   payConfigSaving,
-  isDev,
   salaryTemplateActive,
   onUpsertPayConfig,
   onHourlyWageChange,
@@ -36,7 +34,6 @@ function PayConfigRowTr({
   payConfigDraft: Record<string, string>
   payConfigOfficeWageDraft: Record<string, string>
   payConfigSaving: boolean
-  isDev: boolean
   salaryTemplateActive: boolean
   onUpsertPayConfig: (personName: string, patch: Partial<PayConfigRow>) => void
   onHourlyWageChange: (personName: string, rawValue: string) => void
@@ -119,17 +116,12 @@ function PayConfigRowTr({
       <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center' }}>
         <input
           type="checkbox"
-          checked={c.show_in_hours}
-          onChange={(e) => onUpsertPayConfig(n, { show_in_hours: e.target.checked })}
-          disabled={payConfigSaving || !isDev}
-          title={!isDev ? 'Only dev can change this' : undefined}
-        />
-      </td>
-      <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center' }}>
-        <input
-          type="checkbox"
-          checked={c.show_in_cost_matrix}
-          onChange={(e) => onUpsertPayConfig(n, { show_in_cost_matrix: e.target.checked })}
+          checked={c.show_in_hours || c.show_in_cost_matrix}
+          onChange={(e) =>
+            // One visibility knob (cost-matrix retirement phase 1): the legacy
+            // show_in_hours / show_in_cost_matrix columns always move together now.
+            onUpsertPayConfig(n, { show_in_hours: e.target.checked, show_in_cost_matrix: e.target.checked })
+          }
           disabled={payConfigSaving}
         />
       </td>
@@ -145,7 +137,6 @@ export function PeoplePayConfigModal({
   payConfigDraft,
   payConfigOfficeWageDraft,
   payConfigSaving,
-  isDev,
   salaryTemplateByPersonName,
   onUpsertPayConfig,
   onHourlyWageChange,
@@ -248,7 +239,7 @@ export function PeoplePayConfigModal({
           </button>
         </div>
         <p id="people-pay-config-modal-desc" style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: '0 0 0.75rem', flexShrink: 0 }}>
-          Set hourly wage, Salary (8 hrs/day), Show in Hours (include in Hours tab), and Show in Cost Matrix (include in cost matrix and teams).
+          Set hourly wage, Salary (8 hrs/day), and Include in Hours &amp; crew costing (Hours tab, crew rosters, team labor totals).
         </p>
         <label htmlFor="people-pay-config-modal-name-filter" style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 500, color: 'var(--text-700)', marginBottom: '0.35rem', flexShrink: 0 }}>
           Filter by name
@@ -283,8 +274,7 @@ export function PeoplePayConfigModal({
                 <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderBottom: '1px solid var(--border)' }} title="Optional second rate for office/bid/unassigned time. Blank = same as hourly wage.">Office wage ($)</th>
                 <th style={{ padding: '0.5rem 0.75rem', textAlign: 'center', borderBottom: '1px solid var(--border)' }}>Salary</th>
                 <th style={{ padding: '0.5rem 0.75rem', textAlign: 'center', borderBottom: '1px solid var(--border)' }} title="Record hours for tracking (salary still used for pay)">Record hours</th>
-                <th style={{ padding: '0.5rem 0.75rem', textAlign: 'center', borderBottom: '1px solid var(--border)' }}>Show in Hours</th>
-                <th style={{ padding: '0.5rem 0.75rem', textAlign: 'center', borderBottom: '1px solid var(--border)' }}>Show in Cost Matrix</th>
+                <th style={{ padding: '0.5rem 0.75rem', textAlign: 'center', borderBottom: '1px solid var(--border)' }} title="Show on the Hours tab and in crew-costing rosters and team labor totals">Include in Hours &amp; crew costing</th>
               </tr>
             </thead>
             <tbody>
@@ -319,7 +309,6 @@ export function PeoplePayConfigModal({
                         payConfigDraft={payConfigDraft}
                         payConfigOfficeWageDraft={payConfigOfficeWageDraft}
                         payConfigSaving={payConfigSaving}
-                        isDev={isDev}
                         salaryTemplateActive={salaryTemplateByPersonName[n] === true}
                         onUpsertPayConfig={onUpsertPayConfig}
                         onHourlyWageChange={onHourlyWageChange}

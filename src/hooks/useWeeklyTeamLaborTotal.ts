@@ -31,7 +31,13 @@ function getDaysInRange(start: string, end: string): string[] {
   return days
 }
 
-export function useCostMatrixTotal(enabled: boolean): { total: number | null; loading: boolean } {
+/**
+ * Current-week internal team labor total: people_hours × wages (salaried = flat 8/0) for
+ * everyone flagged `show_in_cost_matrix` (legacy column name — the merged "Include in Hours
+ * & crew costing" knob writes it). Shown on the Dashboard "Internal Team" pin card and in
+ * Settings → Dashboard. Formerly `useCostMatrixTotal`, renamed in cost-matrix retirement phase 2.
+ */
+export function useWeeklyTeamLaborTotal(enabled: boolean): { total: number | null; loading: boolean } {
   const [total, setTotal] = useState<number | null>(null)
   const [loading, setLoading] = useState(false)
 

@@ -691,9 +691,9 @@ export default function SettingsDashboardTab({
         </div>
 
         <div style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '1rem' }}>
-          <h2 style={{ marginTop: 0, marginBottom: '0.5rem' }}>Pin Cost matrix to Dashboard</h2>
+          <h2 style={{ marginTop: 0, marginBottom: '0.5rem' }}>Pin Internal Team labor to Dashboard</h2>
           <p style={{ margin: '0 0 0.75rem 0', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-            Pin Cost matrix to a master or dev&apos;s dashboard so it appears on their Dashboard.
+            Pin the current-week Internal Team labor total to a master or dev&apos;s dashboard.
           </p>
           {pinCostMatrixMasterIds.size > 0 && (
             <p style={{ fontSize: '0.875rem', marginBottom: '0.5rem', fontWeight: 500 }}>
@@ -772,7 +772,7 @@ export default function SettingsDashboardTab({
                 if (error) setPinCostMatrixMessage({ type: 'error', text: error.message })
                 else {
                   loadCostMatrixPinnedUsers()
-                  setPinCostMatrixMessage({ type: 'success', text: `Unpinned Cost matrix for ${count} user${count !== 1 ? 's' : ''}.` })
+                  setPinCostMatrixMessage({ type: 'success', text: `Unpinned Internal Team labor for ${count} user${count !== 1 ? 's' : ''}.` })
                   setTimeout(() => setPinCostMatrixMessage(null), 5000)
                 }
               }}

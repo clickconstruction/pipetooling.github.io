@@ -20,10 +20,8 @@ import {
   KIND_TO_USER_ROLE,
   KINDS,
 } from '../components/people/peopleUsersTabShared'
-import { PeopleHoursSharing } from '../components/people/PeopleHoursSharing'
 import { PeopleHoursTeams, type PeopleHoursTeam } from '../components/people/PeopleHoursTeams'
 import { PeopleHoursDueSummaries } from '../components/people/PeopleHoursDueSummaries'
-import { PeopleCostMatrix } from '../components/people/PeopleCostMatrix'
 import { PeopleHoursSessions } from '../components/people/PeopleHoursSessions'
 import { PeopleHoursWeekRange } from '../components/people/PeopleHoursWeekRange'
 import { PeopleHoursGrid } from '../components/people/PeopleHoursGrid'
@@ -104,7 +102,6 @@ import { PeopleHoursDayAuditModal } from '../components/PeopleHoursDayAuditModal
 import { PeopleHoursDashboardClockStrip } from '../components/people/PeopleHoursDashboardClockStrip'
 import { ClockSessionEditSplitModal } from '../components/ClockSessionEditSplitModal'
 import { DashboardMyTimeDayEditorModal } from '../components/DashboardMyTimeDayEditorModal'
-import { PersonTimeDetailModal } from '../components/PersonTimeDetailModal'
 import { ReviewHoursModal } from '../components/ReviewHoursModal'
 import PeopleAppActivityPanel from '../components/people/PeopleAppActivityPanel'
 import PeopleTeamsTab from '../components/people/PeopleTeamsTab'
@@ -127,7 +124,6 @@ import {
 import {
   buildPeopleHoursPendingByCellMap,
   pendingByCellKey,
-  pendingUnapprovedCountsByWorkDate,
   summarizePeopleHoursPendingByCell,
   sumClosedPendingClockHoursForCell,
   type PeopleHoursPendingCellEntry,
@@ -161,9 +157,7 @@ type HoursTabSectionId =
   | 'grid'
   | 'payTools'
   | 'dueSummaries'
-  | 'costMatrix'
   | 'teams'
-  | 'sharing'
 
 /** Sections with chevron open/close state (`payTools` toolbar and `week` range are always visible). */
 type HoursTabCollapsibleSectionId = Exclude<HoursTabSectionId, 'payTools' | 'week'>
@@ -175,9 +169,7 @@ const HOURS_TAB_SECTION_SCROLL_ID: Record<HoursTabSectionId, string> = {
   grid: 'people-hours-grid',
   payTools: 'people-hours-pay-tools',
   dueSummaries: 'people-hours-due-summaries',
-  costMatrix: 'cost-matrix',
   teams: 'people-hours-teams',
-  sharing: 'people-hours-sharing',
 }
 
 const INITIAL_HOURS_TAB_SECTIONS_OPEN: Record<HoursTabCollapsibleSectionId, boolean> = {
@@ -185,9 +177,7 @@ const INITIAL_HOURS_TAB_SECTIONS_OPEN: Record<HoursTabCollapsibleSectionId, bool
   sessions: true,
   grid: true,
   dueSummaries: false,
-  costMatrix: true,
   teams: false,
-  sharing: false,
 }
 
 const HOURS_TAB_SECTIONS_STACK_GAP = '0.75rem'
@@ -297,8 +287,8 @@ export default function People() {
   const hoursTabFirstLoadCycleStartedRef = useRef(false)
   const hoursTableScrollRef = useRef<HTMLDivElement>(null)
   const hoursFocusClearTimeoutRef = useRef<number | null>(null)
-  const { canAccessPay, canAccessHours, canAccessLicenses, canAccessContracts, canViewCostMatrixShared, isDev, canSeePushStatus } = usePeopleAccess(authUser?.id)
-  const canOpenHoursTab = canAccessPay || canAccessHours || canViewCostMatrixShared
+  const { canAccessPay, canAccessHours, canAccessLicenses, canAccessContracts, isDev, canSeePushStatus } = usePeopleAccess(authUser?.id)
+  const canOpenHoursTab = canAccessPay || canAccessHours
   const usersTabTags = useUsersTabTags({
     isDev,
     activeTab,
@@ -331,7 +321,6 @@ export default function People() {
   } = usePayConfig({
     canAccessPay,
     canAccessHours,
-    canViewCostMatrixShared,
     setError,
     showToast,
     peopleRosterRef,
@@ -354,13 +343,7 @@ export default function People() {
       setSalariedWorkdaysModalOpen(false)
     }
   }, [activeTab])
-  const [personTimeDetailModalPerson, setPersonTimeDetailModalPerson] = useState<string | null>(null)
   const [reviewHoursModalOpen, setReviewHoursModalOpen] = useState(false)
-  const [hoursReviewedSet, setHoursReviewedSet] = useState<Set<string>>(new Set())
-  const [costMatrixShareCandidates, setCostMatrixShareCandidates] = useState<Array<{ id: string; name: string; email: string | null; role: string }>>([])
-  const [costMatrixSharedUserIds, setCostMatrixSharedUserIds] = useState<Set<string>>(new Set())
-  const [costMatrixShareSaving, setCostMatrixShareSaving] = useState(false)
-  const [costMatrixShareError, setCostMatrixShareError] = useState<string | null>(null)
   const [archivedUserNames, setArchivedUserNames] = useState<Set<string>>(new Set())
   const [rejectedSectionOpen, setRejectedSectionOpen] = useState(false)
   const [hoursTabSectionsOpen, setHoursTabSectionsOpen] = useState<Record<HoursTabCollapsibleSectionId, boolean>>(
@@ -415,10 +398,6 @@ export default function People() {
     return start.toLocaleDateString('en-CA')
   })
   const [teamPeriodEnd, setTeamPeriodEnd] = useState(() => new Date().toLocaleDateString('en-CA'))
-  const [showMaxHours, setShowMaxHours] = useState(false)
-  const [costMatrixTags, setCostMatrixTags] = useState<Record<string, string>>({})
-  const [costMatrixTagColors, setCostMatrixTagColors] = useState<Record<string, string>>({})
-  const [matrixSortBy, setMatrixSortBy] = useState<'cost' | 'tag' | 'name'>('cost')
   const [showMaxHoursTeams, setShowMaxHoursTeams] = useState(false)
   const [teamToDelete, setTeamToDelete] = useState<{ id: string; name: string } | null>(null)
   const [teamDeletingId, setTeamDeletingId] = useState<string | null>(null)
@@ -519,7 +498,6 @@ export default function People() {
   } = usePeopleHoursData({
     canAccessHours,
     canAccessPay,
-    canViewCostMatrixShared,
     prefixMap,
     peopleRosterRef,
     authUser,
@@ -618,7 +596,7 @@ export default function People() {
   loadPeopleHoursRef.current = () => {
     if (
       activeTab === 'hours' &&
-      (canAccessHours || canAccessPay || canViewCostMatrixShared)
+      (canAccessHours || canAccessPay)
     ) {
       loadPeopleHours(hoursDateStart, hoursDateEnd)
     }
@@ -1186,22 +1164,12 @@ export default function People() {
   }, [payConfigModalOpen, canAccessPay, payConfigRosterSections, users, loadPayConfigSalaryTemplateIndicators])
 
   async function loadArchivedUserNames() {
-    if (!canAccessPay && !canAccessHours && !canViewCostMatrixShared) return
+    if (!canAccessPay && !canAccessHours) return
     const { data, error } = await supabase.rpc('get_archived_user_names')
     if (error) return
     const arr = Array.isArray(data) ? data : []
     const names = arr.filter((x): x is string => typeof x === 'string' && x.trim() !== '')
     setArchivedUserNames(new Set(names))
-  }
-
-  async function loadHoursReviewed() {
-    if (!canAccessPay) return
-    const { data } = await supabase
-      .from('hours_reviewed')
-      .select('person_name')
-      .eq('start_date', hoursDateStart)
-    const set = new Set((data ?? []).map((r: { person_name: string }) => r.person_name))
-    setHoursReviewedSet(set)
   }
 
   const draftPayrollPendingFetchIdRef = useRef(0)
@@ -1243,7 +1211,7 @@ export default function People() {
   loadDraftPayrollPendingApprovalsRef.current = loadDraftPayrollPendingApprovals
 
   async function loadHoursDaysCorrect(start: string, end: string) {
-    if (!canAccessHours && !canAccessPay && !canViewCostMatrixShared) return
+    if (!canAccessHours && !canAccessPay) return
     const { data, error } = await (supabase as any)
       .from('hours_days_correct')
       .select('work_date')
@@ -2112,7 +2080,7 @@ export default function People() {
   }
 
   async function loadTeams() {
-    if (!canAccessPay && !canViewCostMatrixShared) return
+    if (!canAccessPay) return
     const [teamsRes, membersRes] = await Promise.all([
       supabase.from('people_teams').select('id, name, sequence_order').order('sequence_order', { ascending: true }),
       supabase.from('people_team_members').select('team_id, person_name'),
@@ -2127,52 +2095,6 @@ export default function People() {
     setTeams(teamList.map((t) => ({ id: t.id, name: t.name, members: membersByTeam.get(t.id) ?? [] })))
   }
 
-  async function loadCostMatrixShares() {
-    if (!isDev) return
-    const [candidatesRes, sharesRes] = await Promise.all([
-      supabase.from('users').select('id, name, email, role').is('archived_at', null).in('role', ['master_technician', 'assistant', 'controller' as 'assistant', 'dev']).order('name'),
-      supabase.from('cost_matrix_teams_shares').select('shared_with_user_id'),
-    ])
-    if (candidatesRes.data) setCostMatrixShareCandidates(candidatesRes.data as Array<{ id: string; name: string; email: string | null; role: string }>)
-    if (sharesRes.data) setCostMatrixSharedUserIds(new Set((sharesRes.data as { shared_with_user_id: string }[]).map((r) => r.shared_with_user_id)))
-  }
-
-  async function toggleCostMatrixShare(userId: string, isShared: boolean) {
-    if (!isDev) return
-    setCostMatrixShareSaving(true)
-    setCostMatrixShareError(null)
-    if (isShared) {
-      const { error } = await supabase.from('cost_matrix_teams_shares').insert({ shared_with_user_id: userId })
-      if (error) setCostMatrixShareError(error.message)
-      else setCostMatrixSharedUserIds((prev) => new Set(prev).add(userId))
-    } else {
-      const { error } = await supabase.from('cost_matrix_teams_shares').delete().eq('shared_with_user_id', userId)
-      if (error) setCostMatrixShareError(error.message)
-      else setCostMatrixSharedUserIds((prev) => { const next = new Set(prev); next.delete(userId); return next })
-    }
-    setCostMatrixShareSaving(false)
-  }
-
-  async function loadCostMatrixTags() {
-    if (!canAccessPay && !canViewCostMatrixShared) return
-    const { data } = await supabase.from('people_cost_matrix_tags').select('person_name, tags')
-    const map: Record<string, string> = {}
-    for (const r of (data ?? []) as { person_name: string; tags: string }[]) {
-      map[r.person_name] = r.tags ?? ''
-    }
-    setCostMatrixTags(map)
-  }
-
-  async function loadCostMatrixTagColors() {
-    if (!canAccessPay && !canViewCostMatrixShared) return
-    const { data } = await supabase.from('cost_matrix_tag_colors').select('tag, color')
-    const map: Record<string, string> = {}
-    for (const r of (data ?? []) as { tag: string; color: string }[]) {
-      map[r.tag] = r.color ?? '#e5e7eb'
-    }
-    setCostMatrixTagColors(map)
-  }
-
   useEffect(() => {
     if (activeTab === 'hours' && canAccessPay && Object.keys(payConfig).length > 0) {
       const dups = findPersonUserDuplicates(people, users, payConfig)
@@ -2182,15 +2104,8 @@ export default function People() {
     }
   }, [activeTab, payConfig, people, users])
 
-  useEffect(() => {
-    if (activeTab === 'hours' && isDev && (canAccessPay || canViewCostMatrixShared)) {
-      const t = setTimeout(() => loadCostMatrixShares(), 80)
-      return () => clearTimeout(t)
-    }
-  }, [activeTab, isDev, canAccessPay, canViewCostMatrixShared])
-
   async function loadHoursDisplayOrder() {
-    if (!canAccessHours && !canAccessPay && !canViewCostMatrixShared) return
+    if (!canAccessHours && !canAccessPay) return
     const { data } = await supabase.from('people_hours_display_order').select('person_name, sequence_order')
     const map: Record<string, number> = {}
     for (const r of (data ?? []) as { person_name: string; sequence_order: number }[]) {
@@ -2219,46 +2134,6 @@ export default function People() {
     ])
   }
 
-  async function saveCostMatrixTags(personName: string, tags: string) {
-    if (!canAccessPay) return
-    const trimmed = (tags ?? '').trim()
-    setCostMatrixTags((prev) => ({ ...prev, [personName]: trimmed }))
-    await supabase.from('people_cost_matrix_tags').upsert(
-      { person_name: personName, tags: trimmed },
-      { onConflict: 'person_name' }
-    )
-  }
-
-  async function saveTagColor(tag: string, color: string) {
-    if (!canAccessPay) return
-    const trimmedTag = tag.trim()
-    if (!trimmedTag) return
-    setCostMatrixTagColors((prev) => ({ ...prev, [trimmedTag]: color }))
-    await supabase.from('cost_matrix_tag_colors').upsert(
-      { tag: trimmedTag, color },
-      { onConflict: 'tag' }
-    )
-  }
-
-  async function moveMatrixRow(personName: string, direction: 'up' | 'down') {
-    const idx = showPeopleForMatrix.indexOf(personName)
-    if (idx < 0) return
-    const otherIdx = direction === 'up' ? idx - 1 : idx + 1
-    if (otherIdx < 0 || otherIdx >= showPeopleForMatrix.length) return
-    const otherName = showPeopleForMatrix[otherIdx]
-    if (!otherName) return
-    const newOrderA = otherIdx
-    const newOrderB = idx
-    setHoursDisplayOrder((prev) => ({
-      ...prev,
-      [personName]: newOrderA,
-      [otherName]: newOrderB,
-    }))
-    await Promise.all([
-      supabase.from('people_hours_display_order').upsert({ person_name: personName, sequence_order: newOrderA }, { onConflict: 'person_name' }),
-      supabase.from('people_hours_display_order').upsert({ person_name: otherName, sequence_order: newOrderB }, { onConflict: 'person_name' }),
-    ])
-  }
 
   useEffect(() => {
     if (activeTab !== 'hours' || !canOpenHoursTab) {
@@ -2268,7 +2143,6 @@ export default function People() {
     const t = setTimeout(() => {
       hoursTabFirstLoadCycleStartedRef.current = true
       setHoursTabLoading(true)
-      const matrixOrPay = canAccessPay || canViewCostMatrixShared
       const loads: Promise<unknown>[] = [
         loadPayConfig(),
         loadPeopleHours(hoursDateStart, hoursDateEnd),
@@ -2282,19 +2156,16 @@ export default function People() {
           loadRejectedClockSessions(hoursDateStart, hoursDateEnd),
         )
       }
-      if (matrixOrPay) {
+      if (canAccessPay) {
         loads.push(
           loadTeams(),
-          loadCostMatrixTags(),
-          loadCostMatrixTagColors(),
           loadArchivedUserNames(),
-          loadHoursReviewed(),
         )
       }
       void Promise.all(loads).finally(() => setHoursTabLoading(false))
     }, 80)
     return () => clearTimeout(t)
-  }, [activeTab, canOpenHoursTab, canAccessHours, canAccessPay, canViewCostMatrixShared, hoursDateStart, hoursDateEnd])
+  }, [activeTab, canOpenHoursTab, canAccessHours, canAccessPay, hoursDateStart, hoursDateEnd])
 
   // Employment tab reads payConfig + template indicators; load them here since the
   // hours-tab load cycle (the usual owner) may never have run this session.
@@ -2684,15 +2555,6 @@ export default function People() {
     return wage * getPayrollEffectiveHours(personName, workDate)
   }
 
-  function getCostForPersonDateMatrix(personName: string, workDate: string): number {
-    if (!showMaxHours) return getCostForPersonDate(personName, workDate)
-    const cfg = payConfig[personName]
-    const wage = cfg?.hourly_wage ?? 0
-    const day = new Date(workDate + 'T12:00:00').getDay()
-    if (day >= 1 && day <= 5) return wage * 8
-    return getCostForPersonDate(personName, workDate)
-  }
-
   function getCostForPersonDateTeams(personName: string, workDate: string): number {
     if (!showMaxHoursTeams) return getCostForPersonDate(personName, workDate)
     const cfg = payConfig[personName]
@@ -2727,23 +2589,13 @@ export default function People() {
       return orderA !== orderB ? orderA - orderB : a.localeCompare(b)
     })
 
-  const showPeopleForMatrix =
-    matrixSortBy === 'cost'
-      ? [...showPeopleForMatrixBase].sort((a, b) => {
-          const days = getDaysInRange(hoursDateStart, hoursDateEnd)
-          const totalA = days.reduce((s, d) => s + getCostForPersonDateMatrix(a, d), 0)
-          const totalB = days.reduce((s, d) => s + getCostForPersonDateMatrix(b, d), 0)
-          return totalB - totalA
-        })
-      : matrixSortBy === 'tag'
-        ? [...showPeopleForMatrixBase].sort((a, b) => {
-            const tagsA = (costMatrixTags[a] ?? '').split(',').map((t) => t.trim()).filter(Boolean)
-            const tagsB = (costMatrixTags[b] ?? '').split(',').map((t) => t.trim()).filter(Boolean)
-            const firstA = tagsA[0] ?? 'zzz'
-            const firstB = tagsB[0] ?? 'zzz'
-            return firstA.localeCompare(firstB) || a.localeCompare(b)
-          })
-        : [...showPeopleForMatrixBase].sort((a, b) => a.localeCompare(b))
+  // Cost-desc, the old cost-matrix default order — Due summaries keep reading this list.
+  const showPeopleForMatrix = [...showPeopleForMatrixBase].sort((a, b) => {
+    const days = getDaysInRange(hoursDateStart, hoursDateEnd)
+    const totalA = days.reduce((s, d) => s + getCostForPersonDate(a, d), 0)
+    const totalB = days.reduce((s, d) => s + getCostForPersonDate(b, d), 0)
+    return totalB - totalA
+  })
 
 
   /**
@@ -2859,12 +2711,7 @@ export default function People() {
   }
 
   const hoursDays = getDaysInRange(hoursDateStart, hoursDateEnd)
-  const matrixDays = hoursDays
 
-  const pendingUnapprovedCountByWorkDate = useMemo(
-    () => pendingUnapprovedCountsByWorkDate(pendingClockSessions),
-    [pendingClockSessions],
-  )
 
   /** People → Hours: per-cell pending closed sessions where pending hours > saved people_hours. Drives the amber badge, column dot, person row total badge, and roll-up pill. */
   const peopleHoursPendingByCellMap = useMemo(
@@ -3657,7 +3504,6 @@ export default function People() {
                 payConfigDraft={payConfigDraft}
                 payConfigOfficeWageDraft={payConfigOfficeWageDraft}
                 payConfigSaving={payConfigSaving}
-                isDev={isDev}
                 salaryTemplateByPersonName={salaryTemplateByPersonName}
                 onUpsertPayConfig={upsertPayConfig}
                 onHourlyWageChange={updatePayConfigHourlyWage}
@@ -3674,7 +3520,7 @@ export default function People() {
                   }
                   canAddToJob={canAccessPay}
                   canMarkReviewed={canAccessPay}
-                  onReviewedChange={() => void loadHoursReviewed()}
+                  onReviewedChange={() => {}}
                   onClose={() => setReviewHoursModalOpen(false)}
                 />
               ) : null}
@@ -3716,24 +3562,14 @@ export default function People() {
                 Sessions
               </button>
             ) : null}
-            {canAccessPay || canViewCostMatrixShared ? (
+            {canAccessPay ? (
               <button type="button" onClick={() => jumpToHoursTabSection('dueSummaries')} style={{ padding: '0.25rem 0.55rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--bg-muted)', cursor: 'pointer', fontSize: '0.8125rem' }}>
                 Due totals
               </button>
             ) : null}
-            {canAccessPay || canViewCostMatrixShared ? (
-              <button type="button" onClick={() => jumpToHoursTabSection('costMatrix')} style={{ padding: '0.25rem 0.55rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--bg-muted)', cursor: 'pointer', fontSize: '0.8125rem' }}>
-                Cost matrix
-              </button>
-            ) : null}
-            {canAccessPay || canViewCostMatrixShared ? (
+            {canAccessPay ? (
               <button type="button" onClick={() => jumpToHoursTabSection('teams')} style={{ padding: '0.25rem 0.55rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--bg-muted)', cursor: 'pointer', fontSize: '0.8125rem' }}>
                 Teams
-              </button>
-            ) : null}
-            {isDev || canAccessPay ? (
-              <button type="button" onClick={() => jumpToHoursTabSection('sharing')} style={{ padding: '0.25rem 0.55rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--bg-muted)', cursor: 'pointer', fontSize: '0.8125rem' }}>
-                Sharing / tags
               </button>
             ) : null}
           </div>
@@ -3859,61 +3695,22 @@ export default function People() {
           />
           </>
           )}
-          {(canAccessPay || canViewCostMatrixShared) && (
+          {canAccessPay && (
           <div style={HOURS_TAB_SECTIONS_STACK}>
             <>
             {error && <p style={{ color: 'var(--text-red-700)', marginBottom: '1rem' }}>{error}</p>}
             <PeopleHoursDueSummaries
               open={hoursTabSectionsOpen.dueSummaries}
               onToggle={() => setHoursTabSectionsOpen((p) => ({ ...p, dueSummaries: !p.dueSummaries }))}
-              matrixDays={matrixDays}
-              showPeopleForMatrix={showPeopleForMatrix}
-              costMatrixTags={costMatrixTags}
               teamsFiltered={teamsFiltered}
               teamPeriodStart={teamPeriodStart}
               teamPeriodEnd={teamPeriodEnd}
-              hoursDateStart={hoursDateStart}
-              hoursDateEnd={hoursDateEnd}
-              getCostForPersonDateMatrix={getCostForPersonDateMatrix}
-              getEffectiveHours={getEffectiveHours}
               getCostForPersonDateTeams={getCostForPersonDateTeams}
-            />
-            {personTimeDetailModalPerson && (
-              <PersonTimeDetailModal
-                personName={personTimeDetailModalPerson}
-                startDate={hoursDateStart}
-                endDate={hoursDateEnd}
-                hoursRows={peopleHours.filter((h) => h.person_name === personTimeDetailModalPerson).map((h) => ({ work_date: h.work_date, hours: h.hours }))}
-                onClose={() => setPersonTimeDetailModalPerson(null)}
-              />
-            )}
-            <PeopleCostMatrix
-              open={hoursTabSectionsOpen.costMatrix}
-              onToggle={() => setHoursTabSectionsOpen((p) => ({ ...p, costMatrix: !p.costMatrix }))}
-              canAccessPay={canAccessPay}
-              canAccessHours={canAccessHours}
-              showMaxHours={showMaxHours}
-              setShowMaxHours={setShowMaxHours}
-              matrixSortBy={matrixSortBy}
-              setMatrixSortBy={setMatrixSortBy}
-              matrixDays={matrixDays}
-              pendingUnapprovedCountByWorkDate={pendingUnapprovedCountByWorkDate}
-              showPeopleForMatrix={showPeopleForMatrix}
-              payConfig={payConfig}
-              getCostForPersonDateMatrix={getCostForPersonDateMatrix}
-              hoursReviewedSet={hoursReviewedSet}
-              moveMatrixRow={moveMatrixRow}
-              setPersonTimeDetailModalPerson={setPersonTimeDetailModalPerson}
-              costMatrixTags={costMatrixTags}
-              setCostMatrixTags={setCostMatrixTags}
-              saveCostMatrixTags={saveCostMatrixTags}
-              costMatrixTagColors={costMatrixTagColors}
             />
             <PeopleHoursTeams
               open={hoursTabSectionsOpen.teams}
               onToggle={() => setHoursTabSectionsOpen((p) => ({ ...p, teams: !p.teams }))}
               canAccessPay={canAccessPay}
-              canViewCostMatrixShared={canViewCostMatrixShared}
               teamPeriodStart={teamPeriodStart}
               setTeamPeriodStart={setTeamPeriodStart}
               teamPeriodEnd={teamPeriodEnd}
@@ -3955,22 +3752,6 @@ export default function People() {
               </ul>
             </section>
             )}
-            {(isDev || canAccessPay) && (
-              <PeopleHoursSharing
-                isDev={isDev}
-                canAccessPay={canAccessPay}
-                open={hoursTabSectionsOpen.sharing}
-                onToggle={() => setHoursTabSectionsOpen((p) => ({ ...p, sharing: !p.sharing }))}
-                costMatrixShareCandidates={costMatrixShareCandidates}
-                costMatrixSharedUserIds={costMatrixSharedUserIds}
-                costMatrixShareSaving={costMatrixShareSaving}
-                costMatrixShareError={costMatrixShareError}
-                toggleCostMatrixShare={toggleCostMatrixShare}
-                costMatrixTags={costMatrixTags}
-                costMatrixTagColors={costMatrixTagColors}
-                saveTagColor={saveTagColor}
-              />
-            )}
             </>
           </div>
           )}
@@ -3997,11 +3778,11 @@ export default function People() {
           payConfigDraft={payConfigDraft}
           payConfigOfficeWageDraft={payConfigOfficeWageDraft}
           payConfigSaving={payConfigSaving}
-          isDev={isDev}
           salaryTemplateByPersonName={salaryTemplateByPersonName}
           onUpsertPayConfig={upsertPayConfig}
           onHourlyWageChange={updatePayConfigHourlyWage}
           onOfficeHourlyWageChange={updatePayConfigOfficeHourlyWage}
+          onViewPayReport={(stub) => void viewPayStubInModal(stub)}
         />
       )}
 
