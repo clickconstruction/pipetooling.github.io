@@ -1,7 +1,11 @@
 import { Fragment } from 'react'
 import { ChecklistTitleWithLinks } from './ChecklistTitleWithLinks'
 import { DispatchNoteCombobox } from './DispatchNoteCombobox'
-import { getDispatchNoteDisplayMeta } from '../utils/dispatchNoteDisplay'
+import {
+  formatDispatchNoteDaysAgoShort,
+  formatDispatchNoteDaysAgoShortPhrase,
+  getDispatchNoteDisplayMeta,
+} from '../utils/dispatchNoteDisplay'
 import { useNarrowViewport640 } from '../hooks/useNarrowViewport640'
 
 export type EstimatorInboxRow = {
@@ -37,6 +41,10 @@ function formatDatetime(iso: string | null): string {
   const weekday = date.toLocaleDateString(undefined, { weekday: 'short' })
   const dateTime = date.toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' })
   return `${weekday}, ${dateTime}`
+}
+
+function formatDateShort(iso: string): string {
+  return new Date(iso).toLocaleDateString(undefined, { dateStyle: 'short' })
 }
 
 type EstimatorInboxSectionProps = {
@@ -83,6 +91,29 @@ export function EstimatorInboxSection({
   onDismiss,
 }: EstimatorInboxSectionProps) {
   const narrow = useNarrowViewport640()
+  // An empty inbox compresses to a single slim line — no body, no full-size header.
+  if (!loading && requests.length === 0 && headerBadge === 'open') {
+    return (
+      <div
+        style={{
+          marginBottom: '0.5rem',
+          border: '1px solid var(--border)',
+          borderRadius: 8,
+          background: 'var(--bg-subtle)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.5rem',
+          padding: '0.3rem 1rem',
+          color: 'var(--text-muted)',
+          fontSize: '0.8125rem',
+        }}
+      >
+        <span style={{ fontWeight: 600 }}>{sectionTitle}</span>
+        <span>— empty</span>
+      </div>
+    )
+  }
+
   // Amber header while work is waiting, so a collapsed inbox still signals at a glance.
   const hasOpenWork = !loading && headerBadge === 'open' && requests.some((r) => r.status === 'open')
 
@@ -155,52 +186,63 @@ export function EstimatorInboxSection({
                 const noteCount = req.note_count ?? 0
                 const noteCountLabel =
                   noteCount === 0 ? 'No messages' : noteCount === 1 ? '1 message' : `${noteCount} messages`
-                const lastNoteMeta = req.last_note_at ? getDispatchNoteDisplayMeta(req.last_note_at) : null
-                const statsEl = (
-                  <div
-                    style={{
-                      fontSize: '0.75rem',
-                      color: 'var(--text-muted)',
-                      lineHeight: 1.35,
-                    }}
-                  >
-                    <div style={{ fontWeight: 600, color: 'var(--text-700)' }}>{noteCountLabel}</div>
-                    {lastNoteMeta ? (
-                      narrow ? (
-                        <div
-                          style={{
-                            marginTop: 2,
-                            display: 'flex',
-                            flexDirection: 'column',
-                            gap: 2,
-                          }}
-                        >
-                          <span>Last {lastNoteMeta.weekdayTimeChicago}</span>
-                          <span>{lastNoteMeta.daysAgoLabel}</span>
-                        </div>
-                      ) : (
-                        <div style={{ marginTop: 2 }}>
-                          Last {lastNoteMeta.weekdayTimeChicago} · {lastNoteMeta.daysAgoLabel}
-                        </div>
-                      )
-                    ) : null}
-                  </div>
-                )
-                const dismissBtn = (
+                // Narrow closed rows: full-width green bar across the card bottom —
+                // the phone-sized counterpart of the desktop Dismiss rail.
+                const dismissBottomBar = (
                   <button
                     type="button"
                     onClick={() => onDismiss(req.id)}
                     disabled={estimatorRequestDismissingId === req.id}
+                    title="Dismiss from inbox"
                     style={{
-                      padding: '0.35rem 0.75rem',
-                      background: 'var(--bg-200)',
-                      border: 'none',
-                      borderRadius: 4,
-                      cursor: estimatorRequestDismissingId === req.id ? 'not-allowed' : 'pointer',
+                      width: '100%',
+                      marginTop: '0.5rem',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 6,
+                      padding: '0.45rem 0.75rem',
+                      border: '1px solid var(--border)',
+                      borderRadius: 6,
+                      background: 'var(--bg-green-tint)',
+                      color: 'var(--text-green-800)',
                       fontSize: '0.875rem',
-                      flexShrink: 0,
+                      fontWeight: 600,
+                      cursor: estimatorRequestDismissingId === req.id ? 'not-allowed' : 'pointer',
                     }}
                   >
+                    <span aria-hidden>✓</span>
+                    {estimatorRequestDismissingId === req.id ? '…' : 'Dismiss'}
+                  </button>
+                )
+                // Desktop closed rows: full-height Dismiss rail on the left — reads as
+                // "done, ready to archive" and gives dismissal a big obvious target.
+                const showDismissRail = isClosed && !narrow
+                const dismissRail = (
+                  <button
+                    type="button"
+                    onClick={() => onDismiss(req.id)}
+                    disabled={estimatorRequestDismissingId === req.id}
+                    title="Dismiss from inbox"
+                    style={{
+                      flexShrink: 0,
+                      alignSelf: 'stretch',
+                      width: 88,
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 4,
+                      border: 'none',
+                      borderRight: '1px solid var(--border)',
+                      background: 'var(--bg-green-tint)',
+                      color: 'var(--text-green-800)',
+                      fontSize: '0.8125rem',
+                      fontWeight: 600,
+                      cursor: estimatorRequestDismissingId === req.id ? 'not-allowed' : 'pointer',
+                    }}
+                  >
+                    <span aria-hidden style={{ fontSize: '1rem', lineHeight: 1 }}>✓</span>
                     {estimatorRequestDismissingId === req.id ? '…' : 'Dismiss'}
                   </button>
                 )
@@ -229,12 +271,25 @@ export function EstimatorInboxSection({
                       </li>
                     ) : null}
                     <li
-                      style={{
-                        padding: '0.75rem 0',
-                        borderBottom: '1px solid #f3f4f6',
-                        background: isClosed ? 'var(--bg-muted)' : undefined,
-                      }}
+                      style={
+                        showDismissRail
+                          ? {
+                              padding: 0,
+                              borderBottom: '1px solid #f3f4f6',
+                              background: 'var(--bg-muted)',
+                              display: 'flex',
+                              alignItems: 'stretch',
+                              gap: '0.75rem',
+                            }
+                          : {
+                              padding: '0.75rem 0',
+                              borderBottom: '1px solid #f3f4f6',
+                              background: isClosed ? 'var(--bg-muted)' : undefined,
+                            }
+                      }
                     >
+                    {showDismissRail ? dismissRail : null}
+                    <div style={showDismissRail ? { flex: 1, minWidth: 0, padding: '0.75rem 0.75rem 0.75rem 0' } : undefined}>
                     <div
                       // Whole collapsed row toggles the thread; the guard lets clicks on links
                       // and action buttons (Dismiss) through untouched.
@@ -288,17 +343,23 @@ export function EstimatorInboxSection({
                               }
                         }
                       >
-                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginRight: 6 }} aria-hidden>
-                          {expanded ? '▼' : '▶'}
-                        </span>
-                        <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginBottom: 4, display: 'inline' }}>
-                          From {fromLabel}
-                          {req.created_at ? (
-                            <span style={{ marginLeft: '0.5rem' }}>· {formatDatetime(req.created_at)}</span>
-                          ) : null}
-                        </div>
                         <div style={{ fontWeight: 500 }}>
                           <ChecklistTitleWithLinks title={req.title} links={req.links ?? []} />
+                        </div>
+                        <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: 4 }}>
+                          <span style={{ fontSize: '0.75rem', marginRight: 6 }} aria-hidden>
+                            {expanded ? '▼' : '▶'}
+                          </span>
+                          From {fromLabel}
+                          {req.created_at ? (
+                            <span style={{ marginLeft: '0.5rem' }} title={formatDatetime(req.created_at)}>
+                              · {formatDateShort(req.created_at)} ({formatDispatchNoteDaysAgoShort(req.created_at)})
+                            </span>
+                          ) : null}
+                          <span style={{ marginLeft: '0.5rem' }}>
+                            · <span style={{ fontWeight: 600, color: 'var(--text-700)' }}>{noteCountLabel}</span>
+                            {req.last_note_at ? `, ${formatDispatchNoteDaysAgoShortPhrase(req.last_note_at)}` : null}
+                          </span>
                         </div>
                         {req.reference_summary?.trim() ? (
                           <div style={{ marginTop: 6, fontSize: '0.8125rem', color: 'var(--text-600)' }}>
@@ -319,73 +380,6 @@ export function EstimatorInboxSection({
                             </a>
                           </div>
                         ) : null}
-                      </div>
-                      <div
-                        style={
-                          narrow
-                            ? {
-                                flexShrink: 0,
-                                width: '100%',
-                                display: 'flex',
-                                flexDirection: 'column',
-                                alignItems: 'flex-start',
-                                gap: 6,
-                                textAlign: 'left',
-                              }
-                            : {
-                                flexShrink: 0,
-                                display: 'flex',
-                                flexDirection: 'column',
-                                alignItems: 'flex-end',
-                                gap: 6,
-                                textAlign: 'right',
-                                maxWidth: 'min(220px, 45%)',
-                              }
-                        }
-                      >
-                        {narrow && isClosed ? (
-                          <div
-                            style={{
-                              display: 'flex',
-                              flexDirection: 'row',
-                              alignItems: 'flex-start',
-                              gap: '0.5rem',
-                              width: '100%',
-                            }}
-                          >
-                            <div style={{ flex: 1, minWidth: 0 }}>{statsEl}</div>
-                            <div
-                              style={{
-                                display: 'flex',
-                                flexDirection: 'column',
-                                alignItems: 'flex-end',
-                                gap: 4,
-                                flexShrink: 0,
-                              }}
-                            >
-                              {dismissBtn}
-                              {noteCount > 0 ? (
-                                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textAlign: 'right' }}>
-                                  Click to expand thread
-                                </div>
-                              ) : null}
-                            </div>
-                          </div>
-                        ) : narrow && !isClosed ? (
-                          statsEl
-                        ) : (
-                          <>
-                            {statsEl}
-                            {isClosed ? (
-                              <>
-                                <div style={{ display: 'contents' }}>{dismissBtn}</div>
-                                {noteCount > 0 ? (
-                                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Click to expand thread</div>
-                                ) : null}
-                              </>
-                            ) : null}
-                          </>
-                        )}
                       </div>
                     </div>
                     {expanded && (
@@ -641,6 +635,8 @@ export function EstimatorInboxSection({
                         )}
                       </div>
                     )}
+                    {narrow && isClosed ? dismissBottomBar : null}
+                    </div>
                   </li>
                   </Fragment>
                 )

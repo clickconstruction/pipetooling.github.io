@@ -32,6 +32,29 @@ export function HelpFeedbackInboxSection() {
 
   const openCount = rows.filter((r) => r.status === 'open').length
 
+  // An empty inbox compresses to a single slim line — no body, no full-size header.
+  if (!loading && rows.length === 0) {
+    return (
+      <div
+        style={{
+          marginBottom: '0.5rem',
+          border: '1px solid var(--border)',
+          borderRadius: 8,
+          background: 'var(--bg-subtle)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.5rem',
+          padding: '0.3rem 1rem',
+          color: 'var(--text-muted)',
+          fontSize: '0.8125rem',
+        }}
+      >
+        <span style={{ fontWeight: 600 }}>Help feedback</span>
+        <span>— empty</span>
+      </div>
+    )
+  }
+
   function renderRow(row: HelpFeedbackInboxRow) {
     const isClosed = row.status === 'closed'
     const expanded = expandedId === row.id
