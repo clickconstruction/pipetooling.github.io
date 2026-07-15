@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-15 (v2.685)
+last_updated: 2026-07-15 (v2.686)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.686)
+
+### Dashboard — Dispatch/Estimator inbox rows expand from anywhere in the box (2026-07-15)
+Clicking a closed inbox row's thread previously only worked on the message-text column (left side); the stats, "Expand for thread" hint, and empty space did nothing, which read as broken. The click/keyboard toggle now lives on the whole collapsed row container in both [`DispatchInboxSection`](../src/components/DispatchInboxSection.tsx) and [`EstimatorInboxSection`](../src/components/EstimatorInboxSection.tsx), guarded so clicks on links and action buttons (Dismiss, Add Customer Pictures URL, Create Trip Charge) still do their own thing. Hint text updated "Expand for thread" → "Click to expand thread".
 
 ## Latest Updates (v2.685)
 
