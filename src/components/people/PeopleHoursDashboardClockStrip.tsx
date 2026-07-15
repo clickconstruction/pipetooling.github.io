@@ -439,8 +439,6 @@ export function PeopleHoursDashboardClockStrip({ onSessionsChanged, addSessionPe
         jobsWorkedTodayJobLedgerIdsWithReport={myTeam.jobsWorkedTodayJobLedgerIdsWithReport}
         showScopeToggle={showClockStripScopeToggle}
         clockStripScope={clockStripScope}
-        clockStripNarrowScopeLabel={showClockStripScopeToggle ? 'Everyone' : undefined}
-        clockStripWideScopeLabel={showClockStripScopeToggle ? 'Organization' : undefined}
         onClockStripScopeChange={setClockStripScopePersist}
         showJobBidColumn={showClockStripScopeToggle}
         onJobBidSaved={onStripJobBidSaved}

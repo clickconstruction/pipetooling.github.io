@@ -24,7 +24,7 @@ export function CollapsibleSection({ title, count, headerCountLabel, open, onTog
           margin: 0,
           padding: '0.5rem 0.75rem',
           width: '100%',
-          background: headerStyle?.background ?? '#f9fafb',
+          background: headerStyle?.background ?? 'var(--bg-subtle)',
           border: 'none',
           cursor: 'pointer',
           fontSize: '0.875rem',
