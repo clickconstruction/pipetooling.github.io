@@ -4337,8 +4337,10 @@ export default function Dashboard() {
   }
 
   const showChecklist = checklistLoading || todayChecklist.length > 0
+  /** Recently Completed only earns its corner link when something was actually completed (dev-only feature). */
+  const showRecentlyCompleted = isDev && completedItems.length > 0
   /** My Inbox card: Due Today / Overdue / Recently Completed Tasks (dev) grouped as one unit. */
-  const showMyInboxCard = userLoading || showChecklist || outstandingLoading || outstandingItems.length > 0 || isDev
+  const showMyInboxCard = userLoading || showChecklist || outstandingLoading || outstandingItems.length > 0 || showRecentlyCompleted
   const showAssigned = assignedLoading || assignedSteps.length > 0
 
   const activeAssignedSteps = useMemo(
@@ -5682,7 +5684,38 @@ export default function Dashboard() {
       )}
 
       {showMyInboxCard && (
-        <DashboardGroupCard id="dash-my-inbox" title="My Inbox">
+        <DashboardGroupCard
+          id="dash-my-inbox"
+          title="My Inbox"
+          headerRight={
+            showRecentlyCompleted ? (
+              <button
+                type="button"
+                onClick={() => setCompletedItemsOpen((o) => !o)}
+                aria-expanded={completedItemsOpen}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  padding: 0,
+                  cursor: 'pointer',
+                  fontSize: '0.875rem',
+                  fontWeight: 400,
+                  color: 'var(--text-link)',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                <span aria-hidden style={{ fontSize: '0.6875rem', marginRight: 4 }}>{completedItemsOpen ? '▼' : '▶'}</span>
+                Recently Completed
+                {(() => {
+                  const n = completedItems
+                    .filter((inst) => !ignoredItemIds.has(inst.checklist_item_id))
+                    .filter((inst) => !readInstanceIds.has(inst.id)).length
+                  return n > 0 ? ` (${n} unread)` : ''
+                })()}
+              </button>
+            ) : null
+          }
+        >
         {(userLoading || showChecklist) && (
         <div style={{ marginBottom: '1rem' }}>
           <h2 style={{ fontSize: '1.125rem', marginBottom: '0.75rem' }}>
@@ -5841,31 +5874,8 @@ export default function Dashboard() {
           ) : null}
         </div>
       )}
-      {isDev && (
+      {showRecentlyCompleted && (
         <div>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem', marginBottom: completedItemsOpen ? '0.75rem' : 0 }}>
-            <h2
-              style={{
-                fontSize: '1.125rem',
-                margin: 0,
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.5rem',
-              }}
-              onClick={() => setCompletedItemsOpen((o) => !o)}
-              role="button"
-              tabIndex={0}
-              onKeyDown={(e) => e.key === 'Enter' && setCompletedItemsOpen((o) => !o)}
-            >
-              {completedItemsOpen ? '▼' : '▶'} Recently Completed Tasks
-              {(() => {
-                const visibleItems = completedItems.filter((inst) => !ignoredItemIds.has(inst.checklist_item_id))
-                const n = visibleItems.filter((inst) => !readInstanceIds.has(inst.id)).length
-                return n > 0 ? <span style={{ fontWeight: 600, color: 'var(--text-link)' }}>{' - '}{n} UNREAD</span> : null
-              })()}
-            </h2>
-          </div>
           {completedItemsOpen && (
             <>
               {completedItemsLoading ? (

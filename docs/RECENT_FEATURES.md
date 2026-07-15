@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-15 (v2.682)
+last_updated: 2026-07-15 (v2.683)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.683)
+
+### Dashboard — Recently Completed hides when empty; corner link in My Inbox (2026-07-15)
+The dev-only **Recently Completed Tasks** block no longer renders a big collapsible heading that's always present: it hides entirely when nothing was completed in the last 7 days, and otherwise appears as a small link-styled toggle in the **My Inbox** card's top-right corner — `▶ Recently Completed (N unread)` — that expands the same grouped-by-completer list in place (unread markers, mark-read/ignore/re-send unchanged). `DashboardGroupCard` gains a `headerRight` slot for the title row; the My Inbox card/dock gate now requires actual completed items on the dev leg instead of bare `isDev`. Help guide `dashboard-my-inbox.md` updated.
 
 ## Latest Updates (v2.682)
 

@@ -4,8 +4,19 @@ import type { ReactNode } from 'react'
  * Groups related dashboard sections into one visible unit: a bordered card with
  * a title, visually matching BillingPipelineCard. Used by "My Inbox" (Due Today /
  * Overdue / Recently Completed Tasks); `id` carries the section-dock anchor.
+ * `headerRight` renders in the title row's top-right corner (link-styled controls).
  */
-export function DashboardGroupCard({ id, title, children }: { id?: string; title: string; children: ReactNode }) {
+export function DashboardGroupCard({
+  id,
+  title,
+  headerRight,
+  children,
+}: {
+  id?: string
+  title: string
+  headerRight?: ReactNode
+  children: ReactNode
+}) {
   return (
     <div
       id={id}
@@ -19,7 +30,10 @@ export function DashboardGroupCard({ id, title, children }: { id?: string; title
         scrollMarginTop: 8,
       }}
     >
-      <h2 style={{ margin: '0 0 0.5rem', fontSize: '1.125rem' }}>{title}</h2>
+      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.5rem' }}>
+        <h2 style={{ margin: 0, fontSize: '1.125rem' }}>{title}</h2>
+        {headerRight ?? null}
+      </div>
       {children}
     </div>
   )
