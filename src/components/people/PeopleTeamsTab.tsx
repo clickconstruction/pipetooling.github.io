@@ -3,7 +3,39 @@ import { supabase } from '../../lib/supabase'
 import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
 import { useToastContext } from '../../contexts/ToastContext'
 
-type GoalPickerUserRow = { id: string; name: string | null; email: string | null }
+type GoalPickerUserRow = {
+  id: string
+  name: string | null
+  email: string | null
+  role: string | null
+  archived_at: string | null
+}
+
+/** Singular role labels for inline display next to names (users.role values). */
+const ROLE_LABELS: Record<string, string> = {
+  dev: 'Dev',
+  master_technician: 'Master Technician',
+  assistant: 'Assistant',
+  controller: 'Controller',
+  helpers: 'Helper',
+  helper: 'Helper',
+  estimator: 'Estimator',
+  primary: 'Primary',
+  superintendent: 'Superintendent',
+  sub: 'Subcontractor',
+  subcontractor: 'Subcontractor',
+}
+
+function roleLabelForUser(userId: string, users: GoalPickerUserRow[]): string {
+  const r = users.find((x) => x.id === userId)?.role
+  return r ? ROLE_LABELS[r] ?? r : ''
+}
+
+function pickerOptionLabel(u: GoalPickerUserRow): string {
+  const base = (u.name?.trim() || u.email || u.id).slice(0, 60)
+  const role = u.role ? ROLE_LABELS[u.role] ?? u.role : ''
+  return role ? `${base} — ${role}` : base
+}
 
 type TeamAssignmentRow = {
   id: string
@@ -21,7 +53,8 @@ type TeamLeaderAssignmentRowRaw = {
 
 function displayLabelForUser(userId: string, users: GoalPickerUserRow[]): string {
   const u = users.find((x) => x.id === userId)
-  return u?.name?.trim() || u?.email || userId
+  const base = u?.name?.trim() || u?.email || userId
+  return u?.archived_at ? `${base} (archived)` : base
 }
 
 function normalizeAssignmentRow(r: TeamLeaderAssignmentRowRaw): TeamAssignmentRow {
@@ -42,11 +75,15 @@ export default function PeopleTeamsTab({ authUserId, authUserRole }: PeopleTeams
   const { showToast } = useToastContext()
   const isDev = authUserRole === 'dev'
 
+  /** All users (including archived) — assignments may reference archived people; labels must still resolve. */
+  const [allUsers, setAllUsers] = useState<GoalPickerUserRow[]>([])
+  /** Active users only — what the leader/member pickers offer. */
   const [pickerUsers, setPickerUsers] = useState<GoalPickerUserRow[]>([])
   const [assignments, setAssignments] = useState<TeamAssignmentRow[]>([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
 
+  const [archivedTeamsOpen, setArchivedTeamsOpen] = useState(false)
   const [globalLeaderId, setGlobalLeaderId] = useState('')
   const [globalMemberId, setGlobalMemberId] = useState('')
   const [assignSaving, setAssignSaving] = useState(false)
@@ -59,7 +96,7 @@ export default function PeopleTeamsTab({ authUserId, authUserRole }: PeopleTeams
       const [goalUsers, tlaRows] = await Promise.all([
         withSupabaseRetry(
           async () =>
-            supabase.from('users').select('id, name, email').is('archived_at', null).order('name'),
+            supabase.from('users').select('id, name, email, role, archived_at').order('name'),
           'people teams load users',
         ),
         withSupabaseRetry(
@@ -71,7 +108,9 @@ export default function PeopleTeamsTab({ authUserId, authUserRole }: PeopleTeams
           'people teams load assignments',
         ),
       ])
-      setPickerUsers((goalUsers ?? []) as GoalPickerUserRow[])
+      const all = (goalUsers ?? []) as GoalPickerUserRow[]
+      setAllUsers(all)
+      setPickerUsers(all.filter((u) => !u.archived_at))
       setAssignments(((tlaRows ?? []) as TeamLeaderAssignmentRowRaw[]).map(normalizeAssignmentRow))
     } catch (e) {
       showToast(formatErrorMessage(e), 'error')
@@ -111,38 +150,53 @@ export default function PeopleTeamsTab({ authUserId, authUserRole }: PeopleTeams
     }
     for (const [, list] of byLeader) {
       list.sort((a, b) =>
-        displayLabelForUser(a.member_user_id, pickerUsers).localeCompare(
-          displayLabelForUser(b.member_user_id, pickerUsers),
+        displayLabelForUser(a.member_user_id, allUsers).localeCompare(
+          displayLabelForUser(b.member_user_id, allUsers),
           undefined,
           { sensitivity: 'base' },
         ),
       )
     }
     return byLeader
-  }, [assignments, pickerUsers])
+  }, [assignments, allUsers])
 
   const sortedLeaderIds = useMemo(() => {
     const ids = [...leadersGrouped.keys()]
     ids.sort((a, b) =>
-      displayLabelForUser(a, pickerUsers).localeCompare(displayLabelForUser(b, pickerUsers), undefined, {
+      displayLabelForUser(a, allUsers).localeCompare(displayLabelForUser(b, allUsers), undefined, {
         sensitivity: 'base',
       }),
     )
     return ids
-  }, [leadersGrouped, pickerUsers])
+  }, [leadersGrouped, allUsers])
 
   const filteredLeaderIds = useMemo(() => {
     const q = searchQuery.trim().toLowerCase()
     if (!q) return sortedLeaderIds
     return sortedLeaderIds.filter((leaderId) => {
-      const leaderLabel = displayLabelForUser(leaderId, pickerUsers).toLowerCase()
+      const leaderLabel = displayLabelForUser(leaderId, allUsers).toLowerCase()
       if (leaderLabel.includes(q)) return true
       const rows = leadersGrouped.get(leaderId) ?? []
       return rows.some((r) =>
-        displayLabelForUser(r.member_user_id, pickerUsers).toLowerCase().includes(q),
+        displayLabelForUser(r.member_user_id, allUsers).toLowerCase().includes(q),
       )
     })
-  }, [sortedLeaderIds, searchQuery, pickerUsers, leadersGrouped])
+  }, [sortedLeaderIds, searchQuery, allUsers, leadersGrouped])
+
+  // Teams led by an archived user collapse into a bottom section — they're inert
+  // (an archived leader can't sign in to approve hours) but stay inspectable/removable.
+  const archivedUserIds = useMemo(
+    () => new Set(allUsers.filter((u) => u.archived_at).map((u) => u.id)),
+    [allUsers],
+  )
+  const activeLeaderIds = useMemo(
+    () => filteredLeaderIds.filter((id) => !archivedUserIds.has(id)),
+    [filteredLeaderIds, archivedUserIds],
+  )
+  const archivedLeaderIds = useMemo(
+    () => filteredLeaderIds.filter((id) => archivedUserIds.has(id)),
+    [filteredLeaderIds, archivedUserIds],
+  )
 
   const memberOptionsForLeader = useCallback(
     (leaderId: string) => {
@@ -254,7 +308,7 @@ export default function PeopleTeamsTab({ authUserId, authUserRole }: PeopleTeams
             <option value="">Select user…</option>
             {pickerUsers.map((u) => (
               <option key={u.id} value={u.id}>
-                {(u.name?.trim() || u.email || u.id).slice(0, 80)}
+                {pickerOptionLabel(u)}
               </option>
             ))}
           </select>
@@ -288,7 +342,7 @@ export default function PeopleTeamsTab({ authUserId, authUserRole }: PeopleTeams
             <option value="">{globalMemberPlaceholder}</option>
             {globalMemberOptions.map((u) => (
               <option key={u.id} value={u.id}>
-                {(u.name?.trim() || u.email || u.id).slice(0, 80)}
+                {pickerOptionLabel(u)}
               </option>
             ))}
           </select>
@@ -336,9 +390,9 @@ export default function PeopleTeamsTab({ authUserId, authUserRole }: PeopleTeams
       ) : filteredLeaderIds.length === 0 ? (
         <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', margin: 0 }}>No assignments match your search.</p>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          {filteredLeaderIds.map((leaderId) => {
-            const leaderLabel = displayLabelForUser(leaderId, pickerUsers)
+        (() => {
+          const renderLeaderCard = (leaderId: string) => {
+            const leaderLabel = displayLabelForUser(leaderId, allUsers)
             const rows = leadersGrouped.get(leaderId) ?? []
             const perOpts = memberOptionsForLeader(leaderId)
             const perPick = perLeaderMemberId[leaderId] ?? ''
@@ -375,6 +429,11 @@ export default function PeopleTeamsTab({ authUserId, authUserRole }: PeopleTeams
                     }}
                   >
                     {leaderLabel}
+                    {roleLabelForUser(leaderId, allUsers) ? (
+                      <span style={{ fontWeight: 400, fontSize: '0.8125rem', color: 'var(--text-muted)', marginLeft: '0.45rem' }}>
+                        {roleLabelForUser(leaderId, allUsers)}
+                      </span>
+                    ) : null}
                   </span>
                   <div
                     style={{
@@ -409,7 +468,7 @@ export default function PeopleTeamsTab({ authUserId, authUserRole }: PeopleTeams
                       </option>
                       {perOpts.map((u) => (
                         <option key={u.id} value={u.id}>
-                          {(u.name?.trim() || u.email || u.id).slice(0, 80)}
+                          {pickerOptionLabel(u)}
                         </option>
                       ))}
                     </select>
@@ -457,7 +516,12 @@ export default function PeopleTeamsTab({ authUserId, authUserRole }: PeopleTeams
                         {rows.map((row) => (
                           <tr key={row.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
                             <td style={{ padding: '0.5rem 0.5rem', paddingLeft: '1.25rem' }}>
-                              {displayLabelForUser(row.member_user_id, pickerUsers)}
+                              {displayLabelForUser(row.member_user_id, allUsers)}
+                              {roleLabelForUser(row.member_user_id, allUsers) ? (
+                                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginLeft: '0.4rem' }}>
+                                  {roleLabelForUser(row.member_user_id, allUsers)}
+                                </span>
+                              ) : null}
                             </td>
                             <td style={{ padding: '0.5rem 0.5rem', maxWidth: 220 }}>
                               <select
@@ -517,8 +581,43 @@ export default function PeopleTeamsTab({ authUserId, authUserRole }: PeopleTeams
                 </div>
               </div>
             )
-          })}
-        </div>
+          }
+          return (
+            <>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                {activeLeaderIds.map((id) => renderLeaderCard(id))}
+                {activeLeaderIds.length === 0 ? (
+                  <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', margin: 0 }}>
+                    No active-leader assignments{searchQuery.trim() ? ' match your search' : ''}.
+                  </p>
+                ) : null}
+              </div>
+              {archivedLeaderIds.length > 0 ? (
+                <div style={{ marginTop: '1rem' }}>
+                  <button
+                    type="button"
+                    onClick={() => setArchivedTeamsOpen((v) => !v)}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      padding: 0,
+                      color: 'var(--text-muted)',
+                      fontSize: '0.8125rem',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    {archivedTeamsOpen ? '▾' : '▸'} Archived leaders ({archivedLeaderIds.length})
+                  </button>
+                  {archivedTeamsOpen ? (
+                    <div style={{ marginTop: '0.6rem', display: 'flex', flexDirection: 'column', gap: '1rem', opacity: 0.8 }}>
+                      {archivedLeaderIds.map((id) => renderLeaderCard(id))}
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
+            </>
+          )
+        })()
       )}
     </div>
   )
