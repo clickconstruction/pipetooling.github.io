@@ -504,6 +504,13 @@ export function DashboardMyTimeDayEditorModal({
               .eq('id', session.id),
           'reject clock session from my time day editor',
         )
+        // people_hours is maintained incrementally (approve +duration / reject -duration); a raw
+        // rejected_at update bypasses that, freezing the day's payroll hours. Resync from the
+        // remaining approved sessions server-side — the same RPC the Adjust-times save path uses.
+        await withSupabaseRetry(
+          async () => supabase.rpc('recompute_people_hours_after_session_edit', { p_session_id: session.id }),
+          'recompute people_hours after reject',
+        )
         setRejectSessionConfirm(null)
         setSessionsFetchNonce((n) => n + 1)
         onLinkedSessionsUpdated?.()
