@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-15 (v2.690)
+last_updated: 2026-07-15 (v2.691)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.691)
+
+### Jobs → Sub Labor — Date / Contractor sort toggle (2026-07-15)
+A **Sort:** segmented toggle sits to the right of the ledger search box: **Date** (job date, newest first, falling back to created date) or **Contractor** (alphabetical). Defaults to **Contractor**, so the ledger opens grouped by sub. Sorting applies to the already search-/due-filtered rows. [`JobsSubLaborTab.tsx`](../src/components/jobs/JobsSubLaborTab.tsx).
 
 ## Latest Updates (v2.690)
 
