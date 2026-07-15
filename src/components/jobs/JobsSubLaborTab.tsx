@@ -59,6 +59,7 @@ export default function JobsSubLaborTab({
   const [expandedSubLaborJobIds, setExpandedSubLaborJobIds] = useState<Set<string>>(new Set())
   const [showAllOutstanding, setShowAllOutstanding] = useState(false)
   const [showOnlyDue, setShowOnlyDue] = useState(true)
+  const [sortBy, setSortBy] = useState<'date' | 'contractor'>('contractor')
 
   const outstandingRows = subLaborOutstandingByPerson.rows
   const OUTSTANDING_PREVIEW = 8
@@ -73,6 +74,15 @@ export default function JobsSubLaborTab({
     .filter((job) => subLaborJobMatchesSearch(job, subLaborSearch, laborJobNamesByHcp))
     .map((job) => ({ job, ...subLaborJobBalance(job) }))
     .filter((row) => !showOnlyDue || row.balance > 0)
+    .sort((a, b) => {
+      if (sortBy === 'contractor') {
+        return (a.job.assigned_to_name ?? '').localeCompare(b.job.assigned_to_name ?? '')
+      }
+      // Date: newest first, by job_date (falling back to created_at).
+      const aDate = a.job.job_date ?? a.job.created_at ?? ''
+      const bDate = b.job.job_date ?? b.job.created_at ?? ''
+      return bDate.localeCompare(aDate)
+    })
 
   return (
     <div>
@@ -180,6 +190,33 @@ export default function JobsSubLaborTab({
           onChange={(e) => onSubLaborSearchChange(e.target.value)}
           style={{ flex: '1 1 240px', minWidth: 0, padding: '0.5rem 0.75rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem', boxSizing: 'border-box' }}
         />
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', whiteSpace: 'nowrap' }}>
+          <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>Sort:</span>
+          <div style={{ display: 'flex', border: '1px solid var(--border-strong)', borderRadius: 4, overflow: 'hidden' }}>
+            {(['date', 'contractor'] as const).map((key) => {
+              const active = sortBy === key
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => setSortBy(key)}
+                  aria-pressed={active}
+                  style={{
+                    padding: '0.4rem 0.75rem',
+                    border: 'none',
+                    background: active ? '#3b82f6' : 'var(--surface)',
+                    color: active ? 'white' : 'var(--text-700)',
+                    cursor: 'pointer',
+                    fontSize: '0.875rem',
+                    fontWeight: active ? 600 : 400,
+                  }}
+                >
+                  {key === 'date' ? 'Date' : 'Contractor'}
+                </button>
+              )
+            })}
+          </div>
+        </div>
         <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.875rem', cursor: 'pointer', whiteSpace: 'nowrap' }}>
           <input
             type="checkbox"
