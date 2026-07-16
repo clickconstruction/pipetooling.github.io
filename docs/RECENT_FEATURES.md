@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-16 (v2.695)
+last_updated: 2026-07-16 (v2.696)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.696)
+
+### Safety — deleted records are now archived for recovery (Phase 1, 2026-07-16)
+High-value rows were hard-deleted and irrecoverable: deleting a job (`jobs_ledger`) cascades across ~17 child tables (invoices, payments, materials, crew, reports…); bids and reports/invoices delete the same way. With Supabase PITR off — and PITR being a whole-database rollback anyway — there was no way to surgically undo one hostile or accidental deletion. New migration `20260716120000_deleted_records_archive.sql` adds `public.deleted_records_archive` plus a generic `BEFORE DELETE` trigger (`archive_deleted_record()`, `SECURITY DEFINER`) that snapshots the full deleted row (`to_jsonb(OLD)`) of the covered tables — `jobs_ledger` + its cascade closure, `jobs_ledger_invoices`, `reports`, and `bids` + its cascade closure (~38 tables) — grouped under its top-level job/bid bundle, with who deleted it and when. It fires for every delete path (direct delete, delete RPCs, cascade) and is guarded so it can never block a delete. Rows auto-purge after 90 days (`pg_cron`). The archive is dev-only (RLS `SELECT is_dev()`), written solely by the trigger. This is **Phase 1 (capture)** — deletions are recoverable-from-data immediately; **Phase 2** will add a dev-only restore RPC + a "Recently deleted" Settings view. No client change. See [`MIGRATIONS.md`](MIGRATIONS.md) and [`ACCESS_CONTROL.md`](ACCESS_CONTROL.md).
 
 ## Latest Updates (v2.695)
 
