@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-16 (v2.702)
+last_updated: 2026-07-16 (v2.703)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.703)
+
+### Fix — pay stubs with deductions can be deleted again (2026-07-16)
+Deleting a pay stub that had **any** deduction failed with `pay stub not found for pay_stub_id …` and rolled the delete back, so those stubs were simply undeletable from People → Pay. A validation trigger on `pay_stub_deductions` fires during the stub's own cascade delete, looked up the parent stub, found it already gone, and raised — the same shape as the job-activity cascade bug fixed in `20260619120000`. `20260716235000_fix_pay_stub_deductions_cascade_delete.sql` makes that lookup return quietly on DELETE when the parent is gone (exactly as the sibling `validate_pay_stub_payments_vs_net()` already did), while leaving the deductions-cannot-exceed-gross cap fully intact on insert and update. This bug pre-dates the deleted-records archive — it reproduces with the archive trigger removed — and was found while testing tier-2 coverage. No client change.
 
 ## Latest Updates (v2.702)
 
