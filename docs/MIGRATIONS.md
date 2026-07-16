@@ -101,6 +101,13 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 ### July 2026
 
+#### July 16, 2026
+
+**`20260716090000_guard_users_privileged_columns.sql`** _(apply via `supabase db push` after the file is on `main`)_
+- **Purpose**: **Close a self-privilege-escalation hole.** The `"Users can update own profile"` RLS policy checks only row ownership (`auth.uid() = id`), not which columns change, and `authenticated` holds column UPDATE on `public.users` — so any authenticated user could PATCH their own row to `role='dev'` (full admin, incl. the cascading `jobs_ledger` hard-delete) or clear their own `read_only` training flag. Adds a `BEFORE UPDATE OF role, read_only, archived_at` trigger (`users_guard_privileged_columns()`, `SECURITY DEFINER`): only a `dev` may change `role`/`read_only`; `archived_at` is edge-flow-only.
+- **Impact**: None for legitimate flows — dev `updateRole`/`updateReadOnly` (authenticated dev) still pass, and service-role edge functions (`archive-user`/`restore-user`/`claim-dev`/`merge-users`) pass because their calls carry no JWT (`auth.uid()` NULL → deny branches skipped, same as `prevent_bid_number_update_by_estimator_primary`). Blocks self-escalation for **every** non-dev role. No client change.
+- **Category**: Security / RLS hardening
+
 #### July 15, 2026
 
 **`20260715120000_drop_show_in_cost_matrix.sql`** _(applied via `supabase db push` after the v2.675 client deploy)_
