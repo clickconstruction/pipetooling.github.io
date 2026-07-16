@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-15 (v2.693)
+last_updated: 2026-07-15 (v2.694)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.694)
+
+### Dashboard — expanded Recent Report readable in dark mode (2026-07-15)
+Expanding a report in the Dashboard **Recent Reports** section forced a hardcoded white background (`#fff`) on the row while its text stayed theme-driven — so in dark mode you got light-gray text on a white block, effectively unreadable. The literal had slipped past the `theme-tokenize.mjs` CI check because it sat in the head of a nested ternary (the codemod only rewrites the tail branch). The expanded-row background now uses `var(--surface)` — pixel-identical in light mode, correct dark slate (`#1f2937`) in dark mode — so the already-tokenized body text lands on a real surface with proper contrast. The "hide from dashboard reports…on refresh" checkbox `accentColor` also moved from raw `#9ca3af` to `var(--text-faint)` for dark-mode polish. [`Dashboard.tsx`](../src/pages/Dashboard.tsx).
 
 ## Latest Updates (v2.693)
 

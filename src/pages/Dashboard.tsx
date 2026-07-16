@@ -7209,7 +7209,7 @@ export default function Dashboard() {
                           style={{
                             border: '1px solid var(--border)',
                             borderRadius: 8,
-                            background: isExpanded ? '#fff' : (isRead ? 'var(--bg-subtle)' : 'var(--surface)'),
+                            background: isExpanded ? 'var(--surface)' : (isRead ? 'var(--bg-subtle)' : 'var(--surface)'),
                             opacity: isRead && !isExpanded ? 0.85 : 1,
                             overflow: 'hidden',
                           }}
@@ -7383,7 +7383,7 @@ export default function Dashboard() {
                         }
                       }
                     }}
-                    style={{ margin: 0, accentColor: '#9ca3af' }}
+                    style={{ margin: 0, accentColor: 'var(--text-faint)' }}
                   />
                   <span>hide from dashboard reports I've opened, on refresh</span>
                 </label>
