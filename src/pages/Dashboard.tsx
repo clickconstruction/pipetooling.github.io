@@ -1122,7 +1122,6 @@ export default function Dashboard() {
   const [superintendentJobs, setSuperintendentJobs] = useState<DashboardTeamAssignedJobRow[]>([])
   const [superintendentJobsLoading, setSuperintendentJobsLoading] = useState(false)
   const [superintendentJobsExpanded, setSuperintendentJobsExpanded] = useState(true)
-  const [assignedJobsExpanded, setAssignedJobsExpanded] = useState(true)
   const [assignedStagesExpanded, setAssignedStagesExpanded] = useState(true)
   const [assignedStagesCompleteExpanded, setAssignedStagesCompleteExpanded] = useState(false)
   const [subscribedStagesExpanded, setSubscribedStagesExpanded] = useState(true)
@@ -4362,6 +4361,9 @@ export default function Dashboard() {
   }, [assignedLoading, assignedSteps])
 
   const showSubscribed = role === 'dev' || role === 'master_technician' || isAssistantLike(role)
+  /** Projects card wraps Assigned + Subscribed stages; visible if either sub-section would show. */
+  const projectsCardVisible =
+    userLoading || showAssigned || (showSubscribed && (subscribedLoading || subscribedSteps.length > 0))
   const showRecent = role === 'dev' || role === 'master_technician' || isAssistantLike(role) || role === 'primary'
   const showFinancials = role === 'dev' || role === 'master_technician' || isAssistantLike(role)
 
@@ -4649,6 +4651,7 @@ export default function Dashboard() {
   const dockSections = [
     { id: 'dash-notifications', label: 'Notifications', visible: showFinancials },
     { id: 'dash-clocked-in', label: 'ClockedIn', visible: Boolean(authUser?.id && showClockActivityStrip) },
+    { id: 'dash-my-inbox', label: 'My Inbox', visible: showMyInboxCard },
     {
       id: 'dash-teams-inbox',
       label: 'Teams Inbox',
@@ -4659,7 +4662,6 @@ export default function Dashboard() {
       label: 'Billing',
       visible: isAssistantLike(role) || role === 'dev' || role === 'master_technician',
     },
-    { id: 'dash-my-inbox', label: 'My Inbox', visible: showMyInboxCard },
     {
       id: 'dash-bids',
       label: 'Bids',
@@ -4668,1025 +4670,12 @@ export default function Dashboard() {
         (myBidsLoading || myBids.some((b) => !hiddenBidIds.has(b.id))),
     },
     { id: 'dash-reports', label: 'Reports', visible: showRecent },
+    { id: 'dash-projects', label: 'Projects', visible: projectsCardVisible },
     { id: 'dash-me', label: 'Me', visible: Boolean(authUser?.id) },
   ].filter((sec) => sec.visible)
 
   /** Above-the-fold: quick actions and clock first; checklist/assigned use skeletons until data arrives. */
-  return (
-    <div style={{ paddingBottom: dockSections.length > 1 ? '4.5rem' : 0 }}>
-      {dockSections.length > 1 ? <SectionDock sections={dockSections} ariaLabel="Dashboard sections" /> : null}
-      {showFinancials && <div id="dash-notifications" aria-hidden="true" style={dockAnchorStyle} />}
-      {showFinancials && <DashboardFinancialsSection />}
-      {showDashboardQuickButtons && quickButtonsPlacement === 'top' && (
-        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '1rem', justifyContent: 'center' }}>
-          {quickActionDefs.map((b) => (
-            <Link key={b.key} to={b.to} style={quickActionLinkStyle}>
-              {b.label}
-            </Link>
-          ))}
-        </div>
-      )}
-      {authUser?.id && (
-        <ClockInOutButton
-          userId={authUser.id}
-          userName={clockDisplayName}
-          onOpenMyTimeDayEditor={dashboardSelfIsSalary ? undefined : openMyTimePreviewFromClock}
-          onClockInSuccess={handleClockInSuccessContractPrompt}
-          onFieldReportSaved={() => void refreshDashboardAssignedJobLists()}
-        />
-      )}
-      {tallyAndPinnedBlock}
-      {authUser?.id && teamFeedbackHomeEnabled && (
-        <div style={{ marginBottom: '1rem' }}>
-          <button
-            type="button"
-            onClick={() => setTeamFeedbackWizardOpen(true)}
-            style={{
-              padding: '0.5rem 1rem',
-              fontSize: '1rem',
-              fontWeight: 600,
-              border: '2px solid #ea580c',
-              borderRadius: 8,
-              background: 'var(--bg-orange-tint)',
-              color: 'var(--text-orange-700)',
-              cursor: 'pointer',
-            }}
-          >
-            Quick feedback
-          </button>
-        </div>
-      )}
-      {authUser?.id && teamFeedbackWizardOpen && (
-        <TeamFeedbackWizard
-          open
-          onClose={() => setTeamFeedbackWizardOpen(false)}
-          userId={authUser.id}
-          source="home_button"
-          skipIntro
-        />
-      )}
-      <DashboardContractSigningPromptModal
-        open={contractSigningPromptOpen}
-        rows={contractSigningPromptRows}
-        openingDocId={contractSigningPromptOpeningId}
-        onClose={() => setContractSigningPromptOpen(false)}
-        onOpenSigningPage={openContractSigningPageForDoc}
-      />
-      {isAssistantLike(role) && authUser?.id && showClockActivityStrip && (
-        <div id="dash-clocked-in" aria-hidden="true" style={dockAnchorStyle} />
-      )}
-      {isAssistantLike(role) && authUser?.id && showClockActivityStrip && (
-        <DashboardTeamActiveClockStrip
-          sessions={sessionsForStrip}
-          hoursTodayByUserId={hoursTodayForStrip}
-          clockedInTodayRows={myTeam.clockedInTodayStripRows}
-          jobsWorkedTodayRows={myTeam.jobsWorkedTodayStripRows}
-          jobsWorkedTodayReportKeys={myTeam.jobsWorkedTodayReportKeys}
-          jobsWorkedTodayReportIdByKey={myTeam.jobsWorkedTodayReportIdByKey}
-          jobsWorkedTodayJobLedgerIdsWithReport={myTeam.jobsWorkedTodayJobLedgerIdsWithReport}
-          showScopeToggle={showClockStripScopeToggle}
-          clockStripScope={clockStripScope}
-          onClockStripScopeChange={setClockStripScopePersist}
-          showJobBidColumn={showClockStripScopeToggle}
-          onJobBidSaved={(patch) => {
-            myTeam.applyOptimisticClockSessionAssign(patch)
-            void myTeam.loadPending({ silent: true })
-          }}
-          onJobBidAssignError={(msg) => showToast(msg, 'error')}
-          onApplyScheduleProportionsForSession={applySchedule.requestApply}
-          onOpenStripMyTimeEditor={
-            showStripSubjectMyTimeEditor ? openStripMyTimeEditor : undefined
-          }
-          authUserId={authUser.id}
-          canApproveClockSessions={showClockStripScopeToggle}
-          onClockSessionsMutated={() => {
-            void myTeam.loadPending({ silent: true })
-          }}
-          onMaterializeSalarySession={
-            showClockStripScopeToggle ? materializeSalarySessionForStrip : undefined
-          }
-          enableCopyDayJobMix={showClockStripScopeToggle}
-          enableScheduleDayEmail={showClockStripScopeToggle}
-          clockStripWorkDateYmd={myTeam.clockStripWorkDateYmd}
-        />
-      )}
-      {isAssistantLike(role) && authUser?.id && (
-        <DashboardMyTeamPendingBanner
-          pendingApprovalCount={myTeam.pendingApprovalCount}
-          loadingSessions={myTeam.loadingSessions}
-          onGoToPendingSessions={goToPendingSessionsInMyTeam}
-        />
-      )}
-      {isAssistantLike(role) && (
-        <>
-          {/* Inboxes first: processing dispatch/estimator requests is the assistant's primary queue. */}
-          {authUser?.id && (dispatchInboxEligible || estimatorInboxEligible) && (
-            <DashboardGroupCard id="dash-teams-inbox" title="Teams Inbox">
-              {dispatchInboxEligible && (
-                <DispatchInboxSection
-                  sectionOpen={dispatchRequestsOpen}
-                  onToggleSection={() => setDispatchRequestsOpen((o) => !o)}
-                  requests={dispatchRequests}
-                  loading={dispatchRequestsLoading}
-                  expandedRequestId={expandedDispatchRequestId}
-                  onToggleExpandRequest={toggleExpandDispatchRequest}
-                  notesByRequestId={dispatchThreadNotesByRequestId}
-                  notesLoadingRequestId={dispatchNotesLoadingRequestId}
-                  noteSubmitRequestId={dispatchNoteSubmitRequestId}
-                  canAddNotes={dispatchInboxEligible}
-                  dispatchRequestDismissingId={dispatchRequestDismissingId}
-                  noteDraft={dispatchNoteDraft}
-                  onNoteDraftChange={setDispatchNoteDraft}
-                  onSubmitNote={submitDispatchNote}
-                  onSubmitNoteAndClose={submitDispatchNoteAndClose}
-                  onDismiss={dismissDispatchRequest}
-                  onOpenDismissedArchive={() => setDispatchDismissedModalOpen(true)}
-                  onLinkJobPictures={
-                    jobFormModal
-                      ? (jobId) => jobFormModal.openEditJob(jobId, { jobPicturesLinkHighlight: true })
-                      : undefined
-                  }
-                  onCreateTripCharge={(args) => setTripChargeTarget(args)}
-                />
-              )}
-              {estimatorInboxEligible && (
-                <EstimatorInboxSection
-                  sectionOpen={estimatorRequestsOpen}
-                  onToggleSection={() => setEstimatorRequestsOpen((o) => !o)}
-                  requests={estimatorRequests}
-                  loading={estimatorRequestsLoading}
-                  expandedRequestId={expandedEstimatorRequestId}
-                  onToggleExpandRequest={toggleExpandEstimatorRequest}
-                  notesByRequestId={estimatorThreadNotesByRequestId}
-                  notesLoadingRequestId={estimatorNotesLoadingRequestId}
-                  noteSubmitRequestId={estimatorNoteSubmitRequestId}
-                  canAddNotes={estimatorInboxEligible}
-                  estimatorRequestDismissingId={estimatorRequestDismissingId}
-                  noteDraft={estimatorNoteDraft}
-                  onNoteDraftChange={setEstimatorNoteDraft}
-                  onSubmitNote={submitEstimatorNote}
-                  onSubmitNoteAndClose={submitEstimatorNoteAndClose}
-                  onDismiss={dismissEstimatorRequest}
-                />
-              )}
-            </DashboardGroupCard>
-          )}
-          <div id="dash-billing" aria-hidden="true" style={dockAnchorStyle} />
-          <BillingPipelineCard>
-          {authUser?.id && (
-            <BillingPipelineStage step={1} connectToNext>
-              <DashboardFieldCollectPaymentQueue
-                embedded
-                onPrepareBill={handlePrepareBillFromFieldQueue}
-                shouldShowPrepareBill={shouldShowPrepareBillForFieldQueue}
-              />
-            </BillingPipelineStage>
-          )}
-          <BillingPipelineStage step={2} connectToNext={waitingForPaymentLoading || billedWaitingDashboardUnits.length > 0}>
-          <div style={{ marginBottom: '0.5rem' }}>
-            <button
-              type="button"
-              onClick={() => setReadyToBillExpanded((prev) => !prev)}
-              aria-expanded={readyToBillExpanded}
-              style={{ margin: 0, padding: 0, border: 'none', background: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: readyToBillExpanded ? '0.75rem' : 0 }}
-            >
-              <span aria-hidden>{readyToBillExpanded ? '\u25BC' : '\u25B6'}</span>
-              <h2 style={{ fontSize: '1.125rem', margin: 0 }}>Ready to Bill ({readyToBillDashboardUnits.length})</h2>
-            </button>
-            {readyToBillExpanded && (
-            <>
-            {readyToBillLoading && readyToBillDashboardUnits.length === 0 ? (
-              <DashboardListRowSkeleton rows={2} />
-            ) : readyToBillDashboardUnits.length === 0 ? (
-              <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0 }}>No jobs or invoices ready to bill yet</p>
-            ) : (
-              <div>
-                {readyToBillDashboardUnits.map((unit) => {
-                  if (unit.kind === 'invoice') {
-                    const inv = unit.inv
-                    return (
-                      <div
-                        key={inv.id}
-                        style={{
-                          border: '1px solid var(--border)',
-                          borderRadius: 8,
-                          padding: '1rem',
-                          marginBottom: '0.75rem',
-                          background: 'var(--surface)',
-                        }}
-                      >
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>
-                          <div>
-                            <div style={{ fontWeight: 600 }}>
-                              {inv.hcp_number || '—'} · {inv.job_name || '—'}
-                            </div>
-                            <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginTop: 4 }}>
-                              {inv.job_address?.trim() ? (
-                                <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(inv.job_address.trim())}`} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--text-link)', textDecoration: 'none' }}>{inv.job_address}</a>
-                              ) : (
-                                '—'
-                              )}
-                            </div>
-                            <div style={{ fontSize: '0.875rem', marginTop: 4 }}>
-                              {`Invoice: $${inv.amount.toLocaleString('en-US', { minimumFractionDigits: 2 })}`}
-                              {(() => {
-                                const { applied, open } = dashboardBilledInvoiceAmounts(inv)
-                                if (applied <= 0) return null
-                                return (
-                                  <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: 2 }}>
-                                    {`Applied: $${applied.toLocaleString('en-US', { minimumFractionDigits: 2 })} · Open: $${open.toLocaleString('en-US', { minimumFractionDigits: 2 })}`}
-                                  </div>
-                                )
-                              })()}
-                            </div>
-                          </div>
-                          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-                            {(inv.google_drive_link?.trim() || inv.job_plans_link?.trim()) && (
-                              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
-                                {inv.google_drive_link?.trim() && (
-                                  <a
-                                    href={inv.google_drive_link.trim()}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    onClick={(e) => { e.preventDefault(); openInExternalBrowser(inv.google_drive_link!.trim()) }}
-                                    title="Google Drive"
-                                    style={{ display: 'inline-flex', alignItems: 'center', color: 'var(--text-muted)', padding: '0.35rem' }}
-                                  >
-                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="1.25em" height="1.25em" fill="currentColor" aria-hidden="true">
-                                      <path d="M403 378.9L239.4 96L400.6 96L564.2 378.9L403 378.9zM265.5 402.5L184.9 544L495.4 544L576 402.5L265.5 402.5zM218.1 131.4L64 402.5L144.6 544L301 272.8L218.1 131.4z" />
-                                    </svg>
-                                  </a>
-                                )}
-                                {inv.job_plans_link?.trim() && (
-                                  <a
-                                    href={inv.job_plans_link.trim()}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    onClick={(e) => { e.preventDefault(); openInExternalBrowser(inv.job_plans_link!.trim()) }}
-                                    title="Job Plans"
-                                    style={{ display: 'inline-flex', alignItems: 'center', color: 'var(--text-muted)', padding: '0.35rem' }}
-                                  >
-                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="1.25em" height="1.25em" fill="currentColor" aria-hidden="true">
-                                      <path d="M296.5 69.2C311.4 62.3 328.6 62.3 343.5 69.2L562.1 170.2C570.6 174.1 576 182.6 576 192C576 201.4 570.6 209.9 562.1 213.8L343.5 314.8C328.6 321.7 311.4 321.7 296.5 314.8L77.9 213.8C69.4 209.8 64 201.3 64 192C64 182.7 69.4 174.1 77.9 170.2L296.5 69.2zM112.1 282.4L276.4 358.3C304.1 371.1 336 371.1 363.7 358.3L528 282.4L562.1 298.2C570.6 302.1 576 310.6 576 320C576 329.4 570.6 337.9 562.1 341.8L343.5 442.8C328.6 449.7 311.4 449.7 296.5 442.8L77.9 341.8C69.4 337.8 64 329.3 64 320C64 310.7 69.4 302.1 77.9 298.2L112 282.4zM77.9 426.2L112 410.4L276.3 486.3C304 499.1 335.9 499.1 363.6 486.3L527.9 410.4L562 426.2C570.5 430.1 575.9 438.6 575.9 448C575.9 457.4 570.5 465.9 562 469.8L343.4 570.8C328.5 577.7 311.3 577.7 296.4 570.8L77.9 469.8C69.4 465.8 64 457.3 64 448C64 438.7 69.4 430.1 77.9 426.2z" />
-                                    </svg>
-                                  </a>
-                                )}
-                              </div>
-                            )}
-                            <ReadyToBillJobIconToolbar
-                              jobId={inv.job_id}
-                              hcpNumber={inv.hcp_number ?? '—'}
-                              jobName={inv.job_name ?? '—'}
-                              jobAddress={inv.job_address ?? '—'}
-                              jobFormModalAvailable={Boolean(jobFormModal)}
-                              onEditJob={openReadyToBillEditJob}
-                              onOpenDetail={openReadyToBillDetailJobModal}
-                            />
-                            <button type="button" onClick={() => setViewReportsJob({ id: inv.job_id, hcpNumber: inv.hcp_number ?? '—', jobName: inv.job_name ?? '—', jobAddress: inv.job_address ?? '—' })} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: 'var(--text-link)', border: '1px solid #2563eb', borderRadius: 4, cursor: 'pointer' }}>View<br />Reports</button>
-                            <button type="button" onClick={() => { setSendBackChecked(false); setSendBackInvoice({ inv, action: 'delete' }) }} disabled={invoiceStatusUpdatingId === inv.id} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: 'var(--text-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: invoiceStatusUpdatingId === inv.id ? 'not-allowed' : 'pointer' }}>Delete<br />draft bill</button>
-                            <div className="billingPipelineActionAgePair">
-                              <button type="button" onClick={() => {
-                                if (!dashboardJobHasCustomerForBilling(inv.customer_id)) {
-                                  showToast?.('Link this job to a customer before billing.', 'error')
-                                  return
-                                }
-                                openDashboardBillCustomerInvoice(inv)
-                              }} disabled={invoiceStatusUpdatingId === inv.id} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#16a34a', color: 'white', border: 'none', borderRadius: 4, cursor: invoiceStatusUpdatingId === inv.id ? 'not-allowed' : 'pointer' }}>{invoiceStatusUpdatingId === inv.id ? '…' : 'Bill Customer'}</button>
-                              {inv.open_since_at && <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', textAlign: 'center' }} title="Time open">Open {formatTimeSince(inv.open_since_at)}</span>}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    )
-                  }
-                  const j = unit.job
-                  const bundleInv = unit.kind === 'job_bundle' ? unit.inv : null
-                  const remaining = bundleInv != null ? Number(bundleInv.amount) : (Number(j.revenue ?? 0) - Number(j.payments_made ?? 0))
-                  return (
-                    <div
-                      key={bundleInv != null ? `bundle-${j.id}-${bundleInv.id}` : j.id}
-                      style={{
-                        border: '1px solid var(--border)',
-                        borderRadius: 8,
-                        padding: '1rem',
-                        marginBottom: '0.75rem',
-                        background: 'var(--surface)',
-                      }}
-                    >
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>
-                        <div>
-                          <div style={{ fontWeight: 600 }}>
-                            {j.hcp_number || '—'} · {j.job_name || '—'}
-                          </div>
-                          <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginTop: 4 }}>
-                            {j.job_address?.trim() ? (
-                              <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(j.job_address.trim())}`} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--text-link)', textDecoration: 'none' }}>{j.job_address}</a>
-                            ) : (
-                              '—'
-                            )}
-                          </div>
-                          {bundleInv != null ? (
-                            <div style={{ fontSize: '0.75rem', color: 'var(--text-blue-800)', marginTop: 4 }} title="Single billing line for this job (Stripe or external send)">
-                              Billing line: ${remaining.toLocaleString('en-US', { minimumFractionDigits: 2 })}
-                            </div>
-                          ) : (
-                            <div style={{ fontSize: '0.875rem', marginTop: 4 }}>Remaining: ${remaining.toLocaleString('en-US', { minimumFractionDigits: 2 })}</div>
-                          )}
-                        </div>
-                        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-                          {(j.google_drive_link?.trim() || j.job_plans_link?.trim()) && (
-                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
-                              {j.google_drive_link?.trim() && (
-                                <a href={j.google_drive_link.trim()} target="_blank" rel="noopener noreferrer" onClick={(e) => { e.preventDefault(); openInExternalBrowser(j.google_drive_link!.trim()) }} title="Google Drive" style={{ display: 'inline-flex', alignItems: 'center', color: 'var(--text-muted)', padding: '0.35rem' }}>
-                                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="1.25em" height="1.25em" fill="currentColor" aria-hidden="true"><path d="M403 378.9L239.4 96L400.6 96L564.2 378.9L403 378.9zM265.5 402.5L184.9 544L495.4 544L576 402.5L265.5 402.5zM218.1 131.4L64 402.5L144.6 544L301 272.8L218.1 131.4z" /></svg>
-                                </a>
-                              )}
-                              {j.job_plans_link?.trim() && (
-                                <a href={j.job_plans_link.trim()} target="_blank" rel="noopener noreferrer" onClick={(e) => { e.preventDefault(); openInExternalBrowser(j.job_plans_link!.trim()) }} title="Job Plans" style={{ display: 'inline-flex', alignItems: 'center', color: 'var(--text-muted)', padding: '0.35rem' }}>
-                                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="1.25em" height="1.25em" fill="currentColor" aria-hidden="true"><path d="M296.5 69.2C311.4 62.3 328.6 62.3 343.5 69.2L562.1 170.2C570.6 174.1 576 182.6 576 192C576 201.4 570.6 209.9 562.1 213.8L343.5 314.8C328.6 321.7 311.4 321.7 296.5 314.8L77.9 213.8C69.4 209.8 64 201.3 64 192C64 182.7 69.4 174.1 77.9 170.2L296.5 69.2zM112.1 282.4L276.4 358.3C304.1 371.1 336 371.1 363.7 358.3L528 282.4L562.1 298.2C570.6 302.1 576 310.6 576 320C576 329.4 570.6 337.9 562.1 341.8L343.5 442.8C328.6 449.7 311.4 449.7 296.5 442.8L77.9 341.8C69.4 337.8 64 329.3 64 320C64 310.7 69.4 302.1 77.9 298.2L112 282.4zM77.9 426.2L112 410.4L276.3 486.3C304 499.1 335.9 499.1 363.6 486.3L527.9 410.4L562 426.2C570.5 430.1 575.9 438.6 575.9 448C575.9 457.4 570.5 465.9 562 469.8L343.4 570.8C328.5 577.7 311.3 577.7 296.4 570.8L77.9 469.8C69.4 465.8 64 457.3 64 448C64 438.7 69.4 430.1 77.9 426.2z" /></svg>
-                                </a>
-                              )}
-                            </div>
-                          )}
-                          <ReadyToBillJobIconToolbar
-                            jobId={j.id}
-                            hcpNumber={j.hcp_number ?? '—'}
-                            jobName={j.job_name ?? '—'}
-                            jobAddress={j.job_address ?? '—'}
-                            jobFormModalAvailable={Boolean(jobFormModal)}
-                            onEditJob={openReadyToBillEditJob}
-                            onOpenDetail={openReadyToBillDetailJobModal}
-                          />
-                          <button type="button" onClick={() => setViewReportsJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', jobAddress: j.job_address ?? '—' })} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: 'var(--text-link)', border: '1px solid #2563eb', borderRadius: 4, cursor: 'pointer' }}>View<br />Reports</button>
-                          <button type="button" onClick={() => { setSendBackChecked(false); setSendBackJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', toStatus: 'working', rtbDraftCount: countDashboardRtbDraftsForJob(j.id, readyToBillInvoices) }) }} disabled={jobStatusUpdatingId === j.id} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: 'var(--text-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: jobStatusUpdatingId === j.id ? 'not-allowed' : 'pointer' }} aria-label="Send back">Send<br />Back</button>
-                          {bundleInv != null && (
-                            <button type="button" onClick={() => { setSendBackChecked(false); setSendBackInvoice({ inv: bundleInv, action: 'delete' }) }} disabled={invoiceStatusUpdatingId === bundleInv.id} title="Remove this billing line (partial invoice row)" style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: 'var(--text-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: invoiceStatusUpdatingId === bundleInv.id ? 'not-allowed' : 'pointer' }}>Delete<br />draft bill</button>
-                          )}
-                          <div className="billingPipelineActionAgePair">
-                            {bundleInv != null ? (
-                              <button type="button" onClick={() => {
-                                if (!dashboardJobHasCustomerForBilling(bundleInv.customer_id)) {
-                                  showToast?.('Link this job to a customer before billing.', 'error')
-                                  return
-                                }
-                                openDashboardBillCustomerInvoice(bundleInv)
-                              }} disabled={invoiceStatusUpdatingId === bundleInv.id} title="Bill Customer for this billing line (e.g. Stripe)" style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#16a34a', color: 'white', border: 'none', borderRadius: 4, cursor: invoiceStatusUpdatingId === bundleInv.id ? 'not-allowed' : 'pointer' }}>{invoiceStatusUpdatingId === bundleInv.id ? '…' : 'Bill Customer'}</button>
-                            ) : (
-                              <button type="button" onClick={() => {
-                                if (!dashboardJobHasCustomerForBilling(j.customer_id)) {
-                                  showToast?.('Link this job to a customer before billing.', 'error')
-                                  return
-                                }
-                                setSendRecordJobMeta({ id: j.id })
-                              }} disabled={jobStatusUpdatingId === j.id} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: jobStatusUpdatingId === j.id ? 'not-allowed' : 'pointer' }}>{jobStatusUpdatingId === j.id ? '…' : 'Bill Customer'}</button>
-                            )}
-                            {(bundleInv?.created_at ?? j.created_at) && (
-                              <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', textAlign: 'center' }} title={bundleInv != null ? 'Time since invoice created' : 'Time since job created'}>
-                                Open {formatTimeSince(bundleInv?.created_at ?? j.created_at)}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            )}
-            </>
-            )}
-          </div>
-          </BillingPipelineStage>
-          {(waitingForPaymentLoading || billedWaitingDashboardUnits.length > 0) && (
-            <BillingPipelineStage step={3}>
-            <div style={{ marginBottom: 0 }}>
-              <button
-                type="button"
-                onClick={() => setWaitingForPaymentExpanded((prev) => !prev)}
-                aria-expanded={waitingForPaymentExpanded}
-                style={{ margin: 0, padding: 0, border: 'none', background: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: waitingForPaymentExpanded ? '0.75rem' : 0 }}
-              >
-                <span aria-hidden>{waitingForPaymentExpanded ? '\u25BC' : '\u25B6'}</span>
-                <h2 style={{ fontSize: '1.125rem', margin: 0 }}>Billed Waiting for Payment ({billedWaitingDashboardUnits.length})</h2>
-              </button>
-              {waitingForPaymentExpanded && (
-              <>
-              {waitingForPaymentLoading && billedWaitingDashboardUnits.length === 0 ? (
-                <DashboardListRowSkeleton rows={2} />
-              ) : (
-                <div>
-                  {billedWaitingDashboardUnits.map((unit) => {
-                    if (unit.kind === 'invoice' || unit.kind === 'job_bundle') {
-                      const inv = unit.inv
-                      const cardKey = unit.kind === 'job_bundle' ? `billed-bundle-${unit.job.id}-${inv.id}` : inv.id
-                      return (
-                    <div key={cardKey} style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '1rem', marginBottom: '0.75rem', background: 'var(--surface)' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>
-                        <div>
-                          <div style={{ fontWeight: 600 }}>{inv.hcp_number || '—'} · {inv.job_name || '—'}</div>
-                          <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginTop: 4 }}>
-                            {inv.job_address?.trim() ? (
-                              <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(inv.job_address.trim())}`} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--text-link)', textDecoration: 'none' }}>{inv.job_address}</a>
-                            ) : (
-                              '—'
-                            )}
-                          </div>
-                          <div style={{ fontSize: '0.875rem', marginTop: 4 }}>
-                            {`Invoice: $${inv.amount.toLocaleString('en-US', { minimumFractionDigits: 2 })}`}
-                            {(() => {
-                              const { applied, open } = dashboardBilledInvoiceAmounts(inv)
-                              if (applied <= 0) return null
-                              return (
-                                <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: 2 }}>
-                                  {`Applied: $${applied.toLocaleString('en-US', { minimumFractionDigits: 2 })} · Open: $${open.toLocaleString('en-US', { minimumFractionDigits: 2 })}`}
-                                </div>
-                              )
-                            })()}
-                          </div>
-                        </div>
-                        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-                          {(inv.google_drive_link?.trim() || inv.job_plans_link?.trim()) && (
-                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
-                              {inv.google_drive_link?.trim() && (
-                                <a href={inv.google_drive_link.trim()} target="_blank" rel="noopener noreferrer" onClick={(e) => { e.preventDefault(); openInExternalBrowser(inv.google_drive_link!.trim()) }} title="Google Drive" style={{ display: 'inline-flex', alignItems: 'center', color: 'var(--text-muted)', padding: '0.35rem' }}>
-                                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="1.25em" height="1.25em" fill="currentColor" aria-hidden="true"><path d="M403 378.9L239.4 96L400.6 96L564.2 378.9L403 378.9zM265.5 402.5L184.9 544L495.4 544L576 402.5L265.5 402.5zM218.1 131.4L64 402.5L144.6 544L301 272.8L218.1 131.4z" /></svg>
-                                </a>
-                              )}
-                              {inv.job_plans_link?.trim() && (
-                                <a href={inv.job_plans_link.trim()} target="_blank" rel="noopener noreferrer" onClick={(e) => { e.preventDefault(); openInExternalBrowser(inv.job_plans_link!.trim()) }} title="Job Plans" style={{ display: 'inline-flex', alignItems: 'center', color: 'var(--text-muted)', padding: '0.35rem' }}>
-                                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="1.25em" height="1.25em" fill="currentColor" aria-hidden="true"><path d="M296.5 69.2C311.4 62.3 328.6 62.3 343.5 69.2L562.1 170.2C570.6 174.1 576 182.6 576 192C576 201.4 570.6 209.9 562.1 213.8L343.5 314.8C328.6 321.7 311.4 321.7 296.5 314.8L77.9 213.8C69.4 209.8 64 201.3 64 192C64 182.7 69.4 174.1 77.9 170.2L296.5 69.2zM112.1 282.4L276.4 358.3C304.1 371.1 336 371.1 363.7 358.3L528 282.4L562.1 298.2C570.6 302.1 576 310.6 576 320C576 329.4 570.6 337.9 562.1 341.8L343.5 442.8C328.6 449.7 311.4 449.7 296.5 442.8L77.9 341.8C69.4 337.8 64 329.3 64 320C64 310.7 69.4 302.1 77.9 298.2L112 282.4zM77.9 426.2L112 410.4L276.3 486.3C304 499.1 335.9 499.1 363.6 486.3L527.9 410.4L562 426.2C570.5 430.1 575.9 438.6 575.9 448C575.9 457.4 570.5 465.9 562 469.8L343.4 570.8C328.5 577.7 311.3 577.7 296.4 570.8L77.9 469.8C69.4 465.8 64 457.3 64 448C64 438.7 69.4 430.1 77.9 426.2z" /></svg>
-                                </a>
-                              )}
-                            </div>
-                          )}
-                          <button type="button" onClick={() => setViewReportsJob({ id: inv.job_id, hcpNumber: inv.hcp_number ?? '—', jobName: inv.job_name ?? '—', jobAddress: inv.job_address ?? '—' })} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: 'var(--text-link)', border: '1px solid #2563eb', borderRadius: 4, cursor: 'pointer' }}>View<br />Reports</button>
-                          <button type="button" onClick={() => { setSendBackChecked(false); setSendBackInvoice({ inv, action: 'revert' }) }} disabled={invoiceStatusUpdatingId === inv.id} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: 'var(--text-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: invoiceStatusUpdatingId === inv.id ? 'not-allowed' : 'pointer' }}>Send<br />back</button>
-                          <div className="billingPipelineActionAgePair">
-                            <button type="button" onClick={() => setMarkPaidInvoice(inv)} disabled={invoiceStatusUpdatingId === inv.id} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#16a34a', color: 'white', border: 'none', borderRadius: 4, cursor: invoiceStatusUpdatingId === inv.id ? 'not-allowed' : 'pointer' }}>{invoiceStatusUpdatingId === inv.id ? '…' : 'Mark Paid'}</button>
-                            {inv.open_since_at && <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', textAlign: 'center' }} title="Time open">Open {formatTimeSince(inv.open_since_at)}</span>}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                      )
-                    }
-                    const j = unit.job
-                    const remaining = Number(j.revenue ?? 0) - Number(j.payments_made ?? 0)
-                    return (
-                      <div key={j.id} style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '1rem', marginBottom: '0.75rem', background: 'var(--surface)' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>
-                          <div>
-                            <div style={{ fontWeight: 600 }}>{j.hcp_number || '—'} · {j.job_name || '—'}</div>
-                            <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginTop: 4 }}>
-                              {j.job_address?.trim() ? (
-                                <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(j.job_address.trim())}`} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--text-link)', textDecoration: 'none' }}>{j.job_address}</a>
-                              ) : (
-                                '—'
-                              )}
-                            </div>
-                            <div style={{ fontSize: '0.875rem', marginTop: 4 }}>Remaining: ${remaining.toLocaleString('en-US', { minimumFractionDigits: 2 })}</div>
-                          </div>
-                          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-                            {(j.google_drive_link?.trim() || j.job_plans_link?.trim()) && (
-                              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
-                                {j.google_drive_link?.trim() && (
-                                  <a href={j.google_drive_link.trim()} target="_blank" rel="noopener noreferrer" onClick={(e) => { e.preventDefault(); openInExternalBrowser(j.google_drive_link!.trim()) }} title="Google Drive" style={{ display: 'inline-flex', alignItems: 'center', color: 'var(--text-muted)', padding: '0.35rem' }}>
-                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="1.25em" height="1.25em" fill="currentColor" aria-hidden="true"><path d="M403 378.9L239.4 96L400.6 96L564.2 378.9L403 378.9zM265.5 402.5L184.9 544L495.4 544L576 402.5L265.5 402.5zM218.1 131.4L64 402.5L144.6 544L301 272.8L218.1 131.4z" /></svg>
-                                  </a>
-                                )}
-                                {j.job_plans_link?.trim() && (
-                                  <a href={j.job_plans_link.trim()} target="_blank" rel="noopener noreferrer" onClick={(e) => { e.preventDefault(); openInExternalBrowser(j.job_plans_link!.trim()) }} title="Job Plans" style={{ display: 'inline-flex', alignItems: 'center', color: 'var(--text-muted)', padding: '0.35rem' }}>
-                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="1.25em" height="1.25em" fill="currentColor" aria-hidden="true"><path d="M296.5 69.2C311.4 62.3 328.6 62.3 343.5 69.2L562.1 170.2C570.6 174.1 576 182.6 576 192C576 201.4 570.6 209.9 562.1 213.8L343.5 314.8C328.6 321.7 311.4 321.7 296.5 314.8L77.9 213.8C69.4 209.8 64 201.3 64 192C64 182.7 69.4 174.1 77.9 170.2L296.5 69.2zM112.1 282.4L276.4 358.3C304.1 371.1 336 371.1 363.7 358.3L528 282.4L562.1 298.2C570.6 302.1 576 310.6 576 320C576 329.4 570.6 337.9 562.1 341.8L343.5 442.8C328.6 449.7 311.4 449.7 296.5 442.8L77.9 341.8C69.4 337.8 64 329.3 64 320C64 310.7 69.4 302.1 77.9 298.2L112 282.4zM77.9 426.2L112 410.4L276.3 486.3C304 499.1 335.9 499.1 363.6 486.3L527.9 410.4L562 426.2C570.5 430.1 575.9 438.6 575.9 448C575.9 457.4 570.5 465.9 562 469.8L343.4 570.8C328.5 577.7 311.3 577.7 296.4 570.8L77.9 469.8C69.4 465.8 64 457.3 64 448C64 438.7 69.4 430.1 77.9 426.2z" /></svg>
-                                  </a>
-                                )}
-                              </div>
-                            )}
-                            <button type="button" onClick={() => setViewReportsJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', jobAddress: j.job_address ?? '—' })} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: 'var(--text-link)', border: '1px solid #2563eb', borderRadius: 4, cursor: 'pointer' }}>View<br />Reports</button>
-                            <button type="button" onClick={() => { setSendBackChecked(false); setSendBackJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', toStatus: 'ready_to_bill', rtbDraftCount: 0 }) }} disabled={jobStatusUpdatingId === j.id} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: 'var(--text-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: jobStatusUpdatingId === j.id ? 'not-allowed' : 'pointer' }}>Send<br />back</button>
-                            <div className="billingPipelineActionAgePair">
-                              <button type="button" onClick={() => setMarkPaidJob(j)} disabled={jobStatusUpdatingId === j.id} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: jobStatusUpdatingId === j.id ? 'not-allowed' : 'pointer' }}>{jobStatusUpdatingId === j.id ? '…' : 'Mark Paid'}</button>
-                              {j.created_at && <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', textAlign: 'center' }} title="Time since job created">Open {formatTimeSince(j.created_at)}</span>}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-              )}
-              </>
-              )}
-            </div>
-            </BillingPipelineStage>
-          )}
-          </BillingPipelineCard>
-        </>
-      )}
-      {!isAssistantLike(role) && authUser?.id && showClockActivityStrip && (
-        <div id="dash-clocked-in" aria-hidden="true" style={dockAnchorStyle} />
-      )}
-      {!isAssistantLike(role) && authUser?.id && showClockActivityStrip && (
-        <DashboardTeamActiveClockStrip
-          sessions={sessionsForStrip}
-          hoursTodayByUserId={hoursTodayForStrip}
-          clockedInTodayRows={myTeam.clockedInTodayStripRows}
-          jobsWorkedTodayRows={myTeam.jobsWorkedTodayStripRows}
-          jobsWorkedTodayReportKeys={myTeam.jobsWorkedTodayReportKeys}
-          jobsWorkedTodayReportIdByKey={myTeam.jobsWorkedTodayReportIdByKey}
-          jobsWorkedTodayJobLedgerIdsWithReport={myTeam.jobsWorkedTodayJobLedgerIdsWithReport}
-          showScopeToggle={showClockStripScopeToggle}
-          clockStripScope={clockStripScope}
-          onClockStripScopeChange={setClockStripScopePersist}
-          showJobBidColumn={showClockStripScopeToggle}
-          onJobBidSaved={(patch) => {
-            myTeam.applyOptimisticClockSessionAssign(patch)
-            void myTeam.loadPending({ silent: true })
-          }}
-          onJobBidAssignError={(msg) => showToast(msg, 'error')}
-          onApplyScheduleProportionsForSession={applySchedule.requestApply}
-          onOpenStripMyTimeEditor={
-            showStripSubjectMyTimeEditor ? openStripMyTimeEditor : undefined
-          }
-          authUserId={authUser.id}
-          canApproveClockSessions={showClockStripScopeToggle}
-          onClockSessionsMutated={() => {
-            void myTeam.loadPending({ silent: true })
-          }}
-          onMaterializeSalarySession={
-            showClockStripScopeToggle ? materializeSalarySessionForStrip : undefined
-          }
-          enableCopyDayJobMix={showClockStripScopeToggle}
-          enableScheduleDayEmail={showClockStripScopeToggle}
-          clockStripWorkDateYmd={myTeam.clockStripWorkDateYmd}
-        />
-      )}
-      {(role === 'dev' || role === 'master_technician') && authUser?.id && (
-        <DashboardMyTeamPendingBanner
-          pendingApprovalCount={myTeam.pendingApprovalCount}
-          loadingSessions={myTeam.loadingSessions}
-          onGoToPendingSessions={goToPendingSessionsInMyTeam}
-        />
-      )}
-      {stripMyTimeEditor && (
-        <DashboardMyTimeDayEditorModal
-          dateStr={stripMyTimeEditor.dateStr}
-          sessions={[]}
-          subjectUserId={stripMyTimeEditor.subjectUserId}
-          subjectDisplayName={stripMyTimeEditor.displayName}
-          showSalariedLabelUnderVisualStrip={stripMyTimeEditor.showSalariedStripFooter}
-          prefetchSalarySessionsWhenEmpty
-          clockTimesReadOnly={stripMyTimeEditor.clockTimesReadOnly}
-          jobLabels={{}}
-          bidLabels={{}}
-          allowNcnsFromMyTime={showClockStripScopeToggle}
-          showMarkNotComingIn={showStripSubjectMyTimeEditor}
-          onMarkNotComingIn={
-            showStripSubjectMyTimeEditor
-              ? () =>
-                  handleStripMarkNotComingIn({
-                    subjectUserId: stripMyTimeEditor.subjectUserId,
-                    displayName: stripMyTimeEditor.displayName,
-                    workDateYmd: stripMyTimeEditor.dateStr,
-                  })
-              : undefined
-          }
-          onClose={() => setStripMyTimeEditor(null)}
-          onSaved={() => {
-            void myTeam.loadPending({ silent: true })
-            setStripMyTimeEditor(null)
-          }}
-          onLinkedSessionsUpdated={() => void myTeam.loadPending({ silent: true })}
-        />
-      )}
-      {isDev && authUser?.id && <DashboardDevRejectedNotification />}
-      {authUser?.id && dispatchInboxEligible && (
-        <DispatchDismissedItemsModal
-          open={dispatchDismissedModalOpen}
-          onClose={() => setDispatchDismissedModalOpen(false)}
-          loadRows={fetchDismissedDispatchInboxRows}
-        />
-      )}
-      {tripChargeTarget && (
-        <CreateTripChargeModal
-          target={tripChargeTarget}
-          onClose={() => setTripChargeTarget(null)}
-          onCreated={() => {
-            setTripChargeTarget(null)
-            void refreshInvoicesRef.current()
-          }}
-        />
-      )}
-      {authUser?.id && (dispatchInboxEligible || estimatorInboxEligible) && !isAssistantLike(role) && (
-        <DashboardGroupCard id="dash-teams-inbox" title="Teams Inbox">
-          {isDev && <HelpFeedbackInboxSection />}
-          {dispatchInboxEligible && (
-        <DispatchInboxSection
-          sectionOpen={dispatchRequestsOpen}
-          onToggleSection={() => setDispatchRequestsOpen((o) => !o)}
-          requests={dispatchRequests}
-          loading={dispatchRequestsLoading}
-          expandedRequestId={expandedDispatchRequestId}
-          onToggleExpandRequest={toggleExpandDispatchRequest}
-          notesByRequestId={dispatchThreadNotesByRequestId}
-          notesLoadingRequestId={dispatchNotesLoadingRequestId}
-          noteSubmitRequestId={dispatchNoteSubmitRequestId}
-          canAddNotes={dispatchInboxEligible}
-          dispatchRequestDismissingId={dispatchRequestDismissingId}
-          noteDraft={dispatchNoteDraft}
-          onNoteDraftChange={setDispatchNoteDraft}
-          onSubmitNote={submitDispatchNote}
-          onSubmitNoteAndClose={submitDispatchNoteAndClose}
-          onDismiss={dismissDispatchRequest}
-          onOpenDismissedArchive={() => setDispatchDismissedModalOpen(true)}
-          onLinkJobPictures={
-            jobFormModal
-              ? (jobId) => jobFormModal.openEditJob(jobId, { jobPicturesLinkHighlight: true })
-              : undefined
-          }
-          onCreateTripCharge={
-            role === 'dev' || role === 'master_technician'
-              ? (args) => setTripChargeTarget(args)
-              : undefined
-          }
-        />
-          )}
-          {estimatorInboxEligible && (
-        <EstimatorInboxSection
-          sectionOpen={estimatorRequestsOpen}
-          onToggleSection={() => setEstimatorRequestsOpen((o) => !o)}
-          requests={estimatorRequests}
-          loading={estimatorRequestsLoading}
-          expandedRequestId={expandedEstimatorRequestId}
-          onToggleExpandRequest={toggleExpandEstimatorRequest}
-          notesByRequestId={estimatorThreadNotesByRequestId}
-          notesLoadingRequestId={estimatorNotesLoadingRequestId}
-          noteSubmitRequestId={estimatorNoteSubmitRequestId}
-          canAddNotes={estimatorInboxEligible}
-          estimatorRequestDismissingId={estimatorRequestDismissingId}
-          noteDraft={estimatorNoteDraft}
-          onNoteDraftChange={setEstimatorNoteDraft}
-          onSubmitNote={submitEstimatorNote}
-          onSubmitNoteAndClose={submitEstimatorNoteAndClose}
-          onDismiss={dismissEstimatorRequest}
-        />
-          )}
-        </DashboardGroupCard>
-      )}
-      {(role === 'dev' || role === 'master_technician') && (
-        <div id="dash-billing" aria-hidden="true" style={dockAnchorStyle} />
-      )}
-      {(role === 'dev' || role === 'master_technician') && (
-        <BillingPipelineCard>
-        {authUser?.id && (
-          <BillingPipelineStage step={1} connectToNext>
-            <DashboardFieldCollectPaymentQueue
-              embedded
-              onPrepareBill={handlePrepareBillFromFieldQueue}
-              shouldShowPrepareBill={shouldShowPrepareBillForFieldQueue}
-            />
-          </BillingPipelineStage>
-        )}
-        <BillingPipelineStage step={2} connectToNext={waitingForPaymentLoading || billedWaitingDashboardUnits.length > 0}>
-        <div style={{ marginBottom: '0.5rem' }}>
-          <button
-            type="button"
-            onClick={() => setReadyToBillExpanded((prev) => !prev)}
-            aria-expanded={readyToBillExpanded}
-            style={{ margin: 0, padding: 0, border: 'none', background: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: readyToBillExpanded ? '0.75rem' : 0 }}
-          >
-            <span aria-hidden>{readyToBillExpanded ? '\u25BC' : '\u25B6'}</span>
-            <h2 style={{ fontSize: '1.125rem', margin: 0 }}>Ready to Bill ({readyToBillDashboardUnits.length})</h2>
-          </button>
-          {readyToBillExpanded && (
-          <>
-          {readyToBillLoading && readyToBillDashboardUnits.length === 0 ? (
-            <DashboardListRowSkeleton rows={2} />
-          ) : readyToBillDashboardUnits.length === 0 ? (
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0 }}>No jobs or invoices ready to bill yet</p>
-          ) : (
-            <div>
-              {readyToBillDashboardUnits.map((unit) => {
-                if (unit.kind === 'invoice') {
-                  const inv = unit.inv
-                  return (
-                    <div
-                      key={inv.id}
-                      style={{
-                        border: '1px solid var(--border)',
-                        borderRadius: 8,
-                        padding: '1rem',
-                        marginBottom: '0.75rem',
-                        background: 'var(--surface)',
-                      }}
-                    >
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>
-                        <div>
-                          <div style={{ fontWeight: 600 }}>
-                            {inv.hcp_number || '—'} · {inv.job_name || '—'}
-                          </div>
-                          <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginTop: 4 }}>
-                            {inv.job_address?.trim() ? (
-                              <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(inv.job_address.trim())}`} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--text-link)', textDecoration: 'none' }}>{inv.job_address}</a>
-                            ) : (
-                              '—'
-                            )}
-                          </div>
-                          <div style={{ fontSize: '0.875rem', marginTop: 4 }}>
-                            {`Invoice: $${inv.amount.toLocaleString('en-US', { minimumFractionDigits: 2 })}`}
-                            {(() => {
-                              const { applied, open } = dashboardBilledInvoiceAmounts(inv)
-                              if (applied <= 0) return null
-                              return (
-                                <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: 2 }}>
-                                  {`Applied: $${applied.toLocaleString('en-US', { minimumFractionDigits: 2 })} · Open: $${open.toLocaleString('en-US', { minimumFractionDigits: 2 })}`}
-                                </div>
-                              )
-                            })()}
-                          </div>
-                        </div>
-                        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-                          {(inv.google_drive_link?.trim() || inv.job_plans_link?.trim()) && (
-                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
-                              {inv.google_drive_link?.trim() && (
-                                <a
-                                  href={inv.google_drive_link.trim()}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  onClick={(e) => { e.preventDefault(); openInExternalBrowser(inv.google_drive_link!.trim()) }}
-                                  title="Google Drive"
-                                  style={{ display: 'inline-flex', alignItems: 'center', color: 'var(--text-muted)', padding: '0.35rem' }}
-                                >
-                                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="1.25em" height="1.25em" fill="currentColor" aria-hidden="true">
-                                    <path d="M403 378.9L239.4 96L400.6 96L564.2 378.9L403 378.9zM265.5 402.5L184.9 544L495.4 544L576 402.5L265.5 402.5zM218.1 131.4L64 402.5L144.6 544L301 272.8L218.1 131.4z" />
-                                  </svg>
-                                </a>
-                              )}
-                              {inv.job_plans_link?.trim() && (
-                                <a
-                                  href={inv.job_plans_link.trim()}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  onClick={(e) => { e.preventDefault(); openInExternalBrowser(inv.job_plans_link!.trim()) }}
-                                  title="Job Plans"
-                                  style={{ display: 'inline-flex', alignItems: 'center', color: 'var(--text-muted)', padding: '0.35rem' }}
-                                >
-                                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="1.25em" height="1.25em" fill="currentColor" aria-hidden="true">
-                                    <path d="M296.5 69.2C311.4 62.3 328.6 62.3 343.5 69.2L562.1 170.2C570.6 174.1 576 182.6 576 192C576 201.4 570.6 209.9 562.1 213.8L343.5 314.8C328.6 321.7 311.4 321.7 296.5 314.8L77.9 213.8C69.4 209.8 64 201.3 64 192C64 182.7 69.4 174.1 77.9 170.2L296.5 69.2zM112.1 282.4L276.4 358.3C304.1 371.1 336 371.1 363.7 358.3L528 282.4L562.1 298.2C570.6 302.1 576 310.6 576 320C576 329.4 570.6 337.9 562.1 341.8L343.5 442.8C328.6 449.7 311.4 449.7 296.5 442.8L77.9 341.8C69.4 337.8 64 329.3 64 320C64 310.7 69.4 302.1 77.9 298.2L112 282.4zM77.9 426.2L112 410.4L276.3 486.3C304 499.1 335.9 499.1 363.6 486.3L527.9 410.4L562 426.2C570.5 430.1 575.9 438.6 575.9 448C575.9 457.4 570.5 465.9 562 469.8L343.4 570.8C328.5 577.7 311.3 577.7 296.4 570.8L77.9 469.8C69.4 465.8 64 457.3 64 448C64 438.7 69.4 430.1 77.9 426.2z" />
-                                  </svg>
-                                </a>
-                              )}
-                            </div>
-                          )}
-                          <ReadyToBillJobIconToolbar
-                              jobId={inv.job_id}
-                              hcpNumber={inv.hcp_number ?? '—'}
-                              jobName={inv.job_name ?? '—'}
-                              jobAddress={inv.job_address ?? '—'}
-                              jobFormModalAvailable={Boolean(jobFormModal)}
-                              onEditJob={openReadyToBillEditJob}
-                              onOpenDetail={openReadyToBillDetailJobModal}
-                            />
-                          <button type="button" onClick={() => setViewReportsJob({ id: inv.job_id, hcpNumber: inv.hcp_number ?? '—', jobName: inv.job_name ?? '—', jobAddress: inv.job_address ?? '—' })} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: 'var(--text-link)', border: '1px solid #2563eb', borderRadius: 4, cursor: 'pointer' }}>View<br />Reports</button>
-                          <button type="button" onClick={() => { setSendBackChecked(false); setSendBackInvoice({ inv, action: 'delete' }) }} disabled={invoiceStatusUpdatingId === inv.id} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: 'var(--text-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: invoiceStatusUpdatingId === inv.id ? 'not-allowed' : 'pointer' }}>Delete<br />draft bill</button>
-                          <div className="billingPipelineActionAgePair">
-                            <button type="button" onClick={() => {
-                                if (!dashboardJobHasCustomerForBilling(inv.customer_id)) {
-                                  showToast?.('Link this job to a customer before billing.', 'error')
-                                  return
-                                }
-                                openDashboardBillCustomerInvoice(inv)
-                              }} disabled={invoiceStatusUpdatingId === inv.id} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#16a34a', color: 'white', border: 'none', borderRadius: 4, cursor: invoiceStatusUpdatingId === inv.id ? 'not-allowed' : 'pointer' }}>{invoiceStatusUpdatingId === inv.id ? '…' : 'Bill Customer'}</button>
-                            {inv.open_since_at && <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', textAlign: 'center' }} title="Time open">Open {formatTimeSince(inv.open_since_at)}</span>}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  )
-                }
-                const j = unit.job
-                const bundleInv = unit.kind === 'job_bundle' ? unit.inv : null
-                const remaining = bundleInv != null ? Number(bundleInv.amount) : (Number(j.revenue ?? 0) - Number(j.payments_made ?? 0))
-                return (
-                  <div
-                    key={bundleInv != null ? `bundle-${j.id}-${bundleInv.id}` : j.id}
-                    style={{
-                      border: '1px solid var(--border)',
-                      borderRadius: 8,
-                      padding: '1rem',
-                      marginBottom: '0.75rem',
-                      background: 'var(--surface)',
-                    }}
-                  >
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>
-                      <div>
-                        <div style={{ fontWeight: 600 }}>
-                          {j.hcp_number || '—'} · {j.job_name || '—'}
-                        </div>
-                        <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginTop: 4 }}>
-                          {j.job_address?.trim() ? (
-                            <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(j.job_address.trim())}`} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--text-link)', textDecoration: 'none' }}>{j.job_address}</a>
-                          ) : (
-                            '—'
-                          )}
-                        </div>
-                        {bundleInv != null ? (
-                          <div style={{ fontSize: '0.75rem', color: 'var(--text-blue-800)', marginTop: 4 }} title="Single billing line for this job (Stripe or external send)">
-                            Billing line: ${remaining.toLocaleString('en-US', { minimumFractionDigits: 2 })}
-                          </div>
-                        ) : (
-                          <div style={{ fontSize: '0.875rem', marginTop: 4 }}>Remaining: ${remaining.toLocaleString('en-US', { minimumFractionDigits: 2 })}</div>
-                        )}
-                      </div>
-                      <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-                        {(j.google_drive_link?.trim() || j.job_plans_link?.trim()) && (
-                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
-                            {j.google_drive_link?.trim() && (
-                              <a href={j.google_drive_link.trim()} target="_blank" rel="noopener noreferrer" onClick={(e) => { e.preventDefault(); openInExternalBrowser(j.google_drive_link!.trim()) }} title="Google Drive" style={{ display: 'inline-flex', alignItems: 'center', color: 'var(--text-muted)', padding: '0.35rem' }}>
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="1.25em" height="1.25em" fill="currentColor" aria-hidden="true"><path d="M403 378.9L239.4 96L400.6 96L564.2 378.9L403 378.9zM265.5 402.5L184.9 544L495.4 544L576 402.5L265.5 402.5zM218.1 131.4L64 402.5L144.6 544L301 272.8L218.1 131.4z" /></svg>
-                              </a>
-                            )}
-                            {j.job_plans_link?.trim() && (
-                              <a href={j.job_plans_link.trim()} target="_blank" rel="noopener noreferrer" onClick={(e) => { e.preventDefault(); openInExternalBrowser(j.job_plans_link!.trim()) }} title="Job Plans" style={{ display: 'inline-flex', alignItems: 'center', color: 'var(--text-muted)', padding: '0.35rem' }}>
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="1.25em" height="1.25em" fill="currentColor" aria-hidden="true"><path d="M296.5 69.2C311.4 62.3 328.6 62.3 343.5 69.2L562.1 170.2C570.6 174.1 576 182.6 576 192C576 201.4 570.6 209.9 562.1 213.8L343.5 314.8C328.6 321.7 311.4 321.7 296.5 314.8L77.9 213.8C69.4 209.8 64 201.3 64 192C64 182.7 69.4 174.1 77.9 170.2L296.5 69.2zM112.1 282.4L276.4 358.3C304.1 371.1 336 371.1 363.7 358.3L528 282.4L562.1 298.2C570.6 302.1 576 310.6 576 320C576 329.4 570.6 337.9 562.1 341.8L343.5 442.8C328.6 449.7 311.4 449.7 296.5 442.8L77.9 341.8C69.4 337.8 64 329.3 64 320C64 310.7 69.4 302.1 77.9 298.2L112 282.4zM77.9 426.2L112 410.4L276.3 486.3C304 499.1 335.9 499.1 363.6 486.3L527.9 410.4L562 426.2C570.5 430.1 575.9 438.6 575.9 448C575.9 457.4 570.5 465.9 562 469.8L343.4 570.8C328.5 577.7 311.3 577.7 296.4 570.8L77.9 469.8C69.4 465.8 64 457.3 64 448C64 438.7 69.4 430.1 77.9 426.2z" /></svg>
-                              </a>
-                            )}
-                          </div>
-                        )}
-                        <ReadyToBillJobIconToolbar
-                            jobId={j.id}
-                            hcpNumber={j.hcp_number ?? '—'}
-                            jobName={j.job_name ?? '—'}
-                            jobAddress={j.job_address ?? '—'}
-                            jobFormModalAvailable={Boolean(jobFormModal)}
-                            onEditJob={openReadyToBillEditJob}
-                            onOpenDetail={openReadyToBillDetailJobModal}
-                          />
-                        <button type="button" onClick={() => setViewReportsJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', jobAddress: j.job_address ?? '—' })} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: 'var(--text-link)', border: '1px solid #2563eb', borderRadius: 4, cursor: 'pointer' }}>View<br />Reports</button>
-                        <button type="button" onClick={() => { setSendBackChecked(false); setSendBackJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', toStatus: 'working', rtbDraftCount: countDashboardRtbDraftsForJob(j.id, readyToBillInvoices) }) }} disabled={jobStatusUpdatingId === j.id} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: 'var(--text-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: jobStatusUpdatingId === j.id ? 'not-allowed' : 'pointer' }} aria-label="Send back">Send<br />Back</button>
-                        {bundleInv != null && (
-                          <button type="button" onClick={() => { setSendBackChecked(false); setSendBackInvoice({ inv: bundleInv, action: 'delete' }) }} disabled={invoiceStatusUpdatingId === bundleInv.id} title="Remove this billing line (partial invoice row)" style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: 'var(--text-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: invoiceStatusUpdatingId === bundleInv.id ? 'not-allowed' : 'pointer' }}>Delete<br />draft bill</button>
-                        )}
-                        <div className="billingPipelineActionAgePair">
-                          {bundleInv != null ? (
-                            <button type="button" onClick={() => {
-                                if (!dashboardJobHasCustomerForBilling(bundleInv.customer_id)) {
-                                  showToast?.('Link this job to a customer before billing.', 'error')
-                                  return
-                                }
-                                openDashboardBillCustomerInvoice(bundleInv)
-                              }} disabled={invoiceStatusUpdatingId === bundleInv.id} title="Bill Customer for this billing line (e.g. Stripe)" style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#16a34a', color: 'white', border: 'none', borderRadius: 4, cursor: invoiceStatusUpdatingId === bundleInv.id ? 'not-allowed' : 'pointer' }}>{invoiceStatusUpdatingId === bundleInv.id ? '…' : 'Bill Customer'}</button>
-                          ) : (
-                            <button type="button" onClick={() => {
-                                if (!dashboardJobHasCustomerForBilling(j.customer_id)) {
-                                  showToast?.('Link this job to a customer before billing.', 'error')
-                                  return
-                                }
-                                setSendRecordJobMeta({ id: j.id })
-                              }} disabled={jobStatusUpdatingId === j.id} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: jobStatusUpdatingId === j.id ? 'not-allowed' : 'pointer' }}>{jobStatusUpdatingId === j.id ? '…' : 'Bill Customer'}</button>
-                          )}
-                          {(bundleInv?.created_at ?? j.created_at) && (
-                            <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', textAlign: 'center' }} title={bundleInv != null ? 'Time since invoice created' : 'Time since job created'}>
-                              Open {formatTimeSince(bundleInv?.created_at ?? j.created_at)}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          )}
-          </>
-          )}
-        </div>
-        </BillingPipelineStage>
-        {(waitingForPaymentLoading || billedWaitingDashboardUnits.length > 0) && (
-          <BillingPipelineStage step={3}>
-          <div style={{ marginBottom: 0 }}>
-          <button
-            type="button"
-            onClick={() => setWaitingForPaymentExpanded((prev) => !prev)}
-            aria-expanded={waitingForPaymentExpanded}
-            style={{ margin: 0, padding: 0, border: 'none', background: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: waitingForPaymentExpanded ? '0.75rem' : 0 }}
-          >
-            <span aria-hidden>{waitingForPaymentExpanded ? '\u25BC' : '\u25B6'}</span>
-            <h2 style={{ fontSize: '1.125rem', margin: 0 }}>Billed Waiting for Payment ({billedWaitingDashboardUnits.length})</h2>
-          </button>
-          {waitingForPaymentExpanded && (
-          <>
-          {waitingForPaymentLoading && billedWaitingDashboardUnits.length === 0 ? (
-            <DashboardListRowSkeleton rows={2} />
-          ) : (
-            <div>
-              {billedWaitingDashboardUnits.map((unit) => {
-                if (unit.kind === 'invoice' || unit.kind === 'job_bundle') {
-                  const inv = unit.inv
-                  const cardKey = unit.kind === 'job_bundle' ? `billed-bundle-${unit.job.id}-${inv.id}` : inv.id
-                  return (
-                    <div key={cardKey} style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '1rem', marginBottom: '0.75rem', background: 'var(--surface)' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>
-                        <div>
-                          <div style={{ fontWeight: 600 }}>{inv.hcp_number || '—'} · {inv.job_name || '—'}</div>
-                          <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginTop: 4 }}>
-                            {inv.job_address?.trim() ? (
-                              <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(inv.job_address.trim())}`} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--text-link)', textDecoration: 'none' }}>{inv.job_address}</a>
-                            ) : (
-                              '—'
-                            )}
-                          </div>
-                          <div style={{ fontSize: '0.875rem', marginTop: 4 }}>
-                            {`Invoice: $${inv.amount.toLocaleString('en-US', { minimumFractionDigits: 2 })}`}
-                            {(() => {
-                              const { applied, open } = dashboardBilledInvoiceAmounts(inv)
-                              if (applied <= 0) return null
-                              return (
-                                <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: 2 }}>
-                                  {`Applied: $${applied.toLocaleString('en-US', { minimumFractionDigits: 2 })} · Open: $${open.toLocaleString('en-US', { minimumFractionDigits: 2 })}`}
-                                </div>
-                              )
-                            })()}
-                          </div>
-                        </div>
-                        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-                          {(inv.google_drive_link?.trim() || inv.job_plans_link?.trim()) && (
-                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
-                              {inv.google_drive_link?.trim() && (
-                                <a href={inv.google_drive_link.trim()} target="_blank" rel="noopener noreferrer" onClick={(e) => { e.preventDefault(); openInExternalBrowser(inv.google_drive_link!.trim()) }} title="Google Drive" style={{ display: 'inline-flex', alignItems: 'center', color: 'var(--text-muted)', padding: '0.35rem' }}>
-                                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="1.25em" height="1.25em" fill="currentColor" aria-hidden="true"><path d="M403 378.9L239.4 96L400.6 96L564.2 378.9L403 378.9zM265.5 402.5L184.9 544L495.4 544L576 402.5L265.5 402.5zM218.1 131.4L64 402.5L144.6 544L301 272.8L218.1 131.4z" /></svg>
-                                </a>
-                              )}
-                              {inv.job_plans_link?.trim() && (
-                                <a href={inv.job_plans_link.trim()} target="_blank" rel="noopener noreferrer" onClick={(e) => { e.preventDefault(); openInExternalBrowser(inv.job_plans_link!.trim()) }} title="Job Plans" style={{ display: 'inline-flex', alignItems: 'center', color: 'var(--text-muted)', padding: '0.35rem' }}>
-                                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="1.25em" height="1.25em" fill="currentColor" aria-hidden="true"><path d="M296.5 69.2C311.4 62.3 328.6 62.3 343.5 69.2L562.1 170.2C570.6 174.1 576 182.6 576 192C576 201.4 570.6 209.9 562.1 213.8L343.5 314.8C328.6 321.7 311.4 321.7 296.5 314.8L77.9 213.8C69.4 209.8 64 201.3 64 192C64 182.7 69.4 174.1 77.9 170.2L296.5 69.2zM112.1 282.4L276.4 358.3C304.1 371.1 336 371.1 363.7 358.3L528 282.4L562.1 298.2C570.6 302.1 576 310.6 576 320C576 329.4 570.6 337.9 562.1 341.8L343.5 442.8C328.6 449.7 311.4 449.7 296.5 442.8L77.9 341.8C69.4 337.8 64 329.3 64 320C64 310.7 69.4 302.1 77.9 298.2L112 282.4zM77.9 426.2L112 410.4L276.3 486.3C304 499.1 335.9 499.1 363.6 486.3L527.9 410.4L562 426.2C570.5 430.1 575.9 438.6 575.9 448C575.9 457.4 570.5 465.9 562 469.8L343.4 570.8C328.5 577.7 311.3 577.7 296.4 570.8L77.9 469.8C69.4 465.8 64 457.3 64 448C64 438.7 69.4 430.1 77.9 426.2z" /></svg>
-                                </a>
-                              )}
-                            </div>
-                          )}
-                          <button type="button" onClick={() => setViewReportsJob({ id: inv.job_id, hcpNumber: inv.hcp_number ?? '—', jobName: inv.job_name ?? '—', jobAddress: inv.job_address ?? '—' })} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: 'var(--text-link)', border: '1px solid #2563eb', borderRadius: 4, cursor: 'pointer' }}>View<br />Reports</button>
-                          <button type="button" onClick={() => { setSendBackChecked(false); setSendBackInvoice({ inv, action: 'revert' }) }} disabled={invoiceStatusUpdatingId === inv.id} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: 'var(--text-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: invoiceStatusUpdatingId === inv.id ? 'not-allowed' : 'pointer' }}>Send<br />back</button>
-                          <div className="billingPipelineActionAgePair">
-                            <button type="button" onClick={() => setMarkPaidInvoice(inv)} disabled={invoiceStatusUpdatingId === inv.id} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#16a34a', color: 'white', border: 'none', borderRadius: 4, cursor: invoiceStatusUpdatingId === inv.id ? 'not-allowed' : 'pointer' }}>{invoiceStatusUpdatingId === inv.id ? '…' : 'Mark Paid'}</button>
-                            {inv.open_since_at && <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', textAlign: 'center' }} title="Time open">Open {formatTimeSince(inv.open_since_at)}</span>}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  )
-                }
-                const j = unit.job
-                const remaining = Number(j.revenue ?? 0) - Number(j.payments_made ?? 0)
-                return (
-                  <div key={j.id} style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '1rem', marginBottom: '0.75rem', background: 'var(--surface)' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>
-                      <div>
-                        <div style={{ fontWeight: 600 }}>{j.hcp_number || '—'} · {j.job_name || '—'}</div>
-                        <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginTop: 4 }}>
-                          {j.job_address?.trim() ? (
-                            <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(j.job_address.trim())}`} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--text-link)', textDecoration: 'none' }}>{j.job_address}</a>
-                          ) : (
-                            '—'
-                          )}
-                        </div>
-                        <div style={{ fontSize: '0.875rem', marginTop: 4 }}>Remaining: ${remaining.toLocaleString('en-US', { minimumFractionDigits: 2 })}</div>
-                      </div>
-                      <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-                        {(j.google_drive_link?.trim() || j.job_plans_link?.trim()) && (
-                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
-                            {j.google_drive_link?.trim() && (
-                              <a href={j.google_drive_link.trim()} target="_blank" rel="noopener noreferrer" onClick={(e) => { e.preventDefault(); openInExternalBrowser(j.google_drive_link!.trim()) }} title="Google Drive" style={{ display: 'inline-flex', alignItems: 'center', color: 'var(--text-muted)', padding: '0.35rem' }}>
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="1.25em" height="1.25em" fill="currentColor" aria-hidden="true"><path d="M403 378.9L239.4 96L400.6 96L564.2 378.9L403 378.9zM265.5 402.5L184.9 544L495.4 544L576 402.5L265.5 402.5zM218.1 131.4L64 402.5L144.6 544L301 272.8L218.1 131.4z" /></svg>
-                              </a>
-                            )}
-                            {j.job_plans_link?.trim() && (
-                              <a href={j.job_plans_link.trim()} target="_blank" rel="noopener noreferrer" onClick={(e) => { e.preventDefault(); openInExternalBrowser(j.job_plans_link!.trim()) }} title="Job Plans" style={{ display: 'inline-flex', alignItems: 'center', color: 'var(--text-muted)', padding: '0.35rem' }}>
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="1.25em" height="1.25em" fill="currentColor" aria-hidden="true"><path d="M296.5 69.2C311.4 62.3 328.6 62.3 343.5 69.2L562.1 170.2C570.6 174.1 576 182.6 576 192C576 201.4 570.6 209.9 562.1 213.8L343.5 314.8C328.6 321.7 311.4 321.7 296.5 314.8L77.9 213.8C69.4 209.8 64 201.3 64 192C64 182.7 69.4 174.1 77.9 170.2L296.5 69.2zM112.1 282.4L276.4 358.3C304.1 371.1 336 371.1 363.7 358.3L528 282.4L562.1 298.2C570.6 302.1 576 310.6 576 320C576 329.4 570.6 337.9 562.1 341.8L343.5 442.8C328.6 449.7 311.4 449.7 296.5 442.8L77.9 341.8C69.4 337.8 64 329.3 64 320C64 310.7 69.4 302.1 77.9 298.2L112 282.4zM77.9 426.2L112 410.4L276.3 486.3C304 499.1 335.9 499.1 363.6 486.3L527.9 410.4L562 426.2C570.5 430.1 575.9 438.6 575.9 448C575.9 457.4 570.5 465.9 562 469.8L343.4 570.8C328.5 577.7 311.3 577.7 296.4 570.8L77.9 469.8C69.4 465.8 64 457.3 64 448C64 438.7 69.4 430.1 77.9 426.2z" /></svg>
-                              </a>
-                            )}
-                          </div>
-                        )}
-                        <button type="button" onClick={() => setViewReportsJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', jobAddress: j.job_address ?? '—' })} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: 'var(--text-link)', border: '1px solid #2563eb', borderRadius: 4, cursor: 'pointer' }}>View<br />Reports</button>
-                        <button type="button" onClick={() => { setSendBackChecked(false); setSendBackJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', toStatus: 'ready_to_bill', rtbDraftCount: 0 }) }} disabled={jobStatusUpdatingId === j.id} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: 'var(--text-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: jobStatusUpdatingId === j.id ? 'not-allowed' : 'pointer' }}>Send<br />back</button>
-                        <div className="billingPipelineActionAgePair">
-                          <button type="button" onClick={() => setMarkPaidJob(j)} disabled={jobStatusUpdatingId === j.id} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: jobStatusUpdatingId === j.id ? 'not-allowed' : 'pointer' }}>{jobStatusUpdatingId === j.id ? '…' : 'Mark Paid'}</button>
-                          {j.created_at && <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', textAlign: 'center' }} title="Time since job created">Open {formatTimeSince(j.created_at)}</span>}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          )}
-          </>
-          )}
-        </div>
-          </BillingPipelineStage>
-        )}
-        </BillingPipelineCard>
-      )}
-
-      {showMyInboxCard && (
+  const myInboxCard = showMyInboxCard && (
         <DashboardGroupCard
           id="dash-my-inbox"
           title="My Inbox"
@@ -6202,7 +5191,1024 @@ export default function Dashboard() {
         </div>
       )}
         </DashboardGroupCard>
+  )
+
+  return (
+    <div style={{ paddingBottom: dockSections.length > 1 ? '4.5rem' : 0 }}>
+      {dockSections.length > 1 ? <SectionDock sections={dockSections} ariaLabel="Dashboard sections" /> : null}
+      {showFinancials && <div id="dash-notifications" aria-hidden="true" style={dockAnchorStyle} />}
+      {showFinancials && <DashboardFinancialsSection />}
+      {showDashboardQuickButtons && quickButtonsPlacement === 'top' && (
+        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '1rem', justifyContent: 'center' }}>
+          {quickActionDefs.map((b) => (
+            <Link key={b.key} to={b.to} style={quickActionLinkStyle}>
+              {b.label}
+            </Link>
+          ))}
+        </div>
       )}
+      {authUser?.id && (
+        <ClockInOutButton
+          userId={authUser.id}
+          userName={clockDisplayName}
+          onOpenMyTimeDayEditor={dashboardSelfIsSalary ? undefined : openMyTimePreviewFromClock}
+          onClockInSuccess={handleClockInSuccessContractPrompt}
+          onFieldReportSaved={() => void refreshDashboardAssignedJobLists()}
+        />
+      )}
+      {tallyAndPinnedBlock}
+      {authUser?.id && teamFeedbackHomeEnabled && (
+        <div style={{ marginBottom: '1rem' }}>
+          <button
+            type="button"
+            onClick={() => setTeamFeedbackWizardOpen(true)}
+            style={{
+              padding: '0.5rem 1rem',
+              fontSize: '1rem',
+              fontWeight: 600,
+              border: '2px solid #ea580c',
+              borderRadius: 8,
+              background: 'var(--bg-orange-tint)',
+              color: 'var(--text-orange-700)',
+              cursor: 'pointer',
+            }}
+          >
+            Quick feedback
+          </button>
+        </div>
+      )}
+      {authUser?.id && teamFeedbackWizardOpen && (
+        <TeamFeedbackWizard
+          open
+          onClose={() => setTeamFeedbackWizardOpen(false)}
+          userId={authUser.id}
+          source="home_button"
+          skipIntro
+        />
+      )}
+      <DashboardContractSigningPromptModal
+        open={contractSigningPromptOpen}
+        rows={contractSigningPromptRows}
+        openingDocId={contractSigningPromptOpeningId}
+        onClose={() => setContractSigningPromptOpen(false)}
+        onOpenSigningPage={openContractSigningPageForDoc}
+      />
+      {isAssistantLike(role) && authUser?.id && showClockActivityStrip && (
+        <div id="dash-clocked-in" aria-hidden="true" style={dockAnchorStyle} />
+      )}
+      {isAssistantLike(role) && authUser?.id && showClockActivityStrip && (
+        <DashboardTeamActiveClockStrip
+          sessions={sessionsForStrip}
+          hoursTodayByUserId={hoursTodayForStrip}
+          clockedInTodayRows={myTeam.clockedInTodayStripRows}
+          jobsWorkedTodayRows={myTeam.jobsWorkedTodayStripRows}
+          jobsWorkedTodayReportKeys={myTeam.jobsWorkedTodayReportKeys}
+          jobsWorkedTodayReportIdByKey={myTeam.jobsWorkedTodayReportIdByKey}
+          jobsWorkedTodayJobLedgerIdsWithReport={myTeam.jobsWorkedTodayJobLedgerIdsWithReport}
+          showScopeToggle={showClockStripScopeToggle}
+          clockStripScope={clockStripScope}
+          onClockStripScopeChange={setClockStripScopePersist}
+          showJobBidColumn={showClockStripScopeToggle}
+          onJobBidSaved={(patch) => {
+            myTeam.applyOptimisticClockSessionAssign(patch)
+            void myTeam.loadPending({ silent: true })
+          }}
+          onJobBidAssignError={(msg) => showToast(msg, 'error')}
+          onApplyScheduleProportionsForSession={applySchedule.requestApply}
+          onOpenStripMyTimeEditor={
+            showStripSubjectMyTimeEditor ? openStripMyTimeEditor : undefined
+          }
+          authUserId={authUser.id}
+          canApproveClockSessions={showClockStripScopeToggle}
+          onClockSessionsMutated={() => {
+            void myTeam.loadPending({ silent: true })
+          }}
+          onMaterializeSalarySession={
+            showClockStripScopeToggle ? materializeSalarySessionForStrip : undefined
+          }
+          enableCopyDayJobMix={showClockStripScopeToggle}
+          enableScheduleDayEmail={showClockStripScopeToggle}
+          clockStripWorkDateYmd={myTeam.clockStripWorkDateYmd}
+        />
+      )}
+      {isAssistantLike(role) && authUser?.id && (
+        <DashboardMyTeamPendingBanner
+          pendingApprovalCount={myTeam.pendingApprovalCount}
+          loadingSessions={myTeam.loadingSessions}
+          onGoToPendingSessions={goToPendingSessionsInMyTeam}
+        />
+      )}
+      {isAssistantLike(role) && (
+        <>
+          {myInboxCard}
+          {authUser?.id && (dispatchInboxEligible || estimatorInboxEligible) && (
+            <DashboardGroupCard id="dash-teams-inbox" title="Teams Inbox">
+              {dispatchInboxEligible && (
+                <DispatchInboxSection
+                  sectionOpen={dispatchRequestsOpen}
+                  onToggleSection={() => setDispatchRequestsOpen((o) => !o)}
+                  requests={dispatchRequests}
+                  loading={dispatchRequestsLoading}
+                  expandedRequestId={expandedDispatchRequestId}
+                  onToggleExpandRequest={toggleExpandDispatchRequest}
+                  notesByRequestId={dispatchThreadNotesByRequestId}
+                  notesLoadingRequestId={dispatchNotesLoadingRequestId}
+                  noteSubmitRequestId={dispatchNoteSubmitRequestId}
+                  canAddNotes={dispatchInboxEligible}
+                  dispatchRequestDismissingId={dispatchRequestDismissingId}
+                  noteDraft={dispatchNoteDraft}
+                  onNoteDraftChange={setDispatchNoteDraft}
+                  onSubmitNote={submitDispatchNote}
+                  onSubmitNoteAndClose={submitDispatchNoteAndClose}
+                  onDismiss={dismissDispatchRequest}
+                  onOpenDismissedArchive={() => setDispatchDismissedModalOpen(true)}
+                  onLinkJobPictures={
+                    jobFormModal
+                      ? (jobId) => jobFormModal.openEditJob(jobId, { jobPicturesLinkHighlight: true })
+                      : undefined
+                  }
+                  onCreateTripCharge={(args) => setTripChargeTarget(args)}
+                />
+              )}
+              {estimatorInboxEligible && (
+                <EstimatorInboxSection
+                  sectionOpen={estimatorRequestsOpen}
+                  onToggleSection={() => setEstimatorRequestsOpen((o) => !o)}
+                  requests={estimatorRequests}
+                  loading={estimatorRequestsLoading}
+                  expandedRequestId={expandedEstimatorRequestId}
+                  onToggleExpandRequest={toggleExpandEstimatorRequest}
+                  notesByRequestId={estimatorThreadNotesByRequestId}
+                  notesLoadingRequestId={estimatorNotesLoadingRequestId}
+                  noteSubmitRequestId={estimatorNoteSubmitRequestId}
+                  canAddNotes={estimatorInboxEligible}
+                  estimatorRequestDismissingId={estimatorRequestDismissingId}
+                  noteDraft={estimatorNoteDraft}
+                  onNoteDraftChange={setEstimatorNoteDraft}
+                  onSubmitNote={submitEstimatorNote}
+                  onSubmitNoteAndClose={submitEstimatorNoteAndClose}
+                  onDismiss={dismissEstimatorRequest}
+                />
+              )}
+            </DashboardGroupCard>
+          )}
+          <div id="dash-billing" aria-hidden="true" style={dockAnchorStyle} />
+          <BillingPipelineCard>
+          {authUser?.id && (
+            <BillingPipelineStage step={1} connectToNext>
+              <DashboardFieldCollectPaymentQueue
+                embedded
+                onPrepareBill={handlePrepareBillFromFieldQueue}
+                shouldShowPrepareBill={shouldShowPrepareBillForFieldQueue}
+              />
+            </BillingPipelineStage>
+          )}
+          <BillingPipelineStage step={2} connectToNext={waitingForPaymentLoading || billedWaitingDashboardUnits.length > 0}>
+          <div style={{ marginBottom: '0.5rem' }}>
+            <button
+              type="button"
+              onClick={() => setReadyToBillExpanded((prev) => !prev)}
+              aria-expanded={readyToBillExpanded}
+              style={{ margin: 0, padding: 0, border: 'none', background: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: readyToBillExpanded ? '0.75rem' : 0 }}
+            >
+              <span aria-hidden>{readyToBillExpanded ? '\u25BC' : '\u25B6'}</span>
+              <h2 style={{ fontSize: '1.125rem', margin: 0 }}>Ready to Bill ({readyToBillDashboardUnits.length})</h2>
+            </button>
+            {readyToBillExpanded && (
+            <>
+            {readyToBillLoading && readyToBillDashboardUnits.length === 0 ? (
+              <DashboardListRowSkeleton rows={2} />
+            ) : readyToBillDashboardUnits.length === 0 ? (
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0 }}>No jobs or invoices ready to bill yet</p>
+            ) : (
+              <div>
+                {readyToBillDashboardUnits.map((unit) => {
+                  if (unit.kind === 'invoice') {
+                    const inv = unit.inv
+                    return (
+                      <div
+                        key={inv.id}
+                        style={{
+                          border: '1px solid var(--border)',
+                          borderRadius: 8,
+                          padding: '1rem',
+                          marginBottom: '0.75rem',
+                          background: 'var(--surface)',
+                        }}
+                      >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>
+                          <div>
+                            <div style={{ fontWeight: 600 }}>
+                              {inv.hcp_number || '—'} · {inv.job_name || '—'}
+                            </div>
+                            <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginTop: 4 }}>
+                              {inv.job_address?.trim() ? (
+                                <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(inv.job_address.trim())}`} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--text-link)', textDecoration: 'none' }}>{inv.job_address}</a>
+                              ) : (
+                                '—'
+                              )}
+                            </div>
+                            <div style={{ fontSize: '0.875rem', marginTop: 4 }}>
+                              {`Invoice: $${inv.amount.toLocaleString('en-US', { minimumFractionDigits: 2 })}`}
+                              {(() => {
+                                const { applied, open } = dashboardBilledInvoiceAmounts(inv)
+                                if (applied <= 0) return null
+                                return (
+                                  <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: 2 }}>
+                                    {`Applied: $${applied.toLocaleString('en-US', { minimumFractionDigits: 2 })} · Open: $${open.toLocaleString('en-US', { minimumFractionDigits: 2 })}`}
+                                  </div>
+                                )
+                              })()}
+                            </div>
+                          </div>
+                          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                            {(inv.google_drive_link?.trim() || inv.job_plans_link?.trim()) && (
+                              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
+                                {inv.google_drive_link?.trim() && (
+                                  <a
+                                    href={inv.google_drive_link.trim()}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    onClick={(e) => { e.preventDefault(); openInExternalBrowser(inv.google_drive_link!.trim()) }}
+                                    title="Google Drive"
+                                    style={{ display: 'inline-flex', alignItems: 'center', color: 'var(--text-muted)', padding: '0.35rem' }}
+                                  >
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="1.25em" height="1.25em" fill="currentColor" aria-hidden="true">
+                                      <path d="M403 378.9L239.4 96L400.6 96L564.2 378.9L403 378.9zM265.5 402.5L184.9 544L495.4 544L576 402.5L265.5 402.5zM218.1 131.4L64 402.5L144.6 544L301 272.8L218.1 131.4z" />
+                                    </svg>
+                                  </a>
+                                )}
+                                {inv.job_plans_link?.trim() && (
+                                  <a
+                                    href={inv.job_plans_link.trim()}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    onClick={(e) => { e.preventDefault(); openInExternalBrowser(inv.job_plans_link!.trim()) }}
+                                    title="Job Plans"
+                                    style={{ display: 'inline-flex', alignItems: 'center', color: 'var(--text-muted)', padding: '0.35rem' }}
+                                  >
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="1.25em" height="1.25em" fill="currentColor" aria-hidden="true">
+                                      <path d="M296.5 69.2C311.4 62.3 328.6 62.3 343.5 69.2L562.1 170.2C570.6 174.1 576 182.6 576 192C576 201.4 570.6 209.9 562.1 213.8L343.5 314.8C328.6 321.7 311.4 321.7 296.5 314.8L77.9 213.8C69.4 209.8 64 201.3 64 192C64 182.7 69.4 174.1 77.9 170.2L296.5 69.2zM112.1 282.4L276.4 358.3C304.1 371.1 336 371.1 363.7 358.3L528 282.4L562.1 298.2C570.6 302.1 576 310.6 576 320C576 329.4 570.6 337.9 562.1 341.8L343.5 442.8C328.6 449.7 311.4 449.7 296.5 442.8L77.9 341.8C69.4 337.8 64 329.3 64 320C64 310.7 69.4 302.1 77.9 298.2L112 282.4zM77.9 426.2L112 410.4L276.3 486.3C304 499.1 335.9 499.1 363.6 486.3L527.9 410.4L562 426.2C570.5 430.1 575.9 438.6 575.9 448C575.9 457.4 570.5 465.9 562 469.8L343.4 570.8C328.5 577.7 311.3 577.7 296.4 570.8L77.9 469.8C69.4 465.8 64 457.3 64 448C64 438.7 69.4 430.1 77.9 426.2z" />
+                                    </svg>
+                                  </a>
+                                )}
+                              </div>
+                            )}
+                            <ReadyToBillJobIconToolbar
+                              jobId={inv.job_id}
+                              hcpNumber={inv.hcp_number ?? '—'}
+                              jobName={inv.job_name ?? '—'}
+                              jobAddress={inv.job_address ?? '—'}
+                              jobFormModalAvailable={Boolean(jobFormModal)}
+                              onEditJob={openReadyToBillEditJob}
+                              onOpenDetail={openReadyToBillDetailJobModal}
+                            />
+                            <button type="button" onClick={() => setViewReportsJob({ id: inv.job_id, hcpNumber: inv.hcp_number ?? '—', jobName: inv.job_name ?? '—', jobAddress: inv.job_address ?? '—' })} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: 'var(--text-link)', border: '1px solid #2563eb', borderRadius: 4, cursor: 'pointer' }}>View<br />Reports</button>
+                            <button type="button" onClick={() => { setSendBackChecked(false); setSendBackInvoice({ inv, action: 'delete' }) }} disabled={invoiceStatusUpdatingId === inv.id} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: 'var(--text-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: invoiceStatusUpdatingId === inv.id ? 'not-allowed' : 'pointer' }}>Delete<br />draft bill</button>
+                            <div className="billingPipelineActionAgePair">
+                              <button type="button" onClick={() => {
+                                if (!dashboardJobHasCustomerForBilling(inv.customer_id)) {
+                                  showToast?.('Link this job to a customer before billing.', 'error')
+                                  return
+                                }
+                                openDashboardBillCustomerInvoice(inv)
+                              }} disabled={invoiceStatusUpdatingId === inv.id} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#16a34a', color: 'white', border: 'none', borderRadius: 4, cursor: invoiceStatusUpdatingId === inv.id ? 'not-allowed' : 'pointer' }}>{invoiceStatusUpdatingId === inv.id ? '…' : 'Bill Customer'}</button>
+                              {inv.open_since_at && <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', textAlign: 'center' }} title="Time open">Open {formatTimeSince(inv.open_since_at)}</span>}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  }
+                  const j = unit.job
+                  const bundleInv = unit.kind === 'job_bundle' ? unit.inv : null
+                  const remaining = bundleInv != null ? Number(bundleInv.amount) : (Number(j.revenue ?? 0) - Number(j.payments_made ?? 0))
+                  return (
+                    <div
+                      key={bundleInv != null ? `bundle-${j.id}-${bundleInv.id}` : j.id}
+                      style={{
+                        border: '1px solid var(--border)',
+                        borderRadius: 8,
+                        padding: '1rem',
+                        marginBottom: '0.75rem',
+                        background: 'var(--surface)',
+                      }}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>
+                        <div>
+                          <div style={{ fontWeight: 600 }}>
+                            {j.hcp_number || '—'} · {j.job_name || '—'}
+                          </div>
+                          <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginTop: 4 }}>
+                            {j.job_address?.trim() ? (
+                              <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(j.job_address.trim())}`} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--text-link)', textDecoration: 'none' }}>{j.job_address}</a>
+                            ) : (
+                              '—'
+                            )}
+                          </div>
+                          {bundleInv != null ? (
+                            <div style={{ fontSize: '0.75rem', color: 'var(--text-blue-800)', marginTop: 4 }} title="Single billing line for this job (Stripe or external send)">
+                              Billing line: ${remaining.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                            </div>
+                          ) : (
+                            <div style={{ fontSize: '0.875rem', marginTop: 4 }}>Remaining: ${remaining.toLocaleString('en-US', { minimumFractionDigits: 2 })}</div>
+                          )}
+                        </div>
+                        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                          {(j.google_drive_link?.trim() || j.job_plans_link?.trim()) && (
+                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
+                              {j.google_drive_link?.trim() && (
+                                <a href={j.google_drive_link.trim()} target="_blank" rel="noopener noreferrer" onClick={(e) => { e.preventDefault(); openInExternalBrowser(j.google_drive_link!.trim()) }} title="Google Drive" style={{ display: 'inline-flex', alignItems: 'center', color: 'var(--text-muted)', padding: '0.35rem' }}>
+                                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="1.25em" height="1.25em" fill="currentColor" aria-hidden="true"><path d="M403 378.9L239.4 96L400.6 96L564.2 378.9L403 378.9zM265.5 402.5L184.9 544L495.4 544L576 402.5L265.5 402.5zM218.1 131.4L64 402.5L144.6 544L301 272.8L218.1 131.4z" /></svg>
+                                </a>
+                              )}
+                              {j.job_plans_link?.trim() && (
+                                <a href={j.job_plans_link.trim()} target="_blank" rel="noopener noreferrer" onClick={(e) => { e.preventDefault(); openInExternalBrowser(j.job_plans_link!.trim()) }} title="Job Plans" style={{ display: 'inline-flex', alignItems: 'center', color: 'var(--text-muted)', padding: '0.35rem' }}>
+                                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="1.25em" height="1.25em" fill="currentColor" aria-hidden="true"><path d="M296.5 69.2C311.4 62.3 328.6 62.3 343.5 69.2L562.1 170.2C570.6 174.1 576 182.6 576 192C576 201.4 570.6 209.9 562.1 213.8L343.5 314.8C328.6 321.7 311.4 321.7 296.5 314.8L77.9 213.8C69.4 209.8 64 201.3 64 192C64 182.7 69.4 174.1 77.9 170.2L296.5 69.2zM112.1 282.4L276.4 358.3C304.1 371.1 336 371.1 363.7 358.3L528 282.4L562.1 298.2C570.6 302.1 576 310.6 576 320C576 329.4 570.6 337.9 562.1 341.8L343.5 442.8C328.6 449.7 311.4 449.7 296.5 442.8L77.9 341.8C69.4 337.8 64 329.3 64 320C64 310.7 69.4 302.1 77.9 298.2L112 282.4zM77.9 426.2L112 410.4L276.3 486.3C304 499.1 335.9 499.1 363.6 486.3L527.9 410.4L562 426.2C570.5 430.1 575.9 438.6 575.9 448C575.9 457.4 570.5 465.9 562 469.8L343.4 570.8C328.5 577.7 311.3 577.7 296.4 570.8L77.9 469.8C69.4 465.8 64 457.3 64 448C64 438.7 69.4 430.1 77.9 426.2z" /></svg>
+                                </a>
+                              )}
+                            </div>
+                          )}
+                          <ReadyToBillJobIconToolbar
+                            jobId={j.id}
+                            hcpNumber={j.hcp_number ?? '—'}
+                            jobName={j.job_name ?? '—'}
+                            jobAddress={j.job_address ?? '—'}
+                            jobFormModalAvailable={Boolean(jobFormModal)}
+                            onEditJob={openReadyToBillEditJob}
+                            onOpenDetail={openReadyToBillDetailJobModal}
+                          />
+                          <button type="button" onClick={() => setViewReportsJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', jobAddress: j.job_address ?? '—' })} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: 'var(--text-link)', border: '1px solid #2563eb', borderRadius: 4, cursor: 'pointer' }}>View<br />Reports</button>
+                          <button type="button" onClick={() => { setSendBackChecked(false); setSendBackJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', toStatus: 'working', rtbDraftCount: countDashboardRtbDraftsForJob(j.id, readyToBillInvoices) }) }} disabled={jobStatusUpdatingId === j.id} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: 'var(--text-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: jobStatusUpdatingId === j.id ? 'not-allowed' : 'pointer' }} aria-label="Send back">Send<br />Back</button>
+                          {bundleInv != null && (
+                            <button type="button" onClick={() => { setSendBackChecked(false); setSendBackInvoice({ inv: bundleInv, action: 'delete' }) }} disabled={invoiceStatusUpdatingId === bundleInv.id} title="Remove this billing line (partial invoice row)" style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: 'var(--text-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: invoiceStatusUpdatingId === bundleInv.id ? 'not-allowed' : 'pointer' }}>Delete<br />draft bill</button>
+                          )}
+                          <div className="billingPipelineActionAgePair">
+                            {bundleInv != null ? (
+                              <button type="button" onClick={() => {
+                                if (!dashboardJobHasCustomerForBilling(bundleInv.customer_id)) {
+                                  showToast?.('Link this job to a customer before billing.', 'error')
+                                  return
+                                }
+                                openDashboardBillCustomerInvoice(bundleInv)
+                              }} disabled={invoiceStatusUpdatingId === bundleInv.id} title="Bill Customer for this billing line (e.g. Stripe)" style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#16a34a', color: 'white', border: 'none', borderRadius: 4, cursor: invoiceStatusUpdatingId === bundleInv.id ? 'not-allowed' : 'pointer' }}>{invoiceStatusUpdatingId === bundleInv.id ? '…' : 'Bill Customer'}</button>
+                            ) : (
+                              <button type="button" onClick={() => {
+                                if (!dashboardJobHasCustomerForBilling(j.customer_id)) {
+                                  showToast?.('Link this job to a customer before billing.', 'error')
+                                  return
+                                }
+                                setSendRecordJobMeta({ id: j.id })
+                              }} disabled={jobStatusUpdatingId === j.id} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: jobStatusUpdatingId === j.id ? 'not-allowed' : 'pointer' }}>{jobStatusUpdatingId === j.id ? '…' : 'Bill Customer'}</button>
+                            )}
+                            {(bundleInv?.created_at ?? j.created_at) && (
+                              <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', textAlign: 'center' }} title={bundleInv != null ? 'Time since invoice created' : 'Time since job created'}>
+                                Open {formatTimeSince(bundleInv?.created_at ?? j.created_at)}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+            </>
+            )}
+          </div>
+          </BillingPipelineStage>
+          {(waitingForPaymentLoading || billedWaitingDashboardUnits.length > 0) && (
+            <BillingPipelineStage step={3}>
+            <div style={{ marginBottom: 0 }}>
+              <button
+                type="button"
+                onClick={() => setWaitingForPaymentExpanded((prev) => !prev)}
+                aria-expanded={waitingForPaymentExpanded}
+                style={{ margin: 0, padding: 0, border: 'none', background: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: waitingForPaymentExpanded ? '0.75rem' : 0 }}
+              >
+                <span aria-hidden>{waitingForPaymentExpanded ? '\u25BC' : '\u25B6'}</span>
+                <h2 style={{ fontSize: '1.125rem', margin: 0 }}>Billed Waiting for Payment ({billedWaitingDashboardUnits.length})</h2>
+              </button>
+              {waitingForPaymentExpanded && (
+              <>
+              {waitingForPaymentLoading && billedWaitingDashboardUnits.length === 0 ? (
+                <DashboardListRowSkeleton rows={2} />
+              ) : (
+                <div>
+                  {billedWaitingDashboardUnits.map((unit) => {
+                    if (unit.kind === 'invoice' || unit.kind === 'job_bundle') {
+                      const inv = unit.inv
+                      const cardKey = unit.kind === 'job_bundle' ? `billed-bundle-${unit.job.id}-${inv.id}` : inv.id
+                      return (
+                    <div key={cardKey} style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '1rem', marginBottom: '0.75rem', background: 'var(--surface)' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>
+                        <div>
+                          <div style={{ fontWeight: 600 }}>{inv.hcp_number || '—'} · {inv.job_name || '—'}</div>
+                          <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginTop: 4 }}>
+                            {inv.job_address?.trim() ? (
+                              <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(inv.job_address.trim())}`} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--text-link)', textDecoration: 'none' }}>{inv.job_address}</a>
+                            ) : (
+                              '—'
+                            )}
+                          </div>
+                          <div style={{ fontSize: '0.875rem', marginTop: 4 }}>
+                            {`Invoice: $${inv.amount.toLocaleString('en-US', { minimumFractionDigits: 2 })}`}
+                            {(() => {
+                              const { applied, open } = dashboardBilledInvoiceAmounts(inv)
+                              if (applied <= 0) return null
+                              return (
+                                <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: 2 }}>
+                                  {`Applied: $${applied.toLocaleString('en-US', { minimumFractionDigits: 2 })} · Open: $${open.toLocaleString('en-US', { minimumFractionDigits: 2 })}`}
+                                </div>
+                              )
+                            })()}
+                          </div>
+                        </div>
+                        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                          {(inv.google_drive_link?.trim() || inv.job_plans_link?.trim()) && (
+                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
+                              {inv.google_drive_link?.trim() && (
+                                <a href={inv.google_drive_link.trim()} target="_blank" rel="noopener noreferrer" onClick={(e) => { e.preventDefault(); openInExternalBrowser(inv.google_drive_link!.trim()) }} title="Google Drive" style={{ display: 'inline-flex', alignItems: 'center', color: 'var(--text-muted)', padding: '0.35rem' }}>
+                                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="1.25em" height="1.25em" fill="currentColor" aria-hidden="true"><path d="M403 378.9L239.4 96L400.6 96L564.2 378.9L403 378.9zM265.5 402.5L184.9 544L495.4 544L576 402.5L265.5 402.5zM218.1 131.4L64 402.5L144.6 544L301 272.8L218.1 131.4z" /></svg>
+                                </a>
+                              )}
+                              {inv.job_plans_link?.trim() && (
+                                <a href={inv.job_plans_link.trim()} target="_blank" rel="noopener noreferrer" onClick={(e) => { e.preventDefault(); openInExternalBrowser(inv.job_plans_link!.trim()) }} title="Job Plans" style={{ display: 'inline-flex', alignItems: 'center', color: 'var(--text-muted)', padding: '0.35rem' }}>
+                                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="1.25em" height="1.25em" fill="currentColor" aria-hidden="true"><path d="M296.5 69.2C311.4 62.3 328.6 62.3 343.5 69.2L562.1 170.2C570.6 174.1 576 182.6 576 192C576 201.4 570.6 209.9 562.1 213.8L343.5 314.8C328.6 321.7 311.4 321.7 296.5 314.8L77.9 213.8C69.4 209.8 64 201.3 64 192C64 182.7 69.4 174.1 77.9 170.2L296.5 69.2zM112.1 282.4L276.4 358.3C304.1 371.1 336 371.1 363.7 358.3L528 282.4L562.1 298.2C570.6 302.1 576 310.6 576 320C576 329.4 570.6 337.9 562.1 341.8L343.5 442.8C328.6 449.7 311.4 449.7 296.5 442.8L77.9 341.8C69.4 337.8 64 329.3 64 320C64 310.7 69.4 302.1 77.9 298.2L112 282.4zM77.9 426.2L112 410.4L276.3 486.3C304 499.1 335.9 499.1 363.6 486.3L527.9 410.4L562 426.2C570.5 430.1 575.9 438.6 575.9 448C575.9 457.4 570.5 465.9 562 469.8L343.4 570.8C328.5 577.7 311.3 577.7 296.4 570.8L77.9 469.8C69.4 465.8 64 457.3 64 448C64 438.7 69.4 430.1 77.9 426.2z" /></svg>
+                                </a>
+                              )}
+                            </div>
+                          )}
+                          <button type="button" onClick={() => setViewReportsJob({ id: inv.job_id, hcpNumber: inv.hcp_number ?? '—', jobName: inv.job_name ?? '—', jobAddress: inv.job_address ?? '—' })} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: 'var(--text-link)', border: '1px solid #2563eb', borderRadius: 4, cursor: 'pointer' }}>View<br />Reports</button>
+                          <button type="button" onClick={() => { setSendBackChecked(false); setSendBackInvoice({ inv, action: 'revert' }) }} disabled={invoiceStatusUpdatingId === inv.id} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: 'var(--text-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: invoiceStatusUpdatingId === inv.id ? 'not-allowed' : 'pointer' }}>Send<br />back</button>
+                          <div className="billingPipelineActionAgePair">
+                            <button type="button" onClick={() => setMarkPaidInvoice(inv)} disabled={invoiceStatusUpdatingId === inv.id} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#16a34a', color: 'white', border: 'none', borderRadius: 4, cursor: invoiceStatusUpdatingId === inv.id ? 'not-allowed' : 'pointer' }}>{invoiceStatusUpdatingId === inv.id ? '…' : 'Mark Paid'}</button>
+                            {inv.open_since_at && <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', textAlign: 'center' }} title="Time open">Open {formatTimeSince(inv.open_since_at)}</span>}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                      )
+                    }
+                    const j = unit.job
+                    const remaining = Number(j.revenue ?? 0) - Number(j.payments_made ?? 0)
+                    return (
+                      <div key={j.id} style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '1rem', marginBottom: '0.75rem', background: 'var(--surface)' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>
+                          <div>
+                            <div style={{ fontWeight: 600 }}>{j.hcp_number || '—'} · {j.job_name || '—'}</div>
+                            <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginTop: 4 }}>
+                              {j.job_address?.trim() ? (
+                                <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(j.job_address.trim())}`} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--text-link)', textDecoration: 'none' }}>{j.job_address}</a>
+                              ) : (
+                                '—'
+                              )}
+                            </div>
+                            <div style={{ fontSize: '0.875rem', marginTop: 4 }}>Remaining: ${remaining.toLocaleString('en-US', { minimumFractionDigits: 2 })}</div>
+                          </div>
+                          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                            {(j.google_drive_link?.trim() || j.job_plans_link?.trim()) && (
+                              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
+                                {j.google_drive_link?.trim() && (
+                                  <a href={j.google_drive_link.trim()} target="_blank" rel="noopener noreferrer" onClick={(e) => { e.preventDefault(); openInExternalBrowser(j.google_drive_link!.trim()) }} title="Google Drive" style={{ display: 'inline-flex', alignItems: 'center', color: 'var(--text-muted)', padding: '0.35rem' }}>
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="1.25em" height="1.25em" fill="currentColor" aria-hidden="true"><path d="M403 378.9L239.4 96L400.6 96L564.2 378.9L403 378.9zM265.5 402.5L184.9 544L495.4 544L576 402.5L265.5 402.5zM218.1 131.4L64 402.5L144.6 544L301 272.8L218.1 131.4z" /></svg>
+                                  </a>
+                                )}
+                                {j.job_plans_link?.trim() && (
+                                  <a href={j.job_plans_link.trim()} target="_blank" rel="noopener noreferrer" onClick={(e) => { e.preventDefault(); openInExternalBrowser(j.job_plans_link!.trim()) }} title="Job Plans" style={{ display: 'inline-flex', alignItems: 'center', color: 'var(--text-muted)', padding: '0.35rem' }}>
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="1.25em" height="1.25em" fill="currentColor" aria-hidden="true"><path d="M296.5 69.2C311.4 62.3 328.6 62.3 343.5 69.2L562.1 170.2C570.6 174.1 576 182.6 576 192C576 201.4 570.6 209.9 562.1 213.8L343.5 314.8C328.6 321.7 311.4 321.7 296.5 314.8L77.9 213.8C69.4 209.8 64 201.3 64 192C64 182.7 69.4 174.1 77.9 170.2L296.5 69.2zM112.1 282.4L276.4 358.3C304.1 371.1 336 371.1 363.7 358.3L528 282.4L562.1 298.2C570.6 302.1 576 310.6 576 320C576 329.4 570.6 337.9 562.1 341.8L343.5 442.8C328.6 449.7 311.4 449.7 296.5 442.8L77.9 341.8C69.4 337.8 64 329.3 64 320C64 310.7 69.4 302.1 77.9 298.2L112 282.4zM77.9 426.2L112 410.4L276.3 486.3C304 499.1 335.9 499.1 363.6 486.3L527.9 410.4L562 426.2C570.5 430.1 575.9 438.6 575.9 448C575.9 457.4 570.5 465.9 562 469.8L343.4 570.8C328.5 577.7 311.3 577.7 296.4 570.8L77.9 469.8C69.4 465.8 64 457.3 64 448C64 438.7 69.4 430.1 77.9 426.2z" /></svg>
+                                  </a>
+                                )}
+                              </div>
+                            )}
+                            <button type="button" onClick={() => setViewReportsJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', jobAddress: j.job_address ?? '—' })} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: 'var(--text-link)', border: '1px solid #2563eb', borderRadius: 4, cursor: 'pointer' }}>View<br />Reports</button>
+                            <button type="button" onClick={() => { setSendBackChecked(false); setSendBackJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', toStatus: 'ready_to_bill', rtbDraftCount: 0 }) }} disabled={jobStatusUpdatingId === j.id} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: 'var(--text-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: jobStatusUpdatingId === j.id ? 'not-allowed' : 'pointer' }}>Send<br />back</button>
+                            <div className="billingPipelineActionAgePair">
+                              <button type="button" onClick={() => setMarkPaidJob(j)} disabled={jobStatusUpdatingId === j.id} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: jobStatusUpdatingId === j.id ? 'not-allowed' : 'pointer' }}>{jobStatusUpdatingId === j.id ? '…' : 'Mark Paid'}</button>
+                              {j.created_at && <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', textAlign: 'center' }} title="Time since job created">Open {formatTimeSince(j.created_at)}</span>}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+              </>
+              )}
+            </div>
+            </BillingPipelineStage>
+          )}
+          </BillingPipelineCard>
+        </>
+      )}
+      {!isAssistantLike(role) && authUser?.id && showClockActivityStrip && (
+        <div id="dash-clocked-in" aria-hidden="true" style={dockAnchorStyle} />
+      )}
+      {!isAssistantLike(role) && authUser?.id && showClockActivityStrip && (
+        <DashboardTeamActiveClockStrip
+          sessions={sessionsForStrip}
+          hoursTodayByUserId={hoursTodayForStrip}
+          clockedInTodayRows={myTeam.clockedInTodayStripRows}
+          jobsWorkedTodayRows={myTeam.jobsWorkedTodayStripRows}
+          jobsWorkedTodayReportKeys={myTeam.jobsWorkedTodayReportKeys}
+          jobsWorkedTodayReportIdByKey={myTeam.jobsWorkedTodayReportIdByKey}
+          jobsWorkedTodayJobLedgerIdsWithReport={myTeam.jobsWorkedTodayJobLedgerIdsWithReport}
+          showScopeToggle={showClockStripScopeToggle}
+          clockStripScope={clockStripScope}
+          onClockStripScopeChange={setClockStripScopePersist}
+          showJobBidColumn={showClockStripScopeToggle}
+          onJobBidSaved={(patch) => {
+            myTeam.applyOptimisticClockSessionAssign(patch)
+            void myTeam.loadPending({ silent: true })
+          }}
+          onJobBidAssignError={(msg) => showToast(msg, 'error')}
+          onApplyScheduleProportionsForSession={applySchedule.requestApply}
+          onOpenStripMyTimeEditor={
+            showStripSubjectMyTimeEditor ? openStripMyTimeEditor : undefined
+          }
+          authUserId={authUser.id}
+          canApproveClockSessions={showClockStripScopeToggle}
+          onClockSessionsMutated={() => {
+            void myTeam.loadPending({ silent: true })
+          }}
+          onMaterializeSalarySession={
+            showClockStripScopeToggle ? materializeSalarySessionForStrip : undefined
+          }
+          enableCopyDayJobMix={showClockStripScopeToggle}
+          enableScheduleDayEmail={showClockStripScopeToggle}
+          clockStripWorkDateYmd={myTeam.clockStripWorkDateYmd}
+        />
+      )}
+      {(role === 'dev' || role === 'master_technician') && authUser?.id && (
+        <DashboardMyTeamPendingBanner
+          pendingApprovalCount={myTeam.pendingApprovalCount}
+          loadingSessions={myTeam.loadingSessions}
+          onGoToPendingSessions={goToPendingSessionsInMyTeam}
+        />
+      )}
+      {stripMyTimeEditor && (
+        <DashboardMyTimeDayEditorModal
+          dateStr={stripMyTimeEditor.dateStr}
+          sessions={[]}
+          subjectUserId={stripMyTimeEditor.subjectUserId}
+          subjectDisplayName={stripMyTimeEditor.displayName}
+          showSalariedLabelUnderVisualStrip={stripMyTimeEditor.showSalariedStripFooter}
+          prefetchSalarySessionsWhenEmpty
+          clockTimesReadOnly={stripMyTimeEditor.clockTimesReadOnly}
+          jobLabels={{}}
+          bidLabels={{}}
+          allowNcnsFromMyTime={showClockStripScopeToggle}
+          showMarkNotComingIn={showStripSubjectMyTimeEditor}
+          onMarkNotComingIn={
+            showStripSubjectMyTimeEditor
+              ? () =>
+                  handleStripMarkNotComingIn({
+                    subjectUserId: stripMyTimeEditor.subjectUserId,
+                    displayName: stripMyTimeEditor.displayName,
+                    workDateYmd: stripMyTimeEditor.dateStr,
+                  })
+              : undefined
+          }
+          onClose={() => setStripMyTimeEditor(null)}
+          onSaved={() => {
+            void myTeam.loadPending({ silent: true })
+            setStripMyTimeEditor(null)
+          }}
+          onLinkedSessionsUpdated={() => void myTeam.loadPending({ silent: true })}
+        />
+      )}
+      {isDev && authUser?.id && <DashboardDevRejectedNotification />}
+      {authUser?.id && dispatchInboxEligible && (
+        <DispatchDismissedItemsModal
+          open={dispatchDismissedModalOpen}
+          onClose={() => setDispatchDismissedModalOpen(false)}
+          loadRows={fetchDismissedDispatchInboxRows}
+        />
+      )}
+      {tripChargeTarget && (
+        <CreateTripChargeModal
+          target={tripChargeTarget}
+          onClose={() => setTripChargeTarget(null)}
+          onCreated={() => {
+            setTripChargeTarget(null)
+            void refreshInvoicesRef.current()
+          }}
+        />
+      )}
+      {(role === 'dev' || role === 'master_technician') && myInboxCard}
+      {authUser?.id && (dispatchInboxEligible || estimatorInboxEligible) && !isAssistantLike(role) && (
+        <DashboardGroupCard id="dash-teams-inbox" title="Teams Inbox">
+          {isDev && <HelpFeedbackInboxSection />}
+          {dispatchInboxEligible && (
+        <DispatchInboxSection
+          sectionOpen={dispatchRequestsOpen}
+          onToggleSection={() => setDispatchRequestsOpen((o) => !o)}
+          requests={dispatchRequests}
+          loading={dispatchRequestsLoading}
+          expandedRequestId={expandedDispatchRequestId}
+          onToggleExpandRequest={toggleExpandDispatchRequest}
+          notesByRequestId={dispatchThreadNotesByRequestId}
+          notesLoadingRequestId={dispatchNotesLoadingRequestId}
+          noteSubmitRequestId={dispatchNoteSubmitRequestId}
+          canAddNotes={dispatchInboxEligible}
+          dispatchRequestDismissingId={dispatchRequestDismissingId}
+          noteDraft={dispatchNoteDraft}
+          onNoteDraftChange={setDispatchNoteDraft}
+          onSubmitNote={submitDispatchNote}
+          onSubmitNoteAndClose={submitDispatchNoteAndClose}
+          onDismiss={dismissDispatchRequest}
+          onOpenDismissedArchive={() => setDispatchDismissedModalOpen(true)}
+          onLinkJobPictures={
+            jobFormModal
+              ? (jobId) => jobFormModal.openEditJob(jobId, { jobPicturesLinkHighlight: true })
+              : undefined
+          }
+          onCreateTripCharge={
+            role === 'dev' || role === 'master_technician'
+              ? (args) => setTripChargeTarget(args)
+              : undefined
+          }
+        />
+          )}
+          {estimatorInboxEligible && (
+        <EstimatorInboxSection
+          sectionOpen={estimatorRequestsOpen}
+          onToggleSection={() => setEstimatorRequestsOpen((o) => !o)}
+          requests={estimatorRequests}
+          loading={estimatorRequestsLoading}
+          expandedRequestId={expandedEstimatorRequestId}
+          onToggleExpandRequest={toggleExpandEstimatorRequest}
+          notesByRequestId={estimatorThreadNotesByRequestId}
+          notesLoadingRequestId={estimatorNotesLoadingRequestId}
+          noteSubmitRequestId={estimatorNoteSubmitRequestId}
+          canAddNotes={estimatorInboxEligible}
+          estimatorRequestDismissingId={estimatorRequestDismissingId}
+          noteDraft={estimatorNoteDraft}
+          onNoteDraftChange={setEstimatorNoteDraft}
+          onSubmitNote={submitEstimatorNote}
+          onSubmitNoteAndClose={submitEstimatorNoteAndClose}
+          onDismiss={dismissEstimatorRequest}
+        />
+          )}
+        </DashboardGroupCard>
+      )}
+      {(role === 'dev' || role === 'master_technician') && (
+        <div id="dash-billing" aria-hidden="true" style={dockAnchorStyle} />
+      )}
+      {(role === 'dev' || role === 'master_technician') && (
+        <BillingPipelineCard>
+        {authUser?.id && (
+          <BillingPipelineStage step={1} connectToNext>
+            <DashboardFieldCollectPaymentQueue
+              embedded
+              onPrepareBill={handlePrepareBillFromFieldQueue}
+              shouldShowPrepareBill={shouldShowPrepareBillForFieldQueue}
+            />
+          </BillingPipelineStage>
+        )}
+        <BillingPipelineStage step={2} connectToNext={waitingForPaymentLoading || billedWaitingDashboardUnits.length > 0}>
+        <div style={{ marginBottom: '0.5rem' }}>
+          <button
+            type="button"
+            onClick={() => setReadyToBillExpanded((prev) => !prev)}
+            aria-expanded={readyToBillExpanded}
+            style={{ margin: 0, padding: 0, border: 'none', background: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: readyToBillExpanded ? '0.75rem' : 0 }}
+          >
+            <span aria-hidden>{readyToBillExpanded ? '\u25BC' : '\u25B6'}</span>
+            <h2 style={{ fontSize: '1.125rem', margin: 0 }}>Ready to Bill ({readyToBillDashboardUnits.length})</h2>
+          </button>
+          {readyToBillExpanded && (
+          <>
+          {readyToBillLoading && readyToBillDashboardUnits.length === 0 ? (
+            <DashboardListRowSkeleton rows={2} />
+          ) : readyToBillDashboardUnits.length === 0 ? (
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0 }}>No jobs or invoices ready to bill yet</p>
+          ) : (
+            <div>
+              {readyToBillDashboardUnits.map((unit) => {
+                if (unit.kind === 'invoice') {
+                  const inv = unit.inv
+                  return (
+                    <div
+                      key={inv.id}
+                      style={{
+                        border: '1px solid var(--border)',
+                        borderRadius: 8,
+                        padding: '1rem',
+                        marginBottom: '0.75rem',
+                        background: 'var(--surface)',
+                      }}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>
+                        <div>
+                          <div style={{ fontWeight: 600 }}>
+                            {inv.hcp_number || '—'} · {inv.job_name || '—'}
+                          </div>
+                          <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginTop: 4 }}>
+                            {inv.job_address?.trim() ? (
+                              <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(inv.job_address.trim())}`} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--text-link)', textDecoration: 'none' }}>{inv.job_address}</a>
+                            ) : (
+                              '—'
+                            )}
+                          </div>
+                          <div style={{ fontSize: '0.875rem', marginTop: 4 }}>
+                            {`Invoice: $${inv.amount.toLocaleString('en-US', { minimumFractionDigits: 2 })}`}
+                            {(() => {
+                              const { applied, open } = dashboardBilledInvoiceAmounts(inv)
+                              if (applied <= 0) return null
+                              return (
+                                <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: 2 }}>
+                                  {`Applied: $${applied.toLocaleString('en-US', { minimumFractionDigits: 2 })} · Open: $${open.toLocaleString('en-US', { minimumFractionDigits: 2 })}`}
+                                </div>
+                              )
+                            })()}
+                          </div>
+                        </div>
+                        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                          {(inv.google_drive_link?.trim() || inv.job_plans_link?.trim()) && (
+                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
+                              {inv.google_drive_link?.trim() && (
+                                <a
+                                  href={inv.google_drive_link.trim()}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  onClick={(e) => { e.preventDefault(); openInExternalBrowser(inv.google_drive_link!.trim()) }}
+                                  title="Google Drive"
+                                  style={{ display: 'inline-flex', alignItems: 'center', color: 'var(--text-muted)', padding: '0.35rem' }}
+                                >
+                                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="1.25em" height="1.25em" fill="currentColor" aria-hidden="true">
+                                    <path d="M403 378.9L239.4 96L400.6 96L564.2 378.9L403 378.9zM265.5 402.5L184.9 544L495.4 544L576 402.5L265.5 402.5zM218.1 131.4L64 402.5L144.6 544L301 272.8L218.1 131.4z" />
+                                  </svg>
+                                </a>
+                              )}
+                              {inv.job_plans_link?.trim() && (
+                                <a
+                                  href={inv.job_plans_link.trim()}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  onClick={(e) => { e.preventDefault(); openInExternalBrowser(inv.job_plans_link!.trim()) }}
+                                  title="Job Plans"
+                                  style={{ display: 'inline-flex', alignItems: 'center', color: 'var(--text-muted)', padding: '0.35rem' }}
+                                >
+                                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="1.25em" height="1.25em" fill="currentColor" aria-hidden="true">
+                                    <path d="M296.5 69.2C311.4 62.3 328.6 62.3 343.5 69.2L562.1 170.2C570.6 174.1 576 182.6 576 192C576 201.4 570.6 209.9 562.1 213.8L343.5 314.8C328.6 321.7 311.4 321.7 296.5 314.8L77.9 213.8C69.4 209.8 64 201.3 64 192C64 182.7 69.4 174.1 77.9 170.2L296.5 69.2zM112.1 282.4L276.4 358.3C304.1 371.1 336 371.1 363.7 358.3L528 282.4L562.1 298.2C570.6 302.1 576 310.6 576 320C576 329.4 570.6 337.9 562.1 341.8L343.5 442.8C328.6 449.7 311.4 449.7 296.5 442.8L77.9 341.8C69.4 337.8 64 329.3 64 320C64 310.7 69.4 302.1 77.9 298.2L112 282.4zM77.9 426.2L112 410.4L276.3 486.3C304 499.1 335.9 499.1 363.6 486.3L527.9 410.4L562 426.2C570.5 430.1 575.9 438.6 575.9 448C575.9 457.4 570.5 465.9 562 469.8L343.4 570.8C328.5 577.7 311.3 577.7 296.4 570.8L77.9 469.8C69.4 465.8 64 457.3 64 448C64 438.7 69.4 430.1 77.9 426.2z" />
+                                  </svg>
+                                </a>
+                              )}
+                            </div>
+                          )}
+                          <ReadyToBillJobIconToolbar
+                              jobId={inv.job_id}
+                              hcpNumber={inv.hcp_number ?? '—'}
+                              jobName={inv.job_name ?? '—'}
+                              jobAddress={inv.job_address ?? '—'}
+                              jobFormModalAvailable={Boolean(jobFormModal)}
+                              onEditJob={openReadyToBillEditJob}
+                              onOpenDetail={openReadyToBillDetailJobModal}
+                            />
+                          <button type="button" onClick={() => setViewReportsJob({ id: inv.job_id, hcpNumber: inv.hcp_number ?? '—', jobName: inv.job_name ?? '—', jobAddress: inv.job_address ?? '—' })} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: 'var(--text-link)', border: '1px solid #2563eb', borderRadius: 4, cursor: 'pointer' }}>View<br />Reports</button>
+                          <button type="button" onClick={() => { setSendBackChecked(false); setSendBackInvoice({ inv, action: 'delete' }) }} disabled={invoiceStatusUpdatingId === inv.id} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: 'var(--text-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: invoiceStatusUpdatingId === inv.id ? 'not-allowed' : 'pointer' }}>Delete<br />draft bill</button>
+                          <div className="billingPipelineActionAgePair">
+                            <button type="button" onClick={() => {
+                                if (!dashboardJobHasCustomerForBilling(inv.customer_id)) {
+                                  showToast?.('Link this job to a customer before billing.', 'error')
+                                  return
+                                }
+                                openDashboardBillCustomerInvoice(inv)
+                              }} disabled={invoiceStatusUpdatingId === inv.id} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#16a34a', color: 'white', border: 'none', borderRadius: 4, cursor: invoiceStatusUpdatingId === inv.id ? 'not-allowed' : 'pointer' }}>{invoiceStatusUpdatingId === inv.id ? '…' : 'Bill Customer'}</button>
+                            {inv.open_since_at && <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', textAlign: 'center' }} title="Time open">Open {formatTimeSince(inv.open_since_at)}</span>}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                }
+                const j = unit.job
+                const bundleInv = unit.kind === 'job_bundle' ? unit.inv : null
+                const remaining = bundleInv != null ? Number(bundleInv.amount) : (Number(j.revenue ?? 0) - Number(j.payments_made ?? 0))
+                return (
+                  <div
+                    key={bundleInv != null ? `bundle-${j.id}-${bundleInv.id}` : j.id}
+                    style={{
+                      border: '1px solid var(--border)',
+                      borderRadius: 8,
+                      padding: '1rem',
+                      marginBottom: '0.75rem',
+                      background: 'var(--surface)',
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>
+                      <div>
+                        <div style={{ fontWeight: 600 }}>
+                          {j.hcp_number || '—'} · {j.job_name || '—'}
+                        </div>
+                        <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginTop: 4 }}>
+                          {j.job_address?.trim() ? (
+                            <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(j.job_address.trim())}`} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--text-link)', textDecoration: 'none' }}>{j.job_address}</a>
+                          ) : (
+                            '—'
+                          )}
+                        </div>
+                        {bundleInv != null ? (
+                          <div style={{ fontSize: '0.75rem', color: 'var(--text-blue-800)', marginTop: 4 }} title="Single billing line for this job (Stripe or external send)">
+                            Billing line: ${remaining.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                          </div>
+                        ) : (
+                          <div style={{ fontSize: '0.875rem', marginTop: 4 }}>Remaining: ${remaining.toLocaleString('en-US', { minimumFractionDigits: 2 })}</div>
+                        )}
+                      </div>
+                      <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                        {(j.google_drive_link?.trim() || j.job_plans_link?.trim()) && (
+                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
+                            {j.google_drive_link?.trim() && (
+                              <a href={j.google_drive_link.trim()} target="_blank" rel="noopener noreferrer" onClick={(e) => { e.preventDefault(); openInExternalBrowser(j.google_drive_link!.trim()) }} title="Google Drive" style={{ display: 'inline-flex', alignItems: 'center', color: 'var(--text-muted)', padding: '0.35rem' }}>
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="1.25em" height="1.25em" fill="currentColor" aria-hidden="true"><path d="M403 378.9L239.4 96L400.6 96L564.2 378.9L403 378.9zM265.5 402.5L184.9 544L495.4 544L576 402.5L265.5 402.5zM218.1 131.4L64 402.5L144.6 544L301 272.8L218.1 131.4z" /></svg>
+                              </a>
+                            )}
+                            {j.job_plans_link?.trim() && (
+                              <a href={j.job_plans_link.trim()} target="_blank" rel="noopener noreferrer" onClick={(e) => { e.preventDefault(); openInExternalBrowser(j.job_plans_link!.trim()) }} title="Job Plans" style={{ display: 'inline-flex', alignItems: 'center', color: 'var(--text-muted)', padding: '0.35rem' }}>
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="1.25em" height="1.25em" fill="currentColor" aria-hidden="true"><path d="M296.5 69.2C311.4 62.3 328.6 62.3 343.5 69.2L562.1 170.2C570.6 174.1 576 182.6 576 192C576 201.4 570.6 209.9 562.1 213.8L343.5 314.8C328.6 321.7 311.4 321.7 296.5 314.8L77.9 213.8C69.4 209.8 64 201.3 64 192C64 182.7 69.4 174.1 77.9 170.2L296.5 69.2zM112.1 282.4L276.4 358.3C304.1 371.1 336 371.1 363.7 358.3L528 282.4L562.1 298.2C570.6 302.1 576 310.6 576 320C576 329.4 570.6 337.9 562.1 341.8L343.5 442.8C328.6 449.7 311.4 449.7 296.5 442.8L77.9 341.8C69.4 337.8 64 329.3 64 320C64 310.7 69.4 302.1 77.9 298.2L112 282.4zM77.9 426.2L112 410.4L276.3 486.3C304 499.1 335.9 499.1 363.6 486.3L527.9 410.4L562 426.2C570.5 430.1 575.9 438.6 575.9 448C575.9 457.4 570.5 465.9 562 469.8L343.4 570.8C328.5 577.7 311.3 577.7 296.4 570.8L77.9 469.8C69.4 465.8 64 457.3 64 448C64 438.7 69.4 430.1 77.9 426.2z" /></svg>
+                              </a>
+                            )}
+                          </div>
+                        )}
+                        <ReadyToBillJobIconToolbar
+                            jobId={j.id}
+                            hcpNumber={j.hcp_number ?? '—'}
+                            jobName={j.job_name ?? '—'}
+                            jobAddress={j.job_address ?? '—'}
+                            jobFormModalAvailable={Boolean(jobFormModal)}
+                            onEditJob={openReadyToBillEditJob}
+                            onOpenDetail={openReadyToBillDetailJobModal}
+                          />
+                        <button type="button" onClick={() => setViewReportsJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', jobAddress: j.job_address ?? '—' })} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: 'var(--text-link)', border: '1px solid #2563eb', borderRadius: 4, cursor: 'pointer' }}>View<br />Reports</button>
+                        <button type="button" onClick={() => { setSendBackChecked(false); setSendBackJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', toStatus: 'working', rtbDraftCount: countDashboardRtbDraftsForJob(j.id, readyToBillInvoices) }) }} disabled={jobStatusUpdatingId === j.id} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: 'var(--text-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: jobStatusUpdatingId === j.id ? 'not-allowed' : 'pointer' }} aria-label="Send back">Send<br />Back</button>
+                        {bundleInv != null && (
+                          <button type="button" onClick={() => { setSendBackChecked(false); setSendBackInvoice({ inv: bundleInv, action: 'delete' }) }} disabled={invoiceStatusUpdatingId === bundleInv.id} title="Remove this billing line (partial invoice row)" style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: 'var(--text-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: invoiceStatusUpdatingId === bundleInv.id ? 'not-allowed' : 'pointer' }}>Delete<br />draft bill</button>
+                        )}
+                        <div className="billingPipelineActionAgePair">
+                          {bundleInv != null ? (
+                            <button type="button" onClick={() => {
+                                if (!dashboardJobHasCustomerForBilling(bundleInv.customer_id)) {
+                                  showToast?.('Link this job to a customer before billing.', 'error')
+                                  return
+                                }
+                                openDashboardBillCustomerInvoice(bundleInv)
+                              }} disabled={invoiceStatusUpdatingId === bundleInv.id} title="Bill Customer for this billing line (e.g. Stripe)" style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#16a34a', color: 'white', border: 'none', borderRadius: 4, cursor: invoiceStatusUpdatingId === bundleInv.id ? 'not-allowed' : 'pointer' }}>{invoiceStatusUpdatingId === bundleInv.id ? '…' : 'Bill Customer'}</button>
+                          ) : (
+                            <button type="button" onClick={() => {
+                                if (!dashboardJobHasCustomerForBilling(j.customer_id)) {
+                                  showToast?.('Link this job to a customer before billing.', 'error')
+                                  return
+                                }
+                                setSendRecordJobMeta({ id: j.id })
+                              }} disabled={jobStatusUpdatingId === j.id} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: jobStatusUpdatingId === j.id ? 'not-allowed' : 'pointer' }}>{jobStatusUpdatingId === j.id ? '…' : 'Bill Customer'}</button>
+                          )}
+                          {(bundleInv?.created_at ?? j.created_at) && (
+                            <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', textAlign: 'center' }} title={bundleInv != null ? 'Time since invoice created' : 'Time since job created'}>
+                              Open {formatTimeSince(bundleInv?.created_at ?? j.created_at)}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+          </>
+          )}
+        </div>
+        </BillingPipelineStage>
+        {(waitingForPaymentLoading || billedWaitingDashboardUnits.length > 0) && (
+          <BillingPipelineStage step={3}>
+          <div style={{ marginBottom: 0 }}>
+          <button
+            type="button"
+            onClick={() => setWaitingForPaymentExpanded((prev) => !prev)}
+            aria-expanded={waitingForPaymentExpanded}
+            style={{ margin: 0, padding: 0, border: 'none', background: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: waitingForPaymentExpanded ? '0.75rem' : 0 }}
+          >
+            <span aria-hidden>{waitingForPaymentExpanded ? '\u25BC' : '\u25B6'}</span>
+            <h2 style={{ fontSize: '1.125rem', margin: 0 }}>Billed Waiting for Payment ({billedWaitingDashboardUnits.length})</h2>
+          </button>
+          {waitingForPaymentExpanded && (
+          <>
+          {waitingForPaymentLoading && billedWaitingDashboardUnits.length === 0 ? (
+            <DashboardListRowSkeleton rows={2} />
+          ) : (
+            <div>
+              {billedWaitingDashboardUnits.map((unit) => {
+                if (unit.kind === 'invoice' || unit.kind === 'job_bundle') {
+                  const inv = unit.inv
+                  const cardKey = unit.kind === 'job_bundle' ? `billed-bundle-${unit.job.id}-${inv.id}` : inv.id
+                  return (
+                    <div key={cardKey} style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '1rem', marginBottom: '0.75rem', background: 'var(--surface)' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>
+                        <div>
+                          <div style={{ fontWeight: 600 }}>{inv.hcp_number || '—'} · {inv.job_name || '—'}</div>
+                          <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginTop: 4 }}>
+                            {inv.job_address?.trim() ? (
+                              <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(inv.job_address.trim())}`} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--text-link)', textDecoration: 'none' }}>{inv.job_address}</a>
+                            ) : (
+                              '—'
+                            )}
+                          </div>
+                          <div style={{ fontSize: '0.875rem', marginTop: 4 }}>
+                            {`Invoice: $${inv.amount.toLocaleString('en-US', { minimumFractionDigits: 2 })}`}
+                            {(() => {
+                              const { applied, open } = dashboardBilledInvoiceAmounts(inv)
+                              if (applied <= 0) return null
+                              return (
+                                <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: 2 }}>
+                                  {`Applied: $${applied.toLocaleString('en-US', { minimumFractionDigits: 2 })} · Open: $${open.toLocaleString('en-US', { minimumFractionDigits: 2 })}`}
+                                </div>
+                              )
+                            })()}
+                          </div>
+                        </div>
+                        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                          {(inv.google_drive_link?.trim() || inv.job_plans_link?.trim()) && (
+                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
+                              {inv.google_drive_link?.trim() && (
+                                <a href={inv.google_drive_link.trim()} target="_blank" rel="noopener noreferrer" onClick={(e) => { e.preventDefault(); openInExternalBrowser(inv.google_drive_link!.trim()) }} title="Google Drive" style={{ display: 'inline-flex', alignItems: 'center', color: 'var(--text-muted)', padding: '0.35rem' }}>
+                                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="1.25em" height="1.25em" fill="currentColor" aria-hidden="true"><path d="M403 378.9L239.4 96L400.6 96L564.2 378.9L403 378.9zM265.5 402.5L184.9 544L495.4 544L576 402.5L265.5 402.5zM218.1 131.4L64 402.5L144.6 544L301 272.8L218.1 131.4z" /></svg>
+                                </a>
+                              )}
+                              {inv.job_plans_link?.trim() && (
+                                <a href={inv.job_plans_link.trim()} target="_blank" rel="noopener noreferrer" onClick={(e) => { e.preventDefault(); openInExternalBrowser(inv.job_plans_link!.trim()) }} title="Job Plans" style={{ display: 'inline-flex', alignItems: 'center', color: 'var(--text-muted)', padding: '0.35rem' }}>
+                                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="1.25em" height="1.25em" fill="currentColor" aria-hidden="true"><path d="M296.5 69.2C311.4 62.3 328.6 62.3 343.5 69.2L562.1 170.2C570.6 174.1 576 182.6 576 192C576 201.4 570.6 209.9 562.1 213.8L343.5 314.8C328.6 321.7 311.4 321.7 296.5 314.8L77.9 213.8C69.4 209.8 64 201.3 64 192C64 182.7 69.4 174.1 77.9 170.2L296.5 69.2zM112.1 282.4L276.4 358.3C304.1 371.1 336 371.1 363.7 358.3L528 282.4L562.1 298.2C570.6 302.1 576 310.6 576 320C576 329.4 570.6 337.9 562.1 341.8L343.5 442.8C328.6 449.7 311.4 449.7 296.5 442.8L77.9 341.8C69.4 337.8 64 329.3 64 320C64 310.7 69.4 302.1 77.9 298.2L112 282.4zM77.9 426.2L112 410.4L276.3 486.3C304 499.1 335.9 499.1 363.6 486.3L527.9 410.4L562 426.2C570.5 430.1 575.9 438.6 575.9 448C575.9 457.4 570.5 465.9 562 469.8L343.4 570.8C328.5 577.7 311.3 577.7 296.4 570.8L77.9 469.8C69.4 465.8 64 457.3 64 448C64 438.7 69.4 430.1 77.9 426.2z" /></svg>
+                                </a>
+                              )}
+                            </div>
+                          )}
+                          <button type="button" onClick={() => setViewReportsJob({ id: inv.job_id, hcpNumber: inv.hcp_number ?? '—', jobName: inv.job_name ?? '—', jobAddress: inv.job_address ?? '—' })} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: 'var(--text-link)', border: '1px solid #2563eb', borderRadius: 4, cursor: 'pointer' }}>View<br />Reports</button>
+                          <button type="button" onClick={() => { setSendBackChecked(false); setSendBackInvoice({ inv, action: 'revert' }) }} disabled={invoiceStatusUpdatingId === inv.id} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: 'var(--text-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: invoiceStatusUpdatingId === inv.id ? 'not-allowed' : 'pointer' }}>Send<br />back</button>
+                          <div className="billingPipelineActionAgePair">
+                            <button type="button" onClick={() => setMarkPaidInvoice(inv)} disabled={invoiceStatusUpdatingId === inv.id} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#16a34a', color: 'white', border: 'none', borderRadius: 4, cursor: invoiceStatusUpdatingId === inv.id ? 'not-allowed' : 'pointer' }}>{invoiceStatusUpdatingId === inv.id ? '…' : 'Mark Paid'}</button>
+                            {inv.open_since_at && <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', textAlign: 'center' }} title="Time open">Open {formatTimeSince(inv.open_since_at)}</span>}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                }
+                const j = unit.job
+                const remaining = Number(j.revenue ?? 0) - Number(j.payments_made ?? 0)
+                return (
+                  <div key={j.id} style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '1rem', marginBottom: '0.75rem', background: 'var(--surface)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>
+                      <div>
+                        <div style={{ fontWeight: 600 }}>{j.hcp_number || '—'} · {j.job_name || '—'}</div>
+                        <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginTop: 4 }}>
+                          {j.job_address?.trim() ? (
+                            <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(j.job_address.trim())}`} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--text-link)', textDecoration: 'none' }}>{j.job_address}</a>
+                          ) : (
+                            '—'
+                          )}
+                        </div>
+                        <div style={{ fontSize: '0.875rem', marginTop: 4 }}>Remaining: ${remaining.toLocaleString('en-US', { minimumFractionDigits: 2 })}</div>
+                      </div>
+                      <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                        {(j.google_drive_link?.trim() || j.job_plans_link?.trim()) && (
+                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
+                            {j.google_drive_link?.trim() && (
+                              <a href={j.google_drive_link.trim()} target="_blank" rel="noopener noreferrer" onClick={(e) => { e.preventDefault(); openInExternalBrowser(j.google_drive_link!.trim()) }} title="Google Drive" style={{ display: 'inline-flex', alignItems: 'center', color: 'var(--text-muted)', padding: '0.35rem' }}>
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="1.25em" height="1.25em" fill="currentColor" aria-hidden="true"><path d="M403 378.9L239.4 96L400.6 96L564.2 378.9L403 378.9zM265.5 402.5L184.9 544L495.4 544L576 402.5L265.5 402.5zM218.1 131.4L64 402.5L144.6 544L301 272.8L218.1 131.4z" /></svg>
+                              </a>
+                            )}
+                            {j.job_plans_link?.trim() && (
+                              <a href={j.job_plans_link.trim()} target="_blank" rel="noopener noreferrer" onClick={(e) => { e.preventDefault(); openInExternalBrowser(j.job_plans_link!.trim()) }} title="Job Plans" style={{ display: 'inline-flex', alignItems: 'center', color: 'var(--text-muted)', padding: '0.35rem' }}>
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="1.25em" height="1.25em" fill="currentColor" aria-hidden="true"><path d="M296.5 69.2C311.4 62.3 328.6 62.3 343.5 69.2L562.1 170.2C570.6 174.1 576 182.6 576 192C576 201.4 570.6 209.9 562.1 213.8L343.5 314.8C328.6 321.7 311.4 321.7 296.5 314.8L77.9 213.8C69.4 209.8 64 201.3 64 192C64 182.7 69.4 174.1 77.9 170.2L296.5 69.2zM112.1 282.4L276.4 358.3C304.1 371.1 336 371.1 363.7 358.3L528 282.4L562.1 298.2C570.6 302.1 576 310.6 576 320C576 329.4 570.6 337.9 562.1 341.8L343.5 442.8C328.6 449.7 311.4 449.7 296.5 442.8L77.9 341.8C69.4 337.8 64 329.3 64 320C64 310.7 69.4 302.1 77.9 298.2L112 282.4zM77.9 426.2L112 410.4L276.3 486.3C304 499.1 335.9 499.1 363.6 486.3L527.9 410.4L562 426.2C570.5 430.1 575.9 438.6 575.9 448C575.9 457.4 570.5 465.9 562 469.8L343.4 570.8C328.5 577.7 311.3 577.7 296.4 570.8L77.9 469.8C69.4 465.8 64 457.3 64 448C64 438.7 69.4 430.1 77.9 426.2z" /></svg>
+                              </a>
+                            )}
+                          </div>
+                        )}
+                        <button type="button" onClick={() => setViewReportsJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', jobAddress: j.job_address ?? '—' })} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: 'var(--text-link)', border: '1px solid #2563eb', borderRadius: 4, cursor: 'pointer' }}>View<br />Reports</button>
+                        <button type="button" onClick={() => { setSendBackChecked(false); setSendBackJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', toStatus: 'ready_to_bill', rtbDraftCount: 0 }) }} disabled={jobStatusUpdatingId === j.id} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: 'var(--text-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: jobStatusUpdatingId === j.id ? 'not-allowed' : 'pointer' }}>Send<br />back</button>
+                        <div className="billingPipelineActionAgePair">
+                          <button type="button" onClick={() => setMarkPaidJob(j)} disabled={jobStatusUpdatingId === j.id} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: jobStatusUpdatingId === j.id ? 'not-allowed' : 'pointer' }}>{jobStatusUpdatingId === j.id ? '…' : 'Mark Paid'}</button>
+                          {j.created_at && <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', textAlign: 'center' }} title="Time since job created">Open {formatTimeSince(j.created_at)}</span>}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+          </>
+          )}
+        </div>
+          </BillingPipelineStage>
+        )}
+        </BillingPipelineCard>
+      )}
+
+      {!isAssistantLike(role) && role !== 'dev' && role !== 'master_technician' && myInboxCard}
       {isSubcontractorLikeRole(role) && (
         <div style={{ marginTop: '1.5rem', marginBottom: '2rem' }}>
           <div
@@ -7764,31 +7770,17 @@ export default function Dashboard() {
 
 
       {(assignedJobsLoading || assignedJobs.length > 0) && (
-        <div style={{ marginTop: '2rem' }}>
-          <button
-            type="button"
-            onClick={() => setAssignedJobsExpanded((prev) => !prev)}
-            aria-expanded={assignedJobsExpanded}
-            style={{ margin: 0, padding: 0, border: 'none', background: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: assignedJobsExpanded ? '0.75rem' : 0 }}
-          >
-            <span aria-hidden>{assignedJobsExpanded ? '\u25BC' : '\u25B6'}</span>
-            <h2 style={{ fontSize: '1.125rem', margin: 0 }}>
-              Assigned Jobs ({assignedJobs.length})
-            </h2>
-          </button>
-          {assignedJobsExpanded && (assignedJobsLoading && assignedJobs.length === 0 ? (
+        <DashboardGroupCard title={`Assigned Jobs (${assignedJobs.length})`}>
+          {assignedJobsLoading && assignedJobs.length === 0 ? (
             <DashboardListRowSkeleton rows={2} />
           ) : (
             <div>
-              {assignedJobs.map((j) => (
+              {assignedJobs.map((j, idx) => (
                 <div
                   key={j.id}
                   style={{
-                    border: '1px solid var(--border)',
-                    borderRadius: 8,
-                    padding: '1rem',
-                    marginBottom: '0.75rem',
-                    background: 'var(--surface)',
+                    padding: '0.85rem 0',
+                    borderBottom: idx < assignedJobs.length - 1 ? '1px solid var(--border)' : 'none',
                   }}
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>
@@ -8018,17 +8010,13 @@ export default function Dashboard() {
                         : '/workflows'}
                       style={{
                         display: 'block',
-                        marginTop: '1rem',
-                        marginLeft: '-1rem',
-                        marginRight: '-1rem',
-                        marginBottom: '-1rem',
-                        padding: '0.5rem 1rem',
+                        marginTop: '0.75rem',
+                        padding: '0.4rem 0.75rem',
                         background: '#ede9fe',
                         color: '#6d28d9',
                         textDecoration: 'none',
                         fontSize: '0.875rem',
-                        borderBottomLeftRadius: 8,
-                        borderBottomRightRadius: 8,
+                        borderRadius: 6,
                         textAlign: 'center',
                       }}
                     >
@@ -8038,8 +8026,8 @@ export default function Dashboard() {
                 </div>
               ))}
             </div>
-          ))}
-        </div>
+          )}
+        </DashboardGroupCard>
       )}
 
       {(role === 'dev' || role === 'master_technician' || isAssistantLike(role) || role === 'primary') && dashboardButtonVisibility?.inspections !== false && (upcomingInspectionsLoading || upcomingInspections.length > 0) && (
@@ -8255,8 +8243,10 @@ export default function Dashboard() {
           )}
         </div>
       )}
+      {projectsCardVisible && (
+        <DashboardGroupCard id="dash-projects" title="Projects">
       {(userLoading || showAssigned) && (
-        <div style={{ marginTop: '2rem' }}>
+        <div>
           <button
             type="button"
             onClick={() => setAssignedStagesExpanded((prev) => !prev)}
@@ -8275,9 +8265,9 @@ export default function Dashboard() {
             }}
           >
             <span aria-hidden>{assignedStagesExpanded ? '\u25BC' : '\u25B6'}</span>
-            <h2 id="dashboard-assigned-stages-heading" style={{ fontSize: '1.125rem', margin: 0 }}>
-              Projects: Assigned Stages ({assignedSteps.length})
-            </h2>
+            <h3 id="dashboard-assigned-stages-heading" style={{ fontSize: '1rem', margin: 0 }}>
+              Assigned Stages ({assignedSteps.length})
+            </h3>
           </button>
           {assignedStagesExpanded &&
             (assignedLoading && assignedSteps.length === 0 ? (
@@ -8422,7 +8412,7 @@ export default function Dashboard() {
       )}
       
       {showSubscribed && (subscribedLoading || subscribedSteps.length > 0) && (
-        <div style={{ marginTop: '2rem' }}>
+        <div style={{ marginTop: (userLoading || showAssigned) ? '1.5rem' : 0 }}>
           <button
             type="button"
             onClick={() => setSubscribedStagesExpanded((prev) => !prev)}
@@ -8441,9 +8431,9 @@ export default function Dashboard() {
             }}
           >
             <span aria-hidden>{subscribedStagesExpanded ? '\u25BC' : '\u25B6'}</span>
-            <h2 id="dashboard-subscribed-stages-heading" style={{ fontSize: '1.125rem', margin: 0 }}>
-              Projects: Subscribed Stages ({subscribedSteps.length})
-            </h2>
+            <h3 id="dashboard-subscribed-stages-heading" style={{ fontSize: '1rem', margin: 0 }}>
+              Subscribed Stages ({subscribedSteps.length})
+            </h3>
           </button>
           {subscribedStagesExpanded ? (
             <div
@@ -8510,6 +8500,8 @@ export default function Dashboard() {
             </div>
           ) : null}
         </div>
+      )}
+        </DashboardGroupCard>
       )}
 
       {authUser?.id && (

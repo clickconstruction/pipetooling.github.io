@@ -7,7 +7,7 @@ keywords: dashboard navigation, section bar, dock, jump to section, scroll, bott
 On desktop, a floating bar sits at the bottom of the Dashboard (and the Quickfill page) with one chip per major section:
 
 :::example the section bar
-{{chip:gray|Notifications}} {{chip:blue|ClockedIn}} {{chip:gray|Teams Inbox}} {{chip:gray|Billing}} {{chip:gray|My Inbox}} {{chip:gray|Bids}} {{chip:gray|Reports}} {{chip:gray|Me}}
+{{chip:gray|Notifications}} {{chip:blue|ClockedIn}} {{chip:gray|My Inbox}} {{chip:gray|Teams Inbox}} {{chip:gray|Billing}} {{chip:gray|Bids}} {{chip:gray|Reports}} {{chip:gray|Projects}} {{chip:gray|Me}}
 :::
 
 - The ringed chip tracks where you are — it updates as you scroll.
@@ -28,4 +28,5 @@ The bar stays out of the way on phones and tablets ({{icon:help|gear}} it's desk
 | My Inbox | My Inbox card (Due Today / Overdue / Recently Completed Tasks) |
 | Bids | My Bids |
 | Reports | Recent Reports |
+| Projects | The **Projects** card — Assigned Stages and Subscribed Stages grouped together |
 | Me | My Time |
