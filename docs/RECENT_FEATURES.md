@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-16 (v2.696)
+last_updated: 2026-07-16 (v2.697)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.697)
+
+### Safety — deleted-records archive now covers four missed bid tables (2026-07-16)
+The Phase 1 archive (v2.696) enumerated its tables from the baseline, so four `ON DELETE CASCADE` children of **bids** that were added later were missed: `bid_versions`, `bid_payment_schedule_rows`, `price_book_versions` (bid-scoped price books) and `price_book_entries`. Deleting a bid destroyed those rows with **no snapshot**. New migration `20260716150000_deleted_records_archive_coverage_bids.sql` attaches the existing archive trigger to all four, taking coverage from 38 to **42 tables**. This also unblocks Phase 2 bid restore: several archived rows (`bid_count_row_custom_prices`, `bid_count_row_submission_hides`, `bid_pricing_assignments`) hold **NOT NULL** foreign keys to `price_book_versions`, so with that parent gone unarchived they could never have been re-inserted. Template (non-bid-scoped) price books archive as their own bundle, since `price_book_versions.bid_id` is nullable. No client change. See [`MIGRATIONS.md`](MIGRATIONS.md).
 
 ## Latest Updates (v2.696)
 
