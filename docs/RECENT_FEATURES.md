@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-16 (v2.703)
+last_updated: 2026-07-17 (v2.704)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.704)
+
+### Read-only training mode now works for every role — and actually blocks everything (2026-07-17)
+The **Read-only** checkbox in Active Accounts only appeared on Assistant/Controller rows; it now appears on **every** role, so you can put any teammate — a new hire, or an account you have questions about — into training mode. The database was always role-agnostic here; only the UI was narrow. Two things were fixed to make that safe. First, read-only **didn't do what it said**: it was enforced purely by row-level security, which `SECURITY DEFINER` database functions bypass — so a flagged user could still delete invoices and delete jobs through those paths while being shown the amber "changes won't save" banner. A statement-level trigger on every table now blocks those too (triggers, unlike row-level security, still fire inside those functions), so "no change will save" is finally literally true. Blocked saves now show a clear error instead of silently doing nothing. Second, **you can no longer put your own account into read-only mode** — a read-only user can't undo it and only a dev can change the flag, so doing it to yourself (or to your only dev) was an unrecoverable lockout. Passive browsing is untouched. Help guide updated. See [`MIGRATIONS.md`](MIGRATIONS.md) and [`ACCESS_CONTROL.md`](ACCESS_CONTROL.md).
 
 ## Latest Updates (v2.703)
 

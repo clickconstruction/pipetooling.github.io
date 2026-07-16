@@ -138,11 +138,22 @@ export function useActiveAccountsManagement({ enabled, onDataChanged }: UseActiv
   async function updateReadOnly(id: string, readOnly: boolean) {
     setUpdatingId(id)
     setError(null)
-    const { error: e } = await supabase.from('users').update({ read_only: readOnly }).eq('id', id)
+    // Reconcile from what the DB actually returned, never from what we asked for. RLS blocks an UPDATE by
+    // filtering it to zero rows rather than erroring, so assuming success here would render a write that
+    // never happened as though it had (e.g. a read-only user trying to clear their own flag).
+    const { data, error: e } = await supabase
+      .from('users')
+      .update({ read_only: readOnly })
+      .eq('id', id)
+      .select('id, read_only')
+    const savedRow = data?.[0]
     if (e) {
       setError(e.message)
+    } else if (!savedRow) {
+      setError('That change did not apply — you may not have permission to change this account.')
     } else {
-      setUsers((prev) => prev.map((u) => (u.id === id ? { ...u, read_only: readOnly } : u)))
+      const saved = !!savedRow.read_only
+      setUsers((prev) => prev.map((u) => (u.id === id ? { ...u, read_only: saved } : u)))
     }
     setUpdatingId(null)
   }
@@ -892,6 +903,8 @@ export function useActiveAccountsManagement({ enabled, onDataChanged }: UseActiv
   }, [deleteReassignUserId])
 
   return {
+    /** Signed-in user's id — the panel hides the read-only toggle on your own row (the DB refuses it too). */
+    currentUserId: authUser?.id ?? null,
     users,
     setUsers,
     error,
