@@ -562,7 +562,7 @@ export default function Layout() {
             textAlign: 'center',
           }}
         >
-          <strong>Training mode — read-only.</strong> Explore anything; changes won't save until an admin turns this off.
+          <strong>Training mode — read-only.</strong> Explore anything; no change will save until a dev turns this off.
         </div>
       )}
       <div className="appNavChrome">

@@ -101,6 +101,16 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 ### July 2026
 
+#### July 17, 2026
+
+**`20260717000000_read_only_all_roles_and_rpc_block.sql`** _(apply via `supabase db push` after the file is on `main`)_
+- **Purpose**: **Make read-only (training) mode airtight so it can be offered for every role.** The toggle promised "every change is blocked" but only enforced RESTRICTIVE RLS — and a table's owner bypasses RLS, so all ~79 mutating `SECURITY DEFINER` RPCs granted to `authenticated` skipped it, none checking `is_read_only()`. **Live, not theoretical:** verified pre-migration on a local stack that a `read_only` master_technician successfully called `delete_ready_to_bill_invoice` (invoice deleted) and `migrate_job_ledger_costs_and_delete` (job deleted) — while the app showed them the amber "changes won't save" banner. Seven such RPCs admit `assistant`, the exact role the toggle already supported.
+- **Fix**: table ownership bypasses RLS but **not triggers** — triggers fire inside `SECURITY DEFINER` functions. Adds `block_if_read_only()` + `apply_read_only_stmt_blocks()`, attaching a `read_only_block_stmt` **statement-level** `BEFORE INSERT/UPDATE/DELETE` trigger to every RLS-enabled public table. Closes all ~79 at once **without touching a single function body** — the alternative was rewriting ~268 KB of payroll/billing plpgsql to fix a permissions gap. Same idiom as `apply_read_only_write_blocks()` and the archive sweeps.
+- **Safe by construction**: `is_read_only()` is false when `auth.uid()` is NULL, so cron/service-role/anon writes pass untouched (the carve-out the original migration documented). Statement-level ⇒ one indexed lookup per write **statement**, not per row. Also fixes a UX bug: RLS blocked UPDATE/DELETE by silently filtering to zero rows; the trigger raises, so users see why.
+- **Passive browsing preserved** — excluded tables: `user_app_activity_daily` / `user_app_activity_page_daily` (the `bump_user_app_activity` heartbeat the original migration carved out), `estimate_customer_events` (anon link-view telemetry), `deleted_records_archive` (written only by its own definer trigger).
+- **Self-flag guard**: extends `users_guard_privileged_columns` (v2.695) — you cannot read-only your **own** account. A read-only user's own-row UPDATE is filtered by the restrictive policy and no edge function touches the column, so self-flagging the last dev was a permanent lockout recoverable only by direct SQL.
+- **Category**: Security / access control
+
 #### July 16, 2026
 
 **`20260716235000_fix_pay_stub_deductions_cascade_delete.sql`** _(apply via `supabase db push` after the file is on `main`)_

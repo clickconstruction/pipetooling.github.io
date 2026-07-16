@@ -9,7 +9,7 @@ import type { UserRole } from '../../hooks/useAuth'
 import type { UserRow } from '../../types/settingsRows'
 import { ROLES } from '../../lib/userRoles'
 import { displayLabelForUserRole } from '../../lib/userRoleDisplay'
-import { isAssistantLike, isSubcontractorLikeRole } from '../../lib/subcontractorLikeRole'
+import { isSubcontractorLikeRole } from '../../lib/subcontractorLikeRole'
 import { eligibleAbsorbCandidates } from '../../lib/mergeUserAccounts'
 import { buildServiceTypeTradePill } from '../../lib/serviceTypeTradePill'
 import { useToastContext } from '../../contexts/ToastContext'
@@ -168,6 +168,7 @@ export default function ActiveAccountsPanel({ variant, onDataChanged, onOpenFind
     setActiveAccountsSectionOpen,
     updateRole,
     updateReadOnly,
+    currentUserId,
     startEditUser,
     cancelEditUser,
     saveUserEdits,
@@ -327,9 +328,16 @@ export default function ActiveAccountsPanel({ variant, onDataChanged, onOpenFind
                     <td className="activeAccountsCard__lastLogin">
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', alignItems: 'flex-start' }}>
                         <span>{timeSinceAgo(u.last_sign_in_at)}</span>
-                        {isAssistantLike(u.role) && (
+                        {u.id === currentUserId ? (
+                          <span
+                            title="You cannot put your own account in read-only mode — a read-only user cannot undo it, so ask another dev."
+                            style={{ fontSize: '0.8125rem', whiteSpace: 'nowrap', color: 'var(--text-faint)' }}
+                          >
+                            Read-only n/a
+                          </span>
+                        ) : (
                           <label
-                            title="Training mode: they can browse everything their role can see, but every change is blocked."
+                            title="Training mode: they can browse everything their role can see, but every change is blocked. Works for any role."
                             style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer', fontSize: '0.8125rem', whiteSpace: 'nowrap', color: u.read_only ? 'var(--text-amber-700)' : 'var(--text-muted)' }}
                           >
                             <input
