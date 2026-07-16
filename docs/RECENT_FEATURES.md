@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-16 (v2.698)
+last_updated: 2026-07-16 (v2.699)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.699)
+
+### Safety — "Recently deleted" restore UI (Phase 2b, 2026-07-16)
+The restore RPCs (v2.698) are now driveable from the app. **Settings → Data & migration → Recently deleted (dev)** lists every deleted job/bid bundle from the last 90 days — label (e.g. `J-1042 · Smith Remodel`), row count, tables, who deleted it and when — with **Preview restore** and **Restore** per entry. Preview gates Restore (same interlock as the merge-users dialog): Restore stays disabled until you've previewed, and because the preview is a real execution that rolls back, its per-table counts are true rather than estimated. Warnings render amber (e.g. a nullable reference cleared because its target was deleted later — the job returns minus its customer); blockers render red and Restore stays disabled (e.g. the job's master account is gone), with nothing committed. New [`DeletedRecordsSection`](../src/components/settings/DeletedRecordsSection.tsx) is self-contained (owns state via `useDeletedRecordsArchive`) and rendered by [`SettingsDataTab`](../src/components/settings/SettingsDataTab.tsx), so `Settings.tsx` is untouched; RPC calls go through [`deletedRecordsArchive.ts`](../src/lib/deletedRecordsArchive.ts) with `withSupabaseRetry`. Help guide: `recover-a-deleted-job.md`.
 
 ## Latest Updates (v2.698)
 
