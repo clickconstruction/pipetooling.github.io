@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-15 (v2.694)
+last_updated: 2026-07-16 (v2.695)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.695)
+
+### Security — users can no longer self-escalate their role (2026-07-16)
+The `"Users can update own profile"` RLS policy on `public.users` checked only row ownership (`auth.uid() = id`), not which columns changed, and `authenticated` holds column UPDATE on the table — so any authenticated user could PATCH their own row to `role = 'dev'` (inheriting full admin, including the `jobs_ledger` hard-delete that cascades across ~18 child tables and erases its own audit trail) or clear their own `read_only` training-mode flag. New migration `20260716090000_guard_users_privileged_columns.sql` adds a `BEFORE UPDATE OF role, read_only, archived_at` trigger: only a `dev` may change `role`/`read_only`, and `archived_at` is changeable only by the archive/restore edge flow. Service-role edge functions and the dev Active Accounts UI are unaffected (they carry no JWT / run as a dev). Blocks self-escalation for every non-dev role; no client change. See [`MIGRATIONS.md`](MIGRATIONS.md) and [`ACCESS_CONTROL.md`](ACCESS_CONTROL.md).
 
 ## Latest Updates (v2.694)
 

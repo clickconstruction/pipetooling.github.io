@@ -91,6 +91,11 @@ Pipetooling implements comprehensive role-based access control (RBAC) using eigh
 - **Database**: Foreign key relationships enforce data ownership
 - **Edge Functions**: Role validation before privileged operations
 
+### Privileged `users` columns are DB-guarded (v2.695, `20260716090000_guard_users_privileged_columns.sql`)
+- **What**: A `BEFORE UPDATE OF role, read_only, archived_at` trigger (`users_guard_privileged_columns()`) on **`public.users`** blocks self-privilege-escalation. Only a **`dev`** may change **`role`** or **`read_only`**; **`archived_at`** is changeable only by the archive/restore edge flow.
+- **Why**: The `"Users can update own profile"` RLS policy checks only row ownership (`auth.uid() = id`), not which columns change, and `authenticated` holds column UPDATE on the table. Without the trigger, any authenticated user could PATCH their own row to `role='dev'` (full admin, incl. the cascading `jobs_ledger` hard-delete) or clear their own training-mode `read_only` flag. The role hierarchy in this document is only a real security boundary because of this guard.
+- **Unaffected**: dev `updateRole`/`updateReadOnly` from **Active Accounts** (authenticated dev), and service-role edge functions (`archive-user`, `restore-user`, `claim-dev`, `merge-users`) — the latter carry no JWT, so `auth.uid()` is NULL and the deny branches are skipped.
+
 ### Stripe out-of-band payment unwind (v2.362, refinements v2.363)
 - **Who**: **`dev`**, **`master_technician`**, **`assistant`**, and **`primary`** with the same job-access pattern as **`mark_invoice_paid`** (RPC **`revert_stripe_oob_invoice_payment`** enforces this).
 - **Where**: **Hosted Stripe bill** panel (**`HostedStripeBillPanel`**) when the ledger invoice is **Paid** — **Undo out-of-band payment** issues a Stripe **credit note** (no card charge on the invoice) and reverts the ledger row to **Billed**. **v2.363**: optional **`onAfterOobUnwindSuccess`** refreshes **Edit Job** **Payments received** and **Bill Customer** success-screen job snapshots so **`jobs_ledger_payments`** removals match the form without reopening the editor.
