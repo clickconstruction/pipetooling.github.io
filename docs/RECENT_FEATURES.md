@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-16 (v2.697)
+last_updated: 2026-07-16 (v2.698)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.698)
+
+### Safety — deleted records can now be restored (Phase 2 RPCs, 2026-07-16)
+The archive (v2.696/v2.697) captured every deleted row, but recovery still meant a dev hand-reconstructing JSONB. New migration `20260716180000_deleted_records_restore.sql` adds two **dev-only** RPCs: `list_deleted_records()` returns one row per restorable bundle (kind, label like `J-1042 · Smith Remodel`, row count, tables, who deleted it and when), and `restore_deleted_records(group_key, dry_run)` puts a whole job/bid bundle back. It is **all-or-nothing with a real dry-run preview** — the preview genuinely executes and rolls back, so its per-table counts are true, not estimated. A reference to something since deleted through a **nullable** column (e.g. the job's customer) is cleared with a warning so the job still comes back; through a **required** column (e.g. `master_user_id`) it is reported as a blocker and nothing is committed. Rows are re-inserted parent→child in an order computed from the live foreign-key catalog rather than a hardcoded list, and restored bundles drop off the list (`restored_at`). Backend only — the "Recently deleted" Settings UI follows in v2.699. See [`MIGRATIONS.md`](MIGRATIONS.md) and [`ACCESS_CONTROL.md`](ACCESS_CONTROL.md).
 
 ## Latest Updates (v2.697)
 
