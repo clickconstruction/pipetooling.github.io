@@ -85,6 +85,7 @@ import DashboardFinancialsSection from '../components/DashboardFinancialsSection
 import DashboardLostBidsMissingReasonBanner from '../components/DashboardLostBidsMissingReasonBanner'
 import DashboardTallyStaleBanner from '../components/DashboardTallyStaleBanner'
 import DashboardTallyStaleStaffBanner from '../components/DashboardTallyStaleStaffBanner'
+import DashboardBulkDeleteAlertBanner from '../components/DashboardBulkDeleteAlertBanner'
 import { DashboardStaleTallyStaffFollowUpModal } from '../components/DashboardStaleTallyStaffFollowUpModal'
 import {
   canRoleSeeArBankUnallocatedDashboardBanner,
@@ -4458,6 +4459,8 @@ export default function Dashboard() {
           onOpen={() => setTallyStaffFollowUpModalOpen(true)}
         />
       )}
+      {/* Dev-only and self-gating: renders nothing unless a burst of deletions was detected. */}
+      <DashboardBulkDeleteAlertBanner />
       {role != null && (
         <div style={{ display: 'flex', alignItems: 'stretch', gap: '0.5rem', marginBottom: '1rem' }}>
           <div style={{ position: 'relative', width: 48, height: 48, flexShrink: 0 }}>

@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-17 (v2.704)
+last_updated: 2026-07-17 (v2.705)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.705)
+
+### Safety — the dashboard now tells you when someone deletes a lot at once (2026-07-17)
+Deleted work has been archived and restorable since v2.696, and read-only can freeze an account since v2.704 — but both assumed **somebody notices**, and nothing told you. A red **Bulk deletion detected** notice now appears on the dev Dashboard alongside the other notices when one person deletes a burst of things, with **Snooze 24h** / **Dismiss until count increases** and a link straight to Recently deleted. It counts **things, not rows**: deleting one job archives roughly twenty rows behind the scenes, so a row-based alarm would fire on every ordinary delete — one job is one thing. A second row-based trigger still catches a single enormous deletion (a customer that takes fifty projects with it). Your own deletions never trigger it, and only devs see it. Thresholds (on/off, things, rows, window, lookback) are configurable in **Settings → Data & migration → Bulk-deletion alert (dev)**; blank uses the default, and a blank or invalid value falls back rather than silencing the alarm. New help guide: *know when someone deletes a lot at once*. See [`MIGRATIONS.md`](MIGRATIONS.md).
 
 ## Latest Updates (v2.704)
 

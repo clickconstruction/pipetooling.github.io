@@ -11174,6 +11174,18 @@ export type Database = {
           hours: number
         }[]
       }
+      list_bulk_deletion_alerts: {
+        Args: never
+        Returns: {
+          actor_id: string
+          actor_name: string
+          bundles: number
+          row_count: number
+          tables: string[]
+          window_end: string
+          window_start: string
+        }[]
+      }
       list_deleted_records: {
         Args: { p_limit?: number }
         Returns: {
