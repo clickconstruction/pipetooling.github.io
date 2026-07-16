@@ -5,6 +5,7 @@
  * it is single-surface, so threading its state through Settings.tsx would add props for no benefit. */
 import type { Dispatch, SetStateAction } from 'react'
 import DeletedRecordsSection from './DeletedRecordsSection'
+import BulkDeleteAlertSettingsBlock from './BulkDeleteAlertSettingsBlock'
 
 export default function SettingsDataTab({
   dataBackupSectionOpen,
@@ -174,6 +175,7 @@ export default function SettingsDataTab({
       )}
     </div>
     <DeletedRecordsSection />
+    <BulkDeleteAlertSettingsBlock />
     </>
   )
 }

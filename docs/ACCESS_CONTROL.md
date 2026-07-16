@@ -91,6 +91,11 @@ Pipetooling implements comprehensive role-based access control (RBAC) using eigh
 - **Database**: Foreign key relationships enforce data ownership
 - **Edge Functions**: Role validation before privileged operations
 
+### Bulk-deletion alerting (v2.705, `20260717120000_bulk_deletion_alerts.sql`)
+- **Who**: **dev-only**. `list_bulk_deletion_alerts()` is `SECURITY DEFINER` with the `WHERE public.is_dev()` idiom — a non-dev gets zero rows. Surfaced as a self-gating Dashboard notice; thresholds configured in the dev-only **Settings → Data & migration** tab.
+- **What**: a read-side aggregate over `deleted_records_archive` (no new capture). Flags one `(actor, time-bucket)` per burst where `count(distinct group_key) >= bundles` **OR** `count(*) >= rows`. Counts **bundles** (whole jobs/bids/customers), because one job delete archives ~20 rows and a row-only threshold would fire on every ordinary delete.
+- **Scope**: **excludes the caller's own deletions** by design — other devs still see your bursts, so no spree is invisible to everyone. Thresholds live in `app_settings` (`bulk_delete_alert_*_v1`, all-read/dev-write) and are read server-side so the notice and its numbers cannot disagree.
+
 ### Read-only (training) mode — any role, DB-enforced (v2.704, `20260717000000_read_only_all_roles_and_rpc_block.sql`)
 - **Who**: a **dev** flags any user via Active Accounts → **Read-only**. Available for **every role** as of v2.704 (previously assistant/controller only; the `users.read_only` column was always role-agnostic). **Nobody can flag their own account** — a read-only user cannot clear the flag and only devs can change it, so self-flagging was an unrecoverable lockout.
 - **What it blocks**: everything. Enforcement is two-layered — the RESTRICTIVE RLS policies from v2.693 (`read_only_users_cannot_insert/update/delete` on 228 tables) **plus** a statement-level `read_only_block_stmt` trigger (`block_if_read_only()`) on every RLS-enabled public table. The trigger is what closes the `SECURITY DEFINER` gap: a table's owner bypasses RLS, so ~79 mutating definer RPCs (e.g. `mark_invoice_paid`, `delete_ready_to_bill_invoice`, `migrate_job_ledger_costs_and_delete`) previously ran **unblocked** for a flagged user. Triggers fire inside definer functions, so they no longer do.

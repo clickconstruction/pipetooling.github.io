@@ -90,3 +90,50 @@ export function normalizeJobTallyMinPostedYmd(value: string | null | undefined):
 export function parseHideDevTallyFlag(valueText: string | null | undefined): boolean {
   return (valueText ?? '').trim() === 'true'
 }
+
+/* ── Bulk-deletion alert (dev dashboard notice). Thresholds are ALSO read server-side by the
+ * list_bulk_deletion_alerts() RPC, so these key names are load-bearing in SQL — see
+ * 20260717120000_bulk_deletion_alerts.sql. Defaults below must match the RPC's COALESCE fallbacks. */
+
+/** `value_text` — 'true'/'false'. Missing = enabled. Dev writes; all authenticated read. */
+export const APP_SETTINGS_KEY_BULK_DELETE_ALERT_ENABLED = 'bulk_delete_alert_enabled_v1' as const
+
+/** `value_num` — alert when one person deletes at least this many BUNDLES (distinct group_key) in a window. Missing = 5. Dev writes; all authenticated read. */
+export const APP_SETTINGS_KEY_BULK_DELETE_ALERT_BUNDLES = 'bulk_delete_alert_bundles_v1' as const
+
+/** `value_num` — second trigger: alert at this many archived ROWS in a window (catches one huge bundle, e.g. a customer cascading into many projects). Missing = 200. Dev writes; all authenticated read. */
+export const APP_SETTINGS_KEY_BULK_DELETE_ALERT_ROWS = 'bulk_delete_alert_rows_v1' as const
+
+/** `value_num` — width of the detection window, in minutes. Missing = 60. Dev writes; all authenticated read. */
+export const APP_SETTINGS_KEY_BULK_DELETE_ALERT_WINDOW_MINUTES = 'bulk_delete_alert_window_minutes_v1' as const
+
+/** `value_num` — how far back the dashboard notice looks, in hours. Missing = 168 (7 days). Dev writes; all authenticated read. */
+export const APP_SETTINGS_KEY_BULK_DELETE_ALERT_LOOKBACK_HOURS = 'bulk_delete_alert_lookback_hours_v1' as const
+
+/** Defaults — must stay in sync with the COALESCE fallbacks in list_bulk_deletion_alerts(). */
+export const BULK_DELETE_ALERT_DEFAULTS = {
+  bundles: 5,
+  rows: 200,
+  windowMinutes: 60,
+  lookbackHours: 168,
+} as const
+
+/**
+ * Parse a bulk-delete-alert `value_num` threshold. Blank/garbage/≤0 falls back to `fallback` rather
+ * than to zero — a mistyped setting must never silence the alarm or fire it on every delete.
+ * Clamps to app_settings.value_num's numeric(10,2) ceiling.
+ */
+export function parseBulkDeleteAlertThreshold(
+  value: number | string | null | undefined,
+  fallback: number,
+): number {
+  if (value === null || value === undefined || value === '') return fallback
+  const n = typeof value === 'number' ? value : Number(String(value).trim())
+  if (!Number.isFinite(n) || n <= 0) return fallback
+  return Math.min(Math.floor(n), 99_999_999)
+}
+
+/** Parse the bulk-delete-alert enabled flag: only the literal 'false' (trimmed) disables it; missing = on. */
+export function parseBulkDeleteAlertEnabled(valueText: string | null | undefined): boolean {
+  return (valueText ?? '').trim() !== 'false'
+}
