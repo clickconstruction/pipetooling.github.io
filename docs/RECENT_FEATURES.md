@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-15 (v2.692)
+last_updated: 2026-07-15 (v2.693)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,17 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.693)
+
+### Dashboard — My Inbox moved above Teams Inbox (2026-07-15)
+The section order is now `ClockedIn → My Inbox → Teams Inbox → Billing` (was `… → Teams Inbox → Billing → My Inbox`). Because My Inbox is one shared block while the clock strip and Teams Inbox live in each role path, the ~515-line card was extracted to a single `myInboxCard` element and rendered in gated spots — inside the assistant path, before the dev/master Teams Inbox, and a fallback for roles with no Teams Inbox — so it still renders exactly once per role with no duplication. The bottom-dock **My Inbox** chip moves before **Teams Inbox** to match. [`Dashboard.tsx`](../src/pages/Dashboard.tsx).
+
+### Dashboard — Assigned Jobs restyled as one card (2026-07-15)
+The **Assigned Jobs** section was a bare collapsible heading over a stack of individually bordered job boxes — which read as card-heavy and too similar to the new Projects card. It's now one titled **Assigned Jobs (N)** card (same `DashboardGroupCard` chrome) whose jobs render as lightweight rows separated by thin dividers, matching the Billing Pipeline look. Always open (the section-level collapse toggle is dropped; `assignedJobsExpanded` state removed). The in-progress-stage footer bar loses its box-flush negative margins and becomes a normal rounded bar within the row. [`Dashboard.tsx`](../src/pages/Dashboard.tsx).
+
+### Dashboard — Projects stages grouped into one "Projects" card (2026-07-15)
+The two standalone headings **Projects: Assigned Stages (N)** and **Projects: Subscribed Stages (N)** now sit inside one bordered **Projects** [`DashboardGroupCard`](../src/components/dashboard/DashboardGroupCard.tsx) (matching Teams Inbox / My Inbox), so they read as one section belonging to the user instead of two loose headings. Each sub-section stays independently collapsible; with the card title carrying "Projects", the sub-headings drop the redundant prefix → **Assigned Stages (N)** / **Subscribed Stages (N)**. The card's `id="dash-projects"` doubles as the scrollspy anchor and adds a **Projects** chip to the bottom section dock (previously these sections had no dock representation). The card shows whenever either sub-section qualifies (Assigned is data-gated, Subscribed is dev/master/assistant-gated) and hides — with its chip — when neither does. [`Dashboard.tsx`](../src/pages/Dashboard.tsx); help guide `dashboard-section-bar.md` updated.
 
 ## Latest Updates (v2.692)
 
