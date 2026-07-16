@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-16 (v2.699)
+last_updated: 2026-07-16 (v2.700)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.700)
+
+### Fix — restoring a deleted bid hung (2026-07-16)
+`restore_deleted_records` (v2.698) was verified end-to-end against deleted **jobs**, but the **bids** tree contains a foreign-key cycle that jobs does not: a bid points at its selected version, and a version points back at its bid. The insert-order sort walked that cycle and spun, so restoring — or even *previewing* — a deleted bid would hang until the connection was dropped, and no valid parent→child order existed anyway. `20260716210000_deleted_records_restore_fk_cycles.sql` detects genuine cycle back-edges and defers just those columns: the row goes in without them, then they're filled back in once their target exists. Everything else still orders normally — deliberately narrow, because blanket-deferring nullable columns would have broken reports (whose anchor is nullable but required by a CHECK). Deleted bids now restore correctly, including their versions, count rows, bid-scoped price books and cost estimates. Found by testing a bid restore rather than assuming the job result generalised.
 
 ## Latest Updates (v2.699)
 
