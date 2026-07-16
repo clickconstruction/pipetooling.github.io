@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-16 (v2.701)
+last_updated: 2026-07-16 (v2.702)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.702)
+
+### Safety — deleted-records archive now covers 83 tables (tier 2, 2026-07-16)
+The archive protected jobs and bids; everything else — customers, projects, estimates, payroll, time, supply-house invoices, sub labor, purchase orders, the material catalog — was still hard-deleted with nothing kept. `20260716230000_deleted_records_archive_tier2.sql` takes coverage from **42 to 83 tables**, chosen by walking the live foreign-key catalog rather than by hand. It also closes three silent holes: deleting a **supply house** or **material template** used to orphan archived rows that pointed at them (so those could never be restored), and **project-anchored reports were archived but unrestorable** because `projects` wasn't covered. Worth knowing: **deleting a customer cascades into their projects**, workflows and reports — that whole tree is now captured and restorable as one bundle. `people_hours` is deliberately excluded: it's derived data the system recomputes, so archiving it would only add noise. Restore needed no changes — it reads the FK graph live. No client change. See [`MIGRATIONS.md`](MIGRATIONS.md).
 
 ## Latest Updates (v2.701)
 
