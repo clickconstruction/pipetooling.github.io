@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-16 (v2.700)
+last_updated: 2026-07-16 (v2.701)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.701)
+
+### Fix — delete dialogs no longer claim "this cannot be undone" (2026-07-16)
+Since v2.696–v2.700 a deleted job, bid, invoice, report, count row or price book **can** be put back by a dev, but every delete dialog still said the opposite — misleading people at the exact moment they make the decision, and in the scarier direction. Updated the five now-false claims: **Delete job from Billing** ("This permanently removes the job… This cannot be undone." → now names what goes with it and points at Settings → Data & migration → Recently deleted, 90 days), **Migrate costs and delete** and **Combine/Separate** (the *cost move* genuinely can't be reversed, but the removed job and its invoices/payments can be restored — the dialogs now draw that distinction instead of a blanket "cannot be undone"), **Clear all counts**, and **Delete price book version**. The Edit-Job costs warning no longer says tally parts & materials are "permanently lost". Copy elsewhere is untouched and still correct: customers, pay stubs, teams, contracts, banking accounts, job-book entries, checklist groups, merges and job *reassignment* are **not** archive-covered, so "cannot be undone" remains true there. Copy only — no behaviour change.
 
 ## Latest Updates (v2.700)
 

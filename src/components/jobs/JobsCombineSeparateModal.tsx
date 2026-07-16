@@ -663,7 +663,10 @@ export default function JobsCombineSeparateModal({ open, onClose, onAfterSuccess
                 <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: 'var(--text-700)', lineHeight: 1.5 }}>
                   Move labor, parts, materials, Specific Work, and related rows from the <strong>source</strong> job into
                   the <strong>target</strong> job, add the source <strong>Job total (revenue)</strong> to the target, then
-                  remove the source job. Matches <strong>Edit Job → Migrate and Delete</strong>. This cannot be undone.
+                  remove the source job. Matches <strong>Edit Job → Migrate and Delete</strong>. <strong>Moving the
+                  rows cannot be reversed</strong> — a dev can restore the removed source job for 90 days
+                  (<strong>Settings → Data &amp; migration → Recently deleted</strong>), but anything moved to the
+                  target stays there.
                 </p>
 
                 <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-700)', marginBottom: 6 }}>

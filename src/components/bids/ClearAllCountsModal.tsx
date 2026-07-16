@@ -38,10 +38,11 @@ export function ClearAllCountsModal({
     <ModalShell cardStyle={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, maxWidth: 520, width: '90%', maxHeight: '90vh', overflow: 'auto' }}>
       <h2 style={{ margin: '0 0 1rem 0', color: 'var(--text-red-700)' }}>Clear all counts</h2>
       <p style={{ fontSize: '0.875rem', color: 'var(--text-700)', marginBottom: '0.5rem' }}>
-        This will permanently delete <strong>{rowCount}</strong> count row{rowCount === 1 ? '' : 's'} for this bid.
+        This will delete <strong>{rowCount}</strong> count row{rowCount === 1 ? '' : 's'} for this bid.
       </p>
       <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginBottom: '0.75rem' }}>
-        Related takeoff template mappings, pricing assignments, and custom fixture prices for those rows will also be removed.
+        Related takeoff template mappings, pricing assignments, and custom fixture prices for those rows will also be
+        removed. A dev can put them back for 90 days from <strong>Settings → Data &amp; migration → Recently deleted</strong>.
       </p>
       <p style={{ fontSize: '0.875rem', color: 'var(--text-700)', marginBottom: '0.35rem' }}>
         Type <strong style={{ color: 'var(--text-red-700)' }}>{confirmLabel}</strong> exactly to confirm.
