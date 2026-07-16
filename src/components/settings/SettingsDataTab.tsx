@@ -1,7 +1,10 @@
-/** Settings → Data & migration tab: dev-only JSON backup exporters.
+/** Settings → Data & migration tab: dev-only JSON backup exporters + the deleted-records archive.
  * Presentational; all state/handlers live in the parent (Settings.tsx) and arrive as props.
- * The SettingsGroup wrapper and the `myRole === 'dev'` gate stay in the parent. */
+ * The SettingsGroup wrapper and the `myRole === 'dev'` gate stay in the parent.
+ * Exception: DeletedRecordsSection is self-contained (owns its state via useDeletedRecordsArchive) —
+ * it is single-surface, so threading its state through Settings.tsx would add props for no benefit. */
 import type { Dispatch, SetStateAction } from 'react'
+import DeletedRecordsSection from './DeletedRecordsSection'
 
 export default function SettingsDataTab({
   dataBackupSectionOpen,
@@ -55,6 +58,7 @@ export default function SettingsDataTab({
   exportAllLoading: boolean
 }) {
   return (
+    <>
     <div style={{ marginBottom: '2rem', border: '1px solid var(--border)', borderRadius: 8 }}>
       <button
         type="button"
@@ -169,5 +173,7 @@ export default function SettingsDataTab({
         </div>
       )}
     </div>
+    <DeletedRecordsSection />
+    </>
   )
 }

@@ -2396,6 +2396,42 @@ export type Database = {
           },
         ]
       }
+      deleted_records_archive: {
+        Row: {
+          deleted_at: string
+          deleted_by: string | null
+          group_key: string | null
+          id: string
+          record_id: string | null
+          restored_at: string | null
+          restored_by: string | null
+          row_data: Json
+          table_name: string
+        }
+        Insert: {
+          deleted_at?: string
+          deleted_by?: string | null
+          group_key?: string | null
+          id?: string
+          record_id?: string | null
+          restored_at?: string | null
+          restored_by?: string | null
+          row_data: Json
+          table_name: string
+        }
+        Update: {
+          deleted_at?: string
+          deleted_by?: string | null
+          group_key?: string | null
+          id?: string
+          record_id?: string | null
+          restored_at?: string | null
+          restored_by?: string | null
+          row_data?: Json
+          table_name?: string
+        }
+        Relationships: []
+      }
       dev_ignored_checklist_items: {
         Row: {
           checklist_item_id: string
@@ -11138,6 +11174,19 @@ export type Database = {
           hours: number
         }[]
       }
+      list_deleted_records: {
+        Args: { p_limit?: number }
+        Returns: {
+          deleted_at: string
+          deleted_by: string
+          deleted_by_name: string
+          group_key: string
+          kind: string
+          label: string
+          row_count: number
+          tables: string[]
+        }[]
+      }
       list_feedback_peer_candidates: {
         Args: never
         Returns: {
@@ -11889,6 +11938,10 @@ export type Database = {
       resolve_pay_person_id_from_clock_user: {
         Args: { p_display_name: string; p_user_id: string }
         Returns: string
+      }
+      restore_deleted_records: {
+        Args: { p_dry_run?: boolean; p_group_key: string }
+        Returns: Json
       }
       restore_rejected_clock_sessions: {
         Args: { p_session_ids: string[] }
