@@ -2417,8 +2417,9 @@ export function BidsPricingTab({
             >
               <h3 style={{ margin: '0 0 0.75rem', color: 'var(--text-red-700)' }}>Delete price book version</h3>
               <p style={{ margin: '0 0 0.75rem', color: 'var(--text-700)', fontSize: '0.9rem' }}>
-                This will permanently delete the price book version{' '}
-                <strong>{pricingVersionToDelete.name}</strong> and all entries it contains.
+                This will delete the price book version <strong>{pricingVersionToDelete.name}</strong> and all entries
+                it contains. A dev can put it back for 90 days from <strong>Settings → Data &amp; migration → Recently
+                deleted</strong>.
               </p>
               <p style={{ margin: '0 0 0.5rem', color: 'var(--text-600)', fontSize: '0.875rem' }}>
                 Type the name of this price book version to confirm:

@@ -6558,7 +6558,9 @@ export default function JobFormModal({
                 <strong>Job:</strong> {(editing.job_name ?? '').trim() || '—'}
               </p>
               <p style={{ margin: 0, color: 'var(--text-muted)' }}>
-                This permanently removes the job from Billing. This cannot be undone.
+                This removes the job from Billing along with everything on it — invoices, payments, costs and
+                reports. A dev can put it back for 90 days from <strong>Settings → Data &amp; migration → Recently
+                deleted</strong>.
               </p>
               {hasMigrateableCosts && !costSnapshotStillLoading ? (
                 <div
@@ -6589,7 +6591,7 @@ export default function JobFormModal({
                   <p style={{ margin: 0, color: 'var(--text-muted)' }}>
                     To delete this job you must first reassign these to another job — otherwise card
                     charges &amp; supply-invoice splits would be unlinked and tally parts &amp; materials
-                    permanently lost.
+                    removed along with it.
                   </p>
                 </div>
               ) : null}
@@ -6737,11 +6739,14 @@ export default function JobFormModal({
               Move labor, parts, materials, Specific Work, and related rows to another job, add this job’s{' '}
               <strong>Job total (revenue)</strong> to the target’s total, then remove{' '}
               <strong>HCP {effectiveJobLedgerNumber(editing.hcp_number, editing.click_number) || '—'}</strong> —{' '}
-              <strong>{(editing.job_name ?? '').trim() || '—'}</strong>. This cannot be undone.
+              <strong>{(editing.job_name ?? '').trim() || '—'}</strong>. <strong>Moving the costs cannot be
+              reversed.</strong>
             </p>
             <p style={{ margin: '0 0 1rem', fontSize: '0.8125rem', color: 'var(--text-amber-800)', lineHeight: 1.45 }}>
-              This job’s own invoices and recorded payments are permanently deleted with it — only costs,
-              labor, and revenue move to the target.
+              This job’s own invoices and recorded payments are deleted with it — only costs, labor, and revenue
+              move to the target. A dev can restore the deleted job and those invoices/payments for 90 days
+              (<strong>Settings → Data &amp; migration → Recently deleted</strong>), but anything moved to the target
+              stays there.
             </p>
             {editJobSubLaborData != null && editJobSubLaborData.count > 0 ? (
               <p style={{ margin: '0 0 1rem', fontSize: '0.8125rem', color: 'var(--text-amber-800)', lineHeight: 1.45 }}>
