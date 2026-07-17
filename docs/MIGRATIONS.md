@@ -103,6 +103,12 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 #### July 17, 2026
 
+**`20260717180000_drop_dev_reset_estimates.sql`** _(apply via `supabase db push` after the file is on `main`)_
+- **Purpose**: **Remove a "wipe every estimate" button from prod.** `dev_reset_estimates_for_testing()` was `DELETE FROM public.estimates WHERE true` behind a dev-only type-"DELETE" confirm in Settings → Templates & testing. There is no staging env — this "reset for testing" ran against real data, so a dev could erase the whole estimate book in one click believing it was a test. Since v2.702 estimates are archived (so it became recoverable and now trips the bulk-deletion alert), but a standing delete-everything control has no legitimate prod use. `DROP FUNCTION`; the UI (the "Delete all estimates" section) is removed in the same PR.
+- **Category**: Security / cleanup
+
+#### July 17, 2026
+
 **`20260717150000_claim_dev_break_glass.sql`** _(apply via `supabase db push` after the file is on `main`, and BEFORE `supabase functions deploy claim-dev`)_
 - **Purpose**: **Close the claim-dev escalation path.** `claim-dev` was a form labelled only "Enter code" (Settings → Advanced, visible to every role except subcontractor/helpers) that promoted you to dev instantly, with no audit, no notification and no lockout — gated solely by a static shared secret. It promoted via a service-role client, so `auth.uid()` was NULL inside `users_guard_privileged_columns` (`20260716090000`) and that guard early-returned: the rule "only a dev can change a role; nobody self-promotes" had a deployed, UI-exposed bypass.
 - **Now**: adds `claim_dev_attempts` (append-only audit, dev-only SELECT, no client write policy) and `claim_dev_attempt(p_user_id, p_code_ok)` — `SECURITY DEFINER`, **`REVOKE`d from `authenticated` and granted only to `service_role`** so the edge function is its sole caller (not a new door). It grants dev **only when no usable dev exists** (`role='dev' AND archived_at IS NULL AND read_only=false`), refuses `read_only`/archived callers even in a genuine lockout, takes `pg_advisory_xact_lock` so the check is race-free, and logs **every** branch (`granted` / `refused_bad_code` / `refused_dev_exists` / `refused_read_only` / `refused_unknown_user`).

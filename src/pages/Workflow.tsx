@@ -3546,7 +3546,7 @@ export default function Workflow() {
             ) : (
               <>
                 <p style={{ marginBottom: '0.5rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-                  This step has content (assignee, notes, line items, or has been started). Deleting will permanently remove it and related data.
+                  This step has content (assignee, notes, line items, or has been started). Deleting removes it and its related data — a dev can put it back for 90 days from Settings → Data &amp; migration → Recently deleted.
                 </p>
                 <p style={{ marginBottom: 8, fontSize: '0.875rem' }}>Type &quot;{confirmDeleteStep.name}&quot; to confirm:</p>
                 <input

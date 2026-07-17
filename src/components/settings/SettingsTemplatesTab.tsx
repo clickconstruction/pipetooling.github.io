@@ -46,15 +46,6 @@ type SettingsTemplatesTabProps = {
   setJobTallyMinPostedYmdError: Dispatch<SetStateAction<string | null>>
   templatesJobPartsTallySectionOpen: boolean
   setTemplatesJobPartsTallySectionOpen: Dispatch<SetStateAction<boolean>>
-  // Delete all estimates
-  templatesDeleteAllEstimatesSectionOpen: boolean
-  setTemplatesDeleteAllEstimatesSectionOpen: Dispatch<SetStateAction<boolean>>
-  devResetEstimatesModalOpen: boolean
-  setDevResetEstimatesModalOpen: Dispatch<SetStateAction<boolean>>
-  devResetEstimatesConfirmInput: string
-  setDevResetEstimatesConfirmInput: Dispatch<SetStateAction<string>>
-  devResetEstimatesLoading: boolean
-  setDevResetEstimatesLoading: Dispatch<SetStateAction<boolean>>
   // Test target + notification template testing
   templateTestTargetUserId: string
   setTemplateTestTargetUserId: Dispatch<SetStateAction<string>>
@@ -144,14 +135,6 @@ export default function SettingsTemplatesTab({
   setJobTallyMinPostedYmdError,
   templatesJobPartsTallySectionOpen,
   setTemplatesJobPartsTallySectionOpen,
-  templatesDeleteAllEstimatesSectionOpen,
-  setTemplatesDeleteAllEstimatesSectionOpen,
-  devResetEstimatesModalOpen,
-  setDevResetEstimatesModalOpen,
-  devResetEstimatesConfirmInput,
-  setDevResetEstimatesConfirmInput,
-  devResetEstimatesLoading,
-  setDevResetEstimatesLoading,
   templateTestTargetUserId,
   setTemplateTestTargetUserId,
   notificationTestError,
@@ -385,172 +368,6 @@ export default function SettingsTemplatesTab({
               </div>
             ) : null}
           </div>
-          <div style={{ marginBottom: '1.5rem', border: '1px solid var(--border)', borderRadius: 8 }}>
-            <button
-              type="button"
-              onClick={() => setTemplatesDeleteAllEstimatesSectionOpen((prev) => !prev)}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.35rem',
-                margin: 0,
-                padding: '1rem',
-                width: '100%',
-                background: 'none',
-                border: 'none',
-                cursor: 'pointer',
-                fontSize: '1rem',
-                fontWeight: 600,
-                textAlign: 'left',
-              }}
-            >
-              <span style={{ fontSize: '0.75rem' }}>{templatesDeleteAllEstimatesSectionOpen ? '▼' : '▶'}</span>
-              Delete all estimates (this org, dev only)
-            </button>
-            {templatesDeleteAllEstimatesSectionOpen ? (
-              <div
-                style={{
-                  padding: '0 1rem 1rem 1rem',
-                  borderTop: '1px solid #fecaca',
-                  background: 'var(--bg-amber-tint)',
-                }}
-              >
-                <p style={{ margin: '0 0 0.75rem', color: 'var(--text-amber-900)', fontSize: '0.875rem', lineHeight: 1.5 }}>
-                  Permanently removes every estimate for your resolved org (all statuses). Jobs are not deleted. Related
-                  thread notes and customer events are removed with each estimate. The next quote number is{' '}
-                  <strong>1</strong> only if no estimate rows remain in the database after this; if other organizations still
-                  have quotes, the next number follows the global sequence.
-                </p>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setDevResetEstimatesConfirmInput('')
-                    setDevResetEstimatesModalOpen(true)
-                  }}
-                  style={{
-                    padding: '0.5rem 1rem',
-                    fontSize: '0.875rem',
-                    fontWeight: 600,
-                    background: '#b91c1c',
-                    color: '#ffffff',
-                    border: 'none',
-                    borderRadius: 4,
-                    cursor: 'pointer',
-                  }}
-                >
-                  Delete all estimates…
-                </button>
-              </div>
-            ) : null}
-          </div>
-          {devResetEstimatesModalOpen ? (
-            <div
-              style={{
-                position: 'fixed',
-                inset: 0,
-                background: 'rgba(0,0,0,0.5)',
-                zIndex: 1000,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <div
-                role="dialog"
-                aria-modal="true"
-                aria-labelledby="dev-reset-estimates-title"
-                style={{
-                  background: 'var(--surface)',
-                  borderRadius: 8,
-                  padding: '1.5rem',
-                  maxWidth: '480px',
-                  width: '90%',
-                  boxShadow: '0 10px 40px rgba(0,0,0,0.15)',
-                }}
-              >
-                <h3 id="dev-reset-estimates-title" style={{ marginTop: 0, marginBottom: '0.75rem', color: 'var(--text-red-800)' }}>
-                  Confirm delete all estimates
-                </h3>
-                <p style={{ margin: '0 0 0.75rem', color: 'var(--text-700)', fontSize: '0.875rem', lineHeight: 1.5 }}>
-                  This cannot be undone. Type <strong>DELETE</strong> below to confirm.
-                </p>
-                <input
-                  type="text"
-                  value={devResetEstimatesConfirmInput}
-                  onChange={(e) => setDevResetEstimatesConfirmInput(e.target.value)}
-                  placeholder="DELETE"
-                  autoComplete="off"
-                  aria-label="Type DELETE to confirm"
-                  style={{
-                    width: '100%',
-                    boxSizing: 'border-box',
-                    padding: '0.5rem 0.75rem',
-                    fontSize: '0.875rem',
-                    border: '1px solid var(--border-strong)',
-                    borderRadius: 4,
-                    marginBottom: '1rem',
-                  }}
-                />
-                <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
-                  <button
-                    type="button"
-                    disabled={devResetEstimatesLoading}
-                    onClick={() => {
-                      setDevResetEstimatesModalOpen(false)
-                      setDevResetEstimatesConfirmInput('')
-                    }}
-                    style={{ padding: '0.5rem 1rem', fontSize: '0.875rem' }}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="button"
-                    disabled={devResetEstimatesLoading || devResetEstimatesConfirmInput.trim() !== 'DELETE'}
-                    onClick={() => {
-                      void (async () => {
-                        setDevResetEstimatesLoading(true)
-                        try {
-                          const deleted = await withSupabaseRetry(
-                            () => supabase.rpc('dev_reset_estimates_for_testing'),
-                            'dev reset estimates',
-                          )
-                          const n = typeof deleted === 'number' ? deleted : 0
-                          showToast(`Deleted ${n} estimate(s). Quote numbering updated.`, 'success')
-                          setDevResetEstimatesModalOpen(false)
-                          setDevResetEstimatesConfirmInput('')
-                        } catch (e) {
-                          showToast(formatErrorMessage(e, 'Could not reset estimates'), 'error')
-                        } finally {
-                          setDevResetEstimatesLoading(false)
-                        }
-                      })()
-                    }}
-                    style={{
-                      padding: '0.5rem 1rem',
-                      fontSize: '0.875rem',
-                      fontWeight: 600,
-                      background:
-                        devResetEstimatesLoading || devResetEstimatesConfirmInput.trim() !== 'DELETE'
-                          ? '#e5e7eb'
-                          : '#b91c1c',
-                      color:
-                        devResetEstimatesLoading || devResetEstimatesConfirmInput.trim() !== 'DELETE'
-                          ? '#6b7280'
-                          : '#ffffff',
-                      border: 'none',
-                      borderRadius: 4,
-                      cursor:
-                        devResetEstimatesLoading || devResetEstimatesConfirmInput.trim() !== 'DELETE'
-                          ? 'not-allowed'
-                          : 'pointer',
-                    }}
-                  >
-                    {devResetEstimatesLoading ? 'Deleting…' : 'Confirm delete'}
-                  </button>
-                </div>
-              </div>
-            </div>
-          ) : null}
           <p style={{ marginTop: '2rem', marginBottom: '0.75rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>
             Choose who receives <strong>notification</strong> and <strong>email</strong> template tests (push goes to their devices; email goes to their account email).
           </p>

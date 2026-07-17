@@ -10730,7 +10730,6 @@ export type Database = {
         Args: { p_invoice_id: string }
         Returns: Json
       }
-      dev_reset_estimates_for_testing: { Args: never; Returns: number }
       dismiss_mercury_duplicate_pair: {
         Args: { p_id_a: string; p_id_b: string }
         Returns: undefined
