@@ -5,38 +5,36 @@ file: MIGRATIONS.md
 type: Reference/Changelog
 purpose: Complete database migration history organized by date and category
 audience: Developers, Database Administrators, AI Agents
-last_updated: 2026-07-15
+last_updated: 2026-07-17
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate to Advanced
 
-total_migrations: ~100
-date_range: "Through May 21, 2027"
+total_migrations: "84 live in supabase/migrations/ (baseline + post-baseline) + 847 archived pre-baseline files (squashed into the 2026-06-04 baseline)"
+date_range: "Through July 17, 2026 — the latest real migration. Archive filenames dated 2027 are typos; that work happened March–June 2026 (see the note atop Recent Migrations)."
 categories: "Bids, Materials, Workflow, RLS, Database Improvements"
 
 key_sections:
-  - name: "Recent Migrations (Feb 2026)"
-    line: ~18
+  - name: "Recent Migrations"
     anchor: "#recent-migrations"
     description: "Latest schema changes by date"
   - name: "Migrations by Category"
-    line: ~196
     anchor: "#migrations-by-category"
     description: "Grouped by system/feature"
   - name: "Migrations by Feature"
-    line: ~337
     anchor: "#migrations-by-feature"
     description: "Complete feature implementation sequences"
   - name: "Migration Best Practices"
-    line: ~397
     anchor: "#migration-best-practices"
     description: "How to create safe migrations"
   - name: "Rollback Procedures"
-    line: ~452
     anchor: "#rollback-procedures"
     description: "How to revert changes"
+  - name: "Migration Tracking"
+    anchor: "#migration-tracking"
+    description: "Viewing applied migrations and status"
 
 quick_navigation:
-  - "[Latest Changes](#recent-migrations) - May 2027 · July 2026 · April 2026"
+  - "[Latest Changes](#recent-migrations) - July 2026 · June 2026 baseline · archived pre-baseline"
   - "[By Category](#migrations-by-category) - Grouped by system"
   - "[Best Practices](#migration-best-practices) - How to migrate safely"
   - "[Rollback](#rollback-procedures) - Reverting changes"
@@ -63,8 +61,12 @@ when_to_read:
 1. [Overview](#overview)
 2. [Recent Migrations](#recent-migrations)
 3. [Migrations by Category](#migrations-by-category)
-4. [Migration Best Practices](#migration-best-practices)
-5. [Rollback Procedures](#rollback-procedures)
+4. [Migrations by Feature](#migrations-by-feature)
+5. [Migration Best Practices](#migration-best-practices)
+6. [Rollback Procedures](#rollback-procedures)
+7. [Migration Tracking](#migration-tracking)
+8. [Related Documentation](#related-documentation)
+9. [Future Migration Planning](#future-migration-planning)
 
 ---
 
@@ -85,7 +87,7 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 ### Key Principles
 - **Append-only — never edit _or renumber_ an existing migration.** A version is **immutable once applied to prod**; to change behavior, add a *new* migration. Renumbering an already-applied file is the #1 cause of remote/local history drift here.
 - **One version → one file.** Two files must never share a `YYYYMMDDHHMMSS` prefix — `db push` silently skips one. Create files with `supabase migration new …` (don't hand-invent timestamps). CI enforces both rules via [`scripts/check-migrations.sh`](../scripts/check-migrations.sh).
-- **Apply manually:** `supabase db push` (or MCP `apply_migration` on the generated file). CI does **not** apply migrations.
+- **Apply manually — `supabase db push` ONLY**, and only after the file is on `main` (or in the PR merging right now). Never apply DDL via the Supabase MCP `apply_migration` / `execute_sql` or the dashboard SQL editor: `apply_migration` mints a server-timestamp ledger version that never matches the repo filename (renumber drift), and the other two leave no ledger row at all. See `CLAUDE.md` — reconciling past violations took a full ledger rewrite (2026-07-04). CI does **not** apply migrations.
 - **Prefer idempotent / re-runnable DDL** so a migration survives a re-apply during drift recovery:
   - `CREATE TABLE/INDEX … IF NOT EXISTS`, `ALTER TABLE … ADD COLUMN IF NOT EXISTS`
   - `CREATE OR REPLACE FUNCTION/VIEW …`
@@ -250,6 +252,37 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 - **Impact**: Client companion in the same PR: `usePayConfig` / Quickfill Hours / Unassigned-field-time / CrewJobsBlock / HoursUnassignedModal / `salaryPayConfigGate` / `teamLabor` read flags via the RPC (wage columns dropped from their selects); `useDashboardFinancials` assistant path uses the totals RPC; Job Summary Team-Labor/profit cells and the Projects day-modal Team-labor row are dev/master-only. Types hand-added to `database.ts` (regen after apply). **`RECENT_FEATURES.md` v2.660**.
 - **Category**: Payroll / RLS / RPC / Security
 
+#### July 13, 2026
+
+**`20260713230000_list_user_display_names.sql`**
+- **Purpose**: **`list_user_display_names(p_user_ids uuid[])`** — narrow SECURITY DEFINER lookup returning display name + `archived_at` only (no email/role/pay) for explicit ids, any authenticated caller. Dispatch showed "Unknown" for many people under non-dev roles: the `users` SELECT policy hides archived rows from everyone but devs and hides master_technician/dev rows from (e.g.) assistants, so name lookups for schedule-block assignees and job team members came back empty.
+- **Impact**: Schedule dispatch name resolution (assignees + job team members). `GRANT EXECUTE TO authenticated`.
+- **Category**: Users / RPC / Dispatch
+
+**`20260713210000_tally_badge_respects_sorting_floor.sql`**
+- **Purpose**: **`count_unlinked_mercury_transactions_for_tally()`** now applies the global sorting start date (`app_settings.job_tally_min_posted_ymd`, America/Chicago day semantics — clause copied from the stale-count sibling). The Dashboard Tally badge counted the caller's entire unlinked history (99+) while the Tally page hides rows posted before the floor. Body is the `20260709160000` version verbatim plus the floor clause.
+- **Impact**: Dashboard Tally badge count matches the Tally page's "Show unlinked" view.
+- **Category**: Tally / Banking / RPC
+
+**`20260713190000_jobs_ledger_completeness.sql`**
+- **Purpose**: Job completeness (0–100%) marked from the Job Detail modal, with attribution: `jobs_ledger.completeness_pct` (CHECK 0–100), `completeness_marked_by` (FK `users`), `completeness_marked_at`; AFTER UPDATE trigger `jobs_ledger_completeness_to_activity_upd` (SECURITY DEFINER, fires on `completeness_pct` change) logs every change to `job_activity_events` (`completeness_marked`, from → to in `detail`) so the activity panel shows who marked it and when.
+- **Category**: Jobs / Schema / Triggers
+
+**`20260713170000_drop_dead_salary_artifacts.sql`**
+- **Purpose**: Salaried-area cleanup (audited 2026-07-04): drops `salary_force_close_open_sessions_after_shift()` (superseded — its fragment-close behavior moved inline into `salary_sync_one_user_clock_sessions` in `20260515092032`; zero callers in DB or client) and `clock_sessions.salary_split_derived` (written only by pre-consolidation split logic; never read). Both statements `IF EXISTS` — ensure-gone cleanup, idempotent (the function was already absent from prod; same-name recovered file `20260703194625` is a separate ledger artifact, see July 2–4 above).
+- **Category**: Salary / Cleanup
+
+**`20260713153000_bids_bid_due_time.sql`** — `bids.bid_due_time time`: optional time-of-day a bid is due, alongside `bid_due_date`. Wall-clock time exactly as entered; no timezone math (matches `bid_due_date` semantics).
+
+**`20260713120000_time_off_paid_kind_people_employment_dates.sql`**
+- **Purpose**: Employment-tab groundwork (schema only; UI + payroll wiring in follow-up PRs). (1) `user_time_off.kind` CHECK widened from `('unpaid')` to `('unpaid','paid')` — salary sync deliberately treats both alike (any time-off row clears the day's non-final `salary_schedule` sessions); the distinction is payroll math: only **unpaid** weekdays subtract from the salaried flat 8h credit (paid is salaried-only by product decision — hourly pay already follows logged hours). (2) `people.start_date` / `people.end_date` (nullable, inclusive dates) + `people_employment_dates_order` CHECK — salaried payroll credit clamps to the employment window (NULL start = no clamping; NULL end = currently employed).
+- **Category**: People / Payroll / Schema
+
+**`20260713090000_read_only_training_mode.sql`**
+- **Purpose**: Read-only "training mode": `users.read_only` flag + `is_read_only()` helper + **`apply_read_only_write_blocks()`** — adds three RESTRICTIVE policies (`read_only_users_cannot_insert/update/delete`) to every RLS-enabled public table. A flagged user keeps their role's full read visibility (SELECT policies untouched) but every direct client write is denied at the database, regardless of UI gaps. Kept as a callable helper: rerun (or call from a migration) after CREATE TABLE — now a standing repo migration rule (see `CLAUDE.md`). Deliberately out of scope at this stage: service-role writes, postgres-owned SECURITY DEFINER RPCs, anon public accept flows, `storage.objects` — the RPC gap was later closed by `20260717000000_read_only_all_roles_and_rpc_block.sql` (v2.704 statement blocks).
+- **Impact**: Toggled from Active Accounts (Manage accounts); the column is role-agnostic so any role can be flagged without another migration.
+- **Category**: Security / RLS / Training mode
+
 #### July 12, 2026
 
 **`20260712190000_merge_user_accounts.sql`** + **`20260712191500_merge_user_accounts_fix_text_append.sql`**
@@ -376,6 +409,11 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 #### June 30, 2026
 
+**`20260630200000_jobs_ledger_customer_master_invariant.sql`**
+- **Purpose**: Invariant — **a job's linked customer must be owned by the job's master** (Stripe billing rejects mismatches with "Customer does not belong to this job master" in `preview-stripe-invoice` / `create-stripe-invoice` / `update-collect-payment-stripe-customer-email`; nothing kept the two in sync, so they drifted). (1) **Backfill**: non-project jobs re-owned to their customer's master ("job follows the customer"); project-linked jobs (master locked to the project owner by `jobs_ledger_project_master_match`) re-point to the unique same-name customer under the job master, else the customer link is cleared for re-pick. (2) **Cascade**: `cascade_customer_master_to_jobs_ledger` AFTER UPDATE trigger on `customers` re-owns directly-linked (non-project) jobs when a customer's `master_user_id` changes — mirrors `cascade_customer_master_to_projects`. (3) **Backstop**: `jobs_ledger_customer_master_match` BEFORE INSERT/UPDATE trigger rejects reintroduced divergence (P0001) — fires only when `customer_id` / `master_user_id` change, so editing unrelated fields on a legacy row is never blocked.
+- **Impact**: The billing edge functions stop failing on drifted rows. The new backstop surfaced customers mastered to assistants — healed by `20260703150000_customers_master_role_heal_and_guard.sql` (above).
+- **Category**: Jobs / Customers / Data integrity / Triggers
+
 **`20260630190000_connection_monitor_health_checks.sql`**
 - **Purpose**: Observability — extend the monitor with a `monitoring.health_checks` table + `checkpoint_activity` view (folded into `sample_connections()`): per-minute checkpoint counters, `io_wait_backends`, and a `sample_duration_ms` **latency canary**. Distinguishes an **infra freeze** (checkpoint stall, sampling gap, conns under ceiling) from **true connection-pool exhaustion**.
 - **Impact**: The 2026-06-30 20:34 UTC outage **disproved** the connection-exhaustion theory — the DB froze while idle at 49/90 connections with a 130 s stalled checkpoint (storage/host I/O stall). This captures that fingerprint going forward. See [`SUPABASE_INCIDENT_RUNBOOK.md`](./runbooks/SUPABASE_INCIDENT_RUNBOOK.md) **Phase B2**.
@@ -442,7 +480,7 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 - **Impact**: **[`Banking.tsx`](../src/pages/Banking.tsx)** splits **`loadRows`** into **`loadAllRows`** + **`loadUnlabeledRows`** + **`loadRowsForActiveView`** (tab-aware dispatcher); the unlabeled-only RPC fires only when (Accounting tab + Hide labeled = on), the default 90% case. Drag Sort, User Review, Category Review, Sorting, and Ledger continue to use the master 15k fetch. **[`BankingMercuryAccountingTab.tsx`](../src/components/banking/BankingMercuryAccountingTab.tsx)** drops local `hideLabeledTransactions` state, lifts it to props, derives `inputIsUnlabeledOnly`, and short-circuits both `loadAssignmentsForList` and the `displayTransactions` filter when the parent already pre-narrowed the input. New optional `onAfterAssignmentChange?` prop fires after each of the four assignment-table mutation flows (`clearRowDragSortLabel`, `handleQuickAssignLabel`, `handleApprove`, `handleApproveAll`) so the unlabeled list shrinks (or grows) in place. **`RECENT_FEATURES.md`** **v2.579**, **`AGENTS.md`** Banking Mercury Accounting row, **`GLOSSARY.md`** Accounting rules entry. **`npm run gen-types:linked`** after **`db push`** so the new RPC is typed (`Args: { p_limit?: number }`).
 - **Category**: Banking / Mercury / Accounting / RPC
 
-**`20260525160339_add_drag_sort_internal_transfers_builtin.sql`**
+**`20260525160441_add_drag_sort_internal_transfers_builtin.sql`**
 - **Purpose**: Backfill the **Internal Transfers** Drag Sort built-in (**`mercury_drag_sort_labels`**) into existing orgs without requiring a Drag Sort tab visit to trigger client-side seeding via **`ensureDragSortDefaultLabels()`**. New row: **`default_key='internal_transfers'`**, **`name='Internal Transfers'`**, **`schedule_c_line='N/A'`**, **`is_system_default=true`**, **`sort_order=9999`** (parks at the bottom of the sidebar away from Schedule-C-flavored buckets). Mirrors the **`20260520161301_mercury_drag_sort_employee_benefits_builtin.sql`** precedent.
 - **Changes**: Single **`INSERT … ON CONFLICT (default_key) DO NOTHING`** statement so re-applying or running alongside the client seeder is safe (the `default_key` UNIQUE constraint is the canonical de-dupe). Per **`mercury_drag_sort_labels_guard_system_fields`** trigger, the row's **`name`** / **`schedule_c_line`** / **`description`** become immutable after insert. No new RLS / RPCs / triggers — covered by the existing **`mercury_drag_sort_labels`** policies + guard. The label is **mutually exclusive with `mercury_transaction_splits`** but that's enforced client-side via UI hard blocks (see **`RECENT_FEATURES.md`** **v2.572**), not via DB trigger.
 - **Impact**: Adds the new bucket to every org's Drag Sort sidebar + Accounting tab dropdowns. Counts toward the new **`'internal_transfer'`** key in **[`overheadPartsAccountingBuckets.ts`](../src/lib/overheadPartsAccountingBuckets.ts)** so labeled rows are excluded from the Field Total / Hours modal's Materials total via **`sumMaterialsTotalUsdExcludingInternalTransfer`**. Sidebar rendering picks up the slate accent automatically once **[`dragSortLabelBucketCard.tsx`](../src/components/banking/dragSortLabelBucketCard.tsx)** receives the new **`defaultKey`** prop. Hard blocks in **[`BankingMercuryDragSortTab.tsx`](../src/components/banking/BankingMercuryDragSortTab.tsx)**, **[`BankingMercuryAccountingTab.tsx`](../src/components/banking/BankingMercuryAccountingTab.tsx)**, **[`MercuryTransactionAllocationsModal.tsx`](../src/components/MercuryTransactionAllocationsModal.tsx)** prevent label/split coexistence. Helpers **`INTERNAL_TRANSFERS_DEFAULT_KEY`** + **`isInternalTransfersLabel`** in **[`dragSortDefaultLabels.ts`](../src/lib/dragSortDefaultLabels.ts)** centralize the default-key check. Applied via Supabase MCP **`apply_migration`**; observed `sort_order=270` post-apply because the client seeder's `index * 10` pricing ran before the migration and **`ON CONFLICT DO NOTHING`** preserved the existing row — both values still place the label at the bottom of the list, so no fix needed. **`RECENT_FEATURES.md`** **v2.572**, **`GLOSSARY.md`** **Internal Transfers (Banking Mercury Drag Sort built-in)**, **`AGENTS.md`** Drag Sort row. **`npm run gen-types:linked`** after **`db push`** (no schema column changes; ensures history sync).
@@ -1064,6 +1102,8 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 ### July 2026
 
+> **Typo-dated headings — this is not real July 2026 work.** Apart from `20260701000000_create_hours_reviewed.sql` (a genuine July 1, 2026 file, live in `supabase/migrations/`), every file in this block has a `202705…`-prefixed "2027"-typo filename from the pre-baseline archive; the real work happened spring 2026 (March–June). In particular, do **not** confuse the phantom "July 13, 2026" heading below with the real July 13, 2026 migrations (`202607…` files) documented near the top of [Recent Migrations](#recent-migrations).
+
 #### July 20, 2026
 
 **`20270520120000_address_geocodes_estimator_map_access.sql`**
@@ -1452,7 +1492,7 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 #### March 21, 2026
 
-**`20260321120000_create_person_licenses.sql`**
+**`20260321120002_create_person_licenses.sql`**
 - **Purpose**: Licenses per person (plumber, journeyman, etc.)
 - **Changes**: Create `person_licenses` (person_name, license_type, note, date_of_expiry); indexes on person_name and date_of_expiry; RLS same as pay_stubs
 - **Impact**: People Licenses tab; expiring-in-30-days section; person-centric expandable table with Add/Edit/Delete
@@ -1476,7 +1516,7 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 - **Impact**: Existing cost data preserved in person_license_cost_lines
 - **Category**: People / Licenses
 
-**`20260321120000_add_supply_house_invoice_to_line_items.sql`**
+**`20260321120001_add_supply_house_invoice_to_line_items.sql`**
 - **Purpose**: Link workflow step line items to supply house invoices
 - **Changes**: Add `supply_house_invoice_id` (uuid, nullable, FK → supply_house_invoices.id ON DELETE SET NULL) to `workflow_step_line_items`; index on supply_house_invoice_id
 - **Impact**: Workflow Add Supply House Invoice modal; View Invoice button on linked line items
@@ -1839,7 +1879,7 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 #### April 4, 2026
 
-**`20260404050204_salary_sync_boundary_open_close.sql`**
+**`20260404050732_salary_sync_boundary_open_close.sql`**
 - **Purpose**: **`salary_sync_one_user_clock_sessions`** — replace per-slot canonical `UPDATE`/overlap INSERT logic with **boundary** open/ close: at each template block end set **`clocked_out_at`** on **all** still-open **`clock_sessions`** for that user/**`work_date`** to that instant (every `origin`; **`approved_at`** does not block); inside each block insert/reopen canonical **`salary_schedule`** only when **no** open exists that day; catch-up closed rows when missing; PTO / no-template / excluded-weekend paths **close remaining opens** at **`p_now`** after deleting non-final **`salary_schedule`** rows; **split** mode deletes orphan NULL-index **`salary_schedule`** rows only; **continuous** skips NULL-index catch-up/open when pending indexed **`salary_schedule`** segments exist (preserves **`20270402100000`** intent)
 - **Changes**: `CREATE OR REPLACE` **`salary_sync_one_user_clock_sessions`**; updated **`COMMENT`**; **`REVOKE ALL`** (unchanged surface area)
 - **Impact**: Cron **`sync-salary-sessions`** and **`sync_salary_clock_sessions_for_user_day`**; removes split-template **half-open overlap** INSERT guard from sync (see [`SALARY_CLOCK_SESSIONS.md`](SALARY_CLOCK_SESSIONS.md))
@@ -1919,7 +1959,7 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 - **Impact**: Clock In, Update Focus, Dispatch, Crew Jobs / Bids, Add job or bid search now return bids for all roles
 - **Category**: Bids / Clock Sessions / Task Dispatch
 
-**`20260322120001_fix_bid_search_and_j_prefix.sql`**
+**`20260322120005_fix_bid_search_and_j_prefix.sql`**
 - **Purpose**: Fix bids still not showing (2-arg overload) and J651/B88 search normalization
 - **Changes**: DROP 2-arg `search_bids_for_clock(TEXT, UUID)` overload so frontend calls use the 3-arg SECURITY DEFINER version; `search_jobs_ledger` normalizes "J" prefix (J651 matches hcp_number 651); `search_bids_for_clock` normalizes "B" prefix (B88 matches bid_number 88)
 - **Impact**: Bids now appear in search; "J651" finds job 651; "B88" finds bid 88
@@ -2190,7 +2230,7 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 - **Impact**: Counts tab refetch returns deterministic order; used by drag-and-drop reordering (v2.122)
 - **Category**: Bids / Counts
 
-**`20250310120000_optimize_bid_pricing_rls.sql`**
+**`20250310120001_optimize_bid_pricing_rls.sql`**
 - **Purpose**: Mitigate statement timeout (57014) on Pricing tab when loading bid_pricing_assignments and bid_count_row_custom_prices
 - **Changes**: Create `can_access_bid_for_pricing(bid_id UUID)` SECURITY DEFINER helper; recreate RLS policies on both tables to use the helper instead of per-row correlated EXISTS subqueries
 - **Impact**: Reduces RLS evaluation cost for bids with many count rows; Pricing tab loads faster without timeout
@@ -2296,7 +2336,7 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 - **Impact**: Dashboard **My Time** modal (strip) **NCNS** button; **two-step** confirm when any session was approved
 - **Category**: People / Hours / Dashboard / RLS
 
-**`20260321120000_create_person_licenses.sql`**
+**`20260321120002_create_person_licenses.sql`**
 - **Purpose**: Licenses per person (plumber, journeyman, etc.)
 - **Changes**: Create `person_licenses` (person_name, license_type, note, date_of_expiry); indexes on person_name and date_of_expiry; RLS same as pay_stubs
 - **Impact**: People Licenses tab; expiring-in-30-days section; person-centric expandable table with Add/Edit/Delete
@@ -3495,7 +3535,7 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 - `create_master_shares.sql` - Master-to-master sharing
 
 **RLS Optimizations**:
-- `20250310120000_optimize_bid_pricing_rls.sql` - can_access_bid_for_pricing for bid_pricing_assignments and bid_count_row_custom_prices
+- `20250310120001_optimize_bid_pricing_rls.sql` - can_access_bid_for_pricing for bid_pricing_assignments and bid_count_row_custom_prices
 - `optimize_rls_for_master_sharing.sql` - Helper function pattern to prevent timeouts
 - `optimize_workflow_step_line_items_rls.sql` - Can access project via step
 - `fix_project_workflow_step_actions_rls.sql` - Can access step for action
