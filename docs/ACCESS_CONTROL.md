@@ -5,37 +5,34 @@ file: ACCESS_CONTROL.md
 type: Reference Matrix
 purpose: Complete role-based permissions matrix and access control patterns
 audience: Developers, Security Auditors, AI Agents
-last_updated: 2026-05-16
+last_updated: 2026-07-17
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate
 
-total_roles: 8
+total_roles: 9
 tables_with_rls: "50+"
 access_patterns: "Ownership, Adoption, Sharing"
 
 key_sections:
   - name: "User Roles"
-    line: ~18
     anchor: "#user-roles"
     description: "Detailed breakdown of all 9 roles"
   - name: "Page Access Matrix"
-    line: ~232
     anchor: "#page-access-matrix"
     description: "Which roles access which pages"
   - name: "Feature Access Matrix"
-    line: ~257
     anchor: "#feature-access-matrix"
     description: "Feature-level permissions by role"
   - name: "Data Access Patterns"
-    line: ~430
     anchor: "#data-access-patterns"
     description: "Adoption, sharing, ownership patterns"
+  - name: "Permission Summary"
+    anchor: "#permission-summary"
+    description: "Roles ranked least to most restrictive"
   - name: "RLS Policy Examples"
-    line: ~527
     anchor: "#rls-policy-examples"
     description: "Sample policies with explanations"
   - name: "Troubleshooting"
-    line: ~596
     anchor: "#troubleshooting-access-issues"
     description: "Common access issues and fixes"
 
@@ -65,12 +62,15 @@ when_to_read:
 4. [Feature Access Matrix](#feature-access-matrix)
 5. [Data Access Patterns](#data-access-patterns)
 6. [Special Relationships](#special-relationships)
+7. [Permission Summary](#permission-summary)
+8. [RLS Policy Examples](#rls-policy-examples)
+9. [Troubleshooting Access Issues](#troubleshooting-access-issues)
 
 ---
 
 ## Overview
 
-Pipetooling implements comprehensive role-based access control (RBAC) using eight distinct user roles, each with specific permissions tailored to their responsibilities.
+Pipetooling implements comprehensive role-based access control (RBAC) using nine distinct user roles, each with specific permissions tailored to their responsibilities. (The `user_role` PostgreSQL enum also carries the legacy values `owner` and `master` — predecessors of `dev` and `master_technician` — which no active account uses.)
 
 ### Nine User Roles
 1. **dev** - System administrators with full access
@@ -381,7 +381,7 @@ Pipetooling implements comprehensive role-based access control (RBAC) using eigh
 **Permissions**:
 
 **Bids - Full Access**:
-- All 6 tabs (Bid Board, Counts, Takeoff, Cost Estimate, Pricing, Cover Letter, Submission)
+- All 14 tabs (`BIDS_TABS` in [`Bids.tsx`](../src/pages/Bids.tsx)): Bid Board, Builder Review, Unsent/Working, Bid Costs, Estimators, Counts, Takeoff, Cost Estimate (Labor), Pricing, Cover Letter, Submission & Followup, RFI, Change Order, Lien Release
 - Create, edit, and delete bids
 - Enter counts, map templates, calculate costs
 - Manage labor book and price book assignments
@@ -473,7 +473,7 @@ Pipetooling implements comprehensive role-based access control (RBAC) using eigh
 - Users who need to send tasks without full project visibility
 
 **Layout Behavior**:
-- Navigation shows: Dashboard, Materials, Jobs, Bids, Prospects, Calendar, Checklist
+- Navigation shows: Dashboard, Estimates, Jobs, Bids ([`Layout.tsx`](../src/components/Layout.tsx)); other allowed routes (Materials, Documents, Calendar, Checklist, Settings, Tally, Help — `PRIMARY_PATHS` in [`layoutRouteAccess.ts`](../src/lib/layoutRouteAccess.ts)) are reachable directly or via the gear menu. No Prospects access.
 - Attempts to access blocked pages (e.g. Projects) redirect to `/dashboard`
 
 ---
@@ -548,6 +548,8 @@ Pipetooling implements comprehensive role-based access control (RBAC) using eigh
 
 ## Page Access Matrix
 
+> **Reading the 7-column matrices**: all matrices in this document show 7 role columns. **helpers** reads as the **sub** (subcontractor) column, and **controller** reads as the **assistant** column *plus* the payroll/financial surfaces listed in the controller section — neither is broken out as its own column.
+
 | Page | dev | master | assistant | sub | estimator | primary | superintendent |
 |------|-----|--------|-----------|-----|-----------|---------|-----------------|
 | **Dashboard** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
@@ -557,30 +559,39 @@ Pipetooling implements comprehensive role-based access control (RBAC) using eigh
 | **People** | ✅ | ✅ | ✅ limited | ❌ | ❌ | ❌ | ❌ |
 | **Jobs** | ✅ | ✅ | ✅ limited | ❌ | ❌ | ✅ Reports + Billing | ✅ Reports + Sub Ledger |
 | **Dispatch** (`/schedule-dispatch`) | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ✅ week grid (same `job_schedule_blocks` rules; **+ → Linked copy** / **Linked** crew rows; DnD reassign **solo** legs only) |
-| **Banking** | ✅ full Mercury (Ledger + User Sort + Drag Sort + **Accounting** + Configuration + sync); RLS SELECT on **`mercury_transactions`** + nicknames; org-wide **`mercury_drag_sort_labels`** / **`mercury_transaction_drag_sort_assignments`** (Drag Sort / Accounting approvals); **`mercury_accounting_label_rules`** / **`mercury_accounting_label_suggestions`** (**Accounting** tab, banking-staff RLS); **Stripe** segment (**dev-only**): **Invoices** (`jobs_ledger_invoices` + job embed, rows without **`stripe_invoice_id`** highlighted) and **Data** (`stripe_webhook_events` webhook log) | ❌ | ✅ **User Sort** + **Drag Sort** + **Accounting** (default User Sort slice, no Configuration / no sync); read **`mercury_transactions`** + nicknames; **edit `mercury_debit_card_nicknames`** only (RLS); rules/suggestions/approvals per banking-staff policies | ❌ | ❌ | ❌ | ❌ |
+| **Banking** | ✅ full Mercury (Ledger + User Sort + Drag Sort + **Accounting** + **User Review** + **Category Review** + **Reconciliation** + Configuration + sync); RLS SELECT on **`mercury_transactions`** + nicknames; org-wide **`mercury_drag_sort_labels`** / **`mercury_transaction_drag_sort_assignments`** (Drag Sort / Accounting approvals); **`mercury_accounting_label_rules`** / **`mercury_accounting_label_suggestions`** (**Accounting** tab, banking-staff RLS); **Stripe** segment (**dev-only**): **Invoices** (`jobs_ledger_invoices` + job embed, rows without **`stripe_invoice_id`** highlighted) and **Data** (`stripe_webhook_events` webhook log) | ✅ same staff tabs as assistant (`canAccessBanking` = dev / master_technician / assistant-like — [`Banking.tsx`](../src/pages/Banking.tsx)) | ✅ **User Sort** + **Drag Sort** + **Accounting** + **User Review** + **Category Review** + **Reconciliation** (default User Sort slice, no Configuration / no sync); read **`mercury_transactions`** + nicknames; **edit `mercury_debit_card_nicknames`** only (RLS); rules/suggestions/approvals per banking-staff policies | ❌ | ❌ | ❌ | ❌ |
 
 Non-dev roles do not see the Banking **Stripe** segment; master/assistant deep links with `product=stripe` normalize to Mercury **User Sort**.
 
 Mercury **Person** attribution (job splits modal): staff use **`list_users_for_banking_attribution`** (**SECURITY DEFINER**, same dev/master/assistant gate as **`replace_mercury_transaction_splits`**) for the user picker; **`mercury_transaction_attributions`** may store **`user_id`** or legacy **`person_id`** (not both).
-| **Calendar** | ✅ | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ |
+| **Calendar** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | **Bids** | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ limited |
 | **Estimates** | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ limited (project-linked super visibility) |
 | **Materials** | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ limited |
 | **Templates** | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | **Settings** | ✅ | ✅ limited | ✅ limited | ❌ | ✅ limited | ✅ limited | ✅ limited |
 | **Map** (`/map`) | ✅ | ✅ | ✅ | ❌ | ✅ | ❌ | ❌ |
+| **Prospects** (`/prospects`) | ✅ | ✅ | ✅ | ❌ | ✅ if `estimator_prospects_access` granted | ❌ | ❌ |
+| **Quickfill** (`/quickfill`) | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| **Checklist** (`/checklist`) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| **Tally** (`/tally`) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| **Documents** (`/documents`) | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ |
+| **Accounts Receivable** (`/accounts-receivable`) | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| **Help** (`/help`) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+
+Route access for the restricted roles above comes from the per-role allowed-path lists in [`layoutRouteAccess.ts`](../src/lib/layoutRouteAccess.ts) (`SUBCONTRACTOR_PATHS`, `PRIMARY_PATHS`, `SUPERINTENDENT_PATHS`, `estimatorAllowedPaths`); dev / master_technician / assistant-like (assistant, controller) pass every route. Prospects additionally gates per page: staff (dev / master_technician / assistant / controller) or estimator with `estimator_prospects_access`; the **Team** tab further requires per-user `users.team_prospects_access`. Checklist and Tally feature access still varies by role (see the feature matrices below).
 
 *\* **Map**: **dev**, **master_technician**, **assistant**, and **estimator** — page **`/map`**; **[`layoutRouteAccess.ts`](../src/lib/layoutRouteAccess.ts)**, **`Layout.tsx`**: desktop **pin** when `canShowMapNav`; **narrow** hides pin → **Map** under **gear**; **`address_geocodes`** RLS (**`20270520120000_address_geocodes_estimator_map_access.sql`**); Edge **`geocode-address-batch`** (primary load chunks) / **`geocode-one`** (**Review geocodes** Google refresh, Settings default-label). **Subcontractor**, **primary**, and **superintendent** are redirected away from **`/map`** when it is not an allowed route.*
 
 ### Redirection Rules
 
-**Subcontractors**: Any page except Dashboard/Calendar/Checklist/Settings/Tally → `/dashboard`. On those allowed routes, **Task Dispatch**, **Estimator Inbox**, and **Task** (checklist add) in the header behave like other roles that pass [`headerTaskDispatchEstimatorEligible.ts`](../src/lib/headerTaskDispatchEstimatorEligible.ts) (`helpers` matches — see **helpers** section above).
+**Subcontractors**: Any page except Dashboard/Calendar/Checklist/Settings/Tally/Help → `/dashboard`. On those allowed routes, **Task Dispatch**, **Estimator Inbox**, and **Task** (checklist add) in the header behave like other roles that pass [`headerTaskDispatchEstimatorEligible.ts`](../src/lib/headerTaskDispatchEstimatorEligible.ts) (`helpers` matches — see **helpers** section above).
 
-**Estimators**: Any page except Dashboard/**Map**/Materials/Estimates/Bids/**Customers**/Calendar/Checklist/People/Settings/Tally/Prospects (if enabled) → `/bids`
+**Estimators**: Any page except Dashboard/**Map**/Materials/Estimates/**Documents**/Bids/**Customers**/Calendar/Checklist/People/Settings/Tally/Help/Prospects (if enabled) → `/bids`
 
-**Primary**: Any page except Dashboard/Materials/Estimates/Jobs/Bids/Prospects/Calendar/Checklist/Settings → `/dashboard`; Jobs shows Reports and Billing tabs only; Bids full access (all tabs); Projects hidden
+**Primary**: Any page except Dashboard/Materials/Estimates/Documents/Jobs/Bids/Calendar/Checklist/Settings/Tally/Help → `/dashboard`; Jobs shows Reports and Billing tabs only; Bids full access (all tabs); Projects and Prospects hidden
 
-**Superintendent**: Any page except Dashboard/Projects/Workflow/Jobs/Dispatch/Bids/Materials/Estimates/Calendar/Checklist/Settings/Tally → `/dashboard`; Jobs shows Reports, Sub Sheet Ledger; Bids shows draft tabs only (no Pricing, Cover Letter, Submission); Materials shows Price book and Assembly book; People and Customers pages blocked
+**Superintendent**: Any page except Dashboard/Projects/Workflow/Jobs/Dispatch/Bids/Materials/Estimates/**Documents**/Calendar/Checklist/Settings/Tally/Help → `/dashboard`; Jobs shows Reports, Sub Sheet Ledger; Bids shows draft tabs only (no Pricing, Cover Letter, Submission); Materials shows Price book and Assembly book; People and Customers pages blocked
 
 **Assistants**: Can access most pages but see filtered data
 
@@ -632,7 +643,7 @@ Mercury **Person** attribution (job splits modal): staff use **`list_users_for_b
 
 **RLS notes** (v2.408, [`20270427120000_checklist_tech_tree_multi_roadmap.sql`](../supabase/archive/migrations-pre-baseline/20270427120000_checklist_tech_tree_multi_roadmap.sql)): **Dev**, **master_technician**, **assistant**, and **primary** bypass membership for **select** and **structure** (see all roadmaps). **Subcontractor**, **estimator**, **superintendent** (and anyone not in that bypass set) need a row in **`checklist_tech_tree_roadmap_members`** for each roadmap they can open. Migration backfill adds **viewer** on the **Default** roadmap for all non-archived users, so everyone typically retains access to that graph; additional named roadmaps are visible only to bypass roles or invited members.
 
-**Task modal CHECKLIST RLS** ([`20270519120000_subcontractor_helpers_estimator_checklist_task_definitions.sql`](../supabase/archive/migrations-pre-baseline/20270519120000_subcontractor_helpers_estimator_checklist_task_definitions.sql)): **`can_define_task_style_checklist_items()`** allows **subcontractor**, **helpers**, and **estimator** to insert/update/delete checklist definitions only when **`created_by_user_id = auth.uid()`** (and related assignee/instance rows for those items); staff paths still use **`is_dev_or_master_or_assistant()`** unchanged. [**`20260501205038_fix_checklist_items_rls_recursion.sql`](../supabase/migrations/20260501205038_fix_checklist_items_rls_recursion.sql)** adds **`checklist_item_created_by_auth_user(uuid)`** and **`checklist_instance_parent_item_created_by_auth_user(uuid)`** (**`SECURITY DEFINER`**, **`SET row_security = off`**) so junction/instance policies do not query **`checklist_items`** under RLS recursively (**RECENT_FEATURES.md** v2.450).
+**Task modal CHECKLIST RLS** ([`20270519120000_subcontractor_helpers_estimator_checklist_task_definitions.sql`](../supabase/archive/migrations-pre-baseline/20270519120000_subcontractor_helpers_estimator_checklist_task_definitions.sql)): **`can_define_task_style_checklist_items()`** allows **subcontractor**, **helpers**, and **estimator** to insert/update/delete checklist definitions only when **`created_by_user_id = auth.uid()`** (and related assignee/instance rows for those items); staff paths still use **`is_dev_or_master_or_assistant()`** unchanged. [**`20260501205038_fix_checklist_items_rls_recursion.sql`](../supabase/archive/migrations-pre-baseline/20260501205038_fix_checklist_items_rls_recursion.sql)** adds **`checklist_item_created_by_auth_user(uuid)`** and **`checklist_instance_parent_item_created_by_auth_user(uuid)`** (**`SECURITY DEFINER`**, **`SET row_security = off`**) so junction/instance policies do not query **`checklist_items`** under RLS recursively (**RECENT_FEATURES.md** v2.450).
 
 ### Quickfill (`/quickfill`)
 
@@ -732,7 +743,7 @@ Mercury **Person** attribution (job splits modal): staff use **`list_users_for_b
 | Counts tab | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ |
 | Takeoff tab | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ |
 | Cost Estimate tab | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ |
-| Pricing tab | ✅ | ✅ | ✅ | ❌ | ✅ | ❌ | ❌ |
+| Pricing tab | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ❌ |
 | Cover Letter tab | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ❌ |
 | Submission tab | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ❌ |
 | Manage book versions | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ |
@@ -932,10 +943,13 @@ master_user_id = auth.uid()
 
 1. **dev**: Full system access
 2. **master_technician**: Full business access (own data + shared)
-3. **estimator**: Focused access (bids + materials only)
-4. **primary**: Focused access (materials + job reports only)
-5. **assistant**: Conditional access (depends on adoption)
-6. **subcontractor**: Minimal access (assigned stages only)
+3. **controller**: Assistant-level access everywhere plus full payroll/financial visibility (`has_payroll_access()`)
+4. **assistant**: Conditional access (depends on adoption)
+5. **superintendent**: Assigned projects only (run jobs, draft bids, no People/Customers pages)
+6. **estimator**: Focused access (bids + materials only)
+7. **primary**: Focused access (materials + job reports only)
+8. **subcontractor**: Minimal access (assigned stages only)
+9. **helpers**: Minimal access (same as subcontractor, scoped via `helpers_service_type_ids`)
 
 ### By Use Case
 
@@ -943,13 +957,17 @@ master_user_id = auth.uid()
 
 **Business Operations** → master_technician
 
+**Bookkeeping / Payroll Processing** → controller
+
+**Operational Support** → assistant
+
+**Field Supervision (assigned projects)** → superintendent
+
 **Bid Estimation** → estimator
 
 **Materials & Reports** → primary
 
-**Operational Support** → assistant
-
-**Task Execution** → subcontractor
+**Task Execution** → subcontractor / helpers
 
 ---
 
