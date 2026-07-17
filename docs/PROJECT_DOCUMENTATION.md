@@ -7,33 +7,27 @@ file: PROJECT_DOCUMENTATION.md
 type: Technical Reference
 purpose: Complete technical documentation covering architecture, database schema, and development patterns
 audience: Developers, AI Agents, Technical Staff
-last_updated: 2026-05-21
+last_updated: 2026-07-17
 estimated_read_time: 45-60 minutes
 difficulty: Advanced
 
 key_sections:
   - name: "Database Schema"
-    line: ~600
     anchor: "#database-schema"
     description: "Complete table definitions, relationships, and RLS policies"
-  - name: "Authentication & Authorization" 
-    line: ~1247
+  - name: "Authentication & Authorization"
     anchor: "#authentication--authorization"
     description: "User roles, permissions, and access patterns"
   - name: "Database Functions"
-    line: ~711
     anchor: "#database-functions"
     description: "Triggers, helper functions, and transaction functions"
   - name: "Key Features"
-    line: ~1480
     anchor: "#key-features"
     description: "Feature-by-feature implementation details"
   - name: "Materials Management"
-    line: ~763
     anchor: "#materials-management-tables"
     description: "Price book, templates, purchase orders"
   - name: "Bids Management"
-    line: ~879
     anchor: "#bids-management-tables"
     description: "Bids tables and book systems"
 
@@ -82,6 +76,16 @@ when_to_read:
 11. [Common Patterns](#common-patterns)
 12. [Known Issues & Gotchas](#known-issues--gotchas)
 13. [Future Development Notes](#future-development-notes)
+14. [Quick Reference](#quick-reference)
+15. [Getting Started for New Developers](#getting-started-for-new-developers)
+16. [Contact & Support](#contact--support)
+
+---
+
+## How to read this doc
+
+- The **Database Schema** section documents roughly **55 of the ~234 tables** — the core project/workflow/people/materials/bids tables. Major later tables (`jobs_ledger`, `estimates`, `prospects`, `pay_stubs`, `mercury_transactions`, Stripe billing tables) are documented inside their **Key Features** sections instead.
+- Prefer the specialist docs when they exist: [ACCESS_CONTROL.md](./ACCESS_CONTROL.md) for role permissions, [BIDS_SYSTEM.md](./BIDS_SYSTEM.md) for bids, [EDGE_FUNCTIONS.md](./EDGE_FUNCTIONS.md) for the 57 Edge Functions, [MIGRATIONS.md](./MIGRATIONS.md) for schema history, and [RECENT_FEATURES.md](./RECENT_FEATURES.md) for the per-version changelog.
 
 ---
 
@@ -183,8 +187,6 @@ A Master Plumber can:
 ---
 
 ## Database Layer Improvements
-
-**Last Updated**: 2026-02-04
 
 The application underwent comprehensive database layer improvements to address systematic issues with data integrity, transaction handling, and maintainability. These enhancements make the system more robust and reliable.
 
@@ -524,7 +526,7 @@ WHERE proname IN (
   - `id` (uuid, PK) - Matches `auth.users.id`
   - `email` (text)
   - `name` (text, nullable)
-  - `role` (enum: `'dev' | 'master_technician' | 'assistant' | 'subcontractor' | 'estimator'`)
+  - `role` (enum `user_role`, 9 active values: `'dev' | 'master_technician' | 'assistant' | 'subcontractor' | 'estimator' | 'primary' | 'superintendent' | 'helpers' | 'controller'`; legacy `'owner'`/`'master'` values remain in the enum but are unused — see `20250101000000_baseline.sql` and `20260714210000_add_user_role_controller.sql`)
   - `last_sign_in_at` (timestamptz, nullable)
 - **Relationships**: Referenced by `customers.master_user_id`, `people.master_user_id`
 - **RLS**: 
@@ -721,12 +723,13 @@ WHERE proname IN (
 - **Key Fields**:
   - `id` (uuid, PK)
   - `master_user_id` (uuid, FK → `users.id`)
-  - `kind` (check constraint: includes `assistant`, `master_technician`, `sub`, `estimator`, `dev`, `primary`, `superintendent`)
+  - `kind` (check constraint: includes `assistant`, `master_technician`, `sub`, `estimator`, `dev`, `primary`, `superintendent`, `helper`)
   - `name` (text)
   - `email` (text, nullable)
   - `phone` (text, nullable)
   - `notes` (text, nullable)
   - `archived_at` (timestamptz, nullable) – when set, person is archived (hidden from roster); can be restored
+  - `start_date` / `end_date` (date, nullable) – employment window, edited on the People **Employment** tab (`20260713120000_time_off_paid_kind_people_employment_dates.sql`)
 - **RLS**: Users can only see/manage their own roster entries; devs can see all entries and can update/delete any people (via `20260211210000_allow_devs_update_delete_people.sql`); shared access via `master_shares` (viewing master and their assistants can see shared people)
 
 #### `public.labels` / `public.people_labels` / `public.user_labels`
@@ -921,7 +924,7 @@ WHERE proname IN (
   - `supabase/archive/optimize_workflow_step_line_items_rls.sql` - RLS optimization
   - `supabase/archive/add_link_to_line_items.sql` - Added link field
   - `supabase/archive/add_purchase_order_to_line_items.sql` - Added purchase_order_id field
-  - `supabase/migrations/20260321120001_add_supply_house_invoice_to_line_items.sql` - Added supply_house_invoice_id field
+  - `supabase/archive/migrations-pre-baseline/20260321120001_add_supply_house_invoice_to_line_items.sql` - Added supply_house_invoice_id field
   - `supabase/archive/migrations-pre-baseline/20270329210000_workflow_step_line_items_item_date.sql` - Added optional `item_date`
 
 #### `public.workflow_projections`
@@ -1008,8 +1011,7 @@ WHERE proname IN (
 
 #### `public.claim_dev_with_code(code text)`
 - **Returns**: `boolean`
-- **Purpose**: Deprecated. Replaced by claim-dev Edge Function (DEV_PROMOTION_CODE secret).
-- **Usage**: Called from Settings page
+- **Purpose**: Deprecated. Replaced by the claim-dev Edge Function (DEV_PROMOTION_CODE secret), which as of `20260717150000_claim_dev_break_glass.sql` is **break-glass only**: the promotion is refused whenever a usable dev exists (`role='dev'`, not archived, not read-only), read-only callers are always refused, and every attempt (granted or refused) is audited in `claim_dev_attempts` (dev-only SELECT; repeated refusals surface as a dashboard alert). The backing RPC `claim_dev_attempt()` is REVOKEd from PUBLIC/anon/authenticated and granted only to `service_role`, so the Edge Function is its sole caller and all refusals return the same opaque failure.
 
 #### `public.track_price_history()`
 - **Trigger**: Fires on `material_part_prices` INSERT and UPDATE
@@ -1072,11 +1074,11 @@ uuid3           | Supply House C    | 0
   - Electrical (sequence_order: 2)
   - HVAC (sequence_order: 3)
 - **Ledger display prefixes (jobs/bids)**:
-  - **Migration**: [`20260430201832_service_types_ledger_display_prefixes.sql`](../supabase/migrations/20260430201832_service_types_ledger_display_prefixes.sql) adds columns and backfills **Plumbing** → `JP`/`BP`, **Electrical** → `JE`/`BE`, **HVAC** → `JH`/`BH`; other rows stay null (**`J`**/**`B`** in the client).
+  - **Migration**: [`20260430201832_service_types_ledger_display_prefixes.sql`](../supabase/archive/migrations-pre-baseline/20260430201832_service_types_ledger_display_prefixes.sql) adds columns and backfills **Plumbing** → `JP`/`BP`, **Electrical** → `JE`/`BE`, **HVAC** → `JH`/`BH`; other rows stay null (**`J`**/**`B`** in the client).
   - **Settings (dev)**: Service type add/edit modal — optional prefix fields with validation (trim, max length, uniqueness across rows).
   - **Client**: [`src/lib/ledgerDisplayPrefixes.ts`](../src/lib/ledgerDisplayPrefixes.ts) — `buildPrefixMap`, `resolveJobPrefix` / `resolveBidPrefix`, `formatLedgerJobLabel` / `formatLedgerBidLabel` (and related helpers used in Clock In, Jobs, Bids, Documents, My Time, push copy, etc.). Many flows load `service_type_id` with rows so labels match the trade.
-  - **Search RPCs** (prefix-aware match from **`20260430201832`**): `search_jobs_ledger` and `search_bids_for_clock` return **`service_type_id`** and treat typed queries as **legacy `J`/`B` + digits** or **configured prefix + remainder** when matching `hcp_number` / `bid_number`. Follow-up **[`20260430205318_search_jobs_ledger_service_type_name.sql`](../supabase/migrations/20260430205318_search_jobs_ledger_service_type_name.sql)** adds **`service_type_name`** on **`search_jobs_ledger`** (JOIN **`service_types`**) for unified-search **trade** pills on job rows; **[`20270518120000_list_assigned_jobs_service_type_name.sql`](../supabase/archive/migrations-pre-baseline/20270518120000_list_assigned_jobs_service_type_name.sql)** adds **`service_type_name`** to **`list_assigned_jobs_for_dashboard`**. Client: **`serviceTypeTagForUnifiedRow`** / **`getBidServiceTypeTag`** in [`unifiedJobBidSearch.ts`](../src/utils/unifiedJobBidSearch.ts) (**`RECENT_FEATURES`** **v2.433**).
-  - **Crew / detail RPCs**: [`20260430202750_crew_rpcs_service_type_id_for_ledger_prefixes.sql`](../supabase/migrations/20260430202750_crew_rpcs_service_type_id_for_ledger_prefixes.sql) adds `service_type_id` where needed; [`20260430203800_restore_pct_complete_on_jobs_ledger_detail_rpcs.sql`](../supabase/migrations/20260430203800_restore_pct_complete_on_jobs_ledger_detail_rpcs.sql) restores **`pct_complete`** on `get_jobs_ledger_by_ids*`, `get_jobs_ledger_by_hcp_numbers*`.
+  - **Search RPCs** (prefix-aware match from **`20260430201832`**): `search_jobs_ledger` and `search_bids_for_clock` return **`service_type_id`** and treat typed queries as **legacy `J`/`B` + digits** or **configured prefix + remainder** when matching `hcp_number` / `bid_number`. Follow-up **[`20260430205318_search_jobs_ledger_service_type_name.sql`](../supabase/archive/migrations-pre-baseline/20260430205318_search_jobs_ledger_service_type_name.sql)** adds **`service_type_name`** on **`search_jobs_ledger`** (JOIN **`service_types`**) for unified-search **trade** pills on job rows; **[`20270518120000_list_assigned_jobs_service_type_name.sql`](../supabase/archive/migrations-pre-baseline/20270518120000_list_assigned_jobs_service_type_name.sql)** adds **`service_type_name`** to **`list_assigned_jobs_for_dashboard`**. Client: **`serviceTypeTagForUnifiedRow`** / **`getBidServiceTypeTag`** in [`unifiedJobBidSearch.ts`](../src/utils/unifiedJobBidSearch.ts) (**`RECENT_FEATURES`** **v2.433**).
+  - **Crew / detail RPCs**: [`20260430202750_crew_rpcs_service_type_id_for_ledger_prefixes.sql`](../supabase/archive/migrations-pre-baseline/20260430202750_crew_rpcs_service_type_id_for_ledger_prefixes.sql) adds `service_type_id` where needed; [`20260430203800_restore_pct_complete_on_jobs_ledger_detail_rpcs.sql`](../supabase/archive/migrations-pre-baseline/20260430203800_restore_pct_complete_on_jobs_ledger_detail_rpcs.sql) restores **`pct_complete`** on `get_jobs_ledger_by_ids*`, `get_jobs_ledger_by_hcp_numbers*`.
 - **Estimates**: **Quote #** still uses the global **`E…`** pattern; trade-specific prefixes apply to **jobs ledger** and **bids** only unless extended later.
 - **RLS**:
   - SELECT: All authenticated users
@@ -1218,15 +1220,15 @@ uuid3           | Supply House C    | 0
 ### Estimates (customer proposals, Approach A)
 
 - **Purpose**: Lightweight quotes sent to customers: draft → **Send** (hashed public token + email) → customer opens **`/estimate/accept?t=…`** → **accept-estimate** Edge Function records name, consent, IP/UA (`customer_accepted`). Distinct from **`cost_estimates`** (bid takeoff pricing).
-- **Table**: `public.estimates` — see migrations [`20260404212052_estimates_approach_a.sql`](../supabase/migrations/20260404212052_estimates_approach_a.sql) (Approach A), [`20260405003103_estimates_global_estimate_number.sql`](../supabase/migrations/20260405003103_estimates_global_estimate_number.sql) (global **`estimate_number`**), and [`20260405010252_estimate_customer_experience_defaults_snapshot.sql`](../supabase/migrations/20260405010252_estimate_customer_experience_defaults_snapshot.sql) (**`customer_experience_overrides`**, **`customer_experience_sent`**). **`estimate_customer_events`** ([`20260406024629_estimate_customer_events.sql`](../supabase/migrations/20260406024629_estimate_customer_events.sql), [`20260406025757_log_estimate_customer_event_rpc.sql`](../supabase/migrations/20260406025757_log_estimate_customer_event_rpc.sql), [`20260406033952_estimates_audit_customer_accepted_trigger.sql`](../supabase/migrations/20260406033952_estimates_audit_customer_accepted_trigger.sql), [`20260406034514_record_estimate_public_link_view_rpc.sql`](../supabase/migrations/20260406034514_record_estimate_public_link_view_rpc.sql), [`20260412184127_dedupe_record_estimate_public_link_view.sql`](../supabase/migrations/20260412184127_dedupe_record_estimate_public_link_view.sql)) is an append-only timeline of **public link views** and **accept submissions** (**`client_ip`** / **`user_agent`** per event when available; **`metadata`** holds e.g. **`had_signature`**, **`repeat_after_accepted`**). **Link views** are inserted by **`record_estimate_public_link_view`** (called from **`get-estimate-for-customer`** while **`sent`**). **First accept** events are inserted by trigger **`estimates_audit_customer_accepted_trigger`** on **`sent` → `customer_accepted`** (copies **`acceptor_ip`** / **`acceptor_user_agent`**). Repeat **`accept-estimate`** posts (**`alreadyAccepted`**) may append via **`log_estimate_customer_event`** from Edge. Staff **`SELECT`** uses the same visibility shape as **`estimates`**. **`job_ledger_id`** links to **`jobs_ledger`** after acceptance; [**`create_job_from_estimate`**](../supabase/migrations/20260405072854_estimate_create_job_rpc.sql) inserts the job and sets the link atomically (unique when non-null). Status enum **`estimate_status`**. Staff edit only while **`draft`**; **`sent`** / accept transitions use service role in Edge Functions.
+- **Table**: `public.estimates` — see migrations [`20260404212052_estimates_approach_a.sql`](../supabase/archive/migrations-pre-baseline/20260404212052_estimates_approach_a.sql) (Approach A), [`20260405003103_estimates_global_estimate_number.sql`](../supabase/archive/migrations-pre-baseline/20260405003103_estimates_global_estimate_number.sql) (global **`estimate_number`**), and [`20260405010252_estimate_customer_experience_defaults_snapshot.sql`](../supabase/archive/migrations-pre-baseline/20260405010252_estimate_customer_experience_defaults_snapshot.sql) (**`customer_experience_overrides`**, **`customer_experience_sent`**). **`estimate_customer_events`** ([`20260406024629_estimate_customer_events.sql`](../supabase/archive/migrations-pre-baseline/20260406024629_estimate_customer_events.sql), [`20260406025757_log_estimate_customer_event_rpc.sql`](../supabase/archive/migrations-pre-baseline/20260406025757_log_estimate_customer_event_rpc.sql), [`20260406033952_estimates_audit_customer_accepted_trigger.sql`](../supabase/archive/migrations-pre-baseline/20260406033952_estimates_audit_customer_accepted_trigger.sql), [`20260406034514_record_estimate_public_link_view_rpc.sql`](../supabase/archive/migrations-pre-baseline/20260406034514_record_estimate_public_link_view_rpc.sql), [`20260412184127_dedupe_record_estimate_public_link_view.sql`](../supabase/archive/migrations-pre-baseline/20260412184127_dedupe_record_estimate_public_link_view.sql)) is an append-only timeline of **public link views** and **accept submissions** (**`client_ip`** / **`user_agent`** per event when available; **`metadata`** holds e.g. **`had_signature`**, **`repeat_after_accepted`**). **Link views** are inserted by **`record_estimate_public_link_view`** (called from **`get-estimate-for-customer`** while **`sent`**). **First accept** events are inserted by trigger **`estimates_audit_customer_accepted_trigger`** on **`sent` → `customer_accepted`** (copies **`acceptor_ip`** / **`acceptor_user_agent`**). Repeat **`accept-estimate`** posts (**`alreadyAccepted`**) may append via **`log_estimate_customer_event`** from Edge. Staff **`SELECT`** uses the same visibility shape as **`estimates`**. **`job_ledger_id`** links to **`jobs_ledger`** after acceptance; [**`create_job_from_estimate`**](../supabase/archive/migrations-pre-baseline/20260405072854_estimate_create_job_rpc.sql) inserts the job and sets the link atomically (unique when non-null). Status enum **`estimate_status`**. Staff edit only while **`draft`**; **`sent`** / accept transitions use service role in Edge Functions.
 - **`estimate_number`**: Monotonic global **Quote #** per row (`public.estimates_estimate_number_seq` on insert; trigger forbids changing the column after assignment). Gaps in the sequence are possible if draft rows are deleted. List and detail show **Quote #**; canonical staff URL is **`/estimates/{estimate_number}`**. Legacy **`/estimates/{uuid}`** still resolves; the app **`replace`**-navigates to the numeric path when opened by UUID.
 - **RLS**: Staff roles aligned with bids/jobs (`user_can_access_estimate`, broad read for estimator/primary/dev/assistant/master like bids). No anon/customer PostgREST access.
 - **Edge**: **`get-estimate-for-customer`** (GET), **`accept-estimate`** (POST), **`send-estimate-to-customer`** (JWT + Resend). Optional secret **`ESTIMATE_PUBLIC_ORIGIN`** for link base; else client sends **`public_origin`**. Response may include **`accept_url`** (e.g. when Resend is not configured or for staff copy-open after send).
 - **UI**: [`Estimates.tsx`](../src/pages/Estimates.tsx) (list **Quote #** column; **`sent`** detail: **`h1`** with **`# {estimate_number}`** + title; **For** / **Acceptance page logo** / **Line items**; **`customer_accepted`** detail: **`#`** + status only (no duplicate title); frozen quote **card** ([`EstimateCustomerDocument.tsx`](../src/components/estimates/EstimateCustomerDocument.tsx) + optional [`EstimateCustomerAttachmentCard`](../src/components/estimates/EstimateCustomerAttachmentCard.tsx)) first, then customer/email (**Customer:** opens [`CustomerSnapshotModal`](../src/components/customers/CustomerSnapshotModal.tsx)), **Customer acceptance**, collapsible **Customer activity** (**`EstimateDetailCustomerActivitySection`** in [`Estimates.tsx`](../src/pages/Estimates.tsx): **`sent`** default expanded, **`customer_accepted`** default collapsed), **Job** block **centered** — **Create job from estimate** (primary blue) / link / **Unlink job** (modal; clears **`job_ledger_id` only**); **Customer activity** copy — **“Customer opened quote link”** / **“Customer accepted estimate”**, optional IP / **`(with signature)`**, datetime (refetch on **`window` `focus`** while **`sent`**); **`sent`**: **Copy customer link** / **Open customer link** under waiting copy; [`EstimateCustomerAcceptLinkButtons.tsx`](../src/components/estimates/EstimateCustomerAcceptLinkButtons.tsx) — when **`sent`**, omitted from the top of **Customer experience**; **Customer experience** collapsible **Email** / **Acceptance page** / **Thank you**; **draft** **Customize customer copy** under preview tabs; **Line item catalog** modal **Insert from catalog** / **Edit book**; public [`EstimateAccept.tsx`](../src/pages/EstimateAccept.tsx) (**`AbortController`** on initial load). Shared body + modal: [`EstimateAcceptBody.tsx`](../src/components/estimates/EstimateAcceptBody.tsx) — **Approve** modal omits **`accept_instructions`**; primary submit centered; [`EstimateTermsHeaderNotice.tsx`](../src/components/estimates/EstimateTermsHeaderNotice.tsx) — linked **Terms and Conditions.** only; **accepted** staff inline record: disclosure + disabled checked **`accept_checkbox_label`** before **Full name**. [`EstimateCustomerThankYou.tsx`](../src/components/estimates/EstimateCustomerThankYou.tsx) — centered thank-you + **`public/chick.png`**; **Valid through** / **`doc_*`** on document unchanged. Nav: Materials → **Estimates** → Bids (where applicable). See **RECENT_FEATURES** **v2.288**.
 - **Mobile / narrow viewport (`≤640px`)**: **`estimatesPageShellCss`** on **`.estimates-page-modern`** (`width: 100%`, **`min-width: 0`**, **`max-width: min(1100px | 900px, 100%)`** via **`estimates-page-shell--list`** vs **`--detail`**, tighter padding **`@media (max-width: 640px)`**); list tables wrapped with **`estimateListTableScrollWrapStyle`** (**`overflow-x: auto`**, **`max-width: 100%`**); **`EstimateListCards`** (**`useNarrowViewport640`**) replaces **`EstimateListTable`** on Ledger / Stages at **`≤640px`** (cards keep thread expand + **`JobThreadNotesPanel`**); Customer experience **Email** HTML preview horizontal scroll + **`estimate-email-html-preview-root`** responsive **`img`**; expanded draft **`CustomerNotesTable`** in **`overflow-x: auto`**; preview shells **`max-width: min(640px, 100%)`**; **[`AcceptHeaderBrandPicker.tsx`](../src/components/estimates/AcceptHeaderBrandPicker.tsx)** **`max-width: min(900px, 100%)`**. See **RECENT_FEATURES** **v2.430**.
-- **Customer copy**: Merge order: **`customer_experience_sent`** (frozen when estimate moves to **`sent`**) overrides live merges; else **`app_settings`** keys `estimate_*` (dev: [`Settings.tsx`](../src/pages/Settings.tsx) **Estimate customer experience defaults**) plus optional **`customer_experience_overrides`** on the row. Draft **Customize customer copy** groups fields into **Email**, **Acceptance page**, and **Thank you** under each respective preview tab (with **Acceptance** covering both **`doc_*`** quote-document strings and **`accept_*`** accept-form strings); each textarea **shows** merged defaults (builtins plus **`app_settings`**) until staff edits, and **`customer_experience_overrides`** persists only changed keys. Templates support **`{{accept_url}}`**, **`{{title}}`**, **`{{estimate_number}}`** in email subject/body. Shared logic: [`src/lib/estimateCustomerExperience.ts`](../src/lib/estimateCustomerExperience.ts) and [`supabase/functions/_shared/estimateCustomerExperience.ts`](../supabase/functions/_shared/estimateCustomerExperience.ts) (keep in sync). Builtin thank-you body and accept-page footer tagline match **v2.288**; **[`20260412190051_update_estimate_thank_you_body_default.sql`](../supabase/migrations/20260412190051_update_estimate_thank_you_body_default.sql)** and **[`20260412190601_update_estimate_accept_page_footer_tagline.sql`](../supabase/migrations/20260412190601_update_estimate_accept_page_footer_tagline.sql)** update **`app_settings`** on existing deploys. Public GET JSON includes **`customer_experience`** (no email fields) for the accept page; **`already_accepted`** **409** includes **`customer_experience`** for thank-you. Legacy **`estimateCustomerEmail.ts`** files are unused by the app; Edge sends **`resolveEstimateCustomerExperience`** output.
+- **Customer copy**: Merge order: **`customer_experience_sent`** (frozen when estimate moves to **`sent`**) overrides live merges; else **`app_settings`** keys `estimate_*` (dev: [`Settings.tsx`](../src/pages/Settings.tsx) **Estimate customer experience defaults**) plus optional **`customer_experience_overrides`** on the row. Draft **Customize customer copy** groups fields into **Email**, **Acceptance page**, and **Thank you** under each respective preview tab (with **Acceptance** covering both **`doc_*`** quote-document strings and **`accept_*`** accept-form strings); each textarea **shows** merged defaults (builtins plus **`app_settings`**) until staff edits, and **`customer_experience_overrides`** persists only changed keys. Templates support **`{{accept_url}}`**, **`{{title}}`**, **`{{estimate_number}}`** in email subject/body. Shared logic: [`src/lib/estimateCustomerExperience.ts`](../src/lib/estimateCustomerExperience.ts) and [`supabase/functions/_shared/estimateCustomerExperience.ts`](../supabase/functions/_shared/estimateCustomerExperience.ts) (keep in sync). Builtin thank-you body and accept-page footer tagline match **v2.288**; **[`20260412190051_update_estimate_thank_you_body_default.sql`](../supabase/archive/migrations-pre-baseline/20260412190051_update_estimate_thank_you_body_default.sql)** and **[`20260412190601_update_estimate_accept_page_footer_tagline.sql`](../supabase/archive/migrations-pre-baseline/20260412190601_update_estimate_accept_page_footer_tagline.sql)** update **`app_settings`** on existing deploys. Public GET JSON includes **`customer_experience`** (no email fields) for the accept page; **`already_accepted`** **409** includes **`customer_experience`** for thank-you. Legacy **`estimateCustomerEmail.ts`** files are unused by the app; Edge sends **`resolveEstimateCustomerExperience`** output.
 - **Customer on draft**: Staff pick a **`customers`** row via [`CustomerSearchCombobox`](../src/components/customers/CustomerSearchCombobox.tsx) (search shows CRM email and phone); **Edit customer** opens the global [`EditCustomerModal`](../src/components/EditCustomerModal.tsx) (same as Customers/Bids); optional **Create new customer** opens [`NewCustomerForm`](../src/components/NewCustomerForm.tsx). **`estimates.customer_id`** is saved on draft. Send uses **`contact_info.email`** when present; if the CRM record has no email, **Send to email (override)** supplies the address for the Edge function—**`customer_email`** on the row may then reflect that override (not the CRM field). Shared display helpers: [`customerContactDisplay.ts`](../src/lib/customerContactDisplay.ts).
-- **Email when customer accepts (staff)**: Column **`accept_notify_user_ids`** (`uuid[]`, nullable; [**`20260430213314_estimates_accept_notify_user_ids.sql`**](../supabase/migrations/20260430213314_estimates_accept_notify_user_ids.sql)). After **`sent` → `customer_accepted`**, **`accept-estimate`** (Edge) emails each eligible **`users.email`** for ids in this array (**`estimate_accept_notify_filter_eligible_user_ids`**). **`NULL`**: never saved for this field—draft detail load in [`Estimates.tsx`](../src/pages/Estimates.tsx) initializes selection to **deduped current user + every `master_technician`** (falls back to self only if the query fails). **`[]`**: explicitly no staff recipients. **Draft UI**: **Notify me** (self) + **Also notify** ([`SearchableMultiSelect`](../src/components/SearchableMultiSelect.tsx); self omitted from the multi list); options ordered **Master technicians → Assistants → Superintendents → everyone else** with small section captions on labeled separators ([`SearchableSelectSeparatorListRow`](../src/components/SearchableSelect.tsx)). Saved **non-null** arrays load as stored. See **RECENT_FEATURES** **v2.434** and **`EDGE_FUNCTIONS.md`** **accept-estimate**.
+- **Email when customer accepts (staff)**: Column **`accept_notify_user_ids`** (`uuid[]`, nullable; [**`20260430213314_estimates_accept_notify_user_ids.sql`**](../supabase/archive/migrations-pre-baseline/20260430213314_estimates_accept_notify_user_ids.sql)). After **`sent` → `customer_accepted`**, **`accept-estimate`** (Edge) emails each eligible **`users.email`** for ids in this array (**`estimate_accept_notify_filter_eligible_user_ids`**). **`NULL`**: never saved for this field—draft detail load in [`Estimates.tsx`](../src/pages/Estimates.tsx) initializes selection to **deduped current user + every `master_technician`** (falls back to self only if the query fails). **`[]`**: explicitly no staff recipients. **Draft UI**: **Notify me** (self) + **Also notify** ([`SearchableMultiSelect`](../src/components/SearchableMultiSelect.tsx); self omitted from the multi list); options ordered **Master technicians → Assistants → Superintendents → everyone else** with small section captions on labeled separators ([`SearchableSelectSeparatorListRow`](../src/components/SearchableSelect.tsx)). Saved **non-null** arrays load as stored. See **RECENT_FEATURES** **v2.434** and **`EDGE_FUNCTIONS.md`** **accept-estimate**.
 
 ### Documents page (`/documents`)
 
@@ -1272,6 +1274,7 @@ uuid3           | Supply House C    | 0
   - `gc_contact_phone` (text, nullable) - Project contact phone for this bid
   - `gc_contact_email` (text, nullable) - Project contact email for this bid
   - `bid_due_date` (date, nullable)
+  - `bid_due_time` (time, nullable) - Optional time-of-day the bid is due; wall-clock as entered, no timezone math (`20260713153000_bids_bid_due_time.sql`)
   - `bid_date_sent` (date, nullable)
   - `bid_date_sent_attested_at` (timestamptz, nullable), `bid_date_sent_attested_by` (uuid, FK → `users.id` ON DELETE SET NULL) — when/how bid “sent” was confirmed in the attestation modal
   - `bid_date_sent_ack_email_at` / `bid_date_sent_ack_email_by`, `bid_date_sent_ack_phone_at` / `bid_date_sent_ack_phone_by`, `bid_date_sent_ack_honesty_at` / `bid_date_sent_ack_honesty_by` — per-checkbox acknowledgment timestamps and users (FK → `users.id` ON DELETE SET NULL)
@@ -1656,7 +1659,7 @@ counts_fixture_groups (id)
   - Manually create users
   - Delete users
   - Impersonate other users (via "imitate" button)
-  - Claim dev role via Settings (enter promotion code; stored in DEV_PROMOTION_CODE secret)
+  - Claim dev role via Settings (promotion code in DEV_PROMOTION_CODE secret) — **break-glass only** since `20260717150000_claim_dev_break_glass.sql`: refused whenever a usable dev exists, refused for read-only callers, and every attempt is audited in `claim_dev_attempts`
 
 #### `master_technician`
 - **Access**: Dashboard, Customers, Projects, People, Calendar, Settings
@@ -1845,6 +1848,34 @@ counts_fixture_groups (id)
 
 **Use Case**: Primary users handle materials, job reports, task assignment, and bid documents (RFI, Change Order, Lien Release) without access to customer/project management or full bid creation/editing.
 
+#### `superintendent`
+
+**Purpose**: Runs jobs on assigned projects — manages subcontractors, drafts bids — without People page access.
+
+- **Project access only via assignment**: devs/masters/assistants assign superintendents per project (`project_superintendents`; Workflow page "Assigned Superintendents" section). Adoption via `master_superintendents` (Settings → People & accounts) does **not** grant project access.
+- Can assign subcontractors to workflow stages on assigned projects.
+- Optional service-type scoping via `superintendent_service_type_ids` on the user record (NULL/empty = all service types) — limits Bids and Materials visibility.
+- See [ACCESS_CONTROL.md](./ACCESS_CONTROL.md) (authoritative) for the full page/feature matrix.
+
+#### `helpers`
+
+**Purpose**: Field/crew workers with the **same product experience as `subcontractor`** — limited navigation, assigned stages only.
+
+- Routing, RLS, and Edge guards treat `helpers` as subcontractor-like (`isSubcontractorLikeRole()`, `SUBCONTRACTOR_PATHS`); treat as subcontractor unless a feature explicitly distinguishes them.
+- Clock In and Dispatch service-type filtering uses `helpers_service_type_ids` on `users` (same semantics as `subcontractor_service_type_ids`).
+- Roster rows use `people.kind = 'helper'`.
+- Dashboard Assigned Jobs hides **Send to Billing**; `update_job_status` rejects that transition for helpers.
+- See [ACCESS_CONTROL.md](./ACCESS_CONTROL.md) for details.
+
+#### `controller`
+
+**Purpose**: Bookkeeper/financial controller (v2.662; migrations `20260714213000_controller_capabilities.sql`, `20260714230000_controller_payroll_capability_sweep.sql`) — process wages without dev keys.
+
+- **Assistant-like everywhere**: DB `is_assistant()` and client `isAssistantLike()` match `assistant OR controller`, so every assistant capability applies automatically.
+- **Plus dev-level financial visibility**: Payroll tab, wages/pay stubs (`has_payroll_access()` was rewritten to include controller), team labor totals, Job Summary labor/profit, Cost breakdown team labor.
+- **Not dev admin**: no user management, impersonation, backups, or deletes.
+- See [ACCESS_CONTROL.md](./ACCESS_CONTROL.md) (read the assistant column, then add the pay/financial surfaces).
+
 ### Row Level Security (RLS) Patterns
 
 #### Common Pattern: Master-Assistant Adoption and Master Sharing
@@ -1938,7 +1969,7 @@ user_id = auth.uid()
 - **Data**: Name, address, contact info (JSONB), date_met
 
 ### 2. Project Management
-- **Page**: `Projects.tsx`, `ProjectForm.tsx`
+- **Page**: `Projects.tsx`, `ProjectNewGate.tsx` / `ProjectEditGate.tsx` (create/edit gates)
 - **Tabs** (top of page, `pageUnderlineTabStyle`, `?tab=stages|job-history|forecast`, default `stages`):
   - **Overview** (rendered label as of **v2.551** — internal state + URL param still `stages` so existing bookmarks keep working) — the project listing UI described below.
   - **Job History** (renamed from **Job Schedule** in **v2.553** — URL value is now `job-history`) — horizontally-scrollable Gantt of working jobs (see "Job History Tab" subsection below).
@@ -2268,7 +2299,7 @@ No DB / migration / RLS / RPC / Edge changes — relies entirely on the existing
 
 ### 5. People Roster
 - **Page**: `People.tsx`
-- **Tabs**: **Users** (default), **Payroll** (legacy URL **`?tab=pay_stubs`**), **Hours** (timesheet + team due totals + pay tools — former **Pay** merged here; legacy **`?tab=pay`** / **`?tab=team_costs`** rewrite to **`hours`**), **Team Costs**, **Vehicles**, **Housing**, **Offsets**, **Contracts** (dev, pay-approved masters, assistants), **Review** (dev-only), **Feedback** (dev-only; URL **`?tab=feedback`**)
+- **Tabs** (15 keys in the `PeopleTab` union, [`People.tsx`](../src/pages/People.tsx)): **Review** (dev-only), **Users** (default), **Teams**, **Overhead**, **Employment** (pay staff; `people.start_date`/`end_date`), **Payroll** (URL **`?tab=pay_stubs`**), **Hours** (timesheet + team due totals + pay tools — former **Pay** and **Team Costs** merged here; legacy **`?tab=pay`** / **`?tab=team_costs`** rewrite to **`hours`**), **Offsets**, **Vehicles**, **Housing**, **Licenses**, **Contracts** (dev, pay-approved masters, assistants), **Write-ups**, **Feedback** (dev-only; URL **`?tab=feedback`**), **Activity**
 - **Features**:
   - **Users tab** lists roster groups in fixed order: Master Technicians, Assistants, Primaries, Estimators, Superintendents, Subcontractors, then Devs (Devs section dev-only). **Search** (name, email, phone, notes): sections with **no** matching rows are **hidden** (no section heading or **Add** for that slice); when **every** section would be empty, one muted **No matches.** appears under the search (**`role="status"`** — **`RECENT_FEATURES.md`** v2.443). With an empty search query, sections still appear including **None yet.** where applicable.
   - For users with login accounts, optional **`users.notes`** (text, nullable) stores **full name and job title** for display (e.g. legal name plus credential). The list shows that text after contact info (`—` suffix); the pencil opens the **Full name, title, and phone** modal, which edits **`users.notes`** and **`users.phone`**. (Roster-only **`people.notes`** remains a separate field—see **Data** line below; UI label on Add/Edit person is still **Notes**.)
@@ -2284,7 +2315,8 @@ No DB / migration / RLS / RPC / Edge changes — relies entirely on the existing
   - **Impersonate (dev-only)**: On Users tab, devs see an imitate icon per user; redirects to pipetooling.com/dashboard (production)
   - **Hours tab** (dev, approved masters, assistants; **Teams** for pay staff): **`?tab=hours`**; legacy **`?tab=pay`** and **`?tab=team_costs`** rewrite to **`hours`**. **`people-hours-pay-tools`** (**Review Hours** / **People pay config**) when **`canAccessPay`** is a **fixed toolbar** (not collapsible). **Section jump** — centered chip row (**`id="people-hours-sections-nav"`**) is **first** in the Hours stack after pay tools (**Clock strip**, **Week**, **Sessions**, **Hours grid**, **Due totals**, **Teams**): **`jumpToHoursTabSection`** expands collapsible targets and smooth-scrolls; **Week** scrolls only (**week** is never collapsible). **Week / date range** — **Week range** **`h3`** left-aligned; **no** bordered card shell ( **`scroll-margin-top`** anchor **`people-hours-week`** ). Wide layout: **← last week** then **Start** / **End** with labels **above** **`type="date"`** inputs; narrow: carousel + **`details`** **Custom dates**. Anchors: **`people-hours-week`**, **`people-hours-sections-nav`**, **`people-hours-clock-strip`**, **`people-hours-sessions`**, **`people-hours-grid`**, **`people-hours-pay-tools`**, **`people-hours-due-summaries`**, **`people-hours-teams`**; **`scroll-margin-top`** avoids the sticky header. **`?tab=hours&section=rejected`** expands **Sessions**, opens **Rejected**, scrolls to **`people-hours-rejected`**, then drops **`section`** from the URL. Collapsible sections other than **Week range** use the shared bordered card shell and chevron headers (**`RECENT_FEATURES.md`** **v2.455**, layout **v2.495**). **Dashboard-style clock strip** ([**`PeopleHoursDashboardClockStrip.tsx`**](../src/components/people/PeopleHoursDashboardClockStrip.tsx) wraps [**`DashboardTeamActiveClockStrip.tsx`**](../src/components/DashboardTeamActiveClockStrip.tsx) like **`Dashboard.tsx`**) with **My Team** / **Company** when eligible ([**`dashboardClockStripScopeStorage.ts`**](../src/lib/dashboardClockStripScopeStorage.ts) — **`dashboard_clock_strip_scope`**). **Strip calendar day** — chevrons + **Today**; **`shiftWorkDateYmd`** / week helpers from [**`peopleHoursClockStripSelectedDay.ts`**](../src/lib/peopleHoursClockStripSelectedDay.ts) (shared with **`QuickfillPeopleHoursNewSection`**); **`stripWorkDateYmd`** keeps **live open-session** semantics only when that day is **today** (**`America/Chicago`** **`denverCalendarDayKey`**). **`onSessionsChanged`** bumps **`People.tsx`** **`loadAllClockSessionsRef`** so Pending/Approved lists refresh after strip actions. See **`RECENT_FEATURES.md`** v2.453. **Pending clock sessions** (collapsible) below the strip: sessions clocked out but not yet approved. Columns: Person; **Time & location** (line 1: duration and in/out times; line 2: work date + location text, or `In: — | Out: —` when GPS is missing); **Notes & job** (spanning two columns): notes with **job/bid label** below in the same cell; Location (map pins / links when present); **Action** (accountability: "Approved/Rejected/Revoked by … at" on one line, timestamp on the next; short locale date/time, no seconds); **Actions** (Force clock out, then **Approve**, **Reject**, **Edit**). Assignment controls for job/bid live in the Job column when shown. **Approved Sessions** (collapsible) with Revoke button. **Rejected Sessions** (collapsible) with Delete. Approve merges hours via `approve_clock_sessions` RPC (and syncs crew jobs when a job is linked); Revoke subtracts via `revoke_clock_sessions` RPC. **Edit** opens shared **`ClockSessionEditSplitModal`** (clock in/out, required notes; **Split session** with midpoint preview replaces one session with two; each part can get a different job). **Correct-day audit** from weekly grid cells: **`PeopleHoursDayAuditModal`**—read-only unless the user can edit crew jobs (**Edit** / **Done**); crew draft + **Save** matches unassigned-hour upserts; per-row **Edit** uses the same clock modal; **Add session** when the day has no clock rows. **Highlight by job** above the grid (`search_jobs_ledger` + clear chip) tints rows/cells when that person-week includes the selected job in `unifiedAssignments`; **missing job** / merge **flash** / hours **flash** still override visually. Datetime helpers: `src/utils/datetimeLocal.ts`. Timesheet with day columns (editable HH:MM:SS for hourly; read-only for salary); per-person HH:MM:SS and Decimal total columns; two footer rows (Total HH:MM:SS, Total Decimal) with per-day sums and grand total. Subscribes to `people_hours` and `clock_sessions` Realtime; refetches when another user changes hours. **Manual hours → My Time draft**: For an editable, non-**Correct** day, when a cell blurs with **hours &gt; 0** (same access gates as **`saveHours`**), **`People.tsx`** opens **`DashboardMyTimeDayEditorModal`** with a **draft** session built in **`peopleHoursManualDraftSession.ts`** (8:00 AM **`America/Chicago`** on **`work_date`**, closed span for the entered duration; draft id prefix `draft:people-hours:`). **`persistDirtyChangesAsync`** in the modal **`INSERT`**s a real **`clock_sessions`** row on save. If **`users.name`** (trim) does not match the roster **`person_name`**, a toast runs and hours are **saved to `people_hours` only**. After a successful draft save, People runs **`saveHours(..., 0)`** for that person/date so **`approve_clock_sessions`** does not double-count against an old manual total. Grid display uses **`max(people_hours, pending closed clock hours)`** for hourly rows so pending sessions remain visible before approval. **Revoked sessions are excluded** from the cell display sum (**v2.537**, **`sumClosedPendingClockHoursForCell`** / **`pendingUnapprovedCountsByWorkDate`** in [`src/lib/peopleHoursPendingByCell.ts`](../src/lib/peopleHoursPendingByCell.ts)) — revoke clears **`approved_at`** but leaves **`rejected_at`** null, so revoked rows still load via the **`approved_at IS NULL AND rejected_at IS NULL`** filter on **`pendingClockSessions`**; the explicit **`revoked_at`** check in the helpers ensures the cell value drops as soon as **`revoke_clock_sessions`** has subtracted the hours from **`people_hours`**, matching the amber pending-vs-payroll badge. **Close persists drafts** (**v2.533**): **`requestClose`** in **`DashboardMyTimeDayEditorModal`** collects every cluster id whose sessions include an **`isDraftPeopleHoursSessionId`** member into **`draftClusterIds`** and merges them into **`effectiveDirty`** before deciding whether to skip persistence — so typing a value into an empty cell and hitting **Close** without assigning a job still **`INSERT`**s the pending **`clock_sessions`** row (previously the draft was silently discarded unless a split or job assignment also marked the cluster dirty). Toast copy on draft per-session **Edit** clarifies *"This block isn't saved yet — Close will save it as a pending session that can be approved or rejected from People → Hours."* **Pending vs payroll visibility on the grid** (**v2.533**, gated on **`canAccessHours || canAccessPay`**): each cell shows a small amber **`! n`** pill in the top-right when pending closed clock sessions for that person+day sum to **more** than the saved **`people_hours`** value (the cell hour value itself is unchanged because matrix display already uses **`max(people_hours, pending)`**, so the badge surfaces the gap that **Draft Payroll** would otherwise undercount). Clicking the badge opens **[`PeopleHoursPendingCellPopover`](../src/components/people/PeopleHoursPendingCellPopover.tsx)** anchored to the cell (portal, repositions on resize/scroll); the popover lists pending sessions with **`HH:MM – HH:MM (X.XXh)`** + job/bid label, per-row **✕** reject (two-click confirm) and footer **Approve all (n)** which calls **`approveClockSessions`** ([`src/lib/approveClockSessions.ts`](../src/lib/approveClockSessions.ts)) — same **`approve_clock_sessions`** RPC as the Pending Sessions section, so crew jobs / crew bids stay in sync. **View in My Time** opens the existing **`DashboardMyTimeDayEditorModal`** for inspection. A week-strip roll-up banner above the grid summarizes the org-wide gap (**`Pending: N people · H h not yet in payroll across K days`**) with a **Review & approve** button → **[`PeopleHoursBulkApprovePendingModal`](../src/components/people/PeopleHoursBulkApprovePendingModal.tsx)** (lists each affected person/day with **`+H.HH h`**, runs **`approve_clock_sessions`** against every session id at once). Each day-column header gets a small amber dot (**`workDateHasAnyPendingExcess`**) and each person row's right-most total cell gets a muted **`+X.XX pending`** subline (**`personPendingExcessHours`**). All gap detection lives in pure helpers in **[`src/lib/peopleHoursPendingByCell.ts`](../src/lib/peopleHoursPendingByCell.ts)** (**`buildPeopleHoursPendingByCellMap`** folds **`pendingClockSessions`** + **`peopleHours`** + roster + visible day window into a `Map<personName|workDate, {count, pendingHours, peopleHoursValue, diffHours, sessionIds, sessions}>` — only emits keys where **`pendingHours > peopleHoursValue + 1e-9`**, skips salary-only people via the caller's **`isSalaryOnly`** predicate, and excludes rejected / revoked sessions). Covered by 6 unit tests in **[`src/lib/peopleHoursPendingByCell.test.ts`](../src/lib/peopleHoursPendingByCell.test.ts)**. The modal instance for this path passes **`allowNcnsFromMyTime={false}`** (no **NCNS** button). Opening My Time from a pending session row still allows NCNS per role rules. **At the top** (when **`canAccessPay`**): **Review Hours** and **People pay config** (outside any collapsible card; **`PeoplePayConfigModal`** for wages—dev and pay-approved masters (everyone with a pay-config row appears on Hours/crew surfaces since v2.677; archiving removes them)). **Review Hours** opens a modal (person/week, **Mark as reviewed**). **Below the grid** (when **`canAccessPay`**): **Due by Team**; **Teams** section (`people_teams`): pay-eligible users add/rename teams, add/remove members, or delete a team via **×** next to the name (confirmation modal). **Realtime**: hours views update when hours or sessions change—no manual refresh. (The **Cost matrix** grid, trade tags, tag colors, and the dev **Share Cost Matrix and Teams** grant retired in v2.673–v2.674.)
   - **Overhead tab** (`?tab=overhead`, **dev** and **master_technician** only — not **assistant**; **Teams** remains dev / master / assistant): week / custom **Start** / **End**; **Advanced** / **Simple** table view (**`overheadTableViewStorage.ts`**, localStorage **`people_overhead_table_simple_view_v1`**): **Simple** hides **Bid labor ($)**, **Office labor ($)**, and **Office parts ($)** — **Office Total ($) / Hours** and breakdown modals from those scopes are unchanged (**`RECENT_FEATURES.md`** v2.465). **Advanced** table columns: **Date | Bid labor ($) | Office labor ($) | Office parts ($) | Office Total ($) / Hours | Overhead % | Field Total ($) / Hours**; **Simple**: **Date | Overhead % | Office Total ($) / Hours | Field Total ($) / Hours** (no per-row **Detail** column or inline session list — v2.466; session lines live in breakdown modals). **Advanced** only: **Office Total ($) / Hours** has **no** left border (no vertical rule between **Office parts ($)** and **Office Total**); **Overhead %** and **Field Total ($) / Hours** keep left borders (**`RECENT_FEATURES.md`** v2.502). **Overhead %** = **Office Total ($)** ÷ **Field Total ($) × 100** per day (rounded whole percent; **`RECENT_FEATURES.md`** v2.501); **—** when field total is $0. Toolbar **Overhead office job** (dev) opens a modal to set **`app_settings`** **`overhead_office_job_ledger_id_v1`** (**Choose / Change / Clear** via **`search_jobs_ledger`**). **Labor** from **approved, closed** **`clock_sessions`** on the org **office** **`jobs_ledger`** and time on **bids** (`bid_id` set; if both office job and bid are set on a session, **office** wins); **$** = hours × **`people_pay_config.hourly_wage`**. **Office parts ($)** = materials on that office job: **Mercury** allocations by **posted** date (Chicago), **supply** invoice allocations by **invoice** date, **tally** lines by **`created_at`** (Chicago); **Total ($)** (dollars in the combined column) = labor + office parts (no cross-source dedupe). The **hours** figure in **Office Total ($) / Hours** is the sum of **office + bid** overhead session hours that day only (parts add no hours). The **hours** in **Field Total ($) / Hours** are **jobs-ledger** field labor hours for that column’s scope only (not bid-only clock; materials add no hours). **Field total ($)** = labor on other **`jobs_ledger`** rows (not bid-only) plus materials on those jobs when an office job is configured; when none is configured, all non–bid-only jobs ledger labor and all jobs’ materials — **not** added into overhead **Office Total ($)**. Click **$** cells for breakdown modals. **`fetchOverheadOfficePartsByDay.ts`**, **`fetchOtherJobsPartsByDay`**, **`mergeOverheadDayTableRows`**, **`overheadDailyLabor.ts`**, **`overheadOfficeJobSettings.ts`** (**`RECENT_FEATURES.md`** v2.459–v2.462, v2.466).
-  - **Team Costs Tab** (dev, approved masters, assistants): **Crew Jobs / Bids** table with date picker and prev/next day buttons; per-person job/bid percentage assignments (each row owns its own percentages — the "inherit from crew lead" feature was frozen in **v2.538**, see **`RECENT_FEATURES.md`**, **MIGRATIONS.md** `20260516154601_freeze_crew_lead_inheritance` and `20260516162434_drop_crew_lead_inheritance_from_sync_rpcs`). **Team Job Labor** table: all-time aggregate of jobs with man hours and cost; searchable; clickable breakdown modals.
+  - **Employment tab** (`?tab=employment`, pay staff): [`PeopleEmploymentTab`](../src/components/people/PeopleEmploymentTab.tsx) edits per-person employment windows — `people.start_date` / `people.end_date` (`20260713120000_time_off_paid_kind_people_employment_dates.sql`).
+  - There is no separate **Team Costs** tab anymore — the Crew Jobs / Bids percentage grid and Team Job Labor aggregate live under **Hours**; only the legacy `?tab=team_costs` URL rewrite (to `hours`) remains. (Per-person job/bid percentage rows own their own percentages — "inherit from crew lead" was frozen in **v2.538**; **MIGRATIONS.md** `20260516154601_freeze_crew_lead_inheritance` and `20260516162434_drop_crew_lead_inheritance_from_sync_rpcs`.)
   - **Vehicles Tab** (dev, pay-approved masters, assistants): Fleet vehicle CRUD (year, make, model, VIN, weekly insurance/registration cost); odometer entries (date + value); possession assignments (user + start/end date). Vehicle info shown on Pay reports when user has possession during pay period (person_name must match users.name).
   - **Housing Tab** (dev, pay-approved masters, assistants): Housing unit CRUD (address; weekly rent, utilities, insurance); possession assignments (user + start/end date). Housing line items appear on Pay reports when the person has an assignment overlapping the stub period (`housing_units`, `housing_possessions`).
   - **Offsets Tab** (dev, pay-approved masters, assistants): **Backcharges**, **damages**, and **employee credits** (`person_offsets.type`). Pending rows (`pay_stub_id` null) or Applied (linked to a pay stub). Pending offsets appear on printed pay reports. **Employee credit** is money owed *to* the person (e.g. overpayment recorded as an offset); it is **not** applied as a **Less** deduction from **PayStubLessModal** (no **Apply** for that type). Other offset types still flow through **`pay_stub_deductions`** when applied from **Less** or the Offsets tab.
@@ -2345,9 +2377,9 @@ No DB / migration / RLS / RPC / Edge changes — relies entirely on the existing
 - **Page**: `Quickfill.tsx`
 - **Route**: `/quickfill`
   - **Section chrome**: Each visible block is wrapped in **`QuickfillSectionWrapper`** with a **left-aligned** section title (**`h2`**, **`1.5rem`** and **`fontWeight: 700`**, matching Banking page title weight). After the **first** visible section (order follows **`SECTIONS`** in code), a **full-width** **`2px`** top border (**`#94a3b8`**) separates blocks. **Jump row** (centered buttons under the page **`h1`**): one **muted** subline per button — compact relative time plus **who** marked (**`formatJumpMarkSublineRelative`** in **[`Quickfill.tsx`](../src/pages/Quickfill.tsx)**; e.g. **`2d Taunya`**); **`title`** / **`aria-label`** retain **Last marked …** for accessibility (**`RECENT_FEATURES`** **v2.513**). Jump buttons and **Active sections** use the same labels (e.g. **People Hours (Old)** for the legacy hours grid). **Jobs Billing** reminder counts only jobs whose **`hcp_number`** parses as an integer **≥ Min HCP (inclusive)** (default **406**); the threshold is configured next to **Jobs Billing** in **Active sections** and stored in **`localStorage`** as **`pipetooling_quickfill_jobs_billing_min_hcp`**.
-  - **Features**: Sections (in order per **`SECTIONS`**): **Warnings** (dev / master_technician / assistant only; **`quickfill_section_marks.section_id` = `warnings`**; **shown only when** **`list_stale_unlinked_mercury_transactions_for_tally_staff`** returns at least one row — same stale tally staff follow-up as Dashboard: **[`DashboardTallyStaleStaffBanner`](../src/components/DashboardTallyStaleStaffBanner.tsx)** + **[`DashboardStaleTallyStaffFollowUpModal`](../src/components/DashboardStaleTallyStaffFollowUpModal.tsx)**; counts loaded via shared **[`useStaleTallyStaffFollowUp`](../src/hooks/useStaleTallyStaffFollowUp.ts)** and **[`TALLY_STALE_MIN_AGE_DAYS`](../src/lib/tallyStaleMinAgeDays.ts)**). When **Warnings** renders, it also includes **Unallocated bank deposits** — **[`DashboardArBankUnallocatedBanner`](../src/components/DashboardArBankUnallocatedBanner.tsx)** + **[`QuickfillMetricReporter`](../src/pages/Quickfill.tsx)** (**`ar-bank-unallocated`**) when **`count_mercury_transactions_for_bank_payments`** &gt; 0 (same filter as Jobs **Bank Payments**). **People Hours (Old)** (grid plus pending / approved sessions; link to People Hours), **People Hours (new)**, **Banking sorting**, **Crew Jobs / Bids**, **Billed Awaiting Payment** (count and total, HCP/Job/Assigned/Remaining table, link to Jobs Stages), Unpriced Fixtures (count + link to Jobs Parts), Cant Reach, Supply Houses, **Jobs Billing** ( **`JobsBillingReminderSection`**: counts only jobs at/above Min HCP; threshold in **Active sections** / **`app_settings`**), **Complete, no Total Bill** (**v2.649**, `complete-no-bill`: non-paid jobs resolved **100% complete** — same rule as the Job Summary % column via RPC `list_latest_report_completion_pct` — with empty/$0 `revenue`, shown as inline cards with first-clock-in/session/hours line, **Job Detail** + **Edit job** buttons, and an **Activity ▾** accordion embedding the Job-Detail feed; kernel [`quickfillCompleteNoBill.ts`](../src/lib/quickfillCompleteNoBill.ts); dev/master/assistant; reuses the Jobs Billing min-HCP threshold). **Banking sorting** (paginated snapshot of Mercury transactions that still need a linked person and/or job splits, for dev/master/assistant—uses the same per-user Banking sorting config as [`Banking.tsx`](../src/pages/Banking.tsx) **Sorting** tab via [`loadBankingSortingConfig`](../src/lib/bankingSortingConfig.ts); loads up to 5000 recent `mercury_transactions`, then runs **`fetchMercuryRelationsState`** and **`fetchMercuryNicknameMaps`** in parallel; summary shows **Without person**, **Not split to jobs**, **Total available**; **Link…** opens attributions in **Person** and/or **Jobs** cells when missing—no separate Link column; link to full Banking). **`mercury_transactions`** is in **`supabase_realtime`** ([**`20260403051729_mercury_transactions_supabase_realtime.sql`**](../supabase/migrations/20260403051729_mercury_transactions_supabase_realtime.sql)); **[`BankingSortingSnapshotSection.tsx`](../src/components/quickfill/BankingSortingSnapshotSection.tsx)** debounced-refetches on inserts/updates (e.g. **`mercury-webhook`** or dev sync). **People Hours (new)** (Dashboard strip + day nav; **≤640px** viewport stacks **full date** on line 1 and **Previous day | Next day | Today** on line 2; amber notice under nav: assistance does not approve). **People Hours (Old)** — grid plus **Pending clock sessions** (same table layout and accountability formatting as People Hours; Force clock out; **Approve**, **Reject**, **Edit** in that order) and **Approved Sessions** (Revoke). **Edit** uses **`ClockSessionEditSplitModal`**; correct-day cell flow uses **`PeopleHoursDayAuditModal`** with the same props/refresh behavior as People. Same date range and Realtime subscription as People Hours. Unpriced fixtures visible to dev, master_technician, assistant. **Crew Jobs / Bids** (below Hours): same as Jobs Team Labor tab; date picker, Crew Jobs table (Name, Crew, Jobs/Bids with job and bid assignments), Team Job Labor table (HCP, Job, People, Man hours with breakdown modal; **Job Cost column hidden** in Quickfill). **[`CrewJobsBlock.tsx`](../src/components/CrewJobsBlock.tsx)** subscribes to **`postgres_changes`** on **`people_crew_jobs`** / **`people_crew_bids`** filtered by the selected **`work_date`**, and reloads Team Job Labor when those rows change (e.g. after **`approve_clock_sessions`** or assigning a job on an approved session—see migration **`20260402120000_clock_sessions_sync_crew_assignments_trigger.sql`**). Visible to dev, pay-approved masters, assistants.
+  - **Features**: Sections (in order per **`SECTIONS`**): **Warnings** (dev / master_technician / assistant only; **`quickfill_section_marks.section_id` = `warnings`**; **shown only when** **`list_stale_unlinked_mercury_transactions_for_tally_staff`** returns at least one row — same stale tally staff follow-up as Dashboard: **[`DashboardTallyStaleStaffBanner`](../src/components/DashboardTallyStaleStaffBanner.tsx)** + **[`DashboardStaleTallyStaffFollowUpModal`](../src/components/DashboardStaleTallyStaffFollowUpModal.tsx)**; counts loaded via shared **[`useStaleTallyStaffFollowUp`](../src/hooks/useStaleTallyStaffFollowUp.ts)** and **[`TALLY_STALE_MIN_AGE_DAYS`](../src/lib/tallyStaleMinAgeDays.ts)**). When **Warnings** renders, it also includes **Unallocated bank deposits** — **[`DashboardArBankUnallocatedBanner`](../src/components/DashboardArBankUnallocatedBanner.tsx)** + **[`QuickfillMetricReporter`](../src/pages/Quickfill.tsx)** (**`ar-bank-unallocated`**) when **`count_mercury_transactions_for_bank_payments`** &gt; 0 (same filter as Jobs **Bank Payments**). **People Hours (Old)** (grid plus pending / approved sessions; link to People Hours), **People Hours (new)**, **Banking sorting**, **Crew Jobs / Bids**, **Billed Awaiting Payment** (count and total, HCP/Job/Assigned/Remaining table, link to Jobs Stages), Unpriced Fixtures (count + link to Jobs Parts), Cant Reach, Supply Houses, **Jobs Billing** ( **`JobsBillingReminderSection`**: counts only jobs at/above Min HCP; threshold in **Active sections** / **`app_settings`**), **Complete, no Total Bill** (**v2.649**, `complete-no-bill`: non-paid jobs resolved **100% complete** — same rule as the Job Summary % column via RPC `list_latest_report_completion_pct` — with empty/$0 `revenue`, shown as inline cards with first-clock-in/session/hours line, **Job Detail** + **Edit job** buttons, and an **Activity ▾** accordion embedding the Job-Detail feed; kernel [`quickfillCompleteNoBill.ts`](../src/lib/quickfillCompleteNoBill.ts); dev/master/assistant; reuses the Jobs Billing min-HCP threshold). **Banking sorting** (paginated snapshot of Mercury transactions that still need a linked person and/or job splits, for dev/master/assistant—uses the same per-user Banking sorting config as [`Banking.tsx`](../src/pages/Banking.tsx) **Sorting** tab via [`loadBankingSortingConfig`](../src/lib/bankingSortingConfig.ts); loads up to 5000 recent `mercury_transactions`, then runs **`fetchMercuryRelationsState`** and **`fetchMercuryNicknameMaps`** in parallel; summary shows **Without person**, **Not split to jobs**, **Total available**; **Link…** opens attributions in **Person** and/or **Jobs** cells when missing—no separate Link column; link to full Banking). **`mercury_transactions`** is in **`supabase_realtime`** ([**`20260403051729_mercury_transactions_supabase_realtime.sql`**](../supabase/archive/migrations-pre-baseline/20260403051729_mercury_transactions_supabase_realtime.sql)); **[`BankingSortingSnapshotSection.tsx`](../src/components/quickfill/BankingSortingSnapshotSection.tsx)** debounced-refetches on inserts/updates (e.g. **`mercury-webhook`** or dev sync). **People Hours (new)** (Dashboard strip + day nav; **≤640px** viewport stacks **full date** on line 1 and **Previous day | Next day | Today** on line 2; amber notice under nav: assistance does not approve). **People Hours (Old)** — grid plus **Pending clock sessions** (same table layout and accountability formatting as People Hours; Force clock out; **Approve**, **Reject**, **Edit** in that order) and **Approved Sessions** (Revoke). **Edit** uses **`ClockSessionEditSplitModal`**; correct-day cell flow uses **`PeopleHoursDayAuditModal`** with the same props/refresh behavior as People. Same date range and Realtime subscription as People Hours. Unpriced fixtures visible to dev, master_technician, assistant. **Crew Jobs / Bids** (below Hours): same as Jobs Team Labor tab; date picker, Crew Jobs table (Name, Crew, Jobs/Bids with job and bid assignments), Team Job Labor table (HCP, Job, People, Man hours with breakdown modal; **Job Cost column hidden** in Quickfill). **[`CrewJobsBlock.tsx`](../src/components/CrewJobsBlock.tsx)** subscribes to **`postgres_changes`** on **`people_crew_jobs`** / **`people_crew_bids`** filtered by the selected **`work_date`**, and reloads Team Job Labor when those rows change (e.g. after **`approve_clock_sessions`** or assigning a job on an approved session—see migration **`20260402120000_clock_sessions_sync_crew_assignments_trigger.sql`**). Visible to dev, pay-approved masters, assistants.
   - **Schedule** ([`QuickfillScheduleSection.tsx`](../src/components/quickfill/QuickfillScheduleSection.tsx), [`Quickfill.tsx`](../src/pages/Quickfill.tsx), [`DispatchAddBlockTimeRange.tsx`](../src/components/schedule/DispatchAddBlockTimeRange.tsx)): read-only per-user **`DispatchAddBlockTimeRange`** for a selected company-calendar day (Hub roster + batched **`job_schedule_blocks`**); Previous / Next / Today; link to **`/schedule-dispatch`** with **`week`**, optional **`day`** (and **`jobId`** when deep-linking from a band); **`quickfill_section_marks.section_id` = `schedule`**; section visible only for **dev**, **master_technician**, **assistant**, **superintendent** (same gate as **`sectionWouldRenderOnPage`** in **`Quickfill.tsx`**). Realtime on **`job_schedule_blocks`** refetches when the selected **`work_date`** changes. **Section header** omits the **N open** backlog line and **Mark history** (**`QuickfillSectionWrapper`** **`showOutstandingInHeader={false}`** **`showMarkHistoryButton={false}`** for **`schedule`** only); **`useReportQuickfillSectionMetric('schedule', null, false)`** so **`quickfill_section_mark_events.outstanding_count`** is not populated with the old roster “no blocks” count. Centered amber **schedule conflicts** prompt (*Are there any obvious schedule conflicts?*). **Secondary** (clock session) timeline strips use the same **bar height** and **label font size** as **occupied** (schedule block) strips.
-  - **Prospects** ([`QuickfillProspectsSection.tsx`](../src/components/quickfill/QuickfillProspectsSection.tsx), [`prospectWarmthCounts.ts`](../src/lib/prospectWarmthCounts.ts), [`prospectTeamActivity.ts`](../src/lib/prospectTeamActivity.ts), [`prospectTeamActivityChartData.ts`](../src/lib/prospectTeamActivityChartData.ts), [`ProspectTeamActivityLineChart.tsx`](../src/components/quickfill/ProspectTeamActivityLineChart.tsx)): **Active** lead counts by **warmth** (Warmth **3** / **2** / **1** / **0**, plus **Warmth 4+** when any — excludes **`prospect_fit_status`** **`not_a_fit`** and **`cant_reach`**, same as **Prospects → Prospect List**). **Team (last 30 days)** — **line chart** (**recharts**): one series per **dev** / **master_technician** / **assistant** user; **Y** = **Marked + Updated** per day (sum of unique-prospect counts from timers and from comments; **`buildProspectTeamActivityChartData`**). **Prospects** page **Team** tab remains **per-day tables**. **Estimators** with **`estimator_prospects_access`**: warmth + **Open Prospects** only. **`canAccessProspects`** in **`Quickfill.tsx`**; **`quickfill_section_marks.section_id` = `prospects`**; metrics report total **active** count. CTA: **`/prospects?tab=prospect-list`**. See **`RECENT_FEATURES.md`** → v2.381 / v2.382.381; **`ACCESS_CONTROL.md`** → Quickfill.
+  - **Prospects** ([`QuickfillProspectsSection.tsx`](../src/components/quickfill/QuickfillProspectsSection.tsx), [`prospectWarmthCounts.ts`](../src/lib/prospectWarmthCounts.ts), [`prospectTeamActivity.ts`](../src/lib/prospectTeamActivity.ts), [`prospectTeamActivityChartData.ts`](../src/lib/prospectTeamActivityChartData.ts), [`ProspectTeamActivityLineChart.tsx`](../src/components/quickfill/ProspectTeamActivityLineChart.tsx)): **Active** lead counts by **warmth** (Warmth **3** / **2** / **1** / **0**, plus **Warmth 4+** when any — excludes **`prospect_fit_status`** **`not_a_fit`** and **`cant_reach`**, same as **Prospects → Prospect List**). **Team (last 30 days)** — **line chart** (**recharts**): one series per **dev** / **master_technician** / **assistant** user; **Y** = **Marked + Updated** per day (sum of unique-prospect counts from timers and from comments; **`buildProspectTeamActivityChartData`**). **Prospects** page **Customers → Activity** sub-tab (renamed from **Team** in v2.708) remains **per-day tables**; the top-level **Team** tab is now the prospective-hires board (see the Prospects section below). **Estimators** with **`estimator_prospects_access`**: warmth + **Open Prospects** only. **`canAccessProspects`** in **`Quickfill.tsx`**; **`quickfill_section_marks.section_id` = `prospects`**; metrics report total **active** count. CTA: **`/prospects?tab=prospect-list`**. See **`RECENT_FEATURES.md`** → v2.381 / v2.382.381; **`ACCESS_CONTROL.md`** → Quickfill.
   - **Stages: customer link & customer pictures** (`quickfill_section_marks.section_id` = `no-customer-stages`, label in **`SECTIONS`**): **[`QuickfillStagesNoCustomerSection.tsx`](../src/components/quickfill/QuickfillStagesNoCustomerSection.tsx)**; data from **[`useQuickfillStagesJobsWithoutCustomer`](../src/hooks/useQuickfillStagesJobsWithoutCustomer.ts)** (**dev** / **master_technician** / **assistant**). Mirrors **Jobs → Stages** with an **empty** search: **`buildStagesJobsWithoutCustomerList`** (no linked customer — **Open list (n)** → **[`StagesNoCustomerJobsModal`](../src/components/jobs/StagesNoCustomerJobsModal.tsx)**) and **`buildStagesWorkingJobsWithoutPicturesList`** (**working** jobs with empty **`job_pictures_link`** — **No customer pictures (n)** → **[`StagesAlertJobListModal`](../src/components/jobs/StagesAlertJobListModal.tsx)**; Quickfill uses **`titleId`** **`stages-no-job-pictures-quickfill-modal-title`**). Section **outstanding** count and visibility use the **union** of distinct job **`id`**s (**`quickfillStagesAlertsUnionCount`**). See **`RECENT_FEATURES.md`** → v2.413.
   - **Unassigned field time** (`quickfill_section_marks.section_id` = `unassigned-field-time`, **dev** / **master_technician** / **assistant**; **v2.537**): **[`QuickfillUnassignedFieldTimeSection.tsx`](../src/components/quickfill/QuickfillUnassignedFieldTimeSection.tsx)** lists per (person, work_date) cells where the org paid for **field-type** time the team summary cannot allocate to a job. **v2.546 — approved-clock-only sourcing**: every input now comes from approved-closed `clock_sessions` only. Pure helper **`buildApprovedClosedHoursByPersonByDate`** (in **[`peopleHoursUnallocatedRows.ts`](../src/lib/peopleHoursUnallocatedRows.ts)**) sums approved-closed hours per (person, work_date) across every bucket (office, bid, field, unassigned); `computeUnallocatedFieldRows` uses that map for both candidate keys and `dayHoursRaw`. Math: `approvedClockOnDay = Σ approved-closed clock for person+date`; `dayHoursRaw = is_salary ? (weekday && approvedClockOnDay > 0 ? 8 : 0) : approvedClockOnDay`; `overheadOnDay = Σ approved-closed (office + bid) clock` (matches **`overheadBucketForSession`**, office = **`overhead_office_job_ledger_id_v1`**, bid = **`bid_id`** set); `fieldHours = max(0, dayHoursRaw - overheadOnDay)`; **`crewAttributedHrs = dayHoursRaw × Σ pct/100`** over **`people_crew_jobs`** + **`people_crew_bids`** assignments excluding the office job (**Convention 1, share-of-total-day**, matches the `sync_crew_jobs_from_clock` trigger — v2.539); `unallocatedHrs = max(0, fieldHours - crewAttributedHrs - subLaborHrs)`; only emits when **`unallocatedHrs > thresholdHours`** — covered by **21 unit tests** in [`peopleHoursUnallocatedRows.test.ts`](../src/lib/peopleHoursUnallocatedRows.test.ts) (v2.546 added `buildApprovedClosedHoursByPersonByDate` helper tests + `skips salary weekdays with NO approved clock` + `skips when a closed session is still pending approval` + `uses approved-clock hours (not people_hours) for hourly people` gates; Paige-shaped Office + non-Office regression from v2.539 stayed green). **Two key effects of v2.546**: (1) manual `people_hours` grid overrides no longer create rows when no clock backs them up — hourly `dayHoursRaw` reads straight from approved clock; (2) salary weekdays without approved clock no longer produce phantom 8h rows (PTO / sick / no-show salary days now correctly drop off). **Pending sessions are explicitly excluded** — the section defers to the Pending Sessions UI (v2.537) so it doesn't nag about something payroll hasn't approved yet. UI: window selector **3 / 7 / 14 / 30** days (default **14**, **`localStorage`** **`quickfill_unassigned_field_window_days`**) and threshold **≥ 0.25 / 0.5 / 1 / 2 / 4 h** (default **1 h**, **`quickfill_unassigned_field_threshold`**); single-line summary `{H} h across {N} {person|people} · {K} {day|days}`; day groups with header `{Weekday} · {H} h unassigned` and a row table **Person | Day hrs | Overhead | Field | Unalloc. (amber bold) | Context | [Open day audit]**. Realtime on **`people_crew_jobs`** / **`people_crew_bids`** / **`clock_sessions`** — v2.546 dropped the no-longer-relevant `people_hours` subscription and parallel Supabase query (manual grid edits no longer trigger a reload of a section that doesn't read them). **Open day audit** mounts **`PeopleHoursDayAuditModal`** for that person+day. **Audit modal additions (v2.537)**: read-only **Dispatch** panel above **Clock sessions** uses **[`usePersonDayScheduleData`](../src/hooks/usePersonDayScheduleData.ts)** + **[`QuickfillScheduleUserRow`](../src/components/schedule/QuickfillScheduleUserRow.tsx)** (same hourly strip used by **User day schedule** modal and Quickfill **Schedule**) with primary scheduled bands and secondary recorded bands via **`clockSessionsToDispatchSecondaryBands`**, plus a plain-text `<ul>` of every block (`time_start–time_end · {job/HCP label} · — {note}`) and an **Open in Schedule Dispatch** deep-link (**`/schedule-dispatch?week={Sunday}&day={workDate}`**, week from **`companyWeekStartSundayContaining`**). Each clock session row shows a status pill — **Approved** (green) / **Pending** (amber) / **Open** (grey) — with explanatory tooltips, and an inline **Approve** button next to **Edit** for closed pending rows when **`canEditCrewJobs`** (calls **`approveClockSessions`** → **`approve_clock_sessions`** RPC, same path as the Pending Sessions section so **`sync_crew_jobs_from_clock`** still runs server-side; **`approvingSessionIds: Set<string>`** so only the in-flight row disables; refreshes sessions and bubbles **`onCrewSaved?.()`** so Quickfill drops the row when the gap closes). When there are **no** crew assignments yet but at least one closed pending session links to a job/bid, a **pending-approval banner** in **Job / bid assignments** reads `\"{N} pending session(s) link to {Job/Bid label[, ...]}. Approve {it/them} above to auto-assign these hours.\"` (labels via **`formatJobLedgerShortLine`** / **`formatBidLedgerShortLine`** + trade prefix map — supports **v2.432** ledger display prefixes like **`BE249`**); for **2+** sessions an **Approve all (N)** button on the banner runs them through one RPC call. Why it works: **`people_crew_jobs`** is populated by **`sync_crew_jobs_from_clock`**, which the **`clock_sessions_sync_crew_assignments_after_job_bid`** trigger only runs for **approved** sessions, so a clocked-but-unapproved session never auto-creates the crew row that the team summary needs. The badge + Approve button surfaces this directly. **Layout**: **Clock sessions** list grows naturally — the inner **`maxHeight: 220`** + **`overflowY: 'auto'`** was removed so the list lays out at full height and the modal's outer **`maxHeight: '90vh'`** + **`overflow: 'auto'`** handles overflow (no nested scrollbar). **Audit modal additions (v2.545)**: per-clock-session **`Assign`** popover — every row whose `job_ledger_id` and `bid_id` are both null now shows the shared **`AssignSessionJobPopover`** ([`src/components/clock-sessions/AssignSessionJobPopover.tsx`](../src/components/clock-sessions/AssignSessionJobPopover.tsx), the same portal control the Dashboard clock strip uses) right beside the existing **Approve** / **Edit** buttons in the row's right-side actions cluster, gated on `canEditCrewJobs && !sessionsUserMissing && !!s.user_id && !s.job_ledger_id && !s.bid_id`. Portal `popoverZIndex={1110}` (above modal `zIndex: 1002`); Dispatch quick-picks seeded from `dispatchScheduleAssigneeUserId={s.user_id}` + `dispatchScheduleWorkDateYmd={workDate}` so the day's `job_schedule_blocks` jobs surface above the unified search. On save it `UPDATE`s `clock_sessions.job_ledger_id` (or `bid_id`) for **just that session**; the **`clock_sessions_sync_crew_assignments_after_job_bid`** trigger (migration **`20260402120000`**) fires and re-runs **`sync_crew_jobs_from_clock`** — which per **v2.538** always rewrites `people_crew_jobs.job_assignments` for already-approved sessions, so the audit modal's **Job / bid assignments** panel and the Quickfill Unassigned list both update on the next `refreshSessions()` + `onCrewSaved?.()` refresh. **This is the canonical fix** for *"session was never linked to a job"* (e.g. *Darren clocked 6 hours with notes about the ATV but `job_ledger_id IS NULL`*) — preferred over directly editing `people_crew_jobs` because the source of truth stays the clock session itself. **Audit modal additions (v2.543)**: inline **`Assign a job or bid`** blue-outline button now sits next to *No job or bid assignments for this day.* in the **Job / bid assignments** panel when **`canEditCrewJobs && !isEditMode`** and the day has zero crew assignments — one click flips `isEditMode = true`, opens the **Search HCP, bid #, job name, project, address…** input with cleared text/results, and any picked result lands at **100%** with the existing **Save crew** button persisting via the same `people_crew_jobs` / `people_crew_bids` upserts. Post-**v2.545** this CTA is the **override** path (use it when the session is overhead and shouldn't allocate to its linked job); the per-row **`Assign`** popover above is the canonical fix for missing job links. View-mode subtitle now matches reality — editing keeps the existing copy, **`!isEditMode && canEditCrewJobs`** says *“Click Edit to change assignments or sessions.”*, **`!canEditCrewJobs`** says *“View only — you don't have permission to edit this day.”* (the prior hardcoded *“This day is marked Correct (view only).”* was misleading because the modal never actually consults **`hours_reviewed`**).
   - **Office Arriving** / **Office Leaving** ([`QuickfillOfficeSection.tsx`](../src/components/quickfill/QuickfillOfficeSection.tsx)): dev-only **Edit checklist** / **Done editing** per variant (**`localStorage`**: **`quickfill_office_arriving_dev_edit`**, **`quickfill_office_leaving_dev_edit`**); off = normal checklist; on = drag reorder, **Remove**, dev add panel. **Edit checklist** row **right-aligned**; checklist rows **`alignItems: center`** (checkbox aligned with label).
@@ -2361,7 +2393,7 @@ No DB / migration / RLS / RPC / Edge changes — relies entirely on the existing
   - Shows steps assigned to current user (by `assigned_to_name`)
   - **Bids** (due dates) and **prospect callbacks** for roles that have access (same as prior behavior)
   - **My Day single-day card** (above the month grid, **all authenticated viewers**, both viewports — **v2.558**): full-width card with **← prev / heading / next →** layout. Heading reads `My Day · {Today | Yesterday | Tomorrow | weekday, MMM D}` via **`formatMyDayHeadingLabel(ymd, todayKey)`** ([`Calendar.tsx`](../src/pages/Calendar.tsx)); day math runs on the `YYYY-MM-DD` calendar key with the pure helper **`shiftYmd(ymd, delta)`** (no timezone math). The card lists the same **`renderPlannedWorkChips`** that the day-detail modal uses (long-form `573 · Johnny Ingram` label + `8:00 AM–12:00 PM` time + optional dispatch note); clicking a chip calls **`useJobDetailModal().openJobDetail({ jobId })`**. Scrubbing past the visible grid range triggers a `useEffect` that bumps **`currentMonth`** to the month containing the new **`myDayKey`** so the existing planned-work load effect refreshes **`plannedByWorkDate`**; **Today** in the header resets both `currentMonth` and `myDayKey`. Empty-state copy **No planned work.** is centered.
-  - **Salaried workday layer** (when `people_pay_config.is_salary` and a **`salary_work_schedule_templates`** row exists): optional **Show my workday** checkbox (per-user **`localStorage`** **`calendar_show_my_workday_${uid}`**; **defaults to `false` — v2.558**). Renders **unpaid time off** (`user_time_off`, `kind` always `unpaid`) and scheduled blocks (**override** or **template**) via **`resolveCalendarWorkday`**; chips link to Settings **Salaried workday** or **Unpaid time off**. Data for that layer is loaded for the **full visible grid** (including leading/trailing padding days from adjacent months), so time off and overrides match every painted cell. **Upcoming** includes time-off ranges and future **day overrides**.
+  - **Salaried workday layer** (when `people_pay_config.is_salary` and a **`salary_work_schedule_templates`** row exists): optional **Show my workday** checkbox (per-user **`localStorage`** **`calendar_show_my_workday_${uid}`**; **defaults to `false` — v2.558**). Renders **unpaid time off** (`user_time_off` rows with `kind = 'unpaid'`; the CHECK allows `('unpaid','paid')` since `20260713120000` — paid time off is salaried-only and recorded by pay staff) and scheduled blocks (**override** or **template**) via **`resolveCalendarWorkday`**; chips link to Settings **Salaried workday** or **Unpaid time off**. Data for that layer is loaded for the **full visible grid** (including leading/trailing padding days from adjacent months), so time off and overrides match every painted cell. **Upcoming** includes time-off ranges and future **day overrides**.
   - **Show recorded time** toggle (per-user **`localStorage`** **`calendar_show_recorded_time_${uid}`**; **defaults to `false` — v2.558**) controls the **Recorded Xh** chip and per-session lines below.
   - **Show weekends** toggle — when **off**, Saturday + Sunday columns are hidden from the month grid (`visibleDays` drops them, `dayHeaders` becomes `Mon–Fri`, `gridColumns` flips to `repeat(5, 1fr)`); My Day arrows are unaffected and still step one calendar day at a time. **v2.558** — the toggle now defaults from **viewport** state (**`useState(() => !mobileCalendarLayout)`**) and is **not persisted**: every page open mobile (`max-width: 640px`, **`CALENDAR_MOBILE_CHROME_MQ`**) starts **unchecked** and desktop starts **checked**; in-session flips work but a refresh resets to the viewport default. The legacy `calendar_show_weekends_${uid}` localStorage key is no longer read or written (its hydration `useEffect` and the `setItem` write inside the toggle handler are both gone).
   - **Toggle placement**: on **mobile** (`mobileCalendarLayout`), **Show my workday** / **Show recorded time** / **Show weekends** move from the month-header row to a centered flex cluster **below** the grid; on **desktop** they sit beside the **Today** button in the month-header row. Three render helpers (**`renderShowMyWorkdayToggle`**, **`renderShowRecordedTimeToggle`**, **`renderShowWeekendsToggle`**) mount the same checkbox in either location.
@@ -2373,7 +2405,7 @@ No DB / migration / RLS / RPC / Edge changes — relies entirely on the existing
   - Links to workflow pages
   - Navigation (prev/next month, "Today")
   - **Access Control**: Assistants/subcontractors only see stages assigned to them
-- **Settings**: **`TimeOffSettings`** (`#settings-time-off`) — self-service CRUD on **`user_time_off`** (unpaid-only ranges)
+- **Settings**: **`TimeOffSettings`** (`#settings-time-off`) — self-service CRUD on **`user_time_off`**; self-service remains **unpaid-only** even though the table's `kind` CHECK is now `('unpaid','paid')` (`20260713120000_time_off_paid_kind_people_employment_dates.sql`)
 
 ### 8. Dashboard
 - **Page**: `Dashboard.tsx`
@@ -2442,7 +2474,7 @@ No DB / migration / RLS / RPC / Edge changes — relies entirely on the existing
 - **Layout/Navigation**:
   - **Gear menu** (top-right in Layout): Settings link (all users); Global Reload (dev-only, broadcasts reload to all connected clients via Supabase Realtime)
   - **Top button row** (Settings page): Sign out, Hard Reload (clears caches, reloads current user only), Change password
-  - **In-page jump links**: **People & accounts** (`#settings-people`) appears for **dev** and **master_technician**. Adoption, master-to-master sharing, primaries/superintendents, **Share Cost Matrix and Teams**, and related UI all live in that single group (there is no separate **Sharing & access** section or anchor).
+  - **In-page jump links**: **People & accounts** (`#settings-people`) appears for **dev** and **master_technician**. Adoption, master-to-master sharing, primaries/superintendents, and related UI all live in that single group; there is no separate **Sharing & access** section or anchor. The dev **Share Cost Matrix and Teams** grant was retired (`20260715090000_retire_cost_matrix_shares_and_tags.sql`; "see costs without pay admin" is the **controller** role now).
 - **Features (All Users)**:
   - **Sign out**: At top of Settings page
   - **Hard Reload**: At top of Settings page; clears caches and reloads current user only
@@ -2451,7 +2483,7 @@ No DB / migration / RLS / RPC / Edge changes — relies entirely on the existing
 - **Features (Dev, Master, Assistant)**:
   - **Dashboard buttons**: Checkboxes to show/hide each quick-action button (Job, Job Labor, Bid, Project, Part, Assembly, New Prospect) on the Dashboard. Stored per-user in `user_dashboard_buttons`.
   - **My Roles Goals** (dev, master, assistant): Pick a user and manage that user’s **daily goal** lines (add, edit, delete, reorder). Stored in **`user_dashboard_goals`**. These drive the full-screen **“My Roles Goals”** gate on the target user’s Dashboard after their first clock-in of the day (see Dashboard **Clock In/Out**); acknowledgment per calendar day is **`user_daily_goals_ack`**.
-  - **Dashboard Page Pins** (all roles): Collapsible section visible to all authenticated users. **Page pins** card: Clear all + per-pin Remove list. Shows merged pins from localStorage and `user_pinned_tabs`, filtered by role. Users can manage their own pins (add via Layout pin icon; remove individual pins or clear all in Settings). **Pin Billed, Cost matrix, Supply Houses AP, Sub Labor Due** remain dev-only (checkboxes to pin financial totals to masters/devs dashboards).
+  - **Dashboard Page Pins** (all roles): Collapsible section visible to all authenticated users. **Page pins** card: Clear all + per-pin Remove list. Shows merged pins from localStorage and `user_pinned_tabs`, filtered by role. Users can manage their own pins (add via Layout pin icon; remove individual pins or clear all in Settings). **Pin Billed, Internal Team labor, Supply Houses AP, Sub Labor Due** remain dev-only (checkboxes to pin financial totals to masters/devs dashboards).
   - **Job Book** (Collect Payment): Collapsible **Job Book (Collect Payment line items)** (**[`JobBookSettingsSection`](../src/components/settings/JobBookSettingsSection.tsx)**; shared **[`JobBookEditorPanel`](../src/components/settings/JobBookEditorPanel.tsx)**) — maintain **`job_book_entries`** (**Work**, **Cost**, optional **`service_types`** restriction, reorder). **Add line** focuses **Work** with the default label selected; **Cost** at **0** selects all on focus for faster typing. The same editor opens from **Jobs → Stages** (toolbar book icon, **[`JobBookModal`](../src/components/jobs/JobBookModal.tsx)**). **RLS**: all **`authenticated`** users may **SELECT** (subcontractors read the list in **`CollectPaymentModal`**); **INSERT/UPDATE/DELETE** for **dev** / **master_technician** / **assistant** only.
 - **People & accounts** (`settings-people`):
   - **Dev-only blocks** (in order before sharing): Active Accounts and user tools — action row includes **Invite via email**, **Manually add user**, **Archive user**, **Archive User & Reassign Customers**, and **Merge users** (**v2.652**: keep + merge-away pickers with eligibility rules — same role, absorbed archived or never signed in, live account survives; **Preview merge** dry-run shows per-table counts via `merge_user_accounts`; Edge `merge-users` bans the absorbed login); each account row's **Edit** mode ends with a red **Archive** button whose confirm explains the effects (login banned · hidden from lists · nothing deleted · restorable) and warns when the account owns customers — **Role visibility**, **Task Dispatch** group for assistants, **Pay Approved Masters**, **Team feedback** (same **[`TeamFeedbackDevSettingsBlock`](../src/components/team-feedback/TeamFeedbackDevSettingsBlock.tsx)** as **People → Feedback**: **Enabled** persists to DB; **Settings** / **Eligibility** modals; raw submissions with detail modal, CSV, dev delete), **Additional People** (People Created by Me / Other Users), etc.
@@ -2468,7 +2500,6 @@ No DB / migration / RLS / RPC / Edge changes — relies entirely on the existing
     - Checkbox indicates sharing status
     - Shared masters receive assistant-level access (cannot see financial totals)
     - Viewing masters can see who has shared with them
-  - **Share Cost Matrix and Teams** (dev): Grant view-only Pay cost matrix and teams to selected masters or assistants—UI in this group (moved from People Pay; not under Dashboard Page Pins)
 - **Jobs & dispatch** (`settings-jobs`, dev): **Job creation overrides** (per user, “create jobs as” another master/assistant; bulk re-assign with confirmation). **Default Labor Rate** ($/hr) for new labor jobs in Jobs → + Labor.
 - **Features (Dev Only)**:
   - View all users with roles
@@ -2484,7 +2515,7 @@ No DB / migration / RLS / RPC / Edge changes — relies entirely on the existing
   - **Email Template Management**: Create and edit email templates for all notification types
   - **Prospect copy templates** (dev): Edit default body and subject for No Response Email, Phone call Follow up Email, and Just checking in Email. Stored in `app_settings`. New users inherit these defaults.
   - View all people entries (not just own entries)
-  - **Pin to Dashboard** (dev-only, within Dashboard Page Pins section): Pin Billed Awaiting Payment, Supply Houses AP, Sub Labor Due, and Cost matrix (Internal Team) to masters/devs dashboards. Checkbox list of masters/devs, "Pin To Dashboard" and "Unpin All" buttons. Pins appear as shortcut links on the target user's Dashboard with live totals (Billed Awaiting Payment (count) - $total, Supply Houses: $X, Sub Labor Due: $X, Internal Team: $X).
+  - **Pin to Dashboard** (dev-only, within Dashboard Page Pins section): **Pin Billed to Dashboard**, **Pin Supply Houses AP to Dashboard**, **Pin Sub Labor Due to Dashboard**, and **Pin Internal Team labor to Dashboard** (renamed from the old Cost matrix pin) for masters/devs dashboards. Checkbox list of masters/devs, "Pin To Dashboard" and "Unpin All" buttons. Pins appear as shortcut links on the target user's Dashboard with live totals (Billed Awaiting Payment (count) - $total, Supply Houses: $X, Sub Labor Due: $X, Internal Team: $X).
   - **Duplicate Materials** (`/duplicates`): Dev-only page for finding and removing duplicate material parts. Groups parts with 80%+ name similarity; shows Name, Manufacturer, Part Type, Service Type, Best Price, Supply House; filters by "Only show 100% name match" and service type (Plumbing, Electrical, HVAC); delete with type-to-confirm. Accessible via Settings → Duplicate Materials link.
   - **Data backup (dev)**: Export projects, materials, or bids as JSON for backup
     - "Export projects backup" downloads customers, projects, workflows, steps, step actions, subscriptions, line items, projections
@@ -2707,7 +2738,7 @@ No DB / migration / RLS / RPC / Edge changes — relies entirely on the existing
 - **Edit**: Edit column shows only a **gear/settings icon** (no visible button box; header text hidden, `title`/`aria-label` for accessibility). Opens the full New/Edit Bid modal.
 - "New" button opens modal to create/edit bids. **Top of form** (CSS grid `bid-form-top-fields`): **Desktop** — row 1: Estimator, Account Man, Bid Date; row 2: Bid #, **Project Name** (required; spans two columns). **Mobile** — row 1: Estimator | Account Man; row 2: Bid # | Bid Date; row 3: **Project Name** full width. **Estimator**, **Account Man**, **Service Type**, and **Win/Loss** use [`SearchableSelect`](../src/components/SearchableSelect.tsx) (portal list, `z-index` above the modal overlay) instead of native `<select>`. **Estimator** and **Account Man** lists: **`loadEstimatorUsers`** in **`Bids.tsx`** — **non-archived** users only, exclude **Helper** (`helpers` role), exclude display name exactly **delete** (trim, case-insensitive); **`RECENT_FEATURES`** **v2.449**. **Service Type** is required for submit (`bidFormMissingFields` / `bidFormCanSubmit`). **Service Type**, **Win/Loss**, and **Bid Date Sent** share a flex row. **Project Address** is full width, then **Distance to Office (miles)** and **Plan Pages** on a **two-column row** (map link beside distance). Modal `maxWidth` **720px**. **"Save and start Counts"** (bottom left) saves the bid and opens it in the Counts tab. **Win/Loss audit note** (**v2.507**): After a successful **Save** or **Save and start Counts**, when **`outcome`** changes from the value before save (**new bid** first save included), **`insertOutcomeChangeBidNoteAfterSave`** inserts **`bids_submission_entries`** and updates **`bids.last_contact`** using **[`outcomeChangeBidNote.ts`](../src/lib/outcomeChangeBidNote.ts)** (body includes **who changed** (`profileName` or session email) and optional loss reason when **Lost**). Runs before the optional **Confirm bid sent** modal note, which can supersede **`last_contact`**. Then: Project Folder (inline **bid folders** links), Job Plans, **Bid Submission**, **Design Drawings Plan Date**, GC/Builder picker, **Project Contact**, **Submitted to**, Bid Value / Agreed / Maximum Profit, etc. When outcome is **Won**, **Estimated Job Start Date** is shown. Distance uses min 0, step 0.1. Profit label is "Maximum Profit".
 - **Edit Bid modal**: **Cancel** button is at **top right** next to the title. **Archive from board**: outline control beside **Delete bid** when the **saved** bid is eligible for working-board archive and not yet archived (**[`workingBoardArchiveEligibility.ts`](../src/lib/workingBoardArchiveEligibility.ts)**); confirm stacks above the form (**`RECENT_FEATURES`** **v2.518**). **Delete**: "Delete bid" opens a separate confirmation modal; user must type the project name (or leave empty) to enable Delete.
-- **GC/Builder**: Uses `customers` table as data source with searchable combobox (same pattern as customer picker in ProjectForm). **"+ Add new customer"** option at the top of the dropdown (for dev, master_technician, assistant, and estimator) opens an **Add Customer** modal with the same form as `/customers/new` but without Quick Fill; on save, the new customer is created, list is refetched, and the new customer is selected as the bid's GC/Builder. Legacy `bids_gc_builders` retained for backward compatibility.
+- **GC/Builder**: Uses `customers` table as data source with searchable combobox (same pattern as the project form customer picker). **"+ Add new customer"** option at the top of the dropdown (for dev, master_technician, assistant, and estimator) opens an **Add Customer** modal with the same form as `/customers/new` but without Quick Fill; on save, the new customer is created, list is refetched, and the new customer is selected as the bid's GC/Builder. Legacy `bids_gc_builders` retained for backward compatibility.
 - Clicking a GC/Builder name opens a modal: customer details (name, address, phone/email from contact_info, won/lost bids) or legacy GC/Builder details (name, address, contact number, won/lost bids) depending on whether bid has `customer_id` or `gc_builder_id`.
 
 **Estimators Tab** (**v2.531+**, URL `?tab=estimators`, viewable by **all roles**; sits to the **right of Bid Costs**):
@@ -2816,6 +2847,23 @@ No DB / migration / RLS / RPC / Edge changes — relies entirely on the existing
 - **Data hook**: [`useMapPageData.ts`](../src/hooks/useMapPageData.ts) — loads address-bearing jobs/bids/estimates (RLS-visible rows), merges **`address_geocodes`**; clears **Loading…** immediately after cached coordinates apply, then invokes Edge **`geocode-address-batch`** in chunks (≤20 addresses) for misses with a **generation** guard so **Reload** does not race; optional **Resolving addresses…** line plus collapsible progress list; **`geocode-one`** remains for [**MapGeocodeReviewModal**](../src/components/map/MapGeocodeReviewModal.tsx) **`refresh_google_only`** and **Settings** default-map label flows ([`invokeGeocodeOneRefreshGoogleOnly.ts`](../src/lib/map/invokeGeocodeOneRefreshGoogleOnly.ts), [`mapDefaultViewSettings.ts`](../src/lib/mapDefaultViewSettings.ts)); see [**EDGE_FUNCTIONS.md**](./EDGE_FUNCTIONS.md) (**`geocode-one`**, **`geocode-address-batch`**)
 - **Access**: **dev**, **master_technician**, **assistant**, and **estimator** — **[`Map.tsx`](../src/pages/Map.tsx)** + [`layoutRouteAccess.ts`](../src/lib/layoutRouteAccess.ts) / [`Layout.tsx`](../src/components/Layout.tsx); desktop **pin** in header when `canShowMapNav`; **narrow width** hides the pin → **Map** is under **gear** for eligible roles; **`address_geocodes`** RLS and Edge role checks (**`20270520120000_address_geocodes_estimator_map_access.sql`**) include **estimator**
 
+### 17. Prospects (`/prospects`)
+- **Page**: [`Prospects.tsx`](../src/pages/Prospects.tsx) with two top-level tabs:
+  - **Customers** — the sales-lead pipeline, with sub-tabs **Follow Up**, **Prospect List**, **Convert**, and **Activity** (renamed from **Team** in v2.708; per-user/per-day marked+updated activity tables). Lead warmth, fit status (`prospect_fit_status`), callbacks, and copy templates feed the Calendar and the Quickfill **Prospects** section.
+  - **Team** — the **prospective-hires board** ([`TeamProspectsTab`](../src/components/prospects/TeamProspectsTab.tsx)): candidate cards in `team_prospects` with roles in `team_prospect_roles` (`20260717190000`, `20260717230000`), including per-source success tracking (v2.715). Access is per-user via `users.team_prospects_access` (`20260717250000_team_prospects_access_flag.sql`, helper `user_has_team_prospects_access()`, v2.714) — prospects-staff role alone is not enough.
+- See [ACCESS_CONTROL.md](./ACCESS_CONTROL.md) and [RECENT_FEATURES.md](./RECENT_FEATURES.md) (v2.708–v2.715) for details.
+
+### 18. Read-only training mode
+- A dev can flag any user `users.read_only` (Settings → Active Accounts → **Read-only**, any role since v2.704; nobody can flag or clear their own account). The user browses everything their role can see, but all writes are blocked.
+- Enforcement is two layered, idempotent helpers that migrations re-run after CREATE TABLE: `apply_read_only_write_blocks()` (restrictive RLS policies; `20260713090000_read_only_training_mode.sql`) and `apply_read_only_stmt_blocks()` (`read_only_block_stmt` statement trigger that also stops SECURITY DEFINER RPCs; `20260717000000_read_only_all_roles_and_rpc_block.sql`).
+- Anonymous public flows (estimate/contract accept) are unaffected — `is_read_only()` is false without a JWT. See [ACCESS_CONTROL.md](./ACCESS_CONTROL.md) → Read-only training mode.
+
+### 19. Deleted-records archive, restore, and bulk-deletion alerts
+- **Archive**: `deleted_records_archive` captures every deleted row (payload, `deleted_by`, `deleted_at`, `table_name`, `group_key` bundling a cascade into one logical deletion) across ~83 covered tables. Migrations `20260716120000` (core), `20260716150000` (bids coverage), `20260716230000` (tier 2), `20260717210000` (people).
+- **Restore**: `list_deleted_records()` / `restore_deleted_records()` RPCs power the dev "Recently deleted" UI with one-click restore, including FK-cycle handling (`20260716180000_deleted_records_restore.sql`, `20260716210000_deleted_records_restore_fk_cycles.sql`).
+- **Alerts**: `list_bulk_deletion_alerts()` (`20260717120000_bulk_deletion_alerts.sql`) is a read-side aggregate over the archive that surfaces deletion bursts (measured in bundles, not rows) on the dev dashboard.
+- See [MIGRATIONS.md](./MIGRATIONS.md) and [RECENT_FEATURES.md](./RECENT_FEATURES.md) (v2.695–v2.704) for details.
+
 ---
 
 ## File Structure
@@ -2852,10 +2900,11 @@ pipetooling.github.io/
 │   │   ├── CustomerForm.tsx    # Create/edit customer
 │   │   ├── Customers.tsx       # List customers
 │   │   ├── Dashboard.tsx       # User dashboard
-│   │   ├── People.tsx          # People roster (Users, Hours — pay tools + matrix in Hours)
+│   │   ├── People.tsx          # People roster (Users, Hours, Payroll + other tabs — pay tools live in Hours; cost matrix retired)
 │   │   ├── Jobs.tsx           # Jobs (Reports, Stages, Billing, Team Labor, Sub Labor, Crew P&L, Parts, Job Summary, Inspections)
 │   │   ├── Map.tsx            # Map: jobs/bids/estimates on Leaflet + address_geocodes (dev / master / assistant / estimator)
-│   │   ├── ProjectForm.tsx    # Create/edit project
+│   │   ├── ProjectNewGate.tsx # Create project (gate)
+│   │   ├── ProjectEditGate.tsx # Edit project (gate)
 │   │   ├── Materials.tsx       # Materials management (price book, templates, purchase orders)
 │   │   ├── Bids.tsx            # Bids management (bid board, counts, takeoffs, cover letter, submission & followup); Confirm bid sent optional Adds to bid note → bids_submission_entries (v2.383)
 │   │   ├── Projects.tsx       # List projects
@@ -3038,12 +3087,12 @@ VITE_SUPABASE_ANON_KEY=your-anon-key
 
 ##### `allow_devs_update_delete_people`
 - **Purpose**: Allows devs to edit and delete people entries created by other users
-- **Location**: `supabase/migrations/20260211210000_allow_devs_update_delete_people.sql`
+- **Location**: `supabase/archive/migrations-pre-baseline/20260211210000_allow_devs_update_delete_people.sql`
 - **What it does**: Adds UPDATE and DELETE policies for `people` using `is_dev()`, enabling devs to manage names, email, phone, notes and delete entries in Settings → People Created by Other Users
 
 ##### `create_counts_fixture_groups`
 - **Purpose**: Configurable quick-select groups for adding count rows in Bids
-- **Location**: `supabase/migrations/20260211200000_create_counts_fixture_groups.sql`
+- **Location**: `supabase/archive/migrations-pre-baseline/20260211200000_create_counts_fixture_groups.sql`
 - **What it does**:
   1. Creates `counts_fixture_groups` (id, service_type_id, label, sequence_order)
   2. Creates `counts_fixture_group_items` (id, group_id, name, sequence_order)
@@ -3471,7 +3520,7 @@ async function myFunction() {
   - `is_dev()` is used in `people` table policies (for devs to read all entries)
   - All new policies should use `is_dev()` function pattern
 
-### 4. Updating Functions Used by RLS Policies
+### 2. Updating Functions Used by RLS Policies
 - **Issue**: Cannot drop a function (e.g., `is_owner()`) if RLS policies depend on it
 - **Solution**: When renaming functions used by policies:
   1. Create the new function first (e.g., `is_dev()`)
@@ -3484,7 +3533,7 @@ async function myFunction() {
   - Dropping and recreating each policy with updated expressions
   - Finally dropping `is_owner()` after all dependencies are updated
 
-### 5. RLS Policy Recursion Prevention
+### 3. RLS Policy Recursion Prevention
 - **Issue**: RLS policies that query `public.users` directly can cause recursion or performance issues
 - **Solution**: Use helper functions with `SECURITY DEFINER` instead of direct queries
 - **Examples**:
@@ -3496,11 +3545,11 @@ async function myFunction() {
   - `public.master_adopted_current_user(master_user_id UUID)` - Checks if master adopted current user (SECURITY DEFINER)
 - **Best Practice**: All policies should use helper functions instead of direct `EXISTS (SELECT 1 FROM public.users ...)` queries
 
-### 6. Character Encoding in Workflow
+### 4. Character Encoding in Workflow
 - **Issue**: Special characters (↓, ·, …, ←, –) display as "?"
 - **Solution**: Use Unicode escapes: `{"\u2193"}` or ASCII alternatives
 
-### 2. Foreign Key Deletion Order
+### 5. Foreign Key Deletion Order
 - **Issue**: Deleting parent records fails if children exist
 - **Solution**: Always delete in dependency order:
   1. `step_subscriptions`
@@ -3509,7 +3558,7 @@ async function myFunction() {
   4. `projects`
   5. `customers`
 
-### 3. Edge Function CORS
+### 6. Edge Function CORS
 - **Issue**: Edge Functions can fail with CORS errors
 - **Solution**: All Edge Functions explicitly set CORS headers:
   ```typescript
@@ -3520,7 +3569,7 @@ async function myFunction() {
   }
   ```
 
-### 4. Edge Function JWT Validation
+### 7. Edge Function JWT Validation
 - **Issue**: Gateway JWT validation can fail on GitHub Pages
 - **Solution**: Use `verify_jwt: false` and validate internally:
   ```typescript
@@ -3531,36 +3580,32 @@ async function myFunction() {
   const { data: { user }, error } = await supabase.auth.getUser(token)
   ```
 
-### 5. Environment Variables in Build
+### 8. Environment Variables in Build
 - **Issue**: Missing env vars cause runtime errors
 - **Solution**: GitHub Actions workflow validates secrets before build
 - **Note**: Values must be set in repository secrets
 
-### 6. Character Encoding in Workflow
-- **Issue**: Special characters (↓, ·, …, ←, –) display as "?"
-- **Solution**: Use Unicode escapes: `{"\u2193"}` or ASCII alternatives
-
-### 7. People Deduplication
+### 9. People Deduplication
 - **Issue**: Same person appears twice if they exist in both `people` and `users`
 - **Solution**: Filter `people` entries where `email` matches a `user.email`
 
-### 8. Impersonation Session Storage
+### 10. Impersonation Session Storage
 - **Issue**: Original session lost during impersonation (e.g. when reload occurs after Global Reload or new version)
 - **Solution**: Store original session in `localStorage` before impersonating (persists across reloads)
 - **Key**: `'impersonation_original'`
 
-### 9. TypeScript Type Updates
+### 11. TypeScript Type Updates
 - **Issue**: Database types can become out of sync
 - **Solution**: Manually update `src/types/database.ts` when schema changes
 
-### 10. RLS Policy for Assistant Step Updates
+### 12. RLS Policy for Assistant Step Updates
 - **Issue**: Assistants getting 400 errors when updating workflow steps (especially when changing `assigned_to_name`)
 - **Root Cause**: `WITH CHECK` clause in `project_workflow_steps` UPDATE policy was too restrictive - only allowed assistants to update steps where `assigned_to_name` matched their name, preventing assignment changes
 - **Solution**: Updated `optimize_rls_for_master_sharing.sql` migration to include `can_access_project_via_workflow(workflow_id)` check in `WITH CHECK` clause, allowing assistants to update any step in workflows they can access (via adoption/sharing)
 - **Migration**: `supabase/archive/optimize_rls_for_master_sharing.sql` (updated UPDATE policy)
 - **Future**: Consider Supabase CLI type generation
 
-### 11. Materials Price Book - Missing Prices in Expanded Row (FIXED 2026-02-04)
+### 13. Materials Price Book - Missing Prices in Expanded Row (FIXED 2026-02-04)
 - **Issue**: Prices added via "Edit prices" modal were not appearing in the expanded row details after closing the modal, even though they were visible in the modal itself and stored correctly in the database
 - **Root Cause**: The `loadParts()` function was loading all prices across all parts in a single query with Supabase's default 1,000-row limit. With 1,241+ total prices in the database, prices beyond the cheapest 1,000 were being cut off. The "Edit prices" modal worked correctly because it filtered prices by `part_id` first, loading only that part's prices.
 - **Symptoms**:
@@ -3596,23 +3641,23 @@ async function myFunction() {
   - Scales to any number of total prices
 - **Files Modified**: `src/pages/Materials.tsx` (lines 194-217)
 
-### 12. GitHub Pages MIME Types
+### 14. GitHub Pages MIME Types
 - **Issue**: Module scripts fail with wrong MIME type
 - **Solution**: `public/.nojekyll` prevents Jekyll from interfering
 - **Note**: GitHub Pages must be configured to use "GitHub Actions" as source, not a branch
 
-### 11. Refresh Token Errors
+### 15. Refresh Token Errors
 - **Issue**: Console errors for invalid refresh tokens on login screen
 - **Solution**: Errors are handled gracefully in `useAuth` hook - invalid tokens are cleared automatically
 - **Note**: These errors are harmless and indicate user needs to sign in again
 
-### 12. Magic Link Authentication Handling
+### 16. Magic Link Authentication Handling
 - **Issue**: Magic links from "imitate" feature redirect with tokens in URL hash but weren't being processed
 - **Solution**: Added `AuthHandler` component in `App.tsx` that detects `type=magiclink` tokens in URL hash, sets session, and redirects to dashboard
 - **Implementation**: Extracts `access_token` and `refresh_token` from hash, calls `supabase.auth.setSession()`, clears hash, and navigates
 - **Files Modified**: `src/App.tsx` - Added AuthHandler component, `src/pages/Settings.tsx` - Fixed redirect URL construction
 
-### 13. TypeScript Strict Mode
+### 17. TypeScript Strict Mode
 - **Issue**: TypeScript errors for potentially undefined values
 - **Solution**: Always check for undefined before accessing array elements, use non-null assertions (`!`) when type narrowing guarantees existence
 - **Common Patterns**:
@@ -3620,13 +3665,13 @@ async function myFunction() {
   - Use destructuring with validation: `if (dateMatch && dateMatch[1] && dateMatch[2])`
   - Wrap function calls in arrow functions for event handlers: `onClick={() => openAddStep()}`
 
-### 14. Current Stage Position Display
+### 18. Current Stage Position Display
 - **Issue**: Projects page showed invalid positions like "[16 / 13]" when using raw `sequence_order` values
 - **Solution**: Calculate position by finding step's index in sorted list, then add 1 (1-indexed)
 - **Implementation**: `Projects.tsx` sorts steps by `sequence_order` and finds index position instead of using raw value
 - **Result**: Always shows correct position relative to total steps, regardless of sequence_order gaps or non-sequential values
 
-### 15. Users Table RLS Recursion
+### 19. Users Table RLS Recursion
 - **Issue**: Policies on `users` table that query `users` or `master_assistants` (which queries `users`) cause infinite recursion errors
 - **Solution**: Use `SECURITY DEFINER` functions to bypass RLS when checking relationships
 - **Example**: `master_adopted_current_user()` function uses `SECURITY DEFINER` to check `master_assistants` without triggering RLS
@@ -3634,21 +3679,21 @@ async function myFunction() {
 - **Result**: Assistants can now see master information (name/email) when viewing projects without recursion errors
 - **Master Sharing**: Similar pattern used for `master_shares` table - RLS policies check for sharing relationships without recursion
 
-### 16. Line Items RLS Timeout
+### 20. Line Items RLS Timeout
 - **Issue**: Loading line items causes statement timeout errors (500 Internal Server Error)
 - **Solution**: Created `can_access_project_via_step()` helper function to optimize RLS policies
 - **Implementation**: Uses `SECURITY DEFINER` to bypass RLS, performs single optimized query
 - **Migration**: `supabase/archive/optimize_workflow_step_line_items_rls.sql`
 - **Result**: Line items load quickly without timeout errors
 
-### 17. Step Actions RLS Errors
+### 21. Step Actions RLS Errors
 - **Issue**: Recording workflow actions causes 403 Forbidden or 500 Internal Server Error
 - **Solution**: Created `can_access_step_for_action()` helper function to optimize RLS policies
 - **Implementation**: Uses `SECURITY DEFINER` to bypass RLS, checks step access efficiently
 - **Migration**: `supabase/archive/fix_project_workflow_step_actions_rls.sql`
 - **Result**: Actions can be recorded successfully without errors
 
-### 18. Workflow Data Persistence Issues
+### 22. Workflow Data Persistence Issues
 - **Issue**: Projections and workflow steps (cards) not persisting when navigating away and back to a project
   - Symptoms: Added projections/steps disappear on first navigation back, but appear on subsequent visits
   - Root Cause: Race condition where `workflow?.id` from React state was `null` during immediate save operations
@@ -3657,7 +3702,7 @@ async function myFunction() {
 - **Files Modified**: `src/pages/Workflow.tsx`
 - **Result**: Projections and steps now persist correctly on first navigation back
 
-### 19. Concurrent Workflow Creation
+### 23. Concurrent Workflow Creation
 - **Issue**: Multiple workflows being created for the same project, causing duplicate workflow entries
   - Symptoms: Console logs showing multiple "Created new workflow" messages for the same project
   - Root Cause: Race condition where multiple concurrent calls to `ensureWorkflow` could all pass the initial check before any stored their promise
@@ -3670,7 +3715,7 @@ async function myFunction() {
 - **Files Modified**: `src/pages/Workflow.tsx`
 - **Result**: Only one workflow is created per project, even with concurrent calls
 
-### 20. Redundant loadSteps Calls
+### 24. Redundant loadSteps Calls
 - **Issue**: Excessive `loadSteps` calls (7+ times) for the same workflow_id, causing performance issues
   - Symptoms: Console logs showing multiple redundant `loadSteps` calls on page load
   - Root Cause: `useEffect` with `workflow?.id` in dependency array re-running when workflow state updates
@@ -3685,7 +3730,7 @@ async function myFunction() {
 - **Files Modified**: `src/pages/Workflow.tsx`
 - **Result**: Reduced to 1-2 `loadSteps` calls per page load, improving performance
 
-### 21. TypeScript Type Errors: string | null vs string | undefined
+### 25. TypeScript Type Errors: string | null vs string | undefined
 - **Issue**: TypeScript build errors: `Type 'string | null' is not assignable to type 'string | undefined'`
   - Symptoms: Build fails with 7 type errors in `Workflow.tsx` when assigning `ensureWorkflow(projectId)` result
   - Root Cause: `ensureWorkflow` returns `Promise<string | null>`, but variables inferred from `workflow?.id` are typed as `string | undefined` (optional chaining returns `undefined`, not `null`)
@@ -3717,18 +3762,17 @@ async function myFunction() {
    - **Solution**: Centralized error handling/toast system
 3. **Styling**: Inline styles make maintenance difficult
    - **Solution**: Consider CSS modules or Tailwind
-4. **Testing**: No tests currently
-   - **Solution**: Add unit tests for hooks, integration tests for pages
+4. **Testing**: 233 `*.test.ts(x)` files (~1,800 unit tests) run via vitest (`npm test`); repo convention is to extract logic into pure `.ts` kernels with unit tests — there is no render-test harness
 5. **Edge Function Error Messages**: Inconsistent error format
    - **Solution**: Standardize error response format
 
 ### Database Considerations
 - **Indexes**: Review query patterns and add indexes for performance
-- **Archiving**: Consider soft deletes or archive tables for historical data
-- **Audit Trail**: No audit logging currently (who changed what, when)
+- **Archiving**: Implemented — `deleted_records` archives deletes with restore RPCs (six migrations 2026-07-16/17: `20260716120000_deleted_records_archive.sql` through `20260717210000_deleted_records_archive_people.sql`); see the Deleted-records section under Key Features
+- **Audit Trail**: Partially implemented — `deleted_records` (who deleted what, when, with payload), `bulk_deletion_alerts` (`20260717120000`), and `claim_dev_attempts` (claim-dev attempt audit, `20260717150000`); plus the long-standing `project_workflow_step_actions` action history
 
 ### Security Considerations
-- **Admin Code**: Now configurable via DEV_PROMOTION_CODE Supabase secret (claim-dev Edge Function)
+- **Admin Code**: DEV_PROMOTION_CODE Supabase secret (claim-dev Edge Function) — break-glass only since `20260717150000_claim_dev_break_glass.sql` (refused while a usable dev exists; audited)
 - **Rate Limiting**: No rate limiting on Edge Functions
 - **Input Validation**: Some user inputs not validated (e.g., email format)
 - **SQL Injection**: RLS policies use parameterized queries (safe), but be cautious with dynamic SQL
@@ -3742,11 +3786,16 @@ async function myFunction() {
 
 ## Quick Reference
 
-### User Roles
+### User Roles (9 — see [ACCESS_CONTROL.md](./ACCESS_CONTROL.md) for the authoritative matrix)
 - **dev**: Full access, user management, templates
 - **master_technician**: Create/manage projects, customers, workflows
 - **assistant**: Create/edit projects, view/update workflows (assigned stages only), full access to Bids
 - **subcontractor**: Dashboard and Calendar only
+- **estimator**: Bids + Materials focused; no Customers/Projects/People
+- **primary**: Materials, Jobs Reports, bid documents (RFI/CO/Lien Release)
+- **superintendent**: Runs assigned projects; manages subs; no People page
+- **helpers**: Subcontractor-like field role (`helpers_service_type_ids` scoping)
+- **controller**: Assistant-like plus dev-level financial visibility (Payroll, wages)
 
 ### Key Routes
 - `/map` - Staff map of job/bid/estimate addresses (**dev**, **master**, **assistant**, **estimator**; desktop **pin** / mobile **gear** per [`Layout.tsx`](../src/components/Layout.tsx); **Geoman** area filter + table **Filter**; **Debug** → **Review geocodes**; **`address_geocodes`**; chunked **`geocode-address-batch`** for cold addresses; see **Key Features** §16)
@@ -3754,13 +3803,26 @@ async function myFunction() {
 - `/customers` - Customer list
 - `/projects` - Project list
 - `/workflows/:projectId` - Workflow management
-- `/people` - People roster (Users, Pay, Hours, and other tabs; dev **Feedback** via `?tab=feedback`)
+- `/people` - People roster (Users, Hours, Payroll, and other tabs — no separate Pay tab, it merged into Hours; dev **Feedback** via `?tab=feedback`)
 - `/jobs` - Jobs (Reports, Stages, Billing, Team Labor, Sub Labor, Crew P&L, Parts, Job Summary, Inspections tabs)
+- `/accounts-receivable` - AR view sharing the Jobs list cache
+- `/schedule-dispatch` - Schedule Dispatch hub / job-week grids
+- `/banking` - Mercury banking (sorting, attributions)
+- `/quickfill` - Quickfill daily-review sections
 - `/calendar` - Calendar view
-- `/materials` - Materials management (devs and masters only: price book, templates, purchase orders)
-- `/bids` - Bids management (bid board, counts, takeoffs, cover letter, submission & followup; devs, masters, assistants)
+- `/materials` - Materials management (price book, templates, purchase orders)
+- `/estimates` (+ `/estimates/:id`) - Customer estimates
+- `/documents` - Documents page
+- `/duplicates` - Duplicate materials cleanup (dev)
+- `/bids` - Bids management (bid board, counts, takeoffs, cover letter, submission & followup)
+- `/prospects` - Prospects (Customers pipeline + Team hiring board)
+- `/checklist` - Checklist (Today, History, Review, Manage, Roadmap)
+- `/tally` - Job parts tally
+- `/help` - Help guides
 - `/templates` - Template management (dev)
 - `/settings` - User management (dev) and password change (all users)
+- Public/entry routes: `/accept-invite`, `/task`, `/estimate/accept`, `/contract/accept`
+- Full route list: [`src/App.tsx`](../src/App.tsx)
 
 ### Environment Variables
 - `VITE_SUPABASE_URL` - Supabase project URL
@@ -3768,22 +3830,19 @@ async function myFunction() {
 - `RESEND_API_KEY` - Resend API key (set as Supabase secret for Edge Functions)
 
 ### Edge Functions
-- `invite-user` - Send invitation email
-- `create-user` - Manually create user; **role** must be one of: `dev`, `master_technician`, `assistant`, `subcontractor`, `estimator`
-- `archive-user` - Archive user
-- `restore-user` - Restore archived user
-- `set-user-password` - Set another user's password (dev only)
-- `login-as-user` - Generate impersonation magic link
-- `test-email` - Send test emails using Resend service (for email template testing)
-- `send-workflow-notification` - Send workflow stage notifications via email (automatically called when steps change status)
+There are **57** Edge Functions in `supabase/functions/` — see [EDGE_FUNCTIONS.md](./EDGE_FUNCTIONS.md) for the full annotated reference (an inline list here goes stale). Frequently referenced examples:
+- `create-user` - Manually create user; **role** must be one of the 9 valid roles: `dev`, `master_technician`, `assistant`, `subcontractor`, `helpers`, `estimator`, `primary`, `superintendent`, `controller`
+- `invite-user`, `archive-user`, `restore-user`, `set-user-password`, `login-as-user` - Account lifecycle
+- `claim-dev` - Break-glass dev promotion (audited; see Security Considerations)
+- `send-workflow-notification`, `test-email` - Email
 
 ### Database Enums
-- `user_role`: `'dev' | 'master_technician' | 'assistant' | 'subcontractor' | 'estimator' | 'primary' | 'superintendent'`
+- `user_role` (9 active values): `'dev' | 'master_technician' | 'assistant' | 'subcontractor' | 'estimator' | 'primary' | 'superintendent' | 'helpers' | 'controller'` (legacy `'owner'`/`'master'` values remain in the enum but are unused)
 - `project_status`: `'awaiting_start' | 'active' | 'completed' | 'on_hold'`
 - `workflow_status`: `'draft' | 'active' | 'completed'`
 - `step_status`: `'pending' | 'in_progress' | 'completed' | 'rejected' | 'approved'`
 - `step_type`: `'delivery' | 'count' | 'work' | 'inspection' | 'billing' | null`
-- `people.kind` (check constraint, not a separate enum type): includes `assistant`, `master_technician`, `sub`, `estimator`, `dev`, `primary`, `superintendent`
+- `people.kind` (check constraint, not a separate enum type): includes `assistant`, `master_technician`, `sub`, `estimator`, `dev`, `primary`, `superintendent`, `helper`
 
 ---
 
@@ -3822,504 +3881,6 @@ For questions or issues:
 
 ---
 
-**Last Updated**: 2026-02-04
-**Documentation Version**: 2.20
+## Recent Updates
 
-## Recent Updates (v2.12–v2.20)
-
-### v2.20 – Takeoff book: aliases + multiple templates/stages per entry + default version
-- **Takeoff book entry aliases**: Takeoff Book entries can include optional **additional names** (aliases). If a count row’s Fixture or Tie-in matches the primary name or any alias (case-insensitive), the entry applies.
-- **Multiple templates/stages per entry**: Takeoff Book entries now support multiple **(Template, Stage)** pairs per fixture/alias entry. Applying the Takeoff Book adds mappings for each Template/Stage pair for matching fixtures.
-- **Default version selection**: In Takeoffs, when a bid has no takeoff book version selected, the UI defaults to the version named **“Default”** and persists it to the bid.
-- **Database**:
-  - `takeoff_book_entries.alias_names` (TEXT[], default `'{}'`); migration `add_takeoff_book_entries_alias_names.sql`.
-  - New table `takeoff_book_entry_items` (Template/Stage pairs per entry), with migration/backfill and moving `template_id`/`stage` from entries to items; migration `add_takeoff_book_entry_items.sql`.
-
-### v2.19 – Submission & Followup: clickable GC/Builder, all-bids modal, scroll buttons
-- **Clickable GC/Builder (customer)** in Submission & Followup tables (Not yet won or lost, Won, Started or Complete): clicking opens the customer/GC Builder modal.
-- **Customer / GC Builder modal** includes an **All bids** section listing every bid for that entity and its computed status (Unsent, Not yet won or lost, Won, Started or Complete, Lost).
-- **Navigation buttons**:
-  - **Up-arrow** next to the row Edit/settings button scrolls up to the selected-bid summary.
-  - **Down-arrow** near the Approval PDF area scrolls down to the selected bid’s row and auto-expands the correct section if collapsed.
-- **Copy update**: Template-selection instruction text now notes staged billing: “Materials broken down by stage allows for staged billing.”
-
-### v2.18 – Bid outcome: Started or Complete
-- **Bid outcome** can be **Won**, **Lost**, or **Started or Complete**. Win/ Loss dropdown in New/Edit bid includes the new option. **Submission & Followup** tab has a **Started or Complete** section between Won and Lost; bids with this outcome appear there (Project/GC, Bid Due Date, Edit). Unsent and "Not yet won or lost" exclude started_or_complete. Bid Board Win/ Loss column shows "Started or Complete" for that outcome.
-- **Database**: `bids.outcome` CHECK extended to allow `'started_or_complete'`; migration `add_bids_outcome_started_or_complete.sql`.
-
-### v2.17 – Labor book: multiple names per entry
-- **Labor book entries** can have one primary **Fixture or Tie-in** name and optional **additional names** (aliases). If a count row's Fixture or Tie-in matches the primary name or any alias (case-insensitive), that entry's labor rate is applied. First match wins by entry order. Entry form has "Additional names (optional)" (comma-separated, e.g. WC, Commode); table shows "also: …" when aliases exist.
-- **Database**: `labor_book_entries.alias_names` (TEXT[], default `'{}'`); migration `add_labor_book_entries_alias_names.sql`.
-
-### v2.16 – Approval PDF, call scripts, Evaluate checklist
-- **Approval PDF (Submission & Followup)**: Pricing table now has a **Per Unit** column (after Entry, before Revenue). Per Unit and Revenue display as **whole numbers** (e.g. $1,234). **Alignment**: Count column centered; Per Unit and Revenue right-aligned. **Pricing page (page 2)** of the Approval PDF is rendered in **landscape**; other pages (Submission & Followup, Cost Estimate, Cover Letter) remain portrait. **Cover Letter**: "Inclusions:" and "Exclusions and Scope:" headings are **bold**.
-- **Submission & Followup – Call scripts**: Above the contact table, two buttons open read-only modals: **Sent Bid Script** and **Bid Question Script**. Modals show the respective script text; closing dismisses the modal.
-- **Bid Board – Evaluate**: An **Evaluate** button (left of "New") opens a modal with a checklist: LOCATION, PAYMENT TERMS, BID DOCUMENTS, COMPETITION, STRENGTHS. The checklist resets when the modal is closed.
-
-### v2.15 – Cover Letter and Edit Bid modal
-- **Cover Letter tab**: Default Inclusions ("Permits"), default Exclusions (four lines), default Terms and Warranty (full paragraph); labels updated ("Terms and Warranty", "Exclusions and Scope (one per line, shown as bullets)"); Project section shows Project Name + Project Address at top; "Edit bid" button in header (next to Close).
-- **Edit Bid modal**: Project Name* and Project Address at top (label "Address" → "Project Address"); remaining fields follow (Project Folder, Job Plans, GC/Builder, etc.).
-
-### v2.14 – Cost Estimate: Labor book
-- **Labor book**: Create/edit/delete labor book versions and entries (hours per stage: Rough In, Top Out, Trim Set); bid-level "Labor book version" dropdown ("— Use defaults —" or select version); when syncing cost estimate labor rows from count rows, **new** labor rows get hours from selected version (match by fixture name); existing labor rows not overwritten when version changes.
-- **Database**: `labor_book_versions`, `labor_book_entries`, `bids.selected_labor_book_version_id`; migrations `create_labor_book_versions_and_entries.sql`, `add_bids_selected_labor_book_version.sql`. Settings bids backup includes labor book (and price book, takeoff book, POs).
-
-### v2.13 – Pricing tab (full implementation)
-- **Price book**: Create/edit/delete price book versions and entries (prices per stage: Rough In, Top Out, Trim Set, Total — **New/Edit entry** modal accepts **cent precision**, `step` 0.01); bid margin comparison: select bid and price book version, assign price book entry per count row (dropdown); compare cost (labor + allocated materials) vs revenue; margin % with flags: red (&lt; 20%), yellow (&lt; 40%), green (≥ 40%); cost allocation (labor from cost estimate, materials by labor hours); selected version stored on bid (`selected_price_book_version_id`); "Go to Cost Estimate" prompt when bid has no cost estimate.
-- **Database**: `price_book_versions`, `price_book_entries`, `bid_pricing_assignments`, `bids.selected_price_book_version_id`; migrations `create_price_book_versions_and_entries.sql`, `create_bid_pricing_assignments.sql`, `add_bids_selected_price_book_version.sql`.
-
-### v2.12 – Submission cost estimate, currency, Pricing placeholder
-- **Submission & Followup**: When a bid is selected, panel shows cost estimate indicator (grand total with comma formatting, or "Not yet created"); View cost estimate / Create cost estimate button switches to Cost Estimate tab with that bid preselected.
-- **Currency formatting**: `formatCurrency(n)` in Bids.tsx; numbers over 999 display with commas (e.g. $12,345.67) in Cost Estimate tab and Submission preview.
-- **Pricing tab**: New tab between Cost Estimate and Cover Letter; placeholder "Pricing – coming soon." (full implementation in v2.13).
-- **Revert migration**: `revert_price_book_and_bids_job_type.sql` drops price book tables and `bids.job_type` if rolling back schema.
-
-## Recent Updates (v2.11)
-
-### Bids – Approval PDF (Submission & Followup)
-- Approval PDF pages are clearly titled: Submission and Followup, Pricing, Cost Estimate, Cover Letter
-- "Margins" content is included on the PDF (cost estimate + pricing-by-version summary)
-- Bid Submission / Project Folder / Job Plans links are separated with line breaks for readability
-- Pricing and Cost Estimate sections render as tables for cleaner layout
-- Removed redundant "Our Cost" line from the approval packet display
-- Added bid fields for **Bid Submission link** (`bid_submission_link`) and **Design Drawings Plan Date** (`design_drawing_plan_date`)
-- Masters can see all bids under RLS (`allow_masters_see_all_bids.sql`)
-
-## Recent Updates (v2.10)
-
-### Bids – Bid Board and Submission & Followup
-- **Bid Board**: **Search** input (full width) filters by project name, address, customer name, or GC/builder name. Columns: Project Folder, Job Plans, GC/Builder, Project Name, Address, **Win/ Loss** (toggle button to hide/show lost bids; when hiding, label "(hiding lost)" and underlined), **Bid Value**, Estimator, Bid Due Date, Bid Date Sent, Distance to Office (miles), Last Contact, Notes, Edit. Agreed Value and Maximum Profit columns removed. All column headers and cells **centered**. **Plans Link Folder**. **Distance to Office (miles)** (value e.g. 66.6mi). **Last Contact** short date with day of week (e.g. "Sun 2/1"). **Bid Due Date** and **Bid Date Sent** **YY/MM/DD** (e.g. 26/02/12). **Bid Value** **compact currency** (e.g. $121k). **Edit** column **gear icon** (opens full edit modal). **Notes** cell **clickable** → quick-edit modal; Save updates notes and refreshes table. **New/Edit modal**: After GC/Builder picker, **Project Contact Name**, **Project Contact Phone**, **Project Contact Email** (per bid; not shown on Bid Board). When outcome is Won, **Estimated Job Start Date** date input is shown and saved. **Delete**: "Delete bid" button in Edit modal opens **separate confirmation modal**; type project name (or leave empty if none) to enable Delete; Cancel closes only delete modal.
-- **Submission & Followup**: **Five collapsible sections** with clickable headers (chevron ▼/▶ and item count). "Lost" collapsed by default. **Unsent / Working Bids**, **Not yet won or lost**, **Won**, **Started or Complete**, **Lost**. **Selected-bid panel**: Bid title, then summary: Builder Name, Builder Address, **Builder Phone Number**, **Builder Email** (from customer or legacy GC/Builder), Project Name, Project Address, **Project Contact Name**, **Project Contact Phone**, **Project Contact Email**, Bid Size; then submission entries table, Add row, Edit icon, Close. **Not yet won or lost**: columns Project/GC, GC/Builder (customer), Time since last contact, Time to/from bid due date, **Edit**. **Unsent / Working Bids**: columns Project/GC, Bid Due Date, Bid Date Sent, Time since last contact, Time to/from bid due date, **Edit** (gear when row is selected; opens full edit modal). **Time to/from bid due date**: e.g. "X days since deadline", "Due today", "X days until due". **Won** table: columns Project/GC, **Estimated Job Start Date** (YY/MM/DD), GC/Builder (customer), Edit. **Started or Complete** table: Project/GC, GC/Builder (customer), Edit. **Lost** table: Project/GC, Bid Due Date, Edit. **Edit icon** (gear) next to Close opens that bid's full edit modal. **Submission entry rows**: Edit and Delete **icon buttons** (gear, trash) with tooltips.
-
-## Recent Updates (v2.9)
-
-### Bids Management
-- **New Bids section** with route `/bids` and nav link for devs, master_technicians, and assistants (same as Materials visibility except subcontractors).
-- **Bid Board tab**: Table of bids (project folder link, plans link, GC/Builder, project name/address, bid due date, bid date sent, won/lost, bid value, agreed value, projected maximum profit, distance from office, last contact, notes). New/Edit modal with bid folders links [plumbing] [electrical] [HVAC]; distance as number input; profit labeled "Projected Maximum Profit". GC/Builder uses **customers** table with searchable combobox (same pattern as ProjectForm customer picker). Clicking GC/Builder name opens modal with customer or legacy GC/Builder details and won/lost bid counts.
-- **Counts tab**: Search bids; select bid to show fixture/count rows. **Add row** and **Import** buttons. Import: paste tab- or comma-separated text (Fixture, Count, Plan Page per line). Columns: Fixture, Count, Plan Page, actions. Plan Page field added to `bids_count_rows` and persisted.
-- **Takeoffs / Cover Letter tabs**: Takeoffs (template mappings, create PO, view PO); Cover Letter (select bid; Customer + Project Name/Address; Inclusions/Exclusions/Terms with defaults; combined document; Edit bid button).
-- **Submission & Followup tab**: Add rows (contact method, notes, time/date) per selected bid.
-- **Database**: Tables `bids_gc_builders`, `bids`, `bids_count_rows`, `bids_submission_entries`; migrations `add_bids_customer_id.sql`, `add_bids_count_rows_page.sql`, `split_bids_project_name_and_address.sql`, `allow_assistants_access_bids.sql`. RLS grants devs, masters, and assistants full access to bids tables.
-
-## Recent Updates (v2.8)
-
-### Materials – Searchable Part Pickers
-- **Template Add Item (Part)**: Replaced plain part `<select>` with a searchable combobox. Type to filter parts by name, manufacturer, fixture type, or notes (same fields as Price Book). Dropdown shows up to 50 matches with optional second line (manufacturer · fixture type). Select or Clear; closes on outside click, blur, or Escape.
-- **PO Add Part**: Same searchable part picker when adding a part to a draft purchase order. Quantity input remains beside the picker.
-
-### Materials – Template Search
-- **Material Templates list**: Search input above the template list filters by name or description (case-insensitive). Empty search shows all templates; "No templates match" when the filter returns no results.
-
-### Settings – Data Backup (Dev Only)
-- **Data backup (dev)** section: At the very top of Settings (below header). Three export buttons for devs only.
-  - **Export projects backup**: Downloads JSON with customers, projects, project_workflows, project_workflow_steps, project_workflow_step_actions, step_subscriptions, workflow_step_line_items, workflow_projections. Filename: `projects-backup-YYYY-MM-DD.json`.
-  - **Export materials backup**: Downloads JSON with supply_houses, material_parts, material_part_prices, material_templates, material_template_items. Filename: `materials-backup-YYYY-MM-DD.json`.
-  - **Export bids backup**: Downloads JSON with bids, bids_gc_builders, bids_count_rows, bids_submission_entries, cost_estimates, cost_estimate_labor_rows, fixture_labor_defaults, bid_pricing_assignments, price_book_versions, price_book_entries, labor_book_versions, labor_book_entries, takeoff_book_versions, takeoff_book_entries, purchase_orders, purchase_order_items (all POs and PO items visible under RLS, including Takeoffs-created POs). Filename: `bids-backup-YYYY-MM-DD.json`.
-- **Maintenance: Materials prices**: Collapsible subsection (minimized by default). "Review orphaned material prices" button.
-- Exports respect RLS (user only receives data they can read). Each file includes an `exportedAt` timestamp.
-
-## Recent Updates (v2.8)
-
-### Purchase Order and Price Book Enhancements
-- ✅ **Supply house dropdown with active prices**: Draft PO items and selected PO section use a dropdown per line showing "Supply House Name - $X.XX" options; selecting one updates the PO item and total. Finalized POs show read-only supply house text.
-- ✅ **Finalized POs**: Supply House cell is read-only (no dropdown). Confirmed column is hidden (table shows Part, Qty, Supply House, Price, Total only).
-- ✅ **Update price to zero**: In the PO supply-house price table, setting New Price to 0 and "Update price" removes that price from the price book (button label: "Remove from supply house").
-- ✅ **Price book refresh**: Closing the Part Prices modal refetches parts so the Price Book table shows updated Best Price without a full page refresh.
-- ✅ **View PO inline**: Selected PO details appear in an inline section above "Search purchase orders" (no modal). Close hides the section.
-- ✅ **Print PO**: Print button opens a print-friendly document: draft shows Part, Qty, All prices, Chosen, Total; finalized shows Part, Qty, Supply House, Price, Total. Grand Total in both. Print window closes after print/cancel.
-- ✅ **Reliable refresh**: "Update price" in the PO modal passes part id so the price list refreshes correctly after update.
-
-## Recent Updates (v2.7)
-
-### Materials Management System
-- ✅ **Complete Materials Management System** with three main tabs:
-  - **Price Book**: Parts, supply houses, and price management
-  - **Templates & Purchase Orders**: Template creation and draft PO building
-  - **Purchase Orders (Management)**: PO management and workflow integration
-
-#### Price Book Performance Enhancements (v2.24)
-
-- ✅ **Load All Mode** (opt-in, v2.46):
-  - **Toggle button** with speed icon (triangle SVG) next to filter dropdowns
-  - **Batch loading**: Fetches all parts and prices in batched queries (no N+1)
-  - Shows "Loading all parts..." during load
-  - **Instant client-side search**: No network delay, filters as you type
-  - **Instant client-side sorting**: Click "#" to sort by price count immediately
-  - **Visual indicators**:
-    - Button turns blue when Load All is active
-    - Search box background turns light blue
-    - Search placeholder: "Search all parts (instant)..."
-  - **Default mode**: Off by default (paginated) to reduce database load; enable via toggle for bulk editing. Preference persists in localStorage per user.
-  - **Perfect for assistants**: Bulk price updates without pagination interruption
-  - **Toggle anytime**: Switch to paginated mode if needed
-  - **Implementation**: `loadAllParts()` with `fetchPricesForParts()` batch helper, `allParts` state array
-
-- ✅ **Infinite Scroll** (paginated mode):
-  - **Automatic loading** when within 200px of page bottom
-  - Loads next 50 parts seamlessly
-  - Loading indicators: "Loading more parts…" or "Scroll down to load more"
-  - Prevents duplicate requests via `loadingPartsRef`
-  - Only active on Price Book tab (respects current search/filter)
-  - Automatically disabled in Load All mode
-  - No manual button clicking needed
-
-- ✅ **Server-Side Search**:
-  - **Searches entire database** (not just current page)
-  - **300ms debounce** prevents excessive queries while typing
-  - **Searches across**: name, manufacturer, fixture type, notes fields
-  - Uses Supabase `.ilike()` for case-insensitive matching
-  - Works with pagination - filtered results paginate correctly
-  - Query pattern: `.or('name.ilike.%term%,manufacturer.ilike.%term%,...')`
-  - Compatible with fixture type and manufacturer filters
-
-- ✅ **Server-Side Sorting by Price Count**:
-  - Click **"#" column header** to sort all parts by price count
-  - **Database function**: `get_parts_ordered_by_price_count(ascending_order)`
-  - Returns ordered part IDs array
-  - Frontend fetches parts by ID for current page in correct order
-  - Maintains global sort order across pages (not just current page)
-  - **Use case**: Quickly identify parts needing prices (sort ascending = 0 prices first)
-  - Migration: `create_parts_with_price_count_function.sql`
-
-- ✅ **Disk IO Optimizations** (v2.46):
-  - **Batch price fetching**: `fetchPricesForParts()` fetches prices for multiple parts in one query instead of N+1 per part
-  - **Conditional Load All**: `loadAllParts` runs only when Load All mode is on; paginated `loadParts` runs when off
-  - **Template items batching**: `loadTemplateItems` batch-fetches parts, prices, and nested templates
-  - **Template stats filter**: `loadAllTemplateItemsForStats` filters by selected service type
-  - **Composite index**: `idx_material_parts_service_type_name` on `(service_type_id, name)` for faster parts queries
-
-- ✅ **Supply House Statistics**:
-  - **Global stats** displayed at top of Supply Houses modal
-  - Shows:
-    - Total parts count across database
-    - Percentage of parts with prices
-    - Percentage of parts with multiple prices
-    - Per-supply-house coverage sorted by count (highest first)
-  - **Auto-refresh** every time modal opens
-  - **Database function**: `get_supply_house_price_counts()`
-  - Returns `(supply_house_id, name, price_count)` sorted by count DESC
-  - **Benefits**: Quick visibility into pricing coverage, identify gaps
-  - Migration: `create_supply_house_stats_function.sql`
-
-#### Materials System Features
-
-- ✅ **Supply House Management**:
-  - Full CRUD for supply houses (create, edit, delete)
-  - Contact information tracking (name, contact person, phone, email, address, notes)
-  - Delete button in Edit Supply House form
-  - Price coverage statistics in modal
-
-- ✅ **Price History Tracking**:
-  - Automatic price change tracking via database trigger
-  - View price history with old price, new price, percentage change, timestamp, user, and notes
-  - "View History" button in price management modal
-  - History entries created on price updates and confirmations
-
-- ✅ **Price Confirmation System**:
-  - Per-item checkbox in PO view for assistants to confirm prices (draft POs only; Confirmed column hidden for finalized)
-  - Shows "time since checked" (e.g., "2 hours ago")
-  - Creates price history entry when confirmed (for charting/analysis)
-  - Tracks who confirmed and when
-
-- ✅ **Finalized PO Notes**:
-  - Add-only notes to finalized purchase orders
-  - Shows user name and timestamp
-  - Use cases: final bill amounts, pickup difficulties
-  - Notes display prominently at top of PO view
-  - RLS policy enforces add-only (can only update when notes is null)
-
-- ✅ **Purchase Order Features**:
-  - Default name: "New Purchase Order [current date]"
-  - Inline name editing for draft POs
-  - **"Duplicate as Draft" button** for finalized POs (creates copy, resets confirmation)
-  - **Print Purchase Order**:
-    - Draft POs: Shows all prices per part (every supply house)
-    - Finalized POs: Shows chosen prices only
-    - Print-friendly formatting, opens in new window
-  - **Inline PO View** (not modal): Selected PO section above search
-  - **Supply House Dropdown** (draft POs): Shows "Supply House - $X.XX", immediate update
-  - Change supply house for individual items (even if higher price)
-  - Delete button in selected PO section (inline view)
-
-- ✅ **Template Features**:
-  - **Nested template support**: Templates can contain other templates
-  - **Template expansion**: `expandTemplate()` utility recursively expands nested templates
-  - **"From template" tags**: PO items tagged when added via template
-  - Used by Bids Takeoff tab for creating purchase orders
-
-- ✅ **UI Improvements**:
-  - Delete buttons moved to edit modals (parts, templates, supply houses, POs)
-  - Price edit modal: Delete button only visible after Edit is pressed
-  - Improved sorting and organization
-  - Load All mode optimized for bulk editing workflows
-
-### Data Export and Backup Features
-
-**Location**: Settings page → Data Export section (dev-only)
-
-**Note (v2.46)**: Export may take several minutes for large datasets and uses significant database resources.
-
-- ✅ **Projects Export**:
-  - **Data included**: Complete projects data with workflows, steps, and related information
-  - **Format**: JSON file download
-  - **Filename**: `projects_export_YYYY-MM-DD.json`
-  - **Use cases**: 
-    - Backup project data before major changes
-    - Export for external analysis or reporting
-    - Archive completed projects
-  - **Access**: Dev role only
-  - **Implementation**: Exports all projects accessible to current user via RLS
-
-- ✅ **Materials Export**:
-  - **Data included**:
-    - Parts (`material_parts`)
-    - Prices (`material_part_prices`)
-    - Supply houses (`supply_houses`)
-    - Templates (`material_templates`, `material_template_items`)
-    - Purchase orders (`purchase_orders`, `purchase_order_items`)
-  - **Format**: JSON file with nested structure
-  - **Filename**: `materials_export_YYYY-MM-DD.json`
-  - **Use cases**:
-    - Backup materials database
-    - Share price book with other users
-    - Migrate to new system
-  - **Access**: Dev and master_technician roles
-  - **Complete export**: Includes all related tables with proper relationships
-
-- ✅ **Bids Backup Export**:
-  - **Data included**:
-    - All bids data (`bids`, `bids_count_rows`, `bids_submission_entries`)
-    - Cost estimates (`cost_estimates`, `cost_estimate_labor_rows`)
-    - Price book (`price_book_versions`, `price_book_entries`, `bid_pricing_assignments`)
-    - Labor book (`labor_book_versions`, `labor_book_entries`)
-    - Takeoff book (`takeoff_book_versions`, `takeoff_book_entries`, `takeoff_book_entry_items`)
-    - Purchase orders (`purchase_orders`, `purchase_order_items`) - all rows under RLS
-  - **Format**: Comprehensive JSON backup
-  - **Filename**: `bids_backup_YYYY-MM-DD.json`
-  - **Use cases**:
-    - Complete bid system backup
-    - Preserve estimation data for analysis
-    - Migration or system transfer
-    - Historical record keeping
-  - **Access**: Dev and estimator roles
-  - **Complete system**: Exports entire bidding and estimation system
-
-- ✅ **Orphaned Prices Cleanup**:
-  - **Purpose**: Remove prices for deleted parts (data maintenance)
-  - **What it does**:
-    - Finds prices in `material_part_prices` where `part_id` no longer exists in `material_parts`
-    - Displays count of orphaned prices before deletion
-    - Requires confirmation (shows list of affected supply houses)
-    - Deletes orphaned price records
-  - **When to use**:
-    - After bulk part deletions
-    - Database cleanup and maintenance
-    - Before major data exports (ensures clean data)
-  - **Safety**:
-    - Shows preview before deletion
-    - Requires explicit confirmation
-    - Cannot be undone (recommend export backup first)
-  - **Access**: Dev role only
-  - **Implementation**: Uses LEFT JOIN to find orphaned records
-
-### Export File Formats
-
-**JSON Structure Pattern**:
-```json
-{
-  "export_date": "2026-02-07T12:00:00Z",
-  "export_type": "projects|materials|bids",
-  "data": {
-    "main_table": [...],
-    "related_table_1": [...],
-    "related_table_2": [...]
-  },
-  "metadata": {
-    "total_records": 123,
-    "tables_included": ["table1", "table2"],
-    "exported_by": "user_id"
-  }
-}
-```
-
-**Benefits of Export System**:
-- **Backup**: Regular backups prevent data loss
-- **Migration**: Easy transfer to new systems or projects
-- **Analysis**: External data analysis in Excel, Python, etc.
-- **Audit**: Historical records of system state
-- **Sharing**: Share configurations (templates, price books) between users
-- **Recovery**: Restore from backup if needed
-
-**Best Practices**:
-1. Export regularly (weekly/monthly backups)
-2. Store exports in secure location (not just browser downloads)
-3. Name exports with dates for easy tracking
-4. Test imports/restores periodically
-5. Export before major system changes
-6. Keep exports for audit trail (at least 1 year)
-
-### Line Items Enhancement
-- ✅ **Link Field Added**:
-  - Optional link field in Add/Edit Line Item modal (positioned at top, above memo)
-  - Auto-formats URLs (adds https:// if missing)
-  - Displayed as clickable link icon (chain link SVG) next to memo
-  - Available in both Ledger table and Private Notes section
-  - Opens in new tab with security attributes
-
-## Recent Updates (v2.6)
-
-### Workflow Data Persistence & Performance Fixes
-- ✅ **Fixed data persistence issues** for projections and workflow steps
-  - Projections and steps now persist correctly when navigating away and back
-  - Fixed race condition where `workflow?.id` from state was null during save operations
-  - All save/delete operations now ensure valid workflow_id via `ensureWorkflow(projectId)`
-- ✅ **Prevented concurrent workflow creation**
-  - Implemented mutex pattern using `useRef` and placeholder promises
-  - Only one workflow is created per project, even with concurrent calls
-  - Added retry logic for insert errors to handle unique constraint violations
-- ✅ **Optimized redundant loadSteps calls**
-  - Reduced from 7+ calls to 1-2 calls per page load
-  - Added ref tracking to prevent redundant loads when workflow state updates
-  - Improved performance and reduced database queries
-- ✅ **Fixed TypeScript type errors**
-  - Resolved 7 type errors where `string | null` was not assignable to `string | undefined`
-  - Explicitly typed workflowId variables as `string | null` to match `ensureWorkflow` return type
-  - Used nullish coalescing operator (`?? null`) to convert `undefined` to `null`
-  - TypeScript build now succeeds
-
-## Recent Updates (v2.4)
-
-### Assistant Workflow Access
-- ✅ Assistants can now see ALL stages in workflows they have access to (not just assigned stages)
-- ✅ Subcontractors remain restricted to assigned stages only
-- ✅ Fixed line items not updating immediately for assistants after adding/editing
-
-### Financial Tracking Updates
-- ✅ Assistants can add/edit line items but cannot see financial totals (Ledger Total, Total Left on Job)
-- ✅ Updated label: "Line Items (Master and Assistants only)"
-- ✅ Ledger section visible to devs, masters, and assistants (totals hidden from assistants)
-
-### Workflow Stage Status Display
-- ✅ Status moved to top of card (right below "Assigned to")
-- ✅ Previous work incomplete status includes reason inline: "Status: Previous work incomplete - {reason}"
-- ✅ Removed duplicate status display from bottom of card
-
-### Re-open Stages
-- ✅ Added "Re-open" button for completed, approved, and marked-incomplete stages
-- ✅ Available to devs, masters, and assistants (on Workflow page only)
-- ✅ Button appears inline with Edit and Delete buttons (bottom right of card)
-- ✅ Resets stage to pending, clears rejection reason, approval info, and next step rejection notices
-- ✅ Records 'reopened' action and sends notifications
-
-### Master-to-Master Sharing
-- ✅ Added `master_shares` table for master-to-master sharing relationships
-- ✅ Updated all RLS policies to support master sharing (customers, projects, workflows, steps, line items, projections)
-- ✅ Shared masters receive assistant-level access (can see but not modify, cannot see financial totals)
-- ✅ UI added to Settings page for managing shares
-
-### Database RLS Optimizations
-- ✅ Optimized `workflow_step_line_items` RLS (prevents timeout errors)
-- ✅ Fixed `project_workflow_step_actions` RLS (fixes 403/500 errors)
-- ✅ Created helper functions: `can_access_project_via_step()`, `can_access_step_for_action()`
-
-## Recent Updates (v2.3)
-
-### Workflow Step Assignment
-- ✅ Autocomplete dropdown in "Add Step" modal for assigning masters and subs
-- ✅ "Add person" prompt when name doesn't exist in list
-- ✅ Shows source indicators: "(user)" vs "(not user)"
-
-### Projects Page Fixes
-- ✅ Fixed current stage position calculation (uses sorted position, not raw sequence_order)
-- ✅ Prevents display of invalid positions like "[16 / 13]"
-
-### RLS Policy Fixes
-- ✅ Fixed users table RLS recursion issue (uses SECURITY DEFINER function)
-- ✅ Assistants can now see master information for projects they have access to
-- ✅ Created `master_adopted_current_user()` function to safely check adoptions
-
-## Recent Updates (v2.2)
-
-### Password Management
-- ✅ Password reset functionality (forgot password)
-- ✅ Password change in Settings (for all users)
-- Routes: `/reset-password`, `/reset-password-confirm`
-
-### Edge Functions
-- ✅ `archive-user` - Fully implemented (requires `SUPABASE_SERVICE_ROLE_KEY`)
-- ✅ `restore-user` - Fully implemented (requires `SUPABASE_SERVICE_ROLE_KEY`)
-- ✅ `login-as-user` - Fully implemented (requires `SUPABASE_SERVICE_ROLE_KEY`)
-- ✅ `send-workflow-notification` - Fully implemented (requires `RESEND_API_KEY`)
-
-### Database & RLS
-- ✅ Email templates RLS policies updated to use `is_dev()` function
-- ✅ People table RLS policy added for devs to read all entries
-- ✅ All Edge Functions use manual JWT validation (gateway verification disabled)
-
-### UI Improvements
-- ✅ Date formatting includes day of week (e.g., "Tue, 1/21/26, 6:52 PM")
-- ✅ Orange gear favicon added
-- ✅ "Forgot password?" link on sign-in page
-
-**See [RECENT_FEATURES.md](./RECENT_FEATURES.md) for detailed information about all recent additions.**
-
-## Recent Feature Additions (v2.0+)
-
-### Major Features Added
-
-#### Workflow Enhancements
-1. **Private Notes**: Owners, masters, and assistants can add private notes to each stage (separate from public notes)
-2. **Line Items**: Track expenses/credits per stage with memo and amount fields
-3. **Projections**: Track projected costs for entire workflow (stage, memo, amount)
-4. **Ledger**: Aggregated view of all line items at top of workflow page
-5. **Action History Ledger**: Complete audit trail at bottom of each stage card
-6. **Set Start Date/Time**: Date/time picker for setting custom start times (replaces immediate start)
-7. **Amount Formatting**: All monetary amounts display with comma separators (e.g., `$1,234.56`)
-
-#### Access Control
-8. **Assistant/Subcontractor Restrictions**: 
-   - Only see stages assigned to them
-   - Can only use action buttons on assigned stages
-   - Cannot see private notes, line items, projections, or ledger
-9. **Current User in Person Assignment**: Signed-in user always appears first in "Add person" modal
-
-#### Calendar Improvements
-10. **Central Time Zone**: All calendar dates/times display in Central Time (America/Chicago)
-11. **Two-Line Display**: Each calendar item shows stage name (top) and project name (bottom)
-
-#### Email System
-12. **Email Templates**: Customizable email content for 11 notification types
-13. **Test Email Function** (`test-email`): Edge Function for testing email templates with Resend (client supplies rendered subject/body from Settings). **`send-workflow-notification`** is the production path (server loads `email_templates` by type); devs can smoke-test it from **Settings → Templates & testing → Workflow email (Edge Function)** — see `RECENT_FEATURES.md` v2.186 and `WORKFLOW_EMAIL_TESTING.md`.
-14. **Template Variables**: Support for dynamic content (e.g., `{{name}}`, `{{email}}`, `{{link}}`)
-
-#### Settings Enhancements
-15. **People Visibility**: Devs can see all users and all people entries (RLS policy updated)
-16. **Separated People Lists**: "People Created by Me" and "People Created by Other Users"
-17. **Email Template Management**: GUI for devs to edit email templates in Settings
-18. **Password Change**: All users can change their password in Settings (requires current password verification)
-
-#### Authentication & Security
-19. **Password Reset**: Users can request password reset via "Forgot password?" link on sign-in page
-20. **Password Reset Confirmation**: Dedicated page for setting new password after clicking email link
-21. **RLS Policy Fixes**: 
-    - Email templates table uses `is_dev()` function for policies
-    - People table allows devs to read all entries
-
-#### UI Improvements
-20. **Date Formatting**: Date/time displays now include day of week (e.g., "Tue, 1/21/26, 6:52 PM")
-21. **Favicon**: Orange gear icon displayed in browser tabs
-22. **Contact Integration**: Clickable email/phone links throughout the app
-23. **Google Maps Integration**: Clickable addresses open in Google Maps
-24. **Direct Step Navigation**: Hash fragments enable direct links to specific step cards
-
-#### Existing Features (from v2.0)
-25. **Approval Tracking**: Tracks who approved steps and when (`approved_by`, `approved_at`)
-26. **Cross-Step Notifications**: Automatic notifications to adjacent step assignees
-27. **Workflow Header Navigation**: Visual stage overview with color-coding and clickable navigation
-28. **Step Reordering**: Insert steps at any position (beginning, end, or after specific step)
-29. **Customer Quick Fill**: Paste tab-separated data to auto-fill customer forms
-30. **Active Stage Display**: Projects list shows currently active workflow stage
-31. **Assigned Stages Dashboard**: Users see all stages assigned to them with full details
-32. **Project Address Field**: Separate address field for projects (can differ from customer address)
-33. **Date Met Tracking**: Track when customer relationship started
-34. **Refresh Token Error Handling**: Graceful handling of expired/invalid tokens
+The versioned changelog no longer lives in this file. See [RECENT_FEATURES.md](./RECENT_FEATURES.md) for the live per-version changelog (v2.NNN entries ship with every feature PR); the old v2.0-v2.20 history that used to be appended here is preserved in git history.
