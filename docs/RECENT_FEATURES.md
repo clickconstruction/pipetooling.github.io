@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-17 (v2.710)
+last_updated: 2026-07-17 (v2.711)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.711)
+
+### Materials/Takeoff — Add Part prices are one step shorter (2026-07-17)
+Field feedback (Wendi): about half of new parts get a price at entry, and the **Add Part** modal (Bids → Takeoff → Add part line, and Materials) made each one cost two extra clicks — expand the collapsed **Add Prices (Optional)** accordion, then press **+ Add Price**. The accordion and that button are gone: the **Prices** section is now always visible with one blank price row ready to fill (supply house / price / effective date). Leave it blank and Save skips it (blank rows were already dropped on save); **+ Add another price** appends more rows. Edit Part is unchanged (prices there are managed in the price book as before). [`PartFormModal.tsx`](../src/components/PartFormModal.tsx)
 
 ## Latest Updates (v2.710)
 

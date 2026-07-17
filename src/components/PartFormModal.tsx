@@ -53,7 +53,6 @@ export function PartFormModal({
     price: string
     effective_date: string
   }>>([])
-  const [pricesSectionExpanded, setPricesSectionExpanded] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
   const [deleteConfirmName, setDeleteConfirmName] = useState('')
@@ -68,7 +67,6 @@ export function PartFormModal({
         setPartLink(editingPart.link || '')
         setPartNotes(editingPart.notes || '')
         setPartPrices([])
-        setPricesSectionExpanded(false)
         setDeleteConfirmOpen(false)
         setDeleteConfirmName('')
       } else {
@@ -77,8 +75,8 @@ export function PartFormModal({
         setPartPartTypeId('')
         setPartLink('')
         setPartNotes('')
-        setPartPrices([])
-        setPricesSectionExpanded(false)
+        // Pre-seed one blank row so pricing needs zero extra clicks; blank rows are dropped on save
+        setPartPrices([{ supply_house_id: '', price: '', effective_date: '' }])
         setDeleteConfirmOpen(false)
         setDeleteConfirmName('')
       }
@@ -293,30 +291,16 @@ export function PartFormModal({
             />
           </div>
 
-          {/* Optional Prices Section - only show when adding new part */}
+          {/* Optional Prices Section - only show when adding new part. Always open with one
+              blank row pre-seeded: ~half of new parts get a price, and the old collapsed
+              accordion + "+ Add Price" cost two clicks every time. Blank rows are dropped on save. */}
           {!editingPart && (
             <div style={{ marginBottom: '1.5rem', border: '1px solid var(--border)', borderRadius: 4, overflow: 'hidden' }}>
-              <button
-                type="button"
-                onClick={() => setPricesSectionExpanded(!pricesSectionExpanded)}
-                style={{
-                  width: '100%',
-                  padding: '0.75rem 1rem',
-                  background: 'var(--bg-subtle)',
-                  border: 'none',
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  cursor: 'pointer',
-                  fontWeight: 500,
-                }}
-              >
-                <span>Add Prices (Optional)</span>
-                <span>{pricesSectionExpanded ? '▼' : '▶'}</span>
-              </button>
+              <div style={{ padding: '0.75rem 1rem', background: 'var(--bg-subtle)', fontWeight: 500 }}>
+                Prices <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>(optional — leave blank to skip)</span>
+              </div>
 
-              {pricesSectionExpanded && (
-                <div style={{ padding: '1rem' }}>
+              <div style={{ padding: '1rem' }}>
                   {/* List existing prices */}
                   {partPrices.map((priceItem, idx) => (
                     <div key={idx} style={{ marginBottom: '1rem', padding: '0.75rem', background: 'var(--bg-sky-tint)', borderRadius: 4 }}>
@@ -382,9 +366,9 @@ export function PartFormModal({
                     onClick={() => {
                       setPartPrices([...partPrices, { supply_house_id: '', price: '', effective_date: '' }])
                     }}
-                    style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
+                    style={{ padding: '0.4rem 0.75rem', fontSize: '0.875rem', background: 'none', color: 'var(--text-blue-500)', border: '1px solid var(--border)', borderRadius: 4, cursor: 'pointer' }}
                   >
-                    + Add Price
+                    + Add another price
                   </button>
 
                   {supplyHouses.length === 0 && (
@@ -392,8 +376,7 @@ export function PartFormModal({
                       No supply houses available. Add supply houses first to set prices.
                     </p>
                   )}
-                </div>
-              )}
+              </div>
             </div>
           )}
 
