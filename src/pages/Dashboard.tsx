@@ -99,15 +99,10 @@ import { useDashboardMyTeamSectionState } from '../hooks/useDashboardMyTeamSecti
 import { useApplyScheduleProportions } from '../hooks/useApplyScheduleProportions'
 import { ApplyScheduleApprovedConfirmModal } from '../components/clock-sessions/ApplyScheduleApprovedConfirmModal'
 import { useDispatchInbox } from '../hooks/useDispatchInbox'
-import { DispatchInboxSection } from '../components/DispatchInboxSection'
+import { useEstimatorInbox } from '../hooks/useEstimatorInbox'
 import { DispatchDismissedItemsModal } from '../components/DispatchDismissedItemsModal'
 import CreateTripChargeModal, { type CreateTripChargeTarget } from '../components/CreateTripChargeModal'
-import { HelpFeedbackInboxSection } from '../components/HelpFeedbackInboxSection'
-import {
-  EstimatorInboxSection,
-  type EstimatorInboxRow,
-  type EstimatorThreadNoteRow,
-} from '../components/EstimatorInboxSection'
+import { DashboardTeamsInboxCard } from '../components/dashboard/DashboardTeamsInboxCard'
 import { ChecklistTitleWithLinks } from '../components/ChecklistTitleWithLinks'
 import AssignedStageCard from '../components/AssignedStageCard'
 import { type JobBillingContext } from '../lib/jobBillingContext'
@@ -1287,23 +1282,8 @@ export default function Dashboard() {
     }
   }, [authUser?.id, dashboardSalaryScheduleClockActive, fetchContractDashboardPromptRows])
 
-  const [dispatchRequestsOpen, setDispatchRequestsOpen] = useState(true)
   const [dispatchDismissedModalOpen, setDispatchDismissedModalOpen] = useState(false)
   const [tripChargeTarget, setTripChargeTarget] = useState<CreateTripChargeTarget | null>(null)
-
-  const [estimatorInboxEligible, setEstimatorInboxEligible] = useState(false)
-  const [estimatorRequestsOpen, setEstimatorRequestsOpen] = useState(true)
-  const [estimatorRequests, setEstimatorRequests] = useState<EstimatorInboxRow[]>([])
-  const [estimatorRequestsLoading, setEstimatorRequestsLoading] = useState(false)
-  const [estimatorRequestDismissingId, setEstimatorRequestDismissingId] = useState<string | null>(null)
-  const [expandedEstimatorRequestId, setExpandedEstimatorRequestId] = useState<string | null>(null)
-  const [estimatorThreadNotesByRequestId, setEstimatorThreadNotesByRequestId] = useState<
-    Record<string, EstimatorThreadNoteRow[]>
-  >({})
-  const [estimatorNotesLoadingRequestId, setEstimatorNotesLoadingRequestId] = useState<string | null>(null)
-  const [estimatorNoteSubmitRequestId, setEstimatorNoteSubmitRequestId] = useState<string | null>(null)
-  const [estimatorNoteDraft, setEstimatorNoteDraft] = useState('')
-  const expandedEstimatorRequestIdRef = useRef<string | null>(null)
 
   const [lostMissingLossReasonCount, setLostMissingLossReasonCount] = useState(0)
   const [lostMissingLossReasonLoading, setLostMissingLossReasonLoading] = useState(true)
@@ -1311,23 +1291,14 @@ export default function Dashboard() {
   const [myBidsDockHasContent, setMyBidsDockHasContent] = useState(false)
 
   const isDev = role === 'dev'
-  const {
-    dispatchInboxEligible,
-    dispatchRequests,
-    dispatchRequestsLoading,
-    dispatchRequestDismissingId,
-    expandedDispatchRequestId,
-    dispatchThreadNotesByRequestId,
-    dispatchNotesLoadingRequestId,
-    dispatchNoteSubmitRequestId,
-    dispatchNoteDraft,
-    setDispatchNoteDraft,
-    toggleExpandDispatchRequest,
-    submitDispatchNote,
-    submitDispatchNoteAndClose,
-    dismissDispatchRequest,
-    fetchDismissedDispatchInboxRows,
-  } = useDispatchInbox()
+  // Both inbox engines stay here (not in DashboardTeamsInboxCard): the
+  // SectionDock entry + the card render gates need the eligibility flags, and
+  // DispatchDismissedItemsModal (rendered once, outside both card positions)
+  // needs fetchDismissedDispatchInboxRows.
+  const dispatchInbox = useDispatchInbox()
+  const { dispatchInboxEligible, fetchDismissedDispatchInboxRows } = dispatchInbox
+  const estimatorInbox = useEstimatorInbox()
+  const { estimatorInboxEligible } = estimatorInbox
   const billCustomer = useBillCustomerModal()
   const materializeSalarySessionForStrip = useCallback(
     async (userId: string) => {
@@ -1505,180 +1476,6 @@ export default function Dashboard() {
       }
     },
     [showToast],
-  )
-
-  useEffect(() => {
-    if (!authUser?.id) {
-      setEstimatorInboxEligible(false)
-      return
-    }
-    if (role === 'dev') {
-      setEstimatorInboxEligible(true)
-      return
-    }
-    let cancelled = false
-    supabase
-      .from('estimator_group_members')
-      .select('user_id')
-      .eq('user_id', authUser.id)
-      .maybeSingle()
-      .then(({ data }) => {
-        if (!cancelled) setEstimatorInboxEligible(!!data)
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [authUser?.id, role])
-
-  const loadEstimatorRequests = useCallback(() => {
-    if (!authUser?.id || !estimatorInboxEligible) {
-      setEstimatorRequests([])
-      return
-    }
-    setEstimatorRequestsLoading(true)
-    void Promise.all([
-      supabase
-        .from('estimator_requests')
-        .select(
-          'id, title, links, created_at, from_user_id, reference_summary, location_lat, location_lng, status, closed_at, closed_by_user_id, closed_note, sender:users!estimator_requests_from_user_id_fkey(name, email), closed_by:users!estimator_requests_closed_by_user_id_fkey(name)',
-        )
-        .order('created_at', { ascending: false }),
-      supabase.from('estimator_request_dismissals').select('request_id').eq('user_id', authUser.id),
-    ]).then(async ([requestsRes, dismissalsRes]) => {
-      if (requestsRes.error) {
-        setEstimatorRequestsLoading(false)
-        console.error('Estimator inbox load:', requestsRes.error)
-        return
-      }
-      const dismissedIds = new Set(
-        (dismissalsRes.data ?? []).map((r: { request_id: string }) => r.request_id),
-      )
-      const rows = ((requestsRes.data ?? []) as EstimatorInboxRow[]).filter(
-        (r) => !dismissedIds.has(r.id),
-      )
-      rows.sort((a, b) => {
-        const aOpen = a.status === 'open' ? 1 : 0
-        const bOpen = b.status === 'open' ? 1 : 0
-        if (aOpen !== bOpen) return bOpen - aOpen
-        const aDate = a.status === 'closed' ? (a.closed_at ?? a.created_at ?? '') : (a.created_at ?? '')
-        const bDate = b.status === 'closed' ? (b.closed_at ?? b.created_at ?? '') : (b.created_at ?? '')
-        return bDate.localeCompare(aDate)
-      })
-
-      let merged: EstimatorInboxRow[] = rows.map((r) => ({
-        ...r,
-        note_count: 0,
-        last_note_at: null,
-      }))
-
-      if (rows.length > 0) {
-        try {
-          const statsRows = await withSupabaseRetry(
-            async () =>
-              supabase.rpc('estimator_inbox_note_stats', { p_request_ids: rows.map((r) => r.id) }),
-            'estimator inbox note stats',
-          )
-          type StatRow = { request_id: string; note_count: number; last_note_at: string | null }
-          const list = (statsRows ?? []) as StatRow[]
-          const byId = new Map(
-            list.map((s) => [
-              s.request_id,
-              { note_count: Number(s.note_count), last_note_at: s.last_note_at ?? null },
-            ]),
-          )
-          merged = rows.map((r) => {
-            const s = byId.get(r.id)
-            return {
-              ...r,
-              note_count: s?.note_count ?? 0,
-              last_note_at: s?.last_note_at ?? null,
-            }
-          })
-        } catch (e) {
-          console.error('Estimator inbox note stats:', e)
-        }
-      }
-
-      setEstimatorRequests(merged)
-      setEstimatorRequestsLoading(false)
-    })
-  }, [authUser?.id, estimatorInboxEligible])
-
-  const loadEstimatorNotesForRequest = useCallback(
-    async (requestId: string) => {
-      setEstimatorNotesLoadingRequestId(requestId)
-      try {
-        const data = await withSupabaseRetry(
-          async () =>
-            supabase
-              .from('estimator_request_notes')
-              .select(
-                'id, body, created_at, author:users!estimator_request_notes_author_user_id_fkey(name)',
-              )
-              .eq('request_id', requestId)
-              .order('created_at', { ascending: true }),
-          'load estimator_request notes',
-        )
-        const rows = (data as EstimatorThreadNoteRow[] | null) ?? []
-        setEstimatorThreadNotesByRequestId((prev) => ({ ...prev, [requestId]: rows }))
-      } catch (e) {
-        showToast(formatErrorMessage(e, 'Failed to load estimator notes'), 'error')
-      } finally {
-        setEstimatorNotesLoadingRequestId(null)
-      }
-    },
-    [showToast],
-  )
-
-  useEffect(() => {
-    expandedEstimatorRequestIdRef.current = expandedEstimatorRequestId
-  }, [expandedEstimatorRequestId])
-
-  useEffect(() => {
-    if (!expandedEstimatorRequestId) return
-    setEstimatorNoteDraft('')
-    void loadEstimatorNotesForRequest(expandedEstimatorRequestId)
-  }, [expandedEstimatorRequestId, loadEstimatorNotesForRequest])
-
-  useEffect(() => {
-    if (!authUser?.id || !estimatorInboxEligible) {
-      setEstimatorRequests([])
-      return
-    }
-    loadEstimatorRequests()
-  }, [authUser?.id, estimatorInboxEligible, loadEstimatorRequests])
-
-  const dashboardEstimatorEnabled = !!authUser?.id && estimatorInboxEligible
-  const dashboardEstimatorRequestFilters = useMemo(
-    () => [{ event: '*' as const, schema: 'public', table: 'estimator_requests' }],
-    [],
-  )
-  useRealtimeChannel(
-    dashboardEstimatorEnabled,
-    'dashboard-estimator-requests',
-    dashboardEstimatorRequestFilters,
-    () => {
-      loadEstimatorRequests()
-    },
-    { debounceMs: 400 },
-  )
-
-  // See useEstimatorInbox: drop the per-payload optimization in favour of "if
-  // expanded, reload its notes". Volume on estimator_request_notes is low.
-  const dashboardEstimatorNoteFilters = useMemo(
-    () => [{ event: 'INSERT' as const, schema: 'public', table: 'estimator_request_notes' }],
-    [],
-  )
-  useRealtimeChannel(
-    dashboardEstimatorEnabled,
-    'dashboard-estimator-request-notes',
-    dashboardEstimatorNoteFilters,
-    () => {
-      const expandedId = expandedEstimatorRequestIdRef.current
-      if (expandedId) void loadEstimatorNotesForRequest(expandedId)
-      loadEstimatorRequests()
-    },
-    { debounceMs: 400 },
   )
 
   useEffect(() => {
@@ -3608,165 +3405,6 @@ export default function Dashboard() {
     await loadAssignedSteps()
   }
 
-  function toggleExpandEstimatorRequest(requestId: string) {
-    setExpandedEstimatorRequestId((prev) => (prev === requestId ? null : requestId))
-  }
-
-  async function submitEstimatorNote(requestId: string) {
-    if (!authUser?.id) return
-    const body = estimatorNoteDraft.trim()
-    if (!body) {
-      showToast('Enter a note.', 'error')
-      return
-    }
-    if (body.length > 2000) {
-      showToast('Note must be 2000 characters or less.', 'error')
-      return
-    }
-
-    let wasClosed = false
-    const row = estimatorRequests.find((r) => r.id === requestId)
-    if (row) {
-      wasClosed = row.status === 'closed'
-    } else {
-      const { data: statusRow, error: statusErr } = await supabase
-        .from('estimator_requests')
-        .select('status')
-        .eq('id', requestId)
-        .maybeSingle()
-      if (statusErr) {
-        showToast(statusErr.message, 'error')
-        return
-      }
-      wasClosed = statusRow?.status === 'closed'
-    }
-
-    setEstimatorNoteSubmitRequestId(requestId)
-    try {
-      await withSupabaseRetry(
-        async () =>
-          supabase.from('estimator_request_notes').insert({
-            request_id: requestId,
-            author_user_id: authUser.id,
-            body,
-          }),
-        'insert estimator_request note',
-      )
-
-      if (wasClosed) {
-        try {
-          await withSupabaseRetry(
-            async () =>
-              supabase
-                .from('estimator_requests')
-                .update({
-                  status: 'open',
-                  closed_at: null,
-                  closed_by_user_id: null,
-                  closed_note: null,
-                })
-                .eq('id', requestId),
-            'reopen estimator request',
-          )
-        } catch (reopenErr) {
-          setEstimatorNoteDraft('')
-          await loadEstimatorNotesForRequest(requestId)
-          loadEstimatorRequests()
-          showToast(formatErrorMessage(reopenErr, 'Note saved, but reopen failed.'), 'error')
-          return
-        }
-      }
-
-      setEstimatorNoteDraft('')
-      await loadEstimatorNotesForRequest(requestId)
-      loadEstimatorRequests()
-      showToast(wasClosed ? 'Note added and task reopened.' : 'Note added.', 'success')
-    } catch (e) {
-      showToast(formatErrorMessage(e, 'Failed to add note'), 'error')
-    } finally {
-      setEstimatorNoteSubmitRequestId(null)
-    }
-  }
-
-  async function submitEstimatorNoteAndClose(requestId: string) {
-    if (!authUser?.id) return
-    const body = estimatorNoteDraft.trim()
-    if (!body) {
-      showToast('Enter a note.', 'error')
-      return
-    }
-    if (body.length > 2000) {
-      showToast('Note must be 2000 characters or less.', 'error')
-      return
-    }
-
-    const row = estimatorRequests.find((r) => r.id === requestId)
-    if (row?.status === 'closed') {
-      showToast('This request is already closed.', 'error')
-      return
-    }
-
-    setEstimatorNoteSubmitRequestId(requestId)
-    try {
-      await withSupabaseRetry(
-        async () =>
-          supabase.from('estimator_request_notes').insert({
-            request_id: requestId,
-            author_user_id: authUser.id,
-            body,
-          }),
-        'insert estimator_request note',
-      )
-
-      try {
-        await withSupabaseRetry(
-          async () =>
-            supabase
-              .from('estimator_requests')
-              .update({
-                status: 'closed',
-                closed_at: new Date().toISOString(),
-                closed_by_user_id: authUser.id,
-                closed_note: body,
-              })
-              .eq('id', requestId),
-          'close estimator request',
-        )
-      } catch (closeErr) {
-        setEstimatorNoteDraft('')
-        await loadEstimatorNotesForRequest(requestId)
-        loadEstimatorRequests()
-        showToast(formatErrorMessage(closeErr, 'Note saved, but mark closed failed.'), 'error')
-        return
-      }
-
-      setEstimatorNoteDraft('')
-      await loadEstimatorNotesForRequest(requestId)
-      loadEstimatorRequests()
-      showToast('Note added and request marked closed.', 'success')
-    } catch (e) {
-      showToast(formatErrorMessage(e, 'Failed to add note'), 'error')
-    } finally {
-      setEstimatorNoteSubmitRequestId(null)
-    }
-  }
-
-  async function dismissEstimatorRequest(requestId: string) {
-    if (!authUser?.id) return
-    setEstimatorRequestDismissingId(requestId)
-    const { error } = await supabase.from('estimator_request_dismissals').insert({
-      user_id: authUser.id,
-      request_id: requestId,
-    })
-    setEstimatorRequestDismissingId(null)
-    if (error) {
-      showToast(error.message, 'error')
-      return
-    }
-    setEstimatorRequests((prev) => prev.filter((r) => r.id !== requestId))
-    setExpandedEstimatorRequestId((ex) => (ex === requestId ? null : ex))
-  }
-
   const showChecklist = checklistLoading || todayChecklist.length > 0
   /** Recently Completed only earns its corner link when something was actually completed (dev-only feature). */
   const showRecentlyCompleted = isDev && completedItems.length > 0
@@ -4737,55 +4375,18 @@ export default function Dashboard() {
         <>
           {myInboxCard}
           {authUser?.id && (dispatchInboxEligible || estimatorInboxEligible) && (
-            <DashboardGroupCard id="dash-teams-inbox" title="Teams Inbox">
-              {dispatchInboxEligible && (
-                <DispatchInboxSection
-                  sectionOpen={dispatchRequestsOpen}
-                  onToggleSection={() => setDispatchRequestsOpen((o) => !o)}
-                  requests={dispatchRequests}
-                  loading={dispatchRequestsLoading}
-                  expandedRequestId={expandedDispatchRequestId}
-                  onToggleExpandRequest={toggleExpandDispatchRequest}
-                  notesByRequestId={dispatchThreadNotesByRequestId}
-                  notesLoadingRequestId={dispatchNotesLoadingRequestId}
-                  noteSubmitRequestId={dispatchNoteSubmitRequestId}
-                  canAddNotes={dispatchInboxEligible}
-                  dispatchRequestDismissingId={dispatchRequestDismissingId}
-                  noteDraft={dispatchNoteDraft}
-                  onNoteDraftChange={setDispatchNoteDraft}
-                  onSubmitNote={submitDispatchNote}
-                  onSubmitNoteAndClose={submitDispatchNoteAndClose}
-                  onDismiss={dismissDispatchRequest}
-                  onOpenDismissedArchive={() => setDispatchDismissedModalOpen(true)}
-                  onLinkJobPictures={
-                    jobFormModal
-                      ? (jobId) => jobFormModal.openEditJob(jobId, { jobPicturesLinkHighlight: true })
-                      : undefined
-                  }
-                  onCreateTripCharge={(args) => setTripChargeTarget(args)}
-                />
-              )}
-              {estimatorInboxEligible && (
-                <EstimatorInboxSection
-                  sectionOpen={estimatorRequestsOpen}
-                  onToggleSection={() => setEstimatorRequestsOpen((o) => !o)}
-                  requests={estimatorRequests}
-                  loading={estimatorRequestsLoading}
-                  expandedRequestId={expandedEstimatorRequestId}
-                  onToggleExpandRequest={toggleExpandEstimatorRequest}
-                  notesByRequestId={estimatorThreadNotesByRequestId}
-                  notesLoadingRequestId={estimatorNotesLoadingRequestId}
-                  noteSubmitRequestId={estimatorNoteSubmitRequestId}
-                  canAddNotes={estimatorInboxEligible}
-                  estimatorRequestDismissingId={estimatorRequestDismissingId}
-                  noteDraft={estimatorNoteDraft}
-                  onNoteDraftChange={setEstimatorNoteDraft}
-                  onSubmitNote={submitEstimatorNote}
-                  onSubmitNoteAndClose={submitEstimatorNoteAndClose}
-                  onDismiss={dismissEstimatorRequest}
-                />
-              )}
-            </DashboardGroupCard>
+            <DashboardTeamsInboxCard
+              dispatchInbox={dispatchInbox}
+              estimatorInbox={estimatorInbox}
+              showHelpFeedback={false}
+              onOpenDismissedArchive={() => setDispatchDismissedModalOpen(true)}
+              onLinkJobPictures={
+                jobFormModal
+                  ? (jobId) => jobFormModal.openEditJob(jobId, { jobPicturesLinkHighlight: true })
+                  : undefined
+              }
+              onCreateTripCharge={(args) => setTripChargeTarget(args)}
+            />
           )}
           <div id="dash-billing" aria-hidden="true" style={dockAnchorStyle} />
           <BillingPipelineCard>
@@ -5234,26 +4835,10 @@ export default function Dashboard() {
       )}
       {(role === 'dev' || role === 'master_technician') && myInboxCard}
       {authUser?.id && (dispatchInboxEligible || estimatorInboxEligible) && !isAssistantLike(role) && (
-        <DashboardGroupCard id="dash-teams-inbox" title="Teams Inbox">
-          {isDev && <HelpFeedbackInboxSection />}
-          {dispatchInboxEligible && (
-        <DispatchInboxSection
-          sectionOpen={dispatchRequestsOpen}
-          onToggleSection={() => setDispatchRequestsOpen((o) => !o)}
-          requests={dispatchRequests}
-          loading={dispatchRequestsLoading}
-          expandedRequestId={expandedDispatchRequestId}
-          onToggleExpandRequest={toggleExpandDispatchRequest}
-          notesByRequestId={dispatchThreadNotesByRequestId}
-          notesLoadingRequestId={dispatchNotesLoadingRequestId}
-          noteSubmitRequestId={dispatchNoteSubmitRequestId}
-          canAddNotes={dispatchInboxEligible}
-          dispatchRequestDismissingId={dispatchRequestDismissingId}
-          noteDraft={dispatchNoteDraft}
-          onNoteDraftChange={setDispatchNoteDraft}
-          onSubmitNote={submitDispatchNote}
-          onSubmitNoteAndClose={submitDispatchNoteAndClose}
-          onDismiss={dismissDispatchRequest}
+        <DashboardTeamsInboxCard
+          dispatchInbox={dispatchInbox}
+          estimatorInbox={estimatorInbox}
+          showHelpFeedback={isDev}
           onOpenDismissedArchive={() => setDispatchDismissedModalOpen(true)}
           onLinkJobPictures={
             jobFormModal
@@ -5266,28 +4851,6 @@ export default function Dashboard() {
               : undefined
           }
         />
-          )}
-          {estimatorInboxEligible && (
-        <EstimatorInboxSection
-          sectionOpen={estimatorRequestsOpen}
-          onToggleSection={() => setEstimatorRequestsOpen((o) => !o)}
-          requests={estimatorRequests}
-          loading={estimatorRequestsLoading}
-          expandedRequestId={expandedEstimatorRequestId}
-          onToggleExpandRequest={toggleExpandEstimatorRequest}
-          notesByRequestId={estimatorThreadNotesByRequestId}
-          notesLoadingRequestId={estimatorNotesLoadingRequestId}
-          noteSubmitRequestId={estimatorNoteSubmitRequestId}
-          canAddNotes={estimatorInboxEligible}
-          estimatorRequestDismissingId={estimatorRequestDismissingId}
-          noteDraft={estimatorNoteDraft}
-          onNoteDraftChange={setEstimatorNoteDraft}
-          onSubmitNote={submitEstimatorNote}
-          onSubmitNoteAndClose={submitEstimatorNoteAndClose}
-          onDismiss={dismissEstimatorRequest}
-        />
-          )}
-        </DashboardGroupCard>
       )}
       {(role === 'dev' || role === 'master_technician') && (
         <div id="dash-billing" aria-hidden="true" style={dockAnchorStyle} />

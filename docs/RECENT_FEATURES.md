@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-17 (v2.718)
+last_updated: 2026-07-17 (v2.719)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.719)
+
+### Dashboard — Teams Inbox card: `useEstimatorInbox` adopted, duplicate render collapsed (2026-07-17)
+Extraction #4 of the Dashboard decomposition ([`DASHBOARD_SECTIONS_ARCHITECTURE.md`](DASHBOARD_SECTIONS_ARCHITECTURE.md)), in two moves. First, the fully inline estimator-inbox engine (~10 state vars, eligibility check, requests/notes loaders, `estimator_inbox_note_stats` merge, note submit/close/reopen/dismiss handlers, and both realtime channels) was replaced by the existing [`useEstimatorInbox`](../src/hooks/useEstimatorInbox.ts) hook it near-duplicated (already used by `ChecklistReviewInboxes`) — a line-by-line parity check found the inline engine byte-identical to the hook except client-side channel names (`dashboard-estimator-*` → the hook's `checklist-estimator-*`; Dashboard and Checklist are separate routes, so the names never coexist). Second, the two role-position copies of the "Teams Inbox" group card collapsed into one [`DashboardTeamsInboxCard.tsx`](../src/components/dashboard/DashboardTeamsInboxCard.tsx) rendered at both branch positions, parameterized by the two real differences (`showHelpFeedback`; `onCreateTripCharge` gated to dev/master in the non-assistant copy). **No behavior change** — both inbox engines stay in the parent (SectionDock gates + dismissed-items modal need them); the dismissed-archive and trip-charge modals stay parent-side with openers passed down; the card owns only the two section open/closed toggles. `Dashboard.tsx` is down to 6,898 lines (7,335 → 6,898).
 
 ## Latest Updates (v2.718)
 
