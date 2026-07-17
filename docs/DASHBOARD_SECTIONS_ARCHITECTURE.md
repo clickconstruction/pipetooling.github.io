@@ -50,7 +50,7 @@ Sections in order of first JSX appearance in the main return (Job Mode variant f
 | 11 | Recent Reports | `id="dash-reports"` / h2 "Recent Reports" (~7150) | inline (~250 lines) | ~10 | low (self-contained loader + realtime; hide-on-refresh localStorage) | low | Early target: `DashboardRecentReportsSection` (note dead `ReportEditModal` wiring) |
 | 12 | Team Ready to Bill (assigned RTB jobs) | h2 "Ready to Bill (`assignedReadyToBillJobs.length`)" (~7490) | inline (~295 lines) | ~4 | med (job-row family; shared modals) | med | Extract with the job-row family (Stage A row helpers first) |
 | 13 | Assigned Jobs | `DashboardGroupCard title="Assigned Jobs"` (~7779) | inline (~260 lines) | 2 | med (writes `readyForBillingJob`; shared modals; `updateJobStatus` refreshes it) | med | Extract with the job-row family |
-| 14 | Upcoming inspection | h2 "Upcoming inspection (3 days)" (~8041) | inline (~58 lines) | 2 | **none** (own loader; gate reads `dashboardButtonVisibility.inspections`) | trivial | **First extraction** — validates the section pattern |
+| 14 | Upcoming inspection | [`DashboardUpcomingInspectionsSection`](../src/components/dashboard/DashboardUpcomingInspectionsSection.tsx) | **extracted (v2.716)** | 0 | none (parent passes `role` + `inspectionsButtonVisible`) | — | Done |
 | 15 | Superintendent Jobs | h2 "Superintendent Jobs" (~8108) | inline (~150 lines) | 3 | med (dedupes against `assignedJobs`; shared modals) | med | Extract with the job-row family |
 | 16 | Projects (Assigned + Subscribed Stages) | `DashboardGroupCard id="dash-projects"` (~8253); h3s "Assigned Stages"/"Subscribed Stages" | partial (`AssignedStageCard` extracted) | ~10 | med (boot loader shared with My Inbox; `userNames`) | med | Seam boot loader; move workflow-step action engine + 3 modals with it |
 | 17 | My Team | `DashboardMyTeamSection` (lazy, ~8515) | extracted | 0 (hook in parent) | high (shares `myTeam` with strip cluster) | n/a | Done; `myTeam` hook stays in parent |
@@ -240,11 +240,10 @@ Cross-checked against [`src/lib/canLeaveJobFieldReport.ts`](../src/lib/canLeaveJ
 
 ### 14. Upcoming inspection
 
-- **Render location:** h2 "Upcoming inspection (3 days)" (~8041), block ~8039–8097. Gate: `showRecent`-style roles (dev/master/assistant-like/primary) AND `dashboardButtonVisibility?.inspections !== false` (hidden quick-button also hides this section — hidden coupling with section 3).
-- **Owned local state:** `upcomingInspections`/`upcomingInspectionsLoading` (~1213–1214).
-- **Handlers/loaders:** one effect (~1985, `inspections` table, today..+2 days via `toLocalDateString`).
-- **Supabase:** `inspections`.
-- **Extraction status + risk + approach:** Inline. **Trivial — extract first** (`DashboardUpcomingInspectionsSection`, props: `role` gate result + `inspectionsButtonVisible`). Validates the section-extraction pattern like `vehicles` did for People.
+- **Status: extracted (v2.716)** → [`DashboardUpcomingInspectionsSection.tsx`](../src/components/dashboard/DashboardUpcomingInspectionsSection.tsx); Stage-A kernel [`dashboardUpcomingInspections.ts`](../src/lib/dashboardUpcomingInspections.ts) (date-line formatting, 6 tests).
+- **What stayed in the parent:** only the thin wrapper — parent passes `authUserId`, `role`, and `inspectionsButtonVisible` (`dashboardButtonVisibility?.inspections !== false`, the hidden coupling with section 3). The component takes `role` (not a precomputed gate) so the loader's effect deps stay `[authUserId, role]`, preserving the quirk that the loader runs on role alone while the button flag gates render only.
+- **Note:** the component imports `toLocalDateString` from `lib/dailyGoalsGate` (byte-identical to Dashboard's module-level copy, which remains for its 3 other call sites — dedupe candidate when the banner block extracts).
+- **Supabase:** `inspections` (today..+2 days).
 
 ### 15. Superintendent Jobs
 
