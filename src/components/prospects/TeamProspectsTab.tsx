@@ -24,6 +24,7 @@ import {
   roleKeyOf,
   type TeamProspectRankUpdate,
 } from '../../lib/teamProspectRanking'
+import { distinctTeamProspectSources, summarizeTeamProspectSources } from '../../lib/teamProspectSourceSummary'
 
 export type TeamProspect = {
   id: string
@@ -104,10 +105,12 @@ function CandidateFields({
   draft,
   setDraft,
   roles,
+  knownSources,
 }: {
   draft: CandidateDraft
   setDraft: (d: CandidateDraft) => void
   roles: TeamProspectRole[]
+  knownSources: string[]
 }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
@@ -138,7 +141,13 @@ function CandidateFields({
       </label>
       <label>
         <span style={labelSpanStyle}>Source (referral, job board, walk-in…)</span>
-        <input type="text" value={draft.source} onChange={(e) => setDraft({ ...draft, source: e.target.value })} style={inputStyle} />
+        {/* Reuse existing spellings so the Source success stats don't fragment */}
+        <input type="text" list="team-prospect-source-options" value={draft.source} onChange={(e) => setDraft({ ...draft, source: e.target.value })} style={inputStyle} />
+        <datalist id="team-prospect-source-options">
+          {knownSources.map((s) => (
+            <option key={s} value={s} />
+          ))}
+        </datalist>
       </label>
       <label>
         <span style={labelSpanStyle}>Notes</span>
@@ -362,6 +371,7 @@ export default function TeamProspectsTab({ authUserId, resolveMasterId }: Props)
 
   const [hiredOpen, setHiredOpen] = useState(false)
   const [passedOpen, setPassedOpen] = useState(false)
+  const [sourcesOpen, setSourcesOpen] = useState(false)
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }))
 
@@ -391,6 +401,8 @@ export default function TeamProspectsTab({ authUserId, resolveMasterId }: Props)
     referencedCountByRole.set(r.role_id, (referencedCountByRole.get(r.role_id) ?? 0) + 1)
   }
   const unsortedActive = activeByRole[UNSORTED_ROLE_KEY] ?? []
+  const sourceSummary = summarizeTeamProspectSources(rows)
+  const knownSources = distinctTeamProspectSources(rows)
 
   async function persistRankUpdates(updates: TeamProspectRankUpdate[]) {
     const results = await Promise.all(
@@ -798,11 +810,55 @@ export default function TeamProspectsTab({ authUserId, resolveMasterId }: Props)
       {!loading && hired.length > 0 && bucketSection('Hired', hired, hiredOpen, setHiredOpen)}
       {!loading && passed.length > 0 && bucketSection('Passed', passed, passedOpen, setPassedOpen)}
 
+      {!loading && sourceSummary.length > 0 && (
+        <section style={{ marginTop: '1rem' }}>
+          <button
+            type="button"
+            onClick={() => setSourcesOpen(!sourcesOpen)}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontWeight: 600, fontSize: '0.9375rem', padding: 0 }}
+          >
+            {sourcesOpen ? '▾' : '▸'} Source success ({sourceSummary.length})
+          </button>
+          {sourcesOpen && (
+            <div style={{ marginTop: '0.5rem', border: '1px solid var(--border)', borderRadius: 8, overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
+                <thead>
+                  <tr style={{ borderBottom: '1px solid var(--border)', background: 'var(--bg-subtle)' }}>
+                    <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', fontWeight: 600 }}>Source</th>
+                    <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', fontWeight: 600 }}>Candidates</th>
+                    <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', fontWeight: 600 }}>Active</th>
+                    <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', fontWeight: 600 }}>Hired</th>
+                    <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', fontWeight: 600 }}>Passed</th>
+                    <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', fontWeight: 600 }} title="Hired ÷ (Hired + Passed) — undecided candidates don't count against a source">
+                      Hire rate
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {sourceSummary.map((s) => (
+                    <tr key={s.key} style={{ borderBottom: '1px solid var(--border)' }}>
+                      <td style={{ padding: '0.5rem 0.75rem' }}>{s.label}</td>
+                      <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{s.total}</td>
+                      <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: 'var(--text-muted)' }}>{s.active}</td>
+                      <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: s.hired > 0 ? '#16a34a' : undefined, fontWeight: s.hired > 0 ? 600 : undefined }}>{s.hired}</td>
+                      <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: 'var(--text-muted)' }}>{s.passed}</td>
+                      <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
+                        {s.hireRate === null ? '—' : `${Math.round(s.hireRate * 100)}%`}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+      )}
+
       {addOpen &&
         modal(
           'Add candidate',
           <>
-            <CandidateFields draft={addDraft} setDraft={setAddDraft} roles={roles} />
+            <CandidateFields draft={addDraft} setDraft={setAddDraft} roles={roles} knownSources={knownSources} />
             <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
               <button
                 type="button"
@@ -829,7 +885,7 @@ export default function TeamProspectsTab({ authUserId, resolveMasterId }: Props)
         modal(
           'Edit candidate',
           <>
-            <CandidateFields draft={editDraft} setDraft={setEditDraft} roles={roles} />
+            <CandidateFields draft={editDraft} setDraft={setEditDraft} roles={roles} knownSources={knownSources} />
             <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
               <button
                 type="button"
