@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-17 (v2.716)
+last_updated: 2026-07-17 (v2.717)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.717)
+
+### Dashboard — Recent Reports section extracted (2026-07-17)
+Extraction #2 of the Dashboard decomposition ([`DASHBOARD_SECTIONS_ARCHITECTURE.md`](DASHBOARD_SECTIONS_ARCHITECTURE.md)): the "Recent Reports" section — its 11 state vars, loader, `reports` realtime channel, hide-on-refresh localStorage, and the (dead) edit-modal wiring — moved from `Dashboard.tsx` into [`DashboardRecentReportsSection.tsx`](../src/components/dashboard/DashboardRecentReportsSection.tsx), with the unread/visible filtering in new kernel [`dashboardRecentReports.ts`](../src/lib/dashboardRecentReports.ts) (8 unit tests). **No behavior change.** `Dashboard.tsx` is down ~450 lines across the first two extractions (8,899 → 8,446).
 
 ## Latest Updates (v2.716)
 
