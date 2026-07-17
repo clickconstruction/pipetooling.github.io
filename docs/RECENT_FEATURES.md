@@ -2049,7 +2049,7 @@ when_to_read:
 ## Latest Updates (v2.717)
 
 ### Dashboard — Recent Reports section extracted (2026-07-17)
-Extraction #2 of the Dashboard decomposition ([`DASHBOARD_SECTIONS_ARCHITECTURE.md`](DASHBOARD_SECTIONS_ARCHITECTURE.md)): the "Recent Reports" section — its 11 state vars, loader, `reports` realtime channel, hide-on-refresh localStorage, and the (dead) edit-modal wiring — moved from `Dashboard.tsx` into [`DashboardRecentReportsSection.tsx`](../src/components/dashboard/DashboardRecentReportsSection.tsx), with the unread/visible filtering in new kernel [`dashboardRecentReports.ts`](../src/lib/dashboardRecentReports.ts) (8 unit tests). **No behavior change.** `Dashboard.tsx` is down ~330 lines across the first two extractions.
+Extraction #2 of the Dashboard decomposition ([`DASHBOARD_SECTIONS_ARCHITECTURE.md`](DASHBOARD_SECTIONS_ARCHITECTURE.md)): the "Recent Reports" section — its 11 state vars, loader, `reports` realtime channel, hide-on-refresh localStorage, and the (dead) edit-modal wiring — moved from `Dashboard.tsx` into [`DashboardRecentReportsSection.tsx`](../src/components/dashboard/DashboardRecentReportsSection.tsx), with the unread/visible filtering in new kernel [`dashboardRecentReports.ts`](../src/lib/dashboardRecentReports.ts) (8 unit tests). **No behavior change.** `Dashboard.tsx` is down ~450 lines across the first two extractions (8,899 → 8,446).
 
 ## Latest Updates (v2.716)
 
