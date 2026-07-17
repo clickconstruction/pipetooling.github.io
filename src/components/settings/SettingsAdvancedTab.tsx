@@ -78,6 +78,12 @@ export default function SettingsAdvancedTab({
               </button>
             </div>
             {codeError && <p style={{ color: 'var(--text-red-700)', marginTop: 4, marginBottom: 0 }}>{codeError}</p>}
+            {/* Static on purpose: it must not reveal WHY a code was refused (a "correct but refused"
+             * response would confirm the code is valid). It just tells an honest user what to do instead. */}
+            <p style={{ marginTop: '0.5rem', marginBottom: 0, fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+              This code only works when no dev is available. If a dev already has access, ask them to change
+              your role in <strong>Settings → People &amp; accounts</strong> instead. Every attempt is recorded.
+            </p>
           </form>
         </div>
       )}

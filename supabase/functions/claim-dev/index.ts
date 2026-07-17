@@ -71,19 +71,9 @@ serve(async (req) => {
 
     const { code }: ClaimDevRequest = await req.json()
 
-    if (!code || typeof code !== 'string') {
-      return new Response(
-        JSON.stringify({ success: false }),
-        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
-    }
-
-    if (!secureCompare(code.trim(), promotionCode)) {
-      return new Response(
-        JSON.stringify({ success: false }),
-        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
-    }
+    // The code check stays here (this is where the secret lives); the RPC is told only the boolean.
+    // We do NOT return early on a bad code — every attempt, good or bad, must reach the audit trail.
+    const codeOk = !!code && typeof code === 'string' && secureCompare(code.trim(), promotionCode)
 
     const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
     if (!serviceRoleKey) {
@@ -100,20 +90,28 @@ serve(async (req) => {
       },
     })
 
-    const { error: updateError } = await adminClient
-      .from('users')
-      .update({ role: 'dev' })
-      .eq('id', authUser.id)
+    // Break-glass only. claim_dev_attempt() enforces the gate (no usable dev exists; caller not
+    // read_only/archived), performs the promotion, and audits EVERY branch to claim_dev_attempts.
+    // It is REVOKEd from authenticated and granted only to service_role, so this is its sole caller.
+    const { data: result, error: rpcError } = await adminClient.rpc('claim_dev_attempt', {
+      p_user_id: authUser.id,
+      p_code_ok: codeOk,
+    })
 
-    if (updateError) {
+    if (rpcError) {
       return new Response(
-        JSON.stringify({ error: `Failed to update role: ${updateError.message}` }),
+        JSON.stringify({ error: `Failed to update role: ${rpcError.message}` }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
+    // Deliberately opaque: a *correct* code refused because a dev already exists must look identical to
+    // a wrong code, or the response becomes an oracle confirming the secret is valid. The real reason is
+    // in claim_dev_attempts, which only devs can read.
+    const granted = (result as { ok?: boolean } | null)?.ok === true
+
     return new Response(
-      JSON.stringify({ success: true }),
+      JSON.stringify({ success: granted }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
   } catch (error) {

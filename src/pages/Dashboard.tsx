@@ -86,6 +86,7 @@ import DashboardLostBidsMissingReasonBanner from '../components/DashboardLostBid
 import DashboardTallyStaleBanner from '../components/DashboardTallyStaleBanner'
 import DashboardTallyStaleStaffBanner from '../components/DashboardTallyStaleStaffBanner'
 import DashboardBulkDeleteAlertBanner from '../components/DashboardBulkDeleteAlertBanner'
+import DashboardClaimDevAttemptsBanner from '../components/DashboardClaimDevAttemptsBanner'
 import { DashboardStaleTallyStaffFollowUpModal } from '../components/DashboardStaleTallyStaffFollowUpModal'
 import {
   canRoleSeeArBankUnallocatedDashboardBanner,
@@ -4461,6 +4462,8 @@ export default function Dashboard() {
       )}
       {/* Dev-only and self-gating: renders nothing unless a burst of deletions was detected. */}
       <DashboardBulkDeleteAlertBanner />
+      {/* Dev-only and self-gating: renders nothing unless someone was refused the break-glass dev code. */}
+      <DashboardClaimDevAttemptsBanner />
       {role != null && (
         <div style={{ display: 'flex', alignItems: 'stretch', gap: '0.5rem', marginBottom: '1rem' }}>
           <div style={{ position: 'relative', width: 48, height: 48, flexShrink: 0 }}>

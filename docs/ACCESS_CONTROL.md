@@ -91,6 +91,12 @@ Pipetooling implements comprehensive role-based access control (RBAC) using eigh
 - **Database**: Foreign key relationships enforce data ownership
 - **Edge Functions**: Role validation before privileged operations
 
+### claim-dev is break-glass only (v2.706, `20260717150000_claim_dev_break_glass.sql`)
+- **What**: the "Enter code" form (Settings → Advanced) promotes to dev **only when no usable dev exists** (`role='dev' AND archived_at IS NULL AND read_only=false`). A `read_only` or archived caller is refused even then — a frozen account never escalates. Previously it promoted **any** non-subcontractor role instantly, bypassing the v2.695 self-promotion guard (service-role ⇒ `auth.uid()` NULL ⇒ guard early-returns).
+- **Enforcement**: `claim_dev_attempt(uuid, boolean)` — `SECURITY DEFINER`, **`REVOKE`d from `authenticated`, granted only to `service_role`**, so the claim-dev edge function is its sole caller. Race-free via `pg_advisory_xact_lock`.
+- **Audit**: every attempt lands in `claim_dev_attempts` (append-only; **dev-only SELECT**; no client write policy). Repeated refusals raise a dev dashboard alert. Refusals are **opaque to the caller** by design — a correct-code-but-refused response would be a code oracle.
+- **Removed**: `delete-user` (undeployed 2026-07-17) — its `users` hard-delete cascaded 100 FKs into archived-but-unrestorable loss. Use `archive-user` (bans + soft-archives, reversible).
+
 ### Bulk-deletion alerting (v2.705, `20260717120000_bulk_deletion_alerts.sql`)
 - **Who**: **dev-only**. `list_bulk_deletion_alerts()` is `SECURITY DEFINER` with the `WHERE public.is_dev()` idiom — a non-dev gets zero rows. Surfaced as a self-gating Dashboard notice; thresholds configured in the dev-only **Settings → Data & migration** tab.
 - **What**: a read-side aggregate over `deleted_records_archive` (no new capture). Flags one `(actor, time-bucket)` per burst where `count(distinct group_key) >= bundles` **OR** `count(*) >= rows`. Counts **bundles** (whole jobs/bids/customers), because one job delete archives ~20 rows and a row-only threshold would fire on every ordinary delete.
