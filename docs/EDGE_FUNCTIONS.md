@@ -1543,11 +1543,17 @@ const response = await supabase.functions.invoke('set-user-password', {
 
 ### claim-dev
 
-**Purpose**: Promote the current user to dev role by entering the promotion code (stored in Supabase secret)
+**Purpose**: **Break-glass only (v2.706).** Promote the current user to dev *when no usable dev is available* — bootstrapping the first dev, or recovering when every dev is archived or read-only. It is **not** a general self-promotion path: if a usable dev exists, use **Settings → People & accounts** instead.
 
 **Endpoint**: `POST /functions/v1/claim-dev`
 
-**Required Role**: Authenticated user (any role; promotes self to dev on success)
+**Required Role**: Authenticated user. **Refused** when a usable dev exists (`role='dev' AND archived_at IS NULL AND read_only=false`), when the caller is `read_only` or archived, or when the code is wrong.
+
+**How it enforces**: the function checks the code (constant-time) and calls the SECURITY DEFINER RPC `claim_dev_attempt(p_user_id, p_code_ok)`, which holds the gate, performs the promotion and **audits every attempt** to `claim_dev_attempts` (dev-only SELECT). That RPC is `REVOKE`d from `authenticated` and granted only to `service_role`, so this function is its sole caller — it is not a new door.
+
+> **Every refusal returns the same opaque `{ success: false }`**, including a *correct* code refused because a dev exists. Anything else would be a **code oracle**, confirming the secret is valid. The real reason is recorded in `claim_dev_attempts`; repeated `refused_*` rows raise a dev dashboard alert. Preserve this behaviour if you edit the function.
+
+> Deploy order: this function calls `claim_dev_attempt()`, so **`supabase db push` must run before `supabase functions deploy claim-dev`**. `verify_jwt = false` in `config.toml` is intentional (the function does its own Bearer + `getUser` check) — preserve it on redeploy.
 
 **Required Secrets**:
 - `SUPABASE_URL`

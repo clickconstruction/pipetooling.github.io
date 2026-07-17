@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-17 (v2.705)
+last_updated: 2026-07-17 (v2.706)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,13 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.706)
+
+### Security — the admin code is now break-glass only, and every attempt is recorded (2026-07-17)
+Settings → Advanced had a box labelled only **"Enter code"**, visible to every role except subcontractors. The right code made you a **dev instantly** — no record, no notification, nobody told. It sidestepped the v2.695 guard that was supposed to make "nobody promotes themselves" true, because it promoted through a service-role client. Anyone who had ever seen that code — a contractor, a former employee, a screenshot — could become a dev at any time, silently. The code now works **only when no dev is available** (all archived or read-only, or none at all) — the genuine lockout it exists for. Otherwise it is refused and you're pointed at Settings → People & accounts. **Every attempt is logged**, and repeated refusals raise a **"Someone tried to become a dev"** notice on the dev Dashboard, because someone probing the code while you're here is exactly what you'd want to know. A refused attempt looks identical to a wrong code on purpose, so it can't be used to confirm a guess. A frozen (read-only) account is refused even in a real lockout.
+
+Also removed: the **`delete-user`** function, which was live in production but not in this repo, called by nothing, and superseded by Archive. Its one operation hard-deleted a user — which cascades across **100 foreign keys**, taking their jobs, customers, projects, estimates, prospects, people and reports with them. That data would have been archived but **not restorable**, since restoring a job needs the user it belongs to. It was the only known way to lose work permanently; it's gone, and its source is kept in `supabase/archive/functions-removed/` for the record. See [`MIGRATIONS.md`](MIGRATIONS.md) and [`EDGE_FUNCTIONS.md`](EDGE_FUNCTIONS.md).
 
 ## Latest Updates (v2.705)
 

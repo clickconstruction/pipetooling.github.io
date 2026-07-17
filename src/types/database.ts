@@ -2396,6 +2396,30 @@ export type Database = {
           },
         ]
       }
+      claim_dev_attempts: {
+        Row: {
+          attempted_at: string
+          attempted_by: string | null
+          detail: Json
+          id: string
+          outcome: string
+        }
+        Insert: {
+          attempted_at?: string
+          attempted_by?: string | null
+          detail?: Json
+          id?: string
+          outcome: string
+        }
+        Update: {
+          attempted_at?: string
+          attempted_by?: string | null
+          detail?: Json
+          id?: string
+          outcome?: string
+        }
+        Relationships: []
+      }
       deleted_records_archive: {
         Row: {
           deleted_at: string

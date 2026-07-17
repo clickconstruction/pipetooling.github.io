@@ -103,6 +103,16 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 #### July 17, 2026
 
+**`20260717150000_claim_dev_break_glass.sql`** _(apply via `supabase db push` after the file is on `main`, and BEFORE `supabase functions deploy claim-dev`)_
+- **Purpose**: **Close the claim-dev escalation path.** `claim-dev` was a form labelled only "Enter code" (Settings → Advanced, visible to every role except subcontractor/helpers) that promoted you to dev instantly, with no audit, no notification and no lockout — gated solely by a static shared secret. It promoted via a service-role client, so `auth.uid()` was NULL inside `users_guard_privileged_columns` (`20260716090000`) and that guard early-returned: the rule "only a dev can change a role; nobody self-promotes" had a deployed, UI-exposed bypass.
+- **Now**: adds `claim_dev_attempts` (append-only audit, dev-only SELECT, no client write policy) and `claim_dev_attempt(p_user_id, p_code_ok)` — `SECURITY DEFINER`, **`REVOKE`d from `authenticated` and granted only to `service_role`** so the edge function is its sole caller (not a new door). It grants dev **only when no usable dev exists** (`role='dev' AND archived_at IS NULL AND read_only=false`), refuses `read_only`/archived callers even in a genuine lockout, takes `pg_advisory_xact_lock` so the check is race-free, and logs **every** branch (`granted` / `refused_bad_code` / `refused_dev_exists` / `refused_read_only` / `refused_unknown_user`).
+- **The two real lockouts still work**: the only dev is archived, or the only dev is read-only. Bootstrap (no dev at all) still works.
+- **No oracle**: the edge function returns the same opaque `{success:false}` for every refusal — a correct-code-but-refused response would confirm the secret is valid. The truth lives in `claim_dev_attempts`.
+- **Related**: the `delete-user` edge function was **undeployed** the same day — ACTIVE v38, absent from this repo and from `config.toml`, called by no UI, superseded by `archive-user`, and its `users` hard-delete cascaded 100 FKs (jobs, customers, estimates, prospects, people, clock sessions, reports) into archived-but-**unrestorable** loss (`jobs_ledger.master_user_id` is NOT NULL, so restore blocks). Source preserved at `supabase/archive/functions-removed/delete-user/`.
+- **Category**: Security / privilege escalation
+
+#### July 17, 2026
+
 **`20260717120000_bulk_deletion_alerts.sql`** _(apply via `supabase db push` after the file is on `main`)_
 - **Purpose**: **Bulk-deletion alerting.** Everything in v2.695–v2.704 (no self-escalation, 83 tables archived, one-click restore, airtight read-only) assumed *somebody notices* — nothing told you. Adds dev-only `list_bulk_deletion_alerts()`, a read-side aggregate over `deleted_records_archive` (no new capture needed: actor/time/bundle are already recorded). Returns one row per `(actor, time bucket)` exceeding the thresholds.
 - **The unit is bundles, not rows**: deleting ONE job archives many rows (measured: minimal job = 5 rows/1 bundle; a real one 15–20+; a real prod bid count-clear was 19 rows/1 bundle). A row threshold would fire on a single legitimate delete. `count(distinct group_key)` = "how many *things*". Rows remain a **second** trigger for one enormous bundle (a customer cascading into 50 projects = 1 bundle, hundreds of rows). Thresholds OR'd.
