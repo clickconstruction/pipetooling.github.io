@@ -3,16 +3,16 @@
 ---
 file: docs/BIDS_TABS_ARCHITECTURE.md
 type: Engineering / Refactor Map
-purpose: Inventory what every tab in src/pages/Bids.tsx touches (state, memos, handlers, sub-components, supabase tables, cross-tab coupling) to track the decomposition of the former ~18.8k-line God component (now ~4.1k lines, all tabs extracted).
+purpose: Inventory what every tab in src/pages/Bids.tsx touches (state, memos, handlers, sub-components, supabase tables, cross-tab coupling) to track the decomposition of the former ~18.8k-line God component (now ~3.8k lines, all tabs extracted).
 audience: Developers, AI Agents
-last_updated: 2026-05-31
+last_updated: 2026-07-17
 ---
 
 ## Overview
 
-[`src/pages/Bids.tsx`](../src/pages/Bids.tsx) was a ~18,800-line "God component"; after extracting every workflow tab it is now ~4,119 lines. This map is a refactoring aid: for each tab it records what state, derived data, handlers, sub-components, and external systems the tab touches, plus its extraction status and risk. It is **coupling/refactor-oriented** — for feature/workflow/DB behavior, see [`BIDS_SYSTEM.md`](./BIDS_SYSTEM.md). **All 14 tabs are now extracted to their own components; the parent retains the shared bid pointer, URL deep-link router, the `useBidPricingEngine` seam, and a few shared page-level modals.**
+[`src/pages/Bids.tsx`](../src/pages/Bids.tsx) was a ~18,800-line "God component"; after extracting every workflow tab it is now **~3,787 lines**. This map is a refactoring aid: for each tab it records what state, derived data, handlers, sub-components, and external systems the tab touches, plus its extraction status and risk. It is **coupling/refactor-oriented** — for feature/workflow/DB behavior, see [`BIDS_SYSTEM.md`](./BIDS_SYSTEM.md). **All 14 tabs are now extracted to their own components; the parent retains the shared bid pointer, URL deep-link router, the `useBidPricingEngine` seam, and a few shared page-level modals.**
 
-The tabs are switched on a single `activeTab` state ([`Bids.tsx:337`](../src/pages/Bids.tsx)):
+The tabs are switched on a single `activeTab` state ([`Bids.tsx:178`](../src/pages/Bids.tsx); the `BIDS_TABS` deep-link union lives further down — search `const BIDS_TABS`):
 
 ```
 'bid-board' | 'builder-review' | 'working' | 'bid-costs' | 'estimators' | 'counts'
@@ -25,7 +25,7 @@ Each per-tab section lists: render location, **owned local state** (used only by
 
 ### How to maintain this doc
 - Update the relevant dossier whenever a tab is extracted, or its state/handlers change.
-- Treat line numbers as approximate anchors — they drift as the file changes. When in doubt, search for the symbol name.
+- **Anchors drift.** Prefer symbol names over line numbers; when a line number appears, treat it as approximate and search for the symbol. Most line numbers in the per-tab dossiers are **historical pre-extraction positions** in the old monolithic file (kept as a record of what moved) — they do not resolve in today's ~3,787-line parent.
 - When a tab is fully extracted to its own component, change its Status to `extracted` and point at the new file.
 
 ---
@@ -36,18 +36,18 @@ Each per-tab section lists: render location, **owned local state** (used only by
 |---|---|---|---|---|---|---|---|---|
 | `bid-board` | Bid Board | thin wrapper | ~633 | extracted (`BidsBidBoardTab` + `BidBoardEstimatingHealthSection`) | ~4 (deep-link + sectionOpen + lost-summary, in parent) | med-high | No | Done |
 | `builder-review` | Builder Review | thin wrapper | ~377 | extracted (`BidsBuilderReviewTab`) | 2 (deep-link, in parent) | medium | No | Done |
-| `working` | Unsent / Working | 10885-10906 | ~22 | mostly extracted (wraps `BidsWorkingBoard`) | 4 (deep-link) | low-med | No | Nearly done; only move the archive-confirm + deep-link glue |
+| `working` | Unsent / Working | thin wrapper (`activeTab === 'working'`) | ~22 | mostly extracted (wraps `BidsWorkingBoard`) | 4 (deep-link) | low-med | No | Nearly done; only move the archive-confirm + deep-link glue |
 | `bid-costs` | Bid Costs | thin wrapper | ~76 (dev-only) | extracted (`BidsBidCostsTab`) | 0 | low | No | Done |
-| `estimators` | Estimators | 10987-10997 | ~11 | extracted (`BidsEstimatorsTab`) | 0 | low | No | Done |
+| `estimators` | Estimators | thin wrapper | ~11 | extracted (`BidsEstimatorsTab`) | 0 | low | No | Done |
 | `counts` | Counts | thin wrapper | ~289 | extracted (`BidsCountsTab`) | 1 (selection, in parent) | high | Yes (via hook props) | Done |
 | `takeoffs` | Takeoff | thin wrapper | ~52 | extracted (`BidsTakeoffTab`) | 2 (selection + shared tax, in parent) | high | Yes (via hook props) | Done |
 | `labor` | Cost Estimate | thin wrapper | ~70 | extracted (`BidsLaborTab`) | 3 (selection + shared tax/distance, in parent) | high | Yes (via hook props) | Done |
 | `pricing` | Pricing | thin wrapper | ~47 | extracted (`BidsPricingTab`) | 2 (selection + shared tax, in parent) | high | Yes (via hook props) | Done |
 | `cover-letter` | Cover Letter | thin wrapper | ~37 | extracted (`BidsCoverLetterTab`) | 8 `*ByBid` maps (parent-owned, shared with `downloadApprovalPdf`) | high | Yes (via `coverLetterPricingRows` prop) | Done |
 | `submission-followup` | Submission & Followup | wrapper | ~1,260 | extracted (`BidSubmissionFollowupTab`) | 0 (parent keeps selection) | medium | No | Done |
-| `rfi` | RFI | 17045-17054 | ~10 | extracted (`BidRfiTab`) | 0 (parent) | low | No | Done |
-| `change-order` | Change Order | 17056-17065 | ~10 | extracted (`BidChangeOrderTab`) | 0 (parent) | low | No | Done |
-| `lien-release` | Lien Release | 17068-17076 | ~9 | extracted (`BidLienReleaseTab`) | 0 (parent) | low | No | Done |
+| `rfi` | RFI | thin wrapper | ~10 | extracted (`BidRfiTab`) | 0 (parent) | low | No | Done |
+| `change-order` | Change Order | thin wrapper | ~10 | extracted (`BidChangeOrderTab`) | 0 (parent) | low | No | Done |
+| `lien-release` | Lien Release | thin wrapper | ~9 | extracted (`BidLienReleaseTab`) | 0 (parent) | low | No | Done |
 
 > Status legend: `inline` = rendered directly in `Bids.tsx`; `extracted` = moved to its own component file; `extracted component` = already a thin wrapper around an imported component.
 
@@ -55,9 +55,11 @@ Each per-tab section lists: render location, **owned local state** (used only by
 
 ## Per-tab dossiers
 
+> **Note on line numbers:** every tab is extracted, so the line ranges quoted inside these dossiers are **historical pre-extraction anchors** in the old monolithic `Bids.tsx` — a record of what moved where. They do not resolve in the current ~3,787-line parent; search by symbol name instead (e.g. `activeTab === 'bid-board'`, the state variable, the handler).
+
 ### `bid-board` — Bid Board
 
-- **Render location:** [`Bids.tsx:9872-10504`](../src/pages/Bids.tsx) (~633 lines). Marker `{/* Bid Board Tab */}` at 9871.
+- **Render location:** parent renders a thin `<BidsBidBoardTab .../>` behind `activeTab === 'bid-board'` (pre-extraction: ~633 inline lines).
 - **Owned local state:** `bidBoardSearchQuery` (417), `expandedBidBoardBidId` (418), `bidBoardNotesTab` (419), `bidBoardNotesUnreadByBidId` (420), `bidBoardUnreadFetchSeqRef` (421), `bidsForBoardUnreadRef` (422), `staffOutcomeDrilldown` (424, modal at 9086-9265), `bidBoardSectionOpen` (536), `lostSummaryModalOpen` (537), `lostSummaryInitialStaffTab` (538), `bidBoardDeepLinkHighlightId`/`Gen` (539-540), `scoreboardDetailsExpanded` (541), `bidBoardDeepLinkTimeoutRef` (542), `bidBoardPendingScrollBidIdRef` (543). Also opened from here but rendered elsewhere: `evaluateModalOpen`/`evaluateChecked` (435-436, modal 17501-17564), `workingBoardArchivedModalOpen` (665).
 - **Cross-tab/shared state:** `activeTab` (read + write via deep links); `bids` (read, write via `loadBids`); `selectedServiceTypeId` (implicit filter — board is service-type-scoped); `editingBid`/`bidFormOpen` (write via `openEditBid`); `viewingCustomer`/`viewingGcBuilder` (write); `selectedBidForSubmission` + `scrollToContactFromBidBoard` (write via `handleLastContactClick` 7419); `ledgerPrefixMap` (read); URL params (`tab`, `bidId`, `lostSummary`).
 - **Derived memos:** `filteredBidsForBidBoard` (7739), `bidBoardBuckets` (8256, uses `getSubmissionSectionKey` + `compareBidsForBidBoardDueDate`), `lostBidsMissingLossReasonCount` (8274), `bidBoardStaffOutcomeByRole` (8280), `bidBoardWeeklySentSummaries` (8285), `staffOutcomeDrilldownBids` (8290), `workingBoardArchivedBids` (7879), `showLostModalLabor` (556).
@@ -70,7 +72,7 @@ Each per-tab section lists: render location, **owned local state** (used only by
 
 ### `builder-review` — Builder Review
 
-- **Render location:** [`Bids.tsx:10507-10883`](../src/pages/Bids.tsx) (~377 lines). Marker `{/* Builder Review Tab */}` at 10506.
+- **Render location:** parent renders a thin `<BidsBuilderReviewTab .../>` behind `activeTab === 'builder-review'` (pre-extraction: ~377 inline lines).
 - **Owned local state:** `builderReviewSectionOpen` (410), `builderReviewCardExpanded` (411), `builderReviewSearchQuery` (412), `builderReviewSortOrder` (413), `builderReviewPiaCustomerIds` (414, persisted to localStorage), `builderReviewDeepLinkHighlightCustomerId` (626), `builderReviewDeepLinkHighlightGen` (627), `builderReviewDeepLinkTimeoutRef` (628), `builderReviewPendingDeepLinkBidIdRef` (629), `builderReviewDeepLinkAppliedBidIdRef` (630). Contact-person modal state (403-409) is opened here, rendered at 17257-17390.
 - **Cross-tab/shared state:** `activeTab` (read + write); `bids` (read — **all trades** via `loadBids(null)` at 6379); `customers` (read/write); `customerContacts`, `customerContactPersons`, `lastContactFromEntries` (read); `selectedServiceTypeId` (read for new-bid prefill); `editingBid`/`bidFormOpen` (write via `openEditBid`/`openNewBidWithCustomer`); `selectedBidForSubmission` + `scrollToContactFromBidBoard` (write at 10618-10620); `narrowViewport640`.
 - **Derived memos:** `builderReviewCustomersSorted` (8428), `builderReviewCustomersFiltered` (8452), `builderReviewPiaCustomersExcluded` (8468). Per-card bid buckets computed inline at 10568-10573.
@@ -83,7 +85,7 @@ Each per-tab section lists: render location, **owned local state** (used only by
 
 ### `working` — Unsent / Working
 
-- **Render location:** [`Bids.tsx:10885-10906`](../src/pages/Bids.tsx) (~22 lines). Gate `activeTab === 'working' && authUser?.id`.
+- **Render location:** ~22-line wrapper behind `activeTab === 'working' && authUser?.id`.
 - **Owned local state:** `workingBoardDeepLinkBidId` (664), `workingBoardPendingDeepLinkBidIdRef` (673), `workingDeepLinkAppliedBidIdRef` (674), `onWorkingBoardDeepLinkHandled` (675). Working-ecosystem state rendered elsewhere: `workingBoardArchivedModalOpen` (665, Bid Board), `archiveWorkingBoardBusyBidId` (666, `BidFormModal`), `workingBoardArchiveConfirmBidId`/`Label` (667-668, confirm dialog 9801-9869).
 - **Cross-tab/shared state:** `activeTab` + `authUser` (gate); `setError` (via `onLoadError`); `bids` (read in preview callback); URL `?tab=working&bidId=`; `editingBid` written indirectly by `archiveWorkingBoardBid`.
 - **Derived memos:** `workingBoardEligibleBids` (7866), `workingBoardVisibleBids` (7875), `workingBoardArchivedBids` (7879, used by Bid Board modal), `useWorkingBoardInboxCount(...)` (7924, tab badge).
@@ -96,7 +98,7 @@ Each per-tab section lists: render location, **owned local state** (used only by
 
 ### `bid-costs` — Bid Costs (dev-only)
 
-- **Render location:** [`Bids.tsx:10909-10984`](../src/pages/Bids.tsx) (~76 lines). Gate `myRole === 'dev' && activeTab === 'bid-costs'`; non-dev redirected away (6079-6086).
+- **Render location:** thin wrapper behind `myRole === 'dev' && activeTab === 'bid-costs'`; non-dev redirected away (search the `bid-costs` redirect effect).
 - **Owned local state:** `bidCostsSectionOpen` (679). Shared labor data loaded for it: `teamLaborDataForBids` (898, also used by Pricing).
 - **Cross-tab/shared state:** `activeTab` + `myRole` (gate + redirect); `setSharedBid(bid)` on row click (writes all `selectedBidFor*`); `bids` (read); URL `?tab=bid-costs`.
 - **Derived memos:** `teamLaborByBidId` (8082), `bidCostsUnsent`/`Pending`/`Won`/`StartedOrComplete`/`Lost` (inline filters 8169-8180).
@@ -109,11 +111,11 @@ Each per-tab section lists: render location, **owned local state** (used only by
 
 ### `estimators` — Estimators
 
-- **Render location:** [`Bids.tsx:10987-10997`](../src/pages/Bids.tsx) (~11 lines). Gate `activeTab === 'estimators'`.
+- **Render location:** ~11-line wrapper behind `activeTab === 'estimators'`.
 - **Owned local state:** none in the parent — all state lives in the extracted component.
 - **Cross-tab/shared state:** `activeTab` (→ `active` prop), `myRole` (→ `viewerRole`), `bids` (read in preview callback), `bidPreview`, URL `?tab=estimators`. Does not touch `selectedBidFor*` or `editingBid`.
 - **Derived memos:** none in the parent.
-- **Handlers/functions:** inline `onOpenBidPreview` (10991-10995) → `bidPreview.openBidPreviewFromBid`.
+- **Handlers/functions:** inline `onOpenBidPreview` → `bidPreview.openBidPreviewFromBid`.
 - **Data dependencies (parent):** `bids` (preview lookup), `myRole`.
 - **Supabase tables (parent):** none. The component loads `users`, `bid_estimators_extra_users`, RPCs `list_bid_estimators_window_hours`/`list_bid_estimators_all_time_hours`, and `bids` labels.
 - **Sub-components:** `BidsEstimatorsTab` (**extracted**, [`src/components/bids/BidsEstimatorsTab.tsx`](../src/components/bids/BidsEstimatorsTab.tsx)); child renders `BidsEstimatorsExtraUsersModal`.
@@ -137,7 +139,7 @@ Each per-tab section lists: render location, **owned local state** (used only by
 
 ### `takeoffs` — Takeoff
 
-> **Extracted (2026-05-30)** to [`src/components/bids/BidsTakeoffTab.tsx`](../src/components/bids/BidsTakeoffTab.tsx) (~4,991 lines). Part of the **pricing-engine cluster** (`counts → takeoffs → labor → pricing`); engine data comes from `useBidPricingEngine`. This was the largest inline tab; extracting it dropped `Bids.tsx` from ~8,829 to ~4,119 lines.
+> **Extracted (2026-05-30)** to [`src/components/bids/BidsTakeoffTab.tsx`](../src/components/bids/BidsTakeoffTab.tsx) (**~5,641 lines** as of 2026-07-17 — it has kept growing post-extraction and is now the repo's largest bids component). Part of the **pricing-engine cluster** (`counts → takeoffs → labor → pricing`); engine data comes from `useBidPricingEngine`. This was the largest inline tab; extracting it dropped `Bids.tsx` from ~8,829 to ~4,119 lines (the parent is ~3,787 today).
 
 - **Render location:** parent renders a thin `<BidsTakeoffTab .../>` behind `activeTab === 'takeoffs'`.
 - **Owned local state (now inside `BidsTakeoffTab`, ~80 vars):** `takeoffSearchQuery`, rough-part picker + numpad state (`takeoffRoughPartPickerLineId`, `roughLineCatalogApplyModal`/`PriceId`/`Saving`, `roughAddAssembly*`, `roughQtyNumpad*` + refs), remove-confirm (`takeoffRemoveConfirm` + ref), PO creation (`takeoffExistingPOId`/`CreatingPO`/`AddingToPO`/`Printing`/`SuccessMessage`/`CreatedPOId`/`ExistingPOItems`), template picker (`takeoffTemplatePicker*` + anchor/refs/preview-cache), takeoff-book admin (`takeoffBook*`, `editingTakeoffBook*`, `savingTakeoff*`, `applyingTakeoffBookTemplates`), add/edit-template + parts modals (`takeoffAddTemplate*`, `takeoffNewItem*`, `takeoffNewTemplate*`, `editTemplate*`, `addParts*`), part-form state (`bidsPartForm*`, `supplyHouses`, `partTypes`), part-prices modal (`partPricesModal*`), and the PO-review modal state `costEstimatePOModalPoId`/`Data`. `roughPartLinesSensors` (dnd) moved too. `supplyHouses`/`partTypes` are now loaded by the child (mount effect), not the parent.
@@ -182,7 +184,7 @@ Each per-tab section lists: render location, **owned local state** (used only by
 
 ### `cover-letter` — Cover Letter
 
-> **Extracted (2026-05-30)** to [`src/components/bids/BidsCoverLetterTab.tsx`](../src/components/bids/BidsCoverLetterTab.tsx) (~564 lines). Consumes the pricing engine read-only via the `coverLetterPricingRows` prop (from `useBidPricingRows`). The 8 `coverLetterXxxByBid` maps stay parent-owned because `downloadApprovalPdf` (Submission tab) reads them.
+> **Extracted (2026-05-30)** to [`src/components/bids/BidsCoverLetterTab.tsx`](../src/components/bids/BidsCoverLetterTab.tsx) (**~954 lines** as of 2026-07-17; ~564 at extraction — grew with Schedule of Values v2.596 and the bundled-pricings letter work). Consumes the pricing engine read-only via the `coverLetterPricingRows` prop (from `useBidPricingRows`). The 8 `coverLetterXxxByBid` maps stay parent-owned because `downloadApprovalPdf` (Submission tab) reads them.
 
 - **Render location:** parent renders a thin `<BidsCoverLetterTab .../>` behind `activeTab === 'cover-letter'`.
 - **Owned local state (now inside `BidsCoverLetterTab`):** `coverLetterSearchQuery`, `coverLetterTermsCollapsed`, `coverLetterBidSubmissionQuickAddBidId`, `coverLetterBidSubmissionQuickAddValue`, `applyingBidValue`, `bidValueAppliedSuccess`, `bidSubmissionQuickAddSuccess`. One effect (quick-add reset on bid change) also lives in the child.
@@ -200,7 +202,7 @@ Each per-tab section lists: render location, **owned local state** (used only by
 
 > **Extracted** (2026-05-29) to [`src/components/bids/BidSubmissionFollowupTab.tsx`](../src/components/bids/BidSubmissionFollowupTab.tsx) (~2,070 lines). The parent now renders a thin `<BidSubmissionFollowupTab .../>` wrapper and shrank by ~1,948 lines. The component owns all tab-local state, the buckets/nav/memos, the notes-tab logic, the stale-overlay effect (now unguarded, with unmount cleanup), and the `downloadSubmissionSummaryPdf` / `printFollowupSheet` / `downloadFollowupSheetPdf` document functions. `getSubmissionSectionKey` was promoted to [`src/lib/bids/submissionSections.ts`](../src/lib/bids/submissionSections.ts) (shared with Bid Board). **Stayed in the parent** (passed as props): `selectedBidForSubmission` + setter (controlled), `submissionSectionOpen` + `submissionSummaryCardRef` (shared with the deep-link handler), `downloadApprovalPdf` (now a thin wrapper over [`src/lib/bidDocuments/approvalPdf.ts`](../src/lib/bidDocuments/approvalPdf.ts) (Stage A, 2026-05-31); the wrapper resolves the bid + `priceBookVersions` + `serviceTypes` + the 8 cover-letter `*ByBid` values into an `ApprovalPdfContext`), the checklist-task action, the script modals, and the watermark/scroll/post-edit-refresh effects. The dossier below describes the pre-extraction inline layout for historical reference.
 
-- **Render location:** [`Bids.tsx:15785-17045`](../src/pages/Bids.tsx) (~1,260 lines).
+- **Render location (historical, pre-extraction):** ~1,260 inline lines.
 - **Owned local state** (used only by this tab):
   - `submissionSearchQuery` (511) — string search filter.
   - `submissionFollowupStaleDaysInput` (512) — string; "highlight no update in last N days".
@@ -235,7 +237,7 @@ Each per-tab section lists: render location, **owned local state** (used only by
 
 ### `rfi` — RFI
 
-- **Render location:** [`Bids.tsx:17045-17054`](../src/pages/Bids.tsx) (~10 lines — thin wrapper).
+- **Render location:** ~10-line thin wrapper behind `activeTab === 'rfi'`.
 - **Owned local state (parent):** none. Document state lives inside the component.
 - **Cross-tab/shared state:** `selectedBidForRfi` (parent-owned, controlled prop); written via `selectBidAndSyncUrl(bid, 'rfi')`; cleared via `setSelectedBidForRfi(null)`. Parent passes `bids`, `authUser`, `onEditBid → openEditBid`.
 - **Derived memos / handlers (parent):** none beyond the inline prop callbacks.
@@ -246,7 +248,7 @@ Each per-tab section lists: render location, **owned local state** (used only by
 
 ### `change-order` — Change Order
 
-- **Render location:** [`Bids.tsx:17056-17065`](../src/pages/Bids.tsx) (~10 lines — thin wrapper).
+- **Render location:** ~10-line thin wrapper behind `activeTab === 'change-order'`.
 - **Owned local state (parent):** none.
 - **Cross-tab/shared state:** `selectedBidForChangeOrder` (parent-owned, controlled prop); written via `selectBidAndSyncUrl(bid, 'change-order')`; cleared via `closeSharedBidAndClearUrl`. Parent passes `bids`, `authUser`, `onEditBid → openEditBid`.
 - **Derived memos / handlers (parent):** inline prop callbacks only.
@@ -257,7 +259,7 @@ Each per-tab section lists: render location, **owned local state** (used only by
 
 ### `lien-release` — Lien Release
 
-- **Render location:** [`Bids.tsx:17068-17076`](../src/pages/Bids.tsx) (~9 lines — thin wrapper).
+- **Render location:** ~9-line thin wrapper behind `activeTab === 'lien-release'`.
 - **Owned local state (parent):** none.
 - **Cross-tab/shared state:** `selectedBidForLienRelease` (parent-owned, controlled prop); written via `selectBidAndSyncUrl(bid, 'lien-release')`; cleared via `closeSharedBidAndClearUrl`. `onEditBid` here directly calls `setBidFormOpen(true) + setEditingBid(bid)` (does not pass `authUser`).
 - **Derived memos / handlers (parent):** inline prop callbacks only.
@@ -278,10 +280,10 @@ A single click sets the selected bid for **every** workflow tab at once:
 
 | Symbol | Lines | Role |
 |---|---|---|
-| `setSharedBid` | [973-982](../src/pages/Bids.tsx) | Atomically writes 8 selections: `selectedBidForCounts`, `selectedBidForTakeoff`, `selectedBidForCostEstimate`, `selectedBidForPricing`, `selectedBidForSubmission`, `selectedBidForRfi`, `selectedBidForChangeOrder`, `selectedBidForLienRelease`. **Cover Letter has no own selection — it reuses `selectedBidForPricing`.** |
-| `selectBidAndSyncUrl` | [995-1003](../src/pages/Bids.tsx) | `setSharedBid(bid)` + writes URL `?tab=…&bidId=…` |
-| `closeSharedBidAndClearUrl` | [985-992](../src/pages/Bids.tsx) | Clears all `selectedBidFor*` + removes `bidId` from URL |
-| URL deep-link restore | [6192-6206](../src/pages/Bids.tsx) | On load, if `bidId` + a workflow `tab` present, calls `setSharedBid` + `setActiveTab` |
+| `setSharedBid` | [`Bids.tsx:607`](../src/pages/Bids.tsx) (anchors drift — search the symbol) | Atomically writes 8 selections: `selectedBidForCounts`, `selectedBidForTakeoff`, `selectedBidForCostEstimate`, `selectedBidForPricing`, `selectedBidForSubmission`, `selectedBidForRfi`, `selectedBidForChangeOrder`, `selectedBidForLienRelease`. **Cover Letter has no own selection — it reuses `selectedBidForPricing`.** |
+| `selectBidAndSyncUrl` | `Bids.tsx:629` | `setSharedBid(bid)` + writes URL `?tab=…&bidId=…` |
+| `closeSharedBidAndClearUrl` | `Bids.tsx:619` | Clears all `selectedBidFor*` + removes `bidId` from URL |
+| URL deep-link restore | search `const BIDS_TABS` / the `bidId` effect | On load, if `bidId` + a workflow `tab` present, calls `setSharedBid` + `setActiveTab` |
 
 **Implication:** each extracted tab should receive its `selectedBid` + `onSelectBid`/`onClose` as controlled props (the pattern already used by the RFI/CO/Lien tabs), not own it.
 
@@ -289,11 +291,11 @@ A single click sets the selected bid for **every** workflow tab at once:
 
 | Variable | Line | Used by |
 |---|---|---|
-| `activeTab` | 337 | All tabs (render gate + effect gates) |
-| `bids` | 398 | All tabs (master list, pickers, post-edit refresh) |
-| `editingBid` / `bidFormOpen` | 427 / — | All tabs via `openEditBid` → `BidFormModal` |
-| `selectedServiceTypeId` | 341 | bid-board, builder-review, takeoffs, labor, pricing (scopes books/templates/parts) |
-| `error` | 336 | All handlers |
+| `activeTab` | 178 | All tabs (render gate + effect gates) |
+| `bids` | 239 | All tabs (master list, pickers, post-edit refresh) |
+| `editingBid` / `bidFormOpen` | 248 / — | All tabs via `openEditBid` → `BidFormModal` |
+| `selectedServiceTypeId` | 182 | bid-board, builder-review, takeoffs, labor, pricing (scopes books/templates/parts) |
+| `error` | 177 | All handlers |
 | `authUser` / `myRole` | — | gates (`bid-costs` dev-only), new-bid defaults, role-based actions |
 | `narrowViewport640` (`useNarrowViewport640`) | hook | All detail layouts |
 | `bidPreview` (`useBidPreview`) | hook | All title bars + preview buttons |
@@ -303,12 +305,12 @@ A single click sets the selected bid for **every** workflow tab at once:
 
 | Function | Line | Notes |
 |---|---|---|
-| `loadBids` | 1419 | Master loader; `loadBids(null)` (all trades) forced by builder-review |
-| `openEditBid` | 7073 / 7128 | Opens `BidFormModal`; used by every tab with a bid table |
-| `openNewBidWithCustomer` | 7058 | builder-review |
-| `openGcBuilderOrCustomerModal` | 7729 | bid-board, submission-followup |
-| `loadCustomers` / `loadCustomerContacts` / `loadCustomerContactPersons` | 1321 / 1718 / 1730 | builder-review, working, submission-followup |
-| `getSubmissionSectionKey` | 8190 | **Shared by bid-board + submission-followup** → extract to a lib first |
+| `loadBids` | 830 | Master loader; `loadBids(null)` (all trades) forced by builder-review |
+| `openEditBid` | 1526 | Opens `BidFormModal`; used by every tab with a bid table |
+| `openNewBidWithCustomer` | 1511 | builder-review |
+| `openGcBuilderOrCustomerModal` | 2161 | bid-board, submission-followup |
+| `loadCustomers` / `loadCustomerContacts` / `loadCustomerContactPersons` | 763 / 939 / 951 | builder-review, working, submission-followup |
+| `getSubmissionSectionKey` | [`lib/bids/submissionSections.ts`](../src/lib/bids/submissionSections.ts) | **Shared by bid-board + submission-followup** (promoted to a lib during the submission-followup extraction) |
 | `useBidEditForm` | [`lib/bids/useBidEditForm.ts`](../src/lib/bids/useBidEditForm.ts) | Encapsulates the bid-edit modal form (already extracted) |
 
 ### Pricing-engine shared layer
@@ -329,6 +331,13 @@ A single click sets the selected bid for **every** workflow tab at once:
 | `loadPricingDataForBid` | in hook | Aggregates counts + labor + takeoff materials |
 | `openMaterialsModelSwitch` / `confirmMaterialsModelSwitch` | in hook | `bids.materials_model` toggle (Takeoffs/Labor/Pricing) |
 | `setCostEstimatePO` | in hook | Labor origin, also called from Takeoffs materials section |
+| `bidVersions` / `selectedBidVersionId` / `switchActiveVersion` | in hook | **Bid Versions** (2026-06-11, migrations `20260610170000`–`190000`): the bid's named variants, the active one (`bids.selected_bid_version_id`), and the switcher consumed by [`BidVersionPicker`](../src/components/bids/BidVersionPicker.tsx) |
+| `selectedPricingVersionId` / `setSelectedPricingVersionId` | in hook | The active bid-scoped **Pricing** (`price_book_versions` row with `bid_id` set) |
+| `loadBidPricings` / `loadBidVersions` | in hook | Loaders for a bid's Pricings and Versions |
+| `templatePriceBookVersions` / `templatesMode` / `setTemplatesMode` | in hook | Shared master price-book **templates** (`bid_id IS NULL`) + template-management mode |
+| `defaultPriceBookTemplateId` / `rememberLastPriceBookTemplate` | in hook | Per-user remembered template default (`bid_pricing_user_prefs`, `20260618120000`) |
+| `travelPeople` / `travelNights` / `travelMealsRate` / `travelHotelRate` | in hook | Labor-tab Travel (meals + hotels) inputs persisted on `cost_estimates` |
+| `costEstimate{Equipment,Permit,Subcontractor,Waste,Other}Rows` + `pricing{Equipment,Permit,Subcontractor,Waste,Other}Rows` | in hook | **Direct Costs** row state (Labor edit-side + Pricing read-side mirrors) |
 | `computeBidPricingRows` | [`lib/bidPricingRowCalculations`](../src/lib/bidPricingRowCalculations.ts) | The single pricing calc kernel. The render-time IIFEs (Pricing grid + Cover Letter) were **deduped (2026-05-29)** onto `pricingRowsForGrid` + `coverLetterPricingRows`; the one-shot CSV/PDF handlers still call it directly with their own export-specific inputs |
 | `useBidPricingRows` | [`src/hooks/useBidPricingRows.ts`](../src/hooks/useBidPricingRows.ts) | **Extracted (2026-05-30).** Wraps the three shared memos `pricingRowsForGrid` + `pricingPackageSource` + `coverLetterPricingRows` over `computeBidPricingRows`. Consumed by the parent: `BidsPricingTab` gets the first two as props; `BidsCoverLetterTab` gets `coverLetterPricingRows` as a prop |
 | `pricingPage.ts` | [`src/lib/bidDocuments/pricingPage.ts`](../src/lib/bidDocuments/pricingPage.ts) | **Print/CSV builders (Stage A, 2026-05-30).** `printPricingPage`/`printAllPricingPages`/`buildPricingCsvForBid` take a `PricingPrintContext`; own the per-version filtering, cost-math, HTML/CSV assembly, supabase reads, and side effects. `BidsPricingTab` builds the context and calls them |
@@ -341,6 +350,14 @@ A single click sets the selected bid for **every** workflow tab at once:
 ### Shared component / lib helpers already extracted
 
 `BidWorkflowTabTitleWithPreview`, `ModalShell`, `BidFormModal` (+ `useBidEditForm`), `CountRow`/`NewCountRow`, `BidsWorkingBoard`, `BidsEstimatorsTab`, `BidNotesTable`/`CustomerNotesTable`/`UnifiedBidCustomerNotes`, `BidRfiTab`/`BidChangeOrderTab`/`BidLienReleaseTab`, `copyRichHtmlToClipboard`, `bidStyles`, plus the `lib/bids/*` and `lib/bidDocuments/*` helper families.
+
+Components added after the extraction pass (easy to miss in the dossiers above):
+
+- **[`BidVersionPicker`](../src/components/bids/BidVersionPicker.tsx)** — rendered **3× by the parent** (`Bids.tsx`) into the Takeoff / Pricing / Cover Letter tab headers; drives `switchActiveVersion` + rename/delete/first-split.
+- **[`MyBidsToggle`](../src/components/bids/MyBidsToggle.tsx)** — bid-picker filter chip, rendered inside `BidsCountsTab` / `BidsTakeoffTab` / `BidsLaborTab` / `BidsPricingTab` / `BidsCoverLetterTab`.
+- **[`AssignTakeoffPartModal`](../src/components/bids/AssignTakeoffPartModal.tsx)** — inline takeoff part assignment from the Pricing grid (rendered by `BidsPricingTab`); stamps `bid_version_id` on takeoff writes.
+- **[`BidBoardCustomerReviewModal`](../src/components/bids/BidBoardCustomerReviewModal.tsx)** — per-customer bid counts + team hours (v2.641), rendered by `BidsBidBoardTab`.
+- **[`BidProjectCell`](../src/components/bids/BidProjectCell.tsx)** — small ledger-prefixed project cell used in the takeoff bid table.
 
 ---
 
@@ -365,7 +382,7 @@ graph TD
     end
 
     subgraph docs["Document tabs (extracted)"]
-        SF[submission-followup · inline]
+        SF[submission-followup · extracted]
         RFI[rfi]
         CHG[change-order]
         LIEN[lien-release]
@@ -404,4 +421,4 @@ Ordered by **value ÷ risk** — start where lines come out cheaply and coupling
 7. ~~**`counts` → `takeoffs` → `labor` → `pricing`** (the cluster)~~ **DONE (2026-05-30)** — all four cluster tabs extracted (`BidsCountsTab`, `BidsTakeoffTab`, `BidsLaborTab`, `BidsPricingTab`); each consumes the shared engine via `useBidPricingEngine` props with the selection parent-owned. `takeoffs` was the largest single block (~2,900 lines removed; `SortableRoughPartLineRow` + all takeoff modals moved with it).
 8. ~~**`cover-letter`**~~ **DONE (2026-05-30)** — extracted to `BidsCoverLetterTab` (~564 lines). The 8 `coverLetterXxxByBid` maps stay parent-owned (shared with `downloadApprovalPdf`); `coverLetterPricingRows` passed as a prop from `useBidPricingRows`; `saveBidSubmissionQuickAdd` stays in the parent as a callback. `COVER_LETTER_INCLUSIONS_PLACEHOLDER` moved into the child. `Bids.tsx` shrank from ~9,273 to ~8,829 lines.
 
-> Already done: `submission-followup` (`BidSubmissionFollowupTab`); `bid-costs` (`BidsBidCostsTab`); `builder-review` (`BidsBuilderReviewTab`); `bid-board` (`BidsBidBoardTab` + `BidBoardEstimatingHealthSection`); `estimators`, `rfi`, `change-order`, `lien-release` (extracted components); `working` board kanban (`BidsWorkingBoard`) + archive-confirm dialog (`WorkingBoardArchiveConfirmDialog`); the bid-edit form (`useBidEditForm`); the **pricing-engine seam** (`useBidPricingEngine` + `bidPricingEngineTypes` + `computeBidPricingRows` dedupe); the full pricing-engine cluster — `counts` (`BidsCountsTab`), `takeoffs` (`BidsTakeoffTab`), `labor` (`BidsLaborTab`), `pricing` (`BidsPricingTab`); `cover-letter` (`BidsCoverLetterTab`). **All workflow tabs are now extracted; `Bids.tsx` is ~4,119 lines (down from ~18,800).**
+> Already done: `submission-followup` (`BidSubmissionFollowupTab`); `bid-costs` (`BidsBidCostsTab`); `builder-review` (`BidsBuilderReviewTab`); `bid-board` (`BidsBidBoardTab` + `BidBoardEstimatingHealthSection`); `estimators`, `rfi`, `change-order`, `lien-release` (extracted components); `working` board kanban (`BidsWorkingBoard`) + archive-confirm dialog (`WorkingBoardArchiveConfirmDialog`); the bid-edit form (`useBidEditForm`); the **pricing-engine seam** (`useBidPricingEngine` + `bidPricingEngineTypes` + `computeBidPricingRows` dedupe); the full pricing-engine cluster — `counts` (`BidsCountsTab`), `takeoffs` (`BidsTakeoffTab`), `labor` (`BidsLaborTab`), `pricing` (`BidsPricingTab`); `cover-letter` (`BidsCoverLetterTab`). **All workflow tabs are now extracted; `Bids.tsx` is ~3,787 lines (down from ~18,800).**
