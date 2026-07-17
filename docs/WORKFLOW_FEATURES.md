@@ -30,8 +30,8 @@ This document provides detailed information about all workflow-related features.
   - Validates for duplicate names (case-insensitive)
   - Automatically selects newly added person after creation
 - **Data sources**: 
-  - Queries `users` table for roles `'master_technician'` and `'subcontractor'`
-  - Queries `people` table for kind `'master_technician'` and `'sub'`
+  - Queries `users` table for roles `'master_technician'`, `'subcontractor'`, `'helpers'`, and `'primary'`
+  - Queries `people` table for kinds `'master_technician'`, `'sub'`, and `'helper'`, excluding archived entries (`archived_at IS NULL`); scoped to the current user's roster (`master_user_id`), or to adopted masters' rosters for superintendents (via `master_superintendents`)
   - Combines and deduplicates by name (case-insensitive)
 
 **Implementation**: `src/pages/Workflow.tsx` - `StepFormModal` component
@@ -81,16 +81,16 @@ This document provides detailed information about all workflow-related features.
 
 Workflow uses scoped CSS classes (`wf-btn-ghost`, `wf-btn-primary`, `wf-btn-success`, `wf-btn-danger`, `wf-btn-info`, `wf-btn-secondary`, etc.) with hover states and transitions. **Action button colors**: Set Start blue (initiate, `wf-btn-info`), Complete green (success, `wf-btn-success`), Approve blue (manager sign-off, `wf-btn-info`), Previous work incomplete red (destructive, `wf-btn-danger`). Approve and Previous work incomplete are visually separated from Set Start and Complete (left border, spacing) and available to dev, master, assistant, and superintendent. Notify control is right-aligned when the card is expanded.
 
-### Collapse Old Stages Toggle
+### Hide Old Stages Toggle
 
-- **Toggle button**: "Collapse old stages" / "Expand old stages" (shown when 2+ completed/approved stages).
+- **Toggle button**: "Hide Old Stages" / "Show Old Stages" (shown when 2+ completed/approved stages).
 - **When off**: All steps shown individually.
 - **When on**: Old completed stages (all but the most recent by `sequence_order`) are replaced by a single summary row: `X previous stages · Started {date}`. Most recent completed stage stays visible. Summary row is clickable to expand.
-- **Implementation**: `oldStagesCollapsed` state; `displayItems` array with `summary` or `step` types; summary card uses green background `#f0fdf4`.
+- **Implementation**: `oldStagesCollapsed` state; `displayItems` array with `summary` or `step` types; summary card uses a green-tinted background.
 
 ### Stage Breadcrumb Layout
 
-- **Location**: Dedicated row below the title and "Expand old stages" / "Add step" buttons.
+- **Location**: Dedicated row below the title and "Show Old Stages" / "Add step" buttons.
 - **Full width**: Breadcrumb spans full width; no longer competes with buttons on the same row.
 - **Horizontal scroll**: Stages stay on one line (`whiteSpace: nowrap`); horizontal scrollbar when content exceeds viewport. Uses `overflowX: auto`, `minWidth: 0`, `WebkitOverflowScrolling: touch` following Materials/People pattern.
 - **Click to scroll**: Each stage name is clickable and scrolls the corresponding step card into view.
@@ -125,7 +125,7 @@ Each stage card has collapsible sections for Notify, Notes, Private Notes, and L
 
 **Purpose**: Track actual expenses/credits for individual workflow stages
 
-**Location**: Separate collapsible section in each stage card (visible to devs, masters, and assistants)
+**Location**: Separate collapsible section in each stage card (visible to devs, masters, assistant-like roles, and superintendents)
 
 **Fields**:
 - **Date (optional)**: User-entered calendar date (`item_date`); shown in the **Line Items For Office** table and in delete confirmation when set.
@@ -143,7 +143,7 @@ Each stage card has collapsible sections for Notify, Notes, Private Notes, and L
 
 **Access / Visibility**:
 - Devs and masters can see and manage line items for all stages
-- Assistants can see and edit line items for projects they can access (via adopted masters)
+- Assistant-like roles (assistant, controller) and superintendents can see and edit line items for projects they can access (via adopted masters / project assignment)
 - Subcontractors cannot see line items
 
 **Database**: `workflow_step_line_items` table
@@ -164,8 +164,9 @@ Each stage card has collapsible sections for Notify, Notes, Private Notes, and L
 - Negative amounts for credits/adjustments
 - Amounts formatted with commas: `$1,234.56`
 - Projections table and Ledger table shown in a single panel
-- `Projections Total`, `Ledger Total`, and **“Total Left on Job: Projections - Ledger = …”** displayed
-- Visual distinction: Light blue background for the entire financial panel
+- Summary bar shows `Projections: $…`, `Ledger: $…`, and **`Left: $…`** (Projections minus Ledger)
+- **Visibility**: `Ledger:` total shows for all `canManageStages` roles (dev, master, assistant-like, superintendent); `Projections:` and `Left:` are dev/master-only
+- Visual distinction: Light blue tinted background for the entire financial panel
 
 **Database**:
 - Projections: `workflow_projections` table
@@ -177,20 +178,21 @@ Each stage card has collapsible sections for Notify, Notes, Private Notes, and L
 
 ### Role-Based Visibility
 
-**Owners and Master Technicians**:
+The gates in `src/pages/Workflow.tsx` (`canManageStages`, `canSeePrivateNotesAndApprove`, `isDevOrMaster`, `canAssignSuperintendents`) drive this. `canManageStages` and `canSeePrivateNotesAndApprove` both cover dev, master_technician, assistant-like roles (assistant, controller — `isAssistantLike`), and superintendent; Projections and the `Left:` total are `isDevOrMaster`-only.
+
+**Owners (dev) and Master Technicians**:
 - See all stages in all workflows
 - Can add, edit, delete stages
-- Can see private notes, line items, projections, ledger
+- Can see private notes, line items, Ledger total, Projections, and `Left:` total
 - Can use all action buttons
-- Can manage notification settings
+- Can manage notification settings and assign superintendents
 
-**Assistants**:
-- Only see stages where `assigned_to_name` matches their name (for projects they can access via adopted masters)
-- Cannot add, edit, or delete stages
-- Cannot see private notes, projections, or ledger; can see and edit line items on accessible projects
-- Can only use Set Start and Complete on assigned stages
-- Can only see "ME" column in notification settings
-- Error message if accessing workflow with no assigned stages
+**Assistants (and Controllers — assistant-like)**:
+- Can manage stages (`canManageStages`): add, edit, delete stages on workflows for projects they can access (via adopted masters)
+- Can see private notes and line items (`canSeePrivateNotesAndApprove`), and the `Ledger:` total in the financial summary bar
+- Cannot see `Projections:` or `Left:` (dev/master-only)
+- Can approve stages and send back previous work
+- Can assign superintendents
 
 **Subcontractors**:
 - Only see stages where `assigned_to_name` matches their name
@@ -201,10 +203,10 @@ Each stage card has collapsible sections for Notify, Notes, Private Notes, and L
 - Error message if accessing workflow with no assigned stages
 
 **Superintendents**:
-- See all stages in workflows for projects they have access to (via adoption or project assignment)
-- Cannot add, edit, or delete stages; can assign people
-- Can see private notes, line items; cannot see projections or financial totals
+- See stages in workflows for projects they have access to (via adoption or project assignment)
+- In `canManageStages` and `canSeePrivateNotesAndApprove`: can see private notes, line items, and the `Ledger:` total; cannot see `Projections:` or `Left:`
 - Can use Set Start, Complete, Approve, and Send Back: Previous Work Incomplete on stages in accessible workflows
+- Cannot assign superintendents (`canAssignSuperintendents` excludes them)
 - Can only see "ME" column in notification settings
 
 ### Person Assignment
@@ -285,14 +287,15 @@ All monetary amounts throughout the application use comma formatting:
 
 ---
 
-## Migration Order
+## Migrations
 
-When setting up a new environment, run migrations in this order:
-
-1. `add_private_notes_to_workflow_steps.sql`
-2. `create_workflow_step_line_items.sql`
-3. `create_workflow_projections.sql`
-4. `create_email_templates.sql` (see `EMAIL_TEMPLATES_SETUP.md`)
+All of the schema above is included in the squashed baseline migration
+(`supabase/migrations/20250101000000_baseline.sql`) — a new environment just runs
+`supabase db push`. The original standalone `.sql` files (`add_private_notes_to_workflow_steps.sql`,
+`create_workflow_step_line_items.sql`, `create_workflow_projections.sql`,
+`create_email_templates.sql`) are kept for reference in `supabase/archive/`. For how migrations
+are applied (never via the Dashboard SQL editor), see the migration rule in
+[CLAUDE.md](../CLAUDE.md).
 
 ---
 
