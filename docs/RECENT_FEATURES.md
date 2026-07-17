@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-17 (v2.715)
+last_updated: 2026-07-17 (v2.716)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.716)
+
+### Dashboard — Upcoming inspection section extracted (2026-07-17)
+First extraction of the Dashboard decomposition ([`DASHBOARD_SECTIONS_ARCHITECTURE.md`](DASHBOARD_SECTIONS_ARCHITECTURE.md)): the "Upcoming inspection (3 days)" section moved from `Dashboard.tsx` into [`DashboardUpcomingInspectionsSection.tsx`](../src/components/dashboard/DashboardUpcomingInspectionsSection.tsx), with its date-line formatting in new kernel [`dashboardUpcomingInspections.ts`](../src/lib/dashboardUpcomingInspections.ts) (6 unit tests). **No behavior change** — same role gates (dev/master/assistant-like/primary, hidden when the `inspections` quick button is off), same query, same rendering.
 
 ## Latest Updates (v2.715)
 
