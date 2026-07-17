@@ -299,7 +299,7 @@ Pipetooling implements comprehensive role-based access control (RBAC) using eigh
 - **Reports tab** — **Recurring Email Reports**: schedules and recipients with optional **include costs** (same product as dev/master; **`user_can_manage_recurring_job_report_scope`**)
 
 **Prospects**:
-- Team tab: Visible to dev and assistant; shows last 30 days of prospect activity (User | Cards Marked | Cards Updated)
+- Activity tab (formerly "Team"; under the top-level Customers tab): Visible to dev and assistant; shows last 30 days of prospect activity (User | Cards Marked | Cards Updated)
 
 ---
 
