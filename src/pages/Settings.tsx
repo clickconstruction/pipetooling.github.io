@@ -589,7 +589,6 @@ export default function Settings() {
   const [notificationTemplatesSectionOpen, setNotificationTemplatesSectionOpen] = useState(false)
   const [workflowFnEmailSectionOpen, setWorkflowFnEmailSectionOpen] = useState(false)
   const [templatesJobPartsTallySectionOpen, setTemplatesJobPartsTallySectionOpen] = useState(false)
-  const [templatesDeleteAllEstimatesSectionOpen, setTemplatesDeleteAllEstimatesSectionOpen] = useState(false)
   const [editingNotificationTemplate, setEditingNotificationTemplate] = useState<NotificationTemplate | null>(null)
   const [notificationTemplateTitle, setNotificationTemplateTitle] = useState('')
   const [notificationTemplateBody, setNotificationTemplateBody] = useState('')
@@ -609,9 +608,6 @@ export default function Settings() {
   const [jobTallyMinPostedYmdError, setJobTallyMinPostedYmdError] = useState<string | null>(null)
   const [fieldDispatchPhoneInput, setFieldDispatchPhoneInput] = useState('')
   const [fieldDispatchPhoneSaving, setFieldDispatchPhoneSaving] = useState(false)
-  const [devResetEstimatesModalOpen, setDevResetEstimatesModalOpen] = useState(false)
-  const [devResetEstimatesConfirmInput, setDevResetEstimatesConfirmInput] = useState('')
-  const [devResetEstimatesLoading, setDevResetEstimatesLoading] = useState(false)
   const [editingNonUserPerson, setEditingNonUserPerson] = useState<PersonRow | null>(null)
   const [editPersonName, setEditPersonName] = useState('')
   const [editPersonEmail, setEditPersonEmail] = useState('')
@@ -745,7 +741,7 @@ export default function Settings() {
 
   async function deleteAllOrphanPrices() {
     if (orphanPrices.length === 0) return
-    if (!confirm('Delete ALL orphaned material prices listed here? This cannot be undone.')) return
+    if (!confirm('Delete ALL orphaned material prices listed here? A dev can put them back for 90 days from Settings → Data & migration → Recently deleted.')) return
     const ids = orphanPrices.map((p) => p.id)
     const { error } = await supabase.from('material_part_prices').delete().in('id', ids)
     if (error) {
@@ -5004,14 +5000,6 @@ export default function Settings() {
           setJobTallyMinPostedYmdError={setJobTallyMinPostedYmdError}
           templatesJobPartsTallySectionOpen={templatesJobPartsTallySectionOpen}
           setTemplatesJobPartsTallySectionOpen={setTemplatesJobPartsTallySectionOpen}
-          templatesDeleteAllEstimatesSectionOpen={templatesDeleteAllEstimatesSectionOpen}
-          setTemplatesDeleteAllEstimatesSectionOpen={setTemplatesDeleteAllEstimatesSectionOpen}
-          devResetEstimatesModalOpen={devResetEstimatesModalOpen}
-          setDevResetEstimatesModalOpen={setDevResetEstimatesModalOpen}
-          devResetEstimatesConfirmInput={devResetEstimatesConfirmInput}
-          setDevResetEstimatesConfirmInput={setDevResetEstimatesConfirmInput}
-          devResetEstimatesLoading={devResetEstimatesLoading}
-          setDevResetEstimatesLoading={setDevResetEstimatesLoading}
           templateTestTargetUserId={templateTestTargetUserId}
           setTemplateTestTargetUserId={setTemplateTestTargetUserId}
           notificationTestError={notificationTestError}

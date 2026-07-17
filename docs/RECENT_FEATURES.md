@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-17 (v2.706)
+last_updated: 2026-07-17 (v2.707)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.707)
+
+### Safety — honest delete wording + a wipe-everything button removed (2026-07-17)
+Two cleanups riding on the archive work. **(1)** Since v2.702, deleting a **pay report**, **orphaned material prices**, or a **workflow step** archives it — recoverable for 90 days from Recently deleted — but those three dialogs still said "This cannot be undone." Fixed, so the copy matches reality. (Left correctly alone: customer *merge*, contract documents, and deleting a **person** — none of which restore, so their warnings stand.) **(2)** Removed `dev_reset_estimates_for_testing` — a dev-only **"Delete all estimates"** button that ran `DELETE FROM estimates WHERE true` against the live database. With no staging environment, a "reset for testing" control that wipes the real estimate book in one click is a footgun; it's gone (button + function), and if estimates ever genuinely need clearing it should be done deliberately by hand. See [`MIGRATIONS.md`](MIGRATIONS.md).
 
 ## Latest Updates (v2.706)
 
