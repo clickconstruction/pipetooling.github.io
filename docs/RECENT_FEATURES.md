@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-17 (v2.714)
+last_updated: 2026-07-17 (v2.715)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.715)
+
+### Prospects Team board — Source success tracking (2026-07-17)
+Requested by William: which candidate source is actually working? A collapsible **Source success** table below the board rolls up every candidate by their **Source** field — Candidates | Active | Hired | Passed | **Hire rate** — sorted with the most hires first. The rate is **Hired ÷ (Hired + Passed)**: undecided candidates don't count against a source that's still warming up (shown as — until a source has its first decision). Sources are free text, so the rollup groups case-/whitespace-insensitively ("Referral" = "referral "), and the Add/Edit **Source** field now autocompletes from spellings already in use so the stats don't fragment. Client-only — no migration. Kernel [`teamProspectSourceSummary.ts`](../src/lib/teamProspectSourceSummary.ts) (9 unit tests); help guide updated.
 
 ## Latest Updates (v2.714)
 

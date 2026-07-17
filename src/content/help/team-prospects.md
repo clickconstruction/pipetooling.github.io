@@ -35,6 +35,18 @@ Each column is its own ranked list — **#1 is your top candidate for that role*
 
 Neither is final: open the bucket and press **Back to active** to put someone back in the running — they rejoin at the bottom of their role's ranking.
 
+## See which source is working
+
+Fill in the **Source** field when you add candidates (it suggests spellings you've already used — pick from the list so the stats stay clean). The collapsible **Source success** section below the board then shows, per source, how many candidates came in, how many were hired or passed, and the **hire rate**:
+
+:::example Reading the table
+**Referral** — 6 candidates · 2 active · 3 hired · 1 passed · **75%** hire rate
+
+**Job board** — 9 candidates · 4 active · 1 hired · 4 passed · **20%** hire rate
+:::
+
+The hire rate only counts decided candidates (hired ÷ hired + passed), so a brand-new source with nobody decided yet shows — instead of a misleading 0%.
+
 ## Removing a role column
 
 A role column can be deleted only once **every candidate in it has been individually deleted** — including anyone in the Hired or Passed buckets still tagged with that role. Until then the column's ✕ stays disabled and tells you how many people are still assigned. This is deliberate: a column can't silently take candidates with it.
