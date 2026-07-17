@@ -110,6 +110,14 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 #### July 17, 2026
 
+**`20260717230000_team_prospect_roles.sql`** _(apply via `supabase db push` after the file is on `main`)_
+- **Purpose**: **Role columns on the Team hiring board** (v2.712). New `team_prospect_roles` table (`name`, `position`, standard ownership + `updated_at` trigger) and `team_prospects.role_id` FK. Ranking (`rank_order`) is now scoped per role column; `role_id` NULL = virtual "Unsorted" column.
+- **Key constraint**: the FK is **`ON DELETE RESTRICT`** — a role cannot be deleted while any candidate (any status, including hired/passed) references it. The UI disables the delete button until the column is empty; the FK makes the rule un-bypassable.
+- **Safety rails**: same RLS surface as `team_prospects` (`user_has_prospects_staff_access()`), `zzz_archive_on_delete` archive trigger, and both read-only block re-applies.
+- **Category**: Prospects / new feature
+
+#### July 17, 2026
+
 **`20260717190000_team_prospects.sql`** _(apply via `supabase db push` after the file is on `main`)_
 - **Purpose**: **Prospective-hires pipeline** (Prospects page → top-level **Team** tab, v2.709). New `team_prospects` table: candidate identity (`name` required, `phone_number`, `email`, `trade`, `source`, `notes`), pipeline `status` (`active` / `hired` / `passed`, enforced by CHECK — unlike the free-text `prospect_fit_status` on `prospects`), explicit drag ranking (`rank_order`, 1 = top candidate), `last_contact`, standard ownership (`master_user_id`, `created_by`) and timestamps (+ `update_updated_at_column` trigger).
 - **RLS**: mirrors the customer-lead prospect tables — SELECT/UPDATE/DELETE for `user_has_prospects_staff_access()`; INSERT additionally requires `created_by = auth.uid()` and a valid owner (self for dev/master, adopted master for assistants, a master_technician for access-granted estimators).

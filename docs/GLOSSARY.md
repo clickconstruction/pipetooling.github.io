@@ -144,11 +144,11 @@ A client or General Contractor (GC) who provides work. Customers have an owner (
 **Key Fields**: name, address, contact info (JSONB), date_met, master_user_id
 
 ### Team prospects (Prospects → Team tab)
-Prospective **hires** — candidates for the crew, tracked separately from customer leads. The Prospects page has two top-level tabs: **Customers** (lead pipeline: Follow Up / Prospect List / Convert / Activity) and **Team** (v2.709). Team candidates form a drag-ranked list (`rank_order`, #1 = top candidate) with statuses `active` / `hired` / `passed`; **Talked today** stamps `last_contact`. Access = `user_has_prospects_staff_access()`.
+Prospective **hires** — candidates for the crew, tracked separately from customer leads. The Prospects page has two top-level tabs: **Customers** (lead pipeline: Follow Up / Prospect List / Convert / Activity) and **Team** (v2.709). The Team tab is a **board with one drag-ranked column per role** being hired for (v2.712): users add role columns as needed; drag re-ranks within a column (#1 = top candidate) or moves a candidate across columns; `role_id` NULL rows show in a virtual **Unsorted** column. A role column is deletable **only when empty** (FK `ON DELETE RESTRICT`). Statuses `active` / `hired` / `passed`; **Talked today** stamps `last_contact`. Access = `user_has_prospects_staff_access()`.
 
-**Database**: `team_prospects` table
+**Database**: `team_prospects`, `team_prospect_roles` tables
 
-**Key Fields**: name, trade, source, status, rank_order, last_contact, master_user_id
+**Key Fields**: name, trade, source, status, role_id, rank_order (per-column), last_contact, master_user_id
 
 ### Project
 A job site or construction project for a specific customer. Each project has one workflow. The project owner automatically matches the customer owner (enforced by database trigger).
