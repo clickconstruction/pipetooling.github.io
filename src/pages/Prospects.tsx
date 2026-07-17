@@ -47,7 +47,7 @@ const EditIcon = () => (
   </svg>
 )
 
-type ProspectsTab = 'follow-up' | 'prospect-list' | 'convert' | 'team'
+type ProspectsTab = 'follow-up' | 'prospect-list' | 'convert' | 'activity'
 
 type Prospect = {
   id: string
@@ -77,7 +77,7 @@ type ProspectComment = {
   created_by_user?: { name: string | null; email: string | null } | null
 }
 
-const PROSPECTS_TABS: ProspectsTab[] = ['follow-up', 'prospect-list', 'convert', 'team']
+const PROSPECTS_TABS: ProspectsTab[] = ['follow-up', 'prospect-list', 'convert', 'activity']
 
 const DIDNT_ANSWER_MOVE_NEXT_KEY = (userId: string) => `prospects_didnt_answer_move_next_${userId}`
 
@@ -341,16 +341,18 @@ export default function Prospects() {
   const [emailSentTemplateKeys, setEmailSentTemplateKeys] = useState<Set<string>>(new Set())
   const copyTemplateTextareaRef = useRef<HTMLTextAreaElement | null>(null)
 
-  // Team tab state (dev and assistant) - last 30 days
+  // Activity tab state (dev and assistant) - last 30 days
   const [teamDataByDate, setTeamDataByDate] = useState<Record<string, ProspectTeamRow[]>>({})
   const [teamLoading, setTeamLoading] = useState(false)
-  const canAccessTeamTab = authRole === 'dev' || isAssistantLike(authRole)
+  const canAccessActivityTab = authRole === 'dev' || isAssistantLike(authRole)
 
   useEffect(() => {
     const params = new URLSearchParams(location.search)
-    const tab = params.get('tab')
+    const rawTab = params.get('tab')
+    // Legacy links: ?tab=team used to be the activity tables before the Team hiring tab existed
+    const tab = rawTab === 'team' ? 'activity' : rawTab
     if (tab && PROSPECTS_TABS.includes(tab as ProspectsTab)) {
-      if (tab === 'team' && !canAccessTeamTab) {
+      if (tab === 'activity' && !canAccessActivityTab) {
         setSearchParams((p) => {
           const next = new URLSearchParams(p)
           next.set('tab', 'follow-up')
@@ -359,6 +361,13 @@ export default function Prospects() {
         setActiveTab('follow-up')
       } else {
         setActiveTab(tab as ProspectsTab)
+        if (rawTab !== tab) {
+          setSearchParams((p) => {
+            const next = new URLSearchParams(p)
+            next.set('tab', tab)
+            return next
+          }, { replace: true })
+        }
       }
     } else if (!tab) {
       setSearchParams((p) => {
@@ -367,7 +376,7 @@ export default function Prospects() {
         return next
       }, { replace: true })
     }
-  }, [location.search, setSearchParams, authRole, canAccessTeamTab])
+  }, [location.search, setSearchParams, authRole, canAccessActivityTab])
 
   // Open New Prospect modal when navigating from Dashboard button
   useEffect(() => {
@@ -933,7 +942,7 @@ export default function Prospects() {
   }, [activeTab, authUser?.id])
 
   const loadTeamActivity = useCallback(async () => {
-    if (!canAccessTeamTab) return
+    if (!canAccessActivityTab) return
     setTeamLoading(true)
     try {
       const result = await loadProspectTeamActivity(supabase)
@@ -943,13 +952,13 @@ export default function Prospects() {
     } finally {
       setTeamLoading(false)
     }
-  }, [canAccessTeamTab])
+  }, [canAccessActivityTab])
 
   useEffect(() => {
-    if (activeTab === 'team' && canAccessTeamTab) {
+    if (activeTab === 'activity' && canAccessActivityTab) {
       loadTeamActivity()
     }
-  }, [activeTab, canAccessTeamTab, loadTeamActivity])
+  }, [activeTab, canAccessActivityTab, loadTeamActivity])
 
   const loadScheduledCallback = useCallback(async () => {
     if (!currentProspect?.id || !authUser?.id) {
@@ -1551,6 +1560,12 @@ export default function Prospects() {
         </div>
       </div>
 
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem', flexWrap: 'wrap' }}>
+        <button type="button" style={pageTabStyle(true)}>
+          Customers
+        </button>
+      </div>
+
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', borderBottom: '2px solid var(--border)', marginBottom: '2rem', flexWrap: 'wrap' }}>
         <button
           type="button"
@@ -1575,15 +1590,15 @@ export default function Prospects() {
         >
           Convert
         </button>
-        {canAccessTeamTab && (
+        {canAccessActivityTab && (
           <>
             <span style={{ color: 'var(--text-faint)', padding: '0 0.1rem', position: 'relative', top: '-1px', fontSize: '0.875rem' }}>|</span>
             <button
               type="button"
-              onClick={() => setTab('team')}
-              style={tabStyle(activeTab === 'team')}
+              onClick={() => setTab('activity')}
+              style={tabStyle(activeTab === 'activity')}
             >
-              Team
+              Activity
             </button>
           </>
         )}
@@ -2621,7 +2636,7 @@ export default function Prospects() {
         </div>
       )}
 
-      {activeTab === 'team' && canAccessTeamTab && (
+      {activeTab === 'activity' && canAccessActivityTab && (
         <div style={{ padding: '1rem 0' }}>
           {teamLoading ? (
             <p style={{ color: 'var(--text-muted)' }}>Loading…</p>

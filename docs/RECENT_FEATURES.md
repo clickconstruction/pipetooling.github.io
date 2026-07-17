@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-17 (v2.707)
+last_updated: 2026-07-17 (v2.708)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.708)
+
+### Prospects — tabs regrouped under a top-level Customers tab (2026-07-17)
+The Prospects page now has a top-level tab row with **Customers**, containing the existing sub-tabs: **Follow Up | Prospect List | Convert | Activity**. **Activity** is the new name for the old "Team" tab (the per-day Cards Marked / Cards Updated tables for dev/assistant) — renamed to free up "Team" for the upcoming hiring-pipeline tab where prospective crew members are entered and ranked. No behavior changes: all tools work exactly as before, and legacy `?tab=team` links redirect to `?tab=activity`. Groundwork for the Team prospects (prospective hires) tab landing next.
 
 ## Latest Updates (v2.707)
 
