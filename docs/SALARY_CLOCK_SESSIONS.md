@@ -31,10 +31,13 @@ There is **no** stored salary amount or per-person daily-hours override; the 8 h
 
 **Two rule tiers since 2026-07-13 (Employment tab series, PRs #266–#272):**
 
-1. **Cost/display surfaces** (Hours grid, cost matrix, Due summaries, CrewJobsBlock,
-   `teamLabor.ts`, `get_man_hours_by_job()` RPC, unassigned-field-time) — the plain flat 8/0,
-   currently **re-derived inline per surface** (a shared `salariedEffectiveHours.ts` kernel exists
-   only on the open PR #182 branch — until that merges, do not assume it is importable).
+1. **Cost/display surfaces** (Hours grid, Due summaries, CrewJobsBlock,
+   `teamLabor.ts`, `get_man_hours_by_job()` RPC, unassigned-field-time) — the plain flat 8/0.
+   The shared kernel [`src/lib/salariedEffectiveHours.ts`](../src/lib/salariedEffectiveHours.ts)
+   is on `main` (PR #182, merged 2026-07-13) and is imported by `People.tsx`,
+   `CrewJobsBlock.tsx`, `quickfill/HoursSection.tsx`, and `HoursUnassignedModal.tsx`.
+   Note: `src/utils/teamLabor.ts` and `src/lib/people/derivePersonTeamSummary.ts` still
+   derive the 8/0 rule **inline** rather than via the kernel.
 2. **Payroll surfaces** (pay-stub generation, Draft Payroll preview + person-hours drilldown) —
    flat 8/0 **adjusted** by the unit-tested kernel
    [`src/lib/salariedPayrollDays.ts`](../src/lib/salariedPayrollDays.ts):
@@ -171,6 +174,12 @@ When My Time **merges** multiple `clock_sessions` rows into **one** visual segme
 ---
 
 ## Migration index (salary session behavior)
+
+> **Post-squash note**: migrations were squash-baselined at
+> `supabase/migrations/20250101000000_baseline.sql`; the versions listed below now live as
+> reference-only files in `supabase/archive/migrations-pre-baseline/` (the live schema comes
+> from the baseline). Archive filenames can differ slightly from ledger versions — e.g. the
+> boundary-sync file is archived as `20260404050732_salary_sync_boundary_open_close.sql`.
 
 | Version | What it changes |
 |---------|-----------------|
