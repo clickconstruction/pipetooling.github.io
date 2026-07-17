@@ -7,50 +7,31 @@ file: GLOSSARY.md
 type: Reference
 purpose: Comprehensive definitions of all domain-specific terms and technical concepts
 audience: All users (especially new developers and AI agents)
-last_updated: 2026-05-21
+last_updated: 2026-07-17
 estimated_read_time: 15-20 minutes (reference only)
 difficulty: Beginner
 
-total_terms: ~129
 categories: 9
 
 key_sections:
   - name: "User Roles"
-    line: ~17
     anchor: "#user-roles"
-    terms: 6
   - name: "Project Management"
-    line: ~66
     anchor: "#project-management"
-    terms: 6
   - name: "Access Control"
-    line: ~107
     anchor: "#access-control"
-    terms: 5
   - name: "Workflow Concepts"
-    line: ~234
     anchor: "#workflow-concepts"
-    terms: 8
   - name: "Bids System"
-    line: ~228
     anchor: "#bids-system"
-    terms: 19
   - name: "Materials System"
-    line: ~385
     anchor: "#materials-system"
-    terms: 14
   - name: "Database Concepts"
-    line: ~495
     anchor: "#database-concepts"
-    terms: 11
   - name: "Technical Terms"
-    line: ~561
     anchor: "#technical-terms"
-    terms: 9
   - name: "Abbreviations"
-    line: ~655
     anchor: "#abbreviations"
-    terms: ~15
 
 usage: "Use Ctrl+F/Cmd+F to search for specific terms"
 
@@ -83,6 +64,8 @@ when_to_read:
 - [Database Concepts](#database-concepts)
 - [Technical Terms](#technical-terms)
 - [UI/UX Terms](#uiux-terms)
+- [Abbreviations](#abbreviations)
+- [Common Phrases](#common-phrases)
 
 ---
 
@@ -119,18 +102,28 @@ External worker with minimal access. Only sees stages they are assigned to by na
 Same high-level routing and subcontractor-parity policies as **subcontractor** (`SUBCONTRACTOR_PATHS`, `isSubcontractorLikeRole()`). Stored role: PostgreSQL **`user_role`** enum value **`helpers`**. Service-type column: **`users.helpers_service_type_ids`** (Clock/Dispatch), analogous to **`subcontractor_service_type_ids`**. **`people.kind` = `helper`** for off‑roster People rows. See [ACCESS_CONTROL.md](./ACCESS_CONTROL.md) **`### helpers (Helper)`**.
 
 ### estimator (Estimator)
-Bid estimation specialist with access only to Bids and Materials systems. Cannot access ongoing project management, workflows, or dashboard. Can view all customers (for bid creation) and create new customers via Bids modal.
+Bid estimation specialist centered on the Bids and Materials systems. Can view all customers (for bid creation), create customers via the Bids modal or Customers page, and edit basic customer fields. Allowed routes also include Dashboard, Map, Estimates, Documents, Calendar, Checklist, People, Settings, Tally, and Help (`estimatorAllowedPaths` in [`layoutRouteAccess.ts`](../src/lib/layoutRouteAccess.ts)); Prospects only when `estimator_prospects_access` is granted.
 
-**Capabilities**: Full Bids system, full Materials system, view/create customers (via Bids)
+**Capabilities**: Full Bids system, full Materials system, view/create/edit customers (no owner/Stripe/merge/delete)
 
-**Key Restriction**: No access to Projects, Workflows, Dashboard, Calendar, or Settings pages
+**Key Restriction**: No access to Projects, Workflows, Jobs, or Quickfill pages
 
 ### primary (Primary)
-Materials and job reports specialist with access to Materials (full), Jobs (Reports tab only), Bids (Bid Board, RFI, Change Order, Lien Release), and Dashboard with Recent Reports and Send task. Cannot access Customers, Projects, People, or other Jobs/Bids tabs.
+Materials and job reports specialist with access to Materials (full), Jobs (**Reports and Billing** tabs), Bids (**full access** — all tabs including Pricing and Cover Letter, which are hidden only for superintendents — [`Bids.tsx`](../src/pages/Bids.tsx)), and Dashboard with Recent Reports and Send task. Cannot access Customers, Projects, People, or Prospects.
 
-**Capabilities**: Full Materials system, Jobs Reports tab (view/create reports), Bids Bid Board + RFI/Change Order/Lien Release (view bids, generate documents), Dashboard Recent Reports, Send task, ChecklistAddModal ("detail send")
+**Capabilities**: Full Materials system, Jobs Reports tab (view/create reports) + Billing tab (view jobs, add materials), full Bids access (create/edit/delete bids, all tabs), Dashboard Recent Reports, Send task, ChecklistAddModal ("detail send")
 
-**Key Restriction**: No access to Customers, Projects, People, or Jobs/Bids tabs other than Reports and Bid Board/RFI/Change Order/Lien Release
+**Key Restriction**: No access to Customers, Projects, People, Prospects, Quickfill, or Jobs tabs other than Reports and Billing
+
+### superintendent (Superintendent)
+Runs jobs, manages subcontractors, and drafts bids — but only on projects they are explicitly assigned to via `project_superintendents` (adoption through `master_superintendents` no longer grants project access). Sees Jobs Reports + Sub Sheet Ledger tabs, the Schedule Dispatch week grid, and the Bids draft flow; the Pricing, Cover Letter, and Submission tabs are hidden ([`Bids.tsx`](../src/pages/Bids.tsx)).
+
+**Capabilities**: Workflow stage visibility + people assignment on assigned projects, Jobs Reports/Sub Sheet Ledger, draft-flow Bids tabs, Materials Price/Assembly books, Dispatch
+
+**Key Restriction**: Assigned projects only; no People or Customers pages (customer create from the Bids modal only)
+
+### controller (Controller)
+Bookkeeper/financial-controller role: acts like an assistant everywhere plus dev-level financial visibility via `has_payroll_access()`. See the full entry at [Controller (role)](#controller-role) below and `ACCESS_CONTROL.md` → controller section.
 
 ---
 
@@ -217,7 +210,7 @@ Reusable workflow definition. Masters and devs can create templates with pre-def
 **Access**: Only dev can create/edit templates
 
 ### Clock Sessions / Pending Clock Sessions
-User clock-in/clock-out records from the Dashboard. Each session has `clocked_in_at`, `clocked_out_at`, `work_date` (from clock-in date), required `notes` ("What are you working on?"), and optional `job_ledger_id` or `bid_id` for job/bid-level reporting (mutually exclusive). **Pending** sessions are clocked out but not yet approved or rejected. **Approved** sessions have hours merged into `people_hours`; **Rejected** sessions are in a separate section. Pay-access users approve, reject, or revoke in People Hours tab (and Quickfill Hours section). `approve_clock_sessions` RPC merges hours into `people_hours` (canonical **`person_id`** → **`people.id`** when resolvable, via **`people.account_user_id`** or a unique trimmed roster name match; denormalized **`person_name`** is still written for legacy readers) and, for sessions with `job_ledger_id`, auto-creates/updates `people_crew_jobs` via **`sync_crew_jobs_from_clock`**; for sessions with `bid_id`, auto-creates/updates `people_crew_bids` via **`sync_crew_bids_from_clock`**. Both sync RPCs now **always** write the computed `job_assignments` / `bid_assignments` for the person+date — the "skip if **`crew_lead_person_name`** is set" branch was dropped in **v2.538** after the freeze migration removed every follower row (see **Crew lead inheritance (deprecated)** below). `revoke_clock_sessions` subtracts hours and moves back to Pending, recomputing or removing crew jobs/crew bids when the session had a job or bid. **Pending table UX**: Time and duration on the first line of the time column; work date and location (or placeholder when GPS missing) on the second line; **Notes** and **Job/Bid** share a wide cell with the job/bid label under the notes; accountability uses two lines (actor line + short timestamp without seconds). Pending row actions are ordered **Approve**, **Reject**, **Edit**. Job/Bid label format: `J123 · [job name] - [address]` for jobs or `B456 · [project name] - [address]` for bids. Cross-midnight work (e.g. 11pm–1am) is attributed entirely to the clock-in date. Devs do not appear in the Pay roster; if a dev's session is approved, hours go to `people_hours` but are not visible in the Hours grid. **Pending vs payroll visibility on the Hours grid** (**v2.533**): Because **`people_hours`** is what **Draft Payroll** reads, closed pending sessions do not yet contribute to a person's payroll total even though the Hours grid cell shows **`max(people_hours, pending closed clock hours)`**. To stop operators from running payroll on phantom hours, every grid cell where pending sums to **more** than saved **`people_hours`** now renders an amber **`! n`** pill (gated on **`canAccessHours || canAccessPay`**); clicking opens **`PeopleHoursPendingCellPopover`** with per-row reject and a one-click **Approve all (n)** that calls **`approve_clock_sessions`**. A week-strip roll-up banner above the grid surfaces the org-wide gap (**`Pending: N people · H h not yet in payroll`**) with a **Review & approve** bulk modal (**`PeopleHoursBulkApprovePendingModal`**). Day-column headers get an amber dot and person rows get a `+X.XX pending` subline below the total. Detection lives in pure helpers in **[`src/lib/peopleHoursPendingByCell.ts`](../src/lib/peopleHoursPendingByCell.ts)** (closed sessions only, excluding rejected / revoked, salary-only people skipped). **Revoked filter on the cell display sum (v2.537)**: `loadPendingClockSessions` queries `approved_at IS NULL AND rejected_at IS NULL`, which still returns **revoked** rows (revoke clears **`approved_at`** but leaves **`rejected_at`** null and sets **`revoked_at`**). The same helper module now exports **`sumClosedPendingClockHoursForCell`** and **`pendingUnapprovedCountsByWorkDate`**, both of which explicitly skip **`rejected_at || revoked_at`**, so the cell value (`max(people_hours, pendingSum)`) and the cost-matrix **Unapproved** column drop revoked hours immediately after **`revoke_clock_sessions`** subtracts them from **`people_hours`**. Without this the badge logic (which already filtered revoked) and the cell value disagreed on the same row. Related: typing into an **empty** Hours grid cell builds a draft session and opens **`DashboardMyTimeDayEditorModal`**; **v2.533** also fixes that modal so **Close** persists the draft as a pending **`clock_sessions`** row even without a job/bid (previously the draft was silently discarded unless an additional edit marked the cluster dirty).
+User clock-in/clock-out records from the Dashboard. Each session has `clocked_in_at`, `clocked_out_at`, `work_date` (from clock-in date), required `notes` ("What are you working on?"), and optional `job_ledger_id` or `bid_id` for job/bid-level reporting (mutually exclusive). **Pending** sessions are clocked out but not yet approved or rejected. **Approved** sessions have hours merged into `people_hours`; **Rejected** sessions are in a separate section. Pay-access users approve, reject, or revoke in People Hours tab (and Quickfill Hours section). `approve_clock_sessions` RPC merges hours into `people_hours` (canonical **`person_id`** → **`people.id`** when resolvable, via **`people.account_user_id`** or a unique trimmed roster name match; denormalized **`person_name`** is still written for legacy readers) and, for sessions with `job_ledger_id`, auto-creates/updates `people_crew_jobs` via **`sync_crew_jobs_from_clock`**; for sessions with `bid_id`, auto-creates/updates `people_crew_bids` via **`sync_crew_bids_from_clock`**. Both sync RPCs now **always** write the computed `job_assignments` / `bid_assignments` for the person+date — the "skip if **`crew_lead_person_name`** is set" branch was dropped in **v2.538** after the freeze migration removed every follower row (see **Crew lead inheritance (deprecated)** below). `revoke_clock_sessions` subtracts hours and moves back to Pending, recomputing or removing crew jobs/crew bids when the session had a job or bid. **Pending table UX**: Time and duration on the first line of the time column; work date and location (or placeholder when GPS missing) on the second line; **Notes** and **Job/Bid** share a wide cell with the job/bid label under the notes; accountability uses two lines (actor line + short timestamp without seconds). Pending row actions are ordered **Approve**, **Reject**, **Edit**. Job/Bid label format: `J123 · [job name] - [address]` for jobs or `B456 · [project name] - [address]` for bids. Cross-midnight work (e.g. 11pm–1am) is attributed entirely to the clock-in date. Devs do not appear in the Pay roster; if a dev's session is approved, hours go to `people_hours` but are not visible in the Hours grid. **Pending vs payroll visibility on the Hours grid** (**v2.533**): Because **`people_hours`** is what **Draft Payroll** reads, closed pending sessions do not yet contribute to a person's payroll total even though the Hours grid cell shows **`max(people_hours, pending closed clock hours)`**. To stop operators from running payroll on phantom hours, every grid cell where pending sums to **more** than saved **`people_hours`** now renders an amber **`! n`** pill (gated on **`canAccessHours || canAccessPay`**); clicking opens **`PeopleHoursPendingCellPopover`** with per-row reject and a one-click **Approve all (n)** that calls **`approve_clock_sessions`**. A week-strip roll-up banner above the grid surfaces the org-wide gap (**`Pending: N people · H h not yet in payroll`**) with a **Review & approve** bulk modal (**`PeopleHoursBulkApprovePendingModal`**). Day-column headers get an amber dot and person rows get a `+X.XX pending` subline below the total. Detection lives in pure helpers in **[`src/lib/peopleHoursPendingByCell.ts`](../src/lib/peopleHoursPendingByCell.ts)** (closed sessions only, excluding rejected / revoked, salary-only people skipped). **Revoked filter on the cell display sum (v2.537)**: `loadPendingClockSessions` queries `approved_at IS NULL AND rejected_at IS NULL`, which still returns **revoked** rows (revoke clears **`approved_at`** but leaves **`rejected_at`** null and sets **`revoked_at`**). The same helper module now exports **`sumClosedPendingClockHoursForCell`** and **`pendingUnapprovedCountsByWorkDate`**, both of which explicitly skip **`rejected_at || revoked_at`**, so the cell value (`max(people_hours, pendingSum)`) drops revoked hours immediately after **`revoke_clock_sessions`** subtracts them from **`people_hours`** (this also fed the cost-matrix **Unapproved** column until the cost matrix was fully retired on 2026-07-15 — migrations `20260715090000` / `20260715120000`). Without this the badge logic (which already filtered revoked) and the cell value disagreed on the same row. Related: typing into an **empty** Hours grid cell builds a draft session and opens **`DashboardMyTimeDayEditorModal`**; **v2.533** also fixes that modal so **Close** persists the draft as a pending **`clock_sessions`** row even without a job/bid (previously the draft was silently discarded unless an additional edit marked the cluster dirty).
 
 **Database**: `clock_sessions`
 
@@ -243,7 +236,7 @@ A per-user, per-device toggle in the header gear menu (**[`Layout.tsx`](../src/c
 
 **Storage** — `localStorage` key `dashboard_job_mode_${userId}` (per-user suffix so a shared phone doesn't leak between accounts), with the `storage` event syncing across tabs. Mirrors the **`dashboard_clock_strip_scope`** pattern; toggle implemented in **[`jobModeToggle.ts`](../src/lib/jobModeToggle.ts)** + **[`useJobModeEnabled.ts`](../src/hooks/useJobModeEnabled.ts)**.
 
-**Visibility** — toggle gated by **`canLeaveJobFieldReport(role)`** in the gear dropdown (all 8 roles: dev, master_technician, assistant, helpers, subcontractor, estimator, primary, superintendent). Without that capability the buttons would be useless.
+**Visibility** — toggle gated by **`canLeaveJobFieldReport(role)`** in the gear dropdown (all 9 roles: dev, master_technician, assistant, controller, helpers, subcontractor, estimator, primary, superintendent — the predicate uses `isAssistantLike`, so controller passes; [`canLeaveJobFieldReport.ts`](../src/lib/canLeaveJobFieldReport.ts)). Without that capability the buttons would be useless.
 
 **Realtime / day rollover** — the card subscribes to `postgres_changes` on `clock_sessions` (this user) and `job_schedule_blocks` (this user, this `work_date`); a 1-minute interval re-checks `denverCalendarDayKey(Date.now())` so a long-open page rolls over at midnight. The picker is fully unit-tested (14 cases) so adding new state branches is safe.
 
@@ -430,6 +423,20 @@ Relationship where a user owns a resource (customer, project, purchase order). I
 
 **Inheritance**: Projects inherit owner from customer (automatic)
 
+### Read-only (training) mode
+Per-user flag (`users.read_only`) a dev sets from Active Accounts that lets someone browse everything their role can see while blocking every direct INSERT/UPDATE/DELETE. Enforcement is two-layered: restrictive RLS policies created by `apply_read_only_write_blocks()` (migration `20260713090000`) plus a statement-level `read_only_block_stmt` trigger attached by `apply_read_only_stmt_blocks()` that also stops writes inside `SECURITY DEFINER` RPCs (migration `20260717000000`, which extended the flag from assistant/controller to **every role**). Nobody can flag or unflag their own account — only devs change it — and JWT-less writers (cron, service-role, edge functions) are deliberately unaffected.
+
+**Database**: `users.read_only`, `is_read_only()`, `apply_read_only_write_blocks()`, `apply_read_only_stmt_blocks()`
+
+**See**: `ACCESS_CONTROL.md` → Read-only (training) mode; `MIGRATIONS.md` → `20260713090000`, `20260717000000`
+
+### Deleted-records archive & restore
+Dev-only safety net for hard deletes: a `BEFORE DELETE` trigger (`archive_deleted_record()`, `SECURITY DEFINER`) snapshots deleted rows from high-value tables (jobs, bids, reports, customers→projects trees, people roster + cascades) into **`public.deleted_records_archive`**, grouped by the top-level record with `deleted_by`/`deleted_at`; rows auto-purge after 90 days. Two dev-only RPCs drive restore: `list_deleted_records(p_limit)` and `restore_deleted_records(p_group_key, p_dry_run)` — all-or-nothing with a dry-run preview (dangling nullable FKs are nulled + warned; dangling NOT NULL FKs block the restore). Surfaced in **Settings → Data & migration → Recently deleted (dev)**.
+
+**Database**: `deleted_records_archive`; migrations `20260716120000` (archive), `20260716150000`/`20260716230000` (coverage), `20260716180000`/`20260716210000` (restore), `20260717210000` (people)
+
+**See**: `ACCESS_CONTROL.md` → Deleted-records archive; `RECENT_FEATURES.md` → v2.696–v2.699
+
 ---
 
 ## Workflow Concepts
@@ -522,6 +529,21 @@ Per-transaction org-wide scratch text stored in **`mercury_transaction_org_notes
 ### Mercury sync (Banking)
 Mercury transactions are pulled from the Mercury REST API (`/api/v1/transactions`) into **`mercury_transactions`** by Edge function **[`sync-mercury-transactions`](../supabase/functions/sync-mercury-transactions/index.ts)** — paginated 500/page × **`MAX_PAGES = 120`** = up to **60,000 tx** per invocation, upserted on **`mercury_id`** so re-running over an overlapping range is idempotent. Two trigger paths from **Banking** → **Mercury**: **(1) Refresh from Mercury** — top-of-page button + **Advanced** menu item, all eligible roles (dev / master_technician / assistant), hardcoded to **`{ lookback_days: 90 }`** in **`handleSync`** so daily refreshes stay fast (~10s). **(2) Backfill from Mercury…** (**v2.575**) — **dev only**, lives in the **Advanced** menu between **Refresh from Mercury** and **Reload table**; opens **[`MercuryBackfillModal.tsx`](../src/components/banking/MercuryBackfillModal.tsx)** with a custom **`{ start, end }`** picker (default **`[today − 365, today]`** in **`APP_CALENDAR_TZ`**, range capped at **3650** days client-side, future / reverse ranges blocked). Submit posts **`{ start, end }`** to the same Edge function (already supported, no Edge change), then runs **`Promise.all([loadRows(), loadNicknames(), loadDebitCardNicknames()])`** so the table reflects new rows immediately. Both paths share the same **`syncing`** flag so they mutex automatically. Display side: in [`Banking.tsx`](../src/pages/Banking.tsx) `loadRows`, the in-memory cap is **`MERCURY_TRANSACTIONS_BANKING_LIST_LIMIT = 15000`** (raised from 5,000 in v2.575) so a year of synced rows fits in one scrollable list; search and rules still filter via the DB, not the in-memory list. Edge function gated **`dev only`** at the `users.role` check; UI gates the menu item on **`isDevBanking`** so non-dev viewers don't see it. `RECENT_FEATURES.md` → **v2.575**; `EDGE_FUNCTIONS.md` → **`sync-mercury-transactions`**.
 
+### User Review tab (Banking Mercury)
+Banking → Mercury tab (`?tab=user_review`) for all banking staff (`canAccessBanking` — dev / master_technician / assistant-like) that pivots Mercury transactions by **attributed user** × accounting label so spend per person is visible at a glance; the **Unassigned** row sorts first. Cells drill into a ledger modal with a per-row **Assign to** person picker and a bulk assign/unassign control (writes via `mercurySetTransactionAttribution`, preserving job splits); counterparty clicks open the shared `TransactionDetailModal`.
+
+**Implementation**: [`BankingMercuryUserReviewTab.tsx`](../src/components/banking/BankingMercuryUserReviewTab.tsx), pivots in [`bankingMercuryUserReviewPivot.ts`](../src/lib/bankingMercuryUserReviewPivot.ts). Not the same thing as the Dashboard **User Review modal** (clock-strip schedule review). See `RECENT_FEATURES.md` → v2.590.
+
+### Category Review tab (Banking Mercury)
+Banking → Mercury tab (`?tab=category_review`, same `canAccessBanking` gate) that pivots the filtered Mercury transactions by **accounting label** (the Drag Sort / Accounting label catalog) with per-label count + sum, so Schedule C-shaped spend review happens without leaving Banking. Drill-ins list the label's transactions; clicking a transaction date opens the shared `TransactionDetailModal` for inline reassignment.
+
+**Implementation**: [`BankingMercuryCategoryReviewTab.tsx`](../src/components/banking/BankingMercuryCategoryReviewTab.tsx); shares the label catalog types with the User Review pivot. See `RECENT_FEATURES.md` → v2.590.
+
+### Reconciliation tab (Banking Mercury)
+Banking → Mercury tab (`?tab=reconciliation`, same `canAccessBanking` gate) that checks sync completeness of `mercury_transactions` against Mercury's own statements, per account per month (3/6/12-month windows): statement count vs present count, missing-transaction samples and value, and ending-balance continuity, rendered as ok/warn status pills. A **Payroll** chip cross-checks the scope against People → Payroll stub payments. Raw numbers come from the `mercury-reconcile` edge function; pass/fail thresholds live in the pure kernel.
+
+**Implementation**: [`BankingMercuryReconciliationTab.tsx`](../src/components/banking/BankingMercuryReconciliationTab.tsx), kernel [`mercuryReconciliation.ts`](../src/lib/mercuryReconciliation.ts), fetch via [`fetchMercuryReconciliation.ts`](../src/lib/fetchMercuryReconciliation.ts).
+
 ## Controller (role)
 
 Bookkeeper/financial-controller role added in **v2.662** (Phase 3 of the pay-visibility overhaul). **Acts like an assistant everywhere** — the DB's `is_assistant()` and the client's `isAssistantLike()` are assistant-LIKE (assistant **or** controller), so every assistant capability (clock cards, hours, crew, contracts, licenses, vehicles, housing, dispatch) extends automatically — **plus dev-level financial visibility**: `has_payroll_access()` (wages, pay stubs, People → Payroll tab), Dashboard financials unredacted, Job Summary team-labor/profit, Cost breakdown team labor, Projects day-modal team labor. **Not** dev admin: no user management, impersonation, backups, or dev-only deletes. Compare `role === 'assistant'` / `users.role` directly when strictly-assistant semantics matter.
@@ -555,6 +577,11 @@ Per-task preference to stop receiving completed-task push notifications for a sp
 
 ### Ignored section (dev)
 Collapsible section in Dashboard Recently Completed Tasks where devs move task types they want out of the main view. Stored in `dev_ignored_checklist_items`. Main section shows only non-ignored types; UNREAD count excludes ignored; Ignore/Un-ignore buttons move task types between sections.
+
+### My Inbox (Dashboard)
+Bordered Dashboard card (v2.681, reusable [`DashboardGroupCard`](../src/components/dashboard/DashboardGroupCard.tsx)) that groups the personal checklist sections into one unit: **Due Today** (was "Checklist: Due Today"), **Overdue** (was "Checklist: Outstanding"), and — for devs — **Recently Completed Tasks**. As of v2.683 the dev-only Recently Completed block hides entirely when nothing completed in the last 7 days and otherwise appears as a `▶ Recently Completed (N unread)` corner link in the card's top-right that expands the grouped-by-completer list in place. The section-dock's **My Inbox** chip anchors to the card whenever it renders.
+
+**See**: `RECENT_FEATURES.md` → v2.681, v2.683; help guide `src/content/help/dashboard-my-inbox.md`
 
 ---
 
@@ -600,7 +627,7 @@ Short identifier for a bid (e.g. "456"), analogous to HCP for jobs. Stored in `b
 Optional **per–service-type** characters shown **before** the numeric **HCP** (**`jobs_ledger.hcp_number`**) or **bid** (**`bids.bid_number`**) in the UI and in some notifications. Stored on **`service_types`** as **`ledger_job_prefix`** and **`ledger_bid_prefix`**. **Dev-only** editing in **Settings** (Service types). **Implementation**: [`ledgerDisplayPrefixes.ts`](../src/lib/ledgerDisplayPrefixes.ts); Edge helpers in **`supabase/functions/_shared/ledgerDisplayPrefixes.ts`**. **Stripe** invoice **number** generation remains **digits-only HCP** (no prefix) unless changed separately.
 
 ### Estimators tab (Bids → Estimators)
-A cross-bid analytics tab on the Bids page (**`?tab=estimators`**, viewable by **all roles**) — **v2.531**. Shows a **days × estimators** pivot of **`clock_sessions`** linked to **bids** over the last **30 days** (**`APP_CALENDAR_TZ`**). Each cell stacks one chip per bid the column user clocked into that day, formatted **`{N}% — {label} ({project clip})`**, where **`{N}% = userHoursThatDay / bidAllTimeHours × 100`** (lifetime team denominator, so **100%** means that user has been the only one to clock any time to the bid ever). **`{label}`** is the trade-aware ledger label (e.g. **`BE249`** when **`service_types.ledger_bid_prefix` = `BE`**, **`B412`** when blank — see **Bid Number**); **`{project clip}`** is the first **10** characters of **`bids.project_name`** + `...` (omitted when ≤10 chars). Click the bid label → **Bid preview** modal via **`useBidPreview`**.
+A cross-bid analytics tab on the Bids page (**`?tab=estimators`**, viewable by **every role that can open `/bids`** — subcontractor and helpers cannot reach the Bids page at all, since `/bids` is not in `SUBCONTRACTOR_PATHS` in [`layoutRouteAccess.ts`](../src/lib/layoutRouteAccess.ts)) — **v2.531**. Shows a **days × estimators** pivot of **`clock_sessions`** linked to **bids** over the last **30 days** (**`APP_CALENDAR_TZ`**). Each cell stacks one chip per bid the column user clocked into that day, formatted **`{N}% — {label} ({project clip})`**, where **`{N}% = userHoursThatDay / bidAllTimeHours × 100`** (lifetime team denominator, so **100%** means that user has been the only one to clock any time to the bid ever). **`{label}`** is the trade-aware ledger label (e.g. **`BE249`** when **`service_types.ledger_bid_prefix` = `BE`**, **`B412`** when blank — see **Bid Number**); **`{project clip}`** is the first **10** characters of **`bids.project_name`** + `...` (omitted when ≤10 chars). Click the bid label → **Bid preview** modal via **`useBidPreview`**.
 
 **Columns** = `role = 'estimator'` users **plus** the org-wide augmentation list **`bid_estimators_extra_users`**. **Manage columns** (dev / master_technician / assistant only) edits the augmentation list via **[`BidsEstimatorsExtraUsersModal.tsx`](../src/components/bids/BidsEstimatorsExtraUsersModal.tsx)**. **Cost mode** (dev only) appends **`{bidValue × pct}k | {bidValue}k`** per chip via **`formatBidValueK`**, or **`no bid value`** in red when **`bids.bid_value`** is missing. **Search bar** (**v2.534**) above the table matches the bid's ledger label (prefix or digits), **`project_name`**, and **GC/Builder name** (**`customers.name`** with legacy **`bids_gc_builders.name`** fallback) — case-insensitive substring; matching chips get an amber pill and rows with no match are hidden, but estimator columns stay stable.
 
@@ -980,7 +1007,7 @@ User-facing label for **manual job materials** lines stored on **`jobs_ledger_ma
 Read-only **T±n (weekday)** summaries under **Assigned / HCP**: **`j:`** (job / field) = calendar-latest of **`last_work_date`** (approved clock sessions cache) and max **`job_schedule_blocks.work_date`** for the job; **`b:`** (billing reference) = calendar-**latest** of **last manual bill date** (**`last_bill_date`**) and invoice **`sent_to_customer_at`** / **`billed_at`** and payment **`paid_on`**; **`—`** only when all of those are empty. **Implementation**: **[`src/lib/stagesJobReferenceDates.ts`](../src/lib/stagesJobReferenceDates.ts)**.
 
 ### Stages line "man-hours applied" (Jobs Stages tab) — **v2.592**
-Read-only clock-icon line on each Stages-board card, directly under **`b:`**, showing **total man-hours applied** to the job as a compact `8h 15m` / `45m` label (via **`formatDecimalWorkHoursToHhMm`**, which returns **`—`** for non-positive values), with a **per-person breakdown on hover** (`title` tooltip, descending). Backed by the **`SECURITY INVOKER`** RPC **`get_man_hours_by_job()`** (migration **`20260607234914`**), which mirrors the canonical **[`teamLabor.ts`](../src/lib/teamLabor.ts)** allocation kernel — salaried = **8h Mon–Fri**, hourly = **`people_hours`** (last 2 years), each crew day split across that day's **`job_assignments`** by **`pct`** — so totals reconcile with the **Combined Labor / Teams Summary** tabs. Loaded **once per Stages visit** in **[`Jobs.tsx`](../src/pages/Jobs.tsx)** (`loadStagesManHours`, load-once `useRef`, retry on error); shows **`…`** while loading and **`—`** when the job has no allocated hours or the caller's role has no RLS read access to the labor tables. See **`RECENT_FEATURES.md`** → v2.592.
+Read-only clock-icon line on each Stages-board card, directly under **`b:`**, showing **total man-hours applied** to the job as a compact `8h 15m` / `45m` label (via **`formatDecimalWorkHoursToHhMm`**, which returns **`—`** for non-positive values), with a **per-person breakdown on hover** (`title` tooltip, descending). Backed by the **`SECURITY INVOKER`** RPC **`get_man_hours_by_job()`** (migration **`20260607234914`**), which mirrors the canonical **[`teamLabor.ts`](../src/utils/teamLabor.ts)** allocation kernel — salaried = **8h Mon–Fri**, hourly = **`people_hours`** (last 2 years), each crew day split across that day's **`job_assignments`** by **`pct`** — so totals reconcile with the **Combined Labor / Teams Summary** tabs. Loaded **once per Stages visit** in **[`Jobs.tsx`](../src/pages/Jobs.tsx)** (`loadStagesManHours`, load-once `useRef`, retry on error); shows **`…`** while loading and **`—`** when the job has no allocated hours or the caller's role has no RLS read access to the labor tables. See **`RECENT_FEATURES.md`** → v2.592.
 
 ### Clock sessions in Job activity / notes (v2.593)
 The **Job activity / notes** feed (**`JobThreadNotesPanel`**, shown on Jobs **Stages**, **Workflow**, and the **Job Detail** modal) is a merged chronological timeline of read-only and interactive sources: thread notes (**`jobs_ledger_thread_notes`**), field reports, dispatch schedule blocks (**v2.445**), and — as of **v2.593** — **clock in/out sessions**. Clock rows render with an indigo left-border + **CLOCK** tag showing `person · in → out · duration` (open sessions read *still on the clock*), an amber **Pending approval** chip when **`approved_at`** is null, and the session note when present. Pure kernel **[`clockSessionsToActivityItems`](../src/lib/jobThreadClockActivity.ts)** maps non-rejected **`clock_sessions`** (fetched via **`fetchClockSessionsForJobLedger`**, which already excludes revoked) into timeline items; merged + sorted in **[`useJobThreadNotes.ts`](../src/hooks/useJobThreadNotes.ts)** / **[`useJobThreadNotesForModal.ts`](../src/hooks/useJobThreadNotesForModal.ts)** with a `clock_sessions` Realtime subscription. **RLS-governed** (roles without labor read-access see no clock rows). Because it keeps **pending** (unapproved) sessions, this surfaces clocked time that has **not** yet rolled into man-hours (see **Stages line "man-hours applied"**, which is approved-only). The collapsed **Last activity** preview is unaffected (thread-stats only). No DB / migration / type changes.
@@ -1307,7 +1334,7 @@ Command to auto-generate TypeScript types from Supabase schema: `supabase gen ty
 
 ---
 
-**Last Updated**: 2026-02-10
+**Last Updated**: 2026-07-17
 
 **Related Documentation**: 
 - [AI_CONTEXT.md](./AI_CONTEXT.md) - Quick project overview
