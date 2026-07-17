@@ -10,6 +10,7 @@ export type UserRow = {
   last_sign_in_at: string | null
   read_only?: boolean
   estimator_prospects_access?: boolean
+  team_prospects_access?: boolean
   estimator_service_type_ids?: string[] | null
   primary_service_type_ids?: string[] | null
   superintendent_service_type_ids?: string[] | null

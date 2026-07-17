@@ -226,7 +226,7 @@ function substituteCopyPlaceholders(
 export default function Prospects() {
   const navigate = useNavigate()
   const location = useLocation()
-  const { user: authUser, role: authRole, loading: authLoading, estimatorProspectsAccess } = useAuth()
+  const { user: authUser, role: authRole, loading: authLoading, estimatorProspectsAccess, teamProspectsAccess } = useAuth()
   const { showToast } = useToastContext()
   const [searchParams, setSearchParams] = useSearchParams()
   const [topTab, setTopTab] = useState<ProspectsTopTab>('customers')
@@ -354,8 +354,18 @@ export default function Prospects() {
     const params = new URLSearchParams(location.search)
     const tab = params.get('tab')
     if (tab === 'team') {
-      // Top-level Team tab: the prospective-hires pipeline
-      setTopTab('team')
+      // Top-level Team tab: the prospective-hires board (per-user users.team_prospects_access)
+      if (teamProspectsAccess) {
+        setTopTab('team')
+      } else {
+        setSearchParams((p) => {
+          const next = new URLSearchParams(p)
+          next.set('tab', 'follow-up')
+          return next
+        }, { replace: true })
+        setTopTab('customers')
+        setActiveTab('follow-up')
+      }
     } else if (tab && PROSPECTS_TABS.includes(tab as ProspectsTab)) {
       if (tab === 'activity' && !canAccessActivityTab) {
         setSearchParams((p) => {
@@ -376,7 +386,7 @@ export default function Prospects() {
         return next
       }, { replace: true })
     }
-  }, [location.search, setSearchParams, authRole, canAccessActivityTab])
+  }, [location.search, setSearchParams, authRole, canAccessActivityTab, teamProspectsAccess])
 
   // Open New Prospect modal when navigating from Dashboard button
   useEffect(() => {
@@ -1554,9 +1564,11 @@ export default function Prospects() {
             <button type="button" onClick={() => setTab(activeTab)} style={pageTabStyle(topTab === 'customers')}>
               Customers
             </button>
-            <button type="button" onClick={openTeamTab} style={pageTabStyle(topTab === 'team')}>
-              Team
-            </button>
+            {teamProspectsAccess && (
+              <button type="button" onClick={openTeamTab} style={pageTabStyle(topTab === 'team')}>
+                Team
+              </button>
+            )}
           </div>
         </div>
         <h1 style={{ margin: 0, marginLeft: '1rem', flexShrink: 0, fontSize: '1.5rem', fontWeight: 700, color: 'var(--text-strong)' }}>Prospects</h1>
@@ -1620,7 +1632,7 @@ export default function Prospects() {
       </div>
       )}
 
-      {topTab === 'team' && authUser?.id && (
+      {topTab === 'team' && teamProspectsAccess && authUser?.id && (
         <TeamProspectsTab authUserId={authUser.id} resolveMasterId={getEffectiveMasterId} />
       )}
 

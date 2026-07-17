@@ -81,6 +81,7 @@ export function useActiveAccountsManagement({ enabled, onDataChanged }: UseActiv
   const [editName, setEditName] = useState('')
   const [editEstimatorServiceTypeIds, setEditEstimatorServiceTypeIds] = useState<string[]>([])
   const [editEstimatorProspectsAccess, setEditEstimatorProspectsAccess] = useState(false)
+  const [editTeamProspectsAccess, setEditTeamProspectsAccess] = useState(false)
   const [editPrimaryServiceTypeIds, setEditPrimaryServiceTypeIds] = useState<string[]>([])
   const [editSuperintendentServiceTypeIds, setEditSuperintendentServiceTypeIds] = useState<string[]>([])
   const [editSubcontractorServiceTypeIds, setEditSubcontractorServiceTypeIds] = useState<string[]>([])
@@ -99,7 +100,7 @@ export function useActiveAccountsManagement({ enabled, onDataChanged }: UseActiv
   async function loadUsers() {
     const { data: list, error: eList } = await supabase
       .from('users')
-      .select('id, email, name, role, last_sign_in_at, read_only, estimator_prospects_access, estimator_service_type_ids, primary_service_type_ids, superintendent_service_type_ids, subcontractor_service_type_ids, helpers_service_type_ids')
+      .select('id, email, name, role, last_sign_in_at, read_only, estimator_prospects_access, team_prospects_access, estimator_service_type_ids, primary_service_type_ids, superintendent_service_type_ids, subcontractor_service_type_ids, helpers_service_type_ids')
       .is('archived_at', null)
       .order('name')
     if (eList) setError(eList.message)
@@ -163,6 +164,7 @@ export function useActiveAccountsManagement({ enabled, onDataChanged }: UseActiv
     setEditEmail(u.email)
     setEditName(u.name)
     setEditEstimatorProspectsAccess(u.role === 'estimator' && !!u.estimator_prospects_access)
+    setEditTeamProspectsAccess(!!u.team_prospects_access)
     setEditEstimatorServiceTypeIds(u.role === 'estimator' ? (u.estimator_service_type_ids ?? []) : [])
     setEditPrimaryServiceTypeIds(u.role === 'primary' ? (u.primary_service_type_ids ?? []) : [])
     setEditSuperintendentServiceTypeIds(u.role === 'superintendent' ? (u.superintendent_service_type_ids ?? []) : [])
@@ -181,6 +183,7 @@ export function useActiveAccountsManagement({ enabled, onDataChanged }: UseActiv
     setEditEmail('')
     setEditName('')
     setEditEstimatorProspectsAccess(false)
+    setEditTeamProspectsAccess(false)
     setEditEstimatorServiceTypeIds([])
     setEditPrimaryServiceTypeIds([])
     setEditSuperintendentServiceTypeIds([])
@@ -195,6 +198,7 @@ export function useActiveAccountsManagement({ enabled, onDataChanged }: UseActiv
       email: string
       estimator_service_type_ids?: string[] | null
       estimator_prospects_access?: boolean
+      team_prospects_access?: boolean
       primary_service_type_ids?: string[] | null
       superintendent_service_type_ids?: string[] | null
       subcontractor_service_type_ids?: string[] | null
@@ -212,6 +216,9 @@ export function useActiveAccountsManagement({ enabled, onDataChanged }: UseActiv
     }
     if (updates.estimator_prospects_access !== undefined) {
       updatePayload.estimator_prospects_access = updates.estimator_prospects_access
+    }
+    if (updates.team_prospects_access !== undefined) {
+      updatePayload.team_prospects_access = updates.team_prospects_access
     }
     if (updates.primary_service_type_ids !== undefined) {
       updatePayload.primary_service_type_ids = updates.primary_service_type_ids?.length ? updates.primary_service_type_ids : null
@@ -254,6 +261,7 @@ export function useActiveAccountsManagement({ enabled, onDataChanged }: UseActiv
               email: updates.email,
               ...(updates.estimator_service_type_ids !== undefined ? { estimator_service_type_ids: updates.estimator_service_type_ids } : {}),
               ...(updates.estimator_prospects_access !== undefined ? { estimator_prospects_access: updates.estimator_prospects_access } : {}),
+              ...(updates.team_prospects_access !== undefined ? { team_prospects_access: updates.team_prospects_access } : {}),
               ...(updates.primary_service_type_ids !== undefined ? { primary_service_type_ids: updates.primary_service_type_ids } : {}),
               ...(updates.superintendent_service_type_ids !== undefined ? { superintendent_service_type_ids: updates.superintendent_service_type_ids } : {}),
               ...(updates.subcontractor_service_type_ids !== undefined ? { subcontractor_service_type_ids: updates.subcontractor_service_type_ids } : {}),
@@ -291,6 +299,7 @@ export function useActiveAccountsManagement({ enabled, onDataChanged }: UseActiv
       email: string
       estimator_service_type_ids?: string[] | null
       estimator_prospects_access?: boolean
+      team_prospects_access?: boolean
       primary_service_type_ids?: string[] | null
       superintendent_service_type_ids?: string[] | null
       subcontractor_service_type_ids?: string[] | null
@@ -302,6 +311,9 @@ export function useActiveAccountsManagement({ enabled, onDataChanged }: UseActiv
     if (editingUser?.role === 'estimator') {
       updates.estimator_service_type_ids = editEstimatorServiceTypeIds.length > 0 ? editEstimatorServiceTypeIds : null
       updates.estimator_prospects_access = editEstimatorProspectsAccess
+    }
+    if (editingUser && ['dev', 'master_technician', 'assistant', 'estimator'].includes(editingUser.role)) {
+      updates.team_prospects_access = editTeamProspectsAccess
     }
     if (editingUser?.role === 'primary') {
       updates.primary_service_type_ids = editPrimaryServiceTypeIds.length > 0 ? editPrimaryServiceTypeIds : null
@@ -320,6 +332,7 @@ export function useActiveAccountsManagement({ enabled, onDataChanged }: UseActiv
     setEditEmail('')
     setEditName('')
     setEditEstimatorProspectsAccess(false)
+    setEditTeamProspectsAccess(false)
     setEditEstimatorServiceTypeIds([])
     setEditPrimaryServiceTypeIds([])
     setEditSubcontractorServiceTypeIds([])
@@ -995,6 +1008,8 @@ export function useActiveAccountsManagement({ enabled, onDataChanged }: UseActiv
     setEditEstimatorServiceTypeIds,
     editEstimatorProspectsAccess,
     setEditEstimatorProspectsAccess,
+    editTeamProspectsAccess,
+    setEditTeamProspectsAccess,
     editPrimaryServiceTypeIds,
     setEditPrimaryServiceTypeIds,
     editSuperintendentServiceTypeIds,

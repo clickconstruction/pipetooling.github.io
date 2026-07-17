@@ -10040,6 +10040,7 @@ export type Database = {
           created_at: string | null
           email: string
           estimator_prospects_access: boolean
+          team_prospects_access: boolean
           estimator_service_type_ids: string[] | null
           helpers_service_type_ids: string[] | null
           id: string
@@ -10059,6 +10060,7 @@ export type Database = {
           created_at?: string | null
           email: string
           estimator_prospects_access?: boolean
+          team_prospects_access?: boolean
           estimator_service_type_ids?: string[] | null
           helpers_service_type_ids?: string[] | null
           id: string
@@ -10078,6 +10080,7 @@ export type Database = {
           created_at?: string | null
           email?: string
           estimator_prospects_access?: boolean
+          team_prospects_access?: boolean
           estimator_service_type_ids?: string[] | null
           helpers_service_type_ids?: string[] | null
           id?: string

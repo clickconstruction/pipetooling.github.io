@@ -34,6 +34,8 @@ interface UseAuthReturn {
   profileName: string | null
   /** True only when role is estimator and users.estimator_prospects_access is set. */
   estimatorProspectsAccess: boolean
+  /** Per-user gate for the Prospects Team hiring board (users.team_prospects_access). */
+  teamProspectsAccess: boolean
   /** Training mode (users.read_only): browsing works, all writes are blocked by RLS. */
   readOnly: boolean
   loading: boolean
@@ -48,6 +50,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [role, setRole] = useState<UserRole | null>(null)
   const [profileName, setProfileName] = useState<string | null>(null)
   const [estimatorProspectsAccess, setEstimatorProspectsAccess] = useState(false)
+  const [teamProspectsAccess, setTeamProspectsAccess] = useState(false)
   const [readOnly, setReadOnly] = useState(false)
   const [loading, setLoading] = useState(true)
   const [sessionExpiresAt, setSessionExpiresAt] = useState<number | null>(null)
@@ -117,29 +120,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (session?.user?.id) {
       supabase
         .from('users')
-        .select('name, role, estimator_prospects_access, read_only')
+        .select('name, role, estimator_prospects_access, team_prospects_access, read_only')
         .eq('id', session.user.id)
         .single()
         .then(({ data, error: rowError }) => {
           if (rowError || !data) {
             setRole(null)
             setEstimatorProspectsAccess(false)
+            setTeamProspectsAccess(false)
             setReadOnly(false)
             setProfileName(null)
             return
           }
-          const row = data as { name: string; role: UserRole; estimator_prospects_access?: boolean | null; read_only?: boolean | null }
+          const row = data as { name: string; role: UserRole; estimator_prospects_access?: boolean | null; team_prospects_access?: boolean | null; read_only?: boolean | null }
           const trimmed = row.name?.trim() ?? ''
           setProfileName(trimmed.length > 0 ? trimmed : null)
           const r = row?.role ?? null
           setRole(r)
           setEstimatorProspectsAccess(r === 'estimator' && !!row?.estimator_prospects_access)
+          setTeamProspectsAccess(!!row?.team_prospects_access)
           setReadOnly(!!row?.read_only)
         })
     } else {
       setRole(null)
       setProfileName(null)
       setEstimatorProspectsAccess(false)
+      setTeamProspectsAccess(false)
       setReadOnly(false)
     }
   }
@@ -231,6 +237,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     role,
     profileName,
     estimatorProspectsAccess,
+    teamProspectsAccess,
     readOnly,
     loading,
     checkSession,
