@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-17 (v2.711)
+last_updated: 2026-07-17 (v2.712)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.712)
+
+### Prospects — Team tab is now a board with one column per role (2026-07-17)
+Hiring rarely means one list: you're filling several roles at once. The Team tab (v2.709) is now a board — **one drag-ranked column per role** you're hiring for. **+ Add role** creates a column (name + Enter); each column has its own **+ Add candidate** and its own #1-at-the-top ranking. Drag a card **within** a column to re-rank or **across** columns to move a candidate to a different role (also available as a "Role column" picker in Edit). Candidates from before this change (or added without a role) sit in a virtual **Unsorted** column that appears only while it has people. A role column can be deleted **only after every candidate in it has been individually deleted** — the ✕ stays disabled while anyone (including Hired/Passed) is still assigned, and the database enforces the same rule with an `ON DELETE RESTRICT` foreign key, so it can't be bypassed. New `team_prospect_roles` table + `team_prospects.role_id`; ranking is now scoped per column ([`teamProspectRanking.ts`](../src/lib/teamProspectRanking.ts), 21 unit tests; board drag pattern shared with the Bids Working board). See [`MIGRATIONS.md`](MIGRATIONS.md); help guide *track and rank prospective hires* updated.
 
 ## Latest Updates (v2.711)
 

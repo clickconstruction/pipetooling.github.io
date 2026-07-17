@@ -9409,6 +9409,51 @@ export type Database = {
           },
         ]
       }
+      team_prospect_roles: {
+        Row: {
+          created_at: string | null
+          created_by: string
+          id: string
+          master_user_id: string
+          name: string
+          position: number
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          created_by: string
+          id?: string
+          master_user_id: string
+          name: string
+          position?: number
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string
+          id?: string
+          master_user_id?: string
+          name?: string
+          position?: number
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_prospect_roles_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "team_prospect_roles_master_user_id_fkey"
+            columns: ["master_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       team_prospects: {
         Row: {
           created_at: string | null
@@ -9421,6 +9466,7 @@ export type Database = {
           notes: string | null
           phone_number: string | null
           rank_order: number
+          role_id: string | null
           source: string | null
           status: string
           trade: string | null
@@ -9437,6 +9483,7 @@ export type Database = {
           notes?: string | null
           phone_number?: string | null
           rank_order?: number
+          role_id?: string | null
           source?: string | null
           status?: string
           trade?: string | null
@@ -9453,6 +9500,7 @@ export type Database = {
           notes?: string | null
           phone_number?: string | null
           rank_order?: number
+          role_id?: string | null
           source?: string | null
           status?: string
           trade?: string | null
@@ -9471,6 +9519,13 @@ export type Database = {
             columns: ["master_user_id"]
             isOneToOne: false
             referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "team_prospects_role_id_fkey"
+            columns: ["role_id"]
+            isOneToOne: false
+            referencedRelation: "team_prospect_roles"
             referencedColumns: ["id"]
           },
         ]
