@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-17 (v2.719)
+last_updated: 2026-07-17 (v2.720)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.720)
+
+### Dashboard — `useDashboardBoot` seam (2026-07-17)
+Extraction #5 of the Dashboard decomposition ([`DASHBOARD_SECTIONS_ARCHITECTURE.md`](DASHBOARD_SECTIONS_ARCHITECTURE.md)) — the shared-hook seam (playbook Step 2), a **refactor, not a move; no behavior change**. The phase-1 boot effect (four-query `fetchDashboardPhase1` + day-scoped sessionStorage cache hydrate/write via `dashboardBootCache` — key format unchanged), its derived state (`userName`, `userNames`, today-checklist seed, subscribed/assigned steps, the four loading flags, `userError`), the phase-2 `loadSubscribed`/`loadAssigned` follow-ups, and the `loadAssignedSteps` reload used by the workflow-step action handlers moved verbatim from `Dashboard.tsx` into [`useDashboardBoot.ts`](../src/hooks/useDashboardBoot.ts) (shared types in [`dashboardBootTypes.ts`](../src/lib/dashboardBootTypes.ts)); the parent destructures the returned object so every downstream reference is textually unchanged. Boot-seeded state still mutated by parent handlers (today checklist via the My Inbox toggle/forward flow, `userError` via forward errors) is returned with its setter; those handlers stay in the parent for the section 6/16 extractions this seam unblocks (My Inbox, Projects card). `Dashboard.tsx` is down to 6,562 lines (6,898 → 6,562).
 
 ## Latest Updates (v2.719)
 
