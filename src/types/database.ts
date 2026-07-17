@@ -9409,6 +9409,72 @@ export type Database = {
           },
         ]
       }
+      team_prospects: {
+        Row: {
+          created_at: string | null
+          created_by: string
+          email: string | null
+          id: string
+          last_contact: string | null
+          master_user_id: string
+          name: string
+          notes: string | null
+          phone_number: string | null
+          rank_order: number
+          source: string | null
+          status: string
+          trade: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          created_by: string
+          email?: string | null
+          id?: string
+          last_contact?: string | null
+          master_user_id: string
+          name: string
+          notes?: string | null
+          phone_number?: string | null
+          rank_order?: number
+          source?: string | null
+          status?: string
+          trade?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string
+          email?: string | null
+          id?: string
+          last_contact?: string | null
+          master_user_id?: string
+          name?: string
+          notes?: string | null
+          phone_number?: string | null
+          rank_order?: number
+          source?: string | null
+          status?: string
+          trade?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_prospects_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "team_prospects_master_user_id_fkey"
+            columns: ["master_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_app_activity_daily: {
         Row: {
           active_seconds: number

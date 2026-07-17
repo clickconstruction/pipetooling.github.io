@@ -7,6 +7,7 @@ import { useAuth } from '../hooks/useAuth'
 import { isAssistantLike } from '../lib/subcontractorLikeRole'
 import { useToastContext } from '../contexts/ToastContext'
 import NewCustomerForm, { type NewCustomerFormPayload } from '../components/NewCustomerForm'
+import TeamProspectsTab from '../components/prospects/TeamProspectsTab'
 
 const COPY_TEMPLATE_KEYS = ['no_response_email', 'phone_followup_email', 'just_checking_in_email'] as const
 type CopyTemplateKey = (typeof COPY_TEMPLATE_KEYS)[number]
@@ -46,6 +47,8 @@ const EditIcon = () => (
     <path d="M535.6 85.7C513.7 63.8 478.3 63.8 456.4 85.7L432 110.1L529.9 208L554.3 183.6C576.2 161.7 576.2 126.3 554.3 104.4L535.6 85.7zM236.4 305.7C230.3 311.8 225.6 319.3 222.9 327.6L193.3 416.4C190.4 425 192.7 434.5 199.1 441C205.5 447.5 215 449.7 223.7 446.8L312.5 417.2C320.7 414.5 328.2 409.8 334.4 403.7L496 241.9L398.1 144L236.4 305.7zM160 128C107 128 64 171 64 224L64 480C64 533 107 576 160 576L416 576C469 576 512 533 512 480L512 384C512 366.3 497.7 352 480 352C462.3 352 448 366.3 448 384L448 480C448 497.7 433.7 512 416 512L160 512C142.3 512 128 497.7 128 480L128 224C128 206.3 142.3 192 160 192L256 192C273.7 192 288 177.7 288 160C288 142.3 273.7 128 256 128L160 128z" />
   </svg>
 )
+
+type ProspectsTopTab = 'customers' | 'team'
 
 type ProspectsTab = 'follow-up' | 'prospect-list' | 'convert' | 'activity'
 
@@ -226,6 +229,7 @@ export default function Prospects() {
   const { user: authUser, role: authRole, loading: authLoading, estimatorProspectsAccess } = useAuth()
   const { showToast } = useToastContext()
   const [searchParams, setSearchParams] = useSearchParams()
+  const [topTab, setTopTab] = useState<ProspectsTopTab>('customers')
   const [activeTab, setActiveTab] = useState<ProspectsTab>('follow-up')
 
   // Follow Up state
@@ -348,26 +352,22 @@ export default function Prospects() {
 
   useEffect(() => {
     const params = new URLSearchParams(location.search)
-    const rawTab = params.get('tab')
-    // Legacy links: ?tab=team used to be the activity tables before the Team hiring tab existed
-    const tab = rawTab === 'team' ? 'activity' : rawTab
-    if (tab && PROSPECTS_TABS.includes(tab as ProspectsTab)) {
+    const tab = params.get('tab')
+    if (tab === 'team') {
+      // Top-level Team tab: the prospective-hires pipeline
+      setTopTab('team')
+    } else if (tab && PROSPECTS_TABS.includes(tab as ProspectsTab)) {
       if (tab === 'activity' && !canAccessActivityTab) {
         setSearchParams((p) => {
           const next = new URLSearchParams(p)
           next.set('tab', 'follow-up')
           return next
         }, { replace: true })
+        setTopTab('customers')
         setActiveTab('follow-up')
       } else {
+        setTopTab('customers')
         setActiveTab(tab as ProspectsTab)
-        if (rawTab !== tab) {
-          setSearchParams((p) => {
-            const next = new URLSearchParams(p)
-            next.set('tab', tab)
-            return next
-          }, { replace: true })
-        }
       }
     } else if (!tab) {
       setSearchParams((p) => {
@@ -392,10 +392,21 @@ export default function Prospects() {
   }, [location.search, setSearchParams])
 
   const setTab = (tab: ProspectsTab) => {
+    setTopTab('customers')
     setActiveTab(tab)
     setSearchParams((p) => {
       const next = new URLSearchParams(p)
       next.set('tab', tab)
+      next.delete('prospect_id')
+      return next
+    })
+  }
+
+  const openTeamTab = () => {
+    setTopTab('team')
+    setSearchParams((p) => {
+      const next = new URLSearchParams(p)
+      next.set('tab', 'team')
       next.delete('prospect_id')
       return next
     })
@@ -639,11 +650,11 @@ export default function Prospects() {
   }, [authUser?.id])
 
   useEffect(() => {
-    if (activeTab === 'follow-up' && authUser?.id) {
+    if (topTab === 'customers' && activeTab === 'follow-up' && authUser?.id) {
       loadFollowUpProspects()
       loadMyTimeToday()
     }
-  }, [activeTab, authUser?.id, searchParams])
+  }, [topTab, activeTab, authUser?.id, searchParams])
 
   useEffect(() => {
     if ((activeTab === 'prospect-list' || activeTab === 'convert') && authUser?.id) {
@@ -989,7 +1000,7 @@ export default function Prospects() {
 
   // Acquire lock when viewing a prospect; release on cleanup (switch prospect/tab)
   useEffect(() => {
-    if (activeTab !== 'follow-up' || !currentProspect?.id || !authUser?.id) return
+    if (topTab !== 'customers' || activeTab !== 'follow-up' || !currentProspect?.id || !authUser?.id) return
     const prospectId = currentProspect.id
     void supabase.from('prospect_calling_locks').upsert(
       { prospect_id: prospectId, user_id: authUser.id },
@@ -998,7 +1009,7 @@ export default function Prospects() {
     return () => {
       void supabase.from('prospect_calling_locks').delete().eq('prospect_id', prospectId).eq('user_id', authUser!.id)
     }
-  }, [activeTab, currentProspect?.id, authUser?.id])
+  }, [topTab, activeTab, currentProspect?.id, authUser?.id])
 
   // Follow Up timer: counts up while on tab, resets when user leaves and comes back
   useEffect(() => {
@@ -1012,12 +1023,12 @@ export default function Prospects() {
   }, [])
 
   useEffect(() => {
-    if (activeTab !== 'follow-up' || document.visibilityState !== 'visible') return
+    if (topTab !== 'customers' || activeTab !== 'follow-up' || document.visibilityState !== 'visible') return
     const interval = setInterval(() => {
       setFollowUpTimerSeconds((s) => s + 1)
     }, 1000)
     return () => clearInterval(interval)
-  }, [activeTab])
+  }, [topTab, activeTab])
 
   // Auto-resize comment textarea as text wraps
   useEffect(() => {
@@ -1539,7 +1550,7 @@ export default function Prospects() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '0.5rem' }}>
         <h1 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 600 }}>Prospects</h1>
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-          {canAccessFollowUp && (
+          {canAccessFollowUp && topTab === 'customers' && (
           <button
             type="button"
             onClick={() => {
@@ -1561,11 +1572,15 @@ export default function Prospects() {
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem', flexWrap: 'wrap' }}>
-        <button type="button" style={pageTabStyle(true)}>
+        <button type="button" onClick={() => setTab(activeTab)} style={pageTabStyle(topTab === 'customers')}>
           Customers
+        </button>
+        <button type="button" onClick={openTeamTab} style={pageTabStyle(topTab === 'team')}>
+          Team
         </button>
       </div>
 
+      {topTab === 'customers' && (
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', borderBottom: '2px solid var(--border)', marginBottom: '2rem', flexWrap: 'wrap' }}>
         <button
           type="button"
@@ -1603,8 +1618,13 @@ export default function Prospects() {
           </>
         )}
       </div>
+      )}
 
-      {activeTab === 'follow-up' && (
+      {topTab === 'team' && authUser?.id && (
+        <TeamProspectsTab authUserId={authUser.id} resolveMasterId={getEffectiveMasterId} />
+      )}
+
+      {topTab === 'customers' && activeTab === 'follow-up' && (
         <>
           {!canAccessFollowUp ? (
             <p style={{ color: 'var(--text-muted)' }}>You do not have access to Follow Up.</p>
@@ -2138,7 +2158,7 @@ export default function Prospects() {
         </>
       )}
 
-      {activeTab === 'prospect-list' && (
+      {topTab === 'customers' && activeTab === 'prospect-list' && (
         <>
           {!canAccessFollowUp ? (
             <p style={{ color: 'var(--text-muted)' }}>You do not have access to Prospect List.</p>
@@ -2429,7 +2449,7 @@ export default function Prospects() {
         </>
       )}
 
-      {activeTab === 'convert' && (
+      {topTab === 'customers' && activeTab === 'convert' && (
         <div className="prospectsConvert">
           {!canAccessFollowUp ? (
             <p style={{ color: 'var(--text-muted)' }}>You do not have access to Convert.</p>
@@ -2636,7 +2656,7 @@ export default function Prospects() {
         </div>
       )}
 
-      {activeTab === 'activity' && canAccessActivityTab && (
+      {topTab === 'customers' && activeTab === 'activity' && canAccessActivityTab && (
         <div style={{ padding: '1rem 0' }}>
           {teamLoading ? (
             <p style={{ color: 'var(--text-muted)' }}>Loading…</p>

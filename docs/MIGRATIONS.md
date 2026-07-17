@@ -103,6 +103,14 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 #### July 17, 2026
 
+**`20260717190000_team_prospects.sql`** _(apply via `supabase db push` after the file is on `main`)_
+- **Purpose**: **Prospective-hires pipeline** (Prospects page → top-level **Team** tab, v2.709). New `team_prospects` table: candidate identity (`name` required, `phone_number`, `email`, `trade`, `source`, `notes`), pipeline `status` (`active` / `hired` / `passed`, enforced by CHECK — unlike the free-text `prospect_fit_status` on `prospects`), explicit drag ranking (`rank_order`, 1 = top candidate), `last_contact`, standard ownership (`master_user_id`, `created_by`) and timestamps (+ `update_updated_at_column` trigger).
+- **RLS**: mirrors the customer-lead prospect tables — SELECT/UPDATE/DELETE for `user_has_prospects_staff_access()`; INSERT additionally requires `created_by = auth.uid()` and a valid owner (self for dev/master, adopted master for assistants, a master_technician for access-granted estimators).
+- **Safety rails**: `zzz_archive_on_delete` BEFORE-DELETE trigger (deleted-records archive, root bundle) and both `apply_read_only_write_blocks()` + `apply_read_only_stmt_blocks()` so read-only (training) users cannot write.
+- **Category**: Prospects / new feature
+
+#### July 17, 2026
+
 **`20260717180000_drop_dev_reset_estimates.sql`** _(apply via `supabase db push` after the file is on `main`)_
 - **Purpose**: **Remove a "wipe every estimate" button from prod.** `dev_reset_estimates_for_testing()` was `DELETE FROM public.estimates WHERE true` behind a dev-only type-"DELETE" confirm in Settings → Templates & testing. There is no staging env — this "reset for testing" ran against real data, so a dev could erase the whole estimate book in one click believing it was a test. Since v2.702 estimates are archived (so it became recoverable and now trips the bulk-deletion alert), but a standing delete-everything control has no legitimate prod use. `DROP FUNCTION`; the UI (the "Delete all estimates" section) is removed in the same PR.
 - **Category**: Security / cleanup

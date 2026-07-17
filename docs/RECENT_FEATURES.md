@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-17 (v2.708)
+last_updated: 2026-07-17 (v2.709)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.709)
+
+### Prospects — Team tab: track and rank prospective hires (2026-07-17)
+The Prospects page's top-level **Team** tab (next to **Customers**) is a recruiting pipeline: candidates for the crew, kept as a ranked list where **#1 is the top candidate**. **Add candidate** takes a name (required) plus phone, email, trade, source, and notes. Drag the ⠿ handle to re-rank — the order persists (`rank_order`) and is shared by everyone with access. **Talked today** stamps last contact (each card shows "Contacted N days ago"); **Hired** / **Passed** move a candidate into collapsed buckets below the list, and **Back to active** returns them to the bottom of the ranking. Deep link: `/prospects?tab=team`. Access matches the rest of Prospects (`user_has_prospects_staff_access()`: dev / master / assistant, or estimator with Prospects access). New `team_prospects` table (status CHECK, deleted-records archive coverage, read-only blocks) — see [`MIGRATIONS.md`](MIGRATIONS.md); ranking math in [`teamProspectRanking.ts`](../src/lib/teamProspectRanking.ts) (16 unit tests). New help guide: *track and rank prospective hires*.
 
 ## Latest Updates (v2.708)
 
