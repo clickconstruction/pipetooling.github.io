@@ -3,59 +3,44 @@
 ---
 file: EDGE_FUNCTIONS.md
 type: API Reference
-purpose: Complete API documentation for all 10+ Supabase Edge Functions
+purpose: Complete API documentation for all 57 Supabase Edge Functions
 audience: Developers, DevOps, AI Agents
-last_updated: 2026-04-21
+last_updated: 2026-07-17
 estimated_read_time: 20-25 minutes
 difficulty: Intermediate
 
 runtime: "Deno (TypeScript)"
-authentication: "Manual JWT validation"
-total_functions: 35
+authentication: "In-function JWT / signature / cron-secret validation for most functions (see Overview for the two gateway-verified exceptions)"
+total_functions: 57
 
 key_sections:
+  - name: "Functions"
+    anchor: "#functions"
+    description: "Per-function reference (all 57), user admin through Stripe/Mercury"
   - name: "create-user"
-    line: ~55
     anchor: "#create-user"
     description: "Create users with roles (dev-only)"
-  - name: "invite-user"
-    anchor: "#invite-user"
-    description: "Email an invite link via Resend (dev-only)"
-  - name: "send-sign-in-email"
-    anchor: "#send-sign-in-email"
-    description: "Email a magic sign-in link via Resend (dev-only)"
   - name: "archive-user"
-    line: ~181
     anchor: "#archive-user"
     description: "Archive users by email/name (dev-only)"
-  - name: "restore-user"
-    line: ~250
-    anchor: "#restore-user"
-    description: "Restore archived users (dev-only)"
   - name: "login-as-user"
-    line: ~293
     anchor: "#login-as-user"
     description: "Generate magic link for impersonation"
   - name: "send-workflow-notification"
-    line: ~401
     anchor: "#send-workflow-notification"
     description: "Send email notifications via Resend"
-  - name: "set-user-password"
-    line: ~497
-    anchor: "#set-user-password"
-    description: "Set user password (dev-only)"
-  - name: "test-email"
-    line: ~571
-    anchor: "#test-email"
-    description: "Test email templates"
+  - name: "stripe-webhook"
+    anchor: "#stripe-webhook"
+    description: "Stripe invoice lifecycle webhook"
+  - name: "mercury-webhook"
+    anchor: "#mercury-webhook"
+    description: "Mercury transaction webhook"
   - name: "Error Handling"
-    line: ~655
     anchor: "#error-handling"
     description: "Standard error responses"
   - name: "Deployment"
-    line: ~747
     anchor: "#deployment"
-    description: "Deploy and test procedures"
+    description: "Deploy and test procedures + required secrets"
 
 quick_navigation:
   - "[All Functions](#functions) - Complete function list"
@@ -78,6 +63,7 @@ required_secrets:
   - "SUPABASE_SERVICE_ROLE_KEY"
   - "RESEND_API_KEY (for email functions)"
   - "DEV_PROMOTION_CODE (for claim-dev)"
+  - "…plus push/cron/Mercury/Stripe/maps secrets — full annotated list in Deployment → Required Secrets"
 
 when_to_read:
   - Calling edge functions from frontend
@@ -102,10 +88,32 @@ when_to_read:
    - [login-as-user](#login-as-user)
    - [dev-login](#dev-login)
    - [send-workflow-notification](#send-workflow-notification)
+   - [get-estimate-for-customer](#get-estimate-for-customer)
+   - [get-estimate-public-terms](#get-estimate-public-terms)
+   - [accept-estimate](#accept-estimate)
+   - [send-estimate-to-customer](#send-estimate-to-customer)
+   - [get-contract-for-signer](#get-contract-for-signer)
+   - [accept-contract](#accept-contract)
+   - [send-contract-for-signature](#send-contract-for-signature)
+   - [get-contract-signing-link-for-self](#get-contract-signing-link-for-self)
+   - [check-estimate-attachment-url](#check-estimate-attachment-url)
+   - [resolve-ip-geolocation](#resolve-ip-geolocation)
+   - [street-view-preview](#street-view-preview)
+   - [geocode-address-batch](#geocode-address-batch)
+   - [geocode-one](#geocode-one)
+   - [send-bid-pricing-package](#send-bid-pricing-package)
    - [send-checklist-notification](#send-checklist-notification)
+   - [send-report-notification](#send-report-notification)
    - [notify-dispatch-request](#notify-dispatch-request)
    - [notify-estimator-request](#notify-estimator-request)
    - [notify-team-lead-clock](#notify-team-lead-clock)
+   - [send-scheduled-reminders](#send-scheduled-reminders)
+   - [recurring-job-report-preview](#recurring-job-report-preview)
+   - [recurring-job-report-test-send](#recurring-job-report-test-send)
+   - [recurring-job-report-dispatch](#recurring-job-report-dispatch)
+   - [schedule-day-email-dispatch](#schedule-day-email-dispatch)
+   - [schedule-share-dispatch](#schedule-share-dispatch)
+   - [sync-salary-sessions](#sync-salary-sessions)
    - [set-user-password](#set-user-password)
    - [claim-dev](#claim-dev)
    - [test-email](#test-email)
@@ -120,6 +128,12 @@ when_to_read:
    - [preview-stripe-invoice](#preview-stripe-invoice)
    - [void-stripe-invoice-for-revert](#void-stripe-invoice-for-revert)
    - [stripe-webhook](#stripe-webhook)
+   - [sync-mercury-transactions](#sync-mercury-transactions)
+   - [mercury-webhook](#mercury-webhook)
+   - [get-mercury-account-balances](#get-mercury-account-balances)
+   - [mercury-reconcile](#mercury-reconcile)
+   - [import-manual-transactions](#import-manual-transactions)
+   - [manage-manual-account](#manage-manual-account)
 4. [Error Handling](#error-handling)
 5. [Deployment](#deployment)
 
@@ -127,7 +141,7 @@ when_to_read:
 
 ## Overview
 
-PipeTooling uses Supabase Edge Functions (Deno runtime) for privileged server-side operations that require elevated permissions or external API access. All functions use manual JWT validation with gateway verification disabled.
+PipeTooling uses Supabase Edge Functions (Deno runtime) for privileged server-side operations that require elevated permissions or external API access. Nearly all functions validate the caller inside the handler — a user JWT (`auth.getUser` + role check), a webhook signature (`stripe-webhook`, `mercury-webhook`), or a cron secret (`X-Cron-Secret`) — with gateway verification disabled via a `[functions.<name>] verify_jwt = false` block in [`supabase/config.toml`](../supabase/config.toml). **Two exceptions**: `merge-users` and `schedule-share-dispatch` have no `[functions.*]` block, so the gateway default (`verify_jwt = true`) applies to them per repo config.
 
 **Field collect payment (Stripe):** The app uses **hosted Stripe invoices** and **`stripe-webhook`** (**`invoice.paid`**) with **`complete_job_collect_payment_flow_for_invoice`** — not physical Stripe Terminal readers. **`update-collect-payment-stripe-customer-email`** lets subcontractors correct payer email before **`send-stripe-invoice`**. Older **`terminal-connection-token`** / **`create-terminal-collect-payment-intent`** functions are **not** in the repo (see **`RECENT_FEATURES.md`** v2.344).
 
@@ -1091,6 +1105,44 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 
 ---
 
+### send-bid-pricing-package
+
+**Purpose**: Resend-backed delivery of a bid's **external Pricing package** — Job Plans link (+ optional CountTooling plans link) and the 4-column external pricing table (Fixture/Tie-in, Count, Unit price, Revenue). The server **re-computes pricing rows from the database** (count rows + `bid_pricing_assignments` + `bid_count_row_custom_prices` + `bid_count_row_submission_hides` + `price_book_entries`) instead of trusting client-built HTML, so the email always matches the live Pricing tab. Subject/heading use the Bids-tab label shape `{prefix}{n} project name`.
+
+**Endpoint**: `POST /functions/v1/send-bid-pricing-package`
+
+**Authentication**: `verify_jwt = false`; in-handler JWT + role gate. Sender must be a non-archived `dev` / `master_technician` / `assistant` / `estimator`; the bid itself is read with the **user-scoped** client, so bids RLS must let the sender see it.
+
+**Required Secrets**: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY`
+
+#### Request Parameters
+
+```typescript
+{
+  bid_id: string
+  price_book_version_id: string
+  recipient_user_id: string   // org user; must be non-archived with an email on file
+}
+```
+
+#### Response
+
+```typescript
+{ ok: true, resend_id: string | null, row_count: number, revenue_total_cents: number }
+// or { ok: false, error: string } with 400/401/403/404/405/500/502
+```
+
+#### Behavior
+
+1. Role-gate the sender; load bid (user-scoped), recipient (service-role — no dependence on a wide-open `users` read policy), and price book version.
+2. Derive per-row unit price/revenue (`unit_price_override` → entry `total_price` → custom price; `is_fixed_price` rows charge the unit price once) and drop hidden / zero-count rows; **400** when no visible fixtures remain.
+3. Build HTML + plain-text bodies (kernels in [`_shared/bidPricingPackage.ts`](../supabase/functions/_shared/bidPricingPackage.ts)) and send via Resend.
+4. Append an audit row to **`bid_pricing_package_sends`** with the service-role client (recipient, revenue total in cents, row count, `resend_id`); an audit-insert failure is logged but does not fail the send.
+
+**Used by**: Bids → Pricing tab → **Package and send** modal ([`PackageAndSendBidPricingModal.tsx`](../src/components/bids/PackageAndSendBidPricingModal.tsx)).
+
+---
+
 ### send-checklist-notification
 
 **Purpose**: Send Web Push notifications for checklist events (completion, test)
@@ -1170,6 +1222,33 @@ const response = await supabase.functions.invoke('send-checklist-notification', 
 4. Sends Web Push via `web-push` library using VAPID keys
 5. Returns count of notifications sent (0 if no subscriptions)
 6. Used by: Checklist completion flow, Settings "Test notification" button
+
+---
+
+### send-report-notification
+
+**Purpose**: Web-push notification when a report is submitted: loads the report + template + creator, resolves the job display name (`jobs_ledger.job_name` → `projects.name` → bid project/contact name), and pushes "New *{template}* — *{creator}* submitted a *{template}* for *{job}*" to every user who opted in for that template in **`user_report_notification_preferences`** (submitter excluded). Legacy template name "Superintendent Report" is displayed as "Status Report". Deep link `/jobs?tab=reports`; per-recipient sends recorded in `notification_history` (`template_type: report_submitted`, best-effort).
+
+**Endpoint**: `POST /functions/v1/send-report-notification`
+
+**Authentication**: `verify_jwt = false`; in-handler JWT (`auth.getUser`) — any authenticated user (the caller just submitted the report; recipients are decided by their own preferences).
+
+**Required Secrets**: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`
+
+#### Request Parameters
+
+```typescript
+{ report_id: string }
+```
+
+#### Response
+
+```typescript
+{ success: true, message: string, push_sent: number }   // push_sent = successful subscription sends
+// or { error: string } with 400/401/404/500
+```
+
+**Used by**: report save flows — [`NewReportModal.tsx`](../src/components/NewReportModal.tsx), [`AdditionalReportModal.tsx`](../src/components/AdditionalReportModal.tsx), and the Job Mode [`TurnawayModal.tsx`](../src/components/jobMode/TurnawayModal.tsx).
 
 ---
 
@@ -1425,6 +1504,45 @@ Per-recipient **`activity_scope`** + **`crew_filter`** + **`include_costs`** (fr
 **Request**: Optional body `{"cron_secret":"..."}` or header **`X-Cron-Secret`**.
 
 **Success**: `{ "ok": true, "processed": n, "sent": k, "errors": [] }`
+
+---
+
+### schedule-share-dispatch
+
+**Purpose**: Email the **Schedule board** (Dispatch hub blocks) to chosen recipients — two modes in one function, distinguished by the cron secret:
+
+- **Instant** (caller JWT): POST from the Share Schedule modal sends the board for the selected dates to up to **50** recipients right now, rendered from the **sharer's** visibility (`list_schedule_blocks_for_share` RPC with `p_viewer = sender`). Same content to every recipient.
+- **Recurring** (pg_cron, every 15 min): loads enabled **`schedule_share_recurring`** subscriptions, matches each row's `days_of_week` + quarter-hour `time_local` in its `timezone` against now, renders from the **creator's** visibility (falls back to the recipient), and emails the recipient. Idempotent — at most one send per subscription per local run date via **`schedule_share_recurring_log`** (also records failures).
+
+**Endpoint**: `POST /functions/v1/schedule-share-dispatch`
+
+**Authentication**: cron path — `X-Cron-Secret` header or `{"cron_secret": "..."}` body matching `CRON_SECRET`; otherwise instant path — Bearer JWT + role gate (non-archived `dev` / `master_technician` / `assistant` / `superintendent`, mirroring schedule-dispatch edit roles). **Note**: this function has **no** `[functions.*]` block in `config.toml`, so the repo config leaves the gateway default `verify_jwt = true` in place (see [Overview](#overview)).
+
+**Required Secrets**: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY`, `CRON_SECRET`
+
+#### Instant request
+
+```typescript
+{
+  recipientUserIds: string[]        // max 50; deduped; each must be non-archived with an email
+  baseDate: string                  // YYYY-MM-DD
+  includeCurrentDay: boolean
+  scope: 'none' | 'next_day' | 'rest_of_week'   // at least one of current day / scope required
+}
+```
+
+#### Response
+
+```typescript
+// instant
+{ ok: boolean, mode: 'instant', sent: number, results: Array<{ recipientUserId, ok, error? }> }
+// recurring (cron)
+{ ok: true, mode: 'recurring', processed: number, sent: number, skipped: number, errors: string[] }
+```
+
+**Cron**: archived migration `20270605160000_schedule_share.sql` registers pg_cron job **`schedule-share-dispatch`** (`*/15 * * * *`) posting with the vault `CRON_SECRET` as `X-Cron-Secret`. Shared kernels: [`_shared/scheduleShareCore.ts`](../supabase/functions/_shared/scheduleShareCore.ts) (dates + email build), [`_shared/recurringJobReportTimezone.ts`](../supabase/functions/_shared/recurringJobReportTimezone.ts) (wall-quarter matching).
+
+**Used by**: Schedule → [`ScheduleShareModal.tsx`](../src/components/schedule/ScheduleShareModal.tsx) (instant sends + managing recurring subscriptions).
 
 ---
 
@@ -2168,8 +2286,9 @@ interface Body {
 **Required Secrets**:
 - `SUPABASE_URL`
 - `SUPABASE_SERVICE_ROLE_KEY`
-- `STRIPE_SECRET_KEY`
-- `STRIPE_WEBHOOK_SECRET`
+- `STRIPE_SECRET_KEY_LIVE` / `STRIPE_SECRET_KEY_TEST` — dual live/test API keys; legacy `STRIPE_SECRET_KEY` is honored as a fallback when its `sk_live_` / `sk_test_` prefix matches the resolved mode (resolution in [`_shared/stripeSecrets.ts`](../supabase/functions/_shared/stripeSecrets.ts), `stripeApiKeyForMode`)
+- `STRIPE_WEBHOOK_SECRET_LIVE` / `STRIPE_WEBHOOK_SECRET_TEST` — signature verification tries **live, then test, then legacy `STRIPE_WEBHOOK_SECRET`** (`stripeWebhookSecretsOrdered()`; live first because most prod traffic is livemode)
+- `STRIPE_WEBHOOK_DEBUG_FINGERPRINT` (optional) — `1`/`true` logs safe secret fingerprints (length, `whsec_` prefix, last 4 chars — never the full value) when debugging signature failures
 
 #### Request
 
@@ -2266,6 +2385,138 @@ Migration **`20270605150000_sync_mercury_transactions_pg_cron.sql`** schedules t
 2. **Secrets** (Dashboard → Edge Functions → Secrets, or `supabase secrets set`): `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `MERCURY_API_KEY`, `MERCURY_WEBHOOK_SECRET` (must match Mercury’s webhook signing secret).
 3. **Mercury dashboard**: Create webhook → URL `https://<project-ref>.supabase.co/functions/v1/mercury-webhook` → subscribe to **transaction** events so POST JSON includes `resourceType: "transaction"` and `resourceId`.
 4. **Verify**: Edge logs show `200` with `received: true`; new rows appear in `mercury_transactions`. **UI**: After migration adding `mercury_transactions` to `supabase_realtime`, Banking Sorting and Quickfill Banking sorting **debounced-refetch** on `postgres_changes` (no manual Refresh required for DB-driven updates).
+
+---
+
+### get-mercury-account-balances
+
+**Purpose**: Live Mercury account balances for the Balance Sheet cash line: `GET /accounts` from the Mercury API, filters out archived accounts, and returns per-account `currentBalance` / `availableBalance` plus totals. Read-only — nothing is written to the database.
+
+**Endpoint**: `POST /functions/v1/get-mercury-account-balances` (empty JSON body)
+
+**Authentication**: `verify_jwt = false`; in-handler JWT + Banking role gate (`dev` / `master_technician` / `assistant`).
+
+**Required Secrets**: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `MERCURY_API_KEY`
+
+#### Response
+
+```typescript
+{
+  ok: true,
+  accounts: Array<{ id, name, kind, currentBalance, availableBalance }>,
+  totalCurrentBalance: number,
+  totalAvailableBalance: number
+}
+// or { error: string } with 401/403/405/500; 502 on Mercury API failure
+```
+
+**Used by**: Banking → [`BankingMercuryCategoryReviewTab.tsx`](../src/components/banking/BankingMercuryCategoryReviewTab.tsx) (Balance Sheet cash).
+
+---
+
+### mercury-reconcile
+
+**Purpose**: Reconcile the books (`mercury_transactions`) against Mercury **statements** and live balances, per account per month: fetches non-archived accounts + up to `monthsBack` statements each (singular `/account/{id}/statements` with plural fallback), checks which statement transaction ids exist in the books via the service-role RPC **`list_present_mercury_ids`** (ids batched 2000-per-call in the POST body — a giant `in.(...)` GET filter would blow PostgREST's URL limit), and reports per-month present/missing counts, missing value + a sample (cap 50), statement net vs. transaction sum, and a **current open period** check (`expectedCurrent = latest ending balance + book activity since close`, `delta` vs. Mercury's live balance).
+
+**Endpoint**: `POST /functions/v1/mercury-reconcile`
+
+**Authentication**: `verify_jwt = false`; in-handler JWT + Banking role gate (`dev` / `master_technician` / `assistant`). Existence checks run service-role because `mercury_transactions` SELECT is dev-only.
+
+**Required Secrets**: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `MERCURY_API_KEY`
+
+#### Request Parameters
+
+```typescript
+{
+  monthsBack?: number   // default 12, clamped 1–24
+  accountId?: string    // optional: reconcile a single Mercury account
+}
+```
+
+#### Response
+
+```typescript
+{
+  ok: true, generatedAt: string, monthsBack: number,
+  accounts: Array<{
+    id, name, currentBalance, availableBalance,
+    months: Array<{ period, startDate, endDate, statementCount, presentCount, missingCount,
+                    missingValue, missingSample, endingBalance, prevEndingBalance,
+                    statementNet, statementTxSum }>,
+    current: { mercuryCurrentBalance, availableBalance, latestStatementEnd,
+               bookActivitySinceClose?, expectedCurrent, delta }
+  }>
+}
+// or { error: string } with 401/403/405/500; 502 on Mercury API failure
+```
+
+**Used by**: Banking reconciliation view via [`fetchMercuryReconciliation.ts`](../src/lib/fetchMercuryReconciliation.ts) + [`mercuryReconciliation.ts`](../src/lib/mercuryReconciliation.ts).
+
+---
+
+### import-manual-transactions
+
+**Purpose**: Import **manual (non-Mercury) transactions** — e.g. a closed or external bank account's CSV — into `mercury_transactions` with `source = 'manual'`. Creates a new synthetic account (random UUID + `mercury_account_nicknames` row) or appends to an existing one; **refuses to write manual rows onto a real Mercury account** (any `source = 'mercury'` row on the target id → 400). Multiset de-dup by `(postedDate, amount, payee, memo)` against pre-existing manual rows: a re-upload of already-imported rows is skipped, but genuinely-duplicate rows *within* one upload all import. Rows are stamped with a shared `manual_upload_id`, `created_by`, and `posted_at = <date>T12:00:00Z` (noon UTC keeps the America/Chicago calendar day); the original CSV fields ride along in `raw`.
+
+**Endpoint**: `POST /functions/v1/import-manual-transactions`
+
+**Authentication**: `verify_jwt = false`; in-handler JWT + role gate (`dev` / `master_technician`).
+
+**Required Secrets**: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`
+
+#### Request Parameters
+
+```typescript
+{
+  accountName?: string   // required when creating a new synthetic account
+  accountId?: string     // existing synthetic account uuid to append to
+  rows: Array<{          // 1–5000 rows; postedDate YYYY-MM-DD + finite amount required
+    postedDate: string, amount: number,   // signed; negative = money out
+    payee?, memo?, category?, type?, refNo?, reconciliationStatus?
+  }>
+}
+```
+
+#### Response
+
+```typescript
+{ ok: true, accountId, accountName, manualUploadId, inserted: number, skipped: number }
+// or { error: string } with 400/401/403/405/500
+```
+
+**Used by**: Banking → manual CSV import ([`Banking.tsx`](../src/pages/Banking.tsx) + [`parseBankingImportCsv.ts`](../src/lib/parseBankingImportCsv.ts)).
+
+---
+
+### manage-manual-account
+
+**Purpose**: Rename or delete a **manual (synthetic) account** created by `import-manual-transactions`. Guard: refuses to touch any account with real Mercury rows (`source = 'mercury'` → 400) and 404s when the id has no manual rows. **rename** upserts `mercury_account_nicknames`; **delete** removes the account's `source = 'manual'` transactions (dependents clean up via `ON DELETE CASCADE`; `jobs_ledger_payments` is `SET NULL`) and drops the nickname row.
+
+**Endpoint**: `POST /functions/v1/manage-manual-account`
+
+**Authentication**: `verify_jwt = false`; in-handler JWT + role gate (`dev` / `master_technician`).
+
+**Required Secrets**: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`
+
+#### Request Parameters
+
+```typescript
+{
+  action: 'rename' | 'delete'
+  accountId: string
+  name?: string          // rename only; non-empty, max 120 chars
+}
+```
+
+#### Response
+
+```typescript
+{ ok: true, action: 'rename', accountId, name }
+// or { ok: true, action: 'delete', accountId, deleted: number }
+// or { error: string } with 400/401/403/404/405/500
+```
+
+**Used by**: Banking → [`ManualAccountsModal.tsx`](../src/components/banking/ManualAccountsModal.tsx).
 
 ---
 
@@ -2377,13 +2628,50 @@ try {
 
 ### Required Secrets
 
-Configure these in Supabase Dashboard → Project Settings → Edge Functions:
+Configure these in Supabase Dashboard → Project Settings → Edge Functions (or `supabase secrets set`). The full set read via `Deno.env.get` across the functions:
 
 ```bash
+# Core (nearly every function)
 SUPABASE_URL=https://yourproject.supabase.co
 SUPABASE_ANON_KEY=your-anon-key
-SUPABASE_SERVICE_ROLE_KEY=your-service-role-key  # For admin operations
-RESEND_API_KEY=your-resend-api-key               # For email functions
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key   # admin operations
+
+# Email via Resend (invites, estimates/contracts, invoices, reports, schedule emails…)
+RESEND_API_KEY=...
+
+# Web push (send-workflow/checklist/report notifications, notify-* functions, send-scheduled-reminders)
+VAPID_PUBLIC_KEY=...
+VAPID_PRIVATE_KEY=...
+
+# Cron-driven functions (send-scheduled-reminders, sync-salary-sessions, recurring-job-report-dispatch,
+# schedule-day-email-dispatch, schedule-share-dispatch, sync-mercury-transactions); must equal Vault cron_secret
+CRON_SECRET=...
+
+# Mercury banking (sync-mercury-transactions, mercury-webhook, get-mercury-account-balances, mercury-reconcile)
+MERCURY_API_KEY=...
+MERCURY_WEBHOOK_SECRET=...
+
+# Stripe billing (dual live/test; legacy single-key names still honored as fallbacks —
+# see _shared/stripeSecrets.ts)
+STRIPE_SECRET_KEY_LIVE=...
+STRIPE_SECRET_KEY_TEST=...
+STRIPE_WEBHOOK_SECRET_LIVE=...
+STRIPE_WEBHOOK_SECRET_TEST=...
+# legacy fallbacks: STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET
+# optional debug: STRIPE_WEBHOOK_DEBUG_FINGERPRINT=1
+
+# Maps / geo
+GOOGLE_MAPS_API_KEY=...        # street-view-preview, geocode-one, geocode-address-batch
+GSA_API_KEY=...                # gsa-per-diem
+IPINFO_TOKEN=...               # resolve-ip-geolocation
+
+# Misc
+DEV_LOGIN_SECRET=...               # dev-login
+DEV_PROMOTION_CODE=...             # claim-dev
+ESTIMATE_PUBLIC_ORIGIN=...         # public estimate/contract links (accept-estimate,
+                                   # send-estimate-to-customer, send-contract-for-signature,
+                                   # get-contract-signing-link-for-self)
+TEAM_LEAD_CLOCK_WEBHOOK_SECRET=... # notify-team-lead-clock DB webhook
 ```
 
 ### Deploy Individual Function
