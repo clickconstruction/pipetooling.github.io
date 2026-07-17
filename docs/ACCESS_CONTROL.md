@@ -300,6 +300,7 @@ Pipetooling implements comprehensive role-based access control (RBAC) using eigh
 
 **Prospects**:
 - Activity tab (formerly "Team"; under the top-level Customers tab): Visible to dev and assistant; shows last 30 days of prospect activity (User | Cards Marked | Cards Updated)
+- Team tab (top-level, v2.709): prospective-hires pipeline (`team_prospects`) — same access as the rest of Prospects (`user_has_prospects_staff_access()`: dev, master_technician, assistant, estimator with `estimator_prospects_access`)
 
 ---
 

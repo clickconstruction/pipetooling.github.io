@@ -143,6 +143,13 @@ A client or General Contractor (GC) who provides work. Customers have an owner (
 
 **Key Fields**: name, address, contact info (JSONB), date_met, master_user_id
 
+### Team prospects (Prospects → Team tab)
+Prospective **hires** — candidates for the crew, tracked separately from customer leads. The Prospects page has two top-level tabs: **Customers** (lead pipeline: Follow Up / Prospect List / Convert / Activity) and **Team** (v2.709). Team candidates form a drag-ranked list (`rank_order`, #1 = top candidate) with statuses `active` / `hired` / `passed`; **Talked today** stamps `last_contact`. Access = `user_has_prospects_staff_access()`.
+
+**Database**: `team_prospects` table
+
+**Key Fields**: name, trade, source, status, rank_order, last_contact, master_user_id
+
 ### Project
 A job site or construction project for a specific customer. Each project has one workflow. The project owner automatically matches the customer owner (enforced by database trigger).
 
