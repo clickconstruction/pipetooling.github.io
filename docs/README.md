@@ -25,6 +25,7 @@
 | [`BIDS_SYSTEM.md`](./BIDS_SYSTEM.md) | Bids system: all tabs, workflow, schema. |
 | [`BIDS_TABS_ARCHITECTURE.md`](./BIDS_TABS_ARCHITECTURE.md) | Decomposition map of `src/pages/Bids.tsx` (per-tab state/coupling, extraction status). |
 | [`PEOPLE_TABS_ARCHITECTURE.md`](./PEOPLE_TABS_ARCHITECTURE.md) | Same map for `src/pages/People.tsx`. |
+| [`DASHBOARD_SECTIONS_ARCHITECTURE.md`](./DASHBOARD_SECTIONS_ARCHITECTURE.md) | Same map for `src/pages/Dashboard.tsx` (section-based, not tabbed). |
 | [`PAGE_DECOMPOSITION_PLAYBOOK.md`](./PAGE_DECOMPOSITION_PLAYBOOK.md) | The method for breaking down god components + current large-file inventory. Start here for extraction work. |
 | [`SALARY_CLOCK_SESSIONS.md`](./SALARY_CLOCK_SESSIONS.md) | Salaried auto-session sync behavior runbook. |
 | [`TIME_AND_ZONES.md`](./TIME_AND_ZONES.md) | Company timezone rules (`APP_CALENDAR_TZ`), instants vs wall-clock. |
