@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-17 (v2.712)
+last_updated: 2026-07-17 (v2.713)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.713)
+
+### Prospects — page title moved to the right of the tabs (2026-07-17)
+The Prospects page now uses the same top-row layout as Jobs and People: the **Customers | Team** tabs sit on the left (scrollable when narrow) with the **Prospects** title on the right of the same row, instead of a separate title row above the tabs. The **New Prospect** button moved from the old title row to the right end of the Customers sub-tab row (Follow Up | Prospect List | Convert | Activity). No behavior changes.
 
 ## Latest Updates (v2.712)
 

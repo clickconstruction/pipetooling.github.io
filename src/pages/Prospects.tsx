@@ -1547,37 +1547,19 @@ export default function Prospects() {
 
   return (
     <div style={{ padding: '1rem 1.5rem' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '0.5rem' }}>
-        <h1 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 600 }}>Prospects</h1>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-          {canAccessFollowUp && topTab === 'customers' && (
-          <button
-            type="button"
-            onClick={() => {
-              setNewCompanyName('')
-              setNewContactName('')
-              setNewPhoneNumber('')
-              setNewEmail('')
-              setNewAddress('')
-              setNewLinksToWebsite('')
-              setNewProspectError(null)
-              setNewProspectModalOpen(true)
-            }}
-            style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
-          >
-            New Prospect
-          </button>
-          )}
+      {/* Tabs left, page title right — same top-row pattern as Jobs / People */}
+      <div style={{ display: 'flex', alignItems: 'center', borderBottom: '1px solid var(--border)', marginBottom: '1rem', overflow: 'hidden' }}>
+        <div style={{ flex: 1, minWidth: 0, overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', width: 'max-content' }}>
+            <button type="button" onClick={() => setTab(activeTab)} style={pageTabStyle(topTab === 'customers')}>
+              Customers
+            </button>
+            <button type="button" onClick={openTeamTab} style={pageTabStyle(topTab === 'team')}>
+              Team
+            </button>
+          </div>
         </div>
-      </div>
-
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem', flexWrap: 'wrap' }}>
-        <button type="button" onClick={() => setTab(activeTab)} style={pageTabStyle(topTab === 'customers')}>
-          Customers
-        </button>
-        <button type="button" onClick={openTeamTab} style={pageTabStyle(topTab === 'team')}>
-          Team
-        </button>
+        <h1 style={{ margin: 0, marginLeft: '1rem', flexShrink: 0, fontSize: '1.5rem', fontWeight: 700, color: 'var(--text-strong)' }}>Prospects</h1>
       </div>
 
       {topTab === 'customers' && (
@@ -1616,6 +1598,24 @@ export default function Prospects() {
               Activity
             </button>
           </>
+        )}
+        {canAccessFollowUp && (
+          <button
+            type="button"
+            onClick={() => {
+              setNewCompanyName('')
+              setNewContactName('')
+              setNewPhoneNumber('')
+              setNewEmail('')
+              setNewAddress('')
+              setNewLinksToWebsite('')
+              setNewProspectError(null)
+              setNewProspectModalOpen(true)
+            }}
+            style={{ marginLeft: 'auto', marginBottom: '0.35rem', padding: '0.4rem 0.9rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
+          >
+            New Prospect
+          </button>
         )}
       </div>
       )}
