@@ -48,7 +48,7 @@ gh pr merge --squash --delete-branch   # once "checks" is green
 
 ## For AI Agents / New Developers
 
-**Start here**: [AGENTS.md](./AGENTS.md) → [AI_CONTEXT.md](./docs/AI_CONTEXT.md) (entry point + 30-second project overview)
+**Start here**: [AGENTS.md](./AGENTS.md) → [AI_CONTEXT.md](./docs/AI_CONTEXT.md) → [docs/README.md](./docs/README.md) (entry point → project overview → full documentation index)
 
 **Then consult based on your task**:
 
