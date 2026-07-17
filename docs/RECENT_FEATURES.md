@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-17 (v2.713)
+last_updated: 2026-07-17 (v2.714)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.714)
+
+### Prospects — Team hiring board is now per-user (2026-07-17)
+The Team board should only be visible to the few people actually running hiring (initially William, Malachi, and Robert), not every prospects-staff user. New per-user flag `users.team_prospects_access`, **default off for everyone including devs** — a dev grants it per account in **Settings → Active accounts → Edit → "Can see Prospects → Team (hiring board)"** (shown for dev/master/assistant/estimator accounts). Without the flag the Team tab disappears, `?tab=team` bounces to Follow Up, and — the part that actually matters — the `team_prospects` / `team_prospect_roles` RLS now runs through `user_has_team_prospects_access()` (prospects staff AND the flag), so the data itself is unreadable without it. The flag is also added to the `users_guard_privileged_columns` trigger (only a dev can change it — no self-granting through the own-profile update policy). The Customers pipeline is untouched. See [`MIGRATIONS.md`](MIGRATIONS.md).
 
 ## Latest Updates (v2.713)
 

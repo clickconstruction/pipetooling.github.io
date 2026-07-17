@@ -41,4 +41,4 @@ A role column can be deleted only once **every candidate in it has been individu
 
 ## Who can see this
 
-The Team tab follows the same access as the rest of Prospects: devs, masters, assistants, and estimators who've been granted Prospects access.
+The Team tab is granted **per person**, on top of normal Prospects access. If you don't see the tab, you haven't been granted it. A dev can turn it on for someone under {{icon:gear}} **Settings → Active accounts → Edit** with the **Can see Prospects → Team (hiring board)** checkbox.

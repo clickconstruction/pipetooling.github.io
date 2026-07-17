@@ -140,6 +140,8 @@ export default function ActiveAccountsPanel({ variant, onDataChanged, onOpenFind
     setEditEstimatorServiceTypeIds,
     editEstimatorProspectsAccess,
     setEditEstimatorProspectsAccess,
+    editTeamProspectsAccess,
+    setEditTeamProspectsAccess,
     editPrimaryServiceTypeIds,
     setEditPrimaryServiceTypeIds,
     editSuperintendentServiceTypeIds,
@@ -453,6 +455,21 @@ export default function ActiveAccountsPanel({ variant, onDataChanged, onOpenFind
                             Can access Prospects
                           </label>
                         </div>
+                      </td>
+                    </tr>
+                  )}
+                  {editingUserId === u.id && ['dev', 'master_technician', 'assistant', 'estimator'].includes(u.role) && (
+                    <tr key={`${u.id}-team-prospects`} style={{ borderBottom: '1px solid var(--border)', backgroundColor: 'var(--bg-subtle)' }}>
+                      <td colSpan={4} style={{ padding: '0.5rem 0.75rem' }}>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: '0.875rem' }}>
+                          <input
+                            type="checkbox"
+                            checked={editTeamProspectsAccess}
+                            onChange={(e) => setEditTeamProspectsAccess(e.target.checked)}
+                            disabled={updatingId === u.id}
+                          />
+                          Can see Prospects → Team (hiring board)
+                        </label>
                       </td>
                     </tr>
                   )}

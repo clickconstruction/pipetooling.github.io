@@ -110,6 +110,14 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 #### July 17, 2026
 
+**`20260717250000_team_prospects_access_flag.sql`** _(apply via `supabase db push` after the file is on `main`)_
+- **Purpose**: **Per-user gate for the Team hiring board** (v2.714). `users.team_prospects_access boolean NOT NULL DEFAULT false` + `user_has_team_prospects_access()` (= `user_has_prospects_staff_access()` AND the flag). All eight `team_prospects` / `team_prospect_roles` policies re-created onto the new function — without the flag the board's data is unreadable server-side, regardless of role (devs included).
+- **Guard**: `users_guard_privileged_columns()` re-created to also block non-dev changes to `team_prospects_access` (trigger column list extended). The row-scoped "Users can update own profile" policy would otherwise allow self-granting.
+- **No seed**: nobody has the flag after applying — grant it in Settings → Active accounts (initially William, Malachi, Robert).
+- **Category**: Prospects / access control
+
+#### July 17, 2026
+
 **`20260717230000_team_prospect_roles.sql`** _(apply via `supabase db push` after the file is on `main`)_
 - **Purpose**: **Role columns on the Team hiring board** (v2.712). New `team_prospect_roles` table (`name`, `position`, standard ownership + `updated_at` trigger) and `team_prospects.role_id` FK. Ranking (`rank_order`) is now scoped per role column; `role_id` NULL = virtual "Unsorted" column.
 - **Key constraint**: the FK is **`ON DELETE RESTRICT`** — a role cannot be deleted while any candidate (any status, including hired/passed) references it. The UI disables the delete button until the column is empty; the FK makes the rule un-bypassable.
