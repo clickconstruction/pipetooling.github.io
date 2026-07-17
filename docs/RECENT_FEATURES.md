@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-17 (v2.709)
+last_updated: 2026-07-17 (v2.710)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.710)
+
+### Safety — deleting a person is now recoverable (2026-07-17)
+The v2.707 copy sweep surfaced the last archive gap: a **person** (People roster) could be hard-deleted with no snapshot, so it was the one covered-tables gap left after tier 2 — which is exactly why its delete dialog's "cannot be undone" was left standing then. New migration `20260717210000_deleted_records_archive_people.sql` attaches the archive trigger to `people` and its four cascade children, so deleting a person now captures the whole bundle and a dev can put it back for 90 days from Recently deleted (it lists as a *person* with their name). The dialog copy is updated to match. `people_hours` remains excluded (it's derived data the system recomputes). No cross-table blocker existed, and restore needed no change. See [`MIGRATIONS.md`](MIGRATIONS.md).
 
 ## Latest Updates (v2.709)
 

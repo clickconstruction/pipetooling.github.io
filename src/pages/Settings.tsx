@@ -1493,7 +1493,7 @@ export default function Settings() {
   }
 
   async function deleteNonUserPerson(p: PersonRow) {
-    if (!confirm(`Delete "${p.name}"? This cannot be undone.`)) return
+    if (!confirm(`Delete "${p.name}"? A dev can put them back for 90 days from Settings → Data & migration → Recently deleted.`)) return
     setDeletingPersonId(p.id)
     setError(null)
     const { error: err } = await supabase.from('people').delete().eq('id', p.id)

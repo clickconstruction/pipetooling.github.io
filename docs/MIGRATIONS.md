@@ -103,6 +103,13 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 #### July 17, 2026
 
+**`20260717210000_deleted_records_archive_people.sql`** _(apply via `supabase db push` after the file is on `main`)_
+- **Purpose**: **Close the last archive-coverage gap** found during the v2.707 delete-copy sweep: `public.people` (the roster table — not `public.users`) is UI-hard-deletable but was uncovered, so deleting a person was unrecoverable. Attaches the existing `zzz_archive_on_delete` trigger to `people` + its 4 `ON DELETE CASCADE` children (`external_team_job_payments`, `external_team_sub_managers`, `people_labels`, `team_feedback_peer_ratings`), chosen from the live catalog. Refreshes `list_deleted_records` to label a deleted person as kind `person`.
+- **Impact**: A person delete now captures the person + its cascade children as one bundle and is restorable. No cross-table blocker existed (the already-covered children of `people` — pay_stubs, person_offsets, etc. — reference it via a nullable, non-cascading FK). `people_hours` stays deliberately excluded (derived/machine-churned). No restore-RPC change (topo order from the live catalog). No client change beyond softening the person-delete dialog copy.
+- **Category**: Security / data-recovery
+
+#### July 17, 2026
+
 **`20260717190000_team_prospects.sql`** _(apply via `supabase db push` after the file is on `main`)_
 - **Purpose**: **Prospective-hires pipeline** (Prospects page → top-level **Team** tab, v2.709). New `team_prospects` table: candidate identity (`name` required, `phone_number`, `email`, `trade`, `source`, `notes`), pipeline `status` (`active` / `hired` / `passed`, enforced by CHECK — unlike the free-text `prospect_fit_status` on `prospects`), explicit drag ranking (`rank_order`, 1 = top candidate), `last_contact`, standard ownership (`master_user_id`, `created_by`) and timestamps (+ `update_updated_at_column` trigger).
 - **RLS**: mirrors the customer-lead prospect tables — SELECT/UPDATE/DELETE for `user_has_prospects_staff_access()`; INSERT additionally requires `created_by = auth.uid()` and a valid owner (self for dev/master, adopted master for assistants, a master_technician for access-granted estimators).
