@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-17 (v2.717)
+last_updated: 2026-07-17 (v2.718)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.718)
+
+### Dashboard — My Bids section extracted (2026-07-17)
+Extraction #3 of the Dashboard decomposition ([`DASHBOARD_SECTIONS_ARCHITECTURE.md`](DASHBOARD_SECTIONS_ARCHITECTURE.md)): the "My Bids" section — its ~10 state vars (incl. the `dashboard_my_bids_hidden_${uid}` localStorage), the big bids/read-state/submission-entries/customer-contacts loader, hide/unhide, mark-read watermark, "from others" note panels, and the ~680-line render block — moved from `Dashboard.tsx` into [`DashboardMyBidsSection.tsx`](../src/components/dashboard/DashboardMyBidsSection.tsx), with the unread-flag computation, "from others" bucketing/sorting, and the section's formatters in new kernel [`dashboardMyBids.ts`](../src/lib/dashboardMyBids.ts) (17 unit tests). **No behavior change** — the loader-includes-superintendent / render-excludes-superintendent quirk and both `myBidsSectionExpanded` primary-collapse mechanisms are preserved; the SectionDock gate's data half now flows up via a visibility callback since the state moved into the child. `Dashboard.tsx` is down to 7,335 lines (8,446 → 7,335).
 
 ## Latest Updates (v2.717)
 
