@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-17 (v2.720)
+last_updated: 2026-07-17 (v2.721)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.721)
+
+### Dashboard — Projects card extracted (2026-07-17)
+Extraction #6 of the Dashboard decomposition ([`DASHBOARD_SECTIONS_ARCHITECTURE.md`](DASHBOARD_SECTIONS_ARCHITECTURE.md)): the "Projects" group card — Assigned Stages (+ Complete sub-list), Subscribed Stages, the workflow-step action engine (`recordAction`, `findPreviousStep`/`findNextStep`, `markStarted`/`submitSetStart`, `markCompleted`, `markApproved`, `submitReject`, `submitSkip`), the three reject/skip/set-start step modals, and the section's expand toggles incl. the one-time expand heuristic — moved from `Dashboard.tsx` into [`DashboardProjectsCard.tsx`](../src/components/dashboard/DashboardProjectsCard.tsx), with the pure display helpers (`formatDatetime`, `daysOpen`, `personDisplay`) in new kernel [`dashboardProjectsCard.ts`](../src/lib/dashboardProjectsCard.ts) (13 unit tests; `formatDatetime` stays shared — `Dashboard.tsx` re-imports it for the subcontractor last-activity job-row lines). **No behavior change** — step data still flows from the parent's `useDashboardBoot` seam (`assignedSteps`/`subscribedSteps`/`userNames`/`loadAssignedSteps` passed as props); `getCurrentUserName` stays in the parent (shared with My Inbox checklist notifications) and is passed down; the `showAssigned`/`showSubscribed`/`projectsCardVisible` gates stay in the parent (the SectionDock entry reads `projectsCardVisible`); the step modals keep rendering inside the card's conditional (quirk #14, now inside the component); name-keyed identity (`p_user_name`) unchanged. `Dashboard.tsx` is down to 6,014 lines (6,562 → 6,014).
 
 ## Latest Updates (v2.720)
 
