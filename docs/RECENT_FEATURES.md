@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-18 (v2.734)
+last_updated: 2026-07-18 (v2.735)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.735)
+
+### Fix — Stages partial-invoice modal uses unallocated remaining (2026-07-18)
+Live-confirmed billing bug (2026-07-18): the Jobs → Stages "Create partial invoice" modal ([`Jobs.tsx`](../src/pages/Jobs.tsx) `createInvoiceFromModal`) computed "Remaining" as `revenue − payments_made` only, ignoring existing ready_to_bill/billed invoice allocations — a $600 job with a $200 billed invoice and a $400 RTB primary showed "Remaining: $600.00" (true unallocated remaining: $0) and would accept an over-allocating amount; the `ensure_single_ready_to_bill_invoice_for_job` RPC only guards the primary row, so a too-large partial left the job over-invoiced. The modal's Remaining display, its input blur-clamp, `createInvoiceFromModal`'s clamp/reject, and both green partial-invoice icons' disabled gates now all use the billing-unallocated basis via the existing `jobBillingUnallocatedDollars` kernel ([`jobsStagesBoard.ts`](../src/lib/jobsStagesBoard.ts)) plus a new thin clamp wrapper `clampPartialInvoiceCentsToUnallocated` — matching `JobFormModal.createInvoice`'s semantics (over-entries clamp with an "Adjusted to remaining unallocated" toast; zero remaining rejects with "No remaining balance to bill"; a full-remainder amount on an RTB job still opens Bill Customer). 8 new kernel tests (no invoices, RTB-only, billed-only, mixed live-repro, non-billing statuses, over-allocation clamp, zero remaining, over-allocated never negative). **Visible change**: the modal's Remaining figure now subtracts existing invoice lines, and the icon disables when nothing is left to allocate.
 
 ## Latest Updates (v2.734)
 
