@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-18 (v2.736)
+last_updated: 2026-07-19 (v2.737)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.737)
+
+### Settings — deep links restored (`?tab=` and `#section`) (2026-07-19)
+`src/pages/Settings.tsx` read no URL state after its sections→tabs conversion, so every inbound deep link silently landed on the default "Recent push" tab. Now fixed: **`/settings?tab=<group-id>`** activates that tab, and **`/settings#<section-anchor>`** activates the owning tab and scrolls the section into view. This repairs the 8 live inbound links — **Dashboard bulk-delete banner** → `?tab=settings-data`, **claim-dev attempts banner** → `?tab=settings-people`, and **Calendar** (×6) → `#settings-time-off` / `#settings-salary-workday` (both under "Your account"). New pure resolver [`settingsDeepLink.ts`](../src/lib/settingsDeepLink.ts) (`resolveSettingsDeepLink` + the anchor→tab map, **6 tests**): `?tab=` wins over a tab-shaped hash, a section-anchor hash still scrolls, unknown values are ignored. The apply effect retries when the role-filtered jump groups arrive (so a valid target isn't lost to load order) and polls up to ~5 s for the anchor element (the scheduling tab mounts conditionally and hydrates async). Verified all four link shapes live. Gap was documented in [`SETTINGS_TABS_ARCHITECTURE.md`](SETTINGS_TABS_ARCHITECTURE.md).
 
 ## Latest Updates (v2.736)
 
