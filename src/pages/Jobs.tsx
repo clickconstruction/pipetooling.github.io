@@ -62,6 +62,8 @@ import JobsCrewPnlTab from '../components/jobs/JobsCrewPnlTab'
 import JobsSubLaborTab from '../components/jobs/JobsSubLaborTab'
 import type { LaborJob, LaborJobPayment, SubLaborBackchargeTarget, SubLaborPaymentTarget } from '../types/laborJob'
 import { formatDispatchNoteDaysAgoShortPhrase, formatDispatchNoteWeekdayShortTimeChicago, getDispatchNoteDisplayMeta } from '../utils/dispatchNoteDisplay'
+import { buildStagesMoneyBarModel } from '../lib/stagesMoneyBar'
+import StagesProgressPaymentCell from '../components/jobs/StagesProgressPaymentCell'
 import JobReportsModal from '../components/JobReportsModal'
 import JobsInspectionsTab from '../components/jobs/JobsInspectionsTab'
 import JobsReportsTab from '../components/jobs/JobsReportsTab'
@@ -5866,7 +5868,8 @@ ${totalsHtml}
             }
 
             function renderStagesTable(jobList: JobWithDetails[], actionLabel: React.ReactNode | null, onAction: (j: JobWithDetails) => void, showTimeOpen?: boolean, onSendBack?: (j: JobWithDetails) => void, onSendBackSimple?: (j: JobWithDetails) => void, showRemaining?: boolean, showFinalBill?: boolean, showPctComplete?: boolean) {
-              const stagesTableColCount = 5 + (showPctComplete ? 1 : 0)
+              const mergedProgressPayment = !!showRemaining && !!showPctComplete
+              const stagesTableColCount = mergedProgressPayment ? 5 : 5 + (showPctComplete ? 1 : 0)
               return (
                 <div style={{ border: '1px solid var(--border)', borderRadius: 4, overflowX: 'auto', WebkitOverflowScrolling: 'touch', minWidth: 0 }}>
                   <table style={{ width: '100%', minWidth: 700, borderCollapse: 'collapse', fontSize: '0.875rem' }}>
@@ -5884,7 +5887,7 @@ ${totalsHtml}
                         </th>
                         <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Job</th>
                         <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)', minWidth: 200 }}>Last activity</th>
-                        {showPctComplete && (
+                        {showPctComplete && !mergedProgressPayment && (
                           <th
                             style={{
                               padding: '0.75rem',
@@ -5901,14 +5904,16 @@ ${totalsHtml}
                             padding: '0.75rem',
                             textAlign: 'center',
                             borderBottom: '1px solid var(--border)',
-                            ...(showRemaining ? { minWidth: '7rem' } : {}),
+                            ...(mergedProgressPayment ? { minWidth: '12rem' } : showRemaining ? { minWidth: '7rem' } : {}),
                           }}
                         >
-                          {showRemaining
-                            ? renderStagesThreeLineHeader('Paid', 'Left', 'Total Bill')
-                            : showFinalBill
-                              ? 'Final Bill'
-                              : 'Revenue'}
+                          {mergedProgressPayment
+                            ? 'Progress & payment'
+                            : showRemaining
+                              ? renderStagesThreeLineHeader('Paid', 'Left', 'Total Bill')
+                              : showFinalBill
+                                ? 'Final Bill'
+                                : 'Revenue'}
                         </th>
                         <th style={{ padding: '0.75rem', width: 140, borderBottom: '1px solid var(--border)' }} />
                       </tr>
@@ -6071,7 +6076,7 @@ ${totalsHtml}
                               {renderStagesJobColumnEstimateFooter(j.linkedEstimateForStages)}
                             </td>
                             {renderStagesLastActivityCell(j, stagesJobLevelStripeEmailedHintInvoice(j))}
-                            {showPctComplete && (
+                            {showPctComplete && !mergedProgressPayment && (
                               <td style={{ padding: '0.75rem', textAlign: 'center', verticalAlign: 'middle' }}>
                                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
                                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.15rem' }}>
@@ -6132,7 +6137,18 @@ ${totalsHtml}
                               </td>
                             )}
                             <td style={{ padding: '0.75rem', textAlign: 'center', verticalAlign: 'middle' }}>
-                              {showRemaining
+                              {mergedProgressPayment ? (
+                                <StagesProgressPaymentCell
+                                  model={buildStagesMoneyBarModel({
+                                    totalBill: j.revenue != null ? Number(j.revenue) : null,
+                                    paymentsMade: j.payments_made != null ? Number(j.payments_made) : null,
+                                    pctComplete: j.pct_complete ?? null,
+                                  })}
+                                  pctComplete={j.pct_complete ?? null}
+                                  pctSaving={pctCompleteSavingId === j.id}
+                                  onPctCommit={(n) => updateJobPctComplete(j.id, n)}
+                                />
+                              ) : showRemaining
                                 ? (() => {
                                     const rev = j.revenue != null ? Number(j.revenue) : 0
                                     const pm = j.payments_made != null ? Number(j.payments_made) : 0

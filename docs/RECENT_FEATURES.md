@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-18 (v2.740)
+last_updated: 2026-07-18 (v2.741)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.741)
+
+### Jobs Stages — "% Complete/Value Created/Could Bill" + "Paid/Left/Total Bill" merged into one Progress & payment cell (2026-07-18)
+The two three-line money columns on the Waiting and Working stage tables required mapping header line N to value line N, with mismatched vocabulary (header "Total Bill" over a "$41,550 bid" value; "Value Created" over "done"; "Could Bill" over "to bill"). They're now **one "Progress & payment" column**: the editable **% done** input and the **bid** total on top, a **bar of the whole bid** (green = paid, amber = work done but not yet paid for, empty track = not done) and a self-labeled legend — **Paid**, **Unbilled**, and bold **Owed** (bid − payments) with hover tooltips defining each. No % + no bid renders a dashed empty bar. The table drops from 6 columns to 5. Math lives in kernel [`stagesMoneyBar.ts`](../src/lib/stagesMoneyBar.ts) (clamping, overpaid, paid-ahead-of-progress; 9 tests); presentation in [`StagesProgressPaymentCell.tsx`](../src/components/jobs/StagesProgressPaymentCell.tsx). The Paid section's "Final Bill" column and the Ready to Bill/Billed unified tables' invoice-level money cells are unchanged (candidate follow-up). Help guide *bill a customer and get paid* gains a "Reading the Progress & payment bar" section.
 
 ## Latest Updates (v2.740)
 
