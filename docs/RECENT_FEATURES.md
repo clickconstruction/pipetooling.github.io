@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-17 (v2.723)
+last_updated: 2026-07-17 (v2.724)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.724)
+
+### Dashboard — My Schedule section + useDashboardSubSchedule seam (2026-07-17)
+Extraction #9 of the Dashboard decomposition ([`DASHBOARD_SECTIONS_ARCHITECTURE.md`](DASHBOARD_SECTIONS_ARCHITECTURE.md)), in two parts. **Seam:** the sub-schedule data engine — `subScheduleRows`/`subScheduleLoading` + the schedule-blocks loader effect (`fetchScheduleBlocksForAssigneeDateRange`), `subScheduleLabels` + labels effect, `subSchedulePhones` + phones effect, `scheduleReminderNow` + its 60s interval, and the derived `subScheduleDayPartition` memo + `leaveReportReminderForJobRow` callback — moved from `Dashboard.tsx` into new hook [`useDashboardSubSchedule.ts`](../src/hooks/useDashboardSubSchedule.ts), which **stays in the parent**: the loader's gate is `canLeaveJobFieldReport(role)` (quirk #11 — the rows drive the leave-report reminder icons on the Team Ready to Bill / Assigned Jobs rows for every leave-report-capable role, not just the subcontractor-like roles that render the section), and the parent destructures `leaveReportReminderForJobRow` so those job-row call sites are unchanged. **Section:** the `isSubcontractorLikeRole(role)`-gated "My Schedule" render (call-dispatch header + Calendar link, today/tomorrow day groups, customer-call buttons, pictures-link row, Leave Report buttons) moved into [`DashboardMyScheduleSection.tsx`](../src/components/dashboard/DashboardMyScheduleSection.tsx) (self-gates on role; parent renders it unconditionally at the same position). Pure logic went to new kernel [`dashboardSubSchedule.ts`](../src/lib/dashboardSubSchedule.ts) (9 unit tests): `dedupeSubScheduleBlocks` (moved verbatim from the module scope), `subScheduleJobLabel` (the "HCP · name" fallback label used twice in the labels effect), `partitionSubScheduleBlocksByDay`, and `sortSubScheduleBlocksByStart` (the render's inline day-row sort). **No behavior change** — seam choices: `assignedJobs`/`assignedReadyToBillJobs` stay parent-owned (read-only props for labels/pictures-link/reminder lookups); the shared modal openers stay in the parent and pass down as callbacks (`setLeaveReportJob` → `AdditionalReportModal`, `submitLinkJobPicturesDispatchRequest` — shared with the Team RTB rows); `detailModalAssignedJobsRows` stays a parent memo (shared with `openJobDetailFromDashboardJobRow`) and the section calls `useJobDetailModal()` itself; `firstAssistantDispatchPhone` stays a parent hook, passed down. The shared module-level row pieces `DashboardJobPicturesLinkRow` and `DashboardLeaveReportButton` moved verbatim to their own files in [`src/components/dashboard/`](../src/components/dashboard/DashboardJobPicturesLinkRow.tsx) (imported by both `Dashboard.tsx` and the section — they belong to the job-row family, extraction item 11), and the `DashboardTeamAssignedJobRow` type moved verbatim to [`dashboardTeamAssignedJobRow.ts`](../src/lib/dashboardTeamAssignedJobRow.ts). `Dashboard.tsx` is down to 4,053 lines (4,614 → 4,053).
 
 ## Latest Updates (v2.723)
 

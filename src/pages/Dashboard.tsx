@@ -7,7 +7,6 @@ import {
   useRef,
   useState,
   type CSSProperties,
-  type MouseEventHandler,
 } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
@@ -115,23 +114,17 @@ import {
   MyTeamSectionSkeleton,
 } from '../components/dashboard/DashboardSkeletons'
 import {
-  fetchScheduleBlocksForAssigneeDateRange,
-  type JobScheduleBlockRow,
-} from '../lib/jobScheduleBlocks'
-import { shouldShowLeaveReportScheduleReminder } from '../lib/leaveReportScheduleReminder'
-import {
   SUBCONTRACTOR_ACTIVITY_SOURCE_ORDER,
   subcontractorActivitySourceLabel,
   type SubcontractorActivitySource,
 } from '../lib/subcontractorJobActivityCopy'
 import { subcontractorLastActivityMobileLine } from '../lib/subcontractorLastActivityCompact'
 import SubcontractorJobActivityModal from '../components/dashboard/SubcontractorJobActivityModal'
-import {
-  scheduleDateKeyAddDays,
-  scheduleFormatWeekdayLong,
-  scheduleFormatWindow,
-  scheduleTodayDateKey,
-} from '../lib/jobScheduleChicago'
+import { useDashboardSubSchedule } from '../hooks/useDashboardSubSchedule'
+import { DashboardMyScheduleSection } from '../components/dashboard/DashboardMyScheduleSection'
+import { DashboardJobPicturesLinkRow } from '../components/dashboard/DashboardJobPicturesLinkRow'
+import { DashboardLeaveReportButton } from '../components/dashboard/DashboardLeaveReportButton'
+import type { DashboardTeamAssignedJobRow } from '../lib/dashboardTeamAssignedJobRow'
 
 const DashboardMyTeamSection = lazy(() => import('../components/DashboardMyTeamSection'))
 import type { Database } from '../types/database'
@@ -357,92 +350,6 @@ function buildBilledWaitingDashboardUnits(jobs: JobForDashboard[], invoices: Inv
   return out
 }
 
-/** Dashboard Assigned Jobs + team Ready to Bill rows from list_*_for_dashboard RPCs. */
-type DashboardTeamAssignedJobRow = {
-  id: string
-  hcp_number: string
-  job_name: string
-  job_address: string
-  google_drive_link: string | null
-  job_plans_link: string | null
-  job_pictures_link?: string | null
-  revenue: number | null
-  created_at: string | null
-  last_report_at?: string | null
-  /** Latest `reports.created_at` authored by viewer (Dashboard Leave Report nag; 12h silence). */
-  my_last_report_at?: string | null
-  /** Max of latest thread note, field report, qualifying clock session, and schedule block (Dashboard "Last activity"). */
-  last_job_activity_at?: string | null
-  last_thread_note_at?: string | null
-  last_clock_activity_at?: string | null
-  last_schedule_activity_at?: string | null
-  in_progress_stage_name?: string | null
-  project_id?: string | null
-  in_progress_step_id?: string | null
-  collect_payment_button_variant?: string | null
-  status?: string | null
-}
-
-function DashboardLeaveReportButton(props: {
-  showReminder: boolean
-  onClick: MouseEventHandler<HTMLButtonElement>
-  buttonTitle?: string
-}) {
-  const { showReminder, onClick, buttonTitle } = props
-  return (
-    <span style={{ display: 'inline-flex', alignItems: 'center' }}>
-      <span style={{ position: 'relative', display: 'inline-block' }}>
-        <button
-          type="button"
-          onClick={onClick}
-          title={buttonTitle}
-          style={{
-            padding: '0.35rem 0.75rem',
-            fontSize: '0.875rem',
-            background: '#3b82f6',
-            color: 'white',
-            border: 'none',
-            borderRadius: 4,
-            cursor: 'pointer',
-          }}
-        >
-          Leave<br />Report
-        </button>
-        {showReminder ? (
-          <span
-            role="status"
-            aria-label="Scheduled work ended — leave a job report."
-            style={{
-              position: 'absolute',
-              left: '50%',
-              top: '50%',
-              transform: 'translate(-50%, -50%)',
-              display: 'inline-flex',
-              pointerEvents: 'none',
-            }}
-          >
-            {/* Icon: Font Awesome Free 7.x — circle exclamation (OFL/CC-BY) */}
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 640 640"
-              width={21}
-              height={21}
-              aria-hidden
-              focusable={false}
-              style={{ color: '#FFE600' }}
-            >
-              <path
-                fill="currentColor"
-                d="M320 576C178.6 576 64 461.4 64 320C64 178.6 178.6 64 320 64C461.4 64 576 178.6 576 320C576 461.4 461.4 576 320 576zM320 384C302.3 384 288 398.3 288 416C288 433.7 302.3 448 320 448C337.7 448 352 433.7 352 416C352 398.3 337.7 384 320 384zM320 192C301.8 192 287.3 207.5 288.6 225.7L296 329.7C296.9 342.3 307.4 352 319.9 352C332.5 352 342.9 342.3 343.8 329.7L351.2 225.7C352.5 207.5 338.1 192 319.8 192z"
-              />
-            </svg>
-          </span>
-        ) : null}
-      </span>
-    </span>
-  )
-}
-
 function subcontractorAssignedJobStageDisplay(
   j: Pick<DashboardTeamAssignedJobRow, 'in_progress_stage_name' | 'project_id'>,
 ): { line: string; title: string | undefined } | null {
@@ -455,76 +362,6 @@ function subcontractorAssignedJobStageDisplay(
       line: 'Stage: —',
       title: 'No step is currently in progress for this project',
     }
-  }
-  return null
-}
-
-function DashboardJobPicturesLinkRow({
-  jobPicturesLink,
-  layout = 'stacked',
-  onMissingClick,
-  size = 'default',
-}: {
-  jobPicturesLink: string | null | undefined
-  layout?: 'stacked' | 'inline'
-  onMissingClick?: () => void
-  /** `large` matches the My Schedule Leave Report button height. */
-  size?: 'default' | 'large'
-}) {
-  const url = jobPicturesLink?.trim()
-  const glyphSize = size === 'large' ? '2.5em' : '1.25em'
-  const glyph = (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={glyphSize} height={glyphSize} fill="currentColor" aria-hidden="true">
-      <path d="M128 160C128 124.7 156.7 96 192 96L512 96C547.3 96 576 124.7 576 160L576 416C576 451.3 547.3 480 512 480L192 480C156.7 480 128 451.3 128 416L128 160zM56 192C69.3 192 80 202.7 80 216L80 512C80 520.8 87.2 528 96 528L456 528C469.3 528 480 538.7 480 552C480 565.3 469.3 576 456 576L96 576C60.7 576 32 547.3 32 512L32 216C32 202.7 42.7 192 56 192zM224 224C241.7 224 256 209.7 256 192C256 174.3 241.7 160 224 160C206.3 160 192 174.3 192 192C192 209.7 206.3 224 224 224zM420.5 235.5C416.1 228.4 408.4 224 400 224C391.6 224 383.9 228.4 379.5 235.5L323.2 327.6L298.7 297C294.1 291.3 287.3 288 280 288C272.7 288 265.8 291.3 261.3 297L197.3 377C191.5 384.2 190.4 394.1 194.4 402.4C198.4 410.7 206.8 416 216 416L488 416C496.7 416 504.7 411.3 508.9 403.7C513.1 396.1 513 386.9 508.4 379.4L420.4 235.4z" />
-    </svg>
-  )
-  if (url) {
-    const link = (
-      <a
-        href={url}
-        target="_blank"
-        rel="noopener noreferrer"
-        title="Open customer pictures"
-        aria-label="Open customer pictures"
-        onClick={(e) => {
-          e.stopPropagation()
-          e.preventDefault()
-          openInExternalBrowser(url)
-        }}
-        style={{ display: 'inline-flex', alignItems: 'center', color: 'var(--text-blue-500)', textDecoration: 'none' }}
-      >
-        {/* Font Awesome Free 7.x — images (OFL) */}
-        {glyph}
-      </a>
-    )
-    if (layout === 'inline') return link
-    return <div style={{ marginTop: 6 }}>{link}</div>
-  }
-  if (onMissingClick) {
-    const missingBtn = (
-      <button
-        type="button"
-        title="No customer photos link — tap to ask Dispatch to set one"
-        aria-label="No customer photos link — tap to ask Dispatch to set one"
-        onClick={(e) => {
-          e.stopPropagation()
-          onMissingClick()
-        }}
-        style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          padding: 0,
-          border: 'none',
-          background: 'transparent',
-          cursor: 'pointer',
-          color: 'var(--text-red-600)',
-        }}
-      >
-        {glyph}
-      </button>
-    )
-    if (layout === 'inline') return missingBtn
-    return <div style={{ marginTop: 6 }}>{missingBtn}</div>
   }
   return null
 }
@@ -603,22 +440,6 @@ function subcontractorLastActivityBlock(
     line2: relLine,
     line3: subcontractorLastActivityTypeLine(j),
   }
-}
-
-/** One row per mirrored linked group (same group, date, window). */
-function dedupeSubScheduleBlocks(blocks: JobScheduleBlockRow[]): JobScheduleBlockRow[] {
-  const seen = new Set<string>()
-  const out: JobScheduleBlockRow[] = []
-  for (const b of blocks) {
-    const g = b.shared_block_group_id
-    const key = g
-      ? `g:${g}:${b.work_date}:${b.time_start}:${b.time_end}`
-      : `id:${b.id}`
-    if (seen.has(key)) continue
-    seen.add(key)
-    out.push(b)
-  }
-  return out
 }
 
 const HOURS_DAY_CORRECT_BLOCK_TOAST =
@@ -905,11 +726,18 @@ export default function Dashboard() {
   const [superintendentJobs, setSuperintendentJobs] = useState<DashboardTeamAssignedJobRow[]>([])
   const [superintendentJobsLoading, setSuperintendentJobsLoading] = useState(false)
   const [superintendentJobsExpanded, setSuperintendentJobsExpanded] = useState(true)
-  const [subScheduleRows, setSubScheduleRows] = useState<JobScheduleBlockRow[]>([])
-  const [subScheduleLoading, setSubScheduleLoading] = useState(false)
-  const [subScheduleLabels, setSubScheduleLabels] = useState<Map<string, string>>(() => new Map())
-  const [subSchedulePhones, setSubSchedulePhones] = useState<Map<string, string | null>>(() => new Map())
-  const [scheduleReminderNow, setScheduleReminderNow] = useState(() => new Date())
+  const {
+    subScheduleLoading,
+    subScheduleLabels,
+    subSchedulePhones,
+    subScheduleDayPartition,
+    leaveReportReminderForJobRow,
+  } = useDashboardSubSchedule({
+    authUserId: authUser?.id,
+    role,
+    assignedJobs,
+    assignedReadyToBillJobs,
+  })
   const [readyToBillInvoices, setReadyToBillInvoices] = useState<InvoiceForDashboard[]>([])
   const [readyToBillJobs, setReadyToBillJobs] = useState<JobForDashboard[]>([])
   const [readyToBillLoading, setReadyToBillLoading] = useState(false)
@@ -1374,160 +1202,6 @@ export default function Dashboard() {
         setAssignedJobs((data ?? []) as unknown as DashboardTeamAssignedJobRow[])
       })
   }, [authUser?.id])
-
-  useEffect(() => {
-    const id = window.setInterval(() => setScheduleReminderNow(new Date()), 60_000)
-    return () => window.clearInterval(id)
-  }, [])
-
-  useEffect(() => {
-    if (!authUser?.id || !canLeaveJobFieldReport(role)) {
-      setSubScheduleRows([])
-      setSubScheduleLoading(false)
-      return
-    }
-    let cancelled = false
-    const run = async () => {
-      if (isSubcontractorLikeRole(role)) setSubScheduleLoading(true)
-      const todayYmd = scheduleTodayDateKey()
-      const tomorrowYmd = scheduleDateKeyAddDays(todayYmd, 1) ?? todayYmd
-      const { data, error } = await fetchScheduleBlocksForAssigneeDateRange(
-        authUser.id,
-        todayYmd,
-        tomorrowYmd,
-      )
-      if (cancelled) return
-      if (error) {
-        showToast(error, 'warning')
-        setSubScheduleRows([])
-        setSubScheduleLoading(false)
-        return
-      }
-      setSubScheduleRows(dedupeSubScheduleBlocks(data ?? []))
-      setSubScheduleLoading(false)
-    }
-    void run()
-    return () => {
-      cancelled = true
-    }
-  }, [authUser?.id, role, showToast])
-
-  useEffect(() => {
-    if (!isSubcontractorLikeRole(role) || !authUser?.id) {
-      setSubScheduleLabels(new Map())
-      return
-    }
-    if (subScheduleRows.length === 0) {
-      setSubScheduleLabels(new Map())
-      return
-    }
-    const jobIds = [...new Set(subScheduleRows.map((b) => b.job_id))]
-    const labelMap = new Map<string, string>()
-    for (const j of [...assignedJobs, ...assignedReadyToBillJobs]) {
-      if (jobIds.includes(j.id)) {
-        labelMap.set(
-          j.id,
-          `${(j.hcp_number ?? '').trim() || '—'} · ${(j.job_name ?? '').trim() || 'Job'}`,
-        )
-      }
-    }
-    const missing = jobIds.filter((id) => !labelMap.has(id))
-    if (missing.length === 0) {
-      setSubScheduleLabels(new Map(labelMap))
-      return
-    }
-    let cancelled = false
-    void (async () => {
-      try {
-        const rows = await withSupabaseRetry(
-          async () =>
-            await supabase.from('jobs_ledger').select('id, hcp_number, job_name').in('id', missing),
-          'dashboardSubScheduleJobLabels',
-        )
-        if (cancelled) return
-        for (const r of (rows ?? []) as Array<{
-          id: string
-          hcp_number: string | null
-          job_name: string | null
-        }>) {
-          labelMap.set(
-            r.id,
-            `${(r.hcp_number ?? '').trim() || '—'} · ${(r.job_name ?? '').trim() || 'Job'}`,
-          )
-        }
-        for (const id of missing) {
-          if (!labelMap.has(id)) labelMap.set(id, 'Job')
-        }
-        setSubScheduleLabels(new Map(labelMap))
-      } catch {
-        if (!cancelled) {
-          for (const id of missing) {
-            if (!labelMap.has(id)) labelMap.set(id, 'Job')
-          }
-          setSubScheduleLabels(new Map(labelMap))
-        }
-      }
-    })()
-    return () => {
-      cancelled = true
-    }
-  }, [role, authUser?.id, subScheduleRows, assignedJobs, assignedReadyToBillJobs])
-
-  useEffect(() => {
-    if (!isSubcontractorLikeRole(role) || !authUser?.id) {
-      setSubSchedulePhones(new Map())
-      return
-    }
-    if (subScheduleRows.length === 0) {
-      setSubSchedulePhones(new Map())
-      return
-    }
-    const jobIds = [...new Set(subScheduleRows.map((b) => b.job_id))]
-    let cancelled = false
-    void (async () => {
-      try {
-        const rows = await withSupabaseRetry(
-          async () =>
-            await supabase.from('jobs_ledger').select('id, customer_phone').in('id', jobIds),
-          'dashboardSubScheduleJobPhones',
-        )
-        if (cancelled) return
-        const m = new Map<string, string | null>()
-        for (const r of (rows ?? []) as Array<{ id: string; customer_phone: string | null }>) {
-          m.set(r.id, r.customer_phone)
-        }
-        setSubSchedulePhones(m)
-      } catch {
-        if (!cancelled) setSubSchedulePhones(new Map())
-      }
-    })()
-    return () => {
-      cancelled = true
-    }
-  }, [role, authUser?.id, subScheduleRows])
-
-  const subScheduleDayPartition = useMemo(() => {
-    const todayYmd = scheduleTodayDateKey()
-    const tomorrowYmd = scheduleDateKeyAddDays(todayYmd, 1) ?? todayYmd
-    return {
-      todayYmd,
-      tomorrowYmd,
-      todayBlocks: subScheduleRows.filter((b) => b.work_date === todayYmd),
-      tomorrowBlocks: subScheduleRows.filter((b) => b.work_date === tomorrowYmd),
-    }
-  }, [subScheduleRows])
-
-  const leaveReportReminderForJobRow = useCallback(
-    (j: Pick<DashboardTeamAssignedJobRow, 'id' | 'my_last_report_at'>) =>
-      shouldShowLeaveReportScheduleReminder({
-        now: scheduleReminderNow,
-        todayYmd: scheduleTodayDateKey(scheduleReminderNow),
-        jobId: j.id,
-        blocks: subScheduleRows,
-        myLastReportAtIso: j.my_last_report_at ?? null,
-      }),
-    [scheduleReminderNow, subScheduleRows],
-  )
 
   const refreshDashboardAssignedJobLists = useCallback(async () => {
     if (!authUser?.id) return
@@ -3269,255 +2943,20 @@ export default function Dashboard() {
       )}
 
       {!isAssistantLike(role) && role !== 'dev' && role !== 'master_technician' && myInboxCard}
-      {isSubcontractorLikeRole(role) && (
-        <div style={{ marginTop: '1.5rem', marginBottom: '2rem' }}>
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'baseline',
-              justifyContent: 'space-between',
-              flexWrap: 'wrap',
-              gap: '0.5rem',
-              marginBottom: '0.75rem',
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'nowrap', gap: '0.5rem', minWidth: 0 }}>
-              {firstAssistantDispatchPhone ? (
-                <a
-                  href={`tel:${firstAssistantDispatchPhone.telHref}`}
-                  style={{ color: 'inherit', textDecoration: 'none', whiteSpace: 'nowrap' }}
-                  aria-label={`Call dispatch at ${firstAssistantDispatchPhone.display}`}
-                  title={`Call dispatch at ${firstAssistantDispatchPhone.display}`}
-                >
-                  <h2 style={{ fontSize: '1.125rem', margin: 0, whiteSpace: 'nowrap' }}>My Schedule</h2>
-                </a>
-              ) : (
-                <h2 style={{ fontSize: '1.125rem', margin: 0, whiteSpace: 'nowrap' }}>My Schedule</h2>
-              )}
-              {firstAssistantDispatchPhone && (
-                <a
-                  href={`tel:${firstAssistantDispatchPhone.telHref}`}
-                  style={{ fontSize: '0.6875rem', color: 'var(--text-muted)', textDecoration: 'none', lineHeight: 1.15, whiteSpace: 'nowrap' }}
-                  aria-label={`Schedule wrong? Click to call dispatch at ${firstAssistantDispatchPhone.display}`}
-                  title={`Call dispatch at ${firstAssistantDispatchPhone.display}`}
-                >
-                  (schedule wrong?<br />click to call dispatch)
-                </a>
-              )}
-            </div>
-            <Link to="/calendar" style={{ fontSize: '0.875rem', fontWeight: 400, color: 'var(--text-link)' }}>
-              Calendar →
-            </Link>
-          </div>
-          {subScheduleLoading ? (
-            <DashboardListRowSkeleton rows={2} />
-          ) : (
-            <>
-              {(['today', 'tomorrow'] as const).map((which) => {
-                const ymd = which === 'today' ? subScheduleDayPartition.todayYmd : subScheduleDayPartition.tomorrowYmd
-                const blocks =
-                  which === 'today' ? subScheduleDayPartition.todayBlocks : subScheduleDayPartition.tomorrowBlocks
-                const dayTitle = which === 'today' ? 'Today' : 'Tomorrow'
-                const sorted = [...blocks].sort((a, b) => a.time_start.localeCompare(b.time_start))
-                return (
-                  <div key={which} style={{ marginBottom: which === 'today' ? '1.25rem' : 0 }}>
-                    <h3 style={{ fontSize: '1rem', fontWeight: 600, margin: '0 0 0.5rem 0', color: 'var(--text-700)', textAlign: 'center' }}>
-                      {dayTitle}
-                      <span style={{ fontWeight: 400, color: 'var(--text-muted)', fontSize: '0.875rem', marginLeft: '0.5rem' }}>
-                        {scheduleFormatWeekdayLong(ymd)}
-                      </span>
-                    </h3>
-                    {sorted.length === 0 ? (
-                      <p style={{ margin: 0, color: 'var(--text-faint)', fontSize: '0.875rem', textAlign: 'center' }}>No blocks scheduled.</p>
-                    ) : (
-                      <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-                        {sorted.map((b) => {
-                          const rowLabel = subScheduleLabels.get(b.job_id) ?? 'Job'
-                          const fromAssigned =
-                            assignedJobs.find((j) => j.id === b.job_id) ??
-                            assignedReadyToBillJobs.find((j) => j.id === b.job_id)
-                          const prefillAddr = (fromAssigned?.job_address ?? '').trim() || null
-                          const scheduleDetailPayload = {
-                            jobId: b.job_id,
-                            prefillRowLabel: rowLabel,
-                            prefillAddress: prefillAddr,
-                            scheduleContext: {
-                              workDate: b.work_date,
-                              timeStart: b.time_start,
-                              timeEnd: b.time_end,
-                              note: b.note,
-                            },
-                          }
-                          return (
-                            <li
-                              key={b.id}
-                              role="button"
-                              tabIndex={0}
-                              onClick={() =>
-                                jobDetailModal?.openJobDetail({
-                                  ...scheduleDetailPayload,
-                                  assignedJobsRows: detailModalAssignedJobsRows,
-                                })
-                              }
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter' || e.key === ' ') {
-                                  e.preventDefault()
-                                  jobDetailModal?.openJobDetail({
-                                    ...scheduleDetailPayload,
-                                    assignedJobsRows: detailModalAssignedJobsRows,
-                                  })
-                                }
-                              }}
-                              aria-label={`Job details: ${rowLabel}`}
-                              style={{
-                                padding: '0.5rem 0.75rem',
-                                border: '1px solid var(--border)',
-                                borderRadius: 8,
-                                marginBottom: '0.5rem',
-                                background: 'var(--surface)',
-                                cursor: 'pointer',
-                              }}
-                            >
-                              <div
-                                style={{
-                                  display: 'flex',
-                                  alignItems: 'flex-start',
-                                  justifyContent: 'space-between',
-                                  gap: '0.75rem',
-                                }}
-                              >
-                                <div style={{ flex: 1, minWidth: 0 }}>
-                                  <div
-                                    style={{
-                                      fontWeight: 500,
-                                      display: 'flex',
-                                      alignItems: 'center',
-                                      gap: '0.5rem',
-                                      minWidth: 0,
-                                    }}
-                                  >
-                                    <span
-                                      style={{
-                                        minWidth: 0,
-                                        overflow: 'hidden',
-                                        textOverflow: 'ellipsis',
-                                      }}
-                                    >
-                                      {rowLabel}
-                                    </span>
-                                    {(() => {
-                                      const phone = (subSchedulePhones.get(b.job_id) ?? '').trim()
-                                      if (!phone) return null
-                                      return (
-                                        <button
-                                          type="button"
-                                          onClick={(e) => {
-                                            e.stopPropagation()
-                                            openInExternalBrowser(`tel:${phone}`)
-                                          }}
-                                          onKeyDown={(e) => {
-                                            if (e.key === 'Enter' || e.key === ' ') {
-                                              e.stopPropagation()
-                                            }
-                                          }}
-                                          aria-label={`Call customer at ${phone}`}
-                                          title={`Call customer at ${phone}`}
-                                          style={{
-                                            flexShrink: 0,
-                                            background: 'transparent',
-                                            border: 'none',
-                                            padding: '0.2rem',
-                                            cursor: 'pointer',
-                                            color: 'var(--text-link)',
-                                            display: 'inline-flex',
-                                            alignItems: 'center',
-                                          }}
-                                        >
-                                          <svg
-                                            xmlns="http://www.w3.org/2000/svg"
-                                            viewBox="0 0 640 640"
-                                            width={16}
-                                            height={16}
-                                            aria-hidden
-                                            focusable={false}
-                                            style={{ display: 'block' }}
-                                          >
-                                            <path
-                                              fill="currentColor"
-                                              d="M224.2 89C216.3 70.1 195.7 60.1 176.1 65.4L170.6 66.9C106 84.5 50.8 147.1 66.9 223.3C104 398.3 241.7 536 416.7 573.1C493 589.3 555.5 534 573.1 469.4L574.6 463.9C580 444.2 569.9 423.6 551.1 415.8L453.8 375.3C437.3 368.4 418.2 373.2 406.8 387.1L368.2 434.3C297.9 399.4 241.3 341 208.8 269.3L253 233.3C266.9 222 271.6 202.9 264.8 186.3L224.2 89z"
-                                            />
-                                          </svg>
-                                        </button>
-                                      )
-                                    })()}
-                                  </div>
-                                  <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
-                                    {scheduleFormatWindow(b.time_start, b.time_end)}
-                                  </div>
-                                  {b.note?.trim() ? (
-                                    <div
-                                      style={{
-                                        fontSize: '0.8125rem',
-                                        color: 'var(--text-faint)',
-                                        marginTop: '0.35rem',
-                                        wordBreak: 'break-word',
-                                      }}
-                                    >
-                                      {b.note.trim()}
-                                    </div>
-                                  ) : null}
-                                </div>
-                                <div
-                                  style={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '0.5rem',
-                                    flexShrink: 0,
-                                  }}
-                                >
-                                  <DashboardJobPicturesLinkRow
-                                    layout="inline"
-                                    size="large"
-                                    jobPicturesLink={fromAssigned?.job_pictures_link}
-                                    onMissingClick={() =>
-                                      void submitLinkJobPicturesDispatchRequest({
-                                        jobId: b.job_id,
-                                        hcpNumber: fromAssigned?.hcp_number,
-                                        jobName: fromAssigned?.job_name ?? rowLabel,
-                                        jobAddress: fromAssigned?.job_address,
-                                      })
-                                    }
-                                  />
-                                  {canLeaveJobFieldReport(role) ? (
-                                    <DashboardLeaveReportButton
-                                      showReminder={
-                                        fromAssigned ? leaveReportReminderForJobRow(fromAssigned) : false
-                                      }
-                                      onClick={(e) => {
-                                        e.stopPropagation()
-                                        setLeaveReportJob({
-                                          id: b.job_id,
-                                          hcpNumber: fromAssigned?.hcp_number ?? '—',
-                                          jobName: fromAssigned?.job_name ?? rowLabel,
-                                          jobAddress: fromAssigned?.job_address ?? '—',
-                                        })
-                                      }}
-                                    />
-                                  ) : null}
-                                </div>
-                              </div>
-                            </li>
-                          )
-                        })}
-                      </ul>
-                    )}
-                  </div>
-                )
-              })}
-            </>
-          )}
-        </div>
-      )}
+      <DashboardMyScheduleSection
+        role={role}
+        firstAssistantDispatchPhone={firstAssistantDispatchPhone}
+        subScheduleLoading={subScheduleLoading}
+        subScheduleDayPartition={subScheduleDayPartition}
+        subScheduleLabels={subScheduleLabels}
+        subSchedulePhones={subSchedulePhones}
+        leaveReportReminderForJobRow={leaveReportReminderForJobRow}
+        assignedJobs={assignedJobs}
+        assignedReadyToBillJobs={assignedReadyToBillJobs}
+        detailModalAssignedJobsRows={detailModalAssignedJobsRows}
+        submitLinkJobPicturesDispatchRequest={submitLinkJobPicturesDispatchRequest}
+        setLeaveReportJob={setLeaveReportJob}
+      />
       <DashboardMyBidsSection
         authUserId={authUser?.id}
         role={role}
