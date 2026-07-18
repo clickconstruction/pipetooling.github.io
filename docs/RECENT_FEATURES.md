@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-19 (v2.737)
+last_updated: 2026-07-18 (v2.738)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.738)
+
+### Jobs Stages — Reports column moved next to Job, condensed to one button (2026-07-18)
+On every Stages table (Waiting / Working / Ready to Bill and the billed tables), the reports column used to sit at the far right as a two-part cell — a "N reports" count over a two-line **View Reports** button. It's now a single compact **"N Reports"** button (same action: opens the job's Reports modal), and the column moved to sit **between Job and Last activity**, where it's visible without scanning to the row's end. The header shrank from "View Reports" to **Reports**. Both table renderers in [`Jobs.tsx`](../src/pages/Jobs.tsx) updated (the shared stage table and the unified billed/collections table, job and invoice rows). Layout/copy only — no behavior or data changes.
 
 ## Latest Updates (v2.737)
 
