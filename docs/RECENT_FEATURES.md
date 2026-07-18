@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-17 (v2.725)
+last_updated: 2026-07-17 (v2.726)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.726)
+
+### Dashboard — Team Ready to Bill section extracted (2026-07-17)
+Extraction #11a of the Dashboard decomposition ([`DASHBOARD_SECTIONS_ARCHITECTURE.md`](DASHBOARD_SECTIONS_ARCHITECTURE.md)) — first of the three job-row-family sections, in two stages. **Stage A (shared by the family):** the pure module-level row helpers — `formatTimeSince` (also used by the billing-pipeline "Open …" chips), `subcontractorAssignedJobStageDisplay`, `subcontractorLastActivityTypeLine`, and `subcontractorLastActivityBlock` — moved verbatim from `Dashboard.tsx` module scope into new kernel [`dashboardJobRowActivity.ts`](../src/lib/dashboardJobRowActivity.ts) (18 unit tests; `formatTimeSince`/`subcontractorLastActivityBlock` take `now` as a parameter defaulting to `new Date()` for determinism, call sites unchanged; `formatDatetime` stays imported from `dashboardProjectsCard.ts`, not duplicated). **Stage B:** the `isDashboardTeamReadyToBillRole(role)`-gated "Ready to Bill (N)" section — the third, distinct "Ready to Bill" heading (quirk #5, preserved exactly; team-assigned jobs via RPC, not the billing-invoice pipeline) — moved into [`DashboardTeamReadyToBillSection.tsx`](../src/components/dashboard/DashboardTeamReadyToBillSection.tsx) (self-gates on role; parent renders it unconditionally at the section's position), taking with it `assignedReadyToBillExpanded`, and `collectPaymentJob` + the `CollectPaymentModal` tail render (its only opener is these rows' subcontractor-like Collect Payment buttons; the modal is a fixed overlay, so the earlier DOM position is inert — `onFlowChanged` still calls the seam's `refreshAssignedReadyToBill`, now passed as a prop). **No behavior change** — seam choices: the data stays in the parent's [`useDashboardAssignedJobs`](../src/hooks/useDashboardAssignedJobs.ts) seam (`assignedReadyToBillJobs`/`Loading` + `refreshAssignedReadyToBill` passed down); the shared modal openers stay in the parent as callbacks (`setViewReportsJob` → `JobReportsModal`, `setLeaveReportJob` → `AdditionalReportModal`, `setSubcontractorJobActivityModalJob` → `SubcontractorJobActivityModal` — each also opened from the Assigned Jobs rows); `openJobDetailFromDashboardJobRow` + `leaveReportReminderForJobRow` (quirk #11) pass down unchanged. `Dashboard.tsx` is down to 3,566 lines (3,975 → 3,566).
 
 ## Latest Updates (v2.725)
 
