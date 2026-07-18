@@ -264,17 +264,12 @@ export function DashboardBillingPipelineSection({
                                 '—'
                               )}
                             </div>
+                            {/* No Applied/Open sub-line here: payments cannot exist on ready_to_bill
+                                invoices (every payment-insert RPC requires status 'billed', and no
+                                path reverts an invoice with payments back to ready_to_bill), so the
+                                RTB loaders correctly map with an empty payments map. */}
                             <div style={{ fontSize: '0.875rem', marginTop: 4 }}>
                               {`Invoice: $${inv.amount.toLocaleString('en-US', { minimumFractionDigits: 2 })}`}
-                              {(() => {
-                                const { applied, open } = dashboardBilledInvoiceAmounts(inv)
-                                if (applied <= 0) return null
-                                return (
-                                  <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: 2 }}>
-                                    {`Applied: $${applied.toLocaleString('en-US', { minimumFractionDigits: 2 })} · Open: $${open.toLocaleString('en-US', { minimumFractionDigits: 2 })}`}
-                                  </div>
-                                )
-                              })()}
                             </div>
                           </div>
                           <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
