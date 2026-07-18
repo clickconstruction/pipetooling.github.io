@@ -121,10 +121,14 @@ import {
 import { subcontractorLastActivityMobileLine } from '../lib/subcontractorLastActivityCompact'
 import SubcontractorJobActivityModal from '../components/dashboard/SubcontractorJobActivityModal'
 import { useDashboardSubSchedule } from '../hooks/useDashboardSubSchedule'
+import { useDashboardAssignedJobs } from '../hooks/useDashboardAssignedJobs'
 import { DashboardMyScheduleSection } from '../components/dashboard/DashboardMyScheduleSection'
 import { DashboardJobPicturesLinkRow } from '../components/dashboard/DashboardJobPicturesLinkRow'
 import { DashboardLeaveReportButton } from '../components/dashboard/DashboardLeaveReportButton'
-import type { DashboardTeamAssignedJobRow } from '../lib/dashboardTeamAssignedJobRow'
+import {
+  isDashboardTeamReadyToBillRole,
+  type DashboardTeamAssignedJobRow,
+} from '../lib/dashboardTeamAssignedJobRow'
 
 const DashboardMyTeamSection = lazy(() => import('../components/DashboardMyTeamSection'))
 import type { Database } from '../types/database'
@@ -364,16 +368,6 @@ function subcontractorAssignedJobStageDisplay(
     }
   }
   return null
-}
-
-function isDashboardTeamReadyToBillRole(role: string | null | undefined): boolean {
-  return (
-    role === 'subcontractor' ||
-    role === 'helpers' ||
-    role === 'primary' ||
-    role === 'superintendent' ||
-    role === 'estimator'
-  )
 }
 
 function subcontractorLastActivityTimeMs(iso: string | null | undefined): number | null {
@@ -718,13 +712,21 @@ export default function Dashboard() {
   const [pinnedRoutes, setPinnedRoutes] = useState<PinnedItem[]>([])
   const [readyToBillExpanded, setReadyToBillExpanded] = useState(true)
   const [waitingForPaymentExpanded, setWaitingForPaymentExpanded] = useState(false)
-  const [assignedJobs, setAssignedJobs] = useState<DashboardTeamAssignedJobRow[]>([])
-  const [assignedJobsLoading, setAssignedJobsLoading] = useState(false)
-  const [assignedReadyToBillJobs, setAssignedReadyToBillJobs] = useState<DashboardTeamAssignedJobRow[]>([])
-  const [assignedReadyToBillLoading, setAssignedReadyToBillLoading] = useState(false)
+  const {
+    assignedJobs,
+    setAssignedJobs,
+    assignedJobsLoading,
+    assignedReadyToBillJobs,
+    setAssignedReadyToBillJobs,
+    assignedReadyToBillLoading,
+    superintendentJobs,
+    setSuperintendentJobs,
+    superintendentJobsLoading,
+    refreshDashboardAssignedJobLists,
+    refreshAssignedReadyToBill,
+    resyncDashboardAfterUpdateJobStatusFailureRef,
+  } = useDashboardAssignedJobs({ authUserId: authUser?.id, role })
   const [assignedReadyToBillExpanded, setAssignedReadyToBillExpanded] = useState(true)
-  const [superintendentJobs, setSuperintendentJobs] = useState<DashboardTeamAssignedJobRow[]>([])
-  const [superintendentJobsLoading, setSuperintendentJobsLoading] = useState(false)
   const [superintendentJobsExpanded, setSuperintendentJobsExpanded] = useState(true)
   const {
     subScheduleLoading,
@@ -772,8 +774,6 @@ export default function Dashboard() {
   const [jobStatusUpdatingId, setJobStatusUpdatingId] = useState<string | null>(null)
   const dashboardInvoiceMutationLockRef = useRef<string | null>(null)
   const dashboardJobStatusMutationLockRef = useRef<string | null>(null)
-  /** Set after `refreshInvoices` is defined; reloads dashboard job lists on `update_job_status` RPC failure. */
-  const resyncDashboardAfterUpdateJobStatusFailureRef = useRef<() => Promise<void>>(async () => {})
   const dashboardInvoiceSendBackConfirmLockRef = useRef(false)
   const [viewReportsJob, setViewReportsJob] = useState<{ id: string; hcpNumber: string; jobName: string; jobAddress: string } | null>(null)
   const [subcontractorJobActivityModalJob, setSubcontractorJobActivityModalJob] = useState<{
@@ -1191,36 +1191,6 @@ export default function Dashboard() {
     { debounceMs: 500 },
   )
 
-  useEffect(() => {
-    if (!authUser?.id) return
-    setAssignedJobsLoading(true)
-    supabase
-      .rpc('list_assigned_jobs_for_dashboard')
-      .then(({ data, error }) => {
-        setAssignedJobsLoading(false)
-        if (error) return
-        setAssignedJobs((data ?? []) as unknown as DashboardTeamAssignedJobRow[])
-      })
-  }, [authUser?.id])
-
-  const refreshDashboardAssignedJobLists = useCallback(async () => {
-    if (!authUser?.id) return
-    try {
-      const { data: assignedData } = await supabase.rpc('list_assigned_jobs_for_dashboard')
-      if (assignedData) setAssignedJobs(assignedData as unknown as DashboardTeamAssignedJobRow[])
-      if (isDashboardTeamReadyToBillRole(role)) {
-        const { data: rtbAssignedData } = await supabase.rpc('list_ready_to_bill_assigned_jobs_for_dashboard')
-        if (rtbAssignedData) setAssignedReadyToBillJobs(rtbAssignedData as unknown as DashboardTeamAssignedJobRow[])
-      }
-      if (role === 'superintendent') {
-        const { data: superintendentData } = await supabase.rpc('list_superintendent_jobs_for_dashboard')
-        if (superintendentData) setSuperintendentJobs(superintendentData as unknown as DashboardTeamAssignedJobRow[])
-      }
-    } catch {
-      /* keep prior lists */
-    }
-  }, [authUser?.id, role])
-
   const detailModalAssignedJobsRows = useMemo(
     () => [...assignedJobs, ...assignedReadyToBillJobs],
     [assignedJobs, assignedReadyToBillJobs],
@@ -1253,54 +1223,6 @@ export default function Dashboard() {
       project_id: null,
     }))
   }, [readyToBillJobs])
-
-  useEffect(() => {
-    if (!authUser?.id || !isDashboardTeamReadyToBillRole(role)) {
-      setAssignedReadyToBillJobs([])
-      setAssignedReadyToBillLoading(false)
-      return
-    }
-    let cancelled = false
-    setAssignedReadyToBillLoading(true)
-    void (async () => {
-      try {
-        const data = await withSupabaseRetry(
-          async () => supabase.rpc('list_ready_to_bill_assigned_jobs_for_dashboard'),
-          'list_ready_to_bill_assigned_jobs_for_dashboard',
-        )
-        if (cancelled) return
-        setAssignedReadyToBillJobs((data ?? []) as unknown as DashboardTeamAssignedJobRow[])
-      } catch {
-        /* keep prior list */
-      } finally {
-        if (!cancelled) setAssignedReadyToBillLoading(false)
-      }
-    })()
-    return () => {
-      cancelled = true
-    }
-  }, [authUser?.id, role])
-
-  const refreshAssignedReadyToBill = useCallback(() => {
-    if (!authUser?.id || !isDashboardTeamReadyToBillRole(role)) return
-    void supabase.rpc('list_ready_to_bill_assigned_jobs_for_dashboard').then(({ data, error }) => {
-      if (!error && data) {
-        setAssignedReadyToBillJobs(data as unknown as DashboardTeamAssignedJobRow[])
-      }
-    })
-  }, [authUser?.id, role])
-
-  useEffect(() => {
-    if (!authUser?.id || role !== 'superintendent') return
-    setSuperintendentJobsLoading(true)
-    supabase
-      .rpc('list_superintendent_jobs_for_dashboard')
-      .then(({ data, error }) => {
-        setSuperintendentJobsLoading(false)
-        if (error) return
-        setSuperintendentJobs((data ?? []) as unknown as typeof superintendentJobs)
-      })
-  }, [authUser?.id, role])
 
   useEffect(() => {
     if (!authUser?.id || (role !== 'dev' && role !== 'master_technician' && !isAssistantLike(role))) return
