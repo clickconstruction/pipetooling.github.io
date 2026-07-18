@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-17 (v2.724)
+last_updated: 2026-07-17 (v2.725)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.725)
+
+### Dashboard — `useDashboardAssignedJobs` seam (2026-07-17)
+Extraction #10 of the Dashboard decomposition ([`DASHBOARD_SECTIONS_ARCHITECTURE.md`](DASHBOARD_SECTIONS_ARCHITECTURE.md)) — the assigned-jobs shared-hook seam (playbook Step 2), a **refactor, not a move; no behavior change**; unblocks the job-row family extractions (Team Ready to Bill / Assigned Jobs / Superintendent Jobs, item 11). The assigned-jobs data trio — `assignedJobs`/`assignedJobsLoading` + its `list_assigned_jobs_for_dashboard` loader effect, `assignedReadyToBillJobs`/`assignedReadyToBillLoading` + its `list_ready_to_bill_assigned_jobs_for_dashboard` loader effect, `superintendentJobs`/`superintendentJobsLoading` + its `list_superintendent_jobs_for_dashboard` loader effect — plus `refreshDashboardAssignedJobLists` (report modals + ClockInOutButton field-report save + the billing engine's `updateJobStatus`), `refreshAssignedReadyToBill` (`CollectPaymentModal.onFlowChanged`), and the `resyncDashboardAfterUpdateJobStatusFailureRef` **declaration** moved verbatim from `Dashboard.tsx` into [`useDashboardAssignedJobs.ts`](../src/hooks/useDashboardAssignedJobs.ts); the parent destructures the returned object so every downstream reference is textually unchanged. Seam choices: the three **setters are returned** because the billing engine's `updateJobStatus` (parent-side until the `useDashboardBillingInvoices` seam, item 12) optimistically prunes and then reloads the lists inline; the resync ref's render-body **assignment stays in the parent** (quirk #10 preserved — the closure calls the parent-scope `refreshInvoices` before reloading the lists, so its target cannot move until the billing seam exists); the `assignedReadyToBillExpanded`/`superintendentJobsExpanded` flags stay in the parent (render state for the upcoming section extractions); `isDashboardTeamReadyToBillRole` moved verbatim from Dashboard's module scope into [`dashboardTeamAssignedJobRow.ts`](../src/lib/dashboardTeamAssignedJobRow.ts) so the hook and the page share one definition. `Dashboard.tsx` is down to 3,975 lines (4,053 → 3,975).
 
 ## Latest Updates (v2.724)
 

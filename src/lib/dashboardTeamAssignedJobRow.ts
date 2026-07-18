@@ -29,3 +29,19 @@ export type DashboardTeamAssignedJobRow = {
   collect_payment_button_variant?: string | null
   status?: string | null
 }
+
+/**
+ * Roles that see the Team Ready to Bill section / load
+ * `list_ready_to_bill_assigned_jobs_for_dashboard`. Moved verbatim from
+ * `src/pages/Dashboard.tsx` module scope (v2.725 `useDashboardAssignedJobs`
+ * seam) so the hook and the page share one definition.
+ */
+export function isDashboardTeamReadyToBillRole(role: string | null | undefined): boolean {
+  return (
+    role === 'subcontractor' ||
+    role === 'helpers' ||
+    role === 'primary' ||
+    role === 'superintendent' ||
+    role === 'estimator'
+  )
+}
