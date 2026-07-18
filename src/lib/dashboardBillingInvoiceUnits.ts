@@ -185,7 +185,13 @@ export type BilledWaitingDashboardUnit =
   | { kind: 'job_bundle'; job: JobForDashboard; inv: InvoiceForDashboard }
   | { kind: 'invoice'; inv: InvoiceForDashboard }
 
-/** Dedupes billed job + invoice rows: one merged row when exactly one billed invoice on the job. */
+/**
+ * Dedupes billed job + invoice rows: one merged row when exactly one billed
+ * invoice on the job. Every job always yields a row — 0 invoices → plain job
+ * row, 1 invoice → merged `job_bundle`, 2+ invoices → plain job row (its
+ * "Remaining" card, computed job-side as revenue − payments_made) followed by
+ * each invoice standalone.
+ */
 export function buildBilledWaitingDashboardUnits(jobs: JobForDashboard[], invoices: InvoiceForDashboard[]): BilledWaitingDashboardUnit[] {
   const byJob = new Map<string, InvoiceForDashboard[]>()
   for (const inv of invoices) {
@@ -201,7 +207,7 @@ export function buildBilledWaitingDashboardUnits(jobs: JobForDashboard[], invoic
       const inv = billedOnJob[0]!
       bundledIds.add(inv.id)
       out.push({ kind: 'job_bundle', job, inv })
-    } else if (billedOnJob.length === 0) {
+    } else {
       out.push({ kind: 'job', job })
     }
   }
