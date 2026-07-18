@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-17 (v2.726)
+last_updated: 2026-07-18 (v2.727)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.727)
+
+### Dashboard — billing kernels + `useDashboardBillingInvoices` seam (2026-07-18)
+Extraction #12 of the Dashboard decomposition ([`DASHBOARD_SECTIONS_ARCHITECTURE.md`](DASHBOARD_SECTIONS_ARCHITECTURE.md)) — the billing-invoices engine seam, MONEY-PATH code moved **verbatim** (behavior-preserving; whitespace-normalized diff proofs in the PR), in two stages. **Stage A:** the pure module-scope billing helpers — `buildPaymentsByInvoiceIdMap`, `mapJoinedInvoiceToDashboard`, `dashboardBilledInvoiceAmounts`, `dashboardInvoiceToPaymentModal`, `jobBillingFromDashboardInvoice`, `dashboardJobHasCustomerForBilling`, `countDashboardRtbDraftsForJob`, `buildBilledWaitingDashboardUnits` — plus the shared row types (`InvoiceForDashboard`/`JobForDashboard`/`DashboardInvoiceJoinRow`/`BilledWaitingDashboardUnit`) and `DASHBOARD_INVOICES_JOBS_LEDGER_SELECT` moved into new kernel [`dashboardBillingInvoiceUnits.ts`](../src/lib/dashboardBillingInvoiceUnits.ts) (23 unit tests on the money math: payment grouping/applied-open amounts with clamping, invoice→modal/billing-context mapping, billed-waiting bucketing incl. the 2+-invoices-drops-the-job-row behavior, and a select/mapper drift guard). **Seam:** new hook [`useDashboardBillingInvoices.ts`](../src/hooks/useDashboardBillingInvoices.ts) owns the Ready to Bill / Billed Waiting for Payment invoice+job lists, their loader effects, `refreshInvoices`, `updateJobStatus` (+ `moveJobToReadyToBillWithStripePrep`), `revertBilledDashboardInvoiceToReadyToBill`, `deleteInvoice`, the three mutation-lock refs, `invoiceStatusUpdatingId`/`jobStatusUpdatingId`, and the derived units/memos (`readyToBillDashboardUnits`, `billedWaitingDashboardUnits`, `fieldQueueCombinedBillInvoices`, `shouldShowPrepareBillForFieldQueue`, `readyToBillDetailModalAssignedRows`); inputs are `authUserId`/`role` plus the `useDashboardAssignedJobs` setters and resync ref. **Quirk #10 resolution:** the `resyncDashboardAfterUpdateJobStatusFailureRef.current` closure now lives in — and is render-body-assigned by — the billing hook (its target finally moved with `refreshInvoices`); `refreshInvoicesRef` + its render-body assignment stay in the parent verbatim (every consumer — edit-job/detail-modal `onSaved`, the `sendRecordJobMeta` effect, `CreateTripChargeModal.onCreated` — is parent-side, and a parent-local `useRef` keeps the lint profile identical). Modal state (`sendBack*`, `markPaid*`, `sendRecordJobMeta`, `readyForBillingJob`) and the context glue that opens app-level modals stay in the parent for the section extraction (item 13). `Dashboard.tsx` is down to 3,072 lines (3,566 → 3,072).
 
 ## Latest Updates (v2.726)
 
