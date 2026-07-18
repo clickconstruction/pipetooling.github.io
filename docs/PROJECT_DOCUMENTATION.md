@@ -7,7 +7,7 @@ file: PROJECT_DOCUMENTATION.md
 type: Technical Reference
 purpose: Complete technical documentation covering architecture, database schema, and development patterns
 audience: Developers, AI Agents, Technical Staff
-last_updated: 2026-07-17
+last_updated: 2026-07-18
 estimated_read_time: 45-60 minutes
 difficulty: Advanced
 
@@ -551,6 +551,7 @@ WHERE proname IN (
   - `address` (text, nullable)
   - `contact_info` (jsonb, nullable) - Contains `{ phone: string, email: string }`
   - `date_met` (date, nullable) - Date when customer was first met
+  - `archived_at` (timestamptz, nullable) / `archived_by` (uuid, FK → `users.id`, ON DELETE SET NULL) - **Soft archive** (v2.735, migration `20260718172650`): non-NULL `archived_at` hides the customer from the Customers list by default (Show archived toggle + badge) and from pickers that link new jobs/estimates/bids/projects; existing links keep working and display is unchanged. Archive/Unarchive is in the Edit customer form (dev/master/assistant-like) with a confirm modal; kernel `src/lib/customerArchive.ts`. No RLS change — same-row UPDATE under existing policies.
 - **RLS**: 
   - SELECT: Users can see customers where `master_user_id` matches their ID, they're a dev/master, they're in `master_assistants`, they're in `master_shares`, or they're an **estimator** (estimators can see all customers, for Bids GC/Builder dropdown only; they cannot access `/customers` page)
   - INSERT: Estimators can insert customers only when `master_user_id` is set to a valid master (dev or master_technician); see migration `allow_estimators_select_customers.sql`

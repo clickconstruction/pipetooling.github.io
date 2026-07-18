@@ -13,6 +13,7 @@ import {
 import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
 import { openInExternalBrowser } from '../lib/openInExternalBrowser'
 import { isAssistantLike } from '../lib/subcontractorLikeRole'
+import { isCustomerArchived } from '../lib/customerArchive'
 
 type CustomerRow = Database['public']['Tables']['customers']['Row']
 
@@ -151,6 +152,9 @@ export default function EditCustomerForm({ customerId, onSaved, onCancel, onDele
   const [deleteConfirm, setDeleteConfirm] = useState('')
   const [deleting, setDeleting] = useState(false)
   const [advancedExpanded, setAdvancedExpanded] = useState(false)
+  const [archivedAt, setArchivedAt] = useState<string | null>(null)
+  const [archiveConfirmOpen, setArchiveConfirmOpen] = useState(false)
+  const [archiving, setArchiving] = useState(false)
 
   const [mergeExpanded, setMergeExpanded] = useState(false)
   const [mergeCustomers, setMergeCustomers] = useState<CustomerPickRow[]>([])
@@ -339,6 +343,8 @@ export default function EditCustomerForm({ customerId, onSaved, onCancel, onDele
           : null
       )
       setMasterUserId(row.master_user_id ?? '')
+      // Tolerate the column not existing yet (client can deploy before db push).
+      setArchivedAt(isCustomerArchived(row) ? row.archived_at : null)
       setFetching(false)
     })()
   }, [customerId])
@@ -442,13 +448,57 @@ export default function EditCustomerForm({ customerId, onSaved, onCancel, onDele
     !mergePreviewLoading &&
     !mergePreviewError
 
+  async function setArchived(archive: boolean) {
+    setArchiving(true)
+    setError(null)
+    const nextArchivedAt = archive ? new Date().toISOString() : null
+    const { error: err, data } = await supabase
+      .from('customers')
+      .update({ archived_at: nextArchivedAt, archived_by: archive ? (user?.id ?? null) : null })
+      .eq('id', customerId)
+      .select('id')
+    setArchiving(false)
+    if (err) {
+      showToast(formatErrorMessage(err, archive ? 'Archive failed' : 'Unarchive failed'), 'error')
+      return
+    }
+    if (!Array.isArray(data) || data.length === 0) {
+      showToast('Could not update this customer. You may not have permission.', 'error')
+      return
+    }
+    setArchivedAt(nextArchivedAt)
+    setArchiveConfirmOpen(false)
+    showToast(archive ? `${name || 'Customer'} archived.` : `${name || 'Customer'} unarchived.`, 'success')
+    await onSaved()
+  }
+
   if (fetching) return <p>Loading…</p>
 
   const showMergeUi = myRole === 'dev' || myRole === 'master_technician' || isAssistantLike(myRole)
+  const showArchiveUi = showMergeUi
+  const isArchived = archivedAt != null
 
   return (
     <div>
-      <h2 style={{ margin: 0, marginBottom: '1rem' }}>Edit customer</h2>
+      <h2 style={{ margin: 0, marginBottom: isArchived ? '0.5rem' : '1rem' }}>Edit customer</h2>
+      {isArchived && (
+        <p
+          style={{
+            margin: '0 0 1rem',
+            padding: '0.4rem 0.75rem',
+            borderRadius: 6,
+            background: 'var(--bg-muted)',
+            border: '1px solid var(--border-strong)',
+            color: 'var(--text-700)',
+            fontSize: '0.875rem',
+            maxWidth: 400,
+            boxSizing: 'border-box',
+          }}
+        >
+          <strong>Archived</strong> {new Date(archivedAt!).toLocaleDateString()} — hidden from the customer list and
+          new-link pickers. Existing jobs, bids, and estimates are unaffected.
+        </p>
+      )}
       <form onSubmit={handleSubmit} style={{ maxWidth: 400 }}>
         <div style={{ marginBottom: '1rem' }}>
           <label htmlFor="edit-name" style={{ display: 'block', marginBottom: 4 }}>
@@ -708,6 +758,32 @@ export default function EditCustomerForm({ customerId, onSaved, onCancel, onDele
               Cancel
             </button>
           </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+          {showArchiveUi && (
+            <button
+              type="button"
+              disabled={archiving}
+              onClick={() => {
+                if (isArchived) {
+                  void setArchived(false)
+                } else {
+                  setArchiveConfirmOpen(true)
+                }
+              }}
+              style={{
+                padding: '0.5rem 0.75rem',
+                background: 'var(--surface)',
+                border: '1px solid var(--border-strong)',
+                borderRadius: 4,
+                cursor: archiving ? 'not-allowed' : 'pointer',
+                color: 'var(--text-700)',
+                fontWeight: 500,
+                opacity: archiving ? 0.7 : 1,
+              }}
+            >
+              {archiving ? 'Working…' : isArchived ? 'Unarchive' : 'Archive customer'}
+            </button>
+          )}
           {(myRole === 'dev' || myRole === 'master_technician') && (
             <button
               type="button"
@@ -732,6 +808,7 @@ export default function EditCustomerForm({ customerId, onSaved, onCancel, onDele
               </svg>
             </button>
           )}
+          </div>
         </div>
       </form>
 
@@ -905,6 +982,57 @@ export default function EditCustomerForm({ customerId, onSaved, onCancel, onDele
               )}
             </div>
           )}
+        </div>
+      )}
+
+      {archiveConfirmOpen && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100 }}>
+          <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 320, maxWidth: 420 }}>
+            <h2 style={{ marginTop: 0 }}>Archive customer</h2>
+            <p style={{ marginBottom: '0.5rem' }}>
+              Archive <strong>{name}</strong>? Nothing is deleted:
+            </p>
+            <ul style={{ margin: '0 0 1rem', paddingLeft: '1.25rem', fontSize: '0.875rem', color: 'var(--text-700)' }}>
+              <li>Hidden from the Customers list (a "Show archived" toggle reveals them)</li>
+              <li>Removed from pickers that link new jobs, bids, estimates, and projects</li>
+              <li>Existing jobs, bids, estimates, and projects stay linked and display unchanged</li>
+              <li>You can unarchive anytime from this screen</li>
+            </ul>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button
+                type="button"
+                onClick={() => {
+                  void setArchived(true)
+                }}
+                disabled={archiving}
+                style={{
+                  padding: '0.5rem 1rem',
+                  color: 'white',
+                  background: '#b45309',
+                  border: 'none',
+                  borderRadius: 4,
+                  cursor: archiving ? 'not-allowed' : 'pointer',
+                  fontWeight: 500,
+                }}
+              >
+                {archiving ? 'Archiving…' : 'Archive'}
+              </button>
+              <button
+                type="button"
+                onClick={() => setArchiveConfirmOpen(false)}
+                disabled={archiving}
+                style={{
+                  padding: '0.5rem 1rem',
+                  background: 'var(--bg-muted)',
+                  border: '1px solid var(--border-strong)',
+                  borderRadius: 4,
+                  cursor: archiving ? 'not-allowed' : 'pointer',
+                }}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

@@ -22,6 +22,7 @@ import { useToastContext } from '../contexts/ToastContext'
 import { useEditCustomerModal } from '../contexts/EditCustomerModalContext'
 import CustomerSearchCombobox from '../components/customers/CustomerSearchCombobox'
 import NewCustomerForm from '../components/NewCustomerForm'
+import { filterActiveCustomersForPicker } from '../lib/customerArchive'
 import { CustomerNotesTable } from '../components/customerNotes/CustomerNotesTable'
 import { useCustomerContactsForCustomer } from '../hooks/useCustomerContactsForCustomer'
 import {
@@ -2421,7 +2422,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
           async () =>
             await supabase
               .from('customers')
-              .select('id, name, address, contact_info, date_met, master_user_id, customer_type')
+              .select('id, name, address, contact_info, date_met, master_user_id, customer_type, archived_at')
               .order('name'),
           'load customers for estimate',
         )
@@ -2473,7 +2474,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
           async () =>
             await supabase
               .from('customers')
-              .select('id, name, address, contact_info, date_met, master_user_id, customer_type')
+              .select('id, name, address, contact_info, date_met, master_user_id, customer_type, archived_at')
               .order('name'),
           'refetch customers after edit',
         )
@@ -3031,7 +3032,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
           async () =>
             await supabase
               .from('customers')
-              .select('id, name, address, contact_info, date_met, master_user_id, customer_type')
+              .select('id, name, address, contact_info, date_met, master_user_id, customer_type, archived_at')
               .eq('id', customerId)
               .maybeSingle(),
           'load customer for send',
@@ -3362,7 +3363,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
           >
             <span style={{ display: 'block', fontWeight: 500, marginBottom: '0.25rem' }}>Customer</span>
             <CustomerSearchCombobox
-              customers={customers}
+              customers={filterActiveCustomersForPicker(customers, customerId)}
               loading={customersLoading}
               valueId={customerId}
               searchText={customerSearch}

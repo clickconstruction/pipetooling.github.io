@@ -8,6 +8,7 @@ import {
   type EstimateForCreateJob,
 } from '../../lib/createJobFromEstimateSubmit'
 import { normalizeEstimateLineItemsFromJson } from '../../lib/estimateLineItemNormalize'
+import { filterActiveCustomersForPicker } from '../../lib/customerArchive'
 import { EstimateLineItemsTable } from './EstimateCustomerDocument'
 import type { Tables } from '../../types/database'
 import type { JobPayloadCustomerRow } from '../../lib/jobLedgerCustomer'
@@ -172,11 +173,16 @@ export default function CreateJobFromEstimateModal({
       try {
         const rows = await withSupabaseRetry(
           async () =>
-            await supabase.from('customers').select('id, name, master_user_id').order('name'),
+            await supabase.from('customers').select('id, name, master_user_id, archived_at').order('name'),
           'load customers for create job from estimate',
         )
         if (customersCancelled) return
-        setCustomersForPayload((rows ?? []) as JobPayloadCustomerRow[])
+        // Linking a NEW job — archived customers excluded from this picker.
+        setCustomersForPayload(
+          filterActiveCustomersForPicker(
+            (rows ?? []) as (JobPayloadCustomerRow & { archived_at?: string | null })[],
+          ),
+        )
       } catch (e) {
         if (!customersCancelled) {
           showToast(formatErrorMessage(e, 'Could not load customers'), 'error')

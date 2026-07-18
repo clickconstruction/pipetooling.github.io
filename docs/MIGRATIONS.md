@@ -5,7 +5,7 @@ file: MIGRATIONS.md
 type: Reference/Changelog
 purpose: Complete database migration history organized by date and category
 audience: Developers, Database Administrators, AI Agents
-last_updated: 2026-07-17
+last_updated: 2026-07-18
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate to Advanced
 
@@ -102,6 +102,14 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 > **Reading older entries:** filenames beginning **`2027…`** are **typo-dated** (the real work happened March–June 2026). All of them predate the **2026-06-04 baseline squash** — the files now live in [`supabase/archive/migrations-pre-baseline/`](../supabase/archive/migrations-pre-baseline/) and their schema is part of [`20250101000000_baseline.sql`](../supabase/migrations/20250101000000_baseline.sql). Entries below keep the original filenames so they match the archive. The prod ledger was fully reconciled on **2026-07-04** (backup: `supabase_migrations._schema_migrations_backup_20260704`); since then, migrations apply **only** via `supabase db push` (see `CLAUDE.md`).
 
 ### July 2026
+
+#### July 18, 2026
+
+**`20260718172650_customer_soft_archive.sql`** _(apply via `supabase db push` after the file is on `main`)_
+- **Purpose**: **Customer soft archive** (v2.735). Adds nullable `customers.archived_at timestamptz` and `customers.archived_by uuid REFERENCES users(id) ON DELETE SET NULL` (both `ADD COLUMN IF NOT EXISTS`, idempotent) + column comments documenting the semantics. Archived customers are hidden from the Customers list by default and excluded from pickers that link new jobs/estimates/bids/projects; existing links keep working and archived customers still render wherever already referenced. Never a delete.
+- **No RLS change**: archiving is a same-row UPDATE already covered by the existing customers UPDATE policies (masters own rows, assistants of adopted masters, estimators). No new table, so the read-only-blocks footer does not apply.
+- **Ordering**: the v2.735 client adds `archived_at` to several explicit customer select lists — push this migration immediately after the client PR merges or those loads 400.
+- **Category**: Customers / feature
 
 #### July 17, 2026
 

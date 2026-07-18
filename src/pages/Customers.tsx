@@ -5,6 +5,7 @@ import { supabase } from '../lib/supabase'
 import { useNewCustomerModal } from '../contexts/NewCustomerModalContext'
 import { useEditCustomerModal } from '../contexts/EditCustomerModalContext'
 import { CustomerNotesTable } from '../components/customerNotes/CustomerNotesTable'
+import { isCustomerArchived, partitionCustomersByArchived } from '../lib/customerArchive'
 import type { Database } from '../types/database'
 import type { Json } from '../types/database'
 
@@ -65,6 +66,7 @@ export default function Customers() {
   >({})
   const [expandedNotesCustomerId, setExpandedNotesCustomerId] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
+  const [showArchived, setShowArchived] = useState(false)
 
   async function refreshNoteCountsForCustomers(ids: string[]) {
     if (ids.length === 0) return
@@ -187,13 +189,16 @@ export default function Customers() {
   if (loading) return <p>Loading customers…</p>
   if (error) return <p style={{ color: 'var(--text-red-700)' }}>{error}</p>
 
-  const defaultTypeCount = customers.filter(isCustomerCommercialDefaultType).length
+  const { active: activeCustomers, archived: archivedCustomers } = partitionCustomersByArchived(customers)
+  const visibleCustomers = showArchived ? customers : activeCustomers
+
+  const defaultTypeCount = visibleCustomers.filter(isCustomerCommercialDefaultType).length
   const typeFromUrl = parseCustomerTypeFilter(searchParams.get('type'))
   const typeFilter: CustomerTypeFilter =
     typeFromUrl === 'commercial_default' && defaultTypeCount === 0 ? 'all' : typeFromUrl
 
   const q = searchQuery.trim().toLowerCase()
-  const byType = customers.filter((c) => {
+  const byType = visibleCustomers.filter((c) => {
     if (typeFilter === 'all') return true
     if (typeFilter === 'commercial') return c.customer_type === 'commercial'
     if (typeFilter === 'commercial_default') return isCustomerCommercialDefaultType(c)
@@ -280,6 +285,25 @@ export default function Customers() {
               }}
             >
               {NO_CUSTOMER_TYPE_LABEL} ({defaultTypeCount})
+            </button>
+          ) : null}
+          {archivedCustomers.length > 0 ? (
+            <button
+              type="button"
+              onClick={() => setShowArchived((prev) => !prev)}
+              aria-pressed={showArchived}
+              style={{
+                padding: '0.35rem 0.75rem',
+                border: '1px solid var(--border-strong)',
+                borderRadius: 4,
+                background: showArchived ? 'var(--bg-muted)' : 'var(--surface)',
+                color: 'var(--text-700)',
+                cursor: 'pointer',
+                fontSize: '0.875rem',
+                marginLeft: 'auto',
+              }}
+            >
+              {showArchived ? 'Hide archived' : 'Show archived'} ({archivedCustomers.length})
             </button>
           ) : null}
         </div>
@@ -374,6 +398,22 @@ export default function Customers() {
                       }}
                     >
                       {customerTypeTagLabel(c)}
+                    </span>
+                  ) : null}
+                  {isCustomerArchived(c) ? (
+                    <span
+                      style={{
+                        fontSize: '0.6875rem',
+                        fontWeight: 600,
+                        padding: '0.1rem 0.4rem',
+                        borderRadius: 4,
+                        background: 'var(--bg-amber-100)',
+                        color: 'var(--text-amber-800)',
+                        border: '1px solid #f59e0b',
+                      }}
+                      title={c.archived_at ? `Archived ${new Date(c.archived_at).toLocaleDateString()}` : 'Archived'}
+                    >
+                      Archived
                     </span>
                   ) : null}
                 </div>
