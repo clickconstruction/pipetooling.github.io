@@ -66,6 +66,7 @@ import {
 } from '../lib/bids/bidFormatting'
 import { tabStyle, bidsTabStyle } from '../lib/bids/bidStyles'
 import { extractContactInfo } from '../lib/bids/bidContactInfo'
+import { filterActiveCustomersForPicker } from '../lib/customerArchive'
 import { useBidEditForm } from '../lib/bids/useBidEditForm'
 
 type GcBuilder = Database['public']['Tables']['bids_gc_builders']['Row']
@@ -763,14 +764,17 @@ export default function Bids() {
   async function loadCustomers() {
     const { data, error } = await supabase
       .from('customers')
-      .select('id, name, address, master_user_id, contact_info')
+      .select('id, name, address, master_user_id, contact_info, archived_at')
       .or('customer_type.is.null,customer_type.eq.commercial')
       .order('name')
     if (error) {
       setError(`Failed to load customers: ${error.message}`)
       return
     }
-    setCustomers((data as Customer[]) ?? [])
+    // Archived customers stay out of the GC picker and Builder Review roster;
+    // bid rows render their customer via the embedded customers(*) join, so
+    // existing archived links still display.
+    setCustomers(filterActiveCustomersForPicker((data as Customer[]) ?? []))
   }
 
   async function loadServiceTypes() {

@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-18 (v2.735)
+last_updated: 2026-07-18 (v2.736)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.736)
+
+### Customers — soft archive: archive/unarchive, list toggle, picker filtering (2026-07-18)
+Customers can now be **archived** (patterned on user archival — soft, reversible, nothing deleted). Migration `20260718172650_customer_soft_archive.sql` adds nullable `customers.archived_at timestamptz` + `archived_by uuid` (FK → users, ON DELETE SET NULL); **no RLS change** — archiving is a same-row UPDATE already covered by the existing customers UPDATE policies. **Edit customer** ([`EditCustomerForm.tsx`](../src/components/EditCustomerForm.tsx), dev/master/assistant-like) gains an **Archive customer** button with a confirm modal spelling out the effects (and **Unarchive** + an "Archived <date>" banner when archived). The **Customers page** hides archived rows by default behind a **Show archived (n)** toggle; archived cards get an amber **Archived** badge. Pickers that link **NEW** records exclude archived customers via the new pure kernel [`customerArchive.ts`](../src/lib/customerArchive.ts) (`isCustomerArchived` / `partitionCustomersByArchived` / `filterActiveCustomersForPicker`, **8 tests**; tolerates the column not existing yet): job form customer search (keeps the currently-linked row selectable), estimate customer combobox (same), Bids GC picker + Builder Review roster, new-project picker, create-job-from-estimate picker, and Jobs' link-implication list. **Display of existing links is unchanged everywhere** — by-id lookups, embedded joins (`customers(*)`), snapshot/clock/print surfaces, backups, merge picker (archived duplicates stay mergeable), and header global search (still finds archived customers for navigation) are untouched. Apply the migration with `supabase db push` immediately after merge — the new explicit-select `archived_at` columns 400 until it lands.
 
 ## Latest Updates (v2.735)
 

@@ -31,6 +31,7 @@ import { MoneyDecimalAmountInput } from '../MoneyDecimalAmountInput'
 import type { Database } from '../../types/database'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import { resolveCustomerIdForJobPayload } from '../../lib/jobLedgerCustomer'
+import { filterActiveCustomersForPicker } from '../../lib/customerArchive'
 import { jobLedgerHasCustomerForBilling } from '../../lib/jobLedgerCustomerForBilling'
 import { revenueDollarsFromFixtures } from '../../lib/revenueFromJobFixtures'
 import { resolveEffectiveJobMasterUserId } from '../../lib/resolveEffectiveJobMasterUserId'
@@ -1378,7 +1379,7 @@ export default function JobFormModal({
               async () =>
                 await supabase
                   .from('customers')
-                  .select('id, name, address, contact_info, date_met, master_user_id, customer_type')
+                  .select('id, name, address, contact_info, date_met, master_user_id, customer_type, archived_at')
                   .eq('id', estimateCustomerId)
                   .maybeSingle(),
               'job form import estimate customer',
@@ -1452,7 +1453,7 @@ export default function JobFormModal({
           { data: stData },
           { data: meRow },
         ] = await Promise.all([
-          supabase.from('customers').select('id, name, address, contact_info, date_met, master_user_id, customer_type').order('name'),
+          supabase.from('customers').select('id, name, address, contact_info, date_met, master_user_id, customer_type, archived_at').order('name'),
           supabase.from('projects').select('id, name, customer_id, master_user_id, customers(name)').order('name'),
           supabase
             .from('bids')
@@ -1904,7 +1905,7 @@ export default function JobFormModal({
     ;(async () => {
       const { data } = await supabase
         .from('customers')
-        .select('id, name, address, contact_info, date_met, master_user_id, customer_type')
+        .select('id, name, address, contact_info, date_met, master_user_id, customer_type, archived_at')
         .order('name')
       const all = (data as CustomerRow[]) ?? []
       const name = customerName.trim()
@@ -3811,7 +3812,10 @@ export default function JobFormModal({
                       ) : (
                         (() => {
                           const q = customerSearch.toLowerCase()
-                          const filtered = customers.filter((c) =>
+                          // Archived customers can't be linked to new/edited jobs; the
+                          // currently-linked one stays selectable (keepId) so editing an
+                          // existing link keeps working.
+                          const filtered = filterActiveCustomersForPicker(customers, customerId).filter((c) =>
                             (c.name || '').toLowerCase().includes(q) || (c.address || '').toLowerCase().includes(q)
                           )
                           return (

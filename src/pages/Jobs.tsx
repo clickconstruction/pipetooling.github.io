@@ -43,6 +43,7 @@ import {
   sumInvoiceAppliedFromJobPayments,
 } from '../lib/jobs/invoiceBilling'
 import { pageTabStyle } from '../lib/pageTabStyle'
+import { filterActiveCustomersForPicker } from '../lib/customerArchive'
 import { openInExternalBrowser } from '../lib/openInExternalBrowser'
 import { useAuth } from '../hooks/useAuth'
 import { isAssistantLike } from '../lib/subcontractorLikeRole'
@@ -3145,9 +3146,10 @@ ${totalsHtml}
     ;(async () => {
       const { data } = await supabase
         .from('customers')
-        .select('id, name, address, contact_info, date_met, master_user_id, customer_type')
+        .select('id, name, address, contact_info, date_met, master_user_id, customer_type, archived_at')
         .order('name')
-      setCustomers((data as CustomerRow[]) ?? [])
+      // Feeds link-implication for NEW customer links — archived excluded.
+      setCustomers(filterActiveCustomersForPicker((data as CustomerRow[]) ?? []))
     })()
   }, [jobFormModal?.isOpen, authUser?.id, authLoading, activeTab])
 
@@ -4295,9 +4297,9 @@ ${totalsHtml}
     void (async () => {
       const { data } = await supabase
         .from('customers')
-        .select('id, name, address, contact_info, date_met, master_user_id, customer_type')
+        .select('id, name, address, contact_info, date_met, master_user_id, customer_type, archived_at')
         .order('name')
-      setCustomers((data as CustomerRow[]) ?? [])
+      setCustomers(filterActiveCustomersForPicker((data as CustomerRow[]) ?? []))
     })()
   }
 

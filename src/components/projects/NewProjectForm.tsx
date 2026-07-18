@@ -4,6 +4,7 @@ import { Pencil, ChevronUp, ChevronDown, Trash2 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useIsNarrowScreen } from '../../hooks/useIsNarrowScreen'
+import { filterActiveCustomersForPicker } from '../../lib/customerArchive'
 import type { Database } from '../../types/database'
 import type { NewProjectPrefill } from '../../contexts/NewProjectModalContext'
 
@@ -98,10 +99,11 @@ export default function NewProjectForm({ prefill, onCancel, onCreated }: NewProj
     (async () => {
       const { data } = await supabase
         .from('customers')
-        .select('id, name, address, master_user_id')
+        .select('id, name, address, master_user_id, archived_at')
         .or('customer_type.is.null,customer_type.eq.commercial')
         .order('name')
-      setCustomers((data as CustomerRow[]) ?? [])
+      // New-project picker links a NEW record — archived customers excluded.
+      setCustomers(filterActiveCustomersForPicker((data as CustomerRow[]) ?? []))
       setCustomersLoading(false)
     })()
   }, [])

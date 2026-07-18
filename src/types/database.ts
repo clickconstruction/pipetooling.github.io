@@ -2346,6 +2346,8 @@ export type Database = {
       customers: {
         Row: {
           address: string | null
+          archived_at: string | null
+          archived_by: string | null
           contact_info: Json | null
           created_at: string | null
           customer_type: string | null
@@ -2360,6 +2362,8 @@ export type Database = {
         }
         Insert: {
           address?: string | null
+          archived_at?: string | null
+          archived_by?: string | null
           contact_info?: Json | null
           created_at?: string | null
           customer_type?: string | null
@@ -2374,6 +2378,8 @@ export type Database = {
         }
         Update: {
           address?: string | null
+          archived_at?: string | null
+          archived_by?: string | null
           contact_info?: Json | null
           created_at?: string | null
           customer_type?: string | null
@@ -2387,6 +2393,13 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "customers_archived_by_fkey"
+            columns: ["archived_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "customers_master_user_id_fkey"
             columns: ["master_user_id"]
