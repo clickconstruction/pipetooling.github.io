@@ -217,7 +217,10 @@ export function useDashboardBillingInvoices({
       setAssignedJobs((prev) => prev.filter((j) => j.id !== jobId))
       setAssignedReadyToBillJobs((prev) => prev.filter((j) => j.id !== jobId))
       setSuperintendentJobs((prev) => prev.filter((j) => j.id !== jobId))
-      refreshInvoices()
+      // Runs concurrently with the job-list reloads below, but its completion is
+      // part of the returned promise (awaited before `return true`) so callers
+      // never observe stale invoice state after awaiting updateJobStatus.
+      const invoicesRefreshed = refreshInvoices()
       const { data: assignedData } = await supabase.rpc('list_assigned_jobs_for_dashboard')
       if (assignedData) setAssignedJobs(assignedData as unknown as DashboardTeamAssignedJobRow[])
       if (isDashboardTeamReadyToBillRole(role)) {
@@ -228,6 +231,7 @@ export function useDashboardBillingInvoices({
         const { data: superintendentData } = await supabase.rpc('list_superintendent_jobs_for_dashboard')
         if (superintendentData) setSuperintendentJobs(superintendentData as unknown as DashboardTeamAssignedJobRow[])
       }
+      await invoicesRefreshed
       return true
     } finally {
       setJobStatusUpdatingId(null)
