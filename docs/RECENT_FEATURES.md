@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-18 (v2.733)
+last_updated: 2026-07-18 (v2.734)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.734)
+
+### Fix — payment modal no longer receives leaked dashboard fields (2026-07-18)
+Billing bug-review pass #6 (issue 1 from PR #385's seed list — the last of the pass; issue 7, the render-body ref assignments, is deliberately deferred to its own architectural pass). `dashboardInvoiceToPaymentModal` ([`dashboardBillingInvoiceUnits.ts`](../src/lib/dashboardBillingInvoiceUnits.ts)) destructured most dashboard-flattened fields off the invoice before spreading it into the `InvoiceWithJobLike` object handed to `BilledPaymentConfirmationModal`, but missed `customer_phone` and `last_work_date` — those two rode the spread into the modal's invoice object as undeclared extras (harmless today: the modal never reads them, but they made the object shape lie about its type and would silently feed any future spread of it). Both are now stripped in the same destructure. The pinning test flipped to assert all 13 dashboard-only fields are stripped, plus a new exhaustive shape test: the modal invoice's keys are exactly the invoice-table columns + `job`. **No visible change** — the modal ignored the extras. Kernel suite 27 → 28 tests.
 
 ## Latest Updates (v2.733)
 

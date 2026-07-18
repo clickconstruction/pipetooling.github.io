@@ -231,7 +231,7 @@ describe('dashboardInvoiceToPaymentModal', () => {
     })
   })
 
-  it('strips the dashboard-only flattened fields from the invoice row', () => {
+  it('strips ALL the dashboard-only flattened fields from the invoice row', () => {
     const out = dashboardInvoiceToPaymentModal(mkInvoice()) as unknown as Record<string, unknown>
     for (const stripped of [
       'hcp_number',
@@ -243,15 +243,18 @@ describe('dashboardInvoiceToPaymentModal', () => {
       'customer_id',
       'customer_name',
       'customer_email',
+      'customer_phone',
+      'last_work_date',
       'open_since_at',
       'invoice_payments',
     ]) {
       expect(stripped in out, `${stripped} should be stripped`).toBe(false)
     }
-    // Documents current behavior: customer_phone / last_work_date are NOT in the
-    // destructure list, so they ride along on the spread (harmless extras today).
-    expect(out.customer_phone).toBe('555-0100')
-    expect(out.last_work_date).toBe('2026-06-30')
+  })
+
+  it('passes through exactly the invoice-table fields plus the job object', () => {
+    const out = dashboardInvoiceToPaymentModal(mkInvoice()) as unknown as Record<string, unknown>
+    expect(Object.keys(out).sort()).toEqual([...Object.keys(BASE_INVOICE_FIELDS), 'job'].sort())
   })
 })
 

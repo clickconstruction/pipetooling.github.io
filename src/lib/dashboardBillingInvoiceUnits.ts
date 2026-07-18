@@ -111,6 +111,7 @@ export function dashboardBilledInvoiceAmounts(inv: InvoiceForDashboard): { appli
   return { applied, open: Math.max(0, Number(inv.amount ?? 0) - applied) }
 }
 
+/** Strips every dashboard-flattened field so only invoice-table columns ride the spread. */
 export function dashboardInvoiceToPaymentModal(inv: InvoiceForDashboard): InvoiceWithJobLike {
   const {
     hcp_number,
@@ -122,6 +123,8 @@ export function dashboardInvoiceToPaymentModal(inv: InvoiceForDashboard): Invoic
     customer_id,
     customer_name,
     customer_email,
+    customer_phone: _customerPhone,
+    last_work_date: _lastWorkDate,
     open_since_at: _openSince,
     invoice_payments: _invPay,
     ...invoiceRow
