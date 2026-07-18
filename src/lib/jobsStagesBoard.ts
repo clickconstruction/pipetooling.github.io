@@ -36,6 +36,11 @@ export function jobBillingUnallocatedDollars(job: JobWithDetails): number {
   return jobBillingUnallocCentsJob(job) / 100
 }
 
+/** Requested partial-invoice cents clamped to the billing-unallocated remainder (Stages "Create partial invoice"). */
+export function clampPartialInvoiceCentsToUnallocated(job: JobWithDetails, amountDollars: number): number {
+  return Math.min(Math.round(amountDollars * 100), jobBillingUnallocCentsJob(job))
+}
+
 function invoiceAmountCents(inv: Pick<JobsLedgerInvoice, 'amount'>): number {
   return Math.round(Number(inv.amount ?? 0) * 100)
 }

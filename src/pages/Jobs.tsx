@@ -171,6 +171,7 @@ import {
 import {
   buildBilledStageRows,
   buildJobsStagesBoardLists,
+  clampPartialInvoiceCentsToUnallocated,
   jobBillingUnallocatedDollars,
   jobInCollections,
   locateStagesInvoiceSection,
@@ -4344,15 +4345,15 @@ ${totalsHtml}
       setError('Enter a valid amount greater than 0')
       return
     }
-    const remaining = Math.max(0, (Number(createPartialInvoiceJob.revenue ?? 0) - Number(createPartialInvoiceJob.payments_made ?? 0)))
-    const amountToUseCents = Math.min(Math.round(amount * 100), Math.round(remaining * 100))
+    const remaining = jobBillingUnallocatedDollars(createPartialInvoiceJob)
+    const amountToUseCents = clampPartialInvoiceCentsToUnallocated(createPartialInvoiceJob, amount)
     const amountToUse = amountToUseCents / 100
     if (!(amountToUse > 0)) {
       setError('No remaining balance to bill')
       return
     }
     if (amountToUseCents < Math.round(amount * 100)) {
-      showToast(`Adjusted to remaining balance ($${formatCurrency(amountToUse)})`, 'info')
+      showToast(`Adjusted to remaining unallocated ($${formatCurrency(amountToUse)})`, 'info')
       setCreatePartialInvoiceAmount(String(amountToUse))
     }
     if (
@@ -6196,7 +6197,7 @@ ${totalsHtml}
                                       </svg>
                                     </button>
                                     {(() => {
-                                      const rem = Math.max(0, (Number(j.revenue ?? 0) - Number(j.payments_made ?? 0)))
+                                      const rem = jobBillingUnallocatedDollars(j)
                                       return (
                                         <button
                                           type="button"
@@ -6924,7 +6925,7 @@ ${totalsHtml}
                                           )
                                         })()}
                                       {showCreatePartialInvoice && (() => {
-                                        const rem = Math.max(0, (Number(j.revenue ?? 0) - Number(j.payments_made ?? 0)))
+                                        const rem = jobBillingUnallocatedDollars(j)
                                         return (
                                           <button
                                             type="button"
@@ -9762,7 +9763,7 @@ ${totalsHtml}
             <h2 style={{ margin: '0 0 1rem', fontSize: '1.25rem' }}>Create partial invoice</h2>
             <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>{createPartialInvoiceJob.hcp_number ?? '—'} · {createPartialInvoiceJob.job_name ?? '—'}</p>
             <div style={{ marginBottom: '1rem' }}>
-              <div style={{ marginBottom: '0.5rem', fontSize: '0.875rem' }}>Remaining: ${formatCurrency(Math.max(0, (Number(createPartialInvoiceJob.revenue ?? 0) - Number(createPartialInvoiceJob.payments_made ?? 0))))}</div>
+              <div style={{ marginBottom: '0.5rem', fontSize: '0.875rem' }}>Remaining: ${formatCurrency(jobBillingUnallocatedDollars(createPartialInvoiceJob))}</div>
               <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>
                 Amount ($)
                 <input
@@ -9773,13 +9774,9 @@ ${totalsHtml}
                   onChange={(e) => setCreatePartialInvoiceAmount(e.target.value)}
                   onBlur={() => {
                     if (!createPartialInvoiceJob) return
-                    const rem = Math.max(
-                      0,
-                      Number(createPartialInvoiceJob.revenue ?? 0) - Number(createPartialInvoiceJob.payments_made ?? 0)
-                    )
                     const raw = parseFloat(createPartialInvoiceAmount)
                     if (!Number.isFinite(raw)) return
-                    const useCents = Math.min(Math.round(raw * 100), Math.round(rem * 100))
+                    const useCents = clampPartialInvoiceCentsToUnallocated(createPartialInvoiceJob, raw)
                     const clamped = useCents / 100
                     if (Math.round(raw * 100) !== useCents) {
                       setCreatePartialInvoiceAmount(String(clamped))

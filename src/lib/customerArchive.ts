@@ -1,5 +1,5 @@
 /**
- * Customer soft-archive kernel (v2.735).
+ * Customer soft-archive kernel (v2.736).
  *
  * A customer is archived when `customers.archived_at` is a non-empty value.
  * All helpers tolerate rows where the column is missing entirely (undefined) —

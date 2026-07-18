@@ -1,4 +1,4 @@
--- Customer soft archive (v2.735).
+-- Customer soft archive (v2.736).
 -- Adds nullable archive markers to public.customers. No delete, no RLS change:
 -- archiving is a same-row UPDATE already covered by the existing customers
 -- UPDATE policies (masters own rows, assistants of adopted masters, estimators).

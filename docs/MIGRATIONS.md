@@ -106,9 +106,9 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 #### July 18, 2026
 
 **`20260718172650_customer_soft_archive.sql`** _(apply via `supabase db push` after the file is on `main`)_
-- **Purpose**: **Customer soft archive** (v2.735). Adds nullable `customers.archived_at timestamptz` and `customers.archived_by uuid REFERENCES users(id) ON DELETE SET NULL` (both `ADD COLUMN IF NOT EXISTS`, idempotent) + column comments documenting the semantics. Archived customers are hidden from the Customers list by default and excluded from pickers that link new jobs/estimates/bids/projects; existing links keep working and archived customers still render wherever already referenced. Never a delete.
+- **Purpose**: **Customer soft archive** (v2.736). Adds nullable `customers.archived_at timestamptz` and `customers.archived_by uuid REFERENCES users(id) ON DELETE SET NULL` (both `ADD COLUMN IF NOT EXISTS`, idempotent) + column comments documenting the semantics. Archived customers are hidden from the Customers list by default and excluded from pickers that link new jobs/estimates/bids/projects; existing links keep working and archived customers still render wherever already referenced. Never a delete.
 - **No RLS change**: archiving is a same-row UPDATE already covered by the existing customers UPDATE policies (masters own rows, assistants of adopted masters, estimators). No new table, so the read-only-blocks footer does not apply.
-- **Ordering**: the v2.735 client adds `archived_at` to several explicit customer select lists — push this migration immediately after the client PR merges or those loads 400.
+- **Ordering**: the v2.736 client adds `archived_at` to several explicit customer select lists — push this migration immediately after the client PR merges or those loads 400.
 - **Category**: Customers / feature
 
 #### July 17, 2026

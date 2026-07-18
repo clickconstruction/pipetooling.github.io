@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-18 (v2.735)
+last_updated: 2026-07-18 (v2.736)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2046,10 +2046,15 @@ when_to_read:
 155. [Customer and Project Management](#customer-and-project-management)
 ---
 
-## Latest Updates (v2.735)
+## Latest Updates (v2.736)
 
 ### Customers — soft archive: archive/unarchive, list toggle, picker filtering (2026-07-18)
 Customers can now be **archived** (patterned on user archival — soft, reversible, nothing deleted). Migration `20260718172650_customer_soft_archive.sql` adds nullable `customers.archived_at timestamptz` + `archived_by uuid` (FK → users, ON DELETE SET NULL); **no RLS change** — archiving is a same-row UPDATE already covered by the existing customers UPDATE policies. **Edit customer** ([`EditCustomerForm.tsx`](../src/components/EditCustomerForm.tsx), dev/master/assistant-like) gains an **Archive customer** button with a confirm modal spelling out the effects (and **Unarchive** + an "Archived <date>" banner when archived). The **Customers page** hides archived rows by default behind a **Show archived (n)** toggle; archived cards get an amber **Archived** badge. Pickers that link **NEW** records exclude archived customers via the new pure kernel [`customerArchive.ts`](../src/lib/customerArchive.ts) (`isCustomerArchived` / `partitionCustomersByArchived` / `filterActiveCustomersForPicker`, **8 tests**; tolerates the column not existing yet): job form customer search (keeps the currently-linked row selectable), estimate customer combobox (same), Bids GC picker + Builder Review roster, new-project picker, create-job-from-estimate picker, and Jobs' link-implication list. **Display of existing links is unchanged everywhere** — by-id lookups, embedded joins (`customers(*)`), snapshot/clock/print surfaces, backups, merge picker (archived duplicates stay mergeable), and header global search (still finds archived customers for navigation) are untouched. Apply the migration with `supabase db push` immediately after merge — the new explicit-select `archived_at` columns 400 until it lands.
+
+## Latest Updates (v2.735)
+
+### Fix — Stages partial-invoice modal uses unallocated remaining (2026-07-18)
+Live-confirmed billing bug (2026-07-18): the Jobs → Stages "Create partial invoice" modal ([`Jobs.tsx`](../src/pages/Jobs.tsx) `createInvoiceFromModal`) computed "Remaining" as `revenue − payments_made` only, ignoring existing ready_to_bill/billed invoice allocations — a $600 job with a $200 billed invoice and a $400 RTB primary showed "Remaining: $600.00" (true unallocated remaining: $0) and would accept an over-allocating amount; the `ensure_single_ready_to_bill_invoice_for_job` RPC only guards the primary row, so a too-large partial left the job over-invoiced. The modal's Remaining display, its input blur-clamp, `createInvoiceFromModal`'s clamp/reject, and both green partial-invoice icons' disabled gates now all use the billing-unallocated basis via the existing `jobBillingUnallocatedDollars` kernel ([`jobsStagesBoard.ts`](../src/lib/jobsStagesBoard.ts)) plus a new thin clamp wrapper `clampPartialInvoiceCentsToUnallocated` — matching `JobFormModal.createInvoice`'s semantics (over-entries clamp with an "Adjusted to remaining unallocated" toast; zero remaining rejects with "No remaining balance to bill"; a full-remainder amount on an RTB job still opens Bill Customer). 8 new kernel tests (no invoices, RTB-only, billed-only, mixed live-repro, non-billing statuses, over-allocation clamp, zero remaining, over-allocated never negative). **Visible change**: the modal's Remaining figure now subtracts existing invoice lines, and the icon disables when nothing is left to allocate.
 
 ## Latest Updates (v2.734)
 
