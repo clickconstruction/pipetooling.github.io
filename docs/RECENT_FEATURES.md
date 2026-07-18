@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-18 (v2.739)
+last_updated: 2026-07-18 (v2.740)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.740)
+
+### Jobs Stages — compact Last activity timestamp (2026-07-18)
+The stamp line at the top of each Stages **Last activity** cell now reads `Taunya · Tue 2:57 PM (18d ago)` instead of `Taunya · Tuesday 2:57 PM (18 days ago)` — short weekday, compact age. New [`formatDispatchNoteWeekdayShortTimeChicago`](../src/utils/dispatchNoteDisplay.ts) ("Tue 2:57 PM", America/Chicago; +2 tests) paired with the existing `formatDispatchNoteDaysAgoShortPhrase` ("18d ago" / "today"). Scoped to the Stages activity cell only — the Stripe "emailed customer" hint and every other `getDispatchNoteDisplayMeta` consumer keep the long form.
 
 ## Latest Updates (v2.739)
 

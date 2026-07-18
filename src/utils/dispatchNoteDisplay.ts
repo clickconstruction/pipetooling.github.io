@@ -69,6 +69,15 @@ export function formatDispatchNoteWeekdayTimeChicago(isoUtc: string): string {
   }).format(new Date(isoUtc))
 }
 
+/** e.g. "Tue 2:57 PM" in America/Chicago (short weekday, no comma) — for tight scan lines. */
+export function formatDispatchNoteWeekdayShortTimeChicago(isoUtc: string): string {
+  const weekday = new Intl.DateTimeFormat('en-US', {
+    timeZone: APP_CALENDAR_TZ,
+    weekday: 'short',
+  }).format(new Date(isoUtc))
+  return `${weekday} ${formatDispatchNoteTimeChicago(isoUtc)}`
+}
+
 /** e.g. "3:45 PM" in America/Chicago (time only). */
 export function formatDispatchNoteTimeChicago(isoUtc: string): string {
   return new Intl.DateTimeFormat('en-US', {

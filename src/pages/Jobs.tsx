@@ -61,7 +61,7 @@ import { buildClickToolingUrl, formatAddressTwoLines, resolvedLaborInvoiceLink }
 import JobsCrewPnlTab from '../components/jobs/JobsCrewPnlTab'
 import JobsSubLaborTab from '../components/jobs/JobsSubLaborTab'
 import type { LaborJob, LaborJobPayment, SubLaborBackchargeTarget, SubLaborPaymentTarget } from '../types/laborJob'
-import { getDispatchNoteDisplayMeta } from '../utils/dispatchNoteDisplay'
+import { formatDispatchNoteDaysAgoShortPhrase, formatDispatchNoteWeekdayShortTimeChicago, getDispatchNoteDisplayMeta } from '../utils/dispatchNoteDisplay'
 import JobReportsModal from '../components/JobReportsModal'
 import JobsInspectionsTab from '../components/jobs/JobsInspectionsTab'
 import JobsReportsTab from '../components/jobs/JobsReportsTab'
@@ -5770,7 +5770,6 @@ ${totalsHtml}
               }
               const useReport = tReport != null && (tNote == null || tReport > tNote)
               const atIso = useReport ? stat.last_report_at! : stat.last_note_at!
-              const meta = getDispatchNoteDisplayMeta(atIso)
               const author = useReport
                 ? stat.last_report_author_name?.trim() || ''
                 : stat.last_note_author_name?.trim() || lastChronologicalNoteAuthor || ''
@@ -5789,8 +5788,8 @@ ${totalsHtml}
                       <div style={{ fontSize: '0.6875rem', color: 'var(--text-muted)', marginBottom: '0.2rem' }}>
                         {author ? <span>{author}</span> : null}
                         {author ? <span style={{ margin: '0 0.35rem' }}>·</span> : null}
-                        <span>{meta.weekdayTimeChicago}</span>
-                        <span style={{ marginLeft: '0.35rem' }}>({meta.daysAgoLabel})</span>
+                        <span>{formatDispatchNoteWeekdayShortTimeChicago(atIso)}</span>
+                        <span style={{ marginLeft: '0.35rem' }}>({formatDispatchNoteDaysAgoShortPhrase(atIso)})</span>
                       </div>
                       <div
                         style={{
