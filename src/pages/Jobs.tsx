@@ -5497,6 +5497,30 @@ ${totalsHtml}
               const titleWithNotes = titleParts.length > 0 ? titleParts.join(' · ') : titleForEmpty
               const expanded = expandedJobThreadId === jobId
               const scheduleNoTeam = (job.team_members?.length ?? 0) === 0
+              const cellReportCount = job.report_count ?? 0
+
+              function renderStagesViewReportsFooterButton() {
+                return (
+                  <div style={{ display: 'flex', justifyContent: 'flex-start', flexShrink: 0 }}>
+                    <button
+                      type="button"
+                      onClick={() => setViewReportsJob({ id: job.id, hcpNumber: job.hcp_number ?? '—', jobName: job.job_name ?? '—', jobAddress: job.job_address ?? '—' })}
+                      style={{
+                        padding: '0.2rem 0.5rem',
+                        fontSize: '0.75rem',
+                        background: 'none',
+                        color: cellReportCount > 0 ? 'var(--text-link)' : 'var(--text-muted)',
+                        border: cellReportCount > 0 ? '1px solid #2563eb' : '1px solid var(--border)',
+                        borderRadius: 4,
+                        cursor: 'pointer',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      {cellReportCount} Report{cellReportCount !== 1 ? 's' : ''}
+                    </button>
+                  </div>
+                )
+              }
 
               const stagesInvoiceJumpAmountChipStyle: CSSProperties = {
                 padding: '0.15rem 0.4rem',
@@ -5722,6 +5746,7 @@ ${totalsHtml}
                       </div>
                       {renderStagesStripeEmailedCustomerHint()}
                       {renderStagesInvoiceJumpChips(job)}
+                      {renderStagesViewReportsFooterButton()}
                     </div>
                   </td>
                 )
@@ -5738,6 +5763,7 @@ ${totalsHtml}
                       </div>
                       {renderStagesStripeEmailedCustomerHint()}
                       {renderStagesInvoiceJumpChips(job)}
+                      {renderStagesViewReportsFooterButton()}
                     </div>
                   </td>
                 )
@@ -5782,6 +5808,7 @@ ${totalsHtml}
                     </div>
                     {renderStagesStripeEmailedCustomerHint()}
                     {renderStagesInvoiceJumpChips(job)}
+                    {renderStagesViewReportsFooterButton()}
                   </div>
                 </td>
               )
@@ -5840,7 +5867,7 @@ ${totalsHtml}
             }
 
             function renderStagesTable(jobList: JobWithDetails[], actionLabel: React.ReactNode | null, onAction: (j: JobWithDetails) => void, showTimeOpen?: boolean, onSendBack?: (j: JobWithDetails) => void, onSendBackSimple?: (j: JobWithDetails) => void, showRemaining?: boolean, showFinalBill?: boolean, showPctComplete?: boolean) {
-              const stagesTableColCount = 6 + (showPctComplete ? 1 : 0)
+              const stagesTableColCount = 5 + (showPctComplete ? 1 : 0)
               return (
                 <div style={{ border: '1px solid var(--border)', borderRadius: 4, overflowX: 'auto', WebkitOverflowScrolling: 'touch', minWidth: 0 }}>
                   <table style={{ width: '100%', minWidth: 700, borderCollapse: 'collapse', fontSize: '0.875rem' }}>
@@ -5857,7 +5884,6 @@ ${totalsHtml}
                           {renderStagesThreeLineHeader('Assigned', 'HCP', 'Last-Activity')}
                         </th>
                         <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Job</th>
-                        <th style={{ padding: '0.75rem', width: 100, borderBottom: '1px solid var(--border)' }}>Reports</th>
                         <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)', minWidth: 200 }}>Last activity</th>
                         {showPctComplete && (
                           <th
@@ -6044,15 +6070,6 @@ ${totalsHtml}
                               })()}
                               {renderJobCustomerLine(j)}
                               {renderStagesJobColumnEstimateFooter(j.linkedEstimateForStages)}
-                            </td>
-                            <td style={{ padding: '0.75rem', textAlign: 'center', verticalAlign: 'middle' }}>
-                              <button
-                                type="button"
-                                onClick={() => setViewReportsJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', jobAddress: j.job_address ?? '—' })}
-                                style={{ padding: '0.35rem 0.75rem', fontSize: '0.8125rem', background: 'none', color: 'var(--text-link)', border: '1px solid #2563eb', borderRadius: 4, cursor: 'pointer', whiteSpace: 'nowrap' }}
-                              >
-                                {(j.report_count ?? 0)} Report{(j.report_count ?? 0) !== 1 ? 's' : ''}
-                              </button>
                             </td>
                             {renderStagesLastActivityCell(j, stagesJobLevelStripeEmailedHintInvoice(j))}
                             {showPctComplete && (
@@ -6391,7 +6408,7 @@ ${totalsHtml}
                   </span>
                 )
               }
-              const unifiedStagesColCount = 6
+              const unifiedStagesColCount = 5
               const flashRowStyle = (invoiceId: string): CSSProperties =>
                 flashInvoiceId === invoiceId
                   ? {
@@ -6442,7 +6459,6 @@ ${totalsHtml}
                           {renderStagesThreeLineHeader('Assigned', 'HCP', 'Last-Activity')}
                         </th>
                         <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Job</th>
-                        <th style={{ padding: '0.75rem', width: 100, borderBottom: '1px solid var(--border)' }}>Reports</th>
                         <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)', minWidth: 200 }}>Last activity</th>
                         <th
                           style={{
@@ -6648,15 +6664,6 @@ ${totalsHtml}
                                     </div>
                                   ) : null}
                                   {renderStagesJobColumnEstimateFooter(j.linkedEstimateForStages)}
-                                </td>
-                                <td style={{ padding: '0.75rem', textAlign: 'center', verticalAlign: 'middle' }}>
-                                  <button
-                                    type="button"
-                                    onClick={() => setViewReportsJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', jobAddress: j.job_address ?? '—' })}
-                                    style={{ padding: '0.35rem 0.75rem', fontSize: '0.8125rem', background: 'none', color: 'var(--text-link)', border: '1px solid #2563eb', borderRadius: 4, cursor: 'pointer', whiteSpace: 'nowrap' }}
-                                  >
-                                    {(j.report_count ?? 0)} Report{(j.report_count ?? 0) !== 1 ? 's' : ''}
-                                  </button>
                                 </td>
                                 {renderStagesLastActivityCell(j, bundleInv ?? undefined)}
                                 <td style={{ padding: '0.75rem', textAlign: 'center', verticalAlign: 'middle' }}>
@@ -7184,15 +7191,6 @@ ${totalsHtml}
                                   })()}
                                   {renderJobCustomerLine(job)}
                                   {renderStagesJobColumnEstimateFooter(job.linkedEstimateForStages)}
-                                </td>
-                                <td style={{ padding: '0.75rem', textAlign: 'center', verticalAlign: 'middle' }}>
-                                  <button
-                                    type="button"
-                                    onClick={() => setViewReportsJob({ id: job.id, hcpNumber: job.hcp_number ?? '—', jobName: job.job_name ?? '—', jobAddress: job.job_address ?? '—' })}
-                                    style={{ padding: '0.35rem 0.75rem', fontSize: '0.8125rem', background: 'none', color: 'var(--text-link)', border: '1px solid #2563eb', borderRadius: 4, cursor: 'pointer', whiteSpace: 'nowrap' }}
-                                  >
-                                    {(job.report_count ?? 0)} Report{(job.report_count ?? 0) !== 1 ? 's' : ''}
-                                  </button>
                                 </td>
                                 {renderStagesLastActivityCell(job, inv)}
                                 <td style={{ padding: '0.75rem', textAlign: 'center', verticalAlign: 'middle' }}>
