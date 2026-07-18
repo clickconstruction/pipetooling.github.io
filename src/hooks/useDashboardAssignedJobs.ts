@@ -22,17 +22,16 @@ export type UseDashboardAssignedJobsInput = {
  * ClockInOutButton field-report save + the billing engine's `updateJobStatus`)
  * and `refreshAssignedReadyToBill` (CollectPaymentModal.onFlowChanged).
  *
- * The setters are returned because the parent's billing engine
- * (`updateJobStatus`, still page-side until the `useDashboardBillingInvoices`
- * seam) optimistically prunes and then reloads these lists inline.
+ * The setters are returned because the billing engine's `updateJobStatus`
+ * (in `useDashboardBillingInvoices` as of v2.727, which takes them as inputs)
+ * optimistically prunes and then reloads these lists inline.
  *
  * `resyncDashboardAfterUpdateJobStatusFailureRef` (quirk #10 in
- * DASHBOARD_SECTIONS_ARCHITECTURE.md): the hook declares the ref, but its
- * `.current` is still assigned in the PARENT's render body — the resync
- * closure calls the billing engine's `refreshInvoices` (parent scope) before
- * reloading these lists, so the target function cannot move until the billing
- * seam exists. Preserve the render-body assignment pattern; do not convert it
- * to an effect.
+ * DASHBOARD_SECTIONS_ARCHITECTURE.md): the hook declares the ref; its
+ * `.current` is assigned in `useDashboardBillingInvoices`' body during render
+ * (the resync closure calls that engine's `refreshInvoices` before reloading
+ * these lists). Preserve the render-body assignment pattern; do not convert
+ * it to an effect.
  */
 export function useDashboardAssignedJobs({ authUserId, role }: UseDashboardAssignedJobsInput) {
   const [assignedJobs, setAssignedJobs] = useState<DashboardTeamAssignedJobRow[]>([])
@@ -41,7 +40,7 @@ export function useDashboardAssignedJobs({ authUserId, role }: UseDashboardAssig
   const [assignedReadyToBillLoading, setAssignedReadyToBillLoading] = useState(false)
   const [superintendentJobs, setSuperintendentJobs] = useState<DashboardTeamAssignedJobRow[]>([])
   const [superintendentJobsLoading, setSuperintendentJobsLoading] = useState(false)
-  /** Assigned by the PARENT in its render body after `refreshInvoices` is defined (quirk #10); reloads dashboard job lists on `update_job_status` RPC failure. */
+  /** Assigned in `useDashboardBillingInvoices`' body during render (quirk #10); reloads dashboard job lists on `update_job_status` RPC failure. */
   const resyncDashboardAfterUpdateJobStatusFailureRef = useRef<() => Promise<void>>(async () => {})
 
   useEffect(() => {
