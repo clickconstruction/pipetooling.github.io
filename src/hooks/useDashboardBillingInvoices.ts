@@ -33,6 +33,7 @@ import {
   DASHBOARD_INVOICES_JOBS_LEDGER_SELECT,
   buildBilledWaitingDashboardUnits,
   buildPaymentsByInvoiceIdMap,
+  isDashboardBillingInvoicesRole,
   mapJoinedInvoiceToDashboard,
   type DashboardInvoiceJoinRow,
   type InvoiceForDashboard,
@@ -41,7 +42,6 @@ import {
   type ReadyToBillDashboardUnit,
 } from '../lib/dashboardBillingInvoiceUnits'
 import { releaseMutationLock, tryAcquireMutationLock } from '../lib/mutationLockSet'
-import { isAssistantLike } from '../lib/subcontractorLikeRole'
 import {
   isDashboardTeamReadyToBillRole,
   type DashboardTeamAssignedJobRow,
@@ -143,7 +143,16 @@ export function useDashboardBillingInvoices({
   }, [readyToBillJobs])
 
   useEffect(() => {
-    if (!authUserId || (role !== 'dev' && role !== 'master_technician' && !isAssistantLike(role))) return
+    if (!authUserId || !isDashboardBillingInvoicesRole(role)) {
+      // Keep state truthful when the user/role becomes ineligible (sign-out,
+      // role change): clear the lists instead of leaving stale rows that only
+      // the render gates hide (issue 6 of the billing bug-review pass).
+      setReadyToBillInvoices([])
+      setReadyToBillJobs([])
+      setReadyToBillLoading(false)
+      return
+    }
+    let cancelled = false
     setReadyToBillLoading(true)
     Promise.all([
       supabase
@@ -153,6 +162,7 @@ export function useDashboardBillingInvoices({
         .order('created_at', { ascending: false }),
       supabase.rpc('get_jobs_ledger_by_status', { p_status: 'ready_to_bill' }),
     ]).then(([invRes, jobRes]) => {
+      if (cancelled) return
       setReadyToBillLoading(false)
       if (!invRes.error) {
         const rows = (invRes.data ?? []) as DashboardInvoiceJoinRow[]
@@ -163,10 +173,19 @@ export function useDashboardBillingInvoices({
         setReadyToBillJobs((jobRes.data ?? []) as JobForDashboard[])
       }
     })
+    return () => {
+      cancelled = true
+    }
   }, [authUserId, role])
 
   useEffect(() => {
-    if (!authUserId || (role !== 'dev' && role !== 'master_technician' && !isAssistantLike(role))) return
+    if (!authUserId || !isDashboardBillingInvoicesRole(role)) {
+      setWaitingForPaymentInvoices([])
+      setWaitingForPaymentJobs([])
+      setWaitingForPaymentLoading(false)
+      return
+    }
+    let cancelled = false
     setWaitingForPaymentLoading(true)
     Promise.all([
       supabase
@@ -176,6 +195,7 @@ export function useDashboardBillingInvoices({
         .order('created_at', { ascending: false }),
       supabase.rpc('get_jobs_ledger_by_status', { p_status: 'billed' }),
     ]).then(async ([invRes, jobRes]) => {
+      if (cancelled) return
       setWaitingForPaymentLoading(false)
       const jobs = (jobRes.data ?? []) as JobForDashboard[]
       if (!jobRes.error) {
@@ -191,8 +211,12 @@ export function useDashboardBillingInvoices({
         const { data: payData } = await supabase.from('jobs_ledger_payments').select('*').in('job_id', [...jobIds])
         payMap = buildPaymentsByInvoiceIdMap((payData ?? []) as JobsLedgerPaymentRow[])
       }
+      if (cancelled) return
       setWaitingForPaymentInvoices(rows.map((r) => mapJoinedInvoiceToDashboard(r, payMap)))
     })
+    return () => {
+      cancelled = true
+    }
   }, [authUserId, role])
 
   async function updateJobStatus(jobId: string, toStatus: 'working' | 'ready_to_bill' | 'billed' | 'paid'): Promise<boolean> {
@@ -262,7 +286,7 @@ export function useDashboardBillingInvoices({
   }
 
   async function refreshInvoices() {
-    if (role !== 'dev' && role !== 'master_technician' && !isAssistantLike(role)) return
+    if (!isDashboardBillingInvoicesRole(role)) return
     const emptyPay = new Map<string, JobsLedgerPaymentRow[]>()
     const fetchInvoiceRows = async (status: string) => {
       const { data } = await supabase

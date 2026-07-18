@@ -7,6 +7,7 @@ import {
   dashboardBilledInvoiceAmounts,
   dashboardInvoiceToPaymentModal,
   dashboardJobHasCustomerForBilling,
+  isDashboardBillingInvoicesRole,
   jobBillingFromDashboardInvoice,
   mapJoinedInvoiceToDashboard,
   type DashboardInvoiceJoinRow,
@@ -268,6 +269,21 @@ describe('jobBillingFromDashboardInvoice', () => {
       customer_phone: '555-0100',
       last_work_date: '2026-06-30',
     })
+  })
+})
+
+describe('isDashboardBillingInvoicesRole', () => {
+  it('accepts the office roles that load the billing-invoice pipeline', () => {
+    expect(isDashboardBillingInvoicesRole('dev')).toBe(true)
+    expect(isDashboardBillingInvoicesRole('master_technician')).toBe(true)
+    expect(isDashboardBillingInvoicesRole('assistant')).toBe(true)
+    expect(isDashboardBillingInvoicesRole('controller')).toBe(true)
+  })
+
+  it('rejects every other role plus null/undefined', () => {
+    for (const role of ['subcontractor', 'helpers', 'primary', 'superintendent', 'estimator', '', null, undefined]) {
+      expect(isDashboardBillingInvoicesRole(role as string | null | undefined), String(role)).toBe(false)
+    }
   })
 })
 
