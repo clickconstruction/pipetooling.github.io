@@ -11,6 +11,17 @@ Every job moves through one pipeline. This guide covers the billing half — how
 {{chip:gray|Waiting}} → {{chip:blue|Working}} → {{chip:yellow|Ready to bill}} → {{chip:red|Billed}} → {{chip:green|Paid}}
 :::
 
+## Reading the Progress & payment bar
+
+On the Jobs Stages board, Waiting and Working jobs show one **Progress & payment** cell instead of separate money columns. The bar is the job's whole bid: the green part is **paid**, the amber part is work **done but not paid for yet** (unbilled), and the empty part is work not done yet. Under the bar, the same three numbers are spelled out — **Paid**, **Unbilled**, and **Owed** (bid minus payments). The **% done** box at the top is where the office records how complete the job is — type a number and press Enter. No % and no bid value yet shows an empty dashed bar.
+
+:::example One glance at a Working job
+70 % done · $41,550 bid
+{{chip:green|Paid $16,620}} {{chip:yellow|Unbilled $12,465}} → **Owed $24,930**
+:::
+
+A big amber slice is the signal to bill: work is finished but the money hasn't been asked for.
+
 ## Getting to Ready to bill
 
 A job usually reaches Ready to bill one of two ways:
