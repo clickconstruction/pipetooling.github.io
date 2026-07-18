@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-18 (v2.727)
+last_updated: 2026-07-18 (v2.728)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.728)
+
+### Dashboard — Billing Pipeline section extracted (2026-07-18)
+Extraction #13 — the final major extraction — of the Dashboard decomposition ([`DASHBOARD_SECTIONS_ARCHITECTURE.md`](DASHBOARD_SECTIONS_ARCHITECTURE.md)): the whole `BillingPipelineCard` — Stage 1 field collect-payment queue (`DashboardFieldCollectPaymentQueue`, self-loading), Stage 2 "Ready to Bill" invoice units, Stage 3 "Billed Waiting for Payment" — moved into [`DashboardBillingPipelineSection.tsx`](../src/components/dashboard/DashboardBillingPipelineSection.tsx), **collapsing duplicated-render quirk #1**: the two literal ~350-line role-branch copies (re-verified byte-identical under whitespace normalization before deletion; component body derives from the assistant copy) became ONE component mounted at BOTH positions — assistant branch and dev/master branch, positions and per-branch page order preserved exactly, mutually exclusive gates so exactly one copy mounts. **Moved with it** (each verified single-opener-inside-the-card): `readyToBillExpanded`/`waitingForPaymentExpanded`, the `ReadyToBillJobIconToolbar` module component, and the modal cluster — `BilledPaymentConfirmationModal` ×2 with `markPaidJob`/`markPaidInvoice`, the inline send-back invoice confirm (`DELETE_DRAFT_BILL_LABEL`) and send-back job confirm with `sendBackJob`/`sendBackInvoice`/`sendBackChecked`/`sendBackStatusEventLine`/`sendBackInvoiceStripeExplainerAfterFailure`, the send-back status-event + explainer-reset effects, and `useSendBackCollectPaymentFlowNotice` (all fixed overlays — DOM position inert). **Stayed in the parent:** `sendRecordJobMeta` + its job-fetch effect + loading overlay (also opened by the parent-side `handlePrepareBillFromFieldQueue`), the `readyForBillingJob` Send-to-Billing confirm (opened from the Assigned/Superintendent rows), the context glue (`openReadyToBillEditJob`/`openReadyToBillDetailJobModal`/`openDashboardBillCustomerInvoice`/`handlePrepareBillFromFieldQueue` + `refreshInvoicesRef`), and `setViewReportsJob` (shared `JobReportsModal`) — all passed down via one `billingPipelineSectionProps` object alongside the `useDashboardBillingInvoices` seam outputs. The component calls `useToastContext()`/`useJobFormModal()` itself. **No behavior change** (MONEY PATH — whitespace-normalized diff proofs per block in the PR; the only substitution is the Stage-1 gate `authUser?.id` → the `authUserId` prop). `Dashboard.tsx` is down to 2,076 lines (3,072 → 2,076); Dashboard extraction-order items 12–13 complete.
 
 ## Latest Updates (v2.727)
 
