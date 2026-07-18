@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-17 (v2.721)
+last_updated: 2026-07-17 (v2.722)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.722)
+
+### Dashboard — My Inbox card extracted (2026-07-17)
+Extraction #7 of the Dashboard decomposition ([`DASHBOARD_SECTIONS_ARCHITECTURE.md`](DASHBOARD_SECTIONS_ARCHITECTURE.md)): the "My Inbox" group card — Due Today / Overdue checklists, the dev-only Recently Completed corner section (read/unread, ignore/un-ignore, per-completer grouping), the checklist CRUD engine (`loadTodayChecklist`/`loadOutstanding`, optimistic `toggleChecklistComplete`/`toggleOutstandingComplete` with in-flight refs, `saveFwd`, `sendChecklistCompletionNotifications` via edge fn `send-checklist-notification`, `maybeCreateNextChecklistInstance`), and the Forward + `ChecklistItemMuteModal` modal wiring — moved from `Dashboard.tsx` into [`DashboardMyInboxCard.tsx`](../src/components/dashboard/DashboardMyInboxCard.tsx), with the Overdue "T-days" helpers (`getDaysUntilDue`, `formatTDays`) in new kernel [`dashboardMyInbox.ts`](../src/lib/dashboardMyInbox.ts) (10 unit tests; `getDaysUntilDue` takes `today` as a parameter defaulting to `new Date()` for determinism). **No behavior change** — the parent still builds one `myInboxCard` element and mounts it at the same three role positions (quirk #4); today-checklist data keeps flowing from the parent's `useDashboardBoot` seam (`todayChecklist` + setter, `checklistLoading`, `userLoading`, `setUserError` as props); `getCurrentUserName` stays parent-owned (also feeds the Projects card) and is passed down; the Recently Completed corner-link semantics (quirk #13 — link only when `completedItems.length > 0`; unread count filters ignored task types first) are preserved verbatim. The `showMyInboxCard` gate now lives in the child (its outstanding/completed halves moved with the state) and is reported up via an `onVisibleChange` callback for the parent's SectionDock entry — the same seam as My Bids' `onContentVisibleChange`. `Dashboard.tsx` is down to 4,956 lines (6,014 → 4,956).
 
 ## Latest Updates (v2.721)
 

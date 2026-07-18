@@ -18,10 +18,10 @@ export type UseDashboardBootInput = {
  * steps, their loading flags, `userError`), and the `loadAssignedSteps` reload
  * used by the workflow-step action handlers.
  *
- * Boot-SEEDED state that section logic still mutates in the parent (today
- * checklist via the My Inbox toggle/forward handlers, `userError` via the
- * forward flow) is returned with its setter so those handlers keep working
- * unchanged until sections 6/16 are extracted.
+ * Boot-SEEDED state that section logic still mutates (today checklist via the
+ * My Inbox toggle/forward handlers, `userError` via the forward flow) is
+ * returned with its setter; as of v2.722 those handlers live in
+ * `DashboardMyInboxCard`, which receives the setters as props from the parent.
  */
 export function useDashboardBoot({ authUserId }: UseDashboardBootInput) {
   const [subscribedSteps, setSubscribedSteps] = useState<SubscribedStep[]>([])
