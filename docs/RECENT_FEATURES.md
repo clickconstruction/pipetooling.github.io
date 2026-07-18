@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-18 (v2.730)
+last_updated: 2026-07-18 (v2.731)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.731)
+
+### Fix — `updateJobStatus` awaits the invoice refresh (2026-07-18)
+Billing bug-review pass #3 (issue 4 from PR #385's seed list). In [`useDashboardBillingInvoices`](../src/hooks/useDashboardBillingInvoices.ts), the success path of `updateJobStatus` fired `refreshInvoices()` without awaiting it while awaiting the three job-list RPC reloads — so a caller that awaited `updateJobStatus` (the send-back job confirm in the Billing Pipeline section, and the Send-to-Billing confirm via `moveJobToReadyToBillWithStripePrep`) could resolve while the Ready to Bill / Billed Waiting for Payment lists were still stale, and the invoice and job refreshes could land in either order relative to the returned promise. Now the refresh still starts at the same point and runs **concurrently** with the job-list reloads (no serialization added), but its completion is awaited before `return true`, making it part of the returned promise. Both callers were checked for timing assumptions: each just awaits the boolean and closes its confirm modal on success — they now do so with guaranteed-fresh invoice state. **No visible change** in the common case (the refresh usually finished during the reloads anyway); the modals can close marginally later when the invoice refresh is the slowest call. No test added: the fix is promise-ordering inside a React hook and this repo's vitest harness is node-env pure-kernel only (no hook/render harness).
 
 ## Latest Updates (v2.730)
 
