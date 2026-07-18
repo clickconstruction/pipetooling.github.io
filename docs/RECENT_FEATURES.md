@@ -2049,7 +2049,7 @@ when_to_read:
 ## Latest Updates (v2.739)
 
 ### Jobs Stages — Reports button folded into the Last activity cell (2026-07-18)
-Follow-up to v2.738: the dedicated Reports column is gone entirely. The compact **"N Reports"** button now sits at the bottom of each card's **Last activity** cell (below the activity preview and any Open Invoice chips), freeing a whole column of width on every Stages table. Tastefully quiet: the button is blue-outlined when the job has reports and muted (gray text/border) at 0 reports, so rows with something to read stand out. Same action — opens the job's Reports modal. Implemented once in the shared `renderStagesLastActivityCell` (all three of its render paths), so all stage tables — Waiting / Working / Ready to Bill and the billed tables' job and invoice rows — get it automatically; the standalone Reports header/cells and their column counts are removed. [`Jobs.tsx`](../src/pages/Jobs.tsx)
+Follow-up to v2.738: the dedicated Reports column is gone entirely. The compact **"N Reports"** button now sits at the bottom of each card's **Last activity** cell (below the activity preview and any Open Invoice chips), freeing a whole column of width on every Stages table. The button looks the same at every count (compact blue outline). Same action — opens the job's Reports modal. Implemented once in the shared `renderStagesLastActivityCell` (all three of its render paths), so all stage tables — Waiting / Working / Ready to Bill and the billed tables' job and invoice rows — get it automatically; the standalone Reports header/cells and their column counts are removed. [`Jobs.tsx`](../src/pages/Jobs.tsx)
 
 ## Latest Updates (v2.738)
 
