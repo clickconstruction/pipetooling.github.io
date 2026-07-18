@@ -22,6 +22,7 @@
 | [`RECENT_FEATURES.md`](./RECENT_FEATURES.md) | Append-only changelog, one entry per PR (`v2.NNN`). The single home for per-feature detail. |
 | [`MIGRATIONS.md`](./MIGRATIONS.md) | Migration history + the baseline-squash story. Pair with `npm run check:migration-drift`. |
 | [`EDGE_FUNCTIONS.md`](./EDGE_FUNCTIONS.md) | Reference for all Supabase Edge Functions (deploy is manual — see `../CLAUDE.md`). |
+| [`BILLING_FLOWS.md`](./BILLING_FLOWS.md) | Billing system map: job lifecycle, invoices/break-offs, the three billing channels, Stripe test/live plumbing, payments, send-backs, cleanup — plus the live-test safety brief. |
 | [`BIDS_SYSTEM.md`](./BIDS_SYSTEM.md) | Bids system: all tabs, workflow, schema. |
 | [`BIDS_TABS_ARCHITECTURE.md`](./BIDS_TABS_ARCHITECTURE.md) | Decomposition map of `src/pages/Bids.tsx` (per-tab state/coupling, extraction status). |
 | [`PEOPLE_TABS_ARCHITECTURE.md`](./PEOPLE_TABS_ARCHITECTURE.md) | Same map for `src/pages/People.tsx`. |
@@ -44,4 +45,4 @@
 - Docs ship with features: `RECENT_FEATURES.md` entry per PR, `MIGRATIONS.md` entry per migration, `EDGE_FUNCTIONS.md` section per function, help guide per user-facing flow (all enforced by convention in `../CLAUDE.md`).
 - Migration files cited in docs may live in `supabase/archive/migrations-pre-baseline/` — history was squash-baselined at `20250101000000_baseline.sql` (2026-06-04); "2027"-dated filenames in the archive are typos from spring 2026.
 
-last_updated: 2026-07-17
+last_updated: 2026-07-18
