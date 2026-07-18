@@ -9,7 +9,7 @@ import {
   type CSSProperties,
   type MouseEventHandler,
 } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useRealtimeChannel } from '../hooks/useRealtimeChannel'
 import { openInExternalBrowser } from '../lib/openInExternalBrowser'
@@ -36,7 +36,6 @@ import { useJobModeEnabled } from '../hooks/useJobModeEnabled'
 import DashboardJobModeCard from '../components/jobMode/DashboardJobModeCard'
 import TurnawayModal from '../components/jobMode/TurnawayModal'
 import { useSendBackCollectPaymentFlowNotice } from '../hooks/useSendBackCollectPaymentFlowNotice'
-import NewReportModal from '../components/NewReportModal'
 import JobReportsModal from '../components/JobReportsModal'
 import AdditionalReportModal from '../components/AdditionalReportModal'
 import type { DetailJobModalAssignedJobRow } from '../components/jobs/DetailJobModal'
@@ -76,20 +75,9 @@ import DashboardMyTimeSection from '../components/DashboardMyTimeSection'
 import { DashboardMyTimeDayEditorModal } from '../components/DashboardMyTimeDayEditorModal'
 import DashboardDevRejectedNotification from '../components/DashboardDevRejectedNotification'
 import DashboardMyTeamPendingBanner from '../components/DashboardMyTeamPendingBanner'
-import DashboardArBankUnallocatedBanner from '../components/DashboardArBankUnallocatedBanner'
 import DashboardFinancialsSection from '../components/DashboardFinancialsSection'
-import DashboardLostBidsMissingReasonBanner from '../components/DashboardLostBidsMissingReasonBanner'
-import DashboardTallyStaleBanner from '../components/DashboardTallyStaleBanner'
-import DashboardTallyStaleStaffBanner from '../components/DashboardTallyStaleStaffBanner'
-import DashboardBulkDeleteAlertBanner from '../components/DashboardBulkDeleteAlertBanner'
-import DashboardClaimDevAttemptsBanner from '../components/DashboardClaimDevAttemptsBanner'
-import { DashboardStaleTallyStaffFollowUpModal } from '../components/DashboardStaleTallyStaffFollowUpModal'
-import {
-  canRoleSeeArBankUnallocatedDashboardBanner,
-  useArBankUnallocatedCount,
-} from '../hooks/useArBankUnallocatedCount'
-import { useStaleTallyStaffFollowUp } from '../hooks/useStaleTallyStaffFollowUp'
-import { TALLY_STALE_MIN_AGE_DAYS } from '../lib/tallyStaleMinAgeDays'
+import { DashboardPinnedQuickRow } from '../components/dashboard/DashboardPinnedQuickRow'
+import { filterPinnedByRole } from '../lib/dashboardPinnedRow'
 import { DashboardTeamActiveClockStrip } from '../components/DashboardTeamActiveClockStrip'
 import { useDashboardMyTeamSectionState } from '../hooks/useDashboardMyTeamSectionState'
 import { useApplyScheduleProportions } from '../hooks/useApplyScheduleProportions'
@@ -617,38 +605,6 @@ function subcontractorLastActivityBlock(
   }
 }
 
-// Paths each role can access (for filtering pinned items). When role is null, treat as primary to prevent flash.
-const SUBCONTRACTOR_PATHS = new Set(['/', '/dashboard', '/calendar', '/checklist', '/settings', '/tally'])
-const PRIMARY_PATHS = new Set(['/dashboard', '/materials', '/jobs', '/bids', '/calendar', '/checklist', '/settings', '/tally'])
-const SUPERINTENDENT_PATHS = new Set(['/dashboard', '/projects', '/workflows', '/jobs', '/bids', '/materials', '/calendar', '/checklist', '/settings', '/tally'])
-
-function getAllowedPathsForRole(role: string | null, estimatorProspectsAccess?: boolean): Set<string> | null {
-  if (role === 'subcontractor' || role === 'helpers') return SUBCONTRACTOR_PATHS
-  if (role === 'estimator') {
-    return new Set([
-      '/dashboard',
-      '/materials',
-      '/bids',
-      '/customers',
-      ...(estimatorProspectsAccess ? ['/prospects'] : []),
-      '/calendar',
-      '/checklist',
-      '/people',
-      '/settings',
-      '/tally',
-    ])
-  }
-  if (role === 'primary' || role === null) return PRIMARY_PATHS
-  if (role === 'superintendent') return SUPERINTENDENT_PATHS
-  return null // dev, master_technician, assistant: no filter (all paths allowed)
-}
-
-function filterPinnedByRole(pins: PinnedItem[], role: string | null, estimatorProspectsAccess?: boolean): PinnedItem[] {
-  const allowed = getAllowedPathsForRole(role, estimatorProspectsAccess)
-  if (!allowed) return pins
-  return pins.filter((p) => allowed.has(p.path))
-}
-
 /** One row per mirrored linked group (same group, date, window). */
 function dedupeSubScheduleBlocks(blocks: JobScheduleBlockRow[]): JobScheduleBlockRow[] {
   const seen = new Set<string>()
@@ -738,7 +694,6 @@ function ReadyToBillJobIconToolbar({
 }
 
 export default function Dashboard() {
-  const navigate = useNavigate()
   const jobDetailModal = useJobDetailModal()
   const { user: authUser, role, estimatorProspectsAccess } = useAuth()
   const isDocVisible = useDocumentVisibility()
@@ -940,7 +895,6 @@ export default function Dashboard() {
   /** Mirrors DashboardMyInboxCard’s render gate (reported via onVisibleChange) for the SectionDock entry. */
   const [myInboxDockVisible, setMyInboxDockVisible] = useState(true)
   const [pinnedRoutes, setPinnedRoutes] = useState<PinnedItem[]>([])
-  const [newReportModalOpen, setNewReportModalOpen] = useState(false)
   const [readyToBillExpanded, setReadyToBillExpanded] = useState(true)
   const [waitingForPaymentExpanded, setWaitingForPaymentExpanded] = useState(false)
   const [assignedJobs, setAssignedJobs] = useState<DashboardTeamAssignedJobRow[]>([])
@@ -1169,8 +1123,6 @@ export default function Dashboard() {
   const [dispatchDismissedModalOpen, setDispatchDismissedModalOpen] = useState(false)
   const [tripChargeTarget, setTripChargeTarget] = useState<CreateTripChargeTarget | null>(null)
 
-  const [lostMissingLossReasonCount, setLostMissingLossReasonCount] = useState(0)
-  const [lostMissingLossReasonLoading, setLostMissingLossReasonLoading] = useState(true)
   /** Data half of the My Bids dock gate, reported up by DashboardMyBidsSection (which owns the section state). */
   const [myBidsDockHasContent, setMyBidsDockHasContent] = useState(false)
 
@@ -1218,9 +1170,6 @@ export default function Dashboard() {
     [showToast, myTeam.loadPending],
   )
   const visiblePins = filterPinnedByRole(pinnedRoutes, role, estimatorProspectsAccess)
-  const pinsToShow = visiblePins
-    .filter((p) => p.path !== '/dashboard' && p.path !== '/')
-    .filter((p) => !(p.path === '/materials' && p.tab === 'external-team'))
   const hasCostMatrixPin = visiblePins.some((p) => p.path === '/people' && p.tab === 'hours')
   const hasBilledPin = visiblePins.some((p) => p.path === '/jobs' && p.tab === 'billed')
   const hasSupplyHousesAPPin = visiblePins.some((p) => p.path === '/materials' && p.tab === 'supply-houses')
@@ -1238,75 +1187,11 @@ export default function Dashboard() {
       setFinancialRefreshKey((k) => k + 1)
     }, FINANCIAL_PINS_REALTIME_DEBOUNCE_MS)
   }, [isDocVisible])
-  const [tallyUnlinkedCount, setTallyUnlinkedCount] = useState<number | null>(null)
-  const [tallyStaleUnlinkedCount, setTallyStaleUnlinkedCount] = useState<number | null>(null)
-  const [tallyStaffFollowUpModalOpen, setTallyStaffFollowUpModalOpen] = useState(false)
-  const {
-    peopleCount: tallyStaffStalePeopleCount,
-    transactionCount: tallyStaffStaleTxCount,
-    refetch: refetchStaleTallyStaffFollowUp,
-  } = useStaleTallyStaffFollowUp(TALLY_STALE_MIN_AGE_DAYS)
   const { total: costMatrixTotal } = useWeeklyTeamLaborTotal(hasCostMatrixPin)
   const { count: billedCount, total: billedTotal } = useBilledTotal(hasBilledPin, financialRefreshKey)
   const { count: hoursAwaitingCount } = useHoursAwaitingApprovalCount(isDev, financialRefreshKey)
   const { total: supplyHousesAPTotal } = useSupplyHousesAPTotal(hasSupplyHousesAPPin, financialRefreshKey)
   const { total: subLaborDueTotal } = useSubLaborDueTotal(hasSubLaborDuePin, financialRefreshKey)
-
-  const arBankCountEnabled = Boolean(authUser?.id) && canRoleSeeArBankUnallocatedDashboardBanner(role)
-  const { count: arBankUnallocatedCount } = useArBankUnallocatedCount({
-    enabled: arBankCountEnabled,
-    authUserId: authUser?.id,
-    authRole: role,
-  })
-
-  const loadTallyUnlinkedCount = useCallback(async () => {
-    if (!authUser?.id || role == null) return
-    try {
-      const n = await withSupabaseRetry(
-        async () => await supabase.rpc('count_unlinked_mercury_transactions_for_tally'),
-        'count unlinked tally transactions',
-      )
-      setTallyUnlinkedCount(typeof n === 'number' && Number.isFinite(n) ? n : 0)
-    } catch {
-      setTallyUnlinkedCount(null)
-    }
-  }, [authUser?.id, role])
-
-  const loadTallyStaleUnlinkedCount = useCallback(async () => {
-    if (!authUser?.id || role == null) return
-    try {
-      const n = await withSupabaseRetry(
-        async () =>
-          await supabase.rpc('count_unlinked_mercury_transactions_for_tally_stale', {
-            min_age_days: TALLY_STALE_MIN_AGE_DAYS,
-          }),
-        'count stale unlinked tally transactions',
-      )
-      setTallyStaleUnlinkedCount(typeof n === 'number' && Number.isFinite(n) ? n : 0)
-    } catch {
-      setTallyStaleUnlinkedCount(null)
-    }
-  }, [authUser?.id, role])
-
-  useEffect(() => {
-    if (!authUser?.id || role == null) {
-      setTallyUnlinkedCount(null)
-      setTallyStaleUnlinkedCount(null)
-      return
-    }
-    void loadTallyUnlinkedCount()
-    void loadTallyStaleUnlinkedCount()
-  }, [authUser?.id, role, loadTallyUnlinkedCount, loadTallyStaleUnlinkedCount])
-
-  useEffect(() => {
-    if (!authUser?.id || role == null) return
-    const onFocus = () => {
-      void loadTallyUnlinkedCount()
-      void loadTallyStaleUnlinkedCount()
-    }
-    window.addEventListener('focus', onFocus)
-    return () => window.removeEventListener('focus', onFocus)
-  }, [authUser?.id, role, loadTallyUnlinkedCount, loadTallyStaleUnlinkedCount])
 
   useEffect(() => {
     if (!authUser?.id) {
@@ -1477,49 +1362,6 @@ export default function Dashboard() {
     () => scheduleFinancialPinsRefreshFromRealtime(),
     { debounceMs: 500 },
   )
-
-  useEffect(() => {
-    const hasBidsAccess =
-      role === 'dev' ||
-      role === 'master_technician' ||
-      isAssistantLike(role) ||
-      role === 'estimator' ||
-      role === 'primary' ||
-      role === 'superintendent'
-    if (!authUser?.id || !hasBidsAccess) {
-      setLostMissingLossReasonCount(0)
-      setLostMissingLossReasonLoading(false)
-      return
-    }
-    let cancelled = false
-    setLostMissingLossReasonLoading(true)
-    const uidForFilter = authUser.id
-    void (async () => {
-      try {
-        const rawRows = await withSupabaseRetry(
-          async () =>
-            supabase
-              .from('bids')
-              .select('loss_reason')
-              .eq('outcome', 'lost')
-              .or(`estimator_id.eq.${uidForFilter},account_manager_id.eq.${uidForFilter}`)
-              .limit(500),
-          'dashboard lost bids missing loss reason',
-        )
-        if (cancelled) return
-        const rows = (rawRows ?? []) as Array<{ loss_reason: string | null }>
-        const n = rows.filter((r) => !String(r.loss_reason ?? '').trim()).length
-        if (!cancelled) setLostMissingLossReasonCount(n)
-      } catch {
-        if (!cancelled) setLostMissingLossReasonCount(0)
-      } finally {
-        if (!cancelled) setLostMissingLossReasonLoading(false)
-      }
-    })()
-    return () => {
-      cancelled = true
-    }
-  }, [authUser?.id, role])
 
   useEffect(() => {
     if (!authUser?.id) return
@@ -2333,21 +2175,6 @@ export default function Dashboard() {
     fontWeight: 600,
     fontSize: '1rem',
   }
-  /** Pinned-row chips share the quick-button look; slightly tighter padding so many pins still fit one row. */
-  const pinnedItemLinkStyle: CSSProperties = {
-    display: 'inline-flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    boxSizing: 'border-box',
-    padding: '0.5rem 1rem',
-    fontSize: '0.9375rem',
-    fontWeight: 600,
-    background: '#3b82f6',
-    color: 'white',
-    border: 'none',
-    borderRadius: 8,
-    textDecoration: 'none',
-  }
   const quickActionDefs = useMemo(() => {
     if (!showDashboardQuickButtons || role === null) {
       return [] as Array<{ key: string; label: string; to: string }>
@@ -2367,177 +2194,27 @@ export default function Dashboard() {
       .filter((b) => dashboardButtonVisibility?.[b.key] !== false)
   }, [showDashboardQuickButtons, role, dashboardButtonVisibility])
 
-  const showPinnedRowWithQuickActions =
-    pinsToShow.length > 0 || isDev || (quickButtonsPlacement === 'with_pins' && showDashboardQuickButtons)
-
-  const tallyLinkAccessibleName =
-    typeof tallyUnlinkedCount === 'number' && tallyUnlinkedCount > 0
-      ? `Job Parts Tally, ${tallyUnlinkedCount} unlinked transaction${tallyUnlinkedCount === 1 ? '' : 's'}`
-      : 'Job Parts Tally'
-
-  const tallyAndPinnedBlock = (
-    <>
-      {arBankCountEnabled && (
-        <DashboardArBankUnallocatedBanner
-          count={arBankUnallocatedCount ?? 0}
-          loading={arBankUnallocatedCount === null}
-          onGoToAr={() => {
-            showToast('Opening Accounts Receivable…', 'info', 2800)
-            navigate('/accounts-receivable')
-          }}
-        />
-      )}
-      {role != null && (
-        <DashboardTallyStaleBanner
-          staleCount={typeof tallyStaleUnlinkedCount === 'number' ? tallyStaleUnlinkedCount : 0}
-          loading={tallyStaleUnlinkedCount === null}
-          minAgeDays={TALLY_STALE_MIN_AGE_DAYS}
-          onGoToTally={() => navigate('/tally?tab=transactions')}
-        />
-      )}
-      <DashboardLostBidsMissingReasonBanner
-        count={lostMissingLossReasonCount}
-        loading={lostMissingLossReasonLoading}
-        onGoToLostSummary={() => {
-          if (!authUser?.id) return
-          navigate(
-            `/bids?tab=bid-board&lostSummary=1&lostSummaryTab=${encodeURIComponent(authUser.id)}`,
-          )
-        }}
-      />
-      {(role === 'dev' || role === 'master_technician' || isAssistantLike(role)) && (
-        <DashboardTallyStaleStaffBanner
-          peopleCount={typeof tallyStaffStalePeopleCount === 'number' ? tallyStaffStalePeopleCount : 0}
-          transactionCount={typeof tallyStaffStaleTxCount === 'number' ? tallyStaffStaleTxCount : 0}
-          loading={tallyStaffStalePeopleCount === null || tallyStaffStaleTxCount === null}
-          minAgeDays={TALLY_STALE_MIN_AGE_DAYS}
-          onOpen={() => setTallyStaffFollowUpModalOpen(true)}
-        />
-      )}
-      {/* Dev-only and self-gating: renders nothing unless a burst of deletions was detected. */}
-      <DashboardBulkDeleteAlertBanner />
-      {/* Dev-only and self-gating: renders nothing unless someone was refused the break-glass dev code. */}
-      <DashboardClaimDevAttemptsBanner />
-      {role != null && (
-        <div style={{ display: 'flex', alignItems: 'stretch', gap: '0.5rem', marginBottom: '1rem' }}>
-          <div style={{ position: 'relative', width: 48, height: 48, flexShrink: 0 }}>
-            <Link
-              to="/tally"
-              title={tallyLinkAccessibleName}
-              aria-label={tallyLinkAccessibleName}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                width: 48,
-                height: 48,
-                background: '#3b82f6',
-                color: 'white',
-                borderRadius: 8,
-                textDecoration: 'none',
-                boxSizing: 'border-box',
-              }}
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={28} height={28} fill="currentColor" style={{ display: 'block' }} aria-hidden>
-                <path d="M541.4 162.6C549 155 561.7 156.9 565.5 166.9C572.3 184.6 576 203.9 576 224C576 312.4 504.4 384 416 384C398.5 384 381.6 381.2 365.8 376L178.9 562.9C150.8 591 105.2 591 77.1 562.9C49 534.8 49 489.2 77.1 461.1L264 274.2C258.8 258.4 256 241.6 256 224C256 135.6 327.6 64 416 64C436.1 64 455.4 67.7 473.1 74.5C483.1 78.3 484.9 91 477.4 98.6L388.7 187.3C385.7 190.3 384 194.4 384 198.6L384 240C384 248.8 391.2 256 400 256L441.4 256C445.6 256 449.7 254.3 452.7 251.3L541.4 162.6z" />
-              </svg>
-            </Link>
-            {typeof tallyUnlinkedCount === 'number' && tallyUnlinkedCount > 0 ? (
-              <span
-                aria-hidden
-                style={{
-                  position: 'absolute',
-                  top: -4,
-                  right: -4,
-                  minWidth: 18,
-                  padding: '0 5px',
-                  height: 18,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  borderRadius: 9999,
-                  background: '#f59e0b',
-                  color: '#1c1917',
-                  fontSize: 10,
-                  fontWeight: 700,
-                  fontVariantNumeric: 'tabular-nums',
-                  lineHeight: 1,
-                  boxSizing: 'border-box',
-                  pointerEvents: 'none',
-                }}
-              >
-                {tallyUnlinkedCount > 99 ? '99+' : tallyUnlinkedCount}
-              </span>
-            ) : null}
-          </div>
-          <button
-            type="button"
-            onClick={() => setNewReportModalOpen(true)}
-            style={{
-              flex: 1,
-              padding: '0 1.5rem',
-              background: '#3b82f6',
-              color: 'white',
-              borderRadius: 8,
-              border: 'none',
-              fontWeight: 600,
-              fontSize: '1.125rem',
-              textAlign: 'center',
-              minHeight: 48,
-              height: 48,
-              boxSizing: 'border-box',
-              cursor: 'pointer',
-            }}
-          >
-            Job Report
-          </button>
-        </div>
-      )}
-      {showPinnedRowWithQuickActions && (
-        <div style={{ marginBottom: '1rem' }}>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center' }}>
-            {isDev && (
-              <Link to="/people?tab=hours" style={pinnedItemLinkStyle}>
-                Hours Awaiting Approval: {hoursAwaitingCount ?? '…'}
-              </Link>
-            )}
-            {quickButtonsPlacement === 'with_pins' &&
-              showDashboardQuickButtons &&
-              quickActionDefs.map((b) => (
-                <Link key={b.key} to={b.to} style={pinnedItemLinkStyle}>
-                  {b.label}
-                </Link>
-              ))}
-            {pinsToShow.map((item) => {
-              const isCostMatrix = item.path === '/people' && item.tab === 'hours'
-              const isSupplyHouseAP = item.path === '/materials' && item.tab === 'supply-houses'
-              const isBilled = item.path === '/jobs' && item.tab === 'billed'
-              const isSubLaborDue = item.path === '/jobs' && item.tab === 'sub_sheet_ledger'
-              const to = item.tab
-                ? isSubLaborDue
-                  ? '/jobs?tab=sub_sheet_ledger'
-                  : `${item.path}?tab=${encodeURIComponent(isBilled ? 'stages' : item.tab)}${isBilled ? '&showBilledTotalByName=true' : ''}`
-                : item.path
-              const displayLabel = isCostMatrix
-                ? (costMatrixTotal != null ? `Internal Team: $${Math.round(costMatrixTotal).toLocaleString('en-US')}` : item.label)
-                : isBilled
-                  ? (billedCount != null && billedTotal != null ? `Billed Awaiting Payment (${billedCount}): $${billedTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : 'Billed Awaiting Payment…')
-                  : isSupplyHouseAP
-                    ? (supplyHousesAPTotal != null ? `Supply Houses: $${Math.round(supplyHousesAPTotal).toLocaleString('en-US')}` : item.label)
-                    : isSubLaborDue
-                      ? (subLaborDueTotal != null ? `Sub Labor Due: $${subLaborDueTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : item.label)
-                      : (item.tab ? `${item.label} · ${item.tab.replace(/-/g, ' ').replace(/_/g, ' ')}` : item.label)
-              return (
-                <Link key={item.path + (item.tab ?? '')} to={to} style={pinnedItemLinkStyle}>
-                  {displayLabel}
-                </Link>
-              )
-            })}
-          </div>
-        </div>
-      )}
-    </>
-  )
+  // Banners + tally + Job Report + quick actions + pins row live in
+  // DashboardPinnedQuickRow (v2.723), mounted at BOTH positions (Job Mode early
+  // return + main return). pinnedRoutes/visiblePins and the financial pin total
+  // hooks stay here: the has*Pin flags they derive from also enable the
+  // dashboard-financial-pins realtime channel, and quick-button state stays
+  // because dashboardButtonVisibility also gates the Upcoming-inspection
+  // section and the top placement renders outside the block.
+  const pinnedQuickRowSharedProps = {
+    authUserId: authUser?.id,
+    role,
+    visiblePins,
+    quickActionDefs,
+    quickButtonsPlacement,
+    showDashboardQuickButtons,
+    hoursAwaitingCount,
+    costMatrixTotal,
+    billedCount,
+    billedTotal,
+    supplyHousesAPTotal,
+    subLaborDueTotal,
+  }
 
   // Job Mode focused view: replaces top of Dashboard with one big card; rest of
   // Dashboard is hidden until user taps "Show full dashboard" (component-local;
@@ -2545,7 +2222,8 @@ export default function Dashboard() {
   if (jobModeEnabled && !jobModeShowFullDashboard && authUser?.id) {
     return (
       <div>
-        {tallyAndPinnedBlock}
+        {/* renderModals={false}: the tail modals never mounted in this early return (their openers are inert in Job Mode) — preserved. */}
+        <DashboardPinnedQuickRow {...pinnedQuickRowSharedProps} renderModals={false} />
         <DashboardJobModeCard
           userId={authUser.id}
           onLeaveReport={(j) => setLeaveReportJob(j)}
@@ -2673,7 +2351,7 @@ export default function Dashboard() {
           onFieldReportSaved={() => void refreshDashboardAssignedJobLists()}
         />
       )}
-      {tallyAndPinnedBlock}
+      <DashboardPinnedQuickRow {...pinnedQuickRowSharedProps} renderModals />
       {authUser?.id && teamFeedbackHomeEnabled && (
         <div style={{ marginBottom: '1rem' }}>
           <button
@@ -4603,21 +4281,6 @@ export default function Dashboard() {
 
       <ApplyScheduleApprovedConfirmModal {...applySchedule.approvedConfirm} />
 
-      <NewReportModal
-        open={newReportModalOpen}
-        onClose={() => setNewReportModalOpen(false)}
-        onSaved={() => setNewReportModalOpen(false)}
-        authUserId={authUser?.id ?? null}
-        userRole={role}
-      />
-      {(role === 'dev' || role === 'master_technician' || isAssistantLike(role)) && (
-        <DashboardStaleTallyStaffFollowUpModal
-          open={tallyStaffFollowUpModalOpen}
-          onClose={() => setTallyStaffFollowUpModalOpen(false)}
-          minAgeDays={TALLY_STALE_MIN_AGE_DAYS}
-          onDataChanged={() => void refetchStaleTallyStaffFollowUp()}
-        />
-      )}
       {viewReportsJob && (
         <JobReportsModal
           open={!!viewReportsJob}

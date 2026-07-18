@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-17 (v2.722)
+last_updated: 2026-07-17 (v2.723)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.723)
+
+### Dashboard — pins + quick actions row extracted (2026-07-17)
+Extraction #8 of the Dashboard decomposition ([`DASHBOARD_SECTIONS_ARCHITECTURE.md`](DASHBOARD_SECTIONS_ARCHITECTURE.md)): the banners + tally + quick actions + pins block (the old `tallyAndPinnedBlock`) — the six banners (`DashboardArBankUnallocatedBanner` + `useArBankUnallocatedCount`, `DashboardTallyStaleBanner`, `DashboardTallyStaleStaffBanner` + `useStaleTallyStaffFollowUp`, `DashboardLostBidsMissingReasonBanner` + its lost-bids count loader, `DashboardBulkDeleteAlertBanner`, `DashboardClaimDevAttemptsBanner`), the tally icon + badge (`loadTallyUnlinkedCount`/`loadTallyStaleUnlinkedCount` RPC loaders + focus-refresh effect), the "Job Report" button, the with-pins quick-action chips, the pins row, and the two tail modals (`NewReportModal`, `DashboardStaleTallyStaffFollowUpModal`) — moved from `Dashboard.tsx` into [`DashboardPinnedQuickRow.tsx`](../src/components/dashboard/DashboardPinnedQuickRow.tsx), mounted at **both** positions (the Job Mode early return and the main return; a `renderModals={false}` prop at the Job Mode mount preserves that the tail modals never rendered in that branch). Pure logic went to new kernel [`dashboardPinnedRow.ts`](../src/lib/dashboardPinnedRow.ts) (18 unit tests): the role path Sets + `getAllowedPathsForRole`/`filterPinnedByRole` (the parent now imports `filterPinnedByRole` from the kernel — single source), `filterPinsToShow`, the pin chip route/label calc `getPinnedChipDisplay` (Internal Team / Billed Awaiting Payment / Supply Houses / Sub Labor Due totals), and `getTallyLinkAccessibleName`. **No behavior change** — seam choices: `dashboardButtonVisibility` + `quickButtonsPlacement` + their loaders + `quickActionDefs` + the top-placement quick-buttons render **stay in the parent** (the visibility map also gates the Upcoming-inspection section — quirk #9 untouched — and the top placement renders outside the block), passed down as props; `pinnedRoutes`/`refreshPinned`/`visiblePins` and the financial pin machinery (`financialRefreshKey`, the `dashboard-financial-pins` realtime channel, and the five total hooks) **stay in the parent** because the `has*Pin` flags derived from `visiblePins` enable the hooks + the realtime channel — the totals are passed down. `Dashboard.tsx` is down to 4,614 lines (4,951 → 4,614).
 
 ## Latest Updates (v2.722)
 
