@@ -1,14 +1,14 @@
 # Private Notes, Line Items For Office, and Projections for Workflows
 
-This document describes the private notes, line items (labeled "Line Items For Office" in the UI), and projections features added to workflows, visible to devs, masters, and assistants.
+This document describes the private notes (labeled "Notes for Office" in the UI), line items (labeled "Line Items For Office"), and projections features added to workflows. Notes and line items are visible to devs, masters, assistant-like roles (assistant, controller), and superintendents; projections stay dev/master-only.
 
 ## Overview
 
 ### Private Notes and Line Items
 
-Each workflow stage now has a **Private Notes** section that is only visible to users with `dev` or `master_technician` roles. This is separate from the regular "Notes" field which is visible to all users.
+Each workflow stage has a **Notes for Office** (private notes) section that is visible to devs, masters, assistant-like roles (assistant, controller), and superintendents — the `canSeePrivateNotesAndApprove` gate in `src/pages/Workflow.tsx` (`isAssistantLike` covers assistant + controller). This is separate from the regular "Notes" field, which is visible to all users.
 
-Additionally, each stage includes a **Line Items For Office** section (within the private notes area for devs/masters; assistants also see and can edit line items), allowing owners, masters, and assistants to track expenses, credits, and other financial items with memo and amount fields. Line items can link to purchase orders or supply house invoices from Materials. All line items are automatically aggregated into a **Ledger** displayed at the top of the workflow page.
+Additionally, each stage includes a **Line Items For Office** section (visible to the same roles), allowing them to track expenses, credits, and other financial items with memo and amount fields. Line items can link to purchase orders or supply house invoices from Materials. All line items are automatically aggregated into a **Ledger** total in the financial summary bar at the top of the workflow page.
 
 ### Projections
 
@@ -16,56 +16,39 @@ At the workflow level (above the Ledger), there is a **Projections** section for
 
 ## Database Changes
 
-### Migrations Required
+### Schema (already in the baseline — no setup needed)
 
-Two SQL migrations are needed:
+All of the schema below is included in the squashed baseline migration
+`supabase/migrations/20250101000000_baseline.sql`; there is nothing to apply for a new
+environment beyond the normal `supabase db push`. The original standalone SQL files are kept
+for historical reference in `supabase/archive/` (`add_private_notes_to_workflow_steps.sql`,
+`create_workflow_step_line_items.sql`, `create_workflow_projections.sql`).
+
+> **Never apply DDL via the Dashboard SQL editor** — see the migration rule in
+> [CLAUDE.md](../CLAUDE.md). Migrations go through `supabase db push` only.
 
 #### 1. Private Notes Field
 
-**File**: `supabase/archive/add_private_notes_to_workflow_steps.sql`
-
-**To apply**:
-1. Go to Supabase Dashboard → SQL Editor
-2. Click "New Query"
-3. Copy and paste the contents of the migration file
-4. Click "Run"
-
-The migration adds:
-- `private_notes TEXT` column to `project_workflow_steps` table
+- `private_notes TEXT` column on the `project_workflow_steps` table
 - A comment documenting the field's purpose
 
 #### 2. Line Items Table
 
-**File**: `supabase/archive/create_workflow_step_line_items.sql`
-
-**To apply**:
-1. Go to Supabase Dashboard → SQL Editor
-2. Click "New Query"
-3. Copy and paste the contents of the migration file
-4. Click "Run"
-
-The migration creates:
 - `workflow_step_line_items` table with fields:
   - `id` (UUID, primary key)
   - `step_id` (UUID, foreign key to `project_workflow_steps` ON DELETE CASCADE)
+  - `item_date` (DATE, optional) - User-entered calendar date for the line item
+  - `link` (TEXT, optional) - URL for external references
   - `memo` (TEXT, required) - Description of the line item
   - `amount` (NUMERIC(10, 2), required) - **Supports negative numbers** for credits/refunds
+  - `supply_house_invoice_id` (UUID, optional) - Link to a `supply_house_invoices` row
   - `sequence_order` (INTEGER) - Order within the step
   - `created_at`, `updated_at` (timestamps)
 - Indexes for performance
-- RLS policies restricting access to owners and master_technicians only
+- RLS policies restricting access to privileged roles
 
 #### 3. Projections Table
 
-**File**: `supabase/archive/create_workflow_projections.sql`
-
-**To apply**:
-1. Go to Supabase Dashboard → SQL Editor
-2. Click "New Query"
-3. Copy and paste the contents of the migration file
-4. Click "Run"
-
-The migration creates:
 - `workflow_projections` table with fields:
   - `id` (UUID, primary key)
   - `workflow_id` (UUID, foreign key to `project_workflows` ON DELETE CASCADE)
@@ -75,7 +58,7 @@ The migration creates:
   - `sequence_order` (INTEGER) - Order within the workflow
   - `created_at`, `updated_at` (timestamps)
 - Indexes for performance
-- RLS policies restricting access to owners and master_technicians only
+- RLS policies restricting access to owners and master_technicians
 
 ## UI Changes
 
@@ -87,17 +70,17 @@ In the Workflow page (`src/pages/Workflow.tsx`), each stage now displays:
    - Standard textarea for general notes
    - Visible to everyone
 
-2. **Private Notes** (visible only to owners and masters)
-   - Highlighted with a yellow/amber background (`#fef3c7`)
-   - Border color: `#fbbf24`
-   - Label: "Private Notes (Your account only)"
-   - Only shown when `userRole === 'dev' || userRole === 'master_technician'`
+2. **Notes for Office** (private notes; visible to devs, masters, assistant-like roles, superintendents)
+   - Collapsible section header labeled "Notes for Office (N words)" (word count of the current note)
+   - Shown when `canSeePrivateNotesAndApprove` is true (dev, master_technician, assistant-like, superintendent)
 
-3. **Line Items For Office** (within Private Notes section for devs/masters; assistants see and can edit)
+3. **Line Items For Office** (same visibility as Notes for Office)
    - Located below the private notes textarea
    - "+ Add Line Item" button to create new items
    - "Add PO" and "Add Supply House Invoice" buttons to link purchase orders or supply house invoices from Materials
    - Each line item displays:
+     - **Date** (optional): User-entered calendar date (`item_date`)
+     - **Link** (optional): URL for external references
      - **Memo**: Description of the item
      - **Amount**: Monetary value (supports negative numbers)
    - Edit and Delete buttons for each item
@@ -105,29 +88,15 @@ In the Workflow page (`src/pages/Workflow.tsx`), each stage now displays:
    - Negative amounts are displayed in red with parentheses: `($50.00)`
    - Positive amounts display normally: `$50.00`
 
-4. **Projections** (above Ledger, at top of workflow page)
-   - Only visible to owners and masters
-   - Light blue background (`#f0f9ff`) with blue border (`#bae6fd`)
-   - "+ Add Projection" button
-   - Table with columns: Stage, Memo, Amount, Actions
-   - Edit and Delete buttons for each projection
-   - Total calculation at bottom
-   - Amounts formatted with commas (e.g., `$1,234.56`)
-   - Supports negative numbers
-   - Empty state message when no projections exist
+4. **Projections + Ledger summary bar** (top of workflow page)
+   - One unified collapsible panel: a summary bar plus a combined Projections + Ledger table
+   - Summary bar shows `Projections: $…`, `Ledger: $…`, and `Left: $…` (Projections minus Ledger)
+   - **Visibility split**: the Ledger total is visible to all `canManageStages` roles (dev, master, assistant-like, superintendent); the Projections total and the `Left:` figure are dev/master-only
+   - "+ Add Projection" button (dev/master-only)
+   - Expanded table lists projections and ledger line items with Edit/Delete actions
+   - Amounts formatted with commas (e.g., `$1,234.56`); negatives in red with parentheses; supports negative numbers
 
-5. **Ledger** (below Projections, at top of workflow page)
-   - Only visible to owners and masters
-   - Light gray background (`#f9fafb`) with gray border (`#e5e7eb`)
-   - Displays all line items from all stages in a table format
-   - Columns: Stage, Memo, Amount
-   - Shows total sum at the bottom
-   - Negative amounts displayed in red with parentheses
-   - Total turns red if negative
-   - Amounts formatted with commas (e.g., `$1,234.56`)
-   - Empty state message when no line items exist
-
-6. **Action Ledger** (at bottom of each stage card)
+5. **Action Ledger** (at bottom of each stage card)
    - Complete history of all actions performed on the stage
    - Shows action type, performer, timestamp, and optional notes
    - Chronologically ordered (newest first)
@@ -146,6 +115,7 @@ The component now:
 
 #### `updatePrivateNotes(step: Step, privateNotes: string)`
 - Updates the `private_notes` field for a workflow step
+- Goes through the `update_step_private_notes` RPC, with a direct-table-update fallback if the RPC is not found in the schema cache
 - Called when the private notes textarea loses focus (onBlur)
 - Automatically refreshes the steps list after update
 
@@ -153,7 +123,7 @@ The component now:
 
 #### `loadLineItemsForSteps(stepIds: string[])`
 - Loads all line items for the given step IDs
-- Only executes if user is dev or master_technician
+- Only executes for roles that can see private notes (dev, master, assistant-like, superintendent)
 - Groups items by step_id in state
 
 #### `saveLineItem(stepId: string, item: LineItem | null, memo: string, amount: string)`
@@ -257,23 +227,22 @@ Currently, the security is enforced at the UI level. For production, consider:
 
 ### Private Notes
 
-1. **As Owner or Master Technician**:
+1. **As dev, master, assistant, controller, or superintendent**:
    - Navigate to any workflow
    - Scroll to any stage
-   - You'll see both "Notes" and "Private Notes" sections
-   - Private Notes has a yellow/amber background to distinguish it
-   - Type in the private notes field and click away (blur) to save
+   - You'll see both the "Notes" and the "Notes for Office" sections
+   - Type in the Notes for Office field and click away (blur) to save
 
-2. **As Assistant or Subcontractor**:
+2. **As Subcontractor (or other non-privileged roles)**:
    - Navigate to any workflow
    - Scroll to any stage
    - You'll only see the regular "Notes" section
-   - Private Notes section is hidden
+   - The Notes for Office section is hidden
 
 ### Line Items
 
 1. **Adding a Line Item**:
-   - As dev or master, scroll to any stage's Private Notes section
+   - As a privileged role, scroll to any stage's Line Items For Office section
    - Click "+ Add Line Item" button
    - Enter a memo (description) - required
    - Enter an amount - required (supports negative numbers for credits/refunds)
@@ -289,9 +258,7 @@ Currently, the security is enforced at the UI level. For production, consider:
    - Item is immediately removed
 
 4. **Viewing the Ledger**:
-   - At the top of the workflow page, owners and masters see a "Ledger" section
-   - Shows all line items from all stages in a table
-   - Displays total at the bottom
+   - At the top of the workflow page, the Projections + Ledger summary bar shows the `Ledger:` total (all `canManageStages` roles); expanding the panel shows all line items from all stages in a table
    - Negative amounts shown in red with parentheses: `($50.00)`
    - Positive amounts shown normally: `$50.00`
    - Amounts formatted with commas: `$1,234.56`
@@ -300,7 +267,7 @@ Currently, the security is enforced at the UI level. For production, consider:
 
 1. **Adding a Projection**:
    - As dev or master, scroll to the top of the workflow page
-   - Click "+ Add Projection" button in the Projections section
+   - Click "+ Add Projection" button in the Projections + Ledger summary bar
    - Enter stage name - required
    - Enter memo (description) - required
    - Enter amount - required (supports negative numbers)
@@ -315,10 +282,9 @@ Currently, the security is enforced at the UI level. For production, consider:
    - Click "Delete" button next to any projection
    - Projection is immediately removed
 
-4. **Viewing Projections**:
-   - Projections section appears above the Ledger
-   - Shows all projections in a table format
-   - Displays total at the bottom
+4. **Viewing Projections** (dev/master-only):
+   - The summary bar shows `Projections: $…` and `Left: $…` (Projections minus Ledger)
+   - Expanding the panel shows all projections in a table format
    - Amounts formatted with commas: `$1,234.56`
 
 ### Negative Numbers
@@ -340,48 +306,10 @@ Currently, the security is enforced at the UI level. For production, consider:
 
 ## Visual Design
 
-### Private Notes Section
-- **Background**: Light yellow/amber (`#fef3c7`)
-- **Border**: Amber (`#fbbf24`)
-- **Text Color**: Dark brown (`#92400e`) for the label
-- **Textarea**: White background with amber border
-- **Purpose**: Visually distinct from regular notes to indicate privileged access
+Styling uses the app's theme CSS variables (see `src/index.css` and the theme-token rule in
+[CLAUDE.md](../CLAUDE.md)), so all of these surfaces adapt to light/dark mode. In brief:
 
-### Line Items
-- **Background**: White cards within the private notes section
-- **Border**: Amber (`#fbbf24`) to match private notes theme
-- **Positive Amounts**: Black/dark gray (`#111827` or `#6b7280`)
-- **Negative Amounts**: Red (`#b91c1c`) with parentheses formatting
-- **Buttons**: 
-  - Add: Amber background (`#fbbf24`)
-  - Edit: Light gray background (`#f3f4f6`)
-  - Delete: Light red background (`#fee2e2`)
-
-### Projections
-- **Background**: Light blue (`#f0f9ff`)
-- **Border**: Blue (`#bae6fd`)
-- **Table**: Clean table layout with stage, memo, amount, and actions columns
-- **Total**: Bold, large font
-  - Positive: Black (`#111827`)
-  - Negative: Red (`#b91c1c`)
-- **Separator**: Blue border (`#0ea5e9`) above total
-- **Buttons**:
-  - Add: Blue background (`#0ea5e9`)
-  - Edit: Light gray background (`#f3f4f6`)
-  - Delete: Light red background (`#fee2e2`)
-
-### Ledger
-- **Background**: Light gray (`#f9fafb`)
-- **Border**: Gray (`#e5e7eb`)
-- **Table**: Clean table layout with stage, memo, and amount columns
-- **Total**: Bold, large font
-  - Positive: Black (`#111827`)
-  - Negative: Red (`#b91c1c`)
-- **Separator**: Dark border (`#111827`) above total
-
-### Action Ledger
-- **Background**: Light gray (`#f9fafb`)
-- **Border**: Gray (`#e5e7eb`)
-- **Location**: Bottom of each stage card
-- **Content**: Chronological list of all actions
-- **Format**: Action type, performer, timestamp, optional notes
+- **Notes for Office**: collapsible header with word count; styled like the regular Notes section.
+- **Line Items**: negative amounts render in red with parentheses; positive amounts in the standard text color.
+- **Projections + Ledger summary bar**: light blue tinted panel; totals turn red when negative; the `Left:` figure is green when non-negative, red when negative.
+- **Action Ledger**: muted panel at the bottom of each stage card; chronological list of actions (action type, performer, timestamp, optional notes).

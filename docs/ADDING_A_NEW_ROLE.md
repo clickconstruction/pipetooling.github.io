@@ -19,7 +19,7 @@ ALTER TYPE user_role ADD VALUE IF NOT EXISTS 'new_role';
 COMMENT ON TYPE user_role IS 'User role enum: dev (formerly owner), master_technician, assistant, subcontractor, estimator, primary, superintendent, new_role';
 ```
 
-**Reference**: [supabase/migrations/20260221210000_add_user_role_primary.sql](../supabase/migrations/20260221210000_add_user_role_primary.sql)
+**Reference**: [supabase/archive/migrations-pre-baseline/20260221210000_add_user_role_primary.sql](../supabase/archive/migrations-pre-baseline/20260221210000_add_user_role_primary.sql) (pre-baseline history — see note under "RLS by Table Category")
 
 ### 2. Regenerate types
 
@@ -33,14 +33,14 @@ supabase gen types typescript --local > src/types/database.ts
 
 Ensure the user-creation Edge Functions accept the new role in their validation:
 
-- **Files**: `supabase/functions/create-user/index.ts` (`validRoles`, around line 89) and `supabase/functions/invite-user/index.ts` (`VALID_ROLES`)
-- Add `'new_role'` to both arrays (both use the same modern 8-role list: dev, master_technician, assistant, subcontractor, helpers, estimator, primary, superintendent)
+- **Files**: `supabase/functions/create-user/index.ts` (`validRoles`) and `supabase/functions/invite-user/index.ts` (`VALID_ROLES`)
+- Add `'new_role'` to both arrays (both use the same modern 9-role list: dev, master_technician, assistant, subcontractor, helpers, estimator, primary, superintendent, controller)
 - If the role needs service type filtering (like estimator/subcontractor), add handling for `service_type_ids` when `role === 'new_role'` in both functions
 - **Redeploy both functions** — CI does not deploy edge functions; a stale deployed copy will reject the new role even when the repo is correct (this exact drift broke Helper in create-user and the whole invite flow, fixed 2026-07-02)
 
 ### 4. Signup trigger
 
-Add the role to the `handle_new_user` accepted `invited_role` list (new migration; see `supabase/migrations/20260702160000_modernize_handle_new_user.sql`). Users invited with a role missing from that list fall back to `helpers`.
+Add the role to the `handle_new_user` accepted `invited_role` list (new migration). The **latest** function body lives in `supabase/migrations/20260714213000_controller_capabilities.sql` (the `CREATE OR REPLACE FUNCTION public.handle_new_user()` block) — start from that, not the older `20260702160000_modernize_handle_new_user.sql`. Users invited with a role missing from that list fall back to `helpers`.
 
 ---
 
@@ -48,31 +48,32 @@ Add the role to the `handle_new_user` accepted `invited_role` list (new migratio
 
 ### Layout.tsx
 
-- **Paths constant** (lines 36–39): Add `NEW_ROLE_PATHS = ['/dashboard', '/materials', ...]` (array of allowed paths)
-- **Redirect logic** (lines 91–100): Add `useEffect` branch for the new role, e.g.:
+(Line numbers drift — search for the symbol names.)
+
+- **Paths constants** (`SUBCONTRACTOR_PATHS`, `PRIMARY_PATHS`, `SUPERINTENDENT_PATHS`, currently around lines 72–74): Add `NEW_ROLE_PATHS = ['/dashboard', '/materials', ...]` (array of allowed paths)
+- **Redirect logic** (the role-branch `useEffect`, currently around lines 188–198): Add a branch for the new role, e.g.:
   ```tsx
   if (role === 'new_role' && (location.pathname === '/' || !NEW_ROLE_PATHS.includes(location.pathname))) {
     navigate('/dashboard', { replace: true })
   }
   ```
+- **Estimator note**: estimator paths are no longer a Layout constant — the estimator branch calls `isEstimatorPathAllowed` from [src/lib/layoutRouteAccess.ts](../src/lib/layoutRouteAccess.ts). That file mirrors Layout's route guards for in-app links — **update it in lock-step with any Layout path change** (it has its own per-role path lists).
 
-**Reference**: [src/components/Layout.tsx](../src/components/Layout.tsx) — `SUBCONTRACTOR_PATHS`, `ESTIMATOR_PATHS`, `PRIMARY_PATHS`, `SUPERINTENDENT_PATHS`
+**Reference**: [src/components/Layout.tsx](../src/components/Layout.tsx), [src/lib/layoutRouteAccess.ts](../src/lib/layoutRouteAccess.ts)
 
 ### Dashboard.tsx
 
-- **Paths constant** (lines 166–168): Add `NEW_ROLE_PATHS = new Set([...])`
-- **getPathsForRole** (lines 171–173): Add `if (role === 'new_role') return NEW_ROLE_PATHS`
+- **Paths constants** (`SUBCONTRACTOR_PATHS`, `PRIMARY_PATHS`, `SUPERINTENDENT_PATHS`, currently around lines 753–755): Add `NEW_ROLE_PATHS = new Set([...])`
+- **getPathsForRole** (just below the constants, currently around lines 757–774): Add `if (role === 'new_role') return NEW_ROLE_PATHS`
 
 **Reference**: [src/pages/Dashboard.tsx](../src/pages/Dashboard.tsx)
 
-### Settings.tsx
+### Settings / role pickers
 
-- **ROLES** (line 121): Add `'new_role'` to the `UserRole[]` array
-- **PAGE_ACCESS** (line 123): Add a `new_role` column to each row with `'yes'`, `'no'`, or `'yes limited'` as appropriate
-- **Report-enabled users** (lines 8327–8337): If the role can be report-enabled (like subcontractor), add logic to show the checkbox for users with this role
+- **ROLES**: the canonical assignable-role list lives in [src/lib/userRoles.ts](../src/lib/userRoles.ts) — add `'new_role'` there
+- **PAGE_ACCESS**: the page-access matrix lives in [src/components/settings/SettingsPeopleTab.tsx](../src/components/settings/SettingsPeopleTab.tsx) (`PAGE_ACCESS` constant near the top) — add a `new_role` column to each row with `'yes'`, `'no'`, or `'yes limited'` as appropriate. *(Known gap: the matrix currently lacks a `controller` column — being fixed separately.)*
+- **Report-enabled users** ([src/pages/Settings.tsx](../src/pages/Settings.tsx) — search `report_enabled_users`, currently used around lines 1103 and 1365): If the role can be report-enabled (like subcontractor), add logic to show the checkbox for users with this role
 - **Service type filtering** (if applicable): Add UI for `new_role_service_type_ids` when creating/editing users with this role
-
-**Reference**: [src/pages/Settings.tsx](../src/pages/Settings.tsx)
 
 ### Page components
 
@@ -90,6 +91,10 @@ Role checks occur in many pages. Search for `role === 'primary'`, `role === 'est
 ## RLS by Table Category
 
 When adding a new role, update RLS policies on affected tables. Use existing migrations as templates.
+
+> **Note**: migrations were squash-baselined at `supabase/migrations/20250101000000_baseline.sql`; every pre-baseline migration referenced in the tables below now lives in [`supabase/archive/migrations-pre-baseline/`](../supabase/archive/migrations-pre-baseline/) (reference-only — the live schema comes from the baseline).
+>
+> **Prefer capability functions over per-policy edits**: before templating dozens of per-table policies, check whether a single-point capability function already gates the area — e.g. `is_assistant()` (assistant-LIKE) and `has_payroll_access()`. The controller rollout ([`20260714213000_controller_capabilities.sql`](../supabase/migrations/20260714213000_controller_capabilities.sql)) landed in ~3 DB function edits instead of ~75 policy rewrites.
 
 ### Bids
 
@@ -157,7 +162,7 @@ AS $$
 $$;
 ```
 
-**Reference**: [supabase/migrations/20260212240000_allow_estimators_see_masters.sql](../supabase/migrations/20260212240000_allow_estimators_see_masters.sql)
+**Reference**: [supabase/archive/migrations-pre-baseline/20260212240000_allow_estimators_see_masters.sql](../supabase/archive/migrations-pre-baseline/20260212240000_allow_estimators_see_masters.sql)
 
 **RLS performance**: Use `(select auth.uid())` and `(select auth.jwt())` in policies so the planner can cache the result per query. See [optimize_workflow_templates_rls.sql](../supabase/archive/optimize_workflow_templates_rls.sql) and Supabase RLS performance docs.
 
@@ -169,7 +174,7 @@ $$;
 
 If the role needs adoption (like Primary or Superintendent), create a junction table mirroring `master_primaries`:
 
-**Reference**: [supabase/migrations/20260223100000_create_master_primaries.sql](../supabase/migrations/20260223100000_create_master_primaries.sql), [supabase/migrations/20260520120001_create_master_superintendents.sql](../supabase/migrations/20260520120001_create_master_superintendents.sql)
+**Reference**: [supabase/archive/migrations-pre-baseline/20260223100000_create_master_primaries.sql](../supabase/archive/migrations-pre-baseline/20260223100000_create_master_primaries.sql), [supabase/archive/migrations-pre-baseline/20260520120001_create_master_superintendents.sql](../supabase/archive/migrations-pre-baseline/20260520120001_create_master_superintendents.sql)
 
 - Table: `master_new_roles(master_id, new_role_id)` with FKs to `users`
 - RLS: Masters and devs can read/manage; new_role users can read who adopted them
@@ -180,7 +185,7 @@ If the role needs adoption (like Primary or Superintendent), create a junction t
 If the role should be restricted to specific service types (e.g., Plumbing only):
 
 - Add column: `ALTER TABLE public.users ADD COLUMN IF NOT EXISTS new_role_service_type_ids UUID[] DEFAULT NULL`
-- **Reference**: [supabase/migrations/20260224000000_add_primary_service_type_ids.sql](../supabase/migrations/20260224000000_add_primary_service_type_ids.sql)
+- **Reference**: [supabase/archive/migrations-pre-baseline/20260224000000_add_primary_service_type_ids.sql](../supabase/archive/migrations-pre-baseline/20260224000000_add_primary_service_type_ids.sql)
 - Update `create-user` Edge Function to accept and store `service_type_ids` when role is `new_role`
 - Add Settings UI for editing this when creating/editing users
 
@@ -189,8 +194,8 @@ If the role should be restricted to specific service types (e.g., Plumbing only)
 For roles that get the Recent Reports section only when explicitly enabled (e.g., subcontractors):
 
 - Table: `report_enabled_users(user_id)` — devs manage via Settings
-- **Reference**: [src/pages/Settings.tsx](../src/pages/Settings.tsx) lines 8327–8337 (Report-enabled users section)
-- [src/pages/Dashboard.tsx](../src/pages/Dashboard.tsx) lines 521–522, 530 — `isReportEnabledOnlyUser` and `showRecent` logic
+- **Reference**: [src/pages/Settings.tsx](../src/pages/Settings.tsx) — search `report_enabled_users` / `reportEnabledUserIds` (load + save logic, currently around lines 1103 and 1365)
+- [src/pages/Dashboard.tsx](../src/pages/Dashboard.tsx) — search `isReportEnabledOnlyUser` (state + effect, currently around line 1096) and `showRecent`
 
 ---
 
@@ -202,13 +207,14 @@ Use this when adding a new role:
 - [ ] Migration: Add role to `handle_new_user` accepted `invited_role` list
 - [ ] Regenerate types: `supabase gen types typescript --local > src/types/database.ts`
 - [ ] Edge Functions: Add role to `validRoles` in `create-user/index.ts` AND `VALID_ROLES` in `invite-user/index.ts`, then redeploy both
-- [ ] Layout.tsx: Add `NEW_ROLE_PATHS` and redirect logic
+- [ ] Layout.tsx: Add `NEW_ROLE_PATHS` and redirect logic (+ mirror in `src/lib/layoutRouteAccess.ts`)
 - [ ] Dashboard.tsx: Add `NEW_ROLE_PATHS` and `getPathsForRole` branch
-- [ ] Settings.tsx: Add to `ROLES`, add `PAGE_ACCESS` column
-- [ ] RLS: Update policies on bids, materials, reports, jobs ledger, users (see table categories above)
+- [ ] Role pickers: Add to `ROLES` in `src/lib/userRoles.ts`; add `PAGE_ACCESS` column in `SettingsPeopleTab.tsx`
+- [ ] **Capability functions first**: if the new role piggybacks on an existing capability, extend the single-point DB functions (`is_assistant()`, `has_payroll_access()`, client `isAssistantLike()`, …) instead of editing dozens of per-table policies — the controller rollout (`20260714213000_controller_capabilities.sql`) landed this way in ~3 function edits
+- [ ] RLS: Update remaining policies on bids, materials, reports, jobs ledger, users (see table categories above)
 - [ ] Helper function: Create `is_new_role()` if needed
 - [ ] Adoption table: Create `master_new_roles` if role uses adoption
 - [ ] Service type filtering: Add `new_role_service_type_ids` to users + create-user + Settings UI if needed
 - [ ] Report-enabled: Add to Settings Report-enabled section + Dashboard logic if needed
 - [ ] Page components: Update role checks in Jobs, Bids, Materials, People, Checklist, Dashboard
-- [ ] Test all 8 roles: dev, master_technician, assistant, subcontractor, helpers, estimator, primary, superintendent (and new role)
+- [ ] Test all 9 roles: dev, master_technician, assistant, subcontractor, helpers, estimator, primary, superintendent, controller (and new role)

@@ -138,7 +138,9 @@ In this repo, **Cursor** loads **[`.cursor/rules/supabase-incident-triage.mdc`](
 2. Ensure client uses `db: { schema: 'public' }` (see [src/lib/supabase.ts](../src/lib/supabase.ts))
 3. For approve_clock_sessions, the app uses [approveClockSessions](../src/lib/approveClockSessions.ts) helper with fetch fallback
 
-**See**: TROUBLESHOOT_404.md → RPC 404 and SPA document `/dashboard` 404; [RECENT_FEATURES.md](./RECENT_FEATURES.md) v2.125, v2.191
+**Note**: a separate, harmless kind of 404 is the SPA **document** 404 on deep links (e.g. `GET /dashboard`) — GitHub Pages serves `404.html` (a copy of `index.html`) and the app still loads. In-app **Hard Reload** avoids the noisy document 404 by loading `/` first and restoring the route via `history.replaceState`; see [src/lib/hardReload.ts](../src/lib/hardReload.ts) and the inline script in [index.html](../index.html).
+
+**See**: [RECENT_FEATURES.md](./RECENT_FEATURES.md) v2.125, v2.191
 
 ---
 
@@ -167,5 +169,5 @@ For **timeouts**, **503s**, **DB contention**, or “everyone clocked out and th
 
 - [docs/runbooks/AGENT_APP_CRASH_INVESTIGATION.md](./runbooks/AGENT_APP_CRASH_INVESTIGATION.md) - Agent playbook: *find why the app crashed*
 - [docs/runbooks/SUPABASE_INCIDENT_RUNBOOK.md](./runbooks/SUPABASE_INCIDENT_RUNBOOK.md) - Supabase CLI inspect + platform logs workflow
-- TROUBLESHOOT_404.md - RPC and Edge function 404 issues
+- [src/lib/hardReload.ts](../src/lib/hardReload.ts) + [index.html](../index.html) - SPA reload / document-404 mechanism (Hard Reload loads `/` then restores the route)
 - [RECENT_FEATURES.md](./RECENT_FEATURES.md) - Fix app and pin features (v2.51)

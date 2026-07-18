@@ -3,19 +3,35 @@
 ---
 file: docs/PAGE_DECOMPOSITION_PLAYBOOK.md
 type: Engineering / Refactor Process
-purpose: A repeatable, generic process for breaking a multi-thousand-line "God component" page into per-tab components + shared hooks + tested pure logic, without re-deriving the strategy each time. Generalizes the method proven on Bids.tsx (~18,800 → ~3,650 lines) and in progress on People.tsx.
+purpose: A repeatable, generic process for breaking a multi-thousand-line "God component" page into per-tab components + shared hooks + tested pure logic, without re-deriving the strategy each time. Generalizes the method proven on Bids.tsx (~18,800 → ~3,787 lines) and People.tsx (~21,435 → ~4,269).
 audience: Developers, AI Agents
-last_updated: 2026-05-31
+last_updated: 2026-07-17
 ---
 
 ## What this is
 
-`src/pages/*.tsx` has several God components: `Jobs.tsx` (~15k), `Settings.tsx` (~12k), `People.tsx` (~8.6k, decomposition well underway), `Dashboard.tsx` (~8.8k), `Materials.tsx` (~6.8k), `Estimates.tsx` (~5.3k), `Workflow.tsx` (~4.8k). Each is a tab-switched page that owns hundreds of `useState`s, dozens of loaders/handlers, and inline JSX for every tab.
+The repo still has several God components (line counts at 2026-07-17):
+
+| File | Lines | Notes |
+|---|---|---|
+| `src/pages/Jobs.tsx` | 10,464 | shrank from ~15k **without an architecture map** — write `docs/JOBS_TABS_ARCHITECTURE.md` (Step 0) before resuming its extraction |
+| `src/pages/Dashboard.tsx` | 8,899 | no map yet |
+| `src/components/jobs/JobFormModal.tsx` | 7,133 | a modal, not a page — same method applies |
+| `src/pages/Materials.tsx` | 6,935 | no map yet |
+| `src/components/bids/BidsTakeoffTab.tsx` | 5,641 | already an extracted tab; kept growing — candidate for its own sub-decomposition |
+| `src/pages/Estimates.tsx` | 5,331 | no map yet |
+| `src/pages/Settings.tsx` | 5,132 | shrank from ~12k **without an architecture map** — write `docs/SETTINGS_TABS_ARCHITECTURE.md` (Step 0) before resuming its extraction |
+| `src/components/people/PeopleReviewTab.tsx` | 5,007 | already an extracted tab |
+| `src/pages/Workflow.tsx` | 4,782 | no map yet |
+| `src/pages/People.tsx` | 4,269 | decomposition essentially done (see map) |
+| `src/pages/Bids.tsx` | 3,787 | decomposition done (see map) |
+
+Each page is a tab-switched surface that owns hundreds of `useState`s, dozens of loaders/handlers, and inline JSX for every tab. Note that `Settings.tsx` and `Jobs.tsx` lost thousands of lines through ad-hoc extractions **without** the Step-0 map this playbook calls for — those two maps are the next ones to write when their extraction resumes.
 
 This document is the **process** for shrinking one. The two reference implementations are:
 
-- [`BIDS_TABS_ARCHITECTURE.md`](./BIDS_TABS_ARCHITECTURE.md) — the completed map (all 14 tabs extracted; `Bids.tsx` ~3,650 lines).
-- [`PEOPLE_TABS_ARCHITECTURE.md`](./PEOPLE_TABS_ARCHITECTURE.md) — an in-progress map using the same method.
+- [`BIDS_TABS_ARCHITECTURE.md`](./BIDS_TABS_ARCHITECTURE.md) — the completed map (all 14 tabs extracted; `Bids.tsx` ~3,787 lines).
+- [`PEOPLE_TABS_ARCHITECTURE.md`](./PEOPLE_TABS_ARCHITECTURE.md) — a near-complete map using the same method (`People.tsx` ~4,269 lines; only the Hours clock-strip wrapper left).
 
 > **Read this before starting an extraction.** Then create (or update) a `docs/<PAGE>_TABS_ARCHITECTURE.md` map for the page you're working on, and work tab by tab.
 
@@ -130,5 +146,5 @@ Flip the tab's Status to `extracted` in `docs/<PAGE>_TABS_ARCHITECTURE.md`, poin
 ## See also
 
 - [`BIDS_TABS_ARCHITECTURE.md`](./BIDS_TABS_ARCHITECTURE.md) — completed reference (controlled selection, `useBidPricingEngine`, Stage-A `lib/bidDocuments/*` builders, recommended extraction order).
-- [`PEOPLE_TABS_ARCHITECTURE.md`](./PEOPLE_TABS_ARCHITECTURE.md) — in-progress reference (no single shared pointer; phased hook extraction).
+- [`PEOPLE_TABS_ARCHITECTURE.md`](./PEOPLE_TABS_ARCHITECTURE.md) — near-complete reference (no single shared pointer; phased hook extraction).
 - `AGENTS.md` (repo root) — project-wide constraints (Supabase, RLS, types).
