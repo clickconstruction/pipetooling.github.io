@@ -40,6 +40,7 @@ import {
   type JobsLedgerPaymentRow,
   type ReadyToBillDashboardUnit,
 } from '../lib/dashboardBillingInvoiceUnits'
+import { releaseMutationLock, tryAcquireMutationLock } from '../lib/mutationLockSet'
 import { isAssistantLike } from '../lib/subcontractorLikeRole'
 import {
   isDashboardTeamReadyToBillRole,
@@ -120,8 +121,12 @@ export function useDashboardBillingInvoices({
   )
   const [invoiceStatusUpdatingId, setInvoiceStatusUpdatingId] = useState<string | null>(null)
   const [jobStatusUpdatingId, setJobStatusUpdatingId] = useState<string | null>(null)
-  const dashboardInvoiceMutationLockRef = useRef<string | null>(null)
-  const dashboardJobStatusMutationLockRef = useRef<string | null>(null)
+  // Per-id lock Sets (v2.732): the old single-slot `string | null` refs only
+  // guarded same-id double-clicks — a mutation on a different id overwrote the
+  // slot and broke the first mutation's finally-cleanup. Same-id guard
+  // semantics are unchanged; different ids now lock independently.
+  const dashboardInvoiceMutationLocksRef = useRef<Set<string>>(new Set())
+  const dashboardJobStatusMutationLocksRef = useRef<Set<string>>(new Set())
   const dashboardInvoiceSendBackConfirmLockRef = useRef(false)
 
   const readyToBillDetailModalAssignedRows = useMemo((): DetailJobModalAssignedJobRow[] => {
@@ -191,8 +196,7 @@ export function useDashboardBillingInvoices({
   }, [authUserId, role])
 
   async function updateJobStatus(jobId: string, toStatus: 'working' | 'ready_to_bill' | 'billed' | 'paid'): Promise<boolean> {
-    if (dashboardJobStatusMutationLockRef.current === jobId) return false
-    dashboardJobStatusMutationLockRef.current = jobId
+    if (!tryAcquireMutationLock(dashboardJobStatusMutationLocksRef.current, jobId)) return false
     setJobStatusUpdatingId(jobId)
     try {
       const { data, error } = await supabase.rpc('update_job_status', { p_job_id: jobId, p_to_status: toStatus })
@@ -235,9 +239,7 @@ export function useDashboardBillingInvoices({
       return true
     } finally {
       setJobStatusUpdatingId(null)
-      if (dashboardJobStatusMutationLockRef.current === jobId) {
-        dashboardJobStatusMutationLockRef.current = null
-      }
+      releaseMutationLock(dashboardJobStatusMutationLocksRef.current, jobId)
     }
   }
 
@@ -316,8 +318,7 @@ export function useDashboardBillingInvoices({
 
   async function revertBilledDashboardInvoiceToReadyToBill(inv: InvoiceForDashboard): Promise<boolean> {
     if (!invoiceNeedsStripeVoidForRevert(inv)) {
-      if (dashboardInvoiceMutationLockRef.current === inv.id) return false
-      dashboardInvoiceMutationLockRef.current = inv.id
+      if (!tryAcquireMutationLock(dashboardInvoiceMutationLocksRef.current, inv.id)) return false
       setInvoiceStatusUpdatingId(inv.id)
       try {
         const data = await withSupabaseRetry(
@@ -342,13 +343,10 @@ export function useDashboardBillingInvoices({
         return false
       } finally {
         setInvoiceStatusUpdatingId(null)
-        if (dashboardInvoiceMutationLockRef.current === inv.id) {
-          dashboardInvoiceMutationLockRef.current = null
-        }
+        releaseMutationLock(dashboardInvoiceMutationLocksRef.current, inv.id)
       }
     }
-    if (dashboardInvoiceMutationLockRef.current === inv.id) return false
-    dashboardInvoiceMutationLockRef.current = inv.id
+    if (!tryAcquireMutationLock(dashboardInvoiceMutationLocksRef.current, inv.id)) return false
     setInvoiceStatusUpdatingId(inv.id)
     try {
       const token = await getAccessTokenForEdgeFunctions()
@@ -380,15 +378,12 @@ export function useDashboardBillingInvoices({
       return true
     } finally {
       setInvoiceStatusUpdatingId(null)
-      if (dashboardInvoiceMutationLockRef.current === inv.id) {
-        dashboardInvoiceMutationLockRef.current = null
-      }
+      releaseMutationLock(dashboardInvoiceMutationLocksRef.current, inv.id)
     }
   }
 
   async function deleteInvoice(invoiceId: string) {
-    if (dashboardInvoiceMutationLockRef.current === invoiceId) return
-    dashboardInvoiceMutationLockRef.current = invoiceId
+    if (!tryAcquireMutationLock(dashboardInvoiceMutationLocksRef.current, invoiceId)) return
     setInvoiceStatusUpdatingId(invoiceId)
     try {
       const data = await withSupabaseRetry(
@@ -408,9 +403,7 @@ export function useDashboardBillingInvoices({
       showToast?.(e instanceof Error ? e.message : 'Failed to remove invoice', 'error')
     } finally {
       setInvoiceStatusUpdatingId(null)
-      if (dashboardInvoiceMutationLockRef.current === invoiceId) {
-        dashboardInvoiceMutationLockRef.current = null
-      }
+      releaseMutationLock(dashboardInvoiceMutationLocksRef.current, invoiceId)
     }
   }
 
