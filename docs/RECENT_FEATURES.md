@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-18 (v2.728)
+last_updated: 2026-07-18 (v2.729)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.729)
+
+### Fix — Billed Waiting for Payment: jobs with multiple invoices keep their job card (2026-07-18)
+First fix of the post-extraction billing bug-review pass (seed list in PR #385). `buildBilledWaitingDashboardUnits` ([`dashboardBillingInvoiceUnits.ts`](../src/lib/dashboardBillingInvoiceUnits.ts)) silently dropped the job's own row when a job in billed status had **2 or more** billed invoices — only the standalone invoice cards rendered, so the job's "Remaining" card (and with it the job-level **Mark Paid** and **Send back** actions) disappeared, asymmetric with the 0-invoice (plain job card) and 1-invoice (merged job+invoice card) cases. **User-visible change:** in Dashboard → Billing Pipeline → Billed Waiting for Payment, a job with 2+ billed invoices now shows its own job card — "Remaining: $…" computed job-side as revenue − payments_made, exactly as in the 0-invoice case — followed by each invoice as its own card (the stage count goes up accordingly). Jobs with 0 or 1 invoices render exactly as before. Pinning test flipped to assert the fix; new cases cover 2 and 3 invoices with mixed amounts and a mixed multi-job scenario (25 kernel tests).
 
 ## Latest Updates (v2.728)
 

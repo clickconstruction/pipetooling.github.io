@@ -309,13 +309,41 @@ describe('buildBilledWaitingDashboardUnits', () => {
     expect(buildBilledWaitingDashboardUnits([job], [])).toEqual([{ kind: 'job' , job }])
   })
 
-  it('drops the job row when it has 2+ billed invoices, listing each invoice standalone (current behavior)', () => {
+  it('keeps the job row when it has 2+ billed invoices, listing each invoice standalone', () => {
     const job = mkJob({ id: 'job-1' })
     const a = mkInvoice({ id: 'a', job_id: 'job-1' })
     const b = mkInvoice({ id: 'b', job_id: 'job-1' })
     expect(buildBilledWaitingDashboardUnits([job], [a, b])).toEqual([
+      { kind: 'job', job },
       { kind: 'invoice', inv: a },
       { kind: 'invoice', inv: b },
+    ])
+  })
+
+  it('keeps the job row with 3 billed invoices of mixed amounts, never bundling any of them', () => {
+    const job = mkJob({ id: 'job-1', revenue: 1000, payments_made: 100 })
+    const a = mkInvoice({ id: 'a', job_id: 'job-1', amount: 300 })
+    const b = mkInvoice({ id: 'b', job_id: 'job-1', amount: 450.5 })
+    const c = mkInvoice({ id: 'c', job_id: 'job-1', amount: 149.5 })
+    expect(buildBilledWaitingDashboardUnits([job], [a, b, c])).toEqual([
+      { kind: 'job', job },
+      { kind: 'invoice', inv: a },
+      { kind: 'invoice', inv: b },
+      { kind: 'invoice', inv: c },
+    ])
+  })
+
+  it('with 2+ invoices on one job and 1 on another, only the single-invoice job bundles', () => {
+    const multi = mkJob({ id: 'j-multi' })
+    const single = mkJob({ id: 'j-single' })
+    const m1 = mkInvoice({ id: 'm1', job_id: 'j-multi', amount: 200 })
+    const m2 = mkInvoice({ id: 'm2', job_id: 'j-multi', amount: 300 })
+    const s1 = mkInvoice({ id: 's1', job_id: 'j-single', amount: 500 })
+    expect(buildBilledWaitingDashboardUnits([multi, single], [m1, m2, s1])).toEqual([
+      { kind: 'job', job: multi },
+      { kind: 'job_bundle', job: single, inv: s1 },
+      { kind: 'invoice', inv: m1 },
+      { kind: 'invoice', inv: m2 },
     ])
   })
 
