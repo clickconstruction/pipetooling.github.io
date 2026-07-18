@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-18 (v2.729)
+last_updated: 2026-07-18 (v2.730)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.730)
+
+### Fix — Ready to Bill cards: dead Applied/Open sub-line removed (2026-07-18)
+Billing bug-review pass #2 (issue 3 from PR #385's seed list). The standalone-invoice cards in Dashboard → Billing Pipeline → Ready to Bill carried an "Applied: $… · Open: $…" sub-line that could never render: the RTB loaders and `refreshInvoices` map ready-to-bill invoices with an empty payments map, so `invoice_payments` is always `[]` there and the `applied > 0` gate never passes. Investigation verdict: this is correct, not a missing fetch — payments **cannot legitimately exist** on `ready_to_bill` invoices. Every server path that inserts an invoice-linked `jobs_ledger_payments` row (`mark_invoice_paid`, `mark_invoice_paid_from_stripe`, `apply_mercury_bank_payment_allocations`, the `mark_job_paid` allocation variant) hard-requires invoice status `billed`; no path ever reverts an invoice to `ready_to_bill` (send-back **deletes** billed invoices and is blocked while payments reference them — `delete_billed_invoice_on_send_back` + the `void-stripe-invoice-for-revert` edge function; `update_job_status` billed→ready_to_bill leaves invoice rows untouched); and the only client-side payment insert (`JobFormModal` re-save) preserves existing links and creates new rows with `invoice_id: null`. The dead render branch in [`DashboardBillingPipelineSection.tsx`](../src/components/dashboard/DashboardBillingPipelineSection.tsx) is removed with an explanatory comment; the billed-stage Applied/Open sub-line (which is live) is unchanged. **No visible change** — the branch never rendered. No kernel change (`dashboardBilledInvoiceAmounts` is untouched and still serves the billed stage).
 
 ## Latest Updates (v2.729)
 
