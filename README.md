@@ -58,7 +58,7 @@ gh pr merge --squash --delete-branch   # once "checks" is green
 | Adding a new role | [ADDING_A_NEW_ROLE.md](./docs/ADDING_A_NEW_ROLE.md) - Step-by-step guide |
 | Working with database/schema | [PROJECT_DOCUMENTATION.md](./docs/PROJECT_DOCUMENTATION.md) - "Database Schema" section |
 | Bids system features | [BIDS_SYSTEM.md](./docs/BIDS_SYSTEM.md) - All 10 tabs documented |
-| Decomposing a large page (Bids/People) | [docs/BIDS_TABS_ARCHITECTURE.md](./docs/BIDS_TABS_ARCHITECTURE.md), [docs/PEOPLE_TABS_ARCHITECTURE.md](./docs/PEOPLE_TABS_ARCHITECTURE.md) - per-tab state/coupling maps + extraction order |
+| Decomposing a large page | [docs/PAGE_DECOMPOSITION_PLAYBOOK.md](./docs/PAGE_DECOMPOSITION_PLAYBOOK.md) - the method + inventory; per-surface `docs/*_ARCHITECTURE.md` maps (Bids, People, Dashboard, Jobs, JobFormModal, Materials, Settings — indexed in [docs/README.md](./docs/README.md)) |
 | Edge Functions / API | [EDGE_FUNCTIONS.md](./docs/EDGE_FUNCTIONS.md) - Complete API reference |
 | Recent changes/features | [RECENT_FEATURES.md](./docs/RECENT_FEATURES.md) - Chronological updates |
 | App crash / outage / Supabase load (AI + CLI triage; Cursor: `.cursor/rules/supabase-incident-triage.mdc`) | [docs/runbooks/AGENT_APP_CRASH_INVESTIGATION.md](./docs/runbooks/AGENT_APP_CRASH_INVESTIGATION.md) → [SUPABASE_INCIDENT_RUNBOOK.md](./docs/runbooks/SUPABASE_INCIDENT_RUNBOOK.md); capture: [`scripts/capture-supabase-incident.sh`](./scripts/capture-supabase-incident.sh); client mitigation: [RECENT_FEATURES.md](./docs/RECENT_FEATURES.md) **v2.454** |
