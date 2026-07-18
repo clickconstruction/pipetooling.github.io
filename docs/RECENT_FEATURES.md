@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-18 (v2.732)
+last_updated: 2026-07-18 (v2.733)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.733)
+
+### Fix — billing loaders clear stale rows and cancel on ineligibility (2026-07-18)
+Billing bug-review pass #5 (issue 6 from PR #385's seed list). The two loader effects in [`useDashboardBillingInvoices`](../src/hooks/useDashboardBillingInvoices.ts) (Ready to Bill and Billed Waiting for Payment) had no cancellation cleanup and simply early-returned when `authUserId`/`role` became ineligible — leaving stale invoice/job rows in state (hidden today only by the render gates) and letting in-flight responses land after a dep change or unmount. Now each effect (1) **clears its lists and loading flag** in the ineligible branch (sign-out or role change makes the state truthful, not merely hidden), and (2) carries a **cancelled-flag cleanup** so a superseded run's responses are dropped — including a re-check after the billed loader's second await (the payments fetch). The triple-duplicated role gate (`dev`/`master_technician`/assistant-like, also in `refreshInvoices`) is extracted to a tested kernel predicate `isDashboardBillingInvoicesRole` in [`dashboardBillingInvoiceUnits.ts`](../src/lib/dashboardBillingInvoiceUnits.ts) (2 new tests; 27 kernel tests total). **No visible change expected** — the render gates already hid the stale rows; this makes the underlying state truthful and removes the stale-response window.
 
 ## Latest Updates (v2.732)
 

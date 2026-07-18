@@ -7,6 +7,7 @@
  */
 import type { Database } from '../types/database'
 import type { InvoiceWithJobLike } from '../components/jobs/BilledPaymentConfirmationModal'
+import { isAssistantLike } from './subcontractorLikeRole'
 import { type JobBillingContext } from './jobBillingContext'
 import { type ReadyToBillDashboardUnit as ReadyToBillDashboardUnitBase } from './buildReadyToBillDashboardUnits'
 
@@ -163,6 +164,15 @@ export type JobForDashboard = {
   job_plans_link: string | null
   created_at: string | null
   customer_id: string | null
+}
+
+/**
+ * Office roles whose Dashboard loads the billing-invoice pipeline (the Ready
+ * to Bill / Billed Waiting for Payment loaders and `refreshInvoices` in
+ * `useDashboardBillingInvoices` all gate on this).
+ */
+export function isDashboardBillingInvoicesRole(role: string | null | undefined): boolean {
+  return role === 'dev' || role === 'master_technician' || isAssistantLike(role)
 }
 
 export function dashboardJobHasCustomerForBilling(customerId: string | null | undefined): boolean {
