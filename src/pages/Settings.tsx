@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useLocation } from 'react-router-dom'
 import { FunctionsHttpError } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import { cascadePersonNameInPayTables, } from '../lib/cascadePersonName'
@@ -11,6 +12,7 @@ import {
   impersonationSignedInAsDescription,
 } from '../lib/impersonationUiLabels'
 import { getMergedFilteredPins, getUsersWithPin, type PinnedItem } from '../lib/pinnedTabs'
+import { resolveSettingsDeepLink } from '../lib/settingsDeepLink'
 import { useWeeklyTeamLaborTotal } from '../hooks/useWeeklyTeamLaborTotal'
 import { fetchSubLaborDueTotal } from '../hooks/useSubLaborDueTotal'
 import { usePushNotifications } from '../hooks/usePushNotifications'
@@ -4006,12 +4008,49 @@ export default function Settings() {
       : 'Select user…'
 
   const settingsJumpGroups = useMemo(() => getSettingsJumpGroups(myRole), [myRole])
+
+  // Deep links into Settings: /settings?tab=<group-id> and /settings#<section-anchor>
+  // (dashboard banners + Calendar). Applied once per unique URL value, re-attempted
+  // when the role-filtered groups arrive so a valid target isn't lost to load order.
+  const location = useLocation()
+  const appliedDeepLinkRef = useRef<string | null>(null)
+  useEffect(() => {
+    const key = `${location.search}|${location.hash}`
+    if (appliedDeepLinkRef.current === key) return
+    const { tabId, anchorId } = resolveSettingsDeepLink(location.search, location.hash)
+    if (!tabId && !anchorId) {
+      appliedDeepLinkRef.current = key
+      return
+    }
+    if (tabId) {
+      if (!settingsJumpGroups.some((g) => g.id === tabId)) return // groups not loaded yet (or not visible to this role) — retry on next groups change
+      setActiveSettingsTab(tabId)
+    }
+    appliedDeepLinkRef.current = key
+    if (anchorId) {
+      // The owning tab mounts conditionally and its sections hydrate from async
+      // data, so the anchor can appear well after this effect runs. Poll for it
+      // (bounded, ~5s) and scroll once it exists, then stop.
+      const deadline = Date.now() + 5000
+      const tick = () => {
+        const el = document.getElementById(anchorId)
+        if (el) {
+          el.scrollIntoView({ block: 'start', behavior: 'auto' })
+          return
+        }
+        if (Date.now() < deadline) window.setTimeout(tick, 120)
+      }
+      window.setTimeout(tick, 120)
+    }
+  }, [location.search, location.hash, settingsJumpGroups])
+
   useEffect(() => {
     const first = settingsJumpGroups[0]
     if (!first) return
-    if (!settingsJumpGroups.some((g) => g.id === activeSettingsTab)) {
-      setActiveSettingsTab(first.id)
-    }
+    // Functional update: when this fires in the same commit as the deep-link
+    // effect above, `prev` is the just-queued deep-link tab (not this render's
+    // stale closure value), so a valid deep link is never clobbered.
+    setActiveSettingsTab((prev) => (settingsJumpGroups.some((g) => g.id === prev) ? prev : first.id))
   }, [settingsJumpGroups, activeSettingsTab])
 
 
