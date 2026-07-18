@@ -5,28 +5,28 @@ file: docs/PAGE_DECOMPOSITION_PLAYBOOK.md
 type: Engineering / Refactor Process
 purpose: A repeatable, generic process for breaking a multi-thousand-line "God component" page into per-tab components + shared hooks + tested pure logic, without re-deriving the strategy each time. Generalizes the method proven on Bids.tsx (~18,800 → ~3,787 lines) and People.tsx (~21,435 → ~4,269).
 audience: Developers, AI Agents
-last_updated: 2026-07-17
+last_updated: 2026-07-18
 ---
 
 ## What this is
 
-The repo still has several God components (line counts at 2026-07-17):
+The repo still has several God components (line counts at 2026-07-18):
 
 | File | Lines | Notes |
 |---|---|---|
-| `src/pages/Jobs.tsx` | 10,464 | shrank from ~15k **without an architecture map** — write `docs/JOBS_TABS_ARCHITECTURE.md` (Step 0) before resuming its extraction |
-| `src/pages/Dashboard.tsx` | 8,899 | no map yet |
-| `src/components/jobs/JobFormModal.tsx` | 7,133 | a modal, not a page — same method applies |
-| `src/pages/Materials.tsx` | 6,935 | no map yet |
+| `src/pages/Jobs.tsx` | 10,463 | map written ([`JOBS_TABS_ARCHITECTURE.md`](./JOBS_TABS_ARCHITECTURE.md)) — extraction can resume |
+| `src/components/jobs/JobFormModal.tsx` | 7,137 | a modal, not a page — same method applies; map written ([`JOB_FORM_MODAL_ARCHITECTURE.md`](./JOB_FORM_MODAL_ARCHITECTURE.md)) |
+| `src/pages/Materials.tsx` | 6,935 | map written ([`MATERIALS_TABS_ARCHITECTURE.md`](./MATERIALS_TABS_ARCHITECTURE.md)) — low-churn, no extraction scheduled |
 | `src/components/bids/BidsTakeoffTab.tsx` | 5,641 | already an extracted tab; kept growing — candidate for its own sub-decomposition |
-| `src/pages/Estimates.tsx` | 5,331 | no map yet |
-| `src/pages/Settings.tsx` | 5,132 | shrank from ~12k **without an architecture map** — write `docs/SETTINGS_TABS_ARCHITECTURE.md` (Step 0) before resuming its extraction |
+| `src/pages/Estimates.tsx` | 5,332 | no map yet |
+| `src/pages/Settings.tsx` | 5,171 | map written ([`SETTINGS_TABS_ARCHITECTURE.md`](./SETTINGS_TABS_ARCHITECTURE.md)) — extraction can resume |
 | `src/components/people/PeopleReviewTab.tsx` | 5,007 | already an extracted tab |
 | `src/pages/Workflow.tsx` | 4,782 | no map yet |
 | `src/pages/People.tsx` | 4,269 | decomposition essentially done (see map) |
-| `src/pages/Bids.tsx` | 3,787 | decomposition done (see map) |
+| `src/pages/Bids.tsx` | 3,791 | decomposition done (see map) |
+| `src/pages/Dashboard.tsx` | 2,076 | shrank from ~8.9k via mapped extraction ([`DASHBOARD_SECTIONS_ARCHITECTURE.md`](./DASHBOARD_SECTIONS_ARCHITECTURE.md)) — remaining sections tracked there |
 
-Each page is a tab-switched surface that owns hundreds of `useState`s, dozens of loaders/handlers, and inline JSX for every tab. Note that `Settings.tsx` and `Jobs.tsx` lost thousands of lines through ad-hoc extractions **without** the Step-0 map this playbook calls for — those two maps are the next ones to write when their extraction resumes.
+Each page is a tab-switched surface that owns hundreds of `useState`s, dozens of loaders/handlers, and inline JSX for every tab. Every large surface except `Estimates.tsx` and `Workflow.tsx` now has its Step-0 architecture map — write those two maps before starting their extraction.
 
 This document is the **process** for shrinking one. The two reference implementations are:
 
