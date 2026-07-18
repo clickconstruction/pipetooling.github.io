@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-18 (v2.731)
+last_updated: 2026-07-18 (v2.732)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.732)
+
+### Fix — billing mutation locks serialize per id (2026-07-18)
+Billing bug-review pass #4 (issue 5 from PR #385's seed list). The two id-keyed mutation locks in [`useDashboardBillingInvoices`](../src/hooks/useDashboardBillingInvoices.ts) (`updateJobStatus`'s job lock; the invoice lock shared by `revertBilledDashboardInvoiceToReadyToBill` and `deleteInvoice`) were single-slot `string | null` refs: they only guarded same-id double-clicks. Starting a mutation on a *different* id while one was in flight overwrote the slot — the first mutation's guarded finally-cleanup (`if (ref.current === id) ref.current = null`) then skipped clearing, and the second mutation's cleanup cleared the slot while the first was still running, so concurrent different-id mutations were effectively unguarded. Replaced with per-id lock Sets via a new pure kernel [`mutationLockSet.ts`](../src/lib/mutationLockSet.ts) (`tryAcquireMutationLock`/`releaseMutationLock`, 7 unit tests incl. the old single-slot interleaving failure mode): the same-id guard semantics are preserved exactly (second click on the same row still returns early), and each id now locks and releases independently. The send-back confirm boolean lock is untouched — it guards a single modal's confirm button (only one send-back modal exists at a time), so it has no different-id flaw. **No visible change** — clicking two different rows in quick succession behaves as before (both mutations run); the fix makes the double-click guard hold reliably while other mutations are in flight.
 
 ## Latest Updates (v2.731)
 
