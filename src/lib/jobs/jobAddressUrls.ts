@@ -9,6 +9,11 @@ export function resolvedLaborInvoiceLink(raw: string): string | null {
   return normalized || null
 }
 
+/** Google Maps search link for a job address (same URL the Stages map-pin used). */
+export function googleMapsSearchUrl(addr: string | null | undefined): string {
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent((addr ?? '').trim())}`
+}
+
 export function buildClickToolingUrl(job: JobWithDetails): string {
   const params = new URLSearchParams()
   params.set('name', (job.customer_name ?? '').trim())

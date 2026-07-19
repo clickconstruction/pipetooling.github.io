@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-18 (v2.746)
+last_updated: 2026-07-19 (v2.748)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.748)
+
+### Jobs Stages — address opens Maps, and a Dispatch bell on each job (2026-07-19)
+Two tweaks to the Stages job cards. (1) The red **map-pin** button is gone from the Last-activity icon stack; instead the **job address itself** (in the Job column) is now the Google-Maps link — same `https://www.google.com/maps/search/?api=1&query=…` URL, and its look is unchanged (muted, no underline; `color: inherit` + `text-decoration: none`). Helper `googleMapsSearchUrl()` in `src/lib/jobs/jobAddressUrls.ts` (+ tests). (2) A **Dispatch bell** (the same service-bell icon as the header Task Dispatch button) now sits in the icon stack **between the call button and the "send job as a task" button**, gated by `showTaskDispatchButton(role)`. Clicking it opens the existing `DispatchTaskModal` **pre-filled with that job as the reference** — the user types the note and hits Send. `DispatchTaskModalContext.openDispatchModal` now takes an optional `{ reference, titleSeed }` preset. (Note: the purple airplane "send job as a task" opens the checklist modal — a different flow — and is unchanged.)
 
 ## Latest Updates (v2.746)
 

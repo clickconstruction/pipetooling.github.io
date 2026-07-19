@@ -42,19 +42,20 @@ export default function DispatchTaskModal() {
 
   useEffect(() => {
     if (!modal?.isDispatchModalOpen) return
-    setTitle('')
+    const preset = modal.dispatchPreset
+    setTitle(preset?.titleSeed ?? '')
     setLinks([])
     setLocationLat(null)
     setLocationLng(null)
     setUnifiedSearchText('')
     setUnifiedSearchResults([])
-    setSelectedReference(null)
+    setSelectedReference(preset?.reference ?? null)
     setReferenceNoHits(false)
     setFormError(null)
     setSending(false)
     const t = setTimeout(() => titleInputRef.current?.focus(), 50)
     return () => clearTimeout(t)
-  }, [modal?.isDispatchModalOpen])
+  }, [modal?.isDispatchModalOpen, modal?.dispatchPreset])
 
   useEffect(() => {
     if (!modal?.isDispatchModalOpen) return
