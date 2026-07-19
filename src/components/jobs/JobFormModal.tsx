@@ -50,6 +50,29 @@ import {
   snapBreakOffCombinedPctToStep,
   unallocatedBillableDollars,
 } from '../../lib/jobs/jobFormBreakOff'
+import type {
+  FixtureRow,
+  JobFormServiceType,
+  MaterialRow,
+  MeServiceTypeColumns,
+  PaymentRow,
+} from '../../lib/jobs/jobFormTypes'
+import { pickDefaultServiceTypeId, visibleServiceTypesForJobForm } from '../../lib/jobs/jobFormServiceTypes'
+import {
+  materialRowHasUserContent,
+  newEmptyPaymentRow,
+  newJobFormHasBlockingContent,
+  normalizeFixtureDisplayName,
+  paymentRowsFromJob,
+} from '../../lib/jobs/jobFormRows'
+import {
+  canRemovePaymentRowFromForm,
+  canUnlinkMercuryPayment,
+  mercuryLinkedPaymentRow,
+  mercuryUnlinkBlockedByStripeHostedInvoice,
+  paymentRowLinkedToInvoice,
+  stripeBillInvoiceForPaymentRow,
+} from '../../lib/jobs/jobFormPaymentPredicates'
 import { resolveEffectiveJobMasterUserId } from '../../lib/resolveEffectiveJobMasterUserId'
 import { resolveEditJobMasterUserId } from '../../lib/resolveEditJobMasterUserId'
 import { getBillingStripeModePref, stripeModeInvokeBody } from '../../lib/billingStripeModePref'
@@ -95,168 +118,16 @@ import {
   stripeInvoiceFixtureLineLength,
 } from '../../lib/stripeInvoiceLineDescription'
 import { SearchableSelect } from '../SearchableSelect'
-import type { UserRole } from '../../hooks/useAuth'
-import { fieldRoleServiceTypeIdsForUser, isAssistantLike, isSubcontractorLikeRole } from '../../lib/subcontractorLikeRole'
+import { isAssistantLike } from '../../lib/subcontractorLikeRole'
 import { showJobCostBreakdownTeamLabor } from '../../lib/jobDetailModalRole'
 
 type EstimatesRow = Database['public']['Tables']['estimates']['Row']
-type JobFormServiceType = { id: string; name: string; color: string | null }
-
-type MeServiceTypeColumns = {
-  role?: string
-  estimator_service_type_ids?: string[] | null
-  primary_service_type_ids?: string[] | null
-  superintendent_service_type_ids?: string[] | null
-  subcontractor_service_type_ids?: string[] | null
-  helpers_service_type_ids?: string[] | null
-}
-
-function visibleServiceTypesForJobForm(types: JobFormServiceType[], me: MeServiceTypeColumns | null): JobFormServiceType[] {
-  if (types.length === 0) return []
-  const role = me?.role
-  if (role === 'estimator' && me?.estimator_service_type_ids && me.estimator_service_type_ids.length > 0) {
-    const f = types.filter((st) => me.estimator_service_type_ids!.includes(st.id))
-    return f.length > 0 ? f : types
-  }
-  if (role === 'primary' && me?.primary_service_type_ids && me.primary_service_type_ids.length > 0) {
-    const f = types.filter((st) => me.primary_service_type_ids!.includes(st.id))
-    return f.length > 0 ? f : types
-  }
-  if (role === 'superintendent' && me?.superintendent_service_type_ids && me.superintendent_service_type_ids.length > 0) {
-    const f = types.filter((st) => me.superintendent_service_type_ids!.includes(st.id))
-    return f.length > 0 ? f : types
-  }
-  if (isSubcontractorLikeRole(role as UserRole)) {
-    const fieldIds = fieldRoleServiceTypeIdsForUser(role as UserRole, me ?? {})
-    if (fieldIds && fieldIds.length > 0) {
-      const f = types.filter((st) => fieldIds.includes(st.id))
-      return f.length > 0 ? f : types
-    }
-  }
-  return types
-}
-
-function pickDefaultServiceTypeId(types: { id: string; name: string }[]): string | undefined {
-  if (types.length === 0) return undefined
-  if (types.length === 1) return types[0]!.id
-  const plumb = types.find((st) => st.name === 'Plumbing')
-  if (plumb) return plumb.id
-  const elec = types.find((st) => st.name === 'Electrical')
-  if (elec) return elec.id
-  return types[0]!.id
-}
-type JobsLedgerInvoiceRow = Database['public']['Tables']['jobs_ledger_invoices']['Row']
 type CustomerRow = Database['public']['Tables']['customers']['Row']
 type UserRow = { id: string; name: string; email: string | null; role: string }
 
-type MaterialRow = { id: string; description: string; amount: number }
-
-function materialRowHasUserContent(row: MaterialRow): boolean {
-  return (row.description ?? '').trim() !== '' || Number(row.amount) !== 0
-}
 
 type MaterialsAccordionKey = 'supply' | 'mercury' | 'tally' | 'billed'
 
-type PaymentRow = {
-  id: string
-  amount: number
-  paid_on: string | null
-  note: string | null
-  payment_type: string | null
-  reference_number: string | null
-  /** Set when loaded from DB; payments applied to an invoice cannot be removed in this form. */
-  invoice_id: string | null
-  /** Set when loaded from DB; Bank Payments flow links a Mercury transaction. */
-  mercury_transaction_id: string | null
-}
-type FixtureRow = {
-  id: string
-  name: string
-  count: number
-  /** Unit price in dollars; null when unset. */
-  line_unit_price: number | null
-  line_description: string
-}
-
-/** Collapses newlines and internal whitespace; trims ends. Single logical line for DB / Stripe. */
-function normalizeFixtureDisplayName(raw: string): string {
-  return (raw ?? '').replace(/\s+/g, ' ').trim()
-}
-
-function fixtureRowHasUserContent(row: FixtureRow): boolean {
-  if (normalizeFixtureDisplayName(row.name ?? '') !== '') return true
-  if ((row.line_description ?? '').trim() !== '') return true
-  if (row.line_unit_price != null && Number.isFinite(Number(row.line_unit_price))) return true
-  const c = Number(row.count)
-  if (Number.isFinite(c) && c !== 1) return true
-  return false
-}
-
-function paymentRowHasUserContent(row: PaymentRow): boolean {
-  if (Number(row.amount) !== 0) return true
-  if ((row.note ?? '').trim() !== '') return true
-  if ((row.reference_number ?? '').trim() !== '') return true
-  if ((row.payment_type ?? '').trim() !== '') return true
-  if (row.invoice_id != null && String(row.invoice_id).trim() !== '') return true
-  if (row.mercury_transaction_id != null && String(row.mercury_transaction_id).trim() !== '') return true
-  return false
-}
-
-/** True when the New Job sheet has any user-visible content; hides **Import** to avoid accidental overwrites. */
-function newJobFormHasBlockingContent(args: {
-  jobName: string
-  jobAddress: string
-  hcpNumber: string
-  customerName: string
-  customerEmail: string
-  customerPhone: string
-  dateMet: string
-  customerId: string | null
-  bidId: string | null
-  projectId: string | null
-  formServiceTypeId: string
-  /** Set on new-job init so auto-picked trade does not hide Import. */
-  initialNewJobServiceTypeId: string
-  googleDriveLink: string
-  jobPicturesLink: string
-  jobPlansLink: string
-  lastBillDate: string
-  fixtures: FixtureRow[]
-  materials: MaterialRow[]
-  payments: PaymentRow[]
-  teamMemberIds: string[]
-}): boolean {
-  if (args.jobName.trim() || args.jobAddress.trim() || args.hcpNumber.trim()) return true
-  if (
-    args.customerId ||
-    args.customerName.trim() ||
-    args.customerEmail.trim() ||
-    args.customerPhone.trim() ||
-    args.dateMet.trim()
-  ) {
-    return true
-  }
-  if (args.bidId || args.projectId) return true
-  if (
-    args.formServiceTypeId.trim() !== '' &&
-    args.formServiceTypeId !== args.initialNewJobServiceTypeId
-  ) {
-    return true
-  }
-  if (
-    args.googleDriveLink.trim() ||
-    args.jobPicturesLink.trim() ||
-    args.jobPlansLink.trim() ||
-    args.lastBillDate.trim()
-  ) {
-    return true
-  }
-  if (args.fixtures.length > 1 || args.fixtures.some(fixtureRowHasUserContent)) return true
-  if (args.materials.length > 1 || args.materials.some(materialRowHasUserContent)) return true
-  if (args.payments.length > 1 || args.payments.some(paymentRowHasUserContent)) return true
-  if (args.teamMemberIds.length > 0) return true
-  return false
-}
 
 const FIXTURE_SCOPE_FIELD_LABEL_VISUALLY_HIDDEN: CSSProperties = {
   position: 'absolute',
@@ -270,86 +141,6 @@ const FIXTURE_SCOPE_FIELD_LABEL_VISUALLY_HIDDEN: CSSProperties = {
   borderWidth: 0,
 }
 
-function localDateYYYYMMDD(): string {
-  const d = new Date()
-  const y = d.getFullYear()
-  const m = String(d.getMonth() + 1).padStart(2, '0')
-  const day = String(d.getDate()).padStart(2, '0')
-  return `${y}-${m}-${day}`
-}
-
-function newEmptyPaymentRow(): PaymentRow {
-  return {
-    id: crypto.randomUUID(),
-    amount: 0,
-    paid_on: localDateYYYYMMDD(),
-    note: null,
-    payment_type: null,
-    reference_number: null,
-    invoice_id: null,
-    mercury_transaction_id: null,
-  }
-}
-
-function paymentRowsFromJob(job: JobWithDetails): PaymentRow[] {
-  if (job.payments?.length) {
-    return job.payments.map((p) => ({
-      id: p.id,
-      amount: Number(p.amount),
-      paid_on: p.paid_on ? String(p.paid_on).slice(0, 10) : null,
-      note: p.note ?? null,
-      payment_type: p.payment_type ?? null,
-      reference_number: p.reference_number ?? null,
-      invoice_id: p.invoice_id ?? null,
-      mercury_transaction_id: p.mercury_transaction_id ?? null,
-    }))
-  }
-  return [newEmptyPaymentRow()]
-}
-
-function mercuryLinkedPaymentRow(row: PaymentRow): boolean {
-  return row.mercury_transaction_id != null && String(row.mercury_transaction_id).trim().length > 0
-}
-
-/** Same roles as Accounts Receivable bank payment apply. */
-function canUnlinkMercuryPayment(role: string | null): boolean {
-  return role === 'dev' || role === 'master_technician' || isAssistantLike(role) || role === 'primary'
-}
-
-function paymentRowLinkedToInvoice(row: PaymentRow): boolean {
-  return row.invoice_id != null && String(row.invoice_id).trim().length > 0
-}
-
-function jobsLedgerInvoiceIsStripeLinked(inv: JobsLedgerInvoiceRow): boolean {
-  if ((inv.stripe_invoice_id ?? '').trim()) return true
-  return (inv.external_send_channel ?? '').trim() === 'stripe'
-}
-
-function stripeBillInvoiceForPaymentRow(
-  row: PaymentRow,
-  job: JobWithDetails | null,
-): JobsLedgerInvoiceRow | null {
-  if (!job || !paymentRowLinkedToInvoice(row)) return null
-  const inv = (job.invoices ?? []).find((i) => i.id === row.invoice_id)
-  if (!inv || !jobsLedgerInvoiceIsStripeLinked(inv)) return null
-  return inv
-}
-
-/** Mercury unlink RPC rejects Stripe-hosted invoices; hide/disable unlink when this applies. */
-function mercuryUnlinkBlockedByStripeHostedInvoice(row: PaymentRow, job: JobWithDetails | null): boolean {
-  if (!job || !paymentRowLinkedToInvoice(row)) return false
-  const inv = (job.invoices ?? []).find((i) => i.id === row.invoice_id)
-  if (!inv) return false
-  return jobsLedgerInvoiceIsStripeLinked(inv)
-}
-
-/** Manual payment lines that may be removed from the form (persist on Save); Stripe/Mercury/invoice-linked excluded. */
-function canRemovePaymentRowFromForm(row: PaymentRow, job: JobWithDetails | null): boolean {
-  if (mercuryLinkedPaymentRow(row)) return false
-  if (paymentRowLinkedToInvoice(row)) return false
-  if (stripeBillInvoiceForPaymentRow(row, job)) return false
-  return true
-}
 
 /** Matches Outstanding billing note/memo sub-row cell styling in Edit Job. */
 const PAYMENT_MEMO_SUB_ROW_CELL_STYLE: CSSProperties = {
