@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-19 (v2.755)
+last_updated: 2026-07-19 (v2.756)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.756)
+
+### Edit Job — billing Phase 2b: attach a manual payment to a specific invoice (2026-07-19)
+A manual payment row in the Edit-Job **③ Payments received** table now has an **"Applies to"** dropdown (next to Type / Ref / Memo) — pick **Job (unassigned)** for a general job payment, or a specific **billed invoice** (`$26,800.00 bill · sent 2026-07-15`) to pay that bill down. Previously a payment's `invoice_id` could only be set by the Stripe/Mercury sync — recording an outside payment (cash, check, ACH) against a particular sent invoice wasn't possible from the form. The plumbing already existed (`updatePaymentRow` allows `invoice_id` on manual rows, `saveJob` persists it, and each billed invoice's open-remaining / write-down room already reads `sum(payments where invoice_id = inv.id)`); this just surfaces the control. The dropdown shows only when the job has at least one billed invoice, and is hidden on Stripe/Mercury-locked rows (their `invoice_id` stays frozen). Presentational addition — no persistence or billing math changed.
 
 ## Latest Updates (v2.755)
 

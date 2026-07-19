@@ -96,7 +96,7 @@ A job needs a linked customer (with an email, for Stripe) before it can be bille
 
 ## Billed → Paid
 
-Once billed, the job shows under **Billed Waiting for Payment** on the Dashboard and on the Accounts Receivable page. Stripe payments mark themselves; outside payments are recorded against the invoice. When everything is collected, the job moves to {{chip:green|Paid}}.
+Once billed, the job shows under **Billed Waiting for Payment** on the Dashboard and on the Accounts Receivable page. Stripe payments mark themselves; outside payments (cash, check, ACH) you record yourself. To record one against a specific bill, add it in the Edit Job window's **③ Payments received** table and set its **Applies to** dropdown to that billed invoice — the payment then pays *that* bill down; leave it on **Job (unassigned)** for a general job payment. When everything is collected, the job moves to {{chip:green|Paid}}.
 
 Jobs that are billed but proving hard to collect can be flagged for **Collections** — they get their own section so the AR picture stays honest.
 
