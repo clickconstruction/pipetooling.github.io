@@ -64,6 +64,7 @@ import type { LaborJob, LaborJobPayment, SubLaborBackchargeTarget, SubLaborPayme
 import { formatDispatchNoteDaysAgoShortPhrase, formatDispatchNoteWeekdayShortTimeChicago, getDispatchNoteDisplayMeta } from '../utils/dispatchNoteDisplay'
 import { buildStagesMoneyBarModel } from '../lib/stagesMoneyBar'
 import StagesProgressPaymentCell from '../components/jobs/StagesProgressPaymentCell'
+import { JobAddressText } from '../components/jobs/JobAddressText'
 import { composePctCompleteNoteBody } from '../lib/jobs/stagesPctNote'
 import { useChecklistAddModal } from '../contexts/ChecklistAddModalContext'
 import { useDispatchTaskModal } from '../contexts/DispatchTaskModalContext'
@@ -5441,9 +5442,8 @@ ${totalsHtml}
                       >
                         <path d="M128 252.6C128 148.4 214 64 320 64C426 64 512 148.4 512 252.6C512 371.9 391.8 514.9 341.6 569.4C329.8 582.2 310.1 582.2 298.3 569.4C248.1 514.9 127.9 371.9 127.9 252.6zM320 320C355.3 320 384 291.3 384 256C384 220.7 355.3 192 320 192C284.7 192 256 220.7 256 256C256 291.3 284.7 320 320 320z" />
                       </svg>
-                      <span>{fmt.line1}</span>
+                      <JobAddressText line1={fmt.line1} line2={fmt.line2} />
                     </div>
-                    {fmt.line2 && <div>{fmt.line2}</div>}
                   </a>
                 </div>
               )
