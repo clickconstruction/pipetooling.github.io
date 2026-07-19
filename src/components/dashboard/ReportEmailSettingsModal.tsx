@@ -330,6 +330,7 @@ export function ReportEmailSettingsModal({
                       options={rosterOptions}
                       placeholder="Pick a person…"
                       searchable
+                      searchReplacesTrigger
                       listAriaLabel="Recipient"
                       portalZIndex={1200}
                     />
