@@ -65,6 +65,7 @@ import { formatDispatchNoteDaysAgoShortPhrase, formatDispatchNoteWeekdayShortTim
 import { buildStagesMoneyBarModel } from '../lib/stagesMoneyBar'
 import StagesProgressPaymentCell from '../components/jobs/StagesProgressPaymentCell'
 import { composePctCompleteNoteBody } from '../lib/jobs/stagesPctNote'
+import { ManageJobPeopleModal } from '../components/jobs/ManageJobPeopleModal'
 import { useChecklistAddModal } from '../contexts/ChecklistAddModalContext'
 import { useDispatchTaskModal } from '../contexts/DispatchTaskModalContext'
 import { showTaskDispatchButton } from '../lib/headerTaskDispatchEstimatorEligible'
@@ -323,6 +324,15 @@ export default function Jobs() {
       authRole === 'primary',
     [authRole],
   )
+  // Matches the jobs_ledger_team_members INSERT/DELETE RLS (dev / master_technician /
+  // assistant only) — who may add or remove people from a job.
+  const canManageJobPeople = useMemo(
+    () => authRole === 'dev' || authRole === 'master_technician' || authRole === 'assistant',
+    [authRole],
+  )
+  const [manageJobPeople, setManageJobPeople] = useState<
+    { jobId: string; jobLabel: string; currentTeamUserIds: string[] } | null
+  >(null)
   const shortNewJobButtonLabel = useMatchMedia(JOBS_SHORT_NEW_JOB_BUTTON_MQ)
   const { nicknameByDebitCard, nicknameByAccount } = useMercuryLedgerNicknames()
   const { showToast } = useToastContext()
@@ -6377,6 +6387,19 @@ ${totalsHtml}
                                   canEditPct={canEditJobPctComplete}
                                   pctSaving={pctCompleteSavingId === j.id}
                                   onCommitPct={(value, note) => commitStagesPctWithNote(j.id, value, note)}
+                                  teamMembers={j.team_members?.map((t) => ({ user_id: t.user_id, name: t.users?.name ?? null })) ?? []}
+                                  peopleAction={
+                                    canManageJobPeople
+                                      ? {
+                                          onClick: () =>
+                                            setManageJobPeople({
+                                              jobId: j.id,
+                                              jobLabel: `${(j.hcp_number ?? '').trim() || '—'} · ${(j.job_name ?? '').trim() || 'Job'}`,
+                                              currentTeamUserIds: j.team_members?.map((t) => t.user_id) ?? [],
+                                            }),
+                                        }
+                                      : undefined
+                                  }
                                   activity={jobThreadActivityByJobId[j.id] ?? []}
                                   loading={jobThreadNotesLoadingId === j.id}
                                   canPost={!!authUser}
@@ -7096,6 +7119,19 @@ ${totalsHtml}
                                       canEditPct={canEditJobPctComplete}
                                       pctSaving={pctCompleteSavingId === j.id}
                                       onCommitPct={(value, note) => commitStagesPctWithNote(j.id, value, note)}
+                                      teamMembers={j.team_members?.map((t) => ({ user_id: t.user_id, name: t.users?.name ?? null })) ?? []}
+                                      peopleAction={
+                                        canManageJobPeople
+                                          ? {
+                                              onClick: () =>
+                                                setManageJobPeople({
+                                                  jobId: j.id,
+                                                  jobLabel: `${(j.hcp_number ?? '').trim() || '—'} · ${(j.job_name ?? '').trim() || 'Job'}`,
+                                                  currentTeamUserIds: j.team_members?.map((t) => t.user_id) ?? [],
+                                                }),
+                                            }
+                                          : undefined
+                                      }
                                       activity={jobThreadActivityByJobId[j.id] ?? []}
                                       loading={jobThreadNotesLoadingId === j.id}
                                       canPost={!!authUser}
@@ -7490,6 +7526,19 @@ ${totalsHtml}
                                       canEditPct={canEditJobPctComplete}
                                       pctSaving={pctCompleteSavingId === job.id}
                                       onCommitPct={(value, note) => commitStagesPctWithNote(job.id, value, note)}
+                                      teamMembers={job.team_members?.map((t) => ({ user_id: t.user_id, name: t.users?.name ?? null })) ?? []}
+                                      peopleAction={
+                                        canManageJobPeople
+                                          ? {
+                                              onClick: () =>
+                                                setManageJobPeople({
+                                                  jobId: job.id,
+                                                  jobLabel: `${(job.hcp_number ?? '').trim() || '—'} · ${(job.job_name ?? '').trim() || 'Job'}`,
+                                                  currentTeamUserIds: job.team_members?.map((t) => t.user_id) ?? [],
+                                                }),
+                                            }
+                                          : undefined
+                                      }
                                       activity={jobThreadActivityByJobId[job.id] ?? []}
                                       loading={jobThreadNotesLoadingId === job.id}
                                       canPost={!!authUser}
@@ -10410,6 +10459,14 @@ ${totalsHtml}
           assigneeCandidates={users.map((u) => ({ user_id: u.id, name: u.name }))}
         />
       ) : null}
+      <ManageJobPeopleModal
+        open={manageJobPeople != null}
+        onClose={() => setManageJobPeople(null)}
+        jobId={manageJobPeople?.jobId ?? null}
+        jobLabel={manageJobPeople?.jobLabel ?? ''}
+        currentTeamUserIds={manageJobPeople?.currentTeamUserIds ?? []}
+        onChanged={() => void loadJobs()}
+      />
       {partsUnattribListJobId ? (
         <PartsUnattributedMercuryListModal
           open

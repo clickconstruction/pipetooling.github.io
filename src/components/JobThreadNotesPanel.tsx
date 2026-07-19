@@ -79,6 +79,10 @@ type JobThreadNotesPanelProps = {
    * Required when `canEditPct` is set.
    */
   onCommitPct?: (value: number, note: string) => void | Promise<void>
+  /** People assigned to the job (jobs_ledger_team_members). Shown top-left. */
+  teamMembers?: Array<{ user_id: string; name: string | null }>
+  /** Far-left "people" button — opens the add/remove-people modal. Editors only. */
+  peopleAction?: { onClick: () => void; disabled?: boolean }
 }
 
 const DEFAULT_ACTIVITY_LIST_MAX_HEIGHT = 'min(280px, 45vh)'
@@ -206,6 +210,8 @@ export function JobThreadNotesPanel({
   canEditPct = false,
   pctSaving = false,
   onCommitPct,
+  teamMembers,
+  peopleAction,
 }: JobThreadNotesPanelProps) {
   const [viewingReport, setViewingReport] = useState<ReportForView | null>(null)
   const [pctEditorOpen, setPctEditorOpen] = useState(false)
@@ -300,11 +306,34 @@ export function JobThreadNotesPanel({
         borderRadius: 6,
       }}
     >
-      {showSectionTitle ? (
-        <div style={{ marginBottom: '0.5rem', textAlign: 'center' }}>
-          <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-700)' }}>
-            {sectionTitle}
-          </div>
+      {peopleAction || (teamMembers && teamMembers.length > 0) || showSectionTitle ? (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.5rem', flexWrap: 'wrap' }}>
+          {peopleAction ? (
+            <button
+              type="button"
+              onClick={peopleAction.onClick}
+              disabled={peopleAction.disabled}
+              title="Add or remove people on this job"
+              aria-label="Manage people on this job"
+              style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 28, height: 28, flexShrink: 0, padding: 0, border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'var(--text-link)', cursor: peopleAction.disabled ? 'not-allowed' : 'pointer' }}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="16" height="16" fill="currentColor" aria-hidden="true">
+                <path d="M144 192C144 156.7 172.7 128 208 128C243.3 128 272 156.7 272 192C272 227.3 243.3 256 208 256C172.7 256 144 227.3 144 192zM32 448C32 386.6 81.6 337 143 337L177 337C238.4 337 288 386.6 288 448C288 465.7 273.7 480 256 480L64 480C46.3 480 32 465.7 32 448zM368 192C368 156.7 396.7 128 432 128C467.3 128 496 156.7 496 192C496 227.3 467.3 256 432 256C396.7 256 368 227.3 368 192zM352 448C352 386.6 401.6 337 463 337L497 337C558.4 337 608 386.6 608 448C608 465.7 593.7 480 576 480L384 480C366.3 480 352 465.7 352 448z" />
+              </svg>
+            </button>
+          ) : null}
+          {teamMembers && teamMembers.length > 0 ? (
+            <span style={{ fontSize: '0.8125rem', color: 'var(--text-700)' }}>
+              {teamMembers.map((m) => (m.name?.trim() ? m.name.trim() : 'Unknown')).join(', ')}
+            </span>
+          ) : peopleAction ? (
+            <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>No one assigned</span>
+          ) : null}
+          {showSectionTitle ? (
+            <span style={{ marginLeft: 'auto', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-700)' }}>
+              {sectionTitle}
+            </span>
+          ) : null}
         </div>
       ) : null}
       {filterEnabled ? (
