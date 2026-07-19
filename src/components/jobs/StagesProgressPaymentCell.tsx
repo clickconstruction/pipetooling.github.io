@@ -6,11 +6,16 @@ const UNBILLED_COLOR = '#f59e0b'
 
 type StagesProgressPaymentCellProps = {
   model: StagesMoneyBarModel
-  /** Current pct_complete (0–100) or null; seeds the editable input. */
+  /** Current pct_complete (0–100) or null; seeds the editable input / read-only label. */
   pctComplete: number | null
-  pctSaving: boolean
-  /** Commit a new pct (null = cleared). Fired on blur / Enter, mirroring the old inline input. */
-  onPctCommit: (pct: number | null) => void
+  pctSaving?: boolean
+  /**
+   * Commit a new pct (null = cleared). Fired on blur / Enter, mirroring the old
+   * inline input. Omit to render pct as read-only text (later-stage tables).
+   */
+  onPctCommit?: (pct: number | null) => void
+  /** Optional row-specific detail line (e.g. this row's invoice amount), rendered under the legend. */
+  footnote?: React.ReactNode
 }
 
 function swatch(color?: string) {
@@ -36,7 +41,7 @@ function swatch(color?: string) {
  * total on top, a paid/unbilled bar of the total bill, and a labeled legend.
  * Pure presentation — all math comes in via the model (see stagesMoneyBar.ts).
  */
-export default function StagesProgressPaymentCell({ model, pctComplete, pctSaving, onPctCommit }: StagesProgressPaymentCellProps) {
+export default function StagesProgressPaymentCell({ model, pctComplete, pctSaving, onPctCommit, footnote }: StagesProgressPaymentCellProps) {
   const rowStyle: React.CSSProperties = { display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '0.5rem' }
   const labelStyle: React.CSSProperties = { fontSize: '0.75rem', color: 'var(--text-muted)' }
   const amountStyle: React.CSSProperties = { fontSize: '0.75rem', fontVariantNumeric: 'tabular-nums' }
@@ -45,43 +50,53 @@ export default function StagesProgressPaymentCell({ model, pctComplete, pctSavin
     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem', minWidth: '11rem', textAlign: 'left' }}>
       <div style={rowStyle}>
         <span style={{ whiteSpace: 'nowrap' }}>
-          <input
-            key={`pct-${pctComplete ?? 'null'}`}
-            type="number"
-            min={0}
-            max={100}
-            defaultValue={pctComplete != null ? pctComplete : ''}
-            onBlur={(e) => {
-              const v = e.target.value.trim()
-              if (v === '') {
-                onPctCommit(null)
-                return
-              }
-              const n = Math.round(Number(v))
-              if (!Number.isNaN(n) && n >= 0 && n <= 100) {
-                onPctCommit(n)
-              }
-            }}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                e.currentTarget.blur()
-              }
-            }}
-            disabled={pctSaving}
-            placeholder=""
-            aria-label="Percent complete"
-            style={{
-              width: '2.75rem',
-              padding: '0.15rem 0.25rem',
-              fontSize: '0.8125rem',
-              textAlign: 'center',
-              border: 'none',
-              borderBottom: '1px solid var(--border-strong)',
-              borderRadius: 0,
-              background: 'transparent',
-            }}
-          />
-          <span style={labelStyle}> % done</span>
+          {onPctCommit ? (
+            <>
+              <input
+                key={`pct-${pctComplete ?? 'null'}`}
+                type="number"
+                min={0}
+                max={100}
+                defaultValue={pctComplete != null ? pctComplete : ''}
+                onBlur={(e) => {
+                  const v = e.target.value.trim()
+                  if (v === '') {
+                    onPctCommit(null)
+                    return
+                  }
+                  const n = Math.round(Number(v))
+                  if (!Number.isNaN(n) && n >= 0 && n <= 100) {
+                    onPctCommit(n)
+                  }
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.currentTarget.blur()
+                  }
+                }}
+                disabled={!!pctSaving}
+                placeholder=""
+                aria-label="Percent complete"
+                style={{
+                  width: '2.75rem',
+                  padding: '0.15rem 0.25rem',
+                  fontSize: '0.8125rem',
+                  textAlign: 'center',
+                  border: 'none',
+                  borderBottom: '1px solid var(--border-strong)',
+                  borderRadius: 0,
+                  background: 'transparent',
+                }}
+              />
+              <span style={labelStyle}> % done</span>
+            </>
+          ) : pctComplete != null ? (
+            <span style={labelStyle}>
+              <span style={{ color: 'var(--text-strong)', fontVariantNumeric: 'tabular-nums' }}>{pctComplete}</span> % done
+            </span>
+          ) : (
+            <span style={labelStyle}>&nbsp;</span>
+          )}
         </span>
         <span style={{ ...labelStyle, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
           {model.hasBar ? `${formatUsdNoCents(model.total)} bid` : 'no bid value'}
@@ -133,6 +148,9 @@ export default function StagesProgressPaymentCell({ model, pctComplete, pctSavin
           </span>
         </div>
       </div>
+      {footnote != null && (
+        <div style={{ fontSize: '0.6875rem', color: 'var(--text-muted)', textAlign: 'center' }}>{footnote}</div>
+      )}
     </div>
   )
 }

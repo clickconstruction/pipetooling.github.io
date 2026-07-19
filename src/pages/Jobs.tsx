@@ -5867,9 +5867,8 @@ ${totalsHtml}
               )
             }
 
-            function renderStagesTable(jobList: JobWithDetails[], actionLabel: React.ReactNode | null, onAction: (j: JobWithDetails) => void, showTimeOpen?: boolean, onSendBack?: (j: JobWithDetails) => void, onSendBackSimple?: (j: JobWithDetails) => void, showRemaining?: boolean, showFinalBill?: boolean, showPctComplete?: boolean) {
-              const mergedProgressPayment = !!showRemaining && !!showPctComplete
-              const stagesTableColCount = mergedProgressPayment ? 5 : 5 + (showPctComplete ? 1 : 0)
+            function renderStagesTable(jobList: JobWithDetails[], actionLabel: React.ReactNode | null, onAction: (j: JobWithDetails) => void, showTimeOpen?: boolean, onSendBack?: (j: JobWithDetails) => void, onSendBackSimple?: (j: JobWithDetails) => void, showPctComplete?: boolean) {
+              const stagesTableColCount = 5
               return (
                 <div style={{ border: '1px solid var(--border)', borderRadius: 4, overflowX: 'auto', WebkitOverflowScrolling: 'touch', minWidth: 0 }}>
                   <table style={{ width: '100%', minWidth: 700, borderCollapse: 'collapse', fontSize: '0.875rem' }}>
@@ -5887,33 +5886,15 @@ ${totalsHtml}
                         </th>
                         <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Job</th>
                         <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)', minWidth: 200 }}>Last activity</th>
-                        {showPctComplete && !mergedProgressPayment && (
-                          <th
-                            style={{
-                              padding: '0.75rem',
-                              textAlign: 'center',
-                              borderBottom: '1px solid var(--border)',
-                              minWidth: '8.5rem',
-                            }}
-                          >
-                            {renderStagesThreeLineHeader('% Complete', 'Value Created', 'Could Bill')}
-                          </th>
-                        )}
                         <th
                           style={{
                             padding: '0.75rem',
                             textAlign: 'center',
                             borderBottom: '1px solid var(--border)',
-                            ...(mergedProgressPayment ? { minWidth: '12rem' } : showRemaining ? { minWidth: '7rem' } : {}),
+                            minWidth: '12rem',
                           }}
                         >
-                          {mergedProgressPayment
-                            ? 'Progress & payment'
-                            : showRemaining
-                              ? renderStagesThreeLineHeader('Paid', 'Left', 'Total Bill')
-                              : showFinalBill
-                                ? 'Final Bill'
-                                : 'Revenue'}
+                          Progress & payment
                         </th>
                         <th style={{ padding: '0.75rem', width: 140, borderBottom: '1px solid var(--border)' }} />
                       </tr>
@@ -6076,91 +6057,17 @@ ${totalsHtml}
                               {renderStagesJobColumnEstimateFooter(j.linkedEstimateForStages)}
                             </td>
                             {renderStagesLastActivityCell(j, stagesJobLevelStripeEmailedHintInvoice(j))}
-                            {showPctComplete && !mergedProgressPayment && (
-                              <td style={{ padding: '0.75rem', textAlign: 'center', verticalAlign: 'middle' }}>
-                                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
-                                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.15rem' }}>
-                                    <input
-                                      key={`pct-${j.id}-${j.pct_complete ?? 'null'}`}
-                                      type="number"
-                                      min={0}
-                                      max={100}
-                                      defaultValue={j.pct_complete != null ? j.pct_complete : ''}
-                                      onBlur={(e) => {
-                                        const v = e.target.value.trim()
-                                        if (v === '') {
-                                          updateJobPctComplete(j.id, null)
-                                          return
-                                        }
-                                        const n = Math.round(Number(v))
-                                        if (!Number.isNaN(n) && n >= 0 && n <= 100) {
-                                          updateJobPctComplete(j.id, n)
-                                        }
-                                      }}
-                                      onKeyDown={(e) => {
-                                        if (e.key === 'Enter') {
-                                          e.currentTarget.blur()
-                                        }
-                                      }}
-                                      disabled={pctCompleteSavingId === j.id}
-                                      placeholder=""
-                                      style={{
-                                        width: '3.5rem',
-                                        padding: '0.25rem 0.35rem',
-                                        fontSize: '0.8125rem',
-                                        textAlign: 'center',
-                                        border: 'none',
-                                        borderBottom: '1px solid var(--border-strong)',
-                                        borderRadius: 0,
-                                        background: 'transparent',
-                                      }}
-                                    />
-                                    <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>%</span>
-                                  </div>
-                                  <div style={{ fontSize: '0.8125rem' }}>
-                                    {j.pct_complete != null
-                                      ? `${formatUsdNoCents((Number(j.revenue ?? 0) * j.pct_complete) / 100)} done`
-                                      : '—'}
-                                  </div>
-                                  {(() => {
-                                    const totalBill = Number(j.revenue ?? 0)
-                                    const valueCreated = j.pct_complete != null ? (totalBill * j.pct_complete) / 100 : 0
-                                    const remaining = Math.max(0, totalBill - Number(j.payments_made ?? 0))
-                                    const toBill = valueCreated - (totalBill - remaining)
-                                    return (
-                                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>
-                                        {valueCreated === 0 || toBill === 0 ? '—' : `${formatUsdNoCents(toBill)} to bill`}
-                                      </div>
-                                    )
-                                  })()}
-                                </div>
-                              </td>
-                            )}
                             <td style={{ padding: '0.75rem', textAlign: 'center', verticalAlign: 'middle' }}>
-                              {mergedProgressPayment ? (
-                                <StagesProgressPaymentCell
-                                  model={buildStagesMoneyBarModel({
-                                    totalBill: j.revenue != null ? Number(j.revenue) : null,
-                                    paymentsMade: j.payments_made != null ? Number(j.payments_made) : null,
-                                    pctComplete: j.pct_complete ?? null,
-                                  })}
-                                  pctComplete={j.pct_complete ?? null}
-                                  pctSaving={pctCompleteSavingId === j.id}
-                                  onPctCommit={(n) => updateJobPctComplete(j.id, n)}
-                                />
-                              ) : showRemaining
-                                ? (() => {
-                                    const rev = j.revenue != null ? Number(j.revenue) : 0
-                                    const pm = j.payments_made != null ? Number(j.payments_made) : 0
-                                    return (
-                                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
-                                        <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{pm > 0 ? `${formatUsdNoCents(pm)} paid` : '—'}</span>
-                                        <span>{rev > 0 || pm > 0 ? `${formatUsdNoCents(rev - pm)} left` : '—'}</span>
-                                        <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{j.revenue != null ? `${formatUsdNoCents(Number(j.revenue))} bid` : '—'}</span>
-                                      </div>
-                                    )
-                                  })()
-                                : (j.revenue != null ? formatCurrency(Number(j.revenue)) : '—')}
+                              <StagesProgressPaymentCell
+                                model={buildStagesMoneyBarModel({
+                                  totalBill: j.revenue != null ? Number(j.revenue) : null,
+                                  paymentsMade: j.payments_made != null ? Number(j.payments_made) : null,
+                                  pctComplete: j.pct_complete ?? null,
+                                })}
+                                pctComplete={j.pct_complete ?? null}
+                                pctSaving={showPctComplete ? pctCompleteSavingId === j.id : undefined}
+                                onPctCommit={showPctComplete ? (n) => updateJobPctComplete(j.id, n) : undefined}
+                              />
                             </td>
                             <td style={{ padding: '0.75rem', verticalAlign: 'top' }}>
                               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
@@ -6480,10 +6387,10 @@ ${totalsHtml}
                             padding: '0.75rem',
                             textAlign: 'center',
                             borderBottom: '1px solid var(--border)',
-                            minWidth: '7rem',
+                            minWidth: '12rem',
                           }}
                         >
-                          {renderStagesThreeLineHeader('Paid', 'Left', 'Total Bill')}
+                          Progress & payment
                         </th>
                         <th style={{ padding: '0.75rem', width: 140, borderBottom: '1px solid var(--border)' }} />
                       </tr>
@@ -6685,27 +6592,20 @@ ${totalsHtml}
                                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
                                     {!bundleInv ? (
                                       <>
-                                        {showRemaining && (() => {
-                                          const pm = j.payments_made != null ? Number(j.payments_made) : 0
-                                          return <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{pm > 0 ? `${formatUsdNoCents(pm)} paid` : '—'}</span>
-                                        })()}
-                                        <span>
-                                          {showRemaining
-                                            ? (() => {
-                                                const u = jobBillingUnallocatedDollars(j)
-                                                const rev = j.revenue != null ? Number(j.revenue) : 0
-                                                const pm = j.payments_made != null ? Number(j.payments_made) : 0
-                                                return rev > 0 || pm > 0 || u > 0 ? (
-                                                  <span title="Left on the job after draft and billed invoice lines">
-                                                    {`${formatUsdNoCents(u)} left`}
-                                                  </span>
-                                                ) : (
-                                                  '—'
-                                                )
-                                              })()
-                                            : (j.revenue != null ? formatCurrencyNoCents(Number(j.revenue)) : '—')}
-                                        </span>
-                                        <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{j.revenue != null ? `${formatUsdNoCents(Number(j.revenue))} bid` : '—'}</span>
+                                        <StagesProgressPaymentCell
+                                          model={buildStagesMoneyBarModel({
+                                            totalBill: j.revenue != null ? Number(j.revenue) : null,
+                                            paymentsMade: j.payments_made != null ? Number(j.payments_made) : null,
+                                            pctComplete: j.pct_complete ?? null,
+                                          })}
+                                          pctComplete={j.pct_complete ?? null}
+                                          footnote={showRemaining ? (() => {
+                                            const u = jobBillingUnallocatedDollars(j)
+                                            return u > 0 ? (
+                                              <span title="Left on the job after draft and billed invoice lines">{`${formatUsdNoCents(u)} unallocated`}</span>
+                                            ) : null
+                                          })() : null}
+                                        />
                                         {sendBackBelowRemaining && onJobSendBack && (
                                           <button
                                             type="button"
@@ -6733,22 +6633,28 @@ ${totalsHtml}
                                       </>
                                     ) : (
                                       <>
-                                        <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-                                          {row.kind === 'job_with_merged_billed'
-                                            ? (() => {
-                                                const ap = sumInvoiceAppliedFromJobPayments(j, bundleInv.id)
-                                                return ap > 0 ? `${formatUsdNoCents(ap)} paid` : '—'
-                                              })()
-                                            : Number(j.payments_made ?? 0) > 0
-                                              ? `${formatUsdNoCents(Number(j.payments_made ?? 0))} paid`
-                                              : '—'}
-                                        </span>
-                                        <span>
-                                          {row.kind === 'job_with_merged_billed'
-                                            ? `${formatUsdNoCents(invoiceOpenRemainingOnJob(bundleInv, j))} left`
-                                            : `${formatUsdNoCents(Number(bundleInv.amount))} remainder`}
-                                        </span>
-                                        <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{j.revenue != null ? `${formatUsdNoCents(Number(j.revenue))} bid` : '—'}</span>
+                                        <StagesProgressPaymentCell
+                                          model={buildStagesMoneyBarModel({
+                                            totalBill: j.revenue != null ? Number(j.revenue) : null,
+                                            paymentsMade: j.payments_made != null ? Number(j.payments_made) : null,
+                                            pctComplete: j.pct_complete ?? null,
+                                          })}
+                                          pctComplete={j.pct_complete ?? null}
+                                          footnote={
+                                            row.kind === 'job_with_merged_billed'
+                                              ? (() => {
+                                                  const ap = sumInvoiceAppliedFromJobPayments(j, bundleInv.id)
+                                                  return (
+                                                    <span title="This row's billed line">
+                                                      {`This bill: ${formatUsdNoCents(ap)} paid · ${formatUsdNoCents(invoiceOpenRemainingOnJob(bundleInv, j))} left`}
+                                                    </span>
+                                                  )
+                                                })()
+                                              : (
+                                                  <span title="Amount on this billing line">{`This line: ${formatUsdNoCents(Number(bundleInv.amount))} remainder`}</span>
+                                                )
+                                          }
+                                        />
                                         {sendBackBelowRemaining && onInvoiceSendBack && bundleInvWithJob != null && (
                                           <button
                                             type="button"
@@ -7210,19 +7116,25 @@ ${totalsHtml}
                                 {renderStagesLastActivityCell(job, inv)}
                                 <td style={{ padding: '0.75rem', textAlign: 'center', verticalAlign: 'middle' }}>
                                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
-                                    <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-                                      {Number(job.payments_made ?? 0) > 0 ? `${formatUsdNoCents(Number(job.payments_made ?? 0))} paid` : '—'}
-                                    </span>
-                                    <span title="Amount on this draft billing line">{`${formatUsdNoCents(Number(inv.amount))} draft`}</span>
-                                    {showRemaining ? (() => {
-                                      const u = jobBillingUnallocatedDollars(job)
-                                      return u > 0 ? (
-                                        <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }} title="Left on the job after all draft and billed lines">
-                                          {`${formatUsdNoCents(u)} left`}
-                                        </span>
-                                      ) : null
-                                    })() : null}
-                                    <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{job.revenue != null ? `${formatUsdNoCents(Number(job.revenue))} bid` : '—'}</span>
+                                    <StagesProgressPaymentCell
+                                      model={buildStagesMoneyBarModel({
+                                        totalBill: job.revenue != null ? Number(job.revenue) : null,
+                                        paymentsMade: job.payments_made != null ? Number(job.payments_made) : null,
+                                        pctComplete: job.pct_complete ?? null,
+                                      })}
+                                      pctComplete={job.pct_complete ?? null}
+                                      footnote={(() => {
+                                        const u = showRemaining ? jobBillingUnallocatedDollars(job) : 0
+                                        return (
+                                          <span>
+                                            <span title="Amount on this draft billing line">{`This line: ${formatUsdNoCents(Number(inv.amount))} draft`}</span>
+                                            {u > 0 ? (
+                                              <span title="Left on the job after all draft and billed lines">{` · ${formatUsdNoCents(u)} unallocated`}</span>
+                                            ) : null}
+                                          </span>
+                                        )
+                                      })()}
+                                    />
                                     {sendBackBelowRemaining && (
                                       <button
                                         type="button"
@@ -7472,7 +7384,7 @@ ${totalsHtml}
                   waiting,
                   'Move to Working',
                   (j) => void updateJobStatus(j.id, 'working'),
-                  true, undefined, undefined, true, undefined, true
+                  true, undefined, undefined, true
                 )}
 
                 <div id="stages-working" style={{ margin: '1.5rem 0 0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
@@ -7505,7 +7417,7 @@ ${totalsHtml}
                   stagesHamMode
                     ? (j) => void updateJobStatus(j.id, 'waiting')
                     : (j) => setSendBackConfirmJob({ id: j.id, toStatus: 'waiting' }),
-                  true, undefined, true
+                  true
                 )}
 
                 <div id="stages-ready-to-bill" style={{ margin: '1.5rem 0 0.5rem' }}>
@@ -7833,8 +7745,6 @@ ${totalsHtml}
                       stagesHamMode
                         ? (j) => updateJobStatus(j.id, 'billed')
                         : (j) => setSendBackConfirmJob({ id: j.id, toStatus: 'billed' }),
-                      false,
-                      true,
                     )}
                   </>
                 ) : null}
