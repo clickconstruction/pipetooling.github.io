@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-19 (v2.754)
+last_updated: 2026-07-19 (v2.755)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.755)
+
+### Edit Job — billing Phase 2: one unified Invoices list + inline "Send bill" (2026-07-19)
+Builds on the Phase-1 billing clarity (v2.754). The Edit-Job modal's **② Invoices** area previously showed the same invoices split across **two** separate blocks — a "Ready to Bill" `<ul>` of drafts and an "Outstanding billing" `<table>` of sent invoices — so you had to scan two places to see a job's bills. These are now **one "Invoices" table** with a **Status / Date / Amount / Actions** layout: each row carries a **Draft** (amber) or **Billed** (blue) status chip, drafts sort to the top, and the sent-invoice note/memo/footer detail sub-row is preserved. Each **Draft** row gets a prominent inline **"Send bill…"** action (the existing `billCustomer.openBillCustomer` flow — Stripe / HouseCall Pro / physical — surfaced right on the row) so you can bill straight from the list; **Billed** rows keep their **Bill** (view), Stripe share panel, and **Add discount** (agreed write-down) actions. The break-off control above is unchanged (carve an amount → it appears as a Draft here). Presentational merge only — no billing/save math changed; ~294 lines of duplicated list JSX collapsed to ~170. Part of the JobFormModal decomposition series (passes 1–3b extracted the billing logic into hooks/kernels first, which is what made this localized change safe).
 
 ## Latest Updates (v2.754)
 
