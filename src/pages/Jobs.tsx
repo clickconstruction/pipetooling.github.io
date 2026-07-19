@@ -5671,7 +5671,7 @@ ${totalsHtml}
                           style={{
                             ...quickIconButtonStyle,
                             cursor: scheduleNoTeam ? 'not-allowed' : 'pointer',
-                            color: scheduleNoTeam ? 'var(--text-faint)' : '#2563eb',
+                            color: scheduleNoTeam ? 'var(--text-faint)' : 'var(--text-link)',
                           }}
                         >
                           <svg
@@ -5693,7 +5693,7 @@ ${totalsHtml}
                           rel="noopener noreferrer"
                           title={`Open in Google Maps: ${mapsAddress}`}
                           aria-label="Open job address in Google Maps"
-                          style={{ ...quickIconButtonStyle, color: '#dc2626', cursor: 'pointer' }}
+                          style={{ ...quickIconButtonStyle, color: 'var(--text-red-600)', cursor: 'pointer' }}
                         >
                           <svg
                             xmlns="http://www.w3.org/2000/svg"
