@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-18 (v2.741)
+last_updated: 2026-07-18 (v2.742)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.742)
+
+### Jobs Stages — Progress & payment cell on every stage (2026-07-18)
+The v2.741 merged cell (bar + Paid/Unbilled/Owed legend) now renders on **all** stage tables, not just Waiting/Working: Ready to Bill, Billed Awaiting Payment, Collections, and Paid in Full — the old "Final Bill" column and the unified billed table's Paid/Left/Total Bill stacks are gone. The bar/legend always shows the same job-level story; row-specific billing detail moved to a small **footnote** under the legend — `This bill: $X paid · $Y left` on merged billed rows, `This line: $X remainder`/`draft` on partial-invoice rows, and `$X unallocated` when job money isn't on any bill yet — with the Send back / Move to Collections buttons and note lines untouched. The **% done** input stays editable in Waiting/Working only; later stages show the % read-only ([`StagesProgressPaymentCell`](../src/components/jobs/StagesProgressPaymentCell.tsx) gains optional `onPctCommit` + `footnote`). `renderStagesTable` drops its now-dead `showRemaining`/`showFinalBill` flags. Help guide section updated.
 
 ## Latest Updates (v2.741)
 
