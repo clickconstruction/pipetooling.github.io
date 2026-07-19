@@ -1,0 +1,58 @@
+import { describe, expect, it } from 'vitest'
+import {
+  breakDollarsFromCombinedPct,
+  breakOffPrefillAmountStringFromJob,
+  snapBreakOffCombinedPctToStep,
+  unallocatedBillableDollars,
+} from './jobFormBreakOff'
+import type { JobWithDetails } from '../../types/jobWithDetails'
+
+describe('unallocatedBillableDollars', () => {
+  it('is gross minus paid minus ready_to_bill + billed invoice amounts', () => {
+    const invoices = [
+      { status: 'ready_to_bill', amount: 300 },
+      { status: 'billed', amount: 200 },
+      { status: 'void', amount: 999 }, // ignored
+    ]
+    expect(unallocatedBillableDollars(1000, 100, invoices)).toBe(400) // 1000 − 100 − 500
+  })
+  it('floors at zero and tolerates null invoices', () => {
+    expect(unallocatedBillableDollars(100, 250, null)).toBe(0)
+    expect(unallocatedBillableDollars(500, 0, undefined)).toBe(500)
+  })
+})
+
+describe('breakDollarsFromCombinedPct', () => {
+  it('converts combined % to break-off dollars, clamped to remaining', () => {
+    // 80% of 1000 = 800; minus 200 paid = 600 break; remaining 700 → 600
+    expect(breakDollarsFromCombinedPct(80, 1000, 200, 700)).toBe(600)
+    // clamps to remaining when break would exceed it
+    expect(breakDollarsFromCombinedPct(100, 1000, 0, 400)).toBe(400)
+    // floors at 0 when paid already exceeds the target %
+    expect(breakDollarsFromCombinedPct(10, 1000, 200, 700)).toBe(0)
+  })
+})
+
+describe('snapBreakOffCombinedPctToStep', () => {
+  it('snaps to the nearest step and clamps to [min,max]', () => {
+    expect(snapBreakOffCombinedPctToStep(52, 0, 100)).toBe(50)
+    expect(snapBreakOffCombinedPctToStep(53, 0, 100)).toBe(55)
+    expect(snapBreakOffCombinedPctToStep(3, 20, 100)).toBe(20) // below min
+    expect(snapBreakOffCombinedPctToStep(97, 0, 90)).toBe(90) // above max
+  })
+})
+
+describe('breakOffPrefillAmountStringFromJob', () => {
+  const job = (over: Partial<JobWithDetails>) => ({ revenue: 0, payments: [], invoices: [], ...over }) as unknown as JobWithDetails
+  it('prefills 80% of gross when little is paid', () => {
+    expect(breakOffPrefillAmountStringFromJob(job({ revenue: 1000 }))).toBe('800.00')
+  })
+  it('prefills 95% once more than 80% is already paid', () => {
+    expect(breakOffPrefillAmountStringFromJob(job({ revenue: 1000, payments: [{ amount: 850 } as never] }))).toBe('150.00')
+    // 95% target = 950, but remaining = 1000−850 = 150 → clamped to 150
+  })
+  it('is empty when nothing is left to bill', () => {
+    expect(breakOffPrefillAmountStringFromJob(job({ revenue: 0 }))).toBe('')
+    expect(breakOffPrefillAmountStringFromJob(job({ revenue: 1000, invoices: [{ status: 'billed', amount: 1000 } as never] }))).toBe('')
+  })
+})

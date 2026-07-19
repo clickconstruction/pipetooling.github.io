@@ -36,6 +36,20 @@ import { jobLedgerHasCustomerForBilling } from '../../lib/jobLedgerCustomerForBi
 import { revenueDollarsFromFixtures } from '../../lib/revenueFromJobFixtures'
 import { buildEditJobBillingBar } from '../../lib/jobs/editJobBillingBar'
 import { MoneyLifecycleBar, PAID_COLOR, BILLED_COLOR, DRAFT_COLOR } from './MoneyLifecycleBar'
+import {
+  formatCurrency,
+  formatPaymentDateForDisplay,
+  parseMoneyInputToNumber,
+  parseMoneyInputToNumberOrNull,
+  sanitizeMoneyTyping,
+} from '../../lib/jobs/jobFormMoney'
+import {
+  BREAK_OFF_COMBINED_SLIDER_STEP_PCT,
+  breakDollarsFromCombinedPct,
+  breakOffPrefillAmountStringFromJob,
+  snapBreakOffCombinedPctToStep,
+  unallocatedBillableDollars,
+} from '../../lib/jobs/jobFormBreakOff'
 import { resolveEffectiveJobMasterUserId } from '../../lib/resolveEffectiveJobMasterUserId'
 import { resolveEditJobMasterUserId } from '../../lib/resolveEditJobMasterUserId'
 import { getBillingStripeModePref, stripeModeInvokeBody } from '../../lib/billingStripeModePref'
@@ -337,19 +351,6 @@ function canRemovePaymentRowFromForm(row: PaymentRow, job: JobWithDetails | null
   return true
 }
 
-function formatCurrency(n: number): string {
-  return n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-}
-
-/** Display `YYYY-MM-DD` for payment table cells (Stripe-locked rows use plain text, not date inputs). */
-function formatPaymentDateForDisplay(isoYmd: string | null | undefined): string {
-  const t = isoYmd?.trim()
-  if (!t) return '—'
-  const d = new Date(`${t}T12:00:00`)
-  if (Number.isNaN(d.getTime())) return t
-  return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
-}
-
 /** Matches Outstanding billing note/memo sub-row cell styling in Edit Job. */
 const PAYMENT_MEMO_SUB_ROW_CELL_STYLE: CSSProperties = {
   paddingTop: 0,
@@ -399,92 +400,6 @@ async function pasteTextToField(ref: RefObject<HTMLInputElement | null>, setValu
       /* clipboard not available */
     }
   }
-}
-
-function parseMoneyInputToNumber(s: string): number {
-  const t = s.replace(/,/g, '').trim()
-  if (t === '' || t === '.') return 0
-  const n = parseFloat(t)
-  return Number.isFinite(n) ? n : 0
-}
-
-function parseMoneyInputToNumberOrNull(s: string): number | null {
-  const t = s.replace(/,/g, '').trim()
-  if (t === '' || t === '.') return null
-  const n = parseFloat(t)
-  return Number.isFinite(n) ? n : null
-}
-
-/** Gross (job total) minus payments minus ready_to_bill and billed invoice line amounts — same basis as Stages unallocated. */
-function unallocatedBillableDollars(
-  gross: number,
-  paidSum: number,
-  invoices: Array<{ status: string; amount: unknown }> | null | undefined,
-): number {
-  let alloc = 0
-  for (const inv of invoices ?? []) {
-    if (inv.status === 'ready_to_bill' || inv.status === 'billed') {
-      alloc += Number(inv.amount) || 0
-    }
-  }
-  return Math.max(0, gross - paidSum - alloc)
-}
-
-/** Break-off dollars for target combined % ((paid + break) / gross) * 100, clamped to remaining unallocated. */
-function breakDollarsFromCombinedPct(
-  combinedPct: number,
-  gross: number,
-  paidSum: number,
-  remainingUnallocated: number,
-): number {
-  const rawBreak = (combinedPct / 100) * gross - paidSum
-  const cents = Math.min(
-    Math.round(remainingUnallocated * 100),
-    Math.max(0, Math.round(rawBreak * 100)),
-  )
-  return cents / 100
-}
-
-const BREAK_OFF_COMBINED_SLIDER_STEP_PCT = 5
-
-function snapBreakOffCombinedPctToStep(
-  pct: number,
-  min: number,
-  max: number,
-  step: number = BREAK_OFF_COMBINED_SLIDER_STEP_PCT,
-): number {
-  const snapped = Math.round(pct / step) * step
-  return Math.min(max, Math.max(min, snapped))
-}
-
-function breakOffPrefillAmountStringFromJob(job: JobWithDetails): string {
-  const gross = job.revenue != null ? Number(job.revenue) : 0
-  const paid = (job.payments ?? []).reduce((s, p) => s + (Number(p.amount) || 0), 0)
-  const remaining = unallocatedBillableDollars(gross, paid, job.invoices)
-  if (!(gross > 0) || !(remaining > 0)) return ''
-  const paidCents = Math.round(paid * 100)
-  const threshold80Cents = Math.round(0.8 * gross * 100)
-  const rawTarget = paidCents > threshold80Cents ? 0.95 * gross : 0.8 * gross
-  const useCents = Math.min(
-    Math.round(remaining * 100),
-    Math.max(0, Math.round(rawTarget * 100)),
-  )
-  const amount = useCents / 100
-  return amount > 0 ? amount.toFixed(2) : ''
-}
-
-function sanitizeMoneyTyping(raw: string): string {
-  const noComma = raw.replace(/,/g, '')
-  let out = ''
-  let dotSeen = false
-  for (const c of noComma) {
-    if (c >= '0' && c <= '9') out += c
-    else if (c === '.' && !dotSeen) {
-      dotSeen = true
-      out += '.'
-    }
-  }
-  return out
 }
 
 type ProjectOption = {
