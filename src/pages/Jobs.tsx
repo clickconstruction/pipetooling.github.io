@@ -33,6 +33,7 @@ import {
 import {
   effectiveInvoiceEstBillDate,
   invoiceOpenRemainingOnJob,
+  jobBilledUnpaidDollars,
   jobStagesInvoiceJumpChipTargets,
   printBilledRowReferenceDate,
   sortStageRowsForTotalByNameDetail,
@@ -6257,6 +6258,7 @@ ${totalsHtml}
                                   totalBill: j.revenue != null ? Number(j.revenue) : null,
                                   paymentsMade: j.payments_made != null ? Number(j.payments_made) : null,
                                   pctComplete: j.pct_complete ?? null,
+                                  billedUnpaid: jobBilledUnpaidDollars(j),
                                 })}
                                 pctComplete={j.pct_complete ?? null}
                                 pctSaving={showPctComplete ? pctCompleteSavingId === j.id : undefined}
@@ -6799,6 +6801,7 @@ ${totalsHtml}
                                             totalBill: j.revenue != null ? Number(j.revenue) : null,
                                             paymentsMade: j.payments_made != null ? Number(j.payments_made) : null,
                                             pctComplete: j.pct_complete ?? null,
+                                            billedUnpaid: jobBilledUnpaidDollars(j),
                                           })}
                                           pctComplete={j.pct_complete ?? null}
                                           footnote={showRemaining ? (() => {
@@ -6840,6 +6843,7 @@ ${totalsHtml}
                                             totalBill: j.revenue != null ? Number(j.revenue) : null,
                                             paymentsMade: j.payments_made != null ? Number(j.payments_made) : null,
                                             pctComplete: j.pct_complete ?? null,
+                                            billedUnpaid: jobBilledUnpaidDollars(j),
                                           })}
                                           pctComplete={j.pct_complete ?? null}
                                           footnote={
@@ -7331,6 +7335,7 @@ ${totalsHtml}
                                         totalBill: job.revenue != null ? Number(job.revenue) : null,
                                         paymentsMade: job.payments_made != null ? Number(job.payments_made) : null,
                                         pctComplete: job.pct_complete ?? null,
+                                        billedUnpaid: jobBilledUnpaidDollars(job),
                                       })}
                                       pctComplete={job.pct_complete ?? null}
                                       footnote={(() => {

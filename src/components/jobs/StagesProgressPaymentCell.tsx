@@ -2,6 +2,7 @@ import { formatUsdNoCents } from '../../lib/jobs/jobFormatting'
 import type { StagesMoneyBarModel } from '../../lib/stagesMoneyBar'
 
 const PAID_COLOR = '#16a34a'
+const BILLED_COLOR = '#2563eb'
 const UNBILLED_COLOR = '#f59e0b'
 
 type StagesProgressPaymentCellProps = {
@@ -105,11 +106,15 @@ export default function StagesProgressPaymentCell({ model, pctComplete, pctSavin
 
       {model.hasBar ? (
         <div
-          title={
+          title={[
+            `Paid ${formatUsdNoCents(model.paid)}`,
+            model.billedUnpaid > 0 ? `billed but unpaid ${formatUsdNoCents(model.billedUnpaid)}` : null,
             model.unbilled != null
-              ? `Paid ${formatUsdNoCents(model.paid)} · done but unpaid ${formatUsdNoCents(model.unbilled)} · not done ${formatUsdNoCents(Math.max(0, model.total - (model.valueCreated ?? 0)))}`
-              : `Paid ${formatUsdNoCents(model.paid)} of ${formatUsdNoCents(model.total)} — set % complete to see unbilled work`
-          }
+              ? `done but unbilled ${formatUsdNoCents(model.unbilled)} · not done ${formatUsdNoCents(Math.max(0, model.total - (model.valueCreated ?? 0)))}`
+              : 'set % complete to see unbilled work',
+          ]
+            .filter(Boolean)
+            .join(' · ')}
           style={{
             display: 'flex',
             height: 10,
@@ -120,6 +125,7 @@ export default function StagesProgressPaymentCell({ model, pctComplete, pctSavin
           }}
         >
           {model.paidFrac > 0 && <div style={{ width: `${model.paidFrac * 100}%`, background: PAID_COLOR }} />}
+          {model.billedFrac > 0 && <div style={{ width: `${model.billedFrac * 100}%`, background: BILLED_COLOR }} />}
           {model.unbilledFrac > 0 && <div style={{ width: `${model.unbilledFrac * 100}%`, background: UNBILLED_COLOR }} />}
         </div>
       ) : (
@@ -134,6 +140,12 @@ export default function StagesProgressPaymentCell({ model, pctComplete, pctSavin
           <span style={labelStyle}>{swatch(PAID_COLOR)}Paid</span>
           <span style={amountStyle}>{model.paid > 0 ? formatUsdNoCents(model.paid) : '—'}</span>
         </div>
+        {model.billedUnpaid > 0 && (
+          <div style={rowStyle} title="Invoiced to the customer but not yet paid">
+            <span style={labelStyle}>{swatch(BILLED_COLOR)}Billed</span>
+            <span style={amountStyle}>{formatUsdNoCents(model.billedUnpaid)}</span>
+          </div>
+        )}
         <div style={rowStyle} title="Work completed that hasn't been paid for yet (% done × bid − paid)">
           <span style={labelStyle}>{swatch(UNBILLED_COLOR)}Unbilled</span>
           <span style={amountStyle}>{model.unbilled != null ? formatUsdNoCents(model.unbilled) : '—'}</span>

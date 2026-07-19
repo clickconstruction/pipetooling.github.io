@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-19 (v2.752)
+last_updated: 2026-07-19 (v2.753)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.753)
+
+### Jobs Stages — Progress & payment bar gains a "Billed" segment (2026-07-19)
+The Stages **Progress & payment** bar only knew two things — money **paid** (green) and work **done but unpaid** from `pct_complete` (amber). A job that had a bill *sent* but nothing paid, with no `pct_complete` set (common in Ready to Bill / Billed Awaiting Payment), computed both segments to zero and rendered an **empty bar** — a sent $16k invoice looked like "nothing happening" (reported on job 879). Added a third, blue **Billed** segment for **invoiced-but-unpaid** dollars: `jobBilledUnpaidDollars(job)` (new, in `src/lib/jobs/invoiceBilling.ts`) sums the open remainder across the job's `status='billed'` invoices — ready-to-bill drafts excluded, since they aren't a bill the customer has received. `buildStagesMoneyBarModel` now takes an optional `billedUnpaid` and stacks the bar green → blue → amber → empty, non-overlapping (`paid ⊆ billed ⊆ done`; blue capped so paid+billed never exceed the track; amber counts only work beyond paid+billed). A **Billed** legend row appears under the bar when the amount is > 0. Omitting `billedUnpaid` reproduces the old paid/pct-only bar exactly, so Waiting/Working are unchanged. Blue is `#2563eb` (a saturated action color, not a neutral — theme check passes). Kernel-tested in `stagesMoneyBar.test.ts` and `invoiceBilling.test.ts`.
 
 ## Latest Updates (v2.752)
 
