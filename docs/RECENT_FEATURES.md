@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-18 (v2.743)
+last_updated: 2026-07-18 (v2.744)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.744)
+
+### Jobs Stages — send a job to someone as a task (2026-07-18)
+Fifth button on the Stages quick-action stack (purple send arrow): **Send job as a task**. It opens the existing New task modal (`ChecklistAddModal`) prefilled with the job as a labeled link — title `{{1:910 · Heron Construction}} — ` (effective job # via `effectiveJobLedgerNumber`, ready for the sender's note) and the link `/jobs?jobDetail=<id>` attached as Link 1 — sender picks the assignee as with any task. When the recipient opens the task and clicks the job's name, the existing `?jobDetail=` deep-link handler opens the **Job Detail modal** directly (works even when the job isn't in their loaded list — the modal fetches by id). No new plumbing: reuses the task-modal preset API (Bids submission follow-up pattern) and the `jobDetail` param handler. Help guide updated. [`Jobs.tsx`](../src/pages/Jobs.tsx)
 
 ## Latest Updates (v2.743)
 

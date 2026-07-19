@@ -64,6 +64,7 @@ import type { LaborJob, LaborJobPayment, SubLaborBackchargeTarget, SubLaborPayme
 import { formatDispatchNoteDaysAgoShortPhrase, formatDispatchNoteWeekdayShortTimeChicago, getDispatchNoteDisplayMeta } from '../utils/dispatchNoteDisplay'
 import { buildStagesMoneyBarModel } from '../lib/stagesMoneyBar'
 import StagesProgressPaymentCell from '../components/jobs/StagesProgressPaymentCell'
+import { useChecklistAddModal } from '../contexts/ChecklistAddModalContext'
 import JobReportsModal from '../components/JobReportsModal'
 import JobsInspectionsTab from '../components/jobs/JobsInspectionsTab'
 import JobsReportsTab from '../components/jobs/JobsReportsTab'
@@ -313,6 +314,7 @@ export default function Jobs() {
   const { nicknameByDebitCard, nicknameByAccount } = useMercuryLedgerNicknames()
   const { showToast } = useToastContext()
   const jobFormModal = useJobFormModal()
+  const checklistAddModal = useChecklistAddModal()
   const billCustomer = useBillCustomerModal()
   const {
     jobs,
@@ -5724,6 +5726,33 @@ ${totalsHtml}
                           </svg>
                         </a>
                       ) : null}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const numLabel = effectiveJobLedgerNumber(job.hcp_number, job.click_number)
+                          const label = `${(numLabel ?? '').trim() || '—'} · ${(job.job_name ?? '').trim() || 'Job'}`
+                          checklistAddModal?.openAddModal({
+                            preset: {
+                              title: `{{1:${label}}} — `,
+                              links: [`${window.location.origin}/jobs?jobDetail=${encodeURIComponent(job.id)}`],
+                            },
+                          })
+                        }}
+                        title="Send this job to someone as a task"
+                        aria-label="Send job as a task"
+                        style={{ ...quickIconButtonStyle, color: '#7c3aed', cursor: 'pointer' }}
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          viewBox="0 0 640 640"
+                          width={16}
+                          height={16}
+                          fill="currentColor"
+                          aria-hidden
+                        >
+                          <path d="M576 64L64 288L240 352L240 496L328 400L472 512L576 64z" />
+                        </svg>
+                      </button>
                     </div>
                     {renderStagesThreadExpandButton(jobId)}
                   </div>
