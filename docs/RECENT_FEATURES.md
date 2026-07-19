@@ -2048,8 +2048,8 @@ when_to_read:
 
 ## Latest Updates (v2.752)
 
-### Jobs Stages — icons on the Job column address + customer (2026-07-19)
-The Stages **Job column** now leads the address with the red **map-pin** icon (still linking to Google Maps) and replaces the "Customer:" label with the header's **customer** icon before the customer name. DRYs the three duplicated Stages address blocks into one `renderJobAddressWithMap()` helper. Display-only.
+### Jobs Stages — Job column: address/customer icons + smart address wrapping (2026-07-19)
+The Stages **Job column** now leads the address with the red **map-pin** icon (still linking to Google Maps) and replaces the "Customer:" label with the header's **customer** icon before the customer name. The three duplicated Stages address blocks are DRYed into one `renderJobAddressWithMap()` helper. Also: the street/city **two-line split now only applies while the street fits on one line** — when the street itself wraps, the forced break (street split across lines, city stranded below) is dropped and the whole address flows continuously (new `JobAddressText` component measuring the street's line-box count via `getClientRects`, a ResizeObserver on the outer flex-item span, and a next-frame re-measure). Display-only.
 
 ## Latest Updates (v2.749)
 
