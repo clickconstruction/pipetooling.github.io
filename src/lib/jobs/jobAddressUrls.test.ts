@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { JobWithDetails } from '../../types/jobWithDetails'
-import { buildClickToolingUrl, formatAddressTwoLines, googleMapsSearchUrl, resolvedLaborInvoiceLink } from './jobAddressUrls'
+import { buildClickToolingUrl, dropTrailingZip, formatAddressTwoLines, googleMapsSearchUrl, resolvedLaborInvoiceLink } from './jobAddressUrls'
 
 describe('googleMapsSearchUrl', () => {
   it('builds an encoded maps search url', () => {
@@ -59,10 +59,10 @@ describe('formatAddressTwoLines', () => {
   it('splits on the first comma when no TX locality precedes it', () => {
     expect(formatAddressTwoLines('456 Oak Ave, Apt 5')).toEqual({ line1: '456 Oak Ave', line2: 'Apt 5' })
   })
-  it('splits at the TX locality (with comma)', () => {
+  it('splits at the TX locality (with comma) and drops the ZIP', () => {
     expect(formatAddressTwoLines('789 Elm Rd, Dallas TX 75001')).toEqual({
       line1: '789 Elm Rd',
-      line2: 'Dallas TX 75001',
+      line2: 'Dallas TX',
     })
   })
   it('splits at the TX locality (no comma)', () => {
@@ -70,5 +70,38 @@ describe('formatAddressTwoLines', () => {
       line1: '100 First Avenue',
       line2: 'Houston TX',
     })
+  })
+  it('drops the ZIP from the city line (the reported case)', () => {
+    expect(formatAddressTwoLines('4527 Western Pine Woods San Antonio, TX 78249')).toEqual({
+      line1: '4527 Western Pine Woods',
+      line2: 'San Antonio, TX',
+    })
+    expect(formatAddressTwoLines('121 Moses Hughes Blanco, TX 78606')).toEqual({
+      line1: '121 Moses Hughes',
+      line2: 'Blanco, TX',
+    })
+  })
+  it('drops a ZIP+4 too', () => {
+    expect(formatAddressTwoLines('789 Elm Rd, Dallas TX 75001-1234')).toEqual({
+      line1: '789 Elm Rd',
+      line2: 'Dallas TX',
+    })
+  })
+})
+
+describe('dropTrailingZip', () => {
+  it('strips a ZIP trailing a state token', () => {
+    expect(dropTrailingZip('San Antonio, TX 78249')).toBe('San Antonio, TX')
+    expect(dropTrailingZip('Dallas TX 75001-1234')).toBe('Dallas TX')
+  })
+  it('strips a ZIP trailing a comma with no state', () => {
+    expect(dropTrailingZip('Somewhere, 78606')).toBe('Somewhere')
+  })
+  it('leaves a unit number that is not a trailing ZIP', () => {
+    expect(dropTrailingZip('Apt 12345')).toBe('Apt 12345')
+    expect(dropTrailingZip('Unit 5')).toBe('Unit 5')
+  })
+  it('leaves a line with no ZIP untouched', () => {
+    expect(dropTrailingZip('Houston TX')).toBe('Houston TX')
   })
 })

@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-19 (v2.751)
+last_updated: 2026-07-19 (v2.752)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.752)
+
+### Jobs Stages — Job column: address/customer icons + smart address wrapping (2026-07-19)
+The Stages **Job column** now leads the address with the red **map-pin** icon (still linking to Google Maps) and replaces the "Customer:" label with the header's **customer** icon before the customer name. The three duplicated Stages address blocks are DRYed into one `renderJobAddressWithMap()` helper. Also: the street/city **two-line split now only applies while the street fits on one line** — when the street itself wraps, the forced break (street split across lines, city stranded below) is dropped and the whole address flows continuously (new `JobAddressText` component measuring the street's line-box count via `getClientRects`, a ResizeObserver on the outer flex-item span, and a next-frame re-measure). The city line now also **drops the trailing ZIP** — the compact Job column doesn't need it (new `dropTrailingZip()` in `jobAddressUrls.ts`, applied inside `formatAddressTwoLines`; only strips a ZIP trailing a state token or comma, so a unit like "Apt 12345" is safe). The Google-Maps link still carries the full address incl. ZIP. Display-only.
 
 ## Latest Updates (v2.751)
 

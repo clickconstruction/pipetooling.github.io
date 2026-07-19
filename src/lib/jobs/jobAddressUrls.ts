@@ -26,19 +26,32 @@ export function buildClickToolingUrl(job: JobWithDetails): string {
 const ADDRESS_STREET_SUFFIX_RE =
   /\b(Way|Circle|Dr\.?|Drive|Ln\.?|Lane|St\.?|Street|Rd\.?|Road|Ave\.?|Avenue|Blvd\.?|Boulevard|Ct\.?|Court|Pl\.?|Place|Ter\.?|Terrace|Trl\.?|Trail|Pkwy\.?|Parkway|Hwy\.?|Highway)\b/gi
 
+/**
+ * Drop a trailing US ZIP (5-digit or ZIP+4) from a city/state line. The compact
+ * Stages Job column doesn't need the ZIP (the Google-Maps link still carries the
+ * full address). Only strips when the ZIP trails a 2-letter state token or a
+ * comma, so a unit number like "Apt 12345" is never mistaken for a ZIP.
+ */
+export function dropTrailingZip(line: string): string {
+  return line
+    .replace(/(\b[A-Za-z]{2}\b)[,\s]+\d{5}(?:-\d{4})?\s*$/, '$1')
+    .replace(/,\s*\d{5}(?:-\d{4})?\s*$/, '')
+    .trim()
+}
+
 export function formatAddressTwoLines(addr: string | null): { line1: string; line2?: string } | null {
   const a = (addr ?? '').trim()
   if (!a) return null
   const bestIdx = findEarliestTxLocalityIndex(a)
   if (bestIdx !== -1 && bestIdx > 0) {
     const line1 = a.slice(0, bestIdx).trim()
-    const line2 = a.slice(bestIdx).trim()
+    const line2 = dropTrailingZip(a.slice(bestIdx).trim())
     return { line1, line2: line2 || undefined }
   }
   const commaIdx = a.indexOf(',')
   if (commaIdx !== -1) {
     const line1 = a.slice(0, commaIdx).trim()
-    const line2 = a.slice(commaIdx + 1).trim()
+    const line2 = dropTrailingZip(a.slice(commaIdx + 1).trim())
     return { line1, line2: line2 || undefined }
   }
   let suffixEndIdx = -1
@@ -53,7 +66,7 @@ export function formatAddressTwoLines(addr: string | null): { line1: string; lin
   }
   if (suffixEndIdx > 0) {
     const line1 = a.slice(0, suffixEndIdx).trim()
-    const line2 = a.slice(suffixEndIdx).trim()
+    const line2 = dropTrailingZip(a.slice(suffixEndIdx).trim())
     if (line2) return { line1, line2 }
   }
   return { line1: a }
