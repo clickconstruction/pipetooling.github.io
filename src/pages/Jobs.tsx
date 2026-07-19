@@ -6332,7 +6332,7 @@ ${totalsHtml}
                                 }}
                               >
                                 <JobThreadNotesPanel
-                                  topSlot={
+                                  pctControl={
                                     canEditJobPctComplete ? (
                                       <JobPctCompleteControl
                                         jobId={j.id}
@@ -7050,7 +7050,7 @@ ${totalsHtml}
                                     }}
                                   >
                                     <JobThreadNotesPanel
-                                      topSlot={
+                                      pctControl={
                                         canEditJobPctComplete ? (
                                           <JobPctCompleteControl
                                             jobId={j.id}
@@ -7443,7 +7443,7 @@ ${totalsHtml}
                                     }}
                                   >
                                     <JobThreadNotesPanel
-                                      topSlot={
+                                      pctControl={
                                         canEditJobPctComplete ? (
                                           <JobPctCompleteControl
                                             jobId={job.id}

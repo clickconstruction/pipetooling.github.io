@@ -89,11 +89,13 @@ export function JobPctCompleteControl({
   const ticksId = `pct-ticks-${jobId}`
 
   if (!open) {
+    // Inline chip sitting in the action-button row. The current percent shows only
+    // once the job has a value (pct != null) — reports/unset jobs just get the button.
     return (
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem', flexWrap: 'wrap' }}>
-        <span style={{ fontSize: '0.8125rem', color: 'var(--text-700)' }}>
-          <strong>% complete:</strong> {savedPct}%
-        </span>
+      <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+        {pct != null && (
+          <span style={{ fontSize: '0.8125rem', color: 'var(--text-700)' }}>{pct}% complete</span>
+        )}
         {canEdit && (
           <button type="button" onClick={() => { setDraft(savedPct); setOpen(true) }} style={editButtonStyle}>
             Set % complete
@@ -104,9 +106,12 @@ export function JobPctCompleteControl({
   }
 
   return (
+    // Opened: take a full-width line of its own at the bottom of the flex action row.
     <div
       style={{
-        marginBottom: '0.5rem',
+        order: 1,
+        flexBasis: '100%',
+        width: '100%',
         padding: '0.6rem',
         border: '1px solid var(--border)',
         borderRadius: 6,

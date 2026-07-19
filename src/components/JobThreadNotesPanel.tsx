@@ -65,8 +65,8 @@ type JobThreadNotesPanelProps = {
   viewerRole?: UserRole | null
   /** Show the All/Notes/Status/Billing/Crew segmented filter. Defaults on when `activity` is provided. */
   showFilter?: boolean
-  /** Optional content rendered at the top of the panel (below the section title) — e.g. the Stages % complete control. */
-  topSlot?: ReactNode
+  /** The Stages % complete control — rendered inline with the Schedule / Week dispatch action buttons. */
+  pctControl?: ReactNode
 }
 
 const DEFAULT_ACTIVITY_LIST_MAX_HEIGHT = 'min(280px, 45vh)'
@@ -190,7 +190,7 @@ export function JobThreadNotesPanel({
   activityListMaxHeight = DEFAULT_ACTIVITY_LIST_MAX_HEIGHT,
   viewerRole,
   showFilter,
-  topSlot,
+  pctControl,
 }: JobThreadNotesPanelProps) {
   const [viewingReport, setViewingReport] = useState<ReportForView | null>(null)
   const noteBodyRef = useRef<HTMLTextAreaElement>(null)
@@ -262,7 +262,6 @@ export function JobThreadNotesPanel({
           </div>
         </div>
       ) : null}
-      {topSlot}
       {filterEnabled ? (
         <div
           role="tablist"
@@ -599,92 +598,43 @@ export function JobThreadNotesPanel({
               lineHeight: 1.35,
             }}
           />
-          {scheduleAction || scheduleDispatchAction ? (
-            <div
+          {/* One flat, wrapping action row: Schedule / Week dispatch / stamps / % complete on the
+              left, Post note pushed right. The % complete control sits in line here; when opened it
+              orders itself onto its own full-width line below (see JobPctCompleteControl). */}
+          <div
+            style={{
+              display: 'flex',
+              flexWrap: 'wrap',
+              alignItems: 'center',
+              gap: '0.5rem',
+              width: '100%',
+            }}
+          >
+            {scheduleAction ? <JobThreadScheduleButton action={scheduleAction} /> : null}
+            {scheduleDispatchAction ? <JobThreadWeekDispatchButton action={scheduleDispatchAction} /> : null}
+            {jobThreadStampActions ? (
+              <JobThreadStampButtons actions={jobThreadStampActions} submitting={submitting} />
+            ) : null}
+            {pctControl}
+            <button
+              type="button"
+              onClick={onSubmit}
+              disabled={submitting || draft.trim().length === 0}
               style={{
-                display: 'flex',
-                flexWrap: 'wrap',
-                alignItems: 'center',
-                gap: '0.5rem',
-                width: '100%',
+                padding: '0.35rem 0.75rem',
+                fontSize: '0.8125rem',
+                background: submitting || draft.trim().length === 0 ? 'var(--bg-200)' : '#3b82f6',
+                color: submitting || draft.trim().length === 0 ? 'var(--text-muted)' : 'white',
+                border: 'none',
+                borderRadius: 4,
+                cursor: submitting || draft.trim().length === 0 ? 'not-allowed' : 'pointer',
+                flexShrink: 0,
+                marginLeft: 'auto',
               }}
             >
-              <div
-                style={{
-                  display: 'flex',
-                  flexWrap: 'wrap',
-                  alignItems: 'center',
-                  gap: '0.5rem',
-                  marginRight: 'auto',
-                }}
-              >
-                {scheduleAction ? <JobThreadScheduleButton action={scheduleAction} /> : null}
-                {scheduleDispatchAction ? <JobThreadWeekDispatchButton action={scheduleDispatchAction} /> : null}
-                {jobThreadStampActions ? (
-                  <JobThreadStampButtons actions={jobThreadStampActions} submitting={submitting} />
-                ) : null}
-              </div>
-              <button
-                type="button"
-                onClick={onSubmit}
-                disabled={submitting || draft.trim().length === 0}
-                style={{
-                  padding: '0.35rem 0.75rem',
-                  fontSize: '0.8125rem',
-                  background: submitting || draft.trim().length === 0 ? 'var(--bg-200)' : '#3b82f6',
-                  color: submitting || draft.trim().length === 0 ? 'var(--text-muted)' : 'white',
-                  border: 'none',
-                  borderRadius: 4,
-                  cursor: submitting || draft.trim().length === 0 ? 'not-allowed' : 'pointer',
-                  flexShrink: 0,
-                }}
-              >
-                {submitting ? 'Posting…' : 'Post note'}
-              </button>
-            </div>
-          ) : (
-            <div
-              style={{
-                display: 'flex',
-                flexWrap: 'wrap',
-                alignItems: 'center',
-                gap: '0.5rem',
-                width: '100%',
-              }}
-            >
-              {jobThreadStampActions ? (
-                <div
-                  style={{
-                    display: 'flex',
-                    flexWrap: 'wrap',
-                    alignItems: 'center',
-                    gap: '0.5rem',
-                    marginRight: 'auto',
-                  }}
-                >
-                  <JobThreadStampButtons actions={jobThreadStampActions} submitting={submitting} />
-                </div>
-              ) : null}
-              <button
-                type="button"
-                onClick={onSubmit}
-                disabled={submitting || draft.trim().length === 0}
-                style={{
-                  padding: '0.35rem 0.75rem',
-                  fontSize: '0.8125rem',
-                  background: submitting || draft.trim().length === 0 ? 'var(--bg-200)' : '#3b82f6',
-                  color: submitting || draft.trim().length === 0 ? 'var(--text-muted)' : 'white',
-                  border: 'none',
-                  borderRadius: 4,
-                  cursor: submitting || draft.trim().length === 0 ? 'not-allowed' : 'pointer',
-                  flexShrink: 0,
-                  marginLeft: jobThreadStampActions ? undefined : 'auto',
-                }}
-              >
-                {submitting ? 'Posting…' : 'Post note'}
-              </button>
-            </div>
-          )}
+              {submitting ? 'Posting…' : 'Post note'}
+            </button>
+          </div>
         </div>
       )}
     </div>
