@@ -1168,11 +1168,16 @@ export function DashboardTeamActiveClockStrip({
   const showClockedInHeaderChrome =
     showClockedInTodayToggle || copyJobMixChrome || scheduleEmailChrome || showAddClockSession === true
   const showStripTopRightBar = scopeShowsOverlay || showClockedInHeaderChrome
-  // Desktop with the Currently In table: the controls overlay the orange header row
-  // itself (its last column reserves space via stripTopRightHeaderReserve). On narrow
-  // viewports — or when there is no Currently In header to land on — keep the
-  // dedicated band above the table instead.
-  const chromeOverlaysHeaderBar = showStripTopRightBar && !shortCurrentlyInHeader && showCurrentlyInTable
+  // Desktop: the controls overlay the first orange header row (its last column
+  // reserves space via stripTopRightHeaderReserve). When nobody is currently
+  // clocked in the "Currently In" table is hidden, so we instead land the controls
+  // on the "Clocked in today / Jobs worked today" header (present whenever there
+  // are today rows). On narrow viewports — or when there is no header to land on —
+  // keep the dedicated band above instead.
+  const chromeOverlaysHeaderBar =
+    showStripTopRightBar &&
+    !shortCurrentlyInHeader &&
+    (showCurrentlyInTable || clockedInTodayRows.length > 0)
   const stripTableHostWithTopBar: CSSProperties = {
     ...stripTableHost,
     ...(showStripTopRightBar && !chromeOverlaysHeaderBar ? { paddingTop: '1.9rem' } : {}),

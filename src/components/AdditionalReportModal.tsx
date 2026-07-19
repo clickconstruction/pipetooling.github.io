@@ -225,11 +225,14 @@ export default function AdditionalReportModal({
       setError(err.message)
       return
     }
-    // Best-effort report notification (fire-and-forget; report is already saved).
+    // Best-effort report notification + subscriber emails (fire-and-forget; report is already saved).
     if (inserted?.id) {
       void supabase.functions
         .invoke('send-report-notification', { body: { report_id: inserted.id } })
         .catch(() => { /* notification is best-effort */ })
+      void supabase.functions
+        .invoke('send-report-email', { body: { report_id: inserted.id } })
+        .catch(() => { /* report email is best-effort */ })
     }
     // If the job was marked 100% complete and is still Working, offer to move it to Ready to bill.
     if (reportSaysJobComplete(fv)) {

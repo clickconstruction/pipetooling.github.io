@@ -104,6 +104,7 @@ when_to_read:
    - [send-bid-pricing-package](#send-bid-pricing-package)
    - [send-checklist-notification](#send-checklist-notification)
    - [send-report-notification](#send-report-notification)
+   - [send-report-email](#send-report-email)
    - [notify-dispatch-request](#notify-dispatch-request)
    - [notify-estimator-request](#notify-estimator-request)
    - [notify-team-lead-clock](#notify-team-lead-clock)
@@ -1249,6 +1250,40 @@ const response = await supabase.functions.invoke('send-checklist-notification', 
 ```
 
 **Used by**: report save flows — [`NewReportModal.tsx`](../src/components/NewReportModal.tsx), [`AdditionalReportModal.tsx`](../src/components/AdditionalReportModal.tsx), and the Job Mode [`TurnawayModal.tsx`](../src/components/jobMode/TurnawayModal.tsx).
+
+---
+
+### send-report-email
+
+**Purpose**: Emails a report to standing recipients configured in **`report_email_subscriptions`** (Dashboard → Recent Reports → mail button). Resolves report content (template name, author, job/project/bid display, `field_values` with signature fields rendered as `[signature captured]`), sends via Resend, and records a `report_email_dispatch_log` row so each `(subscription, report)` is emailed at most once across both modes.
+
+- **`auto`** (`{ report_id }`) — fired fire-and-forget right after a report is created (next to `send-report-notification`). Emails every enabled subscription with `auto_send = true` whose scope matches (`all_authors`, or the report's `created_by_user_id` is in `report_email_subscription_authors`), skipping any already in the dispatch log.
+- **`manual`** (`{ mode: 'manual', subscription_id, since_days? }`) — the "Send now" button. Requires the caller to be a manager (dev / master_technician / assistant / controller). Emails in-scope reports from the last `since_days` (default 14, max 50 reports) not yet dispatched to that subscription.
+
+**Endpoint**: `POST /functions/v1/send-report-email`
+
+**Authentication**: in-handler JWT (`auth.getUser`) — any authenticated user for `auto`; `manual` additionally checks the caller's role. Privileged work uses the service role.
+
+**Required Secrets**: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY`
+
+#### Request Parameters
+
+```typescript
+{ report_id: string }                                              // auto
+{ mode: 'manual', subscription_id: string, since_days?: number }   // manual
+```
+
+#### Response
+
+```typescript
+{ ok: true, sent: number, matched?: number }                       // auto
+{ ok: true, sent: number, candidates?: number, alreadySent?: number } // manual
+// or { error: string } with 400/401/403/404/500
+```
+
+**Used by**: report save flows ([`NewReportModal.tsx`](../src/components/NewReportModal.tsx), [`AdditionalReportModal.tsx`](../src/components/AdditionalReportModal.tsx)) for `auto`; [`ReportEmailSettingsModal.tsx`](../src/components/dashboard/ReportEmailSettingsModal.tsx) "Send now" for `manual`.
+
+**Deploy**: `supabase functions deploy send-report-email` (manual, per repo convention).
 
 ---
 

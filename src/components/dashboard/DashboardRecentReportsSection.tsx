@@ -9,6 +9,7 @@ import { formatReportFieldValueInlineList } from '../../lib/reportSignatureField
 import { recentReportsUnreadCount, recentReportsVisibleRows, type RecentReportRow } from '../../lib/dashboardRecentReports'
 import ReportEditModal, { type ReportForEdit } from '../ReportEditModal'
 import { RecentReportsSkeleton } from './DashboardSkeletons'
+import { ReportEmailSettingsModal } from './ReportEmailSettingsModal'
 
 const HIDE_ON_REFRESH_STORAGE_KEY = 'pipetooling_dashboard_hide_on_refresh_ids'
 
@@ -41,6 +42,10 @@ export function DashboardRecentReportsSection({
   const [reportForEdit, setReportForEdit] = useState<ReportForEdit | null>(null)
   const [recentReportsExpanded, setRecentReportsExpanded] = useState(false)
   const [recentReportsView, setRecentReportsView] = useState<'unread' | 'all'>('unread')
+  const [emailSettingsOpen, setEmailSettingsOpen] = useState(false)
+  // Same gate as the clock-strip schedule-email button (excludes primary).
+  const canManageReportEmails =
+    role === 'dev' || role === 'master_technician' || isAssistantLike(role)
 
   useEffect(() => {
     if (!authUserId) return
@@ -130,18 +135,44 @@ export function DashboardRecentReportsSection({
   return (
     <>
       {showRecent && (
-        <div id="dash-reports" style={{ marginTop: '2rem', marginBottom: '1rem', scrollMarginTop: 8 }}>
-          <button
-            type="button"
-            onClick={() => setRecentReportsExpanded((prev) => !prev)}
-            aria-expanded={recentReportsExpanded}
-            style={{ margin: 0, padding: 0, border: 'none', background: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', flexWrap: 'wrap', gap: '0.5rem', marginBottom: recentReportsExpanded ? '0.5rem' : 0 }}
-          >
-            <h2 style={{ fontSize: '1.125rem', margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <span aria-hidden>{recentReportsExpanded ? '▼' : '▶'}</span>
-              Recent Reports ({recentReportsUnreadCount(recentReports, hiddenReportIds, readReportIds)})
-            </h2>
-          </button>
+        <div
+          id="dash-reports"
+          style={{
+            border: '1px solid var(--border)',
+            borderRadius: 8,
+            background: 'var(--surface)',
+            padding: '0.85rem 1rem 1rem',
+            marginTop: '1rem',
+            marginBottom: '1rem',
+            scrollMarginTop: 8,
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: recentReportsExpanded ? '0.5rem' : 0 }}>
+            <button
+              type="button"
+              onClick={() => setRecentReportsExpanded((prev) => !prev)}
+              aria-expanded={recentReportsExpanded}
+              style={{ margin: 0, padding: 0, border: 'none', background: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'flex-start', flex: 1, minWidth: 0, gap: '0.5rem' }}
+            >
+              <h2 style={{ fontSize: '1.125rem', margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <span aria-hidden>{recentReportsExpanded ? '▼' : '▶'}</span>
+                Recent Reports ({recentReportsUnreadCount(recentReports, hiddenReportIds, readReportIds)})
+              </h2>
+            </button>
+            {canManageReportEmails && (
+              <button
+                type="button"
+                onClick={() => setEmailSettingsOpen(true)}
+                title="Report email recipients"
+                aria-label="Report email recipients"
+                style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 32, height: 32, padding: 0, border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'var(--text-muted)', cursor: 'pointer' }}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="16" height="16" fill="currentColor" aria-hidden="true" style={{ display: 'block' }}>
+                  <path d="M125.4 128C91.5 128 64 155.5 64 189.4C64 190.3 64 191.1 64.1 192L64 192L64 448C64 483.3 92.7 512 128 512L512 512C547.3 512 576 483.3 576 448L576 192L575.9 192C575.9 191.1 576 190.3 576 189.4C576 155.5 548.5 128 514.6 128L125.4 128zM528 256.3L528 448C528 456.8 520.8 464 512 464L128 464C119.2 464 112 456.8 112 448L112 256.3L266.8 373.7C298.2 397.6 341.7 397.6 373.2 373.7L528 256.3zM112 189.4C112 182 118 176 125.4 176L514.6 176C522 176 528 182 528 189.4C528 193.6 526 197.6 522.7 200.1L344.2 335.5C329.9 346.3 310.1 346.3 295.8 335.5L117.3 200.1C114 197.6 112 193.6 112 189.4z" />
+                </svg>
+              </button>
+            )}
+          </div>
           {recentReportsExpanded && (
             <>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.5rem' }}>
@@ -392,6 +423,13 @@ export function DashboardRecentReportsSection({
         }}
         viewerRole={role}
       />
+      {canManageReportEmails && (
+        <ReportEmailSettingsModal
+          open={emailSettingsOpen}
+          onClose={() => setEmailSettingsOpen(false)}
+          authUserId={authUserId}
+        />
+      )}
     </>
   )
 }
