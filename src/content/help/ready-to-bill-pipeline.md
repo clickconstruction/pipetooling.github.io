@@ -25,6 +25,8 @@ $3,850 bid
 {{chip:blue|Billed $3,850}} → **Owed $3,850**
 :::
 
+The **Edit Job** window shows the same bar at the top of its billing section, so you get one picture there too. Under it, three numbered steps make the flow obvious: **① Line Items** (the specific work & materials — their sum is the Job Total), **② Invoices** (the bills you break off and send — creating or sending one **saves right away**, not with the rest of the form), and **③ Payments received** (money collected). The bar adds a striped **Draft** slice for a bill you've carved off but haven't sent yet, and the break-off amount has **Quick set** buttons (20 / 40 / 60 / 80 / Max) next to the slider.
+
 A big amber slice is the signal to bill: work is finished but the money hasn't been asked for. A blue bar means the bill is already out — you're waiting on the customer, not on the office.
 
 Next to each job's **Last activity**, a small stack of shortcuts covers the common jump-offs: the green calendar opens the job's **schedule**, the blue grid opens its **week dispatch**, the red pin opens the address in **Google Maps**, the phone icon **calls the customer** (it only appears when the job has a phone number on file), and the purple send arrow **sends the job to someone as a task** — it opens the New task form with the job attached as a link, you add your note and pick who it's for, and when they open the task, clicking the job's name takes them straight to its **Job Detail**.

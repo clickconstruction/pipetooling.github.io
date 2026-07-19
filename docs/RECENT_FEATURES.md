@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-19 (v2.753)
+last_updated: 2026-07-19 (v2.754)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.754)
+
+### Edit Job — billing section clarity: Progress & payment bar + Line Items → Invoices → Payments steps (2026-07-19)
+The Edit-Job modal's billing area stacked three delete-then-reinsert blocks (line items, invoices, payments) as unlabeled siblings, so it read as three unrelated forms. **Phase 1 (clarity, no schema change):** added the same **Progress & payment bar** the Stages board uses as an anchor at the top of the section, with a 4-tile legend that spells out the equation — **Job Total** (sum of line items) = **Paid** (green) + **Billed** (blue, sent-unpaid) + **Draft** (striped, ready-to-bill not yet sent) + **Remaining to bill**. New shared presentational component `MoneyLifecycleBar` (segment-based so both the Stages cell and the modal can render it) + a pure, unit-tested kernel `buildEditJobBillingBar` (`src/lib/jobs/editJobBillingBar.ts`) that computes the figures live from the fixture-derived total, the payments table, and the job's invoices (draft gets its own segment, unlike the Stages bar). The three blocks are now numbered/labeled steps — **① Line Items — specific work & materials** (was the ambiguous "Specific Work or Materials", which collided with the separate supplies list), **② Invoices — bills you send** (with an explicit "creating or sending a bill **saves right away** — not with the rest of the form" cue, since that flow bypasses Save), **③ Payments received** — each with a one-line caption. The break-off amount gained real **Quick set** % buttons (20/40/60/80/Max) that drive the same combined-% value as the slider (previously the 20/40/60/80 were non-interactive tick labels). Presentational + relabels only; the break-off/save math is unchanged. Phase 2 (merge the three invoice sub-blocks into one list, inline "Send bill", manual payment→invoice attach) is a follow-up.
 
 ## Latest Updates (v2.753)
 
