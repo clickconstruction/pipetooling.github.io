@@ -13,14 +13,19 @@ Every job moves through one pipeline. This guide covers the billing half — how
 
 ## Reading the Progress & payment bar
 
-Every stage on the Jobs Stages board — Waiting through Paid in Full — shows one **Progress & payment** cell instead of separate money columns. The bar is the job's whole bid: the green part is **paid**, the amber part is work **done but not paid for yet** (unbilled), and the empty part is work not done yet. Under the bar, the same three numbers are spelled out — **Paid**, **Unbilled**, and **Owed** (bid minus payments). In Waiting and Working, the **% done** box at the top is where the office records how complete the job is — type a number and press Enter (later stages show the % read-only). No % and no bid value yet shows an empty dashed bar. On billed rows, a small line under the numbers shows what **this row's bill** covers (e.g. `This bill: $0 paid · $3,850 left`) and any amount **unallocated** — money on the job that isn't on any bill yet.
+Every stage on the Jobs Stages board — Waiting through Paid in Full — shows one **Progress & payment** cell instead of separate money columns. The bar is the job's whole bid, filled in order: the green part is **paid**, the blue part is **billed but not yet paid** (an invoice has gone out and you're waiting on the money), the amber part is work **done but not yet billed** (unbilled), and the empty part is work not done yet. Under the bar the same numbers are spelled out — **Paid**, **Billed** (shown only when an invoice is out and unpaid), **Unbilled**, and **Owed** (bid minus payments). In Waiting and Working, the **% done** box at the top is where the office records how complete the job is — type a number and press Enter (later stages show the % read-only). No % and no bid value yet shows an empty dashed bar. On billed rows, a small line under the numbers shows what **this row's bill** covers (e.g. `This bill: $0 paid · $3,850 left`) and any amount **unallocated** — money on the job that isn't on any bill yet.
 
 :::example One glance at a Working job
 70 % done · $41,550 bid
 {{chip:green|Paid $16,620}} {{chip:yellow|Unbilled $12,465}} → **Owed $24,930**
 :::
 
-A big amber slice is the signal to bill: work is finished but the money hasn't been asked for.
+:::example A billed job waiting on payment
+$3,850 bid
+{{chip:blue|Billed $3,850}} → **Owed $3,850**
+:::
+
+A big amber slice is the signal to bill: work is finished but the money hasn't been asked for. A blue bar means the bill is already out — you're waiting on the customer, not on the office.
 
 Next to each job's **Last activity**, a small stack of shortcuts covers the common jump-offs: the green calendar opens the job's **schedule**, the blue grid opens its **week dispatch**, the red pin opens the address in **Google Maps**, the phone icon **calls the customer** (it only appears when the job has a phone number on file), and the purple send arrow **sends the job to someone as a task** — it opens the New task form with the job attached as a link, you add your note and pick who it's for, and when they open the task, clicking the job's name takes them straight to its **Job Detail**.
 

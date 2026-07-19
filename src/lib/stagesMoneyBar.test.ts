@@ -69,6 +69,38 @@ describe('buildStagesMoneyBarModel', () => {
     expect(buildStagesMoneyBarModel({ totalBill: 100, paymentsMade: 0, pctComplete: -5 }).valueCreated).toBe(0)
   })
 
+  it('billed but unpaid, no pct: blue segment shows even without payments (job 879 case)', () => {
+    const m = buildStagesMoneyBarModel({ totalBill: 40135, paymentsMade: 0, pctComplete: null, billedUnpaid: 16054 })
+    expect(m.paidFrac).toBe(0)
+    expect(m.billedFrac).toBeCloseTo(0.4, 2)
+    expect(m.billedUnpaid).toBeCloseTo(16054)
+    expect(m.unbilledFrac).toBe(0) // pct unknown → no amber
+    expect(m.owed).toBe(40135)
+  })
+
+  it('billed sits after paid and amber counts only work beyond paid+billed', () => {
+    const m = buildStagesMoneyBarModel({ totalBill: 1000, paymentsMade: 200, pctComplete: 90, billedUnpaid: 300 })
+    expect(m.paidFrac).toBeCloseTo(0.2)
+    expect(m.billedFrac).toBeCloseTo(0.3)
+    // done = 0.9; amber = 0.9 − 0.2 − 0.3 = 0.4
+    expect(m.unbilledFrac).toBeCloseTo(0.4)
+  })
+
+  it('billed clamps so paid + billed never exceed the track', () => {
+    const m = buildStagesMoneyBarModel({ totalBill: 1000, paymentsMade: 800, pctComplete: null, billedUnpaid: 500 })
+    expect(m.paidFrac).toBeCloseTo(0.8)
+    expect(m.billedFrac).toBeCloseTo(0.2) // capped at 1 − paidFrac
+    expect(m.billedUnpaid).toBeCloseTo(200)
+  })
+
+  it('billedUnpaid omitted behaves exactly like the old paid/pct-only bar', () => {
+    const m = buildStagesMoneyBarModel({ totalBill: 1000, paymentsMade: 250, pctComplete: 70 })
+    expect(m.billedFrac).toBe(0)
+    expect(m.billedUnpaid).toBe(0)
+    expect(m.paidFrac).toBeCloseTo(0.25)
+    expect(m.unbilledFrac).toBeCloseTo(0.45)
+  })
+
   it('non-finite inputs are treated as empty', () => {
     const m = buildStagesMoneyBarModel({ totalBill: Number.NaN, paymentsMade: Number.NaN, pctComplete: Number.NaN })
     expect(m.hasBar).toBe(false)

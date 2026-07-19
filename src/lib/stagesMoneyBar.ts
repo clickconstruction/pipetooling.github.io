@@ -4,8 +4,9 @@
  * One quantity — the job's total bill (bid) — sliced two ways:
  *   work:  done vs not done            (from pct_complete)
  *   money: paid vs owed                (from payments_made)
- * The bar renders paid (green) then done-but-unpaid = unbilled (amber);
- * the empty track is work not yet done.
+ * The bar renders paid (green), then invoiced-but-unpaid = billed (blue),
+ * then done-but-neither-paid-nor-billed = unbilled (amber); the empty track is
+ * work not yet done. Segments never overlap: paid ⊆ billed ⊆ done.
  */
 
 export type StagesMoneyBarInput = {
@@ -15,6 +16,12 @@ export type StagesMoneyBarInput = {
   paymentsMade: number | null | undefined
   /** jobs_ledger.pct_complete, 0–100, or null when the field hasn't reported one. */
   pctComplete: number | null | undefined
+  /**
+   * Dollars invoiced (status='billed') but not yet paid — the "a bill was sent"
+   * signal. Optional; omit (or 0) on tables that don't surface billing lines and
+   * the bar behaves exactly as the old paid/pct-only version.
+   */
+  billedUnpaid?: number | null | undefined
 }
 
 export type StagesMoneyBarModel = {
@@ -22,10 +29,14 @@ export type StagesMoneyBarModel = {
   hasBar: boolean
   /** Green segment width, fraction of the bar (0–1). */
   paidFrac: number
-  /** Amber segment width, fraction of the bar (0–1); paidFrac + unbilledFrac ≤ 1. */
+  /** Blue segment width, fraction of the bar (0–1); invoiced but unpaid. */
+  billedFrac: number
+  /** Amber segment width, fraction of the bar (0–1); paidFrac + billedFrac + unbilledFrac ≤ 1. */
   unbilledFrac: number
   total: number
   paid: number
+  /** Dollars invoiced but not yet paid (clamped to the bar); the "bill sent" amount. */
+  billedUnpaid: number
   /** Dollar value of work performed (total × pct); null when pct unknown. */
   valueCreated: number | null
   /** Work done but not yet paid for, floored at 0; null when pct unknown. */
@@ -60,8 +71,14 @@ export function buildStagesMoneyBarModel(input: StagesMoneyBarInput): StagesMone
   const overpaid = paid > total && total > 0
 
   const paidFrac = hasBar ? clamp01(paid / total) : 0
+  // Blue sits after green and can't spill past the track: cap at the space green leaves.
+  const billedFrac = hasBar
+    ? Math.min(clamp01(Math.max(0, toNumber(input.billedUnpaid)) / total), 1 - paidFrac)
+    : 0
+  const billedUnpaid = billedFrac * total
   const doneFrac = hasBar && valueCreated != null ? clamp01(valueCreated / total) : 0
-  const unbilledFrac = Math.max(0, doneFrac - paidFrac)
+  // Amber is only work done that is neither paid nor already billed.
+  const unbilledFrac = Math.max(0, doneFrac - paidFrac - billedFrac)
 
-  return { hasBar, paidFrac, unbilledFrac, total, paid, valueCreated, unbilled, owed, overpaid }
+  return { hasBar, paidFrac, billedFrac, unbilledFrac, total, paid, billedUnpaid, valueCreated, unbilled, owed, overpaid }
 }

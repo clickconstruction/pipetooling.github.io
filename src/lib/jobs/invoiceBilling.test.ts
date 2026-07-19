@@ -4,6 +4,7 @@ import type { StageRow } from '../jobsStagesBoard'
 import {
   effectiveInvoiceEstBillDate,
   invoiceOpenRemainingOnJob,
+  jobBilledUnpaidDollars,
   jobStagesActiveBillingInvoices,
   jobStagesInvoiceJumpChipTargets,
   printBilledRowReferenceDate,
@@ -70,6 +71,30 @@ describe('sumInvoiceAppliedFromJobPayments / invoiceOpenRemainingOnJob', () => {
   it('open remaining is amount minus applied, floored at zero', () => {
     expect(invoiceOpenRemainingOnJob(inv({ id: 'i1', amount: 400 }) as Inv, j)).toBe(250)
     expect(invoiceOpenRemainingOnJob(inv({ id: 'i1', amount: 100 }) as Inv, j)).toBe(0)
+  })
+})
+
+describe('jobBilledUnpaidDollars', () => {
+  it('sums open remainder across SENT (billed) invoices only, excluding drafts', () => {
+    const j = job({
+      invoices: [
+        inv({ id: 'i1', amount: 16054, status: 'billed' }),
+        inv({ id: 'i2', amount: 24081, status: 'ready_to_bill' }), // draft — excluded
+      ],
+      payments: [],
+    })
+    expect(jobBilledUnpaidDollars(j)).toBe(16054)
+  })
+  it('nets out payments applied to the billed invoice', () => {
+    const j = job({
+      invoices: [inv({ id: 'i1', amount: 1000, status: 'billed' })],
+      payments: [{ invoice_id: 'i1', amount: 400 }],
+    })
+    expect(jobBilledUnpaidDollars(j)).toBe(600)
+  })
+  it('is zero with no billed invoices', () => {
+    expect(jobBilledUnpaidDollars(job({ invoices: [inv({ status: 'ready_to_bill' })] }))).toBe(0)
+    expect(jobBilledUnpaidDollars(job({}))).toBe(0)
   })
 })
 

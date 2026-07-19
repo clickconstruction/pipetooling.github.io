@@ -23,6 +23,20 @@ export function invoiceOpenRemainingOnJob(inv: JobsLedgerInvoice, job: JobWithDe
   return Math.max(0, Number(inv.amount ?? 0) - applied)
 }
 
+/**
+ * Dollars invoiced but not yet paid: open remainder summed across this job's
+ * SENT invoices (status='billed'). Ready-to-bill drafts are excluded — they're
+ * not yet a bill the customer has received (they're the "unallocated" remainder).
+ * Feeds the Stages Progress & payment bar's blue "Billed" segment.
+ */
+export function jobBilledUnpaidDollars(job: JobWithDetails): number {
+  let s = 0
+  for (const inv of job.invoices ?? []) {
+    if (inv.status === 'billed') s += invoiceOpenRemainingOnJob(inv, job)
+  }
+  return s
+}
+
 export function stageRowBilledRemainingAmount(r: StageRow): number {
   if (r.kind === 'job') {
     return Number(r.job.revenue ?? 0) - Number(r.job.payments_made ?? 0)
