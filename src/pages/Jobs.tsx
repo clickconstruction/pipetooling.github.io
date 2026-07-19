@@ -64,7 +64,7 @@ import type { LaborJob, LaborJobPayment, SubLaborBackchargeTarget, SubLaborPayme
 import { formatDispatchNoteDaysAgoShortPhrase, formatDispatchNoteWeekdayShortTimeChicago, getDispatchNoteDisplayMeta } from '../utils/dispatchNoteDisplay'
 import { buildStagesMoneyBarModel } from '../lib/stagesMoneyBar'
 import StagesProgressPaymentCell from '../components/jobs/StagesProgressPaymentCell'
-import { JobPctCompleteControl } from '../components/jobs/JobPctCompleteControl'
+import { composePctCompleteNoteBody } from '../lib/jobs/stagesPctNote'
 import { useChecklistAddModal } from '../contexts/ChecklistAddModalContext'
 import JobReportsModal from '../components/JobReportsModal'
 import JobsInspectionsTab from '../components/jobs/JobsInspectionsTab'
@@ -1056,6 +1056,7 @@ export default function Jobs() {
     jobThreadDraft,
     setJobThreadDraft,
     submitJobThreadNote,
+    submitJobThreadNoteWithBody,
     jobThreadStatsByJobId,
     refreshJobThreadStatsForJobIds,
   } = useJobThreadNotes(showToast, authUser?.id, authProfileName)
@@ -4511,6 +4512,26 @@ ${totalsHtml}
     }
   }
 
+  /**
+   * Stages "Set % complete" commit: post a thread note ("N% complete — <note>",
+   * best-effort with its own toast) then write jobs_ledger.pct_complete. One saving
+   * flag spans both so the editor stays disabled and closes when it clears.
+   */
+  async function commitStagesPctWithNote(jobId: string, value: number, note: string) {
+    setPctCompleteSavingId(jobId)
+    setError(null)
+    try {
+      await submitJobThreadNoteWithBody(jobId, composePctCompleteNoteBody(value, note), 'draft')
+      const { error: err } = await supabase.from('jobs_ledger').update({ pct_complete: value }).eq('id', jobId)
+      if (err) throw err
+      await loadJobs()
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to update % complete')
+    } finally {
+      setPctCompleteSavingId(null)
+    }
+  }
+
   async function setInvoiceEstimatedBillDate(invoiceId: string, jobId: string, date: string | null) {
     setInvoiceEstimatedBillDateSavingId(invoiceId)
     setError(null)
@@ -6332,17 +6353,10 @@ ${totalsHtml}
                                 }}
                               >
                                 <JobThreadNotesPanel
-                                  pctControl={
-                                    canEditJobPctComplete ? (
-                                      <JobPctCompleteControl
-                                        jobId={j.id}
-                                        pct={j.pct_complete ?? null}
-                                        canEdit={canEditJobPctComplete}
-                                        saving={pctCompleteSavingId === j.id}
-                                        onCommit={(v) => updateJobPctComplete(j.id, v)}
-                                      />
-                                    ) : undefined
-                                  }
+                                  pctComplete={j.pct_complete ?? null}
+                                  canEditPct={canEditJobPctComplete}
+                                  pctSaving={pctCompleteSavingId === j.id}
+                                  onCommitPct={(value, note) => commitStagesPctWithNote(j.id, value, note)}
                                   activity={jobThreadActivityByJobId[j.id] ?? []}
                                   loading={jobThreadNotesLoadingId === j.id}
                                   canPost={!!authUser}
@@ -7050,17 +7064,10 @@ ${totalsHtml}
                                     }}
                                   >
                                     <JobThreadNotesPanel
-                                      pctControl={
-                                        canEditJobPctComplete ? (
-                                          <JobPctCompleteControl
-                                            jobId={j.id}
-                                            pct={j.pct_complete ?? null}
-                                            canEdit={canEditJobPctComplete}
-                                            saving={pctCompleteSavingId === j.id}
-                                            onCommit={(v) => updateJobPctComplete(j.id, v)}
-                                          />
-                                        ) : undefined
-                                      }
+                                      pctComplete={j.pct_complete ?? null}
+                                      canEditPct={canEditJobPctComplete}
+                                      pctSaving={pctCompleteSavingId === j.id}
+                                      onCommitPct={(value, note) => commitStagesPctWithNote(j.id, value, note)}
                                       activity={jobThreadActivityByJobId[j.id] ?? []}
                                       loading={jobThreadNotesLoadingId === j.id}
                                       canPost={!!authUser}
@@ -7443,17 +7450,10 @@ ${totalsHtml}
                                     }}
                                   >
                                     <JobThreadNotesPanel
-                                      pctControl={
-                                        canEditJobPctComplete ? (
-                                          <JobPctCompleteControl
-                                            jobId={job.id}
-                                            pct={job.pct_complete ?? null}
-                                            canEdit={canEditJobPctComplete}
-                                            saving={pctCompleteSavingId === job.id}
-                                            onCommit={(v) => updateJobPctComplete(job.id, v)}
-                                          />
-                                        ) : undefined
-                                      }
+                                      pctComplete={job.pct_complete ?? null}
+                                      canEditPct={canEditJobPctComplete}
+                                      pctSaving={pctCompleteSavingId === job.id}
+                                      onCommitPct={(value, note) => commitStagesPctWithNote(job.id, value, note)}
                                       activity={jobThreadActivityByJobId[job.id] ?? []}
                                       loading={jobThreadNotesLoadingId === job.id}
                                       canPost={!!authUser}

@@ -482,6 +482,7 @@ export function useJobThreadNotes(
     setJobThreadDraft,
     loadJobThreadNotesForJob,
     submitJobThreadNote,
+    submitJobThreadNoteWithBody,
     submitJobThreadStamp,
     jobThreadStatsByJobId,
     refreshJobThreadStatsForJobIds,

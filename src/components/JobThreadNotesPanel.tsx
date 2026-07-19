@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { getDispatchNoteDisplayMeta, formatDispatchNoteTimeChicago } from '../utils/dispatchNoteDisplay'
 import type { UserRole } from '../hooks/useAuth'
 import { displayReportTemplateName } from '../lib/reportTemplateDisplayName'
@@ -13,6 +13,8 @@ import {
   scheduleFormatDateLongNoWeekday,
   scheduleFormatWindow,
 } from '../lib/jobScheduleChicago'
+import { clampCompletenessPct } from '../lib/jobs/jobCompleteness'
+import { pctNoteRequired, validatePctCommit } from '../lib/jobs/stagesPctNote'
 
 export type JobThreadNoteRow = {
   id: string
@@ -65,8 +67,18 @@ type JobThreadNotesPanelProps = {
   viewerRole?: UserRole | null
   /** Show the All/Notes/Status/Billing/Crew segmented filter. Defaults on when `activity` is provided. */
   showFilter?: boolean
-  /** The Stages % complete control — rendered inline with the Schedule / Week dispatch action buttons. */
-  pctControl?: ReactNode
+  /** Stages % complete (jobs_ledger.pct_complete); null when never set. Enables the "Set % complete" control. */
+  pctComplete?: number | null
+  /** Whether the viewer may edit the percent (dev / master / assistant / primary on Stages). */
+  canEditPct?: boolean
+  /** True while the percent commit is in flight. */
+  pctSaving?: boolean
+  /**
+   * Commit a new percent plus the accompanying note text. The parent posts a
+   * thread note ("N% complete — <note>") and writes jobs_ledger.pct_complete.
+   * Required when `canEditPct` is set.
+   */
+  onCommitPct?: (value: number, note: string) => void | Promise<void>
 }
 
 const DEFAULT_ACTIVITY_LIST_MAX_HEIGHT = 'min(280px, 45vh)'
@@ -190,9 +202,42 @@ export function JobThreadNotesPanel({
   activityListMaxHeight = DEFAULT_ACTIVITY_LIST_MAX_HEIGHT,
   viewerRole,
   showFilter,
-  pctControl,
+  pctComplete,
+  canEditPct = false,
+  pctSaving = false,
+  onCommitPct,
 }: JobThreadNotesPanelProps) {
   const [viewingReport, setViewingReport] = useState<ReportForView | null>(null)
+  const [pctEditorOpen, setPctEditorOpen] = useState(false)
+  const [pctDraft, setPctDraft] = useState(pctComplete ?? 0)
+  const [pctNoteError, setPctNoteError] = useState<string | null>(null)
+  const openPctEditor = useCallback(() => {
+    setPctDraft(pctComplete ?? 0)
+    setPctNoteError(null)
+    setPctEditorOpen(true)
+  }, [pctComplete])
+  const cancelPctEditor = useCallback(() => {
+    setPctEditorOpen(false)
+    setPctNoteError(null)
+  }, [])
+  // Close once a commit finishes (pctSaving true → false).
+  const wasPctSaving = useRef(pctSaving)
+  useEffect(() => {
+    if (wasPctSaving.current && !pctSaving) {
+      setPctEditorOpen(false)
+      setPctNoteError(null)
+    }
+    wasPctSaving.current = pctSaving
+  }, [pctSaving])
+  const commitPctEditor = useCallback(() => {
+    const check = validatePctCommit(pctDraft, draft)
+    if (!check.ok) {
+      setPctNoteError(check.error)
+      return
+    }
+    setPctNoteError(null)
+    void onCommitPct?.(pctDraft, draft)
+  }, [pctDraft, draft, onCommitPct])
   const noteBodyRef = useRef<HTMLTextAreaElement>(null)
   const activityScrollRef = useRef<HTMLDivElement>(null)
 
@@ -564,77 +609,183 @@ export function JobThreadNotesPanel({
       ) : null}
       {canPost && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '0.5rem' }}>
-          {showComposerLabel ? (
-            <label htmlFor="job-thread-note-body" style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block' }}>
-              Add a note
-            </label>
-          ) : null}
-          <textarea
-            ref={noteBodyRef}
-            id="job-thread-note-body"
-            aria-label={showComposerLabel ? undefined : 'Add a note'}
-            value={draft}
-            onChange={(e) => onDraftChange(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key !== 'Enter' || e.shiftKey) return
-              e.preventDefault()
-              if (submitting || draft.trim().length === 0) return
-              onSubmit()
-            }}
-            disabled={submitting}
-            maxLength={2000}
-            rows={1}
-            placeholder="Type a note… (Enter to post, Shift+Enter for new line)"
-            style={{
-              width: '100%',
-              padding: '0.5rem',
-              fontSize: '0.875rem',
-              border: '1px solid var(--border-strong)',
-              borderRadius: 4,
-              boxSizing: 'border-box',
-              resize: 'none',
-              maxHeight: '10rem',
-              overflowY: 'auto',
-              lineHeight: 1.35,
-            }}
-          />
-          {/* One flat, wrapping action row: Schedule / Week dispatch / stamps / % complete on the
-              left, Post note pushed right. The % complete control sits in line here; when opened it
-              orders itself onto its own full-width line below (see JobPctCompleteControl). */}
-          <div
-            style={{
-              display: 'flex',
-              flexWrap: 'wrap',
-              alignItems: 'center',
-              gap: '0.5rem',
-              width: '100%',
-            }}
-          >
-            {scheduleAction ? <JobThreadScheduleButton action={scheduleAction} /> : null}
-            {scheduleDispatchAction ? <JobThreadWeekDispatchButton action={scheduleDispatchAction} /> : null}
-            {jobThreadStampActions ? (
-              <JobThreadStampButtons actions={jobThreadStampActions} submitting={submitting} />
-            ) : null}
-            {pctControl}
-            <button
-              type="button"
-              onClick={onSubmit}
-              disabled={submitting || draft.trim().length === 0}
+          {pctEditorOpen && canEditPct ? (
+            /* % complete editor takes over the composer area: slider on top, then
+               [note field | Cancel | Set to N%]. A note is required below 100%. */
+            <div
               style={{
-                padding: '0.35rem 0.75rem',
-                fontSize: '0.8125rem',
-                background: submitting || draft.trim().length === 0 ? 'var(--bg-200)' : '#3b82f6',
-                color: submitting || draft.trim().length === 0 ? 'var(--text-muted)' : 'white',
-                border: 'none',
-                borderRadius: 4,
-                cursor: submitting || draft.trim().length === 0 ? 'not-allowed' : 'pointer',
-                flexShrink: 0,
-                marginLeft: 'auto',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '0.5rem',
+                padding: '0.6rem',
+                border: '1px solid var(--border)',
+                borderRadius: 6,
+                background: 'var(--surface)',
               }}
             >
-              {submitting ? 'Posting…' : 'Post note'}
-            </button>
-          </div>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem' }}>
+                <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-700)' }}>Set % complete</span>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
+                  <input
+                    type="number"
+                    min={0}
+                    max={100}
+                    value={pctDraft}
+                    disabled={pctSaving}
+                    onChange={(e) => setPctDraft(clampCompletenessPct(e.target.value) ?? 0)}
+                    aria-label="Percent complete"
+                    style={{ width: 56, padding: '0.2rem 0.35rem', fontSize: '0.8125rem', border: '1px solid var(--border)', borderRadius: 4, background: 'var(--surface)', color: 'var(--text-strong)', textAlign: 'right' }}
+                  />
+                  <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>%</span>
+                </span>
+              </div>
+              <input
+                type="range"
+                min={0}
+                max={100}
+                step={1}
+                list="job-thread-pct-ticks"
+                value={pctDraft}
+                disabled={pctSaving}
+                onChange={(e) => setPctDraft(Number(e.target.value))}
+                aria-label="Percent complete slider"
+                style={{ width: '100%', accentColor: '#3b82f6', cursor: pctSaving ? 'not-allowed' : 'pointer' }}
+              />
+              <datalist id="job-thread-pct-ticks">
+                {[0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100].map((m) => (
+                  <option key={m} value={m} />
+                ))}
+              </datalist>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.65rem', color: 'var(--text-muted)' }}>
+                {[0, 25, 50, 75, 100].map((m) => (
+                  <span key={m}>{m}%</span>
+                ))}
+              </div>
+              {pctNoteError ? (
+                <p style={{ color: 'var(--text-red-700)', fontSize: '0.75rem', margin: 0 }}>{pctNoteError}</p>
+              ) : null}
+              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                <input
+                  type="text"
+                  value={draft}
+                  disabled={pctSaving}
+                  onChange={(e) => onDraftChange(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault()
+                      commitPctEditor()
+                    }
+                  }}
+                  maxLength={2000}
+                  placeholder={pctNoteRequired(pctDraft) ? 'Add a note (required)…' : 'Add a note (optional)…'}
+                  aria-label="Note for percent change"
+                  style={{ flex: '1 1 8rem', minWidth: 0, padding: '0.4rem 0.5rem', fontSize: '0.875rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', color: 'var(--text-strong)', boxSizing: 'border-box' }}
+                />
+                <button
+                  type="button"
+                  onClick={cancelPctEditor}
+                  disabled={pctSaving}
+                  style={{ padding: '0.35rem 0.75rem', fontSize: '0.8125rem', background: 'var(--surface)', color: 'var(--text-700)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: pctSaving ? 'not-allowed' : 'pointer', flexShrink: 0 }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={commitPctEditor}
+                  disabled={pctSaving}
+                  style={{ padding: '0.35rem 0.75rem', fontSize: '0.8125rem', fontWeight: 600, background: pctSaving ? 'var(--bg-200)' : '#3b82f6', color: pctSaving ? 'var(--text-muted)' : 'white', border: 'none', borderRadius: 4, cursor: pctSaving ? 'not-allowed' : 'pointer', flexShrink: 0 }}
+                >
+                  {pctSaving ? 'Setting…' : `Set to ${pctDraft}%`}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <>
+              {showComposerLabel ? (
+                <label htmlFor="job-thread-note-body" style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block' }}>
+                  Add a note
+                </label>
+              ) : null}
+              <textarea
+                ref={noteBodyRef}
+                id="job-thread-note-body"
+                aria-label={showComposerLabel ? undefined : 'Add a note'}
+                value={draft}
+                onChange={(e) => onDraftChange(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key !== 'Enter' || e.shiftKey) return
+                  e.preventDefault()
+                  if (submitting || draft.trim().length === 0) return
+                  onSubmit()
+                }}
+                disabled={submitting}
+                maxLength={2000}
+                rows={1}
+                placeholder="Type a note… (Enter to post, Shift+Enter for new line)"
+                style={{
+                  width: '100%',
+                  padding: '0.5rem',
+                  fontSize: '0.875rem',
+                  border: '1px solid var(--border-strong)',
+                  borderRadius: 4,
+                  boxSizing: 'border-box',
+                  resize: 'none',
+                  maxHeight: '10rem',
+                  overflowY: 'auto',
+                  lineHeight: 1.35,
+                }}
+              />
+              {/* Flat, wrapping action row: Schedule / Week dispatch / stamps / % complete on the left,
+                  Post note pushed right. "Set % complete" opens the editor above (replacing this composer). */}
+              <div
+                style={{
+                  display: 'flex',
+                  flexWrap: 'wrap',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  width: '100%',
+                }}
+              >
+                {scheduleAction ? <JobThreadScheduleButton action={scheduleAction} /> : null}
+                {scheduleDispatchAction ? <JobThreadWeekDispatchButton action={scheduleDispatchAction} /> : null}
+                {jobThreadStampActions ? (
+                  <JobThreadStampButtons actions={jobThreadStampActions} submitting={submitting} />
+                ) : null}
+                {canEditPct ? (
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
+                    {pctComplete != null ? (
+                      <span style={{ fontSize: '0.8125rem', color: 'var(--text-700)' }}>{pctComplete}% complete</span>
+                    ) : null}
+                    <button
+                      type="button"
+                      onClick={openPctEditor}
+                      style={{ padding: '0.3rem 0.6rem', fontSize: '0.75rem', fontWeight: 600, background: 'none', color: 'var(--text-link)', border: '1px solid #2563eb', borderRadius: 4, cursor: 'pointer' }}
+                    >
+                      Set % complete
+                    </button>
+                  </span>
+                ) : null}
+                <button
+                  type="button"
+                  onClick={onSubmit}
+                  disabled={submitting || draft.trim().length === 0}
+                  style={{
+                    padding: '0.35rem 0.75rem',
+                    fontSize: '0.8125rem',
+                    background: submitting || draft.trim().length === 0 ? 'var(--bg-200)' : '#3b82f6',
+                    color: submitting || draft.trim().length === 0 ? 'var(--text-muted)' : 'white',
+                    border: 'none',
+                    borderRadius: 4,
+                    cursor: submitting || draft.trim().length === 0 ? 'not-allowed' : 'pointer',
+                    flexShrink: 0,
+                    marginLeft: 'auto',
+                  }}
+                >
+                  {submitting ? 'Posting…' : 'Post note'}
+                </button>
+              </div>
+            </>
+          )}
         </div>
       )}
     </div>
