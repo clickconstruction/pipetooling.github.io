@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-18 (v2.746)
+last_updated: 2026-07-19 (v2.747)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.747)
+
+### Jobs Stages — drag a slider to set a job's % complete (2026-07-19)
+The Stages expanded **Job activity / notes** panel now has a **% complete** control **in the action-button row** (in line with Schedule / Week dispatch). It shows the current percent as **"N% complete"** — only when the job has a value (unset jobs just get the button) — and, for editable roles, a **Set % complete** button. Opening it turns the **Add a note** area into the editor: a marked 0–100 slider (1% steps) + exact number entry, and a row of **[note field · Cancel · Set to N%]**. **A note is required for anything under 100%.** Committing writes `jobs_ledger.pct_complete` **and** posts a thread note **"N% complete — <note>"** (via `submitJobThreadNoteWithBody`), so the percent is recorded in the activity feed. Pure note-rule kernel `src/lib/jobs/stagesPctNote.ts` (+8 tests). This is the Stages percent only; the Detail-modal completeness mark (`completeness_pct`) stays separate. It writes the same `jobs_ledger.pct_complete` the Progress & payment cell's number input sets (driving the money bar's "value created"), via the existing `updateJobPctComplete`. New `JobPctCompleteControl` (`src/components/jobs/JobPctCompleteControl.tsx`), rendered through a new optional `topSlot` on `JobThreadNotesPanel`, wired at all three Stages panel sites. Gated to dev / master_technician / assistant / primary (matches the jobs_ledger UPDATE RLS). Native range input covers touch + mouse. Note: this is the Stages progress percent, distinct from the Detail-modal completeness mark (`completeness_pct`). No migration.
 
 ## Latest Updates (v2.746)
 
