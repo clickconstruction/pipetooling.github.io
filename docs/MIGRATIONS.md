@@ -105,6 +105,12 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 #### July 18, 2026
 
+**`20260718180000_report_email_subscriptions.sql`** _(apply via `supabase db push` after the file is on `main`)_
+- **Purpose**: **Report email subscriptions** (v2.746). Three new tables backing the "email reports to recipients" feature: `report_email_subscriptions` (one recipient — `recipient_user_id` FK `users` OR `recipient_email` text, enforced by a one-recipient CHECK — plus `all_authors`, `auto_send`, `enabled`), `report_email_subscription_authors` (author filter, unique per `(subscription_id, author_user_id)`, keyed on `reports.created_by_user_id`), and `report_email_dispatch_log` (idempotency ledger, unique `(subscription_id, report_id)` so auto + manual never double-send). Adds `SECURITY DEFINER` helper `can_manage_report_email_subscriptions()` (dev / master_technician / assistant / controller — deliberately excludes `primary`).
+- **RLS**: config tables managed only by `can_manage_report_email_subscriptions()`; dispatch log is SELECT-only for managers (only the service-role `send-report-email` function inserts). `zzz_archive_on_delete` on the root subscriptions table. Ends with both `apply_read_only_write_blocks()` + `apply_read_only_stmt_blocks()` per the CREATE TABLE rule.
+- **Ordering**: additive/greenfield — the client guards its own reads (modal shows a graceful load error until the tables exist), so client and migration can land in either order. Deploy the `send-report-email` edge function separately (`supabase functions deploy send-report-email`).
+- **Category**: Reports / feature
+
 **`20260718172650_customer_soft_archive.sql`** _(apply via `supabase db push` after the file is on `main`)_
 - **Purpose**: **Customer soft archive** (v2.736). Adds nullable `customers.archived_at timestamptz` and `customers.archived_by uuid REFERENCES users(id) ON DELETE SET NULL` (both `ADD COLUMN IF NOT EXISTS`, idempotent) + column comments documenting the semantics. Archived customers are hidden from the Customers list by default and excluded from pickers that link new jobs/estimates/bids/projects; existing links keep working and archived customers still render wherever already referenced. Never a delete.
 - **No RLS change**: archiving is a same-row UPDATE already covered by the existing customers UPDATE policies (masters own rows, assistants of adopted masters, estimators). No new table, so the read-only-blocks footer does not apply.

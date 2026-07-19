@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-18 (v2.745)
+last_updated: 2026-07-18 (v2.746)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.746)
+
+### Reports — email reports to configured recipients (2026-07-18)
+Office staff can now route reports to people by email. A mail button in the Dashboard's **Recent Reports** card header (dev / master_technician / assistant / controller only — the same gate as the clock-strip schedule email) opens **Report email recipients**: add a recipient (an app user *or* an external email address) and choose **all reports** or **only reports from selected people** (filtered on `reports.created_by_user_id`). Two delivery paths, both idempotent via a per-`(subscription, report)` dispatch ledger: **auto** (a fire-and-forget `send-report-email` invoke next to the existing `send-report-notification` web-push in `NewReportModal`/`AdditionalReportModal`, gated per subscription by an Auto-send toggle) and **manual** ("Send now" emails matching reports from the last 14 days not yet sent). Signature fields render as `[signature captured]` (no image embed) in v1. New tables `report_email_subscriptions`, `report_email_subscription_authors`, `report_email_dispatch_log` (migration `20260718180000`, RLS gated on `can_manage_report_email_subscriptions()`); new edge function `send-report-email` (deploy manually). Pure matching/validation kernel in `src/lib/reportEmailSubscriptions.ts` (17 unit tests). Reports previously fired web-push only — email is greenfield.
 
 ## Latest Updates (v2.745)
 
