@@ -316,14 +316,14 @@ export function QuickfillPeopleHoursNewSection() {
               maxHeight: 'min(70vh, 520px)',
               overflow: 'auto',
               boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)',
-              border: '1px solid #e2e8f0',
+              border: '1px solid var(--border)',
             }}
             onClick={(e) => e.stopPropagation()}
           >
             <div
               style={{
                 padding: '1rem 1.25rem',
-                borderBottom: '1px solid #e2e8f0',
+                borderBottom: '1px solid var(--border)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
@@ -343,7 +343,7 @@ export function QuickfillPeopleHoursNewSection() {
                 style={{
                   padding: '0.35rem 0.6rem',
                   borderRadius: 6,
-                  border: '1px solid #cbd5e1',
+                  border: '1px solid var(--border-strong)',
                   background: 'var(--bg-slate-tint)',
                   cursor: 'pointer',
                   fontSize: '0.875rem',

@@ -3307,7 +3307,7 @@ export default function People() {
                     marginBottom: '0.75rem',
                     padding: '0.75rem',
                     background: 'var(--bg-slate-tint)',
-                    border: '1px solid #e2e8f0',
+                    border: '1px solid var(--border)',
                     borderRadius: 6,
                   }}
                 >

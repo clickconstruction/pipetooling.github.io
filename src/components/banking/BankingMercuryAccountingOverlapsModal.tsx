@@ -32,7 +32,7 @@ const tabButtonStyle = (active: boolean): React.CSSProperties => ({
   fontWeight: 600,
   background: active ? '#0f172a' : 'var(--bg-slate-100)',
   color: active ? 'white' : 'var(--text-slate-900)',
-  border: active ? '1px solid #0f172a' : '1px solid #e2e8f0',
+  border: active ? '1px solid #0f172a' : '1px solid var(--border)',
   borderRadius: 6,
   cursor: 'pointer',
 })
@@ -259,7 +259,7 @@ export function BankingMercuryAccountingOverlapsModal({
           <button
             type="button"
             onClick={onClose}
-            style={{ padding: '0.4rem 0.85rem', borderRadius: 6, border: '1px solid #e2e8f0' }}
+            style={{ padding: '0.4rem 0.85rem', borderRadius: 6, border: '1px solid var(--border)' }}
           >
             Close
           </button>

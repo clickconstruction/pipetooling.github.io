@@ -503,7 +503,7 @@ export function TransactionDetailModal({
         <div style={sectionStyle}>
           <h3 style={sectionTitleStyle}>Jobs</h3>
           {internalTransfersLocked ? (
-            <div style={{ fontSize: '0.8125rem', color: '#334155', background: 'var(--bg-slate-tint)', border: '1px solid #cbd5e1', borderRadius: 6, padding: '0.6rem 0.8rem' }}>
+            <div style={{ fontSize: '0.8125rem', color: '#334155', background: 'var(--bg-slate-tint)', border: '1px solid var(--border-strong)', borderRadius: 6, padding: '0.6rem 0.8rem' }}>
               Labeled <strong>Internal Transfers</strong> — cannot be split onto jobs. Change the label to edit jobs.
             </div>
           ) : (
@@ -532,15 +532,15 @@ export function TransactionDetailModal({
                   <div key={ln.jobId} style={{ marginBottom: '0.5rem', padding: '0.5rem 0.6rem', borderRadius: 8, border: '1px solid #f1f5f9', background: 'var(--bg-page)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
                       <span style={{ flex: '1 1 130px', minWidth: 0, fontSize: '0.8125rem', fontWeight: 500 }} title={ln.jobLabel}>{ln.jobLabel}</span>
-                      <button type="button" onClick={() => updateLine(ln.jobId, { mode: 'dollars' })} style={{ padding: '4px 8px', borderRadius: 6, border: '1px solid #cbd5e1', background: ln.mode === 'dollars' ? '#2563eb' : 'var(--surface)', color: ln.mode === 'dollars' ? '#fff' : '#334155', cursor: 'pointer', fontSize: '0.8125rem' }}>$</button>
-                      <button type="button" onClick={() => updateLine(ln.jobId, { mode: 'percent' })} style={{ padding: '4px 8px', borderRadius: 6, border: '1px solid #cbd5e1', background: ln.mode === 'percent' ? '#2563eb' : 'var(--surface)', color: ln.mode === 'percent' ? '#fff' : '#334155', cursor: 'pointer', fontSize: '0.8125rem' }}>%</button>
-                      <input type="text" inputMode="decimal" value={ln.valueStr} onChange={(e) => updateLine(ln.jobId, { valueStr: e.target.value })} placeholder={ln.mode === 'dollars' ? '0.00' : '0'} style={{ width: 90, padding: '6px 10px', fontSize: '0.875rem', border: '1px solid #e2e8f0', borderRadius: 8, boxSizing: 'border-box', fontVariantNumeric: 'tabular-nums' }} />
+                      <button type="button" onClick={() => updateLine(ln.jobId, { mode: 'dollars' })} style={{ padding: '4px 8px', borderRadius: 6, border: '1px solid var(--border-strong)', background: ln.mode === 'dollars' ? '#2563eb' : 'var(--surface)', color: ln.mode === 'dollars' ? '#fff' : '#334155', cursor: 'pointer', fontSize: '0.8125rem' }}>$</button>
+                      <button type="button" onClick={() => updateLine(ln.jobId, { mode: 'percent' })} style={{ padding: '4px 8px', borderRadius: 6, border: '1px solid var(--border-strong)', background: ln.mode === 'percent' ? '#2563eb' : 'var(--surface)', color: ln.mode === 'percent' ? '#fff' : '#334155', cursor: 'pointer', fontSize: '0.8125rem' }}>%</button>
+                      <input type="text" inputMode="decimal" value={ln.valueStr} onChange={(e) => updateLine(ln.jobId, { valueStr: e.target.value })} placeholder={ln.mode === 'dollars' ? '0.00' : '0'} style={{ width: 90, padding: '6px 10px', fontSize: '0.875rem', border: '1px solid var(--border)', borderRadius: 8, boxSizing: 'border-box', fontVariantNumeric: 'tabular-nums' }} />
                       <button type="button" onClick={() => removeLine(ln.jobId)} style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid #fecdd3', background: '#fff1f2', color: '#e11d48', cursor: 'pointer', fontSize: '0.8125rem', fontWeight: 600 }}>Remove</button>
                     </div>
                     {ln.mode === 'percent' && displayTotal > 0 && dd !== null && ln.valueStr.trim() !== '' ? (
                       <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '0.3rem' }}>≈ {formatCurrency(dd)} of {formatCurrency(displayTotal)}</div>
                     ) : null}
-                    <input type="text" value={ln.note} onChange={(e) => updateLine(ln.jobId, { note: e.target.value })} placeholder="Note (optional)" style={{ width: '100%', marginTop: '0.4rem', padding: '6px 10px', fontSize: '0.8125rem', boxSizing: 'border-box', border: '1px solid #e2e8f0', borderRadius: 8 }} />
+                    <input type="text" value={ln.note} onChange={(e) => updateLine(ln.jobId, { note: e.target.value })} placeholder="Note (optional)" style={{ width: '100%', marginTop: '0.4rem', padding: '6px 10px', fontSize: '0.8125rem', boxSizing: 'border-box', border: '1px solid var(--border)', borderRadius: 8 }} />
                   </div>
                 )
               })}

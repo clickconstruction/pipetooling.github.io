@@ -198,7 +198,7 @@ export function ChecklistTechTreeRoadmapMembersModal({
                     disabled={saving}
                     onChange={(e) => void setRole(m.user_id, e.target.value as 'viewer' | 'editor')}
                     aria-label={`Role for ${nameById.get(m.user_id) ?? m.user_id}`}
-                    style={{ padding: '4px 8px', borderRadius: 6, border: '1px solid #e2e8f0' }}
+                    style={{ padding: '4px 8px', borderRadius: 6, border: '1px solid var(--border)' }}
                   >
                     <option value="viewer">Viewer</option>
                     <option value="editor">Editor</option>
@@ -246,7 +246,7 @@ export function ChecklistTechTreeRoadmapMembersModal({
                           padding: '4px 8px',
                           fontSize: 12,
                           borderRadius: 6,
-                          border: '1px solid #cbd5e1',
+                          border: '1px solid var(--border-strong)',
                           background: 'var(--bg-slate-tint)',
                           cursor: 'pointer',
                         }}
@@ -261,7 +261,7 @@ export function ChecklistTechTreeRoadmapMembersModal({
                           padding: '4px 8px',
                           fontSize: 12,
                           borderRadius: 6,
-                          border: '1px solid #cbd5e1',
+                          border: '1px solid var(--border-strong)',
                           background: 'var(--bg-slate-tint)',
                           cursor: 'pointer',
                         }}
@@ -282,7 +282,7 @@ export function ChecklistTechTreeRoadmapMembersModal({
             style={{
               padding: '8px 16px',
               borderRadius: 6,
-              border: '1px solid #cbd5e1',
+              border: '1px solid var(--border-strong)',
               background: 'var(--surface)',
               cursor: 'pointer',
             }}

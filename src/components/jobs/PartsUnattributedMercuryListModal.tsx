@@ -240,7 +240,7 @@ export function PartsUnattributedMercuryListModal({
                               fontWeight: 600,
                               padding: '4px 10px',
                               borderRadius: 6,
-                              border: '1px solid #e2e8f0',
+                              border: '1px solid var(--border)',
                               background: 'var(--surface)',
                               color: 'var(--text-link)',
                               cursor: rowBusy ? 'wait' : 'pointer',

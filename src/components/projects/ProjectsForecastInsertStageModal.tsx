@@ -110,7 +110,7 @@ const labelStyle: CSSProperties = {
 
 const inputStyle: CSSProperties = {
   padding: '0.5rem 0.625rem',
-  border: '1px solid #cbd5e1',
+  border: '1px solid var(--border-strong)',
   borderRadius: 6,
   fontSize: '0.9375rem',
   color: 'var(--text-slate-900)',
@@ -353,7 +353,7 @@ export function ProjectsForecastInsertStageModal({
                 marginTop: '0.25rem',
                 padding: '0.625rem 0.75rem',
                 background: 'var(--bg-slate-tint)',
-                border: '1px solid #e2e8f0',
+                border: '1px solid var(--border)',
                 borderRadius: 6,
                 display: 'flex',
                 flexDirection: 'column',
@@ -374,7 +374,7 @@ export function ProjectsForecastInsertStageModal({
                     fontSize: '0.8125rem',
                     color: 'var(--text-slate-600)',
                     paddingTop: 4,
-                    borderTop: '1px dashed #e2e8f0',
+                    borderTop: '1px dashed var(--border)',
                   }}
                 >
                   {shiftedCount} later {shiftedCount === 1 ? 'stage' : 'stages'} will shift
@@ -403,7 +403,7 @@ export function ProjectsForecastInsertStageModal({
                     fontSize: '0.75rem',
                     color: 'var(--text-muted)',
                     paddingTop: 4,
-                    borderTop: '1px dashed #e2e8f0',
+                    borderTop: '1px dashed var(--border)',
                   }}
                 >
                   No later stages to shift.
@@ -430,7 +430,7 @@ export function ProjectsForecastInsertStageModal({
               disabled={submitting || applying}
               style={{
                 padding: '0.5rem 0.875rem',
-                border: '1px solid #cbd5e1',
+                border: '1px solid var(--border-strong)',
                 background: 'var(--surface)',
                 color: 'var(--text-700)',
                 borderRadius: 6,

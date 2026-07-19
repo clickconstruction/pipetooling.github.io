@@ -58,6 +58,7 @@ const BG = {
   '#fafafa': 'var(--bg-page)',
   '#ffffff': 'var(--surface)',
   '#fff': 'var(--surface)',
+  '#fefdfb': 'var(--surface)',
   white: 'var(--surface)',
   '#f9fafb': 'var(--bg-subtle)',
   '#f3f4f6': 'var(--bg-muted)',
@@ -85,7 +86,12 @@ const BG = {
 
 const BORDER = {
   '#e5e7eb': 'var(--border)',
+  // slate-200/300 borders consolidated onto the gray-200/300 border tokens: the
+  // light values differ by only a few units (imperceptible on a border) and this
+  // gives them proper dark values instead of staying light in dark mode.
+  '#e2e8f0': 'var(--border)',
   '#d1d5db': 'var(--border-strong)',
+  '#cbd5e1': 'var(--border-strong)',
   '#9ca3af': 'var(--border-400)',
   '#fdba74': 'var(--border-orange)',
 }

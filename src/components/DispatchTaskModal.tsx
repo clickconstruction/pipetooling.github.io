@@ -232,7 +232,7 @@ export default function DispatchTaskModal() {
     >
       <div
         style={{
-          background: '#fefdfb',
+          background: 'var(--surface)',
           padding: '1.5rem',
           borderRadius: 12,
           maxWidth: 480,
@@ -260,13 +260,13 @@ export default function DispatchTaskModal() {
               style={{
                 width: '100%',
                 padding: '0.5rem 0.75rem',
-                border: '1px solid #e2e8f0',
+                border: '1px solid var(--border)',
                 borderRadius: 8,
                 fontSize: '0.9375rem',
               }}
             />
           </label>
-          <div style={{ border: '1px solid #e2e8f0', borderRadius: 10, padding: '1rem', background: 'var(--bg-slate-tint)' }}>
+          <div style={{ border: '1px solid var(--border)', borderRadius: 10, padding: '1rem', background: 'var(--bg-slate-tint)' }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               <div style={{ marginBottom: 0 }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', marginBottom: '0.25rem' }}>
@@ -292,7 +292,7 @@ export default function DispatchTaskModal() {
               }}
               placeholder="Search by HCP #, bid #, project name, or address"
               disabled={sending}
-              style={{ width: '100%', padding: '0.5rem', marginBottom: '0.5rem', border: '1px solid #e2e8f0', borderRadius: 8 }}
+              style={{ width: '100%', padding: '0.5rem', marginBottom: '0.5rem', border: '1px solid var(--border)', borderRadius: 8 }}
             />
             {selectedReference && (
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
@@ -328,7 +328,7 @@ export default function DispatchTaskModal() {
                   style={{
                     padding: '0.35rem 0.75rem',
                     fontSize: '0.875rem',
-                    border: '1px solid #e2e8f0',
+                    border: '1px solid var(--border)',
                     borderRadius: 8,
                     background: 'var(--surface)',
                     cursor: sending ? 'not-allowed' : 'pointer',
@@ -346,7 +346,7 @@ export default function DispatchTaskModal() {
                 style={{
                   maxHeight: 160,
                   overflow: 'auto',
-                  border: '1px solid #e2e8f0',
+                  border: '1px solid var(--border)',
                   borderRadius: 8,
                   marginTop: '0.25rem',
                 }}
@@ -371,8 +371,8 @@ export default function DispatchTaskModal() {
                         selectedReference &&
                         selectedReference.source === r.source &&
                         selectedReference.id === r.id
-                          ? '#eff6ff'
-                          : 'white',
+                          ? 'var(--bg-blue-tint)'
+                          : 'var(--surface)',
                       cursor: sending ? 'not-allowed' : 'pointer',
                       borderBottom: '1px solid var(--border)',
                       fontSize: '0.875rem',
@@ -572,7 +572,7 @@ export default function DispatchTaskModal() {
                           flexShrink: 0,
                           padding: '0.25rem 0.5rem',
                           background: 'var(--bg-muted)',
-                          border: '1px solid #e2e8f0',
+                          border: '1px solid var(--border)',
                           borderRadius: 8,
                           cursor: 'pointer',
                           fontSize: '0.875rem',
@@ -587,7 +587,7 @@ export default function DispatchTaskModal() {
                           setLinks((prev) => prev.map((u, j) => (j === i ? e.target.value : u)))
                         }
                         placeholder="URL"
-                        style={{ flex: 1, minWidth: 0, padding: '0.5rem 0.75rem', border: '1px solid #e2e8f0', borderRadius: 8 }}
+                        style={{ flex: 1, minWidth: 0, padding: '0.5rem 0.75rem', border: '1px solid var(--border)', borderRadius: 8 }}
                       />
                       <button
                         type="button"

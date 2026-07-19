@@ -965,7 +965,7 @@ const fieldLabel: CSSProperties = {
 const textInputStyle: CSSProperties = {
   padding: '0.4rem 0.5rem',
   borderRadius: 6,
-  border: '1px solid #cbd5e1',
+  border: '1px solid var(--border-strong)',
   fontSize: '0.875rem',
   color: 'var(--text-slate-900)',
   background: 'var(--surface)',
@@ -976,7 +976,7 @@ const textInputStyle: CSSProperties = {
 const modalSecondaryBtn: CSSProperties = {
   padding: '0.45rem 0.85rem',
   borderRadius: 6,
-  border: '1px solid #cbd5e1',
+  border: '1px solid var(--border-strong)',
   background: 'var(--surface)',
   color: 'var(--text-gray-800)',
   fontSize: '0.8125rem',

@@ -182,7 +182,7 @@ export function BankingMercuryAccountingRulesModal({
               fontWeight: 600,
               background: auditDisabled ? 'var(--bg-200)' : 'var(--bg-slate-100)',
               color: auditDisabled ? 'var(--text-slate-500)' : 'var(--text-slate-900)',
-              border: auditDisabled ? '1px solid var(--border)' : '1px solid #e2e8f0',
+              border: auditDisabled ? '1px solid var(--border)' : '1px solid var(--border)',
               borderRadius: 6,
               cursor: auditDisabled ? 'not-allowed' : 'pointer',
             }}
@@ -198,7 +198,7 @@ export function BankingMercuryAccountingRulesModal({
               fontWeight: 600,
               background: applyDisabled ? 'var(--bg-200)' : 'var(--bg-slate-100)',
               color: applyDisabled ? 'var(--text-slate-500)' : 'var(--text-slate-900)',
-              border: applyDisabled ? '1px solid var(--border)' : '1px solid #e2e8f0',
+              border: applyDisabled ? '1px solid var(--border)' : '1px solid var(--border)',
               borderRadius: 6,
               cursor: applyDisabled ? 'not-allowed' : 'pointer',
             }}

@@ -1261,7 +1261,7 @@ export function ProjectsForecastSpecificTab({
                 left: 0,
                 marginTop: 4,
                 background: 'var(--surface)',
-                border: '1px solid #cbd5e1',
+                border: '1px solid var(--border-strong)',
                 borderRadius: 6,
                 boxShadow: '0 6px 24px rgba(15, 23, 42, 0.12)',
                 minWidth: 360,
@@ -1343,7 +1343,7 @@ export function ProjectsForecastSpecificTab({
               style={{
                 ...forecastSecondaryButtonStyle,
                 background: dragEdit ? 'var(--bg-blue-tint)' : 'var(--surface)',
-                borderColor: dragEdit ? '#bfdbfe' : '#cbd5e1',
+                borderColor: dragEdit ? '#bfdbfe' : 'var(--border-strong)',
                 color: dragEdit ? 'var(--text-blue-700)' : 'var(--text-700)',
                 opacity:
                   dragDisabledReason != null || dragSaving ? 0.55 : 1,
@@ -1371,7 +1371,7 @@ export function ProjectsForecastSpecificTab({
             style={{
               ...forecastSecondaryButtonStyle,
               background: showDates ? 'var(--bg-blue-tint)' : 'var(--surface)',
-              borderColor: showDates ? '#bfdbfe' : '#cbd5e1',
+              borderColor: showDates ? '#bfdbfe' : 'var(--border-strong)',
               color: showDates ? 'var(--text-blue-700)' : 'var(--text-700)',
               opacity: dragEdit ? 0.55 : 1,
               cursor: dragEdit ? 'not-allowed' : 'pointer',

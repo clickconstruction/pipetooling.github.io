@@ -324,7 +324,7 @@ const thStyle: React.CSSProperties = {
   padding: '0.4rem 0.55rem',
   fontWeight: 600,
   color: 'var(--text-slate-600)',
-  borderBottom: '1px solid #e2e8f0',
+  borderBottom: '1px solid var(--border)',
   whiteSpace: 'nowrap',
 }
 const tdStyle: React.CSSProperties = {

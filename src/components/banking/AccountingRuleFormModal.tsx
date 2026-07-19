@@ -510,7 +510,7 @@ export function AccountingRuleFormModal({
                   padding: '0.45rem 0.85rem',
                   fontWeight: 600,
                   background: controlsDisabled ? 'var(--bg-200)' : 'var(--bg-slate-100)',
-                  border: '1px solid #e2e8f0',
+                  border: '1px solid var(--border)',
                   borderRadius: 6,
                   cursor: controlsDisabled ? 'not-allowed' : 'pointer',
                   color: controlsDisabled ? 'var(--text-slate-500)' : 'var(--text-slate-900)',
@@ -554,7 +554,7 @@ export function AccountingRuleFormModal({
                   fontWeight: 600,
                   background: controlsDisabled ? 'var(--bg-200)' : 'var(--surface)',
                   color: controlsDisabled ? 'var(--text-slate-500)' : 'var(--text-slate-900)',
-                  border: '1px solid #e2e8f0',
+                  border: '1px solid var(--border)',
                   borderRadius: 6,
                   cursor: controlsDisabled ? 'not-allowed' : 'pointer',
                 }}

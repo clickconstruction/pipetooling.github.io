@@ -616,7 +616,7 @@ const tdStyleCenter: CSSProperties = { ...tdStyle, textAlign: 'center', width: 8
 const footerSecondaryStyle: CSSProperties = {
   padding: '0.5rem 0.85rem',
   borderRadius: 6,
-  border: '1px solid #cbd5e1',
+  border: '1px solid var(--border-strong)',
   background: 'var(--surface)',
   color: 'var(--text-gray-800)',
   fontSize: '0.8125rem',

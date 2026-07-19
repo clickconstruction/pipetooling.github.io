@@ -670,7 +670,7 @@ const chipStyle: React.CSSProperties = {
   fontSize: '0.8125rem',
   background: 'var(--bg-slate-100)',
   color: 'var(--text-sky-700)',
-  border: '1px solid #cbd5e1',
+  border: '1px solid var(--border-strong)',
   borderRadius: 999,
   cursor: 'pointer',
 }
@@ -746,7 +746,7 @@ function layoutToggleStyle(active: boolean, side: 'left' | 'right'): React.CSSPr
     fontSize: '0.8125rem',
     background: active ? 'var(--bg-blue-200)' : 'var(--surface)',
     color: active ? 'var(--text-blue-700)' : 'var(--text-700)',
-    border: active ? '1px solid #1d4ed8' : '1px solid #cbd5e1',
+    border: active ? '1px solid #1d4ed8' : '1px solid var(--border-strong)',
     borderRadius: side === 'left' ? '999px 0 0 999px' : '0 999px 999px 0',
     marginLeft: side === 'right' ? -1 : 0,
     fontWeight: active ? 700 : 500,

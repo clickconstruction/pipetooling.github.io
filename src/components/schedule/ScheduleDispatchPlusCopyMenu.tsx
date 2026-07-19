@@ -147,7 +147,7 @@ export function ScheduleDispatchPlusCopyMenu({
       <button
         type="button"
         role="menuitem"
-        style={{ ...plusCopyMenuItemStyle, borderBottom: '1px solid #e2e8f0' }}
+        style={{ ...plusCopyMenuItemStyle, borderBottom: '1px solid var(--border)' }}
         onClick={(e) => {
           e.stopPropagation()
           onLinkedCopy()
