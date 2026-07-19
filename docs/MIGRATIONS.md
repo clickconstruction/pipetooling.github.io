@@ -103,7 +103,13 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 ### July 2026
 
-#### July 18, 2026
+#### July 19, 2026
+
+**`20260719120000_job_activity_consolidated_field_edits.sql`** _(apply via `supabase db push` after the file is on `main`)_
+- **Purpose**: **Consolidated Edit-Job activity events** (v2.750). Rewrites the `jobs_ledger_fields_to_activity()` SECURITY DEFINER trigger to emit ONE `field_edited` event per save — `"Job updated — changed A, B, C"` — covering every user-edited `jobs_ledger` field (was only 4 fields, one event each). Expands the trigger's `AFTER UPDATE OF …` column list to: customer_id, customer_name, job_name, hcp_number, click_number, job_address, customer_email, customer_phone, google_drive_link, job_pictures_link, job_plans_link, project_id, bid_id, service_type_id, master_user_id, revenue. Revenue keeps a separate `financial=true` event (dollar amount not exposed to non-financial roles); `payments_made` and `last_bill_date` deliberately excluded. Attribution unchanged (`auth.uid()`).
+- **No RLS/table change**: `CREATE OR REPLACE FUNCTION` + `DROP/CREATE TRIGGER` only — no new table, so the read-only-blocks footer does not apply. Idempotent.
+- **No client change**: the feed's fetch/render/realtime already handle `field_edited`; this only changes what the trigger writes.
+- **Category**: Jobs / activity feed
 
 **`20260718180000_report_email_subscriptions.sql`** _(apply via `supabase db push` after the file is on `main`)_
 - **Purpose**: **Report email subscriptions** (v2.746). Three new tables backing the "email reports to recipients" feature: `report_email_subscriptions` (one recipient — `recipient_user_id` FK `users` OR `recipient_email` text, enforced by a one-recipient CHECK — plus `all_authors`, `auto_send`, `enabled`), `report_email_subscription_authors` (author filter, unique per `(subscription_id, author_user_id)`, keyed on `reports.created_by_user_id`), and `report_email_dispatch_log` (idempotency ledger, unique `(subscription_id, report_id)` so auto + manual never double-send). Adds `SECURITY DEFINER` helper `can_manage_report_email_subscriptions()` (dev / master_technician / assistant / controller — deliberately excludes `primary`).

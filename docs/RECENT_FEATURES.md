@@ -2051,6 +2051,11 @@ when_to_read:
 ### Jobs Stages — manage a job's people from the activity panel (2026-07-19)
 The expanded **Job activity / notes** panel now shows the **people assigned to the job** in the top-left, with a **people button on the far left**. Clicking it (dev / master_technician / assistant — matching the `jobs_ledger_team_members` INSERT/DELETE RLS) opens a **"People on this job"** modal: a searchable roster of assignable users with the current members pre-checked; Save diffs the selection and inserts/deletes `jobs_ledger_team_members` rows. Add/remove already fires the `crew_added` / `crew_removed` activity events via DB trigger, so the change shows up in the feed automatically; the panel refreshes via `loadJobs()`. New `ManageJobPeopleModal` (dark-mode-ready), two new `JobThreadNotesPanel` props (`teamMembers`, `peopleAction`) wired at all three Stages panel sites. Non-editors see the assigned names read-only (no button).
 
+## Latest Updates (v2.750)
+
+### Jobs — Edit-Job changes now show in the activity feed (2026-07-19)
+Editing a job from the Edit Job modal now posts a single consolidated **"Job updated — changed A, B, C"** entry to the **Job activity / notes** feed, attributed to whoever made the edit. Previously only 4 fields (customer, customer name, address, revenue) logged anything, one event per field; now every user-edited `jobs_ledger` field is covered — job name, HCP #, Click #, address, customer email/phone, Drive/pictures/plans links, project/bid links, service type, owner — in one line per save. Revenue keeps its **own financial-gated event** ("Job total changed to $…") so dollar amounts stay hidden from non-financial roles; `payments_made` (own payment events) and `last_bill_date` (billing-set) are excluded. Implemented by rewriting the `jobs_ledger_fields_to_activity()` trigger (migration `20260719120000`) — DB-only, so every edit path is covered and the feed's existing fetch/render/realtime need no change. Attribution stays `auth.uid()`, resolved to a name by `list_job_activity_events`.
+
 ## Latest Updates (v2.749)
 
 ### Dark mode — Dispatch modal fix + modal border sweep (2026-07-19)
