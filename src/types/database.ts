@@ -1619,6 +1619,30 @@ export type Database = {
           },
         ]
       }
+      claim_dev_attempts: {
+        Row: {
+          attempted_at: string
+          attempted_by: string | null
+          detail: Json
+          id: string
+          outcome: string
+        }
+        Insert: {
+          attempted_at?: string
+          attempted_by?: string | null
+          detail?: Json
+          id?: string
+          outcome: string
+        }
+        Update: {
+          attempted_at?: string
+          attempted_by?: string | null
+          detail?: Json
+          id?: string
+          outcome?: string
+        }
+        Relationships: []
+      }
       clock_sessions: {
         Row: {
           approved_at: string | null
@@ -2408,30 +2432,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
-      }
-      claim_dev_attempts: {
-        Row: {
-          attempted_at: string
-          attempted_by: string | null
-          detail: Json
-          id: string
-          outcome: string
-        }
-        Insert: {
-          attempted_at?: string
-          attempted_by?: string | null
-          detail?: Json
-          id?: string
-          outcome: string
-        }
-        Update: {
-          attempted_at?: string
-          attempted_by?: string | null
-          detail?: Json
-          id?: string
-          outcome?: string
-        }
-        Relationships: []
       }
       deleted_records_archive: {
         Row: {
@@ -8204,6 +8204,148 @@ export type Database = {
           },
         ]
       }
+      report_email_dispatch_log: {
+        Row: {
+          dispatched_at: string
+          id: string
+          recipient_email: string | null
+          recipient_user_id: string | null
+          report_id: string
+          subscription_id: string
+          trigger: string
+        }
+        Insert: {
+          dispatched_at?: string
+          id?: string
+          recipient_email?: string | null
+          recipient_user_id?: string | null
+          report_id: string
+          subscription_id: string
+          trigger?: string
+        }
+        Update: {
+          dispatched_at?: string
+          id?: string
+          recipient_email?: string | null
+          recipient_user_id?: string | null
+          report_id?: string
+          subscription_id?: string
+          trigger?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "report_email_dispatch_log_recipient_user_id_fkey"
+            columns: ["recipient_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "report_email_dispatch_log_report_id_fkey"
+            columns: ["report_id"]
+            isOneToOne: false
+            referencedRelation: "reports"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "report_email_dispatch_log_subscription_id_fkey"
+            columns: ["subscription_id"]
+            isOneToOne: false
+            referencedRelation: "report_email_subscriptions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      report_email_subscription_authors: {
+        Row: {
+          author_user_id: string
+          created_at: string | null
+          id: string
+          subscription_id: string
+        }
+        Insert: {
+          author_user_id: string
+          created_at?: string | null
+          id?: string
+          subscription_id: string
+        }
+        Update: {
+          author_user_id?: string
+          created_at?: string | null
+          id?: string
+          subscription_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "report_email_subscription_authors_author_user_id_fkey"
+            columns: ["author_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "report_email_subscription_authors_subscription_id_fkey"
+            columns: ["subscription_id"]
+            isOneToOne: false
+            referencedRelation: "report_email_subscriptions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      report_email_subscriptions: {
+        Row: {
+          all_authors: boolean
+          auto_send: boolean
+          created_at: string | null
+          created_by: string | null
+          enabled: boolean
+          id: string
+          label: string | null
+          recipient_email: string | null
+          recipient_user_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          all_authors?: boolean
+          auto_send?: boolean
+          created_at?: string | null
+          created_by?: string | null
+          enabled?: boolean
+          id?: string
+          label?: string | null
+          recipient_email?: string | null
+          recipient_user_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          all_authors?: boolean
+          auto_send?: boolean
+          created_at?: string | null
+          created_by?: string | null
+          enabled?: boolean
+          id?: string
+          label?: string | null
+          recipient_email?: string | null
+          recipient_user_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "report_email_subscriptions_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "report_email_subscriptions_recipient_user_id_fkey"
+            columns: ["recipient_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       report_enabled_users: {
         Row: {
           created_at: string | null
@@ -10053,7 +10195,6 @@ export type Database = {
           created_at: string | null
           email: string
           estimator_prospects_access: boolean
-          team_prospects_access: boolean
           estimator_service_type_ids: string[] | null
           helpers_service_type_ids: string[] | null
           id: string
@@ -10066,6 +10207,7 @@ export type Database = {
           role: Database["public"]["Enums"]["user_role"]
           subcontractor_service_type_ids: string[] | null
           superintendent_service_type_ids: string[] | null
+          team_prospects_access: boolean
           updated_at: string | null
         }
         Insert: {
@@ -10073,7 +10215,6 @@ export type Database = {
           created_at?: string | null
           email: string
           estimator_prospects_access?: boolean
-          team_prospects_access?: boolean
           estimator_service_type_ids?: string[] | null
           helpers_service_type_ids?: string[] | null
           id: string
@@ -10086,6 +10227,7 @@ export type Database = {
           role?: Database["public"]["Enums"]["user_role"]
           subcontractor_service_type_ids?: string[] | null
           superintendent_service_type_ids?: string[] | null
+          team_prospects_access?: boolean
           updated_at?: string | null
         }
         Update: {
@@ -10093,7 +10235,6 @@ export type Database = {
           created_at?: string | null
           email?: string
           estimator_prospects_access?: boolean
-          team_prospects_access?: boolean
           estimator_service_type_ids?: string[] | null
           helpers_service_type_ids?: string[] | null
           id?: string
@@ -10106,6 +10247,7 @@ export type Database = {
           role?: Database["public"]["Enums"]["user_role"]
           subcontractor_service_type_ids?: string[] | null
           superintendent_service_type_ids?: string[] | null
+          team_prospects_access?: boolean
           updated_at?: string | null
         }
         Relationships: []
@@ -10616,6 +10758,7 @@ export type Database = {
         }
         Returns: Json
       }
+      apply_read_only_stmt_blocks: { Args: never; Returns: number }
       apply_read_only_write_blocks: { Args: never; Returns: number }
       approve_clock_sessions: {
         Args: { p_session_ids: string[] }
@@ -10715,6 +10858,7 @@ export type Database = {
         Returns: boolean
       }
       can_manage_inspection_types: { Args: never; Returns: boolean }
+      can_manage_report_email_subscriptions: { Args: never; Returns: boolean }
       can_manage_schedule_share: { Args: never; Returns: boolean }
       can_manage_team_leader_assignments: { Args: never; Returns: boolean }
       can_modify_people_labor_job: {
@@ -10741,6 +10885,10 @@ export type Database = {
       checklist_item_created_by_auth_user: {
         Args: { p_item_id: string }
         Returns: boolean
+      }
+      claim_dev_attempt: {
+        Args: { p_code_ok: boolean; p_user_id: string }
+        Returns: Json
       }
       clear_mercury_transaction_duplicate: {
         Args: { p_id: string }
@@ -11326,14 +11474,6 @@ export type Database = {
           work_date: string
         }[]
       }
-      list_customer_review_job_hours: {
-        Args: never
-        Returns: {
-          customer_id: string
-          customer_name: string
-          hours: number
-        }[]
-      }
       list_bulk_deletion_alerts: {
         Args: never
         Returns: {
@@ -11344,6 +11484,14 @@ export type Database = {
           tables: string[]
           window_end: string
           window_start: string
+        }[]
+      }
+      list_customer_review_job_hours: {
+        Args: never
+        Returns: {
+          customer_id: string
+          customer_name: string
+          hours: number
         }[]
       }
       list_deleted_records: {
@@ -12406,6 +12554,7 @@ export type Database = {
         Returns: boolean
       }
       user_has_prospects_staff_access: { Args: never; Returns: boolean }
+      user_has_team_prospects_access: { Args: never; Returns: boolean }
       user_is_bid_estimator_or_account_manager: {
         Args: { bid_uuid: string }
         Returns: boolean
