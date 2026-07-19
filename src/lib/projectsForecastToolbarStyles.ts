@@ -65,7 +65,7 @@ export const forecastChipStyle: CSSProperties = {
   fontSize: '0.8125rem',
   background: 'var(--surface)',
   color: 'var(--text-700)',
-  border: '1px solid #cbd5e1',
+  border: '1px solid var(--border-strong)',
   borderRadius: 999,
   cursor: 'pointer',
 }
@@ -75,7 +75,7 @@ export const forecastSecondaryButtonStyle: CSSProperties = {
   fontSize: '0.8125rem',
   background: 'var(--surface)',
   color: 'var(--text-700)',
-  border: '1px solid #cbd5e1',
+  border: '1px solid var(--border-strong)',
   borderRadius: 6,
   cursor: 'pointer',
 }

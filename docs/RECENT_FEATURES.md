@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-19 (v2.748)
+last_updated: 2026-07-19 (v2.749)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2046,6 +2046,10 @@ when_to_read:
 155. [Customer and Project Management](#customer-and-project-management)
 ---
 
+## Latest Updates (v2.749)
+
+### Dark mode — Dispatch modal fix + modal border sweep (2026-07-19)
+Fixed the **Send a task to Dispatch** modal, which rendered a near-white card in dark mode: its `#fefdfb` card, `#e2e8f0` borders, and `white`/`#eff6ff` search rows were raw light literals the theme codemod didn't know, so they slipped past CI. Tokenized them (`var(--surface)` / `var(--border)` / `var(--bg-blue-tint)`). Then closed the gap app-wide: taught `scripts/theme-tokenize.mjs` three more literals — `#fefdfb`→surface, `#e2e8f0`→border, `#cbd5e1`→border-strong (slate-200/300 borders consolidated onto the gray-200/300 border tokens; the light shift is a few units, imperceptible on a border) — and ran the codemod, tokenizing **~29 files** of modal/panel borders so they get proper dark values instead of staying light. CI's `theme-tokenize --check` now guards all three going forward. (Remaining dark-mode long-tail — multi-line-ternary color escapes and rarer stray hexes — is a follow-up; the common modal offenders are covered.)
 ## Latest Updates (v2.748)
 
 ### Jobs Stages — address opens Maps, and a Dispatch bell on each job (2026-07-19)

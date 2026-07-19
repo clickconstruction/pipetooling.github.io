@@ -433,7 +433,7 @@ export function QuickfillDifficultPeopleSection() {
                           type="button"
                           onClick={() => startEdit(row)}
                           disabled={savingCheckId != null || deletingId != null}
-                          style={{ padding: '0.35rem 0.75rem', borderRadius: 6, border: '1px solid #cbd5e1', background: 'var(--bg-slate-tint)' }}
+                          style={{ padding: '0.35rem 0.75rem', borderRadius: 6, border: '1px solid var(--border-strong)', background: 'var(--bg-slate-tint)' }}
                         >
                           Edit
                         </button>

@@ -828,7 +828,7 @@ export function ProjectsForecastSpecificStageModal({ stage, projectId, myRole, o
                     gap: '0.75rem',
                     padding: '0.875rem 1rem',
                     background: 'var(--bg-slate-tint)',
-                    border: '1px solid #e2e8f0',
+                    border: '1px solid var(--border)',
                     borderRadius: 8,
                   }}
                 >
@@ -1346,7 +1346,7 @@ function ReasonBlock({ title, body }: { title: string; body: string }) {
 const dateInputStyle = {
   padding: '0.4rem 0.5rem',
   borderRadius: 6,
-  border: '1px solid #cbd5e1',
+  border: '1px solid var(--border-strong)',
   fontSize: '0.875rem',
   color: 'var(--text-slate-900)',
   background: 'var(--surface)',
@@ -1355,7 +1355,7 @@ const dateInputStyle = {
 const chipBtnStyle = {
   padding: '0.25rem 0.55rem',
   borderRadius: 999,
-  border: '1px solid #cbd5e1',
+  border: '1px solid var(--border-strong)',
   background: 'var(--surface)',
   color: 'var(--text-gray-800)',
   fontSize: '0.6875rem',
@@ -1373,7 +1373,7 @@ const chipBtnPrimaryStyle = {
 const footerSecondaryStyle = {
   padding: '0.5rem 0.85rem',
   borderRadius: 6,
-  border: '1px solid #cbd5e1',
+  border: '1px solid var(--border-strong)',
   background: 'var(--surface)',
   color: 'var(--text-gray-800)',
   fontSize: '0.8125rem',
@@ -1426,7 +1426,7 @@ const headerPercentInputRowStyle = {
   alignItems: 'center',
   gap: 2,
   background: 'var(--surface)',
-  border: '1px solid #cbd5e1',
+  border: '1px solid var(--border-strong)',
   borderRadius: 4,
   padding: '0.1rem 0.35rem',
 } as const

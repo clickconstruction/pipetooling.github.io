@@ -88,7 +88,7 @@ const skipBtnStyle: CSSProperties = {
   flex: '0 0 auto',
   padding: '0.6rem 0.85rem',
   borderRadius: 8,
-  border: '1px solid #cbd5e1',
+  border: '1px solid var(--border-strong)',
   background: 'var(--bg-slate-tint)',
   color: 'var(--text-gray-800)',
   fontSize: '0.875rem',

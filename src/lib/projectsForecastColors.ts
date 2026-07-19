@@ -69,7 +69,7 @@ const SWATCHES: Record<ForecastBarColorKey, ForecastBarSwatch> = {
   },
   skipped: {
     background: 'var(--bg-slate-100)',
-    borderColor: '#cbd5e1',
+    borderColor: 'var(--border-strong)',
     borderStyle: 'solid',
     textColor: '#94a3b8',
     textDecoration: 'line-through',

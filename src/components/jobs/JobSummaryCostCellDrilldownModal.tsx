@@ -259,7 +259,7 @@ export function JobSummaryDrilldownMercuryTable({
                       fontSize: '0.75rem',
                       padding: '0.2rem 0.45rem',
                       borderRadius: 4,
-                      border: '1px solid #cbd5e1',
+                      border: '1px solid var(--border-strong)',
                       background: 'var(--surface)',
                       cursor: 'pointer',
                       fontFamily: 'inherit',
