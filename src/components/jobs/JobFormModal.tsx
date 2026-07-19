@@ -34,6 +34,8 @@ import { resolveCustomerIdForJobPayload } from '../../lib/jobLedgerCustomer'
 import { filterActiveCustomersForPicker } from '../../lib/customerArchive'
 import { jobLedgerHasCustomerForBilling } from '../../lib/jobLedgerCustomerForBilling'
 import { revenueDollarsFromFixtures } from '../../lib/revenueFromJobFixtures'
+import { buildEditJobBillingBar } from '../../lib/jobs/editJobBillingBar'
+import { MoneyLifecycleBar, PAID_COLOR, BILLED_COLOR, DRAFT_COLOR } from './MoneyLifecycleBar'
 import { resolveEffectiveJobMasterUserId } from '../../lib/resolveEffectiveJobMasterUserId'
 import { resolveEditJobMasterUserId } from '../../lib/resolveEditJobMasterUserId'
 import { getBillingStripeModePref, stripeModeInvokeBody } from '../../lib/billingStripeModePref'
@@ -811,6 +813,16 @@ export default function JobFormModal({
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [stripeFixturePreviewRowId])
   const jobTotalBidDollars = useMemo(() => revenueDollarsFromFixtures(fixtures), [fixtures])
+  /** Live money-lifecycle figures for the billing header bar (fixtures total + this form's payments + the job's invoices). */
+  const billingBar = useMemo(
+    () =>
+      buildEditJobBillingBar({
+        total: jobTotalBidDollars,
+        payments: payments.map((p) => ({ amount: Number(p.amount) || 0, invoice_id: p.invoice_id })),
+        invoices: (editing?.invoices ?? []).map((i) => ({ status: i.status, amount: i.amount, id: i.id })),
+      }),
+    [jobTotalBidDollars, payments, editing?.invoices],
+  )
   const [teamMemberIds, setTeamMemberIds] = useState<string[]>([])
   const newJobImportBlockedByContent = useMemo(() => {
     if (mode !== 'new' || editing) return false
@@ -2137,6 +2149,20 @@ export default function JobFormModal({
       setBreakOffSliderDragCombinedPct(combined)
       const bd = breakDollarsFromCombinedPct(combined, total, breakOffPaidSum, breakOffRemaining)
       setNewInvoiceAmount(String(bd))
+    },
+    [jobTotalBidDollars, breakOffCombinedSliderBounds, breakOffPaidSum, breakOffRemaining],
+  )
+
+  /** Quick-% buttons: set the break-off amount to a combined (paid + this bill) percent of the job total, matching the slider axis. */
+  const applyBreakOffCombinedPct = useCallback(
+    (pct: number) => {
+      const total = jobTotalBidDollars
+      if (!(total > 0)) return
+      const { min, max } = breakOffCombinedSliderBounds
+      const clamped = Math.min(max, Math.max(min, pct))
+      const bd = breakDollarsFromCombinedPct(clamped, total, breakOffPaidSum, breakOffRemaining)
+      setNewInvoiceAmount(String(bd))
+      setNewInvoiceAmountInputFocused(false)
     },
     [jobTotalBidDollars, breakOffCombinedSliderBounds, breakOffPaidSum, breakOffRemaining],
   )
@@ -4231,6 +4257,32 @@ export default function JobFormModal({
             </div>
           </div>
           <hr style={{ margin: '0.75rem auto', border: 'none', borderTop: '1px solid var(--border-400)', width: '50%' }} />
+          <div style={{ marginBottom: '1rem' }}>
+            <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.5rem' }}>
+              <span style={{ fontWeight: 600, fontSize: '0.9375rem', color: 'var(--text-700)' }}>Billing</span>
+              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                Line items set the total · Invoices are bills you send · Payments are money received
+              </span>
+            </div>
+            <MoneyLifecycleBar
+              hasBar={billingBar.hasBar}
+              barTitle={`Job total ${'$'}${formatCurrency(billingBar.total)} — paid ${'$'}${formatCurrency(billingBar.paid)}, billed unpaid ${'$'}${formatCurrency(billingBar.billedUnpaid)}, draft ${'$'}${formatCurrency(billingBar.draft)}`}
+              segments={[
+                { key: 'paid', frac: billingBar.paidFrac, color: PAID_COLOR },
+                { key: 'billed', frac: billingBar.billedFrac, color: BILLED_COLOR },
+                { key: 'draft', frac: billingBar.draftFrac, color: DRAFT_COLOR, striped: true },
+              ]}
+              tiles={[
+                { key: 'total', label: 'Job Total', value: billingBar.total, strong: true },
+                { key: 'paid', label: 'Paid', value: billingBar.paid, dot: PAID_COLOR },
+                { key: 'billed', label: 'Billed', value: billingBar.billedUnpaid, dot: BILLED_COLOR },
+                ...(billingBar.draft > 0
+                  ? [{ key: 'draft', label: 'Draft (not sent)', value: billingBar.draft, dot: DRAFT_COLOR, striped: true }]
+                  : []),
+                { key: 'remaining', label: 'Remaining to bill', value: billingBar.remaining, strong: true },
+              ]}
+            />
+          </div>
           <div
             ref={fixturesSectionHighlightRef}
             style={{
@@ -4245,7 +4297,8 @@ export default function JobFormModal({
                 : {}),
             }}
           >
-            <div style={{ fontWeight: 600, fontSize: '0.9375rem', color: 'var(--text-700)', marginBottom: '0.75rem' }}>Specific Work or Materials (Fixtures / Tie-ins / Repair)</div>
+            <div style={{ fontWeight: 600, fontSize: '0.9375rem', color: 'var(--text-700)', marginBottom: '0.15rem' }}>① Line Items — specific work &amp; materials</div>
+            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.75rem' }}>Fixtures / tie-ins / repair. Each line adds to the <strong>Job Total</strong> — this is what the job is worth.</div>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem', tableLayout: 'fixed' }}>
               <colgroup>
                 <col />
@@ -4655,6 +4708,10 @@ export default function JobFormModal({
             </div>
           {editing && (
             <>
+              <div style={{ fontWeight: 600, fontSize: '0.9375rem', color: 'var(--text-700)', marginBottom: '0.15rem' }}>② Invoices — bills you send</div>
+              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.75rem' }}>
+                Carve part of the Job Total into a bill, then send it. Creating or sending a bill <strong>saves right away</strong> — not with the rest of the form.
+              </div>
               {editing ? (
                 <div
                   style={{
@@ -4794,6 +4851,37 @@ export default function JobFormModal({
                       </span>
                     ) : null}
                   </div>
+                  {breakOffBillingTrackPercents.hasTotal ? (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', alignItems: 'center', justifyContent: 'center' }}>
+                      <span style={{ fontSize: '0.6875rem', color: 'var(--text-muted)' }}>Quick set:</span>
+                      {[
+                        { pct: 20, label: '20%' },
+                        { pct: 40, label: '40%' },
+                        { pct: 60, label: '60%' },
+                        { pct: 80, label: '80%' },
+                        { pct: 100, label: 'Max' },
+                      ].map((q) => (
+                        <button
+                          key={q.label}
+                          type="button"
+                          onClick={() => applyBreakOffCombinedPct(q.pct)}
+                          title={q.label === 'Max' ? 'Break off everything left to bill' : `Paid + this bill = ${q.label} of Job Total`}
+                          style={{
+                            fontSize: '0.6875rem',
+                            padding: '0.1rem 0.45rem',
+                            borderRadius: 4,
+                            border: '1px solid var(--border-strong)',
+                            background: 'var(--surface)',
+                            color: 'var(--text-700)',
+                            cursor: 'pointer',
+                            lineHeight: 1.4,
+                          }}
+                        >
+                          {q.label}
+                        </button>
+                      ))}
+                    </div>
+                  ) : null}
                   {breakOffBillingTrackPercents.hasTotal ? (
                     <div style={{ width: '100%', minWidth: 0 }}>
                       <div
@@ -5335,7 +5423,8 @@ export default function JobFormModal({
             </>
           )}
             <div style={{ marginBottom: '1rem' }}>
-              <h4 style={{ margin: '0 0 0.5rem', fontSize: '0.9375rem' }}>Payments received</h4>
+              <h4 style={{ margin: '0 0 0.15rem', fontSize: '0.9375rem' }}>③ Payments received</h4>
+              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: '0 0 0.5rem' }}>Money collected on the job. Saved when you save the job.</div>
               <div style={{ overflowX: 'auto' }}>
               <table
                 style={{
