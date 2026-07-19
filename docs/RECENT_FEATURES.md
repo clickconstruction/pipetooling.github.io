@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-18 (v2.744)
+last_updated: 2026-07-18 (v2.745)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.745)
+
+### Fix — Pages deploy unblocked: theme tokens for Stages quick-action icons (2026-07-18)
+The GitHub Pages deploy had been failing since v2.743 merged: the deploy workflow's theme-token check (`theme-tokenize.mjs --check`, which doesn't run in PR CI) flagged two raw color literals in the new Stages quick-action stack. Fixed by the codemod itself — week-dispatch `#2563eb` → `var(--text-link)`, map-pin `#dc2626` → `var(--text-red-600)`. Identical in light mode, theme-aware in dark; this deploy publishes v2.738–v2.745 to the site together.
 
 ## Latest Updates (v2.744)
 
