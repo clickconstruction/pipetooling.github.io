@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-19 (v2.749)
+last_updated: 2026-07-19 (v2.751)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.751)
+
+### Jobs Stages — manage a job's people from the activity panel (2026-07-19)
+The expanded **Job activity / notes** panel now shows the **people assigned to the job** in the top-left, with a **people button on the far left**. Clicking it (dev / master_technician / assistant — matching the `jobs_ledger_team_members` INSERT/DELETE RLS) opens a **"People on this job"** modal: a searchable roster of assignable users with the current members pre-checked; Save diffs the selection and inserts/deletes `jobs_ledger_team_members` rows. Add/remove already fires the `crew_added` / `crew_removed` activity events via DB trigger, so the change shows up in the feed automatically; the panel refreshes via `loadJobs()`. New `ManageJobPeopleModal` (dark-mode-ready), two new `JobThreadNotesPanel` props (`teamMembers`, `peopleAction`) wired at all three Stages panel sites. Non-editors see the assigned names read-only (no button).
 
 ## Latest Updates (v2.749)
 
