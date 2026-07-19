@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-18 (v2.742)
+last_updated: 2026-07-18 (v2.743)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.743)
+
+### Jobs Stages — quick-action stack beside Last activity (2026-07-18)
+The lone schedule button next to each Stages row's Last activity is now a small vertical stack of coordination shortcuts: **Open schedule** (green calendar, unchanged), **Open week dispatch** (blue week-grid → `/schedule-dispatch?jobId=…&week=…`, same team-assigned gating and role gate as the schedule button), **Open in Google Maps** (red pin, `job_address` — hidden when blank), and **Call customer** (teal handset, `tel:` from `jobs_ledger.customer_phone` — hidden when the job has no phone). All four appear on every stage table since they render inside the shared `renderStagesLastActivityCell` leading controls. Help guide updated. [`Jobs.tsx`](../src/pages/Jobs.tsx)
 
 ## Latest Updates (v2.742)
 

@@ -22,6 +22,8 @@ Every stage on the Jobs Stages board — Waiting through Paid in Full — shows 
 
 A big amber slice is the signal to bill: work is finished but the money hasn't been asked for.
 
+Next to each job's **Last activity**, a small stack of shortcuts covers the common jump-offs: the green calendar opens the job's **schedule**, the blue grid opens its **week dispatch**, the red pin opens the address in **Google Maps**, and the phone icon **calls the customer** (it only appears when the job has a phone number on file).
+
 ## Getting to Ready to bill
 
 A job usually reaches Ready to bill one of two ways:

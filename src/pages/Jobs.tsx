@@ -5608,6 +5608,17 @@ ${totalsHtml}
               }
 
               function renderStagesLastActivityLeadingControls() {
+                const quickIconButtonStyle: CSSProperties = {
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  padding: '0.25rem',
+                  border: 'none',
+                  background: 'none',
+                  flexShrink: 0,
+                }
+                const mapsAddress = (job.job_address ?? '').trim()
+                const customerPhone = (job.customer_phone ?? '').trim()
                 return (
                   <div
                     style={{
@@ -5619,38 +5630,101 @@ ${totalsHtml}
                       alignSelf: 'flex-start',
                     }}
                   >
-                    {canOpenJobScheduleModal ? (
-                      <button
-                        type="button"
-                        onClick={() => setScheduleModalJob(job)}
-                        disabled={scheduleNoTeam}
-                        title={scheduleNoTeam ? 'Assign team members to open schedule' : 'Open schedule'}
-                        aria-label={scheduleNoTeam ? 'Schedule: assign team members first' : 'Open schedule'}
-                        style={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          padding: '0.25rem',
-                          border: 'none',
-                          background: 'none',
-                          cursor: scheduleNoTeam ? 'not-allowed' : 'pointer',
-                          color: scheduleNoTeam ? 'var(--text-faint)' : '#16a34a',
-                          flexShrink: 0,
-                          alignSelf: 'flex-start',
-                        }}
-                      >
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          viewBox="0 0 640 640"
-                          width={16}
-                          height={16}
-                          fill="currentColor"
-                          aria-hidden
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+                      {canOpenJobScheduleModal ? (
+                        <button
+                          type="button"
+                          onClick={() => setScheduleModalJob(job)}
+                          disabled={scheduleNoTeam}
+                          title={scheduleNoTeam ? 'Assign team members to open schedule' : 'Open schedule'}
+                          aria-label={scheduleNoTeam ? 'Schedule: assign team members first' : 'Open schedule'}
+                          style={{
+                            ...quickIconButtonStyle,
+                            cursor: scheduleNoTeam ? 'not-allowed' : 'pointer',
+                            color: scheduleNoTeam ? 'var(--text-faint)' : '#16a34a',
+                          }}
                         >
-                          <path d="M224 64C206.3 64 192 78.3 192 96L192 128L160 128C124.7 128 96 156.7 96 192L96 240L544 240L544 192C544 156.7 515.3 128 480 128L448 128L448 96C448 78.3 433.7 64 416 64C398.3 64 384 78.3 384 96L384 128L256 128L256 96C256 78.3 241.7 64 224 64zM96 288L96 480C96 515.3 124.7 544 160 544L480 544C515.3 544 544 515.3 544 480L544 288L96 288z" />
-                        </svg>
-                      </button>
-                    ) : null}
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            viewBox="0 0 640 640"
+                            width={16}
+                            height={16}
+                            fill="currentColor"
+                            aria-hidden
+                          >
+                            <path d="M224 64C206.3 64 192 78.3 192 96L192 128L160 128C124.7 128 96 156.7 96 192L96 240L544 240L544 192C544 156.7 515.3 128 480 128L448 128L448 96C448 78.3 433.7 64 416 64C398.3 64 384 78.3 384 96L384 128L256 128L256 96C256 78.3 241.7 64 224 64zM96 288L96 480C96 515.3 124.7 544 160 544L480 544C515.3 544 544 515.3 544 480L544 288L96 288z" />
+                          </svg>
+                        </button>
+                      ) : null}
+                      {canOpenJobScheduleModal ? (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const week = getDefaultWeekRange().start
+                            navigate(`/schedule-dispatch?jobId=${encodeURIComponent(job.id)}&week=${encodeURIComponent(week)}`)
+                          }}
+                          disabled={scheduleNoTeam}
+                          title={scheduleNoTeam ? 'Assign team members to open week dispatch' : 'Open week dispatch'}
+                          aria-label={scheduleNoTeam ? 'Week dispatch: assign team members first' : 'Open week dispatch'}
+                          style={{
+                            ...quickIconButtonStyle,
+                            cursor: scheduleNoTeam ? 'not-allowed' : 'pointer',
+                            color: scheduleNoTeam ? 'var(--text-faint)' : '#2563eb',
+                          }}
+                        >
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            viewBox="0 0 640 640"
+                            width={16}
+                            height={16}
+                            fill="currentColor"
+                            aria-hidden
+                          >
+                            <path d="M128 96L512 96C547.3 96 576 124.7 576 160L576 480C576 515.3 547.3 544 512 544L128 544C92.7 544 64 515.3 64 480L64 160C64 124.7 92.7 96 128 96zM128 192L128 480L232 480L232 192L128 192zM280 192L280 480L360 480L360 192L280 192zM408 192L408 480L512 480L512 192L408 192z" />
+                          </svg>
+                        </button>
+                      ) : null}
+                      {mapsAddress ? (
+                        <a
+                          href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapsAddress)}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          title={`Open in Google Maps: ${mapsAddress}`}
+                          aria-label="Open job address in Google Maps"
+                          style={{ ...quickIconButtonStyle, color: '#dc2626', cursor: 'pointer' }}
+                        >
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            viewBox="0 0 640 640"
+                            width={16}
+                            height={16}
+                            fill="currentColor"
+                            aria-hidden
+                          >
+                            <path d="M128 252.6C128 148.4 214 64 320 64C426 64 512 148.4 512 252.6C512 371.9 391.8 514.9 341.6 569.4C329.8 582.2 310.1 582.2 298.3 569.4C248.1 514.9 127.9 371.9 127.9 252.6zM320 320C355.3 320 384 291.3 384 256C384 220.7 355.3 192 320 192C284.7 192 256 220.7 256 256C256 291.3 284.7 320 320 320z" />
+                          </svg>
+                        </a>
+                      ) : null}
+                      {customerPhone ? (
+                        <a
+                          href={`tel:${customerPhone}`}
+                          title={`Call customer: ${customerPhone}`}
+                          aria-label={`Call customer at ${customerPhone}`}
+                          style={{ ...quickIconButtonStyle, color: '#0f766e', cursor: 'pointer' }}
+                        >
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            viewBox="0 0 640 640"
+                            width={16}
+                            height={16}
+                            fill="currentColor"
+                            aria-hidden
+                          >
+                            <path d="M224.2 89C216.3 70.1 195.7 60.1 176.1 65.4L170.6 66.9C106 84.5 50.8 147.1 66.9 223.3C104 398.3 241.7 536 416.7 573.1C492.9 589.2 555.5 534 573.1 469.4L574.6 463.9C579.9 444.2 569.9 423.7 551 415.8L453.8 375.3C437.3 368.4 418.2 373.2 406.8 387.1L368.2 434.3C297.9 399.4 240.7 342.2 205.8 271.9L253 233.3C266.9 221.9 271.7 202.9 264.8 186.3L224.2 89z" />
+                          </svg>
+                        </a>
+                      ) : null}
+                    </div>
                     {renderStagesThreadExpandButton(jobId)}
                   </div>
                 )
