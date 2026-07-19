@@ -306,7 +306,7 @@ export function JobThreadNotesPanel({
         borderRadius: 6,
       }}
     >
-      {peopleAction || (teamMembers && teamMembers.length > 0) ? (
+      {peopleAction || (teamMembers && teamMembers.length > 0) || showSectionTitle ? (
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.5rem', flexWrap: 'wrap' }}>
           {peopleAction ? (
             <button
@@ -329,13 +329,11 @@ export function JobThreadNotesPanel({
           ) : peopleAction ? (
             <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>No one assigned</span>
           ) : null}
-        </div>
-      ) : null}
-      {showSectionTitle ? (
-        <div style={{ marginBottom: '0.5rem', textAlign: 'center' }}>
-          <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-700)' }}>
-            {sectionTitle}
-          </div>
+          {showSectionTitle ? (
+            <span style={{ marginLeft: 'auto', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-700)' }}>
+              {sectionTitle}
+            </span>
+          ) : null}
         </div>
       ) : null}
       {filterEnabled ? (
