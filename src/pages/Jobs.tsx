@@ -64,6 +64,7 @@ import type { LaborJob, LaborJobPayment, SubLaborBackchargeTarget, SubLaborPayme
 import { formatDispatchNoteDaysAgoShortPhrase, formatDispatchNoteWeekdayShortTimeChicago, getDispatchNoteDisplayMeta } from '../utils/dispatchNoteDisplay'
 import { buildStagesMoneyBarModel } from '../lib/stagesMoneyBar'
 import StagesProgressPaymentCell from '../components/jobs/StagesProgressPaymentCell'
+import { JobPctCompleteControl } from '../components/jobs/JobPctCompleteControl'
 import { useChecklistAddModal } from '../contexts/ChecklistAddModalContext'
 import JobReportsModal from '../components/JobReportsModal'
 import JobsInspectionsTab from '../components/jobs/JobsInspectionsTab'
@@ -308,6 +309,16 @@ export default function Jobs() {
       authRole === 'master_technician' ||
       isAssistantLike(authRole) ||
       authRole === 'superintendent',
+    [authRole],
+  )
+  // Matches the jobs_ledger UPDATE RLS (dev / master_technician / assistant / primary)
+  // — who may set a job's % complete from the Stages expanded panel.
+  const canEditJobPctComplete = useMemo(
+    () =>
+      authRole === 'dev' ||
+      authRole === 'master_technician' ||
+      isAssistantLike(authRole) ||
+      authRole === 'primary',
     [authRole],
   )
   const shortNewJobButtonLabel = useMatchMedia(JOBS_SHORT_NEW_JOB_BUTTON_MQ)
@@ -6321,6 +6332,17 @@ ${totalsHtml}
                                 }}
                               >
                                 <JobThreadNotesPanel
+                                  topSlot={
+                                    canEditJobPctComplete ? (
+                                      <JobPctCompleteControl
+                                        jobId={j.id}
+                                        pct={j.pct_complete ?? null}
+                                        canEdit={canEditJobPctComplete}
+                                        saving={pctCompleteSavingId === j.id}
+                                        onCommit={(v) => updateJobPctComplete(j.id, v)}
+                                      />
+                                    ) : undefined
+                                  }
                                   activity={jobThreadActivityByJobId[j.id] ?? []}
                                   loading={jobThreadNotesLoadingId === j.id}
                                   canPost={!!authUser}
@@ -7028,6 +7050,17 @@ ${totalsHtml}
                                     }}
                                   >
                                     <JobThreadNotesPanel
+                                      topSlot={
+                                        canEditJobPctComplete ? (
+                                          <JobPctCompleteControl
+                                            jobId={j.id}
+                                            pct={j.pct_complete ?? null}
+                                            canEdit={canEditJobPctComplete}
+                                            saving={pctCompleteSavingId === j.id}
+                                            onCommit={(v) => updateJobPctComplete(j.id, v)}
+                                          />
+                                        ) : undefined
+                                      }
                                       activity={jobThreadActivityByJobId[j.id] ?? []}
                                       loading={jobThreadNotesLoadingId === j.id}
                                       canPost={!!authUser}
@@ -7410,6 +7443,17 @@ ${totalsHtml}
                                     }}
                                   >
                                     <JobThreadNotesPanel
+                                      topSlot={
+                                        canEditJobPctComplete ? (
+                                          <JobPctCompleteControl
+                                            jobId={job.id}
+                                            pct={job.pct_complete ?? null}
+                                            canEdit={canEditJobPctComplete}
+                                            saving={pctCompleteSavingId === job.id}
+                                            onCommit={(v) => updateJobPctComplete(job.id, v)}
+                                          />
+                                        ) : undefined
+                                      }
                                       activity={jobThreadActivityByJobId[job.id] ?? []}
                                       loading={jobThreadNotesLoadingId === job.id}
                                       canPost={!!authUser}

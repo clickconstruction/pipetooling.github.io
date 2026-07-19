@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-18 (v2.746)
+last_updated: 2026-07-19 (v2.747)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.747)
+
+### Jobs Stages — drag a slider to set a job's % complete (2026-07-19)
+The Stages expanded **Job activity / notes** panel now has a **% complete** control at the top. It shows the current percent and, for editable roles, a **Set % complete** button that opens a marked 0–100 slider (1% steps) plus an exact number entry; changing it reveals **Cancel** / **Set to N%** buttons. It writes the same `jobs_ledger.pct_complete` the Progress & payment cell's number input sets (driving the money bar's "value created"), via the existing `updateJobPctComplete`. New `JobPctCompleteControl` (`src/components/jobs/JobPctCompleteControl.tsx`), rendered through a new optional `topSlot` on `JobThreadNotesPanel`, wired at all three Stages panel sites. Gated to dev / master_technician / assistant / primary (matches the jobs_ledger UPDATE RLS). Native range input covers touch + mouse. Note: this is the Stages progress percent, distinct from the Detail-modal completeness mark (`completeness_pct`). No migration.
 
 ## Latest Updates (v2.746)
 

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { getDispatchNoteDisplayMeta, formatDispatchNoteTimeChicago } from '../utils/dispatchNoteDisplay'
 import type { UserRole } from '../hooks/useAuth'
 import { displayReportTemplateName } from '../lib/reportTemplateDisplayName'
@@ -65,6 +65,8 @@ type JobThreadNotesPanelProps = {
   viewerRole?: UserRole | null
   /** Show the All/Notes/Status/Billing/Crew segmented filter. Defaults on when `activity` is provided. */
   showFilter?: boolean
+  /** Optional content rendered at the top of the panel (below the section title) — e.g. the Stages % complete control. */
+  topSlot?: ReactNode
 }
 
 const DEFAULT_ACTIVITY_LIST_MAX_HEIGHT = 'min(280px, 45vh)'
@@ -188,6 +190,7 @@ export function JobThreadNotesPanel({
   activityListMaxHeight = DEFAULT_ACTIVITY_LIST_MAX_HEIGHT,
   viewerRole,
   showFilter,
+  topSlot,
 }: JobThreadNotesPanelProps) {
   const [viewingReport, setViewingReport] = useState<ReportForView | null>(null)
   const noteBodyRef = useRef<HTMLTextAreaElement>(null)
@@ -259,6 +262,7 @@ export function JobThreadNotesPanel({
           </div>
         </div>
       ) : null}
+      {topSlot}
       {filterEnabled ? (
         <div
           role="tablist"
