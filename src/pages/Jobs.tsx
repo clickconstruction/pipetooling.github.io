@@ -65,7 +65,9 @@ import type { LaborJob, LaborJobPayment, SubLaborBackchargeTarget, SubLaborPayme
 import { formatDispatchNoteDaysAgoShortPhrase, formatDispatchNoteWeekdayShortTimeChicago, getDispatchNoteDisplayMeta } from '../utils/dispatchNoteDisplay'
 import { buildStagesMoneyBarModel } from '../lib/stagesMoneyBar'
 import StagesProgressPaymentCell from '../components/jobs/StagesProgressPaymentCell'
+import { JobAddressText } from '../components/jobs/JobAddressText'
 import { composePctCompleteNoteBody } from '../lib/jobs/stagesPctNote'
+import { ManageJobPeopleModal } from '../components/jobs/ManageJobPeopleModal'
 import { useChecklistAddModal } from '../contexts/ChecklistAddModalContext'
 import { useDispatchTaskModal } from '../contexts/DispatchTaskModalContext'
 import { showTaskDispatchButton } from '../lib/headerTaskDispatchEstimatorEligible'
@@ -324,6 +326,15 @@ export default function Jobs() {
       authRole === 'primary',
     [authRole],
   )
+  // Matches the jobs_ledger_team_members INSERT/DELETE RLS (dev / master_technician /
+  // assistant only) — who may add or remove people from a job.
+  const canManageJobPeople = useMemo(
+    () => authRole === 'dev' || authRole === 'master_technician' || authRole === 'assistant',
+    [authRole],
+  )
+  const [manageJobPeople, setManageJobPeople] = useState<
+    { jobId: string; jobLabel: string; currentTeamUserIds: string[] } | null
+  >(null)
   const shortNewJobButtonLabel = useMatchMedia(JOBS_SHORT_NEW_JOB_BUTTON_MQ)
   const { nicknameByDebitCard, nicknameByAccount } = useMercuryLedgerNicknames()
   const { showToast } = useToastContext()
@@ -5417,6 +5428,38 @@ ${totalsHtml}
               )
             }
 
+            /** Job-column address: red map-pin icon + two-line address, linking to Google Maps. */
+            function renderJobAddressWithMap(address: string | null | undefined) {
+              const fmt = formatAddressTwoLines(address ?? null)
+              if (!fmt) return null
+              return (
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>
+                  <a
+                    href={googleMapsSearchUrl(address)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    title="Open in Google Maps"
+                    style={{ color: 'inherit', textDecoration: 'none' }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.3rem' }}>
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        viewBox="0 0 640 640"
+                        width={12}
+                        height={12}
+                        fill="currentColor"
+                        aria-hidden="true"
+                        style={{ flexShrink: 0, marginTop: 1, color: 'var(--text-red-600)' }}
+                      >
+                        <path d="M128 252.6C128 148.4 214 64 320 64C426 64 512 148.4 512 252.6C512 371.9 391.8 514.9 341.6 569.4C329.8 582.2 310.1 582.2 298.3 569.4C248.1 514.9 127.9 371.9 127.9 252.6zM320 320C355.3 320 384 291.3 384 256C384 220.7 355.3 192 320 192C284.7 192 256 220.7 256 256C256 291.3 284.7 320 320 320z" />
+                      </svg>
+                      <JobAddressText line1={fmt.line1} line2={fmt.line2} />
+                    </div>
+                  </a>
+                </div>
+              )
+            }
+
             function renderJobCustomerLine(job: JobWithDetails) {
               const hasCustomerInfo = ((job.customer_name ?? '').trim() || (job.customer_email ?? '').trim() || (job.customer_phone ?? '').trim())
               if (!hasCustomerInfo) return null
@@ -5435,7 +5478,20 @@ ${totalsHtml}
                     gap: '0.25rem',
                   }}
                 >
-                  <span>Customer: {(job.customer_name ?? '').trim() || '—'}</span>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 640 640"
+                      width={13}
+                      height={13}
+                      fill="currentColor"
+                      aria-hidden="true"
+                      style={{ flexShrink: 0 }}
+                    >
+                      <path d="M160 64C124.7 64 96 92.7 96 128L96 512C96 547.3 124.7 576 160 576L448 576C483.3 576 512 547.3 512 512L512 128C512 92.7 483.3 64 448 64L160 64zM272 352L336 352C380.2 352 416 387.8 416 432C416 440.8 408.8 448 400 448L208 448C199.2 448 192 440.8 192 432C192 387.8 227.8 352 272 352zM248 256C248 225.1 273.1 200 304 200C334.9 200 360 225.1 360 256C360 286.9 334.9 312 304 312C273.1 312 248 286.9 248 256zM576 144C576 135.2 568.8 128 560 128C551.2 128 544 135.2 544 144L544 208C544 216.8 551.2 224 560 224C568.8 224 576 216.8 576 208L576 144zM576 272C576 263.2 568.8 256 560 256C551.2 256 544 263.2 544 272L544 336C544 344.8 551.2 352 560 352C568.8 352 576 344.8 576 336L576 272zM560 384C551.2 384 544 391.2 544 400L544 464C544 472.8 551.2 480 560 480C568.8 480 576 472.8 576 464L576 400C576 391.2 568.8 384 560 384z" />
+                    </svg>
+                    <span>{(job.customer_name ?? '').trim() || '—'}</span>
+                  </span>
                   {showNotInCustomersBadge ? (
                     <button
                       type="button"
@@ -6191,24 +6247,7 @@ ${totalsHtml}
                             </td>
                             <td style={{ padding: '0.75rem' }}>
                               {renderStagesOpenDetailJobName(j)}
-                              {(() => {
-                                const fmt = formatAddressTwoLines(j.job_address)
-                                if (!fmt) return null
-                                return (
-                                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>
-                                    <a
-                                      href={googleMapsSearchUrl(j.job_address)}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      title="Open in Google Maps"
-                                      style={{ color: 'inherit', textDecoration: 'none' }}
-                                    >
-                                      <div>{fmt.line1}</div>
-                                      {fmt.line2 && <div>{fmt.line2}</div>}
-                                    </a>
-                                  </div>
-                                )
-                              })()}
+                              {renderJobAddressWithMap(j.job_address)}
                               {renderJobCustomerLine(j)}
                               {renderStagesJobColumnEstimateFooter(j.linkedEstimateForStages)}
                             </td>
@@ -6379,6 +6418,19 @@ ${totalsHtml}
                                   canEditPct={canEditJobPctComplete}
                                   pctSaving={pctCompleteSavingId === j.id}
                                   onCommitPct={(value, note) => commitStagesPctWithNote(j.id, value, note)}
+                                  teamMembers={j.team_members?.map((t) => ({ user_id: t.user_id, name: t.users?.name ?? null })) ?? []}
+                                  peopleAction={
+                                    canManageJobPeople
+                                      ? {
+                                          onClick: () =>
+                                            setManageJobPeople({
+                                              jobId: j.id,
+                                              jobLabel: `${(j.hcp_number ?? '').trim() || '—'} · ${(j.job_name ?? '').trim() || 'Job'}`,
+                                              currentTeamUserIds: j.team_members?.map((t) => t.user_id) ?? [],
+                                            }),
+                                        }
+                                      : undefined
+                                  }
                                   activity={jobThreadActivityByJobId[j.id] ?? []}
                                   loading={jobThreadNotesLoadingId === j.id}
                                   canPost={!!authUser}
@@ -6721,24 +6773,7 @@ ${totalsHtml}
                                 </td>
                                 <td style={{ padding: '0.75rem' }}>
                                   {renderStagesOpenDetailJobName(j)}
-                                  {(() => {
-                                    const fmt = formatAddressTwoLines(j.job_address)
-                                    if (!fmt) return null
-                                    return (
-                                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>
-                                        <a
-                                          href={googleMapsSearchUrl(j.job_address)}
-                                          target="_blank"
-                                          rel="noopener noreferrer"
-                                          title="Open in Google Maps"
-                                          style={{ color: 'inherit', textDecoration: 'none' }}
-                                        >
-                                          <div>{fmt.line1}</div>
-                                          {fmt.line2 && <div>{fmt.line2}</div>}
-                                        </a>
-                                      </div>
-                                    )
-                                  })()}
+                                  {renderJobAddressWithMap(j.job_address)}
                                   {renderJobCustomerLine(j)}
                                   {bundleInv != null ? (
                                     <div
@@ -7100,6 +7135,19 @@ ${totalsHtml}
                                       canEditPct={canEditJobPctComplete}
                                       pctSaving={pctCompleteSavingId === j.id}
                                       onCommitPct={(value, note) => commitStagesPctWithNote(j.id, value, note)}
+                                      teamMembers={j.team_members?.map((t) => ({ user_id: t.user_id, name: t.users?.name ?? null })) ?? []}
+                                      peopleAction={
+                                        canManageJobPeople
+                                          ? {
+                                              onClick: () =>
+                                                setManageJobPeople({
+                                                  jobId: j.id,
+                                                  jobLabel: `${(j.hcp_number ?? '').trim() || '—'} · ${(j.job_name ?? '').trim() || 'Job'}`,
+                                                  currentTeamUserIds: j.team_members?.map((t) => t.user_id) ?? [],
+                                                }),
+                                            }
+                                          : undefined
+                                      }
                                       activity={jobThreadActivityByJobId[j.id] ?? []}
                                       loading={jobThreadNotesLoadingId === j.id}
                                       canPost={!!authUser}
@@ -7275,24 +7323,7 @@ ${totalsHtml}
                                       </>
                                     )
                                   })()}
-                                  {(() => {
-                                    const fmt = formatAddressTwoLines(job.job_address)
-                                    if (!fmt) return null
-                                    return (
-                                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>
-                                        <a
-                                          href={googleMapsSearchUrl(job.job_address)}
-                                          target="_blank"
-                                          rel="noopener noreferrer"
-                                          title="Open in Google Maps"
-                                          style={{ color: 'inherit', textDecoration: 'none' }}
-                                        >
-                                          <div>{fmt.line1}</div>
-                                          {fmt.line2 && <div>{fmt.line2}</div>}
-                                        </a>
-                                      </div>
-                                    )
-                                  })()}
+                                  {renderJobAddressWithMap(job.job_address)}
                                   {renderJobCustomerLine(job)}
                                   {renderStagesJobColumnEstimateFooter(job.linkedEstimateForStages)}
                                 </td>
@@ -7495,6 +7526,19 @@ ${totalsHtml}
                                       canEditPct={canEditJobPctComplete}
                                       pctSaving={pctCompleteSavingId === job.id}
                                       onCommitPct={(value, note) => commitStagesPctWithNote(job.id, value, note)}
+                                      teamMembers={job.team_members?.map((t) => ({ user_id: t.user_id, name: t.users?.name ?? null })) ?? []}
+                                      peopleAction={
+                                        canManageJobPeople
+                                          ? {
+                                              onClick: () =>
+                                                setManageJobPeople({
+                                                  jobId: job.id,
+                                                  jobLabel: `${(job.hcp_number ?? '').trim() || '—'} · ${(job.job_name ?? '').trim() || 'Job'}`,
+                                                  currentTeamUserIds: job.team_members?.map((t) => t.user_id) ?? [],
+                                                }),
+                                            }
+                                          : undefined
+                                      }
                                       activity={jobThreadActivityByJobId[job.id] ?? []}
                                       loading={jobThreadNotesLoadingId === job.id}
                                       canPost={!!authUser}
@@ -10415,6 +10459,14 @@ ${totalsHtml}
           assigneeCandidates={users.map((u) => ({ user_id: u.id, name: u.name }))}
         />
       ) : null}
+      <ManageJobPeopleModal
+        open={manageJobPeople != null}
+        onClose={() => setManageJobPeople(null)}
+        jobId={manageJobPeople?.jobId ?? null}
+        jobLabel={manageJobPeople?.jobLabel ?? ''}
+        currentTeamUserIds={manageJobPeople?.currentTeamUserIds ?? []}
+        onChanged={() => void loadJobs()}
+      />
       {partsUnattribListJobId ? (
         <PartsUnattributedMercuryListModal
           open
