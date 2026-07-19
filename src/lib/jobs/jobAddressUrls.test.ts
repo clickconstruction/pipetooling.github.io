@@ -1,6 +1,21 @@
 import { describe, expect, it } from 'vitest'
 import type { JobWithDetails } from '../../types/jobWithDetails'
-import { buildClickToolingUrl, formatAddressTwoLines, resolvedLaborInvoiceLink } from './jobAddressUrls'
+import { buildClickToolingUrl, formatAddressTwoLines, googleMapsSearchUrl, resolvedLaborInvoiceLink } from './jobAddressUrls'
+
+describe('googleMapsSearchUrl', () => {
+  it('builds an encoded maps search url', () => {
+    expect(googleMapsSearchUrl('123 Main St, Austin, TX')).toBe(
+      'https://www.google.com/maps/search/?api=1&query=123%20Main%20St%2C%20Austin%2C%20TX',
+    )
+  })
+  it('trims and tolerates null/empty', () => {
+    expect(googleMapsSearchUrl('  456 Oak Ave  ')).toBe(
+      'https://www.google.com/maps/search/?api=1&query=456%20Oak%20Ave',
+    )
+    expect(googleMapsSearchUrl(null)).toBe('https://www.google.com/maps/search/?api=1&query=')
+    expect(googleMapsSearchUrl(undefined)).toBe('https://www.google.com/maps/search/?api=1&query=')
+  })
+})
 
 describe('resolvedLaborInvoiceLink', () => {
   it('returns null for blank input', () => {

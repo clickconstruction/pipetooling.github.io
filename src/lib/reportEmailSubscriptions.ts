@@ -1,13 +1,10 @@
 import { supabase } from './supabase'
 
 /**
- * Report email subscriptions — types, pure helpers, and the typed data-access
- * boundary. The three backing tables (report_email_subscriptions,
- * report_email_subscription_authors, report_email_dispatch_log) land in
- * migration 20260718180000 and are not yet in the generated database types, so
- * every supabase call for them is cast here (via `as never`) and nowhere else.
- * Once types are regenerated post-merge, the casts can be dropped with no
- * change to callers.
+ * Report email subscriptions — types, pure helpers, and the data-access boundary
+ * for the three backing tables (report_email_subscriptions,
+ * report_email_subscription_authors, report_email_dispatch_log), added in
+ * migration 20260718180000 and present in the generated database types.
  */
 
 export interface ReportEmailSubscriptionRow {
@@ -127,24 +124,19 @@ export function scopeSummary(
 // Data access (impure; DB-type casts contained here)
 // ---------------------------------------------------------------------------
 
-/** Loosely-typed table handle for the not-yet-generated tables. */
-function table(name: string) {
-  return supabase.from(name as never)
-}
-
 export async function loadReportEmailSubscriptions(): Promise<SubscriptionWithAuthors[]> {
   const [{ data: subsData, error: subsErr }, { data: authorsData, error: authorsErr }] =
     await Promise.all([
-      table('report_email_subscriptions').select('*').order('created_at', { ascending: true }),
-      table('report_email_subscription_authors').select('subscription_id, author_user_id'),
+      supabase
+        .from('report_email_subscriptions')
+        .select('*')
+        .order('created_at', { ascending: true }),
+      supabase.from('report_email_subscription_authors').select('subscription_id, author_user_id'),
     ])
   if (subsErr) throw subsErr
   if (authorsErr) throw authorsErr
-  const subs = (subsData ?? []) as unknown as ReportEmailSubscriptionRow[]
-  const authorRows = (authorsData ?? []) as unknown as Array<{
-    subscription_id: string
-    author_user_id: string
-  }>
+  const subs: ReportEmailSubscriptionRow[] = subsData ?? []
+  const authorRows = authorsData ?? []
   const bySub = new Map<string, string[]>()
   for (const r of authorRows) {
     const list = bySub.get(r.subscription_id) ?? []
@@ -180,17 +172,19 @@ export async function saveReportEmailSubscription(
 
   let subscriptionId = existingId ?? ''
   if (existingId) {
-    const { error } = await table('report_email_subscriptions')
-      .update(payload as never)
+    const { error } = await supabase
+      .from('report_email_subscriptions')
+      .update(payload)
       .eq('id', existingId)
     if (error) throw error
   } else {
-    const { data, error } = await table('report_email_subscriptions')
-      .insert({ ...payload, created_by: authUserId } as never)
+    const { data, error } = await supabase
+      .from('report_email_subscriptions')
+      .insert({ ...payload, created_by: authUserId })
       .select('id')
       .single()
     if (error) throw error
-    subscriptionId = (data as unknown as { id: string }).id
+    subscriptionId = data.id
   }
 
   await reconcileSubscriptionAuthors(
@@ -205,26 +199,26 @@ export async function reconcileSubscriptionAuthors(
   subscriptionId: string,
   authorUserIds: string[],
 ): Promise<void> {
-  const { data: existingData, error: readErr } = await table('report_email_subscription_authors')
+  const { data: existingData, error: readErr } = await supabase
+    .from('report_email_subscription_authors')
     .select('author_user_id')
     .eq('subscription_id', subscriptionId)
   if (readErr) throw readErr
-  const existing = new Set(
-    ((existingData ?? []) as unknown as Array<{ author_user_id: string }>).map((r) => r.author_user_id),
-  )
+  const existing = new Set((existingData ?? []).map((r) => r.author_user_id))
   const wanted = new Set(authorUserIds)
 
   const toAdd = [...wanted].filter((id) => !existing.has(id))
   const toRemove = [...existing].filter((id) => !wanted.has(id))
 
   if (toAdd.length > 0) {
-    const { error } = await table('report_email_subscription_authors').insert(
-      toAdd.map((author_user_id) => ({ subscription_id: subscriptionId, author_user_id })) as never,
-    )
+    const { error } = await supabase
+      .from('report_email_subscription_authors')
+      .insert(toAdd.map((author_user_id) => ({ subscription_id: subscriptionId, author_user_id })))
     if (error) throw error
   }
   if (toRemove.length > 0) {
-    const { error } = await table('report_email_subscription_authors')
+    const { error } = await supabase
+      .from('report_email_subscription_authors')
       .delete()
       .eq('subscription_id', subscriptionId)
       .in('author_user_id', toRemove)
@@ -233,11 +227,11 @@ export async function reconcileSubscriptionAuthors(
 }
 
 export async function deleteReportEmailSubscription(id: string): Promise<void> {
-  const { error } = await table('report_email_subscriptions').delete().eq('id', id)
+  const { error } = await supabase.from('report_email_subscriptions').delete().eq('id', id)
   if (error) throw error
 }
 
 export async function setSubscriptionEnabled(id: string, enabled: boolean): Promise<void> {
-  const { error } = await table('report_email_subscriptions').update({ enabled } as never).eq('id', id)
+  const { error } = await supabase.from('report_email_subscriptions').update({ enabled }).eq('id', id)
   if (error) throw error
 }

@@ -57,14 +57,17 @@ import { withSupabaseRetry } from '../utils/errorHandling'
 import { laborItemsSubtotal, lineLaborCost } from '../lib/peopleLaborJobItemLineCost'
 import { buildSubLaborOutstandingByPerson, subLaborJobMatchesSearch } from '../lib/subLaborOutstanding'
 import { laborJobSubCost } from '../lib/jobs/subLaborCost'
-import { buildClickToolingUrl, formatAddressTwoLines, resolvedLaborInvoiceLink } from '../lib/jobs/jobAddressUrls'
+import { buildClickToolingUrl, formatAddressTwoLines, googleMapsSearchUrl, resolvedLaborInvoiceLink } from '../lib/jobs/jobAddressUrls'
 import JobsCrewPnlTab from '../components/jobs/JobsCrewPnlTab'
 import JobsSubLaborTab from '../components/jobs/JobsSubLaborTab'
 import type { LaborJob, LaborJobPayment, SubLaborBackchargeTarget, SubLaborPaymentTarget } from '../types/laborJob'
 import { formatDispatchNoteDaysAgoShortPhrase, formatDispatchNoteWeekdayShortTimeChicago, getDispatchNoteDisplayMeta } from '../utils/dispatchNoteDisplay'
 import { buildStagesMoneyBarModel } from '../lib/stagesMoneyBar'
 import StagesProgressPaymentCell from '../components/jobs/StagesProgressPaymentCell'
+import { composePctCompleteNoteBody } from '../lib/jobs/stagesPctNote'
 import { useChecklistAddModal } from '../contexts/ChecklistAddModalContext'
+import { useDispatchTaskModal } from '../contexts/DispatchTaskModalContext'
+import { showTaskDispatchButton } from '../lib/headerTaskDispatchEstimatorEligible'
 import JobReportsModal from '../components/JobReportsModal'
 import JobsInspectionsTab from '../components/jobs/JobsInspectionsTab'
 import JobsReportsTab from '../components/jobs/JobsReportsTab'
@@ -310,11 +313,22 @@ export default function Jobs() {
       authRole === 'superintendent',
     [authRole],
   )
+  // Matches the jobs_ledger UPDATE RLS (dev / master_technician / assistant / primary)
+  // — who may set a job's % complete from the Stages expanded panel.
+  const canEditJobPctComplete = useMemo(
+    () =>
+      authRole === 'dev' ||
+      authRole === 'master_technician' ||
+      isAssistantLike(authRole) ||
+      authRole === 'primary',
+    [authRole],
+  )
   const shortNewJobButtonLabel = useMatchMedia(JOBS_SHORT_NEW_JOB_BUTTON_MQ)
   const { nicknameByDebitCard, nicknameByAccount } = useMercuryLedgerNicknames()
   const { showToast } = useToastContext()
   const jobFormModal = useJobFormModal()
   const checklistAddModal = useChecklistAddModal()
+  const dispatchTaskModal = useDispatchTaskModal()
   const billCustomer = useBillCustomerModal()
   const {
     jobs,
@@ -1045,6 +1059,7 @@ export default function Jobs() {
     jobThreadDraft,
     setJobThreadDraft,
     submitJobThreadNote,
+    submitJobThreadNoteWithBody,
     jobThreadStatsByJobId,
     refreshJobThreadStatsForJobIds,
   } = useJobThreadNotes(showToast, authUser?.id, authProfileName)
@@ -4500,6 +4515,26 @@ ${totalsHtml}
     }
   }
 
+  /**
+   * Stages "Set % complete" commit: post a thread note ("N% complete — <note>",
+   * best-effort with its own toast) then write jobs_ledger.pct_complete. One saving
+   * flag spans both so the editor stays disabled and closes when it clears.
+   */
+  async function commitStagesPctWithNote(jobId: string, value: number, note: string) {
+    setPctCompleteSavingId(jobId)
+    setError(null)
+    try {
+      await submitJobThreadNoteWithBody(jobId, composePctCompleteNoteBody(value, note), 'draft')
+      const { error: err } = await supabase.from('jobs_ledger').update({ pct_complete: value }).eq('id', jobId)
+      if (err) throw err
+      await loadJobs()
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to update % complete')
+    } finally {
+      setPctCompleteSavingId(null)
+    }
+  }
+
   async function setInvoiceEstimatedBillDate(invoiceId: string, jobId: string, date: string | null) {
     setInvoiceEstimatedBillDateSavingId(invoiceId)
     setError(null)
@@ -5619,7 +5654,6 @@ ${totalsHtml}
                   background: 'none',
                   flexShrink: 0,
                 }
-                const mapsAddress = (job.job_address ?? '').trim()
                 const customerPhone = (job.customer_phone ?? '').trim()
                 return (
                   <div
@@ -5686,27 +5720,6 @@ ${totalsHtml}
                           </svg>
                         </button>
                       ) : null}
-                      {mapsAddress ? (
-                        <a
-                          href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapsAddress)}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          title={`Open in Google Maps: ${mapsAddress}`}
-                          aria-label="Open job address in Google Maps"
-                          style={{ ...quickIconButtonStyle, color: 'var(--text-red-600)', cursor: 'pointer' }}
-                        >
-                          <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            viewBox="0 0 640 640"
-                            width={16}
-                            height={16}
-                            fill="currentColor"
-                            aria-hidden
-                          >
-                            <path d="M128 252.6C128 148.4 214 64 320 64C426 64 512 148.4 512 252.6C512 371.9 391.8 514.9 341.6 569.4C329.8 582.2 310.1 582.2 298.3 569.4C248.1 514.9 127.9 371.9 127.9 252.6zM320 320C355.3 320 384 291.3 384 256C384 220.7 355.3 192 320 192C284.7 192 256 220.7 256 256C256 291.3 284.7 320 320 320z" />
-                          </svg>
-                        </a>
-                      ) : null}
                       {customerPhone ? (
                         <a
                           href={`tel:${customerPhone}`}
@@ -5725,6 +5738,37 @@ ${totalsHtml}
                             <path d="M224.2 89C216.3 70.1 195.7 60.1 176.1 65.4L170.6 66.9C106 84.5 50.8 147.1 66.9 223.3C104 398.3 241.7 536 416.7 573.1C492.9 589.2 555.5 534 573.1 469.4L574.6 463.9C579.9 444.2 569.9 423.7 551 415.8L453.8 375.3C437.3 368.4 418.2 373.2 406.8 387.1L368.2 434.3C297.9 399.4 240.7 342.2 205.8 271.9L253 233.3C266.9 221.9 271.7 202.9 264.8 186.3L224.2 89z" />
                           </svg>
                         </a>
+                      ) : null}
+                      {showTaskDispatchButton(authRole) ? (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            dispatchTaskModal?.openDispatchModal({
+                              reference: {
+                                source: 'job',
+                                id: job.id,
+                                hcp_number: job.hcp_number ?? '',
+                                click_number: job.click_number ?? null,
+                                job_name: job.job_name ?? '',
+                                job_address: job.job_address ?? '',
+                              },
+                            })
+                          }
+                          title="Send this job to Dispatch with a note"
+                          aria-label="Send job to Dispatch"
+                          style={{ ...quickIconButtonStyle, color: '#0ea5e9', cursor: 'pointer' }}
+                        >
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            viewBox="0 0 640 640"
+                            width={16}
+                            height={16}
+                            fill="currentColor"
+                            aria-hidden
+                          >
+                            <path d="M280 128C266.7 128 256 138.7 256 152C256 165.3 266.7 176 280 176L296 176L296 209.3C188.8 220.7 104.2 307.7 96.6 416L543.5 416C535.8 307.7 451.2 220.7 344 209.3L344 176L360 176C373.3 176 384 165.3 384 152C384 138.7 373.3 128 360 128L280 128zM88 464C74.7 464 64 474.7 64 488C64 501.3 74.7 512 88 512L552 512C565.3 512 576 501.3 576 488C576 474.7 565.3 464 552 464L88 464z" />
+                          </svg>
+                        </button>
                       ) : null}
                       <button
                         type="button"
@@ -6151,8 +6195,16 @@ ${totalsHtml}
                                 if (!fmt) return null
                                 return (
                                   <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>
-                                    <div>{fmt.line1}</div>
-                                    {fmt.line2 && <div>{fmt.line2}</div>}
+                                    <a
+                                      href={googleMapsSearchUrl(j.job_address)}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      title="Open in Google Maps"
+                                      style={{ color: 'inherit', textDecoration: 'none' }}
+                                    >
+                                      <div>{fmt.line1}</div>
+                                      {fmt.line2 && <div>{fmt.line2}</div>}
+                                    </a>
                                   </div>
                                 )
                               })()}
@@ -6321,6 +6373,10 @@ ${totalsHtml}
                                 }}
                               >
                                 <JobThreadNotesPanel
+                                  pctComplete={j.pct_complete ?? null}
+                                  canEditPct={canEditJobPctComplete}
+                                  pctSaving={pctCompleteSavingId === j.id}
+                                  onCommitPct={(value, note) => commitStagesPctWithNote(j.id, value, note)}
                                   activity={jobThreadActivityByJobId[j.id] ?? []}
                                   loading={jobThreadNotesLoadingId === j.id}
                                   canPost={!!authUser}
@@ -6668,8 +6724,16 @@ ${totalsHtml}
                                     if (!fmt) return null
                                     return (
                                       <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>
-                                        <div>{fmt.line1}</div>
-                                        {fmt.line2 && <div>{fmt.line2}</div>}
+                                        <a
+                                          href={googleMapsSearchUrl(j.job_address)}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          title="Open in Google Maps"
+                                          style={{ color: 'inherit', textDecoration: 'none' }}
+                                        >
+                                          <div>{fmt.line1}</div>
+                                          {fmt.line2 && <div>{fmt.line2}</div>}
+                                        </a>
                                       </div>
                                     )
                                   })()}
@@ -7028,6 +7092,10 @@ ${totalsHtml}
                                     }}
                                   >
                                     <JobThreadNotesPanel
+                                      pctComplete={j.pct_complete ?? null}
+                                      canEditPct={canEditJobPctComplete}
+                                      pctSaving={pctCompleteSavingId === j.id}
+                                      onCommitPct={(value, note) => commitStagesPctWithNote(j.id, value, note)}
                                       activity={jobThreadActivityByJobId[j.id] ?? []}
                                       loading={jobThreadNotesLoadingId === j.id}
                                       canPost={!!authUser}
@@ -7208,8 +7276,16 @@ ${totalsHtml}
                                     if (!fmt) return null
                                     return (
                                       <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>
-                                        <div>{fmt.line1}</div>
-                                        {fmt.line2 && <div>{fmt.line2}</div>}
+                                        <a
+                                          href={googleMapsSearchUrl(job.job_address)}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          title="Open in Google Maps"
+                                          style={{ color: 'inherit', textDecoration: 'none' }}
+                                        >
+                                          <div>{fmt.line1}</div>
+                                          {fmt.line2 && <div>{fmt.line2}</div>}
+                                        </a>
                                       </div>
                                     )
                                   })()}
@@ -7410,6 +7486,10 @@ ${totalsHtml}
                                     }}
                                   >
                                     <JobThreadNotesPanel
+                                      pctComplete={job.pct_complete ?? null}
+                                      canEditPct={canEditJobPctComplete}
+                                      pctSaving={pctCompleteSavingId === job.id}
+                                      onCommitPct={(value, note) => commitStagesPctWithNote(job.id, value, note)}
                                       activity={jobThreadActivityByJobId[job.id] ?? []}
                                       loading={jobThreadNotesLoadingId === job.id}
                                       canPost={!!authUser}
