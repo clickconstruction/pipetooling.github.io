@@ -25,13 +25,18 @@ export function DashboardRecentReportsSection({
   const [isReportEnabledOnlyUser, setIsReportEnabledOnlyUser] = useState(false)
   const [readReportIds, setReadReportIds] = useState<Set<string>>(new Set())
   const [expandedReportId, setExpandedReportId] = useState<string | null>(null)
+  // Pure initializer (no side effects): reads the ids persisted last session so
+  // reports opened before this refresh start out hidden. It must NOT remove the
+  // key here — under React StrictMode the initializer runs twice, and a removal
+  // on the first run makes the second run read nothing, leaving this empty (the
+  // "opened reports still show after refresh" bug). The write effect below keeps
+  // the key in sync with readReportIds, so an explicit removal is unnecessary.
   const [hiddenReportIds, setHiddenReportIds] = useState<Set<string>>(() => {
     try {
       const raw = localStorage.getItem(HIDE_ON_REFRESH_STORAGE_KEY)
       if (!raw) return new Set()
       const ids = JSON.parse(raw) as string[]
       if (!Array.isArray(ids)) return new Set()
-      localStorage.removeItem(HIDE_ON_REFRESH_STORAGE_KEY)
       return new Set(ids)
     } catch {
       return new Set()
