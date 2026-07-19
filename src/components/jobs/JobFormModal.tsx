@@ -36,6 +36,7 @@ import { revenueDollarsFromFixtures } from '../../lib/revenueFromJobFixtures'
 import { buildEditJobBillingBar } from '../../lib/jobs/editJobBillingBar'
 import { MoneyLifecycleBar, PAID_COLOR, BILLED_COLOR, DRAFT_COLOR } from './MoneyLifecycleBar'
 import { useBreakOffSlider } from './useBreakOffSlider'
+import { useJobCostSnapshot } from './useJobCostSnapshot'
 import {
   formatCurrency,
   formatPaymentDateForDisplay,
@@ -86,13 +87,7 @@ import { formatMercuryCardChargesPostedDate } from '../../lib/formatMercuryCardC
 import { fetchJobMaterialsCostSnapshot } from '../../lib/fetchJobMaterialsCostSnapshot'
 import { abbreviatePaymentReferenceLabel } from '../../lib/abbreviatePaymentReference'
 import { formatMercuryDebitCardIdCompact } from '../../lib/mercuryRawDebitCard'
-import {
-  mercuryCardTotalFromLines,
-  tallyPartsTotalFromLines,
-  type JobMercuryAllocLine,
-  type JobSupplyInvoiceLine,
-  type JobTallyPartLine,
-} from '../../lib/fetchJobMaterialsCostSnapshot'
+import { mercuryCardTotalFromLines, tallyPartsTotalFromLines } from '../../lib/fetchJobMaterialsCostSnapshot'
 import { MaterialsCostAccordionRow } from './JobFormMaterialsCostAccordion'
 import JobChargesTimelineStandalone from './JobChargesTimelineStandalone'
 import JobProjectLinkChoiceModal from './JobProjectLinkChoiceModal'
@@ -125,7 +120,6 @@ type CustomerRow = Database['public']['Tables']['customers']['Row']
 type UserRow = { id: string; name: string; email: string | null; role: string }
 
 
-type MaterialsAccordionKey = 'supply' | 'mercury' | 'tally' | 'billed'
 
 
 const FIXTURE_SCOPE_FIELD_LABEL_VISUALLY_HIDDEN: CSSProperties = {
@@ -637,15 +631,20 @@ export default function JobFormModal({
   const [unlinkingMercuryPaymentId, setUnlinkingMercuryPaymentId] = useState<string | null>(null)
   const [paymentRemoveRpcBusy, setPaymentRemoveRpcBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [materialsAccordionOpen, setMaterialsAccordionOpen] = useState<MaterialsAccordionKey | null>('billed')
-  const [jobMaterialsSnapshotLoading, setJobMaterialsSnapshotLoading] = useState(false)
-  const [supplyInvoiceTotal, setSupplyInvoiceTotal] = useState(0)
-  const [supplyInvoiceRpcFailed, setSupplyInvoiceRpcFailed] = useState(false)
-  const [supplyInvoiceLines, setSupplyInvoiceLines] = useState<JobSupplyInvoiceLine[]>([])
-  const [mercuryAllocLines, setMercuryAllocLines] = useState<JobMercuryAllocLine[]>([])
-  const [mercuryFetchFailed, setMercuryFetchFailed] = useState(false)
-  const [tallyPartLines, setTallyPartLines] = useState<JobTallyPartLine[]>([])
-  const [tallyFetchFailed, setTallyFetchFailed] = useState(false)
+  const {
+    materialsAccordionOpen,
+    jobMaterialsSnapshotLoading,
+    supplyInvoiceTotal,
+    supplyInvoiceRpcFailed,
+    supplyInvoiceLines,
+    mercuryAllocLines,
+    mercuryFetchFailed,
+    tallyPartLines,
+    tallyFetchFailed,
+    mercuryCardTotal,
+    tallyPartsTotal,
+    toggleMaterialsAccordion,
+  } = useJobCostSnapshot(editing?.id ?? null)
   const [editJobTeamLaborLoading, setEditJobTeamLaborLoading] = useState(false)
   const [editJobTeamLaborRow, setEditJobTeamLaborRow] = useState<TeamLaborRow | null>(null)
   const [editJobTeamLaborError, setEditJobTeamLaborError] = useState(false)
@@ -1339,47 +1338,6 @@ export default function JobFormModal({
     }
   }, [editing?.id])
 
-  useEffect(() => {
-    const jobId = editing?.id ?? null
-    if (!jobId) {
-      setJobMaterialsSnapshotLoading(false)
-      setSupplyInvoiceTotal(0)
-      setSupplyInvoiceRpcFailed(false)
-      setSupplyInvoiceLines([])
-      setMercuryAllocLines([])
-      setMercuryFetchFailed(false)
-      setTallyPartLines([])
-      setTallyFetchFailed(false)
-      setMaterialsAccordionOpen('billed')
-      return
-    }
-    let cancelled = false
-    setJobMaterialsSnapshotLoading(true)
-    setMaterialsAccordionOpen('billed')
-    setSupplyInvoiceRpcFailed(false)
-    setMercuryFetchFailed(false)
-    setTallyFetchFailed(false)
-
-    void (async () => {
-      try {
-        const snap = await fetchJobMaterialsCostSnapshot(jobId)
-        if (cancelled) return
-        setSupplyInvoiceTotal(snap.supplyInvoiceTotal)
-        setSupplyInvoiceRpcFailed(snap.supplyInvoiceRpcFailed)
-        setSupplyInvoiceLines(snap.supplyInvoiceLines)
-        setMercuryAllocLines(snap.mercuryAllocLines)
-        setMercuryFetchFailed(snap.mercuryFetchFailed)
-        setTallyPartLines(snap.tallyPartLines)
-        setTallyFetchFailed(snap.tallyFetchFailed)
-      } finally {
-        if (!cancelled) setJobMaterialsSnapshotLoading(false)
-      }
-    })()
-
-    return () => {
-      cancelled = true
-    }
-  }, [editing?.id])
 
   useEffect(() => {
     const jobId = editing?.id ?? null
@@ -1675,16 +1633,6 @@ export default function JobFormModal({
     return formatCurrency(sum)
   }, [materials])
 
-  const mercuryCardTotal = useMemo(
-    () => mercuryAllocLines.reduce((s, l) => s + Math.abs(Number(l.allocationAmount)), 0),
-    [mercuryAllocLines],
-  )
-
-  const tallyPartsTotal = useMemo(() => tallyPartLines.reduce((s, l) => s + l.lineTotal, 0), [tallyPartLines])
-
-  const toggleMaterialsAccordion = useCallback((key: MaterialsAccordionKey) => {
-    setMaterialsAccordionOpen((prev) => (prev === key ? null : key))
-  }, [])
 
   const scrollToProjectSection = useCallback(() => {
     setProjectFilesPlansExpanded(true)
