@@ -5131,6 +5131,42 @@ export default function JobFormModal({
                                       }}
                                     />
                                   </div>
+                                  {(editing?.invoices ?? []).some((i) => i.status === 'billed') ? (
+                                    <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.35rem', flexWrap: 'wrap' }}>
+                                      <span style={{ fontWeight: 600, color: 'var(--text-600)', flexShrink: 0 }}>Applies to: </span>
+                                      <select
+                                        id={`edit-job-payment-invoice-${row.id}`}
+                                        value={row.invoice_id ?? ''}
+                                        onChange={(e) =>
+                                          updatePaymentRow(row.id, { invoice_id: e.target.value === '' ? null : e.target.value })
+                                        }
+                                        aria-label="Apply this payment to a specific invoice"
+                                        title="Attach this payment to a billed invoice so it pays that bill down; leave as Job (unassigned) for a general job payment."
+                                        style={{
+                                          flex: '1 1 12rem',
+                                          minWidth: 0,
+                                          maxWidth: '100%',
+                                          boxSizing: 'border-box',
+                                          padding: '0.2rem 0.35rem',
+                                          border: '1px solid var(--border-strong)',
+                                          borderRadius: 4,
+                                          fontSize: '0.75rem',
+                                          color: 'var(--text-700)',
+                                          background: 'var(--surface)',
+                                          lineHeight: 1.35,
+                                        }}
+                                      >
+                                        <option value="">Job (unassigned)</option>
+                                        {(editing?.invoices ?? [])
+                                          .filter((i) => i.status === 'billed')
+                                          .map((inv) => (
+                                            <option key={inv.id} value={inv.id}>
+                                              {`$${formatCurrency(Number(inv.amount ?? 0))} bill${inv.sent_to_customer_at ? ` · sent ${String(inv.sent_to_customer_at).slice(0, 10)}` : ''}`}
+                                            </option>
+                                          ))}
+                                      </select>
+                                    </div>
+                                  ) : null}
                                 </div>
                               )}
                             </td>
