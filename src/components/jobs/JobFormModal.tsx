@@ -36,6 +36,8 @@ import { revenueDollarsFromFixtures } from '../../lib/revenueFromJobFixtures'
 import { buildEditJobBillingBar } from '../../lib/jobs/editJobBillingBar'
 import { MoneyLifecycleBar, PAID_COLOR, BILLED_COLOR, DRAFT_COLOR } from './MoneyLifecycleBar'
 import { useBreakOffSlider } from './useBreakOffSlider'
+import { useJobCostSnapshot } from './useJobCostSnapshot'
+import { useJobMigrate } from './useJobMigrate'
 import {
   formatCurrency,
   formatPaymentDateForDisplay,
@@ -83,16 +85,9 @@ import { setReturnEditJobFromStages } from '../../lib/returnEditJobFromStages'
 import { normalizeJobsLedgerStatus } from '../../lib/jobsLedgerStatusPipeline'
 import { invoiceCreatedCalendarDayOffset } from '../../lib/invoiceCreatedRelative'
 import { formatMercuryCardChargesPostedDate } from '../../lib/formatMercuryCardChargesPostedDate'
-import { fetchJobMaterialsCostSnapshot } from '../../lib/fetchJobMaterialsCostSnapshot'
 import { abbreviatePaymentReferenceLabel } from '../../lib/abbreviatePaymentReference'
 import { formatMercuryDebitCardIdCompact } from '../../lib/mercuryRawDebitCard'
-import {
-  mercuryCardTotalFromLines,
-  tallyPartsTotalFromLines,
-  type JobMercuryAllocLine,
-  type JobSupplyInvoiceLine,
-  type JobTallyPartLine,
-} from '../../lib/fetchJobMaterialsCostSnapshot'
+import { mercuryCardTotalFromLines, tallyPartsTotalFromLines } from '../../lib/fetchJobMaterialsCostSnapshot'
 import { MaterialsCostAccordionRow } from './JobFormMaterialsCostAccordion'
 import JobChargesTimelineStandalone from './JobChargesTimelineStandalone'
 import JobProjectLinkChoiceModal from './JobProjectLinkChoiceModal'
@@ -125,7 +120,6 @@ type CustomerRow = Database['public']['Tables']['customers']['Row']
 type UserRow = { id: string; name: string; email: string | null; role: string }
 
 
-type MaterialsAccordionKey = 'supply' | 'mercury' | 'tally' | 'billed'
 
 
 const FIXTURE_SCOPE_FIELD_LABEL_VISUALLY_HIDDEN: CSSProperties = {
@@ -618,34 +612,39 @@ export default function JobFormModal({
   const [paymentRemoveConfirmRowId, setPaymentRemoveConfirmRowId] = useState<string | null>(null)
   const [unlinkMercuryConfirmRowId, setUnlinkMercuryConfirmRowId] = useState<string | null>(null)
   const [deleteJobConfirmOpen, setDeleteJobConfirmOpen] = useState(false)
-  const [migrateJobModalOpen, setMigrateJobModalOpen] = useState(false)
-  const [migrateTargetSearch, setMigrateTargetSearch] = useState('')
-  const [migrateTargetCandidates, setMigrateTargetCandidates] = useState<
-    Array<{ id: string; hcp_number: string; click_number?: string; job_name: string; job_address: string }>
-  >([])
-  const [migrateTargetSearchLoading, setMigrateTargetSearchLoading] = useState(false)
-  const [migrateTargetJobId, setMigrateTargetJobId] = useState<string | null>(null)
-  const [migrateTargetPreviewLoading, setMigrateTargetPreviewLoading] = useState(false)
-  const [migrateTargetPreview, setMigrateTargetPreview] = useState<{
-    supply: number
-    tally: number
-    mercury: number
-    teamCost: number
-    teamHours: number
-  } | null>(null)
-  const [migratingJob, setMigratingJob] = useState(false)
+  const {
+    migrateJobModalOpen,
+    setMigrateJobModalOpen,
+    migrateTargetSearch,
+    setMigrateTargetSearch,
+    migrateTargetCandidates,
+    setMigrateTargetCandidates,
+    migrateTargetSearchLoading,
+    migrateTargetJobId,
+    setMigrateTargetJobId,
+    migrateTargetPreviewLoading,
+    migrateTargetPreview,
+    migratingJob,
+    setMigratingJob,
+    resetMigrate,
+  } = useJobMigrate(editing?.id ?? null)
   const [unlinkingMercuryPaymentId, setUnlinkingMercuryPaymentId] = useState<string | null>(null)
   const [paymentRemoveRpcBusy, setPaymentRemoveRpcBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [materialsAccordionOpen, setMaterialsAccordionOpen] = useState<MaterialsAccordionKey | null>('billed')
-  const [jobMaterialsSnapshotLoading, setJobMaterialsSnapshotLoading] = useState(false)
-  const [supplyInvoiceTotal, setSupplyInvoiceTotal] = useState(0)
-  const [supplyInvoiceRpcFailed, setSupplyInvoiceRpcFailed] = useState(false)
-  const [supplyInvoiceLines, setSupplyInvoiceLines] = useState<JobSupplyInvoiceLine[]>([])
-  const [mercuryAllocLines, setMercuryAllocLines] = useState<JobMercuryAllocLine[]>([])
-  const [mercuryFetchFailed, setMercuryFetchFailed] = useState(false)
-  const [tallyPartLines, setTallyPartLines] = useState<JobTallyPartLine[]>([])
-  const [tallyFetchFailed, setTallyFetchFailed] = useState(false)
+  const {
+    materialsAccordionOpen,
+    jobMaterialsSnapshotLoading,
+    supplyInvoiceTotal,
+    supplyInvoiceRpcFailed,
+    supplyInvoiceLines,
+    mercuryAllocLines,
+    mercuryFetchFailed,
+    tallyPartLines,
+    tallyFetchFailed,
+    mercuryCardTotal,
+    tallyPartsTotal,
+    toggleMaterialsAccordion,
+  } = useJobCostSnapshot(editing?.id ?? null)
   const [editJobTeamLaborLoading, setEditJobTeamLaborLoading] = useState(false)
   const [editJobTeamLaborRow, setEditJobTeamLaborRow] = useState<TeamLaborRow | null>(null)
   const [editJobTeamLaborError, setEditJobTeamLaborError] = useState(false)
@@ -825,14 +824,7 @@ export default function JobFormModal({
     setPaymentRemoveRpcBusy(false)
     setUnlinkMercuryConfirmRowId(null)
     setDeleteJobConfirmOpen(false)
-    setMigrateJobModalOpen(false)
-    setMigrateTargetSearch('')
-    setMigrateTargetCandidates([])
-    setMigrateTargetJobId(null)
-    setMigrateTargetPreview(null)
-    setMigrateTargetPreviewLoading(false)
-    setMigrateTargetSearchLoading(false)
-    setMigratingJob(false)
+    resetMigrate()
     onClose()
   }
 
@@ -841,14 +833,7 @@ export default function JobFormModal({
     setPaymentRemoveRpcBusy(false)
     setUnlinkMercuryConfirmRowId(null)
     setDeleteJobConfirmOpen(false)
-    setMigrateJobModalOpen(false)
-    setMigrateTargetSearch('')
-    setMigrateTargetCandidates([])
-    setMigrateTargetJobId(null)
-    setMigrateTargetPreview(null)
-    setMigrateTargetPreviewLoading(false)
-    setMigrateTargetSearchLoading(false)
-    setMigratingJob(false)
+    resetMigrate()
     setBillViewInvoice(null)
     setBillingCustomerHighlight(billingGate)
     setFixturesSectionHighlight(fixturesGate)
@@ -1339,47 +1324,6 @@ export default function JobFormModal({
     }
   }, [editing?.id])
 
-  useEffect(() => {
-    const jobId = editing?.id ?? null
-    if (!jobId) {
-      setJobMaterialsSnapshotLoading(false)
-      setSupplyInvoiceTotal(0)
-      setSupplyInvoiceRpcFailed(false)
-      setSupplyInvoiceLines([])
-      setMercuryAllocLines([])
-      setMercuryFetchFailed(false)
-      setTallyPartLines([])
-      setTallyFetchFailed(false)
-      setMaterialsAccordionOpen('billed')
-      return
-    }
-    let cancelled = false
-    setJobMaterialsSnapshotLoading(true)
-    setMaterialsAccordionOpen('billed')
-    setSupplyInvoiceRpcFailed(false)
-    setMercuryFetchFailed(false)
-    setTallyFetchFailed(false)
-
-    void (async () => {
-      try {
-        const snap = await fetchJobMaterialsCostSnapshot(jobId)
-        if (cancelled) return
-        setSupplyInvoiceTotal(snap.supplyInvoiceTotal)
-        setSupplyInvoiceRpcFailed(snap.supplyInvoiceRpcFailed)
-        setSupplyInvoiceLines(snap.supplyInvoiceLines)
-        setMercuryAllocLines(snap.mercuryAllocLines)
-        setMercuryFetchFailed(snap.mercuryFetchFailed)
-        setTallyPartLines(snap.tallyPartLines)
-        setTallyFetchFailed(snap.tallyFetchFailed)
-      } finally {
-        if (!cancelled) setJobMaterialsSnapshotLoading(false)
-      }
-    })()
-
-    return () => {
-      cancelled = true
-    }
-  }, [editing?.id])
 
   useEffect(() => {
     const jobId = editing?.id ?? null
@@ -1500,78 +1444,6 @@ export default function JobFormModal({
   }, [editing?.id, editing?.hcp_number, hcpNumber])
 
   useEffect(() => {
-    if (!migrateJobModalOpen || !editing?.id) {
-      setMigrateTargetCandidates([])
-      setMigrateTargetSearchLoading(false)
-      return
-    }
-    const sourceJobId = editing.id
-    const q = migrateTargetSearch.trim()
-    if (q.length < 2) {
-      setMigrateTargetCandidates([])
-      setMigrateTargetSearchLoading(false)
-      return
-    }
-    setMigrateTargetSearchLoading(true)
-    let cancelledOuter = false
-    const timer = window.setTimeout(() => {
-      void (async () => {
-        try {
-          const raw = await withSupabaseRetry(
-            async () => supabase.rpc('search_jobs_ledger', { search_text: q }),
-            'migrate job target search',
-          )
-          const rows = (raw ?? []) as Array<{ id: string; hcp_number: string; click_number?: string; job_name: string; job_address: string }>
-          if (cancelledOuter) return
-          setMigrateTargetCandidates(rows.filter((r) => r.id !== sourceJobId).slice(0, 30))
-        } catch {
-          if (!cancelledOuter) setMigrateTargetCandidates([])
-        } finally {
-          if (!cancelledOuter) setMigrateTargetSearchLoading(false)
-        }
-      })()
-    }, 280)
-    return () => {
-      cancelledOuter = true
-      window.clearTimeout(timer)
-    }
-  }, [migrateJobModalOpen, migrateTargetSearch, editing?.id])
-
-  useEffect(() => {
-    const tid = migrateTargetJobId
-    if (!tid) {
-      setMigrateTargetPreview(null)
-      setMigrateTargetPreviewLoading(false)
-      return
-    }
-    let cancelled = false
-    setMigrateTargetPreviewLoading(true)
-    setMigrateTargetPreview(null)
-    void (async () => {
-      try {
-        const snap = await fetchJobMaterialsCostSnapshot(tid)
-        const teamRows = await loadTeamLaborData(supabase)
-        const teamRow = teamRows.find((r) => r.jobId === tid) ?? null
-        if (cancelled) return
-        setMigrateTargetPreview({
-          supply: snap.supplyInvoiceTotal,
-          tally: tallyPartsTotalFromLines(snap.tallyPartLines),
-          mercury: mercuryCardTotalFromLines(snap.mercuryAllocLines),
-          teamCost: teamRow?.jobCost ?? 0,
-          teamHours: teamRow?.manHours ?? 0,
-        })
-      } catch {
-        if (!cancelled) setMigrateTargetPreview(null)
-      } finally {
-        if (!cancelled) setMigrateTargetPreviewLoading(false)
-      }
-    })()
-    return () => {
-      cancelled = true
-    }
-  }, [migrateTargetJobId])
-
-  useEffect(() => {
     if (customerId && billingCustomerHighlight) {
       setBillingCustomerHighlight(false)
     }
@@ -1675,16 +1547,6 @@ export default function JobFormModal({
     return formatCurrency(sum)
   }, [materials])
 
-  const mercuryCardTotal = useMemo(
-    () => mercuryAllocLines.reduce((s, l) => s + Math.abs(Number(l.allocationAmount)), 0),
-    [mercuryAllocLines],
-  )
-
-  const tallyPartsTotal = useMemo(() => tallyPartLines.reduce((s, l) => s + l.lineTotal, 0), [tallyPartLines])
-
-  const toggleMaterialsAccordion = useCallback((key: MaterialsAccordionKey) => {
-    setMaterialsAccordionOpen((prev) => (prev === key ? null : key))
-  }, [])
 
   const scrollToProjectSection = useCallback(() => {
     setProjectFilesPlansExpanded(true)
