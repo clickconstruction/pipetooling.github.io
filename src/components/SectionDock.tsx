@@ -12,6 +12,8 @@ export type SectionDockSection = { id: string; label: string }
  * highlight walks to the edge instead of over-scrolling.
  * Parent passes only the sections that actually rendered.
  */
+const DOCK_COLLAPSED_STORAGE_KEY = 'pipetooling_section_dock_collapsed_v1'
+
 export function SectionDock({
   sections,
   ariaLabel = 'Page sections',
@@ -21,6 +23,25 @@ export function SectionDock({
 }) {
   const narrow = useNarrowViewport640()
   const [activeId, setActiveId] = useState<string | null>(null)
+  /** Per-device: collapsed the dock stays out of the way until expanded again. */
+  const [collapsed, setCollapsed] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem(DOCK_COLLAPSED_STORAGE_KEY) === 'true'
+    } catch {
+      return false
+    }
+  })
+  const toggleCollapsed = () => {
+    setCollapsed((prev) => {
+      const next = !prev
+      try {
+        localStorage.setItem(DOCK_COLLAPSED_STORAGE_KEY, String(next))
+      } catch {
+        /* per-device nicety only */
+      }
+      return next
+    })
+  }
   const navRef = useRef<HTMLElement | null>(null)
 
   const recompute = useCallback(() => {
@@ -69,11 +90,7 @@ export function SectionDock({
   if (narrow || sections.length < 2) return null
 
   return (
-    <nav
-      ref={(el) => {
-        navRef.current = el
-      }}
-      aria-label={ariaLabel}
+    <div
       style={{
         position: 'fixed',
         bottom: 12,
@@ -89,38 +106,82 @@ export function SectionDock({
         borderRadius: 999,
         boxShadow: '0 4px 12px rgba(0,0,0,0.18)',
         maxWidth: 'calc(100vw - 2rem)',
-        overflowX: 'auto',
       }}
     >
-      {sections.map((s) => {
-        const active = s.id === activeId
-        return (
-          <button
-            key={s.id}
-            type="button"
-            data-dock-chip={s.id}
-            aria-current={active ? 'true' : undefined}
-            onClick={() => {
-              setActiveId(s.id)
-              document.getElementById(s.id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-            }}
-            style={{
-              padding: '0.3rem 0.75rem',
-              fontSize: '0.8125rem',
-              fontWeight: active ? 700 : 500,
-              whiteSpace: 'nowrap',
-              border: active ? '2px solid #3b82f6' : '2px solid transparent',
-              borderRadius: 999,
-              background: active ? 'var(--bg-blue-tint)' : 'none',
-              color: active ? 'var(--text-blue-700)' : 'var(--text-muted)',
-              cursor: 'pointer',
-              flexShrink: 0,
-            }}
-          >
-            {s.label}
-          </button>
-        )
-      })}
-    </nav>
+      {!collapsed ? (
+        <nav
+          ref={(el) => {
+            navRef.current = el
+          }}
+          aria-label={ariaLabel}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 4,
+            minWidth: 0,
+            overflowX: 'auto',
+          }}
+        >
+          {sections.map((s) => {
+            const active = s.id === activeId
+            return (
+              <button
+                key={s.id}
+                type="button"
+                data-dock-chip={s.id}
+                aria-current={active ? 'true' : undefined}
+                onClick={() => {
+                  setActiveId(s.id)
+                  document.getElementById(s.id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                }}
+                style={{
+                  padding: '0.3rem 0.75rem',
+                  fontSize: '0.8125rem',
+                  fontWeight: active ? 700 : 500,
+                  whiteSpace: 'nowrap',
+                  border: active ? '2px solid #3b82f6' : '2px solid transparent',
+                  borderRadius: 999,
+                  background: active ? 'var(--bg-blue-tint)' : 'none',
+                  color: active ? 'var(--text-blue-700)' : 'var(--text-muted)',
+                  cursor: 'pointer',
+                  flexShrink: 0,
+                }}
+              >
+                {s.label}
+              </button>
+            )
+          })}
+        </nav>
+      ) : null}
+      {!collapsed ? (
+        <span aria-hidden style={{ alignSelf: 'stretch', width: 1, background: 'var(--chrome-border)', flexShrink: 0 }} />
+      ) : null}
+      <button
+        type="button"
+        onClick={toggleCollapsed}
+        aria-expanded={!collapsed}
+        aria-label={collapsed ? 'Expand section bar' : 'Collapse section bar'}
+        title={collapsed ? 'Expand section bar' : 'Collapse section bar'}
+        style={{
+          flexShrink: 0,
+          width: 26,
+          height: 26,
+          display: 'inline-flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: 0,
+          border: 'none',
+          borderRadius: 999,
+          background: 'none',
+          color: 'var(--text-muted)',
+          fontSize: '0.8125rem',
+          fontWeight: 700,
+          cursor: 'pointer',
+          lineHeight: 1,
+        }}
+      >
+        {collapsed ? '<' : '>'}
+      </button>
+    </div>
   )
 }
