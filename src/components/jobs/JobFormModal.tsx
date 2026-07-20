@@ -432,6 +432,156 @@ export default function JobFormModal({
       }),
     [jobTotalBidDollars, payments, editing?.invoices],
   )
+  // ---- Billing money autosave (editing mode only) -------------------------
+  // Persists the money slice — line items, payments, and the derived
+  // revenue/payments_made — ~1.2s after the user stops editing, using the same
+  // delete+reinsert writes as handleSubmit. The baseline snapshot is captured
+  // in the same commit that hydrates the form (hydrate sets editing + fixtures
+  // + payments together), so autosave can never fire against pre-hydration
+  // empty state and wipe rows. Job identity fields stay on explicit Save.
+  const billingMoneySliceJson = useMemo(
+    () =>
+      JSON.stringify({
+        f: fixtures.map((f) => ({ n: f.name, c: f.count, p: f.line_unit_price, d: f.line_description })),
+        p: payments.map((p) => ({
+          a: p.amount,
+          o: p.paid_on,
+          n: p.note,
+          t: p.payment_type,
+          r: p.reference_number,
+          i: p.invoice_id,
+          m: p.mercury_transaction_id,
+        })),
+      }),
+    [fixtures, payments],
+  )
+  const [billingAutosaveStatus, setBillingAutosaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
+  const autosaveBaselineRef = useRef<{ jobId: string; json: string } | null>(null)
+  const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const autosaveRunningRef = useRef(false)
+  const autosaveQueuedRef = useRef(false)
+  const autosaveFixturesRef = useRef(fixtures)
+  autosaveFixturesRef.current = fixtures
+  const autosavePaymentsRef = useRef(payments)
+  autosavePaymentsRef.current = payments
+  const autosaveSliceRef = useRef(billingMoneySliceJson)
+  autosaveSliceRef.current = billingMoneySliceJson
+  const autosaveJobIdRef = useRef<string | null>(null)
+  autosaveJobIdRef.current = editing?.id ?? null
+
+  async function runBillingAutosave(): Promise<void> {
+    const jobId = autosaveJobIdRef.current
+    if (!jobId) return
+    if (autosaveRunningRef.current) {
+      autosaveQueuedRef.current = true
+      return
+    }
+    autosaveRunningRef.current = true
+    setBillingAutosaveStatus('saving')
+    const sliceWritten = autosaveSliceRef.current
+    try {
+      const fx = autosaveFixturesRef.current
+      const pays = autosavePaymentsRef.current
+      const revNum = revenueDollarsFromFixtures(fx)
+      const paymentsMadeNum = pays.reduce((s, p) => s + (Number(p.amount) || 0), 0)
+      const { error: updErr } = await supabase
+        .from('jobs_ledger')
+        .update({ revenue: revNum, payments_made: paymentsMadeNum })
+        .eq('id', jobId)
+      if (updErr) throw updErr
+      const { error: delPayErr } = await supabase.from('jobs_ledger_payments').delete().eq('job_id', jobId)
+      if (delPayErr) throw delPayErr
+      const validPayments = pays.filter((p) => (Number(p.amount) || 0) > 0)
+      for (const [i, p] of validPayments.entries()) {
+        const { error: insPayErr } = await supabase.from('jobs_ledger_payments').insert({
+          job_id: jobId,
+          amount: Number(p.amount) || 0,
+          sequence_order: i,
+          paid_on: p.paid_on?.trim() ? p.paid_on.trim() : null,
+          note: p.note?.trim() ? p.note.trim() : null,
+          payment_type: p.payment_type?.trim() ? p.payment_type.trim() : null,
+          reference_number: p.reference_number?.trim() ? p.reference_number.trim() : null,
+          invoice_id: p.invoice_id,
+          mercury_transaction_id: p.mercury_transaction_id,
+        })
+        if (insPayErr) throw insPayErr
+      }
+      const { error: delFixErr } = await supabase.from('jobs_ledger_fixtures').delete().eq('job_id', jobId)
+      if (delFixErr) throw delFixErr
+      const validFixtures = fx.filter((f) => normalizeFixtureDisplayName(f.name ?? '').length > 0)
+      for (const [i, f] of validFixtures.entries()) {
+        const unit = f.line_unit_price
+        const { error: insFixErr } = await supabase.from('jobs_ledger_fixtures').insert({
+          job_id: jobId,
+          name: normalizeFixtureDisplayName(f.name ?? ''),
+          count: f.count,
+          sequence_order: i,
+          line_unit_price: unit != null && unit > 0 ? unit : null,
+          line_description: (f.line_description ?? '').trim() ? (f.line_description ?? '').trim() : null,
+        })
+        if (insFixErr) throw insFixErr
+      }
+      autosaveBaselineRef.current = { jobId, json: sliceWritten }
+      setBillingAutosaveStatus('saved')
+      onSavedRef.current?.()
+    } catch (autosaveErr) {
+      setBillingAutosaveStatus('error')
+      showToast(
+        `Autosave failed: ${autosaveErr instanceof Error ? autosaveErr.message : String(autosaveErr)}`,
+        'error',
+      )
+    } finally {
+      autosaveRunningRef.current = false
+      if (autosaveQueuedRef.current) {
+        autosaveQueuedRef.current = false
+        void runBillingAutosave()
+      }
+    }
+  }
+  const runBillingAutosaveRef = useRef(runBillingAutosave)
+  runBillingAutosaveRef.current = runBillingAutosave
+
+  /** Cancel any pending debounce and, if the money slice is dirty, save it NOW. */
+  async function flushBillingAutosave(): Promise<void> {
+    if (autosaveTimerRef.current) {
+      clearTimeout(autosaveTimerRef.current)
+      autosaveTimerRef.current = null
+    }
+    const jobId = autosaveJobIdRef.current
+    const base = autosaveBaselineRef.current
+    if (jobId && base && base.jobId === jobId && base.json !== autosaveSliceRef.current) {
+      await runBillingAutosave()
+    }
+  }
+
+  useEffect(() => {
+    const jobId = editing?.id ?? null
+    if (!jobId) {
+      autosaveBaselineRef.current = null
+      return
+    }
+    const base = autosaveBaselineRef.current
+    if (!base || base.jobId !== jobId) {
+      // First sight of this job: the hydrate committed editing + fixtures +
+      // payments together, so this snapshot is the persisted state.
+      autosaveBaselineRef.current = { jobId, json: billingMoneySliceJson }
+      setBillingAutosaveStatus('idle')
+      return
+    }
+    if (base.json === billingMoneySliceJson) return
+    if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current)
+    autosaveTimerRef.current = setTimeout(() => {
+      autosaveTimerRef.current = null
+      void runBillingAutosaveRef.current()
+    }, 1200)
+    return () => {
+      if (autosaveTimerRef.current) {
+        clearTimeout(autosaveTimerRef.current)
+        autosaveTimerRef.current = null
+      }
+    }
+  }, [billingMoneySliceJson, editing?.id])
+
   // Same immediate-save contract as the Stages Progress & payment cell: writes
   // jobs_ledger.pct_complete on blur/Enter, outside the form's Save flow (the
   // form payload never touches pct_complete, so Save can't clobber it).
@@ -1520,6 +1670,8 @@ export default function JobFormModal({
 
   async function moveWorkingJobToReadyToBillFromEdit() {
     if (!editing || editing.status !== 'working') return
+    // Make the DB match the on-screen totals before the status/invoice writes.
+    await flushBillingAutosave()
     const remaining = getEditJobBillableRemaining()
     const amount = parseMoneyInputToNumber(newInvoiceAmount)
     if (!(remaining > 0) || Math.round(amount * 100) !== Math.round(remaining * 100)) {
@@ -1570,6 +1722,8 @@ export default function JobFormModal({
 
   async function createInvoice() {
     if (!editing) return
+    // Make the DB match the on-screen totals before the invoice is written.
+    await flushBillingAutosave()
     const amount = parseMoneyInputToNumber(newInvoiceAmount)
     if (!(amount > 0)) {
       setError('Enter a valid amount greater than 0')
@@ -2026,6 +2180,12 @@ export default function JobFormModal({
     }
     setSaving(true)
     setError(null)
+    // Full save supersedes any pending billing autosave — cancel the debounce
+    // so the two never race; the baseline is refreshed after a successful save.
+    if (autosaveTimerRef.current) {
+      clearTimeout(autosaveTimerRef.current)
+      autosaveTimerRef.current = null
+    }
     const revNum = jobTotalBidDollars
     const paymentsMadeNum = payments.reduce((s, p) => s + (Number(p.amount) || 0), 0)
     const validPayments = payments.filter((p) => (Number(p.amount) || 0) > 0)
@@ -2143,6 +2303,11 @@ export default function JobFormModal({
         for (const uid of toRemove) {
           await supabase.from('jobs_ledger_team_members').delete().eq('job_id', editing.id).eq('user_id', uid)
         }
+
+        // The full save just persisted the money slice too — refresh the
+        // autosave baseline so it doesn't re-write the same data afterwards.
+        autosaveBaselineRef.current = { jobId: editing.id, json: autosaveSliceRef.current }
+        setBillingAutosaveStatus('idle')
 
         const statusBeforeSave = normalizeJobsLedgerStatus(editing.status)
         if (statusBeforeSave === 'paid' && revNum > paymentsMadeNum + 0.01) {
@@ -3367,6 +3532,21 @@ export default function JobFormModal({
           <div style={{ marginBottom: '1rem' }}>
             <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.5rem' }}>
               <span style={{ fontWeight: 600, fontSize: '0.9375rem', color: 'var(--text-700)' }}>Billing</span>
+              {editing?.id && billingAutosaveStatus !== 'idle' && (
+                <span
+                  aria-live="polite"
+                  style={{
+                    fontSize: '0.75rem',
+                    color: billingAutosaveStatus === 'error' ? 'var(--text-red-600)' : 'var(--text-muted)',
+                  }}
+                >
+                  {billingAutosaveStatus === 'saving'
+                    ? 'Saving…'
+                    : billingAutosaveStatus === 'saved'
+                      ? 'Saved'
+                      : 'Autosave failed — use Save'}
+                </span>
+              )}
             </div>
             <MoneyLifecycleBar
               hasBar={billingBar.hasBar}
