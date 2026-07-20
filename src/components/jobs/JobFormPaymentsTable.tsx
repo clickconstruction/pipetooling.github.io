@@ -123,12 +123,14 @@ export function JobFormPaymentsTable({
     setManualEntryOpen(false)
   }, [editing?.id])
   const isBlankManualRow = useCallback(
+    // paid_on is deliberately NOT part of blankness: newEmptyPaymentRow() seeds
+    // today's date, and a date with no amount isn't a recordable payment (the
+    // save path only persists rows with amount > 0).
     (row: PaymentRow) =>
       !persistedLedgerPaymentIds.has(row.id) &&
       !stripeBillInvoiceForPaymentRow(row, editing) &&
       !mercuryLinkedPaymentRow(row) &&
       !(Number(row.amount) > 0) &&
-      !(row.paid_on ?? '').trim() &&
       !(row.note ?? '').trim() &&
       !(row.payment_type ?? '').trim() &&
       !(row.reference_number ?? '').trim() &&

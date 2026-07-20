@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-20 (v2.774)
+last_updated: 2026-07-20 (v2.775)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.775)
+
+### Edit Job — payments section actually starts folded (2026-07-20)
+Browser verification of v2.774 on prod caught that the ③ Payments received section still opened with the blank entry row visible above the new "+ Record non-Stripe payment received" button. Cause: `newEmptyPaymentRow()` seeds `paid_on` with **today's date**, and the blank-manual-row predicate counted a non-empty date as content, so the seeded row never folded. Fix: `paid_on` is deliberately excluded from blankness in [`JobFormPaymentsTable`](../src/components/jobs/JobFormPaymentsTable.tsx) — a date with no amount isn't a recordable payment (the save path only persists rows with `amount > 0`), so nothing meaningful can hide behind the fold.
 
 ## Latest Updates (v2.774)
 
