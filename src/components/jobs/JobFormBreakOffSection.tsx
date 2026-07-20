@@ -1,4 +1,6 @@
+import { useEffect, useState } from 'react'
 import { useBreakOffSlider } from './useBreakOffSlider'
+import { BILLED_COLOR, DRAFT_COLOR, PAID_COLOR } from './MoneyLifecycleBar'
 import {
   formatCurrency,
   parseMoneyInputToNumber,
@@ -60,6 +62,16 @@ export function JobFormBreakOffSection({
     onBreakOffSliderKeyDown,
   } = breakOff
 
+  const [infoOpen, setInfoOpen] = useState(false)
+  useEffect(() => {
+    if (!infoOpen) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setInfoOpen(false)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [infoOpen])
+
   return (
                 <div
                   style={{
@@ -93,7 +105,7 @@ export function JobFormBreakOffSection({
                         whiteSpace: 'nowrap',
                       }}
                     >
-                      {isSendFullUnallocatedToReadyToBill ? 'Send to Ready to Bill:' : 'Break off Invoice:'}
+                      {isSendFullUnallocatedToReadyToBill ? 'Send to Ready to Bill:' : 'Open Invoice:'}
                     </label>
                     <input
                       id="edit-job-partial-invoice-amount"
@@ -199,7 +211,7 @@ export function JobFormBreakOffSection({
                       </span>
                     ) : null}
                   </div>
-                  {breakOffBillingTrackPercents.hasTotal ? (
+                  {breakOffBillingTrackPercents.hasTotal && breakOffRemaining > 0 ? (
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', alignItems: 'center', justifyContent: 'center' }}>
                       <span style={{ fontSize: '0.6875rem', color: 'var(--text-muted)' }}>Quick set:</span>
                       {[
@@ -208,7 +220,16 @@ export function JobFormBreakOffSection({
                         { pct: 60, label: '60%' },
                         { pct: 80, label: '80%' },
                         { pct: 100, label: 'Max' },
-                      ].map((q) => (
+                      ]
+                        // Numeric targets only when they land strictly inside the slider's
+                        // travel (below/at min = $0 invoice; at/above max = same as Max).
+                        .filter((q) =>
+                          q.pct === 100
+                            ? true
+                            : q.pct > breakOffCombinedSliderBounds.min &&
+                              q.pct < breakOffCombinedSliderBounds.max,
+                        )
+                        .map((q) => (
                         <button
                           key={q.label}
                           type="button"
@@ -290,7 +311,7 @@ export function JobFormBreakOffSection({
                             top: 20,
                             height: 8,
                             width: `${breakOffBillingTrackPercents.paidPct}%`,
-                            background: '#2563eb',
+                            background: PAID_COLOR,
                             borderRadius:
                               breakOffBillingTrackPercents.breakPreviewPct > 0 ? '4px 0 0 4px' : 4,
                             zIndex: 1,
@@ -304,8 +325,25 @@ export function JobFormBreakOffSection({
                               top: 20,
                               height: 8,
                               width: `${breakOffBillingTrackPercents.breakPreviewPct}%`,
-                              background: '#93c5fd',
+                              background: DRAFT_COLOR,
                               borderRadius: '0 4px 4px 0',
+                              zIndex: 1,
+                            }}
+                          />
+                        ) : null}
+                        {breakOffBillingTrackPercents.billedPct > 0 ? (
+                          /* Invoices already carved off (drafts + billed) — the wall the
+                             thumb bumps into on the right (slider max = its left edge). */
+                          <div
+                            style={{
+                              position: 'absolute',
+                              left: `${100 - breakOffBillingTrackPercents.billedPct}%`,
+                              top: 20,
+                              height: 8,
+                              width: `${breakOffBillingTrackPercents.billedPct}%`,
+                              background: BILLED_COLOR,
+                              borderRadius:
+                                breakOffBillingTrackPercents.billedPct >= 100 ? 4 : '0 4px 4px 0',
                               zIndex: 1,
                             }}
                           />
@@ -356,10 +394,11 @@ export function JobFormBreakOffSection({
                             }}
                           />
                         ) : null}
+                        {breakOffRemaining > 0 ? (
                         <div
                           role="slider"
                           tabIndex={0}
-                          aria-label={`Paid plus break-off through ${Math.round(breakOffCombinedHandlePct)}% of job total. Track shows ${Math.round(breakOffBillingTrackPercents.paidPct)}% paid and ${Math.round(breakOffBillingTrackPercents.breakPreviewPct)}% new invoice preview. ${jobCompleteTrackPct == null ? 'Field progress not set.' : `Field progress ${Math.round(jobCompleteTrackPct)}%.`}`}
+                          aria-label={`Paid plus break-off through ${Math.round(breakOffCombinedHandlePct)}% of job total. Track shows ${Math.round(breakOffBillingTrackPercents.paidPct)}% paid, ${Math.round(breakOffBillingTrackPercents.breakPreviewPct)}% new invoice preview, and ${Math.round(breakOffBillingTrackPercents.billedPct)}% already billed. ${jobCompleteTrackPct == null ? 'Field progress not set.' : `Field progress ${Math.round(jobCompleteTrackPct)}%.`}`}
                           aria-valuemin={Math.round(breakOffCombinedSliderBounds.min)}
                           aria-valuemax={Math.round(breakOffCombinedSliderBounds.max)}
                           aria-valuenow={Math.round(
@@ -394,6 +433,7 @@ export function JobFormBreakOffSection({
                             />
                           </svg>
                         </div>
+                        ) : null}
                         <div
                           style={{
                             position: 'absolute',
@@ -441,19 +481,20 @@ export function JobFormBreakOffSection({
                     >
                       {(
                         [
-                          { color: 'var(--text-link)', label: 'Paid', sub: '', circle: false },
-                          { color: '#93c5fd', label: 'New Invoice', sub: '', circle: false },
+                          { color: PAID_COLOR, label: 'Paid', sub: '', circle: false },
+                          { color: BILLED_COLOR, label: 'Billed', sub: '', circle: false },
+                          { color: DRAFT_COLOR, label: 'New Invoice', sub: '', circle: false },
                           {
                             color: '#22c55e',
-                            label: 'Paid + this bill',
+                            label: 'Open Invoice',
                             sub: '',
                             circle: false,
-                            triangle: true,
+                            info: true,
                           },
                           {
                             color: '#facc15',
                             label:
-                              jobCompleteTrackPct == null ? 'Job: Not set' : `Job: ${Math.round(jobCompleteTrackPct)}%`,
+                              jobCompleteTrackPct == null ? 'Job %' : `Job: ${Math.round(jobCompleteTrackPct)}%`,
                             sub: '',
                             circle: true,
                           },
@@ -462,19 +503,19 @@ export function JobFormBreakOffSection({
                           label: string
                           sub: string
                           circle: boolean
-                          triangle?: boolean
+                          info?: boolean
                         }[]
-                      ).map((item) => (
-                        <div
-                          key={item.label}
-                          style={{
-                            display: 'inline-flex',
-                            alignItems: 'flex-start',
-                            gap: 6,
-                            maxWidth: '100%',
-                          }}
-                        >
-                          {item.triangle ? (
+                      ).map((item) =>
+                        item.info ? (
+                          <div
+                            key={item.label}
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'flex-start',
+                              gap: 6,
+                              maxWidth: '100%',
+                            }}
+                          >
                             <svg
                               width="12"
                               height="12"
@@ -490,21 +531,68 @@ export function JobFormBreakOffSection({
                                 strokeLinejoin="round"
                               />
                             </svg>
-                          ) : (
                             <span
-                              aria-hidden
                               style={{
-                                width: 12,
-                                height: 12,
-                                borderRadius: item.circle ? '50%' : 3,
-                                background: item.color,
-                                border: item.circle ? '1px solid #ca8a04' : 'none',
-                                boxSizing: 'border-box',
-                                flexShrink: 0,
-                                marginTop: 2,
+                                fontSize: '0.7rem',
+                                color: 'var(--text-muted)',
+                                lineHeight: 1.35,
+                                minWidth: 0,
                               }}
-                            />
-                          )}
+                            >
+                              <span style={{ fontWeight: 600, color: 'var(--text-600)' }}>{item.label}</span>
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => setInfoOpen(true)}
+                              aria-label="How the break-off slider works"
+                              title="How the break-off slider works"
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                width: 16,
+                                height: 16,
+                                marginTop: 0,
+                                flexShrink: 0,
+                                borderRadius: '50%',
+                                border: '1px solid var(--border-strong)',
+                                background: 'var(--surface)',
+                                color: 'var(--text-muted)',
+                                fontFamily: 'Georgia, "Times New Roman", serif',
+                                fontStyle: 'italic',
+                                fontWeight: 700,
+                                fontSize: '0.7rem',
+                                lineHeight: 1,
+                                padding: 0,
+                                cursor: 'pointer',
+                              }}
+                            >
+                              i
+                            </button>
+                          </div>
+                        ) : (
+                        <div
+                          key={item.label}
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'flex-start',
+                            gap: 6,
+                            maxWidth: '100%',
+                          }}
+                        >
+                          <span
+                            aria-hidden
+                            style={{
+                              width: 12,
+                              height: 12,
+                              borderRadius: item.circle ? '50%' : 3,
+                              background: item.color,
+                              border: item.circle ? '1px solid #ca8a04' : 'none',
+                              boxSizing: 'border-box',
+                              flexShrink: 0,
+                              marginTop: 2,
+                            }}
+                          />
                           <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', lineHeight: 1.35, minWidth: 0 }}>
                             <span style={{ fontWeight: 600, color: 'var(--text-600)' }}>{item.label}</span>
                             {item.sub ? (
@@ -516,6 +604,71 @@ export function JobFormBreakOffSection({
                           </span>
                         </div>
                       ))}
+                    </div>
+                  ) : null}
+                  {infoOpen ? (
+                    <div
+                      role="presentation"
+                      onClick={(e) => {
+                        if (e.target === e.currentTarget) setInfoOpen(false)
+                      }}
+                      style={{
+                        position: 'fixed',
+                        inset: 0,
+                        background: 'rgba(0,0,0,0.4)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        zIndex: 2000,
+                        padding: '1rem',
+                      }}
+                    >
+                      <div
+                        role="dialog"
+                        aria-modal="true"
+                        aria-labelledby="break-off-info-title"
+                        style={{
+                          background: 'var(--surface)',
+                          padding: '1.25rem 1.5rem',
+                          borderRadius: 8,
+                          width: '100%',
+                          maxWidth: 420,
+                          boxSizing: 'border-box',
+                          boxShadow: '0 10px 30px rgba(0,0,0,0.25)',
+                        }}
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <h2
+                          id="break-off-info-title"
+                          style={{ margin: '0 0 0.75rem', fontSize: '1.0625rem', fontWeight: 600, color: 'var(--text-800)' }}
+                        >
+                          How the break-off slider works
+                        </h2>
+                        <p style={{ margin: '0 0 1.25rem', fontSize: '0.875rem', lineHeight: 1.5, color: 'var(--text-700)' }}>
+                          The green triangle sets the next bill. It can't go left of what's already
+                          been paid, and can't go right of what's left to bill (job total minus
+                          payments minus invoices already carved off). The yellow dot is just how far
+                          along the work is — it doesn't limit the bill.
+                        </p>
+                        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                          <button
+                            type="button"
+                            onClick={() => setInfoOpen(false)}
+                            style={{
+                              padding: '0.4rem 0.85rem',
+                              fontSize: '0.875rem',
+                              fontWeight: 600,
+                              background: '#3b82f6',
+                              color: 'white',
+                              border: 'none',
+                              borderRadius: 6,
+                              cursor: 'pointer',
+                            }}
+                          >
+                            Got it
+                          </button>
+                        </div>
+                      </div>
                     </div>
                   ) : null}
                 </div>

@@ -145,8 +145,8 @@ export function JobFormPaymentsTable({
 
   return (
     <div style={{ marginBottom: '1rem' }}>
-      <h4 style={{ margin: '0 0 0.15rem', fontSize: '0.9375rem' }}>③ Payments received</h4>
-      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: '0 0 0.5rem' }}>Money collected on the job. Saves automatically.</div>
+      <h4 style={{ margin: '0 0 0.15rem', fontSize: '0.9375rem', fontWeight: 400, textDecoration: 'underline', color: 'var(--text-700)' }}>③ Payments received</h4>
+      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: '0 0 0.5rem' }}>Money collected on the job. Updates automatically when customer pays through Stripe.</div>
       {visiblePayments.length > 0 && (
       <div style={{ overflowX: 'auto' }}>
       <table
@@ -660,23 +660,30 @@ export function JobFormPaymentsTable({
       </div>
       )}
       {!manualEntryOpen && (
-        <button
-          type="button"
-          onClick={openManualEntry}
+        <div
           style={{
+            display: 'flex',
+            justifyContent: 'center',
             marginTop: visiblePayments.length > 0 ? '0.5rem' : 0,
-            padding: '0.35rem 0.75rem',
-            fontSize: '0.8125rem',
-            fontWeight: 500,
-            background: 'var(--surface)',
-            color: 'var(--text-link)',
-            border: '1px solid var(--border-strong)',
-            borderRadius: 6,
-            cursor: 'pointer',
           }}
         >
-          + Record non-Stripe payment received
-        </button>
+          <button
+            type="button"
+            onClick={openManualEntry}
+            style={{
+              padding: '0.35rem 0.75rem',
+              fontSize: '0.8125rem',
+              fontWeight: 500,
+              background: 'var(--surface)',
+              color: 'var(--text-link)',
+              border: '1px solid var(--border-strong)',
+              borderRadius: 6,
+              cursor: 'pointer',
+            }}
+          >
+            + Record non-Stripe payment received
+          </button>
+        </div>
       )}
     </div>
   )

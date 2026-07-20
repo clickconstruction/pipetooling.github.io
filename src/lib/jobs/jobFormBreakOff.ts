@@ -5,10 +5,8 @@
  */
 import type { JobWithDetails } from '../../types/jobWithDetails'
 
-/** Gross (job total) minus payments minus ready_to_bill and billed invoice line amounts — same basis as Stages unallocated. */
-export function unallocatedBillableDollars(
-  gross: number,
-  paidSum: number,
+/** Sum of ready_to_bill + billed invoice line amounts — the dollars already carved off the job total. */
+export function allocatedInvoiceDollars(
   invoices: Array<{ status: string; amount: unknown }> | null | undefined,
 ): number {
   let alloc = 0
@@ -17,7 +15,16 @@ export function unallocatedBillableDollars(
       alloc += Number(inv.amount) || 0
     }
   }
-  return Math.max(0, gross - paidSum - alloc)
+  return alloc
+}
+
+/** Gross (job total) minus payments minus ready_to_bill and billed invoice line amounts — same basis as Stages unallocated. */
+export function unallocatedBillableDollars(
+  gross: number,
+  paidSum: number,
+  invoices: Array<{ status: string; amount: unknown }> | null | undefined,
+): number {
+  return Math.max(0, gross - paidSum - allocatedInvoiceDollars(invoices))
 }
 
 /** Break-off dollars for target combined % ((paid + break) / gross) * 100, clamped to remaining unallocated. */

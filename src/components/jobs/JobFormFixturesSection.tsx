@@ -71,16 +71,9 @@ export function JobFormFixturesSection({
                 : {}),
             }}
           >
-            <div style={{ fontWeight: 600, fontSize: '0.9375rem', color: 'var(--text-700)', marginBottom: '0.15rem' }}>① Line Items</div>
-            <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.75rem' }}>
+            <div style={{ fontWeight: 400, textDecoration: 'underline', fontSize: '0.9375rem', color: 'var(--text-700)', marginBottom: '0.15rem' }}>① Line Items</div>
+            <div style={{ marginBottom: '0.75rem' }}>
               <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Fixtures / tie-ins / repair. The work we agree to do, each line adds to the <strong>Job Total</strong></span>
-              <span
-                aria-live="polite"
-                title="Running total of the line items below."
-                style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-700)', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', marginLeft: 'auto' }}
-              >
-                Job Total: ${formatCurrency(jobTotalDollars)}
-              </span>
             </div>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem', tableLayout: 'fixed' }}>
               <colgroup>
@@ -456,6 +449,15 @@ export function JobFormFixturesSection({
                 })}
               </tbody>
             </table>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
+              <span
+                aria-live="polite"
+                title="Running total of the line items above."
+                style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-700)', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}
+              >
+                Job Total: ${formatCurrency(jobTotalDollars)}
+              </span>
+            </div>
           </div>
   )
 }

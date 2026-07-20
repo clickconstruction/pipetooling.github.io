@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  allocatedInvoiceDollars,
   breakDollarsFromCombinedPct,
   breakOffPrefillAmountStringFromJob,
   combinedPctFromTrackRatio,
@@ -7,6 +8,23 @@ import {
   unallocatedBillableDollars,
 } from './jobFormBreakOff'
 import type { JobWithDetails } from '../../types/jobWithDetails'
+
+describe('allocatedInvoiceDollars', () => {
+  it('sums ready_to_bill + billed amounts and ignores other statuses', () => {
+    const invoices = [
+      { status: 'ready_to_bill', amount: 300 },
+      { status: 'billed', amount: 200 },
+      { status: 'void', amount: 999 }, // ignored
+      { status: 'billed', amount: '50' }, // tolerates string amounts
+    ]
+    expect(allocatedInvoiceDollars(invoices)).toBe(550)
+  })
+  it('returns 0 for null/undefined/empty', () => {
+    expect(allocatedInvoiceDollars(null)).toBe(0)
+    expect(allocatedInvoiceDollars(undefined)).toBe(0)
+    expect(allocatedInvoiceDollars([])).toBe(0)
+  })
+})
 
 describe('unallocatedBillableDollars', () => {
   it('is gross minus paid minus ready_to_bill + billed invoice amounts', () => {
