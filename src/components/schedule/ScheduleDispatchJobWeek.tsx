@@ -32,6 +32,7 @@ import { insertScheduleDispatchCopiedLeg } from '../../lib/scheduleDispatchMirro
 import { fetchSalariedUserIdSetFromUserIds } from '../../lib/salaryPayConfigGate'
 import { isAssistantLike, isSubcontractorLikeRole } from '../../lib/subcontractorLikeRole'
 import { ScheduleDispatchAddBlockModal } from './ScheduleDispatchAddBlockModal'
+import { ScheduleDispatchJobWeekHistory } from './ScheduleDispatchJobWeekHistory'
 import { ScheduleDispatchBlockNoteModal } from './ScheduleDispatchBlockNoteModal'
 import { PreviewJobModal } from '../calendar/PreviewJobModal'
 import {
@@ -1084,6 +1085,8 @@ export function ScheduleDispatchJobWeek() {
           onRequestUndoNotComingIn={canEdit ? handleRequestUndoNotComingIn : undefined}
         />
       </DndContext>
+
+      {jobId ? <ScheduleDispatchJobWeekHistory jobId={jobId} /> : null}
 
       <ScheduleDispatchAddBlockModal
         open={blockModalState != null}

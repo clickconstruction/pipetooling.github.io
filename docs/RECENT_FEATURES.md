@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-19 (v2.761)
+last_updated: 2026-07-19 (v2.762)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.762)
+
+### Schedule Dispatch — per-job Work history (who worked, hours by week, every session) (2026-07-19)
+The per-job Dispatch view (`/schedule-dispatch?jobId=`) previously showed only the selected week's assignment grid. Below it there is now a **Work history** section: every company week (Sunday-start, `companyWeekStartSundayContaining`) the job saw approved clock time, newest first — each collapsed row shows the week range, who worked with per-person hours, and the bold week total; expanding a row breaks out each person's individual sessions (work date, clock-in → clock-out Chicago times, duration, and the session note in italics). The header line rolls up the whole job — total hours · distinct people · first–last work date — and a green **"on the job now"** chip lists anyone with an open session (clocked in, no clock-out; open sessions never count toward hours). Hour rules match every other surface: only approved + closed sessions (`approved_at IS NOT NULL AND rejected_at/revoked_at IS NULL AND clocked_out_at IS NOT NULL`) count. **Hours only — no wages**, so the section is safe for every role that can open Dispatch; RLS trims what a viewer can't read. Implementation: pure kernel [`scheduleDispatchJobHistory.ts`](../src/lib/scheduleDispatchJobHistory.ts) (bucketing/aggregation/summary/open-sessions; **15 unit tests**) + presentational [`ScheduleDispatchJobWeekHistory`](../src/components/schedule/ScheduleDispatchJobWeekHistory.tsx) (one lean `clock_sessions` query by `job_ledger_id`, theme tokens throughout — dark-mode native), mounted below the grid in [`ScheduleDispatchJobWeek`](../src/components/schedule/ScheduleDispatchJobWeek.tsx). Verified against prod data (summary/week totals cross-checked to the cent-minute vs a direct DB aggregation) and the live chip verified end-to-end on a throwaway job with an open session (cleaned up). Guide [`schedule-dispatch.md`](../src/content/help/schedule-dispatch.md) updated. Deferred by design: scheduled-vs-worked comparison, per-week report counts.
 
 ## Latest Updates (v2.761)
 
