@@ -2285,44 +2285,44 @@ export function ScheduleDispatchHub({
           >
             Day
           </button>
-          {canEdit ? (
-            <button
-              type="button"
-              onClick={() => setDispatchSettingsOpen(true)}
-              title="Dispatch settings"
-              aria-label="Open dispatch settings"
-              style={{
-                marginLeft: 'auto',
-                padding: '0.4rem 0.85rem',
-                fontSize: '0.8125rem',
-                background: 'var(--surface)',
-                border: '1px solid var(--border-strong)',
-                borderRadius: 4,
-                color: 'var(--text-700)',
-                cursor: 'pointer',
-                fontWeight: 500,
-              }}
-            >
-              Dispatch Settings
-            </button>
+          {weekNavRightSlot || canEdit ? (
+            <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
+              {weekNavRightSlot}
+              {canEdit ? (
+                <button
+                  type="button"
+                  onClick={() => setDispatchSettingsOpen(true)}
+                  title="Dispatch settings"
+                  aria-label="Open dispatch settings"
+                  style={{
+                    padding: '0.4rem 0.85rem',
+                    fontSize: '0.8125rem',
+                    background: 'var(--surface)',
+                    border: '1px solid var(--border-strong)',
+                    borderRadius: 4,
+                    color: 'var(--text-700)',
+                    cursor: 'pointer',
+                    fontWeight: 500,
+                  }}
+                >
+                  Dispatch Settings
+                </button>
+              ) : null}
+            </div>
           ) : null}
         </div>
       ) : null}
 
       {/* Week nav sits BELOW the tab bar and only on the week-scoped tabs — the Day tab has its own
-          day navigation. On Day, the right slot (e.g. Share) still renders so it stays reachable. */}
+          day navigation. The right slot (Share) lives in the tab-bar cluster when tabs are shown. */}
       {showWeekNavigation && (!showHubViewTabs || hubTab !== 'day') ? (
         <ScheduleDispatchWeekNav
           weekStart={weekStart}
           onWeekShift={onWeekShift}
           onThisWeek={onThisWeek}
           dateRangeOverride={weekNavDateRangeOverride}
-          rightSlot={weekNavRightSlot}
+          rightSlot={showHubViewTabs ? undefined : weekNavRightSlot}
         />
-      ) : showWeekNavigation && weekNavRightSlot ? (
-        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '0.75rem' }}>
-          {weekNavRightSlot}
-        </div>
       ) : null}
 
       {!showHubViewTabs ? (
