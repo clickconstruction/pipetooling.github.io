@@ -17,6 +17,8 @@ On desktop, a floating bar sits at the bottom of the Dashboard (and the Quickfil
 
 The bar stays out of the way on phones and tablets ({{icon:help|gear}} it's desktop-only, wider than 640px), and it never covers a modal.
 
+Want it gone for a while? Click the **&gt;** at the bar's right edge to collapse it down to a single small button; click **&lt;** to bring it back. The choice sticks on your device.
+
 ## What the chips point at
 
 | Chip | Section |

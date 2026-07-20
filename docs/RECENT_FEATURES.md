@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-20 (v2.801)
+last_updated: 2026-07-20 (v2.802)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.802)
+
+### Section dock: persistent collapse toggle + Supply Houses modals no longer sit under the dock (2026-07-20)
+Two related fixes prompted by the Quickfill Add Invoice Save button being covered by the section bar. **(1) Root-cause z-index fix** — [`SupplyHousesTab`](../src/components/SupplyHousesTab.tsx)'s Add/Edit Invoice and sibling modal overlays sat at `zIndex: 100`, under the [`SectionDock`](../src/components/SectionDock.tsx)'s 900 (every other app modal uses 1001–1005, which is why the dock "never covers a modal" elsewhere). Both overlays bump to **1003**; the dock can no longer cover their buttons anywhere. **(2) Dock collapse control** — the dock pill splits into an inner scrollable chip strip + an always-visible toggle at the pill's right edge (hairline divider): **">"** collapses the bar down to a single small round button in the same bottom-center spot, **"<"** expands it back. `aria-expanded` + labeled; the choice persists per device (`pipetooling_section_dock_collapsed_v1`, shared across Dashboard/Quickfill); scrollspy keeps tracking while collapsed so re-expanding is instantly correct. Verified live: toggle cycles with persistence (10 chips ↔ lone button) on the Dashboard, and Quickfill's Add Invoice modal renders above the dock with Save fully in-viewport. Help guide `dashboard-section-bar.md` updated.
 
 ## Latest Updates (v2.801)
 
