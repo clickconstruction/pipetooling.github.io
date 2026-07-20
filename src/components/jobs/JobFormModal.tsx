@@ -227,6 +227,7 @@ export default function JobFormModal({
 
   const [initDone, setInitDone] = useState(false)
   const [editing, setEditing] = useState<JobWithDetails | null>(null)
+  const [pctSaving, setPctSaving] = useState(false)
   const [billViewInvoice, setBillViewInvoice] = useState<InvoiceWithJobForBillView | null>(null)
   const [agreedWriteDownInvoice, setAgreedWriteDownInvoice] = useState<
     Database['public']['Tables']['jobs_ledger_invoices']['Row'] | null
@@ -431,6 +432,21 @@ export default function JobFormModal({
       }),
     [jobTotalBidDollars, payments, editing?.invoices],
   )
+  // Same immediate-save contract as the Stages Progress & payment cell: writes
+  // jobs_ledger.pct_complete on blur/Enter, outside the form's Save flow (the
+  // form payload never touches pct_complete, so Save can't clobber it).
+  async function commitPctComplete(pct: number | null) {
+    if (!editing?.id) return
+    setPctSaving(true)
+    const { error: pctErr } = await supabase.from('jobs_ledger').update({ pct_complete: pct }).eq('id', editing.id)
+    setPctSaving(false)
+    if (pctErr) {
+      showToast(`Could not save % done: ${pctErr.message}`, 'error')
+      return
+    }
+    setEditing((prev) => (prev ? { ...prev, pct_complete: pct } : prev))
+  }
+
   const breakOff = useBreakOffSlider({ jobTotalBidDollars, payments, editing })
   // Only these three are read/written by the shell's money-path handlers
   // (createInvoice / moveWorkingJobToReadyToBillFromEdit); the rest of the hook
@@ -3361,6 +3377,8 @@ export default function JobFormModal({
                 .filter(Boolean)
                 .join(' · ')}
               pctComplete={editing?.pct_complete ?? null}
+              pctSaving={pctSaving}
+              onPctCommit={editing?.id ? commitPctComplete : undefined}
               total={billingBar.total}
               segments={[
                 { key: 'paid', frac: billingBar.paidFrac, color: PAID_COLOR },
@@ -3396,7 +3414,7 @@ export default function JobFormModal({
           <div style={{ marginBottom: '1rem' }}>
           {editing && (
             <>
-              <div style={{ fontWeight: 600, fontSize: '0.9375rem', color: 'var(--text-700)', marginBottom: '0.15rem' }}>② Invoices — bills you send</div>
+              <div style={{ fontWeight: 600, fontSize: '0.9375rem', color: 'var(--text-700)', marginBottom: '0.15rem' }}>② Invoices</div>
               <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.75rem' }}>
                 Creating an invoice <strong>saves right away</strong> separate from this form.
               </div>

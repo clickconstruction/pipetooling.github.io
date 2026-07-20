@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-20 (v2.768)
+last_updated: 2026-07-20 (v2.769)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.769)
+
+### Edit Job — editable "% done" on the billing bar + leaner section headers (2026-07-20)
+Two Edit-Job billing tweaks. **(1)** The **Progress & payment** bar's top-left "% done" slot was display-only — plain text when `pct_complete` was set, blank when not. It's now the same **editable input** as the Stages Progress & payment cell (blank underlined box reading `___ % done`, type a number, blur/Enter saves): [`MoneyLifecycleBar`](../src/components/jobs/MoneyLifecycleBar.tsx) grew the identical `onPctCommit`/`pctSaving` contract as `StagesProgressPaymentCell`, and the modal writes `jobs_ledger.pct_complete` immediately — outside the form's Save flow, which never touches `pct_complete`, so Save can't clobber it. New Job (no id yet) keeps the read-only rendering. **(2)** The numbered billing headers drop their explainer suffixes: **"① Line Items — specific work & materials" → "① Line Items"** and **"② Invoices — bills you send" → "② Invoices"** (③ Payments received already had no suffix) — continuing the v2.764 direction of letting the numbered steps carry the story without restating it.
 
 ## Latest Updates (v2.768)
 
