@@ -472,7 +472,7 @@ function ItemsModal({
   const arSortIndicator = (key: 'date' | 'amount') =>
     arSort?.key === key ? (arSort.dir === 'desc' ? ' ▼' : ' ▲') : ''
   // Unbilled rows carry the Stages % complete (jobs_ledger.pct_complete) — its own column.
-  const showPctComplete = cardKey === 'unbilled'
+  const showPctComplete = cardKey === 'unbilled' || cardKey === 'ar'
   const columnCount = 3 + (showPctComplete ? 1 : 0) + (onSendToDispatch ? 1 : 0)
   // AP sections (Payroll due / Upcoming payroll / Supplies) and the AR Collections section are
   // collapsible; expanded on open.

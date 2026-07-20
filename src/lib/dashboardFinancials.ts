@@ -29,7 +29,7 @@ export type FinancialItem = {
   jobId: string | null
   /** Job street address — shown on Not-billed rows; null elsewhere. */
   address: string | null
-  /** Stages % complete (jobs_ledger.pct_complete) — shown on Not-billed rows; null elsewhere or when unset. */
+  /** Stages % complete (jobs_ledger.pct_complete) — shown on Not-billed and AR (billed/collections) rows; null on AP rows or when unset. */
   pctComplete?: number | null
 }
 
@@ -154,6 +154,7 @@ export function buildArBuckets(
       dateYmd: isoToYmd(inv.billed_at),
       jobId: inv.job_id,
       address: null,
+      pctComplete: job?.pct_complete ?? null,
     })
   }
   for (const job of jobs) {
@@ -170,6 +171,7 @@ export function buildArBuckets(
       dateYmd: job.last_bill_date,
       jobId: job.id,
       address: null,
+      pctComplete: job.pct_complete ?? null,
     })
   }
   return { ar: finishBucket(arItems), collections: finishBucket(collectionsItems) }

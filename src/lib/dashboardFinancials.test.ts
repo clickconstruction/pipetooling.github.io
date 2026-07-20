@@ -75,6 +75,30 @@ describe('buildArBucket', () => {
     )
     expect(bucket).toMatchObject({ total: 0, count: 0, oldestDateYmd: null })
   })
+
+  it('carries the job pct_complete onto invoice-level and job-level AR items (null when unset)', () => {
+    const bucket = buildArBucket(
+      [
+        job({ pct_complete: 85 }),
+        job({ id: 'j2', hcp_number: '501', revenue: 900, payments_made: 100, last_bill_date: '2026-05-01' }),
+      ],
+      [invoice({ amount: 400 })],
+      [],
+    )
+    const invItem = bucket.items.find((i) => i.key === 'inv:i1')
+    const jobItem = bucket.items.find((i) => i.key === 'job:j2')
+    expect(invItem?.pctComplete).toBe(85)
+    expect(jobItem?.pctComplete).toBeNull()
+  })
+
+  it('carries pct_complete onto collections items too', () => {
+    const { collections } = buildArBuckets(
+      [job({ collections_at: '2026-06-01T00:00:00Z', pct_complete: 60 })],
+      [invoice({ amount: 400 })],
+      [],
+    )
+    expect(collections.items[0]?.pctComplete).toBe(60)
+  })
 })
 
 describe('buildApBucket', () => {
