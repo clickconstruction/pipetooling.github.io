@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-20 (v2.800)
+last_updated: 2026-07-20 (v2.801)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.801)
+
+### Travel hints Option B (routed times w/ fallback) + Dispatch Settings for travel hints (2026-07-20)
+Builds on v2.800. **(1) Settings** — new org-wide `app_settings` key `travel_hints_config_v1` ([`travelHintsConfig.ts`](../src/lib/travelHintsConfig.ts); dev writes / all read, defaults `{enabled:true, assumedMph:35, useRouting:false}`), edited in a new **Travel time hints** section of [`DispatchSettingsModal`](../src/components/schedule/DispatchSettingsModal.tsx) (dev-only, matching the RLS): master on/off, assumed mph (5–90) feeding the straight-line kernel (now mph-parameterized), and a "Use live routing" toggle. Saving fires a window event so an open Day view re-reads instantly. **(2) Option B plumbing** — migration `20260720202447_job_travel_times.sql` (routed-pair cache; SELECT-all-authenticated, service-role-only writes, both read-only-block footers) + new edge function [`travel-time-batch`](../supabase/functions/travel-time-batch/index.ts) (JWT + scheduling-role check in-function, ≤25 pairs, 7-day cache TTL, Google Routes computeRouteMatrix diagonal; every failure returns partial results). Client [`routedTravelTimes.ts`](../src/lib/routedTravelTimes.ts) invokes it best-effort; [`jobTravelEstimate.ts`](../src/lib/jobTravelEstimate.ts) `buildDayTravelGaps` gains `{mph, routedByPairKey}` — **routed estimates win, straight-line is the ever-present fallback** (chips read `~Nm` routed vs `≥Nm` straight-line; tooltips name the source). Kernel +2 tests (mph scaling, routed-wins/fallback). Deploy order: `supabase db push` → `supabase functions deploy travel-time-batch --no-verify-jwt`; routing stays off until the Dispatch Settings toggle is enabled. Docs: MIGRATIONS.md + EDGE_FUNCTIONS.md entries, help guide updated.
 
 ## Latest Updates (v2.800)
 

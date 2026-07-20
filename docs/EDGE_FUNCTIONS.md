@@ -5,7 +5,7 @@ file: EDGE_FUNCTIONS.md
 type: API Reference
 purpose: Complete API documentation for all 57 Supabase Edge Functions
 audience: Developers, DevOps, AI Agents
-last_updated: 2026-07-17
+last_updated: 2026-07-20
 estimated_read_time: 20-25 minutes
 difficulty: Intermediate
 
@@ -101,6 +101,7 @@ when_to_read:
    - [street-view-preview](#street-view-preview)
    - [geocode-address-batch](#geocode-address-batch)
    - [geocode-one](#geocode-one)
+   - [travel-time-batch](#travel-time-batch)
    - [send-bid-pricing-package](#send-bid-pricing-package)
    - [send-checklist-notification](#send-checklist-notification)
    - [send-report-notification](#send-report-notification)
@@ -1103,6 +1104,30 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 **Deploy**: `supabase functions deploy geocode-one`
 
 **Implementation**: [`supabase/functions/geocode-one/index.ts`](../supabase/functions/geocode-one/index.ts) + shared [`supabase/functions/_shared/googleGeocode.ts`](../supabase/functions/_shared/googleGeocode.ts); client: **`Map`** **`refresh_google_only`** [`MapGeocodeReviewModal.tsx`](../src/components/map/MapGeocodeReviewModal.tsx), [`invokeGeocodeOneRefreshGoogleOnly.ts`](../src/lib/map/invokeGeocodeOneRefreshGoogleOnly.ts); **Settings** default map label lookup [`mapDefaultViewSettings.ts`](../src/lib/mapDefaultViewSettings.ts) (bulk **Map** load uses **`geocode-address-batch`** via [`useMapPageData.ts`](../src/hooks/useMapPageData.ts)).
+
+---
+
+### travel-time-batch
+
+**Purpose**: Routed drive times between a person's **consecutive scheduled jobs** for the Day-view travel hints (Option B). Reads/fills the **`public.job_travel_times`** cache (7-day TTL, service-role writes) and routes cache misses through the **Google Routes API** (`distanceMatrix/v2:computeRouteMatrix`, `travelMode: DRIVE`, diagonal pairs only). **Every failure path returns partial results** — the client keeps its straight-line (Option A) estimate for any pair missing from `results`, so an unset key / disabled API / quota exhaustion degrades to Option A and never breaks the page. Routing is opt-in per org via **Dispatch Settings → Travel time hints** (`app_settings.travel_hints_config_v1`).
+
+**Endpoint**: `POST /functions/v1/travel-time-batch`
+
+**Body** (JSON): `{ "pairs": { "fromJobId": string, "toJobId": string, "from": { "lat": number, "lng": number }, "to": { "lat": number, "lng": number } }[] }` — max **25** pairs; same-job and non-finite-coordinate pairs are dropped server-side.
+
+**Response** (**200** JSON): `{ "results": { "fromJobId": string, "toJobId": string, "seconds": number, "meters": number, "source": string }[] }` — only pairs that resolved (cache hit or `ROUTE_EXISTS`); callers treat missing pairs as "use the straight-line fallback".
+
+**Headers**: `Authorization: Bearer <user_jwt>`, `apikey: <anon_key>`, `Content-Type: application/json`.
+
+**Secrets**: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` (cache reads/writes), **`GOOGLE_MAPS_API_KEY`** (enable the **Routes API** in Google Cloud; without it the function serves cache hits only).
+
+**Gateway**: `verify_jwt = false`; **`auth.getUser()`** + **`users.role` in `('dev','master_technician','assistant','controller','superintendent','estimator')`** in the function (**403** otherwise).
+
+**Errors**: **401** not signed in; **403** role not allowed; **400** bad JSON; routing/API failures are swallowed (partial `results`, never 5xx for them).
+
+**Deploy**: `supabase functions deploy travel-time-batch --no-verify-jwt` — **after** `supabase db push` applies `20260720202447_job_travel_times.sql` (the function reads/upserts that table).
+
+**Implementation**: [`supabase/functions/travel-time-batch/index.ts`](../supabase/functions/travel-time-batch/index.ts). Client: [`src/lib/routedTravelTimes.ts`](../src/lib/routedTravelTimes.ts) (invoked from the Day view when `useRouting` is on), merged over the straight-line kernel [`src/lib/jobTravelEstimate.ts`](../src/lib/jobTravelEstimate.ts).
 
 ---
 

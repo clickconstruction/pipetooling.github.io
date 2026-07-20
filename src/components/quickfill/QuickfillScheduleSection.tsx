@@ -23,7 +23,19 @@ import {
   TRAVEL_TOUCHING_WARN_MINUTES,
   type DayTravelGap,
   type LatLng,
+  type TravelEstimate,
 } from '../../lib/jobTravelEstimate'
+import {
+  loadTravelHintsConfig,
+  TRAVEL_HINTS_CONFIG_CHANGED_EVENT,
+  TRAVEL_HINTS_DEFAULTS,
+  type TravelHintsConfig,
+} from '../../lib/travelHintsConfig'
+import {
+  fetchRoutedTravelTimes,
+  travelPairKey,
+  type TravelPairRequest,
+} from '../../lib/routedTravelTimes'
 import { normalizeAddressForGeocodeKey } from '../../lib/map/normalizeAddressForGeocode'
 import { batchGeocodeCacheKeys } from '../../lib/map/geocodeCacheBatches'
 import {
@@ -226,11 +238,28 @@ export function QuickfillScheduleSection({
   const [jobCoordsByJobId, setJobCoordsByJobId] = useState<ReadonlyMap<string, LatLng>>(
     () => new Map(),
   )
+  /** Org travel-hints settings (Dispatch Settings → Travel time hints). */
+  const [travelConfig, setTravelConfig] = useState<TravelHintsConfig>(TRAVEL_HINTS_DEFAULTS)
+  useEffect(() => {
+    let cancelled = false
+    const reload = () => {
+      void loadTravelHintsConfig().then((c) => {
+        if (!cancelled) setTravelConfig(c)
+      })
+    }
+    reload()
+    window.addEventListener(TRAVEL_HINTS_CONFIG_CHANGED_EVENT, reload)
+    return () => {
+      cancelled = true
+      window.removeEventListener(TRAVEL_HINTS_CONFIG_CHANGED_EVENT, reload)
+    }
+  }, [])
   const travelJobIdsKey = useMemo(() => {
+    if (!travelConfig.enabled) return ''
     const ids = new Set<string>()
     for (const [, rows] of blocksByUserId) for (const r of rows) ids.add(r.job_id)
     return [...ids].sort().join(',')
-  }, [blocksByUserId])
+  }, [blocksByUserId, travelConfig.enabled])
   useEffect(() => {
     if (!travelJobIdsKey) {
       setJobCoordsByJobId(new Map())
@@ -280,10 +309,46 @@ export function QuickfillScheduleSection({
     }
   }, [travelJobIdsKey])
 
+  /** Option B: routed times for this day's consecutive pairs; empty map = straight-line everywhere. */
+  const [routedByPairKey, setRoutedByPairKey] = useState<ReadonlyMap<string, TravelEstimate>>(
+    () => new Map(),
+  )
+  useEffect(() => {
+    if (!travelConfig.enabled || !travelConfig.useRouting || jobCoordsByJobId.size === 0) {
+      setRoutedByPairKey(new Map())
+      return
+    }
+    const pairByKey = new Map<string, TravelPairRequest>()
+    for (const [, rows] of blocksByUserId) {
+      const sorted = [...rows].sort((a, b) => a.time_start.localeCompare(b.time_start))
+      for (let i = 0; i + 1 < sorted.length; i++) {
+        const fromJobId = sorted[i]!.job_id
+        const toJobId = sorted[i + 1]!.job_id
+        if (fromJobId === toJobId) continue
+        const from = jobCoordsByJobId.get(fromJobId)
+        const to = jobCoordsByJobId.get(toJobId)
+        if (!from || !to) continue
+        pairByKey.set(travelPairKey(fromJobId, toJobId), { fromJobId, toJobId, from, to })
+      }
+    }
+    if (pairByKey.size === 0) {
+      setRoutedByPairKey(new Map())
+      return
+    }
+    let cancelled = false
+    void fetchRoutedTravelTimes([...pairByKey.values()]).then((m) => {
+      if (!cancelled) setRoutedByPairKey(m)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [travelConfig.enabled, travelConfig.useRouting, jobCoordsByJobId, blocksByUserId])
+
   /** Chips for open gaps + red shared-dot warnings for infeasible back-to-backs, per user. */
   const travelUiForUser = useCallback(
     (userId: string, rows: JobScheduleBlockRow[]) => {
-      if (jobCoordsByJobId.size === 0) return { chips: undefined, warnings: undefined }
+      if (!travelConfig.enabled || jobCoordsByJobId.size === 0)
+        return { chips: undefined, warnings: undefined }
       const gaps = buildDayTravelGaps(
         rows.map((r) => ({
           blockId: r.id,
@@ -292,6 +357,7 @@ export function QuickfillScheduleSection({
           endMin: timeInputToMinutesSafe(r.time_end.slice(0, 5)),
         })),
         jobCoordsByJobId,
+        { mph: travelConfig.assumedMph, routedByPairKey },
       )
       if (gaps.length === 0) return { chips: undefined, warnings: undefined }
       const chips: Array<{
@@ -303,15 +369,18 @@ export function QuickfillScheduleSection({
         severity: 'ok' | 'tight'
       }> = []
       const warnings = new Map<string, string>()
+      const prefix = (g: DayTravelGap) => (g.estimate.source === 'routed' ? '~' : '≥')
       const describe = (g: DayTravelGap) =>
-        `Estimated drive between these jobs: at least ${g.estimate.minutes} min (straight-line estimate).`
+        g.estimate.source === 'routed'
+          ? `Estimated drive between these jobs: about ${g.estimate.minutes} min (route estimate).`
+          : `Estimated drive between these jobs: at least ${g.estimate.minutes} min (straight-line estimate).`
       for (const g of gaps) {
         if (g.boundaryKind === 'gap') {
           chips.push({
             id: `travel-${userId}-${g.fromBlockId}-${g.toBlockId}`,
             gapStartMin: g.gapStartMin,
             gapEndMin: g.gapEndMin,
-            label: `≥${g.estimate.minutes}m`,
+            label: `${prefix(g)}${g.estimate.minutes}m`,
             title: g.feasible
               ? describe(g)
               : `${describe(g)} Only ${g.gapMinutes} min of schedule gap — likely not enough.`,
@@ -320,7 +389,9 @@ export function QuickfillScheduleSection({
         } else if (g.estimate.minutes >= TRAVEL_TOUCHING_WARN_MINUTES) {
           warnings.set(
             `shared:${g.fromBlockId}:${g.toBlockId}`,
-            `Back-to-back jobs, but the drive between them is at least ${g.estimate.minutes} min (straight-line estimate).`,
+            g.estimate.source === 'routed'
+              ? `Back-to-back jobs, but the drive between them is about ${g.estimate.minutes} min (route estimate).`
+              : `Back-to-back jobs, but the drive between them is at least ${g.estimate.minutes} min (straight-line estimate).`,
           )
         }
       }
@@ -329,7 +400,7 @@ export function QuickfillScheduleSection({
         warnings: warnings.size > 0 ? warnings : undefined,
       }
     },
-    [jobCoordsByJobId],
+    [jobCoordsByJobId, travelConfig, routedByPairKey],
   )
   const [jobTitleById, setJobTitleById] = useState<Map<string, string>>(() => new Map())
   const [bidTitleById, setBidTitleById] = useState<Map<string, string>>(() => new Map())
