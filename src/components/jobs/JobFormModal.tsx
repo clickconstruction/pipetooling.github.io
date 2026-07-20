@@ -38,6 +38,7 @@ import { JobFormPartsCostSection } from './JobFormPartsCostSection'
 import { JobFormLaborCostPanel } from './JobFormLaborCostPanel'
 import { JobFormBreakOffSection } from './JobFormBreakOffSection'
 import { JobFormFixturesSection } from './JobFormFixturesSection'
+import { JobFormPeoplePicker } from './JobFormPeoplePicker'
 import {
   formatCurrency,
   parseMoneyInputToNumber,
@@ -435,6 +436,8 @@ export default function JobFormModal({
   // output is consumed by JobFormBreakOffSection via the `breakOff` prop.
   const { newInvoiceAmount, setNewInvoiceAmount, setNewInvoiceAmountInputFocused } = breakOff
   const [teamMemberIds, setTeamMemberIds] = useState<string[]>([])
+  const [contractorsSearch, setContractorsSearch] = useState('')
+  const [contractorsDropdownOpen, setContractorsDropdownOpen] = useState(false)
   const newJobImportBlockedByContent = useMemo(() => {
     if (mode !== 'new' || editing) return false
     return newJobFormHasBlockingContent({
@@ -487,9 +490,6 @@ export default function JobFormModal({
       setJobImportSourceOpen(false)
     }
   }, [newJobImportBlockedByContent, jobImportSourceOpen])
-  const [contractorsSearch, setContractorsSearch] = useState('')
-  const [contractorsDropdownOpen, setContractorsDropdownOpen] = useState(false)
-  const contractorsDropdownRef = useRef<HTMLDivElement | null>(null)
   const billingCustomerHighlightRef = useRef<HTMLDivElement | null>(null)
   const fixturesSectionHighlightRef = useRef<HTMLDivElement | null>(null)
   const jobPicturesLinkHighlightRef = useRef<HTMLDivElement | null>(null)
@@ -1419,17 +1419,6 @@ export default function JobFormModal({
       setCreateCustomerFromJobModalLoading(false)
     })()
   }, [createCustomerFromJobModalOpen, authUser?.id, customerName])
-
-  useEffect(() => {
-    if (!contractorsDropdownOpen) return
-    function handleClickOutside(e: MouseEvent) {
-      if (contractorsDropdownRef.current && !contractorsDropdownRef.current.contains(e.target as Node)) {
-        setContractorsDropdownOpen(false)
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [contractorsDropdownOpen])
 
   const billedMaterialsTotalDisplay = useMemo(() => {
     const sum = materials.reduce((s, m) => s + (Number(m.amount) || 0), 0)
@@ -2808,136 +2797,15 @@ export default function JobFormModal({
               </div>
             </div>
           </div>
-          <div style={{ marginBottom: '1rem' }}>
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.75rem',
-                flexWrap: 'wrap',
-                marginBottom: teamMemberIds.length > 0 ? '0.5rem' : 0,
-              }}
-            >
-              <div ref={contractorsDropdownRef} style={{ position: 'relative', flex: '1 1 12rem', minWidth: 0 }}>
-                <input
-                  type="text"
-                  value={contractorsSearch}
-                  onChange={(e) => setContractorsSearch(e.target.value)}
-                  onFocus={() => setContractorsDropdownOpen(true)}
-                  onBlur={() => setTimeout(() => setContractorsDropdownOpen(false), 150)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Escape') setContractorsDropdownOpen(false)
-                    if (e.key === 'Enter') {
-                      const filtered = users.filter((u) => !teamMemberIds.includes(u.id) && u.name.toLowerCase().includes(contractorsSearch.toLowerCase().trim()))
-                      const first = filtered[0]
-                      if (first) {
-                        e.preventDefault()
-                        setTeamMemberIds((prev) => [...prev, first.id])
-                        setContractorsSearch('')
-                      }
-                    }
-                  }}
-                  placeholder="Add People..."
-                  style={{ width: '100%', padding: '0.375rem 0.625rem', border: '1px solid var(--border-strong)', borderRadius: 6, fontSize: '0.875rem' }}
-                />
-                {contractorsDropdownOpen && (() => {
-                  const filtered = users.filter((u) => !teamMemberIds.includes(u.id) && u.name.toLowerCase().includes(contractorsSearch.toLowerCase().trim()))
-                  if (filtered.length === 0 && !contractorsSearch.trim()) return null
-                  return (
-                    <div
-                      style={{
-                        position: 'absolute',
-                        top: '100%',
-                        left: 0,
-                        right: 0,
-                        background: 'var(--surface)',
-                        border: '1px solid var(--border)',
-                        borderRadius: 4,
-                        marginTop: 2,
-                        maxHeight: 200,
-                        overflowY: 'auto',
-                        zIndex: 9999,
-                        boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
-                      }}
-                    >
-                      {filtered.length > 0 ? (
-                        filtered.map((u, idx) => (
-                          <button
-                            key={u.id}
-                            type="button"
-                            onMouseDown={(e) => {
-                              e.preventDefault()
-                              setTeamMemberIds((prev) => [...prev, u.id])
-                              setContractorsSearch('')
-                            }}
-                            style={{
-                              width: '100%',
-                              padding: '0.5rem 0.75rem',
-                              textAlign: 'left',
-                              background: 'var(--surface)',
-                              border: 'none',
-                              borderBottom: idx < filtered.length - 1 ? '1px solid var(--border)' : 'none',
-                              cursor: 'pointer',
-                              color: 'var(--text-strong)',
-                              fontSize: '0.875rem',
-                            }}
-                            onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--bg-subtle)' }}
-                            onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--surface)' }}
-                          >
-                            {u.name}
-                          </button>
-                        ))
-                      ) : (
-                        <div style={{ padding: '0.5rem 0.75rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-                          No matches
-                        </div>
-                      )}
-                    </div>
-                  )
-                })()}
-              </div>
-            </div>
-            {teamMemberIds.length > 0 && (
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem' }}>
-                {teamMemberIds.map((id) => {
-                  const u = users.find((x) => x.id === id)
-                  return (
-                    <span
-                      key={id}
-                      style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '0.25rem',
-                        padding: '0.25rem 0.5rem',
-                        background: 'var(--bg-blue-tint)',
-                        borderRadius: 6,
-                        fontSize: '0.875rem',
-                      }}
-                    >
-                      {u?.name ?? id}
-                      <button
-                        type="button"
-                        onClick={() => setTeamMemberIds((prev) => prev.filter((x) => x !== id))}
-                        title="Remove"
-                        style={{
-                          padding: 0,
-                          background: 'none',
-                          border: 'none',
-                          cursor: 'pointer',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          color: 'var(--text-muted)',
-                          fontSize: '0.875rem',
-                        }}
-                      >
-                        ×
-                      </button>
-                    </span>
-                  )
-                })}
-              </div>
-            )}
-          </div>
+          <JobFormPeoplePicker
+            users={users}
+            teamMemberIds={teamMemberIds}
+            setTeamMemberIds={setTeamMemberIds}
+            contractorsSearch={contractorsSearch}
+            setContractorsSearch={setContractorsSearch}
+            contractorsDropdownOpen={contractorsDropdownOpen}
+            setContractorsDropdownOpen={setContractorsDropdownOpen}
+          />
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', marginBottom: '1rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', marginBottom: customerExpanded ? '0.5rem' : 0 }}>
               <button
