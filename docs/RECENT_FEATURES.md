@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-20 (v2.780)
+last_updated: 2026-07-20 (v2.781)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.781)
+
+### Dark mode: stale/alert row tints use theme tokens instead of raw light hexes (2026-07-20)
+Four surfaces hard-coded the light-pink `#fef2f2` row highlight, which rendered as glaring light bands in dark mode (the raw-hex CI check only catches *neutral* hexes, so these red/blue tints slipped through): the **Stale tally follow-up** modal's stale rows ([`DashboardStaleTallyStaffFollowUpModal`](../src/components/DashboardStaleTallyStaffFollowUpModal.tsx) — also its two toggle-button borders, `#94a3b8` → `var(--border-strong)`), the **Banking Stripe invoices** panel's missing-Stripe-id rows ([`BankingStripeInvoicesPanel`](../src/components/BankingStripeInvoicesPanel.tsx)), the **Bid Submission & Followup** stale-bid rows ([`BidSubmissionFollowupTab`](../src/components/bids/BidSubmissionFollowupTab.tsx) — its selected-row `#eff6ff` also moved to `var(--bg-blue-tint)`), and the **Jobs Parts** tab's unpriced-fixture rows ([`JobsPartsTab`](../src/components/jobs/JobsPartsTab.tsx)). All now use `var(--bg-red-tint)` (`#fef2f2` light / `#3b1a1a` dark), so light mode is pixel-identical and dark mode shows a readable dark-red tint. Verified live in dark mode on the stale-tally modal and the Submission & Followup stale highlight (92 tinted rows, zero raw hexes in the DOM). Pure style change, no behavior difference.
 
 ## Latest Updates (v2.780)
 
