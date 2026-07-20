@@ -117,6 +117,43 @@ jobs:
           fi
           echo "✓ Build output verified: .nojekyll present, index.html references built assets"
 
+      # One release of asset overlap: a tab still running the just-superseded build can
+      # keep fetching its hashed route chunks instead of 404ing (which triggers the
+      # v2.811 auto-reload). The live site's sw.js embeds the precache manifest of the
+      # CURRENT deploy's own build only — merged-in older assets are never listed — so
+      # pulling from it carries exactly one deploy of history, with no accumulation.
+      # Best-effort: a fetch failure must never block the deploy.
+      - name: Merge previous deploy's assets (one release of overlap)
+        run: |
+          SITE_URL="https://$(cat CNAME)"
+          echo "Fetching live SW precache manifest from $SITE_URL/sw.js..."
+          if ! curl -fsSL --max-time 30 "$SITE_URL/sw.js" -o /tmp/live-sw.js; then
+            echo "::warning::Could not fetch live sw.js — skipping asset overlap (first deploy or site unreachable)"
+            exit 0
+          fi
+          PREV_ASSETS=$(grep -oE 'assets/[A-Za-z0-9._-]+' /tmp/live-sw.js | sort -u)
+          if [ -z "$PREV_ASSETS" ]; then
+            echo "::warning::No assets found in live sw.js manifest — skipping asset overlap"
+            exit 0
+          fi
+          mkdir -p dist/assets
+          total=0; merged=0; kept=0; failed=0
+          for a in $PREV_ASSETS; do
+            total=$((total + 1))
+            if [ -f "dist/$a" ]; then
+              kept=$((kept + 1))
+              continue
+            fi
+            if curl -fsSL --max-time 30 "$SITE_URL/$a" -o "dist/$a"; then
+              merged=$((merged + 1))
+            else
+              rm -f "dist/$a"
+              failed=$((failed + 1))
+              echo "::warning::Failed to fetch previous asset $a — stale clients needing it will 404 (auto-recovery reload covers them)"
+            fi
+          done
+          echo "Asset overlap: $total previous assets — $merged merged, $kept already in new build, $failed failed"
+
       - name: Setup Pages
         uses: actions/configure-pages@v4
 
