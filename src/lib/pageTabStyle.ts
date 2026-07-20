@@ -14,7 +14,11 @@ export function pageTabStyle(active: boolean): CSSProperties {
     borderBottom: '6px solid transparent',
     borderLeft: 'none',
     borderRight: 'none',
-    background: active ? '#3b82f6' : 'none',
+    // backgroundColor longhand, NOT the `background` shorthand: React re-applies only the
+    // properties that changed on re-render, and setting the shorthand resets background-clip
+    // to border-box — so the first tab click flooded the fill under the transparent borders
+    // (full-height box) while the initially-rendered tab stayed a slim pill.
+    backgroundColor: active ? '#3b82f6' : 'transparent',
     backgroundClip: 'padding-box',
     borderRadius: 6,
     color: active ? 'white' : 'var(--text-muted)',

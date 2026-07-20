@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-20 (v2.769)
+last_updated: 2026-07-20 (v2.770)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.770)
+
+### Page tabs — selected pill no longer swells to a full-height box after the first click (2026-07-20)
+The v2.763 "slimmer pill" page tabs looked right on page load but reverted to the old full-height blue box the moment any tab was clicked — on every page that uses `pageTabStyle` (Jobs, People, Banking, Projects, Estimates, …). Root cause: the style set the `background` **shorthand** alongside `backgroundClip: 'padding-box'`. React re-applies only the style properties that changed on re-render, and assigning the `background` shorthand resets `background-clip` to `border-box` — so the first click flooded the blue fill under the pill's transparent top/bottom borders (full-height box) while the initially-rendered tab kept the slim pill. Verified live on prod (computed `background-clip` was `border-box` on any clicked tab, `padding-box` on untouched ones). Fix: `backgroundColor` longhand instead of the shorthand, so `background-clip` survives re-renders and the pill stays slim on load and on click alike.
 
 ## Latest Updates (v2.769)
 
