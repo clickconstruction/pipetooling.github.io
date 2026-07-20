@@ -41,7 +41,6 @@ export interface DashboardPinnedQuickRowProps {
   quickButtonsPlacement: 'top' | 'with_pins'
   showDashboardQuickButtons: boolean
   /** Financial pin totals from the parent-side hooks (keyed on financialRefreshKey there). */
-  hoursAwaitingCount: number | null
   costMatrixTotal: number | null
   billedCount: number | null
   billedTotal: number | null
@@ -80,7 +79,6 @@ export function DashboardPinnedQuickRow({
   quickActionDefs,
   quickButtonsPlacement,
   showDashboardQuickButtons,
-  hoursAwaitingCount,
   costMatrixTotal,
   billedCount,
   billedTotal,
@@ -92,7 +90,6 @@ export function DashboardPinnedQuickRow({
 }: DashboardPinnedQuickRowProps) {
   const navigate = useNavigate()
   const { showToast } = useToastContext()
-  const isDev = role === 'dev'
 
   const [newReportModalOpen, setNewReportModalOpen] = useState(false)
   const [tallyUnlinkedCount, setTallyUnlinkedCount] = useState<number | null>(null)
@@ -208,7 +205,7 @@ export function DashboardPinnedQuickRow({
   const pinsToShow = filterPinsToShow(visiblePins)
 
   const showPinnedRowWithQuickActions =
-    pinsToShow.length > 0 || isDev || (quickButtonsPlacement === 'with_pins' && showDashboardQuickButtons)
+    pinsToShow.length > 0 || (quickButtonsPlacement === 'with_pins' && showDashboardQuickButtons)
 
   const tallyLinkAccessibleName = getTallyLinkAccessibleName(tallyUnlinkedCount)
 
@@ -355,11 +352,6 @@ export function DashboardPinnedQuickRow({
       {showPinnedRowWithQuickActions && (
         <div style={{ marginBottom: '1rem' }}>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center' }}>
-            {isDev && (
-              <Link to="/people?tab=hours" style={pinnedItemLinkStyle}>
-                Hours Awaiting Approval: {hoursAwaitingCount ?? '…'}
-              </Link>
-            )}
             {quickButtonsPlacement === 'with_pins' &&
               showDashboardQuickButtons &&
               quickActionDefs.map((b) => (
