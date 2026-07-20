@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-20 (v2.810)
+last_updated: 2026-07-20 (v2.811)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.811)
+
+### White-screen fix, part 1: failed route-chunk loads auto-recover instead of unmounting the app (2026-07-20)
+Clicking a nav button while the tab runs a superseded build used to white-screen: the route's `lazy()` chunk 404s (deploys replace all hashed assets), the rejection throws through the outlet `Suspense`, and no error boundary existed above the routes. Now a **guarded automatic reload** recovers: new kernel [`chunkLoadRecovery.ts`](../src/lib/chunkLoadRecovery.ts) (`isChunkLoadError` classifier for Chrome/Firefox/Safari import-failure messages + `tryClaimChunkRecoveryReload`, a 60-s sessionStorage one-shot that prevents reload loops; unit-tested), a `vite:preloadError` listener in [`main.tsx`](../src/main.tsx), and [`RouteChunkBoundary`](../src/components/RouteChunkBoundary.tsx) wrapping the route outlet in [`Layout`](../src/components/Layout.tsx). Chunk failures show "Updating app…" and hard-reload once; a second failure within the window (or any non-chunk render error) shows a visible fallback with a **Reload** button and **Fix app** link — the route boundary also resets on navigation so one bad page doesn't stick. Diagnosis and companion fixes (SW update flow, cache-wipe hygiene): parts 2–3 follow in v2.812/v2.813. `TROUBLESHOOTING.md` "White screen after app update" updated.
 
 ## Latest Updates (v2.810)
 
