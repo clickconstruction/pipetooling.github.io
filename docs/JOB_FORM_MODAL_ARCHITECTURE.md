@@ -5,12 +5,12 @@ file: docs/JOB_FORM_MODAL_ARCHITECTURE.md
 type: Engineering / Refactor Map
 purpose: Step-0 map for the JobFormModal.tsx decomposition (per PAGE_DECOMPOSITION_PLAYBOOK.md, adapted from tabs to form sections) — inventory what every section of the New/Edit Job modal touches (state, handlers, supabase tables/RPCs, sub-components, coupling) to drive the multi-PR extraction, with a deep-dive on the money-path save engine.
 audience: Developers, AI Agents
-last_updated: 2026-07-19
+last_updated: 2026-07-20
 ---
 
 ## Overview
 
-[`src/components/jobs/JobFormModal.tsx`](../src/components/jobs/JobFormModal.tsx) is a ~7,137-line "God component" (as of v2.736: ~91 `useState` declarations, 21 effects, 33 `useMemo`, 18 `useCallback`, ~24 refs). It is the **largest component in the repo that is a modal, not a page**. This map follows [`PAGE_DECOMPOSITION_PLAYBOOK.md`](./PAGE_DECOMPOSITION_PLAYBOOK.md) and the dossier format of [`DASHBOARD_SECTIONS_ARCHITECTURE.md`](./DASHBOARD_SECTIONS_ARCHITECTURE.md); the billing behavior it implements (invoice lifecycle, payment channels, delete/archive) is flow-mapped in [`BILLING_FLOWS.md`](./BILLING_FLOWS.md) — this doc cross-references that one and does not restate it.
+[`src/components/jobs/JobFormModal.tsx`](../src/components/jobs/JobFormModal.tsx) is a ~4,316-line "God component" (as of v2.782: ~71 `useState` declarations, 17 effects, 23 `useMemo`, 8 `useCallback`, ~30 refs) — down from ~7,137 lines at v2.736 when this map was written; extraction is well underway. It is still the **largest component in the repo that is a modal, not a page**. This map follows [`PAGE_DECOMPOSITION_PLAYBOOK.md`](./PAGE_DECOMPOSITION_PLAYBOOK.md) and the dossier format of [`DASHBOARD_SECTIONS_ARCHITECTURE.md`](./DASHBOARD_SECTIONS_ARCHITECTURE.md); the billing behavior it implements (invoice lifecycle, payment channels, delete/archive) is flow-mapped in [`BILLING_FLOWS.md`](./BILLING_FLOWS.md) — this doc cross-references that one and does not restate it.
 
 ### Key structural differences from the page maps
 
