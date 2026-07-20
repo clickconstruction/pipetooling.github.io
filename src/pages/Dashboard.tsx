@@ -1249,11 +1249,6 @@ export default function Dashboard() {
     },
     { id: 'dash-my-schedule', label: 'My Schedule', visible: Boolean(authUser?.id) },
     {
-      id: 'dash-billing',
-      label: 'Billing',
-      visible: isAssistantLike(role) || role === 'dev' || role === 'master_technician',
-    },
-    {
       id: 'dash-bids',
       label: 'Bids',
       visible:
@@ -1273,12 +1268,17 @@ export default function Dashboard() {
       label: 'Assigned Jobs',
       visible: assignedJobsLoading || assignedJobs.length > 0,
     },
+    {
+      id: 'dash-billing',
+      label: 'Billing',
+      visible: isAssistantLike(role) || role === 'dev' || role === 'master_technician',
+    },
     { id: 'dash-projects', label: 'Projects', visible: projectsCardVisible },
     { id: 'dash-me', label: 'Me', visible: Boolean(authUser?.id) },
   ].filter((sec) => sec.visible)
 
   /** Above-the-fold: quick actions and clock first; checklist/assigned use skeletons until data arrives. */
-  /** Mounted above each Billing Pipeline branch (and standalone for other roles). */
+  /** Mounted per role branch (assistant-like, dev/master, standalone for other roles). */
   const myScheduleSection = (
     <DashboardMyScheduleSection
       role={role}
@@ -1444,8 +1444,6 @@ export default function Dashboard() {
             />
           )}
           {myScheduleSection}
-          <div id="dash-billing" aria-hidden="true" style={dockAnchorStyle} />
-          <DashboardBillingPipelineSection {...billingPipelineSectionProps} />
         </>
       )}
       {!isAssistantLike(role) && authUser?.id && showClockActivityStrip && (
@@ -1562,12 +1560,6 @@ export default function Dashboard() {
         />
       )}
       {(role === 'dev' || role === 'master_technician') && myScheduleSection}
-      {(role === 'dev' || role === 'master_technician') && (
-        <div id="dash-billing" aria-hidden="true" style={dockAnchorStyle} />
-      )}
-      {(role === 'dev' || role === 'master_technician') && (
-        <DashboardBillingPipelineSection {...billingPipelineSectionProps} />
-      )}
 
       {!isAssistantLike(role) && role !== 'dev' && role !== 'master_technician' && myInboxCard}
       {!isAssistantLike(role) && role !== 'dev' && role !== 'master_technician' && myScheduleSection}
@@ -1841,6 +1833,13 @@ export default function Dashboard() {
             </div>
           )}
         </DashboardGroupCard>
+      )}
+
+      {(isAssistantLike(role) || role === 'dev' || role === 'master_technician') && (
+        <>
+          <div id="dash-billing" aria-hidden="true" style={dockAnchorStyle} />
+          <DashboardBillingPipelineSection {...billingPipelineSectionProps} />
+        </>
       )}
 
       <DashboardUpcomingInspectionsSection

@@ -11,7 +11,7 @@ import {
   type RefObject,
   type ReactNode,
 } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { useBidPreview } from '../contexts/BidPreviewModalContext'
 import { useJobDetailModal } from '../contexts/JobDetailModalContext'
 import { supabase } from '../lib/supabase'
@@ -37,7 +37,7 @@ import type { LedgerPrefixMap } from '../lib/ledgerDisplayPrefixes'
 const HEADER_ROW_MIN_HEIGHT = 'calc(1rem + 1.25em)'
 const MIN_HEADER_SEARCH_CHARS = 2
 
-/** When search is closed, skip ⌘K / Ctrl+K so we do not hijack typing in other fields. */
+/** When search is closed, skip ⌘K / Ctrl+K (and plain "s" on the dashboard) so we do not hijack typing in other fields. */
 function isTypingSurface(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false
   const el = target.closest('input, textarea, select, [contenteditable="true"]')
@@ -86,6 +86,7 @@ export function HeaderGlobalSearchProvider({
   children: ReactNode
 }) {
   const navigate = useNavigate()
+  const location = useLocation()
   const bidPreview = useBidPreview()
   const jobDetailModal = useJobDetailModal()
   const { prefixMap } = useLedgerDisplayPrefixes()
@@ -204,6 +205,20 @@ export function HeaderGlobalSearchProvider({
         closeSearch()
         return
       }
+      if (
+        e.key.toLowerCase() === 's' &&
+        !e.metaKey &&
+        !e.ctrlKey &&
+        !e.altKey &&
+        !open &&
+        location.pathname === '/dashboard'
+      ) {
+        if (isTypingSurface(e.target)) return
+        e.preventDefault()
+        e.stopPropagation()
+        openSearch(isMobile ? 'strip' : 'toolbar')
+        return
+      }
       if (e.key.toLowerCase() !== 'k' || (!e.metaKey && !e.ctrlKey)) return
       if (open) {
         e.preventDefault()
@@ -218,7 +233,7 @@ export function HeaderGlobalSearchProvider({
     }
     window.addEventListener('keydown', onKey, true)
     return () => window.removeEventListener('keydown', onKey, true)
-  }, [open, closeSearch, openSearch, isMobile])
+  }, [open, closeSearch, openSearch, isMobile, location.pathname])
 
   useEffect(() => {
     if (!open) return

@@ -7,7 +7,7 @@ keywords: dashboard navigation, section bar, dock, jump to section, scroll, bott
 On desktop, a floating bar sits at the bottom of the Dashboard (and the Quickfill page) with one chip per major section:
 
 :::example the section bar
-{{chip:gray|Notifications}} {{chip:blue|ClockedIn}} {{chip:gray|My Inbox}} {{chip:gray|Teams Inbox}} {{chip:gray|Billing}} {{chip:gray|Bids}} {{chip:gray|Reports}} {{chip:gray|Projects}} {{chip:gray|Me}}
+{{chip:gray|Notifications}} {{chip:blue|ClockedIn}} {{chip:gray|My Inbox}} {{chip:gray|Teams Inbox}} {{chip:gray|My Schedule}} {{chip:gray|Bids}} {{chip:gray|Reports}} {{chip:gray|Assigned Jobs}} {{chip:gray|Billing}} {{chip:gray|Projects}} {{chip:gray|Me}}
 :::
 
 - The ringed chip tracks where you are — it updates as you scroll.
@@ -24,9 +24,11 @@ The bar stays out of the way on phones and tablets ({{icon:help|gear}} it's desk
 | Notifications | Financial cards and alerts at the top |
 | ClockedIn | Team clock activity strip |
 | Teams Inbox | The **Teams Inbox** card — Help feedback, Dispatch, and Estimator inboxes grouped together |
-| Billing | Billing Pipeline card |
 | My Inbox | My Inbox card (Due Today / Overdue / Recently Completed Tasks) |
+| My Schedule | My Schedule card (today / tomorrow blocks) |
 | Bids | My Bids |
 | Reports | Recent Reports |
+| Assigned Jobs | Assigned Jobs card |
+| Billing | Billing Pipeline card (sits below Assigned Jobs) |
 | Projects | The **Projects** card — Assigned Stages and Subscribed Stages grouped together |
 | Me | My Time |
