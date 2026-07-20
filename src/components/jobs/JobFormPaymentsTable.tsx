@@ -1,4 +1,4 @@
-import { Fragment, useCallback, useMemo, type CSSProperties, type KeyboardEvent } from 'react'
+import { Fragment, useCallback, useEffect, useMemo, useState, type CSSProperties, type KeyboardEvent } from 'react'
 import { MoneyDecimalAmountInput } from '../MoneyDecimalAmountInput'
 import { useAuth } from '../../hooks/useAuth'
 import { useToastContext } from '../../contexts/ToastContext'
@@ -115,10 +115,37 @@ export function JobFormPaymentsTable({
   const { role: authRole } = useAuth()
   const { showToast } = useToastContext()
 
+  // Consolidated start: blank manual draft rows (the seeded empty row) stay
+  // hidden behind a "Record non-Stripe payment received" button until the user
+  // asks for one — recorded payments and locked (Stripe/Mercury) rows always show.
+  const [manualEntryOpen, setManualEntryOpen] = useState(false)
+  useEffect(() => {
+    setManualEntryOpen(false)
+  }, [editing?.id])
+  const isBlankManualRow = useCallback(
+    (row: PaymentRow) =>
+      !persistedLedgerPaymentIds.has(row.id) &&
+      !stripeBillInvoiceForPaymentRow(row, editing) &&
+      !mercuryLinkedPaymentRow(row) &&
+      !(Number(row.amount) > 0) &&
+      !(row.paid_on ?? '').trim() &&
+      !(row.note ?? '').trim() &&
+      !(row.payment_type ?? '').trim() &&
+      !(row.reference_number ?? '').trim() &&
+      !row.invoice_id,
+    [editing, persistedLedgerPaymentIds],
+  )
+  const visiblePayments = manualEntryOpen ? payments : payments.filter((r) => !isBlankManualRow(r))
+  const openManualEntry = () => {
+    if (!payments.some((r) => isBlankManualRow(r))) addPaymentRow()
+    setManualEntryOpen(true)
+  }
+
   return (
     <div style={{ marginBottom: '1rem' }}>
       <h4 style={{ margin: '0 0 0.15rem', fontSize: '0.9375rem' }}>③ Payments received</h4>
-      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: '0 0 0.5rem' }}>Money collected on the job. Saved when you save the job.</div>
+      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: '0 0 0.5rem' }}>Money collected on the job. Saves automatically.</div>
+      {visiblePayments.length > 0 && (
       <div style={{ overflowX: 'auto' }}>
       <table
         style={{
@@ -145,14 +172,14 @@ export function JobFormPaymentsTable({
           {(() => {
             // Last non–Stripe-locked row hosts the add (+) control. If all rows are Stripe-backed (-1), there is no inline +.
             let lastUnlockedPaymentIdx = -1
-            for (let i = payments.length - 1; i >= 0; i--) {
-              const pr = payments[i]
+            for (let i = visiblePayments.length - 1; i >= 0; i--) {
+              const pr = visiblePayments[i]
               if (pr && !stripeBillInvoiceForPaymentRow(pr, editing) && !mercuryLinkedPaymentRow(pr)) {
                 lastUnlockedPaymentIdx = i
                 break
               }
             }
-            return payments.map((row, idx) => {
+            return visiblePayments.map((row, idx) => {
             const stripePaymentLocked = Boolean(stripeBillInvoiceForPaymentRow(row, editing))
             const mercuryPaymentLocked = mercuryLinkedPaymentRow(row)
             const payRowCanRemove =
@@ -169,7 +196,7 @@ export function JobFormPaymentsTable({
             const refTrim = (row.reference_number ?? '').trim()
             const hasMemoSubRow =
               !paymentReadOnly || noteTrim.length > 0 || ptTrim.length > 0 || refTrim.length > 0
-            const rowSep = idx < payments.length - 1 ? '1px solid #e5e7eb' : 'none'
+            const rowSep = idx < visiblePayments.length - 1 ? '1px solid #e5e7eb' : 'none'
             const parentCellPad = hasMemoSubRow ? '0.5rem 0.75rem 0.1rem' : '0.5rem 0.75rem'
             const paymentDateCellStyle = {
               paddingTop: '0.5rem',
@@ -394,7 +421,10 @@ export function JobFormPaymentsTable({
                       >
                         <button
                           type="button"
-                          onClick={addPaymentRow}
+                          onClick={() => {
+                            setManualEntryOpen(true)
+                            addPaymentRow()
+                          }}
                           title="Add payment line"
                           aria-label="Add payment line"
                           style={{
@@ -626,6 +656,26 @@ export function JobFormPaymentsTable({
         </tbody>
       </table>
       </div>
+      )}
+      {!manualEntryOpen && (
+        <button
+          type="button"
+          onClick={openManualEntry}
+          style={{
+            marginTop: visiblePayments.length > 0 ? '0.5rem' : 0,
+            padding: '0.35rem 0.75rem',
+            fontSize: '0.8125rem',
+            fontWeight: 500,
+            background: 'var(--surface)',
+            color: 'var(--text-link)',
+            border: '1px solid var(--border-strong)',
+            borderRadius: 6,
+            cursor: 'pointer',
+          }}
+        >
+          + Record non-Stripe payment received
+        </button>
+      )}
     </div>
   )
 }

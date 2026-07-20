@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-20 (v2.773)
+last_updated: 2026-07-20 (v2.774)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.774)
+
+### Edit Job — ③ Payments received starts consolidated (2026-07-20)
+The payments section no longer opens with a blank entry row and its full stack of optional fields. It starts folded: recorded payments and Stripe/Mercury-locked rows always show, but the blank manual draft row hides behind a **"+ Record non-Stripe payment received"** button — click it and the entry row appears (Date, Paid, and the optional Type / Ref / Memo sub-fields plus the **Applies to** invoice selector). The inline **+** on the last row also un-folds the section for the rows it adds, and the folded state resets per job. Section caption updated for v2.773 autosave ("Saves automatically"). Implementation: local `manualEntryOpen` state + a blank-manual-row predicate in [`JobFormPaymentsTable`](../src/components/jobs/JobFormPaymentsTable.tsx) — blank rows are only *hidden*, never created/destroyed, so the autosave slice and Save path see the same rows as before. Guide [`ready-to-bill-pipeline.md`](../src/content/help/ready-to-bill-pipeline.md) Billed→Paid section updated.
 
 ## Latest Updates (v2.773)
 
