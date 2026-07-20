@@ -1,21 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
-import { useAuth } from '../../hooks/useAuth'
-import { useReportQuickfillSectionMetric } from '../../contexts/QuickfillSectionMetricsContext'
-import { isAssistantLike } from '../../lib/subcontractorLikeRole'
-
-type Prospect = {
-  id: string
-  company_name: string | null
-  contact_name: string | null
-  phone_number: string | null
-  email: string | null
-  address: string | null
-  links_to_website: string | null
-  last_contact: string | null
-  prospect_fit_status: string | null
-}
+import type { CantReachProspect as Prospect } from '../../hooks/useQuickfillCantReachProspects'
 
 function formatDateTime(iso: string | null): string {
   if (!iso) return '—'
@@ -48,43 +34,21 @@ function getWebsiteHref(url: string | null): string {
   return 'https://' + s
 }
 
-export function CantReachSection() {
+/**
+ * Presentational: prospects come from the page-level `useQuickfillCantReachProspects`
+ * hook (which also drives the section's count gate and metric report); row mutations
+ * stay local but refresh through the passed `refetch`.
+ */
+export function CantReachSection({
+  prospects,
+  refetch,
+}: {
+  prospects: Prospect[]
+  refetch: () => Promise<void>
+}) {
   const navigate = useNavigate()
-  const { user: authUser, role } = useAuth()
-  const [prospects, setProspects] = useState<Prospect[]>([])
-  const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [isOpen, setIsOpen] = useState(true)
-
-  const canAccess = role === 'dev' || role === 'master_technician' || isAssistantLike(role)
-
-  async function loadCantReach() {
-    if (!authUser?.id) return
-    setLoading(true)
-    const { data, error } = await supabase
-      .from('prospects')
-      .select('id, company_name, contact_name, phone_number, email, address, links_to_website, last_contact, prospect_fit_status')
-      .eq('prospect_fit_status', 'cant_reach')
-      .order('last_contact', { ascending: false, nullsFirst: false })
-    if (error) {
-      setProspects([])
-    } else {
-      setProspects((data ?? []) as Prospect[])
-    }
-    setLoading(false)
-  }
-
-  useEffect(() => {
-    if (canAccess && authUser?.id) loadCantReach()
-  }, [canAccess, authUser?.id])
-
-  useReportQuickfillSectionMetric(
-    'cant-reach',
-    !canAccess || !authUser?.id ? null : loading ? null : prospects.length,
-    !!(canAccess && authUser?.id && loading),
-  )
-
-  if (!canAccess) return null
 
   async function handleSendBack(p: Prospect) {
     if (saving) return
@@ -93,7 +57,7 @@ export function CantReachSection() {
       .from('prospects')
       .update({ prospect_fit_status: null })
       .eq('id', p.id)
-    if (!error) await loadCantReach()
+    if (!error) await refetch()
     setSaving(false)
   }
 
@@ -104,7 +68,7 @@ export function CantReachSection() {
       .from('prospects')
       .update({ prospect_fit_status: 'not_a_fit' })
       .eq('id', p.id)
-    if (!error) await loadCantReach()
+    if (!error) await refetch()
     setSaving(false)
   }
 
@@ -113,7 +77,7 @@ export function CantReachSection() {
     if (!confirm(`Delete prospect "${p.company_name || 'Unknown'}"? This cannot be undone.`)) return
     setSaving(true)
     const { error } = await supabase.from('prospects').delete().eq('id', p.id)
-    if (!error) await loadCantReach()
+    if (!error) await refetch()
     setSaving(false)
   }
 
@@ -121,7 +85,6 @@ export function CantReachSection() {
     navigate(`/prospects?tab=prospect-list&prospect_id=${p.id}`)
   }
 
-  if (loading && prospects.length === 0) return null
   if (prospects.length === 0) return null
 
   return (

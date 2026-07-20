@@ -27,6 +27,18 @@ Pressing it records who marked it and when, and collapses the section into a gre
 
 Sections re-expand on their own after 12 hours, so tomorrow's pass starts fresh. Use {{button:outline|Open now}} to peek inside a collapsed section, and the history icon to see who marked it recently.
 
+Marking a section also removes its chip from the **floating section bar** at the bottom of the screen for the rest of your visit — the bar shrinks toward empty as your pass progresses. The chips all come back the next time you open Quickfill (the sections themselves stay collapsed until their 12 hours are up), and {{button:outline|Open now}} puts a section's chip back immediately.
+
+## Finding a section fast
+
+A **search box** sits between the jump buttons and the first section. Typing filters the section list live by name — for example `bill` leaves only the billing sections on the page:
+
+:::example Searching sections
+Search sections… `bill` → shows **Jobs Billing**, **Billing Awaiting Payments**, and **Complete, no Total Bill**; everything else hides until you clear the search (✕ or Escape).
+:::
+
+The jump buttons above the box always show every section, and the floating section bar follows the search. The filter resets when you leave the page.
+
 ## What's on the page
 
 The sections cover the office's recurring review surfaces — among them:
@@ -39,6 +51,7 @@ The sections cover the office's recurring review surfaces — among them:
 - **Schedule** ("Are there any obvious schedule conflicts?") and **Tomorrow's Schedule** ("Who is on what job tomorrow?").
 - **Email / Texts / Physical inbox** — communication queues.
 - **Prospects**, **Supply Houses**, **Banking sorting**, and more.
+- **Unreachable Prospects** — only appears when at least one prospect is flagged can't-reach; at zero it disappears from the page entirely (working the last one out of the list is the goal).
 
 Devs can reorder sections, hide them, and edit each section's banner prompt — everyone else sees the configured order.
 
