@@ -17,7 +17,7 @@ Common issues and how to resolve them.
 2. Click **Fix app**
 3. The page will unregister service workers, clear caches, clear app localStorage, and reload
 
-**Prevention**: Bookmark `/fix-cache.html` or use the link in Settings → Fix app.
+**Prevention**: Bookmark `/fix-cache.html` or use the link in Settings → Fix app. Since v2.813 the app also updates itself properly: a "A new version is ready" pill appears when a deploy lands (prompt-mode service worker, [src/components/UpdatePrompt.tsx](../src/components/UpdatePrompt.tsx)) and long-lived tabs check for updates hourly and on tab re-focus — stale builds, the raw material for these white screens, should now be rare.
 
 ---
 

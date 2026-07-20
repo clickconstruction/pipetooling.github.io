@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-20 (v2.812)
+last_updated: 2026-07-20 (v2.813)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.813)
+
+### White-screen fix, part 3: the app actually updates — prompt-mode SW with a "new version" pill and hourly checks (2026-07-20)
+Final part of the v2.811–v2.813 series. The SW update pipeline was broken end-to-end: `vite.config.ts` declared `registerType: 'autoUpdate'`, but the custom [`sw.ts`](../src/sw.ts) only calls `skipWaiting()` on a `SKIP_WAITING` message that nothing ever sent — every deploy's SW sat in `waiting` forever and open tabs stayed stale indefinitely (the raw material for stale-chunk white screens). Now the config matches the SW: **`registerType: 'prompt'`** plus new [`UpdatePrompt`](../src/components/UpdatePrompt.tsx) (owns `registerSW`, replacing the bare call in [`App.tsx`](../src/App.tsx)). When a new build's SW reaches `waiting`, a persistent bottom-center pill shows "**A new version is ready**" with **Reload** (posts `SKIP_WAITING`; vite-plugin-pwa reloads once the new SW takes control) and **Not now** (pill returns on the next deploy). Long-lived tabs discover deploys via `registration.update()` hourly **and** when a hidden tab becomes visible again (15-min throttle) — fitting this app's leave-it-open-all-day usage. New help guide [`app-updates.md`](../src/content/help/app-updates.md); `TROUBLESHOOTING.md` updated.
 
 ## Latest Updates (v2.812)
 

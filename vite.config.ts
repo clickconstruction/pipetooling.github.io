@@ -40,7 +40,10 @@ export default defineConfig({
       strategies: 'injectManifest',
       srcDir: 'src',
       filename: 'sw.ts',
-      registerType: 'autoUpdate',
+      // Prompt mode: a new SW waits until the user clicks Reload on the UpdatePrompt
+      // pill (posts SKIP_WAITING — listener in src/sw.ts). autoUpdate never worked with
+      // the custom sw.ts (nothing called skipWaiting), leaving clients stale forever.
+      registerType: 'prompt',
       injectManifest: {
         // Workbox default is 2 MiB; main chunk can exceed 3 MiB as the app grows.
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
