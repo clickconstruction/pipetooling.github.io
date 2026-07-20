@@ -17,10 +17,10 @@ const MONTHS_OPTIONS = [3, 6, 12] as const
 function StatusPill({ status, children }: { status: 'ok' | 'warn' | 'muted'; children: ReactNode }) {
   const style =
     status === 'ok'
-      ? { bg: '#dcfce7', fg: '#166534' }
+      ? { bg: 'var(--bg-green-100)', fg: 'var(--text-green-800)' }
       : status === 'warn'
-        ? { bg: '#fef3c7', fg: '#92400e' }
-        : { bg: '#f1f5f9', fg: '#64748b' }
+        ? { bg: 'var(--bg-amber-100)', fg: 'var(--text-amber-800)' }
+        : { bg: 'var(--bg-slate-100)', fg: 'var(--text-slate-500)' }
   return (
     <span style={{ marginLeft: '0.5rem', fontSize: '0.7rem', fontWeight: 700, padding: '1px 8px', borderRadius: 999, background: style.bg, color: style.fg, whiteSpace: 'nowrap' }}>
       {children}
@@ -42,7 +42,7 @@ function MonthRow({ m }: { m: ReconMonth }) {
     <>
       <tr
         onClick={() => canExpand && setOpen((v) => !v)}
-        style={{ borderTop: '1px solid #f1f5f9', cursor: canExpand ? 'pointer' : 'default' }}
+        style={{ borderTop: '1px solid var(--border)', cursor: canExpand ? 'pointer' : 'default' }}
       >
         <td style={{ padding: '0.4rem 0.6rem', whiteSpace: 'nowrap' }}>
           {canExpand ? <span style={{ color: 'var(--text-amber-800)', marginRight: 4 }}>{open ? '▼' : '▶'}</span> : null}

@@ -63,7 +63,7 @@ export function HelpFeedbackInboxSection() {
     return (
       <li
         key={row.id}
-        style={{ padding: '0.75rem 0', borderBottom: '1px solid #f3f4f6', background: isClosed ? 'var(--bg-muted)' : undefined }}
+        style={{ padding: '0.75rem 0', borderBottom: '1px solid var(--border)', background: isClosed ? 'var(--bg-muted)' : undefined }}
       >
         <div
           role="button"

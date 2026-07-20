@@ -1348,7 +1348,7 @@ export default function JobTally() {
                     }
                     return (
                     <Fragment key={txId}>
-                      <tr style={{ borderTop: '1px solid #f3f4f6' }}>
+                      <tr style={{ borderTop: '1px solid var(--border)' }}>
                         <td style={{ padding: '0.45rem 0.6rem', verticalAlign: 'top' }}>
                           {(() => {
                             const posted = formatTallyPostedParts(row.posted_at)
@@ -1481,7 +1481,7 @@ export default function JobTally() {
                               padding: '0.35rem 0.6rem 0.5rem',
                               verticalAlign: 'top',
                               background: 'var(--bg-page)',
-                              borderTop: '1px solid #f3f4f6',
+                              borderTop: '1px solid var(--border)',
                             }}
                           >
                             <div

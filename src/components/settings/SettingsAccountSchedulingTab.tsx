@@ -215,7 +215,7 @@ export default function SettingsAccountSchedulingTab({
                                       textAlign: 'left',
                                       padding: '0.45rem 0.65rem',
                                       border: 'none',
-                                      borderBottom: '1px solid #f3f4f6',
+                                      borderBottom: '1px solid var(--border)',
                                       background: active ? 'var(--bg-blue-tint)' : 'transparent',
                                       color: selectable ? (active ? 'var(--text-blue-700)' : 'var(--text-strong)') : '#9ca3af',
                                       cursor: selectable ? 'pointer' : 'not-allowed',

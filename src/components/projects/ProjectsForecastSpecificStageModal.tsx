@@ -148,19 +148,19 @@ function formatTimestamp(value: string | null | undefined): string {
 function describeStatus(status: string | null): { label: string; bg: string; color: string; border: string } {
   switch (status) {
     case 'completed':
-      return { label: 'Completed', bg: '#dcfce7', color: 'var(--text-green-800)', border: '#86efac' }
+      return { label: 'Completed', bg: 'var(--bg-green-100)', color: 'var(--text-green-800)', border: '#86efac' }
     case 'approved':
-      return { label: 'Approved', bg: '#dcfce7', color: 'var(--text-green-800)', border: '#86efac' }
+      return { label: 'Approved', bg: 'var(--bg-green-100)', color: 'var(--text-green-800)', border: '#86efac' }
     case 'in_progress':
-      return { label: 'In progress', bg: '#fef3c7', color: 'var(--text-amber-800)', border: '#fcd34d' }
+      return { label: 'In progress', bg: 'var(--bg-amber-100)', color: 'var(--text-amber-800)', border: '#fcd34d' }
     case 'rejected':
-      return { label: 'Previous work incomplete', bg: '#fee2e2', color: 'var(--text-red-800)', border: '#fca5a5' }
+      return { label: 'Previous work incomplete', bg: 'var(--bg-red-100)', color: 'var(--text-red-800)', border: '#fca5a5' }
     case 'skipped':
-      return { label: 'Skipped', bg: '#f3f4f6', color: 'var(--text-600)', border: 'var(--border-strong)' }
+      return { label: 'Skipped', bg: 'var(--bg-muted)', color: 'var(--text-600)', border: 'var(--border-strong)' }
     case 'pending':
       return { label: 'Pending', bg: '#e0e7ff', color: '#3730a3', border: '#a5b4fc' }
     default:
-      return { label: status ?? '—', bg: '#f3f4f6', color: 'var(--text-600)', border: 'var(--border-strong)' }
+      return { label: status ?? '—', bg: 'var(--bg-muted)', color: 'var(--text-600)', border: 'var(--border-strong)' }
   }
 }
 

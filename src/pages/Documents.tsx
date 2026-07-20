@@ -174,7 +174,7 @@ const thStyle: CSSProperties = {
 }
 const tdStyle: CSSProperties = {
   padding: '0.6rem 0.75rem',
-  borderBottom: '1px solid #f3f4f6',
+  borderBottom: '1px solid var(--border)',
   verticalAlign: 'top',
 }
 

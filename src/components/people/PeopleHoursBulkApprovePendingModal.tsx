@@ -167,16 +167,16 @@ export function PeopleHoursBulkApprovePendingModal({
                   .join('\n')
                 return (
                   <tr key={`${e.personName}|${e.workDate}`}>
-                    <td style={{ padding: '0.4rem 0.6rem', borderBottom: '1px solid #f3f4f6' }}>
+                    <td style={{ padding: '0.4rem 0.6rem', borderBottom: '1px solid var(--border)' }}>
                       {dayLabel}
                     </td>
-                    <td style={{ padding: '0.4rem 0.6rem', borderBottom: '1px solid #f3f4f6' }}>
+                    <td style={{ padding: '0.4rem 0.6rem', borderBottom: '1px solid var(--border)' }}>
                       {e.personName}
                     </td>
                     <td
                       style={{
                         padding: '0.4rem 0.6rem',
-                        borderBottom: '1px solid #f3f4f6',
+                        borderBottom: '1px solid var(--border)',
                         textAlign: 'right',
                         whiteSpace: 'pre-line',
                       }}
@@ -187,7 +187,7 @@ export function PeopleHoursBulkApprovePendingModal({
                     <td
                       style={{
                         padding: '0.4rem 0.6rem',
-                        borderBottom: '1px solid #f3f4f6',
+                        borderBottom: '1px solid var(--border)',
                         textAlign: 'right',
                         fontVariantNumeric: 'tabular-nums',
                       }}

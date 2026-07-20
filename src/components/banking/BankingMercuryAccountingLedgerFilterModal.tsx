@@ -293,7 +293,7 @@ export function BankingMercuryAccountingLedgerFilterModal({
             justifyContent: 'flex-end',
             marginTop: '1.25rem',
             paddingTop: '1rem',
-            borderTop: '1px solid #f1f5f9',
+            borderTop: '1px solid var(--border)',
           }}
         >
           <button

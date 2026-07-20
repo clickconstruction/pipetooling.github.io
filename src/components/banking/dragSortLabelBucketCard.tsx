@@ -43,14 +43,14 @@ function paletteForVisual(
   isInternalTransfers: boolean,
 ): { border: string; bg: string } {
   if (visualState === 'droppableHover' || visualState === 'clickableHover') {
-    return { border: '#2563eb', bg: '#eff6ff' }
+    return { border: '#2563eb', bg: 'var(--bg-blue-tint)' }
   }
   if (isInternalTransfers) {
     // Slate accent — visually distinct from the other neutral / Schedule C
     // buckets so users grok this isn't an expense category.
-    return { border: '#94a3b8', bg: '#f1f5f9' }
+    return { border: 'var(--border-400)', bg: 'var(--bg-slate-100)' }
   }
-  return { border: 'var(--border-strong)', bg: '#f9fafb' }
+  return { border: 'var(--border-strong)', bg: 'var(--bg-subtle)' }
 }
 
 function DragSortBucketStatsFooter({
@@ -80,7 +80,7 @@ function DragSortBucketStatsFooter({
           style={{
             fontSize: '0.75rem',
             fontWeight: 600,
-            color: '#334155',
+            color: 'var(--text-slate-600)',
             marginLeft: 'auto',
           }}
         >
@@ -114,7 +114,7 @@ function DragSortBucketStatsInlineCluster({
         {count} tx · {formatUsdDragSortBucket(amountSum)}
       </span>
       {scheduleTrim ? (
-        <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#334155' }}>
+        <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-slate-600)' }}>
           {scheduleCBadgeForCard(scheduleTrim)}
         </span>
       ) : null}

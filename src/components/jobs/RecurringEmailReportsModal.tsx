@@ -899,7 +899,7 @@ export default function RecurringEmailReportsModal({
                   <tbody>
                     {draft.recipientDrafts.map((r) => (
                       <tr key={r.localId}>
-                        <td style={{ padding: 6, borderBottom: '1px solid #f3f4f6' }}>
+                        <td style={{ padding: 6, borderBottom: '1px solid var(--border)' }}>
                           <select
                             value={r.recipient_user_id}
                             onChange={(e) =>
@@ -923,7 +923,7 @@ export default function RecurringEmailReportsModal({
                         <td
                           style={{
                             padding: 6,
-                            borderBottom: '1px solid #f3f4f6',
+                            borderBottom: '1px solid var(--border)',
                             whiteSpace: 'nowrap',
                           }}
                         >
@@ -951,7 +951,7 @@ export default function RecurringEmailReportsModal({
                         <td
                           style={{
                             padding: 6,
-                            borderBottom: '1px solid #f3f4f6',
+                            borderBottom: '1px solid var(--border)',
                             whiteSpace: 'nowrap',
                           }}
                         >
@@ -979,7 +979,7 @@ export default function RecurringEmailReportsModal({
                         <td
                           style={{
                             padding: 6,
-                            borderBottom: '1px solid #f3f4f6',
+                            borderBottom: '1px solid var(--border)',
                             whiteSpace: 'nowrap',
                             textAlign: 'center',
                           }}
@@ -1003,7 +1003,7 @@ export default function RecurringEmailReportsModal({
                         <td
                           style={{
                             padding: 6,
-                            borderBottom: '1px solid #f3f4f6',
+                            borderBottom: '1px solid var(--border)',
                             textAlign: 'right',
                             whiteSpace: 'nowrap',
                           }}

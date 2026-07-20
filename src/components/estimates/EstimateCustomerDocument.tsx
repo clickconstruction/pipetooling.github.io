@@ -35,7 +35,7 @@ const lineTableTdStyle = {
   fontSize: '0.875rem',
   color: 'var(--text-700)',
   padding: '0.4rem 0.5rem',
-  borderBottom: '1px solid #f3f4f6',
+  borderBottom: '1px solid var(--border)',
   verticalAlign: 'top' as const,
 }
 
@@ -49,7 +49,7 @@ const lineTableTdDescStyle = {
   fontSize: '0.8125rem',
   color: 'var(--text-muted)',
   padding: '0 0.5rem 0.4rem',
-  borderBottom: '1px solid #f3f4f6',
+  borderBottom: '1px solid var(--border)',
   verticalAlign: 'top' as const,
 }
 

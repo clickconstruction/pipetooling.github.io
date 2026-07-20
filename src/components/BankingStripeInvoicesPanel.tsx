@@ -133,7 +133,7 @@ export function BankingStripeInvoicesPanel() {
                   <tr
                     key={r.id}
                     style={{
-                      borderBottom: '1px solid #f3f4f6',
+                      borderBottom: '1px solid var(--border)',
                       verticalAlign: 'top',
                       backgroundColor: hasStripeInvoiceId ? undefined : '#fef2f2',
                     }}

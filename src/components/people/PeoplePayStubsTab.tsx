@@ -990,7 +990,7 @@ export default function PeoplePayStubsTab({
                 </thead>
                 <tbody>
                   {upcomingSummary.lines.map((l) => (
-                    <tr key={`${l.personName}:${l.weekStartYmd}`} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                    <tr key={`${l.personName}:${l.weekStartYmd}`} style={{ borderBottom: '1px solid var(--border)' }}>
                       <td style={{ padding: '0.45rem 0.65rem' }}>{l.personName}</td>
                       <td style={{ padding: '0.45rem 0.65rem', whiteSpace: 'nowrap' }}>
                         <button

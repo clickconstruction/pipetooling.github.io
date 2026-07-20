@@ -150,7 +150,7 @@ export function TallyJobTransactionsModal({ open, onClose, jobId, jobLabel, rows
                 {filteredSorted.map((row) => {
                   const jobAmt = splitAmountForJob(row, jobId)
                   return (
-                    <tr key={row.mercury_transaction_id} style={{ borderTop: '1px solid #f3f4f6' }}>
+                    <tr key={row.mercury_transaction_id} style={{ borderTop: '1px solid var(--border)' }}>
                       <td style={{ padding: '0.45rem 0.5rem', verticalAlign: 'top' }}>
                         {(() => {
                           const posted = formatTallyPostedParts(row.posted_at)

@@ -484,7 +484,7 @@ function PlanRow({
 
   return (
     <>
-      <tr style={{ borderBottom: '1px solid #f1f5f9' }}>
+      <tr style={{ borderBottom: '1px solid var(--border)' }}>
         <td style={tdStyleNum}>
           <span
             style={{
@@ -571,7 +571,7 @@ function PlanRow({
         </td>
       </tr>
       {error ? (
-        <tr style={{ borderBottom: '1px solid #f1f5f9' }}>
+        <tr style={{ borderBottom: '1px solid var(--border)' }}>
           <td />
           <td colSpan={4} style={{ padding: '0 0.5rem 0.5rem' }}>
             <div

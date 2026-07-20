@@ -720,7 +720,7 @@ export default function JobsCombineSeparateModal({ open, onClose, onAfterSuccess
                           textAlign: 'left',
                           padding: '0.5rem 0.65rem',
                           border: 'none',
-                          borderBottom: '1px solid #f3f4f6',
+                          borderBottom: '1px solid var(--border)',
                           background: cSourceId === j.id ? 'var(--bg-blue-tint)' : 'var(--surface)',
                           cursor: cMigrateBusy ? 'not-allowed' : 'pointer',
                           fontSize: '0.8125rem',
@@ -786,7 +786,7 @@ export default function JobsCombineSeparateModal({ open, onClose, onAfterSuccess
                           textAlign: 'left',
                           padding: '0.5rem 0.65rem',
                           border: 'none',
-                          borderBottom: '1px solid #f3f4f6',
+                          borderBottom: '1px solid var(--border)',
                           background: cTargetId === j.id ? 'var(--bg-blue-tint)' : 'var(--surface)',
                           cursor: cMigrateBusy ? 'not-allowed' : 'pointer',
                           fontSize: '0.8125rem',
@@ -977,7 +977,7 @@ export default function JobsCombineSeparateModal({ open, onClose, onAfterSuccess
                           textAlign: 'left',
                           padding: '0.5rem 0.65rem',
                           border: 'none',
-                          borderBottom: '1px solid #f3f4f6',
+                          borderBottom: '1px solid var(--border)',
                           background: sSourceId === j.id ? 'var(--bg-blue-tint)' : 'var(--surface)',
                           cursor: sSplitBusy ? 'not-allowed' : 'pointer',
                           fontSize: '0.8125rem',
@@ -1026,7 +1026,7 @@ export default function JobsCombineSeparateModal({ open, onClose, onAfterSuccess
                             alignItems: 'flex-start',
                             gap: '0.5rem',
                             padding: '0.45rem 0.65rem',
-                            borderBottom: '1px solid #f3f4f6',
+                            borderBottom: '1px solid var(--border)',
                             fontSize: '0.8125rem',
                           }}
                         >
@@ -1095,7 +1095,7 @@ export default function JobsCombineSeparateModal({ open, onClose, onAfterSuccess
                               alignItems: 'center',
                               gap: '0.5rem',
                               padding: '0.35rem 0',
-                              borderBottom: '1px solid #f3f4f6',
+                              borderBottom: '1px solid var(--border)',
                               fontSize: '0.8125rem',
                             }}
                           >

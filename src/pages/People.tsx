@@ -3311,7 +3311,7 @@ export default function People() {
                     borderRadius: 6,
                   }}
                 >
-                  <p style={{ margin: '0 0 0.5rem', fontSize: '0.8125rem', color: '#334155', lineHeight: 1.45 }}>
+                  <p style={{ margin: '0 0 0.5rem', fontSize: '0.8125rem', color: 'var(--text-slate-600)', lineHeight: 1.45 }}>
                     You entered <strong>${formatCurrency(parsedPaid)}</strong>, which is more than the remaining balance (<strong>${formatCurrency(rem)}</strong>).{' '}
                     <strong>Confirm</strong> will apply <strong>${formatCurrency(rem)}</strong> to this pay report.{' '}
                     <strong>Excess:</strong> ${formatCurrency(excess)} — use the button below to open <strong>Add offset</strong> (employee credit) on top of this dialog (optional; you can confirm the payment first).

@@ -514,7 +514,7 @@ export default function PeopleTeamsTab({ authUserId, authUserRole }: PeopleTeams
                       </thead>
                       <tbody>
                         {rows.map((row) => (
-                          <tr key={row.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                          <tr key={row.id} style={{ borderBottom: '1px solid var(--border)' }}>
                             <td style={{ padding: '0.5rem 0.5rem', paddingLeft: '1.25rem' }}>
                               {displayLabelForUser(row.member_user_id, allUsers)}
                               {roleLabelForUser(row.member_user_id, allUsers) ? (

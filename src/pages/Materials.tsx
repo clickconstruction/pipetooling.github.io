@@ -3621,7 +3621,7 @@ export default function Materials() {
                   {assemblyTypes.map(at => (
                     <label
                       key={at.id}
-                      style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 0.75rem', cursor: 'pointer', borderBottom: '1px solid #f3f4f6' }}
+                      style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 0.75rem', cursor: 'pointer', borderBottom: '1px solid var(--border)' }}
                     >
                       <input
                         type="checkbox"
@@ -3669,25 +3669,25 @@ export default function Materials() {
                     const assemblyType = assemblyTypes.find(at => at.id === template.assembly_type_id)
                     
                     // Pricing status badge
-                    let statusBg = '#f3f4f6'
-                    let statusColor = '#6b7280'
+                    let statusBg = 'var(--bg-muted)'
+                    let statusColor = 'var(--text-muted)'
                     let statusText = 'Empty'
-                    
+
                     if (costData.partCount === 0 && costData.nestedCount === 0) {
-                      statusBg = '#f3f4f6'
-                      statusColor = '#6b7280'
+                      statusBg = 'var(--bg-muted)'
+                      statusColor = 'var(--text-muted)'
                       statusText = 'Empty'
                     } else if (costData.missingPrices === 0) {
-                      statusBg = '#d1fae5'
-                      statusColor = '#065f46'
+                      statusBg = 'var(--bg-green-100)'
+                      statusColor = 'var(--text-green-800)'
                       statusText = 'All Priced'
                     } else if (costData.missingPrices > 0 && costData.total > 0) {
-                      statusBg = '#fef3c7'
-                      statusColor = '#92400e'
+                      statusBg = 'var(--bg-amber-100)'
+                      statusColor = 'var(--text-amber-800)'
                       statusText = `${costData.missingPrices} Missing`
                     } else {
-                      statusBg = '#fee2e2'
-                      statusColor = '#991b1b'
+                      statusBg = 'var(--bg-red-100)'
+                      statusColor = 'var(--text-red-800)'
                       statusText = 'No Prices'
                     }
                     
@@ -4189,7 +4189,7 @@ export default function Materials() {
                     {assemblyTypes.map(at => (
                       <label
                         key={at.id}
-                        style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 0.75rem', cursor: 'pointer', borderBottom: '1px solid #f3f4f6' }}
+                        style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 0.75rem', cursor: 'pointer', borderBottom: '1px solid var(--border)' }}
                       >
                         <input
                           type="checkbox"
@@ -4481,7 +4481,7 @@ export default function Materials() {
                                 style={{
                                   padding: '0.5rem 0.75rem',
                                   cursor: 'pointer',
-                                  borderBottom: '1px solid #f3f4f6',
+                                  borderBottom: '1px solid var(--border)',
                                 }}
                               >
                                 <div style={{ fontWeight: 500 }}>{p.name}</div>
@@ -4570,7 +4570,7 @@ export default function Materials() {
                                         setNewItemTemplateSearchQuery('')
                                         setNewItemTemplateDropdownOpen(false)
                                       }}
-                                      style={{ padding: '0.5rem 0.75rem', cursor: 'pointer', borderBottom: '1px solid #f3f4f6' }}
+                                      style={{ padding: '0.5rem 0.75rem', cursor: 'pointer', borderBottom: '1px solid var(--border)' }}
                                     >
                                       <div style={{ fontWeight: 500 }}>{t.name}</div>
                                       {typeName && (
@@ -5234,7 +5234,7 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
                             setAddItemModalSearchQuery('')
                             setAddItemModalDropdownOpen(false)
                           }}
-                          style={{ padding: '0.5rem 0.75rem', cursor: 'pointer', borderBottom: '1px solid #f3f4f6' }}
+                          style={{ padding: '0.5rem 0.75rem', cursor: 'pointer', borderBottom: '1px solid var(--border)' }}
                         >
                           <div style={{ fontWeight: 500 }}>{p.name}</div>
                           {(p.manufacturer || p.part_type?.name) && (
@@ -5310,7 +5310,7 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
                                 setAddItemModalSearchQuery('')
                                 setAddItemModalDropdownOpen(false)
                               }}
-                              style={{ padding: '0.5rem 0.75rem', cursor: 'pointer', borderBottom: '1px solid #f3f4f6' }}
+                              style={{ padding: '0.5rem 0.75rem', cursor: 'pointer', borderBottom: '1px solid var(--border)' }}
                             >
                               <div style={{ fontWeight: 500 }}>{t.name}</div>
                               {typeName && (
@@ -5499,7 +5499,7 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
                                           const newPriceNum = parseFloat(newPriceStr)
                                           const isValidPrice = !isNaN(newPriceNum) && newPriceNum >= 0
                                           return (
-                                            <tr key={row.price_id} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                                            <tr key={row.price_id} style={{ borderBottom: '1px solid var(--border)' }}>
                                               <td style={{ padding: '0.5rem' }}>{row.supply_house_name}</td>
                                               <td style={{ padding: '0.5rem' }}>${formatCurrency(row.price)}</td>
                                               <td style={{ padding: '0.5rem' }}>
@@ -6073,7 +6073,7 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
                                 textAlign: 'left',
                                 padding: '0.5rem 0.75rem',
                                 border: 'none',
-                                borderTop: idx === 0 ? 'none' : '1px solid #f3f4f6',
+                                borderTop: idx === 0 ? 'none' : '1px solid var(--border)',
                                 background: 'var(--surface)',
                                 cursor: 'pointer',
                                 font: 'inherit',
@@ -6178,7 +6178,7 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
                                 textAlign: 'left',
                                 padding: '0.5rem 0.75rem',
                                 border: 'none',
-                                borderTop: idx === 0 ? 'none' : '1px solid #f3f4f6',
+                                borderTop: idx === 0 ? 'none' : '1px solid var(--border)',
                                 background: 'var(--surface)',
                                 cursor: 'pointer',
                                 font: 'inherit',
@@ -6274,7 +6274,7 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
                                 textAlign: 'left',
                                 padding: '0.5rem 0.75rem',
                                 border: 'none',
-                                borderTop: idx === 0 ? 'none' : '1px solid #f3f4f6',
+                                borderTop: idx === 0 ? 'none' : '1px solid var(--border)',
                                 background: 'var(--surface)',
                                 cursor: 'pointer',
                                 font: 'inherit',
@@ -6362,7 +6362,7 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
                     const fuLabel = fu?.name?.trim() || fu?.email?.trim() || '—'
                     const cbLabel = cb?.name?.trim() || cb?.email?.trim() || '—'
                     return (
-                      <tr key={row.id} style={{ borderBottom: '1px solid #f3f4f6', verticalAlign: 'top' }}>
+                      <tr key={row.id} style={{ borderBottom: '1px solid var(--border)', verticalAlign: 'top' }}>
                         <td style={{ padding: '0.6rem 0.5rem', fontWeight: 600 }}>{row.po_code}</td>
                         <td style={{ padding: '0.6rem 0.5rem' }}>
                           J{jl?.hcp_number?.trim() || '—'} · {jl?.job_name?.trim() || '—'}

@@ -276,7 +276,7 @@ function FieldQueueLineItemsSection({
                     <tr
                       key={row.id}
                       style={{
-                        borderTop: '1px solid #f3f4f6',
+                        borderTop: '1px solid var(--border)',
                         ...(unmatched
                           ? { background: 'var(--bg-red-tint)', boxShadow: 'inset 3px 0 0 #fecaca' }
                           : {}),

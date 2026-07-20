@@ -192,7 +192,7 @@ function JobChargesTimelineTooltip({ active, payload }: TimelineTooltipProps) {
           {e.percent != null ? ` — ${e.percent}% complete` : ' — no completion %'}
         </div>
       ))}
-      <div style={{ marginTop: '0.25rem', borderTop: '1px solid #f3f4f6', paddingTop: '0.25rem' }}>
+      <div style={{ marginTop: '0.25rem', borderTop: '1px solid var(--border)', paddingTop: '0.25rem' }}>
         <span style={{ color: 'var(--text-red-600)' }}>Cost: ${formatCurrency(row.expense)}</span>
         {row.paymentsToDate > 0 && (
           <span style={{ color: '#15803d', marginLeft: '0.6rem' }}>

@@ -341,7 +341,7 @@ function ProjectsForecastTimelineGridInner<TRow>(
             {gutterHeader ?? null}
           </div>
           {rows.length === 0 ? (
-            <div style={{ height: FORECAST_ROW_H, borderBottom: '1px solid #f1f5f9' }} />
+            <div style={{ height: FORECAST_ROW_H, borderBottom: '1px solid var(--border)' }} />
           ) : (
             rows.map((row, idx) => (
               <div
@@ -351,7 +351,7 @@ function ProjectsForecastTimelineGridInner<TRow>(
                   display: 'flex',
                   alignItems: 'center',
                   padding: '0 8px',
-                  borderBottom: '1px solid #f1f5f9',
+                  borderBottom: '1px solid var(--border)',
                   fontSize: '0.8125rem',
                   color: 'var(--text-slate-900)',
                   overflow: 'hidden',
@@ -451,7 +451,7 @@ function ProjectsForecastTimelineGridInner<TRow>(
                 display: 'grid',
                 gridTemplateColumns,
                 height: FORECAST_HEADER_MONTH_H,
-                borderBottom: '1px solid #f1f5f9',
+                borderBottom: '1px solid var(--border)',
                 fontSize: '0.75rem',
                 color: 'var(--text-700)',
               }}
@@ -501,7 +501,7 @@ function ProjectsForecastTimelineGridInner<TRow>(
                       background: isToday ? '#fff7ed' : weekend ? 'var(--bg-slate-100)' : 'var(--surface)',
                       color: isToday ? '#b45309' : weekend ? 'var(--text-slate-400)' : 'var(--text-700)',
                       fontWeight: digit?.isFirstOfMonth ? 700 : 400,
-                      borderRight: '1px solid #f1f5f9',
+                      borderRight: '1px solid var(--border)',
                     }}
                   >
                     {digit?.day ?? ''}
@@ -552,7 +552,7 @@ function ProjectsForecastTimelineGridInner<TRow>(
                   gridTemplateColumns,
                   height: FORECAST_ROW_H,
                   position: 'relative',
-                  borderBottom: '1px solid #f1f5f9',
+                  borderBottom: '1px solid var(--border)',
                 }}
               >
                 {/* Weekend backdrop — drawn once per row so it lines up with the header. */}

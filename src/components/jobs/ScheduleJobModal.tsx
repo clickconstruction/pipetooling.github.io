@@ -745,7 +745,7 @@ export function ScheduleJobModal({
                     alignItems: 'center',
                     gap: '0.5rem',
                     padding: '0.5rem 0',
-                    borderBottom: '1px solid #f3f4f6',
+                    borderBottom: '1px solid var(--border)',
                     fontSize: '0.8125rem',
                   }}
                 >

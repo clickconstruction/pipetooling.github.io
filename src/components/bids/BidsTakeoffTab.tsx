@@ -3327,7 +3327,7 @@ export function BidsTakeoffTab({
                           </div>
                           {takeoffNewItemPartDropdownOpen && (
                             <ul style={{ position: 'absolute', left: 0, right: 0, top: '100%', margin: 0, marginTop: 2, padding: 0, listStyle: 'none', maxHeight: 200, overflowY: 'auto', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', zIndex: 60, boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}>
-                              {takeoffAddTemplateParts.length === 0 ? <li style={{ padding: '0.75rem', color: 'var(--text-muted)' }}>Loading parts…</li> : filterPartsByQuery(takeoffAddTemplateParts, takeoffNewItemPartSearchQuery).length === 0 ? <li style={{ padding: '0.75rem', color: 'var(--text-muted)' }}>No parts match.{' '}<button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => { openBidsPartFormForCreate(takeoffNewItemPartSearchQuery.trim()); setTakeoffNewItemPartDropdownOpen(false) }} style={{ marginLeft: '0.25rem', padding: '0.25rem 0.5rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}>Add Part</button></li> : filterPartsByQuery(takeoffAddTemplateParts, takeoffNewItemPartSearchQuery).map((p) => (<li key={p.id} onMouseDown={(e) => e.preventDefault()} onClick={() => { setTakeoffNewItemPartId(p.id); setTakeoffNewItemPartSearchQuery(''); setTakeoffNewItemPartDropdownOpen(false) }} style={{ padding: '0.5rem 0.75rem', cursor: 'pointer', borderBottom: '1px solid #f3f4f6' }}><div style={{ fontWeight: 500 }}>{p.name}</div>{(p.manufacturer || p.part_types?.name) && <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>{[p.manufacturer, p.part_types?.name].filter(Boolean).join(' · ')}</div>}</li>))}
+                              {takeoffAddTemplateParts.length === 0 ? <li style={{ padding: '0.75rem', color: 'var(--text-muted)' }}>Loading parts…</li> : filterPartsByQuery(takeoffAddTemplateParts, takeoffNewItemPartSearchQuery).length === 0 ? <li style={{ padding: '0.75rem', color: 'var(--text-muted)' }}>No parts match.{' '}<button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => { openBidsPartFormForCreate(takeoffNewItemPartSearchQuery.trim()); setTakeoffNewItemPartDropdownOpen(false) }} style={{ marginLeft: '0.25rem', padding: '0.25rem 0.5rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}>Add Part</button></li> : filterPartsByQuery(takeoffAddTemplateParts, takeoffNewItemPartSearchQuery).map((p) => (<li key={p.id} onMouseDown={(e) => e.preventDefault()} onClick={() => { setTakeoffNewItemPartId(p.id); setTakeoffNewItemPartSearchQuery(''); setTakeoffNewItemPartDropdownOpen(false) }} style={{ padding: '0.5rem 0.75rem', cursor: 'pointer', borderBottom: '1px solid var(--border)' }}><div style={{ fontWeight: 500 }}>{p.name}</div>{(p.manufacturer || p.part_types?.name) && <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>{[p.manufacturer, p.part_types?.name].filter(Boolean).join(' · ')}</div>}</li>))}
                             </ul>
                           )}
                         </div>
@@ -3339,7 +3339,7 @@ export function BidsTakeoffTab({
                           </div>
                           {takeoffNewItemTemplateDropdownOpen && (
                             <ul style={{ position: 'absolute', left: 0, right: 0, top: '100%', margin: 0, marginTop: 2, padding: 0, listStyle: 'none', maxHeight: 200, overflowY: 'auto', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', zIndex: 60, boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}>
-                              {filterTemplatesByQuery(materialTemplates, takeoffNewItemTemplateSearchQuery, 50).length === 0 ? <li style={{ padding: '0.75rem', color: 'var(--text-muted)' }}>No assemblies match.</li> : filterTemplatesByQuery(materialTemplates, takeoffNewItemTemplateSearchQuery, 50).map((t) => (<li key={t.id} onMouseDown={(e) => e.preventDefault()} onClick={() => { setTakeoffNewItemTemplateId(t.id); setTakeoffNewItemTemplateSearchQuery(''); setTakeoffNewItemTemplateDropdownOpen(false) }} style={{ padding: '0.5rem 0.75rem', cursor: 'pointer', borderBottom: '1px solid #f3f4f6' }}><div style={{ fontWeight: 500 }}>{t.name}</div>{t.description && <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>{t.description}</div>}</li>))}
+                              {filterTemplatesByQuery(materialTemplates, takeoffNewItemTemplateSearchQuery, 50).length === 0 ? <li style={{ padding: '0.75rem', color: 'var(--text-muted)' }}>No assemblies match.</li> : filterTemplatesByQuery(materialTemplates, takeoffNewItemTemplateSearchQuery, 50).map((t) => (<li key={t.id} onMouseDown={(e) => e.preventDefault()} onClick={() => { setTakeoffNewItemTemplateId(t.id); setTakeoffNewItemTemplateSearchQuery(''); setTakeoffNewItemTemplateDropdownOpen(false) }} style={{ padding: '0.5rem 0.75rem', cursor: 'pointer', borderBottom: '1px solid var(--border)' }}><div style={{ fontWeight: 500 }}>{t.name}</div>{t.description && <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>{t.description}</div>}</li>))}
                             </ul>
                           )}
                         </div>
@@ -3396,7 +3396,7 @@ export function BidsTakeoffTab({
                       <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '0.75rem' }}>
                         <tbody>
                           {takeoffNewTemplatePrices.map((p, idx) => (
-                            <tr key={p.supplyHouseId} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                            <tr key={p.supplyHouseId} style={{ borderBottom: '1px solid var(--border)' }}>
                               {saveAsAssemblyCountRowId && (
                                 <td style={{ padding: '0.4rem 0.5rem', whiteSpace: 'nowrap' }}>
                                   <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer', fontSize: '0.8125rem', color: 'var(--text-700)' }}>
@@ -3530,7 +3530,7 @@ export function BidsTakeoffTab({
                     <li style={{ padding: '0.75rem', color: 'var(--text-muted)' }}>No assemblies match.</li>
                   ) : (
                     filterTemplatesByQuery(materialTemplates, roughAddAssemblySearchQuery, 50).map((t) => (
-                      <li key={t.id} style={{ display: 'flex', alignItems: 'stretch', borderBottom: '1px solid #f3f4f6' }}>
+                      <li key={t.id} style={{ display: 'flex', alignItems: 'stretch', borderBottom: '1px solid var(--border)' }}>
                         <button
                           type="button"
                           disabled={roughAddAssemblyExpanding}
@@ -3564,7 +3564,7 @@ export function BidsTakeoffTab({
                             flexShrink: 0,
                             padding: '0.5rem 0.75rem',
                             border: 'none',
-                            borderLeft: '1px solid #f3f4f6',
+                            borderLeft: '1px solid var(--border)',
                             background: roughAddAssemblyExpanding ? 'var(--bg-subtle)' : 'var(--bg-blue-tint)',
                             color: 'var(--text-blue-700)',
                             fontWeight: 600,
@@ -4356,7 +4356,7 @@ export function BidsTakeoffTab({
                             setAddPartsSearchQuery('')
                             setAddPartsDropdownOpen(false)
                           }}
-                          style={{ padding: '0.5rem 0.75rem', cursor: 'pointer', borderBottom: '1px solid #f3f4f6' }}
+                          style={{ padding: '0.5rem 0.75rem', cursor: 'pointer', borderBottom: '1px solid var(--border)' }}
                           onMouseEnter={(e) => ((e.target as HTMLElement).style.background = 'var(--bg-subtle)')}
                           onMouseLeave={(e) => ((e.target as HTMLElement).style.background = 'transparent')}
                         >
@@ -4559,7 +4559,7 @@ export function BidsTakeoffTab({
                     </div>
                     {editTemplateNewItemPartDropdownOpen && (
                       <ul style={{ position: 'absolute', left: 0, right: 0, top: '100%', margin: 0, marginTop: 2, padding: 0, listStyle: 'none', maxHeight: 200, overflowY: 'auto', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', zIndex: 60, boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}>
-                        {takeoffAddTemplateParts.length === 0 ? <li style={{ padding: '0.75rem', color: 'var(--text-muted)' }}>Loading parts…</li> : filterPartsByQuery(takeoffAddTemplateParts, editTemplateNewItemPartSearchQuery).length === 0 ? <li style={{ padding: '0.75rem', color: 'var(--text-muted)' }}>No parts match.{' '}<button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => { openBidsPartFormForCreate(editTemplateNewItemPartSearchQuery.trim()); setEditTemplateNewItemPartDropdownOpen(false) }} style={{ marginLeft: '0.25rem', padding: '0.25rem 0.5rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}>Add Part</button></li> : filterPartsByQuery(takeoffAddTemplateParts, editTemplateNewItemPartSearchQuery).map((p) => (<li key={p.id} onMouseDown={(e) => e.preventDefault()} onClick={() => { setEditTemplateNewItemPartId(p.id); setEditTemplateNewItemPartSearchQuery(''); setEditTemplateNewItemPartDropdownOpen(false) }} style={{ padding: '0.5rem 0.75rem', cursor: 'pointer', borderBottom: '1px solid #f3f4f6' }}><div style={{ fontWeight: 500 }}>{p.name}</div>{(p.manufacturer || p.part_types?.name) && <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>{[p.manufacturer, p.part_types?.name].filter(Boolean).join(' · ')}</div>}</li>))}
+                        {takeoffAddTemplateParts.length === 0 ? <li style={{ padding: '0.75rem', color: 'var(--text-muted)' }}>Loading parts…</li> : filterPartsByQuery(takeoffAddTemplateParts, editTemplateNewItemPartSearchQuery).length === 0 ? <li style={{ padding: '0.75rem', color: 'var(--text-muted)' }}>No parts match.{' '}<button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => { openBidsPartFormForCreate(editTemplateNewItemPartSearchQuery.trim()); setEditTemplateNewItemPartDropdownOpen(false) }} style={{ marginLeft: '0.25rem', padding: '0.25rem 0.5rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}>Add Part</button></li> : filterPartsByQuery(takeoffAddTemplateParts, editTemplateNewItemPartSearchQuery).map((p) => (<li key={p.id} onMouseDown={(e) => e.preventDefault()} onClick={() => { setEditTemplateNewItemPartId(p.id); setEditTemplateNewItemPartSearchQuery(''); setEditTemplateNewItemPartDropdownOpen(false) }} style={{ padding: '0.5rem 0.75rem', cursor: 'pointer', borderBottom: '1px solid var(--border)' }}><div style={{ fontWeight: 500 }}>{p.name}</div>{(p.manufacturer || p.part_types?.name) && <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>{[p.manufacturer, p.part_types?.name].filter(Boolean).join(' · ')}</div>}</li>))}
                       </ul>
                     )}
                   </div>
@@ -4583,7 +4583,7 @@ export function BidsTakeoffTab({
                     </div>
                     {editTemplateNewItemTemplateDropdownOpen && (
                       <ul style={{ position: 'absolute', left: 0, right: 0, top: '100%', margin: 0, marginTop: 2, padding: 0, listStyle: 'none', maxHeight: 200, overflowY: 'auto', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', zIndex: 60, boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}>
-                        {filterTemplatesByQuery(materialTemplates.filter((t) => t.id !== editTemplateModalId), editTemplateNewItemTemplateSearchQuery, 50).length === 0 ? <li style={{ padding: '0.75rem', color: 'var(--text-muted)' }}>No assemblies match.</li> : filterTemplatesByQuery(materialTemplates.filter((t) => t.id !== editTemplateModalId), editTemplateNewItemTemplateSearchQuery, 50).map((t) => (<li key={t.id} onMouseDown={(e) => e.preventDefault()} onClick={() => { setEditTemplateNewItemTemplateId(t.id); setEditTemplateNewItemTemplateSearchQuery(''); setEditTemplateNewItemTemplateDropdownOpen(false) }} style={{ padding: '0.5rem 0.75rem', cursor: 'pointer', borderBottom: '1px solid #f3f4f6' }}><div style={{ fontWeight: 500 }}>{t.name}</div>{t.description && <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>{t.description}</div>}</li>))}
+                        {filterTemplatesByQuery(materialTemplates.filter((t) => t.id !== editTemplateModalId), editTemplateNewItemTemplateSearchQuery, 50).length === 0 ? <li style={{ padding: '0.75rem', color: 'var(--text-muted)' }}>No assemblies match.</li> : filterTemplatesByQuery(materialTemplates.filter((t) => t.id !== editTemplateModalId), editTemplateNewItemTemplateSearchQuery, 50).map((t) => (<li key={t.id} onMouseDown={(e) => e.preventDefault()} onClick={() => { setEditTemplateNewItemTemplateId(t.id); setEditTemplateNewItemTemplateSearchQuery(''); setEditTemplateNewItemTemplateDropdownOpen(false) }} style={{ padding: '0.5rem 0.75rem', cursor: 'pointer', borderBottom: '1px solid var(--border)' }}><div style={{ fontWeight: 500 }}>{t.name}</div>{t.description && <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>{t.description}</div>}</li>))}
                       </ul>
                     )}
                   </div>
@@ -4607,7 +4607,7 @@ export function BidsTakeoffTab({
                       const editingVal = editTemplatePriceEditing[p.id]
                       const isEditing = editingVal !== undefined
                       return (
-                        <tr key={p.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                        <tr key={p.id} style={{ borderBottom: '1px solid var(--border)' }}>
                           <td style={{ padding: '0.4rem 0.5rem' }}>{p.supply_house_name}</td>
                           <td style={{ padding: '0.4rem 0.5rem', textAlign: 'right' }}>
                             {isEditing ? (
@@ -4744,7 +4744,7 @@ export function BidsTakeoffTab({
                     </thead>
                     <tbody>
                       {bundleBreakdownData.parts.map((p) => (
-                        <tr key={p.partId} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                        <tr key={p.partId} style={{ borderBottom: '1px solid var(--border)' }}>
                           <td style={{ padding: '0.35rem 0.5rem' }}>{p.name}</td>
                           <td style={{ padding: '0.35rem 0.5rem', textAlign: 'right' }}>{p.quantity}</td>
                         </tr>
@@ -4763,7 +4763,7 @@ export function BidsTakeoffTab({
                   <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem', marginBottom: '1rem' }}>
                     <tbody>
                       {bundleBreakdownData.perSupplyHouse.map((h) => (
-                        <tr key={h.supplyHouseId} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                        <tr key={h.supplyHouseId} style={{ borderBottom: '1px solid var(--border)' }}>
                           <td style={{ padding: '0.4rem 0.5rem' }}>
                             {h.supplyHouseName}
                             {h.missingCount > 0 && (
@@ -4791,7 +4791,7 @@ export function BidsTakeoffTab({
                   <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
                     <tbody>
                       {bundleBreakdownData.bundleQuotes.map((q) => (
-                        <tr key={q.priceId} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                        <tr key={q.priceId} style={{ borderBottom: '1px solid var(--border)' }}>
                           <td style={{ padding: '0.4rem 0.5rem' }}>{q.supplyHouseName}</td>
                           <td style={{ padding: '0.4rem 0.5rem', textAlign: 'right', whiteSpace: 'nowrap' }}>${formatCurrency(q.price)}</td>
                           <td style={{ padding: '0.4rem 0.5rem', textAlign: 'right' }}>
@@ -4839,7 +4839,7 @@ export function BidsTakeoffTab({
                         const numVal = parseFloat(editVal)
                         const isValid = !isNaN(numVal) && numVal >= 0
                         return (
-                          <tr key={row.price_id} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                          <tr key={row.price_id} style={{ borderBottom: '1px solid var(--border)' }}>
                             <td style={{ padding: '0.5rem' }}>
                               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', alignItems: 'flex-start' }}>
                                 <span>{row.supply_house_name}</span>
@@ -5002,7 +5002,7 @@ export function BidsTakeoffTab({
                         setTakeoffTemplatePickerQuery('')
                         setTakeoffTemplatePickerOpenMappingId(null)
                       }}
-                      style={{ padding: '0.5rem 0.75rem', cursor: 'pointer', borderBottom: '1px solid #f3f4f6' }}
+                      style={{ padding: '0.5rem 0.75rem', cursor: 'pointer', borderBottom: '1px solid var(--border)' }}
                     >
                       <div style={{ fontWeight: 500 }}>{t.name}</div>
                       {t.description && <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>{t.description}</div>}
@@ -5304,7 +5304,7 @@ function SortableRoughPartLineRow({
                       setTakeoffRoughPartPickerLineId(null)
                       setTakeoffRoughPartSearchQuery('')
                     }}
-                    style={{ padding: '0.5rem 0.75rem', cursor: 'pointer', borderBottom: '1px solid #f3f4f6' }}
+                    style={{ padding: '0.5rem 0.75rem', cursor: 'pointer', borderBottom: '1px solid var(--border)' }}
                   >
                     <div style={{ fontWeight: 500 }}>{p.name}</div>
                     {(p.manufacturer || p.part_types?.name) && (
@@ -5591,7 +5591,7 @@ function SortableRoughPartLineRow({
         <tr
           key={`${line.id}-bp-${bp.partId}`}
           style={{
-            borderBottom: i === bundleRows.length - 1 ? '1px solid var(--border)' : '1px solid #f3f4f6',
+            borderBottom: i === bundleRows.length - 1 ? '1px solid var(--border)' : '1px solid var(--border)',
             background: 'var(--bg-page)',
             color: 'var(--text-faint)',
             ...rowTransformStyle,

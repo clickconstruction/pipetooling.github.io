@@ -425,7 +425,7 @@ export function BankingSortingConfigModal({
                       style={{
                         marginBottom: '0.5rem',
                         paddingBottom: '0.45rem',
-                        borderBottom: '1px solid #f3f4f6',
+                        borderBottom: '1px solid var(--border)',
                       }}
                     >
                       <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', flexWrap: 'wrap' }}>

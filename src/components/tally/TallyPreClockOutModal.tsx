@@ -225,7 +225,7 @@ export function TallyPreClockOutModal({
                   const notePanelId = `tally-pre-co-note-${txId}`
                   return (
                     <Fragment key={txId}>
-                      <tr style={{ borderTop: '1px solid #f3f4f6' }}>
+                      <tr style={{ borderTop: '1px solid var(--border)' }}>
                         <td style={{ padding: '0.45rem 0.5rem', verticalAlign: 'top' }}>{formatPostedShort(row.posted_at)}</td>
                         <td
                           style={{

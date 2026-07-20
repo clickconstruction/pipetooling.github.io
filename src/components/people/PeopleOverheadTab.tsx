@@ -1060,12 +1060,12 @@ export default function PeopleOverheadTab({
                   const overheadFactor = overheadFactorTotalOverOtherJobs(row.totalUsd, row.otherJobsUsd)
                   return (
                     <tr key={row.work_date}>
-                        <td style={{ padding: '0.5rem', borderBottom: '1px solid #f3f4f6' }}>
+                        <td style={{ padding: '0.5rem', borderBottom: '1px solid var(--border)' }}>
                           {formatOverheadTabWorkDateLabel(row.work_date)}
                         </td>
                         {!overheadTableSimpleView ? (
                           <>
-                            <td style={{ padding: '0.5rem', borderBottom: '1px solid #f3f4f6' }}>
+                            <td style={{ padding: '0.5rem', borderBottom: '1px solid var(--border)' }}>
                               <button
                                 type="button"
                                 aria-label={`Bid labor breakdown for ${row.work_date}`}
@@ -1075,7 +1075,7 @@ export default function PeopleOverheadTab({
                                 {formatCurrency(row.bidLaborUsd)}
                               </button>
                             </td>
-                            <td style={{ padding: '0.5rem', borderBottom: '1px solid #f3f4f6' }}>
+                            <td style={{ padding: '0.5rem', borderBottom: '1px solid var(--border)' }}>
                               <button
                                 type="button"
                                 aria-label={`Office labor breakdown for ${row.work_date}`}
@@ -1085,7 +1085,7 @@ export default function PeopleOverheadTab({
                                 {formatCurrency(row.officeLaborUsd)}
                               </button>
                             </td>
-                            <td style={{ padding: '0.5rem', borderBottom: '1px solid #f3f4f6' }}>
+                            <td style={{ padding: '0.5rem', borderBottom: '1px solid var(--border)' }}>
                               <button
                                 type="button"
                                 aria-label={`Office parts breakdown for ${row.work_date}`}
@@ -1102,7 +1102,7 @@ export default function PeopleOverheadTab({
                             <td
                               style={{
                                 padding: '0.5rem',
-                                borderBottom: '1px solid #f3f4f6',
+                                borderBottom: '1px solid var(--border)',
                                 borderLeft: '1px solid var(--border-strong)',
                               }}
                               aria-label={
@@ -1116,7 +1116,7 @@ export default function PeopleOverheadTab({
                             <td
                               style={{
                                 padding: '0.5rem',
-                                borderBottom: '1px solid #f3f4f6',
+                                borderBottom: '1px solid var(--border)',
                                 borderLeft: '1px solid var(--border-strong)',
                               }}
                             >
@@ -1130,7 +1130,7 @@ export default function PeopleOverheadTab({
                                 <span style={{ fontWeight: 400 }}> · {row.totalLaborHours.toFixed(2)}h</span>
                               </button>
                             </td>
-                            <td style={{ padding: '0.5rem', borderBottom: '1px solid #f3f4f6', borderLeft: '1px solid var(--border-strong)' }}>
+                            <td style={{ padding: '0.5rem', borderBottom: '1px solid var(--border)', borderLeft: '1px solid var(--border-strong)' }}>
                               <button
                                 type="button"
                                 aria-label={`Field total for ${row.work_date}: ${formatCurrency(row.otherJobsUsd)}, ${row.otherJobsLaborHours.toFixed(2)} hours jobs-ledger labor`}
@@ -1147,7 +1147,7 @@ export default function PeopleOverheadTab({
                             <td
                               style={{
                                 padding: '0.5rem',
-                                borderBottom: '1px solid #f3f4f6',
+                                borderBottom: '1px solid var(--border)',
                               }}
                             >
                               <button
@@ -1163,7 +1163,7 @@ export default function PeopleOverheadTab({
                             <td
                               style={{
                                 padding: '0.5rem',
-                                borderBottom: '1px solid #f3f4f6',
+                                borderBottom: '1px solid var(--border)',
                                 borderLeft: '1px solid var(--border-strong)',
                               }}
                               aria-label={
@@ -1174,7 +1174,7 @@ export default function PeopleOverheadTab({
                             >
                               {overheadFactor == null ? '—' : `${Math.round(overheadFactor * 100)}%`}
                             </td>
-                            <td style={{ padding: '0.5rem', borderBottom: '1px solid #f3f4f6', borderLeft: '1px solid var(--border-strong)' }}>
+                            <td style={{ padding: '0.5rem', borderBottom: '1px solid var(--border)', borderLeft: '1px solid var(--border-strong)' }}>
                               <button
                                 type="button"
                                 aria-label={`Field total for ${row.work_date}: ${formatCurrency(row.otherJobsUsd)}, ${row.otherJobsLaborHours.toFixed(2)} hours jobs-ledger labor`}
@@ -1413,7 +1413,7 @@ export default function PeopleOverheadTab({
                     </thead>
                     <tbody>
                       {overheadBreakdownModalModel.sortedPartLines.map((ln) => (
-                        <tr key={ln.sortKey} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                        <tr key={ln.sortKey} style={{ borderBottom: '1px solid var(--border)' }}>
                           <td style={{ padding: '0.45rem' }}>
                             {ln.source === 'mercury' ? 'Mercury' : ln.source === 'supply' ? 'Supply' : 'Tally'}
                           </td>
@@ -1441,7 +1441,7 @@ export default function PeopleOverheadTab({
                       </thead>
                       <tbody>
                         {overheadBreakdownModalModel.personTotal.map((r) => (
-                          <tr key={r.userName} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                          <tr key={r.userName} style={{ borderBottom: '1px solid var(--border)' }}>
                             <td style={{ padding: '0.45rem' }}>
                               {r.userName}
                               {r.missingWage ? (
@@ -1550,7 +1550,7 @@ export default function PeopleOverheadTab({
                       </thead>
                       <tbody>
                         {overheadBreakdownModalModel.personRows.map((r) => (
-                          <tr key={r.userName} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                          <tr key={r.userName} style={{ borderBottom: '1px solid var(--border)' }}>
                             <td style={{ padding: '0.45rem' }}>
                               {r.userName}
                               {r.missingWage ? (
@@ -1699,7 +1699,7 @@ export default function PeopleOverheadTab({
                   </thead>
                   <tbody>
                     {overheadBreakdownModalModel.personRows.map((r) => (
-                      <tr key={r.userName} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                      <tr key={r.userName} style={{ borderBottom: '1px solid var(--border)' }}>
                         <td style={{ padding: '0.45rem' }}>
                           {r.userName}
                           {r.missingWage ? (
@@ -1980,7 +1980,7 @@ export default function PeopleOverheadTab({
               ) : (
                 <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
                   {overheadJobResults.map((j) => (
-                    <li key={j.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                    <li key={j.id} style={{ borderBottom: '1px solid var(--border)' }}>
                       <button
                         type="button"
                         disabled={overheadJobSaving}

@@ -602,7 +602,7 @@ export function SearchableSelect({
                       textAlign: 'left',
                       padding: listOptionPadding,
                       border: 'none',
-                      borderBottom: nextIsSep ? 'none' : '1px solid #f3f4f6',
+                      borderBottom: nextIsSep ? 'none' : '1px solid var(--border)',
                       background: idx === activeIndex ? 'var(--bg-blue-tint)' : 'var(--surface)',
                       cursor: 'pointer',
                       fontSize: listOptionFontSize,

@@ -130,7 +130,7 @@ export function SearchableMultiSelect({
               <li
                 key={row.value}
                 style={{
-                  borderBottom: nextIsSep ? 'none' : '1px solid #f3f4f6',
+                  borderBottom: nextIsSep ? 'none' : '1px solid var(--border)',
                 }}
               >
                 <label

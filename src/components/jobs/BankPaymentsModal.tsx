@@ -688,7 +688,7 @@ export default function BankPaymentsModal({
           </button>
         </div>
 
-        <div style={{ padding: '0.75rem 1.25rem', borderBottom: '1px solid #f3f4f6', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+        <div style={{ padding: '0.75rem 1.25rem', borderBottom: '1px solid var(--border)', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
           Match Mercury deposits to <strong>Billed Awaiting Payment</strong> lines (non-Stripe). Payments appear in Edit Job →
           Payments received.
           {stripeSkippedCount > 0 ? (
@@ -908,7 +908,7 @@ export default function BankPaymentsModal({
                       textAlign: 'left',
                       padding: '0.6rem 0.75rem',
                       border: 'none',
-                      borderBottom: '1px solid #f3f4f6',
+                      borderBottom: '1px solid var(--border)',
                       background: active ? 'var(--bg-blue-tint)' : 'var(--surface)',
                       cursor: 'pointer',
                       fontSize: '0.8125rem',

@@ -502,7 +502,7 @@ export function BidsEstimatorsTab({
                           style={{
                             ...thBase,
                             verticalAlign: 'top',
-                            borderLeft: '1px solid #f1f5f9',
+                            borderLeft: '1px solid var(--border)',
                             ...(isToday ? todayCellBg : null),
                           }}
                         >

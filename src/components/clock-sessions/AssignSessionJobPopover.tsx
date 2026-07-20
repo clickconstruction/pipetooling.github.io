@@ -641,7 +641,7 @@ export function AssignSessionJobPopover({
                           width: '100%',
                           padding: 0,
                           border: 'none',
-                          borderBottom: '1px solid #f3f4f6',
+                          borderBottom: '1px solid var(--border)',
                           background: 'none',
                           cursor: loading ? 'not-allowed' : 'pointer',
                           fontSize: '0.875rem',

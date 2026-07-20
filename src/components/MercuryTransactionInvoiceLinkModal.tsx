@@ -248,7 +248,7 @@ export default function MercuryTransactionInvoiceLinkModal({
                     alignItems: 'flex-start',
                     gap: '0.6rem',
                     padding: '0.55rem 0.65rem',
-                    borderBottom: '1px solid #f3f4f6',
+                    borderBottom: '1px solid var(--border)',
                     background: isSel ? 'var(--bg-blue-tint)' : 'var(--surface)',
                     cursor: 'pointer',
                   }}

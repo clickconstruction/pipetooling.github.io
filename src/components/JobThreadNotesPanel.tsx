@@ -405,7 +405,7 @@ export function JobThreadNotesPanel({
                       key={s.dedupeKey}
                       style={{
                         padding: '0.5rem 0',
-                        borderBottom: '1px solid #f3f4f6',
+                        borderBottom: '1px solid var(--border)',
                         fontSize: '0.8125rem',
                         borderLeft: '3px solid #86efac',
                         paddingLeft: '0.5rem',
@@ -450,7 +450,7 @@ export function JobThreadNotesPanel({
                       key={c.dedupeKey}
                       style={{
                         padding: '0.5rem 0',
-                        borderBottom: '1px solid #f3f4f6',
+                        borderBottom: '1px solid var(--border)',
                         fontSize: '0.8125rem',
                         borderLeft: '3px solid #a5b4fc',
                         paddingLeft: '0.5rem',
@@ -513,7 +513,7 @@ export function JobThreadNotesPanel({
                       key={ev.dedupeKey}
                       style={{
                         padding: '0.5rem 0',
-                        borderBottom: '1px solid #f3f4f6',
+                        borderBottom: '1px solid var(--border)',
                         fontSize: '0.8125rem',
                         borderLeft: `3px solid ${meta.borderColor}`,
                         paddingLeft: '0.5rem',
@@ -551,7 +551,7 @@ export function JobThreadNotesPanel({
                       key={`n-${n.id}`}
                       style={{
                         padding: '0.5rem 0',
-                        borderBottom: '1px solid #f3f4f6',
+                        borderBottom: '1px solid var(--border)',
                         fontSize: '0.8125rem',
                       }}
                     >
@@ -573,7 +573,7 @@ export function JobThreadNotesPanel({
                     key={`r-${r.id}`}
                     style={{
                       padding: '0.5rem 0',
-                      borderBottom: '1px solid #f3f4f6',
+                      borderBottom: '1px solid var(--border)',
                       fontSize: '0.8125rem',
                       borderLeft: '3px solid #93c5fd',
                       paddingLeft: '0.5rem',

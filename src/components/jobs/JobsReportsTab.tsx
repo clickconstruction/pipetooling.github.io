@@ -559,7 +559,7 @@ export default function JobsReportsTab({
                         {isExpanded && (
                           <div style={{ padding: '0.5rem 1rem', borderTop: '1px solid var(--border)' }}>
                             {reps.map((r) => (
-                              <div key={r.id} style={{ padding: '0.75rem 0', borderBottom: '1px solid #f3f4f6' }}>
+                              <div key={r.id} style={{ padding: '0.75rem 0', borderBottom: '1px solid var(--border)' }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
                                   <div>
                                     <span style={{ fontWeight: 600 }}>{displayReportTemplateName(r.template_name, authRole)}</span>
@@ -796,7 +796,7 @@ export default function JobsReportsTab({
                       {isExpanded && (
                         <div style={{ padding: '0.5rem 1rem', borderTop: '1px solid var(--border)' }}>
                           {reps.map((r) => (
-                            <div key={r.id} style={{ padding: '0.75rem 0', borderBottom: '1px solid #f3f4f6' }}>
+                            <div key={r.id} style={{ padding: '0.75rem 0', borderBottom: '1px solid var(--border)' }}>
                               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
                                 <div>
                                   <span style={{ fontWeight: 600 }}>{displayReportTemplateName(r.template_name, authRole)}</span>

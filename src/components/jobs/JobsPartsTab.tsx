@@ -276,7 +276,7 @@ export default function JobsPartsTab({
                       key={jobId}
                       data-job-id={jobId}
                       style={{
-                        borderBottom: '1px solid #f3f4f6',
+                        borderBottom: '1px solid var(--border)',
                         cursor: 'pointer',
                         background: hasUnpricedFixture ? '#fef2f2' : expanded ? 'var(--bg-subtle)' : undefined,
                       }}

@@ -196,7 +196,7 @@ export default function PeerTeammatePicker({
                       textAlign: 'left',
                       padding: '0.5rem 0.75rem',
                       border: 'none',
-                      borderBottom: '1px solid #f3f4f6',
+                      borderBottom: '1px solid var(--border)',
                       background: 'var(--surface)',
                       cursor: disabled ? 'not-allowed' : 'pointer',
                       fontSize: '0.875rem',

@@ -667,7 +667,7 @@ export function BankingMercuryCategoryReviewTab({
                 return (
                   <tr
                     key={entry.colKey}
-                    style={{ borderBottom: '1px solid #f3f4f6', background: isSelected ? '#eff6ff' : undefined }}
+                    style={{ borderBottom: '1px solid var(--border)', background: isSelected ? '#eff6ff' : undefined }}
                   >
                     <td
                       style={{
@@ -802,7 +802,7 @@ export function BankingMercuryCategoryReviewTab({
               justifyContent: 'space-between',
               gap: '0.75rem',
               padding: '0.85rem 1rem',
-              borderBottom: '1px solid #f3f4f6',
+              borderBottom: '1px solid var(--border)',
             }}
           >
             <div>
@@ -914,7 +914,7 @@ export function BankingMercuryCategoryReviewTab({
                   </thead>
                   <tbody>
                     {selectedSortedRows.map((r) => (
-                      <tr key={r.id} style={{ borderTop: '1px solid #f3f4f6' }}>
+                      <tr key={r.id} style={{ borderTop: '1px solid var(--border)' }}>
                         <td style={detailTdStyle}>
                           <button
                             type="button"

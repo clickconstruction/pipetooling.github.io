@@ -174,7 +174,7 @@ export function PersonActivityDetailModal({ userId, personName, zIndex, onClose 
                 </div>
               ) : null}
               {detail.days.map((day) => (
-                <details key={day.date} style={{ borderBottom: '1px solid #f3f4f6', padding: '0.3rem 0' }}>
+                <details key={day.date} style={{ borderBottom: '1px solid var(--border)', padding: '0.3rem 0' }}>
                   <summary
                     style={{
                       cursor: day.pages.length > 0 ? 'pointer' : 'default',

@@ -645,7 +645,7 @@ export function BankingMercuryUserReviewTab({
                   <tr
                     key={row.rowKey}
                     style={{
-                      borderBottom: '1px solid #f3f4f6',
+                      borderBottom: '1px solid var(--border)',
                       background: isSelected ? '#eff6ff' : undefined,
                     }}
                   >
@@ -834,7 +834,7 @@ export function BankingMercuryUserReviewTab({
               justifyContent: 'space-between',
               gap: '0.75rem',
               padding: '0.85rem 1rem',
-              borderBottom: '1px solid #f3f4f6',
+              borderBottom: '1px solid var(--border)',
             }}
           >
             <div>
@@ -883,7 +883,7 @@ export function BankingMercuryUserReviewTab({
                   <li
                     key={entry.colKey}
                     style={{
-                      borderTop: '1px solid #f3f4f6',
+                      borderTop: '1px solid var(--border)',
                     }}
                   >
                     <button
@@ -952,7 +952,7 @@ export function BankingMercuryUserReviewTab({
                           </thead>
                           <tbody>
                             {entry.rows.map((r) => (
-                              <tr key={r.id} style={{ borderTop: '1px solid #f3f4f6' }}>
+                              <tr key={r.id} style={{ borderTop: '1px solid var(--border)' }}>
                                 <td style={detailTdStyle}>{formatBankingDate(r.posted_at)}</td>
                                 <td style={detailTdStyle}>
                                   {r.counterparty_name?.trim() || <span style={{ color: 'var(--text-faint)' }}>—</span>}
@@ -1076,7 +1076,7 @@ const thBase: CSSProperties = {
 const tdBase: CSSProperties = {
   padding: '0.45rem 0.65rem',
   verticalAlign: 'top',
-  borderRight: '1px solid #f3f4f6',
+  borderRight: '1px solid var(--border)',
 }
 
 function drillButtonStyle(amount: number): CSSProperties {

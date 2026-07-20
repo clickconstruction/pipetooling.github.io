@@ -224,7 +224,7 @@ export function ProjectsForecastSpecificGrid({
           {gutterHeader ?? null}
         </div>
         {stages.length === 0 ? (
-          <div style={{ height: FORECAST_SPECIFIC_ROW_H, borderBottom: '1px solid #f1f5f9' }} />
+          <div style={{ height: FORECAST_SPECIFIC_ROW_H, borderBottom: '1px solid var(--border)' }} />
         ) : (
           stages.map((stage, idx) => (
             <div
@@ -234,7 +234,7 @@ export function ProjectsForecastSpecificGrid({
                 display: 'flex',
                 alignItems: 'center',
                 padding: '0 8px',
-                borderBottom: '1px solid #f1f5f9',
+                borderBottom: '1px solid var(--border)',
                 fontSize: '0.8125rem',
                 color: 'var(--text-slate-900)',
                 overflow: 'hidden',
@@ -278,7 +278,7 @@ export function ProjectsForecastSpecificGrid({
                 display: 'grid',
                 gridTemplateColumns,
                 height: FORECAST_SPECIFIC_HEADER_MONTH_H,
-                borderBottom: '1px solid #f1f5f9',
+                borderBottom: '1px solid var(--border)',
                 fontSize: '0.75rem',
                 color: 'var(--text-700)',
                 background: 'var(--bg-slate-tint)',
@@ -332,21 +332,21 @@ export function ProjectsForecastSpecificGrid({
                       alignItems: 'center',
                       justifyContent: 'center',
                       background: isToday
-                        ? '#fff7ed'
+                        ? 'var(--bg-orange-tint)'
                         : !isDay
-                          ? '#fafafa'
+                          ? 'var(--bg-page)'
                           : weekend
-                            ? '#f1f5f9'
-                            : '#ffffff',
+                            ? 'var(--bg-slate-100)'
+                            : 'var(--surface)',
                       color: isToday
-                        ? '#b45309'
+                        ? 'var(--text-amber-700)'
                         : !isDay
-                          ? '#94a3b8'
+                          ? 'var(--text-slate-400)'
                           : weekend
-                            ? '#94a3b8'
-                            : '#374151',
+                            ? 'var(--text-slate-400)'
+                            : 'var(--text-700)',
                       fontWeight: isDay && digit === '1' ? 700 : 400,
-                      borderRight: '1px solid #f1f5f9',
+                      borderRight: '1px solid var(--border)',
                     }}
                   >
                     {digit}
@@ -398,7 +398,7 @@ export function ProjectsForecastSpecificGrid({
                     gridTemplateColumns,
                     height: FORECAST_SPECIFIC_ROW_H,
                     position: 'relative',
-                    borderBottom: '1px solid #f1f5f9',
+                    borderBottom: '1px solid var(--border)',
                   }}
                 >
                   {/* Per-cell backdrops — weekend tinting on day cols, neutral grey on

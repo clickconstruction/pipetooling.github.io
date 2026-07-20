@@ -586,7 +586,7 @@ export default function CreateJobFromEstimateModal({
                             textAlign: 'left',
                             padding: '0.5rem 0.75rem',
                             border: 'none',
-                            borderTop: index === 0 ? 'none' : '1px solid #f3f4f6',
+                            borderTop: index === 0 ? 'none' : '1px solid var(--border)',
                             background: isSelected ? 'var(--bg-blue-tint)' : 'var(--surface)',
                             cursor: linkFieldsBusy ? 'not-allowed' : 'pointer',
                             opacity: linkFieldsBusy ? 0.65 : 1,

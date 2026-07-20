@@ -42,7 +42,7 @@ const th: CSSProperties = {
 
 const td: CSSProperties = {
   padding: '0.45rem 0.65rem',
-  borderBottom: '1px solid #f3f4f6',
+  borderBottom: '1px solid var(--border)',
   fontSize: '0.8125rem',
   verticalAlign: 'top',
   wordBreak: 'break-word',

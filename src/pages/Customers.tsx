@@ -643,20 +643,20 @@ export default function Customers() {
                             fontSize: '0.875rem',
                             background:
                               bid.outcome === 'won'
-                                ? '#dcfce7'
+                                ? 'var(--bg-green-100)'
                                 : bid.outcome === 'lost'
-                                ? '#fee2e2'
+                                ? 'var(--bg-red-100)'
                                 : bid.outcome === 'started_or_complete'
-                                ? '#dbeafe'
-                                : '#f3f4f6',
+                                ? 'var(--bg-blue-200)'
+                                : 'var(--bg-muted)',
                             color:
                               bid.outcome === 'won'
-                                ? '#166534'
+                                ? 'var(--text-green-800)'
                                 : bid.outcome === 'lost'
-                                ? '#991b1b'
+                                ? 'var(--text-red-800)'
                                 : bid.outcome === 'started_or_complete'
-                                ? '#1e40af'
-                                : '#374151',
+                                ? 'var(--text-blue-800)'
+                                : 'var(--text-700)',
                           }}
                         >
                           {getBidStatus(bid)}

@@ -12,7 +12,7 @@ function amountColor(n: number): string {
 
 const wrap: CSSProperties = { border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden', maxWidth: 620 }
 const sectionHead: CSSProperties = { padding: '0.5rem 0.75rem', background: 'var(--bg-subtle)', borderBottom: '1px solid var(--border)', fontWeight: 700, fontSize: '0.85rem', color: 'var(--text-strong)' }
-const rowStyle: CSSProperties = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.75rem', padding: '0.4rem 0.75rem', borderBottom: '1px solid #f3f4f6', fontSize: '0.85rem' }
+const rowStyle: CSSProperties = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.75rem', padding: '0.4rem 0.75rem', borderBottom: '1px solid var(--border)', fontSize: '0.85rem' }
 const subtotal: CSSProperties = { ...rowStyle, fontWeight: 700, background: '#fcfcfd' }
 const numCell: CSSProperties = { fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }
 

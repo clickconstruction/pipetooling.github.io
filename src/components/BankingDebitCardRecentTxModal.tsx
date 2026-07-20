@@ -158,7 +158,7 @@ export function BankingDebitCardRecentTxModal({
               </thead>
               <tbody>
                 {displayRows.map((r) => (
-                  <tr key={r.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                  <tr key={r.id} style={{ borderBottom: '1px solid var(--border)' }}>
                     <td style={{ padding: '0.45rem 0.75rem', whiteSpace: 'nowrap' }}>{formatDate(r.posted_at)}</td>
                     <td style={{ padding: '0.45rem 0.75rem' }}>{formatCurrency(Number(r.amount))}</td>
                     <td style={{ padding: '0.45rem 0.75rem' }}>{formatMercuryKind(r.kind)}</td>

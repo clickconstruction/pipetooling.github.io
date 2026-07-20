@@ -152,7 +152,7 @@ export function AssignFocusModal({ sessionIds, label, onSaved, onClose, overlayZ
                       padding: '0.5rem 0.75rem',
                       textAlign: 'left',
                       border: 'none',
-                      borderBottom: '1px solid #f3f4f6',
+                      borderBottom: '1px solid var(--border)',
                       background: isSelected ? 'var(--bg-blue-tint)' : 'none',
                       cursor: 'pointer',
                       fontSize: '0.875rem',

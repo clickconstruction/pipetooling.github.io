@@ -184,7 +184,7 @@ export function ChecklistTechTreeRoadmapMembersModal({
                   alignItems: 'center',
                   gap: 8,
                   padding: '8px 0',
-                  borderBottom: '1px solid #f1f5f9',
+                  borderBottom: '1px solid var(--border)',
                   flexWrap: 'wrap',
                 }}
               >

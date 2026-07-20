@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-19 (v2.765)
+last_updated: 2026-07-19 (v2.766)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.766)
+
+### Theme codemod extension + app-wide dark-mode hex sweep (2026-07-19)
+The Quickfill dark-mode fixes (v2.765, PR #446) were hand-applied because `scripts/theme-tokenize.mjs` didn't map those hexes — so CI's `--check` guard couldn't catch the same bugs elsewhere. The codemod's maps now cover them and the whole app was re-swept. **(1) New map entries:** TEXT `#334155` → `var(--text-slate-600)` (slate-700 text consolidated one shade up — it was near-invisible on dark surfaces); BG `#fafbfc` → `var(--bg-subtle)`, `#fef08a` → `var(--bg-yellow-200)`, `#bbf7d0` → `var(--bg-green-200)`; BORDER `#f3f4f6`/`#f1f5f9` → `var(--border)` (near-white hairlines that glare in dark mode — same consolidation precedent as the existing slate borders). **(2) Auto-rewrite:** 246 replacements across 109 files (dark-slate text in the banking/Mercury modals, People, Dashboard follow-up modal; hairline row borders app-wide). **(3) Manual pass** over mapped hexes the regex can't reach (multi-line ternaries, `bg:`/`fg:` palette keys, CSS-in-string, variable assignments): Calendar step-status chips, Customers bid-outcome pills, Materials pricing-status badges, Projects forecast grid/timeline day cells + stage-status pills, banking drag-sort bucket palette, Mercury reconciliation status pills, Banking allocation row borders, Clock-In disabled state, Estimates snapshot-button hover, Projects day-modal session dividers, Subcontractor-activity field-report badge. Print/document builders (`physicalInvoiceDocument`, `bidDocuments/*`) and the iframe-hosted People Review table keep literal hexes on purpose — those documents don't load the app stylesheet. Data-palette literals without tokens (indigo/violet pastels, trade-pill chip colors) are left for a follow-up token pass. CI's `node scripts/theme-tokenize.mjs --check src` now enforces all of the above.
 
 ## Latest Updates (v2.765)
 
