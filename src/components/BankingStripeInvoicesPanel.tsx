@@ -135,7 +135,7 @@ export function BankingStripeInvoicesPanel() {
                     style={{
                       borderBottom: '1px solid var(--border)',
                       verticalAlign: 'top',
-                      backgroundColor: hasStripeInvoiceId ? undefined : '#fef2f2',
+                      backgroundColor: hasStripeInvoiceId ? undefined : 'var(--bg-red-tint)',
                     }}
                   >
                     <td style={{ padding: '0.5rem 0.75rem', maxWidth: 220 }}>

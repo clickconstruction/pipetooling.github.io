@@ -245,9 +245,9 @@ export function BidSubmissionFollowupTab({
   }, [submissionFollowupStaleDaysInput])
 
   function submissionFollowupListRowBackground(bid: BidWithBuilder, isSelected: boolean): string | undefined {
-    if (isSelected) return '#eff6ff'
+    if (isSelected) return 'var(--bg-blue-tint)'
     const n = submissionFollowupStaleDaysThresholdParsed
-    if (n != null && isSubmissionBidStaleForThreshold(bid, lastContactFromEntries, customerContacts, n)) return '#fef2f2'
+    if (n != null && isSubmissionBidStaleForThreshold(bid, lastContactFromEntries, customerContacts, n)) return 'var(--bg-red-tint)'
     return undefined
   }
 

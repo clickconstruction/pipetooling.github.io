@@ -278,7 +278,7 @@ export default function JobsPartsTab({
                       style={{
                         borderBottom: '1px solid var(--border)',
                         cursor: 'pointer',
-                        background: hasUnpricedFixture ? '#fef2f2' : expanded ? 'var(--bg-subtle)' : undefined,
+                        background: hasUnpricedFixture ? 'var(--bg-red-tint)' : expanded ? 'var(--bg-subtle)' : undefined,
                       }}
                       onClick={toggle}
                     >

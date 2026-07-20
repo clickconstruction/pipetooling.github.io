@@ -336,7 +336,7 @@ export function DashboardStaleTallyStaffFollowUpModal({
                 title="Org-wide: hides dev-role staff transactions in the Stale tally follow-up (list and banner count) for everyone"
                 style={{
                   padding: '0.4rem 0.9rem',
-                  border: '1px solid #94a3b8',
+                  border: '1px solid var(--border-strong)',
                   background: hideDevTransactions ? 'var(--bg-slate-100)' : 'var(--surface)',
                   borderRadius: 6,
                   cursor: hideDevBusy ? 'wait' : 'pointer',
@@ -355,7 +355,7 @@ export function DashboardStaleTallyStaffFollowUpModal({
               onClick={() => setShowAllUnlinked((v) => !v)}
               style={{
                 padding: '0.4rem 0.9rem',
-                border: '1px solid #94a3b8',
+                border: '1px solid var(--border-strong)',
                 background: showAllUnlinked ? 'var(--bg-slate-100)' : 'var(--surface)',
                 borderRadius: 6,
                 cursor: 'pointer',
@@ -462,7 +462,7 @@ export function DashboardStaleTallyStaffFollowUpModal({
                               key={r.mercury_transaction_id}
                               style={{
                                 borderBottom: '1px solid var(--border)',
-                                background: rowStale ? '#fef2f2' : undefined,
+                                background: rowStale ? 'var(--bg-red-tint)' : undefined,
                               }}
                             >
                             <td style={{ padding: '0.45rem 0.65rem', whiteSpace: 'nowrap' }}>{formatPostedShort(r.posted_at)}</td>
