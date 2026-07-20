@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-19 (v2.766)
+last_updated: 2026-07-19 (v2.767)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.767)
+
+### People → Licenses — "Hours log": per-person job hours CSV for licensing boards (2026-07-19)
+For helpers working toward advanced plumbing/electrical licenses: expanding a person on **People → Licenses** now shows an **Hours log** button beside "+ Add license". The modal lists every **approved, closed** clock session the person has (same countable rule as every hours surface), **grouped by job then company week** (Sunday start), with a summary line (total hours · jobs · sessions · first–last work date) and an optional From/To range. Sessions not clocked to a job land in **Estimating (bid work)** / **Unassigned / office** buckets so the log reconciles against payroll hours. **Export CSV** produces a board-submission-style file: a certification header block (employee, registration/license #, employer, supervising licensee, period, totals — employer + supervisor persist per device via localStorage) followed by one row per job×week and a reconciling Total row — the detail behind a TSBPE/TDLR employer certification of experience. **Hours only, never wages.** Data comes from new `SECURITY DEFINER` RPC **`list_user_license_hours_log(p_user_id, p_start?, p_end?)`** (migration `20260719190000`) which gates to the Licenses-tab audience (dev / assistant-like incl. controller / Pay-Approved master) and **raises** on anyone else — a licensing log must never be silently partial, which a direct `clock_sessions` query would be under its RLS (team-lead/pay-approved-only visibility). Job numbers use the effective-number rule (HCP else C#), baked in server-side. Implementation: pure kernel [`licenseHoursLog.ts`](../src/lib/licenseHoursLog.ts) (grouping/summary/CSV; **9 unit tests**) + [`PersonLicenseHoursLogModal`](../src/components/people/PersonLicenseHoursLogModal.tsx), wired in [`PeopleLicensesTab`](../src/components/people/PeopleLicensesTab.tsx). New guide [`license-hours-log.md`](../src/content/help/license-hours-log.md). Roster people without a linked user account get an explanatory empty state (clock sessions are per app user).
 
 ## Latest Updates (v2.766)
 

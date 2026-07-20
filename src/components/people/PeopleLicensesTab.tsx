@@ -2,6 +2,7 @@ import { Fragment, useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
 import { useToastContext } from '../../contexts/ToastContext'
+import PersonLicenseHoursLogModal from './PersonLicenseHoursLogModal'
 
 type PersonLicenseCostLine = { id: string; person_license_id: string; amount: number; note: string | null; date: string; created_at: string | null }
 type PersonLicense = {
@@ -47,6 +48,7 @@ export default function PeopleLicensesTab({ people, users }: PeopleLicensesTabPr
   const [costLineNote, setCostLineNote] = useState('')
   const [costLineDate, setCostLineDate] = useState(() => new Date().toLocaleDateString('en-CA'))
   const [expandedCostLinesLicenseId, setExpandedCostLinesLicenseId] = useState<string | null>(null)
+  const [hoursLogPersonName, setHoursLogPersonName] = useState<string | null>(null)
 
   async function loadLicenses() {
     setLicensesLoading(true)
@@ -298,16 +300,28 @@ export default function PeopleLicensesTab({ people, users }: PeopleLicensesTabPr
                             </td>
                             <td style={{ padding: '0.75rem', textAlign: 'right', width: 1 }}>
                               {isExpanded && (
-                                <button
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.stopPropagation()
-                                    openLicenseForm(personName)
-                                  }}
-                                  style={{ padding: '0.25rem 0.5rem', fontSize: '0.8125rem', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer', whiteSpace: 'nowrap' }}
-                                >
-                                  + Add license
-                                </button>
+                                <span style={{ display: 'inline-flex', gap: '0.5rem' }}>
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      setHoursLogPersonName(personName)
+                                    }}
+                                    style={{ padding: '0.25rem 0.5rem', fontSize: '0.8125rem', whiteSpace: 'nowrap' }}
+                                  >
+                                    Hours log
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      openLicenseForm(personName)
+                                    }}
+                                    style={{ padding: '0.25rem 0.5rem', fontSize: '0.8125rem', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer', whiteSpace: 'nowrap' }}
+                                  >
+                                    + Add license
+                                  </button>
+                                </span>
                               )}
                             </td>
                           </tr>
@@ -424,6 +438,14 @@ export default function PeopleLicensesTab({ people, users }: PeopleLicensesTabPr
           </>
         )}
       </div>
+
+      {hoursLogPersonName && (
+        <PersonLicenseHoursLogModal
+          personName={hoursLogPersonName}
+          userId={users.find((u) => u.name === hoursLogPersonName)?.id ?? null}
+          onClose={() => setHoursLogPersonName(null)}
+        />
+      )}
 
       {licenseFormOpen && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
