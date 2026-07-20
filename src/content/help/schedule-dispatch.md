@@ -34,6 +34,18 @@ Pick the job — a schedule block appears in the cell. Jobs the person already c
 
 Each block can carry a note: click the pencil ("Edit block note") to open the **Schedule block note** modal and {{button:blue|Save}}. Notes are what the tech sees about the assignment, so use them for gate codes, scope reminders, and arrival instructions.
 
+## Adjusting times on the Day view
+
+On the **Day** view, every scheduled job bar has an orange dot at its start and end. If you can edit the schedule, drag a dot left or right to change that time — it snaps to 15-minute steps and saves when you let go. A job can never shrink below 30 minutes.
+
+- **Two jobs touching** share one bigger dot connecting them. Dragging it moves the end of the first job and the start of the second together, so they stay touching.
+- **Click and hold** that shared dot to separate them: the later job jumps 15 minutes later without extending its end.
+- **Drag one dot onto another** and they combine — the jobs are now touching.
+
+:::example split back-to-back jobs
+Two jobs meet at 2:30 PM under one dot. Hold the dot — the second job now starts at 2:45 PM, ending at its same time. Drag its start dot back onto 2:30 to rejoin them.
+:::
+
 ## When someone isn't coming in
 
 In the **Add job to schedule** modal footer, press {{button:outline|Not coming in today}}. You'll get a confirmation — and a warning if it will remove existing schedule blocks for that day:
