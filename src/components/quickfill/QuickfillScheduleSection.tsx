@@ -38,6 +38,9 @@ import { ScheduleDispatchAssignJobPickerModal } from '../schedule/ScheduleDispat
 import {
   DISPATCH_ADD_BLOCK_SLOT_COUNT,
   dispatchMinutesToHHmm,
+  formatDispatchQuickTimeLabel,
+  MAX_MIN,
+  MIN_MIN,
   timeInputToMinutesSafe,
   timeInputToPg,
 } from '../../lib/dispatchAddBlockTime'
@@ -100,12 +103,15 @@ export function QuickfillScheduleSection({
   hideConflictPrompt = false,
   initialWorkDateYmd,
   onBlocksSaved,
+  showDaySettings = false,
 }: {
   hideConflictPrompt?: boolean
   /** When set (e.g. Dispatch hub / Quickfill tomorrow), use this as the initial schedule day. */
   initialWorkDateYmd?: string
   /** Fires after this section writes schedule blocks (dot auto-save, separation, add-block) so host views (e.g. the Dispatch hub People/Jobs tabs) can refresh their own caches. */
   onBlocksSaved?: () => void
+  /** Dispatch Day tab only: show the gear that opens the visible-hours (rail window) settings modal. The stored window applies wherever this section renders. */
+  showDaySettings?: boolean
 } = {}) {
   const navigate = useNavigate()
   const { role, user: authUser } = useAuth()
@@ -147,6 +153,61 @@ export function QuickfillScheduleSection({
   /** Auto-save fires this long after the last dot touch (drag release / keyboard nudge). */
   const DOT_AUTOSAVE_DEBOUNCE_MS = 2000
   const dotSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  /** Per-device visible-hours window for the day rail (within the 04:00–20:00 block bounds); null = full day. */
+  const DAY_RAIL_WINDOW_STORAGE_KEY = 'pipetooling_dispatch_day_rail_window_v1'
+  const [dayRailWindow, setDayRailWindow] = useState<{ startMin: number; endMin: number } | null>(() => {
+    try {
+      const raw = localStorage.getItem(DAY_RAIL_WINDOW_STORAGE_KEY)
+      if (!raw) return null
+      const v = JSON.parse(raw) as { startMin?: unknown; endMin?: unknown }
+      const s = typeof v.startMin === 'number' ? v.startMin : NaN
+      const e = typeof v.endMin === 'number' ? v.endMin : NaN
+      if (!Number.isFinite(s) || !Number.isFinite(e)) return null
+      if (s < MIN_MIN || e > MAX_MIN || e - s < 60) return null
+      if (s === MIN_MIN && e === MAX_MIN) return null
+      return { startMin: s, endMin: e }
+    } catch {
+      return null
+    }
+  })
+  const [daySettingsOpen, setDaySettingsOpen] = useState(false)
+  const [daySettingsDraftStart, setDaySettingsDraftStart] = useState(MIN_MIN)
+  const [daySettingsDraftEnd, setDaySettingsDraftEnd] = useState(MAX_MIN)
+  const dayRailTrimWindow = useMemo(
+    () =>
+      dayRailWindow
+        ? {
+            loSlotIndex: (dayRailWindow.startMin - MIN_MIN) / 30,
+            hiSlotIndex: (dayRailWindow.endMin - MIN_MIN) / 30,
+          }
+        : undefined,
+    [dayRailWindow],
+  )
+  const openDaySettings = useCallback(() => {
+    setDaySettingsDraftStart(dayRailWindow?.startMin ?? MIN_MIN)
+    setDaySettingsDraftEnd(dayRailWindow?.endMin ?? MAX_MIN)
+    setDaySettingsOpen(true)
+  }, [dayRailWindow])
+  const saveDaySettings = useCallback(() => {
+    const s = daySettingsDraftStart
+    const e = daySettingsDraftEnd
+    const next = s === MIN_MIN && e === MAX_MIN ? null : { startMin: s, endMin: e }
+    setDayRailWindow(next)
+    try {
+      if (next) localStorage.setItem(DAY_RAIL_WINDOW_STORAGE_KEY, JSON.stringify(next))
+      else localStorage.removeItem(DAY_RAIL_WINDOW_STORAGE_KEY)
+    } catch {
+      /* private mode etc. — the in-memory setting still applies */
+    }
+    setDaySettingsOpen(false)
+  }, [daySettingsDraftStart, daySettingsDraftEnd])
+  /** 30-minute choices across the block bounds for the settings selects. */
+  const dayWindowChoices = useMemo(() => {
+    const out: number[] = []
+    for (let m = MIN_MIN; m <= MAX_MIN; m += 30) out.push(m)
+    return out
+  }, [])
   const [jobTitleById, setJobTitleById] = useState<Map<string, string>>(() => new Map())
   const [bidTitleById, setBidTitleById] = useState<Map<string, string>>(() => new Map())
   const [sessionsByUserId, setSessionsByUserId] = useState<Map<string, ClockSessionForDispatchBand[]>>(
@@ -963,6 +1024,28 @@ export function QuickfillScheduleSection({
             Today
           </button>
         ) : null}
+        {showDaySettings ? (
+          <button
+            type="button"
+            onClick={openDaySettings}
+            title="Day view settings — visible hours"
+            aria-label="Open Day view settings (visible hours)"
+            style={{
+              marginLeft: 'auto',
+              padding: '0.25rem 0.5rem',
+              fontSize: '0.8125rem',
+              border: dayRailWindow ? '1px solid #2563eb' : '1px solid var(--border-strong)',
+              borderRadius: 4,
+              background: dayRailWindow ? 'var(--bg-blue-tint)' : 'var(--surface)',
+              color: dayRailWindow ? 'var(--text-blue-700)' : 'var(--text-700)',
+              cursor: 'pointer',
+            }}
+          >
+            {dayRailWindow
+              ? `${formatDispatchQuickTimeLabel(dispatchMinutesToHHmm(dayRailWindow.startMin))}–${formatDispatchQuickTimeLabel(dispatchMinutesToHHmm(dayRailWindow.endMin))} ⚙`
+              : 'Visible hours ⚙'}
+          </button>
+        ) : null}
       </div>
       {loading ? (
         <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Loading…</p>
@@ -995,14 +1078,23 @@ export function QuickfillScheduleSection({
                 pointerEvents: 'none',
               }}
             >
-              {DISPATCH_ADD_BLOCK_ORIENTATION_MARKS.filter(
-                (m) => m.slotIndex <= DISPATCH_ADD_BLOCK_SLOT_COUNT - 1,
-              ).map(({ slotIndex, label }) => (
+              {DISPATCH_ADD_BLOCK_ORIENTATION_MARKS.filter((m) => {
+                if (m.slotIndex > DISPATCH_ADD_BLOCK_SLOT_COUNT - 1) return false
+                if (!dayRailTrimWindow) return true
+                return (
+                  m.slotIndex >= dayRailTrimWindow.loSlotIndex &&
+                  m.slotIndex <= dayRailTrimWindow.hiSlotIndex
+                )
+              }).map(({ slotIndex, label }) => (
                 <span
                   key={slotIndex}
                   style={{
                     position: 'absolute',
-                    left: dispatchAddBlockTrackThumbLeftPct(slotIndex, DISPATCH_ADD_BLOCK_SLOT_COUNT),
+                    left: dispatchAddBlockTrackThumbLeftPct(
+                      slotIndex,
+                      DISPATCH_ADD_BLOCK_SLOT_COUNT,
+                      dayRailTrimWindow,
+                    ),
                     transform: 'translateX(-50%)',
                     fontSize: '0.65rem',
                     color: 'var(--text-faint)',
@@ -1053,6 +1145,7 @@ export function QuickfillScheduleSection({
                         scheduleDayYmd={workDate}
                         segments={segments}
                         secondaryBands={secondary}
+                        railTrimWindow={dayRailTrimWindow}
                         boundaryDots={dots}
                         onBoundaryDotDrag={
                           dots ? (dot, targetMin) => handleDotDrag(id, dot, targetMin) : undefined
@@ -1120,6 +1213,135 @@ export function QuickfillScheduleSection({
         onSave={() => void saveQuickfillBlockModal()}
         addTimeline={addBlockModalTimeline}
       />
+      {daySettingsOpen ? (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.45)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '1rem',
+            zIndex: 1003,
+          }}
+          role="presentation"
+          onClick={() => setDaySettingsOpen(false)}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="day-view-settings-title"
+            style={{
+              background: 'var(--surface)',
+              borderRadius: 8,
+              width: 'min(94vw, 380px)',
+              padding: '1rem 1.1rem',
+              boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 id="day-view-settings-title" style={{ margin: '0 0 0.5rem 0', color: 'var(--text-strong)' }}>
+              Day view visible hours
+            </h3>
+            <p style={{ margin: '0 0 0.75rem 0', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+              The timeline stretches this window across the page (schedule blocks live between 4:00 AM
+              and 8:00 PM). Saved on this device only; jobs outside the window pin to its edge.
+            </p>
+            <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '0.9rem', flexWrap: 'wrap' }}>
+              <label style={{ fontSize: '0.8125rem', color: 'var(--text-700)', display: 'grid', gap: 4 }}>
+                Start
+                <select
+                  value={daySettingsDraftStart}
+                  onChange={(e) => {
+                    const s = Number(e.target.value)
+                    setDaySettingsDraftStart(s)
+                    if (daySettingsDraftEnd - s < 60) setDaySettingsDraftEnd(Math.min(s + 60, MAX_MIN))
+                  }}
+                  style={{ padding: '0.35rem 0.5rem', fontSize: '0.875rem' }}
+                >
+                  {dayWindowChoices
+                    .filter((m) => m <= MAX_MIN - 60)
+                    .map((m) => (
+                      <option key={m} value={m}>
+                        {formatDispatchQuickTimeLabel(dispatchMinutesToHHmm(m))}
+                      </option>
+                    ))}
+                </select>
+              </label>
+              <label style={{ fontSize: '0.8125rem', color: 'var(--text-700)', display: 'grid', gap: 4 }}>
+                End
+                <select
+                  value={daySettingsDraftEnd}
+                  onChange={(e) => setDaySettingsDraftEnd(Number(e.target.value))}
+                  style={{ padding: '0.35rem 0.5rem', fontSize: '0.875rem' }}
+                >
+                  {dayWindowChoices
+                    .filter((m) => m >= daySettingsDraftStart + 60)
+                    .map((m) => (
+                      <option key={m} value={m}>
+                        {formatDispatchQuickTimeLabel(dispatchMinutesToHHmm(m))}
+                      </option>
+                    ))}
+                </select>
+              </label>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem', flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                onClick={() => {
+                  setDaySettingsDraftStart(MIN_MIN)
+                  setDaySettingsDraftEnd(MAX_MIN)
+                }}
+                style={{
+                  padding: '0.35rem 0.7rem',
+                  fontSize: '0.8125rem',
+                  border: 'none',
+                  background: 'none',
+                  color: 'var(--text-link)',
+                  cursor: 'pointer',
+                  textDecoration: 'underline',
+                }}
+              >
+                Reset to full day (4 AM–8 PM)
+              </button>
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <button
+                  type="button"
+                  onClick={() => setDaySettingsOpen(false)}
+                  style={{
+                    padding: '0.35rem 0.7rem',
+                    fontSize: '0.875rem',
+                    border: '1px solid var(--border-strong)',
+                    borderRadius: 4,
+                    background: 'var(--surface)',
+                    color: 'var(--text-700)',
+                    cursor: 'pointer',
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={saveDaySettings}
+                  style={{
+                    padding: '0.35rem 0.7rem',
+                    fontSize: '0.875rem',
+                    fontWeight: 600,
+                    border: 'none',
+                    borderRadius: 4,
+                    background: '#2563eb',
+                    color: 'white',
+                    cursor: 'pointer',
+                  }}
+                >
+                  Save
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
       {scheduleMyTimeEditor ? (
         <DashboardMyTimeDayEditorModal
           dateStr={workDate}

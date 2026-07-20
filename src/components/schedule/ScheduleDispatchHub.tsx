@@ -2217,16 +2217,6 @@ export function ScheduleDispatchHub({
 
   return (
     <div style={{ padding: '1rem 1.25rem', maxWidth: '100%' }}>
-      {showWeekNavigation ? (
-        <ScheduleDispatchWeekNav
-          weekStart={weekStart}
-          onWeekShift={onWeekShift}
-          onThisWeek={onThisWeek}
-          dateRangeOverride={weekNavDateRangeOverride}
-          rightSlot={weekNavRightSlot}
-        />
-      ) : null}
-
       {showHubViewTabs ? (
         <div
           role="tablist"
@@ -2319,6 +2309,22 @@ export function ScheduleDispatchHub({
         </div>
       ) : null}
 
+      {/* Week nav sits BELOW the tab bar and only on the week-scoped tabs — the Day tab has its own
+          day navigation. On Day, the right slot (e.g. Share) still renders so it stays reachable. */}
+      {showWeekNavigation && (!showHubViewTabs || hubTab !== 'day') ? (
+        <ScheduleDispatchWeekNav
+          weekStart={weekStart}
+          onWeekShift={onWeekShift}
+          onThisWeek={onThisWeek}
+          dateRangeOverride={weekNavDateRangeOverride}
+          rightSlot={weekNavRightSlot}
+        />
+      ) : showWeekNavigation && weekNavRightSlot ? (
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '0.75rem' }}>
+          {weekNavRightSlot}
+        </div>
+      ) : null}
+
       {!showHubViewTabs ? (
         <HubPeoplePanel
           visibleDayKeys={visibleDayKeys}
@@ -2376,6 +2382,7 @@ export function ScheduleDispatchHub({
         <QuickfillScheduleSection
           initialWorkDateYmd={dayTabWorkDateYmd}
           onBlocksSaved={onDayScheduleChanged}
+          showDaySettings
         />
       ) : hubTab === 'jobs' ? (
         <HubJobsPanel
