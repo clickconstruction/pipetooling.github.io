@@ -649,12 +649,6 @@ export function QuickfillScheduleSection({
         <button
           type="button"
           onClick={toggleHideAssistantsEstimators}
-          aria-pressed={hideAssistantsEstimators}
-          aria-label={
-            hideAssistantsEstimators
-              ? 'Show assistants and estimators in the list'
-              : 'Hide assistants and estimators from the list'
-          }
           style={{
             padding: '0.4rem 0.6rem',
             fontSize: '0.8125rem',
@@ -666,7 +660,9 @@ export function QuickfillScheduleSection({
             fontWeight: hideAssistantsEstimators ? 600 : 400,
           }}
         >
-          Hide assistants and estimators
+          {hideAssistantsEstimators
+            ? 'Unhide assistants and estimators'
+            : 'Hide assistants and estimators'}
         </button>
       </div>
       <div
@@ -749,7 +745,7 @@ export function QuickfillScheduleSection({
         <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0 }}>No users in the Schedule Dispatch roster.</p>
       ) : rosterFilteredUsers.length === 0 ? (
         <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0 }}>
-          No one to show with assistants and estimators hidden. Turn off “Hide assistants and estimators” to see them.
+          No one to show with assistants and estimators hidden. Click “Unhide assistants and estimators” to see them.
         </p>
       ) : filteredSortedUsers.length === 0 ? (
         <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0 }}>No people match this search.</p>
