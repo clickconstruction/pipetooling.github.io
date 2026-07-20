@@ -201,7 +201,7 @@ export default function StagesProgressPaymentCell({ model, pctComplete, pctSavin
           style={{ ...rowStyle, borderTop: '1px solid var(--border)', paddingTop: '0.15rem' }}
           title="Bid total minus payments received"
         >
-          <span style={{ fontSize: '0.75rem', fontWeight: 600 }}>Owed</span>
+          <span style={{ fontSize: '0.75rem', fontWeight: 600 }}>Left on Job</span>
           <span style={{ ...amountStyle, fontWeight: 600 }}>
             {model.hasBar || model.paid > 0 ? formatUsdNoCents(model.owed) : '—'}
           </span>

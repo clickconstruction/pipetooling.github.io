@@ -15,6 +15,7 @@ import {
   type JobChargesTimelineData,
 } from '../../lib/jobChargesTimeline'
 import { fetchJobMaterialsCostSnapshot } from '../../lib/fetchJobMaterialsCostSnapshot'
+import { resolveJobCurrentPercentFallback } from '../../lib/jobSummaryPercentComplete'
 import { fetchTeamLaborBreakdownForJob } from '../../utils/teamLabor'
 import { laborJobSubCost } from '../../lib/jobs/subLaborCost'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
@@ -164,7 +165,13 @@ export default function JobChargesTimelineStandalone({
           })),
         )
         const revenue = job.revenue != null ? Number(job.revenue) : null
-        const data = buildJobChargesTimelineChartData(chargeEvents, valueEvents, revenue, paymentEvents)
+        const data = buildJobChargesTimelineChartData(
+          chargeEvents,
+          valueEvents,
+          revenue,
+          paymentEvents,
+          resolveJobCurrentPercentFallback(job),
+        )
         if (!cancelled) {
           setState({ kind: 'ready', data, cardChargesExcluded: snapshot.mercuryFetchFailed })
         }

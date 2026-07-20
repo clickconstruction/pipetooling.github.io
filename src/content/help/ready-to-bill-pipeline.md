@@ -13,16 +13,16 @@ Every job moves through one pipeline. This guide covers the billing half — how
 
 ## Reading the Progress & payment bar
 
-Every stage on the Jobs Stages board — Waiting through Paid in Full — shows one **Progress & payment** cell instead of separate money columns. The bar is the job's whole bid, filled in order: the green part is **paid**, the blue part is **billed but not yet paid** (an invoice has gone out and you're waiting on the money), the amber part is work **done but not yet billed** (unbilled), and the empty part is work not done yet. Under the bar the same numbers are spelled out — **Paid**, **Billed** (shown only when an invoice is out and unpaid), **Unbilled**, and **Owed** (bid minus payments). In Waiting and Working, the **% done** box at the top is where the office records how complete the job is — type a number and press Enter (later stages show the % read-only). No % and no bid value yet shows an empty dashed bar. On billed rows, a small line under the numbers shows what **this row's bill** covers (e.g. `This bill: $0 paid · $3,850 left`) and any amount **unallocated** — money on the job that isn't on any bill yet.
+Every stage on the Jobs Stages board — Waiting through Paid in Full — shows one **Progress & payment** cell instead of separate money columns. The bar is the job's whole bid, filled in order: the green part is **paid**, the blue part is **billed but not yet paid** (an invoice has gone out and you're waiting on the money), the amber part is work **done but not yet billed** (unbilled), and the empty part is work not done yet. Under the bar the same numbers are spelled out — **Paid**, **Billed** (shown only when an invoice is out and unpaid), **Unbilled**, and **Left on Job** (bid minus payments). In Waiting and Working, the **% done** box at the top is where the office records how complete the job is — type a number and press Enter (later stages show the % read-only). No % and no bid value yet shows an empty dashed bar. On billed rows, a small line under the numbers shows what **this row's bill** covers (e.g. `This bill: $0 paid · $3,850 left`) and any amount **unallocated** — money on the job that isn't on any bill yet.
 
 :::example One glance at a Working job
 70 % done · $41,550 bid
-{{chip:green|Paid $16,620}} {{chip:yellow|Unbilled $12,465}} → **Owed $24,930**
+{{chip:green|Paid $16,620}} {{chip:yellow|Unbilled $12,465}} → **Left on Job $24,930**
 :::
 
 :::example A billed job waiting on payment
 $3,850 bid
-{{chip:blue|Billed $3,850}} → **Owed $3,850**
+{{chip:blue|Billed $3,850}} → **Left on Job $3,850**
 :::
 
 The **Edit Job** window shows the same bar at the top of its billing section, so you get one picture there too. Under it, three numbered steps make the flow obvious: **① Line Items** (the specific work & materials — their sum is the Job Total), **② Invoices** (the bills you break off and send), and **③ Payments received** (money collected). **The whole money section saves itself**: line items and payments auto-save a moment after you stop typing (watch the small **Saving… / Saved** note next to the Billing title), and creating or sending an invoice saves right away — so you can enter work and break off a bill in one motion, no Save button in between. The bar adds a striped **Draft** slice for a bill you've carved off but haven't sent yet. Each legend row also leads with where its slice **ends** on the bar — **40% Paid · 60% Billed** reads as "collected 40%, billed 20% more."

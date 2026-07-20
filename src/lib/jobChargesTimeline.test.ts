@@ -18,6 +18,7 @@ import {
   REPORT_FIELD_LABEL_JOB_COMPLETION,
   REPORT_FIELD_LABEL_LEGACY_WHO,
 } from './reportTemplateFieldDisplay'
+import { resolveJobCurrentPercentFallback } from './jobSummaryPercentComplete'
 
 const isoToYmdStub = (iso: string) => (iso.startsWith('2026-06-12T') ? '2026-06-12' : '')
 
@@ -475,6 +476,78 @@ describe('buildJobChargesTimelineChartData — payments / profit line', () => {
     expect(data.chartRows[0]?.profit).toBe(-42)
     expect(data.endPayments).toBe(0)
     expect(data.paymentRiseSegments).toEqual([])
+  })
+})
+
+describe('buildJobChargesTimelineChartData — fallbackPercent', () => {
+  it('no %-report + fallback → single value point on the last bucket, series available', () => {
+    const data = buildJobChargesTimelineChartData(
+      [charge({ dateKey: '2026-06-01', amount: 100 }), charge({ dateKey: '2026-06-03', amount: 50 })],
+      [],
+      1000,
+      [],
+      100,
+    )
+    expect(data.valueSeriesAvailable).toBe(true)
+    expect(data.valueFromFallbackPercent).toBe(true)
+    expect(data.chartRows[0]?.value).toBeNull()
+    expect(data.chartRows[1]?.value).toBe(1000) // 100% × $1,000 on the last bucket only
+  })
+
+  it('a report with a % wins — fallback ignored', () => {
+    const data = buildJobChargesTimelineChartData(
+      [charge({ dateKey: '2026-06-01', amount: 100 })],
+      [valueEvent({ dateKey: '2026-06-01', percent: 60 })],
+      1000,
+      [],
+      100,
+    )
+    expect(data.valueFromFallbackPercent).toBe(false)
+    expect(data.chartRows[0]?.value).toBe(600)
+  })
+
+  it('fallback needs a usable revenue and at least one bucket', () => {
+    const noRevenue = buildJobChargesTimelineChartData(
+      [charge({ dateKey: '2026-06-01', amount: 100 })],
+      [],
+      null,
+      [],
+      100,
+    )
+    expect(noRevenue.valueSeriesAvailable).toBe(false)
+    expect(noRevenue.valueFromFallbackPercent).toBe(false)
+    const noRows = buildJobChargesTimelineChartData([], [], 1000, [], 100)
+    expect(noRows.valueFromFallbackPercent).toBe(false)
+  })
+
+  it('invalid fallback percents are ignored', () => {
+    const data = buildJobChargesTimelineChartData(
+      [charge({ dateKey: '2026-06-01', amount: 100 })],
+      [],
+      1000,
+      [],
+      150,
+    )
+    expect(data.valueFromFallbackPercent).toBe(false)
+    expect(data.chartRows[0]?.value).toBeNull()
+  })
+})
+
+describe('resolveJobCurrentPercentFallback', () => {
+  it('paid invoices → 100; else pct_complete; else null', () => {
+    expect(
+      resolveJobCurrentPercentFallback({
+        pct_complete: null,
+        invoices: [{ status: 'paid', amount: 500 }],
+      }),
+    ).toBe(100)
+    expect(
+      resolveJobCurrentPercentFallback({
+        pct_complete: 40,
+        invoices: [{ status: 'billed', amount: 500 }],
+      }),
+    ).toBe(40)
+    expect(resolveJobCurrentPercentFallback({ pct_complete: null, invoices: [] })).toBeNull()
   })
 })
 

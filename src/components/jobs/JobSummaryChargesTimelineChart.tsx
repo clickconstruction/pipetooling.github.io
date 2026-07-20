@@ -36,6 +36,7 @@ import {
   type JobChargesTimelineData,
 } from '../../lib/jobChargesTimeline'
 import { formatCurrency, jobSummaryPartsCostIsZero } from '../../lib/jobs/jobFormatting'
+import { resolveJobCurrentPercentFallback } from '../../lib/jobSummaryPercentComplete'
 import { laborJobSubCost } from '../../lib/jobs/subLaborCost'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import type {
@@ -327,7 +328,13 @@ export default function JobSummaryChargesTimelineChart({
       })),
     )
     const revenue = row.job.revenue != null ? Number(row.job.revenue) : null
-    return buildJobChargesTimelineChartData(chargeEvents, valueEvents, revenue, paymentEvents)
+    return buildJobChargesTimelineChartData(
+      chargeEvents,
+      valueEvents,
+      revenue,
+      paymentEvents,
+      resolveJobCurrentPercentFallback(row.job),
+    )
   }, [loading, row, mercuryRows, invoiceLines, reports, mercuryNeeded, invoicesNeeded, mileageCost, timePerMile])
 
   if (loading) {
@@ -493,7 +500,9 @@ export function JobChargesTimelineChartView({
         {!data.valueSeriesAvailable &&
           (revenue == null || revenue === 0
             ? ' · Value line hidden: job total not set'
-            : ' · Value line hidden: no report has a completion %')}
+            : ' · Value line hidden: no report or % set on the job')}
+        {data.valueFromFallbackPercent &&
+          ' · Value point uses the job’s current % (no dated field report)'}
         {cardChargesExcluded && ' · Card charges not included (no Banking access)'}
       </p>
     </div>
