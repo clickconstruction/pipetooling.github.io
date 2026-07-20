@@ -104,48 +104,79 @@ export default function StagesProgressPaymentCell({ model, pctComplete, pctSavin
         </span>
       </div>
 
-      {model.hasBar ? (
-        <div
-          title={[
-            `Paid ${formatUsdNoCents(model.paid)}`,
-            model.billedUnpaid > 0 ? `billed but unpaid ${formatUsdNoCents(model.billedUnpaid)}` : null,
-            model.unbilled != null
-              ? `done but unbilled ${formatUsdNoCents(model.unbilled)} · not done ${formatUsdNoCents(Math.max(0, model.total - (model.valueCreated ?? 0)))}`
-              : 'set % complete to see unbilled work',
-          ]
-            .filter(Boolean)
-            .join(' · ')}
-          style={{
-            display: 'flex',
-            height: 10,
-            borderRadius: 4,
-            overflow: 'hidden',
-            background: 'var(--bg-subtle)',
-            border: '1px solid var(--border)',
-          }}
-        >
-          {model.paidFrac > 0 && <div style={{ width: `${model.paidFrac * 100}%`, background: PAID_COLOR }} />}
-          {model.billedFrac > 0 && <div style={{ width: `${model.billedFrac * 100}%`, background: BILLED_COLOR }} />}
-          {model.unbilledFrac > 0 && <div style={{ width: `${model.unbilledFrac * 100}%`, background: UNBILLED_COLOR }} />}
-        </div>
-      ) : (
-        <div
-          title="No bid value on this job yet"
-          style={{ height: 10, borderRadius: 4, background: 'var(--bg-subtle)', border: '1px dashed var(--border-strong)' }}
-        />
-      )}
+      <div
+        title={
+          model.hasBar
+            ? [
+                `Paid ${formatUsdNoCents(model.paid)}`,
+                model.billedUnpaid > 0 ? `billed but unpaid ${formatUsdNoCents(model.billedUnpaid)}` : null,
+                model.unbilled != null
+                  ? `done but unbilled ${formatUsdNoCents(model.unbilled)} · not done ${formatUsdNoCents(Math.max(0, model.total - (model.valueCreated ?? 0)))}`
+                  : 'set % complete to see unbilled work',
+                pctComplete != null ? `field progress ${Math.round(pctComplete)}% (yellow dot)` : null,
+              ]
+                .filter(Boolean)
+                .join(' · ')
+            : [
+                'No bid value on this job yet',
+                pctComplete != null ? `field progress ${Math.round(pctComplete)}% (yellow dot)` : null,
+              ]
+                .filter(Boolean)
+                .join(' · ')
+        }
+        style={{ position: 'relative' }}
+      >
+        {model.hasBar ? (
+          <div
+            style={{
+              display: 'flex',
+              height: 10,
+              borderRadius: 4,
+              overflow: 'hidden',
+              background: 'var(--bg-subtle)',
+              border: '1px solid var(--border)',
+            }}
+          >
+            {model.paidFrac > 0 && <div style={{ width: `${model.paidFrac * 100}%`, background: PAID_COLOR }} />}
+            {model.billedFrac > 0 && <div style={{ width: `${model.billedFrac * 100}%`, background: BILLED_COLOR }} />}
+            {model.unbilledFrac > 0 && <div style={{ width: `${model.unbilledFrac * 100}%`, background: UNBILLED_COLOR }} />}
+          </div>
+        ) : (
+          <div style={{ height: 10, borderRadius: 4, background: 'var(--bg-subtle)', border: '1px dashed var(--border-strong)' }} />
+        )}
+        {pctComplete != null ? (
+          // Field-progress marker — same yellow dot as the Edit-Job break-off track;
+          // sits at pct% across the bar (0% = left edge, 100% = right edge). Work
+          // progress is independent of money, so it also renders on the dashed
+          // no-bid-value track.
+          <div
+            aria-hidden
+            style={{
+              position: 'absolute',
+              left: `${Math.min(100, Math.max(0, pctComplete))}%`,
+              top: '50%',
+              width: 10,
+              height: 10,
+              transform: 'translate(-50%, -50%)',
+              borderRadius: '50%',
+              background: '#facc15',
+              border: '1px solid #ca8a04',
+              boxSizing: 'border-box',
+              pointerEvents: 'none',
+            }}
+          />
+        ) : null}
+      </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.1rem' }}>
         <div style={rowStyle} title="Payments received on this job">
           <span style={labelStyle}>{swatch(PAID_COLOR)}Paid</span>
           <span style={amountStyle}>{model.paid > 0 ? formatUsdNoCents(model.paid) : '—'}</span>
         </div>
-        {model.billedUnpaid > 0 && (
-          <div style={rowStyle} title="Invoiced to the customer but not yet paid">
-            <span style={labelStyle}>{swatch(BILLED_COLOR)}Billed</span>
-            <span style={amountStyle}>{formatUsdNoCents(model.billedUnpaid)}</span>
-          </div>
-        )}
+        <div style={rowStyle} title="Invoiced to the customer but not yet paid">
+          <span style={labelStyle}>{swatch(BILLED_COLOR)}Billed</span>
+          <span style={amountStyle}>{model.billedUnpaid > 0 ? formatUsdNoCents(model.billedUnpaid) : '—'}</span>
+        </div>
         <div style={rowStyle} title="Work completed that hasn't been paid for yet (% done × bid − paid)">
           <span style={labelStyle}>{swatch(UNBILLED_COLOR)}Unbilled</span>
           <span style={amountStyle}>{model.unbilled != null ? formatUsdNoCents(model.unbilled) : '—'}</span>

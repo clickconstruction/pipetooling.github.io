@@ -1,6 +1,7 @@
 import { Fragment, type CSSProperties, type Dispatch, type MutableRefObject, type SetStateAction } from 'react'
 import AutosizeTextarea from '../AutosizeTextarea'
 import { MoneyDecimalAmountInput } from '../MoneyDecimalAmountInput'
+import { formatCurrency } from '../../lib/jobs/jobFormMoney'
 import type { FixtureRow } from '../../lib/jobs/jobFormTypes'
 import { normalizeFixtureDisplayName } from '../../lib/jobs/jobFormRows'
 import {
@@ -30,6 +31,8 @@ type JobFormFixturesSectionProps = {
   addFixtureRow: () => void
   removeFixtureRow: (id: string) => void
   setStripeFixturePreviewRowId: (id: string | null) => void
+  /** Live sum of the line items — shown as the running "Job Total" at the top right. */
+  jobTotalDollars: number
 }
 
 /**
@@ -51,6 +54,7 @@ export function JobFormFixturesSection({
   addFixtureRow,
   removeFixtureRow,
   setStripeFixturePreviewRowId,
+  jobTotalDollars,
 }: JobFormFixturesSectionProps) {
   return (
           <div
@@ -68,7 +72,16 @@ export function JobFormFixturesSection({
             }}
           >
             <div style={{ fontWeight: 600, fontSize: '0.9375rem', color: 'var(--text-700)', marginBottom: '0.15rem' }}>① Line Items — specific work &amp; materials</div>
-            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.75rem' }}>Fixtures / tie-ins / repair. Each line adds to the <strong>Job Total</strong> — this is what the job is worth.</div>
+            <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.75rem' }}>
+              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Fixtures / tie-ins / repair. Each line adds to the <strong>Job Total</strong> — this is what the job is worth.</span>
+              <span
+                aria-live="polite"
+                title="Running total of the line items below."
+                style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-700)', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', marginLeft: 'auto' }}
+              >
+                Job Total: ${formatCurrency(jobTotalDollars)}
+              </span>
+            </div>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem', tableLayout: 'fixed' }}>
               <colgroup>
                 <col />

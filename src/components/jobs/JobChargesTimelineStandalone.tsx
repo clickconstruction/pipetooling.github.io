@@ -179,9 +179,11 @@ export default function JobChargesTimelineStandalone({
 
   return (
     <div style={{ marginTop: '1rem' }}>
-      <div style={{ fontWeight: 600, fontSize: '0.9375rem', marginBottom: '0.35rem' }}>
-        Cost breakdown
-      </div>
+      {state.kind !== 'ready' || state.data.chartRows.length === 0 ? (
+        <div style={{ fontWeight: 600, fontSize: '0.9375rem', marginBottom: '0.35rem' }}>
+          Cost Timeline
+        </div>
+      ) : null}
       {state.kind === 'loading' ? (
         <p style={{ color: 'var(--text-muted)', fontSize: '0.75rem', margin: 0 }}>Loading charge timeline…</p>
       ) : state.kind === 'error' ? (
@@ -193,11 +195,29 @@ export default function JobChargesTimelineStandalone({
           No dated cost events or reports yet.
         </p>
       ) : (
-        <JobChargesTimelineChartView
-          data={state.data}
-          revenue={job.revenue != null ? Number(job.revenue) : null}
-          cardChargesExcluded={state.cardChargesExcluded}
-        />
+        <div style={{ position: 'relative' }}>
+          {/* Title floats centered over the chart's top so the chart keeps the full block height. */}
+          <div
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: '50%',
+              transform: 'translateX(-50%)',
+              fontWeight: 600,
+              fontSize: '0.9375rem',
+              zIndex: 1,
+              pointerEvents: 'none',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            Cost Timeline
+          </div>
+          <JobChargesTimelineChartView
+            data={state.data}
+            revenue={job.revenue != null ? Number(job.revenue) : null}
+            cardChargesExcluded={state.cardChargesExcluded}
+          />
+        </div>
       )}
     </div>
   )

@@ -44,14 +44,14 @@ export function JobFormLaborCostPanel({
   return (
     <>
               <hr style={{ margin: '0.75rem auto', border: 'none', borderTop: '1px solid var(--border-400)', width: '50%' }} />
-              <div style={{ fontWeight: 600, fontSize: '0.9375rem', color: 'var(--text-700)', marginBottom: '0.75rem' }}>Labor Cost</div>
+              <div style={{ fontWeight: 600, fontSize: '0.9375rem', color: 'var(--text-700)', marginBottom: '0.75rem' }}>Labor and Parts Cost</div>
               <div
                 style={{
                   background: 'var(--bg-subtle)',
                   border: '1px solid var(--border)',
                   borderRadius: 8,
                   padding: '0.75rem 1rem',
-                  marginBottom: '1rem',
+                  marginBottom: '0.5rem',
                 }}
               >
                 <div

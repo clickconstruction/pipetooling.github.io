@@ -340,7 +340,7 @@ export function JobThreadNotesPanel({
         <div
           role="tablist"
           aria-label="Filter activity"
-          style={{ display: 'flex', flexWrap: 'wrap', gap: '0.25rem', marginBottom: '0.5rem' }}
+          style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.25rem', marginBottom: '0.5rem' }}
         >
           {ACTIVITY_FILTERS.map((f) => {
             const active = activityFilter === f.value
@@ -366,6 +366,14 @@ export function JobThreadNotesPanel({
               </button>
             )
           })}
+          {pctComplete != null ? (
+            <span
+              title="Stages % complete for this job"
+              style={{ marginLeft: 'auto', fontSize: '0.8125rem', color: 'var(--text-700)', whiteSpace: 'nowrap' }}
+            >
+              {pctComplete}% complete
+            </span>
+          ) : null}
         </div>
       ) : null}
       {loading ? (
@@ -782,7 +790,8 @@ export function JobThreadNotesPanel({
                 ) : null}
                 {canEditPct ? (
                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
-                    {pctComplete != null ? (
+                    {/* Percent readout lives at the top right of the filter row; keep it here only when that row is hidden. */}
+                    {pctComplete != null && !filterEnabled ? (
                       <span style={{ fontSize: '0.8125rem', color: 'var(--text-700)' }}>{pctComplete}% complete</span>
                     ) : null}
                     <button

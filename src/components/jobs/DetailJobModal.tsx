@@ -15,7 +15,8 @@ import {
 } from '../../lib/formatJobDetailModalDateYmd'
 import { deriveRecordedBillingActivityDetail } from '../../lib/stagesJobReferenceDates'
 import { buildServiceTypeTradePill } from '../../lib/serviceTypeTradePill'
-import { JobDetailCompletenessRow } from './JobDetailCompletenessRow'
+import { composePctCompleteNoteBody } from '../../lib/jobs/stagesPctNote'
+import { isAssistantLike } from '../../lib/subcontractorLikeRole'
 import {
   canExpandJobDetailMaterials,
   isStaffFullJobLedgerDetailRole,
@@ -762,6 +763,37 @@ export default function DetailJobModal({
   })
   const { requestOpenUpdateFocus } = useUpdateFocusOpenerBridge()
 
+  // Stages "% complete" flow, transplanted from the Jobs Stages activity panel:
+  // same roles, same note-plus-pct write (replaces the old Completeness card).
+  const canEditJobPctComplete = useMemo(
+    () =>
+      authRole === 'dev' ||
+      authRole === 'master_technician' ||
+      isAssistantLike(authRole) ||
+      authRole === 'primary',
+    [authRole],
+  )
+  const [pctSaving, setPctSaving] = useState(false)
+  const commitPctWithNote = useCallback(
+    async (value: number, note: string) => {
+      if (!jobId) return
+      setPctSaving(true)
+      try {
+        const posted = await threadNotes.submitNoteWithBody(composePctCompleteNoteBody(value, note), 'draft')
+        if (!posted) return
+        const { error: err } = await supabase.from('jobs_ledger').update({ pct_complete: value }).eq('id', jobId)
+        if (err) throw err
+        showToast(`Set to ${value}% complete`, 'success')
+        void loadDetail()
+      } catch (e: unknown) {
+        showToast(formatErrorMessage(e, 'Failed to update % complete'), 'error')
+      } finally {
+        setPctSaving(false)
+      }
+    },
+    [jobId, threadNotes, showToast, loadDetail],
+  )
+
   const jobFormModal = useJobFormModal()
   const showEditJobButton =
     Boolean(jobFormModal) &&
@@ -1072,6 +1104,10 @@ export default function DetailJobModal({
                 })()
               },
             }}
+            pctComplete={fullJob?.pct_complete ?? null}
+            canEditPct={canEditJobPctComplete && fullJob != null}
+            pctSaving={pctSaving}
+            onCommitPct={(value, note) => void commitPctWithNote(value, note)}
             showSectionTitle={false}
             showEmptyPlaceholder={false}
             showComposerLabel={false}
@@ -1135,20 +1171,6 @@ export default function DetailJobModal({
               </DetailRow>
             </div>
 
-            <div style={{ marginTop: '0.75rem' }}>
-              <JobDetailCompletenessRow
-                jobId={fullJob.id}
-                pct={fullJob.completeness_pct ?? null}
-                markedByUserId={fullJob.completeness_marked_by ?? null}
-                markedAtIso={fullJob.completeness_marked_at ?? null}
-                canEdit={isStaffFullJobLedgerDetailRole(authRole)}
-                onMarked={() => {
-                  void loadDetail()
-                  threadNotes.reload()
-                }}
-                showToast={showToast}
-              />
-            </div>
 
             <DetailJobModalFilesPlansRow googleDriveLink={fullJob.google_drive_link} jobPlansLink={fullJob.job_plans_link} />
 
