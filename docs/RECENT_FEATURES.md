@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-20 (v2.788)
+last_updated: 2026-07-20 (v2.789)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.789)
+
+### People → Employment: "Turn off Salaried" confirm bullets reordered and reworded (2026-07-20)
+Copy-only pass on the [`PeopleEmploymentTab`](../src/components/people/PeopleEmploymentTab.tsx) salary-off confirm modal, per owner direction. New order and wording: (1) reassurance first — "All of their history is safe — past pay reports, payments, and approved clock hours are unchanged."; (2) the action's purpose stated neutrally — "Pay switches to logged hours × hourly wage, and their dashboard returns to manual clock in / clock out."; (3) accuracy nudge — "Today's **not-yet-approved** auto-generated sessions are removed, and no new ones will be created." (approved sessions survive); (4) the template bullet (still rendered only when a workday template exists) moves last and softens "permanently deleted" to "**cleared**", spelling out that per-day overrides (including future-dated ones) go too and that re-enabling starts from a blank schedule — "note the current times if you might want them again." No behavior change; verified live against the dev server (bullets render in order, template bullet present for a templated person, Cancel leaves the flag untouched).
 
 ## Latest Updates (v2.788)
 
