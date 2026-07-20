@@ -4,6 +4,7 @@ import {
   buildJobChargesTimelineChartData,
   buildJobPaymentEvents,
   buildJobValueEvents,
+  computeChargesTimelineAxisDomains,
   formatJobChargesDateLabel,
   JOB_CHARGES_UNKNOWN_DATE_KEY,
   reportCompletionPercent,
@@ -474,5 +475,44 @@ describe('buildJobChargesTimelineChartData — payments / profit line', () => {
     expect(data.chartRows[0]?.profit).toBe(-42)
     expect(data.endPayments).toBe(0)
     expect(data.paymentRiseSegments).toEqual([])
+  })
+})
+
+describe('computeChargesTimelineAxisDomains', () => {
+  /** Fraction of an axis domain sitting below zero. */
+  const belowZeroFrac = ([lo, hi]: [number, number]) => -lo / (hi - lo)
+
+  it('aligns $0 at the same height on both axes (profitable job)', () => {
+    const d = computeChargesTimelineAxisDomains([
+      { expense: 4000, profit: -2000, value: null },
+      { expense: 10000, profit: 5000, value: 8000 },
+    ])
+    expect(belowZeroFrac(d.left)).toBeCloseTo(belowZeroFrac(d.right), 10)
+    expect(d.left[1]).toBeCloseTo(10000 * 1.15 + 5) // max dollars drives the left top
+    expect(d.right[1]).toBeCloseTo(5000 * 1.15 + 5)
+    expect(d.right[0]).toBeCloseTo(-2000 * 1.15 - 5)
+  })
+
+  it('caps the below-zero share at half for an all-cost, no-payment job', () => {
+    const d = computeChargesTimelineAxisDomains([
+      { expense: 10000, profit: -10000, value: null },
+    ])
+    expect(belowZeroFrac(d.right)).toBeCloseTo(0.5, 10)
+    expect(belowZeroFrac(d.left)).toBeCloseTo(0.5, 10)
+    expect(d.right[1]).toBeCloseTo(-d.right[0]) // right becomes symmetric
+    expect(d.left[0]).toBeCloseTo(-d.left[1]) // left mirrors to match
+  })
+
+  it('value-created can drive the left top above expense', () => {
+    const d = computeChargesTimelineAxisDomains([
+      { expense: 100, profit: 50, value: 9000 },
+    ])
+    expect(d.left[1]).toBeCloseTo(9000 * 1.15 + 5)
+  })
+
+  it('degenerate empty/zero data still returns sane non-zero domains', () => {
+    const d = computeChargesTimelineAxisDomains([])
+    expect(d.left).toEqual([-5, 5])
+    expect(d.right).toEqual([-5, 5])
   })
 })

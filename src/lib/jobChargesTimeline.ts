@@ -280,6 +280,47 @@ export function formatJobChargesDateLabel(dateKey: string, lastYear: number | nu
   return base
 }
 
+/** Left (costs + value) and right (profit) Y-axis domains for the dual-axis chart. */
+export type ChargesTimelineAxisDomains = {
+  /** Costs / value-created axis — big cumulative dollars, never meaningfully negative. */
+  left: [number, number]
+  /** Profit axis — small magnitude, can be negative. */
+  right: [number, number]
+}
+
+/**
+ * Compute the two Y-axis domains so the $0 gridline lands at the SAME height on
+ * both axes (otherwise dual-axis crossings lie). The below-zero fraction comes
+ * from the profit series and is capped at 0.5 so the costs/value lines always
+ * keep at least half the plot height even when the job is all cost, no payments
+ * (there profit = −costs and the two lines mirror around the midline). Padding
+ * matches the old single-axis domain (×1.15 + $5 headroom each side).
+ */
+export function computeChargesTimelineAxisDomains(
+  rows: Array<Pick<JobChargesTimelineChartRow, 'expense' | 'profit' | 'value'>>,
+): ChargesTimelineAxisDomains {
+  let maxDollars = 0
+  let minProfit = 0
+  let maxProfit = 0
+  for (const r of rows) {
+    if (r.expense > maxDollars) maxDollars = r.expense
+    if (r.value != null && r.value > maxDollars) maxDollars = r.value
+    if (r.profit < minProfit) minProfit = r.profit
+    if (r.profit > maxProfit) maxProfit = r.profit
+  }
+  const left1 = maxDollars * 1.15 + 5
+  let right1 = maxProfit * 1.15 + 5
+  const right0 = minProfit * 1.15 - 5
+  // Fraction of the right axis sitting below $0; cap at one half.
+  let f = -right0 / (right1 - right0)
+  if (f > 0.5) {
+    right1 = -right0
+    f = 0.5
+  }
+  const left0 = (-f / (1 - f)) * left1
+  return { left: [left0, left1], right: [right0, right1] }
+}
+
 export function buildJobChargesTimelineChartData(
   chargeEvents: JobChargeEvent[],
   valueEvents: JobValueEvent[],

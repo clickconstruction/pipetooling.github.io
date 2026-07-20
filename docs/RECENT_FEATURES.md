@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-20 (v2.777)
+last_updated: 2026-07-20 (v2.778)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.778)
+
+### Edit Job billing UX pass + Stages legend percents + dual-axis Cost Timeline (2026-07-20)
+Three related upgrades shipped as one pass. **(1) Break-off slider — the "Billed" wall.** Invoices already carved off (ready_to_bill + billed) now paint as a **blue Billed segment at the RIGHT end** of the ② Invoices track — exactly where the bounds math lives (`slider max = 100% − billed`), so on a fully-billed job the green Paid fill meets the blue wall and it's obvious why nothing moves. Colors now match the Billing bar via `MoneyLifecycleBar`'s exported constants (**Paid green `#16a34a`**, **Billed blue `#2563eb`**, **New-Invoice preview draft-blue `#60a5fa`** — the track previously used Billed-blue for Paid). The green triangle **hides entirely when nothing is left to carve** (mirroring the yellow dot's hide-when-unset rule), the **Quick set** row hides too and otherwise **only shows percents strictly inside the slider's travel** (at/below the paid floor = $0 invoice; at/above the billed ceiling = Max in disguise), and the input label reads **"Open Invoice:"**. The legend reorders to **Paid · Billed · New Invoice · ▽ Open Invoice ⓘ · Job %** — the ⓘ opens a "How the break-off slider works" modal (can't go left of paid, can't go right of what's left to bill; the yellow dot doesn't limit the bill). New kernel fn `allocatedInvoiceDollars()` in [`jobFormBreakOff.ts`](../src/lib/jobs/jobFormBreakOff.ts) (+2 tests). **(2) Edit-Job structure/copy.** **Billing** and **Labor and Parts Cost** headers become full-width bars (`--bg-subtle` + border; the autosave Saving…/Saved note rides inside the Billing bar); the ①②③ step headers are uniformly **non-bold + underlined**; **Job Total moves below the Line-Items table** (reads as the sum of the rows above); the ② caption becomes "Creating an invoice breaks off the invoice as a card that starts in **Stage: Ready to Bill** right away separate from this form."; the ③ caption becomes "Money collected on the job. Updates automatically when customer pays through Stripe." with the **+ Record non-Stripe payment received** button centered. **(3) Legend percents + timeline.** Both the Stages **Progress & payment** cell ([`StagesProgressPaymentCell`](../src/components/jobs/StagesProgressPaymentCell.tsx)) and the Edit-Job Billing bar legend now lead each row with **where its segment ENDS on the bar** — `40% Paid · 60% Billed · 65% Unbilled` reads as collected 40%, billed 20% more, 5% of done work unbilled (Unbilled/Draft rows only get a percent when computable); the Stages row footnotes drop their "This line: " prefix. The **Cost Timeline** ([`JobSummaryChargesTimelineChart`](../src/components/jobs/JobSummaryChargesTimelineChart.tsx), also the Edit-Job/standalone mount) is now **dual-axis**: LEFT = red cumulative **Cost to date** (carries the per-source icons) + blue **Value created**; RIGHT (green ticks) = green **Profit** with the 💵 markers — new kernel `computeChargesTimelineAxisDomains()` (+4 tests) aligns **$0 to the same gridline on both axes** and caps the below-zero share at half so an all-cost job renders as a symmetric mirror instead of a squashed line; the per-segment green payment overlays are gone (the profit line itself is green) and the end-of-line $ labels anchor inside the plot. Guide [`ready-to-bill-pipeline.md`](../src/content/help/ready-to-bill-pipeline.md) updated.
 
 ## Latest Updates (v2.777)
 

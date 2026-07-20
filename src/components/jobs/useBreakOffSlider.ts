@@ -10,6 +10,7 @@ import type { JobWithDetails } from '../../types/jobWithDetails'
 import { parseMoneyInputToNumber } from '../../lib/jobs/jobFormMoney'
 import {
   BREAK_OFF_COMBINED_SLIDER_STEP_PCT,
+  allocatedInvoiceDollars,
   breakDollarsFromCombinedPct,
   combinedPctFromTrackRatio,
   snapBreakOffCombinedPctToStep,
@@ -53,15 +54,22 @@ export function useBreakOffSlider(args: {
     const total = jobTotalBidDollars
     const paidSum = payments.reduce((s, p) => s + (Number(p.amount) || 0), 0)
     if (!(total > 0)) {
-      return { paidPct: 0, breakPreviewPct: 0, hasTotal: false as const }
+      return { paidPct: 0, breakPreviewPct: 0, billedPct: 0, hasTotal: false as const }
     }
     const paidPct = Math.min(100, (paidSum / total) * 100)
+    // Invoices already carved off (ready_to_bill + billed) render as a "Billed"
+    // wall at the RIGHT end of the track — the slider's max is 100% minus this,
+    // so the thumb visibly bumps into it when the job is fully carved up.
+    const billedPct = Math.min(
+      Math.max(0, 100 - paidPct),
+      Math.max(0, (allocatedInvoiceDollars(editing?.invoices) / total) * 100),
+    )
     const rawBreak = Math.max(0, parseMoneyInputToNumber(newInvoiceAmount))
     const breakPreviewPctUncapped = (rawBreak / total) * 100
-    const maxBreakPreview = Math.max(0, 100 - paidPct)
+    const maxBreakPreview = Math.max(0, 100 - paidPct - billedPct)
     const breakPreviewPct = Math.min(maxBreakPreview, breakPreviewPctUncapped)
-    return { paidPct, breakPreviewPct, hasTotal: true as const }
-  }, [jobTotalBidDollars, payments, newInvoiceAmount])
+    return { paidPct, breakPreviewPct, billedPct, hasTotal: true as const }
+  }, [jobTotalBidDollars, payments, newInvoiceAmount, editing?.invoices])
 
   const jobCompleteTrackPct = useMemo(() => {
     const raw = editing?.pct_complete

@@ -3530,8 +3530,21 @@ export default function JobFormModal({
           </div>
           <hr style={{ margin: '0.75rem auto', border: 'none', borderTop: '1px solid var(--border-400)', width: '50%' }} />
           <div style={{ marginBottom: '1rem' }}>
-            <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.5rem' }}>
-              <span style={{ fontWeight: 600, fontSize: '0.9375rem', color: 'var(--text-700)' }}>Billing</span>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'baseline',
+                justifyContent: 'space-between',
+                gap: '0.5rem',
+                flexWrap: 'wrap',
+                marginBottom: '0.75rem',
+                background: 'var(--bg-subtle)',
+                border: '1px solid var(--border)',
+                borderRadius: 6,
+                padding: '0.4rem 0.65rem',
+              }}
+            >
+              <span style={{ fontWeight: 700, fontSize: '0.9375rem', color: 'var(--text-800)' }}>Billing</span>
               {editing?.id && billingAutosaveStatus !== 'idle' && (
                 <span
                   aria-live="polite"
@@ -3566,10 +3579,33 @@ export default function JobFormModal({
                 { key: 'draft', frac: billingBar.draftFrac, color: DRAFT_COLOR },
               ]}
               rows={[
-                { key: 'paid', label: 'Paid', value: billingBar.paid, dot: PAID_COLOR },
-                { key: 'billed', label: 'Billed', value: billingBar.billedUnpaid, dot: BILLED_COLOR },
+                // Labels lead with where each segment ENDS on the bar (cumulative %),
+                // matching the Stages Progress & payment legend.
+                {
+                  key: 'paid',
+                  label: billingBar.hasBar ? `${Math.round(billingBar.paidFrac * 100)}% Paid` : 'Paid',
+                  value: billingBar.paid,
+                  dot: PAID_COLOR,
+                },
+                {
+                  key: 'billed',
+                  label: billingBar.hasBar
+                    ? `${Math.round((billingBar.paidFrac + billingBar.billedFrac) * 100)}% Billed`
+                    : 'Billed',
+                  value: billingBar.billedUnpaid,
+                  dot: BILLED_COLOR,
+                },
                 ...(billingBar.draft > 0
-                  ? [{ key: 'draft', label: 'Draft (not sent)', value: billingBar.draft, dot: DRAFT_COLOR }]
+                  ? [
+                      {
+                        key: 'draft',
+                        label: billingBar.hasBar
+                          ? `${Math.round((billingBar.paidFrac + billingBar.billedFrac + billingBar.draftFrac) * 100)}% Draft (not sent)`
+                          : 'Draft (not sent)',
+                        value: billingBar.draft,
+                        dot: DRAFT_COLOR,
+                      },
+                    ]
                   : []),
               ]}
               bottomRow={{
@@ -3594,9 +3630,9 @@ export default function JobFormModal({
           <div style={{ marginBottom: '1rem' }}>
           {editing && (
             <>
-              <div style={{ fontWeight: 600, fontSize: '0.9375rem', color: 'var(--text-700)', marginBottom: '0.15rem' }}>② Invoices</div>
+              <div style={{ fontWeight: 400, textDecoration: 'underline', fontSize: '0.9375rem', color: 'var(--text-700)', marginBottom: '0.15rem' }}>② Invoices</div>
               <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.75rem' }}>
-                Creating an invoice <strong>saves right away</strong> separate from this form.
+                Creating an invoice breaks off the invoice as a card that starts in <strong>Stage: Ready to Bill</strong> right away separate from this form.
               </div>
               {editing ? (
                 <JobFormBreakOffSection

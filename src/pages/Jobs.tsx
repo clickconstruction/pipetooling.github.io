@@ -6861,7 +6861,7 @@ ${totalsHtml}
                                                   )
                                                 })()
                                               : (
-                                                  <span title="Amount on this billing line">{`This line: ${formatUsdNoCents(Number(bundleInv.amount))} remainder`}</span>
+                                                  <span title="Amount on this billing line">{`${formatUsdNoCents(Number(bundleInv.amount))} remainder`}</span>
                                                 )
                                           }
                                         />
@@ -7348,7 +7348,7 @@ ${totalsHtml}
                                         const u = showRemaining ? jobBillingUnallocatedDollars(job) : 0
                                         return (
                                           <span>
-                                            <span title="Amount on this draft billing line">{`This line: ${formatUsdNoCents(Number(inv.amount))} draft`}</span>
+                                            <span title="Amount on this draft billing line">{`${formatUsdNoCents(Number(inv.amount))} draft`}</span>
                                             {u > 0 ? (
                                               <span title="Left on the job after all draft and billed lines">{` · ${formatUsdNoCents(u)} unallocated`}</span>
                                             ) : null}

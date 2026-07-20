@@ -1,13 +1,14 @@
 /** Jobs → Job Summary expanded row: "Charges & Value" timeline chart.
  *
- * Main stepAfter line = PROFIT (cumulative payments received − charges): charges step it DOWN
- * in red with per-source icons; payments step it UP with those stretches overlaid in green
- * (one thin green Line per `paymentRiseSegment` — recharts can't color a single line
- * per-segment) and a 💵 marker. Above the dashed $0 line = job has collected more than it
- * cost; both money lines carry end-of-line value labels.
- * Blue stepAfter line = value created — each field report with a completion % steps it to
- * (% × job revenue); reports without a % show a 🚩 marker only. Data shaping lives in the pure
- * kernel `src/lib/jobChargesTimeline.ts` (unit-tested); this component only adapts props and renders.
+ * Dual-axis stepAfter chart. LEFT axis (big cumulative dollars): red COSTS line (steps up as
+ * money goes out, carries the per-source icons) and blue VALUE-CREATED line (each field report
+ * with a completion % steps it to % × job revenue; reports without a % show a 🚩 marker only).
+ * RIGHT axis: green PROFIT line (cumulative payments received − costs; rises only on payments,
+ * marked 💵). The two axes share one $0 gridline — `computeChargesTimelineAxisDomains` aligns
+ * their zero heights (unit-tested) so the dashed $0 reference is truthful for both; vertical
+ * comparisons BETWEEN axes are otherwise meaningless (standard dual-axis caveat). All three
+ * lines carry end-of-line value labels. Data shaping lives in the pure kernel
+ * `src/lib/jobChargesTimeline.ts` (unit-tested); this component only adapts props and renders.
  */
 import { useMemo } from 'react'
 import {
@@ -25,12 +26,12 @@ import {
   buildJobChargesTimelineChartData,
   buildJobPaymentEvents,
   buildJobValueEvents,
+  computeChargesTimelineAxisDomains,
   JOB_CHARGE_SOURCE_META,
   tallyPartEventAmount,
   ymdFromDateOnlyOrIso,
   type JobChargesTimelineChartRow,
   type JobChargesTimelineData,
-  type JobPaymentRiseSegment,
 } from '../../lib/jobChargesTimeline'
 import { formatCurrency, jobSummaryPartsCostIsZero } from '../../lib/jobs/jobFormatting'
 import { laborJobSubCost } from '../../lib/jobs/subLaborCost'
@@ -66,25 +67,22 @@ function signedCurrency(n: number): string {
   return `${n < 0 ? '−' : '+'}$${formatCurrency(Math.abs(n))}`
 }
 
-/** Dot renderer for the profit line: source icons (clamped inside the plot), 💵 payment
- * marker (flips above the point near the chart floor), and a bold end-of-line value label. */
-function makeProfitDot(lastIndex: number) {
-  return function renderProfitDot(props: TimelineDotProps) {
+/** Dot renderer for the costs line: source icons (clamped inside the plot) at charge
+ * buckets + a bold end-of-line total (anchored left of the point — the right axis owns
+ * the gutter now). */
+function makeCostsDot(lastIndex: number) {
+  return function renderCostsDot(props: TimelineDotProps) {
     const { cx, cy, index, payload } = props
-    const key = `profit-dot-${index ?? 'x'}`
+    const key = `costs-dot-${index ?? 'x'}`
     const sources = payload?.chargeSources ?? []
-    const hasPayment = payload?.hasPaymentMarker === true
     const isLast = index === lastIndex && payload != null
-    if (cx == null || cy == null || (sources.length === 0 && !hasPayment && !isLast)) {
+    if (cx == null || cy == null || (sources.length === 0 && !isLast)) {
       return <g key={key} />
     }
     const iconRowY = Math.max(24, cy - 12)
-    const paymentY = cy > 190 ? cy - 16 : cy + 26
     return (
       <g key={key}>
-        {(sources.length > 0 || hasPayment) && (
-          <circle cx={cx} cy={cy} r={2.5} fill={sources.length === 0 ? '#16a34a' : '#dc2626'} />
-        )}
+        {sources.length > 0 && <circle cx={cx} cy={cy} r={2.5} fill="#dc2626" />}
         {sources.map((s, i) => (
           <text
             key={s}
@@ -96,18 +94,52 @@ function makeProfitDot(lastIndex: number) {
             {JOB_CHARGE_SOURCE_META[s].icon}
           </text>
         ))}
-        {hasPayment && (
-          <text x={cx} y={paymentY} fontSize={22} textAnchor="middle">
-            💵
+        {isLast && payload && (
+          <text
+            x={cx - 8}
+            y={cy - 8}
+            fontSize={13}
+            fontWeight={700}
+            textAnchor="end"
+            fill="#dc2626"
+          >
+            ${formatCurrency(payload.expense)}
           </text>
+        )}
+      </g>
+    )
+  }
+}
+
+/** Dot renderer for the profit line: 💵 payment marker (flips above the point near the
+ * chart floor) + a bold end-of-line value label. */
+function makeProfitDot(lastIndex: number) {
+  return function renderProfitDot(props: TimelineDotProps) {
+    const { cx, cy, index, payload } = props
+    const key = `profit-dot-${index ?? 'x'}`
+    const hasPayment = payload?.hasPaymentMarker === true
+    const isLast = index === lastIndex && payload != null
+    if (cx == null || cy == null || (!hasPayment && !isLast)) {
+      return <g key={key} />
+    }
+    const paymentY = cy > 190 ? cy - 16 : cy + 26
+    return (
+      <g key={key}>
+        {hasPayment && (
+          <>
+            <circle cx={cx} cy={cy} r={2.5} fill="#16a34a" />
+            <text x={cx} y={paymentY} fontSize={22} textAnchor="middle">
+              💵
+            </text>
+          </>
         )}
         {isLast && payload && (
           <text
-            x={cx + 8}
-            y={cy + 4}
+            x={cx - 8}
+            y={cy + 16}
             fontSize={13}
             fontWeight={700}
-            textAnchor="start"
+            textAnchor="end"
             fill={payload.profit >= 0 ? '#15803d' : '#b91c1c'}
           >
             {signedCurrency(payload.profit)}
@@ -138,11 +170,11 @@ function makeValueDot(lastIndex: number) {
         )}
         {isLast && payload?.value != null && (
           <text
-            x={cx + 8}
+            x={cx - 8}
             y={cy - 6}
             fontSize={13}
             fontWeight={700}
-            textAnchor="start"
+            textAnchor="end"
             fill="#2563eb"
           >
             ${formatCurrency(payload.value)}
@@ -332,15 +364,17 @@ export function JobChargesTimelineChartView({
   cardChargesExcluded: boolean
 }) {
   const lastIndex = data.chartRows.length - 1
+  const costsDot = useMemo(() => makeCostsDot(lastIndex), [lastIndex])
   const profitDot = useMemo(() => makeProfitDot(lastIndex), [lastIndex])
   const valueDot = useMemo(() => makeValueDot(lastIndex), [lastIndex])
+  const axisDomains = useMemo(() => computeChargesTimelineAxisDomains(data.chartRows), [data])
 
   return (
     <div style={{ marginBottom: '0.75rem' }}>
       <div style={{ width: '100%', overflowX: 'auto', minWidth: 0 }}>
         <div style={{ minWidth: Math.max(520, data.chartRows.length * 56), height: 260 }}>
         <ResponsiveContainer width="100%" height={260}>
-          <LineChart data={data.chartRows} margin={{ top: 36, right: 72, left: 8, bottom: 4 }}>
+          <LineChart data={data.chartRows} margin={{ top: 36, right: 8, left: 8, bottom: 4 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
             <XAxis
               dataKey="dateLabel"
@@ -350,44 +384,49 @@ export function JobChargesTimelineChartView({
               padding={{ left: 28, right: 12 }}
             />
             <YAxis
+              yAxisId="dollars"
               width={56}
               tick={{ fontSize: 10 }}
-              domain={[
-                (dataMin: number) => Math.min(0, dataMin) * 1.15 - 5,
-                (dataMax: number) => Math.max(0, dataMax) * 1.15 + 5,
-              ]}
+              domain={axisDomains.left}
               tickFormatter={(v: number) => `$${Math.round(v).toLocaleString('en-US')}`}
             />
-            <ReferenceLine y={0} stroke="#9ca3af" strokeDasharray="4 4" />
+            <YAxis
+              yAxisId="profit"
+              orientation="right"
+              width={56}
+              tick={{ fontSize: 10, fill: '#16a34a' }}
+              domain={axisDomains.right}
+              tickFormatter={(v: number) => `$${Math.round(v).toLocaleString('en-US')}`}
+            />
+            <ReferenceLine yAxisId="dollars" y={0} stroke="#9ca3af" strokeDasharray="4 4" />
             <Tooltip content={<JobChargesTimelineTooltip />} />
             <Line
+              yAxisId="dollars"
+              type="stepAfter"
+              dataKey="expense"
+              name="Cost to date"
+              stroke="#dc2626"
+              strokeWidth={2}
+              dot={costsDot}
+              activeDot={{ r: 4 }}
+              isAnimationActive={false}
+              connectNulls
+            />
+            <Line
+              yAxisId="profit"
               type="stepAfter"
               dataKey="profit"
               name="Profit"
-              stroke="#dc2626"
+              stroke="#16a34a"
               strokeWidth={2}
               dot={profitDot}
               activeDot={{ r: 4 }}
               isAnimationActive={false}
               connectNulls
             />
-            {data.paymentRiseSegments.map((seg: JobPaymentRiseSegment) => (
-              <Line
-                key={`payseg-${seg.from}-${seg.to}`}
-                type="stepAfter"
-                dataKey={(r: JobChargesTimelineChartRow) =>
-                  r.index >= seg.from && r.index <= seg.to ? r.profit : null
-                }
-                stroke="#16a34a"
-                strokeWidth={2.5}
-                dot={false}
-                activeDot={false}
-                isAnimationActive={false}
-                legendType="none"
-              />
-            ))}
             {data.valueSeriesAvailable && (
               <Line
+                yAxisId="dollars"
                 type="stepAfter"
                 dataKey="value"
                 name="Value created"
@@ -404,11 +443,11 @@ export function JobChargesTimelineChartView({
         </div>
       </div>
       <p style={{ color: 'var(--text-700)', fontSize: '0.75rem', margin: '0.25rem 0 0' }}>
-        <span style={{ color: 'var(--text-red-600)', fontWeight: 600 }}>Red falls</span> = money out ·{' '}
-        <span style={{ color: '#16a34a', fontWeight: 600 }}>Green rises</span> = payment received
-        (💵) · <span style={{ color: 'var(--text-link)', fontWeight: 600 }}>Blue</span> = value created
-        (report % × job total) · 🚩 = field report · above the $0 line ={' '}
-        <span style={{ color: '#15803d', fontWeight: 600 }}>profit</span>
+        <span style={{ color: 'var(--text-red-600)', fontWeight: 600 }}>Red</span> = cost to date
+        (left axis) · <span style={{ color: 'var(--text-link)', fontWeight: 600 }}>Blue</span> = value
+        created (report % × job total, left axis) ·{' '}
+        <span style={{ color: '#16a34a', fontWeight: 600 }}>Green</span> = profit (right axis; above
+        the $0 line = collected more than it cost) · 💵 = payment received · 🚩 = field report
       </p>
       <p style={{ color: 'var(--text-faint)', fontSize: '0.6875rem', margin: '0.15rem 0 0' }}>
         Cost sources:{' '}
