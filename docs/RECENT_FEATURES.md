@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-20 (v2.795)
+last_updated: 2026-07-20 (v2.796)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.796)
+
+### Dispatch Day tab: day-nav row moves above the conflict banner; names indented under role headings (2026-07-20)
+Two Day-tab layout tweaks in [`QuickfillScheduleSection`](../src/components/quickfill/QuickfillScheduleSection.tsx) / [`QuickfillScheduleUserRow`](../src/components/schedule/QuickfillScheduleUserRow.tsx). **(1)** The day-nav row (day label + Previous/Next day + Dispatch + Today + Visible-hours gear) extracts to a `dayNavRow` element and, on the Dispatch Day tab (the `showDaySettings` variant), renders ABOVE the "Are there any obvious schedule conflicts?" banner instead of below the search row; the Quickfill → Schedule embed keeps the original order. **(2)** New `nameColumnIndent` prop on the user row adds 1rem left padding to the name column (name column width unchanged, so timelines don't shift) — the section passes it, so people's names sit visibly right of the flush-left underlined role headings. Verified live on the Day tab: nav above banner, search below it, names indented 16px relative to headings. Style/layout only.
 
 ## Latest Updates (v2.795)
 
