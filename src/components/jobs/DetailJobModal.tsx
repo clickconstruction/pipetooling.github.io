@@ -1725,7 +1725,21 @@ export default function DetailJobModal({
               }}
               style={{ width: '100%', padding: '0.45rem 0.55rem', fontSize: '0.875rem', border: '1px solid var(--border-strong)', borderRadius: 4, boxSizing: 'border-box' }}
             />
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '0.5rem' }}>
+              {addLinkTarget.field === 'google_drive_link' ? (
+                <button
+                  type="button"
+                  onClick={() =>
+                    openInExternalBrowser(
+                      'https://drive.google.com/drive/folders/1cOTvZrJFTUlxTiUMoESdMtTRvQgxft60?usp=drive_link',
+                    )
+                  }
+                  title="Open the Company Customers folder in Drive to find this customer's folder"
+                  style={{ padding: '0.35rem 0.5rem', fontSize: '0.8125rem', border: 'none', background: 'none', color: 'var(--text-link)', textDecoration: 'underline', cursor: 'pointer', marginRight: 'auto' }}
+                >
+                  Company Customers
+                </button>
+              ) : null}
               <button
                 type="button"
                 disabled={addLinkSaving}

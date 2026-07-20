@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-20 (v2.808)
+last_updated: 2026-07-20 (v2.809)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.809)
+
+### Job Detail: "Company Customers" shortcut in the Add Customer Files link modal (2026-07-20)
+The Add-link modal from v2.808's grey Customer Files icon gains a **Company Customers** text link left of Cancel ([`DetailJobModal`](../src/components/jobs/DetailJobModal.tsx)) — opens the org's Drive customers folder externally so the user can locate the right customer folder, copy its link, and paste it without leaving the modal. Renders only in the Customer Files variant (not Customer Photos). Verified live on job 813: link present and left of Cancel in the Files modal, absent in the Photos modal.
 
 ## Latest Updates (v2.808)
 
