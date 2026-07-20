@@ -1,5 +1,5 @@
 import {
-  dispatchMinutesToSlotIndex,
+  dispatchMinutesToFractionalSlotIndex,
   timeInputToMinutesSafe,
   timeInputToPg,
 } from './dispatchAddBlockTime'
@@ -39,8 +39,9 @@ export function segmentsToOccupiedBands(segments: AddBlockTimelineSegment[]): Di
       blockId: s.blockId,
       jobId: s.jobId,
       label: s.label,
-      startSlotIndex: dispatchMinutesToSlotIndex(sm),
-      endSlotIndex: dispatchMinutesToSlotIndex(em),
+      // Fractional so off-grid times (15-min dot drags) render at their exact wall-time x.
+      startSlotIndex: dispatchMinutesToFractionalSlotIndex(sm),
+      endSlotIndex: dispatchMinutesToFractionalSlotIndex(em),
     }
   })
 }

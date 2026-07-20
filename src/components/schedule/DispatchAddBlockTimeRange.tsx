@@ -1,5 +1,13 @@
 import { useCallback, useRef, useState, type CSSProperties, type KeyboardEvent, type PointerEvent } from 'react'
-import { dispatchSlotIndexToMinutes, MAX_MIN, MIN_MIN } from '@/lib/dispatchAddBlockTime'
+import {
+  dispatchMinutesToFractionalSlotIndex,
+  dispatchSlotIndexToMinutes,
+  formatDispatchQuickTimeLabel,
+  dispatchMinutesToHHmm,
+  MAX_MIN,
+  MIN_MIN,
+} from '@/lib/dispatchAddBlockTime'
+import { DOT_DRAG_SNAP_MINUTES, type BoundaryDot } from '@/lib/dayScheduleDotDrag'
 
 const THUMB_PX = 22
 const THUMB_HALF = THUMB_PX / 2
@@ -201,6 +209,19 @@ export type DispatchAddBlockTimeRangeProps = {
   /** When set, secondary bands are clickable (e.g. open My Time); use `stopPropagation` so the range control does not capture. */
   onSecondaryBandClick?: (band: DispatchSecondaryBand) => void
   /**
+   * Day-view boundary dots at block edges (see lib/dayScheduleDotDrag). When
+   * set with the drag callbacks, dots are draggable in 15-minute steps; a
+   * `shared` dot (two touching blocks) also supports click-and-hold to
+   * separate. Parent owns drafts/persistence.
+   */
+  boundaryDots?: BoundaryDot[]
+  /** Live during a dot drag (and per keyboard nudge): parent resolves + drafts. */
+  onBoundaryDotDrag?: (dot: BoundaryDot, targetMinutes: number) => void
+  /** Pointer released after a dot drag: parent persists the draft. */
+  onBoundaryDotDragEnd?: () => void
+  /** Click-and-hold on a shared dot: parent separates the later block +15m. */
+  onSharedDotSeparate?: (dot: Extract<BoundaryDot, { kind: 'shared' }>) => void
+  /**
    * Clips the grey rail underlay to a slot fraction of the track.
    * - `undefined` (default): rail spans the full track (existing behavior).
    * - `null`: rail is hidden entirely (use for empty-view rows where no
@@ -236,6 +257,10 @@ export function DispatchAddBlockTimeRange({
   showProposedRange = true,
   secondaryBands,
   onSecondaryBandClick,
+  boundaryDots,
+  onBoundaryDotDrag,
+  onBoundaryDotDragEnd,
+  onSharedDotSeparate,
   railTrimWindow,
 }: DispatchAddBlockTimeRangeProps) {
   const regionRef = useRef<HTMLDivElement>(null)
@@ -248,6 +273,40 @@ export function DispatchAddBlockTimeRange({
     grabOffsetMin: number
   } | null>(null)
   const [activeThumb, setActiveThumb] = useState<'start' | 'end' | null>(null)
+  /** Boundary-dot drag bookkeeping; long-press timer only arms on shared dots. */
+  const dotDragRef = useRef<{
+    key: string
+    dot: BoundaryDot
+    pointerId: number
+    downX: number
+    moved: boolean
+    longPressFired: boolean
+    timer: ReturnType<typeof setTimeout> | null
+  } | null>(null)
+  const [activeDotKey, setActiveDotKey] = useState<string | null>(null)
+
+  const boundaryDotKey = (d: BoundaryDot): string =>
+    d.kind === 'shared' ? `shared:${d.beforeBlockId}:${d.afterBlockId}` : `${d.kind}:${d.blockId}`
+
+  const finishDotDrag = useCallback(
+    (e: PointerEvent) => {
+      const st = dotDragRef.current
+      if (!st || st.pointerId !== e.pointerId) return
+      if (st.timer != null) clearTimeout(st.timer)
+      dotDragRef.current = null
+      setActiveDotKey(null)
+      const el = e.currentTarget as HTMLElement | null
+      if (el?.hasPointerCapture(e.pointerId)) {
+        try {
+          el.releasePointerCapture(e.pointerId)
+        } catch {
+          /* ignore */
+        }
+      }
+      if (!st.longPressFired) onBoundaryDotDragEnd?.()
+    },
+    [onBoundaryDotDragEnd],
+  )
 
   const maxIdx = Math.max(0, slotCount - 1)
   const paintLo = Math.min(startSlotIndex, endSlotIndex)
@@ -583,6 +642,150 @@ export function DispatchAddBlockTimeRange({
         })}
         <div style={railStyle} />
         {showProposedRange ? <div style={fillStyle()} /> : null}
+        {boundaryDots?.map((dot) => {
+          const key = boundaryDotKey(dot)
+          const isShared = dot.kind === 'shared'
+          // Not gated on `disabled`: the Day view renders a read-only rail
+          // (disabled) but editors still get live dots; parents simply omit
+          // the handlers for read-only viewers.
+          const canDragDot = Boolean(onBoundaryDotDrag)
+          const t = slotToTrackT(
+            dispatchMinutesToFractionalSlotIndex(dot.min),
+            slotCount,
+            railTrimWindow,
+          )
+          const isActive = activeDotKey === key
+          const timeLabel = formatDispatchQuickTimeLabel(dispatchMinutesToHHmm(dot.min))
+          const ariaLabel = isShared
+            ? `Boundary between touching jobs at ${timeLabel}. Drag to move both; click and hold to separate.`
+            : `${dot.kind === 'start' ? 'Start' : 'End'} of job at ${timeLabel}. Drag to adjust.`
+          return (
+            <button
+              key={key}
+              type="button"
+              role="slider"
+              aria-label={ariaLabel}
+              aria-valuemin={MIN_MIN}
+              aria-valuemax={MAX_MIN}
+              aria-valuenow={dot.min}
+              aria-valuetext={timeLabel}
+              data-boundary-dot={key}
+              onPointerDown={(e) => {
+                if (!canDragDot || e.button !== 0) return
+                e.stopPropagation()
+                e.preventDefault()
+                const st = {
+                  key,
+                  dot,
+                  pointerId: e.pointerId,
+                  downX: e.clientX,
+                  moved: false,
+                  longPressFired: false,
+                  timer: null as ReturnType<typeof setTimeout> | null,
+                }
+                if (isShared && onSharedDotSeparate) {
+                  st.timer = setTimeout(() => {
+                    const cur = dotDragRef.current
+                    if (!cur || cur.key !== key || cur.moved) return
+                    cur.longPressFired = true
+                    onSharedDotSeparate(dot as Extract<BoundaryDot, { kind: 'shared' }>)
+                  }, 500)
+                }
+                dotDragRef.current = st
+                setActiveDotKey(key)
+                try {
+                  ;(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
+                } catch {
+                  /* synthetic/lost pointer — drag still tracks via element handlers */
+                }
+              }}
+              onPointerMove={(e) => {
+                const st = dotDragRef.current
+                if (!st || st.pointerId !== e.pointerId || st.longPressFired) return
+                if (!st.moved && Math.abs(e.clientX - st.downX) < 5) return
+                if (!st.moved) {
+                  st.moved = true
+                  if (st.timer != null) {
+                    clearTimeout(st.timer)
+                    st.timer = null
+                  }
+                }
+                const track = trackRef.current
+                if (!track || !onBoundaryDotDrag) return
+                const rect = track.getBoundingClientRect()
+                const minutes = clientXToDispatchMinutes(e.clientX, rect, slotCount, railTrimWindow)
+                onBoundaryDotDrag(st.dot, minutes)
+              }}
+              onPointerUp={finishDotDrag}
+              onPointerCancel={finishDotDrag}
+              onKeyDown={(e) => {
+                if (!canDragDot) return
+                if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return
+                e.preventDefault()
+                e.stopPropagation()
+                const delta = e.key === 'ArrowRight' ? DOT_DRAG_SNAP_MINUTES : -DOT_DRAG_SNAP_MINUTES
+                onBoundaryDotDrag?.(dot, dot.min + delta)
+                onBoundaryDotDragEnd?.()
+              }}
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                position: 'absolute',
+                left: `calc(${THUMB_HALF}px + (100% - ${THUMB_PX}px) * ${t})`,
+                top: hasOccupied ? 28 : 18,
+                transform: 'translate(-50%, -50%)',
+                width: 26,
+                height: 26,
+                padding: 0,
+                border: 'none',
+                background: 'transparent',
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: canDragDot ? 'ew-resize' : 'default',
+                touchAction: 'none',
+                zIndex: isActive ? 7 : 6,
+                pointerEvents: canDragDot ? 'auto' : 'none',
+              }}
+            >
+              <span
+                aria-hidden
+                style={{
+                  width: isShared ? 16 : 12,
+                  height: isShared ? 16 : 12,
+                  borderRadius: 999,
+                  background: '#ea580c',
+                  border: '2px solid var(--surface)',
+                  boxShadow: isShared
+                    ? '0 0 0 2px #ea580c, 0 1px 2px rgba(0,0,0,0.25)'
+                    : '0 1px 2px rgba(0,0,0,0.25)',
+                  boxSizing: 'border-box',
+                }}
+              />
+              {isActive ? (
+                <span
+                  aria-hidden
+                  style={{
+                    position: 'absolute',
+                    bottom: 24,
+                    left: '50%',
+                    transform: 'translateX(-50%)',
+                    fontSize: '0.65rem',
+                    fontWeight: 700,
+                    color: 'var(--text-orange-800)',
+                    background: 'var(--surface)',
+                    border: '1px solid #ea580c',
+                    borderRadius: 4,
+                    padding: '0.05rem 0.3rem',
+                    whiteSpace: 'nowrap',
+                    pointerEvents: 'none',
+                  }}
+                >
+                  {timeLabel}
+                </span>
+              ) : null}
+            </button>
+          )
+        })}
         {orientationMarks.length > 0 ? (
           <div aria-hidden style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
             {orientationMarks.map(({ slotIndex }) => (

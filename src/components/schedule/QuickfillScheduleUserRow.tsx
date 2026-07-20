@@ -19,6 +19,7 @@ import {
   type AddBlockTimelineSegment,
 } from '../../lib/scheduleDispatchAddBlockTimeline'
 import { segmentsToOccupiedBands } from '../../lib/quickfillScheduleSegments'
+import type { BoundaryDot } from '../../lib/dayScheduleDotDrag'
 
 /** Matches per-row name column so shared 8 AM / 12 PM / 4 PM labels align with each timeline. */
 export const QUICKFILL_SCHEDULE_NAME_COL_WIDTH = 'clamp(5.5rem, 24vw, 8.5rem)'
@@ -125,6 +126,10 @@ export const QuickfillScheduleUserRow = memo(function QuickfillScheduleUserRow({
   nameColumnSubline,
   compactRow = false,
   railTrimWindow,
+  boundaryDots,
+  onBoundaryDotDrag,
+  onBoundaryDotDragEnd,
+  onSharedDotSeparate,
 }: {
   userId: string
   displayName: string
@@ -162,6 +167,11 @@ export const QuickfillScheduleUserRow = memo(function QuickfillScheduleUserRow({
       by the User Review modal to align rails across rows; default-undefined
       preserves Quickfill / Schedule Dispatch full-rail behavior. */
   railTrimWindow?: { loSlotIndex: number; hiSlotIndex: number } | null
+  /** Day-view boundary dots + drag callbacks (editors only) — threaded into the range control. */
+  boundaryDots?: BoundaryDot[]
+  onBoundaryDotDrag?: (dot: BoundaryDot, targetMinutes: number) => void
+  onBoundaryDotDragEnd?: () => void
+  onSharedDotSeparate?: (dot: Extract<BoundaryDot, { kind: 'shared' }>) => void
 }) {
   const occupiedBands = useMemo(() => segmentsToOccupiedBands(segments), [segments])
 
@@ -281,6 +291,10 @@ export const QuickfillScheduleUserRow = memo(function QuickfillScheduleUserRow({
               : ''
           }`}
           occupiedBands={occupiedBands.length > 0 ? occupiedBands : undefined}
+          boundaryDots={boundaryDots}
+          onBoundaryDotDrag={onBoundaryDotDrag}
+          onBoundaryDotDragEnd={onBoundaryDotDragEnd}
+          onSharedDotSeparate={onSharedDotSeparate}
           secondaryBands={secondaryBands}
           onSecondaryBandClick={
             onOpenMyTimeForSessionStrip && (secondaryBands?.length ?? 0) > 0

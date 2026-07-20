@@ -31,6 +31,12 @@ export function dispatchSlotIndexToMinutes(i: number): number {
   )
 }
 
+/** Exact (possibly fractional) slot position for continuous band/dot geometry; inverse of `dispatchSlotIndexToMinutes` without rounding. */
+export function dispatchMinutesToFractionalSlotIndex(m: number): number {
+  const c = clampInt(m, MIN_MIN, MAX_MIN)
+  return (c - MIN_MIN) / DISPATCH_ADD_BLOCK_SLOT_STEP
+}
+
 /** Nearest 30m slot for slider thumb; typed times off the grid may show a slightly different thumb until adjusted. */
 export function dispatchMinutesToSlotIndex(m: number): number {
   const c = clampInt(m, MIN_MIN, MAX_MIN)

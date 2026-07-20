@@ -5,7 +5,19 @@ import { useAuth } from '../../hooks/useAuth'
 import { useRealtimeChannel } from '../../hooks/useRealtimeChannel'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useReportQuickfillSectionMetric } from '../../contexts/QuickfillSectionMetricsContext'
-import { fetchScheduleBlocksForAssigneesOnDay, type JobScheduleBlockRow } from '../../lib/jobScheduleBlocks'
+import {
+  fetchScheduleBlocksForAssigneesOnDay,
+  updateJobScheduleBlock,
+  type JobScheduleBlockRow,
+} from '../../lib/jobScheduleBlocks'
+import {
+  boundaryDotsFromBlocks,
+  dotMinutesToPgTime,
+  resolveDotDrag,
+  separateSharedDot,
+  type BoundaryDot,
+  type DotBlock,
+} from '../../lib/dayScheduleDotDrag'
 import {
   fetchJobsLedgerForScheduleDispatchHub,
   fetchUserNamesForIds,
@@ -26,6 +38,7 @@ import { ScheduleDispatchAssignJobPickerModal } from '../schedule/ScheduleDispat
 import {
   DISPATCH_ADD_BLOCK_SLOT_COUNT,
   dispatchMinutesToHHmm,
+  timeInputToMinutesSafe,
   timeInputToPg,
 } from '../../lib/dispatchAddBlockTime'
 import {
@@ -113,6 +126,12 @@ export function QuickfillScheduleSection({
   const [userIds, setUserIds] = useState<string[]>([])
   const [nameById, setNameById] = useState<Map<string, string>>(() => new Map())
   const [blocksByUserId, setBlocksByUserId] = useState<Map<string, JobScheduleBlockRow[]>>(() => new Map())
+  /** Live boundary-dot drag draft: applied over `blocksByUserId` for bars + dots until pointerup persists. */
+  const [dotDraft, setDotDraft] = useState<{
+    userId: string
+    updates: Map<string, { startMin: number; endMin: number }>
+  } | null>(null)
+  const [dotSaving, setDotSaving] = useState(false)
   const [jobTitleById, setJobTitleById] = useState<Map<string, string>>(() => new Map())
   const [bidTitleById, setBidTitleById] = useState<Map<string, string>>(() => new Map())
   const [sessionsByUserId, setSessionsByUserId] = useState<Map<string, ClockSessionForDispatchBand[]>>(
@@ -522,6 +541,128 @@ export function QuickfillScheduleSection({
     }
   }, [workDate, role, showToast, ledgerPrefixMap])
 
+  /** Rows with the live dot-drag draft applied (bars + dots track the pointer until persist). */
+  const effectiveRowsForUser = useCallback(
+    (userId: string): JobScheduleBlockRow[] => {
+      const rows = blocksByUserId.get(userId) ?? []
+      if (!dotDraft || dotDraft.userId !== userId) return rows
+      return rows.map((r) => {
+        const u = dotDraft.updates.get(r.id)
+        return u
+          ? { ...r, time_start: dotMinutesToPgTime(u.startMin), time_end: dotMinutesToPgTime(u.endMin) }
+          : r
+      })
+    },
+    [blocksByUserId, dotDraft],
+  )
+
+  const rowsToDotBlocks = (rows: JobScheduleBlockRow[]): DotBlock[] =>
+    rows.map((r) => ({
+      blockId: r.id,
+      startMin: timeInputToMinutesSafe(r.time_start.slice(0, 5)),
+      endMin: timeInputToMinutesSafe(r.time_end.slice(0, 5)),
+    }))
+
+  /**
+   * Dots keep their identity (kind/ids) from the BASE rows for the whole
+   * gesture — only positions come from the draft. Otherwise dragging an edge
+   * onto a neighbor would flip the dot to `shared` mid-drag, unmounting the
+   * element that holds pointer capture. Structure refreshes on reload.
+   */
+  const boundaryDotsForUser = useCallback(
+    (userId: string): BoundaryDot[] => {
+      const base = boundaryDotsFromBlocks(rowsToDotBlocks(blocksByUserId.get(userId) ?? []))
+      if (!dotDraft || dotDraft.userId !== userId) return base
+      const effective = new Map(
+        rowsToDotBlocks(effectiveRowsForUser(userId)).map((b) => [b.blockId, b]),
+      )
+      return base.map((d) => {
+        if (d.kind === 'start') {
+          const b = effective.get(d.blockId)
+          return b ? { ...d, min: b.startMin } : d
+        }
+        if (d.kind === 'end') {
+          const b = effective.get(d.blockId)
+          return b ? { ...d, min: b.endMin } : d
+        }
+        const before = effective.get(d.beforeBlockId)
+        return before ? { ...d, min: before.endMin } : d
+      })
+    },
+    [blocksByUserId, dotDraft, effectiveRowsForUser],
+  )
+
+  const handleDotDrag = useCallback(
+    (userId: string, dot: BoundaryDot, targetMin: number) => {
+      if (dotSaving) return
+      const blocks = rowsToDotBlocks(effectiveRowsForUser(userId))
+      const r = resolveDotDrag(dot, targetMin, blocks)
+      if (r.updates.size === 0) return
+      setDotDraft((prev) => {
+        const merged = new Map(prev && prev.userId === userId ? prev.updates : [])
+        for (const [bid, u] of r.updates) merged.set(bid, u)
+        return { userId, updates: merged }
+      })
+    },
+    [dotSaving, effectiveRowsForUser],
+  )
+
+  const handleDotDragEnd = useCallback(
+    (userId: string) => {
+      setDotDraft((draft) => {
+        if (!draft || draft.userId !== userId || draft.updates.size === 0) return null
+        setDotSaving(true)
+        void (async () => {
+          try {
+            for (const [blockId, u] of draft.updates) {
+              const { error } = await updateJobScheduleBlock(blockId, {
+                time_start: dotMinutesToPgTime(u.startMin),
+                time_end: dotMinutesToPgTime(u.endMin),
+              })
+              if (error) {
+                showToast(error, 'error')
+                break
+              }
+            }
+            await loadData({ quiet: true })
+          } finally {
+            setDotSaving(false)
+            setDotDraft(null)
+          }
+        })()
+        return draft // keep the draft visible until the reload lands
+      })
+    },
+    [loadData, showToast],
+  )
+
+  const handleSharedDotSeparate = useCallback(
+    (userId: string, dot: Extract<BoundaryDot, { kind: 'shared' }>) => {
+      if (dotSaving) return
+      const r = separateSharedDot(dot, rowsToDotBlocks(blocksByUserId.get(userId) ?? []))
+      if (!r) {
+        showToast('Cannot separate — the later job is already at the 30-minute minimum.', 'info')
+        return
+      }
+      setDotSaving(true)
+      void (async () => {
+        try {
+          const { error } = await updateJobScheduleBlock(r.blockId, {
+            time_start: dotMinutesToPgTime(r.startMin),
+            time_end: dotMinutesToPgTime(r.endMin),
+          })
+          if (error) showToast(error, 'error')
+          else showToast('Moved the later job 15 minutes later.', 'success')
+          await loadData({ quiet: true })
+        } finally {
+          setDotSaving(false)
+          setDotDraft(null)
+        }
+      })()
+    },
+    [blocksByUserId, dotSaving, loadData, showToast],
+  )
+
   const saveQuickfillBlockModal = useCallback(async () => {
     if (!blockModalState || !authUser?.id) return
     setAddSaving(true)
@@ -809,15 +950,17 @@ export function QuickfillScheduleSection({
                     fontWeight: 600,
                     color: 'var(--text-strong)',
                     textAlign: 'left',
+                    textDecoration: 'underline',
                   }}
                 >
                   {roleSection.label}
                 </h2>
                 <div>
                   {roleSection.rows.map(({ id, name }) => {
-                    const rows = blocksByUserId.get(id) ?? []
+                    const rows = effectiveRowsForUser(id)
                     const segments = blocksToSegments(rows, jobTitleById)
                     const secondary = scheduleSecondaryByUserId.get(id)
+                    const dots = canEditSchedule && rows.length > 0 ? boundaryDotsForUser(id) : undefined
                     return (
                       <QuickfillScheduleUserRow
                         key={id}
@@ -826,6 +969,14 @@ export function QuickfillScheduleSection({
                         scheduleDayYmd={workDate}
                         segments={segments}
                         secondaryBands={secondary}
+                        boundaryDots={dots}
+                        onBoundaryDotDrag={
+                          dots ? (dot, targetMin) => handleDotDrag(id, dot, targetMin) : undefined
+                        }
+                        onBoundaryDotDragEnd={dots ? () => handleDotDragEnd(id) : undefined}
+                        onSharedDotSeparate={
+                          dots ? (dot) => handleSharedDotSeparate(id, dot) : undefined
+                        }
                         onScheduleAddClick={
                           canEditSchedule
                             ? () => {

@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-20 (v2.791)
+last_updated: 2026-07-20 (v2.792)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.792)
+
+### Schedule Day view: draggable boundary dots on job bars — 15-min drags, shared dot for touching jobs, hold-to-separate (2026-07-20)
+Editors on the Day view (`/schedule-dispatch?hubTab=day` + Quickfill → Schedule) get an orange dot at the start and end of every schedule bar; two touching blocks (A.end = B.start) share ONE larger double-ring dot. **Drag** a dot to change that time — 15-minute snap, live bar preview, persisted on release via `updateJobScheduleBlock` (this person's block only; linked-group legs are untouched). Dragging a **shared** dot moves both edges together (jobs stay touching). Dragging an edge **onto a neighbor clamps at the merge point** — blocks never overlap; equal times re-render as one shared dot. **Click-and-hold (~500ms) a shared dot** separates: the later job's start jumps +15 min with its end unchanged (refused with a toast if it would drop below the minimum). Durations respect the DB's `job_schedule_blocks_min_duration_30m` CHECK (30-min minimum — supersedes the 15-min minimum discussed in planning) and the 04:00–20:00 bounds; dots are `role="slider"` with ←/→ = ±15 min. Pieces: kernel [`dayScheduleDotDrag.ts`](../src/lib/dayScheduleDotDrag.ts) (+14 tests: dot derivation, clamp/merge, separation guard); dot layer + long-press in [`DispatchAddBlockTimeRange`](../src/components/schedule/DispatchAddBlockTimeRange.tsx) (dots keep base identity during a gesture so pointer capture survives a merge); draft/persist orchestration in [`QuickfillScheduleSection`](../src/components/quickfill/QuickfillScheduleSection.tsx); [`segmentsToOccupiedBands`](../src/lib/quickfillScheduleSegments.ts) now uses **fractional** slot indices (new `dispatchMinutesToFractionalSlotIndex`) so off-grid times render at their exact wall-time x (also sharpens User Review rails). Read-only viewers see no dots. Verified live end-to-end: +15 keyboard nudge persists and restores; long-press separated 2:30→2:45 with end pinned; a 300px over-drag clamped exactly at the neighbor's edge and re-merged. Also: Day-view role headings are now underlined. Help guide: `schedule-dispatch.md` → "Adjusting times on the Day view".
 
 ## Latest Updates (v2.791)
 
