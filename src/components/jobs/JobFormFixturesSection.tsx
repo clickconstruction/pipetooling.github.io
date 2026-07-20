@@ -36,7 +36,7 @@ type JobFormFixturesSectionProps = {
 }
 
 /**
- * The "① Line Items — specific work & materials" grid in the Edit/New Job
+ * The "① Line Items" grid in the Edit/New Job
  * modal: one row per fixture (autosizing name, count, unit price) with an
  * add/remove control, plus the per-row scope/notes sub-row carrying the Stripe
  * line-length counter and the "Stripe preview" dialog trigger. Extracted
@@ -71,7 +71,7 @@ export function JobFormFixturesSection({
                 : {}),
             }}
           >
-            <div style={{ fontWeight: 600, fontSize: '0.9375rem', color: 'var(--text-700)', marginBottom: '0.15rem' }}>① Line Items — specific work &amp; materials</div>
+            <div style={{ fontWeight: 600, fontSize: '0.9375rem', color: 'var(--text-700)', marginBottom: '0.15rem' }}>① Line Items</div>
             <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.75rem' }}>
               <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Fixtures / tie-ins / repair. Each line adds to the <strong>Job Total</strong> — this is what the job is worth.</span>
               <span

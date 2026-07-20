@@ -47,6 +47,8 @@ export function MoneyLifecycleBar({
   hasBar,
   segments,
   pctComplete,
+  pctSaving,
+  onPctCommit,
   total,
   rows,
   bottomRow,
@@ -57,6 +59,12 @@ export function MoneyLifecycleBar({
   segments: BarSegment[]
   /** Field % done for the top-left readout + the yellow dot; hidden when null. */
   pctComplete?: number | null
+  pctSaving?: boolean
+  /**
+   * Commit a new pct (null = cleared). Fired on blur / Enter — same contract as
+   * StagesProgressPaymentCell. Omit to render pct as read-only text.
+   */
+  onPctCommit?: (pct: number | null) => void
   /** Job total — the "$X bid" top-right readout. */
   total: number
   /** Stacked legend rows in order (Paid / Billed / Draft …). */
@@ -74,7 +82,47 @@ export function MoneyLifecycleBar({
     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem', textAlign: 'left' }}>
       <div style={rowStyle}>
         <span style={{ whiteSpace: 'nowrap' }}>
-          {pctComplete != null ? (
+          {onPctCommit ? (
+            <>
+              <input
+                key={`pct-${pctComplete ?? 'null'}`}
+                type="number"
+                min={0}
+                max={100}
+                defaultValue={pctComplete != null ? pctComplete : ''}
+                onBlur={(e) => {
+                  const v = e.target.value.trim()
+                  if (v === '') {
+                    onPctCommit(null)
+                    return
+                  }
+                  const n = Math.round(Number(v))
+                  if (!Number.isNaN(n) && n >= 0 && n <= 100) {
+                    onPctCommit(n)
+                  }
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.currentTarget.blur()
+                  }
+                }}
+                disabled={!!pctSaving}
+                placeholder=""
+                aria-label="Percent complete"
+                style={{
+                  width: '2.75rem',
+                  padding: '0.15rem 0.25rem',
+                  fontSize: '0.8125rem',
+                  textAlign: 'center',
+                  border: 'none',
+                  borderBottom: '1px solid var(--border-strong)',
+                  borderRadius: 0,
+                  background: 'transparent',
+                }}
+              />
+              <span style={labelStyle}> % done</span>
+            </>
+          ) : pctComplete != null ? (
             <span style={labelStyle}>
               <span style={{ color: 'var(--text-strong)', fontVariantNumeric: 'tabular-nums' }}>{pctComplete}</span> % done
             </span>
