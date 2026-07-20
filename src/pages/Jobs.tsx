@@ -94,6 +94,7 @@ import BilledBillViewModal from '../components/jobs/BilledBillViewModal'
 import { findInvoiceWithJobFromJobs } from '../lib/invoiceWithJobFromJobList'
 import LienToolingPrefillModal from '../components/jobs/LienToolingPrefillModal'
 import AiaG702G703Modal from '../components/jobs/AiaG702G703Modal'
+import { HazmatFeeModal, type HazmatFeeModalJob } from '../components/jobs/HazmatFeeModal'
 import {
   JobSummaryCostCellDrilldownModal,
 } from '../components/jobs/JobSummaryCostCellDrilldownModal'
@@ -788,6 +789,18 @@ export default function Jobs() {
     invoice: JobsLedgerInvoice | null
   } | null>(null)
   const [aiaG702StagesJob, setAiaG702StagesJob] = useState<JobWithDetails | null>(null)
+  const [hazmatFeeJob, setHazmatFeeJob] = useState<HazmatFeeModalJob | null>(null)
+  /** Same office set as the create_hazmat_fee_incident RPC gate. */
+  const canCreateHazmatFee =
+    authRole === 'dev' || authRole === 'master_technician' || isAssistantLike(authRole)
+  const openHazmatFee = (j: JobWithDetails) =>
+    setHazmatFeeJob({
+      id: j.id,
+      jobNumber: (j.hcp_number ?? '').trim() || (j.click_number ?? '').trim() || '—',
+      jobName: (j.job_name ?? '').trim() || 'Job',
+      jobAddress: (j.job_address ?? '').trim() || '—',
+      customerName: (j.customer_name ?? '').trim() || '—',
+    })
   const lienToolingSenderFallback = useMemo(() => {
     const job = lienToolingPrefillModal?.job
     const sessionName = authProfileName?.trim() ?? ''
@@ -6384,6 +6397,17 @@ ${totalsHtml}
                                         <FileSpreadsheet size={16} aria-hidden />
                                       </button>
                                     ) : null}
+                                    {canCreateHazmatFee ? (
+                                      <button
+                                        type="button"
+                                        onClick={() => openHazmatFee(j)}
+                                        title="Hazmat Fee — document a biohazard incident and bill the customer"
+                                        aria-label="Create a hazmat fee for this job"
+                                        style={{ padding: '0.25rem', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-red-600)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, lineHeight: 1 }}
+                                      >
+                                        <span aria-hidden>☣</span>
+                                      </button>
+                                    ) : null}
                                     <button
                                       type="button"
                                       onClick={() => openEdit(j)}
@@ -7103,6 +7127,17 @@ ${totalsHtml}
                                           }}
                                         >
                                           <FileSpreadsheet size={16} aria-hidden />
+                                        </button>
+                                      ) : null}
+                                      {canCreateHazmatFee ? (
+                                        <button
+                                          type="button"
+                                          onClick={() => openHazmatFee(j)}
+                                          title="Hazmat Fee — document a biohazard incident and bill the customer"
+                                          aria-label="Create a hazmat fee for this job"
+                                          style={{ padding: '0.25rem', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-red-600)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, lineHeight: 1 }}
+                                        >
+                                          <span aria-hidden>☣</span>
                                         </button>
                                       ) : null}
                                       <button
@@ -9992,6 +10027,13 @@ ${totalsHtml}
         onClose={() => setAiaG702StagesJob(null)}
         job={aiaG702StagesJob}
         hcpForFilename={aiaG702StagesJob?.hcp_number ?? ''}
+      />
+      <HazmatFeeModal
+        job={hazmatFeeJob}
+        onClose={() => setHazmatFeeJob(null)}
+        onCreated={() => {
+          loadJobs()
+        }}
       />
       <BilledPaymentConfirmationModal
         mode="job"

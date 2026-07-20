@@ -10984,6 +10984,10 @@ export type Database = {
         }
         Returns: Json
       }
+      create_hazmat_fee_incident: {
+        Args: { p_amount: number; p_incident: Json; p_job_id: string }
+        Returns: Json
+      }
       create_turnaway_trip_charge: {
         Args: {
           p_amount: number

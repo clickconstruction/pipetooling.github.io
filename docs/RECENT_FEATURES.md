@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-20 (v2.803)
+last_updated: 2026-07-20 (v2.804)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.804)
+
+### Hazmat Fee: document a biohazard incident on Jobs → Stages and bill it as a $500 rider invoice (2026-07-20)
+Prompted by a field exposure incident. **Terms first**: §11 "Biohazard / Hazmat Exposure Fee" was appended to the live customer terms (`app_settings.estimate_public_terms_body`, served at `/estimate/terms` and accepted in the estimate flow) — the contractual basis for the fee. **The feature**: a red ☣ button on both Jobs → Stages card variants (next to AIA G702; dev/master/assistant-like, mirroring the RPC gate) opens the 4-step [`HazmatFeeModal`](../src/components/jobs/HazmatFeeModal.tsx): (1) incident details, (2) evidence — ≥1 photo link + ≥1 technician testimonial, both mandatory, (3) liability — displays §11 from the live terms ([`extractHazmatClause`](../src/lib/hazmatFee.ts), tested) and requires confirmation; the clause is **snapshotted verbatim into the incident record** so later terms edits can't weaken the evidence, (4) fee (defaults from new `app_settings.hazmat_fee_default` = 500, editable) + Generate. Backend: migration `20260720212209_hazmat_fee_incidents.sql` — `job_hazmat_incidents` table (RLS: office SELECT, RPC-only writes, both read-only-block footers) + SECURITY DEFINER `create_hazmat_fee_incident` cloned from the turnaway-trip-charge mechanics: server-side evidence validation, independent `ready_to_bill` rider invoice (memo "Hazmat remediation fee — incident MM/DD/YYYY"), revenue bump, atomic incident insert. After generating, "Open printable notice" renders the dispute-ready packet ([`hazmatFeeNotice.ts`](../src/lib/jobsDocuments/hazmatFeeNotice.ts), escaped + tested): incident summary, photo references, statements, the clause verbatim, and the fee. +6 kernel tests. Help guide `charge-a-hazmat-fee.md`; MIGRATIONS.md entry.
 
 ## Latest Updates (v2.803)
 
