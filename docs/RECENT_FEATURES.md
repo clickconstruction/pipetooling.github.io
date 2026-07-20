@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-20 (v2.784)
+last_updated: 2026-07-20 (v2.785)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.785)
+
+### Fix: Schedule Dispatch hub — Job Detail modal no longer closes instantly after opening from a card title (2026-07-20)
+On `/schedule-dispatch` (hub view), clicking a card's job-number/name title opened the Job Detail modal and it vanished immediately. Cause: [`ScheduleDispatchHubPage`](../src/components/schedule/ScheduleDispatchHubPage.tsx) has a cleanup effect that closes a lingering Job Detail modal on view changes (`jobId` / `weekStart`), but it depended on the whole `jobDetailModal` context object — whose identity changes the moment the modal opens ([`JobDetailModalContext`](../src/contexts/JobDetailModalContext.tsx) includes `openState.kind` in its value memo, so `isOpen` flipping rebuilds the value). Open → context identity changes → effect re-runs → `closeJobDetail()` → instant close. Fix: the effect now depends on the stable `closeJobDetail` callback (a no-dep `useCallback` in the provider) instead of the context object, so it fires only on real `jobId`/`weekStart` changes. The other `[jobDetailModal]` deps in the codebase are `useCallback`s (harmless recreation, no destructive side effect) and are left alone.
 
 ## Latest Updates (v2.784)
 

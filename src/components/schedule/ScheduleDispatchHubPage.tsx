@@ -700,9 +700,13 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
     if (!jobId) return
   }, [jobId])
 
+  // Close a lingering Job Detail modal when the view changes (week shift, hub → job week).
+  // Depend on the stable closeJobDetail fn, NOT the context object — its identity changes
+  // when the modal opens (isOpen flips), which made this effect close it instantly.
+  const closeJobDetail = jobDetailModal?.closeJobDetail
   useEffect(() => {
-    jobDetailModal?.closeJobDetail()
-  }, [jobId, weekStart, jobDetailModal])
+    closeJobDetail?.()
+  }, [jobId, weekStart, closeJobDetail])
 
   useEffect(() => {
     if (!jobId) return
