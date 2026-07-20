@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-19 (v2.760)
+last_updated: 2026-07-19 (v2.761)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.761)
+
+### Schedule Dispatch — dark-mode legibility pass (2026-07-19)
+The Schedule Dispatch hub (`/schedule-dispatch`) rendered a stark white grid inside the dark chrome — hard-coded light cell backgrounds, pastel block chips, and translucent-white icon plates that read as glaring coins on dark. The whole surface now uses theme tokens: the idle-cell kernel ([`scheduleDispatchColumnFocus`](../src/lib/scheduleDispatchColumnFocus.ts)) returns `var(--surface)` instead of `#fafafa`; cell state tints (drag-over, disabled, linked-group, availability, multi-select) map to `--bg-blue-200` / `--bg-muted` / `--bg-sky-tint` / `--bg-emerald-tint` / `--bg-green-100` / `--bg-amber-tint` / `--bg-amber-100`; the block-chip drag-handle gradients and body use the red/blue tint tokens with `var(--text-blue-900)` text; grid inset borders and list dividers use `var(--border)`. The shared block-control chrome ([`scheduleBlockActionChromeStyle`](../src/lib/scheduleBlockActionChromeStyle.ts)) becomes theme-aware in one place: the circular icon plate is `color-mix(in srgb, var(--surface) 55%, transparent)` and the icon/glyph halation glows use `var(--surface)` — white in light (pixel-faithful to the old look), dark on dark. Saturated action/status colors (blues, ambers, the orange Share button) stay literal per convention. Verified in both themes on a populated week. Files: [`src/lib/scheduleDispatchColumnFocus.ts`](../src/lib/scheduleDispatchColumnFocus.ts), [`src/lib/scheduleBlockActionChromeStyle.ts`](../src/lib/scheduleBlockActionChromeStyle.ts), [`ScheduleDispatchGrid`](../src/components/schedule/ScheduleDispatchGrid.tsx) / [`ScheduleDispatchHub`](../src/components/schedule/ScheduleDispatchHub.tsx) / [`ScheduleDispatchHubPage`](../src/components/schedule/ScheduleDispatchHubPage.tsx) / [`ChipsWithSearchPicker`](../src/components/schedule/ChipsWithSearchPicker.tsx) / [`ScheduleDispatchAssignJobPickerModal`](../src/components/schedule/ScheduleDispatchAssignJobPickerModal.tsx) / [`QuickfillScheduleUserRow`](../src/components/schedule/QuickfillScheduleUserRow.tsx).
 
 ## Latest Updates (v2.760)
 

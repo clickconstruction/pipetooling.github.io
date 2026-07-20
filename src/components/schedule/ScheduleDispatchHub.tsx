@@ -449,13 +449,13 @@ function HubPeopleBlockCard({
         flexDirection: 'row',
         alignItems: 'stretch',
         marginBottom: 4,
-        background: linkedAccent?.background ?? '#eff6ff',
+        background: linkedAccent?.background ?? 'var(--bg-blue-tint)',
         borderStyle: 'solid',
         borderColor: linkedAccent?.borderColor ?? '#93c5fd',
         borderWidth: linkedAccent ? '3px 1px 1px 1px' : 1,
         borderRadius: 4,
         fontSize: '0.72rem',
-        color: '#1e3a8a',
+        color: 'var(--text-blue-900)',
         overflow: 'visible',
       }}
       title={
@@ -488,8 +488,8 @@ function HubPeopleBlockCard({
           touchAction: dragDisabled ? undefined : 'none',
           cursor: dragDisabled ? 'pointer' : 'grab',
           background: dragDisabled
-            ? 'linear-gradient(90deg, #fee2e2 0%, #fecaca 100%)'
-            : 'linear-gradient(90deg, #dbeafe 0%, #eff6ff 100%)',
+            ? 'linear-gradient(90deg, var(--bg-red-100) 0%, var(--bg-red-200) 100%)'
+            : 'linear-gradient(90deg, var(--bg-blue-200) 0%, var(--bg-blue-tint) 100%)',
           borderRight: `1px solid ${dragDisabled ? '#fca5a5' : '#bfdbfe'}`,
           outline: 'none',
         }}
@@ -525,7 +525,7 @@ function HubPeopleBlockCard({
             color: 'inherit',
           }}
         >
-          <span style={{ fontWeight: 700, color: '#1e3a8a', wordBreak: 'break-word' }}>
+          <span style={{ fontWeight: 700, color: 'var(--text-blue-900)', wordBreak: 'break-word' }}>
             {getJobDisplayTitle(block.job_id)}
           </span>
         </button>
@@ -643,7 +643,7 @@ function HubPeopleBlockCard({
             cursor: placementPickingActive ? 'default' : 'pointer',
             fontFamily: 'inherit',
             filter:
-              'drop-shadow(0 0 1px rgba(255,255,255,0.9)) drop-shadow(0 0 2px rgba(255,255,255,0.7))',
+              'drop-shadow(0 0 1px var(--surface)) drop-shadow(0 0 2px var(--surface))',
           }}
         >
           <ScheduleDispatchLinkedChainsIcon size={12} />
@@ -812,13 +812,13 @@ function HubPeopleDayCell({
     cardPlacementMode?.variant === 'linked' &&
     placementSourceWorkDate != null &&
     workDate !== placementSourceWorkDate
-  let cellBg = isOver ? '#dbeafe' : idleBg
+  let cellBg = isOver ? 'var(--bg-blue-200)' : idleBg
   if (assignJobPickingActive) {
-    cellBg = isOver ? '#a7f3d0' : '#d1fae5'
+    cellBg = isOver ? 'var(--bg-green-100)' : 'var(--bg-emerald-tint)'
   } else if (placementPickingActive && linkedWrongDay) {
     cellBg = 'var(--bg-muted)'
   } else if (placementPickingActive && !linkedWrongDay) {
-    cellBg = isOver ? '#c7d2fe' : '#eef2ff'
+    cellBg = isOver ? 'var(--bg-blue-200)' : 'var(--bg-sky-tint)'
   }
   // Time-off days are not valid scheduling targets in the picker / placement
   // flows: gray them out the same way the existing "linked wrong day" cells
@@ -842,7 +842,7 @@ function HubPeopleDayCell({
   const multiSelectKey = hubPersonDayKey(personUserId, workDate)
   const isMultiSelected = hubMultiCellAddSelectedKeys.has(multiSelectKey)
   if (multiSelectCellActive && isMultiSelected) {
-    cellBg = isOver ? '#fcd34d' : '#fef3c7'
+    cellBg = isOver ? 'var(--bg-amber-100)' : 'var(--bg-amber-tint)'
   }
   const showCellAddJobTriangle =
     canEdit &&
@@ -1409,7 +1409,7 @@ function HubPeoplePanel({
                   whiteSpace: 'nowrap',
                   boxShadow: isMobile
                     ? undefined
-                    : 'inset 1px 0 0 #e5e7eb, inset -1px 0 0 #e5e7eb',
+                    : 'inset 1px 0 0 var(--border), inset -1px 0 0 var(--border)',
                 }}
               >
                 {isMobile ? <span style={scheduleDispatchMobileNamePill}>Person</span> : 'Person'}
@@ -1489,7 +1489,7 @@ function HubPeoplePanel({
                       whiteSpace: isMobile ? undefined : 'nowrap',
                       boxShadow: isMobile
                         ? undefined
-                        : 'inset 1px 0 0 #e5e7eb, inset -1px 0 0 #e5e7eb',
+                        : 'inset 1px 0 0 var(--border), inset -1px 0 0 var(--border)',
                     }}
                   >
                     {isMobile ? (
@@ -1643,7 +1643,7 @@ function HubPeoplePanel({
                     fontSize: '0.75rem',
                     borderRadius: 6,
                     border: allWeekSelected ? '2px solid #059669' : '1px solid #34d399',
-                    background: allWeekSelected ? '#d1fae5' : 'var(--bg-emerald-tint)',
+                    background: allWeekSelected ? 'var(--bg-green-100)' : 'var(--bg-emerald-tint)',
                     color: allWeekSelected ? '#047857' : 'var(--text-emerald-800)',
                     fontWeight: allWeekSelected ? 600 : 500,
                     cursor: 'pointer',
