@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-19 (v2.763)
+last_updated: 2026-07-19 (v2.764)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.764)
+
+### Edit Job — Service type joins the HCP row; Billing hint removed (2026-07-19)
+Two small Edit/New Job form tweaks. **(1)** The **Job Name** and **Service type** fields swap places: Service type now sits in the top row beside **HCP** and **C#**, and Job Name gets the full-width row beneath — the two field blocks moved verbatim (clipboard-paste button, SearchableSelect, required markers all unchanged). **(2)** The **Billing** section's explainer sentence ("Line items set the total · Invoices are bills you send · Payments are money received") is removed — the numbered ①/②/③ section headers carry that story now, and the Progress & payment bar sits directly under the **Billing** title.
 
 ## Latest Updates (v2.763)
 
