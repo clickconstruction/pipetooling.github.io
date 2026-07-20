@@ -1,16 +1,18 @@
 /** Jobs → Job Summary expanded row: "Charges & Value" timeline chart.
  *
- * Dual-axis stepAfter chart. LEFT axis (big cumulative dollars): red COSTS line (steps up as
- * money goes out, carries the per-source icons) and blue VALUE-CREATED line (each field report
- * with a completion % steps it to % × job revenue; reports without a % show a 🚩 marker only).
- * RIGHT axis: green PROFIT line (cumulative payments received − costs; rises only on payments,
- * marked 💵). The two axes share one $0 gridline — `computeChargesTimelineAxisDomains` aligns
- * their zero heights (unit-tested) so the dashed $0 reference is truthful for both; vertical
- * comparisons BETWEEN axes are otherwise meaningless (standard dual-axis caveat). All three
- * lines carry end-of-line value labels. Data shaping lives in the pure kernel
+ * stepAfter chart. LEFT axis: red COST-TO-DATE line (steps up as money goes out, carries the
+ * per-source icons) and green PROFIT line (cumulative payments received − costs; rises only on
+ * payments, marked 💵) — same scale family, so they share one axis. The blue VALUE-CREATED
+ * line (each field report with a completion % steps it to % × job revenue; reports without a %
+ * show a 🚩 marker only) lives on an opt-in RIGHT axis behind a "Value created (right axis)"
+ * toggle, OFF by default — its scale (0 → revenue) usually dwarfs cost/profit. When shown, the
+ * two axes share one $0 gridline — `computeChargesTimelineAxisDomains` aligns their zero
+ * heights (unit-tested) so the dashed $0 reference is truthful for both; vertical comparisons
+ * BETWEEN axes are otherwise meaningless (standard dual-axis caveat). All lines carry
+ * end-of-line value labels. Data shaping lives in the pure kernel
  * `src/lib/jobChargesTimeline.ts` (unit-tested); this component only adapts props and renders.
  */
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import {
   CartesianGrid,
   Line,
@@ -368,9 +370,34 @@ export function JobChargesTimelineChartView({
   const profitDot = useMemo(() => makeProfitDot(lastIndex), [lastIndex])
   const valueDot = useMemo(() => makeValueDot(lastIndex), [lastIndex])
   const axisDomains = useMemo(() => computeChargesTimelineAxisDomains(data.chartRows), [data])
+  // Opt-in second axis: the value-created line's scale (0 → revenue) usually
+  // dwarfs cost/profit, so it stays hidden until asked for.
+  const [showValueAxis, setShowValueAxis] = useState(false)
+  const valueShown = data.valueSeriesAvailable && showValueAxis
 
   return (
     <div style={{ marginBottom: '0.75rem' }}>
+      {data.valueSeriesAvailable && (
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 2 }}>
+          <label
+            style={{
+              fontSize: '0.75rem',
+              color: 'var(--text-muted)',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 4,
+              cursor: 'pointer',
+            }}
+          >
+            <input
+              type="checkbox"
+              checked={showValueAxis}
+              onChange={(e) => setShowValueAxis(e.target.checked)}
+            />
+            Value created (right axis)
+          </label>
+        </div>
+      )}
       <div style={{ width: '100%', overflowX: 'auto', minWidth: 0 }}>
         <div style={{ minWidth: Math.max(520, data.chartRows.length * 56), height: 260 }}>
         <ResponsiveContainer width="100%" height={260}>
@@ -390,14 +417,16 @@ export function JobChargesTimelineChartView({
               domain={axisDomains.left}
               tickFormatter={(v: number) => `$${Math.round(v).toLocaleString('en-US')}`}
             />
-            <YAxis
-              yAxisId="profit"
-              orientation="right"
-              width={56}
-              tick={{ fontSize: 10, fill: '#16a34a' }}
-              domain={axisDomains.right}
-              tickFormatter={(v: number) => `$${Math.round(v).toLocaleString('en-US')}`}
-            />
+            {valueShown && (
+              <YAxis
+                yAxisId="value"
+                orientation="right"
+                width={56}
+                tick={{ fontSize: 10, fill: '#2563eb' }}
+                domain={axisDomains.right}
+                tickFormatter={(v: number) => `$${Math.round(v).toLocaleString('en-US')}`}
+              />
+            )}
             <ReferenceLine yAxisId="dollars" y={0} stroke="#9ca3af" strokeDasharray="4 4" />
             <Tooltip content={<JobChargesTimelineTooltip />} />
             <Line
@@ -413,7 +442,7 @@ export function JobChargesTimelineChartView({
               connectNulls
             />
             <Line
-              yAxisId="profit"
+              yAxisId="dollars"
               type="stepAfter"
               dataKey="profit"
               name="Profit"
@@ -424,9 +453,9 @@ export function JobChargesTimelineChartView({
               isAnimationActive={false}
               connectNulls
             />
-            {data.valueSeriesAvailable && (
+            {valueShown && (
               <Line
-                yAxisId="dollars"
+                yAxisId="value"
                 type="stepAfter"
                 dataKey="value"
                 name="Value created"
@@ -443,11 +472,17 @@ export function JobChargesTimelineChartView({
         </div>
       </div>
       <p style={{ color: 'var(--text-700)', fontSize: '0.75rem', margin: '0.25rem 0 0' }}>
-        <span style={{ color: 'var(--text-red-600)', fontWeight: 600 }}>Red</span> = cost to date
-        (left axis) · <span style={{ color: 'var(--text-link)', fontWeight: 600 }}>Blue</span> = value
-        created (report % × job total, left axis) ·{' '}
-        <span style={{ color: '#16a34a', fontWeight: 600 }}>Green</span> = profit (right axis; above
-        the $0 line = collected more than it cost) · 💵 = payment received · 🚩 = field report
+        <span style={{ color: 'var(--text-red-600)', fontWeight: 600 }}>Red</span> = cost to date ·{' '}
+        <span style={{ color: '#16a34a', fontWeight: 600 }}>Green</span> = profit (above the $0 line
+        = collected more than it cost)
+        {valueShown && (
+          <>
+            {' · '}
+            <span style={{ color: 'var(--text-link)', fontWeight: 600 }}>Blue</span> = value created
+            (report % × job total, right axis)
+          </>
+        )}{' '}
+        · 💵 = payment received · 🚩 = field report
       </p>
       <p style={{ color: 'var(--text-faint)', fontSize: '0.6875rem', margin: '0.15rem 0 0' }}>
         Cost sources:{' '}

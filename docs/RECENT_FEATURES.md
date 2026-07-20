@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-20 (v2.778)
+last_updated: 2026-07-20 (v2.779)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.779)
+
+### Cost Timeline — cost + profit share the left axis; value created moves behind an opt-in right-axis toggle (2026-07-20)
+Rework of v2.778's dual-axis layout after using it: profit no longer gets its own right axis. **Cost to date (red) and Profit (green) now share the LEFT axis** — they're the same scale family (profit = payments − cost), so no cross-scale tricks are needed and the default chart is a plain single-axis read. The blue **Value created** line (report % × job total; scale 0 → revenue, usually dwarfing cost/profit) moves to the **RIGHT axis behind a "Value created (right axis)" checkbox, OFF by default** — the toggle only renders when the value series is available (job total set + a report with a completion %), and turning it on shows the blue line, the blue-tick right axis, and the legend's Blue clause together. `computeChargesTimelineAxisDomains()` in [`jobChargesTimeline.ts`](../src/lib/jobChargesTimeline.ts) reworked (tests updated): the left domain spans cost+profit naturally (no half-cap needed anymore), and the right domain stretches below zero to keep the shared $0 gridline truthful. Applies everywhere the chart mounts (Job Summary expanded rows, Edit-Job Cost Timeline, standalone). Known follow-up: the Job Summary **%** column (RPC-parsed) reports a completion % for some jobs whose chart parse finds none, so the toggle can't appear there yet — tracked separately.
 
 ## Latest Updates (v2.778)
 
