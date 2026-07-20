@@ -808,7 +808,7 @@ export function QuickfillScheduleSection({
                     fontSize: '1rem',
                     fontWeight: 600,
                     color: 'var(--text-strong)',
-                    textAlign: 'center',
+                    textAlign: 'left',
                   }}
                 >
                   {roleSection.label}
