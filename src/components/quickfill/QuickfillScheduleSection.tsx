@@ -19,6 +19,14 @@ import {
   type DotBlock,
 } from '../../lib/dayScheduleDotDrag'
 import {
+  buildDayTravelGaps,
+  TRAVEL_TOUCHING_WARN_MINUTES,
+  type DayTravelGap,
+  type LatLng,
+} from '../../lib/jobTravelEstimate'
+import { normalizeAddressForGeocodeKey } from '../../lib/map/normalizeAddressForGeocode'
+import { batchGeocodeCacheKeys } from '../../lib/map/geocodeCacheBatches'
+import {
   fetchJobsLedgerForScheduleDispatchHub,
   fetchUserNamesForIds,
   fetchUsersTabRosterForScheduleDispatchHub,
@@ -208,6 +216,121 @@ export function QuickfillScheduleSection({
     for (let m = MIN_MIN; m <= MAX_MIN; m += 30) out.push(m)
     return out
   }, [])
+
+  /**
+   * Travel estimates (Option A, straight-line): job coordinates for the day's
+   * blocks, via jobs_ledger.job_address → address_geocodes. Jobs without a
+   * cached geocode simply get no chip (the Map page is the geocode filler).
+   * Option B will layer routed times over this and fall back here.
+   */
+  const [jobCoordsByJobId, setJobCoordsByJobId] = useState<ReadonlyMap<string, LatLng>>(
+    () => new Map(),
+  )
+  const travelJobIdsKey = useMemo(() => {
+    const ids = new Set<string>()
+    for (const [, rows] of blocksByUserId) for (const r of rows) ids.add(r.job_id)
+    return [...ids].sort().join(',')
+  }, [blocksByUserId])
+  useEffect(() => {
+    if (!travelJobIdsKey) {
+      setJobCoordsByJobId(new Map())
+      return
+    }
+    let cancelled = false
+    void (async () => {
+      try {
+        const jobIds = travelJobIdsKey.split(',')
+        const jobRows = await withSupabaseRetry<Array<{ id: string; job_address: string | null }>>(
+          async () => supabase.from('jobs_ledger').select('id, job_address').in('id', jobIds),
+          'load day travel job addresses',
+        )
+        const keyByJobId = new Map<string, string>()
+        for (const j of jobRows ?? []) {
+          const addr = (j.job_address ?? '').trim()
+          if (addr) keyByJobId.set(j.id, normalizeAddressForGeocodeKey(addr))
+        }
+        const uniqueKeys = [...new Set(keyByJobId.values())]
+        const coordByKey = new Map<string, LatLng>()
+        for (const batch of batchGeocodeCacheKeys(uniqueKeys)) {
+          const rows = await withSupabaseRetry<
+            Array<{ address_normalized: string; lat: number; lng: number }>
+          >(
+            async () =>
+              supabase
+                .from('address_geocodes')
+                .select('address_normalized, lat, lng')
+                .in('address_normalized', batch),
+            'load day travel geocodes',
+          )
+          for (const r of rows ?? []) coordByKey.set(r.address_normalized, { lat: r.lat, lng: r.lng })
+        }
+        if (cancelled) return
+        const out = new Map<string, LatLng>()
+        for (const [jobId, key] of keyByJobId) {
+          const c = coordByKey.get(key)
+          if (c) out.set(jobId, c)
+        }
+        setJobCoordsByJobId(out)
+      } catch {
+        if (!cancelled) setJobCoordsByJobId(new Map())
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [travelJobIdsKey])
+
+  /** Chips for open gaps + red shared-dot warnings for infeasible back-to-backs, per user. */
+  const travelUiForUser = useCallback(
+    (userId: string, rows: JobScheduleBlockRow[]) => {
+      if (jobCoordsByJobId.size === 0) return { chips: undefined, warnings: undefined }
+      const gaps = buildDayTravelGaps(
+        rows.map((r) => ({
+          blockId: r.id,
+          jobId: r.job_id,
+          startMin: timeInputToMinutesSafe(r.time_start.slice(0, 5)),
+          endMin: timeInputToMinutesSafe(r.time_end.slice(0, 5)),
+        })),
+        jobCoordsByJobId,
+      )
+      if (gaps.length === 0) return { chips: undefined, warnings: undefined }
+      const chips: Array<{
+        id: string
+        gapStartMin: number
+        gapEndMin: number
+        label: string
+        title: string
+        severity: 'ok' | 'tight'
+      }> = []
+      const warnings = new Map<string, string>()
+      const describe = (g: DayTravelGap) =>
+        `Estimated drive between these jobs: at least ${g.estimate.minutes} min (straight-line estimate).`
+      for (const g of gaps) {
+        if (g.boundaryKind === 'gap') {
+          chips.push({
+            id: `travel-${userId}-${g.fromBlockId}-${g.toBlockId}`,
+            gapStartMin: g.gapStartMin,
+            gapEndMin: g.gapEndMin,
+            label: `≥${g.estimate.minutes}m`,
+            title: g.feasible
+              ? describe(g)
+              : `${describe(g)} Only ${g.gapMinutes} min of schedule gap — likely not enough.`,
+            severity: g.feasible ? 'ok' : 'tight',
+          })
+        } else if (g.estimate.minutes >= TRAVEL_TOUCHING_WARN_MINUTES) {
+          warnings.set(
+            `shared:${g.fromBlockId}:${g.toBlockId}`,
+            `Back-to-back jobs, but the drive between them is at least ${g.estimate.minutes} min (straight-line estimate).`,
+          )
+        }
+      }
+      return {
+        chips: chips.length > 0 ? chips : undefined,
+        warnings: warnings.size > 0 ? warnings : undefined,
+      }
+    },
+    [jobCoordsByJobId],
+  )
   const [jobTitleById, setJobTitleById] = useState<Map<string, string>>(() => new Map())
   const [bidTitleById, setBidTitleById] = useState<Map<string, string>>(() => new Map())
   const [sessionsByUserId, setSessionsByUserId] = useState<Map<string, ClockSessionForDispatchBand[]>>(
@@ -1143,6 +1266,7 @@ export function QuickfillScheduleSection({
                     const segments = blocksToSegments(rows, jobTitleById)
                     const secondary = scheduleSecondaryByUserId.get(id)
                     const dots = canEditSchedule && rows.length > 0 ? boundaryDotsForUser(id) : undefined
+                    const travelUi = travelUiForUser(id, rows)
                     return (
                       <QuickfillScheduleUserRow
                         key={id}
@@ -1153,6 +1277,8 @@ export function QuickfillScheduleSection({
                         secondaryBands={secondary}
                         nameColumnIndent
                         railTrimWindow={dayRailTrimWindow}
+                        travelGapChips={travelUi.chips}
+                        sharedDotWarnings={travelUi.warnings}
                         boundaryDots={dots}
                         onBoundaryDotDrag={
                           dots ? (dot, targetMin) => handleDotDrag(id, dot, targetMin) : undefined

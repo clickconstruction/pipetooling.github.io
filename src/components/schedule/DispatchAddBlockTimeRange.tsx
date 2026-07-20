@@ -222,6 +222,21 @@ export type DispatchAddBlockTimeRangeProps = {
   /** Click-and-hold on a shared dot: parent separates the later block +15m. */
   onSharedDotSeparate?: (dot: Extract<BoundaryDot, { kind: 'shared' }>) => void
   /**
+   * Travel chips rendered in the open gap between two bands (Day view):
+   * label like "≥18m" centered on the gap span; `severity: 'tight'` = the
+   * gap is shorter than the estimated drive.
+   */
+  travelGapChips?: Array<{
+    id: string
+    gapStartMin: number
+    gapEndMin: number
+    label: string
+    title: string
+    severity: 'ok' | 'tight'
+  }>
+  /** Shared-dot travel warnings keyed by the dot key (`shared:<before>:<after>`): dot turns red with this title. */
+  sharedDotWarnings?: ReadonlyMap<string, string>
+  /**
    * Clips the grey rail underlay to a slot fraction of the track.
    * - `undefined` (default): rail spans the full track (existing behavior).
    * - `null`: rail is hidden entirely (use for empty-view rows where no
@@ -261,6 +276,8 @@ export function DispatchAddBlockTimeRange({
   onBoundaryDotDrag,
   onBoundaryDotDragEnd,
   onSharedDotSeparate,
+  travelGapChips,
+  sharedDotWarnings,
   railTrimWindow,
 }: DispatchAddBlockTimeRangeProps) {
   const regionRef = useRef<HTMLDivElement>(null)
@@ -642,6 +659,43 @@ export function DispatchAddBlockTimeRange({
         })}
         <div style={railStyle} />
         {showProposedRange ? <div style={fillStyle()} /> : null}
+        {travelGapChips?.map((chip) => {
+          const midMin = (chip.gapStartMin + chip.gapEndMin) / 2
+          const t = slotToTrackT(
+            dispatchMinutesToFractionalSlotIndex(midMin),
+            slotCount,
+            railTrimWindow,
+          )
+          const tight = chip.severity === 'tight'
+          return (
+            <span
+              key={chip.id}
+              title={chip.title}
+              aria-label={chip.title}
+              role="img"
+              style={{
+                position: 'absolute',
+                left: `calc(${THUMB_HALF}px + (100% - ${THUMB_PX}px) * ${t})`,
+                top: hasOccupied ? 28 : 18,
+                transform: 'translate(-50%, -50%)',
+                fontSize: '0.6rem',
+                fontWeight: 700,
+                lineHeight: 1.1,
+                padding: '0.08rem 0.3rem',
+                borderRadius: 999,
+                whiteSpace: 'nowrap',
+                border: tight ? '1px solid var(--border-red)' : '1px solid var(--border)',
+                background: tight ? 'var(--bg-red-tint)' : 'var(--surface)',
+                color: tight ? 'var(--text-red-700)' : 'var(--text-muted)',
+                zIndex: 5,
+                pointerEvents: 'auto',
+                cursor: 'help',
+              }}
+            >
+              🚗 {chip.label}
+            </span>
+          )
+        })}
         {boundaryDots?.map((dot) => {
           const key = boundaryDotKey(dot)
           const isShared = dot.kind === 'shared'
@@ -656,14 +710,16 @@ export function DispatchAddBlockTimeRange({
           )
           const isActive = activeDotKey === key
           const timeLabel = formatDispatchQuickTimeLabel(dispatchMinutesToHHmm(dot.min))
+          const travelWarn = isShared ? sharedDotWarnings?.get(key) : undefined
           const ariaLabel = isShared
-            ? `Boundary between touching jobs at ${timeLabel}. Drag to move both; click and hold to separate.`
+            ? `Boundary between touching jobs at ${timeLabel}. ${travelWarn ? `${travelWarn} ` : ''}Drag to move both; click and hold to separate.`
             : `${dot.kind === 'start' ? 'Start' : 'End'} of job at ${timeLabel}. Drag to adjust.`
           return (
             <button
               key={key}
               type="button"
               role="slider"
+              title={travelWarn}
               aria-label={ariaLabel}
               aria-valuemin={MIN_MIN}
               aria-valuemax={MAX_MIN}
@@ -753,10 +809,10 @@ export function DispatchAddBlockTimeRange({
                   width: isShared ? 16 : 12,
                   height: isShared ? 16 : 12,
                   borderRadius: 999,
-                  background: '#ea580c',
+                  background: travelWarn ? '#dc2626' : '#ea580c',
                   border: '2px solid var(--surface)',
                   boxShadow: isShared
-                    ? '0 0 0 2px #ea580c, 0 1px 2px rgba(0,0,0,0.25)'
+                    ? `0 0 0 2px ${travelWarn ? '#dc2626' : '#ea580c'}, 0 1px 2px rgba(0,0,0,0.25)`
                     : '0 1px 2px rgba(0,0,0,0.25)',
                   boxSizing: 'border-box',
                 }}
