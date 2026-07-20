@@ -1848,7 +1848,7 @@ export function DashboardTeamActiveClockStrip({
                                   flexShrink: 0,
                                   marginLeft: 2,
                                   padding: '0.1rem 0.2rem',
-                                  border: '1px solid #bfdbfe',
+                                  border: '1px solid var(--border-blue)',
                                   borderRadius: 4,
                                   background: 'var(--bg-blue-tint)',
                                   color: 'var(--text-blue-700)',

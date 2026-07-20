@@ -1324,11 +1324,11 @@ export default function Layout() {
                 padding: '0.35rem 0.75rem',
                 fontSize: '0.875rem',
                 background: isPinnedIn(pins, location.pathname, getTabFromPath(location.pathname, location.search))
-                  ? '#e0e7ff'
+                  ? 'var(--bg-indigo-100)'
                   : 'transparent',
                 color: isPinnedIn(pins, location.pathname, getTabFromPath(location.pathname, location.search))
-                  ? '#3730a3'
-                  : '#6b7280',
+                  ? 'var(--text-indigo-800)'
+                  : 'var(--text-muted)',
                 border: '1px solid var(--border-strong)',
                 borderRadius: 6,
                 cursor: 'pointer',
@@ -1357,8 +1357,8 @@ export default function Layout() {
                     alignItems: 'center',
                     justifyContent: 'center',
                     padding: '0.35rem 0.5rem',
-                    background: pinForOpen ? '#e0e7ff' : 'transparent',
-                    color: pinForOpen ? '#3730a3' : 'var(--text-muted)',
+                    background: pinForOpen ? 'var(--bg-indigo-100)' : 'transparent',
+                    color: pinForOpen ? 'var(--text-indigo-800)' : 'var(--text-muted)',
                     border: '1px solid var(--border-strong)',
                     borderRadius: 6,
                     cursor: 'pointer',
@@ -1435,7 +1435,7 @@ export default function Layout() {
                         fontSize: '0.8125rem',
                         background: 'var(--bg-blue-tint)',
                         color: 'var(--text-blue-700)',
-                        border: '1px solid #bfdbfe',
+                        border: '1px solid var(--border-blue)',
                         borderRadius: 6,
                         cursor: pinForSaving ? 'not-allowed' : 'pointer',
                         fontWeight: 500,

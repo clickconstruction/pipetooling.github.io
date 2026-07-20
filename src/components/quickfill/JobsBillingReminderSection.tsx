@@ -124,7 +124,7 @@ export function JobsBillingReminderSection({ minHcpNumber }: { minHcpNumber: num
         marginBottom: '1.5rem',
         padding: '1rem 1.25rem',
         background: 'var(--bg-amber-100)',
-        border: '1px solid #fcd34d',
+        border: '1px solid var(--border-amber)',
         borderRadius: 8,
         display: 'flex',
         flexWrap: 'wrap',

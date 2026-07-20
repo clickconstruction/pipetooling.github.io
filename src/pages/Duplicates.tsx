@@ -283,7 +283,7 @@ export default function Duplicates() {
                             setDeleteConfirmName('')
                             setError(null)
                           }}
-                          style={{ padding: '0.25rem 0.5rem', background: 'var(--bg-red-100)', color: 'var(--text-red-800)', border: '1px solid #fca5a5', borderRadius: 4, cursor: 'pointer', fontSize: '0.8125rem' }}
+                          style={{ padding: '0.25rem 0.5rem', background: 'var(--bg-red-100)', color: 'var(--text-red-800)', border: '1px solid var(--border-red)', borderRadius: 4, cursor: 'pointer', fontSize: '0.8125rem' }}
                         >
                           Delete
                         </button>

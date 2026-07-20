@@ -24,7 +24,7 @@ export default function DashboardMyTeamPendingBanner({
         gap: '1rem',
         width: '100%',
         padding: '1rem 1.25rem',
-        border: '1px solid #fcd34d',
+        border: '1px solid var(--border-amber)',
         borderRadius: 8,
         background: 'var(--bg-amber-tint)',
         marginBottom: '1rem',

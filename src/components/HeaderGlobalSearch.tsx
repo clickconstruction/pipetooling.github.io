@@ -446,7 +446,8 @@ export function HeaderGlobalSearchNavLayer() {
             }}
           >
             {ctx.results.map((r) => {
-              const pill = serviceTypeTagForUnifiedRow(r) ?? customerTypePillForUnifiedRow(r)
+              const tradePill = serviceTypeTagForUnifiedRow(r)
+              const pill = tradePill ?? customerTypePillForUnifiedRow(r)
               return (
                 <li key={`${r.source}-${r.id}`} role="option">
                   <button
@@ -474,7 +475,10 @@ export function HeaderGlobalSearchNavLayer() {
                             padding: '0.1rem 0.28rem',
                             borderRadius: 3,
                             background: pill.color,
-                            color: 'var(--text-strong)',
+                            // Trade tags keep their bright literal bg in both themes, so
+                            // they need theme-invariant dark text; customer pills flip
+                            // with their bg token and text-strong flips with them.
+                            color: tradePill ? 'var(--text-on-bright-solid)' : 'var(--text-strong)',
                             lineHeight: 1.2,
                           }}
                         >

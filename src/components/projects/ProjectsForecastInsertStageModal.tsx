@@ -387,7 +387,7 @@ export function ProjectsForecastInsertStageModal({
                     fontSize: '0.75rem',
                     color: 'var(--text-amber-800)',
                     background: 'var(--bg-amber-tint)',
-                    border: '1px solid #fcd34d',
+                    border: '1px solid var(--border-amber)',
                     borderRadius: 4,
                     padding: '0.375rem 0.5rem',
                   }}

@@ -124,7 +124,7 @@ export function JobFormDeleteMigrateModals({
                     marginTop: '0.85rem',
                     padding: '0.65rem 0.75rem',
                     background: 'var(--bg-amber-tint)',
-                    border: '1px solid #fde68a',
+                    border: '1px solid var(--border-amber-soft)',
                     borderRadius: 6,
                   }}
                 >
@@ -157,7 +157,7 @@ export function JobFormDeleteMigrateModals({
                     marginTop: '0.85rem',
                     padding: '0.65rem 0.75rem',
                     background: 'var(--bg-amber-tint)',
-                    border: '1px solid #fde68a',
+                    border: '1px solid var(--border-amber-soft)',
                     borderRadius: 6,
                   }}
                 >

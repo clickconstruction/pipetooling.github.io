@@ -1246,7 +1246,7 @@ export default function ClockInOutButton({
     const base =
       useLastLike === 'clockIn'
         ? {
-            border: '1px solid #bfdbfe',
+            border: '1px solid var(--border-blue)',
             borderRadius: 6,
             background: 'var(--bg-blue-tint)',
           }
@@ -1427,7 +1427,7 @@ export default function ClockInOutButton({
           : {
               padding: '0.25rem 0.5rem',
               fontSize: '0.8125rem',
-              border: '1px solid #bfdbfe',
+              border: '1px solid var(--border-blue)',
               borderRadius: 6,
               background: 'var(--bg-blue-tint)',
               cursor: opts.disabled ? 'not-allowed' : 'pointer',

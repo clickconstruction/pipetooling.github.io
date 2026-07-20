@@ -854,7 +854,7 @@ export function HostedStripeBillPanel({
                   fontWeight: 500,
                   color: 'var(--text-amber-800)',
                   background: 'var(--bg-amber-tint)',
-                  border: '1px solid #fde68a',
+                  border: '1px solid var(--border-amber-soft)',
                   borderRadius: 6,
                   cursor: 'pointer',
                 }}
@@ -873,7 +873,7 @@ export function HostedStripeBillPanel({
                   fontWeight: 500,
                   color: 'var(--text-amber-800)',
                   background: 'var(--bg-amber-tint)',
-                  border: '1px solid #fde68a',
+                  border: '1px solid var(--border-amber-soft)',
                   borderRadius: 6,
                   cursor: 'not-allowed',
                   opacity: 0.75,

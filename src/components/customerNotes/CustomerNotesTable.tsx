@@ -149,7 +149,7 @@ function CustomerNotesEntryRow({
                 padding: '0.25rem',
                 background: 'var(--bg-red-100)',
                 color: 'var(--text-red-800)',
-                border: '1px solid #fca5a5',
+                border: '1px solid var(--border-red)',
                 borderRadius: 4,
                 cursor: 'pointer',
                 display: 'inline-flex',
@@ -399,7 +399,7 @@ export function CustomerNotesTable({
 
   const listShellStyle: CSSProperties = useBidBoardCustomerChrome
     ? {
-        border: '1px solid #bbf7d0',
+        border: '1px solid var(--border-green)',
         borderLeft: '3px solid #16a34a',
         borderRadius: 4,
         overflow: 'hidden',

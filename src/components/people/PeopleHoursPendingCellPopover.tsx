@@ -258,7 +258,7 @@ export function PeopleHoursPendingCellPopover({
                     flexShrink: 0,
                     padding: '0.15rem 0.45rem',
                     border: '1px solid',
-                    borderColor: confirming ? '#dc2626' : '#fca5a5',
+                    borderColor: confirming ? '#dc2626' : 'var(--border-red)',
                     background: confirming ? 'var(--bg-red-100)' : 'var(--bg-red-tint)',
                     color: 'var(--text-red-700)',
                     borderRadius: 4,

@@ -66,7 +66,7 @@ export function DashboardUpcomingInspectionsSection({
                     display: 'block',
                     padding: '0.5rem 0.75rem',
                     background: 'var(--bg-blue-tint)',
-                    border: '1px solid #bfdbfe',
+                    border: '1px solid var(--border-blue)',
                     borderRadius: 4,
                     color: 'var(--text-blue-800)',
                     textDecoration: 'none',

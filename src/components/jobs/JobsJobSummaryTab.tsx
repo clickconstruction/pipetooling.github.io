@@ -151,7 +151,7 @@ function JobSummaryExpandedHeader({
             fontWeight: 600,
             borderRadius: 6,
             cursor: 'pointer',
-            border: '1px solid #bfdbfe',
+            border: '1px solid var(--border-blue)',
             background: 'var(--bg-blue-tint)',
             color: 'var(--text-blue-700)',
           }}
@@ -2230,7 +2230,7 @@ export default function JobsJobSummaryTab({
                                           return (
                                             <div
                                               style={{
-                                                border: '1px solid #fde68a',
+                                                border: '1px solid var(--border-amber-soft)',
                                                 borderRadius: 6,
                                                 padding: '0.5rem 0.75rem',
                                                 background: 'var(--bg-amber-tint)',
@@ -2250,7 +2250,7 @@ export default function JobsJobSummaryTab({
                                                 </thead>
                                                 <tbody>
                                                   {orphan.map((s) => (
-                                                    <tr key={s.id} style={{ borderTop: '1px solid #fde68a' }}>
+                                                    <tr key={s.id} style={{ borderTop: '1px solid var(--border-amber-soft)' }}>
                                                       <td style={{ padding: '0.25rem 0.4rem' }}>{s.users?.name ?? '—'}</td>
                                                       <td style={{ padding: '0.25rem 0.4rem' }}>
                                                         {s.work_date

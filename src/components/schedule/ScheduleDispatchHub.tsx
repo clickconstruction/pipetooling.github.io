@@ -490,7 +490,7 @@ function HubPeopleBlockCard({
           background: dragDisabled
             ? 'linear-gradient(90deg, var(--bg-red-100) 0%, var(--bg-red-200) 100%)'
             : 'linear-gradient(90deg, var(--bg-blue-200) 0%, var(--bg-blue-tint) 100%)',
-          borderRight: `1px solid ${dragDisabled ? '#fca5a5' : '#bfdbfe'}`,
+          borderRight: `1px solid ${dragDisabled ? 'var(--border-red)' : 'var(--border-blue)'}`,
           outline: 'none',
         }}
         aria-label={
@@ -517,7 +517,7 @@ function HubPeopleBlockCard({
             padding: '0.35rem 0.45rem',
             margin: 0,
             border: 'none',
-            borderBottom: '1px solid #bfdbfe',
+            borderBottom: '1px solid var(--border-blue)',
             background: 'transparent',
             cursor: placementPickingActive ? 'default' : 'pointer',
             textAlign: 'left',

@@ -95,7 +95,7 @@ export function HelpFeedbackInboxSection() {
                 fontWeight: 600,
                 color: 'var(--text-blue-700)',
                 background: 'var(--bg-blue-tint)',
-                border: '1px solid #bfdbfe',
+                border: '1px solid var(--border-blue)',
                 borderRadius: 999,
                 padding: '0.1rem 0.55rem',
                 textDecoration: 'none',
@@ -178,7 +178,7 @@ export function HelpFeedbackInboxSection() {
             fontWeight: 700,
             color: openCount > 0 ? 'var(--text-amber-700)' : 'var(--text-muted)',
             background: openCount > 0 ? 'var(--bg-amber-tint)' : 'var(--bg-muted)',
-            border: `1px solid ${openCount > 0 ? '#fcd34d' : '#e5e7eb'}`,
+            border: `1px solid ${openCount > 0 ? 'var(--border-amber)' : 'var(--border)'}`,
             borderRadius: 999,
             padding: '0.05rem 0.5rem',
           }}

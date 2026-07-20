@@ -1742,7 +1742,7 @@ function EstimateList() {
             marginTop: '0.75rem',
             padding: '0.5rem 0.75rem',
             background: 'var(--bg-blue-tint)',
-            border: '1px solid #bfdbfe',
+            border: '1px solid var(--border-blue)',
             borderRadius: 6,
             fontSize: '0.875rem',
           }}
@@ -4268,7 +4268,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
                             height: 28,
                             margin: 0,
                             padding: 0,
-                            border: '1px solid #fca5a5',
+                            border: '1px solid var(--border-red)',
                             borderRadius: '50%',
                             background: 'var(--bg-red-tint)',
                             color: 'var(--text-red-700)',

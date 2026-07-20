@@ -22,7 +22,7 @@ export function SupplyHouseWebsiteLink({
         fontWeight: 500,
         color: 'var(--text-link)',
         background: 'var(--bg-blue-tint)',
-        border: '1px solid #bfdbfe',
+        border: '1px solid var(--border-blue)',
         borderRadius: 4,
         cursor: 'pointer',
         whiteSpace: 'nowrap',

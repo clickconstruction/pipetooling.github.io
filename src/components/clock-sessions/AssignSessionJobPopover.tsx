@@ -547,7 +547,7 @@ export function AssignSessionJobPopover({
                             padding: '0.28rem 0.5rem',
                             fontSize: '0.68rem',
                             lineHeight: 1.25,
-                            border: `1px solid ${isCurrent ? '#86efac' : '#bfdbfe'}`,
+                            border: `1px solid ${isCurrent ? 'var(--border-green)' : 'var(--border-blue)'}`,
                             borderRadius: 4,
                             background: isCurrent ? 'var(--bg-green-tint)' : 'var(--bg-blue-tint)',
                             color: isCurrent ? 'var(--text-green-800)' : 'var(--text-blue-700)',

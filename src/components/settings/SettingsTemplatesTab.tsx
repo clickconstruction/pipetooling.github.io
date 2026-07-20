@@ -622,7 +622,7 @@ export default function SettingsTemplatesTab({
                           type="button"
                           onClick={() => openTestEmail(template)}
                           disabled={!templateTestTargetUserId}
-                          style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'var(--bg-sky-tint)', color: 'var(--text-sky-700)', border: '1px solid #bae6fd' }}
+                          style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'var(--bg-sky-tint)', color: 'var(--text-sky-700)', border: '1px solid var(--border-sky)' }}
                         >
                           Test
                         </button>
@@ -674,7 +674,7 @@ export default function SettingsTemplatesTab({
                           type="button"
                           onClick={() => openTestEmail(template)}
                           disabled={!templateTestTargetUserId}
-                          style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'var(--bg-sky-tint)', color: 'var(--text-sky-700)', border: '1px solid #bae6fd' }}
+                          style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'var(--bg-sky-tint)', color: 'var(--text-sky-700)', border: '1px solid var(--border-sky)' }}
                         >
                           Test
                         </button>
@@ -725,7 +725,7 @@ export default function SettingsTemplatesTab({
                           type="button"
                           onClick={() => openTestEmail(template)}
                           disabled={!templateTestTargetUserId}
-                          style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'var(--bg-sky-tint)', color: 'var(--text-sky-700)', border: '1px solid #bae6fd' }}
+                          style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'var(--bg-sky-tint)', color: 'var(--text-sky-700)', border: '1px solid var(--border-sky)' }}
                         >
                           Test
                         </button>
@@ -775,7 +775,7 @@ export default function SettingsTemplatesTab({
                           type="button"
                           onClick={() => openTestEmail(template)}
                           disabled={!templateTestTargetUserId}
-                          style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'var(--bg-sky-tint)', color: 'var(--text-sky-700)', border: '1px solid #bae6fd' }}
+                          style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'var(--bg-sky-tint)', color: 'var(--text-sky-700)', border: '1px solid var(--border-sky)' }}
                         >
                           Test
                         </button>
@@ -877,7 +877,7 @@ export default function SettingsTemplatesTab({
                       type="button" 
                       onClick={testCurrentTemplate}
                       disabled={templateSaving || !templateSubject.trim() || !templateBody.trim() || !templateTestTargetUserId}
-                      style={{ background: 'var(--bg-sky-tint)', color: 'var(--text-sky-700)', border: '1px solid #bae6fd' }}
+                      style={{ background: 'var(--bg-sky-tint)', color: 'var(--text-sky-700)', border: '1px solid var(--border-sky)' }}
                     >
                       Test Email
                     </button>

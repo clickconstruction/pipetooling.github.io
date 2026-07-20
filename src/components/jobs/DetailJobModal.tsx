@@ -328,7 +328,7 @@ const detailJobFilesPlansButtonStyle: CSSProperties = {
   padding: '0.35rem 0.65rem',
   fontSize: '0.875rem',
   background: 'var(--surface)',
-  border: '1px solid #c7d2fe',
+  border: '1px solid var(--border-indigo-soft)',
   borderRadius: 4,
   cursor: 'pointer',
   color: 'var(--text-blue-700)',

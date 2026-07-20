@@ -95,7 +95,7 @@ export function ScheduleBlockPreviewModal({
                 fontWeight: 600,
                 color: 'var(--text-blue-700)',
                 background: 'var(--bg-blue-tint)',
-                border: '1px solid #bfdbfe',
+                border: '1px solid var(--border-blue)',
                 borderRadius: 999,
                 whiteSpace: 'nowrap',
               }}

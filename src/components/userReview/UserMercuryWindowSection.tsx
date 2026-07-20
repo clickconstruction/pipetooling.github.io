@@ -146,7 +146,7 @@ const editLinkButtonStyle: CSSProperties = {
   cursor: 'pointer',
   padding: '0.15rem 0.4rem',
   borderRadius: 4,
-  border: '1px solid #bfdbfe',
+  border: '1px solid var(--border-blue)',
   background: 'var(--bg-blue-tint)',
 }
 

@@ -364,7 +364,7 @@ export default function AdditionalReportModal({
               height: 40,
               padding: 0,
               border: `1px solid ${
-                jobLinksLoading ? '#e5e7eb' : customerFilesUrl ? '#c7d2fe' : '#fecaca'
+                jobLinksLoading ? 'var(--border)' : customerFilesUrl ? 'var(--border-indigo-soft)' : 'var(--border-red)'
               }`,
               borderRadius: 6,
               background: 'var(--surface)',
@@ -405,7 +405,7 @@ export default function AdditionalReportModal({
               height: 40,
               padding: 0,
               border: `1px solid ${
-                jobLinksLoading ? '#e5e7eb' : customerPicturesUrl ? '#c7d2fe' : '#fecaca'
+                jobLinksLoading ? 'var(--border)' : customerPicturesUrl ? 'var(--border-indigo-soft)' : 'var(--border-red)'
               }`,
               borderRadius: 6,
               background: 'var(--surface)',

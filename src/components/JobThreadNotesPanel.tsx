@@ -407,7 +407,7 @@ export function JobThreadNotesPanel({
                         padding: '0.5rem 0',
                         borderBottom: '1px solid var(--border)',
                         fontSize: '0.8125rem',
-                        borderLeft: '3px solid #86efac',
+                        borderLeft: '3px solid var(--border-green)',
                         paddingLeft: '0.5rem',
                         marginLeft: 0,
                       }}
@@ -452,7 +452,7 @@ export function JobThreadNotesPanel({
                         padding: '0.5rem 0',
                         borderBottom: '1px solid var(--border)',
                         fontSize: '0.8125rem',
-                        borderLeft: '3px solid #a5b4fc',
+                        borderLeft: '3px solid var(--border-indigo)',
                         paddingLeft: '0.5rem',
                         marginLeft: 0,
                       }}
@@ -488,7 +488,7 @@ export function JobThreadNotesPanel({
                               textTransform: 'uppercase',
                               color: 'var(--text-amber-800)',
                               background: 'var(--bg-amber-100)',
-                              border: '1px solid #fde68a',
+                              border: '1px solid var(--border-amber-soft)',
                               borderRadius: 4,
                               padding: '0 0.3rem',
                               verticalAlign: 'middle',

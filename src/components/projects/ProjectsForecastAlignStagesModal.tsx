@@ -95,12 +95,12 @@ const CHANGE_PILL_STYLES: Record<AlignmentRow['change'], CSSProperties> = {
   filled: {
     background: 'var(--bg-amber-100)',
     color: 'var(--text-amber-800)',
-    border: '1px solid #fcd34d',
+    border: '1px solid var(--border-amber)',
   },
   repaired: {
     background: 'var(--bg-red-100)',
     color: 'var(--text-red-800)',
-    border: '1px solid #fca5a5',
+    border: '1px solid var(--border-red)',
   },
 }
 
@@ -369,12 +369,12 @@ export function ProjectsForecastAlignStagesModal({
                 : anchorBanner.tone === 'warn'
                   ? {
                       background: 'var(--bg-amber-tint)',
-                      border: '1px solid #fcd34d',
+                      border: '1px solid var(--border-amber)',
                       color: 'var(--text-amber-800)',
                     }
                   : {
                       background: 'var(--bg-blue-tint)',
-                      border: '1px solid #bfdbfe',
+                      border: '1px solid var(--border-blue)',
                       color: 'var(--text-blue-700)',
                     }),
             }}
@@ -537,7 +537,7 @@ function PlanRow({
                     borderRadius: 3,
                     background: 'var(--bg-green-100)',
                     color: 'var(--text-green-800)',
-                    border: '1px solid #86efac',
+                    border: '1px solid var(--border-green)',
                   }}
                 >
                   saved

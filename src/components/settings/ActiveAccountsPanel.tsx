@@ -1054,7 +1054,7 @@ export default function ActiveAccountsPanel({ variant, onDataChanged, onOpenFind
               
               {deleteReassignUserId && deleteReassignCustomerCount === 0 && (
                 <p style={{ 
-                  background: '#e0e7ff', 
+                  background: 'var(--bg-indigo-100)', 
                   border: '1px solid #6366f1', 
                   padding: '0.75rem', 
                   borderRadius: 4, 

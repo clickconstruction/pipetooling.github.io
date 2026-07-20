@@ -424,7 +424,7 @@ export const BankingMercuryDragSortLedgerRow = memo(function BankingMercuryDragS
                 fontWeight: 700,
                 color: quickAssignDisabled === true ? 'var(--text-slate-400)' : 'var(--text-link)',
                 background: 'var(--surface)',
-                border: `1px solid ${quickAssignDisabled === true ? '#e5e7eb' : '#bfdbfe'}`,
+                border: `1px solid ${quickAssignDisabled === true ? 'var(--border)' : 'var(--border-blue)'}`,
                 borderRadius: 6,
                 cursor: quickAssignDisabled === true ? 'not-allowed' : 'pointer',
                 whiteSpace: 'nowrap',
@@ -471,7 +471,7 @@ export const BankingMercuryDragSortLedgerRow = memo(function BankingMercuryDragS
               fontWeight: 600,
               color: ruleShortcutDisabled === true ? 'var(--text-slate-400)' : 'var(--text-link)',
               background: 'var(--surface)',
-              border: `1px solid ${ruleShortcutDisabled === true ? '#e5e7eb' : '#bfdbfe'}`,
+              border: `1px solid ${ruleShortcutDisabled === true ? 'var(--border)' : 'var(--border-blue)'}`,
               borderRadius: 6,
               cursor: ruleShortcutDisabled === true ? 'not-allowed' : 'pointer',
             }}

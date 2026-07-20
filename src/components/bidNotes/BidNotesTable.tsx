@@ -213,7 +213,7 @@ function BidNotesEntryRow({
                 padding: '0.25rem',
                 background: 'var(--bg-red-100)',
                 color: 'var(--text-red-800)',
-                border: '1px solid #fca5a5',
+                border: '1px solid var(--border-red)',
                 borderRadius: 4,
                 cursor: 'pointer',
                 display: 'inline-flex',

@@ -232,7 +232,7 @@ export function DispatchDismissedItemsModal({
                           background: 'var(--bg-green-tint)',
                           padding: '0.45rem 0.5rem',
                           borderRadius: 4,
-                          border: '1px solid #bbf7d0',
+                          border: '1px solid var(--border-green)',
                         }}
                       >
                         <strong>Closed note:</strong> {req.closed_note.trim()}

@@ -1711,7 +1711,7 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
               marginBottom: '0.75rem',
               padding: '0.5rem 0.75rem',
               background: 'var(--bg-blue-200)',
-              border: '1px solid #a5b4fc',
+              border: '1px solid var(--border-indigo)',
               borderRadius: 6,
               fontSize: '0.8125rem',
               color: 'var(--text-blue-900)',

@@ -208,7 +208,7 @@ export function BankingMercuryReconciliationTab() {
             padding: '0.6rem 0.9rem',
             borderRadius: 8,
             background: summary.accountsWithIssues === 0 ? 'var(--bg-green-tint)' : 'var(--bg-amber-tint)',
-            border: `1px solid ${summary.accountsWithIssues === 0 ? '#bbf7d0' : '#fde68a'}`,
+            border: `1px solid ${summary.accountsWithIssues === 0 ? 'var(--border-green)' : 'var(--border-amber-soft)'}`,
             fontSize: '0.9rem',
             fontWeight: 600,
             color: summary.accountsWithIssues === 0 ? 'var(--text-green-800)' : 'var(--text-amber-800)',

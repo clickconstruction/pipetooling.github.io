@@ -249,7 +249,7 @@ export function ProjectsForecastStageLineItemsSection({ stepId, stepName, myRole
         gap: 6,
         padding: '0.5rem 0.75rem',
         background: 'var(--bg-sky-tint)',
-        border: '1px solid #bae6fd',
+        border: '1px solid var(--border-sky)',
         borderRadius: 6,
       }}
     >
@@ -312,7 +312,7 @@ export function ProjectsForecastStageLineItemsSection({ stepId, stepName, myRole
                 style={{
                   fontSize: '0.8125rem',
                   background: 'var(--surface)',
-                  border: '1px solid #bae6fd',
+                  border: '1px solid var(--border-sky)',
                   borderRadius: 4,
                   overflow: 'hidden',
                   width: 'fit-content',
@@ -331,7 +331,7 @@ export function ProjectsForecastStageLineItemsSection({ stepId, stepName, myRole
                   <tbody>
                     {lineItems.map((item, idx) => {
                       const isLast = idx === lineItems.length - 1
-                      const border = isLast ? 'none' : '1px solid #bae6fd'
+                      const border = isLast ? 'none' : '1px solid var(--border-sky)'
                       const linkValue = item.link && item.link.trim() ? normalizeUrl(item.link) : null
                       return (
                         <tr key={item.id}>
@@ -915,7 +915,7 @@ const liHeadCell: CSSProperties = {
   textAlign: 'left',
   padding: '0.35rem 0.5rem',
   fontWeight: 600,
-  borderBottom: '1px solid #bae6fd',
+  borderBottom: '1px solid var(--border-sky)',
 }
 
 const liBodyCell: CSSProperties = {
@@ -926,7 +926,7 @@ const liBodyCell: CSSProperties = {
 const rowGhostBtn: CSSProperties = {
   padding: '0.2rem 0.45rem',
   borderRadius: 4,
-  border: '1px solid #bae6fd',
+  border: '1px solid var(--border-sky)',
   background: 'var(--bg-blue-tint)',
   color: 'var(--text-blue-700)',
   fontSize: '0.6875rem',
@@ -948,7 +948,7 @@ const iconBtn = (color: string): CSSProperties => ({
 const addButtonStyle: CSSProperties = {
   padding: '0.35rem 0.7rem',
   borderRadius: 5,
-  border: '1px solid #bbf7d0',
+  border: '1px solid var(--border-green)',
   background: 'var(--bg-emerald-tint)',
   color: 'var(--text-emerald-800)',
   fontSize: '0.75rem',

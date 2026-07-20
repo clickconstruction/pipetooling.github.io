@@ -84,10 +84,10 @@ export default function SubcontractorJobActivityModal({ open, onClose, jobId, hc
 
   /** Badge fill + label color per RPC `kind` (stronger than pastels for contrast on light cards). */
   const BADGE_BY_KIND: Record<string, { bg: string; color: string }> = {
-    thread_note: { bg: '#bfdbfe', color: 'var(--text-blue-800)' },
+    thread_note: { bg: 'var(--bg-blue-200)', color: 'var(--text-blue-800)' },
     field_report: { bg: 'var(--bg-green-200)', color: 'var(--text-green-800)' },
-    clock: { bg: '#ddd6fe', color: '#6d28d9' },
-    schedule: { bg: '#fde68a', color: 'var(--text-amber-800)' },
+    clock: { bg: 'var(--bg-violet-200)', color: 'var(--text-violet-700)' },
+    schedule: { bg: 'var(--bg-amber-200)', color: 'var(--text-amber-800)' },
   }
   const DEFAULT_BADGE = { bg: 'var(--bg-200)', color: 'var(--text-700)' }
 

@@ -269,8 +269,8 @@ export function PeopleUserTagsPanel({ anchor, people, tags, showToast }: PeopleU
                 alignItems: 'center',
                 gap: '0.2rem',
                 padding: '0.06rem 0.4rem',
-                background: '#e0e7ff',
-                color: '#3730a3',
+                background: 'var(--bg-indigo-100)',
+                color: 'var(--text-indigo-800)',
                 borderRadius: 999,
                 fontSize: '0.75rem',
               }}

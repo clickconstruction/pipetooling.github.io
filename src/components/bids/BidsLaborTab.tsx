@@ -1298,7 +1298,7 @@ export function BidsLaborTab({
                   )
                 })()}
                 {/* Driving Cost Section */}
-                <div style={{ marginTop: '1rem', padding: '0.75rem', background: 'var(--bg-amber-100)', borderRadius: 4, border: '1px solid #fde68a' }}>
+                <div style={{ marginTop: '1rem', padding: '0.75rem', background: 'var(--bg-amber-100)', borderRadius: 4, border: '1px solid var(--border-amber-soft)' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: vehicleTravelCollapsed ? 0 : '0.5rem', flexWrap: 'wrap', gap: '0.5rem' }}>
                     <button type="button" onClick={() => setVehicleTravelCollapsed((c) => !c)} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontSize: '0.875rem', fontWeight: 600 }}>
                       <span aria-hidden style={{ fontSize: '0.7rem' }}>{vehicleTravelCollapsed ? '▶' : '▼'}</span>
@@ -1408,7 +1408,7 @@ export function BidsLaborTab({
                 </div>
               </div>
               {/* Travel Cost Parameters */}
-              <div style={{ marginTop: '1rem', padding: '0.75rem', background: 'var(--bg-amber-100)', borderRadius: 4, border: '1px solid #fde68a' }}>
+              <div style={{ marginTop: '1rem', padding: '0.75rem', background: 'var(--bg-amber-100)', borderRadius: 4, border: '1px solid var(--border-amber-soft)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: lodgingCollapsed ? 0 : '0.5rem', flexWrap: 'wrap', gap: '0.5rem' }}>
                   <button type="button" onClick={() => setLodgingCollapsed((c) => !c)} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontSize: '0.875rem', fontWeight: 600 }}>
                     <span aria-hidden style={{ fontSize: '0.7rem' }}>{lodgingCollapsed ? '▶' : '▼'}</span>
@@ -1528,7 +1528,7 @@ export function BidsLaborTab({
                 )}
               </div>
               {/* Estimators Time */}
-              <div style={{ marginTop: '1rem', padding: '0.75rem', background: 'var(--bg-amber-100)', borderRadius: 4, border: '1px solid #fde68a' }}>
+              <div style={{ marginTop: '1rem', padding: '0.75rem', background: 'var(--bg-amber-100)', borderRadius: 4, border: '1px solid var(--border-amber-soft)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: estimatorTimeCollapsed ? 0 : '0.5rem', flexWrap: 'wrap', gap: '0.5rem' }}>
                   <button type="button" onClick={() => setEstimatorTimeCollapsed((c) => !c)} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontSize: '0.875rem', fontWeight: 600 }}>
                     <span aria-hidden style={{ fontSize: '0.7rem' }}>{estimatorTimeCollapsed ? '▶' : '▼'}</span>
@@ -1602,7 +1602,7 @@ export function BidsLaborTab({
               </div>
                 <h3 id="labor-direct-costs" style={{ margin: '1.5rem 0 0.75rem', fontSize: '1rem', textAlign: 'center', scrollMarginTop: '1rem' }}>DIRECT COSTS</h3>
                 {/* Equipment and Tool Rental Section */}
-                <div style={{ marginTop: '1rem', padding: '0.75rem', background: 'var(--bg-amber-100)', borderRadius: 4, border: '1px solid #fde68a' }}>
+                <div style={{ marginTop: '1rem', padding: '0.75rem', background: 'var(--bg-amber-100)', borderRadius: 4, border: '1px solid var(--border-amber-soft)' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: equipmentRows.length > 0 ? '0.5rem' : 0, flexWrap: 'wrap', gap: '0.5rem' }}>
                     <h4 style={{ margin: 0, fontSize: '0.875rem', fontWeight: 600 }}>Equipment and Tool Rental</h4>
                     <button
@@ -1674,7 +1674,7 @@ export function BidsLaborTab({
                   )}
                 </div>
                 {/* Permits, Inspections & Regulatory Fees Section */}
-                <div style={{ marginTop: '1rem', padding: '0.75rem', background: 'var(--bg-amber-100)', borderRadius: 4, border: '1px solid #fde68a' }}>
+                <div style={{ marginTop: '1rem', padding: '0.75rem', background: 'var(--bg-amber-100)', borderRadius: 4, border: '1px solid var(--border-amber-soft)' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: permitRows.length > 0 ? '0.5rem' : 0, flexWrap: 'wrap', gap: '0.5rem' }}>
                     <h4 style={{ margin: 0, fontSize: '0.875rem', fontWeight: 600 }}>Permits, Inspections, and Regulatory Fees</h4>
                     <button
@@ -1746,7 +1746,7 @@ export function BidsLaborTab({
                   )}
                 </div>
                 {/* Subcontractor Fees Section */}
-                <div style={{ marginTop: '1rem', padding: '0.75rem', background: 'var(--bg-amber-100)', borderRadius: 4, border: '1px solid #fde68a' }}>
+                <div style={{ marginTop: '1rem', padding: '0.75rem', background: 'var(--bg-amber-100)', borderRadius: 4, border: '1px solid var(--border-amber-soft)' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: subcontractorRows.length > 0 ? '0.5rem' : 0, flexWrap: 'wrap', gap: '0.5rem' }}>
                     <h4 style={{ margin: 0, fontSize: '0.875rem', fontWeight: 600 }}>Subcontractor Fees</h4>
                     <button
@@ -1818,7 +1818,7 @@ export function BidsLaborTab({
                   )}
                 </div>
                 {/* Waste Disposal & Site Cleanup Section */}
-                <div style={{ marginTop: '1rem', padding: '0.75rem', background: 'var(--bg-amber-100)', borderRadius: 4, border: '1px solid #fde68a' }}>
+                <div style={{ marginTop: '1rem', padding: '0.75rem', background: 'var(--bg-amber-100)', borderRadius: 4, border: '1px solid var(--border-amber-soft)' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: wasteRows.length > 0 ? '0.5rem' : 0, flexWrap: 'wrap', gap: '0.5rem' }}>
                     <h4 style={{ margin: 0, fontSize: '0.875rem', fontWeight: 600 }}>Waste Disposal and Site Cleanup</h4>
                     <button
@@ -1890,7 +1890,7 @@ export function BidsLaborTab({
                   )}
                 </div>
                 {/* Other Section */}
-                <div style={{ marginTop: '1rem', padding: '0.75rem', background: 'var(--bg-amber-100)', borderRadius: 4, border: '1px solid #fde68a' }}>
+                <div style={{ marginTop: '1rem', padding: '0.75rem', background: 'var(--bg-amber-100)', borderRadius: 4, border: '1px solid var(--border-amber-soft)' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: otherRows.length > 0 ? '0.5rem' : 0, flexWrap: 'wrap', gap: '0.5rem' }}>
                     <h4 style={{ margin: 0, fontSize: '0.875rem', fontWeight: 600 }}>Other</h4>
                     <button

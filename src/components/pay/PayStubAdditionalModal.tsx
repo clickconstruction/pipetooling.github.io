@@ -554,7 +554,7 @@ export function PayStubAdditionalModal({
 
           <div
             className="payStubAdditionalModal__toolPanel"
-            style={{ padding: '0.75rem', background: 'var(--bg-green-tint)', borderRadius: 6, border: '1px solid #bbf7d0' }}
+            style={{ padding: '0.75rem', background: 'var(--bg-green-tint)', borderRadius: 6, border: '1px solid var(--border-green)' }}
           >
             <div style={{ fontWeight: 600, fontSize: '0.875rem', marginBottom: '0.5rem' }}>Change Line to hit Target</div>
             <p style={{ margin: '0 0 0.5rem', fontSize: '0.75rem', color: 'var(--text-green-800)' }}>
@@ -623,7 +623,7 @@ export function PayStubAdditionalModal({
             padding: '0.75rem',
             background: 'var(--bg-amber-tint)',
             borderRadius: 6,
-            border: '1px solid #fcd34d',
+            border: '1px solid var(--border-amber)',
           }}
         >
           <div style={{ fontWeight: 600, fontSize: '0.875rem', marginBottom: '0.35rem' }}>Prevailing Wages</div>
@@ -669,7 +669,7 @@ export function PayStubAdditionalModal({
             <div style={{ overflowX: 'auto', marginTop: '0.5rem' }}>
               <table className="pwSessionsTable" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.75rem' }}>
                 <thead>
-                  <tr style={{ background: 'var(--bg-amber-100)', borderBottom: '1px solid #fcd34d' }}>
+                  <tr style={{ background: 'var(--bg-amber-100)', borderBottom: '1px solid var(--border-amber)' }}>
                     <th style={{ padding: '0.35rem 0.5rem', textAlign: 'left' }}>Date & time</th>
                     <th className="pwCol--jobNotes" style={{ padding: '0.35rem 0.5rem', textAlign: 'left' }}>Job & notes</th>
                     <th style={{ padding: '0.35rem 0.5rem', textAlign: 'right' }}>Hrs & base</th>

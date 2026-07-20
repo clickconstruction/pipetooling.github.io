@@ -148,17 +148,17 @@ function formatTimestamp(value: string | null | undefined): string {
 function describeStatus(status: string | null): { label: string; bg: string; color: string; border: string } {
   switch (status) {
     case 'completed':
-      return { label: 'Completed', bg: 'var(--bg-green-100)', color: 'var(--text-green-800)', border: '#86efac' }
+      return { label: 'Completed', bg: 'var(--bg-green-100)', color: 'var(--text-green-800)', border: 'var(--border-green)' }
     case 'approved':
-      return { label: 'Approved', bg: 'var(--bg-green-100)', color: 'var(--text-green-800)', border: '#86efac' }
+      return { label: 'Approved', bg: 'var(--bg-green-100)', color: 'var(--text-green-800)', border: 'var(--border-green)' }
     case 'in_progress':
-      return { label: 'In progress', bg: 'var(--bg-amber-100)', color: 'var(--text-amber-800)', border: '#fcd34d' }
+      return { label: 'In progress', bg: 'var(--bg-amber-100)', color: 'var(--text-amber-800)', border: 'var(--border-amber)' }
     case 'rejected':
-      return { label: 'Previous work incomplete', bg: 'var(--bg-red-100)', color: 'var(--text-red-800)', border: '#fca5a5' }
+      return { label: 'Previous work incomplete', bg: 'var(--bg-red-100)', color: 'var(--text-red-800)', border: 'var(--border-red)' }
     case 'skipped':
       return { label: 'Skipped', bg: 'var(--bg-muted)', color: 'var(--text-600)', border: 'var(--border-strong)' }
     case 'pending':
-      return { label: 'Pending', bg: '#e0e7ff', color: '#3730a3', border: '#a5b4fc' }
+      return { label: 'Pending', bg: 'var(--bg-indigo-100)', color: 'var(--text-indigo-800)', border: 'var(--border-indigo)' }
     default:
       return { label: status ?? '—', bg: 'var(--bg-muted)', color: 'var(--text-600)', border: 'var(--border-strong)' }
   }
@@ -1025,8 +1025,8 @@ export function ProjectsForecastSpecificStageModal({ stage, projectId, myRole, o
                   onBlurSave={saveNotes}
                   saving={savingNotes}
                   placeholder="Add notes (visible to everyone who can see this stage, including the assigned technician)"
-                  toneColor="#0f172a"
-                  borderColor="#e5e7eb"
+                  toneColor="var(--text-slate-900)"
+                  borderColor="var(--border)"
                 />
               ) : null}
 
@@ -1046,8 +1046,8 @@ export function ProjectsForecastSpecificStageModal({ stage, projectId, myRole, o
                   onBlurSave={savePrivateNotes}
                   saving={savingPrivateNotes}
                   placeholder="Add private notes visible to masters, assistants, and superintendents…"
-                  toneColor="#0369a1"
-                  borderColor="#bae6fd"
+                  toneColor="var(--text-sky-700)"
+                  borderColor="var(--border-sky)"
                 />
               ) : null}
 
@@ -1366,7 +1366,7 @@ const chipBtnStyle = {
 const chipBtnPrimaryStyle = {
   ...chipBtnStyle,
   background: 'var(--bg-blue-tint)',
-  borderColor: '#bfdbfe',
+  borderColor: 'var(--border-blue)',
   color: 'var(--text-blue-700)',
 } as const
 

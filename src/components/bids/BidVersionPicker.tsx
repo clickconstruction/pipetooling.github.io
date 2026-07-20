@@ -212,7 +212,7 @@ export function BidVersionPicker({
         </button>
       </div>
       {isExactMaterials && !isUnsplit && (
-        <div style={{ marginTop: '0.5rem', fontSize: '0.75rem', color: 'var(--text-amber-800)', background: 'var(--bg-amber-tint)', border: '1px solid #fde68a', borderRadius: 4, padding: '0.35rem 0.5rem' }}>
+        <div style={{ marginTop: '0.5rem', fontSize: '0.75rem', color: 'var(--text-amber-800)', background: 'var(--bg-amber-tint)', border: '1px solid var(--border-amber-soft)', borderRadius: 4, padding: '0.35rem 0.5rem' }}>
           This bid uses By-Stage materials — material totals come from shared purchase orders and aren’t versioned.
         </div>
       )}

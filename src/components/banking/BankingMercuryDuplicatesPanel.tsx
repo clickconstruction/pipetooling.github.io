@@ -20,8 +20,8 @@ export type BankingMercuryDuplicatesPanelProps = {
 
 const sourceBadge = (source: string) =>
   source === 'manual'
-    ? { label: 'Manual', bg: '#fef3c7', fg: '#92400e' }
-    : { label: 'Synced', bg: '#e0f2fe', fg: '#075985' }
+    ? { label: 'Manual', bg: 'var(--bg-amber-100)', fg: 'var(--text-amber-800)' }
+    : { label: 'Synced', bg: 'var(--bg-sky-100)', fg: 'var(--text-sky-800)' }
 
 export function BankingMercuryDuplicatesPanel({ onAfterChange, nicknameByAccount }: BankingMercuryDuplicatesPanelProps) {
   const { showToast } = useToastContext()
@@ -144,7 +144,7 @@ export function BankingMercuryDuplicatesPanel({ onAfterChange, nicknameByAccount
     <section
       style={{
         marginBottom: '1.5rem',
-        border: '1px solid #fde68a',
+        border: '1px solid var(--border-amber-soft)',
         background: 'var(--bg-amber-tint)',
         borderRadius: 8,
         padding: '0.75rem 1rem',
@@ -184,7 +184,7 @@ export function BankingMercuryDuplicatesPanel({ onAfterChange, nicknameByAccount
                 const keeperId = keeperFor(c)
                 const busy = busyKey === c.key
                 return (
-                  <div key={c.key} style={{ border: '1px solid #fcd34d', borderRadius: 8, background: 'var(--surface)', padding: '0.65rem 0.8rem' }}>
+                  <div key={c.key} style={{ border: '1px solid var(--border-amber)', borderRadius: 8, background: 'var(--surface)', padding: '0.65rem 0.8rem' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.5rem' }}>
                       <div style={{ fontWeight: 700 }}>
                         {formatUsd(c.members[0]?.amount ?? 0)} · {c.members[0]?.counterpartyName ?? '—'}
@@ -210,7 +210,7 @@ export function BankingMercuryDuplicatesPanel({ onAfterChange, nicknameByAccount
                               padding: '0.35rem 0.5rem',
                               borderRadius: 6,
                               background: m.id === keeperId ? 'var(--bg-green-tint)' : 'var(--bg-slate-tint)',
-                              border: m.id === keeperId ? '1px solid #bbf7d0' : '1px solid var(--border)',
+                              border: m.id === keeperId ? '1px solid var(--border-green)' : '1px solid var(--border)',
                               cursor: 'pointer',
                             }}
                           >
@@ -260,7 +260,7 @@ export function BankingMercuryDuplicatesPanel({ onAfterChange, nicknameByAccount
           )}
 
           {excluded.length > 0 ? (
-            <div style={{ marginTop: '0.85rem', borderTop: '1px solid #fde68a', paddingTop: '0.6rem' }}>
+            <div style={{ marginTop: '0.85rem', borderTop: '1px solid var(--border-amber-soft)', paddingTop: '0.6rem' }}>
               <button
                 type="button"
                 onClick={() => setShowExcluded((v) => !v)}
@@ -284,7 +284,7 @@ export function BankingMercuryDuplicatesPanel({ onAfterChange, nicknameByAccount
                           type="button"
                           disabled={busy}
                           onClick={() => void handleUndo(r)}
-                          style={{ padding: '0.25rem 0.6rem', fontSize: '0.78rem', fontWeight: 600, background: 'var(--surface)', color: 'var(--text-blue-700)', border: '1px solid #bfdbfe', borderRadius: 6, cursor: busy ? 'not-allowed' : 'pointer' }}
+                          style={{ padding: '0.25rem 0.6rem', fontSize: '0.78rem', fontWeight: 600, background: 'var(--surface)', color: 'var(--text-blue-700)', border: '1px solid var(--border-blue)', borderRadius: 6, cursor: busy ? 'not-allowed' : 'pointer' }}
                         >
                           {busy ? '…' : 'Undo'}
                         </button>

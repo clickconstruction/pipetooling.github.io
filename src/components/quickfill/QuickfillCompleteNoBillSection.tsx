@@ -133,7 +133,7 @@ export function QuickfillCompleteNoBillSection({
                         fontWeight: 600,
                         borderRadius: 6,
                         cursor: 'pointer',
-                        border: '1px solid #bfdbfe',
+                        border: '1px solid var(--border-blue)',
                         background: 'var(--bg-blue-tint)',
                         color: 'var(--text-blue-700)',
                       }}
