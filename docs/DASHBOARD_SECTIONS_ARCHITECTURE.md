@@ -10,14 +10,14 @@ last_updated: 2026-07-20
 
 ## Overview
 
-[`src/pages/Dashboard.tsx`](../src/pages/Dashboard.tsx) is an ~8,899-line "God component" (as of v2.715: 132 `useState` mentions / ~57 state declarations, 47 `useEffect`, 21 `useMemo`, 28 `useCallback`). This map follows the process in [`PAGE_DECOMPOSITION_PLAYBOOK.md`](./PAGE_DECOMPOSITION_PLAYBOOK.md) and the format of [`BIDS_TABS_ARCHITECTURE.md`](./BIDS_TABS_ARCHITECTURE.md) / [`PEOPLE_TABS_ARCHITECTURE.md`](./PEOPLE_TABS_ARCHITECTURE.md).
+[`src/pages/Dashboard.tsx`](../src/pages/Dashboard.tsx) is now ~2,144 lines (as of v2.782: ~29 `useState` declarations, 14 `useEffect`, 9 `useMemo`, 16 `useCallback`) — down from the ~8,899-line "God component" (v2.715) this map was written against; most sections are extracted, tracked in the summary table below. This map follows the process in [`PAGE_DECOMPOSITION_PLAYBOOK.md`](./PAGE_DECOMPOSITION_PLAYBOOK.md) and the format of [`BIDS_TABS_ARCHITECTURE.md`](./BIDS_TABS_ARCHITECTURE.md) / [`PEOPLE_TABS_ARCHITECTURE.md`](./PEOPLE_TABS_ARCHITECTURE.md).
 
 ### Key structural differences from Bids/People
 
 1. **Dashboard is NOT tab-switched.** There is no `activeTab`, no `?tab=` URL router, and no shared selection pointer. It is a **role-gated stack of sections** rendered top to bottom; every section's render gate is a role/data predicate, and everything mounts at once. Where the playbook says "tab", read "section". (Like People, only *data* is shared — there is no cross-section UI selection to lift.)
 2. **Role-variant rendering.** The same section can render in *different positions per role*, and two big blocks are **literal duplicated copies** per role branch (see [Duplicated-render quirks](#duplicated-render-quirks-preserve-dont-fix)). The role sets: `assistant`/`controller` (via `isAssistantLike`), `dev`/`master_technician`, `subcontractor`/`helpers` (via `isSubcontractorLikeRole`), `estimator`, `primary`, `superintendent`.
 3. **Job Mode replaces the top of the page.** When `useJobModeEnabled` is on, an early `return` renders only the banner/pins block + `DashboardJobModeCard` until the user taps "Show full dashboard" (`jobModeShowFullDashboard`, resets each page load).
-4. **The file layout is loader-block then JSX-block.** Module helpers at lines ~165–870; all state/effects/handlers inside `Dashboard()` at ~872–4395; JSX from `quickActionDefs` (~4397) to the end. No state is declared below ~1500 except via hooks.
+4. **The file layout is loader-block then JSX-block.** Module helpers at lines ~1–175; all state/effects/handlers inside `Dashboard()` at ~177–1130; JSX from `quickActionDefs` (~1130) to the end (post-extraction layout, as of v2.782).
 
 ### How to read a dossier
 
