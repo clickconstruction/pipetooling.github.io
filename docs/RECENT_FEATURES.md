@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-20 (v2.771)
+last_updated: 2026-07-20 (v2.772)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.772)
+
+### Edit Job — money readouts move as you type + Line Items copy trim (2026-07-20)
+The Edit-Job modal's money picture (Job Total, Progress & payment bar, break-off slider, remaining-to-bill) was already derived live from the unsaved form state — but the dollar inputs ([`MoneyDecimalAmountInput`](../src/components/MoneyDecimalAmountInput.tsx)) only committed **on blur**, so typing a line-item amount visibly changed nothing until you clicked away, which read as "must hit Save first." The input now takes an opt-in **`commitOnType`** flag (commit on every keystroke; blur still commits the final parse) and the Edit-Job **line-item unit price** and **payment amount** inputs turn it on — enter an amount and the whole billing picture updates mid-keystroke, so you can break off an invoice on the new total without saving first (invoice creation already persists immediately, v2.755; the line items themselves still persist on Save). Only pure-client-state consumers get the flag — the Bids Takeoff price input keeps blur-commit. Copy: the Line Items caption becomes "Fixtures / tie-ins / repair. The work we agree to do, each line adds to the **Job Total**", and the break-off chart's "Add Specific Work lines to set Job Total for this chart." empty-state line is removed (the bar's own empty state already carries that message since v2.768).
 
 ## Latest Updates (v2.771)
 
