@@ -169,29 +169,28 @@ export default function StagesProgressPaymentCell({ model, pctComplete, pctSavin
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.1rem' }}>
-        {/* Each label leads with where its segment ENDS on the bar (cumulative %):
-            Paid ends at paid/total, Billed at paid+billed, Unbilled at the % done
-            position — e.g. "40% Paid · 60% Billed · 65% Unbilled" reads as
-            collected 40%, billed 20% more, and 5% of done work still unbilled. */}
-        <div style={rowStyle} title="Payments received on this job; the % is where the green segment ends on the bar">
+        {/* Each label leads with ITS OWN slice's share of the job total (slices + the
+            un-done remainder sum to 100%): "80% Paid · 20% Billed · 0% Unbilled" reads
+            as collected 80%, another 20% billed and waiting, nothing done-but-unbilled. */}
+        <div style={rowStyle} title="Payments received on this job; the % is the green slice's share of the job total">
           <span style={{ ...labelStyle, fontVariantNumeric: 'tabular-nums' }}>
             {swatch(PAID_COLOR)}
             {model.hasBar ? `${Math.round(model.paidFrac * 100)}% ` : ''}Paid
           </span>
           <span style={amountStyle}>{model.paid > 0 ? formatUsdNoCents(model.paid) : '—'}</span>
         </div>
-        <div style={rowStyle} title="Invoiced to the customer but not yet paid; the % is where the blue segment ends on the bar">
+        <div style={rowStyle} title="Invoiced to the customer but not yet paid; the % is the blue slice's share of the job total">
           <span style={{ ...labelStyle, fontVariantNumeric: 'tabular-nums' }}>
             {swatch(BILLED_COLOR)}
-            {model.hasBar ? `${Math.round((model.paidFrac + model.billedFrac) * 100)}% ` : ''}Billed
+            {model.hasBar ? `${Math.round(model.billedFrac * 100)}% ` : ''}Billed
           </span>
           <span style={amountStyle}>{model.billedUnpaid > 0 ? formatUsdNoCents(model.billedUnpaid) : '—'}</span>
         </div>
-        <div style={rowStyle} title="Work completed that hasn't been paid for yet (% done × bid − paid); the % is where the amber segment ends — the job's progress">
+        <div style={rowStyle} title="Work completed that hasn't been paid for yet (% done × bid − paid); the % is the amber slice's share of the job total">
           <span style={{ ...labelStyle, fontVariantNumeric: 'tabular-nums' }}>
             {swatch(UNBILLED_COLOR)}
             {model.hasBar && model.unbilled != null
-              ? `${Math.round((model.paidFrac + model.billedFrac + model.unbilledFrac) * 100)}% `
+              ? `${Math.round(model.unbilledFrac * 100)}% `
               : ''}
             Unbilled
           </span>
@@ -201,7 +200,7 @@ export default function StagesProgressPaymentCell({ model, pctComplete, pctSavin
           style={{ ...rowStyle, borderTop: '1px solid var(--border)', paddingTop: '0.15rem' }}
           title="Bid total minus payments received"
         >
-          <span style={{ fontSize: '0.75rem', fontWeight: 600 }}>Owed</span>
+          <span style={{ fontSize: '0.75rem', fontWeight: 600 }}>Left on Job</span>
           <span style={{ ...amountStyle, fontWeight: 600 }}>
             {model.hasBar || model.paid > 0 ? formatUsdNoCents(model.owed) : '—'}
           </span>

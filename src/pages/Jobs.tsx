@@ -5434,27 +5434,34 @@ ${totalsHtml}
               if (!fmt) return null
               return (
                 <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>
+                  {/* inline-flex so the clickable area hugs the icon + text instead of
+                      stretching across the whole Job cell. */}
                   <a
                     href={googleMapsSearchUrl(address)}
                     target="_blank"
                     rel="noopener noreferrer"
                     title="Open in Google Maps"
-                    style={{ color: 'inherit', textDecoration: 'none' }}
+                    style={{
+                      color: 'inherit',
+                      textDecoration: 'none',
+                      display: 'inline-flex',
+                      alignItems: 'flex-start',
+                      gap: '0.3rem',
+                      maxWidth: '100%',
+                    }}
                   >
-                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.3rem' }}>
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        viewBox="0 0 640 640"
-                        width={12}
-                        height={12}
-                        fill="currentColor"
-                        aria-hidden="true"
-                        style={{ flexShrink: 0, marginTop: 1, color: 'var(--text-red-600)' }}
-                      >
-                        <path d="M128 252.6C128 148.4 214 64 320 64C426 64 512 148.4 512 252.6C512 371.9 391.8 514.9 341.6 569.4C329.8 582.2 310.1 582.2 298.3 569.4C248.1 514.9 127.9 371.9 127.9 252.6zM320 320C355.3 320 384 291.3 384 256C384 220.7 355.3 192 320 192C284.7 192 256 220.7 256 256C256 291.3 284.7 320 320 320z" />
-                      </svg>
-                      <JobAddressText line1={fmt.line1} line2={fmt.line2} />
-                    </div>
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 640 640"
+                      width={12}
+                      height={12}
+                      fill="currentColor"
+                      aria-hidden="true"
+                      style={{ flexShrink: 0, marginTop: 1, color: 'var(--text-red-600)' }}
+                    >
+                      <path d="M128 252.6C128 148.4 214 64 320 64C426 64 512 148.4 512 252.6C512 371.9 391.8 514.9 341.6 569.4C329.8 582.2 310.1 582.2 298.3 569.4C248.1 514.9 127.9 371.9 127.9 252.6zM320 320C355.3 320 384 291.3 384 256C384 220.7 355.3 192 320 192C284.7 192 256 220.7 256 256C256 291.3 284.7 320 320 320z" />
+                    </svg>
+                    <JobAddressText line1={fmt.line1} line2={fmt.line2} />
                   </a>
                 </div>
               )

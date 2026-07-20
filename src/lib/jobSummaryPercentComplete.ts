@@ -41,3 +41,17 @@ export function resolveJobSummaryPercentComplete(
 export function formatJobSummaryPercentComplete(pct: number | null): string {
   return pct == null ? '—' : `${pct}%`
 }
+
+/**
+ * The "%"-column fallback chain when no field report carries a % — paid invoices →
+ * Edit-Job pct_complete → null. Feeds the Cost Timeline's fallback value point so the
+ * chart's value series appears wherever the Job Summary % column shows a percent.
+ */
+export function resolveJobCurrentPercentFallback(job: {
+  pct_complete: number | null
+  invoices: Array<{ status: string | null; amount: number | null }> | null | undefined
+}): number | null {
+  return resolveJobSummaryPercentComplete(null, job.pct_complete, {
+    invoicesAllPaidWithAmount: jobInvoicesAllPaidWithAmount(job.invoices),
+  })
+}

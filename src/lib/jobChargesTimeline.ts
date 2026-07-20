@@ -265,6 +265,12 @@ export type JobChargesTimelineData = {
   /** Transitions where a payment lifted the profit line; consecutive rises merged. */
   paymentRiseSegments: JobPaymentRiseSegment[]
   valueSeriesAvailable: boolean
+  /**
+   * True when the value series exists only via `fallbackPercent` (no dated report carried a
+   * completion %): the last bucket got a single value point from the job's current percent —
+   * same fallback chain as the Job Summary "%" column (paid invoices / Edit-Job % done).
+   */
+  valueFromFallbackPercent: boolean
   hasUnknownDateBucket: boolean
 }
 
@@ -323,6 +329,13 @@ export function buildJobChargesTimelineChartData(
   valueEvents: JobValueEvent[],
   revenue: number | null,
   paymentEvents: JobPaymentEvent[] = [],
+  /**
+   * The job's resolved current completion % (the Job Summary "%"-column fallback chain:
+   * paid invoices → Edit-Job pct_complete). Used ONLY when no dated report carries a % —
+   * it puts a single value point on the LAST bucket so the value series (and its toggle)
+   * appears wherever the % column shows a percent. No 🚩 marker is faked.
+   */
+  fallbackPercent: number | null = null,
 ): JobChargesTimelineData {
   const bucketKey = (dateKey: string | null): string => dateKey ?? JOB_CHARGES_UNKNOWN_DATE_KEY
 
@@ -416,6 +429,25 @@ export function buildJobChargesTimelineChartData(
     else paymentRiseSegments.push({ from: i - 1, to: i })
   }
 
+  // No dated report carried a % — fall back to the job's resolved current percent
+  // (same chain as the Job Summary "%" column) as a single point on the last bucket.
+  let valueFromFallbackPercent = false
+  if (
+    revenueUsable &&
+    !sawPercentReport &&
+    fallbackPercent != null &&
+    Number.isFinite(fallbackPercent) &&
+    fallbackPercent >= 0 &&
+    fallbackPercent <= 100 &&
+    chartRows.length > 0
+  ) {
+    const last = chartRows[chartRows.length - 1]
+    if (last) {
+      last.value = Math.round((fallbackPercent / 100) * (revenue as number) * 100) / 100
+      valueFromFallbackPercent = true
+    }
+  }
+
   const endExpense = Math.round(runningExpense * 100) / 100
   const endPayments = Math.round(runningPayments * 100) / 100
   return {
@@ -424,7 +456,8 @@ export function buildJobChargesTimelineChartData(
     endPayments,
     endProfit: Math.round((endPayments - endExpense) * 100) / 100,
     paymentRiseSegments,
-    valueSeriesAvailable: revenueUsable && sawPercentReport,
+    valueSeriesAvailable: (revenueUsable && sawPercentReport) || valueFromFallbackPercent,
+    valueFromFallbackPercent,
     hasUnknownDateBucket,
   }
 }

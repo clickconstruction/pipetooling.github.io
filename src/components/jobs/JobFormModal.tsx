@@ -3579,8 +3579,8 @@ export default function JobFormModal({
                 { key: 'draft', frac: billingBar.draftFrac, color: DRAFT_COLOR },
               ]}
               rows={[
-                // Labels lead with where each segment ENDS on the bar (cumulative %),
-                // matching the Stages Progress & payment legend.
+                // Labels lead with each slice's OWN share of the job total (slices +
+                // the unbilled remainder sum to 100%), matching the Stages legend.
                 {
                   key: 'paid',
                   label: billingBar.hasBar ? `${Math.round(billingBar.paidFrac * 100)}% Paid` : 'Paid',
@@ -3590,7 +3590,7 @@ export default function JobFormModal({
                 {
                   key: 'billed',
                   label: billingBar.hasBar
-                    ? `${Math.round((billingBar.paidFrac + billingBar.billedFrac) * 100)}% Billed`
+                    ? `${Math.round(billingBar.billedFrac * 100)}% Billed`
                     : 'Billed',
                   value: billingBar.billedUnpaid,
                   dot: BILLED_COLOR,
@@ -3600,7 +3600,7 @@ export default function JobFormModal({
                       {
                         key: 'draft',
                         label: billingBar.hasBar
-                          ? `${Math.round((billingBar.paidFrac + billingBar.billedFrac + billingBar.draftFrac) * 100)}% Draft (not sent)`
+                          ? `${Math.round(billingBar.draftFrac * 100)}% Draft (not sent)`
                           : 'Draft (not sent)',
                         value: billingBar.draft,
                         dot: DRAFT_COLOR,
