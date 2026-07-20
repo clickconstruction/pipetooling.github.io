@@ -19,7 +19,7 @@ In the Dashboard's **Currently In** clock strip, every clocked-in person has a s
 
 ## Assigning someone to a job
 
-Click the add control in a person's cell for the day. The **Add job to schedule** modal opens:
+Click the add control in a person's cell for the day. The **Add job to schedule** modal opens. Type to filter, then press {{chip:gray|↓}} / {{chip:gray|↑}} to highlight a result and {{chip:gray|Enter}} to pick it — or when the search narrows to a single job, {{chip:gray|Enter}} picks it right away.
 
 :::example Add job to schedule
 Search: `Search HCP or job name`

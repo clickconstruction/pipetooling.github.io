@@ -41,6 +41,8 @@ export function ScheduleDispatchAssignJobPickerModal({
 }) {
   const searchRef = useRef<HTMLInputElement>(null)
   const [notComingInConfirming, setNotComingInConfirming] = useState(false)
+  /** Keyboard-highlighted result (-1 = none); ↓/↑ move it, Enter picks it, typing resets it. */
+  const [activeIndex, setActiveIndex] = useState(-1)
 
   useEffect(() => {
     if (!open) return
@@ -53,6 +55,26 @@ export function ScheduleDispatchAssignJobPickerModal({
   useEffect(() => {
     if (!open) setNotComingInConfirming(false)
   }, [open])
+
+  useEffect(() => {
+    setActiveIndex(-1)
+  }, [searchValue, open])
+
+  const moveActive = (delta: 1 | -1) => {
+    const n = jobRows.length
+    if (n === 0) return
+    // Functional update so held-down key repeats never read a stale index.
+    setActiveIndex((prev) => {
+      const cur = prev >= 0 && prev < n ? prev : -1
+      const next = cur < 0 ? (delta > 0 ? 0 : n - 1) : (cur + delta + n) % n
+      queueMicrotask(() =>
+        document
+          .getElementById(`assign-job-picker-option-${next}`)
+          ?.scrollIntoView({ block: 'nearest' }),
+      )
+      return next
+    })
+  }
 
   if (!open) return null
 
@@ -131,20 +153,61 @@ export function ScheduleDispatchAssignJobPickerModal({
           type="search"
           value={searchValue}
           onChange={(e) => onSearchChange(e.target.value)}
+          onKeyDown={(e) => {
+            if (jobRows.length === 0) return
+            if (e.key === 'ArrowDown') {
+              e.preventDefault()
+              moveActive(1)
+              return
+            }
+            if (e.key === 'ArrowUp') {
+              e.preventDefault()
+              moveActive(-1)
+              return
+            }
+            if (e.key === 'Enter') {
+              const row =
+                activeIndex >= 0 && activeIndex < jobRows.length
+                  ? jobRows[activeIndex]
+                  : jobRows.length === 1
+                    ? jobRows[0]
+                    : undefined
+              if (row) {
+                e.preventDefault()
+                onPickJob(row.id)
+              }
+            }
+          }}
           placeholder="Search HCP or job name"
           aria-label="Search jobs"
+          role="combobox"
+          aria-expanded={jobRows.length > 0}
+          aria-controls="assign-job-picker-results"
+          aria-activedescendant={
+            activeIndex >= 0 && activeIndex < jobRows.length
+              ? `assign-job-picker-option-${activeIndex}`
+              : undefined
+          }
+          aria-autocomplete="list"
           style={{ marginBottom: '0.75rem', padding: '0.4rem', fontSize: '0.875rem' }}
         />
         <div style={{ overflowY: 'auto', flex: 1, border: '1px solid var(--border)', borderRadius: 6 }}>
           {jobRows.length === 0 ? (
             <div style={{ padding: '1rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>No jobs match.</div>
           ) : (
-            <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
-              {jobRows.map((r) => (
-                <li key={r.id} style={{ borderBottom: '1px solid var(--border)' }}>
+            <ul id="assign-job-picker-results" role="listbox" aria-label="Matching jobs" style={{ listStyle: 'none', margin: 0, padding: 0 }}>
+              {jobRows.map((r, idx) => (
+                <li
+                  key={r.id}
+                  id={`assign-job-picker-option-${idx}`}
+                  role="option"
+                  aria-selected={idx === activeIndex}
+                  style={{ borderBottom: '1px solid var(--border)' }}
+                >
                   <button
                     type="button"
                     onClick={() => onPickJob(r.id)}
+                    tabIndex={-1}
                     aria-label={
                       r.sessionToday ? `${r.displayTitle}, clocked today` : r.displayTitle
                     }
@@ -154,6 +217,7 @@ export function ScheduleDispatchAssignJobPickerModal({
                       padding: '0.55rem 0.75rem',
                       border: 'none',
                       background: r.sessionToday ? 'var(--bg-blue-tint)' : 'var(--surface)',
+                      boxShadow: idx === activeIndex ? 'inset 0 0 0 2px #2563eb' : undefined,
                       cursor: 'pointer',
                       fontSize: '0.875rem',
                       display: 'flex',

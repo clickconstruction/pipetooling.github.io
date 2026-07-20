@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-20 (v2.793)
+last_updated: 2026-07-20 (v2.794)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.794)
+
+### Dispatch "Add job to schedule" picker: arrow-key navigation + Enter to pick (2026-07-20)
+[`ScheduleDispatchAssignJobPickerModal`](../src/components/schedule/ScheduleDispatchAssignJobPickerModal.tsx) (opened from the Dispatch hub toolbar "+", People-grid cell adds, and the Day view) now supports keyboard selection while typing: ↓/↑ move a wrapping highlight through the filtered jobs (inset blue ring; functional state update so held key repeats never skip; scrolled into view), Enter picks the highlighted job, and — when the search narrows to exactly one match — Enter picks it with no highlight needed. Typing keeps the cursor in the search box and resets the highlight. Combobox a11y (`role="combobox"`, `aria-activedescendant`, `role="option"`/`aria-selected`). Verified live on the hub: type "reliant" → two rapid ↓ landed on the second result → Enter picked it and armed placement mode (canceled; nothing written); typing after arrows cleared the highlight. Help guide `schedule-dispatch.md` updated.
 
 ## Latest Updates (v2.793)
 
