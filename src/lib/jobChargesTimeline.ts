@@ -280,44 +280,41 @@ export function formatJobChargesDateLabel(dateKey: string, lastYear: number | nu
   return base
 }
 
-/** Left (costs + value) and right (profit) Y-axis domains for the dual-axis chart. */
+/** Left (cost + profit) and right (value created) Y-axis domains for the chart. */
 export type ChargesTimelineAxisDomains = {
-  /** Costs / value-created axis — big cumulative dollars, never meaningfully negative. */
+  /** Cost-to-date + profit axis — same scale family (profit = payments − cost); can be negative. */
   left: [number, number]
-  /** Profit axis — small magnitude, can be negative. */
+  /** Value-created axis (report % × revenue) — shown only when the user toggles it on. */
   right: [number, number]
 }
 
 /**
- * Compute the two Y-axis domains so the $0 gridline lands at the SAME height on
- * both axes (otherwise dual-axis crossings lie). The below-zero fraction comes
- * from the profit series and is capped at 0.5 so the costs/value lines always
- * keep at least half the plot height even when the job is all cost, no payments
- * (there profit = −costs and the two lines mirror around the midline). Padding
- * matches the old single-axis domain (×1.15 + $5 headroom each side).
+ * Compute the two Y-axis domains. Cost and profit share the LEFT axis — they are
+ * the same scale family (profit = payments − cost), so no cross-scale tricks are
+ * needed there. Value created (0 → revenue, often much larger) gets the RIGHT
+ * axis, whose domain is stretched below zero so the $0 gridline lands at the
+ * SAME height on both axes (otherwise dual-axis crossings lie). Padding matches
+ * the old single-axis domain (×1.15 + $5 headroom each side).
  */
 export function computeChargesTimelineAxisDomains(
   rows: Array<Pick<JobChargesTimelineChartRow, 'expense' | 'profit' | 'value'>>,
 ): ChargesTimelineAxisDomains {
-  let maxDollars = 0
-  let minProfit = 0
-  let maxProfit = 0
+  let maxLeft = 0
+  let minLeft = 0
+  let maxValue = 0
   for (const r of rows) {
-    if (r.expense > maxDollars) maxDollars = r.expense
-    if (r.value != null && r.value > maxDollars) maxDollars = r.value
-    if (r.profit < minProfit) minProfit = r.profit
-    if (r.profit > maxProfit) maxProfit = r.profit
+    if (r.expense > maxLeft) maxLeft = r.expense
+    if (r.profit > maxLeft) maxLeft = r.profit
+    if (r.profit < minLeft) minLeft = r.profit
+    if (r.value != null && r.value > maxValue) maxValue = r.value
   }
-  const left1 = maxDollars * 1.15 + 5
-  let right1 = maxProfit * 1.15 + 5
-  const right0 = minProfit * 1.15 - 5
-  // Fraction of the right axis sitting below $0; cap at one half.
-  let f = -right0 / (right1 - right0)
-  if (f > 0.5) {
-    right1 = -right0
-    f = 0.5
-  }
-  const left0 = (-f / (1 - f)) * left1
+  const left1 = maxLeft * 1.15 + 5
+  const left0 = minLeft * 1.15 - 5
+  // Fraction of the left axis sitting below $0 (left1 ≥ 5 keeps this < 1);
+  // the right axis mirrors it so the shared $0 gridline is truthful for both.
+  const f = -left0 / (left1 - left0)
+  const right1 = maxValue * 1.15 + 5
+  const right0 = (-f / (1 - f)) * right1
   return { left: [left0, left1], right: [right0, right1] }
 }
 
