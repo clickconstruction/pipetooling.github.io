@@ -9,6 +9,7 @@ const minimalLimitedJob = (): LimitedJobDetailSnapshot => ({
   job_name: 'Test Plaza',
   job_address: '100 Main St, Austin, TX 78701',
   google_drive_link: null,
+  job_pictures_link: null,
   job_plans_link: null,
   revenue: 2500.5,
   project_id: null,

@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-20 (v2.806)
+last_updated: 2026-07-20 (v2.807)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.807)
+
+### Job Detail: Customer Photos link joins the Files/Plans row (2026-07-20)
+[`DetailJobModal`](../src/components/jobs/DetailJobModal.tsx)'s Files/Plans row previously showed only "Customer Files" (`google_drive_link`) and "Job Plans" (`job_plans_link`) — the separate `job_pictures_link` (the blue/red 📷 field used across Dashboard rows) was neither fetched nor rendered. Now a **"Customer Photos" / Open photos** button renders between Customer Files and Job Plans (hidden when the job has no link). Plumbing: `job_pictures_link` added to the limited-detail select + `LimitedJobDetailSnapshot` (AIA template test fixture updated), optional field on `DetailJobModalAssignedJobRow` with the context mapper populating it from `JobWithDetails`, and both render sites pass it. Verified live (857 · TJ Brace: Photos button to the right of the Drive button). Read-only addition; no behavior change elsewhere.
 
 ## Latest Updates (v2.806)
 

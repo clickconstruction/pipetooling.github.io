@@ -5,6 +5,7 @@ export type LimitedJobDetailSnapshot = {
   job_name: string
   job_address: string
   google_drive_link: string | null
+  job_pictures_link: string | null
   job_plans_link: string | null
   revenue: number | null
   project_id: string | null
