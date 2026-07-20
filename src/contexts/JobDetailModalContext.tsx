@@ -41,6 +41,7 @@ function mapJobsToAssignedRows(jobs: JobWithDetails[]): DetailJobModalAssignedJo
     job_name: j.job_name ?? '',
     job_address: j.job_address ?? '',
     google_drive_link: j.google_drive_link,
+    job_pictures_link: j.job_pictures_link,
     job_plans_link: j.job_plans_link,
     revenue: j.revenue != null ? Number(j.revenue) : null,
     project_id: j.project_id,

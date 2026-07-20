@@ -70,6 +70,7 @@ export type DetailJobModalAssignedJobRow = {
   job_name: string
   job_address: string
   google_drive_link: string | null
+  job_pictures_link?: string | null
   job_plans_link: string | null
   revenue: number | null
   project_id?: string | null
@@ -337,14 +338,17 @@ const detailJobFilesPlansButtonStyle: CSSProperties = {
 
 function DetailJobModalFilesPlansRow({
   googleDriveLink,
+  jobPicturesLink,
   jobPlansLink,
 }: {
   googleDriveLink: string | null | undefined
+  jobPicturesLink: string | null | undefined
   jobPlansLink: string | null | undefined
 }) {
   const drive = googleDriveLink?.trim() ?? ''
+  const pictures = jobPicturesLink?.trim() ?? ''
   const plans = jobPlansLink?.trim() ?? ''
-  if (!drive && !plans) return null
+  if (!drive && !pictures && !plans) return null
   return (
     <div
       style={{
@@ -360,6 +364,14 @@ function DetailJobModalFilesPlansRow({
           <div style={{ fontSize: '0.8125rem', fontWeight: 500, color: 'var(--text-muted)', marginBottom: 6 }}>Customer Files</div>
           <button type="button" onClick={() => openInExternalBrowser(drive)} style={detailJobFilesPlansButtonStyle}>
             Open Drive folder
+          </button>
+        </div>
+      ) : null}
+      {pictures ? (
+        <div style={{ minWidth: 0, textAlign: 'center' }}>
+          <div style={{ fontSize: '0.8125rem', fontWeight: 500, color: 'var(--text-muted)', marginBottom: 6 }}>Customer Photos</div>
+          <button type="button" onClick={() => openInExternalBrowser(pictures)} style={detailJobFilesPlansButtonStyle}>
+            Open photos
           </button>
         </div>
       ) : null}
@@ -387,6 +399,7 @@ function mergeLimitedFromAssignedAndLedger(
     job_name: assigned.job_name,
     job_address: assigned.job_address,
     google_drive_link: assigned.google_drive_link,
+    job_pictures_link: assigned.job_pictures_link ?? null,
     job_plans_link: assigned.job_plans_link,
     revenue: assigned.revenue,
     project_id: assigned.project_id ?? null,
@@ -407,7 +420,7 @@ async function fetchLimitedLedgerRow(jobId: string): Promise<LimitedJobDetailSna
         await supabase
           .from('jobs_ledger')
           .select(
-            'id, hcp_number, job_name, job_address, google_drive_link, job_plans_link, revenue, project_id, customer_name, customer_email, customer_phone, last_bill_date, last_work_date, status, service_types:service_type_id(name)',
+            'id, hcp_number, job_name, job_address, google_drive_link, job_pictures_link, job_plans_link, revenue, project_id, customer_name, customer_email, customer_phone, last_bill_date, last_work_date, status, service_types:service_type_id(name)',
           )
           .eq('id', jobId)
           .maybeSingle(),
@@ -420,6 +433,7 @@ async function fetchLimitedLedgerRow(jobId: string): Promise<LimitedJobDetailSna
       job_name: string
       job_address: string
       google_drive_link: string | null
+      job_pictures_link: string | null
       job_plans_link: string | null
       revenue: number | null
       project_id: string | null
@@ -1223,7 +1237,7 @@ export default function DetailJobModal({
             </div>
 
 
-            <DetailJobModalFilesPlansRow googleDriveLink={fullJob.google_drive_link} jobPlansLink={fullJob.job_plans_link} />
+            <DetailJobModalFilesPlansRow googleDriveLink={fullJob.google_drive_link} jobPicturesLink={fullJob.job_pictures_link} jobPlansLink={fullJob.job_plans_link} />
 
             <div style={{ marginTop: '1rem' }}>
               <div style={{ fontWeight: 600, fontSize: '0.9375rem', marginBottom: '0.5rem' }}>Assigned Team</div>
@@ -1517,7 +1531,7 @@ export default function DetailJobModal({
               </DetailRow>
             </div>
 
-            <DetailJobModalFilesPlansRow googleDriveLink={limitedJob.google_drive_link} jobPlansLink={limitedJob.job_plans_link} />
+            <DetailJobModalFilesPlansRow googleDriveLink={limitedJob.google_drive_link} jobPicturesLink={limitedJob.job_pictures_link} jobPlansLink={limitedJob.job_plans_link} />
 
             {showMaterialsCostSection ? (
               <JobDetailMaterialsCostSection
