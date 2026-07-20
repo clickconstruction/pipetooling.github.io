@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-19 (v2.762)
+last_updated: 2026-07-19 (v2.763)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.763)
+
+### App-wide — slimmer page-tab pills, same click target (2026-07-19)
+The page tab bars (Jobs / People / Materials / Estimates / Banking / Projects / Settings / Documents / Prospects / Tally and friends — everything on the shared [`pageTabStyle`](../src/lib/pageTabStyle.ts)) keep their exact clickable area but the active tab's blue pill reads noticeably shorter. Technique: half of each side's 12px vertical padding moves into a **transparent border** and `backgroundClip: 'padding-box'` keeps the fill inside it — the hit target stays content + 24px (verified by measurement: 42px button, 30px visible pill, top/bottom edges still clickable), only the paint shrinks. Fixed px (6px border + 6px padding = the original 0.75rem per side exactly) so browser border-snapping can't shave the target.
 
 ## Latest Updates (v2.762)
 
