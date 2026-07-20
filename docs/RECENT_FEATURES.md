@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-19 (v2.767)
+last_updated: 2026-07-20 (v2.768)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.768)
+
+### Edit Job — empty Progress & payment bar says what to do, not what's missing (2026-07-20)
+When a job has no line items yet, the Edit-Job **Progress & payment** bar's top-right readout said **"no bid value"** — leftover Stages language that read like a missing document (plenty of jobs never had a bid; since v2.755 the job total is set by **line items**, step ①, right below the bar). It now says **"Job total: add a line item to set it"**, and the bar tooltip points at the Line items list specifically. [`MoneyLifecycleBar`](../src/components/jobs/MoneyLifecycleBar.tsx) is used only by the Edit-Job modal, so nothing else changes; the Stages cell's own `no bid value` copy ([`StagesProgressPaymentCell`](../src/components/jobs/StagesProgressPaymentCell.tsx)) is intentionally untouched — you can't add line items from the Stages table, so an imperative there would mislead.
 
 ## Latest Updates (v2.767)
 
