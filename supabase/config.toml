@@ -482,6 +482,10 @@ verify_jwt = false
 [functions.geocode-one]
 verify_jwt = false
 
+# Day-view travel hints (Option B): routed drive times between consecutive scheduled jobs via Google Routes; reads/fills public.job_travel_times. JWT + scheduling role in function. Needs GOOGLE_MAPS_API_KEY.
+[functions.travel-time-batch]
+verify_jwt = false
+
 # GSA federal per-diem lookup by ZIP for the Bids Travel section; caches into public.gsa_per_diem_cache. JWT + role in (dev, master_technician, assistant, estimator) in function. Needs GSA_API_KEY secret.
 [functions.gsa-per-diem]
 verify_jwt = false

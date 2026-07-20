@@ -12,6 +12,14 @@ import {
 import { filterRosterByQuery } from '../../lib/dispatchSettingsPeopleSearch'
 import { ChipsWithSearchPicker, type ChipsWithSearchPickerOption } from './ChipsWithSearchPicker'
 import { formatErrorMessage } from '../../utils/errorHandling'
+import { useAuth } from '../../hooks/useAuth'
+import {
+  loadTravelHintsConfig,
+  TRAVEL_HINTS_CONFIG_CHANGED_EVENT,
+  TRAVEL_HINTS_DEFAULTS,
+  upsertTravelHintsConfig,
+  type TravelHintsConfig,
+} from '../../lib/travelHintsConfig'
 
 export type DispatchSettingsModalRosterRow = {
   userId: string
@@ -32,6 +40,10 @@ export function DispatchSettingsModal({
 }) {
   const { showToast } = useToastContext()
   const { config, reload } = useDispatchNoteRequirements()
+  const { role } = useAuth()
+  /** app_settings writes are dev-only per RLS, so the Travel section renders for devs only. */
+  const isDev = role === 'dev'
+  const [travel, setTravel] = useState<TravelHintsConfig>(TRAVEL_HINTS_DEFAULTS)
 
   const [requireIds, setRequireIds] = useState<string[]>([])
   const [skipIds, setSkipIds] = useState<string[]>([])
@@ -48,6 +60,17 @@ export function DispatchSettingsModal({
     setError(null)
     setBusy(false)
   }, [open, config])
+
+  useEffect(() => {
+    if (!open || !isDev) return
+    let cancelled = false
+    void loadTravelHintsConfig().then((c) => {
+      if (!cancelled) setTravel(c)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [open, isDev])
 
   // Resolve labels for any job ids already saved in config so the chips render the same labels
   // we'd see if the user searched for those jobs. Uses `get_jobs_ledger_by_ids` (broad-access
@@ -140,15 +163,20 @@ export function DispatchSettingsModal({
         skip_note_job_ids: skipJobIds,
       }
       await upsertDispatchNoteRequirementsConfigToAppSettings(next)
+      if (isDev) {
+        const { error: travelErr } = await upsertTravelHintsConfig(travel)
+        if (travelErr) throw new Error(travelErr)
+        window.dispatchEvent(new Event(TRAVEL_HINTS_CONFIG_CHANGED_EVENT))
+      }
       await reload()
-      showToast('Dispatch note settings saved.', 'success')
+      showToast('Dispatch settings saved.', 'success')
       onClose()
     } catch (err) {
       setError(formatErrorMessage(err))
     } finally {
       setBusy(false)
     }
-  }, [requireIds, skipIds, skipJobIds, reload, showToast, onClose])
+  }, [requireIds, skipIds, skipJobIds, reload, showToast, onClose, isDev, travel])
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
@@ -285,6 +313,54 @@ export function DispatchSettingsModal({
             disabled={busy}
           />
         </div>
+
+        {isDev ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, borderTop: '1px solid var(--border)', paddingTop: '0.75rem' }}>
+            <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-strong)' }}>
+              Travel time hints (Day view)
+            </span>
+            <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+              🚗 chips between a person&rsquo;s jobs and red dots on impossible back-to-backs. Live
+              routing asks Google for real drive times and falls back to the straight-line minimum
+              whenever routing is unavailable.
+            </p>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.875rem', color: 'var(--text-700)' }}>
+              <input
+                type="checkbox"
+                checked={travel.enabled}
+                disabled={busy}
+                onChange={(e) => setTravel((t) => ({ ...t, enabled: e.target.checked }))}
+              />
+              Show travel time hints
+            </label>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.875rem', color: 'var(--text-700)' }}>
+              Assumed average speed
+              <input
+                type="number"
+                min={5}
+                max={90}
+                step={5}
+                value={travel.assumedMph}
+                disabled={busy || !travel.enabled}
+                onChange={(e) => {
+                  const v = Number(e.target.value)
+                  setTravel((t) => ({ ...t, assumedMph: Number.isFinite(v) ? Math.min(90, Math.max(5, v)) : t.assumedMph }))
+                }}
+                style={{ width: 70, padding: '0.25rem 0.35rem', fontSize: '0.875rem' }}
+              />
+              mph (straight-line estimate)
+            </label>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.875rem', color: 'var(--text-700)' }}>
+              <input
+                type="checkbox"
+                checked={travel.useRouting}
+                disabled={busy || !travel.enabled}
+                onChange={(e) => setTravel((t) => ({ ...t, useRouting: e.target.checked }))}
+              />
+              Use live routing (Google) with straight-line fallback
+            </label>
+          </div>
+        ) : null}
 
         {error ? (
           <p style={{ color: 'var(--text-red-700)', fontSize: '0.875rem', margin: 0, whiteSpace: 'pre-wrap' }}>

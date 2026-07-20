@@ -110,4 +110,37 @@ describe('buildDayTravelGaps', () => {
     expect(gaps[0]!.fromJobId).toBe('jobA')
     expect(gaps[0]!.toJobId).toBe('jobB')
   })
+
+  it('a higher assumed mph shrinks the straight-line estimate', () => {
+    const slow = buildDayTravelGaps(
+      [blk('b1', 'jobA', 480, 600), blk('b2', 'jobB', 720, 840)],
+      coords,
+      { mph: 20 },
+    )
+    const fast = buildDayTravelGaps(
+      [blk('b1', 'jobA', 480, 600), blk('b2', 'jobB', 720, 840)],
+      coords,
+      { mph: 60 },
+    )
+    expect(fast[0]!.estimate.minutes).toBeLessThan(slow[0]!.estimate.minutes)
+  })
+
+  it('routed estimates win over straight-line, missing pairs fall back', () => {
+    const routed = new Map([
+      ['jobA|jobB', { minutes: 52, meters: 61000, source: 'routed' as const }],
+    ])
+    const gaps = buildDayTravelGaps(
+      [blk('b1', 'jobA', 480, 600), blk('b2', 'jobB', 720, 840)],
+      coords,
+      { routedByPairKey: routed },
+    )
+    expect(gaps[0]!.estimate.source).toBe('routed')
+    expect(gaps[0]!.estimate.minutes).toBe(52)
+    const fallback = buildDayTravelGaps(
+      [blk('b1', 'jobA', 480, 600), blk('b2', 'jobB', 720, 840)],
+      coords,
+      { routedByPairKey: new Map() },
+    )
+    expect(fallback[0]!.estimate.source).toBe('straightline')
+  })
 })

@@ -42,16 +42,17 @@ export function haversineMeters(a: LatLng, b: LatLng): number {
 }
 
 /** Minimum drive minutes for a straight-line distance; 0 when effectively the same site. */
-export function straightLineDriveMinutes(meters: number): number {
+export function straightLineDriveMinutes(meters: number, mph: number = TRAVEL_ASSUMED_MPH): number {
   if (!Number.isFinite(meters) || meters <= TRAVEL_SAME_SITE_METERS) return 0
+  const speed = Number.isFinite(mph) && mph > 0 ? mph : TRAVEL_ASSUMED_MPH
   const roadMeters = meters * TRAVEL_ROAD_WINDING_FACTOR
-  const metersPerMinute = (TRAVEL_ASSUMED_MPH * METERS_PER_MILE) / 60
+  const metersPerMinute = (speed * METERS_PER_MILE) / 60
   return Math.ceil(roadMeters / metersPerMinute)
 }
 
-export function estimateTravelBetween(a: LatLng, b: LatLng): TravelEstimate {
+export function estimateTravelBetween(a: LatLng, b: LatLng, mph?: number): TravelEstimate {
   const meters = haversineMeters(a, b)
-  return { minutes: straightLineDriveMinutes(meters), meters, source: 'straightline' }
+  return { minutes: straightLineDriveMinutes(meters, mph), meters, source: 'straightline' }
 }
 
 export type TravelGapBlock = {
@@ -78,6 +79,16 @@ export type DayTravelGap = {
   gapEndMin: number
 }
 
+export type BuildDayTravelGapsOptions = {
+  /** Assumed average speed for the straight-line fallback (org setting). */
+  mph?: number
+  /**
+   * Option B routed estimates keyed `${fromJobId}|${toJobId}`; when a pair is
+   * present it wins over the straight-line estimate (falls back otherwise).
+   */
+  routedByPairKey?: ReadonlyMap<string, TravelEstimate>
+}
+
 /**
  * Consecutive-pair travel gaps for one person's day. Pairs are skipped when:
  * same job (no travel), either job has no coordinates, or the drive rounds
@@ -86,6 +97,7 @@ export type DayTravelGap = {
 export function buildDayTravelGaps(
   blocks: readonly TravelGapBlock[],
   coordsByJobId: ReadonlyMap<string, LatLng>,
+  options?: BuildDayTravelGapsOptions,
 ): DayTravelGap[] {
   const sorted = [...blocks].sort((a, b) => a.startMin - b.startMin || a.endMin - b.endMin)
   const out: DayTravelGap[] = []
@@ -97,7 +109,9 @@ export function buildDayTravelGaps(
     const a = coordsByJobId.get(from.jobId)
     const b = coordsByJobId.get(to.jobId)
     if (!a || !b) continue
-    const estimate = estimateTravelBetween(a, b)
+    const routed = options?.routedByPairKey?.get(`${from.jobId}|${to.jobId}`)
+    const estimate =
+      routed && routed.minutes > 0 ? routed : estimateTravelBetween(a, b, options?.mph)
     if (estimate.minutes <= 0) continue
     const gapMinutes = Math.max(0, to.startMin - from.endMin)
     const touching = to.startMin <= from.endMin

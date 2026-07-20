@@ -48,7 +48,7 @@ Two jobs meet at 2:30 PM under one dot. Hold the dot — the second job now star
 
 ## Travel-time hints on the Day view
 
-When two of a person's jobs have known locations, the Day view estimates the minimum drive between them (straight-line distance with a road factor — real traffic can only be worse):
+When two of a person's jobs have known locations, the Day view estimates the drive between them. By default that's a straight-line minimum (real traffic can only be worse, shown as {{chip:gray|🚗 ≥18m}}); with live routing on, it's a real road estimate (shown as {{chip:gray|🚗 ~22m}}) that quietly falls back to the straight-line number whenever routing is unavailable. Devs control all of this under {{button:secondary|Dispatch Settings}} → **Travel time hints**: turn hints on/off, set the assumed average speed, and enable live routing.
 
 - An open gap between jobs shows a 🚗 chip like {{chip:gray|🚗 ≥18m}} — red when the gap is shorter than the drive.
 - Back-to-back jobs that are far apart turn their connecting dot **red**; hover it for the estimate.

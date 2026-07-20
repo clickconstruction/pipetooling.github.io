@@ -5,7 +5,7 @@ file: MIGRATIONS.md
 type: Reference/Changelog
 purpose: Complete database migration history organized by date and category
 audience: Developers, Database Administrators, AI Agents
-last_updated: 2026-07-18
+last_updated: 2026-07-20
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate to Advanced
 
@@ -102,6 +102,14 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 > **Reading older entries:** filenames beginning **`2027…`** are **typo-dated** (the real work happened March–June 2026). All of them predate the **2026-06-04 baseline squash** — the files now live in [`supabase/archive/migrations-pre-baseline/`](../supabase/archive/migrations-pre-baseline/) and their schema is part of [`20250101000000_baseline.sql`](../supabase/migrations/20250101000000_baseline.sql). Entries below keep the original filenames so they match the archive. The prod ledger was fully reconciled on **2026-07-04** (backup: `supabase_migrations._schema_migrations_backup_20260704`); since then, migrations apply **only** via `supabase db push` (see `CLAUDE.md`).
 
 ### July 2026
+
+#### July 20, 2026
+
+**`20260720202447_job_travel_times.sql`** _(apply via `supabase db push` after the file is on `main`)_
+- **Purpose**: **Day-view travel hints, Option B cache** (v2.801). New table `job_travel_times` — routed drive-time cache between two jobs: `(from_job_id, to_job_id)` PK (both FK → `jobs_ledger` ON DELETE CASCADE), `duration_seconds`, `distance_meters`, `source` (default `google_routes`), `computed_at`. Written ONLY by the `travel-time-batch` edge function's service-role client (7-day TTL there); clients read it. The Day view falls back to the client-side straight-line estimate (`src/lib/jobTravelEstimate.ts`) for any pair not present.
+- **RLS**: SELECT for all `authenticated` (travel hints render wherever the Day schedule renders); deliberately NO insert/update/delete policies — service-role-only writes. Footer runs BOTH `apply_read_only_write_blocks()` and `apply_read_only_stmt_blocks()`.
+- **Ordering**: apply BEFORE deploying the `travel-time-batch` edge function (the function reads/upserts the table). The client is safe in any order — routing is opt-in via Dispatch Settings and falls back to straight-line when the function/table is missing.
+- **Category**: Schedule dispatch / feature
 
 #### July 19, 2026
 
