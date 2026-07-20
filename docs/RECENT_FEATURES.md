@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-20 (v2.798)
+last_updated: 2026-07-20 (v2.799)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.799)
+
+### Schedule Day view: day nav reads "← Previous Day · date · Next Day →" (2026-07-20)
+The Day-view nav row in [`QuickfillScheduleSection`](../src/components/quickfill/QuickfillScheduleSection.tsx) reorders from "date · Previous day · Next day" to arrow-flanked: **← Previous Day**, then the day label, then **Next Day →** (matching the week nav's arrow pattern); Dispatch / Today / Visible-hours keep their spots after. Shared component, so Quickfill → Schedule matches. Verified live. Copy/layout only.
 
 ## Latest Updates (v2.798)
 

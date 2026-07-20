@@ -896,7 +896,6 @@ export function QuickfillScheduleSection({
           fontSize: '0.875rem',
         }}
       >
-        <span style={{ color: 'var(--text-700)', fontWeight: 600 }}>{dayLabel}</span>
         <button
           type="button"
           onClick={() => setWorkDate((d) => ymdAddDays(d, -1))}
@@ -909,8 +908,9 @@ export function QuickfillScheduleSection({
             cursor: 'pointer',
           }}
         >
-          Previous day
+          ← Previous Day
         </button>
+        <span style={{ color: 'var(--text-700)', fontWeight: 600 }}>{dayLabel}</span>
         <button
           type="button"
           onClick={() => setWorkDate((d) => ymdAddDays(d, 1))}
@@ -923,7 +923,7 @@ export function QuickfillScheduleSection({
             cursor: 'pointer',
           }}
         >
-          Next day
+          Next Day →
         </button>
         <Link
           to={scheduleDispatchHref}
