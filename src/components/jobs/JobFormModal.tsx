@@ -2680,6 +2680,27 @@ export default function JobFormModal({
               />
             </div>
             <div style={{ flex: 1, minWidth: 200 }}>
+              <label
+                htmlFor="job-form-service-type"
+                style={{ display: 'block', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}
+              >
+                Service type <span style={{ color: 'var(--text-red-700)' }}>*</span>
+              </label>
+              <SearchableSelect
+                id="job-form-service-type"
+                value={formServiceTypeId}
+                onChange={setFormServiceTypeId}
+                options={jobFormServiceTypeSelectOptions.map((st) => ({ value: st.id, label: st.name }))}
+                emptyOption={{ value: '', label: 'Select service type…' }}
+                placeholder="Select service type…"
+                required
+                listAriaLabel="Service type"
+                disabled={jobFormServiceTypeSelectOptions.length === 0}
+              />
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+            <div style={{ flex: 1, minWidth: 200 }}>
               <label style={{ display: 'block', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}>Job Name <span style={{ color: 'var(--text-red-700)' }}>*</span></label>
               <div style={{ ...JOB_FIELD_CLIPBOARD_WRAPPER_STYLE, position: 'relative' }}>
                 <input
@@ -2712,27 +2733,6 @@ export default function JobFormModal({
                   <ClipboardPasteGlyph />
                 </button>
               </div>
-            </div>
-          </div>
-          <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-            <div style={{ flex: 1, minWidth: 200 }}>
-              <label
-                htmlFor="job-form-service-type"
-                style={{ display: 'block', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}
-              >
-                Service type <span style={{ color: 'var(--text-red-700)' }}>*</span>
-              </label>
-              <SearchableSelect
-                id="job-form-service-type"
-                value={formServiceTypeId}
-                onChange={setFormServiceTypeId}
-                options={jobFormServiceTypeSelectOptions.map((st) => ({ value: st.id, label: st.name }))}
-                emptyOption={{ value: '', label: 'Select service type…' }}
-                placeholder="Select service type…"
-                required
-                listAriaLabel="Service type"
-                disabled={jobFormServiceTypeSelectOptions.length === 0}
-              />
             </div>
           </div>
           <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'flex-end' }}>
@@ -3351,9 +3351,6 @@ export default function JobFormModal({
           <div style={{ marginBottom: '1rem' }}>
             <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.5rem' }}>
               <span style={{ fontWeight: 600, fontSize: '0.9375rem', color: 'var(--text-700)' }}>Billing</span>
-              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                Line items set the total · Invoices are bills you send · Payments are money received
-              </span>
             </div>
             <MoneyLifecycleBar
               hasBar={billingBar.hasBar}
