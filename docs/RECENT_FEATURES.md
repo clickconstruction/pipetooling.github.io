@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-20 (v2.796)
+last_updated: 2026-07-20 (v2.797)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.797)
+
+### Dispatch: Share button moves into the tab bar, left of Dispatch Settings (2026-07-20)
+The Share button (the hub's `weekNavRightSlot`) previously rode the week-nav row (and, after v2.795, a standalone right-aligned row on the Day tab). It now renders inside the People/Jobs/Day tab bar in a right-aligned cluster — Share first, then Dispatch Settings — in [`ScheduleDispatchHub`](../src/components/schedule/ScheduleDispatchHub.tsx), so it sits in the same place on every tab. The week nav below the tabs no longer carries a right slot when the tab bar is shown (the no-tabs Quickfill-tomorrow embed keeps the old slot placement). Verified live on Day and People tabs: Share and Dispatch Settings share a row, Share on the left. Layout-only.
 
 ## Latest Updates (v2.796)
 
