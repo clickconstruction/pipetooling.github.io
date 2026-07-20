@@ -34,6 +34,12 @@ export type MoneyDecimalAmountInputProps = {
   style?: CSSProperties
   /** When true, shows formatted value and does not accept edits. */
   readOnly?: boolean
+  /**
+   * Commit on every keystroke instead of only on blur, so live-derived readouts
+   * (job total, billing bar, break-off slider) move as the user types. Only for
+   * consumers whose onChange is pure client state — never one that persists.
+   */
+  commitOnType?: boolean
 }
 
 export function MoneyDecimalAmountInput({
@@ -44,6 +50,7 @@ export function MoneyDecimalAmountInput({
   id,
   style,
   readOnly = false,
+  commitOnType = false,
 }: MoneyDecimalAmountInputProps) {
   const [focused, setFocused] = useState(false)
   const [draft, setDraft] = useState('')
@@ -81,7 +88,9 @@ export function MoneyDecimalAmountInput({
       }}
       onChange={(e) => {
         if (readOnly) return
-        setDraft(sanitizeMoneyTyping(e.target.value))
+        const next = sanitizeMoneyTyping(e.target.value)
+        setDraft(next)
+        if (commitOnType) onChange(parseMoneyInputToNumber(next))
       }}
       style={
         readOnly

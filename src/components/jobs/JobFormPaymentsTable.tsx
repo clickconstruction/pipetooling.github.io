@@ -336,6 +336,7 @@ export function JobFormPaymentsTable({
                       <MoneyDecimalAmountInput
                         value={row.amount}
                         onChange={(amount) => updatePaymentRow(row.id, { amount })}
+                        commitOnType
                         placeholder="0"
                         aria-label="Payment amount"
                         style={{

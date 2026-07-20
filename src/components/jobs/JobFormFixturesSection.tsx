@@ -73,7 +73,7 @@ export function JobFormFixturesSection({
           >
             <div style={{ fontWeight: 600, fontSize: '0.9375rem', color: 'var(--text-700)', marginBottom: '0.15rem' }}>① Line Items</div>
             <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.75rem' }}>
-              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Fixtures / tie-ins / repair. Each line adds to the <strong>Job Total</strong> — this is what the job is worth.</span>
+              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Fixtures / tie-ins / repair. The work we agree to do, each line adds to the <strong>Job Total</strong></span>
               <span
                 aria-live="polite"
                 title="Running total of the line items below."
@@ -210,6 +210,7 @@ export function JobFormFixturesSection({
                             <MoneyDecimalAmountInput
                               value={row.line_unit_price ?? 0}
                               onChange={(n) => updateFixtureRow(row.id, { line_unit_price: n === 0 ? null : n })}
+                              commitOnType
                               placeholder="—"
                               aria-label="Unit price"
                               style={{

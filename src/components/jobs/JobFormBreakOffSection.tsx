@@ -397,11 +397,7 @@ export function JobFormBreakOffSection({
                         </div>
                       </div>
                     </div>
-                  ) : (
-                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', lineHeight: 1.4 }}>
-                      Add Specific Work lines to set Job Total for this chart.
-                    </div>
-                  )}
+                  ) : null}
                   {breakOffBillingTrackPercents.hasTotal ? (
                     <div
                       role="group"
