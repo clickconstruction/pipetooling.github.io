@@ -36,7 +36,7 @@ Each block can carry a note: click the pencil ("Edit block note") to open the **
 
 ## Adjusting times on the Day view
 
-On the **Day** view, every scheduled job bar has an orange dot at its start and end. If you can edit the schedule, drag a dot left or right to change that time — it snaps to 15-minute steps and saves when you let go. A job can never shrink below 30 minutes.
+On the **Day** view, every scheduled job bar has an orange dot at its start and end. If you can edit the schedule, drag a dot left or right to change that time — it snaps to 15-minute steps and **auto-saves about 2 seconds after your last touch**, updating the People and Jobs views too. A job can never shrink below 30 minutes. (Switching tabs before the auto-save fires still saves your change first.)
 
 - **Two jobs touching** share one bigger dot connecting them. Dragging it moves the end of the first job and the start of the second together, so they stay touching.
 - **Click and hold** that shared dot to separate them: the later job jumps 15 minutes later without extending its end.

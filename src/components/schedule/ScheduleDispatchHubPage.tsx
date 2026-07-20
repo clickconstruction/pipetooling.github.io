@@ -1807,6 +1807,7 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
             weekNavDateRangeOverride={dispatchWeekNavDateRangeOverride}
             showExpectedManpower={!isTomorrow}
             dayTabWorkDateYmd={isTomorrow ? tomorrowYmd : undefined}
+            onDayScheduleChanged={() => void loadHub({ quiet: true })}
             showWeekNavigation={!isTomorrow}
             showHubViewTabs={!isTomorrow}
             showHideWeekendToggle={!isTomorrow}
