@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-20 (v2.799)
+last_updated: 2026-07-20 (v2.800)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.800)
+
+### Day view travel-time hints (Option A: straight-line minimum) — gap chips + red shared dots (2026-07-20)
+First phase of travel estimates between a person's consecutive scheduled jobs. New pure kernel [`jobTravelEstimate.ts`](../src/lib/jobTravelEstimate.ts) (+10 tests): haversine distance × 1.3 road-winding factor ÷ 35 mph → a true MINIMUM drive in minutes (`TravelEstimate` carries `source: 'straightline' | 'routed'` — the planned Option B routing API will emit `routed` values and **fall back to these straight-line numbers**, so consumers never assume the source). `buildDayTravelGaps` pairs consecutive blocks (same-job, same-site &lt;150m, and un-geocoded pairs skipped). Coordinates come from `jobs_ledger.job_address` → the existing `address_geocodes` cache (Map-page normalize + ≤50-key batch helpers); jobs without a cached geocode show nothing. UI in [`DispatchAddBlockTimeRange`](../src/components/schedule/DispatchAddBlockTimeRange.tsx) via [`QuickfillScheduleSection`](../src/components/quickfill/QuickfillScheduleSection.tsx): open gaps get a 🚗 `≥Nm` chip centered in the gap (red-tinted when the schedule gap &lt; the drive, with an explanatory tooltip); back-to-back pairs with a ≥5-min drive turn their shared boundary dot **red** (#dc2626) with tooltip + aria. Applies wherever the Day section renders. Verified live on real data: three infeasible back-to-backs flagged immediately (two ≥46-min Reliant↔Limitless transitions, one ≥25-min 834→846). Help guide: "Travel-time hints on the Day view".
 
 ## Latest Updates (v2.799)
 

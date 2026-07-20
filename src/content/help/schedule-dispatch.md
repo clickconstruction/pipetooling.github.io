@@ -46,6 +46,14 @@ On the **Day** view, every scheduled job bar has an orange dot at its start and 
 Two jobs meet at 2:30 PM under one dot. Hold the dot — the second job now starts at 2:45 PM, ending at its same time. Drag its start dot back onto 2:30 to rejoin them.
 :::
 
+## Travel-time hints on the Day view
+
+When two of a person's jobs have known locations, the Day view estimates the minimum drive between them (straight-line distance with a road factor — real traffic can only be worse):
+
+- An open gap between jobs shows a 🚗 chip like {{chip:gray|🚗 ≥18m}} — red when the gap is shorter than the drive.
+- Back-to-back jobs that are far apart turn their connecting dot **red**; hover it for the estimate.
+- Jobs without a mapped address show nothing (the Map page is where addresses get geocoded).
+
 ## Choosing the Day view's visible hours
 
 On the Dispatch **Day** tab, the {{button:secondary|Visible hours ⚙}} button (right of the day controls) opens a small settings modal. Pick a start and end (within 4 AM–8 PM, at least an hour apart) and the timeline stretches that window across the page — handy when your crew works 7-to-5 and the early/late hours just waste space. The choice saves on your device only; **Reset to full day** puts it back. Jobs outside the window pin to its edge.

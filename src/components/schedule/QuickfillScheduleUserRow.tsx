@@ -127,6 +127,8 @@ export const QuickfillScheduleUserRow = memo(function QuickfillScheduleUserRow({
   compactRow = false,
   railTrimWindow,
   nameColumnIndent = false,
+  travelGapChips,
+  sharedDotWarnings,
   boundaryDots,
   onBoundaryDotDrag,
   onBoundaryDotDragEnd,
@@ -175,6 +177,16 @@ export const QuickfillScheduleUserRow = memo(function QuickfillScheduleUserRow({
   onBoundaryDotDrag?: (dot: BoundaryDot, targetMinutes: number) => void
   onBoundaryDotDragEnd?: () => void
   onSharedDotSeparate?: (dot: Extract<BoundaryDot, { kind: 'shared' }>) => void
+  /** Travel estimates (Day view): chips in the gaps + red shared dots for infeasible back-to-backs. */
+  travelGapChips?: Array<{
+    id: string
+    gapStartMin: number
+    gapEndMin: number
+    label: string
+    title: string
+    severity: 'ok' | 'tight'
+  }>
+  sharedDotWarnings?: ReadonlyMap<string, string>
 }) {
   const occupiedBands = useMemo(() => segmentsToOccupiedBands(segments), [segments])
 
@@ -298,6 +310,8 @@ export const QuickfillScheduleUserRow = memo(function QuickfillScheduleUserRow({
           onBoundaryDotDrag={onBoundaryDotDrag}
           onBoundaryDotDragEnd={onBoundaryDotDragEnd}
           onSharedDotSeparate={onSharedDotSeparate}
+          travelGapChips={travelGapChips}
+          sharedDotWarnings={sharedDotWarnings}
           secondaryBands={secondaryBands}
           onSecondaryBandClick={
             onOpenMyTimeForSessionStrip && (secondaryBands?.length ?? 0) > 0
