@@ -46,6 +46,10 @@ On the **Day** view, every scheduled job bar has an orange dot at its start and 
 Two jobs meet at 2:30 PM under one dot. Hold the dot — the second job now starts at 2:45 PM, ending at its same time. Drag its start dot back onto 2:30 to rejoin them.
 :::
 
+## Choosing the Day view's visible hours
+
+On the Dispatch **Day** tab, the {{button:secondary|Visible hours ⚙}} button (right of the day controls) opens a small settings modal. Pick a start and end (within 4 AM–8 PM, at least an hour apart) and the timeline stretches that window across the page — handy when your crew works 7-to-5 and the early/late hours just waste space. The choice saves on your device only; **Reset to full day** puts it back. Jobs outside the window pin to its edge.
+
 ## When someone isn't coming in
 
 In the **Add job to schedule** modal footer, press {{button:outline|Not coming in today}}. You'll get a confirmation — and a warning if it will remove existing schedule blocks for that day:

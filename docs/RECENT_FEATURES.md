@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-20 (v2.794)
+last_updated: 2026-07-20 (v2.795)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.795)
+
+### Dispatch: week nav moves below the tab bar (hidden on Day) + Day-view "Visible hours" setting (2026-07-20)
+Two Dispatch hub changes. **(1) Week nav placement** — the "← Week N · date range → This week" row in [`ScheduleDispatchHub`](../src/components/schedule/ScheduleDispatchHub.tsx) rendered above the People/Jobs/Day tab bar on every tab, though it only applies to the week-scoped views. It now renders BELOW the tab bar and only on People/Jobs; on Day (which has its own Previous/Next-day controls) the week nav hides while its right slot (the Share button) stays, right-aligned. **(2) Day-view visible hours** — the Day tab gains a per-device "Visible hours ⚙" button (right of the day controls; shows the active window like "7:00 AM–5:00 PM ⚙" when set) opening a settings modal in [`QuickfillScheduleSection`](../src/components/quickfill/QuickfillScheduleSection.tsx): Start/End selects in 30-min steps within the 04:00–20:00 block bounds (min 1-hour span), Save persists to localStorage (`pipetooling_dispatch_day_rail_window_v1`), Reset returns to the full day. The window feeds the existing `railTrimWindow` geometry, stretching the chosen hours edge-to-edge — bands, boundary dots, clock-session strips, and the shared 8 AM/12 PM/4 PM orientation marks (now window-aware, filtered + repositioned) all re-scale; jobs outside the window pin to its edge. The gear renders only on the Dispatch Day tab (`showDaySettings` prop; the stored window still applies where the section renders elsewhere, e.g. Quickfill → Schedule). Verified live: nav below tabs on People, absent on Day with Share intact; 7 AM–5 PM window re-scaled an 8:00–4:00 bar from 25–75% to 11–89% of the track, persisted, and Reset restored the default. Help guide updated.
 
 ## Latest Updates (v2.794)
 
