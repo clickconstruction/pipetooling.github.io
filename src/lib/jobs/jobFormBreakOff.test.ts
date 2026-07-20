@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   breakDollarsFromCombinedPct,
   breakOffPrefillAmountStringFromJob,
+  combinedPctFromTrackRatio,
   snapBreakOffCombinedPctToStep,
   unallocatedBillableDollars,
 } from './jobFormBreakOff'
@@ -54,5 +55,25 @@ describe('breakOffPrefillAmountStringFromJob', () => {
   it('is empty when nothing is left to bill', () => {
     expect(breakOffPrefillAmountStringFromJob(job({ revenue: 0 }))).toBe('')
     expect(breakOffPrefillAmountStringFromJob(job({ revenue: 1000, invoices: [{ status: 'billed', amount: 1000 } as never] }))).toBe('')
+  })
+})
+
+describe('combinedPctFromTrackRatio', () => {
+  it('maps the track ratio straight onto the 0-100 axis (ticks line up with clicks)', () => {
+    expect(combinedPctFromTrackRatio(0.4, 0, 100)).toBe(40)
+    expect(combinedPctFromTrackRatio(0.8, 0, 100)).toBe(80)
+  })
+  it('bounds clamp but never compress the axis (v2.776 slider-jump bug)', () => {
+    // Summit repro: $13,040 of $32,600 already billed -> max 60%. A click at
+    // the 40% tick must read 40%, not 0 + 0.4*(60-0) = 24%.
+    expect(combinedPctFromTrackRatio(0.4, 0, 60)).toBe(40)
+    // Past max clamps to max instead of stretching the scale.
+    expect(combinedPctFromTrackRatio(0.8, 0, 60)).toBe(60)
+    // Below min (paid floor) clamps up.
+    expect(combinedPctFromTrackRatio(0.1, 30, 100)).toBe(30)
+  })
+  it('tolerates out-of-range ratios from pointer capture', () => {
+    expect(combinedPctFromTrackRatio(-0.5, 0, 100)).toBe(0)
+    expect(combinedPctFromTrackRatio(1.5, 0, 90)).toBe(90)
   })
 })

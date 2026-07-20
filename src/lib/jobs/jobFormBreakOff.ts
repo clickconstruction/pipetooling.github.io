@@ -37,6 +37,20 @@ export function breakDollarsFromCombinedPct(
 
 export const BREAK_OFF_COMBINED_SLIDER_STEP_PCT = 5
 
+/**
+ * Map a pointer position on the break-off track (ratio 0–1 across its width)
+ * to a combined (paid + this bill) percent. The track's visual axis is ALWAYS
+ * 0–100% of the job total — ticks at 20/40/60/80, thumb at the combined pct —
+ * so the ratio maps straight onto that axis and [min, max] only clamps it.
+ * (Mapping into min + ratio*(max−min) compresses the axis and makes clicks
+ * land left of the cursor whenever billed invoices lower `max` — the "slider
+ * jumps" bug, v2.776.)
+ */
+export function combinedPctFromTrackRatio(ratio: number, min: number, max: number): number {
+  const r = Math.min(1, Math.max(0, ratio))
+  return Math.min(max, Math.max(min, r * 100))
+}
+
 export function snapBreakOffCombinedPctToStep(
   pct: number,
   min: number,
