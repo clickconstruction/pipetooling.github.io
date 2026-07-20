@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-20 (v2.786)
+last_updated: 2026-07-20 (v2.787)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.787)
+
+### Revert: clock strip "N Clocked In" label removed (2026-07-20)
+Removes the right-aligned "{sessions.length} Clocked In" label that v2.786 added to [`DashboardTeamActiveClockStrip`](../src/components/DashboardTeamActiveClockStrip.tsx)'s merged orange header row, per owner feedback — the "Currently In (N)" table header already carries the count. The merged header's JSX and `aria-label` return byte-for-byte to their pre-v2.786 form. The v2.786 "Hours Awaiting Approval" chip removal stays.
 
 ## Latest Updates (v2.786)
 
