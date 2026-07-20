@@ -336,19 +336,98 @@ const detailJobFilesPlansButtonStyle: CSSProperties = {
   color: 'var(--text-blue-700)',
 }
 
-function DetailJobModalFilesPlansRow({
+export type JobDetailAddLinkTarget = {
+  field: 'google_drive_link' | 'job_pictures_link'
+  label: string
+}
+
+/**
+ * Customer Files / Customer Photos icon pair above the Address block. Blue =
+ * link set (opens it); grey = missing (opens the add-link modal for roles
+ * that can edit the job; inert for subcontractor-like viewers).
+ */
+function JobDetailLinkIcons({
   googleDriveLink,
   jobPicturesLink,
-  jobPlansLink,
+  canEdit,
+  onAddLink,
 }: {
   googleDriveLink: string | null | undefined
   jobPicturesLink: string | null | undefined
+  canEdit: boolean
+  onAddLink: (target: JobDetailAddLinkTarget) => void
+}) {
+  const items: Array<{
+    field: JobDetailAddLinkTarget['field']
+    label: string
+    openLabel: string
+    url: string
+    path: string
+  }> = [
+    {
+      field: 'google_drive_link',
+      label: 'Customer Files',
+      openLabel: 'Open Drive folder',
+      url: googleDriveLink?.trim() ?? '',
+      path: 'M403 378.9L239.4 96L400.6 96L564.2 378.9L403 378.9zM265.5 402.5L184.9 544L495.4 544L576 402.5L265.5 402.5zM218.1 131.4L64 402.5L144.6 544L301 272.8L218.1 131.4z',
+    },
+    {
+      field: 'job_pictures_link',
+      label: 'Customer Photos',
+      openLabel: 'Open photos',
+      url: jobPicturesLink?.trim() ?? '',
+      path: 'M128 160C128 124.7 156.7 96 192 96L512 96C547.3 96 576 124.7 576 160L576 416C576 451.3 547.3 480 512 480L192 480C156.7 480 128 451.3 128 416L128 160zM56 192C69.3 192 80 202.7 80 216L80 512C80 520.8 87.2 528 96 528L456 528C469.3 528 480 538.7 480 552C480 565.3 469.3 576 456 576L96 576C60.7 576 32 547.3 32 512L32 216C32 202.7 42.7 192 56 192zM224 224C241.7 224 256 209.7 256 192C256 174.3 241.7 160 224 160C206.3 160 192 174.3 192 192C192 209.7 206.3 224 224 224zM420.5 235.5C416.1 228.4 408.4 224 400 224C391.6 224 383.9 228.4 379.5 235.5L323.2 327.6L298.7 297C294.1 291.3 287.3 288 280 288C272.7 288 265.8 291.3 261.3 297L197.3 377C191.5 384.2 190.4 394.1 194.4 402.4C198.4 410.7 206.8 416 216 416L488 416C496.7 416 504.7 411.3 508.9 403.7C513.1 396.1 513 386.9 508.4 379.4L420.4 235.4z',
+    },
+  ]
+  return (
+    <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+      {items.map((it) => {
+        const has = it.url !== ''
+        const inert = !has && !canEdit
+        const title = has
+          ? `${it.label} — ${it.openLabel}`
+          : canEdit
+            ? `${it.label} — no link yet, click to add one`
+            : `${it.label} — no link yet`
+        return (
+          <button
+            key={it.field}
+            type="button"
+            disabled={inert}
+            onClick={(e) => {
+              e.stopPropagation()
+              if (has) openInExternalBrowser(it.url)
+              else if (canEdit) onAddLink({ field: it.field, label: it.label })
+            }}
+            title={title}
+            aria-label={title}
+            style={{
+              padding: '0.15rem',
+              background: 'none',
+              border: 'none',
+              cursor: inert ? 'default' : 'pointer',
+              color: has ? 'var(--text-blue-500)' : 'var(--text-faint)',
+              display: 'inline-flex',
+              alignItems: 'center',
+            }}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="1.35em" height="1.35em" fill="currentColor" aria-hidden="true">
+              <path d={it.path} />
+            </svg>
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+function DetailJobModalFilesPlansRow({
+  jobPlansLink,
+}: {
   jobPlansLink: string | null | undefined
 }) {
-  const drive = googleDriveLink?.trim() ?? ''
-  const pictures = jobPicturesLink?.trim() ?? ''
   const plans = jobPlansLink?.trim() ?? ''
-  if (!drive && !pictures && !plans) return null
+  if (!plans) return null
   return (
     <div
       style={{
@@ -359,30 +438,12 @@ function DetailJobModalFilesPlansRow({
         alignItems: 'start',
       }}
     >
-      {drive ? (
-        <div style={{ minWidth: 0, textAlign: 'center' }}>
-          <div style={{ fontSize: '0.8125rem', fontWeight: 500, color: 'var(--text-muted)', marginBottom: 6 }}>Customer Files</div>
-          <button type="button" onClick={() => openInExternalBrowser(drive)} style={detailJobFilesPlansButtonStyle}>
-            Open Drive folder
-          </button>
-        </div>
-      ) : null}
-      {pictures ? (
-        <div style={{ minWidth: 0, textAlign: 'center' }}>
-          <div style={{ fontSize: '0.8125rem', fontWeight: 500, color: 'var(--text-muted)', marginBottom: 6 }}>Customer Photos</div>
-          <button type="button" onClick={() => openInExternalBrowser(pictures)} style={detailJobFilesPlansButtonStyle}>
-            Open photos
-          </button>
-        </div>
-      ) : null}
-      {plans ? (
-        <div style={{ minWidth: 0, textAlign: 'center' }}>
-          <div style={{ fontSize: '0.8125rem', fontWeight: 500, color: 'var(--text-muted)', marginBottom: 6 }}>Job Plans</div>
-          <button type="button" onClick={() => openInExternalBrowser(plans)} style={detailJobFilesPlansButtonStyle}>
-            Open plans
-          </button>
-        </div>
-      ) : null}
+      <div style={{ minWidth: 0, textAlign: 'center' }}>
+        <div style={{ fontSize: '0.8125rem', fontWeight: 500, color: 'var(--text-muted)', marginBottom: 6 }}>Job Plans</div>
+        <button type="button" onClick={() => openInExternalBrowser(plans)} style={detailJobFilesPlansButtonStyle}>
+          Open plans
+        </button>
+      </div>
     </div>
   )
 }
@@ -771,6 +832,34 @@ export default function DetailJobModal({
 
   const { user: authUser, profileName } = useAuth()
   const { showToast } = useToastContext()
+  /** Add-link modal for the grey Customer Files / Photos icons (office roles only). */
+  const [addLinkTarget, setAddLinkTarget] = useState<JobDetailAddLinkTarget | null>(null)
+  const [addLinkUrl, setAddLinkUrl] = useState('')
+  const [addLinkSaving, setAddLinkSaving] = useState(false)
+  const canEditJobLinks = authRole !== null && !isSubcontractorLikeRole(authRole as UserRole)
+  const saveAddLink = async () => {
+    if (!jobId || !addLinkTarget) return
+    const url = addLinkUrl.trim()
+    if (!/^https?:\/\/\S+$/i.test(url)) {
+      showToast('Enter a full link starting with http:// or https://', 'error')
+      return
+    }
+    setAddLinkSaving(true)
+    try {
+      await withSupabaseRetry(
+        async () => supabase.from('jobs_ledger').update({ [addLinkTarget.field]: url }).eq('id', jobId),
+        'save job link from Job Detail',
+      )
+      showToast(`${addLinkTarget.label} link saved.`, 'success')
+      setAddLinkTarget(null)
+      setAddLinkUrl('')
+      void loadDetail()
+    } catch (e) {
+      showToast(formatErrorMessage(e, 'Could not save the link'), 'error')
+    } finally {
+      setAddLinkSaving(false)
+    }
+  }
   const threadNotes = useJobThreadNotesForModal(open ? jobId : null, open, {
     authUserId: authUser?.id,
     showToast,
@@ -1011,6 +1100,15 @@ export default function DetailJobModal({
           >
             {topBandLeftActive ? (
               <div style={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                <JobDetailLinkIcons
+                  googleDriveLink={(fullJob ?? limitedJob)?.google_drive_link}
+                  jobPicturesLink={(fullJob ?? limitedJob)?.job_pictures_link}
+                  canEdit={canEditJobLinks}
+                  onAddLink={(t) => {
+                    setAddLinkTarget(t)
+                    setAddLinkUrl('')
+                  }}
+                />
                 {mapsAddressLine ? (
                   <div style={{ minWidth: 0 }}>
                     <div style={{ fontSize: '0.8125rem', fontWeight: 500, color: 'var(--text-muted)', marginBottom: 2 }}>Address</div>
@@ -1237,7 +1335,7 @@ export default function DetailJobModal({
             </div>
 
 
-            <DetailJobModalFilesPlansRow googleDriveLink={fullJob.google_drive_link} jobPicturesLink={fullJob.job_pictures_link} jobPlansLink={fullJob.job_plans_link} />
+            <DetailJobModalFilesPlansRow jobPlansLink={fullJob.job_plans_link} />
 
             <div style={{ marginTop: '1rem' }}>
               <div style={{ fontWeight: 600, fontSize: '0.9375rem', marginBottom: '0.5rem' }}>Assigned Team</div>
@@ -1531,7 +1629,7 @@ export default function DetailJobModal({
               </DetailRow>
             </div>
 
-            <DetailJobModalFilesPlansRow googleDriveLink={limitedJob.google_drive_link} jobPicturesLink={limitedJob.job_pictures_link} jobPlansLink={limitedJob.job_plans_link} />
+            <DetailJobModalFilesPlansRow jobPlansLink={limitedJob.job_plans_link} />
 
             {showMaterialsCostSection ? (
               <JobDetailMaterialsCostSection
@@ -1598,6 +1696,56 @@ export default function DetailJobModal({
         </div>
       </div>
 
+      {addLinkTarget ? (
+        <div
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', zIndex: 1006 }}
+          role="presentation"
+          onClick={(e) => {
+            e.stopPropagation()
+            if (!addLinkSaving) setAddLinkTarget(null)
+          }}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label={`Add ${addLinkTarget.label} link`}
+            style={{ background: 'var(--surface)', borderRadius: 8, width: 'min(94vw, 420px)', padding: '1rem 1.1rem', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)', display: 'grid', gap: '0.6rem' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 style={{ margin: 0, color: 'var(--text-strong)', fontSize: '1rem' }}>Add {addLinkTarget.label} link</h3>
+            <input
+              type="url"
+              value={addLinkUrl}
+              onChange={(e) => setAddLinkUrl(e.target.value)}
+              placeholder="https://…"
+              aria-label={`${addLinkTarget.label} link URL`}
+              autoFocus
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') void saveAddLink()
+              }}
+              style={{ width: '100%', padding: '0.45rem 0.55rem', fontSize: '0.875rem', border: '1px solid var(--border-strong)', borderRadius: 4, boxSizing: 'border-box' }}
+            />
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
+              <button
+                type="button"
+                disabled={addLinkSaving}
+                onClick={() => setAddLinkTarget(null)}
+                style={{ padding: '0.35rem 0.7rem', fontSize: '0.875rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', color: 'var(--text-700)', cursor: addLinkSaving ? 'not-allowed' : 'pointer' }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={addLinkSaving}
+                onClick={() => void saveAddLink()}
+                style={{ padding: '0.35rem 0.7rem', fontSize: '0.875rem', fontWeight: 600, border: 'none', borderRadius: 4, background: '#2563eb', color: 'white', cursor: addLinkSaving ? 'not-allowed' : 'pointer' }}
+              >
+                {addLinkSaving ? 'Saving…' : 'Save link'}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
       {reportsModalOpen && fullJob ? (
         <JobReportsModal
           open
