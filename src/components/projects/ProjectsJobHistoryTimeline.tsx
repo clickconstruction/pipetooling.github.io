@@ -277,7 +277,7 @@ export function ProjectsJobHistoryTimeline({
               display: 'grid',
               gridTemplateColumns,
               height: HEADER_MONTH_H,
-              borderBottom: '1px solid #f1f5f9',
+              borderBottom: '1px solid var(--border)',
               fontSize: '0.75rem',
               color: 'var(--text-700)',
             }}
@@ -325,13 +325,13 @@ export function ProjectsJobHistoryTimeline({
                     alignItems: 'center',
                     justifyContent: 'center',
                     background: isToday
-                      ? '#fff7ed'
+                      ? 'var(--bg-orange-tint)'
                       : weekend
-                        ? '#f1f5f9'
-                        : '#ffffff',
-                    color: isToday ? '#b45309' : weekend ? 'var(--text-slate-400)' : 'var(--text-700)',
+                        ? 'var(--bg-slate-100)'
+                        : 'var(--surface)',
+                    color: isToday ? 'var(--text-amber-700)' : weekend ? 'var(--text-slate-400)' : 'var(--text-700)',
                     fontWeight: digit?.isFirstOfMonth ? 700 : 400,
-                    borderRight: '1px solid #f1f5f9',
+                    borderRight: '1px solid var(--border)',
                   }}
                 >
                   {digit?.day ?? ''}
@@ -438,7 +438,7 @@ function JobRow({
         gridTemplateColumns,
         height: ROW_H,
         position: 'relative',
-        borderBottom: '1px solid #f1f5f9',
+        borderBottom: '1px solid var(--border)',
       }}
     >
       {/* Weekend column tint backdrop — rendered as empty grid cells so the bar grid layout stays simple. */}
@@ -504,7 +504,7 @@ function CompactLaneRow({
         gridTemplateColumns,
         height: ROW_H,
         position: 'relative',
-        borderBottom: '1px solid #f1f5f9',
+        borderBottom: '1px solid var(--border)',
       }}
     >
       {/* Weekend tints render once per lane (covering the whole lane width). Each bar inside

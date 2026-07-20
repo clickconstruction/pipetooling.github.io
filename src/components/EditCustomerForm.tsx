@@ -1195,7 +1195,7 @@ function MergeFieldRow({
         gridTemplateColumns: '88px 1fr',
         gap: '8px 12px',
         alignItems: 'start',
-        borderBottom: '1px solid #f3f4f6',
+        borderBottom: '1px solid var(--border)',
         paddingBottom: 8,
       }}
     >

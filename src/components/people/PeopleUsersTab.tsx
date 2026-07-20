@@ -908,7 +908,7 @@ export function PeopleUsersTab({
                           const total = usage.people + usage.users
                           const masterDisp = usersTabTags.tagOrgMasterLabel(row.master_user_id)
                           return (
-                            <tr key={row.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                            <tr key={row.id} style={{ borderBottom: '1px solid var(--border)' }}>
                               <td style={{ padding: '0.45rem 0.75rem' }}>{row.name}</td>
                               <td style={{ padding: '0.45rem 0.75rem', color: 'var(--text-600)' }}>{masterDisp}</td>
                               <td style={{ padding: '0.45rem 0.75rem' }}>{usage.people}</td>

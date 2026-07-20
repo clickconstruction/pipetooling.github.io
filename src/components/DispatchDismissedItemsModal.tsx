@@ -188,7 +188,7 @@ export function DispatchDismissedItemsModal({
                     key={req.id}
                     style={{
                       padding: '0.75rem 0.5rem',
-                      borderBottom: '1px solid #f3f4f6',
+                      borderBottom: '1px solid var(--border)',
                       fontSize: '0.875rem',
                     }}
                   >

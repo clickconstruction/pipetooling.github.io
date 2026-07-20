@@ -163,7 +163,7 @@ export default function JobBidLinkChoiceModal({
                   width: '100%',
                   padding: '0.6rem 0.75rem',
                   border: 'none',
-                  borderBottom: '1px solid #f3f4f6',
+                  borderBottom: '1px solid var(--border)',
                   background: 'var(--surface)',
                   cursor: 'pointer',
                   textAlign: 'left',

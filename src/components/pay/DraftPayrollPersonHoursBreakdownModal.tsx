@@ -168,7 +168,7 @@ export function DraftPayrollPersonHoursBreakdownModal({
                 </thead>
                 <tbody>
                   {rows.map((r) => (
-                    <tr key={r.date} style={{ borderBottom: '1px solid #f3f4f6', verticalAlign: 'top' }}>
+                    <tr key={r.date} style={{ borderBottom: '1px solid var(--border)', verticalAlign: 'top' }}>
                       <td style={{ padding: '0.45rem 0.65rem', whiteSpace: 'nowrap' }}>
                         {!isSalary && onOpenDayEditor ? (
                           <button

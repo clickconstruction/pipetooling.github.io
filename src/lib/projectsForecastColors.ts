@@ -47,14 +47,14 @@ const SWATCHES: Record<ForecastBarColorKey, ForecastBarSwatch> = {
     textDecoration: 'none',
   },
   completed: {
-    background: '#bbf7d0',
+    background: 'var(--bg-green-200)',
     borderColor: '#059669',
     borderStyle: 'solid',
     textColor: '#064e3b',
     textDecoration: 'none',
   },
   approved: {
-    background: '#bbf7d0',
+    background: 'var(--bg-green-200)',
     borderColor: '#059669',
     borderStyle: 'solid',
     textColor: '#064e3b',

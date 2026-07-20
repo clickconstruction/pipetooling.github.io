@@ -31,6 +31,9 @@ const TEXT = {
   '#d1d5db': 'var(--text-faint-300)',
   '#0f172a': 'var(--text-slate-900)',
   '#475569': 'var(--text-slate-600)',
+  // slate-700 text consolidated onto the slate-600 token: one shade apart in
+  // light mode, and the token gives it a readable value on dark surfaces.
+  '#334155': 'var(--text-slate-600)',
   '#64748b': 'var(--text-slate-500)',
   '#94a3b8': 'var(--text-slate-400)',
   '#2563eb': 'var(--text-link)',
@@ -61,6 +64,9 @@ const BG = {
   '#fefdfb': 'var(--surface)',
   white: 'var(--surface)',
   '#f9fafb': 'var(--bg-subtle)',
+  '#fafbfc': 'var(--bg-subtle)',
+  '#fef08a': 'var(--bg-yellow-200)',
+  '#bbf7d0': 'var(--bg-green-200)',
   '#f3f4f6': 'var(--bg-muted)',
   '#e5e7eb': 'var(--bg-200)',
   '#eff6ff': 'var(--bg-blue-tint)',
@@ -90,6 +96,11 @@ const BORDER = {
   // light values differ by only a few units (imperceptible on a border) and this
   // gives them proper dark values instead of staying light in dark mode.
   '#e2e8f0': 'var(--border)',
+  // gray-100/slate-100 hairline borders also consolidate onto --border: as
+  // near-white lines they glare on dark surfaces, and at 1px the light-mode
+  // difference from gray-200 is imperceptible.
+  '#f3f4f6': 'var(--border)',
+  '#f1f5f9': 'var(--border)',
   '#d1d5db': 'var(--border-strong)',
   '#cbd5e1': 'var(--border-strong)',
   '#9ca3af': 'var(--border-400)',

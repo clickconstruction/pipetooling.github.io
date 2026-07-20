@@ -557,7 +557,7 @@ const bankingAllocLinkButtonStyle: CSSProperties = {
   borderRadius: 8,
   border: '1px solid var(--border)',
   background: 'var(--surface)',
-  color: '#334155',
+  color: 'var(--text-slate-600)',
   cursor: 'pointer',
   fontFamily: 'inherit',
   flexShrink: 0,
@@ -755,7 +755,7 @@ function BankingMercuryTable({
   })
 
   function allocationCells(r: MercuryTxRow, notesContinuationBelow: boolean) {
-    const mainBb = notesContinuationBelow ? 'none' : '1px solid #f3f4f6'
+    const mainBb = notesContinuationBelow ? 'none' : '1px solid var(--border)'
     const pad = notesContinuationBelow ? '0.5rem 0.75rem 0 0.75rem' : '0.5rem 0.75rem'
     const uid = userIdByTxId.get(r.id) ?? null
     const pid = personIdByTxId.get(r.id) ?? null
@@ -854,7 +854,7 @@ function BankingMercuryTable({
             const editorOpen = notesExpandedTxId === r.id
             const hasNotePreview = mercuryTxHasNotePreview(r, orgNoteBody)
             const notesContinuationBelow = (hasNotePreview && !editorOpen) || editorOpen
-            const mainRowBb = notesContinuationBelow ? 'none' : '1px solid #f3f4f6'
+            const mainRowBb = notesContinuationBelow ? 'none' : '1px solid var(--border)'
             const padMain = notesContinuationBelow ? '0.5rem 0.75rem 0 0.75rem' : '0.5rem 0.75rem'
             const padExpand = notesContinuationBelow ? '0.5rem 0.35rem 0 0.35rem' : '0.5rem 0.35rem'
             const isExcludedDup = !!r.duplicate_of_transaction_id
@@ -1080,7 +1080,7 @@ function BankingMercuryTable({
                 ) : null}
                 {expanded && (
                   <tr>
-                    <td colSpan={tableColSpan} style={{ padding: 0, borderBottom: '1px solid #f3f4f6' }} onClick={(e) => e.stopPropagation()}>
+                    <td colSpan={tableColSpan} style={{ padding: 0, borderBottom: '1px solid var(--border)' }} onClick={(e) => e.stopPropagation()}>
                       <TransactionDetailPanel r={r} />
                     </td>
                   </tr>

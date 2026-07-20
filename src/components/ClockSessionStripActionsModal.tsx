@@ -429,7 +429,7 @@ export function ClockSessionStripActionsModal({
                           padding: '0.4rem 0.5rem',
                           textAlign: 'left',
                           border: 'none',
-                          borderBottom: '1px solid #f3f4f6',
+                          borderBottom: '1px solid var(--border)',
                           background: 'none',
                           cursor: footerBusy ? 'not-allowed' : 'pointer',
                           fontSize: '0.8125rem',

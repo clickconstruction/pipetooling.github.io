@@ -466,7 +466,7 @@ export function ReviewHoursModal({
                           justifyContent: 'space-between',
                           padding: '0.3rem 0.75rem',
                           fontSize: '0.875rem',
-                          borderBottom: '1px solid #f3f4f6',
+                          borderBottom: '1px solid var(--border)',
                         }}
                       >
                         <span>{formatDateLabel(d)}</span>
@@ -510,7 +510,7 @@ export function ReviewHoursModal({
                     const hasSubRows = hasChildren && isExpanded
                     const isFocus = item.type === 'focus'
                     return (
-                      <li key={item.key} style={{ borderBottom: isLastItem && !hasSubRows ? 'none' : '1px solid #f3f4f6' }}>
+                      <li key={item.key} style={{ borderBottom: isLastItem && !hasSubRows ? 'none' : '1px solid var(--border)' }}>
                         {hasChildren ? (
                           <>
                             <button
@@ -564,7 +564,7 @@ export function ReviewHoursModal({
                                         gap: '0.5rem',
                                         padding: '0.3rem 0.75rem 0.3rem 1.25rem',
                                         fontSize: '0.8125rem',
-                                        borderBottom: subIdx < item.children!.length - 1 ? '1px solid #f3f4f6' : 'none',
+                                        borderBottom: subIdx < item.children!.length - 1 ? '1px solid var(--border)' : 'none',
                                       }}
                                     >
                                       <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: 'var(--text-muted)' }} title={sub.notes}>

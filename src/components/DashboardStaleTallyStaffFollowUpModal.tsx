@@ -342,7 +342,7 @@ export function DashboardStaleTallyStaffFollowUpModal({
                   cursor: hideDevBusy ? 'wait' : 'pointer',
                   fontSize: '0.8125rem',
                   fontWeight: 600,
-                  color: '#334155',
+                  color: 'var(--text-slate-600)',
                   fontFamily: 'inherit',
                   opacity: hideDevBusy ? 0.6 : 1,
                 }}
@@ -361,7 +361,7 @@ export function DashboardStaleTallyStaffFollowUpModal({
                 cursor: 'pointer',
                 fontSize: '0.8125rem',
                 fontWeight: 600,
-                color: '#334155',
+                color: 'var(--text-slate-600)',
                 fontFamily: 'inherit',
               }}
             >
@@ -461,7 +461,7 @@ export function DashboardStaleTallyStaffFollowUpModal({
                             <tr
                               key={r.mercury_transaction_id}
                               style={{
-                                borderBottom: '1px solid #f3f4f6',
+                                borderBottom: '1px solid var(--border)',
                                 background: rowStale ? '#fef2f2' : undefined,
                               }}
                             >

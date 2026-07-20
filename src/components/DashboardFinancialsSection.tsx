@@ -81,7 +81,7 @@ function ApBillModal({
   const pastDue = bill.dueDateYmd ? daysPastDue(bill.dueDateYmd, new Date().toLocaleDateString('en-CA')) : null
 
   const factRow = (label: string, value: React.ReactNode) => (
-    <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', padding: '0.3rem 0', borderBottom: '1px solid #f3f4f6', fontSize: '0.875rem' }}>
+    <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', padding: '0.3rem 0', borderBottom: '1px solid var(--border)', fontSize: '0.875rem' }}>
       <span style={{ color: 'var(--text-muted)' }}>{label}</span>
       <span style={{ textAlign: 'right' }}>{value}</span>
     </div>
@@ -504,7 +504,7 @@ function ItemsModal({
                     </td>
                   </tr>
                   {(isCollapsed('Upcoming payroll (estimate)') ? [] : upcomingSection.items).map((item) => (
-                    <tr key={item.key} style={{ borderBottom: '1px solid #f3f4f6', verticalAlign: 'top' }}>
+                    <tr key={item.key} style={{ borderBottom: '1px solid var(--border)', verticalAlign: 'top' }}>
                       <td style={{ padding: '0.45rem 0.65rem' }}>
                         {item.label}
                         {item.sublabel ? (
@@ -660,7 +660,7 @@ function ItemsModal({
                     </tr>
                   ) : null}
                   {(section.title && isCollapsed(section.title) ? [] : section.items).map((item: FinancialItem) => (
-                <tr key={item.key} style={{ borderBottom: '1px solid #f3f4f6', verticalAlign: 'top' }}>
+                <tr key={item.key} style={{ borderBottom: '1px solid var(--border)', verticalAlign: 'top' }}>
                   <td style={{ padding: '0.45rem 0.65rem' }}>
                     {item.jobId && onOpenJob ? (
                       <button

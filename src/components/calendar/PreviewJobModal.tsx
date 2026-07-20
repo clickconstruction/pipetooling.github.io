@@ -218,7 +218,7 @@ export function PreviewJobModal({
                   key={j.id}
                   style={{
                     padding: '0.5rem 0',
-                    borderBottom: '1px solid #f3f4f6',
+                    borderBottom: '1px solid var(--border)',
                     fontSize: '0.875rem',
                   }}
                 >

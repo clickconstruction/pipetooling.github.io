@@ -462,7 +462,7 @@ export function HeaderGlobalSearchNavLayer() {
                       cursor: 'pointer',
                       fontSize: '0.875rem',
                       color: 'var(--text-strong)',
-                      borderBottom: '1px solid #f3f4f6',
+                      borderBottom: '1px solid var(--border)',
                     }}
                   >
                     <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'wrap' }}>

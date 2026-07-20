@@ -169,7 +169,7 @@ function CounterpartyFrequencyRow({
   const interactive = typeof onRowClick === 'function'
   const baseCellStyle: React.CSSProperties = {
     padding: '0.5rem 0.75rem',
-    borderBottom: '1px solid #f3f4f6',
+    borderBottom: '1px solid var(--border)',
   }
   const trStyle: React.CSSProperties = interactive
     ? { cursor: 'pointer', background: hovered ? 'var(--bg-muted)' : 'transparent' }

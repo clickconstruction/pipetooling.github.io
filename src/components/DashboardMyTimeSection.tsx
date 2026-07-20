@@ -48,7 +48,7 @@ function renderBreakdownList(
         const isLastItem = idx === items.length - 1
         const hasSubRows = hasChildren && isExpanded
         return (
-          <li key={item.key} style={{ borderBottom: isLastItem && !hasSubRows ? 'none' : '1px solid #f3f4f6' }}>
+          <li key={item.key} style={{ borderBottom: isLastItem && !hasSubRows ? 'none' : '1px solid var(--border)' }}>
             {hasChildren ? (
               <>
                 <button
@@ -93,7 +93,7 @@ function renderBreakdownList(
                             gap: '0.5rem',
                             padding: '0.3rem 0.75rem 0.3rem 1.25rem',
                             fontSize: '0.8125rem',
-                            borderBottom: subIdx < item.children!.length - 1 ? '1px solid #f3f4f6' : 'none',
+                            borderBottom: subIdx < item.children!.length - 1 ? '1px solid var(--border)' : 'none',
                           }}
                         >
                           <span style={{ fontVariantNumeric: 'tabular-nums', flexShrink: 0, color: 'var(--text-faint)', minWidth: '5rem' }}>

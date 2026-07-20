@@ -229,7 +229,7 @@ export function AccountingLabelQuickAssignModal({
                     padding: '0.5rem 0.75rem',
                     fontSize: '0.875rem',
                     border: 'none',
-                    borderBottom: idx < filteredLabels.length - 1 ? '1px solid #f3f4f6' : 'none',
+                    borderBottom: idx < filteredLabels.length - 1 ? '1px solid var(--border)' : 'none',
                     background: highlighted ? 'var(--bg-blue-tint)' : 'var(--surface)',
                     color: 'var(--text-slate-900)',
                     cursor: busy ? 'not-allowed' : 'pointer',

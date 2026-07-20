@@ -710,7 +710,7 @@ function ChecklistTodayTab({ authUserId, isDev, setError }: { authUserId: string
                       key={inst.id}
                       style={{
                         padding: '0.5rem 0.75rem',
-                        borderBottom: '1px solid #f3f4f6',
+                        borderBottom: '1px solid var(--border)',
                         display: 'flex',
                         gap: '1rem',
                         alignItems: 'center',
@@ -1084,7 +1084,7 @@ function ChecklistHistoryTab({ authUserId, canViewOthers, canEditHistory, setErr
           <tbody>
             {Array.from(byItem.entries()).map(([itemId, { title, links, dates }]) => (
               <tr key={itemId}>
-                <td style={{ padding: '0.5rem 0.75rem', borderBottom: '1px solid #f3f4f6', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis' }} title={title}>
+                <td style={{ padding: '0.5rem 0.75rem', borderBottom: '1px solid var(--border)', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis' }} title={title}>
                   <ChecklistTitleWithLinks title={title} links={links} />
                 </td>
                 {sortedDates.slice(-60).map((d) => {
@@ -1095,7 +1095,7 @@ function ChecklistHistoryTab({ authUserId, canViewOthers, canEditHistory, setErr
                   const isCycling = cyclingCell === cellKey
                   const isClickable = editMode && !isCycling
                   return (
-                    <td key={d} style={{ padding: 2, borderBottom: '1px solid #f3f4f6' }}>
+                    <td key={d} style={{ padding: 2, borderBottom: '1px solid var(--border)' }}>
                       <div
                         role={isClickable ? 'button' : undefined}
                         tabIndex={isClickable ? 0 : undefined}
@@ -1823,7 +1823,7 @@ function ChecklistOutstandingTab({ authUserId, isDev, canManageChecklists, setEr
                 <Fragment key={userId}>
                   <tr
                     key={userId}
-                    style={{ borderBottom: '1px solid #f3f4f6', cursor: 'pointer' }}
+                    style={{ borderBottom: '1px solid var(--border)', cursor: 'pointer' }}
                     onClick={() => setExpandedUserId((prev) => (prev === userId ? null : userId))}
                   >
                     <td style={{ padding: '0.5rem 0.75rem' }}>
@@ -2343,7 +2343,7 @@ function ChecklistManageTab({ authUserId, role, setError, setEditItemId }: { aut
             if (entry.kind === 'none') return renderNoneRow(entry.key)
             const item = entry.item
             return (
-            <tr key={item.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
+            <tr key={item.id} style={{ borderBottom: '1px solid var(--border)' }}>
               <td
                 style={{
                   padding: '0.5rem 0.75rem',

@@ -332,7 +332,7 @@ export default function CustomerSearchCombobox({
                     textAlign: 'left',
                     padding: '0.5rem 0.75rem',
                     border: 'none',
-                    borderBottom: '1px solid #f3f4f6',
+                    borderBottom: '1px solid var(--border)',
                     background: rowBackground,
                     cursor: 'pointer',
                     fontSize: '0.875rem',

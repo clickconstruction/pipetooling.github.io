@@ -44,8 +44,8 @@ const TH: CSSProperties = {
   textAlign: 'center',
   whiteSpace: 'nowrap',
 }
-const TD_NUM: CSSProperties = { padding: '0.4rem 0.5rem', borderBottom: '1px solid #f3f4f6', textAlign: 'center' }
-const TD_NAME: CSSProperties = { padding: '0.4rem 0.5rem', borderBottom: '1px solid #f3f4f6', textAlign: 'left' }
+const TD_NUM: CSSProperties = { padding: '0.4rem 0.5rem', borderBottom: '1px solid var(--border)', textAlign: 'center' }
+const TD_NAME: CSSProperties = { padding: '0.4rem 0.5rem', borderBottom: '1px solid var(--border)', textAlign: 'left' }
 
 function CountCell({ value, style }: { value: number; style?: CSSProperties }) {
   return <td style={{ ...TD_NUM, ...style }}>{value > 0 ? value : <span style={{ color: 'var(--text-faint-300)' }}>—</span>}</td>

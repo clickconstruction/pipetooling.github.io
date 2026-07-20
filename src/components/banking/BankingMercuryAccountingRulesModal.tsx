@@ -344,7 +344,7 @@ export function BankingMercuryAccountingRulesModal({
                       {rulesSortedForTable.map((r) => {
                         const lbl = labelById.get(r.label_id)
                         return (
-                          <tr key={r.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                          <tr key={r.id} style={{ borderBottom: '1px solid var(--border)' }}>
                             <td style={{ padding: '0.5rem 0.75rem' }}>{r.name}</td>
                             <td style={{ padding: '0.5rem 0.75rem' }}>{lbl?.name ?? r.label_id.slice(0, 8)}</td>
                             <td style={{ padding: '0.5rem 0.75rem' }}>{r.enabled ? 'Yes' : 'No'}</td>

@@ -2440,7 +2440,7 @@ export default function JobsJobSummaryTab({
                                                     gap: '0.5rem',
                                                     fontSize: '0.75rem',
                                                     padding: '0.25rem 0',
-                                                    borderTop: '1px solid #f3f4f6',
+                                                    borderTop: '1px solid var(--border)',
                                                   }}
                                                 >
                                                   <span style={{ color: 'var(--text-700)' }}>{m.description?.trim() || '—'}</span>

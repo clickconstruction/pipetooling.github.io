@@ -298,7 +298,7 @@ export function DispatchInboxSection({
                         showDismissRail
                           ? {
                               padding: 0,
-                              borderBottom: '1px solid #f3f4f6',
+                              borderBottom: '1px solid var(--border)',
                               background: 'var(--bg-muted)',
                               display: 'flex',
                               alignItems: 'stretch',
@@ -306,7 +306,7 @@ export function DispatchInboxSection({
                             }
                           : {
                               padding: '0.75rem 0',
-                              borderBottom: '1px solid #f3f4f6',
+                              borderBottom: '1px solid var(--border)',
                               background: isClosed ? 'var(--bg-muted)' : undefined,
                             }
                       }
@@ -456,7 +456,7 @@ export function DispatchInboxSection({
                                   key={n.id}
                                   style={{
                                     padding: '0.5rem 0',
-                                    borderBottom: '1px solid #f3f4f6',
+                                    borderBottom: '1px solid var(--border)',
                                     fontSize: '0.8125rem',
                                   }}
                                 >

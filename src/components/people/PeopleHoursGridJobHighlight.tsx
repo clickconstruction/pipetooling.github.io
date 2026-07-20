@@ -99,7 +99,7 @@ export function PeopleHoursGridJobHighlight({
                   padding: '0.5rem 0.65rem',
                   textAlign: 'left',
                   border: 'none',
-                  borderBottom: '1px solid #f3f4f6',
+                  borderBottom: '1px solid var(--border)',
                   background: 'none',
                   cursor: 'pointer',
                   fontSize: '0.875rem',

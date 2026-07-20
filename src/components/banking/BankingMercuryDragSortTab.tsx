@@ -167,7 +167,7 @@ const DragSortTransactionPreview = memo(function DragSortTransactionPreview({ ro
       <div
         style={{
           marginTop: 4,
-          color: '#334155',
+          color: 'var(--text-slate-600)',
           overflow: 'hidden',
           textOverflow: 'ellipsis',
           whiteSpace: 'nowrap',
@@ -177,7 +177,7 @@ const DragSortTransactionPreview = memo(function DragSortTransactionPreview({ ro
         {partyDisplay}
       </div>
       <div style={{ marginTop: 6, display: 'flex', flexDirection: 'column', gap: 2 }}>
-        <span style={{ color: '#334155' }}>{formatBankingDate(row.posted_at)}</span>
+        <span style={{ color: 'var(--text-slate-600)' }}>{formatBankingDate(row.posted_at)}</span>
         <span style={{ fontSize: '0.72rem', color: 'var(--text-slate-500)' }}>{formatMercuryKind(row.kind)}</span>
       </div>
     </div>

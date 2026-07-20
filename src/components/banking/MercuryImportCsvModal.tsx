@@ -220,7 +220,7 @@ export function MercuryImportCsvModal({ open, onClose, onSubmit }: MercuryImport
             </label>
 
             {/* Summary line */}
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem 1.25rem', fontSize: '0.8rem', color: '#334155' }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem 1.25rem', fontSize: '0.8rem', color: 'var(--text-slate-600)' }}>
               <span>
                 <strong>{rows.length}</strong> transactions
               </span>
@@ -257,7 +257,7 @@ export function MercuryImportCsvModal({ open, onClose, onSubmit }: MercuryImport
                 </thead>
                 <tbody>
                   {rows.map((r, i) => (
-                    <tr key={i} style={{ borderTop: '1px solid #f1f5f9' }}>
+                    <tr key={i} style={{ borderTop: '1px solid var(--border)' }}>
                       <td style={tdStyle}>{r.postedDate}</td>
                       <td style={tdStyle}>{r.payee ?? <span style={{ color: 'var(--text-faint)' }}>—</span>}</td>
                       <td style={{ ...tdStyle, maxWidth: 240, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>

@@ -84,8 +84,8 @@ function formatDate(iso: string | null): string {
   }
 }
 
-const sectionStyle = { marginBottom: '1rem', paddingBottom: '1rem', borderBottom: '1px solid #f1f5f9' } as const
-const sectionTitleStyle = { margin: '0 0 0.5rem', fontSize: '0.8125rem', fontWeight: 700, color: '#334155', textTransform: 'uppercase', letterSpacing: '0.04em' } as const
+const sectionStyle = { marginBottom: '1rem', paddingBottom: '1rem', borderBottom: '1px solid var(--border)' } as const
+const sectionTitleStyle = { margin: '0 0 0.5rem', fontSize: '0.8125rem', fontWeight: 700, color: 'var(--text-slate-600)', textTransform: 'uppercase', letterSpacing: '0.04em' } as const
 const factLabel = { fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.03em' } as const
 const factValue = { fontSize: '0.875rem', color: 'var(--text-strong)', fontWeight: 500 } as const
 
@@ -503,7 +503,7 @@ export function TransactionDetailModal({
         <div style={sectionStyle}>
           <h3 style={sectionTitleStyle}>Jobs</h3>
           {internalTransfersLocked ? (
-            <div style={{ fontSize: '0.8125rem', color: '#334155', background: 'var(--bg-slate-tint)', border: '1px solid var(--border-strong)', borderRadius: 6, padding: '0.6rem 0.8rem' }}>
+            <div style={{ fontSize: '0.8125rem', color: 'var(--text-slate-600)', background: 'var(--bg-slate-tint)', border: '1px solid var(--border-strong)', borderRadius: 6, padding: '0.6rem 0.8rem' }}>
               Labeled <strong>Internal Transfers</strong> — cannot be split onto jobs. Change the label to edit jobs.
             </div>
           ) : (
@@ -519,7 +519,7 @@ export function TransactionDetailModal({
               {jobSearch.trim().length > 2 && jobResults.length > 0 ? (
                 <div style={{ maxHeight: 140, overflow: 'auto', border: '1px solid var(--border)', borderRadius: 4, marginBottom: '0.5rem', fontSize: '0.8125rem' }}>
                   {jobResults.map((r) => (
-                    <button key={r.id} type="button" onClick={() => addJobLine(r)} style={{ display: 'block', width: '100%', textAlign: 'left', padding: '0.45rem 0.65rem', border: 'none', borderBottom: '1px solid #f3f4f6', background: 'var(--surface)', cursor: 'pointer' }}>
+                    <button key={r.id} type="button" onClick={() => addJobLine(r)} style={{ display: 'block', width: '100%', textAlign: 'left', padding: '0.45rem 0.65rem', border: 'none', borderBottom: '1px solid var(--border)', background: 'var(--surface)', cursor: 'pointer' }}>
                       <span style={{ fontWeight: 600 }}>{formatJobLedgerShortLine(ledgerPrefixMap, r.service_type_id, r.hcp_number, r.job_name)}</span>
                       <span style={{ color: 'var(--text-muted)' }}> · {r.job_address}</span>
                     </button>
@@ -529,11 +529,11 @@ export function TransactionDetailModal({
               {lines.map((ln) => {
                 const dd = lineDisplayDollars(ln, displayTotal)
                 return (
-                  <div key={ln.jobId} style={{ marginBottom: '0.5rem', padding: '0.5rem 0.6rem', borderRadius: 8, border: '1px solid #f1f5f9', background: 'var(--bg-page)' }}>
+                  <div key={ln.jobId} style={{ marginBottom: '0.5rem', padding: '0.5rem 0.6rem', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-page)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
                       <span style={{ flex: '1 1 130px', minWidth: 0, fontSize: '0.8125rem', fontWeight: 500 }} title={ln.jobLabel}>{ln.jobLabel}</span>
-                      <button type="button" onClick={() => updateLine(ln.jobId, { mode: 'dollars' })} style={{ padding: '4px 8px', borderRadius: 6, border: '1px solid var(--border-strong)', background: ln.mode === 'dollars' ? '#2563eb' : 'var(--surface)', color: ln.mode === 'dollars' ? '#fff' : '#334155', cursor: 'pointer', fontSize: '0.8125rem' }}>$</button>
-                      <button type="button" onClick={() => updateLine(ln.jobId, { mode: 'percent' })} style={{ padding: '4px 8px', borderRadius: 6, border: '1px solid var(--border-strong)', background: ln.mode === 'percent' ? '#2563eb' : 'var(--surface)', color: ln.mode === 'percent' ? '#fff' : '#334155', cursor: 'pointer', fontSize: '0.8125rem' }}>%</button>
+                      <button type="button" onClick={() => updateLine(ln.jobId, { mode: 'dollars' })} style={{ padding: '4px 8px', borderRadius: 6, border: '1px solid var(--border-strong)', background: ln.mode === 'dollars' ? '#2563eb' : 'var(--surface)', color: ln.mode === 'dollars' ? '#fff' : 'var(--text-slate-600)', cursor: 'pointer', fontSize: '0.8125rem' }}>$</button>
+                      <button type="button" onClick={() => updateLine(ln.jobId, { mode: 'percent' })} style={{ padding: '4px 8px', borderRadius: 6, border: '1px solid var(--border-strong)', background: ln.mode === 'percent' ? '#2563eb' : 'var(--surface)', color: ln.mode === 'percent' ? '#fff' : 'var(--text-slate-600)', cursor: 'pointer', fontSize: '0.8125rem' }}>%</button>
                       <input type="text" inputMode="decimal" value={ln.valueStr} onChange={(e) => updateLine(ln.jobId, { valueStr: e.target.value })} placeholder={ln.mode === 'dollars' ? '0.00' : '0'} style={{ width: 90, padding: '6px 10px', fontSize: '0.875rem', border: '1px solid var(--border)', borderRadius: 8, boxSizing: 'border-box', fontVariantNumeric: 'tabular-nums' }} />
                       <button type="button" onClick={() => removeLine(ln.jobId)} style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid #fecdd3', background: '#fff1f2', color: '#e11d48', cursor: 'pointer', fontSize: '0.8125rem', fontWeight: 600 }}>Remove</button>
                     </div>

@@ -160,7 +160,7 @@ export function BankingMercuryAccountingOverlapsModal({
                   {pairCounts.map((p) => (
                     <tr
                       key={`${p.winnerRuleId}::${p.shadowedRuleId}`}
-                      style={{ borderBottom: '1px solid #f1f5f9' }}
+                      style={{ borderBottom: '1px solid var(--border)' }}
                     >
                       <td style={{ padding: '0.5rem 0.75rem' }}>
                         <button
@@ -206,7 +206,7 @@ export function BankingMercuryAccountingOverlapsModal({
                     key={row.txId}
                     style={{
                       padding: '0.6rem 0',
-                      borderBottom: '1px solid #f1f5f9',
+                      borderBottom: '1px solid var(--border)',
                       fontSize: '0.875rem',
                     }}
                   >

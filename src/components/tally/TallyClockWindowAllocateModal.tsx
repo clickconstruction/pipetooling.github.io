@@ -374,7 +374,7 @@ export function TallyClockWindowAllocateModal({
                       alignItems: 'flex-start',
                       gap: '0.5rem',
                       padding: '0.5rem 0',
-                      borderTop: '1px solid #f3f4f6',
+                      borderTop: '1px solid var(--border)',
                     }}
                   >
                     <input

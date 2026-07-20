@@ -474,7 +474,7 @@ export function BankingMercuryUserReviewLedgerModal({
                     : shortUuidPrefix(r.id)
                   const bankDescription = meta?.bankDescription ?? null
                   return (
-                    <tr key={r.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                    <tr key={r.id} style={{ borderBottom: '1px solid var(--border)' }}>
                       <td style={cellStyle}>{formatBankingDate(r.posted_at)}</td>
                       <td style={cellStyle}>
                         {onOpenTransactionDetail ? (

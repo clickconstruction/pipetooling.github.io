@@ -359,7 +359,7 @@ export function JobFormDeleteMigrateModals({
                       textAlign: 'left',
                       padding: '0.5rem 0.65rem',
                       border: 'none',
-                      borderBottom: '1px solid #f3f4f6',
+                      borderBottom: '1px solid var(--border)',
                       background: migrateTargetJobId === j.id ? 'var(--bg-blue-tint)' : 'var(--surface)',
                       cursor: migratingJob ? 'not-allowed' : 'pointer',
                       fontSize: '0.8125rem',

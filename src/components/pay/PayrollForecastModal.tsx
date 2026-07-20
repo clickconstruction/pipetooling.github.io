@@ -501,7 +501,7 @@ export function PayrollForecastModal(props: {
                   {unpaidRows.map((row) => {
                     const checked = checkedByRow[row.stubId]
                     return (
-                      <tr key={row.stubId} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                      <tr key={row.stubId} style={{ borderBottom: '1px solid var(--border)' }}>
                         <td style={{ padding: '0.4rem 0.6rem' }}>{row.personName}</td>
                         <td style={{ padding: '0.4rem 0.6rem', color: 'var(--text-700)' }}>
                           {formatShortDayMonth(row.balanceCreatedYmd)}

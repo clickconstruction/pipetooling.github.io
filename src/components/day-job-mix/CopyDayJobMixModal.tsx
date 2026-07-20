@@ -266,7 +266,7 @@ export function CopyDayJobMixModal({
                   </thead>
                   <tbody>
                     {sourceMix.map((r) => (
-                      <tr key={r.key} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                      <tr key={r.key} style={{ borderBottom: '1px solid var(--border)' }}>
                         <td style={{ padding: '0.35rem 0.25rem 0.35rem 0', verticalAlign: 'top' }}>{r.label}</td>
                         <td style={{ padding: '0.35rem 0.25rem', whiteSpace: 'nowrap' }}>{formatPct(r.pct)}</td>
                         <td style={{ padding: '0.35rem 0', whiteSpace: 'nowrap' }}>
@@ -318,7 +318,7 @@ export function CopyDayJobMixModal({
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.75rem' }}>
                       <tbody>
                         {targetPreviewMix.map((r) => (
-                          <tr key={r.key} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                          <tr key={r.key} style={{ borderBottom: '1px solid var(--border)' }}>
                             <td style={{ padding: '0.25rem 0' }}>{r.label}</td>
                             <td style={{ padding: '0.25rem', textAlign: 'right', whiteSpace: 'nowrap' }}>
                               {formatPct(r.pct)}

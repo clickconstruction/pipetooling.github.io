@@ -300,7 +300,7 @@ function CrewPnlRow({
   return (
     <>
       <tr
-        style={{ borderBottom: '1px solid #f3f4f6', cursor: 'pointer' }}
+        style={{ borderBottom: '1px solid var(--border)', cursor: 'pointer' }}
         onClick={onToggle}
         aria-expanded={expanded}
       >
@@ -351,7 +351,7 @@ function CrewPnlRow({
               </thead>
               <tbody>
                 {row.perJob.map((line, i) => (
-                  <tr key={`${line.kind}-${line.jobId ?? line.label}-${i}`} style={{ borderTop: '1px solid #f3f4f6' }}>
+                  <tr key={`${line.kind}-${line.jobId ?? line.label}-${i}`} style={{ borderTop: '1px solid var(--border)' }}>
                     <td style={{ padding: '0.35rem 0.5rem' }}>
                       {line.jobId ? (
                         <button

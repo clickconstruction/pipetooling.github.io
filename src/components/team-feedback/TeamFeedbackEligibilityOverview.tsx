@@ -183,16 +183,16 @@ export default function TeamFeedbackEligibilityOverview() {
                   const resetBusy = resettingUserId === u.id
                   return (
                     <tr key={u.id}>
-                      <td style={{ padding: '0.45rem 0.65rem', borderBottom: '1px solid #f3f4f6', verticalAlign: 'top' }}>
+                      <td style={{ padding: '0.45rem 0.65rem', borderBottom: '1px solid var(--border)', verticalAlign: 'top' }}>
                         <div style={{ fontWeight: 500, color: 'var(--text-strong)' }}>{u.name || '—'}</div>
                         <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', wordBreak: 'break-all' }}>
                           {u.email ?? ''}
                         </div>
                       </td>
-                      <td style={{ padding: '0.45rem 0.65rem', borderBottom: '1px solid #f3f4f6', color: 'var(--text-700)' }}>
+                      <td style={{ padding: '0.45rem 0.65rem', borderBottom: '1px solid var(--border)', color: 'var(--text-700)' }}>
                         {u.role ?? '—'}
                       </td>
-                      <td style={{ padding: '0.45rem 0.65rem', borderBottom: '1px solid #f3f4f6', verticalAlign: 'top' }}>
+                      <td style={{ padding: '0.45rem 0.65rem', borderBottom: '1px solid var(--border)', verticalAlign: 'top' }}>
                         <span
                           style={{
                             display: 'inline-block',
@@ -208,7 +208,7 @@ export default function TeamFeedbackEligibilityOverview() {
                         </span>
                         <div style={{ color: 'var(--text-600)', lineHeight: 1.35 }}>{line}</div>
                       </td>
-                      <td style={{ padding: '0.45rem 0.65rem', borderBottom: '1px solid #f3f4f6', verticalAlign: 'top' }}>
+                      <td style={{ padding: '0.45rem 0.65rem', borderBottom: '1px solid var(--border)', verticalAlign: 'top' }}>
                         <button
                           type="button"
                           title="Clear snooze and cadence barriers for this user (dev only)."

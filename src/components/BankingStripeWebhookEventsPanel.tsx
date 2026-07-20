@@ -98,7 +98,7 @@ export function BankingStripeWebhookEventsPanel() {
             </thead>
             <tbody>
               {rows.map((r) => (
-                <tr key={r.stripe_event_id} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                <tr key={r.stripe_event_id} style={{ borderBottom: '1px solid var(--border)' }}>
                   <td style={{ padding: '0.5rem 0.75rem', whiteSpace: 'nowrap', color: 'var(--text-700)' }}>
                     {formatCompactNoteDateTime(r.received_at)}
                   </td>

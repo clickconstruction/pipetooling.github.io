@@ -1618,7 +1618,7 @@ export default function ClockInOutButton({
           fontWeight: 600,
           border: `2px solid ${CLOCK_IN_ACCENT_ORANGE}`,
           borderRadius: 8,
-          background: canClockIn ? CLOCK_IN_ACCENT_ORANGE : '#f3f4f6',
+          background: canClockIn ? CLOCK_IN_ACCENT_ORANGE : 'var(--bg-muted)',
           color: canClockIn ? 'white' : 'var(--text-faint)',
           cursor: canClockIn && !actionLoading ? 'pointer' : 'not-allowed',
         }}

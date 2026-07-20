@@ -1421,7 +1421,7 @@ export function BidsPricingTab({
                                           style={{
                                             padding: '0.5rem',
                                             cursor: 'pointer',
-                                            borderBottom: '1px solid #f3f4f6',
+                                            borderBottom: '1px solid var(--border)',
                                             background: row.entry?.id === e.id ? 'var(--bg-blue-tint)' : 'var(--surface)'
                                           }}
                                           onMouseEnter={(ev) => { ev.currentTarget.style.background = 'var(--bg-subtle)' }}
@@ -2221,7 +2221,7 @@ export function BidsPricingTab({
                   <div style={{ position: 'absolute', top: '100%', left: 0, marginTop: 4, background: 'var(--surface)', border: '1px solid var(--border-strong)', borderRadius: 6, boxShadow: '0 4px 12px rgba(0,0,0,0.12)', zIndex: 30, minWidth: '14rem', padding: '0.25rem', maxHeight: '60vh', overflowY: 'auto' }}>
                     <button type="button" onClick={openAddBlankPricing} style={addPricingMenuItemStyle}>Blank pricing</button>
                     {priceBookVersions.filter((p) => p.id !== selectedPricingVersionId).length > 0 && (
-                      <div style={{ borderTop: '1px solid #f1f5f9', margin: '0.25rem 0', paddingTop: '0.25rem' }}>
+                      <div style={{ borderTop: '1px solid var(--border)', margin: '0.25rem 0', paddingTop: '0.25rem' }}>
                         <div style={{ fontSize: '0.7rem', color: 'var(--text-faint)', padding: '0.15rem 0.5rem' }}>Duplicate another version's pricing</div>
                         {priceBookVersions.filter((p) => p.id !== selectedPricingVersionId).map((p) => (
                           <button key={p.id} type="button" onClick={() => openClonePricing(p.id, p.name)} style={addPricingMenuItemStyle}>{p.name}</button>
@@ -2229,7 +2229,7 @@ export function BidsPricingTab({
                       </div>
                     )}
                     {templatePriceBookVersions.length > 0 && (
-                      <div style={{ borderTop: '1px solid #f1f5f9', margin: '0.25rem 0', paddingTop: '0.25rem' }}>
+                      <div style={{ borderTop: '1px solid var(--border)', margin: '0.25rem 0', paddingTop: '0.25rem' }}>
                         <div style={{ fontSize: '0.7rem', color: 'var(--text-faint)', padding: '0.15rem 0.5rem' }}>From template</div>
                         {templatePriceBookVersions.map((t) => (
                           <button key={t.id} type="button" onClick={() => openClonePricing(t.id, t.name)} style={addPricingMenuItemStyle}>{t.name}</button>

@@ -201,7 +201,7 @@ export function TransactionContextModal({ open, onClose, anchor, nicknameByAccou
       type="button"
       onClick={onClick}
       disabled={loading}
-      style={{ width: '100%', padding: '0.5rem', border: 'none', borderTop: '1px solid #f1f5f9', borderBottom: '1px solid #f1f5f9', background: 'var(--bg-slate-tint)', color: 'var(--text-link)', fontWeight: 600, fontSize: '0.8rem', cursor: loading ? 'wait' : 'pointer' }}
+      style={{ width: '100%', padding: '0.5rem', border: 'none', borderTop: '1px solid var(--border)', borderBottom: '1px solid var(--border)', background: 'var(--bg-slate-tint)', color: 'var(--text-link)', fontWeight: 600, fontSize: '0.8rem', cursor: loading ? 'wait' : 'pointer' }}
     >
       {loading ? 'Loading…' : label}
     </button>
@@ -258,4 +258,4 @@ export function TransactionContextModal({ open, onClose, anchor, nicknameByAccou
   )
 }
 
-const td: CSSProperties = { padding: '0.4rem 0.65rem', borderBottom: '1px solid #f3f4f6', color: 'var(--text-gray-800)' }
+const td: CSSProperties = { padding: '0.4rem 0.65rem', borderBottom: '1px solid var(--border)', color: 'var(--text-gray-800)' }

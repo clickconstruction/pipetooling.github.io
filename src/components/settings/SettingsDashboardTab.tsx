@@ -1414,7 +1414,7 @@ export default function SettingsDashboardTab({
                     const leaderLabel = displayLabelForGoalPickerUser(row.leader_user_id, goalPickerUsers)
                     const memberLabel = displayLabelForGoalPickerUser(row.member_user_id, goalPickerUsers)
                     return (
-                      <tr key={row.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                      <tr key={row.id} style={{ borderBottom: '1px solid var(--border)' }}>
                         <td style={{ padding: '0.5rem 0.75rem' }}>{leaderLabel}</td>
                         <td style={{ padding: '0.5rem 0.75rem' }}>{memberLabel}</td>
                         <td style={{ padding: '0.5rem 0.75rem', maxWidth: 220 }}>

@@ -109,7 +109,7 @@ function CollectPaymentFixturesLineItemsTable({ fixtures }: { fixtures: CertifyF
         </thead>
         <tbody>
           {fixtures.map((f) => (
-            <tr key={f.id} style={{ borderTop: '1px solid #f3f4f6' }}>
+            <tr key={f.id} style={{ borderTop: '1px solid var(--border)' }}>
               <td style={{ padding: 8 }}>
                 {f.name}
                 {f.line_description ? (
@@ -1021,7 +1021,7 @@ export default function CollectPaymentModal({
                             </thead>
                             <tbody>
                               {jobBookSearchRows.map((row) => (
-                                <tr key={row.id} style={{ borderTop: '1px solid #f3f4f6' }}>
+                                <tr key={row.id} style={{ borderTop: '1px solid var(--border)' }}>
                                   <td style={{ padding: 8 }}>{row.work_label}</td>
                                   <td style={{ padding: 8, textAlign: 'right' }}>
                                     ${Number(row.unit_cost).toLocaleString('en-US', { minimumFractionDigits: 2 })}

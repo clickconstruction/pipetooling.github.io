@@ -676,7 +676,7 @@ export function ProjectsJobHistoryDayModal({
                             key={s.id}
                             style={{
                               padding: '0.3rem 0',
-                              borderTop: sessionIdx === 0 ? undefined : '1px dashed #f1f5f9',
+                              borderTop: sessionIdx === 0 ? undefined : '1px dashed var(--border)',
                               fontSize: '0.875rem',
                               color: 'var(--text-slate-900)',
                               display: 'flex',
@@ -854,7 +854,7 @@ export function ProjectsJobHistoryDayModal({
                           style={{
                             padding: '0 0.75rem 0.75rem',
                             paddingLeft: 'calc(0.75rem + 28px + 0.5rem)',
-                            borderTop: '1px solid #f3f4f6',
+                            borderTop: '1px solid var(--border)',
                             paddingTop: '0.6rem',
                           }}
                         >
@@ -970,10 +970,10 @@ function DayCostRow({
           justifyContent: 'space-between',
           gap: '0.75rem',
           padding: '0.55rem 0.85rem',
-          borderTop: '1px solid #f1f5f9',
+          borderTop: '1px solid var(--border)',
           background: 'transparent',
           border: 'none',
-          borderTopColor: '#f1f5f9',
+          borderTopColor: 'var(--border)',
           borderTopStyle: 'solid',
           borderTopWidth: 1,
           cursor: 'pointer',

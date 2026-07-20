@@ -511,7 +511,7 @@ export default function NewProjectForm({ prefill, onCancel, onCreated }: NewProj
                       style={{
                         padding: '0.5rem',
                         cursor: 'pointer',
-                        borderBottom: '1px solid #f3f4f6',
+                        borderBottom: '1px solid var(--border)',
                       }}
                       onMouseEnter={(e) => {
                         e.currentTarget.style.background = 'var(--bg-muted)'

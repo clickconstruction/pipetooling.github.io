@@ -419,7 +419,7 @@ const ESTIMATE_LIST_CUSTOMER_SNAPSHOT_BTN_CLASS = 'estimate-customer-snapshot-ce
 
 const estimatesListCustomerSnapshotBtnCss = `
   .${ESTIMATES_PAGE_CLASS} .${ESTIMATE_LIST_CUSTOMER_SNAPSHOT_BTN_CLASS}:hover {
-    background: #f3f4f6;
+    background: var(--bg-muted);
   }
 `
 
@@ -1183,7 +1183,7 @@ function EstimateListTable({
 
           if (!showStagesActivity) {
             return (
-              <tr key={r.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
+              <tr key={r.id} style={{ borderBottom: '1px solid var(--border)' }}>
                 {mainRow}
               </tr>
             )
@@ -1193,7 +1193,7 @@ function EstimateListTable({
           const expanded = st.expandedEstimateThreadId === r.id
           return (
             <Fragment key={r.id}>
-              <tr style={{ borderBottom: '1px solid #f3f4f6' }}>{mainRow}</tr>
+              <tr style={{ borderBottom: '1px solid var(--border)' }}>{mainRow}</tr>
               {expanded ? (
                 <tr>
                   <td

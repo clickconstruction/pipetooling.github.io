@@ -1131,11 +1131,11 @@ export default function Calendar() {
                           padding: '2px 4px',
                           background:
                             step.status === 'completed' || step.status === 'approved'
-                              ? '#f0fdf4'
+                              ? 'var(--bg-green-tint)'
                               : step.status === 'skipped'
-                                ? '#f3f4f6'
+                                ? 'var(--bg-muted)'
                                 : step.status === 'rejected'
-                                  ? '#fef2f2'
+                                  ? 'var(--bg-red-tint)'
                                   : CALENDAR_DAY_HOVER_BG,
                           color: 'var(--text-strong)',
                           borderRadius: 3,
@@ -1716,11 +1716,11 @@ export default function Calendar() {
                               padding: '0.5rem 0.75rem',
                               background:
                                 step.status === 'completed' || step.status === 'approved'
-                                  ? '#f0fdf4'
+                                  ? 'var(--bg-green-tint)'
                                   : step.status === 'skipped'
-                                    ? '#f3f4f6'
+                                    ? 'var(--bg-muted)'
                                     : step.status === 'rejected'
-                                      ? '#fef2f2'
+                                      ? 'var(--bg-red-tint)'
                                       : CALENDAR_DAY_HOVER_BG,
                               color: 'var(--text-strong)',
                               borderRadius: 4,
@@ -1854,7 +1854,7 @@ export default function Calendar() {
                           alignItems: 'center',
                           gap: '1rem',
                           padding: '0.5rem 0.75rem',
-                          background: item.step.status === 'completed' || item.step.status === 'approved' ? '#f0fdf4' : item.step.status === 'skipped' ? '#f3f4f6' : item.step.status === 'rejected' ? '#fef2f2' : CALENDAR_DAY_HOVER_BG,
+                          background: item.step.status === 'completed' || item.step.status === 'approved' ? 'var(--bg-green-tint)' : item.step.status === 'skipped' ? 'var(--bg-muted)' : item.step.status === 'rejected' ? 'var(--bg-red-tint)' : CALENDAR_DAY_HOVER_BG,
                           color: 'var(--text-strong)',
                           textDecoration: 'none',
                           borderRadius: 4,

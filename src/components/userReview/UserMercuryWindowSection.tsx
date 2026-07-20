@@ -764,7 +764,7 @@ function JobCard({
             const key = `${job.jobId}::${group.labelId ?? UNLABELED_GROUP_KEY}`
             const isOpen = expandedGroups.has(key)
             return (
-              <li key={key} style={{ borderTop: '1px solid #f3f4f6' }}>
+              <li key={key} style={{ borderTop: '1px solid var(--border)' }}>
                 <button
                   type="button"
                   onClick={() => onToggleGroup(key)}
@@ -963,7 +963,7 @@ function TransactionsTable<R extends UserReviewBreakdownTx>({
             const jobLabel = showJobColumn && jobLabelOf ? jobLabelOf(r) : null
             const isSplit = hasMultipleAllocationsOf ? hasMultipleAllocationsOf(r) : false
             return (
-              <tr key={r.rowKey} style={{ borderTop: '1px solid #f3f4f6' }}>
+              <tr key={r.rowKey} style={{ borderTop: '1px solid var(--border)' }}>
                 <td
                   style={{
                     ...detailTdStyle,

@@ -260,7 +260,7 @@ function fillRemainderButtonStyle(disabled: boolean): CSSProperties {
     borderRadius: 10,
     border: `1px solid ${disabled ? '#e2e8f0' : '#cbd5e1'}`,
     background: disabled ? 'var(--bg-slate-tint)' : 'var(--surface)',
-    color: disabled ? 'var(--text-slate-400)' : '#334155',
+    color: disabled ? 'var(--text-slate-400)' : 'var(--text-slate-600)',
     cursor: disabled ? 'not-allowed' : 'pointer',
     fontFamily: 'inherit',
     boxShadow: disabled ? 'none' : '0 1px 2px rgba(15, 23, 42, 0.05)',
@@ -953,7 +953,7 @@ export function MercuryTransactionAllocationsModal({
               borderRadius: 6,
               border: '1px solid var(--border-strong)',
               background: 'var(--bg-slate-tint)',
-              color: '#334155',
+              color: 'var(--text-slate-600)',
               fontSize: '0.8125rem',
               lineHeight: 1.45,
             }}
@@ -1109,7 +1109,7 @@ export function MercuryTransactionAllocationsModal({
                   textAlign: 'left',
                   padding: '0.45rem 0.65rem',
                   border: 'none',
-                  borderBottom: '1px solid #f3f4f6',
+                  borderBottom: '1px solid var(--border)',
                   background: 'var(--surface)',
                   cursor: 'pointer',
                 }}
@@ -1166,7 +1166,7 @@ export function MercuryTransactionAllocationsModal({
                           borderRadius: 999,
                           border: '1px solid var(--border)',
                           background: userId === id ? 'var(--bg-sky-100)' : 'var(--surface)',
-                          color: '#334155',
+                          color: 'var(--text-slate-600)',
                           cursor: 'pointer',
                           fontFamily: 'inherit',
                           maxWidth: 140,
@@ -1351,7 +1351,7 @@ export function MercuryTransactionAllocationsModal({
                 marginBottom: '0.65rem',
                 padding: '0.65rem 0.75rem',
                 borderRadius: 12,
-                border: '1px solid #f1f5f9',
+                border: '1px solid var(--border)',
                 background: 'var(--bg-page)',
               }}
             >

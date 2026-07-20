@@ -297,7 +297,7 @@ export function AssignTakeoffPartModal({
                         <div
                           key={o.id}
                           onClick={() => void selectOption(o.id)}
-                          style={{ padding: '0.5rem 0.75rem', cursor: 'pointer', borderBottom: '1px solid #f3f4f6' }}
+                          style={{ padding: '0.5rem 0.75rem', cursor: 'pointer', borderBottom: '1px solid var(--border)' }}
                           onMouseEnter={(ev) => { ev.currentTarget.style.background = 'var(--bg-subtle)' }}
                           onMouseLeave={(ev) => { ev.currentTarget.style.background = 'var(--surface)' }}
                         >

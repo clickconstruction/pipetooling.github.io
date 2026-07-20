@@ -39,7 +39,7 @@ const tableHead: CSSProperties = {
 const tableCell: CSSProperties = {
   fontSize: '0.78rem',
   padding: '0.35rem 0.25rem',
-  borderBottom: '1px solid #f3f4f6',
+  borderBottom: '1px solid var(--border)',
   verticalAlign: 'top',
 }
 

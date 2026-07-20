@@ -265,7 +265,7 @@ export function BankingUserCardLinkModal({
                     gap: '0.5rem',
                     marginBottom: '0.65rem',
                     paddingBottom: '0.65rem',
-                    borderBottom: '1px solid #f3f4f6',
+                    borderBottom: '1px solid var(--border)',
                   }}
                 >
                   <div style={{ flex: '0 1 12rem', minWidth: 0 }}>

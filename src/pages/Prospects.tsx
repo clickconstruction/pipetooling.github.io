@@ -2706,7 +2706,7 @@ export default function Prospects() {
                             </thead>
                             <tbody>
                               {visibleRows.map((r) => (
-                                <tr key={r.user_id} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                                <tr key={r.user_id} style={{ borderBottom: '1px solid var(--border)' }}>
                                   <td style={{ padding: '0.5rem 0.75rem' }}>{r.name}</td>
                                   <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{r.cards_marked}</td>
                                   <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{r.cards_updated}</td>
@@ -3160,7 +3160,7 @@ export default function Prospects() {
                   </thead>
                   <tbody>
                     {timerEvents.map((e) => (
-                      <tr key={e.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                      <tr key={e.id} style={{ borderBottom: '1px solid var(--border)' }}>
                         <td style={{ padding: '0.5rem 0.75rem' }}>{formatDateTime(e.created_at)}</td>
                         <td style={{ padding: '0.5rem 0.75rem', fontVariantNumeric: 'tabular-nums', fontFamily: 'ui-monospace, monospace' }}>{formatTimerSeconds(e.timer_seconds)}</td>
                         <td style={{ padding: '0.5rem 0.75rem' }}>{formatTimerButtonName(e.button_name)}</td>

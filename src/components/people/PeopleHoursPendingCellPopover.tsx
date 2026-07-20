@@ -201,8 +201,8 @@ export function PeopleHoursPendingCellPopover({
           listStyle: 'none',
           maxHeight: 180,
           overflowY: 'auto',
-          borderTop: '1px solid #f3f4f6',
-          borderBottom: '1px solid #f3f4f6',
+          borderTop: '1px solid var(--border)',
+          borderBottom: '1px solid var(--border)',
         }}
       >
         {entry.sessions.map((s) => {
@@ -222,7 +222,7 @@ export function PeopleHoursPendingCellPopover({
                 justifyContent: 'space-between',
                 gap: '0.5rem',
                 padding: '0.4rem 0',
-                borderBottom: '1px solid #f3f4f6',
+                borderBottom: '1px solid var(--border)',
               }}
             >
               <div style={{ minWidth: 0, flex: 1 }}>

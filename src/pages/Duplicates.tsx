@@ -268,7 +268,7 @@ export default function Duplicates() {
                   {group.map((part) => {
                     const best = bestPriceByPartId[part.id]
                     return (
-                    <tr key={part.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                    <tr key={part.id} style={{ borderBottom: '1px solid var(--border)' }}>
                       <td style={{ padding: '0.5rem 0.75rem' }}>{part.name}</td>
                       <td style={{ padding: '0.5rem 0.75rem' }}>{part.manufacturer ?? '—'}</td>
                       <td style={{ padding: '0.5rem 0.75rem' }}>{(part.part_type_id ? partTypeMap[part.part_type_id]?.name : null) ?? '—'}</td>

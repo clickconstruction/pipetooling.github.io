@@ -286,7 +286,7 @@ const th = {
 const td = {
   padding: '0.2rem 0.4rem',
   fontSize: '0.75rem',
-  borderBottom: '1px solid #f3f4f6',
+  borderBottom: '1px solid var(--border)',
   verticalAlign: 'middle' as const,
 }
 

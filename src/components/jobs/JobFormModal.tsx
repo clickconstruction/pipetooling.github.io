@@ -2950,7 +2950,7 @@ export default function JobFormModal({
                                 if (!jobAddress.trim()) setJobAddress(c.address ?? '')
                                 setCustomerDropdownOpen(false)
                               }}
-                              style={{ padding: '0.5rem', cursor: 'pointer', borderBottom: '1px solid #f3f4f6' }}
+                              style={{ padding: '0.5rem', cursor: 'pointer', borderBottom: '1px solid var(--border)' }}
                               onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--bg-muted)' }}
                               onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--surface)' }}
                             >
@@ -3986,7 +3986,7 @@ export default function JobFormModal({
                     <div
                       key={c.id}
                       onClick={() => handleLinkToSimilarCustomer(c)}
-                      style={{ padding: '0.5rem 0.75rem', cursor: 'pointer', borderBottom: '1px solid #f3f4f6' }}
+                      style={{ padding: '0.5rem 0.75rem', cursor: 'pointer', borderBottom: '1px solid var(--border)' }}
                       onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--bg-subtle)' }}
                       onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--surface)' }}
                     >

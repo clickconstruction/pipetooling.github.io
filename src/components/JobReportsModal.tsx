@@ -305,7 +305,7 @@ export default function JobReportsModal({
                         style={{
                           padding: '0 1rem 1rem 1rem',
                           paddingLeft: 'calc(1rem + 28px + 0.5rem)',
-                          borderTop: '1px solid #f3f4f6',
+                          borderTop: '1px solid var(--border)',
                           paddingTop: '0.75rem',
                         }}
                         onClick={(e) => e.stopPropagation()}
