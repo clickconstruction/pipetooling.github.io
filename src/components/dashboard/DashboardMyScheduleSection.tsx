@@ -51,7 +51,8 @@ export type DashboardMyScheduleSectionProps = {
  * its rows also drive the job-row sections' leave-report reminders.
  *
  * The parent renders it unconditionally at the section's position; `id`
- * carries the section-dock anchor.
+ * carries the section-dock anchor. The root is a bordered card whose styles
+ * mirror `DashboardGroupCard` (custom header keeps it from using the wrapper).
  */
 export function DashboardMyScheduleSection({
   role,
@@ -70,7 +71,18 @@ export function DashboardMyScheduleSection({
   const jobDetailModal = useJobDetailModal()
 
   return (
-    <div id="dash-my-schedule" style={{ marginTop: '1.5rem', marginBottom: '2rem', scrollMarginTop: 8 }}>
+    <div
+      id="dash-my-schedule"
+      style={{
+        border: '1px solid var(--border)',
+        borderRadius: 8,
+        background: 'var(--surface)',
+        padding: '0.85rem 1rem 1rem',
+        marginTop: '1rem',
+        marginBottom: '1rem',
+        scrollMarginTop: 8,
+      }}
+    >
       <div
         style={{
           display: 'flex',
