@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
-import { formatWorkDateYmdMonthDayShort } from '../../utils/dateUtils'
+import { formatWorkDateYmdMonthDayShort, isoWeekNumberFromGregorianYmd, ymdAddDays } from '../../utils/dateUtils'
 import { formatDecimalWorkHoursToHhMm } from '../../lib/formatDecimalWorkHoursHhMm'
 import { formatClockSessionTimestampPartsChicago } from '../../lib/formatClockSessionTimestamp'
 import {
@@ -20,6 +20,12 @@ type LoadState = { kind: 'loading' } | { kind: 'error' } | { kind: 'ready'; rows
 
 function weekRangeLabel(week: JobHistoryWeek): string {
   return `${formatWorkDateYmdMonthDayShort(week.weekStartYmd)} – ${formatWorkDateYmdMonthDayShort(week.weekEndYmd)}`
+}
+
+/** ISO week number from the week's Thursday — same convention as the WeekNav's "Week N" title. */
+function weekNumberLabel(week: JobHistoryWeek): string | null {
+  const n = isoWeekNumberFromGregorianYmd(ymdAddDays(week.weekStartYmd, 4))
+  return n === null ? null : `w${n}`
 }
 
 function sessionTime(iso: string): string {
@@ -162,6 +168,14 @@ export function ScheduleDispatchJobWeekHistory({ jobId }: { jobId: string }) {
                   <span aria-hidden style={{ fontSize: '0.6875rem', color: 'var(--text-muted)', width: '0.85rem', flexShrink: 0 }}>
                     {expanded ? '▼' : '▶'}
                   </span>
+                  {weekNumberLabel(week) ? (
+                    <span
+                      title="Week of the year"
+                      style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}
+                    >
+                      {weekNumberLabel(week)}
+                    </span>
+                  ) : null}
                   <span style={{ fontWeight: 600, fontSize: '0.8125rem', color: 'var(--text-700)', whiteSpace: 'nowrap' }}>
                     {weekRangeLabel(week)}
                   </span>
