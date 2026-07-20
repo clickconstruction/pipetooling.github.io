@@ -13,6 +13,10 @@ The hub has three view tabs — **People**, **Jobs**, and **Day** — plus a {{b
 
 Opening a single job (from a job link or the Stages board's Week dispatch button) shows that job's week grid — and below it, a **Work history** section: every past week the job saw approved clock time, newest first, with who worked and their hours. The header totals the whole job (hours · people · first–last work date), and a green **on the job now** chip lists anyone currently clocked in. Click a week row to expand it down to the individual sessions — clock-in → clock-out, duration, and any session note. Hours only; wages never appear here.
 
+## Jumping here from the Dashboard
+
+In the Dashboard's **Currently In** clock strip, every clocked-in person has a small calendar icon left of their name: {{chip:blue|2}} **blue with a white count** when they have jobs on today's schedule, **grey** when they have nothing scheduled. Click it and you land on this page with that person's row highlighted and scrolled into view — ready to add jobs for them.
+
 ## Assigning someone to a job
 
 Click the add control in a person's cell for the day. The **Add job to schedule** modal opens:

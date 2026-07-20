@@ -1848,6 +1848,7 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
             onThisWeek={goThisWeek}
             onOpenJob={openJobWeekGrid}
             onOpenHubJobDetail={openHubJobDetail}
+            focusPersonUserId={searchParams.get('focusPerson')?.trim() || null}
             scheduleTodayYmd={scheduleTodayYmd}
             cardPlacementMode={cardPlacementMode}
             placementSourceWorkDate={placementSourceBlock?.work_date ?? null}

@@ -18,8 +18,9 @@ import {
 } from '../hooks/useDashboardMyTeamSectionState'
 import { approveClockSessions } from '../lib/approveClockSessions'
 import { supabase } from '../lib/supabase'
+import { countDistinctJobsPerAssignee } from '../lib/currentlyInDispatchCounts'
 import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
-import { denverCalendarDayKey } from '../utils/dateUtils'
+import { denverCalendarDayKey, getDefaultWeekRange } from '../utils/dateUtils'
 import { useUserReviewModal } from '../contexts/UserReviewModalContext'
 import { useJobDetailModal } from '../contexts/JobDetailModalContext'
 import { useIntervalNowMs } from '../hooks/useIntervalNowMs'
@@ -722,6 +723,7 @@ export function DashboardTeamActiveClockStrip({
   jobsWorkedTodayJobLedgerIdsWithReport,
   showAddClockSession = false,
   onAddClockSession,
+  enableCurrentlyInDispatchIcon = false,
 }: {
   sessions: DashboardStripSession[]
   hoursTodayByUserId: Readonly<Record<string, number>>
@@ -776,11 +778,53 @@ export function DashboardTeamActiveClockStrip({
   showAddClockSession?: boolean
   /** Open the parent-owned add-clock-session modal (with person picker). */
   onAddClockSession?: () => void
+  /**
+   * Dashboard, dispatch-editor roles only: show a dispatch icon left of each
+   * Currently In name (blue + today's distinct-job-count badge when scheduled,
+   * grey when not) linking to /schedule-dispatch?focusPerson=<userId>.
+   */
+  enableCurrentlyInDispatchIcon?: boolean
 }) {
   const { role: viewerRole } = useAuth()
   const prefixMap = useLedgerPrefixMap()
   const clockStripWorkDateResolved =
     clockStripWorkDateYmd ?? new Date().toLocaleDateString('en-CA')
+
+  /** Currently In dispatch badge: distinct jobs scheduled today per open-session user. */
+  const [dispatchJobCounts, setDispatchJobCounts] = useState<ReadonlyMap<string, number>>(
+    () => new Map(),
+  )
+  const dispatchCountUserIdsKey = useMemo(() => {
+    if (!enableCurrentlyInDispatchIcon) return ''
+    return Array.from(new Set(sessions.map((s) => s.user_id))).sort().join(',')
+  }, [enableCurrentlyInDispatchIcon, sessions])
+  useEffect(() => {
+    if (!enableCurrentlyInDispatchIcon || !dispatchCountUserIdsKey) {
+      setDispatchJobCounts(new Map())
+      return
+    }
+    let cancelled = false
+    void (async () => {
+      try {
+        const data = await withSupabaseRetry<Array<{ assignee_user_id: string; job_id: string }>>(
+          async () =>
+            supabase
+              .from('job_schedule_blocks')
+              .select('assignee_user_id, job_id')
+              .eq('work_date', clockStripWorkDateResolved)
+              .in('assignee_user_id', dispatchCountUserIdsKey.split(',')),
+          'load Currently In dispatch job counts',
+        )
+        if (cancelled) return
+        setDispatchJobCounts(countDistinctJobsPerAssignee(data ?? []))
+      } catch {
+        if (!cancelled) setDispatchJobCounts(new Map())
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [enableCurrentlyInDispatchIcon, dispatchCountUserIdsKey, clockStripWorkDateResolved])
   const userReviewModal = useUserReviewModal()
   const openUserReview = useCallback(
     (userId: string, displayName: string) => {
@@ -1549,6 +1593,57 @@ export function DashboardTeamActiveClockStrip({
                 <tr key={s.id}>
                   <td style={{ ...td, ...stripCurrentlyInFirstCol }}>
                     <span style={stripCurrentlyInNameWithSuffix}>
+                    {enableCurrentlyInDispatchIcon ? (() => {
+                      const jobCount = dispatchJobCounts.get(s.user_id) ?? 0
+                      const hasJobs = jobCount > 0
+                      return (
+                        <Link
+                          to={`/schedule-dispatch?week=${encodeURIComponent(getDefaultWeekRange().start)}&focusPerson=${encodeURIComponent(s.user_id)}`}
+                          title={
+                            hasJobs
+                              ? `Open Dispatch for ${personName(s)} — ${jobCount} ${jobCount === 1 ? 'job' : 'jobs'} scheduled today`
+                              : `Open Dispatch for ${personName(s)} — nothing scheduled today; add jobs`
+                          }
+                          aria-label={
+                            hasJobs
+                              ? `Open Dispatch for ${personName(s)}, ${jobCount} ${jobCount === 1 ? 'job' : 'jobs'} scheduled today`
+                              : `Open Dispatch for ${personName(s)}, nothing scheduled today`
+                          }
+                          style={{
+                            position: 'relative',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            flexShrink: 0,
+                            marginRight: '0.4rem',
+                            color: hasJobs ? 'var(--text-link)' : 'var(--text-faint)',
+                          }}
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={18} height={18} fill="currentColor" aria-hidden="true">
+                            <path d="M224 64C206.3 64 192 78.3 192 96L192 128L160 128C124.7 128 96 156.7 96 192L96 240L544 240L544 192C544 156.7 515.3 128 480 128L448 128L448 96C448 78.3 433.7 64 416 64C398.3 64 384 78.3 384 96L384 128L256 128L256 96C256 78.3 241.7 64 224 64zM96 288L96 480C96 515.3 124.7 544 160 544L480 544C515.3 544 544 515.3 544 480L544 288L96 288z" />
+                          </svg>
+                          {hasJobs ? (
+                            <span
+                              aria-hidden
+                              style={{
+                                position: 'absolute',
+                                left: 0,
+                                right: 0,
+                                top: '52%',
+                                transform: 'translateY(-38%)',
+                                textAlign: 'center',
+                                fontSize: '0.5625rem',
+                                fontWeight: 700,
+                                lineHeight: 1,
+                                color: '#ffffff',
+                                pointerEvents: 'none',
+                              }}
+                            >
+                              {jobCount > 9 ? '9+' : jobCount}
+                            </span>
+                          ) : null}
+                        </Link>
+                      )
+                    })() : null}
                     {userReviewModal ? (
                       <button
                         type="button"

@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-20 (v2.787)
+last_updated: 2026-07-20 (v2.788)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.788)
+
+### Dashboard + People UX batch: Currently-In dispatch icons, search keyboard nav, Recent Reports job links, legend trim, collapsible External Subcontractors (2026-07-20)
+Five items shipped together after local review. **(1) Currently In dispatch icons** — [`DashboardTeamActiveClockStrip`](../src/components/DashboardTeamActiveClockStrip.tsx) gains opt-in `enableCurrentlyInDispatchIcon` (Dashboard passes it for dev/master/assistant-like/superintendent): each Currently In row shows a calendar-dispatch glyph left of the name — blue (`var(--text-link)`) with a white distinct-job-count badge ("9+" cap) when the person has `job_schedule_blocks` today, grey (`var(--text-faint)`) when not — linking to `/schedule-dispatch?week=<sunday>&focusPerson=<userId>`. One query per strip load (work_date = strip's Chicago work date, `IN` open-session user ids); counting kernel [`currentlyInDispatchCounts.ts`](../src/lib/currentlyInDispatchCounts.ts) (+tests, multiple blocks on one job count once). The dispatch hub People grid ([`ScheduleDispatchHub`](../src/components/schedule/ScheduleDispatchHub.tsx)) honors the new `?focusPerson` param: blue-tinted sticky name cell + scroll-to-center once loaded. Other strip mounts (People → Hours, Quickfill) unchanged. **(2) Search keyboard navigation** — [`HeaderGlobalSearch`](../src/components/HeaderGlobalSearch.tsx): ↓/↑ move a wrapping highlight through results (blue-tint row, scrolled into view) while focus stays in the input, Enter opens the highlighted result, typing refilters and resets the highlight; combobox a11y (`aria-activedescendant`/`aria-expanded`/`aria-selected`). Enter does nothing with no highlight. **(3) Recent Reports job links** — [`DashboardRecentReportsSection`](../src/components/dashboard/DashboardRecentReportsSection.tsx): the job name atop each report row opens Job Detail (job-linked reports only), and a `DashboardJobPicturesLinkRow` icon sits beside it — blue opens customer pictures, red files the `link_job_pictures` dispatch request (shared `submitLinkJobPicturesDispatchRequest`, deduped). Data was already in `list_reports_with_job_info` (`job_ledger_id`/`job_job_pictures_link`/`job_address`) — now mapped into `RecentReportRow`. **(4) Cost Timeline legend trimmed** ([`JobSummaryChargesTimelineChart`](../src/components/jobs/JobSummaryChargesTimelineChart.tsx)): "Green = profit" drops the "(above the $0 line = collected more than it cost)" parenthetical. **(5) People → Users: External Subcontractors collapses** ([`PeopleUsersTab`](../src/components/people/PeopleUsersTab.tsx)): the heading is a chevron toggle showing the count, collapsed by default; roster search force-expands so matches are never hidden. Help guides: `global-search.md` keyboard section, `schedule-dispatch.md` "Jumping here from the Dashboard".
 
 ## Latest Updates (v2.787)
 

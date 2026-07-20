@@ -1029,6 +1029,8 @@ type HubPeoplePanelProps = {
   summariesError: string | null
   onOpenJob: (jobId: string) => void
   onOpenHubJobDetail: (block: JobScheduleBlockRow, workDateYmd: string) => void
+  /** From ?focusPerson=<userId>: highlight + scroll to this person's row (Dashboard clock-strip shortcut). */
+  focusPersonUserId?: string | null
   cardPlacementMode: ScheduleDispatchCardPlacementMode | null
   placementSourceWorkDate: string | null
   plusMenuBlockId: string | null
@@ -1087,6 +1089,7 @@ function HubPeoplePanel({
   summariesError,
   onOpenJob,
   onOpenHubJobDetail,
+  focusPersonUserId = null,
   cardPlacementMode,
   placementSourceWorkDate,
   plusMenuBlockId,
@@ -1198,6 +1201,14 @@ function HubPeoplePanel({
       jobCount: jobs.size,
     }
   }, [expectedManpowerDayRows])
+
+  /** Scroll the ?focusPerson row into view once rows are rendered. */
+  useEffect(() => {
+    if (!focusPersonUserId || loading) return
+    document
+      .getElementById(`hub-person-row-${focusPersonUserId}`)
+      ?.scrollIntoView({ block: 'center' })
+  }, [focusPersonUserId, loading])
 
   useEffect(() => {
     const prev = prevHubExpectedManpowerKeyRef.current
@@ -1470,7 +1481,7 @@ function HubPeoplePanel({
               </tr>
             ) : (
               filteredAssignees.map((person) => (
-                <tr key={person.userId}>
+                <tr key={person.userId} id={`hub-person-row-${person.userId}`}>
                   <td
                     style={{
                       padding: '0.5rem',
@@ -1479,7 +1490,12 @@ function HubPeoplePanel({
                       borderBottom: '1px solid var(--border)',
                       position: 'sticky',
                       left: 0,
-                      background: isMobile ? 'transparent' : 'var(--surface)',
+                      background:
+                        person.userId === focusPersonUserId
+                          ? 'var(--bg-blue-tint)'
+                          : isMobile
+                            ? 'transparent'
+                            : 'var(--surface)',
                       zIndex: 1,
                       fontWeight: 600,
                       color: 'var(--text-strong)',
@@ -2051,6 +2067,8 @@ type Props = {
   onThisWeek: () => void
   onOpenJob: (jobId: string) => void
   onOpenHubJobDetail: (block: JobScheduleBlockRow, workDateYmd: string) => void
+  /** From ?focusPerson=<userId>: highlight + scroll to this person's row (Dashboard clock-strip shortcut). */
+  focusPersonUserId?: string | null
   cardPlacementMode: ScheduleDispatchCardPlacementMode | null
   placementSourceWorkDate: string | null
   plusMenuBlockId: string | null
@@ -2147,6 +2165,7 @@ export function ScheduleDispatchHub({
   onThisWeek,
   onOpenJob,
   onOpenHubJobDetail,
+  focusPersonUserId = null,
   cardPlacementMode,
   placementSourceWorkDate,
   plusMenuBlockId,
@@ -2317,6 +2336,7 @@ export function ScheduleDispatchHub({
           summariesError={summariesError}
           onOpenJob={onOpenJob}
           onOpenHubJobDetail={onOpenHubJobDetail}
+          focusPersonUserId={focusPersonUserId}
           cardPlacementMode={cardPlacementMode}
           placementSourceWorkDate={placementSourceWorkDate}
           plusMenuBlockId={plusMenuBlockId}
@@ -2385,6 +2405,7 @@ export function ScheduleDispatchHub({
           summariesError={summariesError}
           onOpenJob={onOpenJob}
           onOpenHubJobDetail={onOpenHubJobDetail}
+          focusPersonUserId={focusPersonUserId}
           cardPlacementMode={cardPlacementMode}
           placementSourceWorkDate={placementSourceWorkDate}
           plusMenuBlockId={plusMenuBlockId}

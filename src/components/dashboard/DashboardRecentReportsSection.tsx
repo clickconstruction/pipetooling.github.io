@@ -8,6 +8,8 @@ import { displayReportTemplateName } from '../../lib/reportTemplateDisplayName'
 import { formatReportFieldValueInlineList } from '../../lib/reportSignatureField'
 import { recentReportsUnreadCount, recentReportsVisibleRows, type RecentReportRow } from '../../lib/dashboardRecentReports'
 import ReportEditModal, { type ReportForEdit } from '../ReportEditModal'
+import { useJobDetailModal } from '../../contexts/JobDetailModalContext'
+import { DashboardJobPicturesLinkRow } from './DashboardJobPicturesLinkRow'
 import { RecentReportsSkeleton } from './DashboardSkeletons'
 import { ReportEmailSettingsModal } from './ReportEmailSettingsModal'
 
@@ -16,10 +18,19 @@ const HIDE_ON_REFRESH_STORAGE_KEY = 'pipetooling_dashboard_hide_on_refresh_ids'
 export function DashboardRecentReportsSection({
   authUserId,
   role,
+  submitLinkJobPicturesDispatchRequest,
 }: {
   authUserId: string | undefined
   role: UserRole | null
+  /** Shared with the job-row family — creates the `link_job_pictures` dispatch request. */
+  submitLinkJobPicturesDispatchRequest?: (args: {
+    jobId: string
+    hcpNumber: string | null | undefined
+    jobName: string | null | undefined
+    jobAddress: string | null | undefined
+  }) => Promise<void>
 }) {
+  const jobDetailModal = useJobDetailModal()
   const [recentReports, setRecentReports] = useState<RecentReportRow[]>([])
   const [recentReportsLoading, setRecentReportsLoading] = useState(false)
   const [isReportEnabledOnlyUser, setIsReportEnabledOnlyUser] = useState(false)
@@ -73,7 +84,7 @@ export function DashboardRecentReportsSection({
           supabase.from('report_reads').select('report_id').eq('user_id', authUserId),
         ])
         const arr = Array.isArray(reportsData) ? reportsData : []
-        const list = arr.slice(0, 8).map((r: { id: string; template_name: string; job_display_name: string; created_at: string; created_by_name: string; field_values?: unknown; reported_at_lat?: number | null; reported_at_lng?: number | null }) => ({
+        const list = arr.slice(0, 8).map((r: { id: string; template_name: string; job_display_name: string; created_at: string; created_by_name: string; field_values?: unknown; reported_at_lat?: number | null; reported_at_lng?: number | null; job_ledger_id?: string | null; job_hcp_number?: string; job_job_pictures_link?: string | null; job_address?: string | null }) => ({
           id: r.id,
           template_name: r.template_name,
           job_display_name: r.job_display_name,
@@ -82,6 +93,10 @@ export function DashboardRecentReportsSection({
           field_values: r.field_values as Record<string, string> | undefined,
           reported_at_lat: r.reported_at_lat ?? null,
           reported_at_lng: r.reported_at_lng ?? null,
+          job_ledger_id: r.job_ledger_id ?? null,
+          job_hcp_number: r.job_hcp_number ?? '',
+          job_pictures_link: r.job_job_pictures_link ?? null,
+          job_address: r.job_address ?? null,
         }))
         setRecentReports(list)
         const readIds = new Set<string>()
@@ -281,7 +296,54 @@ export function DashboardRecentReportsSection({
                           </button>
                         )}
                         <div style={{ flex: 1, minWidth: 0 }}>
-                          <span style={{ fontWeight: 500 }}>{r.job_display_name || 'Unknown job'}</span>
+                          {r.job_ledger_id ? (
+                            <span
+                              role="button"
+                              tabIndex={0}
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                jobDetailModal?.openJobDetail({
+                                  jobId: r.job_ledger_id!,
+                                  prefillRowLabel: `${(r.job_hcp_number ?? '').trim() || '—'} · ${r.job_display_name || 'Job'}`,
+                                  prefillAddress: (r.job_address ?? '').trim() || null,
+                                })
+                              }}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter' || e.key === ' ') {
+                                  e.preventDefault()
+                                  e.stopPropagation()
+                                  jobDetailModal?.openJobDetail({
+                                    jobId: r.job_ledger_id!,
+                                    prefillRowLabel: `${(r.job_hcp_number ?? '').trim() || '—'} · ${r.job_display_name || 'Job'}`,
+                                    prefillAddress: (r.job_address ?? '').trim() || null,
+                                  })
+                                }
+                              }}
+                              aria-label={`Job details: ${r.job_display_name || 'Job'}`}
+                              title="Open job details"
+                              style={{ fontWeight: 500, cursor: 'pointer', textDecoration: 'underline', textDecorationColor: 'var(--border-strong)', textUnderlineOffset: 3 }}
+                            >
+                              {r.job_display_name || 'Unknown job'}
+                            </span>
+                          ) : (
+                            <span style={{ fontWeight: 500 }}>{r.job_display_name || 'Unknown job'}</span>
+                          )}
+                          {r.job_ledger_id && submitLinkJobPicturesDispatchRequest ? (
+                            <span style={{ marginLeft: '0.5rem', verticalAlign: 'middle', display: 'inline-flex' }}>
+                              <DashboardJobPicturesLinkRow
+                                layout="inline"
+                                jobPicturesLink={r.job_pictures_link}
+                                onMissingClick={() =>
+                                  void submitLinkJobPicturesDispatchRequest({
+                                    jobId: r.job_ledger_id!,
+                                    hcpNumber: r.job_hcp_number,
+                                    jobName: r.job_display_name,
+                                    jobAddress: r.job_address,
+                                  })
+                                }
+                              />
+                            </span>
+                          ) : null}
                           <span style={{ color: 'var(--text-muted)', fontSize: '0.875rem', marginLeft: '0.5rem' }}>· {displayReportTemplateName(r.template_name, role)}</span>
                           <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
                             {new Date(r.created_at).toLocaleString()} · {r.created_by_name}
