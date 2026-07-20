@@ -59,6 +59,8 @@ export interface DashboardPinnedQuickRowProps {
    * banners keep their original top position.
    */
   jobReportFirst?: boolean
+  /** Slot rendered directly BELOW the Job Report row (main dashboard: the My Schedule card). */
+  afterJobReportRow?: ReactNode
   /**
    * Slot rendered between the notification banners and the pins/quick-action row
    * (the main dashboard passes the finance section here). Omitted in Job Mode.
@@ -86,6 +88,7 @@ export function DashboardPinnedQuickRow({
   subLaborDueTotal,
   renderModals,
   jobReportFirst = false,
+  afterJobReportRow,
   interstitial,
 }: DashboardPinnedQuickRowProps) {
   const navigate = useNavigate()
@@ -306,6 +309,7 @@ export function DashboardPinnedQuickRow({
   return (
     <>
       {jobReportFirst && jobReportRow}
+      {afterJobReportRow}
       {arBankCountEnabled && (
         <DashboardArBankUnallocatedBanner
           count={arBankUnallocatedCount ?? 0}
