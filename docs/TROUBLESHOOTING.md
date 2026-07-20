@@ -8,9 +8,11 @@ Common issues and how to resolve them.
 
 **Symptoms**: App shows a blank white screen even after hard reload. Often happens when the app was open during a deploy (e.g. phone left open).
 
-**Cause**: Service worker or browser cache serving stale/corrupted assets.
+**Cause**: Service worker or browser cache serving stale/corrupted assets. The classic variant: clicking a nav button while running an old build — the route chunk's hashed URL no longer exists after a deploy, the dynamic import 404s, and (before v2.811) the rejection had no error boundary, unmounting the whole tree.
 
-**Solution**:
+**Auto-recovery (v2.811+)**: a failed route-chunk load now shows "Updating app…" and reloads the app once automatically ([src/lib/chunkLoadRecovery.ts](../src/lib/chunkLoadRecovery.ts): `vite:preloadError` listener in `main.tsx` + `RouteChunkBoundary` around the route outlet in `Layout`). Repeated failures within 60 s stop auto-reloading and show a visible fallback with a **Reload** button and a **Fix app** link instead of a white screen.
+
+**Solution** (if a white screen still appears):
 1. Navigate directly to **Fix app**: `https://yoursite.com/fix-cache.html` (replace with your app's base URL)
 2. Click **Fix app**
 3. The page will unregister service workers, clear caches, clear app localStorage, and reload

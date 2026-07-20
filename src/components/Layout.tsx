@@ -7,6 +7,7 @@ import { useForceReload } from '../contexts/ForceReloadContext'
 import { useTheme } from '../contexts/ThemeContext'
 import { useChecklistAddModal } from '../contexts/ChecklistAddModalContext'
 import AddTaskShortcutBanner from './AddTaskShortcutBanner'
+import { RouteChunkBoundary } from './RouteChunkBoundary'
 import { consumePendingOpenAddTask } from '../lib/iosPwa'
 import { useDispatchTaskModal } from '../contexts/DispatchTaskModalContext'
 import { useEstimatorTaskModal } from '../contexts/EstimatorTaskModalContext'
@@ -1281,9 +1282,11 @@ export default function Layout() {
             flexDirection: 'column',
           }}
         >
-          <Suspense fallback={<div style={{ padding: '2rem', textAlign: 'center' }}>Loading…</div>}>
-            <Outlet />
-          </Suspense>
+          <RouteChunkBoundary resetKey={location.pathname}>
+            <Suspense fallback={<div style={{ padding: '2rem', textAlign: 'center' }}>Loading…</div>}>
+              <Outlet />
+            </Suspense>
+          </RouteChunkBoundary>
         </div>
         {authUser?.id && location.pathname !== '/dashboard' && PINNABLE_PATHS.includes(location.pathname as typeof PINNABLE_PATHS[number]) && (
           <div
