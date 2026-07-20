@@ -45,7 +45,9 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import { isAssistantLike } from '../lib/subcontractorLikeRole'
 import { useDispatchInbox } from '../hooks/useDispatchInbox'
+import { useQuickfillCantReachProspects } from '../hooks/useQuickfillCantReachProspects'
 import { useQuickfillCompleteNoBillJobs } from '../hooks/useQuickfillCompleteNoBillJobs'
+import { matchesQuickfillSectionSearch } from '../lib/quickfillSectionSearch'
 import { useQuickfillStagesJobsWithoutCustomer } from '../hooks/useQuickfillStagesJobsWithoutCustomer'
 import { useUnpricedFixturesCount } from '../hooks/useUnpricedFixturesCount'
 import {
@@ -107,6 +109,8 @@ const DEFAULT_JOBS_BILLING_MIN_HCP = 406
 const DEFAULT_SECTION_ORDER_IDS = SECTIONS.map((s) => s.sectionId)
 
 const VALID_SECTION_IDS = new Set(SECTIONS.map((s) => s.sectionId))
+
+const SECTION_LABEL_BY_SECTION_ID = new Map(SECTIONS.map((s) => [s.sectionId, s.label]))
 
 function parseHiddenSectionIdsFromValueText(raw: string | null | undefined): Set<string> {
   if (raw == null || raw === '') return new Set()
@@ -446,6 +450,10 @@ function QuickfillPage() {
   const [warningsModalOpen, setWarningsModalOpen] = useState(false)
   const [sectionMarks, setSectionMarks] = useState<Record<string, { marked_at: string; marked_by?: string; marked_by_name?: string | null }>>({})
   const [forceExpandedSections, setForceExpandedSections] = useState<Set<string>>(new Set(['cant-reach']))
+  // Session-only: chips removed from the floating SectionDock after "Mark up to date".
+  // Deliberately NOT derived from the persisted marks — chips must return on reload.
+  const [dockHiddenThisVisit, setDockHiddenThisVisit] = useState<Set<string>>(() => new Set())
+  const [sectionSearch, setSectionSearch] = useState('')
   const [hiddenSectionIds, setHiddenSectionIds] = useState<Set<string>>(() => new Set())
   const [activeSectionsPanelOpen, setActiveSectionsPanelOpen] = useState(false)
   const [jobsBillingMinHcp, setJobsBillingMinHcp] = useState<number>(DEFAULT_JOBS_BILLING_MIN_HCP)
@@ -454,6 +462,12 @@ function QuickfillPage() {
     'complete-no-bill',
     quickfillCompleteNoBill.fetchEnabled ? quickfillCompleteNoBill.completeNoBillJobs.length : null,
     quickfillCompleteNoBill.fetchEnabled && quickfillCompleteNoBill.loading,
+  )
+  const quickfillCantReach = useQuickfillCantReachProspects()
+  useReportQuickfillSectionMetric(
+    'cant-reach',
+    quickfillCantReach.fetchEnabled ? (quickfillCantReach.loading ? null : quickfillCantReach.prospects.length) : null,
+    quickfillCantReach.fetchEnabled && quickfillCantReach.loading,
   )
   const [markHistoryModal, setMarkHistoryModal] = useState<{ sectionId: string; label: string } | null>(null)
   const [sectionOrderIds, setSectionOrderIds] = useState<string[]>(() => [...DEFAULT_SECTION_ORDER_IDS])
@@ -624,10 +638,17 @@ function QuickfillPage() {
    * sections above the user's scroll position. Sections with no actual content
    * still render their wrapper chrome (title row + Mark up to date button);
    * their bodies handle their own empty / loading states.
+   *
+   * Deliberate exception (user-requested): `cant-reach` IS count-gated — with 0
+   * unreachable prospects the whole section (chrome, jump chip, dock chip)
+   * disappears; the minor layout pop-in when the count resolves is accepted.
    */
   const sectionWouldRenderOnPage = useCallback(
     (sectionId: string): boolean => {
       if (!isSectionVisible(sectionId)) return false
+      if (sectionId === 'cant-reach') {
+        return quickfillCantReach.fetchEnabled && !quickfillCantReach.loading && quickfillCantReach.prospects.length > 0
+      }
       if (sectionId === 'warnings') return warningsSectionEligible
       if (sectionId === 'unpriced-fixtures') {
         return role === 'dev' || role === 'master_technician' || isAssistantLike(role)
@@ -655,6 +676,9 @@ function QuickfillPage() {
       canAccessProspects,
       quickfillNoCustomerStages.fetchEnabled,
       quickfillCompleteNoBill.fetchEnabled,
+      quickfillCantReach.fetchEnabled,
+      quickfillCantReach.loading,
+      quickfillCantReach.prospects,
     ],
   )
 
@@ -665,13 +689,26 @@ function QuickfillPage() {
 
   const hasAnyVisibleSection = orderedSections.some(({ sectionId }) => sectionWouldRenderOnPage(sectionId))
 
-  const firstVisibleSectionId = useMemo(() => {
-    for (const { sectionId } of orderedSections) {
-      if (!sectionWouldRenderOnPage(sectionId)) continue
-      return sectionId
-    }
-    return null
-  }, [orderedSections, sectionWouldRenderOnPage])
+  const sectionPassesSearch = useCallback(
+    (sectionId: string): boolean =>
+      matchesQuickfillSectionSearch(SECTION_LABEL_BY_SECTION_ID.get(sectionId) ?? '', sectionSearch),
+    [sectionSearch],
+  )
+
+  // Sections surviving both the eligibility gate and the search box. Drives the block
+  // list, the first-divider logic, and the dock so no surface points at a filtered-out
+  // block. The jump grid stays unfiltered — it sits above the search bar and doubles
+  // as the "what exists" index.
+  const searchedSections = useMemo(
+    () =>
+      orderedSections.filter(
+        ({ sectionId }) => sectionWouldRenderOnPage(sectionId) && sectionPassesSearch(sectionId),
+      ),
+    [orderedSections, sectionWouldRenderOnPage, sectionPassesSearch],
+  )
+  const noSectionsMatchSearch = hasAnyVisibleSection && searchedSections.length === 0
+
+  const firstVisibleSectionId = useMemo(() => searchedSections[0]?.sectionId ?? null, [searchedSections])
 
   const quickfillSectionDragSensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }))
 
@@ -756,6 +793,9 @@ function QuickfillPage() {
       next.delete(sectionId)
       return next
     })
+    // Drop the chip from the floating dock for the rest of this visit (state resets
+    // on reload, so the chip returns even though the mark persists).
+    setDockHiddenThisVisit((s) => new Set([...s, sectionId]))
     loadSectionMarks()
     try {
       await withSupabaseRetry(
@@ -773,6 +813,17 @@ function QuickfillPage() {
       showToast('Marked up to date, but saving history failed. Try again or contact support.', 'warning')
     }
   }
+
+  /** "Open now" on a collapsed section: expand it and restore its dock chip. */
+  const openSectionNow = useCallback((sectionId: string) => {
+    setForceExpandedSections((s) => new Set([...s, sectionId]))
+    setDockHiddenThisVisit((s) => {
+      if (!s.has(sectionId)) return s
+      const next = new Set(s)
+      next.delete(sectionId)
+      return next
+    })
+  }, [])
 
   function isCollapsed(sectionId: string): boolean {
     const mark = sectionMarks[sectionId]
@@ -798,7 +849,7 @@ function QuickfillPage() {
             collapsed={isCollapsed('warnings') && !forceExpandedSections.has('warnings')}
             mark={sectionMarks['warnings']}
             onMarkUpToDate={() => markSectionUpToDate('warnings')}
-            onOpenNow={() => setForceExpandedSections((s) => new Set([...s, 'warnings']))}
+            onOpenNow={() => openSectionNow('warnings')}
             onOpenHistory={() => setMarkHistoryModal({ sectionId: 'warnings', label: 'Warnings' })}
           >
             <QuickfillMetricReporter
@@ -848,7 +899,7 @@ function QuickfillPage() {
             collapsed={isCollapsed('office-arriving') && !forceExpandedSections.has('office-arriving')}
             mark={sectionMarks['office-arriving']}
             onMarkUpToDate={() => void markSectionUpToDate('office-arriving')}
-            onOpenNow={() => setForceExpandedSections((s) => new Set([...s, 'office-arriving']))}
+            onOpenNow={() => openSectionNow('office-arriving')}
             onOpenHistory={() => setMarkHistoryModal({ sectionId: 'office-arriving', label: 'Office Arriving' })}
           >
             <QuickfillOfficeSection variant="arriving" />
@@ -866,7 +917,7 @@ function QuickfillPage() {
             collapsed={isCollapsed('office-leaving') && !forceExpandedSections.has('office-leaving')}
             mark={sectionMarks['office-leaving']}
             onMarkUpToDate={() => void markSectionUpToDate('office-leaving')}
-            onOpenNow={() => setForceExpandedSections((s) => new Set([...s, 'office-leaving']))}
+            onOpenNow={() => openSectionNow('office-leaving')}
             onOpenHistory={() => setMarkHistoryModal({ sectionId: 'office-leaving', label: 'Office Leaving' })}
           >
             <QuickfillOfficeSection variant="leaving" />
@@ -884,7 +935,7 @@ function QuickfillPage() {
             collapsed={isCollapsed('hours') && !forceExpandedSections.has('hours')}
             mark={sectionMarks['hours']}
             onMarkUpToDate={() => markSectionUpToDate('hours')}
-            onOpenNow={() => setForceExpandedSections((s) => new Set([...s, 'hours']))}
+            onOpenNow={() => openSectionNow('hours')}
             onOpenHistory={() => setMarkHistoryModal({ sectionId: 'hours', label: 'People Hours (Old)' })}
           >
             <HoursSection />
@@ -902,7 +953,7 @@ function QuickfillPage() {
             collapsed={isCollapsed('people-hours-new') && !forceExpandedSections.has('people-hours-new')}
             mark={sectionMarks['people-hours-new']}
             onMarkUpToDate={() => markSectionUpToDate('people-hours-new')}
-            onOpenNow={() => setForceExpandedSections((s) => new Set([...s, 'people-hours-new']))}
+            onOpenNow={() => openSectionNow('people-hours-new')}
             onOpenHistory={() => setMarkHistoryModal({ sectionId: 'people-hours-new', label: 'People Hours (new)' })}
           >
             <QuickfillPeopleHoursNewSection />
@@ -923,9 +974,7 @@ function QuickfillPage() {
             }
             mark={sectionMarks['unassigned-field-time']}
             onMarkUpToDate={() => markSectionUpToDate('unassigned-field-time')}
-            onOpenNow={() =>
-              setForceExpandedSections((s) => new Set([...s, 'unassigned-field-time']))
-            }
+            onOpenNow={() => openSectionNow('unassigned-field-time')}
             onOpenHistory={() =>
               setMarkHistoryModal({
                 sectionId: 'unassigned-field-time',
@@ -948,7 +997,7 @@ function QuickfillPage() {
             collapsed={isCollapsed('difficult-people') && !forceExpandedSections.has('difficult-people')}
             mark={sectionMarks['difficult-people']}
             onMarkUpToDate={() => void markSectionUpToDate('difficult-people')}
-            onOpenNow={() => setForceExpandedSections((s) => new Set([...s, 'difficult-people']))}
+            onOpenNow={() => openSectionNow('difficult-people')}
             onOpenHistory={() => setMarkHistoryModal({ sectionId: 'difficult-people', label: 'Difficult people' })}
           >
             <QuickfillDifficultPeopleSection />
@@ -966,7 +1015,7 @@ function QuickfillPage() {
             collapsed={isCollapsed('banking-sorting') && !forceExpandedSections.has('banking-sorting')}
             mark={sectionMarks['banking-sorting']}
             onMarkUpToDate={() => markSectionUpToDate('banking-sorting')}
-            onOpenNow={() => setForceExpandedSections((s) => new Set([...s, 'banking-sorting']))}
+            onOpenNow={() => openSectionNow('banking-sorting')}
             onOpenHistory={() => setMarkHistoryModal({ sectionId: 'banking-sorting', label: 'Banking sorting' })}
           >
             <BankingSortingSnapshotSection />
@@ -984,7 +1033,7 @@ function QuickfillPage() {
             collapsed={isCollapsed('crew-jobs') && !forceExpandedSections.has('crew-jobs')}
             mark={sectionMarks['crew-jobs']}
             onMarkUpToDate={() => markSectionUpToDate('crew-jobs')}
-            onOpenNow={() => setForceExpandedSections((s) => new Set([...s, 'crew-jobs']))}
+            onOpenNow={() => openSectionNow('crew-jobs')}
             onOpenHistory={() => setMarkHistoryModal({ sectionId: 'crew-jobs', label: 'Crew Jobs / Bids' })}
           >
             <CrewJobsSection />
@@ -1002,7 +1051,7 @@ function QuickfillPage() {
             collapsed={isCollapsed('billed-awaiting') && !forceExpandedSections.has('billed-awaiting')}
             mark={sectionMarks['billed-awaiting']}
             onMarkUpToDate={() => markSectionUpToDate('billed-awaiting')}
-            onOpenNow={() => setForceExpandedSections((s) => new Set([...s, 'billed-awaiting']))}
+            onOpenNow={() => openSectionNow('billed-awaiting')}
             onOpenHistory={() => setMarkHistoryModal({ sectionId: 'billed-awaiting', label: 'Billing Awaiting Payments' })}
           >
             <BilledAwaitingPaymentSection />
@@ -1020,7 +1069,7 @@ function QuickfillPage() {
             collapsed={isCollapsed('unpriced-fixtures') && !forceExpandedSections.has('unpriced-fixtures')}
             mark={sectionMarks['unpriced-fixtures']}
             onMarkUpToDate={() => markSectionUpToDate('unpriced-fixtures')}
-            onOpenNow={() => setForceExpandedSections((s) => new Set([...s, 'unpriced-fixtures']))}
+            onOpenNow={() => openSectionNow('unpriced-fixtures')}
             onOpenHistory={() => setMarkHistoryModal({ sectionId: 'unpriced-fixtures', label: 'Unpriced Fixtures' })}
           >
             <QuickfillMetricReporter sectionId="unpriced-fixtures" count={unpricedFixturesCount} loading={false} />
@@ -1039,10 +1088,10 @@ function QuickfillPage() {
             collapsed={isCollapsed('cant-reach') && !forceExpandedSections.has('cant-reach')}
             mark={sectionMarks['cant-reach']}
             onMarkUpToDate={() => markSectionUpToDate('cant-reach')}
-            onOpenNow={() => setForceExpandedSections((s) => new Set([...s, 'cant-reach']))}
+            onOpenNow={() => openSectionNow('cant-reach')}
             onOpenHistory={() => setMarkHistoryModal({ sectionId: 'cant-reach', label: 'Unreachable Prospects' })}
           >
-            <CantReachSection />
+            <CantReachSection prospects={quickfillCantReach.prospects} refetch={quickfillCantReach.refetch} />
           </QuickfillSectionWrapper>
         )
       case 'prospects':
@@ -1057,7 +1106,7 @@ function QuickfillPage() {
             collapsed={isCollapsed('prospects') && !forceExpandedSections.has('prospects')}
             mark={sectionMarks['prospects']}
             onMarkUpToDate={() => void markSectionUpToDate('prospects')}
-            onOpenNow={() => setForceExpandedSections((s) => new Set([...s, 'prospects']))}
+            onOpenNow={() => openSectionNow('prospects')}
             onOpenHistory={() => setMarkHistoryModal({ sectionId: 'prospects', label: 'Prospects' })}
           >
             <QuickfillProspectsSection />
@@ -1075,7 +1124,7 @@ function QuickfillPage() {
             collapsed={isCollapsed('supply-houses') && !forceExpandedSections.has('supply-houses')}
             mark={sectionMarks['supply-houses']}
             onMarkUpToDate={() => markSectionUpToDate('supply-houses')}
-            onOpenNow={() => setForceExpandedSections((s) => new Set([...s, 'supply-houses']))}
+            onOpenNow={() => openSectionNow('supply-houses')}
             onOpenHistory={() => setMarkHistoryModal({ sectionId: 'supply-houses', label: 'Supply Houses' })}
           >
             <SupplyHousesSection />
@@ -1093,7 +1142,7 @@ function QuickfillPage() {
             collapsed={isCollapsed('jobs-billing') && !forceExpandedSections.has('jobs-billing')}
             mark={sectionMarks['jobs-billing']}
             onMarkUpToDate={() => markSectionUpToDate('jobs-billing')}
-            onOpenNow={() => setForceExpandedSections((s) => new Set([...s, 'jobs-billing']))}
+            onOpenNow={() => openSectionNow('jobs-billing')}
             onOpenHistory={() => setMarkHistoryModal({ sectionId: 'jobs-billing', label: 'Jobs Billing' })}
           >
             <JobsBillingReminderSection minHcpNumber={jobsBillingMinHcp} />
@@ -1111,7 +1160,7 @@ function QuickfillPage() {
             collapsed={isCollapsed('complete-no-bill') && !forceExpandedSections.has('complete-no-bill')}
             mark={sectionMarks['complete-no-bill']}
             onMarkUpToDate={() => void markSectionUpToDate('complete-no-bill')}
-            onOpenNow={() => setForceExpandedSections((s) => new Set([...s, 'complete-no-bill']))}
+            onOpenNow={() => openSectionNow('complete-no-bill')}
             onOpenHistory={() =>
               setMarkHistoryModal({ sectionId: 'complete-no-bill', label: 'Complete, no Total Bill' })
             }
@@ -1135,7 +1184,7 @@ function QuickfillPage() {
             collapsed={isCollapsed('no-customer-stages') && !forceExpandedSections.has('no-customer-stages')}
             mark={sectionMarks['no-customer-stages']}
             onMarkUpToDate={() => void markSectionUpToDate('no-customer-stages')}
-            onOpenNow={() => setForceExpandedSections((s) => new Set([...s, 'no-customer-stages']))}
+            onOpenNow={() => openSectionNow('no-customer-stages')}
             onOpenHistory={() =>
               setMarkHistoryModal({ sectionId: 'no-customer-stages', label: 'Stages: customer link & customer pictures' })
             }
@@ -1159,7 +1208,7 @@ function QuickfillPage() {
             collapsed={isCollapsed('dispatch-inbox') && !forceExpandedSections.has('dispatch-inbox')}
             mark={sectionMarks['dispatch-inbox']}
             onMarkUpToDate={() => void markSectionUpToDate('dispatch-inbox')}
-            onOpenNow={() => setForceExpandedSections((s) => new Set([...s, 'dispatch-inbox']))}
+            onOpenNow={() => openSectionNow('dispatch-inbox')}
             onOpenHistory={() => setMarkHistoryModal({ sectionId: 'dispatch-inbox', label: 'Dispatch inbox' })}
           >
             <QuickfillMetricReporter
@@ -1215,7 +1264,7 @@ function QuickfillPage() {
             collapsed={isCollapsed('schedule') && !forceExpandedSections.has('schedule')}
             mark={sectionMarks['schedule']}
             onMarkUpToDate={() => void markSectionUpToDate('schedule')}
-            onOpenNow={() => setForceExpandedSections((s) => new Set([...s, 'schedule']))}
+            onOpenNow={() => openSectionNow('schedule')}
             onOpenHistory={() => setMarkHistoryModal({ sectionId: 'schedule', label: 'Schedule' })}
             showOutstandingInHeader={false}
             showMarkHistoryButton={false}
@@ -1235,7 +1284,7 @@ function QuickfillPage() {
             collapsed={isCollapsed('tomorrow-schedule') && !forceExpandedSections.has('tomorrow-schedule')}
             mark={sectionMarks['tomorrow-schedule']}
             onMarkUpToDate={() => void markSectionUpToDate('tomorrow-schedule')}
-            onOpenNow={() => setForceExpandedSections((s) => new Set([...s, 'tomorrow-schedule']))}
+            onOpenNow={() => openSectionNow('tomorrow-schedule')}
             onOpenHistory={() =>
               setMarkHistoryModal({ sectionId: 'tomorrow-schedule', label: "Tomorrow's Schedule" })
             }
@@ -1258,7 +1307,7 @@ function QuickfillPage() {
             mark={sectionMarks['email-inbox']}
             omitDefaultMarkButton
             onMarkUpToDate={() => undefined}
-            onOpenNow={() => setForceExpandedSections((s) => new Set([...s, 'email-inbox']))}
+            onOpenNow={() => openSectionNow('email-inbox')}
             onOpenHistory={() => setMarkHistoryModal({ sectionId: 'email-inbox', label: 'Email Inbox' })}
           >
             <QuickfillEmailInboxSection
@@ -1284,7 +1333,7 @@ function QuickfillPage() {
             mark={sectionMarks['email-next-actions']}
             omitDefaultMarkButton
             onMarkUpToDate={() => undefined}
-            onOpenNow={() => setForceExpandedSections((s) => new Set([...s, 'email-next-actions']))}
+            onOpenNow={() => openSectionNow('email-next-actions')}
             onOpenHistory={() => setMarkHistoryModal({ sectionId: 'email-next-actions', label: 'Email: Next Actions' })}
           >
             <QuickfillEmailInboxSection
@@ -1314,7 +1363,7 @@ function QuickfillPage() {
             mark={sectionMarks['email-follow-up']}
             omitDefaultMarkButton
             onMarkUpToDate={() => undefined}
-            onOpenNow={() => setForceExpandedSections((s) => new Set([...s, 'email-follow-up']))}
+            onOpenNow={() => openSectionNow('email-follow-up')}
             onOpenHistory={() => setMarkHistoryModal({ sectionId: 'email-follow-up', label: 'Email: Follow Up' })}
           >
             <QuickfillEmailInboxSection
@@ -1344,7 +1393,7 @@ function QuickfillPage() {
             mark={sectionMarks['texts']}
             omitDefaultMarkButton
             onMarkUpToDate={() => undefined}
-            onOpenNow={() => setForceExpandedSections((s) => new Set([...s, 'texts']))}
+            onOpenNow={() => openSectionNow('texts')}
             onOpenHistory={() => setMarkHistoryModal({ sectionId: 'texts', label: 'Texts' })}
           >
             <QuickfillTextsSection
@@ -1369,7 +1418,7 @@ function QuickfillPage() {
             mark={sectionMarks['physical-inbox']}
             omitDefaultMarkButton
             onMarkUpToDate={() => undefined}
-            onOpenNow={() => setForceExpandedSections((s) => new Set([...s, 'physical-inbox']))}
+            onOpenNow={() => openSectionNow('physical-inbox')}
             onOpenHistory={() => setMarkHistoryModal({ sectionId: 'physical-inbox', label: 'Physical inbox' })}
           >
             <QuickfillPhysicalInboxSection
@@ -1386,8 +1435,8 @@ function QuickfillPage() {
     }
   }
 
-  const dockSections = orderedSections
-    .filter(({ sectionId }) => sectionWouldRenderOnPage(sectionId))
+  const dockSections = searchedSections
+    .filter(({ sectionId }) => !dockHiddenThisVisit.has(sectionId))
     .map(({ id, label }) => ({ id, label }))
 
   return (
@@ -1466,6 +1515,67 @@ function QuickfillPage() {
           )
         })}
       </div>
+      {hasAnyVisibleSection && (
+        <div style={{ position: 'relative', width: '100%', marginBottom: '1.5rem' }}>
+          <input
+            id="quickfill-section-search"
+            type="search"
+            placeholder="Search sections…"
+            value={sectionSearch}
+            onChange={(e) => setSectionSearch(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Escape') setSectionSearch('')
+            }}
+            aria-label="Search Quickfill sections"
+            style={{
+              width: '100%',
+              boxSizing: 'border-box',
+              padding: '0.5rem 2.25rem 0.5rem 0.75rem',
+              border: '1px solid var(--border-strong)',
+              borderRadius: 4,
+              fontSize: '1rem',
+            }}
+          />
+          {sectionSearch !== '' && (
+            <button
+              type="button"
+              onClick={() => setSectionSearch('')}
+              aria-label="Clear section search"
+              style={{
+                position: 'absolute',
+                right: '0.375rem',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                padding: '0.125rem 0.5rem',
+                border: 'none',
+                background: 'none',
+                color: 'var(--text-muted)',
+                fontSize: '1rem',
+                cursor: 'pointer',
+                lineHeight: 1,
+              }}
+            >
+              ✕
+            </button>
+          )}
+        </div>
+      )}
+      {noSectionsMatchSearch && (
+        <p
+          style={{
+            textAlign: 'center',
+            color: 'var(--text-muted)',
+            fontSize: '0.9375rem',
+            marginBottom: '1.5rem',
+            padding: '1rem',
+            border: '1px solid var(--border)',
+            borderRadius: 8,
+            background: 'var(--bg-subtle)',
+          }}
+        >
+          No sections match your search.
+        </p>
+      )}
       {!hasAnyVisibleSection && (
         <p
           style={{
@@ -1490,11 +1600,9 @@ function QuickfillPage() {
           )}
         </p>
       )}
-      {orderedSections.map((meta) =>
-        sectionWouldRenderOnPage(meta.sectionId) ? (
-          <Fragment key={meta.sectionId}>{quickfillSectionBlock(meta)}</Fragment>
-        ) : null,
-      )}
+      {searchedSections.map((meta) => (
+        <Fragment key={meta.sectionId}>{quickfillSectionBlock(meta)}</Fragment>
+      ))}
       {role === 'dev' && (
       <div style={{ marginTop: '2rem' }}>
         <button

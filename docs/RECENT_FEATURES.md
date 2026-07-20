@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-20 (v2.813)
+last_updated: 2026-07-20 (v2.814)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.814)
+
+### Quickfill UX pass: marked sections leave the floating dock, section search bar, Unreachable Prospects hides at zero (2026-07-20)
+Three [`Quickfill`](../src/pages/Quickfill.tsx) changes in one PR. **(1) Dock reflects your pass:** "Mark up to date" now also removes the section's chip from the floating [`SectionDock`](../src/components/SectionDock.tsx) for the rest of the visit (session-only `dockHiddenThisVisit` set — deliberately not derived from the persisted mark, so every chip returns on reload while the section itself stays collapsed ≤ 12 h); all ~25 "Open now" handlers now funnel through a shared `openSectionNow()` that also restores the chip. The top jump-button grid is untouched. **(2) Section search:** a search box between the jump grid and the first section filters section *blocks* by name (kernel [`quickfillSectionSearch.ts`](../src/lib/quickfillSectionSearch.ts), case-insensitive substring, unit-tested) — applied consistently to the block list, the first-divider logic, and the dock (`searchedSections`), with a "No sections match your search" empty state, ✕/Escape to clear, and the jump grid intentionally unfiltered as the what-exists index. **(3) Unreachable Prospects count-gates:** the `cant-reach` fetch hoisted out of [`CantReachSection`](../src/components/quickfill/CantReachSection.tsx) (now presentational, takes `prospects` + `refetch`) into new page-level hook [`useQuickfillCantReachProspects`](../src/hooks/useQuickfillCantReachProspects.ts) (adds `withSupabaseRetry`), with the metric reported from page level so it survives hiding; `sectionWouldRenderOnPage` gains a documented count-gate exception hiding chrome, jump chip, and dock chip at 0 — this also stops non-staff roles seeing the empty section chrome. Help guide `quickfill.md` updated. No DB/type changes.
 
 ## Latest Updates (v2.813)
 
