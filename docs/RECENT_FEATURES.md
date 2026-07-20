@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-20 (v2.783)
+last_updated: 2026-07-20 (v2.784)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.784)
+
+### Dashboard: Billing Pipeline moves below Assigned Jobs + "s" opens global search from the Dashboard (2026-07-20)
+Two dashboard UX items. **(1) Billing Pipeline below Assigned Jobs** — the two per-role-branch mounts of [`DashboardBillingPipelineSection`](../src/components/dashboard/DashboardBillingPipelineSection.tsx) (assistant-like fragment; dev/master pair) collapse into ONE mount gated `isAssistantLike(role) || dev || master_technician`, placed directly after the Assigned Jobs `DashboardGroupCard` (before Upcoming Inspections). The `dash-billing` dock anchor moves with it and the `dockSections` entry shifts after `dash-assigned-jobs` so chip order keeps matching visual order; My Schedule keeps its position in each role branch (the "mounted above Billing Pipeline" comment updated). **(2) Press "s" for search on the Dashboard** — [`HeaderGlobalSearch`](../src/components/HeaderGlobalSearch.tsx)'s keydown handler adds a plain-`s` binding (no ⌘/Ctrl/Alt, search closed, not in a typing surface, `location.pathname === '/dashboard'` via `useLocation`) that calls the same `openSearch` as ⌘K/Ctrl+K, focusing the input so typing starts immediately. Available to every role that has the header search (dev / master_technician / assistant-like — the provider only wraps `Layout` when `headerSearchEligible`). New help guide [`global-search.md`](../src/content/help/global-search.md); [`dashboard-section-bar.md`](../src/content/help/dashboard-section-bar.md) chip example/table refreshed to the current section order.
 
 ## Latest Updates (v2.783)
 
