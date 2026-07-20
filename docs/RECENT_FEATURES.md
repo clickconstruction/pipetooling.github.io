@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-20 (v2.790)
+last_updated: 2026-07-20 (v2.791)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.791)
+
+### Schedule Day view: role section headings left-aligned above the names (2026-07-20)
+The Day-view role headings (Master Technicians / Assistants / Primaries / Estimators / Subcontractors / Helper) in [`QuickfillScheduleSection`](../src/components/quickfill/QuickfillScheduleSection.tsx) were centered over the timeline; they now left-align (`textAlign: 'left'`) so each heading sits directly above its people's names in the left column. Applies to `/schedule-dispatch?hubTab=day` and Quickfill → Schedule (shared component). Style-only; verified live.
 
 ## Latest Updates (v2.790)
 
