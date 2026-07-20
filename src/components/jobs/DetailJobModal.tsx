@@ -837,6 +837,33 @@ export default function DetailJobModal({
   const [addLinkUrl, setAddLinkUrl] = useState('')
   const [addLinkSaving, setAddLinkSaving] = useState(false)
   const canEditJobLinks = authRole !== null && !isSubcontractorLikeRole(authRole as UserRole)
+  /** Photos add-modal's "(Customer)" fallback: a second Add-Customer-Files dialog stacked above it. */
+  const [stackedAddFilesOpen, setStackedAddFilesOpen] = useState(false)
+  const [stackedFilesUrl, setStackedFilesUrl] = useState('')
+  const [stackedFilesSaving, setStackedFilesSaving] = useState(false)
+  const saveStackedFilesLink = async () => {
+    if (!jobId) return
+    const url = stackedFilesUrl.trim()
+    if (!/^https?:\/\/\S+$/i.test(url)) {
+      showToast('Enter a full link starting with http:// or https://', 'error')
+      return
+    }
+    setStackedFilesSaving(true)
+    try {
+      await withSupabaseRetry(
+        async () => supabase.from('jobs_ledger').update({ google_drive_link: url }).eq('id', jobId),
+        'save customer files link from stacked Job Detail dialog',
+      )
+      showToast('Customer Files link saved.', 'success')
+      setStackedAddFilesOpen(false)
+      setStackedFilesUrl('')
+      void loadDetail()
+    } catch (e) {
+      showToast(formatErrorMessage(e, 'Could not save the link'), 'error')
+    } finally {
+      setStackedFilesSaving(false)
+    }
+  }
   const saveAddLink = async () => {
     if (!jobId || !addLinkTarget) return
     const url = addLinkUrl.trim()
@@ -1739,7 +1766,41 @@ export default function DetailJobModal({
                 >
                   Company Customers
                 </button>
-              ) : null}
+              ) : (
+                <span style={{ marginRight: 'auto', display: 'inline-flex', gap: '0.5rem', alignItems: 'center' }}>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      openInExternalBrowser(
+                        'https://drive.google.com/drive/folders/1cOTvZrJFTUlxTiUMoESdMtTRvQgxft60?usp=drive_link',
+                      )
+                    }
+                    title="Open the Company Customers folder in Drive"
+                    style={{ padding: '0.35rem 0.25rem', fontSize: '0.8125rem', border: 'none', background: 'none', color: 'var(--text-link)', textDecoration: 'underline', cursor: 'pointer' }}
+                  >
+                    Company
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const drive = (fullJob ?? limitedJob)?.google_drive_link?.trim() ?? ''
+                      if (drive) openInExternalBrowser(drive)
+                      else {
+                        setStackedFilesUrl('')
+                        setStackedAddFilesOpen(true)
+                      }
+                    }}
+                    title={
+                      ((fullJob ?? limitedJob)?.google_drive_link?.trim() ?? '') !== ''
+                        ? "Open this job's Customer Files folder"
+                        : 'No Customer Files link yet — add one first'
+                    }
+                    style={{ padding: '0.35rem 0.25rem', fontSize: '0.8125rem', border: 'none', background: 'none', color: 'var(--text-link)', textDecoration: 'underline', cursor: 'pointer' }}
+                  >
+                    Customer
+                  </button>
+                </span>
+              )}
               <button
                 type="button"
                 disabled={addLinkSaving}
@@ -1755,6 +1816,68 @@ export default function DetailJobModal({
                 style={{ padding: '0.35rem 0.7rem', fontSize: '0.875rem', fontWeight: 600, border: 'none', borderRadius: 4, background: '#2563eb', color: 'white', cursor: addLinkSaving ? 'not-allowed' : 'pointer' }}
               >
                 {addLinkSaving ? 'Saving…' : 'Save link'}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+      {stackedAddFilesOpen ? (
+        <div
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', zIndex: 1007 }}
+          role="presentation"
+          onClick={(e) => {
+            e.stopPropagation()
+            if (!stackedFilesSaving) setStackedAddFilesOpen(false)
+          }}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Add Customer Files link"
+            style={{ background: 'var(--surface)', borderRadius: 8, width: 'min(94vw, 420px)', padding: '1rem 1.1rem', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)', display: 'grid', gap: '0.6rem' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 style={{ margin: 0, color: 'var(--text-strong)', fontSize: '1rem' }}>Add Customer Files link</h3>
+            <input
+              type="url"
+              value={stackedFilesUrl}
+              onChange={(e) => setStackedFilesUrl(e.target.value)}
+              placeholder="https://…"
+              aria-label="Customer Files link URL"
+              autoFocus
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') void saveStackedFilesLink()
+              }}
+              style={{ width: '100%', padding: '0.45rem 0.55rem', fontSize: '0.875rem', border: '1px solid var(--border-strong)', borderRadius: 4, boxSizing: 'border-box' }}
+            />
+            <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '0.5rem' }}>
+              <button
+                type="button"
+                onClick={() =>
+                  openInExternalBrowser(
+                    'https://drive.google.com/drive/folders/1cOTvZrJFTUlxTiUMoESdMtTRvQgxft60?usp=drive_link',
+                  )
+                }
+                title="Open the Company Customers folder in Drive to find this customer's folder"
+                style={{ padding: '0.35rem 0.5rem', fontSize: '0.8125rem', border: 'none', background: 'none', color: 'var(--text-link)', textDecoration: 'underline', cursor: 'pointer', marginRight: 'auto' }}
+              >
+                Company Customers
+              </button>
+              <button
+                type="button"
+                disabled={stackedFilesSaving}
+                onClick={() => setStackedAddFilesOpen(false)}
+                style={{ padding: '0.35rem 0.7rem', fontSize: '0.875rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', color: 'var(--text-700)', cursor: stackedFilesSaving ? 'not-allowed' : 'pointer' }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={stackedFilesSaving}
+                onClick={() => void saveStackedFilesLink()}
+                style={{ padding: '0.35rem 0.7rem', fontSize: '0.875rem', fontWeight: 600, border: 'none', borderRadius: 4, background: '#2563eb', color: 'white', cursor: stackedFilesSaving ? 'not-allowed' : 'pointer' }}
+              >
+                {stackedFilesSaving ? 'Saving…' : 'Save link'}
               </button>
             </div>
           </div>
