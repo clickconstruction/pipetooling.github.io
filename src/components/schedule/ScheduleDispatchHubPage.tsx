@@ -47,7 +47,7 @@ import {
   fetchJobsLedgerForScheduleDispatchHub,
   fetchTeamMemberUserIdsForJobIds,
   fetchUserNamesForIds,
-  fetchUsersTabUserIdsForScheduleDispatchHub,
+  fetchUsersTabRosterForScheduleDispatchHub,
   formatScheduleDispatchHubJobTitle,
   parseHubPersonDayKey,
   type ScheduleDispatchHubJobRow,
@@ -267,6 +267,7 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
   const [hubJobs, setHubJobs] = useState<ScheduleDispatchHubJobRow[]>([])
   const [hubWeekBlocks, setHubWeekBlocks] = useState<JobScheduleBlockRow[]>([])
   const [hubTeamMemberUserIds, setHubTeamMemberUserIds] = useState<string[]>([])
+  const [hubRoleByUserId, setHubRoleByUserId] = useState<Map<string, string>>(() => new Map())
   const [hubArchivedUserIds, setHubArchivedUserIds] = useState<ReadonlySet<string>>(() => new Set())
   const [hubPeopleNameById, setHubPeopleNameById] = useState<Map<string, string>>(() => new Map())
   const [hubHourlyWageByUserId, setHubHourlyWageByUserId] = useState<Map<string, number>>(() => new Map())
@@ -449,7 +450,7 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
       const [jr, br, usersTabRes] = await Promise.all([
         fetchJobsLedgerForScheduleDispatchHub(),
         fetchJobScheduleBlocksForHubDateRange(weekStart, weekEnd),
-        fetchUsersTabUserIdsForScheduleDispatchHub(role === 'dev'),
+        fetchUsersTabRosterForScheduleDispatchHub(role === 'dev'),
       ])
 
       let hubJobsData: ScheduleDispatchHubJobRow[] = []
@@ -472,8 +473,9 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
         setHubWeekBlocks(br.data)
       }
 
-      const usersTabIds = usersTabRes.error ? [] : usersTabRes.data
+      const usersTabIds = usersTabRes.error ? [] : usersTabRes.data.map((r) => r.id)
       if (usersTabRes.error) showToast(`Dispatch people list: ${usersTabRes.error}`, 'warning')
+      setHubRoleByUserId(new Map(usersTabRes.error ? [] : usersTabRes.data.map((r) => [r.id, r.role])))
 
       // Phase B: team-members for the ledger job ids (needs jobIds from phase A).
       const jobIds = hubJobsData.map((j) => j.id)
@@ -1850,6 +1852,7 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
             onOpenJob={openJobWeekGrid}
             onOpenHubJobDetail={openHubJobDetail}
             focusPersonUserId={searchParams.get('focusPerson')?.trim() || null}
+            roleByUserId={hubRoleByUserId}
             scheduleTodayYmd={scheduleTodayYmd}
             cardPlacementMode={cardPlacementMode}
             placementSourceWorkDate={placementSourceBlock?.work_date ?? null}
