@@ -41,6 +41,7 @@ import ContractAccept from './pages/ContractAccept'
 import ContractBookPreview from './pages/ContractBookPreview'
 import TaskShortcut from './pages/TaskShortcut'
 import { POST_LOGIN_REDIRECT_KEY } from './lib/iosPwa'
+import { wipeServiceWorkersAndCaches } from './lib/hardReload'
 import { ToastProvider, useToastContext } from './contexts/ToastContext'
 import { ThemeProvider } from './contexts/ThemeContext'
 import { LedgerDisplayPrefixProvider } from './contexts/LedgerDisplayPrefixContext'
@@ -123,14 +124,10 @@ function AuthHandler() {
             console.error('Failed to set session from magic link:', error)
             navigate('/sign-in', { replace: true })
           } else {
-            // Clear cache and hard reload
+            // Fresh SW + caches, then hard reload (wipe without unregistering would
+            // leave the old SW controlling with an empty precache — see hardReload.ts)
             const reload = () => { window.location.reload() }
-            if (typeof caches !== 'undefined') {
-              caches.keys().then((keys) => Promise.all(keys.map((k) => caches.delete(k))))
-                .then(reload, reload)
-            } else {
-              reload()
-            }
+            wipeServiceWorkersAndCaches().then(reload, reload)
           }
         })
       }

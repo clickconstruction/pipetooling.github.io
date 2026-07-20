@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-20 (v2.811)
+last_updated: 2026-07-20 (v2.812)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.812)
+
+### White-screen fix, part 2: Hard Reload and magic-link cache wipes now unregister the service worker first (2026-07-20)
+Follow-up to v2.811. Three code paths deleted **all** caches while leaving the old service worker registered and in control: the gear-menu **Hard Reload**, the dev **Global Reload** broadcast (both via `hardReloadFromRoot()`), and the magic-link `AuthHandler` in [`App.tsx`](../src/App.tsx). Workbox only repopulates the precache during a future SW *install*, so after such a wipe every asset fell through to the network — and 404'd as soon as the next deploy replaced the hashed files (a prime white-screen setup). New shared helper `wipeServiceWorkersAndCaches()` in [`hardReload.ts`](../src/lib/hardReload.ts) unregisters every SW registration **before** deleting caches — the same order [`fix-cache.html`](../public/fix-cache.html) already used — and both call sites now use it; the following page load runs uncontrolled, registers a fresh SW, and rebuilds a current precache. Best-effort throughout (never blocks the reload).
 
 ## Latest Updates (v2.811)
 
