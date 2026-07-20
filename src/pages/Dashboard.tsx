@@ -1414,6 +1414,9 @@ export default function Dashboard() {
           enableCopyDayJobMix={showClockStripScopeToggle}
           enableScheduleDayEmail={showClockStripScopeToggle}
           clockStripWorkDateYmd={myTeam.clockStripWorkDateYmd}
+          enableCurrentlyInDispatchIcon={
+            role === 'dev' || role === 'master_technician' || isAssistantLike(role) || role === 'superintendent'
+          }
         />
       )}
       {isAssistantLike(role) && authUser?.id && (
@@ -1479,6 +1482,9 @@ export default function Dashboard() {
           enableCopyDayJobMix={showClockStripScopeToggle}
           enableScheduleDayEmail={showClockStripScopeToggle}
           clockStripWorkDateYmd={myTeam.clockStripWorkDateYmd}
+          enableCurrentlyInDispatchIcon={
+            role === 'dev' || role === 'master_technician' || isAssistantLike(role) || role === 'superintendent'
+          }
         />
       )}
       {(role === 'dev' || role === 'master_technician') && authUser?.id && (
@@ -1566,7 +1572,11 @@ export default function Dashboard() {
         isMobile={isMobile}
         onContentVisibleChange={setMyBidsDockHasContent}
       />
-      <DashboardRecentReportsSection authUserId={authUser?.id} role={role} />
+      <DashboardRecentReportsSection
+        authUserId={authUser?.id}
+        role={role}
+        submitLinkJobPicturesDispatchRequest={submitLinkJobPicturesDispatchRequest}
+      />
       {userError && <p style={{ color: 'var(--text-red-700)', marginBottom: '1rem' }}>{userError}</p>}
 
       <DashboardTeamReadyToBillSection

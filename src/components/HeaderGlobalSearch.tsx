@@ -58,6 +58,9 @@ type HeaderGlobalSearchContextValue = {
   query: string
   setQuery: (q: string) => void
   results: UnifiedSearchResult[]
+  /** Keyboard-highlighted result row (-1 = none); arrows move it, Enter selects it, typing resets it. */
+  activeResultIndex: number
+  setActiveResultIndex: (i: number) => void
   inputRef: RefObject<HTMLInputElement | null>
   stripButtonRef: RefObject<HTMLButtonElement | null>
   toolbarButtonRef: RefObject<HTMLButtonElement | null>
@@ -93,6 +96,7 @@ export function HeaderGlobalSearchProvider({
   const [open, setOpen] = useState(false)
   const [query, setQueryState] = useState('')
   const [results, setResults] = useState<UnifiedSearchResult[]>([])
+  const [activeResultIndex, setActiveResultIndex] = useState(-1)
   /** Header-owned customer snapshot; opened on selecting a customer result. Kept out of the context value. */
   const [snapshotCustomerId, setSnapshotCustomerId] = useState<string | null>(null)
   const [serviceTypes, setServiceTypes] = useState<Array<{ id: string; name: string }>>([])
@@ -153,6 +157,7 @@ export function HeaderGlobalSearchProvider({
 
   const setQuery = useCallback((q: string) => {
     setQueryState(q)
+    setActiveResultIndex(-1)
     if (q.trim().length < MIN_HEADER_SEARCH_CHARS) {
       setResults([])
     }
@@ -163,6 +168,7 @@ export function HeaderGlobalSearchProvider({
     setOpen(true)
     setQueryState('')
     setResults([])
+    setActiveResultIndex(-1)
     queueMicrotask(() => inputRef.current?.focus())
   }, [])
 
@@ -293,6 +299,7 @@ export function HeaderGlobalSearchProvider({
           })),
         ]
         setResults(merged)
+        setActiveResultIndex(-1)
       })
     }, 300)
     return () => clearTimeout(t)
@@ -307,6 +314,8 @@ export function HeaderGlobalSearchProvider({
         query,
         setQuery,
         results,
+        activeResultIndex,
+        setActiveResultIndex,
         inputRef,
         stripButtonRef,
         toolbarButtonRef,
@@ -314,7 +323,7 @@ export function HeaderGlobalSearchProvider({
         navOverlayBackground,
         prefixMap,
       }) satisfies HeaderGlobalSearchContextValue,
-    [open, openSearch, closeSearch, query, setQuery, results, selectResult, navOverlayBackground, prefixMap],
+    [open, openSearch, closeSearch, query, setQuery, results, activeResultIndex, selectResult, navOverlayBackground, prefixMap],
   )
 
   return (
@@ -394,6 +403,18 @@ export function HeaderGlobalSearchNavLayer() {
   const qTrim = ctx.query.trim()
   const showResultsPanel = qTrim.length >= MIN_HEADER_SEARCH_CHARS
 
+  /** Arrow keys move the highlight (wrapping) while focus — and typing — stay in the input. */
+  const moveActiveResult = (delta: 1 | -1) => {
+    const n = ctx.results.length
+    if (n === 0) return
+    const cur = ctx.activeResultIndex
+    const next = cur < 0 ? (delta > 0 ? 0 : n - 1) : (cur + delta + n) % n
+    ctx.setActiveResultIndex(next)
+    queueMicrotask(() =>
+      document.getElementById(`header-search-option-${next}`)?.scrollIntoView({ block: 'nearest' }),
+    )
+  }
+
   return (
     <>
       <div
@@ -418,9 +439,36 @@ export function HeaderGlobalSearchNavLayer() {
           type="search"
           value={ctx.query}
           onChange={(e) => ctx.setQuery(e.target.value)}
+          onKeyDown={(e) => {
+            if (!showResultsPanel || ctx.results.length === 0) return
+            if (e.key === 'ArrowDown') {
+              e.preventDefault()
+              moveActiveResult(1)
+              return
+            }
+            if (e.key === 'ArrowUp') {
+              e.preventDefault()
+              moveActiveResult(-1)
+              return
+            }
+            if (e.key === 'Enter') {
+              const r = ctx.activeResultIndex >= 0 ? ctx.results[ctx.activeResultIndex] : undefined
+              if (r) {
+                e.preventDefault()
+                ctx.selectResult(r)
+              }
+            }
+          }}
           placeholder="Search jobs, bids, estimates, customers…"
           autoComplete="off"
           aria-label="Search query"
+          role="combobox"
+          aria-expanded={showResultsPanel && ctx.results.length > 0}
+          aria-controls="header-global-search-results"
+          aria-activedescendant={
+            ctx.activeResultIndex >= 0 ? `header-search-option-${ctx.activeResultIndex}` : undefined
+          }
+          aria-autocomplete="list"
           style={{
             flex: 1,
             minWidth: 0,
@@ -451,6 +499,7 @@ export function HeaderGlobalSearchNavLayer() {
       {showResultsPanel ? (
         ctx.results.length > 0 ? (
           <ul
+            id="header-global-search-results"
             role="listbox"
             aria-label="Search results"
             style={{
@@ -460,21 +509,28 @@ export function HeaderGlobalSearchNavLayer() {
               padding: '0.25rem 0',
             }}
           >
-            {ctx.results.map((r) => {
+            {ctx.results.map((r, idx) => {
               const tradePill = serviceTypeTagForUnifiedRow(r)
               const pill = tradePill ?? customerTypePillForUnifiedRow(r)
+              const isActive = idx === ctx.activeResultIndex
               return (
-                <li key={`${r.source}-${r.id}`} role="option">
+                <li
+                  key={`${r.source}-${r.id}`}
+                  id={`header-search-option-${idx}`}
+                  role="option"
+                  aria-selected={isActive}
+                >
                   <button
                     type="button"
                     onClick={() => ctx.selectResult(r)}
+                    tabIndex={-1}
                     style={{
                       display: 'block',
                       width: '100%',
                       textAlign: 'left',
                       padding: '0.5rem 0.6rem',
                       border: 'none',
-                      background: 'transparent',
+                      background: isActive ? 'var(--bg-blue-tint)' : 'transparent',
                       cursor: 'pointer',
                       fontSize: '0.875rem',
                       color: 'var(--text-strong)',

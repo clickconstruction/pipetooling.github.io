@@ -7,6 +7,11 @@ export type RecentReportRow = {
   field_values?: Record<string, string>
   reported_at_lat?: number | null
   reported_at_lng?: number | null
+  /** Set when the report is attached to a jobs_ledger row (vs a project/bid) — gates the Job Detail opener + pictures icon. */
+  job_ledger_id?: string | null
+  job_hcp_number?: string
+  job_pictures_link?: string | null
+  job_address?: string | null
 }
 
 /** Unread badge count for the "Recent Reports (N)" heading: not hidden and not read. */

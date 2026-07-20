@@ -480,8 +480,7 @@ export function JobChargesTimelineChartView({
       </div>
       <p style={{ color: 'var(--text-700)', fontSize: '0.75rem', margin: '0.25rem 0 0' }}>
         <span style={{ color: 'var(--text-red-600)', fontWeight: 600 }}>Red</span> = cost to date ·{' '}
-        <span style={{ color: '#16a34a', fontWeight: 600 }}>Green</span> = profit (above the $0 line
-        = collected more than it cost)
+        <span style={{ color: '#16a34a', fontWeight: 600 }}>Green</span> = profit
         {valueShown && (
           <>
             {' · '}

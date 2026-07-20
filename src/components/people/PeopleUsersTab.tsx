@@ -99,6 +99,7 @@ export function PeopleUsersTab({
 }: PeopleUsersTabProps) {
   const [usersTabSearch, setUsersTabSearch] = useState('')
   const usersTabSearchQ = useMemo(() => usersTabSearch.trim().toLowerCase(), [usersTabSearch])
+  const [externalSubsExpanded, setExternalSubsExpanded] = useState(false)
 
   const byKind = useCallback(
     (k: PersonKind) => buildUsersTabKindRoster(k, users, people),
@@ -677,22 +678,42 @@ export function PeopleUsersTab({
                           {withAccountF.map((item) => renderUsersTabRosterListItem('sub', item))}
                         </ul>
                       ) : null}
-                      {externalF.length > 0 ? (
-                        <>
-                          <h3
-                            style={{
-                              margin: withAccountF.length > 0 ? '1rem 0 0.5rem 0' : '0 0 0.5rem 0',
-                              fontSize: '1.125rem',
-                              fontWeight: 700,
-                            }}
-                          >
-                            External Subcontractors
-                          </h3>
-                          <ul style={usersTabRosterUlStyle}>
-                            {externalF.map((item) => renderUsersTabRosterListItem('sub', item))}
-                          </ul>
-                        </>
-                      ) : null}
+                      {externalF.length > 0 ? (() => {
+                        // Searching force-opens the list so matches are never hidden by the collapse.
+                        const externalOpen = externalSubsExpanded || Boolean(usersTabSearchQ)
+                        return (
+                          <>
+                            <button
+                              type="button"
+                              aria-expanded={externalOpen}
+                              aria-controls="users-tab-external-subs-panel"
+                              onClick={() => setExternalSubsExpanded((v) => !v)}
+                              style={{
+                                margin: withAccountF.length > 0 ? '1rem 0 0.5rem 0' : '0 0 0.5rem 0',
+                                padding: 0,
+                                border: 'none',
+                                background: 'none',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '0.5rem',
+                              }}
+                            >
+                              <span aria-hidden style={{ fontSize: '0.875rem' }}>
+                                {externalOpen ? '▼' : '▶'}
+                              </span>
+                              <h3 style={{ margin: 0, fontSize: '1.125rem', fontWeight: 700 }}>
+                                External Subcontractors ({externalF.length})
+                              </h3>
+                            </button>
+                            {externalOpen ? (
+                              <ul id="users-tab-external-subs-panel" style={usersTabRosterUlStyle}>
+                                {externalF.map((item) => renderUsersTabRosterListItem('sub', item))}
+                              </ul>
+                            ) : null}
+                          </>
+                        )
+                      })() : null}
                     </>
                   )
                 }
