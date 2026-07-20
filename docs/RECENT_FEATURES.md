@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-20 (v2.789)
+last_updated: 2026-07-20 (v2.790)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.790)
+
+### Schedule Day view: "Hide assistants and estimators" label flips to "Unhide…" while active (2026-07-20)
+The Day-view people filter button ([`QuickfillScheduleSection`](../src/components/quickfill/QuickfillScheduleSection.tsx), shared by `/schedule-dispatch?hubTab=day` and Quickfill → Schedule) kept the static label "Hide assistants and estimators" in both states, leaving only the blue tint to signal it was on. The label now names the action a click performs — "Hide assistants and estimators" when they're shown, "Unhide assistants and estimators" while hidden — with the active styling unchanged; the redundant `aria-pressed`/`aria-label` pair is dropped since the visible label is now self-describing (avoids "pressed" + flipped-action double-speak in screen readers). The empty-state hint updates to match ("Click “Unhide assistants and estimators” to see them."). Verified live on the Day view: label flips both ways, hidden-state styling intact.
 
 ## Latest Updates (v2.789)
 
