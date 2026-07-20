@@ -1083,16 +1083,27 @@ export default function PeopleEmploymentTab({
               Turn off Salaried for {salaryOffConfirm}?
             </h3>
             <ul style={{ margin: '0 0 0.6rem 0', paddingLeft: '1.1rem', fontSize: '0.875rem', color: 'var(--text-700)', display: 'grid', gap: '0.35rem' }}>
+              <li>
+                All of their history is safe — past pay reports, payments, and approved clock hours
+                are unchanged.
+              </li>
+              <li>
+                Pay switches to logged hours × hourly wage, and their dashboard returns to manual
+                clock in / clock out.
+              </li>
+              <li>
+                Today&rsquo;s not-yet-approved auto-generated sessions are removed, and no new ones
+                will be created.
+              </li>
               {salaryTemplateByPersonName[salaryOffConfirm] ? (
                 <li>
-                  Their salaried workday template and every per-day override are{' '}
-                  <strong style={{ color: 'var(--text-red-600)' }}>permanently deleted</strong> — turning Salaried back on will
-                  not restore them; the schedule must be rebuilt by hand.
+                  Their workday schedule settings — the template and any per-day overrides,
+                  including future-dated ones — are{' '}
+                  <strong style={{ color: 'var(--text-red-600)' }}>cleared</strong>. Turning
+                  Salaried back on later starts with a blank schedule, so note the current times if
+                  you might want them again.
                 </li>
               ) : null}
-              <li>Today&rsquo;s auto-generated schedule sessions are removed and no future ones are created; their dashboard returns to manual clock in/out.</li>
-              <li>Pay and cost math switches to logged hours × hourly wage.</li>
-              <li>Past pay reports, payments, and clock history are not affected.</li>
             </ul>
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
               <button
