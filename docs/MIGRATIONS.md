@@ -105,6 +105,12 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 #### July 20, 2026
 
+**`20260720212209_hazmat_fee_incidents.sql`** _(apply via `supabase db push` after the file is on `main`)_
+- **Purpose**: **Hazmat Fee** (v2.804). New table `job_hazmat_incidents` (incident record: description, exposed people, photo links jsonb, technician testimonials jsonb, verbatim ToS §11 snapshot, fee, `invoice_id`) + SECURITY DEFINER RPC `create_hazmat_fee_incident(p_job_id, p_amount, p_incident jsonb)` that validates evidence (≥1 photo link, ≥1 testimonial, non-empty clause snapshot), then atomically mints an independent `ready_to_bill` rider invoice (memo "Hazmat remediation fee — incident MM/DD/YYYY", must match `buildHazmatFeeMemo` in `src/lib/hazmatFee.ts`), bumps `jobs_ledger.revenue` (same invariant rationale as the trip charge), and inserts the incident row. Office gate cloned from `create_turnaway_trip_charge`. Also seeds `app_settings.hazmat_fee_default = 500`.
+- **RLS**: SELECT for dev / assistant-like / owning master; NO client write policies (RPC-only writes). Footer runs BOTH read-only-block calls.
+- **Ordering**: client v2.804 calls the RPC from the Jobs → Stages ☣ wizard — apply promptly after the client PR merges or the wizard's Generate step errors.
+- **Category**: Jobs / billing / feature
+
 **`20260720202447_job_travel_times.sql`** _(apply via `supabase db push` after the file is on `main`)_
 - **Purpose**: **Day-view travel hints, Option B cache** (v2.801). New table `job_travel_times` — routed drive-time cache between two jobs: `(from_job_id, to_job_id)` PK (both FK → `jobs_ledger` ON DELETE CASCADE), `duration_seconds`, `distance_meters`, `source` (default `google_routes`), `computed_at`. Written ONLY by the `travel-time-batch` edge function's service-role client (7-day TTL there); clients read it. The Day view falls back to the client-side straight-line estimate (`src/lib/jobTravelEstimate.ts`) for any pair not present.
 - **RLS**: SELECT for all `authenticated` (travel hints render wherever the Day schedule renders); deliberately NO insert/update/delete policies — service-role-only writes. Footer runs BOTH `apply_read_only_write_blocks()` and `apply_read_only_stmt_blocks()`.
