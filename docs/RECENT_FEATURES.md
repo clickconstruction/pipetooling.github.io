@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-20 (v2.776)
+last_updated: 2026-07-20 (v2.777)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.777)
+
+### Edit Job — break-off track dollar labels + the green triangle joins the legend (2026-07-20)
+Two readability upgrades to the break-off slider in ② Invoices. **(1)** Whole-dollar amounts now sit **above the track line** at the 20 / 40 / 60 / 80 / 100% marks (e.g. `$6,520 … $32,600` on a $32,600 job; the 100% label right-aligns so it never clips) — muted, tabular-nums, non-interactive; the **green triangle thumb deliberately floats over them** (higher z-index) when it passes. Track grew 34→46px tall to fit the row; bar/rails/field-progress dot/percent labels all shifted down together. **(2)** The legend under the track now explains the thumb: a green triangle swatch labeled **"Paid + this bill"** sits between "New Invoice" and the "Job: N%" dot — it marks where billing reaches once this new bill is included, as a percent of the job total. [`JobFormBreakOffSection`](../src/components/jobs/JobFormBreakOffSection.tsx) only; slider math untouched (fixed in v2.776).
 
 ## Latest Updates (v2.776)
 

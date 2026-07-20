@@ -5,6 +5,7 @@ import {
   parseMoneyInputToNumberOrNull,
   sanitizeMoneyTyping,
 } from '../../lib/jobs/jobFormMoney'
+import { formatUsdNoCents } from '../../lib/jobs/jobFormatting'
 import { breakDollarsFromCombinedPct, snapBreakOffCombinedPctToStep } from '../../lib/jobs/jobFormBreakOff'
 
 type JobFormBreakOffSectionProps = {
@@ -236,7 +237,7 @@ export function JobFormBreakOffSection({
                         style={{
                           position: 'relative',
                           width: '100%',
-                          height: 34,
+                          height: 46,
                           marginTop: 2,
                           touchAction: 'none',
                         }}
@@ -246,12 +247,36 @@ export function JobFormBreakOffSection({
                         onPointerCancel={onBillingBreakOffTrackPointerUpCancel}
                         onLostPointerCapture={onBillingBreakOffTrackLostPointerCapture}
                       >
+                        {/* Whole-dollar amounts above the line at the major ticks; the
+                            green thumb (zIndex 5) deliberately floats over them. */}
+                        {[20, 40, 60, 80, 100].map((pct) => (
+                          <span
+                            key={`usd-${pct}`}
+                            aria-hidden
+                            style={{
+                              position: 'absolute',
+                              ...(pct === 100
+                                ? { right: 0 }
+                                : { left: `${pct}%`, transform: 'translateX(-50%)' }),
+                              top: 0,
+                              fontSize: '0.65rem',
+                              color: 'var(--text-muted)',
+                              fontVariantNumeric: 'tabular-nums',
+                              lineHeight: 1.2,
+                              whiteSpace: 'nowrap',
+                              pointerEvents: 'none',
+                              zIndex: 4,
+                            }}
+                          >
+                            {formatUsdNoCents((pct / 100) * jobTotalBidDollars)}
+                          </span>
+                        ))}
                         <div
                           style={{
                             position: 'absolute',
                             left: 0,
                             right: 0,
-                            top: 8,
+                            top: 20,
                             height: 8,
                             background: 'var(--bg-200)',
                             borderRadius: 4,
@@ -262,7 +287,7 @@ export function JobFormBreakOffSection({
                           style={{
                             position: 'absolute',
                             left: 0,
-                            top: 8,
+                            top: 20,
                             height: 8,
                             width: `${breakOffBillingTrackPercents.paidPct}%`,
                             background: '#2563eb',
@@ -276,7 +301,7 @@ export function JobFormBreakOffSection({
                             style={{
                               position: 'absolute',
                               left: `${breakOffBillingTrackPercents.paidPct}%`,
-                              top: 8,
+                              top: 20,
                               height: 8,
                               width: `${breakOffBillingTrackPercents.breakPreviewPct}%`,
                               background: '#93c5fd',
@@ -287,7 +312,7 @@ export function JobFormBreakOffSection({
                         ) : null}
                         {Array.from({ length: 19 }, (_, i) => (i + 1) * 5).map((pct) => {
                           const isMajor = pct % 20 === 0
-                          const railTop = 8
+                          const railTop = 20
                           const railH = 8
                           const minorH = 5
                           const h = isMajor ? railH : minorH
@@ -318,7 +343,7 @@ export function JobFormBreakOffSection({
                             style={{
                               position: 'absolute',
                               left: `${jobCompleteTrackPct}%`,
-                              top: 7,
+                              top: 19,
                               width: 10,
                               height: 10,
                               transform: 'translateX(-50%)',
@@ -349,7 +374,7 @@ export function JobFormBreakOffSection({
                           style={{
                             position: 'absolute',
                             left: `${breakOffCombinedThumbLeftPct}%`,
-                            top: -2,
+                            top: 10,
                             transform: 'translateX(-50%)',
                             zIndex: 5,
                             lineHeight: 0,
@@ -374,7 +399,7 @@ export function JobFormBreakOffSection({
                             position: 'absolute',
                             left: 0,
                             right: 0,
-                            top: 20,
+                            top: 32,
                             height: 14,
                           }}
                         >
@@ -419,6 +444,13 @@ export function JobFormBreakOffSection({
                           { color: 'var(--text-link)', label: 'Paid', sub: '', circle: false },
                           { color: '#93c5fd', label: 'New Invoice', sub: '', circle: false },
                           {
+                            color: '#22c55e',
+                            label: 'Paid + this bill',
+                            sub: '',
+                            circle: false,
+                            triangle: true,
+                          },
+                          {
                             color: '#facc15',
                             label:
                               jobCompleteTrackPct == null ? 'Job: Not set' : `Job: ${Math.round(jobCompleteTrackPct)}%`,
@@ -430,6 +462,7 @@ export function JobFormBreakOffSection({
                           label: string
                           sub: string
                           circle: boolean
+                          triangle?: boolean
                         }[]
                       ).map((item) => (
                         <div
@@ -441,19 +474,37 @@ export function JobFormBreakOffSection({
                             maxWidth: '100%',
                           }}
                         >
-                          <span
-                            aria-hidden
-                            style={{
-                              width: 12,
-                              height: 12,
-                              borderRadius: item.circle ? '50%' : 3,
-                              background: item.color,
-                              border: item.circle ? '1px solid #ca8a04' : 'none',
-                              boxSizing: 'border-box',
-                              flexShrink: 0,
-                              marginTop: 2,
-                            }}
-                          />
+                          {item.triangle ? (
+                            <svg
+                              width="12"
+                              height="12"
+                              viewBox="0 0 12 12"
+                              aria-hidden
+                              style={{ flexShrink: 0, marginTop: 2 }}
+                            >
+                              <polygon
+                                points="0,3 12,3 6,9"
+                                fill="#22c55e"
+                                stroke="#15803d"
+                                strokeWidth="0.75"
+                                strokeLinejoin="round"
+                              />
+                            </svg>
+                          ) : (
+                            <span
+                              aria-hidden
+                              style={{
+                                width: 12,
+                                height: 12,
+                                borderRadius: item.circle ? '50%' : 3,
+                                background: item.color,
+                                border: item.circle ? '1px solid #ca8a04' : 'none',
+                                boxSizing: 'border-box',
+                                flexShrink: 0,
+                                marginTop: 2,
+                              }}
+                            />
+                          )}
                           <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', lineHeight: 1.35, minWidth: 0 }}>
                             <span style={{ fontWeight: 600, color: 'var(--text-600)' }}>{item.label}</span>
                             {item.sub ? (
