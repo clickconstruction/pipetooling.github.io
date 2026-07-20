@@ -1,6 +1,5 @@
 import { Link } from 'react-router-dom'
 import { canLeaveJobFieldReport } from '../../lib/canLeaveJobFieldReport'
-import { isSubcontractorLikeRole } from '../../lib/subcontractorLikeRole'
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
 import { scheduleFormatWeekdayLong, scheduleFormatWindow } from '../../lib/jobScheduleChicago'
 import { sortSubScheduleBlocksByStart, type SubScheduleDayPartition } from '../../lib/dashboardSubSchedule'
@@ -45,15 +44,14 @@ export type DashboardMyScheduleSectionProps = {
 }
 
 /**
- * Dashboard "My Schedule" section (subcontractor-like roles): today/tomorrow
- * schedule blocks with call-dispatch header, customer-call buttons,
- * pictures-link row, and Leave Report buttons. Render moved verbatim from
- * `src/pages/Dashboard.tsx` (extraction-series refactor; no behavior change);
- * the data engine stays in the parent via `useDashboardSubSchedule` because
+ * Dashboard "My Schedule" section (all roles since v2.782; previously
+ * subcontractor-like only): today/tomorrow schedule blocks with call-dispatch
+ * header, customer-call buttons, pictures-link row, and Leave Report buttons.
+ * The data engine stays in the parent via `useDashboardSubSchedule` because
  * its rows also drive the job-row sections' leave-report reminders.
  *
- * Self-gates on `isSubcontractorLikeRole(role)`; the parent renders it
- * unconditionally at the section's position.
+ * The parent renders it unconditionally at the section's position; `id`
+ * carries the section-dock anchor.
  */
 export function DashboardMyScheduleSection({
   role,
@@ -71,10 +69,8 @@ export function DashboardMyScheduleSection({
 }: DashboardMyScheduleSectionProps) {
   const jobDetailModal = useJobDetailModal()
 
-  if (!isSubcontractorLikeRole(role)) return null
-
   return (
-    <div style={{ marginTop: '1.5rem', marginBottom: '2rem' }}>
+    <div id="dash-my-schedule" style={{ marginTop: '1.5rem', marginBottom: '2rem', scrollMarginTop: 8 }}>
       <div
         style={{
           display: 'flex',

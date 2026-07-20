@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
 import {
@@ -32,6 +32,7 @@ import {
   scheduleFormatWindow,
 } from '../../lib/jobScheduleChicago'
 import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
+import { getDefaultWeekRange } from '../../utils/dateUtils'
 import { isSubcontractorLikeRole } from '../../lib/subcontractorLikeRole'
 import { useJobFormModal } from '../../contexts/JobFormModalContext'
 import { useToastContext } from '../../contexts/ToastContext'
@@ -794,6 +795,22 @@ export default function DetailJobModal({
     [jobId, threadNotes, showToast, loadDetail],
   )
 
+  const navigate = useNavigate()
+  // Mirrors Jobs.tsx canOpenJobScheduleModal — the roles that can use the Dispatch job-week grid.
+  const showWeekDispatchButton =
+    Boolean(jobId) &&
+    (authRole === 'dev' ||
+      authRole === 'master_technician' ||
+      isAssistantLike(authRole) ||
+      authRole === 'superintendent')
+
+  const handleOpenWeekDispatch = () => {
+    if (!jobId) return
+    const week = getDefaultWeekRange().start
+    onClose()
+    navigate(`/schedule-dispatch?jobId=${encodeURIComponent(jobId)}&week=${encodeURIComponent(week)}`)
+  }
+
   const jobFormModal = useJobFormModal()
   const showEditJobButton =
     Boolean(jobFormModal) &&
@@ -827,7 +844,7 @@ export default function DetailJobModal({
     return undefined
   }, [fullJob, limitedJob])
 
-  const showDetailHeaderRightCluster = headerTradePill != null || showEditJobButton
+  const showDetailHeaderRightCluster = headerTradePill != null || showEditJobButton || showWeekDispatchButton
 
   useBodyScrollLock(open && narrowViewport)
 
@@ -895,6 +912,40 @@ export default function DetailJobModal({
                 >
                   {headerTradePill.label}
                 </span>
+              ) : null}
+              {showWeekDispatchButton ? (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    handleOpenWeekDispatch()
+                  }}
+                  title="Open week dispatch to schedule this job"
+                  aria-label="Open week dispatch to schedule this job"
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    padding: '0.35rem',
+                    margin: 0,
+                    border: 'none',
+                    background: 'none',
+                    cursor: 'pointer',
+                    color: 'var(--text-link)',
+                    borderRadius: 4,
+                  }}
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 640 640"
+                    width={20}
+                    height={20}
+                    fill="currentColor"
+                    aria-hidden="true"
+                  >
+                    <path d="M224 64C206.3 64 192 78.3 192 96L192 128L160 128C124.7 128 96 156.7 96 192L96 240L544 240L544 192C544 156.7 515.3 128 480 128L448 128L448 96C448 78.3 433.7 64 416 64C398.3 64 384 78.3 384 96L384 128L256 128L256 96C256 78.3 241.7 64 224 64zM96 288L96 480C96 515.3 124.7 544 160 544L480 544C515.3 544 544 515.3 544 480L544 288L96 288z" />
+                  </svg>
+                </button>
               ) : null}
               {showEditJobButton ? (
                 <button
