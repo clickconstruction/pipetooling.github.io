@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-20 (v2.775)
+last_updated: 2026-07-20 (v2.776)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.776)
+
+### Edit Job — break-off slider clicks land where the cursor is (2026-07-20)
+Live-tested the user-reported "buggy" break-off slider on prod (Summit GC job: $13,040 of $32,600 already billed) and reproduced it exactly: clicking the **40% tick set 25%**, the **80% tick set 50%**, and clicking directly on the green thumb made it jump left. Root cause in [`useBreakOffSlider.ts`](../src/components/jobs/useBreakOffSlider.ts): the pointer-down seed mapped the click ratio into the slider's clamp bounds — `min + ratio*(max−min)` — compressing the whole track into `[min..max]` whenever billed invoices lowered `max` (60% here → every click landed at 60% of its true position). The track's visual axis is always **0–100% of the job total** (ticks, paid fill, thumb all render on it), and the delta-based *drag* handler already used that axis — which is why dragging and clicking disagreed. Fix: new pure kernel fn **`combinedPctFromTrackRatio(ratio, min, max)`** (`ratio*100`, bounds clamp only) in [`jobFormBreakOff.ts`](../src/lib/jobs/jobFormBreakOff.ts) with tests pinning the prod repro numbers; the seed now uses it. Verified the math against both live mis-clicks to the decimal (drag seed 34.8% − 18.4 delta → snapped 15%, exactly as observed).
 
 ## Latest Updates (v2.775)
 

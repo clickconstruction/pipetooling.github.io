@@ -11,6 +11,7 @@ import { parseMoneyInputToNumber } from '../../lib/jobs/jobFormMoney'
 import {
   BREAK_OFF_COMBINED_SLIDER_STEP_PCT,
   breakDollarsFromCombinedPct,
+  combinedPctFromTrackRatio,
   snapBreakOffCombinedPctToStep,
   unallocatedBillableDollars,
 } from '../../lib/jobs/jobFormBreakOff'
@@ -129,8 +130,8 @@ export function useBreakOffSlider(args: {
       const rect = el.getBoundingClientRect()
       const w = rect.width || 1
       const { min, max } = breakOffCombinedSliderBounds
-      const ratio = Math.min(1, Math.max(0, (clientX - rect.left) / w))
-      const unsnapped = Math.min(max, Math.max(min, min + ratio * (max - min)))
+      // The track's visual axis is 0–100% of the job total; bounds only clamp.
+      const unsnapped = combinedPctFromTrackRatio((clientX - rect.left) / w, min, max)
       breakOffSliderLastDragCombinedRef.current = unsnapped
       const combined = snapBreakOffCombinedPctToStep(unsnapped, min, max)
       setBreakOffSliderDragCombinedPct(combined)
