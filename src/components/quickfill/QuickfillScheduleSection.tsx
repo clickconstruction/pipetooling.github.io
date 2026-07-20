@@ -884,73 +884,8 @@ export function QuickfillScheduleSection({
     { debounceMs: 400 },
   )
 
-  return (
-    <div>
-      {!hideConflictPrompt ? (
-        <div role="note" style={QUICKFILL_SECTION_BANNER_BOX_STYLE}>
-          {SCHEDULE_CONFLICTS_DEFAULT_PROMPT}
-        </div>
-      ) : null}
-      <div
-        style={{
-          display: 'flex',
-          flexWrap: 'wrap',
-          alignItems: 'center',
-          gap: '0.5rem',
-          marginBottom: '0.75rem',
-        }}
-      >
-        <input
-          type="search"
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder="Search by person or job…"
-          aria-label="Search by person or job"
-          style={{
-            flex: '1 1 200px',
-            minWidth: 0,
-            padding: '0.4rem 0.5rem',
-            fontSize: '0.875rem',
-            border: '1px solid var(--border-strong)',
-            borderRadius: 4,
-          }}
-        />
-        {searchQuery.trim() !== '' ? (
-          <button
-            type="button"
-            onClick={() => setSearchQuery('')}
-            style={{
-              padding: '0.4rem 0.6rem',
-              fontSize: '0.8125rem',
-              border: '1px solid var(--border-strong)',
-              borderRadius: 4,
-              background: 'var(--surface)',
-              cursor: 'pointer',
-              color: 'var(--text-700)',
-            }}
-          >
-            Clear
-          </button>
-        ) : null}
-        <button
-          type="button"
-          onClick={toggleHideAssistantsEstimators}
-          style={{
-            padding: '0.4rem 0.6rem',
-            fontSize: '0.8125rem',
-            border: hideAssistantsEstimators ? '1px solid #2563eb' : '1px solid var(--border-strong)',
-            borderRadius: 4,
-            background: hideAssistantsEstimators ? 'var(--bg-blue-tint)' : 'var(--surface)',
-            color: hideAssistantsEstimators ? 'var(--text-blue-700)' : 'var(--text-700)',
-            cursor: 'pointer',
-            fontWeight: hideAssistantsEstimators ? 600 : 400,
-          }}
-        >
-          {hideAssistantsEstimators
-            ? 'Unhide assistants and estimators'
-            : 'Hide assistants and estimators'}
-        </button>
-      </div>
+  /** Day label + Previous/Next/Dispatch/Today (+ Visible hours gear). On the Dispatch Day tab it renders ABOVE the conflict banner; elsewhere it keeps its spot below the search row. */
+  const dayNavRow = (
       <div
         style={{
           display: 'flex',
@@ -1047,6 +982,77 @@ export function QuickfillScheduleSection({
           </button>
         ) : null}
       </div>
+  )
+
+  return (
+    <div>
+      {showDaySettings ? dayNavRow : null}
+      {!hideConflictPrompt ? (
+        <div role="note" style={QUICKFILL_SECTION_BANNER_BOX_STYLE}>
+          {SCHEDULE_CONFLICTS_DEFAULT_PROMPT}
+        </div>
+      ) : null}
+      <div
+        style={{
+          display: 'flex',
+          flexWrap: 'wrap',
+          alignItems: 'center',
+          gap: '0.5rem',
+          marginBottom: '0.75rem',
+        }}
+      >
+        <input
+          type="search"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder="Search by person or job…"
+          aria-label="Search by person or job"
+          style={{
+            flex: '1 1 200px',
+            minWidth: 0,
+            padding: '0.4rem 0.5rem',
+            fontSize: '0.875rem',
+            border: '1px solid var(--border-strong)',
+            borderRadius: 4,
+          }}
+        />
+        {searchQuery.trim() !== '' ? (
+          <button
+            type="button"
+            onClick={() => setSearchQuery('')}
+            style={{
+              padding: '0.4rem 0.6rem',
+              fontSize: '0.8125rem',
+              border: '1px solid var(--border-strong)',
+              borderRadius: 4,
+              background: 'var(--surface)',
+              cursor: 'pointer',
+              color: 'var(--text-700)',
+            }}
+          >
+            Clear
+          </button>
+        ) : null}
+        <button
+          type="button"
+          onClick={toggleHideAssistantsEstimators}
+          style={{
+            padding: '0.4rem 0.6rem',
+            fontSize: '0.8125rem',
+            border: hideAssistantsEstimators ? '1px solid #2563eb' : '1px solid var(--border-strong)',
+            borderRadius: 4,
+            background: hideAssistantsEstimators ? 'var(--bg-blue-tint)' : 'var(--surface)',
+            color: hideAssistantsEstimators ? 'var(--text-blue-700)' : 'var(--text-700)',
+            cursor: 'pointer',
+            fontWeight: hideAssistantsEstimators ? 600 : 400,
+          }}
+        >
+          {hideAssistantsEstimators
+            ? 'Unhide assistants and estimators'
+            : 'Hide assistants and estimators'}
+        </button>
+      </div>
+      {!showDaySettings ? dayNavRow : null}
       {loading ? (
         <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Loading…</p>
       ) : sortedUsers.length === 0 ? (
@@ -1145,6 +1151,7 @@ export function QuickfillScheduleSection({
                         scheduleDayYmd={workDate}
                         segments={segments}
                         secondaryBands={secondary}
+                        nameColumnIndent
                         railTrimWindow={dayRailTrimWindow}
                         boundaryDots={dots}
                         onBoundaryDotDrag={

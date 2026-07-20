@@ -126,6 +126,7 @@ export const QuickfillScheduleUserRow = memo(function QuickfillScheduleUserRow({
   nameColumnSubline,
   compactRow = false,
   railTrimWindow,
+  nameColumnIndent = false,
   boundaryDots,
   onBoundaryDotDrag,
   onBoundaryDotDragEnd,
@@ -167,6 +168,8 @@ export const QuickfillScheduleUserRow = memo(function QuickfillScheduleUserRow({
       by the User Review modal to align rails across rows; default-undefined
       preserves Quickfill / Schedule Dispatch full-rail behavior. */
   railTrimWindow?: { loSlotIndex: number; hiSlotIndex: number } | null
+  /** Indent the name column (Day view: names sit right of the flush-left role headings). */
+  nameColumnIndent?: boolean
   /** Day-view boundary dots + drag callbacks (editors only) — threaded into the range control. */
   boundaryDots?: BoundaryDot[]
   onBoundaryDotDrag?: (dot: BoundaryDot, targetMinutes: number) => void
@@ -210,7 +213,7 @@ export const QuickfillScheduleUserRow = memo(function QuickfillScheduleUserRow({
             whiteSpace: 'normal',
             overflow: 'hidden',
             lineHeight: 1.2,
-            padding: '0.15rem 0.25rem',
+            padding: nameColumnIndent ? '0.15rem 0.25rem 0.15rem 1rem' : '0.15rem 0.25rem',
           }}
         >
           {onNameColumnClick ? (
