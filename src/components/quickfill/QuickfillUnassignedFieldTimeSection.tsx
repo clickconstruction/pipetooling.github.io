@@ -128,7 +128,7 @@ const labeledControlStyle: CSSProperties = {
   alignItems: 'center',
   gap: '0.4rem',
   fontSize: '0.875rem',
-  color: '#334155',
+  color: 'var(--text-slate-600)',
 }
 const selectStyle: CSSProperties = {
   padding: '0.3rem 0.4rem',
@@ -165,12 +165,12 @@ const rowGridStyle: CSSProperties = {
   gap: '0.5rem 0.75rem',
   alignItems: 'center',
   padding: '0.5rem 0.75rem',
-  borderBottom: '1px solid #f1f5f9',
+  borderBottom: '1px solid var(--border)',
   fontSize: '0.875rem',
 }
 const headerRowStyle: CSSProperties = {
   ...rowGridStyle,
-  background: '#fafbfc',
+  background: 'var(--bg-subtle)',
   color: 'var(--text-slate-600)',
   fontSize: '0.75rem',
   textTransform: 'uppercase',

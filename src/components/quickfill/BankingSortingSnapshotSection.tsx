@@ -480,7 +480,7 @@ export function BankingSortingSnapshotSection() {
                             style={{
                               padding: '0.5rem 0.4rem',
                               verticalAlign: 'middle',
-                              color: hasPerson ? '#166534' : undefined,
+                              color: hasPerson ? 'var(--text-green-800)' : undefined,
                             }}
                           >
                             {hasPerson ? (
@@ -500,7 +500,7 @@ export function BankingSortingSnapshotSection() {
                             style={{
                               padding: '0.5rem 0.4rem',
                               verticalAlign: 'middle',
-                              color: hasJobSplit ? '#166534' : undefined,
+                              color: hasJobSplit ? 'var(--text-green-800)' : undefined,
                             }}
                           >
                             {hasJobSplit ? (

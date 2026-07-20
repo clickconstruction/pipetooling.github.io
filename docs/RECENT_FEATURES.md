@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-19 (v2.764)
+last_updated: 2026-07-19 (v2.765)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.765)
+
+### Quickfill — dark-mode legibility pass (2026-07-19)
+Several Quickfill sections were hard to read in dark mode; all are now theme-token native. **(1)** The traffic-light **"Mark … up to date!" buttons** (Email Inbox / Next Actions / Follow Up / Texts / Physical Inbox) used pastel `red/yellow/green` hex backgrounds while the button text inherits the page color — in dark mode that meant light-gray text on a pastel chip. The palette now uses `--bg-red-200` plus two new tokens `--bg-yellow-200` / `--bg-green-200` (light values identical to the old hexes; dark values are proper dark tints), so the traffic-light state reads in both themes. **(2)** Hard-coded dark-slate `#334155` text (section collapse buttons on the page, People-Hours breakdown numbers, Unassigned-field-time labels) → `var(--text-slate-600)` — it was near-invisible on dark surfaces. **(3)** The Unassigned-field-time header row pinned a near-white `#fafbfc` background under a light text token → `var(--bg-subtle)`. **(4)** Banking sorting snapshot's green "Assigned"/"Split" cells (`#166534`) → `var(--text-green-800)`. **(5)** Hours' missing-job cell highlight (light-red `rgba` wash) → `var(--bg-red-tint)`. **(6)** Near-white hairline row borders (`#f3f4f6`/`#f1f5f9`) in Office checklist, Prospects, People-Hours and the Mark-history modal → `var(--border)`. Saturated action/status colors (solid buttons, colored borders) stay literal per convention. Note: these hexes predate the theme codemod's map (`scripts/theme-tokenize.mjs` doesn't rewrite `#334155`/`#fafbfc`), which is why CI's token check never flagged them.
 
 ## Latest Updates (v2.764)
 

@@ -672,7 +672,7 @@ export function HoursSection() {
                                 padding: '0.35rem 0.5rem',
                                 textAlign: canEdit ? 'right' : 'center',
                                 ...(missingJob && {
-                                  background: 'rgba(254, 242, 242, 0.9)',
+                                  background: 'var(--bg-red-tint)',
                                   boxShadow: 'inset 0 0 0 1px rgba(252, 165, 165, 0.45)',
                                   borderRadius: 8,
                                 }),

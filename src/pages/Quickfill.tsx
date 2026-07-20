@@ -185,9 +185,9 @@ function getButtonColor(markedAt: string | null): ButtonColor {
 }
 
 const BUTTON_BG: Record<ButtonColor, string> = {
-  red: '#fecaca',
-  yellow: '#fef08a',
-  green: '#bbf7d0',
+  red: 'var(--bg-red-200)',
+  yellow: 'var(--bg-yellow-200)',
+  green: 'var(--bg-green-200)',
 }
 
 const BUTTON_BORDER: Record<ButtonColor, string> = {
@@ -1712,7 +1712,7 @@ function QuickfillSectionWrapper({
                 borderRadius: 6,
                 border: '1px solid var(--border-strong)',
                 background: 'var(--bg-slate-tint)',
-                color: '#334155',
+                color: 'var(--text-slate-600)',
                 cursor: 'pointer',
                 lineHeight: 0,
                 flexShrink: 0,
@@ -1805,7 +1805,7 @@ function QuickfillSectionWrapper({
               borderRadius: 6,
               border: '1px solid var(--border-strong)',
               background: 'var(--bg-slate-tint)',
-              color: '#334155',
+              color: 'var(--text-slate-600)',
               cursor: 'pointer',
               lineHeight: 0,
             }}

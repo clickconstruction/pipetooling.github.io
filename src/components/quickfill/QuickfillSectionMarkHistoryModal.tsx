@@ -313,7 +313,7 @@ function HistoryTable({
             </thead>
             <tbody>
               {rows.map((r) => (
-                <tr key={r.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                <tr key={r.id} style={{ borderBottom: '1px solid var(--border)' }}>
                   <td style={{ padding: '0.5rem 0.65rem', whiteSpace: 'nowrap' }}>{formatMarkedAt(r.marked_at)}</td>
                   <td style={{ padding: '0.5rem 0.65rem' }}>{r.users?.name?.trim() || '—'}</td>
                   <td style={{ padding: '0.5rem 0.65rem', textAlign: 'right' }}>
