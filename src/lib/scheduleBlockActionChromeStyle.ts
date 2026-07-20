@@ -1,18 +1,18 @@
 import type { CSSProperties } from 'react'
 
 /**
- * Soft 1px white edge highlight for icon controls that already sit on a white plate
+ * Soft 1px surface-colored edge highlight (theme-aware) for icon controls that already sit on a white plate
  * (linked chains, block-note). Just enough to keep the colored glyph from blending
  * into the plate's edge against vivid card colors.
  */
 export const scheduleBlockActionLinkedIconButtonStyle: Pick<CSSProperties, 'filter'> = {
-  filter: 'drop-shadow(0 0 1px rgba(255,255,255,0.9))',
+  filter: 'drop-shadow(0 0 1px var(--surface))',
 }
 
-/** White halation for text glyph controls (−, +) on schedule block cards. */
+/** Surface-colored halation (theme-aware) for text glyph controls (−, +) on schedule block cards. */
 export const scheduleBlockActionTextButtonStyle: Pick<CSSProperties, 'textShadow'> = {
   textShadow:
-    '0 0 3px #fff, 0 0 8px #fff, 0 0 16px #fff, 0 0 28px rgba(255,255,255,0.95), 0 0 40px rgba(255,255,255,0.82)',
+    '0 0 3px var(--surface), 0 0 8px var(--surface), 0 0 16px var(--surface), 0 0 28px var(--surface), 0 0 40px var(--surface)',
 }
 
 /**
@@ -23,7 +23,7 @@ export const scheduleBlockActionTextButtonStyle: Pick<CSSProperties, 'textShadow
  */
 export const scheduleBlockControlPlateBackgroundStyle: CSSProperties = {
   borderRadius: '50%',
-  background: 'rgba(255,255,255,0.55)',
+  background: 'color-mix(in srgb, var(--surface) 55%, transparent)',
   border: 'none',
   boxShadow: '0 1px 2px rgba(0,0,0,0.06)',
 }

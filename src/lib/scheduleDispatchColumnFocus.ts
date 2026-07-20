@@ -54,7 +54,7 @@ export function scheduleDispatchDayColumnCellIdleBg(
   if (focused && isToday) return SCHEDULE_DISPATCH_COLUMN_FOCUS_BG
   if (focused) return SCHEDULE_DISPATCH_COLUMN_FOCUS_BG
   if (isToday) return SCHEDULE_DISPATCH_TODAY_COLUMN_BG
-  return '#fafafa'
+  return 'var(--surface)'
 }
 
 /** Jobs hub numeric summary cells: `undefined` means default (no tint). */

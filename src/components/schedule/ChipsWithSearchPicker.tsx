@@ -279,7 +279,7 @@ export function ChipsWithSearchPicker({
             results.map((r, idx) => (
               <li
                 key={r.value}
-                style={{ borderBottom: idx + 1 < results.length ? '1px solid #f3f4f6' : 'none' }}
+                style={{ borderBottom: idx + 1 < results.length ? '1px solid var(--border)' : 'none' }}
               >
                 <button
                   type="button"

@@ -1710,11 +1710,11 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
               margin: '0 1.25rem',
               marginBottom: '0.75rem',
               padding: '0.5rem 0.75rem',
-              background: '#e0e7ff',
+              background: 'var(--bg-blue-200)',
               border: '1px solid #a5b4fc',
               borderRadius: 6,
               fontSize: '0.8125rem',
-              color: '#3730a3',
+              color: 'var(--text-blue-900)',
               display: 'flex',
               flexWrap: 'wrap',
               alignItems: 'center',
@@ -1744,7 +1744,7 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
                 border: '1px solid #4338ca',
                 borderRadius: 4,
                 background: 'var(--surface)',
-                color: '#312e81',
+                color: 'var(--text-blue-900)',
                 cursor: 'pointer',
               }}
             >
@@ -1782,7 +1782,7 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
                 border: '1px solid #047857',
                 borderRadius: 4,
                 background: 'var(--surface)',
-                color: '#064e3b',
+                color: 'var(--text-emerald-800)',
                 cursor: 'pointer',
               }}
             >

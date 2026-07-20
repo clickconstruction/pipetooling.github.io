@@ -166,8 +166,8 @@ function ScheduleDispatchBlockCard({
           touchAction: dragDisabled ? undefined : 'none',
           cursor: dragDisabled ? 'pointer' : 'grab',
           background: dragDisabled
-            ? 'linear-gradient(90deg, #fee2e2 0%, #fecaca 100%)'
-            : 'linear-gradient(90deg, #dbeafe 0%, #eff6ff 100%)',
+            ? 'linear-gradient(90deg, var(--bg-red-100) 0%, var(--bg-red-200) 100%)'
+            : 'linear-gradient(90deg, var(--bg-blue-200) 0%, var(--bg-blue-tint) 100%)',
           borderRight: `1px solid ${dragDisabled ? '#fca5a5' : '#bfdbfe'}`,
           outline: 'none',
         }}
@@ -193,7 +193,7 @@ function ScheduleDispatchBlockCard({
           cursor: canEdit ? 'pointer' : 'default',
         }}
       >
-        <div style={{ fontWeight: 600, color: '#1e3a8a', display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 4 }}>
+        <div style={{ fontWeight: 600, color: 'var(--text-blue-900)', display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 4 }}>
           <span>{scheduleFormatWindow(block.time_start, block.time_end)}</span>
         </div>
         {block.note ? (
@@ -239,7 +239,7 @@ function ScheduleDispatchBlockCard({
                 fontFamily: 'inherit',
                 margin: 0,
                 filter:
-                  'drop-shadow(0 0 1px rgba(255,255,255,0.9)) drop-shadow(0 0 2px rgba(255,255,255,0.7))',
+                  'drop-shadow(0 0 1px var(--surface)) drop-shadow(0 0 2px var(--surface))',
               }}
             >
               <ScheduleDispatchBlockNoteIcon size={12} />
@@ -274,7 +274,7 @@ function ScheduleDispatchBlockCard({
                 color: chainsColor,
                 marginRight: showMinusPlusButtons ? -4 : 0,
                 filter:
-                  'drop-shadow(0 0 1px rgba(255,255,255,0.9)) drop-shadow(0 0 2px rgba(255,255,255,0.7))',
+                  'drop-shadow(0 0 1px var(--surface)) drop-shadow(0 0 2px var(--surface))',
               }}
             >
               <ScheduleDispatchLinkedChainsIcon size={12} />
@@ -411,16 +411,16 @@ function ScheduleDispatchCell({
     cardPlacementMode?.variant === 'linked' &&
     placementSourceWorkDate != null &&
     workDate !== placementSourceWorkDate
-  let cellBg = isOver ? '#dbeafe' : idleBg
+  let cellBg = isOver ? 'var(--bg-blue-200)' : idleBg
   if (placementPickingActive && linkedWrongDay) {
-    cellBg = '#f3f4f6'
+    cellBg = 'var(--bg-muted)'
   } else if (placementPickingActive && !linkedWrongDay) {
-    cellBg = isOver ? '#c7d2fe' : '#eef2ff'
+    cellBg = isOver ? 'var(--bg-blue-200)' : 'var(--bg-sky-tint)'
   }
   // Time-off cells aren't valid placement targets — gray them out the same
   // way `linked wrong day` cells do during the placement flow.
   if (cellHasTimeOff && placementPickingActive) {
-    cellBg = '#f3f4f6'
+    cellBg = 'var(--bg-muted)'
   }
   const placementPickingTargetable = placementPickingActive && !cellHasTimeOff
 
@@ -660,7 +660,7 @@ export function ScheduleDispatchGrid({
                 whiteSpace: 'nowrap',
                 boxShadow: isMobile
                   ? undefined
-                  : 'inset 1px 0 0 #e5e7eb, inset -1px 0 0 #e5e7eb',
+                  : 'inset 1px 0 0 var(--border), inset -1px 0 0 var(--border)',
               }}
             >
               {isMobile ? <span style={scheduleDispatchMobileNamePill}>Team member</span> : 'Team member'}
@@ -676,7 +676,7 @@ export function ScheduleDispatchGrid({
                     ...scheduleDispatchDayColumnHeaderStyle(dk, {
                       scheduleTodayYmd,
                       columnFocusDayYmd,
-                    }, '#f3f4f6'),
+                    }, 'var(--bg-muted)'),
                     border: '1px solid var(--border)',
                     padding: '0.5rem',
                     textAlign: 'center',
@@ -721,7 +721,7 @@ export function ScheduleDispatchGrid({
                     minWidth: 0,
                     boxShadow: isMobile
                       ? undefined
-                      : 'inset 1px 0 0 #e5e7eb, inset -1px 0 0 #e5e7eb',
+                      : 'inset 1px 0 0 var(--border), inset -1px 0 0 var(--border)',
                   }}
                 >
                   <div style={{ lineHeight: 1.25 }}>

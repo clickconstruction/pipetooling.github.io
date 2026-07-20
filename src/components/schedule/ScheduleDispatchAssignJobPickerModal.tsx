@@ -141,7 +141,7 @@ export function ScheduleDispatchAssignJobPickerModal({
           ) : (
             <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
               {jobRows.map((r) => (
-                <li key={r.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                <li key={r.id} style={{ borderBottom: '1px solid var(--border)' }}>
                   <button
                     type="button"
                     onClick={() => onPickJob(r.id)}

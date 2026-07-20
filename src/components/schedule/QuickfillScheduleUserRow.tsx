@@ -186,7 +186,7 @@ export const QuickfillScheduleUserRow = memo(function QuickfillScheduleUserRow({
         alignItems: 'center',
         gap: QUICKFILL_SCHEDULE_ROW_GAP,
         padding: compactRow ? '0.15rem 0' : '0.45rem 0',
-        borderBottom: compactRow ? 'none' : '1px solid #f3f4f6',
+        borderBottom: compactRow ? 'none' : '1px solid var(--border)',
       }}
     >
       {showNameColumn ? (
