@@ -1232,7 +1232,7 @@ export function SupplyHousesTab({
                   <button
                     type="button"
                     onClick={() => deleteInvoice(editingInvoice)}
-                    style={{ padding: '0.5rem 1rem', background: 'var(--bg-red-100)', color: 'var(--text-red-800)', border: '1px solid #fca5a5', borderRadius: 4, cursor: 'pointer' }}
+                    style={{ padding: '0.5rem 1rem', background: 'var(--bg-red-100)', color: 'var(--text-red-800)', border: '1px solid var(--border-red)', borderRadius: 4, cursor: 'pointer' }}
                   >
                     Delete
                   </button>

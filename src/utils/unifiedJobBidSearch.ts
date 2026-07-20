@@ -99,8 +99,8 @@ export function serviceTypeTagForUnifiedRow(r: UnifiedSearchResult): { tag: stri
 export function customerTypePillForUnifiedRow(r: UnifiedSearchResult): { tag: string; color: string } | null {
   if (r.source !== 'customer') return null
   const t = (r.customer_type ?? '').toLowerCase()
-  if (t.startsWith('commercial')) return { tag: 'com', color: '#c7d2fe' }
-  if (t.startsWith('residential')) return { tag: 'res', color: '#bbf7d0' }
+  if (t.startsWith('commercial')) return { tag: 'com', color: 'var(--bg-indigo-200)' }
+  if (t.startsWith('residential')) return { tag: 'res', color: 'var(--bg-green-200)' }
   return null
 }
 

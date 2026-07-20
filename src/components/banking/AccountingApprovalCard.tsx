@@ -79,7 +79,7 @@ export const AccountingApprovalCard = memo(function AccountingApprovalCard({
               ) : (
                 <span
                   title="Synced from Mercury"
-                  style={{ fontSize: '0.62rem', fontWeight: 700, color: '#075985', background: 'var(--bg-sky-100)', borderRadius: 999, padding: '1px 6px' }}
+                  style={{ fontSize: '0.62rem', fontWeight: 700, color: 'var(--text-sky-800)', background: 'var(--bg-sky-100)', borderRadius: 999, padding: '1px 6px' }}
                 >
                   Synced
                 </span>

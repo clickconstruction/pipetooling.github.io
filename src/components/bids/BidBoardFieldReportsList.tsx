@@ -9,8 +9,8 @@ const fieldReportBadgeStyle: CSSProperties = {
   fontWeight: 600,
   padding: '0.125rem 0.35rem',
   borderRadius: 4,
-  background: '#ede9fe',
-  color: '#5b21b6',
+  background: 'var(--bg-violet-100)',
+  color: 'var(--text-violet-800)',
 }
 
 type Props = {

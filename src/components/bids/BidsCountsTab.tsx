@@ -454,7 +454,7 @@ export function BidsCountsTab({
                     padding: '0.5rem 1rem',
                     background: 'var(--surface)',
                     color: 'var(--text-red-700)',
-                    border: '1px solid #fca5a5',
+                    border: '1px solid var(--border-red)',
                     borderRadius: 4,
                     cursor: countRows.length === 0 || clearAllCountsBusy ? 'not-allowed' : 'pointer',
                     opacity: countRows.length === 0 ? 0.5 : 1,

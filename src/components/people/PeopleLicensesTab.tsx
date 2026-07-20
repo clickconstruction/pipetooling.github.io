@@ -223,7 +223,7 @@ export default function PeopleLicensesTab({ people, users }: PeopleLicensesTabPr
           <p style={{ color: 'var(--text-muted)' }}>Loading…</p>
         ) : (
           <>
-            <section style={{ marginBottom: '1.5rem', padding: '1rem', background: 'var(--bg-amber-tint)', borderRadius: 6, border: '1px solid #fde68a' }}>
+            <section style={{ marginBottom: '1.5rem', padding: '1rem', background: 'var(--bg-amber-tint)', borderRadius: 6, border: '1px solid var(--border-amber-soft)' }}>
               <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1rem', fontWeight: 600 }}>Licenses expiring in the next 30 days</h3>
               {licensesExpiringSoon.length === 0 ? (
                 <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0 }}>No licenses expiring in the next 30 days.</p>

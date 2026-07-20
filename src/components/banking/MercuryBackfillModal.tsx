@@ -169,7 +169,7 @@ export function MercuryBackfillModal({ open, onClose, onSubmit }: MercuryBackfil
                 padding: '0.5rem 0.75rem',
                 borderRadius: 6,
                 background: 'var(--bg-amber-100)',
-                border: '1px solid #fde68a',
+                border: '1px solid var(--border-amber-soft)',
                 color: 'var(--text-amber-800)',
                 fontSize: '0.8rem',
               }}

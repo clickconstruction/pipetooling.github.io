@@ -160,7 +160,7 @@ export function PersonActivityDetailModal({ userId, personName, zIndex, onClose 
                         style={{
                           fontSize: '0.75rem',
                           background: 'var(--bg-blue-tint)',
-                          border: '1px solid #bfdbfe',
+                          border: '1px solid var(--border-blue)',
                           color: 'var(--text-blue-800)',
                           borderRadius: 9999,
                           padding: '0.15rem 0.6rem',

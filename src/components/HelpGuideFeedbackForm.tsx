@@ -43,7 +43,7 @@ export function HelpGuideFeedbackForm({ guideSlug }: { guideSlug: string }) {
         Suggestions, confusion, or something the app should do differently — it goes straight to the devs.
       </p>
       {submitted ? (
-        <p style={{ fontSize: '0.875rem', color: 'var(--text-green-800)', background: 'var(--bg-green-tint)', border: '1px solid #bbf7d0', borderRadius: 6, padding: '0.5rem 0.75rem', margin: 0 }}>
+        <p style={{ fontSize: '0.875rem', color: 'var(--text-green-800)', background: 'var(--bg-green-tint)', border: '1px solid var(--border-green)', borderRadius: 6, padding: '0.5rem 0.75rem', margin: 0 }}>
           Thanks — feedback sent.{' '}
           <button
             type="button"

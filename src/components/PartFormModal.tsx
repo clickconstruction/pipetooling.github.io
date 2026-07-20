@@ -266,7 +266,7 @@ export function PartFormModal({
                     const url = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`
                     window.open(url, '_blank', 'noopener,noreferrer')
                   }}
-                  style={{ flexShrink: 0, padding: '0.5rem 0.75rem', background: 'var(--bg-blue-tint)', color: 'var(--text-blue-700)', border: '1px solid #bfdbfe', borderRadius: 4, cursor: 'pointer', whiteSpace: 'nowrap' }}
+                  style={{ flexShrink: 0, padding: '0.5rem 0.75rem', background: 'var(--bg-blue-tint)', color: 'var(--text-blue-700)', border: '1px solid var(--border-blue)', borderRadius: 4, cursor: 'pointer', whiteSpace: 'nowrap' }}
                 >
                   Open ↗
                 </button>
@@ -339,7 +339,7 @@ export function PartFormModal({
                           onClick={() => {
                             setPartPrices(partPrices.filter((_, i) => i !== idx))
                           }}
-                          style={{ padding: '0.5rem 0.75rem', background: 'var(--bg-red-100)', color: 'var(--text-red-800)', border: '1px solid #fca5a5', borderRadius: 4, cursor: 'pointer' }}
+                          style={{ padding: '0.5rem 0.75rem', background: 'var(--bg-red-100)', color: 'var(--text-red-800)', border: '1px solid var(--border-red)', borderRadius: 4, cursor: 'pointer' }}
                         >
                           ×
                         </button>
@@ -385,7 +385,7 @@ export function PartFormModal({
               <button
                 type="button"
                 onClick={() => setDeleteConfirmOpen(true)}
-                style={{ padding: '0.5rem 1rem', background: 'var(--bg-red-100)', color: 'var(--text-red-800)', border: '1px solid #fca5a5', borderRadius: 4, cursor: 'pointer' }}
+                style={{ padding: '0.5rem 1rem', background: 'var(--bg-red-100)', color: 'var(--text-red-800)', border: '1px solid var(--border-red)', borderRadius: 4, cursor: 'pointer' }}
               >
                 Delete
               </button>

@@ -550,7 +550,7 @@ export default function SettingsCatalogsTab({
                               style={{ 
                                 padding: '0.125rem 0.5rem', 
                                 fontSize: '0.75rem', 
-                                background: (partTypePartCounts[pt.id] ?? 0) > 0 ? '#d1fae5' : 'var(--bg-muted)',
+                                background: (partTypePartCounts[pt.id] ?? 0) > 0 ? 'var(--bg-emerald-100)' : 'var(--bg-muted)',
                                 color: (partTypePartCounts[pt.id] ?? 0) > 0 ? 'var(--text-emerald-800)' : 'var(--text-muted)',
                                 borderRadius: 4,
                                 fontWeight: 500
@@ -759,7 +759,7 @@ export default function SettingsCatalogsTab({
                               style={{ 
                                 padding: '0.125rem 0.5rem', 
                                 fontSize: '0.75rem', 
-                                background: (assemblyTypeAssemblyCounts[at.id] ?? 0) > 0 ? '#d1fae5' : 'var(--bg-muted)',
+                                background: (assemblyTypeAssemblyCounts[at.id] ?? 0) > 0 ? 'var(--bg-emerald-100)' : 'var(--bg-muted)',
                                 color: (assemblyTypeAssemblyCounts[at.id] ?? 0) > 0 ? 'var(--text-emerald-800)' : 'var(--text-muted)',
                                 borderRadius: 4,
                                 fontWeight: 500
@@ -952,8 +952,8 @@ export default function SettingsCatalogsTab({
                               style={{ 
                                 padding: '0.125rem 0.5rem', 
                                 fontSize: '0.75rem', 
-                                background: (fixtureTypeTakeoffBookCounts[ft.id] ?? 0) > 0 ? '#ede9fe' : 'var(--bg-muted)',
-                                color: (fixtureTypeTakeoffBookCounts[ft.id] ?? 0) > 0 ? '#5b21b6' : 'var(--text-muted)',
+                                background: (fixtureTypeTakeoffBookCounts[ft.id] ?? 0) > 0 ? 'var(--bg-violet-100)' : 'var(--bg-muted)',
+                                color: (fixtureTypeTakeoffBookCounts[ft.id] ?? 0) > 0 ? 'var(--text-violet-800)' : 'var(--text-muted)',
                                 borderRadius: 4,
                                 fontWeight: 500
                               }}
@@ -978,7 +978,7 @@ export default function SettingsCatalogsTab({
                               style={{ 
                                 padding: '0.125rem 0.5rem', 
                                 fontSize: '0.75rem', 
-                                background: (fixtureTypePriceBookCounts[ft.id] ?? 0) > 0 ? '#d1fae5' : 'var(--bg-muted)',
+                                background: (fixtureTypePriceBookCounts[ft.id] ?? 0) > 0 ? 'var(--bg-emerald-100)' : 'var(--bg-muted)',
                                 color: (fixtureTypePriceBookCounts[ft.id] ?? 0) > 0 ? 'var(--text-emerald-800)' : 'var(--text-muted)',
                                 borderRadius: 4,
                                 fontWeight: 500

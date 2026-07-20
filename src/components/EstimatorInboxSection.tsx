@@ -430,7 +430,7 @@ export function EstimatorInboxSection({
                                   margin: '0 -0.5rem -0.5rem',
                                   paddingLeft: '0.5rem',
                                   paddingRight: '0.5rem',
-                                  borderTop: '1px solid #bbf7d0',
+                                  borderTop: '1px solid var(--border-green)',
                                 }}
                               >
                                 <div style={{ color: 'var(--text-green-800)', fontWeight: 600, marginBottom: 4 }}>Marked closed (final)</div>

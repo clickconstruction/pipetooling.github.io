@@ -151,7 +151,7 @@ function tallyJobsSubRowBannerStyle(allocated: boolean): CSSProperties {
     boxSizing: 'border-box',
     padding: '0.4rem 0.65rem',
     borderRadius: 6,
-    border: allocated ? '1px solid #a7f3d0' : '1px solid #fcd34d',
+    border: allocated ? '1px solid #a7f3d0' : '1px solid var(--border-amber)',
     background: allocated ? 'var(--bg-emerald-tint)' : 'var(--bg-amber-tint)',
     borderLeft: allocated ? '3px solid #059669' : '3px solid #d97706',
   }
@@ -2116,7 +2116,7 @@ export default function JobTally() {
                       justifyContent: 'space-between',
                       padding: '0.75rem 1rem',
                       marginBottom: '0.5rem',
-                      border: e.isFixtureSent ? '1px solid #86efac' : '1px solid var(--border)',
+                      border: e.isFixtureSent ? '1px solid var(--border-green)' : '1px solid var(--border)',
                       borderRadius: 8,
                       background: e.isFixtureSent ? 'var(--bg-green-100)' : 'var(--surface)',
                     }}

@@ -153,7 +153,7 @@ export default function CreateTripChargeModal({ target, onClose, onCreated }: Pr
         </div>
 
         {!loading && job && !job.customer_id && (
-          <p style={{ fontSize: '0.8125rem', color: 'var(--text-amber-700)', background: 'var(--bg-amber-tint)', border: '1px solid #fcd34d', borderRadius: 6, padding: '0.5rem 0.75rem', marginBottom: '1rem' }}>
+          <p style={{ fontSize: '0.8125rem', color: 'var(--text-amber-700)', background: 'var(--bg-amber-tint)', border: '1px solid var(--border-amber)', borderRadius: 6, padding: '0.5rem 0.75rem', marginBottom: '1rem' }}>
             This job has no linked customer — the charge will sit in Ready to Bill until a customer is linked.
           </p>
         )}

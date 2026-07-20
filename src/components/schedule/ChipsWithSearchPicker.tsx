@@ -48,7 +48,7 @@ const chipStyle: CSSProperties = {
   padding: '0.2rem 0.55rem',
   fontSize: '0.8125rem',
   background: '#eef2ff',
-  border: '1px solid #c7d2fe',
+  border: '1px solid var(--border-indigo-soft)',
   borderRadius: 999,
   color: '#1e3a8a',
   maxWidth: '100%',

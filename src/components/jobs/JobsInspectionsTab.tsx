@@ -303,7 +303,7 @@ export default function JobsInspectionsTab({ authUserId, error, onError }: JobsI
                     const dayOfWeek = scheduled.toLocaleDateString('en-US', { weekday: 'long' })
                     const formatted = `${i.scheduled_date} (${diffDays}) ${dayOfWeek}`
                     return (
-                      <li key={i.id} style={{ marginBottom: '0.5rem', padding: '0.5rem 0.75rem', background: 'var(--bg-blue-tint)', border: '1px solid #bfdbfe', borderRadius: 4, fontSize: '0.875rem' }}>
+                      <li key={i.id} style={{ marginBottom: '0.5rem', padding: '0.5rem 0.75rem', background: 'var(--bg-blue-tint)', border: '1px solid var(--border-blue)', borderRadius: 4, fontSize: '0.875rem' }}>
                         <div>
                           <span style={{ color: 'var(--text-muted)', marginRight: '0.5rem' }}>{formatted}</span>
                           <span style={{ color: 'var(--text-600)' }}>{' - '}{i.inspection_type}</span>
@@ -419,7 +419,7 @@ export default function JobsInspectionsTab({ authUserId, error, onError }: JobsI
                 ) : (
                   <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
                     {dayInspections.map((i) => (
-                      <li key={i.id} style={{ marginBottom: '0.5rem', padding: '0.5rem 0.75rem', background: 'var(--bg-blue-tint)', border: '1px solid #bfdbfe', borderRadius: 4 }}>
+                      <li key={i.id} style={{ marginBottom: '0.5rem', padding: '0.5rem 0.75rem', background: 'var(--bg-blue-tint)', border: '1px solid var(--border-blue)', borderRadius: 4 }}>
                         <div style={{ fontWeight: 500 }}>{i.address}</div>
                         <div style={{ fontSize: '0.875rem', color: 'var(--text-600)' }}>{i.inspection_type}</div>
                       </li>

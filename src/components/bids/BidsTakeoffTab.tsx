@@ -2939,7 +2939,7 @@ export function BidsTakeoffTab({
                                   <button
                                     type="button"
                                     onClick={() => addTakeoffTemplate(row.id, Number(row.count))}
-                                    style={{ padding: '0.5rem 1rem', background: '#e0e7ff', color: '#3730a3', border: 'none', borderRadius: 4, cursor: 'pointer' }}
+                                    style={{ padding: '0.5rem 1rem', background: 'var(--bg-indigo-100)', color: 'var(--text-indigo-800)', border: 'none', borderRadius: 4, cursor: 'pointer' }}
                                   >
                                     Add assembly
                                   </button>
@@ -3373,7 +3373,7 @@ export function BidsTakeoffTab({
                                   </td>
                                   <td style={{ padding: '0.5rem 0.75rem' }}>
                                     {item.item_type === 'part' && item.part_id ? (
-                                      <button type="button" onClick={() => setPartPricesModal({ partId: item.part_id!, partName: name })} style={{ padding: '0.25rem 0.5rem', background: 'var(--bg-blue-tint)', color: 'var(--text-blue-700)', border: '1px solid #bfdbfe', borderRadius: 4, cursor: 'pointer' }}>Prices</button>
+                                      <button type="button" onClick={() => setPartPricesModal({ partId: item.part_id!, partName: name })} style={{ padding: '0.25rem 0.5rem', background: 'var(--bg-blue-tint)', color: 'var(--text-blue-700)', border: '1px solid var(--border-blue)', borderRadius: 4, cursor: 'pointer' }}>Prices</button>
                                     ) : '—'}
                                   </td>
                                   <td style={{ padding: '0.5rem 0.75rem' }}><button type="button" onClick={() => removeTakeoffNewTemplateItem(idx)} style={{ padding: '0.25rem 0.5rem', background: 'var(--bg-red-tint)', color: 'var(--text-red-700)', border: '1px solid #fecaca', borderRadius: 4, cursor: 'pointer' }}>Remove</button></td>
@@ -4504,7 +4504,7 @@ export function BidsTakeoffTab({
                                 <button
                                   type="button"
                                   onClick={() => setPartPricesModal({ partId: item.part_id!, partName: name })}
-                                  style={{ padding: '0.25rem 0.5rem', background: 'var(--bg-blue-tint)', color: 'var(--text-blue-700)', border: '1px solid #bfdbfe', borderRadius: 4, cursor: 'pointer' }}
+                                  style={{ padding: '0.25rem 0.5rem', background: 'var(--bg-blue-tint)', color: 'var(--text-blue-700)', border: '1px solid var(--border-blue)', borderRadius: 4, cursor: 'pointer' }}
                                 >
                                   Prices
                                 </button>
@@ -4717,7 +4717,7 @@ export function BidsTakeoffTab({
                     setBundleBreakdownModal(null)
                     void openEditTemplateModal(templateId, assemblyName)
                   }}
-                  style={{ padding: '0.35rem 0.75rem', background: 'var(--bg-blue-tint)', color: 'var(--text-blue-700)', border: '1px solid #bfdbfe', borderRadius: 4, cursor: 'pointer', fontWeight: 500, whiteSpace: 'nowrap' }}
+                  style={{ padding: '0.35rem 0.75rem', background: 'var(--bg-blue-tint)', color: 'var(--text-blue-700)', border: '1px solid var(--border-blue)', borderRadius: 4, cursor: 'pointer', fontWeight: 500, whiteSpace: 'nowrap' }}
                 >
                   Edit assembly
                 </button>
@@ -4767,7 +4767,7 @@ export function BidsTakeoffTab({
                           <td style={{ padding: '0.4rem 0.5rem' }}>
                             {h.supplyHouseName}
                             {h.missingCount > 0 && (
-                              <span style={{ marginLeft: '0.4rem', fontSize: '0.7rem', color: 'var(--text-amber-800)', background: 'var(--bg-amber-tint)', border: '1px solid #fde68a', borderRadius: 4, padding: '0.05rem 0.3rem' }}>
+                              <span style={{ marginLeft: '0.4rem', fontSize: '0.7rem', color: 'var(--text-amber-800)', background: 'var(--bg-amber-tint)', border: '1px solid var(--border-amber-soft)', borderRadius: 4, padding: '0.05rem 0.3rem' }}>
                                 missing {h.missingCount}
                               </span>
                             )}
@@ -4798,7 +4798,7 @@ export function BidsTakeoffTab({
                             <button
                               type="button"
                               onClick={() => applyBundleQuoteToLine(bundleBreakdownModal.lineId, q.price, q.supplyHouseName)}
-                              style={{ padding: '0.3rem 0.6rem', background: 'var(--bg-blue-tint)', color: 'var(--text-blue-700)', border: '1px solid #bfdbfe', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
+                              style={{ padding: '0.3rem 0.6rem', background: 'var(--bg-blue-tint)', color: 'var(--text-blue-700)', border: '1px solid var(--border-blue)', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
                             >
                               Use this price
                             </button>
@@ -5185,7 +5185,7 @@ function SortableRoughPartLineRow({
                 letterSpacing: '0.03em',
                 color: 'var(--text-blue-700)',
                 background: 'var(--bg-blue-tint)',
-                border: '1px solid #bfdbfe',
+                border: '1px solid var(--border-blue)',
                 borderRadius: 4,
                 padding: '0.05rem 0.35rem',
                 cursor: 'pointer',

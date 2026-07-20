@@ -550,7 +550,7 @@ export function PeopleHoursDayAuditModal({
       <div
         style={{
           padding: '0.5rem 0.65rem',
-          border: '1px solid #fde68a',
+          border: '1px solid var(--border-amber-soft)',
           background: 'var(--bg-amber-tint)',
           borderRadius: 6,
           fontSize: '0.8125rem',

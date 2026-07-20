@@ -12,9 +12,9 @@ export function mergeBillCustomerInvoiceDescriptionIssueChrome(
   return {
     ...base,
     background: 'var(--bg-red-tint)',
-    borderTop: '1px solid #fca5a5',
-    borderBottom: '1px solid #fca5a5',
+    borderTop: '1px solid var(--border-red)',
+    borderBottom: '1px solid var(--border-red)',
     borderLeft: '3px solid #dc2626',
-    borderRight: '1px solid #fca5a5',
+    borderRight: '1px solid var(--border-red)',
   }
 }

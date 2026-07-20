@@ -2388,7 +2388,7 @@ export default function Workflow() {
                     }
                   }}
                   disabled={projectSuperintendentSaving}
-                  style={{ padding: '0.15rem 0.35rem', fontSize: '0.8125rem', border: '1px solid #bae6fd', borderRadius: 4, background: 'var(--surface)', minWidth: 140 }}
+                  style={{ padding: '0.15rem 0.35rem', fontSize: '0.8125rem', border: '1px solid var(--border-sky)', borderRadius: 4, background: 'var(--surface)', minWidth: 140 }}
                 >
                   <option value="">Add superintendent...</option>
                   {allSuperintendents
@@ -2523,7 +2523,7 @@ export default function Workflow() {
       {(isDevOrMaster || canManageStages) && (
         <div style={{ marginBottom: '1rem' }}>
           {/* Collapsible summary bar */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', padding: '0.5rem 0.75rem', background: 'var(--bg-sky-tint)', border: '1px solid #bae6fd', borderRadius: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', padding: '0.5rem 0.75rem', background: 'var(--bg-sky-tint)', border: '1px solid var(--border-sky)', borderRadius: 8 }}>
             {isDevOrMaster && (
               <>
                 <span style={{ fontSize: '0.875rem', color: calculateProjectionsTotal() < 0 ? 'var(--text-red-700)' : 'var(--text-strong)', fontWeight: 500 }}>
@@ -2600,10 +2600,10 @@ export default function Workflow() {
             }
 
             return (
-              <div style={{ marginTop: '0.75rem', padding: '0.5rem 0.75rem', background: 'var(--bg-sky-tint)', border: '1px solid #bae6fd', borderRadius: 8 }}>
+              <div style={{ marginTop: '0.75rem', padding: '0.5rem 0.75rem', background: 'var(--bg-sky-tint)', border: '1px solid var(--border-sky)', borderRadius: 8 }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
                   <thead>
-                    <tr style={{ borderBottom: '1px solid #bae6fd' }}>
+                    <tr style={{ borderBottom: '1px solid var(--border-sky)' }}>
                       <th style={{ textAlign: 'left', padding: '0.35rem 0.5rem', fontWeight: 600 }}>Stage</th>
                       <th style={{ textAlign: 'left', padding: '0.35rem 0.5rem', fontWeight: 600 }}>Memo</th>
                       {isDevOrMaster && <th style={{ textAlign: 'right', padding: '0.35rem 0.5rem', fontWeight: 600 }}>Projections</th>}
@@ -2806,7 +2806,7 @@ export default function Workflow() {
             >
               <div
                 style={{
-                  border: '1px solid #bae6fd',
+                  border: '1px solid var(--border-sky)',
                   borderRadius: 8,
                   padding: '0.5rem 0.75rem',
                   marginBottom: '0.25rem',
@@ -3296,7 +3296,7 @@ export default function Workflow() {
                               onBlur={(e) => updatePrivateNotes(s, e.target.value)}
                               placeholder="Add private notes visible to masters, assistants, and superintendents..."
                               rows={2}
-                              style={{ width: '100%', padding: '0.35rem', fontSize: '0.8125rem', border: '1px solid #bae6fd', borderRadius: 4, background: 'var(--surface)' }}
+                              style={{ width: '100%', padding: '0.35rem', fontSize: '0.8125rem', border: '1px solid var(--border-sky)', borderRadius: 4, background: 'var(--surface)' }}
                             />
                           )}
                         </>
@@ -3336,20 +3336,20 @@ export default function Workflow() {
                             <>
                     {(lineItems[s.id] && lineItems[s.id]!.length > 0 ? (
                       <div style={{ display: 'flex', justifyContent: 'center' }}>
-                        <div style={{ fontSize: '0.8125rem', background: 'var(--surface)', border: '1px solid #bae6fd', borderRadius: 4, overflow: 'hidden', width: 'fit-content' }} onClick={(e) => e.stopPropagation()}>
+                        <div style={{ fontSize: '0.8125rem', background: 'var(--surface)', border: '1px solid var(--border-sky)', borderRadius: 4, overflow: 'hidden', width: 'fit-content' }} onClick={(e) => e.stopPropagation()}>
                         <table style={{ borderCollapse: 'collapse' }}>
                           <thead>
                             <tr>
-                              <th style={{ textAlign: 'left', padding: '0.35rem 0.5rem', fontWeight: 600, borderBottom: '1px solid #bae6fd' }}>Memo</th>
-                              <th style={{ textAlign: 'left', padding: '0.35rem 0.5rem', fontWeight: 600, borderBottom: '1px solid #bae6fd', whiteSpace: 'nowrap' }}>Date</th>
-                              <th style={{ textAlign: 'right', padding: '0.35rem 0.5rem', fontWeight: 600, borderBottom: '1px solid #bae6fd' }}>Amount</th>
-                              <th style={{ width: 1, padding: '0.35rem 0.5rem', borderBottom: '1px solid #bae6fd' }}></th>
+                              <th style={{ textAlign: 'left', padding: '0.35rem 0.5rem', fontWeight: 600, borderBottom: '1px solid var(--border-sky)' }}>Memo</th>
+                              <th style={{ textAlign: 'left', padding: '0.35rem 0.5rem', fontWeight: 600, borderBottom: '1px solid var(--border-sky)', whiteSpace: 'nowrap' }}>Date</th>
+                              <th style={{ textAlign: 'right', padding: '0.35rem 0.5rem', fontWeight: 600, borderBottom: '1px solid var(--border-sky)' }}>Amount</th>
+                              <th style={{ width: 1, padding: '0.35rem 0.5rem', borderBottom: '1px solid var(--border-sky)' }}></th>
                             </tr>
                           </thead>
                           <tbody>
                             {lineItems[s.id]!.map((item, idx) => {
                               const isLast = idx === lineItems[s.id]!.length - 1
-                              const rowBorder = isLast ? 'none' : '1px solid #bae6fd'
+                              const rowBorder = isLast ? 'none' : '1px solid var(--border-sky)'
                               return (
                               <tr key={item.id}>
                                 <td style={{ padding: '0.35rem 0.5rem', borderBottom: rowBorder, verticalAlign: 'middle' }}>

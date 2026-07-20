@@ -440,7 +440,7 @@ export function ScheduleShareModal({
                           alignItems: 'center',
                           gap: 6,
                           background: 'var(--bg-blue-tint)',
-                          border: '1px solid #bfdbfe',
+                          border: '1px solid var(--border-blue)',
                           borderRadius: 999,
                           padding: '2px 8px',
                           fontSize: '0.8rem',
@@ -559,7 +559,7 @@ export function ScheduleShareModal({
                             type="button"
                             disabled={busyRowId === row.id}
                             onClick={() => void deleteRow(row)}
-                            style={{ padding: '0.2rem 0.5rem', fontSize: '0.75rem', border: '1px solid #fca5a5', borderRadius: 5, background: 'var(--surface)', color: 'var(--text-red-700)', cursor: 'pointer' }}
+                            style={{ padding: '0.2rem 0.5rem', fontSize: '0.75rem', border: '1px solid var(--border-red)', borderRadius: 5, background: 'var(--surface)', color: 'var(--text-red-700)', cursor: 'pointer' }}
                           >
                             Delete
                           </button>

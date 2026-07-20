@@ -4770,7 +4770,7 @@ ${totalsHtml}
       </div>
 
       {searchParams.get('customer') && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem', padding: '0.5rem 0.75rem', background: 'var(--bg-blue-tint)', border: '1px solid #bfdbfe', borderRadius: 6, fontSize: '0.875rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem', padding: '0.5rem 0.75rem', background: 'var(--bg-blue-tint)', border: '1px solid var(--border-blue)', borderRadius: 6, fontSize: '0.875rem' }}>
           <span style={{ color: 'var(--text-blue-800)' }}>Filtered by customer</span>
           <button
             type="button"
@@ -9585,7 +9585,7 @@ ${totalsHtml}
                       padding: '0.5rem 1.25rem',
                       background: laborJobDeletingId === editingLaborJob.id ? 'var(--bg-red-200)' : 'var(--bg-red-100)',
                       color: 'var(--text-red-800)',
-                      border: '1px solid #fca5a5',
+                      border: '1px solid var(--border-red)',
                       borderRadius: 6,
                       fontSize: '0.875rem',
                       fontWeight: 500,

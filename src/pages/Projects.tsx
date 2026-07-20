@@ -758,7 +758,7 @@ export default function Projects() {
                             width: 24,
                             height: 24,
                             padding: 0,
-                            border: '1px solid #bae6fd',
+                            border: '1px solid var(--border-sky)',
                             borderRadius: 4,
                             background: 'var(--surface)',
                             color: 'var(--text-sky-700)',

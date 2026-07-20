@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-20 (v2.770)
+last_updated: 2026-07-20 (v2.771)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.771)
+
+### Dark mode — pastel data-palettes tokenized (indigo/violet/sky/emerald + pastel border family) (2026-07-20)
+The follow-up token pass v2.766 promised: the remaining data-palette pastels that paired a literal light background with a `--text-*-800` token (which flips light in dark mode → light-on-light unreadable) now have proper theme tokens. **(1) New tokens** in `src/index.css` (light values identical to the old hexes; dark values follow the `--bg-*-100/200` and `--border-orange` precedents): backgrounds `--bg-indigo-100/200`, `--bg-violet-100/200`, `--bg-amber-200`, `--bg-emerald-100`; text `--text-indigo-800`, `--text-violet-700/800`, `--text-sky-800`; a pastel **border family** `--border-blue/green/amber/amber-soft/red/sky/indigo/indigo-soft/violet` (green-300 `#86efac` borders consolidate onto `--border-green`); and theme-invariant `--text-on-bright-solid` (dark text for bright saturated pill backgrounds). **(2) Codemod maps extended** accordingly (`scripts/theme-tokenize.mjs`) and the app re-swept — ~250 rewrites across ~95 files (the ubiquitous `1px solid #bbf7d0/#bfdbfe/#fde68a/#fcd34d/#fca5a5/#bae6fd` pastel borders, indigo `#e0e7ff`+`#3730a3` chips in Layout pins/Calendar/Materials/People tags, purple `#ede9fe`+`#6d28d9` workflow links on Dashboard/RTB, emerald `#d1fae5` badges). **(3) Hand-fixed the palettes the regex can't reach:** Subcontractor-activity badge map (thread_note/clock/schedule), Projects forecast stage-status `describeStatus` pending row, `projectStatusPillStyle`, Mercury duplicates Manual/Synced badges, unified-search customer-type chips (`com`/`res`) — plus HeaderGlobalSearch now gives trade pills (bright literal bgs) theme-invariant dark text while customer pills flip with their tokens, and `NotesCollapsible` tone/border JSX props + template-literal border ternaries (dispatch hub/grid, Mercury ledger, reconciliation, estimators) are tokenized. Deliberately still literal: print/document builders and the iframe People Review table (no app stylesheet), the Projects job-history blue heat ramp, dispatch linked-group hue palette, and saturated disabled-button states (`#86efac`/`#fca5a5` vs solid green/red).
 
 ## Latest Updates (v2.770)
 

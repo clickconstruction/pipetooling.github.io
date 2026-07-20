@@ -1821,7 +1821,7 @@ export default function Prospects() {
                       borderRadius: 8,
                       background: 'var(--bg-amber-100)',
                       color: 'var(--text-amber-800)',
-                      border: '1px solid #fde68a',
+                      border: '1px solid var(--border-amber-soft)',
                       boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
                       cursor: saving ? 'not-allowed' : 'pointer',
                       opacity: saving ? 0.6 : 1,

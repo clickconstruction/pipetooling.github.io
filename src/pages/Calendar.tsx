@@ -897,7 +897,7 @@ export default function Calendar() {
             fontSize: '0.875rem',
             padding: '0.5rem 0.75rem',
             background: '#eef2ff',
-            border: '1px solid #c7d2fe',
+            border: '1px solid var(--border-indigo-soft)',
             borderRadius: 4,
             color: '#312e81',
             textAlign: 'center',
@@ -1209,8 +1209,8 @@ export default function Calendar() {
                         style={{
                           fontSize: '0.75rem',
                           padding: '2px 4px',
-                          background: '#e0e7ff',
-                          color: '#3730a3',
+                          background: 'var(--bg-indigo-100)',
+                          color: 'var(--text-indigo-800)',
                           textDecoration: 'none',
                           borderRadius: 3,
                           overflow: 'hidden',
@@ -1435,9 +1435,9 @@ export default function Calendar() {
                                   fontSize: '0.625rem',
                                   padding: '2px 4px',
                                   background: '#eef2ff',
-                                  color: '#3730a3',
+                                  color: 'var(--text-indigo-800)',
                                   borderRadius: 3,
-                                  border: '1px solid #c7d2fe',
+                                  border: '1px solid var(--border-indigo-soft)',
                                   lineHeight: 1.25,
                                   display: 'block',
                                   overflow: 'hidden',
@@ -1743,10 +1743,10 @@ export default function Calendar() {
                                   padding: '0.25rem 0.5rem',
                                   fontSize: '0.8125rem',
                                   background: 'var(--surface)',
-                                  border: '1px solid #c7d2fe',
+                                  border: '1px solid var(--border-indigo-soft)',
                                   borderRadius: 4,
                                   cursor: 'pointer',
-                                  color: '#3730a3',
+                                  color: 'var(--text-indigo-800)',
                                 }}
                               >
                                 Job preview
@@ -1785,7 +1785,7 @@ export default function Calendar() {
                               color: 'var(--text-amber-800)',
                               textDecoration: 'none',
                               borderRadius: 4,
-                              border: '1px solid #fde68a',
+                              border: '1px solid var(--border-amber-soft)',
                             }}
                           >
                             <div style={{ fontWeight: 500 }}>Bid due: {bid.project_name}</div>
@@ -1804,11 +1804,11 @@ export default function Calendar() {
                             style={{
                               display: 'block',
                               padding: '0.5rem 0.75rem',
-                              background: '#e0e7ff',
-                              color: '#3730a3',
+                              background: 'var(--bg-indigo-100)',
+                              color: 'var(--text-indigo-800)',
                               textDecoration: 'none',
                               borderRadius: 4,
-                              border: '1px solid #c7d2fe',
+                              border: '1px solid var(--border-indigo-soft)',
                             }}
                           >
                             <div style={{ fontWeight: 500 }}>{cb.title ?? 'Prospect callback'}</div>
@@ -1879,7 +1879,7 @@ export default function Calendar() {
                           color: 'var(--text-amber-800)',
                           textDecoration: 'none',
                           borderRadius: 4,
-                          border: '1px solid #fde68a',
+                          border: '1px solid var(--border-amber-soft)',
                         }}
                       >
                         <span style={{ fontSize: '0.875rem', color: 'var(--text-amber-700)', minWidth: 120 }}>
@@ -1901,11 +1901,11 @@ export default function Calendar() {
                           alignItems: 'center',
                           gap: '1rem',
                           padding: '0.5rem 0.75rem',
-                          background: '#e0e7ff',
-                          color: '#3730a3',
+                          background: 'var(--bg-indigo-100)',
+                          color: 'var(--text-indigo-800)',
                           textDecoration: 'none',
                           borderRadius: 4,
-                          border: '1px solid #c7d2fe',
+                          border: '1px solid var(--border-indigo-soft)',
                         }}
                       >
                         <span style={{ fontSize: '0.875rem', color: '#4f46e5', minWidth: 120 }}>

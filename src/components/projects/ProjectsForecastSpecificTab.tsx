@@ -1343,7 +1343,7 @@ export function ProjectsForecastSpecificTab({
               style={{
                 ...forecastSecondaryButtonStyle,
                 background: dragEdit ? 'var(--bg-blue-tint)' : 'var(--surface)',
-                borderColor: dragEdit ? '#bfdbfe' : 'var(--border-strong)',
+                borderColor: dragEdit ? 'var(--border-blue)' : 'var(--border-strong)',
                 color: dragEdit ? 'var(--text-blue-700)' : 'var(--text-700)',
                 opacity:
                   dragDisabledReason != null || dragSaving ? 0.55 : 1,
@@ -1371,7 +1371,7 @@ export function ProjectsForecastSpecificTab({
             style={{
               ...forecastSecondaryButtonStyle,
               background: showDates ? 'var(--bg-blue-tint)' : 'var(--surface)',
-              borderColor: showDates ? '#bfdbfe' : 'var(--border-strong)',
+              borderColor: showDates ? 'var(--border-blue)' : 'var(--border-strong)',
               color: showDates ? 'var(--text-blue-700)' : 'var(--text-700)',
               opacity: dragEdit ? 0.55 : 1,
               cursor: dragEdit ? 'not-allowed' : 'pointer',

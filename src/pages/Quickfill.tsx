@@ -1644,7 +1644,7 @@ function QuickfillSectionWrapper({
             gap: '0.6rem',
             padding: '0.3rem 0.75rem',
             background: 'var(--bg-green-tint)',
-            border: '1px solid #bbf7d0',
+            border: '1px solid var(--border-green)',
             borderRadius: 6,
             fontSize: '0.8125rem',
             color: 'var(--text-green-800)',
@@ -1819,7 +1819,7 @@ function QuickfillSectionWrapper({
           style={{
             padding: '0.75rem 1rem',
             background: 'var(--bg-green-tint)',
-            border: '1px solid #bbf7d0',
+            border: '1px solid var(--border-green)',
             borderRadius: 6,
             fontSize: '0.875rem',
             color: 'var(--text-green-800)',

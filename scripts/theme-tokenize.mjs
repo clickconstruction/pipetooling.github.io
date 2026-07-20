@@ -55,6 +55,10 @@ const TEXT = {
   '#065f46': 'var(--text-emerald-800)',
   '#7f1d1d': 'var(--text-red-900)',
   '#0369a1': 'var(--text-sky-700)',
+  '#075985': 'var(--text-sky-800)',
+  '#6d28d9': 'var(--text-violet-700)',
+  '#5b21b6': 'var(--text-violet-800)',
+  '#3730a3': 'var(--text-indigo-800)',
 }
 
 const BG = {
@@ -86,8 +90,14 @@ const BG = {
   '#fefce8': 'var(--bg-yellow-tint)',
   '#ffedd5': 'var(--bg-orange-100)',
   '#ecfdf5': 'var(--bg-emerald-tint)',
+  '#d1fae5': 'var(--bg-emerald-100)',
   '#dbeafe': 'var(--bg-blue-200)',
   '#e0f2fe': 'var(--bg-sky-100)',
+  '#fde68a': 'var(--bg-amber-200)',
+  '#ede9fe': 'var(--bg-violet-100)',
+  '#ddd6fe': 'var(--bg-violet-200)',
+  '#e0e7ff': 'var(--bg-indigo-100)',
+  '#c7d2fe': 'var(--bg-indigo-200)',
 }
 
 const BORDER = {
@@ -105,6 +115,18 @@ const BORDER = {
   '#cbd5e1': 'var(--border-strong)',
   '#9ca3af': 'var(--border-400)',
   '#fdba74': 'var(--border-orange)',
+  '#bfdbfe': 'var(--border-blue)',
+  '#bbf7d0': 'var(--border-green)',
+  // green-300 borders consolidated onto the green-200 border token: one shade
+  // apart at 1px, and the token gives them a proper dark value.
+  '#86efac': 'var(--border-green)',
+  '#fcd34d': 'var(--border-amber)',
+  '#fde68a': 'var(--border-amber-soft)',
+  '#fca5a5': 'var(--border-red)',
+  '#bae6fd': 'var(--border-sky)',
+  '#a5b4fc': 'var(--border-indigo)',
+  '#c7d2fe': 'var(--border-indigo-soft)',
+  '#c4b5fd': 'var(--border-violet)',
 }
 
 const TEXT_PROPS = /^(color|caretColor|WebkitTextFillColor)$/

@@ -1908,7 +1908,7 @@ export function BidsPricingTab({
                               padding: '0.6rem 0.75rem',
                               fontSize: '0.8125rem',
                               color: 'var(--text-amber-800)',
-                              borderTop: '1px solid #fde68a',
+                              borderTop: '1px solid var(--border-amber-soft)',
                               textAlign: 'center',
                             }}
                           >
@@ -2044,7 +2044,7 @@ export function BidsPricingTab({
                       margin: '1rem 0 0',
                       padding: '0.6rem 0.75rem',
                       background: 'var(--bg-amber-tint)',
-                      border: '1px solid #fde68a',
+                      border: '1px solid var(--border-amber-soft)',
                       borderRadius: 6,
                       fontSize: '0.8125rem',
                       color: 'var(--text-amber-800)',

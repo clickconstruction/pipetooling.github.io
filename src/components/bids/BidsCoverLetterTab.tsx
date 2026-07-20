@@ -639,7 +639,7 @@ export function BidsCoverLetterTab({
                         fontWeight: 600,
                         color: 'var(--text-blue-800)',
                         background: 'var(--bg-blue-200)',
-                        border: '1px solid #bfdbfe',
+                        border: '1px solid var(--border-blue)',
                         borderRadius: 9999,
                         padding: '0.1rem 0.5rem',
                         whiteSpace: 'nowrap',
@@ -827,7 +827,7 @@ export function BidsCoverLetterTab({
                     </span>
                   </div>
                   {paymentScheduleSorted.length > 0 && Math.abs(paymentSchedulePercentSum - 100) > 0.001 && (
-                    <div style={{ marginTop: '0.5rem', padding: '0.35rem 0.5rem', background: 'var(--bg-amber-100)', border: '1px solid #fcd34d', borderRadius: 4, color: 'var(--text-amber-700)', fontSize: '0.8125rem' }}>
+                    <div style={{ marginTop: '0.5rem', padding: '0.35rem 0.5rem', background: 'var(--bg-amber-100)', border: '1px solid var(--border-amber)', borderRadius: 4, color: 'var(--text-amber-700)', fontSize: '0.8125rem' }}>
                       ⚠ Percents sum to {formatPaymentSchedulePercent(paymentSchedulePercentSum)}, not 100%.
                     </div>
                   )}

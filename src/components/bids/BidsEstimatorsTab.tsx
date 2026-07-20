@@ -354,7 +354,7 @@ export function BidsEstimatorsTab({
                 gap: '0.35rem',
                 padding: '0.3rem 0.55rem',
                 background: costMode ? 'var(--bg-blue-tint)' : 'var(--bg-muted)',
-                border: `1px solid ${costMode ? '#bfdbfe' : '#d1d5db'}`,
+                border: `1px solid ${costMode ? 'var(--border-blue)' : 'var(--border-strong)'}`,
                 borderRadius: 4,
                 cursor: 'pointer',
                 fontSize: '0.8125rem',
@@ -530,7 +530,7 @@ export function BidsEstimatorsTab({
                                         background: 'var(--bg-amber-100)',
                                         padding: '0.05rem 0.3rem',
                                         borderRadius: 3,
-                                        boxShadow: 'inset 0 0 0 1px #fcd34d',
+                                        boxShadow: 'inset 0 0 0 1px var(--border-amber)',
                                       }
                                     : null),
                                 }

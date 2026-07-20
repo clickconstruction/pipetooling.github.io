@@ -60,12 +60,12 @@ export type EventRenderMeta = {
 
 const BILLING_BLUE = { tagColor: '#1d4ed8', borderColor: '#93c5fd' } as const
 const MONEY_GREEN = { tagColor: '#047857', borderColor: '#6ee7b7' } as const
-const DANGER_RED = { tagColor: '#b91c1c', borderColor: '#fca5a5' } as const
-const STATUS_AMBER = { tagColor: '#b45309', borderColor: '#fcd34d' } as const
-const CREW_INDIGO = { tagColor: '#4f46e5', borderColor: '#a5b4fc' } as const
+const DANGER_RED = { tagColor: '#b91c1c', borderColor: 'var(--border-red)' } as const
+const STATUS_AMBER = { tagColor: '#b45309', borderColor: 'var(--border-amber)' } as const
+const CREW_INDIGO = { tagColor: '#4f46e5', borderColor: 'var(--border-indigo)' } as const
 const WORK_TEAL = { tagColor: '#0f766e', borderColor: '#5eead4' } as const
 const EDIT_GRAY = { tagColor: '#6b7280', borderColor: 'var(--border-strong)' } as const
-const COMBINE_PURPLE = { tagColor: '#7c3aed', borderColor: '#c4b5fd' } as const
+const COMBINE_PURPLE = { tagColor: '#7c3aed', borderColor: 'var(--border-violet)' } as const
 
 export const JOB_ACTIVITY_EVENT_RENDER: Record<JobActivityEventType, EventRenderMeta> = {
   status_change: { tag: 'Status', ...STATUS_AMBER, bucket: 'status' },

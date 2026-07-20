@@ -369,9 +369,9 @@ export function DashboardMyBidsSection({
                   borderRadius: 4,
                   lineHeight: 1.2,
                   whiteSpace: 'nowrap',
-                  background: '#ede9fe',
-                  border: '1px solid #c4b5fd',
-                  color: '#5b21b6',
+                  background: 'var(--bg-violet-100)',
+                  border: '1px solid var(--border-violet)',
+                  color: 'var(--text-violet-800)',
                 }
                 const renderBidItem = (b: typeof myBids[0], cardStyle: CSSProperties, mode: 'visible' | 'hidden' = 'visible') => {
                   const status =
@@ -509,7 +509,7 @@ export function DashboardMyBidsSection({
                             marginLeft: '0.5rem',
                             padding: '0.6rem 0.75rem 0.6rem 1rem',
                             background: 'var(--bg-amber-tint)',
-                            border: '1px solid #fcd34d',
+                            border: '1px solid var(--border-amber)',
                             borderLeft: '3px solid #f59e0b',
                             borderRadius: 6,
                           }}
@@ -858,8 +858,8 @@ export function DashboardMyBidsSection({
                     </li>
                   )
                 }
-                const unsentCardStyle: CSSProperties = { background: 'var(--bg-blue-tint)', border: '1px solid #bfdbfe', borderRadius: 4, color: 'var(--text-blue-800)', textDecoration: 'none', fontSize: '0.875rem' }
-                const sentCardStyle: CSSProperties = { background: 'var(--bg-blue-tint)', border: '1px solid #bfdbfe', borderRadius: 4, color: 'var(--text-blue-800)', textDecoration: 'none', fontSize: '0.875rem' }
+                const unsentCardStyle: CSSProperties = { background: 'var(--bg-blue-tint)', border: '1px solid var(--border-blue)', borderRadius: 4, color: 'var(--text-blue-800)', textDecoration: 'none', fontSize: '0.875rem' }
+                const sentCardStyle: CSSProperties = { background: 'var(--bg-blue-tint)', border: '1px solid var(--border-blue)', borderRadius: 4, color: 'var(--text-blue-800)', textDecoration: 'none', fontSize: '0.875rem' }
                 const hiddenBidCardStyle: CSSProperties = {
                   background: 'var(--bg-subtle)',
                   border: '1px solid var(--border)',

@@ -265,7 +265,7 @@ export default function PeopleOffsetsTab({ people, users, payStubs, loadPayStubs
                               onClick={() => { setOffsetToApply(o); setOffsetApplyPayStubId(''); setOffsetApplyModalOpen(true) }}
                               title="Apply to pay stub"
                               aria-label="Apply to pay stub"
-                              style={{ padding: '0.35rem', cursor: 'pointer', background: 'var(--bg-blue-tint)', border: '1px solid #bfdbfe', borderRadius: 6, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-link)' }}
+                              style={{ padding: '0.35rem', cursor: 'pointer', background: 'var(--bg-blue-tint)', border: '1px solid var(--border-blue)', borderRadius: 6, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-link)' }}
                             >
                               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width={16} height={16} fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                                 <path d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />

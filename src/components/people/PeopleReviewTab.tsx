@@ -3624,7 +3624,7 @@ export default function PeopleReviewTab({
           {showPeopleForReview.length > 0 && (
             <div style={{ marginBottom: '0.75rem' }}>
               {teamSummaryError ? (
-                <p style={{ color: 'var(--text-red-700)', padding: '0.75rem 1rem', margin: 0, border: '1px solid #fca5a5', borderRadius: 6, background: 'var(--bg-red-tint)' }}>
+                <p style={{ color: 'var(--text-red-700)', padding: '0.75rem 1rem', margin: 0, border: '1px solid var(--border-red)', borderRadius: 6, background: 'var(--bg-red-tint)' }}>
                   {teamSummaryError}
                 </p>
               ) : teamSummaryRows ? (

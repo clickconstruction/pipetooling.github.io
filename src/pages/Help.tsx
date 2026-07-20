@@ -138,7 +138,7 @@ export default function Help() {
         Type what you want to do and the guide pulls up.
       </p>
       {selectedSlug && !selectedGuide && (
-        <p style={{ fontSize: '0.875rem', color: 'var(--text-amber-700)', background: 'var(--bg-amber-tint)', border: '1px solid #fcd34d', borderRadius: 6, padding: '0.5rem 0.75rem' }}>
+        <p style={{ fontSize: '0.875rem', color: 'var(--text-amber-700)', background: 'var(--bg-amber-tint)', border: '1px solid var(--border-amber)', borderRadius: 6, padding: '0.5rem 0.75rem' }}>
           That guide wasn't found — it may have been renamed. Browse or search below.
         </p>
       )}

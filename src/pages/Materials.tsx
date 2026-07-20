@@ -3725,7 +3725,7 @@ export default function Materials() {
                         
                         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
                           {assemblyType && (
-                            <span style={{ padding: '0.125rem 0.5rem', fontSize: '0.75rem', background: '#e0e7ff', color: '#3730a3', borderRadius: 4, fontWeight: 500 }}>
+                            <span style={{ padding: '0.125rem 0.5rem', fontSize: '0.75rem', background: 'var(--bg-indigo-100)', color: 'var(--text-indigo-800)', borderRadius: 4, fontWeight: 500 }}>
                               {assemblyType.name}
                             </span>
                           )}
@@ -3933,7 +3933,7 @@ export default function Materials() {
                                       }}
                                       title="Remove from assembly"
                                       aria-label="Remove from assembly"
-                                      style={{ padding: '0.25rem 0.75rem', fontSize: '0.75rem', background: 'var(--bg-red-100)', color: 'var(--text-red-800)', border: '1px solid #fca5a5', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
+                                      style={{ padding: '0.25rem 0.75rem', fontSize: '0.75rem', background: 'var(--bg-red-100)', color: 'var(--text-red-800)', border: '1px solid var(--border-red)', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
                                     >
                                       Remove
                                     </button>
@@ -3960,7 +3960,7 @@ export default function Materials() {
                                               justifyContent: 'space-between', 
                                               alignItems: 'center',
                                               padding: '0.5rem',
-                                              background: isLowest ? '#d1fae5' : 'var(--bg-subtle)',
+                                              background: isLowest ? 'var(--bg-emerald-100)' : 'var(--bg-subtle)',
                                               borderRadius: 4,
                                               fontSize: '0.75rem'
                                             }}
@@ -4024,7 +4024,7 @@ export default function Materials() {
                         const nestedCost = nestedTemplate ? calculateAssemblyCost(nestedTemplate.id, item.quantity) : { total: 0, missingPrices: 0, partCount: 0, nestedCount: 0 }
                         
                         return (
-                          <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem', background: 'var(--bg-sky-tint)', borderRadius: 4, border: '1px solid #bfdbfe' }}>
+                          <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem', background: 'var(--bg-sky-tint)', borderRadius: 4, border: '1px solid var(--border-blue)' }}>
                             <div style={{ flex: 1 }}>
                               <div style={{ fontWeight: 500, fontSize: '0.875rem' }}>{nestedTemplate?.name || 'Unknown Assembly'}</div>
                               <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.125rem' }}>
@@ -4255,7 +4255,7 @@ export default function Materials() {
                           <div style={{ fontWeight: 600, marginBottom: '0.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
                             {template.name}
                             {assemblyType && (
-                              <span style={{ padding: '0.125rem 0.5rem', fontSize: '0.75rem', background: '#e0e7ff', color: '#3730a3', borderRadius: 4, fontWeight: 500 }}>
+                              <span style={{ padding: '0.125rem 0.5rem', fontSize: '0.75rem', background: 'var(--bg-indigo-100)', color: 'var(--text-indigo-800)', borderRadius: 4, fontWeight: 500 }}>
                                 {assemblyType.name}
                               </span>
                             )}
@@ -4370,7 +4370,7 @@ export default function Materials() {
                                   onClick={() => removeItemFromTemplate(item.id)}
                                   title="Remove from assembly"
                                   aria-label="Remove from assembly"
-                                  style={{ padding: '0.25rem', background: 'var(--bg-red-100)', color: 'var(--text-red-800)', border: '1px solid #fca5a5', borderRadius: 4, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                                  style={{ padding: '0.25rem', background: 'var(--bg-red-100)', color: 'var(--text-red-800)', border: '1px solid var(--border-red)', borderRadius: 4, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
                                 >
                                   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={18} height={18} fill="currentColor" aria-hidden="true">
                                     <path d="M232.7 69.9L224 96L128 96C110.3 96 96 110.3 96 128C96 145.7 110.3 160 128 160L512 160C529.7 160 544 145.7 544 128C544 110.3 529.7 96 512 96L416 96L407.3 69.9C402.9 56.8 390.7 48 376.9 48L263.1 48C249.3 48 237.1 56.8 232.7 69.9zM512 208L128 208L149.1 531.1C150.7 556.4 171.7 576 197 576L443 576C468.3 576 489.3 556.4 490.9 531.1L512 208z" />
@@ -4630,7 +4630,7 @@ export default function Materials() {
           <div>
             {/* Create PO from Template Button (when no editingPO) */}
             {selectedTemplate && !editingPO && (
-              <div style={{ marginBottom: '1.5rem', padding: '1rem', background: 'var(--bg-sky-tint)', border: '1px solid #bae6fd', borderRadius: 4 }}>
+              <div style={{ marginBottom: '1.5rem', padding: '1rem', background: 'var(--bg-sky-tint)', border: '1px solid var(--border-sky)', borderRadius: 4 }}>
                 <button
                   type="button"
                   onClick={() => createPOFromTemplate(selectedTemplate.id)}
@@ -4644,7 +4644,7 @@ export default function Materials() {
 
             {/* Add Template to PO Button (when editingPO is set) */}
             {selectedTemplate && editingPO && editingPO.status === 'draft' && (
-              <div style={{ marginBottom: '1.5rem', padding: '1rem', background: 'var(--bg-sky-tint)', border: '1px solid #bae6fd', borderRadius: 4 }}>
+              <div style={{ marginBottom: '1.5rem', padding: '1rem', background: 'var(--bg-sky-tint)', border: '1px solid var(--border-sky)', borderRadius: 4 }}>
                 <button
                   type="button"
                   onClick={() => addTemplateToPO(editingPO.id, selectedTemplate.id)}
@@ -5005,7 +5005,7 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
                                 <button
                                   type="button"
                                   onClick={() => removePOItem(item.id)}
-                                  style={{ padding: '0.25rem 0.5rem', background: 'var(--bg-red-100)', color: 'var(--text-red-800)', border: '1px solid #fca5a5', borderRadius: 4, cursor: 'pointer' }}
+                                  style={{ padding: '0.25rem 0.5rem', background: 'var(--bg-red-100)', color: 'var(--text-red-800)', border: '1px solid var(--border-red)', borderRadius: 4, cursor: 'pointer' }}
                                 >
                                   Remove
                                 </button>
@@ -5071,7 +5071,7 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
                         closeTemplateForm()
                       }
                     }}
-                    style={{ padding: '0.5rem 1rem', background: 'var(--bg-red-100)', color: 'var(--text-red-800)', border: '1px solid #fca5a5', borderRadius: 4, cursor: 'pointer' }}
+                    style={{ padding: '0.5rem 1rem', background: 'var(--bg-red-100)', color: 'var(--text-red-800)', border: '1px solid var(--border-red)', borderRadius: 4, cursor: 'pointer' }}
                   >
                     Delete
                   </button>
@@ -5383,7 +5383,7 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
               {selectedPO.status === 'finalized' && (
                 <>
                   {selectedPO.notes ? (
-                    <div style={{ marginBottom: '1.5rem', padding: '1rem', background: 'var(--bg-sky-tint)', border: '1px solid #bae6fd', borderRadius: 4 }}>
+                    <div style={{ marginBottom: '1.5rem', padding: '1rem', background: 'var(--bg-sky-tint)', border: '1px solid var(--border-sky)', borderRadius: 4 }}>
                       <div style={{ fontWeight: 600, marginBottom: '0.5rem', color: 'var(--text-sky-700)' }}>Notes</div>
                       <div style={{ marginBottom: '0.5rem', whiteSpace: 'pre-wrap' }}>{selectedPO.notes}</div>
                       {selectedPO.notes_added_by && (
@@ -5802,7 +5802,7 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
                       }
                     }
                   }}
-                  style={{ padding: '0.5rem 1rem', background: 'var(--bg-red-100)', color: 'var(--text-red-800)', border: '1px solid #fca5a5', borderRadius: 4, cursor: 'pointer' }}
+                  style={{ padding: '0.5rem 1rem', background: 'var(--bg-red-100)', color: 'var(--text-red-800)', border: '1px solid var(--border-red)', borderRadius: 4, cursor: 'pointer' }}
                 >
                   Delete
                 </button>
@@ -5933,7 +5933,7 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
                             borderRadius: 4,
                             fontSize: '0.875rem',
                             fontWeight: 500,
-                            background: po.status === 'finalized' ? '#d1fae5' : 'var(--bg-amber-100)',
+                            background: po.status === 'finalized' ? 'var(--bg-emerald-100)' : 'var(--bg-amber-100)',
                             color: po.status === 'finalized' ? 'var(--text-emerald-800)' : 'var(--text-amber-800)',
                           }}>
                             {po.status}
@@ -5957,7 +5957,7 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
                             <button
                               type="button"
                               onClick={() => finalizePO(po.id)}
-                              style={{ marginRight: '0.5rem', padding: '0.25rem 0.5rem', background: '#d1fae5', color: 'var(--text-emerald-800)', border: '1px solid #86efac', borderRadius: 4, cursor: 'pointer' }}
+                              style={{ marginRight: '0.5rem', padding: '0.25rem 0.5rem', background: 'var(--bg-emerald-100)', color: 'var(--text-emerald-800)', border: '1px solid var(--border-green)', borderRadius: 4, cursor: 'pointer' }}
                             >
                               Finalize
                             </button>
@@ -6790,7 +6790,7 @@ function PartPricesManager({
                         deletePrice(editingPrice.id)
                       }
                     }}
-                    style={{ padding: '0.5rem 1rem', background: 'var(--bg-red-100)', color: 'var(--text-red-800)', border: '1px solid #fca5a5', borderRadius: 4, cursor: 'pointer' }}
+                    style={{ padding: '0.5rem 1rem', background: 'var(--bg-red-100)', color: 'var(--text-red-800)', border: '1px solid var(--border-red)', borderRadius: 4, cursor: 'pointer' }}
                   >
                     Delete
                   </button>
@@ -6852,7 +6852,7 @@ function PartPricesManager({
 
           {/* Price History View */}
           {viewingPriceHistory && (
-            <div style={{ marginTop: '2rem', padding: '1rem', background: 'var(--bg-sky-tint)', border: '1px solid #bae6fd', borderRadius: 4 }}>
+            <div style={{ marginTop: '2rem', padding: '1rem', background: 'var(--bg-sky-tint)', border: '1px solid var(--border-sky)', borderRadius: 4 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
                 <h3 style={{ margin: 0 }}>Price History</h3>
                 <button
