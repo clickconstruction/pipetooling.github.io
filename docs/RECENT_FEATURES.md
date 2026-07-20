@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-20 (v2.807)
+last_updated: 2026-07-20 (v2.808)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.808)
+
+### Job Detail: Customer Files + Photos become always-visible icons above Address, with click-to-add for missing links (2026-07-20)
+Follow-up to v2.807. The "Customer Files / Open Drive folder" and "Customer Photos / Open photos" buttons move OUT of the lower Files/Plans row (which now carries Job Plans only) and become an icon pair at the top of [`DetailJobModal`](../src/components/jobs/DetailJobModal.tsx), directly **above the Address block**: the Drive triangle and picture glyphs, **blue** (`var(--text-blue-500)`) when the link exists → opens it externally; **grey** (`var(--text-faint)`) when missing → opens a small **Add link** modal (URL input with http(s) validation, Enter-to-save) that writes `jobs_ledger.google_drive_link` / `job_pictures_link` and reloads the detail. Editing is gated to non-subcontractor-like roles (grey icons render inert for field viewers); tooltips/aria state everything ("no link yet, click to add one"). Verified live both ways: job 919 (both links) shows two blue icons that sit above Address; job 813 (no links) shows two grey icons and clicking one opened "Add Customer Files link" with the URL input.
 
 ## Latest Updates (v2.807)
 
