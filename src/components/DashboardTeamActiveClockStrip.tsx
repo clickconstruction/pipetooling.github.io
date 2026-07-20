@@ -2304,7 +2304,7 @@ export function DashboardTeamActiveClockStrip({
                               clockedInTodayRows.length === 1 ? 'person' : 'people'
                             }; jobs worked today, ${jobsWorkedTodayRows.length} ${
                               jobsWorkedTodayRows.length === 1 ? 'job' : 'jobs'
-                            }; ${sessions.length} currently clocked in`
+                            }`
                           : `Jobs worked today; each row shows job name with today's hours and people (${jobsWorkedTodayRows.length} jobs)`
                       }
                       style={{
@@ -2314,46 +2314,28 @@ export function DashboardTeamActiveClockStrip({
                       }}
                     >
                       {mergeClockedInHeaderIntoJobs ? (
-                        <div
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'space-between',
-                            gap: '0.5rem',
-                            minWidth: 0,
-                          }}
-                        >
-                          {!jobsWorkedTodaySectionCollapsed
-                            ? wrapMergedJobsHeaderTitles(
-                                <>
-                                  <span style={srOnly}>{'Expand session rows. '}</span>
-                                  {citExpandModeTitleButton}
-                                  <span style={srOnly}>{' '}</span>
-                                  <span style={stripOrangeHeaderTypography}>
-                                    Jobs worked today ({jobsWorkedTodayRows.length})
-                                  </span>
-                                </>,
-                              )
-                            : wrapMergedJobsHeaderTitles(
-                                <>
-                                  <span style={srOnly}>{'Expand session rows. '}</span>
-                                  <span style={stripOrangeHeaderTypography}>
-                                    Clocked in today ({clockedInTodayRows.length})
-                                  </span>
-                                  {jobsExpandModeTitleButton}
-                                </>,
-                              )}
-                          <span
-                            aria-hidden
-                            style={{
-                              ...stripOrangeHeaderTypography,
-                              whiteSpace: 'nowrap',
-                              flexShrink: 0,
-                            }}
-                          >
-                            {sessions.length} Clocked In
-                          </span>
-                        </div>
+                        !jobsWorkedTodaySectionCollapsed ? (
+                          wrapMergedJobsHeaderTitles(
+                            <>
+                              <span style={srOnly}>{'Expand session rows. '}</span>
+                              {citExpandModeTitleButton}
+                              <span style={srOnly}>{' '}</span>
+                              <span style={stripOrangeHeaderTypography}>
+                                Jobs worked today ({jobsWorkedTodayRows.length})
+                              </span>
+                            </>,
+                          )
+                        ) : (
+                          wrapMergedJobsHeaderTitles(
+                            <>
+                              <span style={srOnly}>{'Expand session rows. '}</span>
+                              <span style={stripOrangeHeaderTypography}>
+                                Clocked in today ({clockedInTodayRows.length})
+                              </span>
+                              {jobsExpandModeTitleButton}
+                            </>,
+                          )
+                        )
                       ) : (
                         <>
                           <span style={srOnly}>{'Expand session rows per job. '}</span>
