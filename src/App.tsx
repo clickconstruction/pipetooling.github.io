@@ -46,7 +46,7 @@ import { ToastProvider, useToastContext } from './contexts/ToastContext'
 import { ThemeProvider } from './contexts/ThemeContext'
 import { LedgerDisplayPrefixProvider } from './contexts/LedgerDisplayPrefixContext'
 import { DispatchNoteRequirementsProvider } from './contexts/DispatchNoteRequirementsContext'
-import { registerSW } from 'virtual:pwa-register'
+import { UpdatePrompt } from './components/UpdatePrompt'
 import { ForceReloadProvider } from './contexts/ForceReloadContext'
 import { RealtimeLifecycleProvider } from './contexts/RealtimeLifecycleContext'
 import { ChecklistAddModalProvider } from './contexts/ChecklistAddModalContext'
@@ -146,10 +146,6 @@ function AppContent() {
   const { showToast } = useToastContext()
 
   useEffect(() => {
-    registerSW({ immediate: true })
-  }, [])
-
-  useEffect(() => {
     const handleSessionExpiring = ((event: CustomEvent) => {
       const minutes = event.detail.minutesRemaining
       showToast(
@@ -165,6 +161,7 @@ function AppContent() {
   return (
     <>
       <AuthHandler />
+      <UpdatePrompt />
       <Routes>
         <Route path="/sign-in" element={<SignInRoute />} />
         <Route path="/dev-login" element={<DevLogin />} />
