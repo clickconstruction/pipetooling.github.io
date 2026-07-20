@@ -94,8 +94,10 @@ export function SectionDock({
       style={{
         position: 'fixed',
         bottom: 12,
-        left: '50%',
-        transform: 'translateX(-50%)',
+        // Expanded: centered pill. Collapsed: small stub parked at the screen's right edge.
+        ...(collapsed
+          ? { right: 12 }
+          : { left: '50%', transform: 'translateX(-50%)' }),
         zIndex: 900,
         display: 'flex',
         alignItems: 'center',

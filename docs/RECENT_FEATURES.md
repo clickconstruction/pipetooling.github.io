@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-20 (v2.802)
+last_updated: 2026-07-20 (v2.803)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.803)
+
+### Section dock: collapsed stub parks at the bottom-right edge (2026-07-20)
+Follow-up to v2.802 (the commit missed the auto-merge window): when collapsed, the [`SectionDock`](../src/components/SectionDock.tsx) stub now sits 12px off the screen's bottom-RIGHT edge instead of floating alone at bottom-center; expanding restores the centered pill. Verified live both ways. Help guide wording updated.
 
 ## Latest Updates (v2.802)
 
