@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-20 (v2.805)
+last_updated: 2026-07-20 (v2.806)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.806)
+
+### Jobs Stages: icon cluster splits into two rows; hazmat gets the real biohazard glyph in orange (2026-07-20)
+Both stage-card icon clusters in [`Jobs.tsx`](../src/pages/Jobs.tsx) reflow from one row into two right-aligned rows: **row 1 — Create Partial Invoice, Edit, Job Detail**; **row 2 — the rest** (Click Tooling report, Lien Tooling where present, AIA G702, Hazmat Fee). The Hazmat button swaps its ☣ text glyph for the Font Awesome biohazard SVG in the brand orange (`#FF6600`, matching the Click Tooling icon). Buttons, handlers, and gating unchanged — layout/icon only. Verified live: row 1 trio shares a line (y=1219) with the hazmat/report row below (y=1246), icon renders orange SVG.
 
 ## Latest Updates (v2.805)
 
