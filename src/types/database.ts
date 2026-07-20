@@ -11982,6 +11982,23 @@ export type Database = {
           name: string
         }[]
       }
+      list_user_license_hours_log: {
+        Args: { p_end?: string; p_start?: string; p_user_id: string }
+        Returns: {
+          bid_id: string
+          clocked_in_at: string
+          clocked_out_at: string
+          hours: number
+          job_address: string
+          job_ledger_id: string
+          job_name: string
+          job_number: string
+          notes: string
+          service_type_name: string
+          session_id: string
+          work_date: string
+        }[]
+      }
       list_user_mercury_review_window: {
         Args: {
           p_end_ymd: string

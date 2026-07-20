@@ -105,6 +105,13 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 #### July 19, 2026
 
+**`20260719190000_license_hours_log_rpc.sql`** _(apply via `supabase db push` after the file is on `main`)_
+- **Purpose**: **License hours log** (v2.767). New `SECURITY DEFINER` RPC `list_user_license_hours_log(p_user_id uuid, p_start date DEFAULT NULL, p_end date DEFAULT NULL)` — one user's **approved + closed** clock sessions (`approved_at IS NOT NULL`, `rejected_at`/`revoked_at IS NULL`, `clocked_out_at IS NOT NULL`) with per-session hours and job metadata (`jobs_ledger` name/address, effective job number `COALESCE(NULLIF(hcp,''),NULLIF(click,''))`, `service_types.name`), optionally bounded by `work_date`. Backs the People → Licenses "Hours log" modal + board CSV.
+- **Why SECURITY DEFINER**: the `clock_sessions` SELECT policy only exposes other users' rows to dev / pay-approved masters / assistants-of-pay-approved-masters / team leads — a direct query would be **silently partial** for the rest of the Licenses-tab audience. The RPC enforces its own gate (`is_dev() OR is_assistant() OR is_pay_approved_master()` — assistant-like includes controller) and **raises** for anyone else, so an empty result always means "no hours", never "no access". Hours only — no wage columns touched.
+- **No table change**: `CREATE OR REPLACE FUNCTION` + `GRANT EXECUTE TO authenticated` only, so the read-only-blocks footer does not apply. Idempotent.
+- **Ordering**: client v2.767 calls the RPC as soon as the modal opens — push this migration immediately after the client PR merges or the modal shows a load error.
+- **Category**: People / licenses / feature
+
 **`20260719120000_job_activity_consolidated_field_edits.sql`** _(apply via `supabase db push` after the file is on `main`)_
 - **Purpose**: **Consolidated Edit-Job activity events** (v2.750). Rewrites the `jobs_ledger_fields_to_activity()` SECURITY DEFINER trigger to emit ONE `field_edited` event per save — `"Job updated — changed A, B, C"` — covering every user-edited `jobs_ledger` field (was only 4 fields, one event each). Expands the trigger's `AFTER UPDATE OF …` column list to: customer_id, customer_name, job_name, hcp_number, click_number, job_address, customer_email, customer_phone, google_drive_link, job_pictures_link, job_plans_link, project_id, bid_id, service_type_id, master_user_id, revenue. Revenue keeps a separate `financial=true` event (dollar amount not exposed to non-financial roles); `payments_made` and `last_bill_date` deliberately excluded. Attribution unchanged (`auth.uid()`).
 - **No RLS/table change**: `CREATE OR REPLACE FUNCTION` + `DROP/CREATE TRIGGER` only — no new table, so the read-only-blocks footer does not apply. Idempotent.
