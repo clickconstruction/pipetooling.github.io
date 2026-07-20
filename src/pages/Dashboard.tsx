@@ -79,6 +79,7 @@ import { formatDatetime } from '../lib/dashboardProjectsCard'
 import { displayNameFromAuthUser } from '../lib/displayNameFromAuthUser'
 import { fetchHoursDaysCorrectWorkDates } from '../lib/fetchHoursDaysCorrectWorkDates'
 import { resolveReadyToBillBillCustomerTarget } from '../lib/buildReadyToBillDashboardUnits'
+import { isDashboardTeamReadyToBillRole } from '../lib/dashboardTeamAssignedJobRow'
 import {
   dashboardJobHasCustomerForBilling,
   jobBillingFromDashboardInvoice,
@@ -1246,6 +1247,7 @@ export default function Dashboard() {
       label: 'Teams Inbox',
       visible: Boolean(authUser?.id && (dispatchInboxEligible || estimatorInboxEligible)),
     },
+    { id: 'dash-my-schedule', label: 'My Schedule', visible: Boolean(authUser?.id) },
     {
       id: 'dash-billing',
       label: 'Billing',
@@ -1259,11 +1261,41 @@ export default function Dashboard() {
         myBidsDockHasContent,
     },
     { id: 'dash-reports', label: 'Reports', visible: showRecent },
+    {
+      id: 'dash-ready-to-bill',
+      label: 'Ready to Bill',
+      visible:
+        isDashboardTeamReadyToBillRole(role) &&
+        (assignedReadyToBillLoading || assignedReadyToBillJobs.length > 0),
+    },
+    {
+      id: 'dash-assigned-jobs',
+      label: 'Assigned Jobs',
+      visible: assignedJobsLoading || assignedJobs.length > 0,
+    },
     { id: 'dash-projects', label: 'Projects', visible: projectsCardVisible },
     { id: 'dash-me', label: 'Me', visible: Boolean(authUser?.id) },
   ].filter((sec) => sec.visible)
 
   /** Above-the-fold: quick actions and clock first; checklist/assigned use skeletons until data arrives. */
+  /** Mounted above each Billing Pipeline branch (and standalone for other roles). */
+  const myScheduleSection = (
+    <DashboardMyScheduleSection
+      role={role}
+      firstAssistantDispatchPhone={firstAssistantDispatchPhone}
+      subScheduleLoading={subScheduleLoading}
+      subScheduleDayPartition={subScheduleDayPartition}
+      subScheduleLabels={subScheduleLabels}
+      subSchedulePhones={subSchedulePhones}
+      leaveReportReminderForJobRow={leaveReportReminderForJobRow}
+      assignedJobs={assignedJobs}
+      assignedReadyToBillJobs={assignedReadyToBillJobs}
+      detailModalAssignedJobsRows={detailModalAssignedJobsRows}
+      submitLinkJobPicturesDispatchRequest={submitLinkJobPicturesDispatchRequest}
+      setLeaveReportJob={setLeaveReportJob}
+    />
+  )
+
   const myInboxCard = (
     <DashboardMyInboxCard
       authUserId={authUser?.id}
@@ -1411,6 +1443,7 @@ export default function Dashboard() {
               onCreateTripCharge={(args) => setTripChargeTarget(args)}
             />
           )}
+          {myScheduleSection}
           <div id="dash-billing" aria-hidden="true" style={dockAnchorStyle} />
           <DashboardBillingPipelineSection {...billingPipelineSectionProps} />
         </>
@@ -1528,6 +1561,7 @@ export default function Dashboard() {
           }
         />
       )}
+      {(role === 'dev' || role === 'master_technician') && myScheduleSection}
       {(role === 'dev' || role === 'master_technician') && (
         <div id="dash-billing" aria-hidden="true" style={dockAnchorStyle} />
       )}
@@ -1536,20 +1570,7 @@ export default function Dashboard() {
       )}
 
       {!isAssistantLike(role) && role !== 'dev' && role !== 'master_technician' && myInboxCard}
-      <DashboardMyScheduleSection
-        role={role}
-        firstAssistantDispatchPhone={firstAssistantDispatchPhone}
-        subScheduleLoading={subScheduleLoading}
-        subScheduleDayPartition={subScheduleDayPartition}
-        subScheduleLabels={subScheduleLabels}
-        subSchedulePhones={subSchedulePhones}
-        leaveReportReminderForJobRow={leaveReportReminderForJobRow}
-        assignedJobs={assignedJobs}
-        assignedReadyToBillJobs={assignedReadyToBillJobs}
-        detailModalAssignedJobsRows={detailModalAssignedJobsRows}
-        submitLinkJobPicturesDispatchRequest={submitLinkJobPicturesDispatchRequest}
-        setLeaveReportJob={setLeaveReportJob}
-      />
+      {!isAssistantLike(role) && role !== 'dev' && role !== 'master_technician' && myScheduleSection}
       <DashboardMyBidsSection
         authUserId={authUser?.id}
         role={role}
@@ -1575,7 +1596,7 @@ export default function Dashboard() {
 
 
       {(assignedJobsLoading || assignedJobs.length > 0) && (
-        <DashboardGroupCard title={`Assigned Jobs (${assignedJobs.length})`}>
+        <DashboardGroupCard id="dash-assigned-jobs" title={`Assigned Jobs (${assignedJobs.length})`}>
           {assignedJobsLoading && assignedJobs.length === 0 ? (
             <DashboardListRowSkeleton rows={2} />
           ) : (

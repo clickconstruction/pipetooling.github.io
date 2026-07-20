@@ -3,7 +3,6 @@ import { supabase } from '../lib/supabase'
 import { withSupabaseRetry } from '../utils/errorHandling'
 import { useToastContext } from '../contexts/ToastContext'
 import { canLeaveJobFieldReport } from '../lib/canLeaveJobFieldReport'
-import { isSubcontractorLikeRole } from '../lib/subcontractorLikeRole'
 import {
   fetchScheduleBlocksForAssigneeDateRange,
   type JobScheduleBlockRow,
@@ -34,12 +33,11 @@ export type UseDashboardSubScheduleInput = {
  * `subScheduleDayPartition` / `leaveReportReminderForJobRow`.
  *
  * The hook stays in the PARENT (`Dashboard.tsx`): the blocks loader gates on
- * `canLeaveJobFieldReport(role)` — NOT just subcontractor-like roles — because
+ * `canLeaveJobFieldReport(role)` (every role) because
  * `leaveReportReminderForJobRow` drives the leave-report reminder icons on the
- * job-row sections (Team Ready to Bill / Assigned Jobs) for every
- * leave-report-capable role, even though only subcontractor-like roles render
- * the My Schedule section itself (loading spinner, labels, and phones stay
- * subcontractor-like-only).
+ * job-row sections (Team Ready to Bill / Assigned Jobs). Since v2.782 the
+ * My Schedule section renders for all roles, so the loading spinner, labels,
+ * and phones are no longer subcontractor-like-only.
  */
 export function useDashboardSubSchedule({
   authUserId,
@@ -67,7 +65,7 @@ export function useDashboardSubSchedule({
     }
     let cancelled = false
     const run = async () => {
-      if (isSubcontractorLikeRole(role)) setSubScheduleLoading(true)
+      setSubScheduleLoading(true)
       const todayYmd = scheduleTodayDateKey()
       const tomorrowYmd = scheduleDateKeyAddDays(todayYmd, 1) ?? todayYmd
       const { data, error } = await fetchScheduleBlocksForAssigneeDateRange(
@@ -92,7 +90,7 @@ export function useDashboardSubSchedule({
   }, [authUserId, role, showToast])
 
   useEffect(() => {
-    if (!isSubcontractorLikeRole(role) || !authUserId) {
+    if (!authUserId) {
       setSubScheduleLabels(new Map())
       return
     }
@@ -147,7 +145,7 @@ export function useDashboardSubSchedule({
   }, [role, authUserId, subScheduleRows, assignedJobs, assignedReadyToBillJobs])
 
   useEffect(() => {
-    if (!isSubcontractorLikeRole(role) || !authUserId) {
+    if (!authUserId) {
       setSubSchedulePhones(new Map())
       return
     }

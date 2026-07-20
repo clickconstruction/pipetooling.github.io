@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-20 (v2.781)
+last_updated: 2026-07-20 (v2.782)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.782)
+
+### Dashboard nav + dispatch UX pass: My Schedule everywhere, dock chips, Job Detail dispatch shortcut, dispatch-grid polish (2026-07-20)
+Five items shipped together. **(1) My Schedule for all roles** — [`DashboardMyScheduleSection`](../src/components/dashboard/DashboardMyScheduleSection.tsx) drops its `isSubcontractorLikeRole` self-gate; the job-label/customer-phone/loading gates in [`useDashboardSubSchedule`](../src/hooks/useDashboardSubSchedule.ts) open to every role (the blocks fetch already ran for all roles to power leave-report reminders). Office roles with no blocks see "No blocks scheduled." under Today/Tomorrow. **(2) My Schedule moves ABOVE the Billing Pipeline** — hoisted into a `myScheduleSection` element (the `myInboxCard` pattern) and mounted above `DashboardBillingPipelineSection` in both role branches (assistant-like and dev/master); roles without a Billing Pipeline keep the old position. **(3) Floating-dock chips** — new `SectionDock` entries + anchors for **Assigned Jobs** (between Reports and Projects), **My Schedule** (above Billing, all signed-in users), and **Ready to Bill** (`dash-ready-to-bill` anchor in [`DashboardTeamReadyToBillSection`](../src/components/dashboard/DashboardTeamReadyToBillSection.tsx), gated exactly like the section: `isDashboardTeamReadyToBillRole` + rows/loading). **(4) Job Detail week-dispatch button** — [`DetailJobModal`](../src/components/jobs/DetailJobModal.tsx) header gains a calendar icon button (between the trade pill and the Edit gear) that closes the modal and navigates to `/schedule-dispatch?jobId=…&week=<current>`; gated to the dispatch-editor roles (dev / master_technician / assistant-like / superintendent, mirroring Jobs.tsx `canOpenJobScheduleModal`). **(5) Dispatch grid polish** ([`ScheduleDispatchGrid`](../src/components/schedule/ScheduleDispatchGrid.tsx), applies to the job-week grid AND the hub People grid): empty editable cells render "Add block" as a full-height dashed target whose label sits on the team-member name's line (falls back to the bottom-strip layout during card placement so cell clicks still pick the target); block-card icons restack from one row (− + note) to two left-aligned rows (− + over the note icon), preserving the copy menu, note-requirement colors, and linked badge. Also committed: `DECOMPOSITION_MAP.md` (20-file decomposition roadmap from the planning fleet) and `SALARIED_RESEARCH.md` (salaried-people session notes) as untracked→tracked working docs at repo root.
 
 ## Latest Updates (v2.781)
 

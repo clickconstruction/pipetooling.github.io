@@ -83,7 +83,7 @@ export function DashboardTeamReadyToBillSection({
   return (
     <>
       {isDashboardTeamReadyToBillRole(role) && (assignedReadyToBillLoading || assignedReadyToBillJobs.length > 0) && (
-        <div style={{ marginTop: '2rem' }}>
+        <div id="dash-ready-to-bill" style={{ marginTop: '2rem', scrollMarginTop: 8 }}>
           <button
             type="button"
             onClick={() => setAssignedReadyToBillExpanded((prev) => !prev)}

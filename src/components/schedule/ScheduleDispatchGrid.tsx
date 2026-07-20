@@ -200,7 +200,7 @@ function ScheduleDispatchBlockCard({
           <div style={{ color: 'var(--text-600)', marginTop: 2, overflowWrap: 'anywhere' }}>{block.note}</div>
         ) : null}
       </div>
-      {showTopRightControls ? (
+      {showBottomRightCluster || showTopRightControls ? (
         <div
           style={{
             position: 'absolute',
@@ -208,58 +208,13 @@ function ScheduleDispatchBlockCard({
             right: 2,
             zIndex: 3,
             display: 'flex',
-            flexDirection: 'row',
-            alignItems: 'center',
+            flexDirection: 'column',
+            alignItems: 'flex-start',
             gap: 0,
           }}
         >
-          {showEditNoteBtn ? (
-            <button
-              type="button"
-              title="Edit block note"
-              aria-label="Edit block note"
-              onClick={(e) => {
-                e.stopPropagation()
-                onRequestEditBlockNote?.(block)
-              }}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                width: 20,
-                height: 20,
-                minWidth: 20,
-                minHeight: 20,
-                boxSizing: 'border-box',
-                padding: 0,
-                border: 'none',
-                background: 'transparent',
-                color: editNoteColor,
-                cursor: 'pointer',
-                fontFamily: 'inherit',
-                margin: 0,
-                filter:
-                  'drop-shadow(0 0 1px var(--surface)) drop-shadow(0 0 2px var(--surface))',
-              }}
-            >
-              <ScheduleDispatchBlockNoteIcon size={12} />
-            </button>
-          ) : null}
-        </div>
-      ) : null}
-      {showBottomRightCluster ? (
-        <div
-          style={{
-            position: 'absolute',
-            top: 4,
-            right: showEditNoteBtn ? 26 : 2,
-            zIndex: 3,
-            display: 'flex',
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: 0,
-          }}
-        >
+          {showBottomRightCluster ? (
+            <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 0 }}>
           {showLinkedBadge ? (
             <span
               role="img"
@@ -352,6 +307,40 @@ function ScheduleDispatchBlockCard({
               </div>
             </>
           ) : null}
+            </div>
+          ) : null}
+          {showEditNoteBtn ? (
+            <button
+              type="button"
+              title="Edit block note"
+              aria-label="Edit block note"
+              onClick={(e) => {
+                e.stopPropagation()
+                onRequestEditBlockNote?.(block)
+              }}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: 20,
+                height: 20,
+                minWidth: 20,
+                minHeight: 20,
+                boxSizing: 'border-box',
+                padding: 0,
+                border: 'none',
+                background: 'transparent',
+                color: editNoteColor,
+                cursor: 'pointer',
+                fontFamily: 'inherit',
+                margin: 0,
+                filter:
+                  'drop-shadow(0 0 1px var(--surface)) drop-shadow(0 0 2px var(--surface))',
+              }}
+            >
+              <ScheduleDispatchBlockNoteIcon size={12} />
+            </button>
+          ) : null}
         </div>
       ) : null}
     </div>
@@ -423,6 +412,11 @@ function ScheduleDispatchCell({
     cellBg = 'var(--bg-muted)'
   }
   const placementPickingTargetable = placementPickingActive && !cellHasTimeOff
+  // Empty editable cell: the Add button fills the whole block area so its label sits
+  // on the same line as the team-member name (row scanning). During card placement the
+  // cell falls back to the bottom-strip layout so cell clicks still pick the target.
+  const emptyCellFullHeightAdd =
+    canEdit && !cellHasTimeOff && blocks.length === 0 && !placementPickingActive
 
   return (
     <td
@@ -484,6 +478,32 @@ function ScheduleDispatchCell({
             />
           </div>
         ) : null}
+        {emptyCellFullHeightAdd ? (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation()
+              onAddClick()
+            }}
+            style={{
+              width: '100%',
+              minHeight: 48,
+              height: '100%',
+              padding: '0.3rem 0.25rem 0.25rem',
+              fontSize: '0.7rem',
+              background: 'var(--surface)',
+              border: '1px dashed #93c5fd',
+              borderRadius: 4,
+              color: 'var(--text-link)',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'flex-start',
+              justifyContent: 'center',
+            }}
+          >
+            Add block
+          </button>
+        ) : null}
         {blocks.map((b) => {
           const g = b.shared_block_group_id
           const linkPeerCount = g ? groupMemberCountByGroupId.get(g) ?? 0 : 0
@@ -505,7 +525,7 @@ function ScheduleDispatchCell({
           )
         })}
       </div>
-      {canEdit && !cellHasTimeOff ? (
+      {canEdit && !cellHasTimeOff && !emptyCellFullHeightAdd ? (
         <div
           style={{ marginTop: 4, display: 'flex', flexDirection: 'column', gap: 4 }}
           onClick={(e) => e.stopPropagation()}
