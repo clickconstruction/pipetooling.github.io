@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-20 (v2.809)
+last_updated: 2026-07-20 (v2.810)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.810)
+
+### Job Detail: Photos add-modal gains Company + Customer shortcuts; missing Files link stacks its own add-dialog (2026-07-20)
+Follow-up to v2.809. The **Add Customer Photos link** modal ([`DetailJobModal`](../src/components/jobs/DetailJobModal.tsx)) now shows two shortcuts left of Cancel: **Company** (opens the org's Drive customers folder) and **Customer** — opens the job's Customer Files link when set; when the job has no Files link yet, it opens a second **Add Customer Files link** dialog **stacked above the Photos dialog** (z-1007, Photos stays open underneath), so the office can fix the Files link first, then paste the photos link — saving the stacked dialog writes `google_drive_link` and reloads the detail, making the Customer shortcut live immediately. Verified on job 813 (no links): Company/Customer render left of Cancel, Customer's tooltip explains the fallback, clicking stacked the Files dialog over the Photos dialog; both cancel cleanly.
 
 ## Latest Updates (v2.809)
 
