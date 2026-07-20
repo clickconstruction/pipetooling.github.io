@@ -83,7 +83,7 @@ export function MoneyLifecycleBar({
           )}
         </span>
         <span style={{ ...labelStyle, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
-          {hasBar ? `${formatUsdNoCents(total)} bid` : 'no bid value'}
+          {hasBar ? `${formatUsdNoCents(total)} bid` : 'Job total: add a line item to set it'}
         </span>
       </div>
 
@@ -92,7 +92,7 @@ export function MoneyLifecycleBar({
           hasBar
             ? barTitle
             : [
-                'No line items yet — add work below to set the job total',
+                'No line items yet — add one in the Line items list below to set the job total',
                 pctComplete != null ? `field progress ${Math.round(pctComplete)}% (yellow dot)` : null,
               ]
                 .filter(Boolean)
