@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-20 (v2.782)
+last_updated: 2026-07-20 (v2.783)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.783)
+
+### Dashboard: My Schedule renders in a bordered card like the other boxed sections (2026-07-20)
+[`DashboardMyScheduleSection`](../src/components/dashboard/DashboardMyScheduleSection.tsx)'s root `div` was unboxed while the neighboring sections (My Inbox, Teams Inbox, Billing Pipeline, Assigned Jobs, Projects) render inside the shared bordered card. The root now carries the same card styles as [`DashboardGroupCard`](../src/components/dashboard/DashboardGroupCard.tsx) (`1px solid var(--border)`, radius 8, `var(--surface)` background, `0.85rem 1rem 1rem` padding, `1rem` vertical margins — replacing the old `1.5rem`/`2rem` unboxed margins). It keeps its custom header (tel:-linked title + "schedule wrong?" dispatch note + "Calendar →"), which is why it mirrors the wrapper's styles instead of using `DashboardGroupCard` directly. Pure style change; theme tokens only, `dash-my-schedule` dock anchor unchanged.
 
 ## Latest Updates (v2.782)
 
