@@ -374,14 +374,14 @@ export function QuickfillPeopleHoursNewSection() {
                   </thead>
                   <tbody>
                     {pendingApprovalBreakdown.map((row) => (
-                      <tr key={row.workDate} style={{ borderTop: '1px solid #f1f5f9' }}>
+                      <tr key={row.workDate} style={{ borderTop: '1px solid var(--border)' }}>
                         <td style={{ padding: '0.5rem 0.35rem', color: 'var(--text-slate-900)' }}>
                           {formatDenverCalendarDayWithWeekdayAndYear(
                             referenceDateForWorkDateYmd(row.workDate).getTime(),
                           )}
                         </td>
-                        <td style={{ textAlign: 'right', padding: '0.5rem 0.35rem', color: '#334155' }}>{row.count}</td>
-                        <td style={{ textAlign: 'right', padding: '0.5rem 0.35rem', color: '#334155' }}>
+                        <td style={{ textAlign: 'right', padding: '0.5rem 0.35rem', color: 'var(--text-slate-600)' }}>{row.count}</td>
+                        <td style={{ textAlign: 'right', padding: '0.5rem 0.35rem', color: 'var(--text-slate-600)' }}>
                           {row.hours.toFixed(1)}
                         </td>
                       </tr>

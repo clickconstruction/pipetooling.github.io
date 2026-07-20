@@ -13,7 +13,7 @@ const ROW_STYLE: CSSProperties = {
   justifyContent: 'space-between',
   fontSize: '0.9375rem',
   padding: '0.35rem 0',
-  borderBottom: '1px solid #f3f4f6',
+  borderBottom: '1px solid var(--border)',
   fontVariantNumeric: 'tabular-nums',
 }
 

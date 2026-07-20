@@ -204,11 +204,13 @@ button:focus-visible {
   --bg-orange-tint: #fff7ed;
   --bg-green-tint: #f0fdf4;
   --bg-green-100: #dcfce7;
+  --bg-green-200: #bbf7d0;
   --bg-slate-tint: #f8fafc;
   --bg-slate-100: #f1f5f9;
   --bg-neutral-100: #f5f5f5;
   --bg-cream: #fdfaf3;
   --bg-yellow-tint: #fefce8;
+  --bg-yellow-200: #fef08a;
   --bg-orange-100: #ffedd5;
   --bg-emerald-tint: #ecfdf5;
   --bg-blue-200: #dbeafe;
@@ -279,11 +281,13 @@ button:focus-visible {
   --bg-orange-tint: #3d2513;
   --bg-green-tint: #12301f;
   --bg-green-100: #14532d;
+  --bg-green-200: #1a6136;
   --bg-slate-tint: #18212f;
   --bg-slate-100: #334155;
   --bg-neutral-100: #374151;
   --bg-cream: #273040;
   --bg-yellow-tint: #3f3a12;
+  --bg-yellow-200: #524a14;
   --bg-orange-100: #4a2c11;
   --bg-emerald-tint: #0c2f22;
   --bg-blue-200: #24407a;
