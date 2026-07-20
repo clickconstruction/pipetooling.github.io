@@ -25,6 +25,8 @@ export function JobFormPeoplePicker({ users, teamMemberIds, setTeamMemberIds }: 
   return (
     <div style={{ marginBottom: '1rem' }}>
       <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.35rem' }}>
+        {/* Same header style as the form's field labels (e.g. "Last manual bill date"). */}
+        <span style={{ fontWeight: 500, fontSize: '0.875rem', marginRight: '0.15rem' }}>Team:</span>
         <button
           type="button"
           onClick={() => setAddOpen(true)}
