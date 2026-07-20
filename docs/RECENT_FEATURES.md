@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-20 (v2.772)
+last_updated: 2026-07-20 (v2.773)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.773)
+
+### Edit Job — the billing money section saves itself (2026-07-20)
+Closes the v2.770 caveat: line items and payments persisted only on the form's Save button, so entering work, breaking off an invoice, and closing without Save left the job total behind the invoice. Now the **money slice — line items, payments, and the derived `revenue`/`payments_made` — auto-saves ~1.2s after the user stops editing** (existing jobs only; New Job still saves on create), using the exact delete+reinsert writes as the Save path. A small **Saving… / Saved** status sits beside the Billing title; failures toast and show "Autosave failed — use Save". Safety rails: the dirty-check baseline is snapshotted **in the same React commit that hydrates the form** (hydrate sets `editing` + fixtures + payments together), so autosave can never fire against pre-hydration empty state and wipe rows; saves are single-flight with a queued trailing run; **`createInvoice` / move-to-Ready-to-Bill flush any pending autosave first** so the DB always matches the on-screen totals before invoice writes; and the full Save cancels the pending debounce, then re-baselines afterwards so nothing double-writes. Job identity fields (name, address, customer, links…) intentionally stay on explicit Save. Guide [`ready-to-bill-pipeline.md`](../src/content/help/ready-to-bill-pipeline.md) updated ("the whole money section saves itself").
 
 ## Latest Updates (v2.772)
 
