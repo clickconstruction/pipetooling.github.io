@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
@@ -99,10 +99,13 @@ type QuickfillBlockModalState = { kind: 'add'; assigneeUserId: string; workDate:
 export function QuickfillScheduleSection({
   hideConflictPrompt = false,
   initialWorkDateYmd,
+  onBlocksSaved,
 }: {
   hideConflictPrompt?: boolean
   /** When set (e.g. Dispatch hub / Quickfill tomorrow), use this as the initial schedule day. */
   initialWorkDateYmd?: string
+  /** Fires after this section writes schedule blocks (dot auto-save, separation, add-block) so host views (e.g. the Dispatch hub People/Jobs tabs) can refresh their own caches. */
+  onBlocksSaved?: () => void
 } = {}) {
   const navigate = useNavigate()
   const { role, user: authUser } = useAuth()
@@ -126,12 +129,24 @@ export function QuickfillScheduleSection({
   const [userIds, setUserIds] = useState<string[]>([])
   const [nameById, setNameById] = useState<Map<string, string>>(() => new Map())
   const [blocksByUserId, setBlocksByUserId] = useState<Map<string, JobScheduleBlockRow[]>>(() => new Map())
-  /** Live boundary-dot drag draft: applied over `blocksByUserId` for bars + dots until pointerup persists. */
+  /** Live boundary-dot drag draft: applied over `blocksByUserId` for bars + dots until the debounced auto-save persists. */
   const [dotDraft, setDotDraft] = useState<{
     userId: string
     updates: Map<string, { startMin: number; endMin: number }>
   } | null>(null)
   const [dotSaving, setDotSaving] = useState(false)
+  const dotDraftRef = useRef<typeof dotDraft>(null)
+  useEffect(() => {
+    dotDraftRef.current = dotDraft
+  }, [dotDraft])
+  /** Latest host callback for the unmount flush (the cleanup closure is mount-scoped). */
+  const onBlocksSavedRef = useRef(onBlocksSaved)
+  useEffect(() => {
+    onBlocksSavedRef.current = onBlocksSaved
+  }, [onBlocksSaved])
+  /** Auto-save fires this long after the last dot touch (drag release / keyboard nudge). */
+  const DOT_AUTOSAVE_DEBOUNCE_MS = 2000
+  const dotSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [jobTitleById, setJobTitleById] = useState<Map<string, string>>(() => new Map())
   const [bidTitleById, setBidTitleById] = useState<Map<string, string>>(() => new Map())
   const [sessionsByUserId, setSessionsByUserId] = useState<Map<string, ClockSessionForDispatchBand[]>>(
@@ -592,48 +607,113 @@ export function QuickfillScheduleSection({
     [blocksByUserId, dotDraft, effectiveRowsForUser],
   )
 
+  /** Write a draft's updates; keeps the draft rendered until the quiet reload lands, then notifies the host. */
+  const persistDotDraft = useCallback(
+    (draft: { userId: string; updates: Map<string, { startMin: number; endMin: number }> }) => {
+      if (draft.updates.size === 0) {
+        setDotDraft(null)
+        return
+      }
+      setDotSaving(true)
+      void (async () => {
+        try {
+          for (const [blockId, u] of draft.updates) {
+            const { error } = await updateJobScheduleBlock(blockId, {
+              time_start: dotMinutesToPgTime(u.startMin),
+              time_end: dotMinutesToPgTime(u.endMin),
+            })
+            if (error) {
+              showToast(error, 'error')
+              break
+            }
+          }
+          await loadData({ quiet: true })
+          onBlocksSaved?.()
+        } finally {
+          setDotSaving(false)
+          dotDraftRef.current = null
+          setDotDraft(null)
+        }
+      })()
+    },
+    [loadData, showToast, onBlocksSaved],
+  )
+
+  const flushPendingDotSave = useCallback(() => {
+    if (dotSaveTimerRef.current != null) {
+      clearTimeout(dotSaveTimerRef.current)
+      dotSaveTimerRef.current = null
+    }
+    const draft = dotDraftRef.current
+    if (draft) persistDotDraft(draft)
+  }, [persistDotDraft])
+
+  /** Auto-save: (re)arm the timer; fires DOT_AUTOSAVE_DEBOUNCE_MS after the last touch. */
+  const scheduleDotSave = useCallback(() => {
+    if (dotSaveTimerRef.current != null) clearTimeout(dotSaveTimerRef.current)
+    dotSaveTimerRef.current = setTimeout(() => {
+      dotSaveTimerRef.current = null
+      const draft = dotDraftRef.current
+      if (draft) persistDotDraft(draft)
+    }, DOT_AUTOSAVE_DEBOUNCE_MS)
+  }, [persistDotDraft])
+
+  /** Pending edits must not be lost if the section unmounts (e.g. switching to the People tab) — flush immediately. */
+  useEffect(() => {
+    return () => {
+      if (dotSaveTimerRef.current != null) {
+        clearTimeout(dotSaveTimerRef.current)
+        dotSaveTimerRef.current = null
+      }
+      const draft = dotDraftRef.current
+      if (draft && draft.updates.size > 0) {
+        dotDraftRef.current = null
+        void (async () => {
+          for (const [blockId, u] of draft.updates) {
+            await updateJobScheduleBlock(blockId, {
+              time_start: dotMinutesToPgTime(u.startMin),
+              time_end: dotMinutesToPgTime(u.endMin),
+            })
+          }
+          onBlocksSavedRef.current?.()
+        })()
+      }
+    }
+  }, [])
+
   const handleDotDrag = useCallback(
     (userId: string, dot: BoundaryDot, targetMin: number) => {
       if (dotSaving) return
+      // Touching a different person's dot while a save is pending flushes the old draft first.
+      const pending = dotDraftRef.current
+      if (pending && pending.userId !== userId) flushPendingDotSave()
+      else if (dotSaveTimerRef.current != null) {
+        clearTimeout(dotSaveTimerRef.current)
+        dotSaveTimerRef.current = null
+      }
       const blocks = rowsToDotBlocks(effectiveRowsForUser(userId))
       const r = resolveDotDrag(dot, targetMin, blocks)
       if (r.updates.size === 0) return
-      setDotDraft((prev) => {
-        const merged = new Map(prev && prev.userId === userId ? prev.updates : [])
-        for (const [bid, u] of r.updates) merged.set(bid, u)
-        return { userId, updates: merged }
-      })
+      // Ref updates synchronously so the pointerup handler (same tick) sees the draft.
+      const prevDraft = dotDraftRef.current
+      const merged = new Map<string, { startMin: number; endMin: number }>(
+        prevDraft && prevDraft.userId === userId ? prevDraft.updates : [],
+      )
+      for (const [bid, u] of r.updates) merged.set(bid, u)
+      const next = { userId, updates: merged }
+      dotDraftRef.current = next
+      setDotDraft(next)
     },
-    [dotSaving, effectiveRowsForUser],
+    [dotSaving, effectiveRowsForUser, flushPendingDotSave],
   )
 
   const handleDotDragEnd = useCallback(
     (userId: string) => {
-      setDotDraft((draft) => {
-        if (!draft || draft.userId !== userId || draft.updates.size === 0) return null
-        setDotSaving(true)
-        void (async () => {
-          try {
-            for (const [blockId, u] of draft.updates) {
-              const { error } = await updateJobScheduleBlock(blockId, {
-                time_start: dotMinutesToPgTime(u.startMin),
-                time_end: dotMinutesToPgTime(u.endMin),
-              })
-              if (error) {
-                showToast(error, 'error')
-                break
-              }
-            }
-            await loadData({ quiet: true })
-          } finally {
-            setDotSaving(false)
-            setDotDraft(null)
-          }
-        })()
-        return draft // keep the draft visible until the reload lands
-      })
+      const draft = dotDraftRef.current
+      if (!draft || draft.userId !== userId || draft.updates.size === 0) return
+      scheduleDotSave()
     },
-    [loadData, showToast],
+    [scheduleDotSave],
   )
 
   const handleSharedDotSeparate = useCallback(
@@ -654,13 +734,15 @@ export function QuickfillScheduleSection({
           if (error) showToast(error, 'error')
           else showToast('Moved the later job 15 minutes later.', 'success')
           await loadData({ quiet: true })
+          onBlocksSaved?.()
         } finally {
           setDotSaving(false)
+          dotDraftRef.current = null
           setDotDraft(null)
         }
       })()
     },
-    [blocksByUserId, dotSaving, loadData, showToast],
+    [blocksByUserId, dotSaving, loadData, showToast, onBlocksSaved],
   )
 
   const saveQuickfillBlockModal = useCallback(async () => {
@@ -685,6 +767,7 @@ export function QuickfillScheduleSection({
     showToast('Block added.', 'success')
     closeQuickfillAddBlock()
     void loadData({ quiet: true })
+    onBlocksSaved?.()
   }, [
     addBlockDraftByBlockId,
     addNote,
@@ -695,6 +778,7 @@ export function QuickfillScheduleSection({
     closeQuickfillAddBlock,
     loadData,
     showToast,
+    onBlocksSaved,
   ])
 
   const handleScheduleMarkNotComingIn = useCallback(async () => {

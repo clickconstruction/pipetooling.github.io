@@ -2100,6 +2100,8 @@ type Props = {
   showExpectedManpower?: boolean
   /** When set, the Day tab uses this as Quickfill schedule work date (e.g. tomorrow in Quickfill). */
   dayTabWorkDateYmd?: string
+  /** Fires when the Day tab writes schedule blocks (dot auto-save, add-block) so the host can refresh the week data behind the People/Jobs tabs. */
+  onDayScheduleChanged?: () => void
   /** When false, hide the week nav row (e.g. Quickfill tomorrow embed). */
   showWeekNavigation?: boolean
   /** When false, hide the hub tab bar and show only the People grid (e.g. Quickfill tomorrow). */
@@ -2195,6 +2197,7 @@ export function ScheduleDispatchHub({
   onRequestEditBlockNote,
   showExpectedManpower = true,
   dayTabWorkDateYmd,
+  onDayScheduleChanged,
   showWeekNavigation = true,
   showHubViewTabs = true,
   showHideWeekendToggle = true,
@@ -2370,7 +2373,10 @@ export function ScheduleDispatchHub({
           onRequestUndoNotComingIn={onRequestUndoNotComingIn}
         />
       ) : hubTab === 'day' ? (
-        <QuickfillScheduleSection initialWorkDateYmd={dayTabWorkDateYmd} />
+        <QuickfillScheduleSection
+          initialWorkDateYmd={dayTabWorkDateYmd}
+          onBlocksSaved={onDayScheduleChanged}
+        />
       ) : hubTab === 'jobs' ? (
         <HubJobsPanel
           rows={rows}

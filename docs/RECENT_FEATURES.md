@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-20 (v2.792)
+last_updated: 2026-07-20 (v2.793)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.793)
+
+### Day view dot edits auto-save 2s after the last touch and refresh the Dispatch People/Jobs tabs (2026-07-20)
+v2.792's boundary-dot edits persisted per gesture but the Dispatch hub's People/Jobs tabs kept their own week cache, so switching tabs showed stale times. Now: [`QuickfillScheduleSection`](../src/components/quickfill/QuickfillScheduleSection.tsx) holds dot edits as a draft and **auto-saves 2 seconds after the last touch** (each new drag or ←/→ nudge re-arms the timer, batching successive tweaks into one write). After the save it fires a new `onBlocksSaved` callback, threaded via `ScheduleDispatchHub.onDayScheduleChanged` from [`ScheduleDispatchHubPage`](../src/components/schedule/ScheduleDispatchHubPage.tsx) → `loadHub({ quiet: true })`, so the People and Jobs tabs re-fetch the week and show the new times. Safety rails: **switching tabs (unmounting the Day view) before the timer fires flushes the pending save first** — edits are never lost; touching a *different person's* dot while a save is pending flushes the old draft before starting the new one; separation and add-block saves also notify the host. Verified live both ways: +15 nudge → People tab within the debounce window showed 8:00 AM–4:15 PM (flush path); −15 nudge left to the natural 2s timer → People tab showed 8:00 AM–4:00 PM (restored). Help guide updated.
 
 ## Latest Updates (v2.792)
 
