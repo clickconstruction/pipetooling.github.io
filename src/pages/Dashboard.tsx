@@ -1236,6 +1236,7 @@ export default function Dashboard() {
   const dockAnchorStyle: CSSProperties = { scrollMarginTop: 8 }
   /** Sections offered by the floating bottom dock; mirrors each section's render gate. */
   const dockSections = [
+    { id: 'dash-my-schedule', label: 'My Schedule', visible: Boolean(authUser?.id) },
     { id: 'dash-notifications', label: 'Notifications', visible: showFinancials },
     { id: 'dash-clocked-in', label: 'ClockedIn', visible: Boolean(authUser?.id && showClockActivityStrip) },
     { id: 'dash-my-inbox', label: 'My Inbox', visible: myInboxDockVisible },
@@ -1244,7 +1245,6 @@ export default function Dashboard() {
       label: 'Teams Inbox',
       visible: Boolean(authUser?.id && (dispatchInboxEligible || estimatorInboxEligible)),
     },
-    { id: 'dash-my-schedule', label: 'My Schedule', visible: Boolean(authUser?.id) },
     {
       id: 'dash-bids',
       label: 'Bids',
@@ -1275,7 +1275,7 @@ export default function Dashboard() {
   ].filter((sec) => sec.visible)
 
   /** Above-the-fold: quick actions and clock first; checklist/assigned use skeletons until data arrives. */
-  /** Mounted per role branch (assistant-like, dev/master, standalone for other roles). */
+  /** Mounted directly below the Job Report row via DashboardPinnedQuickRow's afterJobReportRow slot (all roles). */
   const myScheduleSection = (
     <DashboardMyScheduleSection
       role={role}
@@ -1333,6 +1333,7 @@ export default function Dashboard() {
         {...pinnedQuickRowSharedProps}
         renderModals
         jobReportFirst
+        afterJobReportRow={myScheduleSection}
         interstitial={
           showFinancials ? (
             <>
@@ -1443,7 +1444,6 @@ export default function Dashboard() {
               onCreateTripCharge={(args) => setTripChargeTarget(args)}
             />
           )}
-          {myScheduleSection}
         </>
       )}
       {!isAssistantLike(role) && authUser?.id && showClockActivityStrip && (
@@ -1562,10 +1562,8 @@ export default function Dashboard() {
           }
         />
       )}
-      {(role === 'dev' || role === 'master_technician') && myScheduleSection}
 
       {!isAssistantLike(role) && role !== 'dev' && role !== 'master_technician' && myInboxCard}
-      {!isAssistantLike(role) && role !== 'dev' && role !== 'master_technician' && myScheduleSection}
       <DashboardMyBidsSection
         authUserId={authUser?.id}
         role={role}

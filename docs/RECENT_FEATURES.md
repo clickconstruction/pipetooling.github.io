@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-20 (v2.804)
+last_updated: 2026-07-20 (v2.805)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.805)
+
+### Dashboard: My Schedule moves directly below the Job Report row (2026-07-20)
+[`DashboardPinnedQuickRow`](../src/components/dashboard/DashboardPinnedQuickRow.tsx) gains an `afterJobReportRow` slot rendered right under the Job Report row; the main Dashboard mount passes the My Schedule card there, replacing the three per-role mounts in [`Dashboard.tsx`](../src/pages/Dashboard.tsx) (assistant-like fragment, dev/master, other-roles fallback). New top-of-page order for every role: Clock In → Job Report → **My Schedule** → notification banners → financials → pins. The `dash-my-schedule` dock chip moves to the front of the dock to match; the Job Mode early-return mount is untouched (no slot passed). Verified live (Job Report y=149 → My Schedule y=213 → banners y=618). Layout-only.
 
 ## Latest Updates (v2.804)
 
