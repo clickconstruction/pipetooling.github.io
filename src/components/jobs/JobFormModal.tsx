@@ -437,8 +437,6 @@ export default function JobFormModal({
   // output is consumed by JobFormBreakOffSection via the `breakOff` prop.
   const { newInvoiceAmount, setNewInvoiceAmount, setNewInvoiceAmountInputFocused } = breakOff
   const [teamMemberIds, setTeamMemberIds] = useState<string[]>([])
-  const [contractorsSearch, setContractorsSearch] = useState('')
-  const [contractorsDropdownOpen, setContractorsDropdownOpen] = useState(false)
   const newJobImportBlockedByContent = useMemo(() => {
     if (mode !== 'new' || editing) return false
     return newJobFormHasBlockingContent({
@@ -765,8 +763,6 @@ export default function JobFormModal({
     )
     setFixtureScopeExpandedById({})
     setTeamMemberIds(job.team_members.map((t) => t.user_id))
-    setContractorsSearch('')
-    setContractorsDropdownOpen(false)
     setNewInvoiceAmountInputFocused(false)
     setNewInvoiceAmount(breakOffPrefillAmountStringFromJob(job))
   }
@@ -798,8 +794,6 @@ export default function JobFormModal({
     setFixtures([{ id: crypto.randomUUID(), name: '', count: 1, line_unit_price: null, line_description: '' }])
     setFixtureScopeExpandedById({})
     setTeamMemberIds([])
-    setContractorsSearch('')
-    setContractorsDropdownOpen(false)
     setBillingCustomerHighlight(false)
     setFixturesSectionHighlight(false)
     setJobPicturesLinkHighlight(false)
@@ -2786,15 +2780,7 @@ export default function JobFormModal({
               </div>
             </div>
           </div>
-          <JobFormPeoplePicker
-            users={users}
-            teamMemberIds={teamMemberIds}
-            setTeamMemberIds={setTeamMemberIds}
-            contractorsSearch={contractorsSearch}
-            setContractorsSearch={setContractorsSearch}
-            contractorsDropdownOpen={contractorsDropdownOpen}
-            setContractorsDropdownOpen={setContractorsDropdownOpen}
-          />
+          <JobFormPeoplePicker users={users} teamMemberIds={teamMemberIds} setTeamMemberIds={setTeamMemberIds} />
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', marginBottom: '1rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', marginBottom: customerExpanded ? '0.5rem' : 0 }}>
               <button
@@ -3371,21 +3357,31 @@ export default function JobFormModal({
             </div>
             <MoneyLifecycleBar
               hasBar={billingBar.hasBar}
-              barTitle={`Job total ${'$'}${formatCurrency(billingBar.total)} — paid ${'$'}${formatCurrency(billingBar.paid)}, billed unpaid ${'$'}${formatCurrency(billingBar.billedUnpaid)}, draft ${'$'}${formatCurrency(billingBar.draft)}`}
+              barTitle={[
+                `Job total ${'$'}${formatCurrency(billingBar.total)} — paid ${'$'}${formatCurrency(billingBar.paid)}, billed unpaid ${'$'}${formatCurrency(billingBar.billedUnpaid)}, draft ${'$'}${formatCurrency(billingBar.draft)}`,
+                editing?.pct_complete != null ? `field progress ${Math.round(editing.pct_complete)}% (yellow dot)` : null,
+              ]
+                .filter(Boolean)
+                .join(' · ')}
+              pctComplete={editing?.pct_complete ?? null}
+              total={billingBar.total}
               segments={[
                 { key: 'paid', frac: billingBar.paidFrac, color: PAID_COLOR },
                 { key: 'billed', frac: billingBar.billedFrac, color: BILLED_COLOR },
-                { key: 'draft', frac: billingBar.draftFrac, color: DRAFT_COLOR, striped: true },
+                { key: 'draft', frac: billingBar.draftFrac, color: DRAFT_COLOR },
               ]}
-              tiles={[
-                { key: 'total', label: 'Job Total', value: billingBar.total, strong: true },
+              rows={[
                 { key: 'paid', label: 'Paid', value: billingBar.paid, dot: PAID_COLOR },
                 { key: 'billed', label: 'Billed', value: billingBar.billedUnpaid, dot: BILLED_COLOR },
                 ...(billingBar.draft > 0
-                  ? [{ key: 'draft', label: 'Draft (not sent)', value: billingBar.draft, dot: DRAFT_COLOR, striped: true }]
+                  ? [{ key: 'draft', label: 'Draft (not sent)', value: billingBar.draft, dot: DRAFT_COLOR }]
                   : []),
-                { key: 'remaining', label: 'Remaining to bill', value: billingBar.remaining, strong: true },
               ]}
+              bottomRow={{
+                label: 'Remaining to bill',
+                value: billingBar.remaining,
+                title: 'Job Total minus payments and every draft or sent bill',
+              }}
             />
           </div>
           <JobFormFixturesSection
@@ -3398,45 +3394,14 @@ export default function JobFormModal({
             addFixtureRow={addFixtureRow}
             removeFixtureRow={removeFixtureRow}
             setStripeFixturePreviewRowId={setStripeFixturePreviewRowId}
+            jobTotalDollars={jobTotalBidDollars}
           />
           <div style={{ marginBottom: '1rem' }}>
-            <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
-              <div style={{ flex: '1 1 140px', minWidth: 0, textAlign: 'center' }}>
-                <label style={{ display: 'block', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}>Job Total ($)</label>
-                <div
-                  aria-live="polite"
-                  style={{
-                    fontSize: '0.875rem',
-                    fontWeight: 600,
-                    color: 'var(--text-700)',
-                    fontVariantNumeric: 'tabular-nums',
-                  }}
-                >
-                  ${formatCurrency(jobTotalBidDollars)}
-                </div>
-                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 4, display: 'block' }}>
-                  Total of lines above.
-                </span>
-              </div>
-              <div style={{ flex: '1 1 140px', minWidth: 0, textAlign: 'center' }}>
-                <label style={{ display: 'block', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}>Remaining ($)</label>
-                <div
-                  style={{
-                    fontSize: '0.875rem',
-                    fontWeight: 600,
-                    color: 'var(--text-700)',
-                    fontVariantNumeric: 'tabular-nums',
-                  }}
-                >
-                  ${formatCurrency(getEditJobBillableRemaining())}
-                </div>
-              </div>
-            </div>
           {editing && (
             <>
               <div style={{ fontWeight: 600, fontSize: '0.9375rem', color: 'var(--text-700)', marginBottom: '0.15rem' }}>② Invoices — bills you send</div>
               <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.75rem' }}>
-                Carve part of the Job Total into a bill, then send it. Creating or sending a bill <strong>saves right away</strong> — not with the rest of the form.
+                Creating an invoice <strong>saves right away</strong> separate from this form.
               </div>
               {editing ? (
                 <JobFormBreakOffSection
@@ -3488,6 +3453,7 @@ export default function JobFormModal({
           />
           <JobFormPartsCostSection
             editing={editing}
+            hideTitle={!!editing?.id}
             materialsAccordionOpen={materialsAccordionOpen}
             toggleMaterialsAccordion={toggleMaterialsAccordion}
             jobMaterialsSnapshotLoading={jobMaterialsSnapshotLoading}

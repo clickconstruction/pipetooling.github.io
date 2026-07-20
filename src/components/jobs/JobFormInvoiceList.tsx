@@ -52,10 +52,6 @@ export function JobFormInvoiceList({
 
   return (
     <div style={{ marginBottom: '1rem' }}>
-      <h4 style={{ margin: '0 0 0.35rem', fontSize: '0.9375rem' }}>Invoices</h4>
-      <p style={{ margin: '0 0 0.5rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-        <strong>Draft</strong> = carved off but not sent. <strong>Send bill</strong> to bill the customer; once sent it shows as <strong>Billed</strong>.
-      </p>
       <div style={{ overflowX: 'auto' }}>
         <table style={{ width: '100%', minWidth: 480, borderCollapse: 'collapse', fontSize: '0.875rem', tableLayout: 'fixed' }}>
           <colgroup>
@@ -209,7 +205,9 @@ export function JobFormInvoiceList({
                               onClose()
                               navigate(`/jobs?tab=stages&stagesInvoice=${encodeURIComponent(inv.id)}`)
                             }}
-                            style={btnGray}
+                            title="Go to this invoice row on Stages"
+                            // Same green as the Stages board's invoice jump chips this lands on.
+                            style={{ padding: '0.15rem 0.45rem', fontSize: '0.75rem', background: '#16a34a', border: 'none', borderRadius: 4, cursor: 'pointer', color: '#ffffff', fontWeight: 600 }}
                           >
                             See in Stages
                           </button>

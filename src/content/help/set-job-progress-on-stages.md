@@ -16,11 +16,11 @@ On the **Jobs → Stages** board, each job has a progress percent (the "% done" 
 5. Setting it saves the percent **and** posts the note to the activity feed as "**N% complete — your note**", so the change shows up in the job's history.
 
 :::example What it affects
-The percent feeds the Progress & payment bar — "value created" = the job's amount × percent done, minus what's already been paid. Setting it higher moves more of the job into the unbilled total. The same percent can also be captured on a field report and in the job's detail window.
+The percent feeds the Progress & payment bar — "value created" = the job's amount × percent done, minus what's already been paid. Setting it higher moves more of the job into the unbilled total. The percent also shows as a **yellow dot on the bar itself** (at 0% the dot sits at the far left, at 100% the far right), so field progress reads off the same track as Paid / Billed / Unbilled. The same percent can also be captured on a field report and in the job's detail window.
 :::
 
 ## Who can change it
 
 Only office roles (dev, master technician, assistant, primary) see the **Set % complete** button — the same people who can edit the job. Everyone else sees the current percent as read-only.
 
-Note: this is the **Stages progress** percent. The separate "how complete is a job" mark with who/when — set from the job's Detail window — is a different field; see [[job-completeness]].
+Note: the same **Set % complete** flow is also available from the job's **Detail window** — the button sits in the action row next to {{button:green|Arrived at job}} and {{button:outline|Leaving job}}, and works identically (slider + note, posted to the activity feed).

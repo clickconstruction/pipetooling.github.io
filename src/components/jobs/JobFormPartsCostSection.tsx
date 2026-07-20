@@ -35,6 +35,8 @@ type JobFormPartsCostSectionProps = {
   addMaterialRow: () => void
   updateMaterialRow: (id: string, updates: Partial<MaterialRow>) => void
   removeMaterialRow: (id: string) => void
+  /** Hide the "Parts Cost" heading (edit mode — the Labor and Parts Cost panel above titles the combined block). */
+  hideTitle?: boolean
 }
 
 /**
@@ -66,13 +68,16 @@ export function JobFormPartsCostSection({
   addMaterialRow,
   updateMaterialRow,
   removeMaterialRow,
+  hideTitle,
 }: JobFormPartsCostSectionProps) {
   const { role: authRole } = useAuth()
   const { nicknameByDebitCard } = useMercuryLedgerNicknames()
 
   return (
     <>
-          <div style={{ fontWeight: 600, fontSize: '0.9375rem', color: 'var(--text-700)', marginBottom: '0.75rem' }}>Parts Cost</div>
+          {hideTitle ? null : (
+            <div style={{ fontWeight: 600, fontSize: '0.9375rem', color: 'var(--text-700)', marginBottom: '0.75rem' }}>Parts Cost</div>
+          )}
           <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, boxShadow: '0 1px 3px rgba(0,0,0,0.05)', marginBottom: '1rem', overflow: 'hidden' }}>
               {editing?.id ? (
                 <>

@@ -276,5 +276,5 @@ export function useJobThreadNotesForModal(
     if (id) void reloadActivityQuiet(id)
   }, [reloadActivityQuiet])
 
-  return { activity, loading, draft, setDraft, submitting, submitNote, submitStamp, canPost, reload }
+  return { activity, loading, draft, setDraft, submitting, submitNote, submitNoteWithBody, submitStamp, canPost, reload }
 }
