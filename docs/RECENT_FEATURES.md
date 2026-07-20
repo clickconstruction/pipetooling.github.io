@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-19 (v2.756)
+last_updated: 2026-07-19 (v2.757)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.757)
+
+### Jobs Stages + Dashboard — "% done" shown (and editable) at every stage (2026-07-19)
+The **% done** control on the Stages **Progress & payment** column previously appeared as an editable box only in **Waiting** and **Working**; Ready to Bill / Billed Awaiting Payment / Collections / Paid rows showed the percent read-only (or nothing when unset). Now every Stages section renders the same editable **% done** box (same `updateJobPctComplete` write, same role/RLS rules — jobs with several invoice rows repeat the box per row; all rows write the same job-level percent). On the **Dashboard**, the **Accounts Receivable** card (billed invoices, billed jobs, and Collections rows) gains the same **% Complete** column the Not Billed Out card already had — [`buildArBuckets`](../src/lib/dashboardFinancials.ts) now carries `pct_complete` onto invoice-level and job-level AR items (2 new kernel tests), and [`DashboardFinancialsSection`](../src/components/DashboardFinancialsSection.tsx) enables the column for `cardKey === 'ar'`. No schema, RLS, or automation changes — `pct_complete` remains a display/reporting field (Progress bars, AIA G702/G703 prefill, Quickfill complete-no-bill suggestions). Files: [`src/pages/Jobs.tsx`](../src/pages/Jobs.tsx), [`src/lib/dashboardFinancials.ts`](../src/lib/dashboardFinancials.ts), [`src/components/DashboardFinancialsSection.tsx`](../src/components/DashboardFinancialsSection.tsx); guide [`set-job-progress-on-stages.md`](../src/content/help/set-job-progress-on-stages.md) updated.
 
 ## Latest Updates (v2.756)
 

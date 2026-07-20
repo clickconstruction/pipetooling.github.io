@@ -6804,6 +6804,8 @@ ${totalsHtml}
                                             billedUnpaid: jobBilledUnpaidDollars(j),
                                           })}
                                           pctComplete={j.pct_complete ?? null}
+                                          pctSaving={pctCompleteSavingId === j.id}
+                                          onPctCommit={(n) => updateJobPctComplete(j.id, n)}
                                           footnote={showRemaining ? (() => {
                                             const u = jobBillingUnallocatedDollars(j)
                                             return u > 0 ? (
@@ -6846,6 +6848,8 @@ ${totalsHtml}
                                             billedUnpaid: jobBilledUnpaidDollars(j),
                                           })}
                                           pctComplete={j.pct_complete ?? null}
+                                          pctSaving={pctCompleteSavingId === j.id}
+                                          onPctCommit={(n) => updateJobPctComplete(j.id, n)}
                                           footnote={
                                             row.kind === 'job_with_merged_billed'
                                               ? (() => {
@@ -7338,6 +7342,8 @@ ${totalsHtml}
                                         billedUnpaid: jobBilledUnpaidDollars(job),
                                       })}
                                       pctComplete={job.pct_complete ?? null}
+                                      pctSaving={pctCompleteSavingId === job.id}
+                                      onPctCommit={(n) => updateJobPctComplete(job.id, n)}
                                       footnote={(() => {
                                         const u = showRemaining ? jobBillingUnallocatedDollars(job) : 0
                                         return (
@@ -7977,6 +7983,7 @@ ${totalsHtml}
                       stagesHamMode
                         ? (j) => updateJobStatus(j.id, 'billed')
                         : (j) => setSendBackConfirmJob({ id: j.id, toStatus: 'billed' }),
+                      true,
                     )}
                   </>
                 ) : null}
