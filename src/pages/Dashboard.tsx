@@ -40,7 +40,6 @@ import { useJobFormModal } from '../contexts/JobFormModalContext'
 import { useJobDetailModal } from '../contexts/JobDetailModalContext'
 import { useWeeklyTeamLaborTotal } from '../hooks/useWeeklyTeamLaborTotal'
 import { useBilledTotal } from '../hooks/useBilledTotal'
-import { useHoursAwaitingApprovalCount } from '../hooks/useHoursAwaitingApprovalCount'
 import { useSupplyHousesAPTotal } from '../hooks/useSupplyHousesAPTotal'
 import { useSubLaborDueTotal } from '../hooks/useSubLaborDueTotal'
 import { useIsMobile } from '../hooks/useIsMobile'
@@ -657,7 +656,6 @@ export default function Dashboard() {
   }, [isDocVisible])
   const { total: costMatrixTotal } = useWeeklyTeamLaborTotal(hasCostMatrixPin)
   const { count: billedCount, total: billedTotal } = useBilledTotal(hasBilledPin, financialRefreshKey)
-  const { count: hoursAwaitingCount } = useHoursAwaitingApprovalCount(isDev, financialRefreshKey)
   const { total: supplyHousesAPTotal } = useSupplyHousesAPTotal(hasSupplyHousesAPPin, financialRefreshKey)
   const { total: subLaborDueTotal } = useSubLaborDueTotal(hasSubLaborDuePin, financialRefreshKey)
 
@@ -1160,7 +1158,6 @@ export default function Dashboard() {
     quickActionDefs,
     quickButtonsPlacement,
     showDashboardQuickButtons,
-    hoursAwaitingCount,
     costMatrixTotal,
     billedCount,
     billedTotal,

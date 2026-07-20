@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-20 (v2.785)
+last_updated: 2026-07-20 (v2.786)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.786)
+
+### Dashboard: "Hours Awaiting Approval" chip removed; clock strip shows "N Clocked In" on the merged orange row (2026-07-20)
+Two clock-related dashboard changes. **(1) "Hours Awaiting Approval: N" is gone** — the dev-only pinned-row chip (linked to `/people?tab=hours`, counted this week's unapproved+unrejected `clock_sessions`) is removed from [`DashboardPinnedQuickRow`](../src/components/dashboard/DashboardPinnedQuickRow.tsx), along with its `hoursAwaitingCount` prop, the parent hook call, and the now-orphaned `useHoursAwaitingApprovalCount` hook (file deleted). The pins/quick-actions row no longer force-shows for devs (`isDev` dropped from `showPinnedRowWithQuickActions` — the chip was the only reason). **(2) "N Clocked In" on the clock strip** — [`DashboardTeamActiveClockStrip`](../src/components/DashboardTeamActiveClockStrip.tsx)'s merged orange header row ("Clocked in today (N) Jobs worked today (N)", shown when the CIT list is collapsed and both lists are non-empty) now right-aligns a live "{sessions.length} Clocked In" label (same count as the "Currently In (N)" table header; open sessions in the current My Team/Company scope). The merged header's `aria-label` gains "; N currently clocked in" and the visible span is `aria-hidden` to avoid double-reading. Layout: the existing title cluster and the new label sit in a `space-between` flex row inside the `<th>`, left of the reserved top-right chrome area, so nothing collides when the controls land on this row (empty Currently-In case).
 
 ## Latest Updates (v2.785)
 
