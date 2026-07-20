@@ -1,5 +1,6 @@
 import type { CSSProperties, KeyboardEvent, MouseEvent, ReactNode } from 'react'
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
+import { groupRosterUsersByAuthRoleSection } from '../../lib/usersTabRosterRoleSections'
 import { useDraggable, useDroppable } from '@dnd-kit/core'
 import { useToastContext } from '../../contexts/ToastContext'
 import type { JobScheduleBlockRow } from '../../lib/jobScheduleBlocks'
@@ -1031,6 +1032,8 @@ type HubPeoplePanelProps = {
   onOpenHubJobDetail: (block: JobScheduleBlockRow, workDateYmd: string) => void
   /** From ?focusPerson=<userId>: highlight + scroll to this person's row (Dashboard clock-strip shortcut). */
   focusPersonUserId?: string | null
+  /** auth role per user — enables the Person-header sort cycle (alphabetical ↔ by role, Day-view section order). */
+  roleByUserId?: Map<string, string>
   cardPlacementMode: ScheduleDispatchCardPlacementMode | null
   placementSourceWorkDate: string | null
   plusMenuBlockId: string | null
@@ -1090,6 +1093,7 @@ function HubPeoplePanel({
   onOpenJob,
   onOpenHubJobDetail,
   focusPersonUserId = null,
+  roleByUserId,
   cardPlacementMode,
   placementSourceWorkDate,
   plusMenuBlockId,
@@ -1251,6 +1255,52 @@ function HubPeoplePanel({
       return false
     })
   }, [afterBlockFilter, search, visibleDayKeys, personDayBlocks, getJobDisplayTitle])
+
+  /** Person-header sort cycle: alphabetical (default) ↔ grouped by role like the Day view. Per-device. */
+  const PEOPLE_SORT_STORAGE_KEY = 'pipetooling_dispatch_people_sort_v1'
+  const [personSort, setPersonSort] = useState<'alpha' | 'role'>(() => {
+    try {
+      return localStorage.getItem(PEOPLE_SORT_STORAGE_KEY) === 'role' ? 'role' : 'alpha'
+    } catch {
+      return 'alpha'
+    }
+  })
+  const cyclePersonSort = () => {
+    setPersonSort((prev) => {
+      const next = prev === 'alpha' ? 'role' : 'alpha'
+      try {
+        localStorage.setItem(PEOPLE_SORT_STORAGE_KEY, next)
+      } catch {
+        /* per-device nicety only */
+      }
+      return next
+    })
+  }
+  const peopleDisplayRows = useMemo((): Array<
+    | { kind: 'heading'; key: string; label: string }
+    | { kind: 'person'; person: { userId: string; displayName: string } }
+  > => {
+    if (personSort !== 'role' || !roleByUserId || roleByUserId.size === 0) {
+      return filteredAssignees.map((person) => ({ kind: 'person' as const, person }))
+    }
+    const sections = groupRosterUsersByAuthRoleSection(
+      filteredAssignees.map((person) => ({ id: person.userId, name: person.displayName })),
+      roleByUserId,
+    )
+    const byId = new Map(filteredAssignees.map((person) => [person.userId, person]))
+    const out: Array<
+      | { kind: 'heading'; key: string; label: string }
+      | { kind: 'person'; person: { userId: string; displayName: string } }
+    > = []
+    for (const sec of sections) {
+      out.push({ kind: 'heading', key: sec.sectionKey, label: sec.label })
+      for (const r of sec.rows) {
+        const person = byId.get(r.id)
+        if (person) out.push({ kind: 'person', person })
+      }
+    }
+    return out
+  }, [personSort, roleByUserId, filteredAssignees])
 
   const emptyMessage = useMemo(() => {
     if (allPeopleRows.length === 0) {
@@ -1423,7 +1473,36 @@ function HubPeoplePanel({
                     : 'inset 1px 0 0 var(--border), inset -1px 0 0 var(--border)',
                 }}
               >
-                {isMobile ? <span style={scheduleDispatchMobileNamePill}>Person</span> : 'Person'}
+                <button
+                  type="button"
+                  onClick={cyclePersonSort}
+                  title={
+                    personSort === 'alpha'
+                      ? 'Sorted alphabetically — click to group by role'
+                      : 'Grouped by role — click to sort alphabetically'
+                  }
+                  aria-label={
+                    personSort === 'alpha'
+                      ? 'People sorted alphabetically. Click to group by role.'
+                      : 'People grouped by role. Click to sort alphabetically.'
+                  }
+                  style={{
+                    padding: 0,
+                    border: 'none',
+                    background: 'none',
+                    cursor: 'pointer',
+                    font: 'inherit',
+                    color: 'inherit',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 4,
+                  }}
+                >
+                  {isMobile ? <span style={scheduleDispatchMobileNamePill}>Person</span> : 'Person'}
+                  <span aria-hidden style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontWeight: 400 }}>
+                    {personSort === 'alpha' ? 'A–Z' : 'by role'}
+                  </span>
+                </button>
               </th>
               {visibleDayKeys.map((dk) => (
                 <th
@@ -1480,7 +1559,38 @@ function HubPeoplePanel({
                 </td>
               </tr>
             ) : (
-              filteredAssignees.map((person) => (
+              peopleDisplayRows.map((item) => {
+                if (item.kind === 'heading') {
+                  return (
+                    <tr key={`people-role-heading-${item.key}`}>
+                      <td
+                        colSpan={1 + visibleDayKeys.length}
+                        style={{
+                          padding: '0.45rem 0.5rem',
+                          borderTop: '1px solid var(--border)',
+                          borderBottom: '1px solid var(--border)',
+                          background: 'var(--bg-subtle)',
+                        }}
+                      >
+                        <span
+                          style={{
+                            position: 'sticky',
+                            left: 8,
+                            display: 'inline-block',
+                            fontWeight: 700,
+                            textDecoration: 'underline',
+                            color: 'var(--text-strong)',
+                            fontSize: '0.9rem',
+                          }}
+                        >
+                          {item.label}
+                        </span>
+                      </td>
+                    </tr>
+                  )
+                }
+                const person = item.person
+                return (
                 <tr key={person.userId} id={`hub-person-row-${person.userId}`}>
                   <td
                     style={{
@@ -1577,7 +1687,8 @@ function HubPeoplePanel({
                     )
                   })}
                 </tr>
-              ))
+                )
+              })
             )}
           </tbody>
         </table>
@@ -2069,6 +2180,8 @@ type Props = {
   onOpenHubJobDetail: (block: JobScheduleBlockRow, workDateYmd: string) => void
   /** From ?focusPerson=<userId>: highlight + scroll to this person's row (Dashboard clock-strip shortcut). */
   focusPersonUserId?: string | null
+  /** auth role per user — enables the Person-header sort cycle (alphabetical ↔ by role, Day-view section order). */
+  roleByUserId?: Map<string, string>
   cardPlacementMode: ScheduleDispatchCardPlacementMode | null
   placementSourceWorkDate: string | null
   plusMenuBlockId: string | null
@@ -2168,6 +2281,7 @@ export function ScheduleDispatchHub({
   onOpenJob,
   onOpenHubJobDetail,
   focusPersonUserId = null,
+  roleByUserId,
   cardPlacementMode,
   placementSourceWorkDate,
   plusMenuBlockId,
@@ -2346,6 +2460,7 @@ export function ScheduleDispatchHub({
           onOpenJob={onOpenJob}
           onOpenHubJobDetail={onOpenHubJobDetail}
           focusPersonUserId={focusPersonUserId}
+          roleByUserId={roleByUserId}
           cardPlacementMode={cardPlacementMode}
           placementSourceWorkDate={placementSourceWorkDate}
           plusMenuBlockId={plusMenuBlockId}
@@ -2419,6 +2534,7 @@ export function ScheduleDispatchHub({
           onOpenJob={onOpenJob}
           onOpenHubJobDetail={onOpenHubJobDetail}
           focusPersonUserId={focusPersonUserId}
+          roleByUserId={roleByUserId}
           cardPlacementMode={cardPlacementMode}
           placementSourceWorkDate={placementSourceWorkDate}
           plusMenuBlockId={plusMenuBlockId}

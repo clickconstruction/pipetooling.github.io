@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-20 (v2.797)
+last_updated: 2026-07-20 (v2.798)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.798)
+
+### Dispatch People tab: clickable "Person" header cycles alphabetical ↔ by-role grouping (2026-07-20)
+The People grid's "Person" header cell in [`ScheduleDispatchHub`](../src/components/schedule/ScheduleDispatchHub.tsx) is now a button that cycles the roster sort: **alphabetical** (default, unchanged) ↔ **grouped by role** — full-width heading rows (Master Technicians / Assistants / Primaries / Estimators / Subcontractors / Helper, underlined like the Day view, sticky-left so they survive horizontal scroll) in the same section order as Dispatch → Day, via the shared `groupRosterUsersByAuthRoleSection` kernel. A small "A–Z" / "by role" hint sits beside the header label, and the choice persists per device (`pipetooling_dispatch_people_sort_v1`). Data plumbing: [`ScheduleDispatchHubPage`](../src/components/schedule/ScheduleDispatchHubPage.tsx) swaps its Phase-A roster fetch to `fetchUsersTabRosterForScheduleDispatchHub` (ids + roles; same cohort as before) and threads a `roleByUserId` map into the hub. Verified live: default A–Z (Abraham, Bryan, Darren…) → click → role headings with Malachi under Master Technicians, Grace/Taunya under Assistants, Trace under Primaries → click → back to A–Z.
 
 ## Latest Updates (v2.797)
 
