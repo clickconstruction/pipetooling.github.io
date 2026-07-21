@@ -13,7 +13,6 @@ import { FileSpreadsheet } from 'lucide-react'
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import {
-  calendarDaysSinceDateUtc,
   formatCurrency,
   formatCurrencyNoCents,
   formatEstimatedCompletionDisplay,
@@ -22,6 +21,7 @@ import {
   formatUsdNoCents,
 } from '../lib/jobs/jobFormatting'
 import {
+  buildBilledAgingBuckets,
   effectiveInvoiceEstBillDate,
   invoiceOpenRemainingOnJob,
   jobBilledUnpaidDollars,
@@ -135,11 +135,9 @@ import { getAccessTokenForEdgeFunctions } from '../lib/supabaseAccessTokenForEdg
 import { runJobsStagesSerializedPipeline } from '../lib/jobsStagesSerializedPipeline'
 import { useJobsStagesMutations } from '../hooks/useJobsStagesMutations'
 import {
-  buildBilledStageRows,
   buildJobsStagesBoardLists,
   clampPartialInvoiceCentsToUnallocated,
   jobBillingUnallocatedDollars,
-  jobInCollections,
   locateStagesInvoiceSection,
   readyToBillRowsExposureTotal,
   stagesInvoiceVisibleWithEmptySearch,
@@ -148,6 +146,8 @@ import {
   stagesWorkingJobsWithoutPicturesFromWorking,
   type InvoiceWithJob,
   type StageRow,
+  buildCapableToBillBreakdownRows,
+  capableToBillTotalFromWorking,
 } from '../lib/jobsStagesBoard'
 import { jobLedgerHasCustomerForBilling } from '../lib/jobLedgerCustomerForBilling'
 import { setJobCollectionsFlag } from '../lib/setJobCollectionsFlag'
@@ -792,38 +792,7 @@ export default function Jobs() {
     return 'Accounts Receivable: apply bank deposits to billed lines (non-Stripe)'
   }, [authRole, bankPaymentsModalBilledRows.length, arBankTxUnallocatedCount])
 
-  const billedAgingBuckets = useMemo(() => {
-    const st = (j: JobWithDetails) => (j.status ?? 'working') as string
-    // Aging chips describe the Billed Awaiting Payment section, so parked Collections jobs are excluded.
-    const filtered = stagesFilteredJobs.filter((j) => !jobInCollections(j))
-    const billedJobsList = filtered.filter((j) => st(j) === 'billed')
-    const billedInvoicesList = filtered.flatMap((j) =>
-      (j.invoices ?? []).filter((i) => i.status === 'billed').map((inv) => ({ ...inv, job: j })),
-    )
-    const billedRowsAging = buildBilledStageRows(billedJobsList, billedInvoicesList)
-    const now = new Date()
-    let count30_90 = 0
-    let sum30_90 = 0
-    let count90 = 0
-    let sum90 = 0
-    for (const r of billedRowsAging) {
-      const iso =
-        r.kind === 'job' ? r.job.last_bill_date ?? null : effectiveInvoiceEstBillDate(r.inv, r.job)
-      if (!iso) continue
-      const days = calendarDaysSinceDateUtc(iso, now)
-      if (days < 30) continue
-      const amount = stageRowBilledRemainingAmount(r)
-      if (amount <= 0) continue
-      if (days < 90) {
-        count30_90++
-        sum30_90 += amount
-      } else {
-        count90++
-        sum90 += amount
-      }
-    }
-    return { count30_90, sum30_90, count90, sum90 }
-  }, [stagesFilteredJobs])
+  const billedAgingBuckets = useMemo(() => buildBilledAgingBuckets(stagesFilteredJobs), [stagesFilteredJobs])
 
   const {
     expandedJobThreadId,
@@ -5275,13 +5244,7 @@ export default function Jobs() {
 
             const workingTotal = working.reduce((s, j) => s + (Number(j.revenue ?? 0) - Number(j.payments_made ?? 0)), 0)
             const waitingTotal = waiting.reduce((s, j) => s + (Number(j.revenue ?? 0) - Number(j.payments_made ?? 0)), 0)
-            const capableToBillTotal = working.reduce((s, j) => {
-              const totalBill = Number(j.revenue ?? 0)
-              const valueCreated = j.pct_complete != null ? (totalBill * j.pct_complete) / 100 : 0
-              const remaining = Math.max(0, totalBill - Number(j.payments_made ?? 0))
-              const toBill = valueCreated - (totalBill - remaining)
-              return s + Math.max(0, toBill)
-            }, 0)
+            const capableToBillTotal = capableToBillTotalFromWorking(working)
             const readyToBillTotal = readyToBillRowsExposureTotal(readyToBillRows)
             const billedTotal = billedActiveRows.reduce((s, r) => s + stageRowBilledRemainingAmount(r), 0)
             const collectionsTotal = collectionsRows.reduce((s, r) => s + stageRowBilledRemainingAmount(r), 0)
@@ -5854,16 +5817,7 @@ export default function Jobs() {
                   )
                 })()}
                 {capableToBillModalOpen && (() => {
-                  const rows = working
-                    .map((j) => {
-                      const totalBill = Number(j.revenue ?? 0)
-                      const valueCreated = j.pct_complete != null ? (totalBill * j.pct_complete) / 100 : 0
-                      const remaining = Math.max(0, totalBill - Number(j.payments_made ?? 0))
-                      const toBill = valueCreated - (totalBill - remaining)
-                      return { job: j, toBill, valueCreated }
-                    })
-                    .filter((r) => r.toBill > 0)
-                    .sort((a, b) => b.toBill - a.toBill)
+                  const rows = buildCapableToBillBreakdownRows(working)
                   return (
                     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60 }}>
                       <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 480, maxWidth: 720, maxHeight: '80vh', overflow: 'auto' }}>

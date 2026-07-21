@@ -1,6 +1,6 @@
 import type { Database } from '../../types/database'
 import type { JobWithDetails } from '../../types/jobWithDetails'
-import { stagesMergedBillingInvoiceId, type StageRow } from '../jobsStagesBoard'
+import { buildBilledStageRows, jobInCollections, stagesMergedBillingInvoiceId, type StageRow } from '../jobsStagesBoard'
 import { calendarDaysSinceDateUtc, formatYmdOrIsoDateForPrintDisplay } from './jobFormatting'
 
 type JobsLedgerInvoice = Database['public']['Tables']['jobs_ledger_invoices']['Row']
@@ -129,4 +129,43 @@ export function stagesJobLevelStripeEmailedHintInvoice(job: JobWithDetails): Job
   )
   if (matches.length !== 1) return undefined
   return matches[0]
+}
+
+export type BilledAgingBuckets = { count30_90: number; sum30_90: number; count90: number; sum90: number }
+
+/**
+ * Billed Awaiting Payment aging chips: 30/90-day buckets over positive
+ * remainders (Collections jobs excluded — the chips describe the Billed
+ * section only). Extracted verbatim from the Jobs.tsx `billedAgingBuckets`
+ * memo (Stage A, step 8 of the decomposition).
+ */
+export function buildBilledAgingBuckets(stagesFilteredJobs: JobWithDetails[], now = new Date()): BilledAgingBuckets {
+  const st = (j: JobWithDetails) => (j.status ?? 'working') as string
+  const filtered = stagesFilteredJobs.filter((j) => !jobInCollections(j))
+  const billedJobsList = filtered.filter((j) => st(j) === 'billed')
+  const billedInvoicesList = filtered.flatMap((j) =>
+    (j.invoices ?? []).filter((i) => i.status === 'billed').map((inv) => ({ ...inv, job: j })),
+  )
+  const billedRowsAging = buildBilledStageRows(billedJobsList, billedInvoicesList)
+  let count30_90 = 0
+  let sum30_90 = 0
+  let count90 = 0
+  let sum90 = 0
+  for (const r of billedRowsAging) {
+    const iso =
+      r.kind === 'job' ? r.job.last_bill_date ?? null : effectiveInvoiceEstBillDate(r.inv, r.job)
+    if (!iso) continue
+    const days = calendarDaysSinceDateUtc(iso, now)
+    if (days < 30) continue
+    const amount = stageRowBilledRemainingAmount(r)
+    if (amount <= 0) continue
+    if (days < 90) {
+      count30_90++
+      sum30_90 += amount
+    } else {
+      count90++
+      sum90 += amount
+    }
+  }
+  return { count30_90, sum30_90, count90, sum90 }
 }

@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-20 (v2.828)
+last_updated: 2026-07-20 (v2.829)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.829)
+
+### Jobs refactor: last inline Stages math extracted and tested (2026-07-20)
+Step 8 of the mapped [`Jobs.tsx`](../src/pages/Jobs.tsx) decomposition ([`JOBS_TABS_ARCHITECTURE.md`](./JOBS_TABS_ARCHITECTURE.md)) — Stage A for the remaining Stages money math. `buildBilledAgingBuckets` (the Billed Awaiting Payment 30/90-day aging chips, Collections excluded) moves verbatim to [`lib/jobs/invoiceBilling.ts`](../src/lib/jobs/invoiceBilling.ts); the Capable-of-Being-Billed kernel — previously **computed inline twice** (section header total + breakdown modal, map quirk #8) — collapses into `jobCapableToBillAmounts` / `capableToBillTotalFromWorking` / `buildCapableToBillBreakdownRows` in [`lib/jobsStagesBoard.ts`](../src/lib/jobsStagesBoard.ts), one tested source for both call sites. Six new unit tests. **Behavior-preserving.** Jobs.tsx 6,921 → 6,875 lines.
 
 ## Latest Updates (v2.828)
 
