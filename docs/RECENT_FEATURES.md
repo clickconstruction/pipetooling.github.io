@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-21 (v2.869)
+last_updated: 2026-07-21 (v2.870)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.870)
+
+### Dispatch → People: orange "off" button on empty days marks Not coming in (2026-07-21)
+Beside the full-width **+** bar on every empty person-day (v2.868), a small orange **off** button now marks that person as not coming in for that day in one click — the same flow as the Add-job picker's "Not coming in today" (records unpaid time off, salary-sync warning surfaced, per-person toast; the picker path with its remove-blocks confirmation is unchanged and now shares one extracted core, `markNotComingInForPersonDay`). Undo stays the same: click the time-off chip in the cell. Help guide updated.
 
 ## Latest Updates (v2.869)
 

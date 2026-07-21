@@ -1417,10 +1417,9 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
     showToast,
   ])
 
-  const handleMarkNotComingInTodayFromAssignPicker = useCallback(async () => {
-    if (!hubCellAddContext) return
-    const subjectUserId = hubCellAddContext.assigneeUserId
-    const workDateYmd = hubCellAddContext.workDate
+  /** Shared core: record unpaid time off + remove any blocks for the day (verbatim
+   * from the assign-picker flow; also used by the empty-cell "off" button). */
+  const markNotComingInForPersonDay = useCallback(async (subjectUserId: string, workDateYmd: string) => {
     const personName = hubPeopleNameById.get(subjectUserId) ?? 'Team member'
     const existingBlockIds = (
       hubPersonDayBlocks.get(hubPersonDayKey(subjectUserId, workDateYmd)) ?? []
@@ -1479,7 +1478,6 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
       )
     }
 
-    closeHubAssignJobPicker()
     if (jobId) {
       await load()
     } else {
@@ -1488,16 +1486,31 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
     void refreshHubUserTimeOff()
     setNotComingInBusy(false)
   }, [
-    hubCellAddContext,
     hubPeopleNameById,
     hubPersonDayBlocks,
     showToast,
-    closeHubAssignJobPicker,
     jobId,
     load,
     loadHub,
     refreshHubUserTimeOff,
   ])
+
+  const handleMarkNotComingInTodayFromAssignPicker = useCallback(async () => {
+    if (!hubCellAddContext) return
+    const subjectUserId = hubCellAddContext.assigneeUserId
+    const workDateYmd = hubCellAddContext.workDate
+    closeHubAssignJobPicker()
+    await markNotComingInForPersonDay(subjectUserId, workDateYmd)
+  }, [hubCellAddContext, closeHubAssignJobPicker, markNotComingInForPersonDay])
+
+  /** Empty-cell "off" button: mark that person/day as not coming in directly. */
+  const onMarkNotComingInForCell = useCallback(
+    (personUserId: string, workDate: string) => {
+      if (notComingInBusy) return
+      void markNotComingInForPersonDay(personUserId, workDate)
+    },
+    [notComingInBusy, markNotComingInForPersonDay],
+  )
 
   // ──────────────────────────────────────────────────────────────────────
   // Undo "Not coming in" — confirm modal driven by a click on the cell chip.
@@ -2108,6 +2121,7 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
             onRequestEditBlockNote={canEdit ? (b) => { setBlockNoteError(null); setBlockNoteEdit(b) } : undefined}
             userTimeOffByCell={hubUserTimeOffByCell}
             onRequestUndoNotComingIn={canEdit ? handleRequestUndoNotComingIn : undefined}
+            onMarkNotComingInForCell={canEdit ? onMarkNotComingInForCell : undefined}
           />
         </DndContext>
         <ScheduleShareModal
