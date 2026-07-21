@@ -204,8 +204,11 @@ export function DashboardTeamReadyToBillSection({
                       {isSubcontractorLikeRole(role) && !isMobile && (() => {
                         const b = subcontractorLastActivityBlock(j)
                         return (
-                          <div
-                            style={{
+                          b.line3 != null ? (
+                            <button
+                              type="button"
+                              className="subcontractorLastActivityTypeBtn"
+                              style={{
                               display: 'flex',
                               flexDirection: 'column',
                               alignItems: 'center',
@@ -215,28 +218,40 @@ export function DashboardTeamReadyToBillSection({
                               maxWidth: 220,
                               lineHeight: 1.25,
                               gap: 2,
-                            }}
-                            title={b.title}
-                          >
-                            <span>{b.line1}</span>
-                            <span>{b.line2}</span>
-                            {b.line3 != null ? (
-                              <button
-                                type="button"
-                                className="subcontractorLastActivityTypeBtn"
-                                onClick={() =>
+                              }}
+                              title={b.title}
+                              onClick={() =>
                                   setSubcontractorJobActivityModalJob({
                                     id: j.id,
                                     hcpNumber: j.hcp_number ?? '—',
                                     jobName: j.job_name ?? '—',
                                   })
-                                }
-                                aria-label={`What last activity means and recent history for ${j.job_name ?? 'this job'}`}
-                              >
-                                {b.line3}
-                              </button>
-                            ) : null}
-                          </div>
+                              }
+                              aria-label={`What last activity means and recent history for ${j.job_name ?? 'this job'}`}
+                            >
+                              <span>{b.line1}</span>
+                              <span>{b.line2}</span>
+                              <span>{b.line3}</span>
+                            </button>
+                          ) : (
+                            <div
+                              style={{
+                              display: 'flex',
+                              flexDirection: 'column',
+                              alignItems: 'center',
+                              fontSize: '0.8125rem',
+                              color: 'var(--text-muted)',
+                              textAlign: 'center',
+                              maxWidth: 220,
+                              lineHeight: 1.25,
+                              gap: 2,
+                              }}
+                              title={b.title}
+                            >
+                              <span>{b.line1}</span>
+                              <span>{b.line2}</span>
+                            </div>
+                          )
                         )
                       })()}
                       {canLeaveJobFieldReport(role) && (
