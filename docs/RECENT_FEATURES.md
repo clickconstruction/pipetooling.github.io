@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-21 (v2.833)
+last_updated: 2026-07-21 (v2.834)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.834)
+
+### Testing: first render-test harness — render-smoke tests for the extracted Jobs components (2026-07-21)
+**Test-only; no behavior change.** The repo's first component-mount test harness, closing the "no render-test harness" gap called out in CLAUDE.md now that the Jobs.tsx decomposition (v2.820–v2.831) produced extracted components worth smoking. New devDependencies `jsdom` (v25 — Node 20.0-compatible), `@testing-library/react`, `@testing-library/dom`. The **global vitest environment stays `node`**: each `*.render.test.tsx` file opts into jsdom with the per-file `// @vitest-environment jsdom` docblock, so the 2,586 pre-existing pure-logic tests run untouched ([`vite.config.ts`](../vite.config.ts) `test.include` gains `src/**/*.render.test.tsx`). Shared setup in [`src/test/renderSmokeMocks.tsx`](../src/test/renderSmokeMocks.tsx): a chainable/thenable supabase client stub (every `from()/select()/eq()/order()/rpc()` chain resolves `{ data: [], error: null }`) wired via `vi.mock` of `src/lib/supabase` (which throws at import time without env vars), a `useAuth` module mock (child modals call it unconditionally), a `renderWithProviders` helper (MemoryRouter + real ToastProvider **in the RTL wrapper** so `rerender` keeps them), jsdom gap fills (`scrollIntoView`, `matchMedia`), and house-style `as unknown as` fixture factories (`makeJob`/`makeInvoice`/`makeLaborJob`). Six colocated suites, 30 tests: [`JobsBillingTab.render.test.tsx`](../src/components/jobs/JobsBillingTab.render.test.tsx) (empty/populated incl. both red-icon conditions, search filtering, sort toggle + its `jobs_billing_sort_asc_<uid>` localStorage key), [`JobsSubLaborFormModal.render.test.tsx`](../src/components/jobs/JobsSubLaborFormModal.render.test.tsx) (closed renders nothing; every handle entry — `openNew`/`openEdit`/`openNewWithJobNumber`/`openWithBillingPrefill` — plus the v2.823 quirk: bare `open()` preserves form state, `openNew()` resets), [`SubLaborPaymentModals.render.test.tsx`](../src/components/jobs/SubLaborPaymentModals.render.test.tsx) (trio openers seed amounts; cancel/clear close), [`JobsStagesTable.render.test.tsx`](../src/components/jobs/JobsStagesTable.render.test.tsx) (empty group, `data-stages-job-id` per row, `showPctComplete` on/off), [`JobsStagesUnifiedTable.render.test.tsx`](../src/components/jobs/JobsStagesUnifiedTable.render.test.tsx) (job / invoice / merged-billed row kinds, `data-stages-invoice-id`, the `flashInvoiceId` styling branch), and [`JobsStagesTab.render.test.tsx`](../src/components/jobs/JobsStagesTab.render.test.tsx) (`active={false}` renders no board, section headers + search filter + section toggles when active, imperative-handle methods callable, and **the always-mounted contract: search text + open sections survive an active→inactive→active round trip**). No product bugs found — the extracted components all mount clean.
 
 ## Latest Updates (v2.833)
 
