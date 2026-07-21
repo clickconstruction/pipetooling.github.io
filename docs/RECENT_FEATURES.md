@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-21 (v2.866)
+last_updated: 2026-07-21 (v2.867)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.867)
+
+### Dispatch → People: Add-block end handle hops the whole block across existing events (2026-07-21)
+In the Add schedule block slider, the start (left) handle could already carry the block across an existing event, but the end (right) handle pinned at the event's edge. New pure kernel [`endDragRangeAcrossGaps`](../src/lib/scheduleDispatchAddBlockTimeline.ts) (8 unit tests): while dragging the end handle, the block resists at the event's start; once the pointer clears the event's far side by ≥ the 30-minute minimum duration, the **start handle jumps to just after the event** and the end keeps following the pointer (multi-event days hop to the right-most cleared gap; dragging the end left past the current gap hops backward with a minimum-duration block). Wired only into [`ScheduleDispatchAddBlockModal`](../src/components/schedule/ScheduleDispatchAddBlockModal.tsx)'s add-mode end-drag — start-drag, band-drag, and the Quickfill/User-review sliders are unchanged.
 
 ## Latest Updates (v2.866)
 

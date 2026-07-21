@@ -14,6 +14,7 @@ import {
 import {
   applySegmentMoveToAbsoluteStart,
   clampNewBlockRangeToGaps,
+  endDragRangeAcrossGaps,
   gapsFromOccupied,
   occupiedUnionFromSegments,
   type AddBlockTimelineSegment,
@@ -148,15 +149,20 @@ export function ScheduleDispatchAddBlockModal({
     (slotIndex: number) => {
       const eMin = dispatchSlotIndexToMinutes(slotIndex)
       const sMinCur = timeInputToMinutesSafe(timeStart)
-      let { s, e } = clampDispatchEndStartForMinDuration(eMin, sMinCur)
       if (mode === 'add' && addTimeline) {
+        // End-drag picks its gap by the dragged END point so the block can hop
+        // across occupied bands: once the pointer clears a band by the minimum
+        // duration, the start jumps to just after the band and the end keeps
+        // following the pointer (see endDragRangeAcrossGaps).
         const gaps = gapsFromOccupied(
           occupiedUnionFromSegments(addTimeline.segments, addTimeline.draftByBlockId),
         )
-        const c = clampNewBlockRangeToGaps({ desiredStartMin: s, desiredEndMin: e, gaps })
-        s = c.startMin
-        e = c.endMin
+        const c = endDragRangeAcrossGaps({ currentStartMin: sMinCur, desiredEndMin: eMin, gaps })
+        onChangeStart(dispatchMinutesToHHmm(c.startMin))
+        onChangeEnd(dispatchMinutesToHHmm(c.endMin))
+        return
       }
+      const { s, e } = clampDispatchEndStartForMinDuration(eMin, sMinCur)
       onChangeStart(dispatchMinutesToHHmm(s))
       onChangeEnd(dispatchMinutesToHHmm(e))
     },

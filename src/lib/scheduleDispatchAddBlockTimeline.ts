@@ -190,6 +190,89 @@ export function clampNewBlockRangeToGaps(args: {
   return { startMin: start, endMin: end }
 }
 
+/**
+ * End-thumb drag for the Add-block slider. Unlike `clampNewBlockRangeToGaps`
+ * (midpoint heuristic, used for start-drag and band moves), the target gap is
+ * chosen by the DRAGGED END POINT so the block can hop across occupied bands:
+ *
+ * - Inside the current gap: end follows the pointer (start pulled right only
+ *   when the minimum duration forces it).
+ * - Dragged into an occupied band: end pins at the band's start (resistance).
+ * - Dragged ≥ the minimum duration past a later gap's start (i.e. the band is
+ *   cleared with room for a valid block): the block HOPS — start jumps to that
+ *   gap's start and the end keeps following the pointer.
+ * - Dragged left past the current gap's start: hops backward into the last gap
+ *   that can host a minimum-duration block ending at the pointer.
+ */
+export function endDragRangeAcrossGaps(args: {
+  currentStartMin: number
+  desiredEndMin: number
+  gaps: MinuteRange[]
+  minDurationMin?: number
+}): { startMin: number; endMin: number } {
+  const {
+    currentStartMin,
+    desiredEndMin,
+    gaps,
+    minDurationMin = JOB_SCHEDULE_BLOCK_MIN_DURATION_MINUTES,
+  } = args
+  const e = clampInt(desiredEndMin, MIN_MIN, MAX_MIN)
+  if (gaps.length === 0) {
+    const end = clampInt(Math.max(e, MIN_MIN + minDurationMin), MIN_MIN + minDurationMin, MAX_MIN)
+    return { startMin: Math.min(currentStartMin, end - minDurationMin), endMin: end }
+  }
+
+  // Gap currently hosting the block (by its start); nearest gap when none contains it.
+  let curGap: MinuteRange = gaps[0]!
+  let bestDist = Infinity
+  for (const g of gaps) {
+    if (currentStartMin >= g.startMin && currentStartMin < g.endMin) {
+      curGap = g
+      bestDist = -1
+      break
+    }
+    const d = currentStartMin < g.startMin ? g.startMin - currentStartMin : currentStartMin - g.endMin
+    if (d < bestDist) {
+      bestDist = d
+      curGap = g
+    }
+  }
+
+  // Right-most gap whose start the dragged end has cleared by ≥ the minimum
+  // duration (gaps are sorted ascending). None ⇒ pointer is left of every
+  // viable gap: hug the first gap.
+  let target: MinuteRange | null = null
+  for (const g of gaps) {
+    if (g.startMin + minDurationMin <= e) target = g
+  }
+  if (!target) target = gaps[0]!
+
+  if (target.startMin > curGap.startMin) {
+    // Forward hop: the band between curGap and target is cleared — start jumps
+    // to just after it (the target gap's start) and the end follows the pointer.
+    const start = target.startMin
+    const end = clampInt(e, start + minDurationMin, target.endMin)
+    return { startMin: start, endMin: end }
+  }
+  if (target.startMin < curGap.startMin) {
+    // Backward hop: minimum-duration block ending at the pointer (clamped into the gap).
+    const end = clampInt(e, target.startMin + minDurationMin, target.endMin)
+    return { startMin: Math.max(target.startMin, end - minDurationMin), endMin: end }
+  }
+
+  // Same gap: end follows the pointer, pinned at the gap's edges; start moves
+  // only when the minimum duration forces it.
+  let start = clampInt(currentStartMin, curGap.startMin, curGap.endMin - minDurationMin)
+  let end = clampInt(e, curGap.startMin + minDurationMin, curGap.endMin)
+  if (end - start < minDurationMin) {
+    start = Math.max(curGap.startMin, end - minDurationMin)
+    if (end - start < minDurationMin) {
+      end = Math.min(curGap.endMin, start + minDurationMin)
+    }
+  }
+  return { startMin: start, endMin: end }
+}
+
 function intervalsOverlapOthers(candidate: MinuteRange, others: MinuteRange[]): boolean {
   for (const o of others) {
     if (scheduleRangesOverlap(candidate, o)) return true
