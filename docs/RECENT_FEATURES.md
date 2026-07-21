@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-21 (v2.857)
+last_updated: 2026-07-21 (v2.858)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.858)
+
+### Settings decomposition, step 5: Dashboard residue → three seam hooks (2026-07-21)
+Order #5 of the [`SETTINGS_TABS_ARCHITECTURE.md`](./SETTINGS_TABS_ARCHITECTURE.md) plan, behavior-preserving. Three parent-instantiated hooks take the Dashboard & alerts engine out of [`Settings.tsx`](../src/pages/Settings.tsx): [`useSettingsFinancialPins`](../src/hooks/useSettingsFinancialPins.ts) (the dev-only Billed / Supply-Houses-AP / External-Team / Cost-Matrix pin cluster — 19 state vars, 4 loaders, and the `useWeeklyTeamLaborTotal` total; pin writes stay in the tab per quirk #8), [`useSettingsMyReports`](../src/hooks/useSettingsMyReports.ts) (the `list_my_reports` loader + edit-window setting + the `settings-my-reports-changes` realtime channel; the page-level view/edit modals stay in the parent and reach the reload via the returned `loadMyReportsRef`), and [`useSettingsTeamLeaderAssignments`](../src/hooks/useSettingsTeamLeaderAssignments.ts) (Team Hours Sharing rows + sort/filter/picker memos + its own load). Settings.tsx shrinks 2,121 → 1,969 lines. Sub-decomposing the 1,985-line `SettingsDashboardTab` itself remains a follow-on. No user-facing changes.
 
 ## Latest Updates (v2.857)
 
