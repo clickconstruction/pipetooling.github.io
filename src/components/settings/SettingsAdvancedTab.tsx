@@ -1,29 +1,58 @@
 /** Settings → Advanced tab: collapsible "Fix app" help + admin claim-code form.
- * Presentational; all state/handlers live in the parent (Settings.tsx) and arrive as props.
+ * Self-contained (v2.856): owns its section-open + claim-code state and the
+ * claim-dev edge-fn call; on success it invokes onRoleMaybeChanged so the parent
+ * reloads (the user's role may have just changed).
  * The role gate (non-subcontractor) stays in the parent. */
-import type { Dispatch, FormEvent, SetStateAction } from 'react'
+import { useState } from 'react'
+import type { FormEvent } from 'react'
+import { FunctionsHttpError } from '@supabase/supabase-js'
+import { supabase } from '../../lib/supabase'
 
 export default function SettingsAdvancedTab({
   active,
-  advancedSectionOpen,
-  setAdvancedSectionOpen,
-  code,
-  setCode,
-  codeError,
-  setCodeError,
-  codeSubmitting,
-  handleClaimCode,
+  onRoleMaybeChanged,
 }: {
   active: boolean
-  advancedSectionOpen: boolean
-  setAdvancedSectionOpen: Dispatch<SetStateAction<boolean>>
-  code: string
-  setCode: Dispatch<SetStateAction<string>>
-  codeError: string | null
-  setCodeError: Dispatch<SetStateAction<string | null>>
-  codeSubmitting: boolean
-  handleClaimCode: (e: FormEvent) => void
+  onRoleMaybeChanged: () => void
 }) {
+  const [advancedSectionOpen, setAdvancedSectionOpen] = useState(false)
+  const [code, setCode] = useState('')
+  const [codeError, setCodeError] = useState<string | null>(null)
+  const [codeSubmitting, setCodeSubmitting] = useState(false)
+
+  async function handleClaimCode(e: FormEvent) {
+    e.preventDefault()
+    setCodeError(null)
+    setCodeSubmitting(true)
+    const { data, error: eFn } = await supabase.functions.invoke('claim-dev', {
+      body: { code: code.trim() },
+    })
+    setCodeSubmitting(false)
+    if (eFn) {
+      let msg = eFn.message
+      if (eFn instanceof FunctionsHttpError && eFn.context?.json) {
+        try {
+          const b = (await eFn.context.json()) as { error?: string } | null
+          if (b?.error) msg = b.error
+        } catch { /* ignore */ }
+      }
+      setCodeError(msg)
+      return
+    }
+    const err = (data as { error?: string } | null)?.error
+    if (err) {
+      setCodeError(err)
+      return
+    }
+    if ((data as { success?: boolean } | null)?.success) {
+      setCode('')
+      setCodeError(null)
+      onRoleMaybeChanged()
+    } else {
+      setCodeError('Invalid code')
+    }
+  }
+
   return (
     <div id="settings-advanced-tools" style={{ marginTop: '2rem', marginBottom: '1.5rem', display: active ? undefined : 'none' }}>
       <button

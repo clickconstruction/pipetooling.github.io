@@ -44,19 +44,13 @@ import SettingsAccountSchedulingTab from '../components/settings/SettingsAccount
 import SettingsAccountBackupTrailing from '../components/settings/SettingsAccountBackupTrailing'
 import { useSettingsBackupExports } from '../hooks/useSettingsBackupExports'
 import { useSettingsCatalogs } from '../hooks/useSettingsCatalogs'
+import { useSettingsJobsAdmin } from '../hooks/useSettingsJobsAdmin'
+import { useSettingsProspectsCatalog } from '../hooks/useSettingsProspectsCatalog'
 import type {
   PersonRow,
   UserRow,
 } from '../types/settingsRows'
 import { displayLabelForGoalPickerUser } from '../lib/goalPickerUserLabel'
-import {
-  builtinEstimateExperience,
-  ESTIMATE_EXPERIENCE_APP_KEY_LIST,
-  ESTIMATE_EXPERIENCE_FIELD_MAX_LEN,
-} from '../lib/estimateCustomerExperience'
-import { ESTIMATE_PUBLIC_TERMS_BODY_APP_KEY } from '../lib/estimatePublicTerms'
-import type { EstimateCatalogLineItem } from '../lib/estimateLineItemCatalog'
-import { catalogDbRowsToLineItems, fetchEstimateCatalogLive, replaceEstimateCatalogFromPayload } from '../lib/estimateCatalogApi'
 import { isAssistantLike, isSubcontractorLikeRole } from '../lib/subcontractorLikeRole'
 
 type UserRole =
@@ -69,8 +63,6 @@ type UserRole =
   | 'primary'
   | 'superintendent'
 type NotificationHistoryRow = Database['public']['Tables']['notification_history']['Row']
-type JobCountByMasterRow =
-  Database['public']['Functions']['list_job_counts_by_master_for_dev_settings']['Returns'][number]
 
 function SettingsGroup({
   id,
@@ -251,9 +243,6 @@ export default function Settings() {
   const [pinCostMatrixSaving, setPinCostMatrixSaving] = useState(false)
   const [pinCostMatrixUnpinSaving, setPinCostMatrixUnpinSaving] = useState(false)
   const [pinCostMatrixMessage, setPinCostMatrixMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
-  const [code, setCode] = useState('')
-  const [codeError, setCodeError] = useState<string | null>(null)
-  const [codeSubmitting, setCodeSubmitting] = useState(false)
   const [passwordChangeOpen, setPasswordChangeOpen] = useState(false)
   const [currentPassword, setCurrentPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
@@ -265,8 +254,6 @@ export default function Settings() {
   const [payApprovedMasters, setPayApprovedMasters] = useState<UserRow[]>([])
   const [payApprovedSaving, setPayApprovedSaving] = useState(false)
   const [payApprovedError, setPayApprovedError] = useState<string | null>(null)
-  const [defaultLaborRate, setDefaultLaborRate] = useState('')
-  const [defaultLaborRateSaving, setDefaultLaborRateSaving] = useState(false)
   const [myProfileName, setMyProfileName] = useState('')
   const [myProfileEmail, setMyProfileEmail] = useState('')
   const [myProfilePhone, setMyProfilePhone] = useState('')
@@ -276,27 +263,6 @@ export default function Settings() {
   /** Personal Salaried workday: shown only when people_pay_config matches profile name and is_salary */
   const [selfIsSalariedInPayConfig, setSelfIsSalariedInPayConfig] = useState(false)
   const [selfPaySalaryLoaded, setSelfPaySalaryLoaded] = useState(false)
-  const [prospectCopyNoResponse, setProspectCopyNoResponse] = useState('')
-  const [prospectCopyPhoneFollowup, setProspectCopyPhoneFollowup] = useState('')
-  const [prospectCopyJustCheckingIn, setProspectCopyJustCheckingIn] = useState('')
-  const [prospectCopyNoResponseSubject, setProspectCopyNoResponseSubject] = useState('')
-  const [prospectCopyPhoneFollowupSubject, setProspectCopyPhoneFollowupSubject] = useState('')
-  const [prospectCopyJustCheckingInSubject, setProspectCopyJustCheckingInSubject] = useState('')
-  const [prospectCopySaving, setProspectCopySaving] = useState(false)
-  const [prospectCopySectionOpen, setProspectCopySectionOpen] = useState(false)
-  const [estimateCxSectionOpen, setEstimateCxSectionOpen] = useState(false)
-  const [estimateCxSaving, setEstimateCxSaving] = useState(false)
-  const [estimatePublicTermsSaving, setEstimatePublicTermsSaving] = useState(false)
-  const [estimatePublicTermsBody, setEstimatePublicTermsBody] = useState('')
-  const [estimatePublicTermsSectionOpen, setEstimatePublicTermsSectionOpen] = useState(false)
-  const [estimateLineItemCatalogSectionOpen, setEstimateLineItemCatalogSectionOpen] = useState(false)
-  const [estimateLineItemCatalogSaving, setEstimateLineItemCatalogSaving] = useState(false)
-  const [estimateLineItemCatalogRows, setEstimateLineItemCatalogRows] = useState<EstimateCatalogLineItem[]>([])
-  const [estimateCxByKey, setEstimateCxByKey] = useState<Record<string, string>>(() => {
-    const o: Record<string, string> = {}
-    for (const k of ESTIMATE_EXPERIENCE_APP_KEY_LIST) o[k] = ''
-    return o
-  })
   const [dashboardButtons, setDashboardButtons] = useState<Record<string, boolean>>({
     job: true,
     job_labor: true,
@@ -342,7 +308,6 @@ export default function Settings() {
   const [dailyGoalsSectionOpen, setDailyGoalsSectionOpen] = useState(false)
   const [teamLeadAssignmentsSectionOpen, setTeamLeadAssignmentsSectionOpen] = useState(false)
   const [reportNotificationsSectionOpen, setReportNotificationsSectionOpen] = useState(false)
-  const [defaultLaborRateSectionOpen, setDefaultLaborRateSectionOpen] = useState(false)
   const [dataBackupSectionOpen, setDataBackupSectionOpen] = useState(false)
   const [dispatchMemberIds, setDispatchMemberIds] = useState<Set<string>>(new Set())
   const [dispatchGroupError, setDispatchGroupError] = useState<string | null>(null)
@@ -473,6 +438,73 @@ export default function Settings() {
     deleteAllOrphanPrices,
   } = useSettingsCatalogs({ setError })
 
+  // Jobs & dispatch admin engine — extracted to useSettingsJobsAdmin (v2.856)
+  const {
+    jobOwnerOverridesSectionOpen,
+    setJobOwnerOverridesSectionOpen,
+    jobOwnerOverrideByUserId,
+    setJobOwnerOverrideByUserId,
+    jobOwnerOverridesSaving,
+    jobCountByUserId,
+    reassignTargetByUserId,
+    setReassignTargetByUserId,
+    reassignConfirmOpen,
+    setReassignConfirmOpen,
+    reassignSourceUserId,
+    setReassignSourceUserId,
+    reassignTargetUserId,
+    setReassignTargetUserId,
+    reassignSubmitting,
+    defaultLaborRateSectionOpen,
+    setDefaultLaborRateSectionOpen,
+    defaultLaborRate,
+    setDefaultLaborRate,
+    defaultLaborRateSaving,
+    saveJobOwnerOverrides,
+    confirmReassignJobs,
+    saveDefaultLaborRate,
+  } = useSettingsJobsAdmin({ enabled: myRole === 'dev', users, setError })
+
+  // Prospects/estimate copy engine — extracted to useSettingsProspectsCatalog (v2.856).
+  // Parent-instantiated because SettingsCatalogsProspectsTab is conditional-mount
+  // (unsaved edits must survive tab switches — map quirk #1).
+  const {
+    prospectCopyNoResponse,
+    setProspectCopyNoResponse,
+    prospectCopyPhoneFollowup,
+    setProspectCopyPhoneFollowup,
+    prospectCopyJustCheckingIn,
+    setProspectCopyJustCheckingIn,
+    prospectCopyNoResponseSubject,
+    setProspectCopyNoResponseSubject,
+    prospectCopyPhoneFollowupSubject,
+    setProspectCopyPhoneFollowupSubject,
+    prospectCopyJustCheckingInSubject,
+    setProspectCopyJustCheckingInSubject,
+    prospectCopySaving,
+    prospectCopySectionOpen,
+    setProspectCopySectionOpen,
+    estimateCxSectionOpen,
+    setEstimateCxSectionOpen,
+    estimateCxSaving,
+    estimateCxByKey,
+    setEstimateCxByKey,
+    estimatePublicTermsSaving,
+    estimatePublicTermsBody,
+    setEstimatePublicTermsBody,
+    estimatePublicTermsSectionOpen,
+    setEstimatePublicTermsSectionOpen,
+    estimateLineItemCatalogSectionOpen,
+    setEstimateLineItemCatalogSectionOpen,
+    estimateLineItemCatalogSaving,
+    estimateLineItemCatalogRows,
+    setEstimateLineItemCatalogRows,
+    saveProspectCopyDefaults,
+    saveEstimateCustomerCopyDefaults,
+    saveEstimatePublicTerms,
+    saveEstimateLineItemCatalog,
+  } = useSettingsProspectsCatalog({ enabled: myRole === 'dev', setError })
+
   async function handleSignOut() {
     await supabase.auth.signOut()
     // Manually clear Supabase auth keys so full page load sees no session
@@ -548,17 +580,7 @@ export default function Settings() {
     )
   }
 
-  const [jobOwnerOverridesSectionOpen, setJobOwnerOverridesSectionOpen] = useState(false)
-  const [jobOwnerOverrideByUserId, setJobOwnerOverrideByUserId] = useState<Record<string, string>>({})
-  const [jobOwnerOverridesSaving, setJobOwnerOverridesSaving] = useState(false)
-  const [jobCountByUserId, setJobCountByUserId] = useState<Record<string, number>>({})
-  const [reassignTargetByUserId, setReassignTargetByUserId] = useState<Record<string, string>>({})
-  const [reassignConfirmOpen, setReassignConfirmOpen] = useState(false)
-  const [reassignSourceUserId, setReassignSourceUserId] = useState<string | null>(null)
-  const [reassignTargetUserId, setReassignTargetUserId] = useState<string | null>(null)
-  const [reassignSubmitting, setReassignSubmitting] = useState(false)
   const [additionalPeopleSectionOpen, setAdditionalPeopleSectionOpen] = useState(false)
-  const [advancedSectionOpen, setAdvancedSectionOpen] = useState(false)
   const [financialPinsSectionOpen, setFinancialPinsSectionOpen] = useState(false)
   const [notificationHistoryOpen, setNotificationHistoryOpen] = useState(false)
   const [mutedTasksOpen, setMutedTasksOpen] = useState(false)
@@ -898,108 +920,10 @@ export default function Settings() {
     if (role === 'dev') {
       await loadPayApprovedMasters()
 
-      const prospectCopySettingKeys = [
-        'prospect_copy_no_response_email',
-        'prospect_copy_phone_followup_email',
-        'prospect_copy_just_checking_in_email',
-        'prospect_copy_no_response_email_subject',
-        'prospect_copy_phone_followup_email_subject',
-        'prospect_copy_just_checking_in_email_subject',
-      ] as const
-      const estimateCxSettingKeys = [...ESTIMATE_EXPERIENCE_APP_KEY_LIST, ESTIMATE_PUBLIC_TERMS_BODY_APP_KEY]
-      const settingsBatchKeys = [
-        'default_labor_rate',
-        ...prospectCopySettingKeys,
-        ...estimateCxSettingKeys,
-      ]
-
-      const { data: settingsBatchRows } = await supabase
-        .from('app_settings')
-        .select('key, value_text, value_num')
-        .in('key', settingsBatchKeys)
-
-      const settingsByKey = new Map(
-        (settingsBatchRows ?? []).map((r) => [r.key, r] as [string, { value_text: string | null; value_num: number | null }]),
-      )
-      const laborRow = settingsByKey.get('default_labor_rate')
-      const laborVal = laborRow?.value_num
-      setDefaultLaborRate(laborVal != null ? String(laborVal) : '')
-
-      const prospectCopyByKey = new Map(
-        prospectCopySettingKeys.map((k) => [k, settingsByKey.get(k)?.value_text ?? ''] as const),
-      )
-      setProspectCopyNoResponse(prospectCopyByKey.get('prospect_copy_no_response_email') ?? '')
-      setProspectCopyPhoneFollowup(prospectCopyByKey.get('prospect_copy_phone_followup_email') ?? '')
-      setProspectCopyJustCheckingIn(prospectCopyByKey.get('prospect_copy_just_checking_in_email') ?? '')
-      setProspectCopyNoResponseSubject(prospectCopyByKey.get('prospect_copy_no_response_email_subject') ?? '')
-      setProspectCopyPhoneFollowupSubject(prospectCopyByKey.get('prospect_copy_phone_followup_email_subject') ?? '')
-      setProspectCopyJustCheckingInSubject(prospectCopyByKey.get('prospect_copy_just_checking_in_email_subject') ?? '')
-
-      const estimateCxRows = estimateCxSettingKeys
-        .map((k) => {
-          const row = settingsByKey.get(k)
-          return row ? { key: k, value_text: row.value_text } : null
-        })
-        .filter((r): r is { key: string; value_text: string | null } => r != null)
-
-      setEstimateCxByKey((prev) => {
-        const next = { ...prev }
-        for (const k of ESTIMATE_EXPERIENCE_APP_KEY_LIST) next[k] = next[k] ?? ''
-        for (const r of estimateCxRows) {
-          if (ESTIMATE_EXPERIENCE_APP_KEY_LIST.includes(r.key as (typeof ESTIMATE_EXPERIENCE_APP_KEY_LIST)[number]))
-            next[r.key] = r.value_text ?? ''
-        }
-        const footerAppKey = 'estimate_accept_page_footer'
-        if (!(next[footerAppKey]?.trim())) next[footerAppKey] = builtinEstimateExperience().accept_page_footer
-        return next
-      })
-      const publicTermsRow = estimateCxRows.find((r) => r.key === ESTIMATE_PUBLIC_TERMS_BODY_APP_KEY)
-      setEstimatePublicTermsBody(publicTermsRow?.value_text ?? '')
-
-      const [
-        ,
-        jobOwnerResult,
-        jobCountsResult,
-        dgmRes,
-        egmRes,
-      ] = await Promise.all([
-        (async () => {
-          try {
-            const ecRows = await fetchEstimateCatalogLive(supabase)
-            setEstimateLineItemCatalogRows(catalogDbRowsToLineItems(ecRows))
-          } catch {
-            setEstimateLineItemCatalogRows([])
-          }
-        })(),
-        supabase.from('app_settings').select('key, value_text').like('key', 'job_owner_override_%'),
-        (async (): Promise<JobCountByMasterRow[]> => {
-          try {
-            const rows = await withSupabaseRetry(
-              () => supabase.rpc('list_job_counts_by_master_for_dev_settings'),
-              'list_job_counts_by_master_for_dev_settings',
-            )
-            return rows ?? []
-          } catch {
-            return []
-          }
-        })(),
+      const [dgmRes, egmRes] = await Promise.all([
         supabase.from('dispatch_group_members').select('user_id'),
         supabase.from('estimator_group_members').select('user_id'),
       ])
-
-      const overrides: Record<string, string> = {}
-      for (const row of jobOwnerResult.data ?? []) {
-        const userId = row.key.replace(/^job_owner_override_/, '')
-        if (userId && row.value_text) overrides[userId] = row.value_text
-      }
-      setJobOwnerOverrideByUserId(overrides)
-
-      const jcRows = jobCountsResult
-      const counts: Record<string, number> = {}
-      for (const row of jcRows) {
-        if (row.master_user_id) counts[row.master_user_id] = Number(row.job_count)
-      }
-      setJobCountByUserId(counts)
 
       if (dgmRes.error) setError(dgmRes.error.message)
       else setDispatchMemberIds(new Set((dgmRes.data ?? []).map((r: { user_id: string }) => r.user_id)))
@@ -1055,132 +979,6 @@ export default function Settings() {
       }
     } finally {
       setEstimatorGroupSavingUserId(null)
-    }
-  }
-
-  async function saveJobOwnerOverrides(e: React.FormEvent) {
-    e.preventDefault()
-    if (myRole !== 'dev') return
-    setJobOwnerOverridesSaving(true)
-    try {
-      const creators = users.filter((u) => ['dev', 'master_technician', 'assistant', 'controller'].includes(u.role))
-      for (const u of creators) {
-        const key = `job_owner_override_${u.id}`
-        const selected = jobOwnerOverrideByUserId[u.id]
-        if (!selected || selected === '') {
-          await supabase.from('app_settings').delete().eq('key', key)
-        } else {
-          await supabase.from('app_settings').upsert({ key, value_text: selected }, { onConflict: 'key' })
-        }
-      }
-      showToast('Job creation overrides saved.', 'success')
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save')
-    } finally {
-      setJobOwnerOverridesSaving(false)
-    }
-  }
-
-  async function confirmReassignJobs() {
-    if (!reassignSourceUserId || !reassignTargetUserId) return
-    setReassignSubmitting(true)
-    try {
-      const { error } = await supabase
-        .from('jobs_ledger')
-        .update({ master_user_id: reassignTargetUserId })
-        .eq('master_user_id', reassignSourceUserId)
-      setReassignConfirmOpen(false)
-      setReassignSourceUserId(null)
-      setReassignTargetUserId(null)
-      if (error) setError(error.message)
-      else {
-        showToast('Jobs reassigned.', 'success')
-        setJobCountByUserId((prev) => ({
-          ...prev,
-          [reassignSourceUserId]: 0,
-          [reassignTargetUserId]: (prev[reassignTargetUserId] ?? 0) + (prev[reassignSourceUserId] ?? 0),
-        }))
-      }
-    } finally {
-      setReassignSubmitting(false)
-    }
-  }
-
-  async function saveDefaultLaborRate(e: React.FormEvent) {
-    e.preventDefault()
-    if (myRole !== 'dev') return
-    setDefaultLaborRateSaving(true)
-    const val = defaultLaborRate.trim() === '' ? null : parseFloat(defaultLaborRate) || null
-    const { error } = await supabase.from('app_settings').upsert({ key: 'default_labor_rate', value_num: val }, { onConflict: 'key' })
-    setDefaultLaborRateSaving(false)
-    if (error) setError(error.message)
-  }
-
-  async function saveProspectCopyDefaults(e: React.FormEvent) {
-    e.preventDefault()
-    if (myRole !== 'dev') return
-    setProspectCopySaving(true)
-    const { error } = await supabase.from('app_settings').upsert(
-      [
-        { key: 'prospect_copy_no_response_email', value_text: prospectCopyNoResponse },
-        { key: 'prospect_copy_phone_followup_email', value_text: prospectCopyPhoneFollowup },
-        { key: 'prospect_copy_just_checking_in_email', value_text: prospectCopyJustCheckingIn },
-        { key: 'prospect_copy_no_response_email_subject', value_text: prospectCopyNoResponseSubject },
-        { key: 'prospect_copy_phone_followup_email_subject', value_text: prospectCopyPhoneFollowupSubject },
-        { key: 'prospect_copy_just_checking_in_email_subject', value_text: prospectCopyJustCheckingInSubject },
-      ],
-      { onConflict: 'key' }
-    )
-    setProspectCopySaving(false)
-    if (error) setError(error.message)
-    else showToast('Prospect copy defaults saved.', 'success')
-  }
-
-  async function saveEstimateCustomerCopyDefaults(e: React.FormEvent) {
-    e.preventDefault()
-    if (myRole !== 'dev') return
-    setEstimateCxSaving(true)
-    const { error } = await supabase.from('app_settings').upsert(
-      ESTIMATE_EXPERIENCE_APP_KEY_LIST.map((key) => ({
-        key,
-        value_text: (estimateCxByKey[key] ?? '').slice(0, ESTIMATE_EXPERIENCE_FIELD_MAX_LEN),
-      })),
-      { onConflict: 'key' },
-    )
-    setEstimateCxSaving(false)
-    if (error) setError(error.message)
-    else showToast('Estimate customer copy defaults saved.', 'success')
-  }
-
-  async function saveEstimatePublicTerms(e: React.FormEvent) {
-    e.preventDefault()
-    if (myRole !== 'dev') return
-    setEstimatePublicTermsSaving(true)
-    const { error } = await supabase.from('app_settings').upsert(
-      {
-        key: ESTIMATE_PUBLIC_TERMS_BODY_APP_KEY,
-        value_text: estimatePublicTermsBody.slice(0, ESTIMATE_EXPERIENCE_FIELD_MAX_LEN),
-      },
-      { onConflict: 'key' },
-    )
-    setEstimatePublicTermsSaving(false)
-    if (error) setError(error.message)
-    else showToast('Public terms page saved.', 'success')
-  }
-
-  async function saveEstimateLineItemCatalog(e: React.FormEvent) {
-    e.preventDefault()
-    if (myRole !== 'dev') return
-    setEstimateLineItemCatalogSaving(true)
-    try {
-      await replaceEstimateCatalogFromPayload(supabase, estimateLineItemCatalogRows)
-      const ecRows = await fetchEstimateCatalogLive(supabase)
-      setEstimateLineItemCatalogRows(catalogDbRowsToLineItems(ecRows))
-      showToast('Estimate line item catalog saved.', 'success')
-    } catch (err) {
-      setError(formatErrorMessage(err, 'Could not save catalog'))
-    } finally {
-      setEstimateLineItemCatalogSaving(false)
     }
   }
 
@@ -1704,39 +1502,6 @@ export default function Settings() {
       return devSalariedPickerRows.find((r) => r.userId != null)?.userId ?? null
     })
   }, [devPayConfigForSalaried, devSalariedPickerRows])
-
-  async function handleClaimCode(e: React.FormEvent) {
-    e.preventDefault()
-    setCodeError(null)
-    setCodeSubmitting(true)
-    const { data, error: eFn } = await supabase.functions.invoke('claim-dev', {
-      body: { code: code.trim() },
-    })
-    setCodeSubmitting(false)
-    if (eFn) {
-      let msg = eFn.message
-      if (eFn instanceof FunctionsHttpError && eFn.context?.json) {
-        try {
-          const b = (await eFn.context.json()) as { error?: string } | null
-          if (b?.error) msg = b.error
-        } catch { /* ignore */ }
-      }
-      setCodeError(msg)
-      return
-    }
-    const err = (data as { error?: string } | null)?.error
-    if (err) {
-      setCodeError(err)
-      return
-    }
-    if ((data as { success?: boolean } | null)?.success) {
-      setCode('')
-      setCodeError(null)
-      await loadData()
-    } else {
-      setCodeError('Invalid code')
-    }
-  }
 
   function openPasswordChange() {
     setPasswordChangeOpen(true)
@@ -2616,14 +2381,7 @@ export default function Settings() {
       {!isSubcontractorLikeRole(myRole) && (
         <SettingsAdvancedTab
           active={activeSettingsTab === 'settings-advanced-tools'}
-          advancedSectionOpen={advancedSectionOpen}
-          setAdvancedSectionOpen={setAdvancedSectionOpen}
-          code={code}
-          setCode={setCode}
-          codeError={codeError}
-          setCodeError={setCodeError}
-          codeSubmitting={codeSubmitting}
-          handleClaimCode={handleClaimCode}
+          onRoleMaybeChanged={() => { void loadData() }}
         />
       )}
 

@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-21 (v2.855)
+last_updated: 2026-07-21 (v2.856)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.856)
+
+### Settings decomposition, step 4a: Advanced claim-code, Jobs admin, prospects/estimate copy (2026-07-21)
+First half of order #4 in [`SETTINGS_TABS_ARCHITECTURE.md`](./SETTINGS_TABS_ARCHITECTURE.md), behavior-preserving. [`SettingsAdvancedTab`](../src/components/settings/SettingsAdvancedTab.tsx) is now fully self-contained (owns the claim-code form + `claim-dev` edge-fn call; the parent passes only `active` and an `onRoleMaybeChanged` reload callback). The Jobs & dispatch admin engine (job-owner overrides, bulk job re-assign with optimistic count fix-up, default labor rate — 12 state vars + 3 handlers + loads) moved into [`useSettingsJobsAdmin`](../src/hooks/useSettingsJobsAdmin.ts). The prospects/estimate copy engine (prospect copy defaults, estimate customer-experience defaults, public terms, line-item catalog — 17 state vars + 4 savers + loads) moved into [`useSettingsProspectsCatalog`](../src/hooks/useSettingsProspectsCatalog.ts), parent-instantiated so unsaved edits still survive the conditional-mount tab's unmounts. `loadData`'s dev-branch `app_settings` batch is gone (each hook fetches its own keys). Settings.tsx shrinks 2,677 → 2,435 lines. No user-facing changes.
 
 ## Latest Updates (v2.855)
 
