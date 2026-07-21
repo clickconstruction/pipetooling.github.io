@@ -34,6 +34,15 @@ Pick the job — a schedule block appears in the cell. Jobs the person already c
 
 Each block can carry a note: click the pencil ("Edit block note") to open the **Schedule block note** modal and {{button:blue|Save}}. Notes are what the tech sees about the assignment, so use them for gate codes, scope reminders, and arrival instructions.
 
+## Copying jobs to a whole crew (linked)
+
+To put the same jobs on several people at once, use the chains button (two links of a chain) next to the **++** in the People toolbar. A bar appears at the top and walks you through two steps:
+
+1. **1 of 2 — Click the job blocks you want to copy linked.** Every block gets a dashed outline; click the ones to copy (they highlight), then press {{button:blue|Next: pick people}}.
+2. **2 of 2 — Click the people to apply them to.** Names in the left column become click targets. Each click instantly gives that person a **linked** copy of every selected block — same day, same times, same note, chained to the original so time and note changes stay in sync (the {{chip:blue|linked}} chains marker appears on the cards).
+
+Copies that would overlap something already on that person's day — or that the person already has — are skipped, and the toast tells you how many applied. Click as many people as you need, then press {{chip:gray|Esc}} or **Done**.
+
 ## Adjusting times on the Day view
 
 On the **Day** view, every scheduled job bar has an orange dot at its start and end. If you can edit the schedule, drag a dot left or right to change that time — it snaps to 15-minute steps and **auto-saves about 2 seconds after your last touch**, updating the People and Jobs views too. A job can never shrink below 30 minutes. (Switching tabs before the auto-save fires still saves your change first.)
