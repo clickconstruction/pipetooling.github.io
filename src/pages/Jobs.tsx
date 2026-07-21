@@ -217,6 +217,7 @@ export default function Jobs() {
     setLaborJobs,
     laborJobNamesByHcp,
     laborJobsLoading,
+    laborJobsLoadedOnce,
     laborJobDeletingId,
     loadLaborJobs,
     deleteLaborJob,
@@ -877,6 +878,11 @@ export default function Jobs() {
     const tab = searchParams.get('tab')
     if (newJob && (tab === 'sub_sheet_ledger' || tab === 'labor')) {
       setActiveTab('sub_sheet_ledger')
+      // Handle-race guard (map rule, v2.834): on the earliest cold-load passes
+      // the form modal's ref isn't attached yet, so an ungated call no-ops
+      // while the param strips. Wait for the ledger's first load — by then the
+      // ref is long attached. (Activating the tab above is what triggers it.)
+      if (!laborJobsLoadedOnce) return
       subLaborFormRef.current?.open()
       setSearchParams((p) => {
         const next = new URLSearchParams(p)
@@ -902,7 +908,7 @@ export default function Jobs() {
         return next
       }, { replace: true })
     }
-  }, [searchParams, jobsListLoading, jobsListRefreshing, jobFormModal, loadJobs])
+  }, [searchParams, jobsListLoading, jobsListRefreshing, laborJobsLoadedOnce, jobFormModal, loadJobs])
 
   // When edit=jobId is in URL, open the global job form modal
   const editJobId = searchParams.get('edit')
@@ -986,7 +992,11 @@ export default function Jobs() {
   // When editLabor=hcp is in URL and labor jobs are loaded, open edit or new labor modal
   const editLaborHcp = searchParams.get('editLabor')
   useEffect(() => {
-    if (!editLaborHcp || laborJobsLoading) return
+    // laborJobsLoading starts false BEFORE the load begins, so on cold loads
+    // this used to decide against an empty list (opening New instead of Edit
+    // pre-v2.823; silently no-opping via the unattached ref after). Gate on
+    // the first completed load (map handle-race rule, v2.834).
+    if (!editLaborHcp || !laborJobsLoadedOnce || laborJobsLoading) return
     const hcpLower = editLaborHcp.trim().toLowerCase()
     const laborJob = laborJobs.find((j) => (j.job_number ?? '').trim().toLowerCase() === hcpLower)
     if (laborJob) {
@@ -999,7 +1009,7 @@ export default function Jobs() {
       next.delete('editLabor')
       return next
     }, { replace: true })
-  }, [editLaborHcp, laborJobs, laborJobsLoading])
+  }, [editLaborHcp, laborJobs, laborJobsLoadedOnce, laborJobsLoading])
 
   // When editParts=jobId is in URL and tally parts are loaded, expand job and scroll to it
   const editPartsJobId = searchParams.get('editParts')

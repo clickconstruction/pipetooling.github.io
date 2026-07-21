@@ -27,6 +27,13 @@ export function useSubLaborLedger({
   const [laborJobs, setLaborJobs] = useState<LaborJob[]>([])
   const [laborJobNamesByHcp, setLaborJobNamesByHcp] = useState<Record<string, string>>({})
   const [laborJobsLoading, setLaborJobsLoading] = useState(false)
+  /**
+   * True after the first loadLaborJobs completes (success or error).
+   * `laborJobsLoading` starts false BEFORE any load begins, so deep-link
+   * effects that gate on it alone run against an empty list on the earliest
+   * cold-load passes — gate on this instead (v2.834 handle-race fix).
+   */
+  const [laborJobsLoadedOnce, setLaborJobsLoadedOnce] = useState(false)
   const [laborJobDeletingId, setLaborJobDeletingId] = useState<string | null>(null)
 
   async function loadLaborJobs() {
@@ -109,6 +116,7 @@ export function useSubLaborLedger({
       setLaborJobNamesByHcp({})
     }
     setLaborJobsLoading(false)
+    setLaborJobsLoadedOnce(true)
   }
 
   async function deleteLaborJob(id: string): Promise<boolean> {
@@ -181,6 +189,7 @@ export function useSubLaborLedger({
     setLaborJobs,
     laborJobNamesByHcp,
     laborJobsLoading,
+    laborJobsLoadedOnce,
     laborJobDeletingId,
     loadLaborJobs,
     deleteLaborJob,

@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-21 (v2.834)
+last_updated: 2026-07-21 (v2.835)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.835)
+
+### Jobs fix: Sub Labor deep links no-opped on cold loads — third handle-race instance (2026-07-21)
+Live-sweep find #3, same family as v2.832's Stages deep links but on the [`JobsSubLaborFormModal`](../src/components/jobs/JobsSubLaborFormModal.tsx) ref: `?editLabor=<hcp>` and `?newJob=true&tab=sub_sheet_ledger` stripped their params on cold loads without opening anything. `?editLabor=`'s guard checked `laborJobsLoading` — which initializes **false before the load begins** — so the first pass decided against an empty list (pre-v2.823 that opened *New* instead of *Edit* for an existing HCP; post-v2.823 the unattached ref made it a total no-op); the `?newJob=` sub-labor branch was ungated. [`useSubLaborLedger`](../src/hooks/useSubLaborLedger.ts) now exposes `laborJobsLoadedOnce` (true after the first load completes) and both effects gate on it — which also fixes the pre-existing wrong-mode cold-load behavior: `?editLabor=` for an existing HCP now opens **Edit**, as the effect's own comment always intended. Map's handle-race rule extended to cover every ref, not just `stagesTabRef`.
 
 ## Latest Updates (v2.834)
 
