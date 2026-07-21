@@ -1014,6 +1014,9 @@ function HubPeopleDayCell({
 }
 
 type HubPeoplePanelProps = {
+  /** Week navigation cluster rendered inline as the first item of the toolbar row,
+   * so nav + controls share one line when the viewport is wide and wrap when narrow. */
+  weekNav?: ReactNode
   visibleDayKeys: string[]
   hideWeekend: boolean
   onHideWeekendChange: (hide: boolean) => void
@@ -1074,6 +1077,7 @@ type HubPeoplePanelProps = {
 }
 
 function HubPeoplePanel({
+  weekNav,
   visibleDayKeys,
   hideWeekend,
   onHideWeekendChange,
@@ -1364,6 +1368,7 @@ function HubPeoplePanel({
       ) : null}
 
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', alignItems: 'center', marginBottom: '0.75rem' }}>
+        {weekNav}
         {canEdit && !hubAssignJobPlacement && onRequestHubAddJob ? (
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
             <button
@@ -2428,8 +2433,10 @@ export function ScheduleDispatchHub({
       ) : null}
 
       {/* Week nav sits BELOW the tab bar and only on the week-scoped tabs — the Day tab has its own
-          day navigation. The right slot (Share) lives in the tab-bar cluster when tabs are shown. */}
-      {showWeekNavigation && (!showHubViewTabs || hubTab !== 'day') ? (
+          day navigation. The right slot (Share) lives in the tab-bar cluster when tabs are shown.
+          On the People tab the nav renders INSIDE the panel's toolbar row (weekNav prop below) so
+          it shares a line with the controls when the viewport is wide. */}
+      {showWeekNavigation && (!showHubViewTabs || hubTab === 'jobs') ? (
         <ScheduleDispatchWeekNav
           weekStart={weekStart}
           onWeekShift={onWeekShift}
@@ -2516,6 +2523,17 @@ export function ScheduleDispatchHub({
         />
       ) : (
         <HubPeoplePanel
+          weekNav={
+            showWeekNavigation ? (
+              <ScheduleDispatchWeekNav
+                inline
+                weekStart={weekStart}
+                onWeekShift={onWeekShift}
+                onThisWeek={onThisWeek}
+                dateRangeOverride={weekNavDateRangeOverride}
+              />
+            ) : undefined
+          }
           visibleDayKeys={visibleDayKeys}
           hideWeekend={hideWeekend}
           onHideWeekendChange={onHideWeekendChange}
