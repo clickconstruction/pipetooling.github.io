@@ -5,7 +5,6 @@ import { DashboardGroupCard } from './DashboardGroupCard'
 import { canLeaveJobFieldReport } from '../../lib/canLeaveJobFieldReport'
 import { isAssistantLike, isSubcontractorLikeRole } from '../../lib/subcontractorLikeRole'
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
-import { labelJobsLedgerStatusForDashboard } from '../../lib/jobsLedgerStatusPipeline'
 import { formatDatetime } from '../../lib/dashboardProjectsCard'
 import { subcontractorLastActivityMobileLine } from '../../lib/subcontractorLastActivityCompact'
 import { formatTimeSince, subcontractorLastActivityBlock } from '../../lib/dashboardJobRowActivity'
@@ -132,11 +131,6 @@ export function DashboardTeamReadyToBillSection({
                           '—'
                         )}
                       </div>
-                      {isSubcontractorLikeRole(role) && (
-                        <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginTop: 4 }}>
-                          Job: {labelJobsLedgerStatusForDashboard(j.status)}
-                        </div>
-                      )}
                       {isSubcontractorLikeRole(role) && narrowViewport660 && j.created_at && (
                         <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginTop: 4 }} title="Time since job created">
                           Open {formatTimeSince(j.created_at)}
