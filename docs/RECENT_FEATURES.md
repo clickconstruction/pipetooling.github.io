@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-21 (v2.858)
+last_updated: 2026-07-21 (v2.859)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.859)
+
+### Settings decomposition, step 6 (final): Your account engine extracted (2026-07-21)
+Order #6 of the [`SETTINGS_TABS_ARCHITECTURE.md`](./SETTINGS_TABS_ARCHITECTURE.md) plan — the last engine move, behavior-preserving. [`useSettingsAccount`](../src/hooks/useSettingsAccount.ts) (parent-instantiated) now owns the profile form (duplicate-name check + pay-table name cascade), the password-change modal state (still *opened* from the page shell header via the returned `openPasswordChange`), the push-notification test, location permission, the self-salaried flag, and the dev-only "All salaried" picker (~26 state vars, 9 handlers, 3 effects, 2 memos). `loadData` hydrates the profile fields through the hook's `applyProfileRow` from its existing users-row fetch — no duplicate query. **Campaign result: Settings.tsx is 1,703 lines, down from 5,171 (−67%)**, with the engine rooms living in 9 focused hooks + 2 self-contained components, each independently reviewable. Remaining follow-on (tracked in the map): sub-decomposing the 1,985-line `SettingsDashboardTab` per section. No user-facing changes.
 
 ## Latest Updates (v2.858)
 

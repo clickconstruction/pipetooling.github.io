@@ -18,7 +18,7 @@ The repo still has several God components (line counts at 2026-07-20):
 | `src/pages/Materials.tsx` | 6,935 | map written ([`MATERIALS_TABS_ARCHITECTURE.md`](./MATERIALS_TABS_ARCHITECTURE.md)) — low-churn, no extraction scheduled |
 | `src/components/bids/BidsTakeoffTab.tsx` | 5,641 | already an extracted tab; kept growing — candidate for its own sub-decomposition |
 | `src/pages/Estimates.tsx` | 5,332 | no map yet |
-| `src/pages/Settings.tsx` | 1,969 | map written ([`SETTINGS_TABS_ARCHITECTURE.md`](./SETTINGS_TABS_ARCHITECTURE.md)) — extraction underway (v2.853–v2.858; Dashboard-residue hooks landed, Account residue last) |
+| `src/pages/Settings.tsx` | 1,703 | **decomposition done** (v2.853–v2.859, 5,171 → 1,703; see map) — remaining follow-on is sub-decomposing `SettingsDashboardTab` (1,985) |
 | `src/components/people/PeopleReviewTab.tsx` | 5,007 | already an extracted tab |
 | `src/pages/Workflow.tsx` | 4,782 | no map yet |
 | `src/components/jobs/JobFormModal.tsx` | 4,342 | a modal, not a page — same method applies; shrank from ~7.1k via mapped extraction ([`JOB_FORM_MODAL_ARCHITECTURE.md`](./JOB_FORM_MODAL_ARCHITECTURE.md)) — extraction underway |
