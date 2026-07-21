@@ -1,3 +1,4 @@
+import { existsSync, readFileSync } from 'node:fs'
 import { defineConfig, devices } from '@playwright/test'
 
 /**
@@ -6,8 +7,21 @@ import { defineConfig, devices } from '@playwright/test'
  * — wired to post-deploy/nightly/manual workflows, never to PR checks.
  *
  * Requires E2E_TEST_EMAIL / E2E_TEST_PASSWORD in the environment (GitHub
- * Actions secrets in CI; export them in your shell locally).
+ * Actions secrets in CI; locally they load from `.env.local` below, or export
+ * them in your shell).
  */
+
+// Local convenience: fill missing vars from gitignored .env.local so
+// `npm run e2e` works without exporting credentials by hand. Real
+// environment variables always win (CI is unaffected — no .env.local there).
+if (existsSync('.env.local')) {
+  for (const line of readFileSync('.env.local', 'utf8').split('\n')) {
+    const m = line.match(/^([A-Za-z_][A-Za-z0-9_]*)=(.*)$/)
+    if (m?.[1] && m[2] !== undefined && process.env[m[1]] === undefined) {
+      process.env[m[1]] = m[2]
+    }
+  }
+}
 export default defineConfig({
   testDir: './e2e',
   timeout: 90_000,
