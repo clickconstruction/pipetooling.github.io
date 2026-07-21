@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-20 (v2.815)
+last_updated: 2026-07-20 (v2.816)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.816)
+
+### Quickfill: new per-user "My Inbox" section — the Dashboard inbox card embedded in the office runway (2026-07-20)
+New Quickfill section **My Inbox** (default position right after Office Arriving) shows the signed-in user's **Due Today** and **Overdue** checklist tasks — the *same* engine as the Dashboard's My Inbox card, not a rebuild: new thin adapter [`QuickfillMyInboxSection`](../src/components/quickfill/QuickfillMyInboxSection.tsx) mounts [`DashboardMyInboxCard`](../src/components/dashboard/DashboardMyInboxCard.tsx) with all its behavior (optimistic checkbox toggles, completion push notifications, days-after-completion rescheduling, Forward + mute modals, dev Recently-Completed corner). Two seams enabled the reuse (Dashboard behavior unchanged): a `loadOnMount` prop (Quickfill has no boot query, so the card self-loads Due Today via its own richer today+overdue-show-until-completed query) and `getCurrentUserName` extracted to [`src/lib/getCurrentUserName.ts`](../src/lib/getCurrentUserName.ts). **Because the section is personal, the org-wide mark system deliberately does not apply**: no "Mark up to date" button, mark history, or "Last marked" stamp (new `showLastMarked` wrapper prop), it never collapses, and its jump-grid chip renders neutral (`var(--surface)`) instead of the freshness palette with the tooltip "Personal section — items are completed individually" — one user marking it would have flipped it for everyone (`quickfill_section_marks` is org-wide). Eligible for every signed-in Quickfill viewer; when the inbox is empty the card self-hides and the section shows "Nothing in your inbox right now." (the card stays mounted so it can re-report). **Prod note:** the saved section order appends unknown ids at the end — a dev should drag My Inbox into place once via Active sections (Dev Only). No DB/RLS/type changes. Help guide + `DASHBOARD_SECTIONS_ARCHITECTURE.md` updated.
 
 ## Latest Updates (v2.815)
 

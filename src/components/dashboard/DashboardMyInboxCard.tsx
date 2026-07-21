@@ -47,6 +47,7 @@ export function DashboardMyInboxCard({
   setUserError,
   getCurrentUserName,
   onVisibleChange,
+  loadOnMount = false,
 }: {
   authUserId: string | undefined
   role: UserRole | null
@@ -59,6 +60,12 @@ export function DashboardMyInboxCard({
   getCurrentUserName: () => Promise<string>
   /** Reports the card's render gate so the parent's SectionDock entry can mirror it. */
   onVisibleChange: (visible: boolean) => void
+  /**
+   * Self-load Due Today on mount. Dashboard leaves this false (its boot query seeds
+   * `todayChecklist`); the Quickfill adapter has no boot and passes true — that path
+   * uses this card's own richer query (today + overdue show-until-completed).
+   */
+  loadOnMount?: boolean
 }) {
   const { showToast } = useToastContext()
   const isDev = role === 'dev'
@@ -93,6 +100,11 @@ export function DashboardMyInboxCard({
     }
     loadOutstanding()
   }, [authUserId])
+
+  useEffect(() => {
+    if (!loadOnMount || !authUserId) return
+    void loadTodayChecklist()
+  }, [loadOnMount, authUserId])
 
   // Load users for Forward modal (all users, for Outstanding Forward)
   useEffect(() => {

@@ -52,6 +52,7 @@ The sections cover the office's recurring review surfaces — among them:
 - **Email / Texts / Physical inbox** — communication queues.
 - **Prospects**, **Supply Houses**, **Banking sorting**, and more.
 - **Unreachable Prospects** — only appears when at least one prospect is flagged can't-reach; at zero it disappears from the page entirely (working the last one out of the list is the goal).
+- **My Inbox** — *yours alone*: the same Due Today and Overdue tasks as the Dashboard's My Inbox card, with the same checkboxes, Forward, and mute controls. Because it's personal, it has no shared "Mark up to date" button and its jump chip stays neutral instead of red/yellow/green — it clears itself as you complete tasks, and shows "Nothing in your inbox right now" when you're done.
 
 Devs can reorder sections, hide them, and edit each section's banner prompt — everyone else sees the configured order.
 
