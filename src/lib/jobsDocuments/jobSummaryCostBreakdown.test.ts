@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import type { LaborJob } from '../../types/laborJob'
+import { formatWorkDateYmdWeekdayLongFriendly } from '../../utils/dateUtils'
 import { buildJobSummaryCostBreakdownHtml, type JobSummaryCostBreakdownInput } from './jobSummaryCostBreakdown'
 
 function baseInput(p: Partial<JobSummaryCostBreakdownInput> = {}): JobSummaryCostBreakdownInput {
@@ -64,8 +65,9 @@ describe('buildJobSummaryCostBreakdownHtml', () => {
     expect(html).toContain('<td>Ana</td>')
     // person-summary footer total = team 240 + card 0 + supply 0
     expect(html).toContain('$240.00')
-    // work-date alloc row rendered from byWorkDate
-    expect(html).toContain('<td>Jul 1, 2026</td>')
+    // work-date alloc row rendered from byWorkDate (formatter output varies by
+    // environment TZ/Intl data, so assert against the formatter itself)
+    expect(html).toContain(`<td>${formatWorkDateYmdWeekdayLongFriendly('2026-07-01')}</td>`)
   })
 
   it('renders supply-house invoices with the unassigned person-summary row', () => {
