@@ -59,6 +59,7 @@ import { pickDayForScheduleDispatchUrl } from '../../lib/scheduleDispatchColumnF
 import {
   companyWeekStartSundayContaining,
   denverCalendarDayKey,
+  denverCalendarDaysBetweenInstantAndNow,
   formatScheduleDispatchVisibleDateRange,
   getDefaultWeekRange,
   getScheduleDispatchVisibleDayKeys,
@@ -82,19 +83,20 @@ import {
 } from '../../lib/userTimeOffByCell'
 import { ScheduleDispatchUndoNotComingInModal } from './ScheduleDispatchUndoNotComingInModal'
 
-/** Picker subline: "MM/DD/YY | address" (date the job was added, app calendar TZ). Either part optional. */
+/** Picker subline: "<N>d MM/DD | address" (N calendar days since the job was added, app calendar TZ). Either part optional. */
 function hubJobPickerSubline(r: { created_at?: string | null; job_address?: string | null }): string | undefined {
   const dt = (r.created_at ?? '').trim()
   let dateLabel = ''
   if (dt) {
     const d = new Date(dt)
     if (!Number.isNaN(d.getTime())) {
-      dateLabel = new Intl.DateTimeFormat('en-US', {
+      const daysAgo = denverCalendarDaysBetweenInstantAndNow(d.getTime())
+      const mmdd = new Intl.DateTimeFormat('en-US', {
         timeZone: APP_CALENDAR_TZ,
         month: '2-digit',
         day: '2-digit',
-        year: '2-digit',
       }).format(d)
+      dateLabel = `${daysAgo}d ${mmdd}`
     }
   }
   const address = (r.job_address ?? '').trim()
