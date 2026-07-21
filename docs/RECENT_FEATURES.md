@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-21 (v2.832)
+last_updated: 2026-07-21 (v2.833)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.833)
+
+### Fix: /accounts-receivable and /map bounced allowed users to the Dashboard on cold loads (2026-07-21)
+Found by the post-decomposition live sweep (pre-existing — not from the refactor). [`useAuth`](../src/hooks/useAuth.ts) resolves `loading` before the un-awaited `users`-row role fetch lands, so on a cold page load there is always a window where `user` is set but `role` is still `null`. [`JobsAccountsReceivable`](../src/pages/JobsAccountsReceivable.tsx) and [`Map`](../src/pages/Map.tsx) render-gated on the role during that window and issued `<Navigate to="/dashboard" replace />` — so a direct load of either URL redirected **every** role, dev included (warm SPA navigation worked because the role was already cached). Both pages now treat `role == null` (with a signed-in user) as still-loading, matching [`ScheduleDispatch`](../src/pages/ScheduleDispatch.tsx)'s `role != null && !allowed` pattern; signed-out visitors keep their old redirects. Once the role resolves, disallowed roles still bounce exactly as before.
 
 ## Latest Updates (v2.832)
 
