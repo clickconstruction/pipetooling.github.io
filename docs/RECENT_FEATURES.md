@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-20 (v2.824)
+last_updated: 2026-07-20 (v2.825)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.825)
+
+### Jobs refactor: Parts/Job Summary Mercury-allocation engine extracted to useJobsMercuryAllocations (2026-07-20)
+Step 5 (seam half) of the mapped [`Jobs.tsx`](../src/pages/Jobs.tsx) decomposition ([`JOBS_TABS_ARCHITECTURE.md`](./JOBS_TABS_ARCHITECTURE.md)): the Mercury-allocation engine **shared by the Parts tab and the Job Summary drilldowns** moves verbatim into [`useJobsMercuryAllocations`](../src/hooks/useJobsMercuryAllocations.ts) (379 lines) — the per-job card-charge totals batch effect, the parts-tab allocation cache (+ loaded/in-flight refs), the unattributed-list / all-jobs-unattributed / allocation-modal states, the two flow refs that route `onPartsAllocSaved` refreshes, quick-assign, and the banking-attribution users loader. The page destructures the return so every downstream reference keeps its name (following the v2.822 `useSubLaborLedger` seam pattern). Job Summary's lazy mercury cache and cost-drilldown modal stay parent-side for now, bridged by two **temporary callbacks** — `onJobSummaryMercuryTouched` (invalidate + force-reload one job) and `onJobSummaryDrilldownClose` — until the step-6 `useJobSummaryData` seam claims them. The all-jobs unattributed **scope memos moved into the hook** (they read the hook-owned card-charge totals, so they cannot stay parent-side); their parent inputs (`jobs`/`showMyJobsOnly`/`myJobIds`) arrive via `unattributedScopeInputs`. The `activeTab`-keyed effects (close-on-tab-leave, refetch-on-open, auto-load for expanded parts rows) stay in the page, UI-coupled per the playbook. The three mercury modals still render in the page's modal tail — moving them into [`JobsPartsTab`](../src/components/jobs/JobsPartsTab.tsx) is the open second half of step 5. **Behavior-preserving.** Jobs.tsx 7,598 → 7,339 lines.
 
 ## Latest Updates (v2.824)
 

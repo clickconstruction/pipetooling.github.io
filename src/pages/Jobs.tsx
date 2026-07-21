@@ -119,24 +119,10 @@ import { getDefaultWeekRange } from '../utils/dateUtils'
 import { fetchAttributionsByMercuryTxIds } from '../lib/fetchMercuryRelationsByTxIds'
 import { fetchMercuryJobAllocationsWithAttributionForJob } from '../lib/fetchMercuryJobAllocationsWithAttributionForJob'
 import { formatDecimalWorkHoursToHhMm } from '../lib/formatDecimalWorkHoursHhMm'
-import { loadMercuryAllocModalDataForTransaction, type MercuryAllocModalData } from '../lib/mercuryAllocModalData'
-import {
-  PartsUnattributedMercuryListModal,
-  loadUsersOptionsForBankingAttribution,
-} from '../components/jobs/PartsUnattributedMercuryListModal'
+import { PartsUnattributedMercuryListModal } from '../components/jobs/PartsUnattributedMercuryListModal'
 import { PartsUnattributedAllJobsModal } from '../components/jobs/PartsUnattributedAllJobsModal'
-import {
-  fetchUnattributedMercuryLinesForManyJobs,
-  type UnattributedMercuryLineForJob,
-} from '../lib/fetchUnattributedMercuryForManyJobs'
-import {
-  MercuryTransactionAllocationsModal,
-  type MercuryAllocSavedDetail,
-} from '../components/MercuryTransactionAllocationsModal'
-import type { SearchableSelectOption } from '../components/SearchableSelect'
-import { isSelectableOption } from '../components/SearchableSelect'
-import { mercuryQuickAssignUserAttribution } from '../lib/mercuryQuickAssignUserAttribution'
-import type { BankingAttributionUser } from '../lib/mercuryCardNicknameUserMatch'
+import { MercuryTransactionAllocationsModal } from '../components/MercuryTransactionAllocationsModal'
+import { useJobsMercuryAllocations } from '../hooks/useJobsMercuryAllocations'
 import {
   deriveStagesBillingActivityDetail,
   deriveStagesFieldReferenceYmd,
@@ -598,23 +584,50 @@ export default function Jobs() {
     }
   }, [])
 
-  const [mercuryCardChargesByJobId, setMercuryCardChargesByJobId] = useState<Map<string, number>>(() => new Map())
-  const partsTabMercuryLoadedRef = useRef<Set<string>>(new Set())
-  const partsTabMercuryInFlightRef = useRef<Set<string>>(new Set())
-  const [partsTabMercuryAllocationsByJobId, setPartsTabMercuryAllocationsByJobId] = useState<
-    Map<string, Awaited<ReturnType<typeof fetchMercuryJobAllocationsWithAttributionForJob>>>
-  >(() => new Map())
-  const partsUnattribFlowJobIdRef = useRef<string | null>(null)
-  /** When opening Mercury alloc modal from Job Summary drilldown, refresh this job (+ targets) on save. */
-  const jobSummaryMercuryEditFlowJobIdRef = useRef<string | null>(null)
-  const [partsUnattribListJobId, setPartsUnattribListJobId] = useState<string | null>(null)
-  const [partsAllocModalData, setPartsAllocModalData] = useState<MercuryAllocModalData | null>(null)
   const [jobSummaryCostDrilldown, setJobSummaryCostDrilldown] = useState<{ title: string; body: ReactNode } | null>(null)
-  const [partsAllocModalOpen, setPartsAllocModalOpen] = useState(false)
-  const [bankingAttributionUsersOptions, setBankingAttributionUsersOptions] = useState<SearchableSelectOption[]>([])
-  const [allJobsUnattributedOpen, setAllJobsUnattributedOpen] = useState(false)
-  const [allJobsUnattributedLoading, setAllJobsUnattributedLoading] = useState(false)
-  const [allJobsUnattributedLines, setAllJobsUnattributedLines] = useState<UnattributedMercuryLineForJob[] | null>(null)
+  const jobListForCardCharges = useMemo(
+    () => (activeTab === 'job-summary' && jobSummaryLedgerJobs !== null ? jobSummaryLedgerJobs : jobs),
+    [activeTab, jobSummaryLedgerJobs, jobs],
+  )
+  const {
+    mercuryCardChargesByJobId,
+    partsTabMercuryLoadedRef,
+    partsTabMercuryAllocationsByJobId,
+    partsUnattribFlowJobIdRef,
+    partsUnattribListJobId,
+    setPartsUnattribListJobId,
+    partsAllocModalData,
+    partsAllocModalOpen,
+    bankingAttributionUsersOptions,
+    allJobsUnattributedOpen,
+    setAllJobsUnattributedOpen,
+    allJobsUnattributedLoading,
+    allJobsUnattributedLines,
+    loadPartsTabMercuryForJob,
+    dismissPartsUnattributedList,
+    closeListOnlyForAssign,
+    closeAllJobsListForAssign,
+    handleAssignToTransactionFromParts,
+    handleJobSummaryMercuryReassignFromDrilldown,
+    closePartsAllocModal,
+    refetchAllJobsUnattributedData,
+    onPartsAllocSaved,
+    partsUnattribBankingUsersForMatch,
+    handleQuickAddUserFromParts,
+  } = useJobsMercuryAllocations({
+    jobListForCardCharges,
+    canAccessBankingForParts,
+    authUserId: authUser?.id,
+    showToast,
+    unattributedScopeInputs: { jobs, showMyJobsOnly, myJobIds },
+    // Job Summary bridge (temporary until the useJobSummaryData seam): the lazy
+    // Job Summary mercury cache + drilldown modal stay parent-side.
+    onJobSummaryMercuryTouched: (jid) => {
+      jobSummaryMercuryAllocationsLoadedRef.current.delete(jid)
+      void loadJobSummaryMercuryAllocationsForJob(jid, true)
+    },
+    onJobSummaryDrilldownClose: () => setJobSummaryCostDrilldown(null),
+  })
   const [pendingScrollToPartsJobId, setPendingScrollToPartsJobId] = useState<string | null>(null)
   const [pendingStagesInvoiceFocusId, setPendingStagesInvoiceFocusId] = useState<string | null>(null)
   const [stagesInvoiceFlashId, setStagesInvoiceFlashId] = useState<string | null>(null)
@@ -2187,270 +2200,6 @@ export default function Jobs() {
     jobSummaryLedgerSnapshotLoadedRef.current = false
   }, [authUser?.id])
 
-  const jobListForCardCharges = useMemo(
-    () => (activeTab === 'job-summary' && jobSummaryLedgerJobs !== null ? jobSummaryLedgerJobs : jobs),
-    [activeTab, jobSummaryLedgerJobs, jobs],
-  )
-  const jobIdsKeyForCardCharges = useMemo(
-    () => jobListForCardCharges.map((j) => j.id).sort().join(','),
-    [jobListForCardCharges],
-  )
-
-  useEffect(() => {
-    if (jobListForCardCharges.length === 0) {
-      setMercuryCardChargesByJobId(new Map())
-      return
-    }
-    const ids = jobListForCardCharges.map((j) => j.id)
-    void withSupabaseRetry(
-      async () =>
-        supabase.from('mercury_transaction_job_allocations').select('job_id, amount').in('job_id', ids),
-      'mercury card charges by job',
-    )
-      .then((rows) => {
-        const m = new Map<string, number>()
-        for (const row of rows ?? []) {
-          const jid = row.job_id
-          m.set(jid, (m.get(jid) ?? 0) + Math.abs(Number(row.amount)))
-        }
-        setMercuryCardChargesByJobId(m)
-      })
-      .catch(() => setMercuryCardChargesByJobId(new Map()))
-  }, [jobIdsKeyForCardCharges])
-
-  const loadPartsTabMercuryForJob = useCallback(async (jobId: string) => {
-    if (partsTabMercuryLoadedRef.current.has(jobId) || partsTabMercuryInFlightRef.current.has(jobId)) {
-      return
-    }
-    partsTabMercuryInFlightRef.current.add(jobId)
-    try {
-      const rows = await fetchMercuryJobAllocationsWithAttributionForJob(jobId, 'parts tab')
-      setPartsTabMercuryAllocationsByJobId((m) => {
-        const n = new Map(m)
-        n.set(jobId, rows)
-        return n
-      })
-    } catch {
-      setPartsTabMercuryAllocationsByJobId((m) => {
-        const n = new Map(m)
-        n.set(jobId, [])
-        return n
-      })
-    } finally {
-      partsTabMercuryInFlightRef.current.delete(jobId)
-      partsTabMercuryLoadedRef.current.add(jobId)
-    }
-  }, [])
-
-  const refreshPartsTabMercuryForJob = useCallback(
-    (jobId: string) => {
-      partsTabMercuryLoadedRef.current.delete(jobId)
-      partsTabMercuryInFlightRef.current.delete(jobId)
-      setPartsTabMercuryAllocationsByJobId((m) => {
-        const n = new Map(m)
-        n.delete(jobId)
-        return n
-      })
-      void loadPartsTabMercuryForJob(jobId)
-    },
-    [loadPartsTabMercuryForJob],
-  )
-
-  const updateMercuryCardTotalForOneJob = useCallback((jobId: string) => {
-    void withSupabaseRetry(
-      async () =>
-        supabase.from('mercury_transaction_job_allocations').select('amount').eq('job_id', jobId),
-      'mercury card charges for one job (parts refresh)',
-    )
-      .then((rows) => {
-        const sum = (rows ?? []).reduce((a, r) => a + Math.abs(Number(r.amount)), 0)
-        setMercuryCardChargesByJobId((m) => {
-          const n = new Map(m)
-          n.set(jobId, sum)
-          return n
-        })
-      })
-      .catch(() => {})
-  }, [])
-
-  const dismissPartsUnattributedList = useCallback(() => {
-    setPartsUnattribListJobId(null)
-    partsUnattribFlowJobIdRef.current = null
-  }, [])
-
-  const closeListOnlyForAssign = useCallback(() => {
-    setPartsUnattribListJobId(null)
-  }, [])
-
-  const closeAllJobsListForAssign = useCallback(() => {
-    setAllJobsUnattributedOpen(false)
-  }, [])
-
-  const handleAssignToTransactionFromParts = useCallback(
-    async (mercuryTransactionId: string, jobIdForFlow?: string | null) => {
-      jobSummaryMercuryEditFlowJobIdRef.current = null
-      if (jobIdForFlow) partsUnattribFlowJobIdRef.current = jobIdForFlow
-      const data = await loadMercuryAllocModalDataForTransaction(
-        mercuryTransactionId,
-        'Parts tab: open Mercury allocation',
-      )
-      setPartsAllocModalData(data)
-      setPartsAllocModalOpen(true)
-    },
-    [],
-  )
-
-  const handleJobSummaryMercuryReassignFromDrilldown = useCallback(
-    async (mercuryTransactionId: string, sourceJobId: string) => {
-      partsUnattribFlowJobIdRef.current = null
-      jobSummaryMercuryEditFlowJobIdRef.current = sourceJobId
-      setJobSummaryCostDrilldown(null)
-      try {
-        const data = await loadMercuryAllocModalDataForTransaction(
-          mercuryTransactionId,
-          'Job Summary: edit Mercury allocation',
-        )
-        setPartsAllocModalData(data)
-        setPartsAllocModalOpen(true)
-      } catch (e) {
-        jobSummaryMercuryEditFlowJobIdRef.current = null
-        showToast(e instanceof Error ? e.message : 'Could not load allocation', 'error')
-      }
-    },
-    [showToast],
-  )
-
-  const closePartsAllocModal = useCallback(() => {
-    setPartsAllocModalOpen(false)
-    setPartsAllocModalData(null)
-    partsUnattribFlowJobIdRef.current = null
-    jobSummaryMercuryEditFlowJobIdRef.current = null
-  }, [])
-
-  const partsUnattributedJobLabelById = useMemo(() => {
-    const m: Record<string, string> = {}
-    for (const j of jobs) {
-      const h = (j.hcp_number ?? '').trim() || '—'
-      const n = (j.job_name ?? '').trim() || '—'
-      m[j.id] = `${h} · ${n}`
-    }
-    return m
-  }, [jobs])
-
-  const partsUnattributedScopeJobIds = useMemo(() => {
-    const ids: string[] = []
-    for (const j of jobs) {
-      if ((mercuryCardChargesByJobId.get(j.id) ?? 0) <= 0) continue
-      if (showMyJobsOnly && myJobIds && !myJobIds.has(j.id)) continue
-      ids.push(j.id)
-    }
-    return ids
-  }, [jobs, mercuryCardChargesByJobId, showMyJobsOnly, myJobIds])
-
-  const refetchAllJobsUnattributedData = useCallback(async () => {
-    setAllJobsUnattributedLines(null)
-    setAllJobsUnattributedLoading(true)
-    if (partsUnattributedScopeJobIds.length === 0) {
-      setAllJobsUnattributedLines([])
-      setAllJobsUnattributedLoading(false)
-      return
-    }
-    try {
-      const lines = await fetchUnattributedMercuryLinesForManyJobs({
-        jobIds: partsUnattributedScopeJobIds,
-        jobLabelById: partsUnattributedJobLabelById,
-        cacheByJobId: partsTabMercuryAllocationsByJobId,
-        operationLabel: 'Parts tab: all jobs unattributed',
-        concurrency: 5,
-      })
-      setAllJobsUnattributedLines(lines)
-    } catch {
-      setAllJobsUnattributedLines([])
-    } finally {
-      setAllJobsUnattributedLoading(false)
-    }
-  }, [partsUnattributedScopeJobIds, partsUnattributedJobLabelById, partsTabMercuryAllocationsByJobId])
-
-  const onPartsAllocSaved = useCallback(
-    (detail: MercuryAllocSavedDetail) => {
-      const jobSummarySourceJobId = jobSummaryMercuryEditFlowJobIdRef.current
-      const partsJobId = partsUnattribFlowJobIdRef.current
-      jobSummaryMercuryEditFlowJobIdRef.current = null
-      partsUnattribFlowJobIdRef.current = null
-
-      setPartsAllocModalOpen(false)
-      setPartsAllocModalData(null)
-      setPartsUnattribListJobId(null)
-
-      if (jobSummarySourceJobId) {
-        setJobSummaryCostDrilldown(null)
-        const touchJobSummaryMercury = (jid: string) => {
-          jobSummaryMercuryAllocationsLoadedRef.current.delete(jid)
-          void loadJobSummaryMercuryAllocationsForJob(jid, true)
-          updateMercuryCardTotalForOneJob(jid)
-        }
-        touchJobSummaryMercury(jobSummarySourceJobId)
-        const seen = new Set<string>([jobSummarySourceJobId])
-        for (const a of detail.allocations) {
-          if (!seen.has(a.job_id)) {
-            seen.add(a.job_id)
-            touchJobSummaryMercury(a.job_id)
-          }
-        }
-      }
-
-      if (partsJobId) {
-        refreshPartsTabMercuryForJob(partsJobId)
-        updateMercuryCardTotalForOneJob(partsJobId)
-      }
-      if (allJobsUnattributedOpen) {
-        void refetchAllJobsUnattributedData()
-      }
-    },
-    [
-      refreshPartsTabMercuryForJob,
-      updateMercuryCardTotalForOneJob,
-      allJobsUnattributedOpen,
-      refetchAllJobsUnattributedData,
-      loadJobSummaryMercuryAllocationsForJob,
-    ],
-  )
-
-  const partsUnattribBankingUsersForMatch = useMemo((): BankingAttributionUser[] => {
-    return bankingAttributionUsersOptions
-      .filter(isSelectableOption)
-      .filter((o) => o.value.trim() !== '')
-      .map((o) => ({ id: o.value, name: o.label }))
-  }, [bankingAttributionUsersOptions])
-
-  const handleQuickAddUserFromParts = useCallback(
-    async (mercuryTransactionId: string, user: BankingAttributionUser, jobIdForFlow?: string | null) => {
-      const jobId = jobIdForFlow ?? partsUnattribFlowJobIdRef.current
-      if (jobIdForFlow) partsUnattribFlowJobIdRef.current = jobIdForFlow
-      if (!jobId) return
-      await mercuryQuickAssignUserAttribution({
-        mercuryTransactionId,
-        userId: user.id,
-        operationLabel: 'Parts tab: quick assign from card nickname',
-        recentPersonPicksStorageKey: authUser?.id ?? null,
-      })
-      showToast('Saved allocations.', 'success')
-      refreshPartsTabMercuryForJob(jobId)
-      updateMercuryCardTotalForOneJob(jobId)
-      if (allJobsUnattributedOpen) {
-        void refetchAllJobsUnattributedData()
-      }
-    },
-    [
-      authUser?.id,
-      showToast,
-      refreshPartsTabMercuryForJob,
-      updateMercuryCardTotalForOneJob,
-      allJobsUnattributedOpen,
-      refetchAllJobsUnattributedData,
-    ],
-  )
-
   useEffect(() => {
     if (activeTab !== 'parts') setAllJobsUnattributedOpen(false)
   }, [activeTab])
@@ -2459,14 +2208,6 @@ export default function Jobs() {
     if (!allJobsUnattributedOpen || activeTab !== 'parts') return
     void refetchAllJobsUnattributedData()
   }, [allJobsUnattributedOpen, activeTab, refetchAllJobsUnattributedData])
-
-  useEffect(() => {
-    if (!canAccessBankingForParts) {
-      setBankingAttributionUsersOptions([])
-      return
-    }
-    void loadUsersOptionsForBankingAttribution().then(setBankingAttributionUsersOptions)
-  }, [canAccessBankingForParts])
 
   useEffect(() => {
     if (activeTab !== 'parts') return
