@@ -913,9 +913,9 @@ export function PeopleHoursDayAuditModal({
                           letterSpacing: '0.02em',
                           textTransform: 'uppercase',
                           borderRadius: 4,
-                          border: `1px solid ${isApproved ? '#16a34a' : isClosed ? '#d97706' : '#6b7280'}`,
-                          background: isApproved ? '#f0fdf4' : isClosed ? 'var(--bg-amber-tint)' : 'var(--bg-muted)',
-                          color: isApproved ? '#166534' : isClosed ? 'var(--text-amber-700)' : 'var(--text-700)',
+                          border: `1px solid ${isApproved ? '#16a34a' : isClosed ? '#d97706' : 'var(--border-strong)'}`,
+                          background: isApproved ? 'var(--bg-green-tint)' : isClosed ? 'var(--bg-amber-tint)' : 'var(--bg-muted)',
+                          color: isApproved ? 'var(--text-green-800)' : isClosed ? 'var(--text-amber-700)' : 'var(--text-700)',
                         }}
                       >
                         {isApproved ? 'Approved' : isClosed ? 'Pending' : 'Open'}
@@ -952,7 +952,7 @@ export function PeopleHoursDayAuditModal({
                                 border: `1px solid ${isApproving ? '#9ca3af' : '#16a34a'}`,
                                 borderRadius: 4,
                                 background: isApproving ? 'var(--bg-muted)' : 'var(--bg-green-tint)',
-                                color: isApproving ? 'var(--text-muted)' : '#15803d',
+                                color: isApproving ? 'var(--text-muted)' : 'var(--text-green-800)',
                                 cursor: isApproving ? 'not-allowed' : 'pointer',
                               }}
                             >

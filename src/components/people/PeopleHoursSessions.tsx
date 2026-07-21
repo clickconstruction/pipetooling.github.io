@@ -257,7 +257,7 @@ export function PeopleHoursSessions({
                       reloadSessions()
                       reloadHours()
                     }}
-                    style={{ padding: '0.2rem 0.5rem', fontSize: '0.8125rem', border: '1px solid #22c55e', borderRadius: 4, background: 'var(--bg-green-tint)', color: '#16a34a', cursor: 'pointer' }}
+                    style={{ padding: '0.2rem 0.5rem', fontSize: '0.8125rem', border: '1px solid #22c55e', borderRadius: 4, background: 'var(--bg-green-tint)', color: 'var(--text-green-800)', cursor: 'pointer' }}
                   >
                     Approve
                   </button>

@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-20 (v2.826)
+last_updated: 2026-07-20 (v2.827)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.827)
+
+### People → Hours UI pass: dark-mode approved styling + Generate remaining confirm modal (2026-07-20)
+Two small People → Hours UI fixes. **(1) Dark-mode approved styling**: the day-audit modal's per-session status pill ([`PeopleHoursDayAuditModal.tsx`](../src/components/PeopleHoursDayAuditModal.tsx)) hardcoded the *light-theme token values* as literals for the Approved branch — `background: '#f0fdf4'` and `color: '#166534'` are exactly light `--bg-green-tint` / `--text-green-800` — so in dark mode approved rows showed a glaring near-white chip while the Pending chip (already tokenized) themed correctly. Now `var(--bg-green-tint)` / `var(--text-green-800)`; the Open branch's raw neutral border `#6b7280` becomes `var(--border-strong)` (the saturated status borders `#16a34a`/`#d97706` stay literal per convention). Same-class one-token contrast fixes: the audit modal's Approve button text `#15803d` → `var(--text-green-800)`, and the Pending Sessions table Approve button text `#16a34a` → `var(--text-green-800)` ([`PeopleHoursSessions.tsx`](../src/components/people/PeopleHoursSessions.tsx)). Note: the raw `#6b7280` escaped `theme-tokenize --check`, likely because it sits inside a template-literal border string — checker gap tracked separately. **(2) Draft Payroll "Generate remaining" confirm modal**: `bulkGenerateMissingPayStubsInModal` in [`People.tsx`](../src/pages/People.tsx) replaced its `window.confirm` with an in-app nested modal in the exact `payStubDeleteConfirm` idiom (owned by People.tsx, `zIndex: Z_PEOPLE_PAY_MODAL_NESTED` (1200) above the Draft Payroll modal's 1100, `role="dialog"` + `aria-modal` + `aria-labelledby`). The handler now snapshots `{ start, end, candidates }` into new `bulkGenerateConfirm` state (same freeze semantics as the old browser confirm) and the loop moved verbatim to `runBulkGeneratePayStubs(candidates)`, fired from the modal's blue primary `Generate N report(s)` button after closing; Cancel is a no-op. Copy preserved: `Generate N pay report(s) for {start} through {end}?` + muted `People who already have a report for this period are skipped.` The zero-candidates path still short-circuits to the info toast without opening the modal, and the existing `bulkGenerating` flag keeps the trigger disabled during a run. Client-only; no DB / types / RPC changes. Verified: `npx tsc --noEmit` clean; zero new lints on touched files. Files: modified [`src/pages/People.tsx`](../src/pages/People.tsx), [`src/components/PeopleHoursDayAuditModal.tsx`](../src/components/PeopleHoursDayAuditModal.tsx), [`src/components/people/PeopleHoursSessions.tsx`](../src/components/people/PeopleHoursSessions.tsx).
 
 ## Latest Updates (v2.826)
 

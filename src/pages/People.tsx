@@ -456,6 +456,8 @@ export default function People() {
   const [hoursFlashWorkDate, setHoursFlashWorkDate] = useState<string | null>(null)
   const [hoursFlashPersonName, setHoursFlashPersonName] = useState<string | null>(null)
   const [payStubDeleteConfirm, setPayStubDeleteConfirm] = useState<PayStubRow | null>(null)
+  /** Draft Payroll "Generate remaining" confirm (replaces the old window.confirm); candidates snapshot at request time. */
+  const [bulkGenerateConfirm, setBulkGenerateConfirm] = useState<{ start: string; end: string; candidates: string[] } | null>(null)
   const [payStubMarkPaidTarget, setPayStubMarkPaidTarget] = useState<PayStubRow | null>(null)
   const [payStubMarkPaidDate, setPayStubMarkPaidDate] = useState('')
   const [payStubMarkPaidAmount, setPayStubMarkPaidAmount] = useState('')
@@ -1673,7 +1675,7 @@ export default function People() {
     return true
   }
 
-  async function bulkGenerateMissingPayStubsInModal() {
+  function bulkGenerateMissingPayStubsInModal() {
     const start = payStubPeriodStart
     const end = payStubPeriodEnd
     if (start > end) {
@@ -1690,12 +1692,11 @@ export default function People() {
       showToast('No missing pay reports with hours for this period.', 'info')
       return
     }
-    if (
-      !window.confirm(
-        `Generate ${candidates.length} pay report(s) for ${start} through ${end}?\n\nPeople who already have a report for this period are skipped.`,
-      )
-    )
-      return
+    setBulkGenerateConfirm({ start, end, candidates })
+  }
+
+  /** Runs the bulk generation the confirm modal approved (candidates snapshot from request time). */
+  async function runBulkGeneratePayStubs(candidates: string[]) {
     setBulkGeneratingPayStubs(true)
     setError(null)
     let ok = 0
@@ -3223,6 +3224,40 @@ export default function People() {
                 }}
               >
                 {deletingPayStubId === payStubDeleteConfirm.id ? 'Deleting…' : 'Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {bulkGenerateConfirm && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: Z_PEOPLE_PAY_MODAL_NESTED }}>
+          <div role="dialog" aria-modal="true" aria-labelledby="bulk-generate-confirm-title" style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 320, maxWidth: 400 }}>
+            <h2 id="bulk-generate-confirm-title" style={{ margin: '0 0 1rem', fontSize: '1.25rem' }}>Generate pay reports?</h2>
+            <p style={{ margin: '0 0 0.5rem', fontSize: '0.875rem' }}>
+              Generate {bulkGenerateConfirm.candidates.length} pay report(s) for {bulkGenerateConfirm.start} through {bulkGenerateConfirm.end}?
+            </p>
+            <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
+              People who already have a report for this period are skipped.
+            </p>
+            <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+              <button
+                type="button"
+                onClick={() => setBulkGenerateConfirm(null)}
+                style={{ padding: '0.5rem 1rem', border: '1px solid var(--border-strong)', background: 'var(--surface)', borderRadius: 4, cursor: 'pointer' }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const { candidates } = bulkGenerateConfirm
+                  setBulkGenerateConfirm(null)
+                  void runBulkGeneratePayStubs(candidates)
+                }}
+                style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
+              >
+                Generate {bulkGenerateConfirm.candidates.length} report(s)
               </button>
             </div>
           </div>
