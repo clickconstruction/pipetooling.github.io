@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-21 (v2.853)
+last_updated: 2026-07-21 (v2.854)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.854)
+
+### Settings decomposition, step 2: Templates & testing engine extracted (2026-07-21)
+Order #2 of the [`SETTINGS_TABS_ARCHITECTURE.md`](./SETTINGS_TABS_ARCHITECTURE.md) plan, behavior-preserving. Stage A: the 11-type email-template defaults map and `replaceTemplateVariables` moved from [`Settings.tsx`](../src/pages/Settings.tsx) into [`lib/settingsTemplates.ts`](../src/lib/settingsTemplates.ts) with unit tests. Stage B: all ~33 state vars, 17 handlers (template CRUD, the three edge-function test senders, report review settings + `report_enabled_users` diff-sync), and 4 load effects moved into the new [`useSettingsTemplatesEngine`](../src/hooks/useSettingsTemplatesEngine.ts) hook, consumed inside [`SettingsTemplatesTab`](../src/components/settings/SettingsTemplatesTab.tsx) — its prop membrane collapses from ~85 props to 3 (`authUser`, `users`, `setError`). `loadData` no longer fetches templates or report settings. Settings.tsx shrinks 4,564 → 3,826 lines. Preserved quirks: `sendTestEmail`'s blocking `alert()`, the mostly-invisible shared-error write in `saveReportSettings`. No user-facing changes.
 
 ## Latest Updates (v2.853)
 
