@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-20 (v2.822)
+last_updated: 2026-07-20 (v2.823)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.823)
+
+### Jobs refactor: New/Edit Sub Labor modal extracted to JobsSubLaborFormModal (2026-07-20)
+Step 4a of the mapped [`Jobs.tsx`](../src/pages/Jobs.tsx) decomposition ([`JOBS_TABS_ARCHITECTURE.md`](./JOBS_TABS_ARCHITECTURE.md)): the ~900-line inline New/Edit Sub Labor modal — plus the Add Subcontractor modal, the labor-book version/entry form modals, the form state, the labor-book CRUD, and the roster partition helpers — moves verbatim into [`JobsSubLaborFormModal`](../src/components/jobs/JobsSubLaborFormModal.tsx) (2,170 lines). The component is **always mounted** so form state survives open/close exactly as before; the parent drives it through an imperative handle (`open`/`openNew`/`openEdit`/`openNewWithJobNumber`/`openWithBillingPrefill` — the last carries the Billing → Sub Labor prefill, with the roster-name intersection now inside the component). Stays in the parent: `editingLaborJob` (the `?editLabor=` deep link and `useSubLaborLedger`'s reload sync need it), the Make Payment / Backcharge / Edit Payment modals, the Drive Settings / Default Labor Rate modals, and the roster loaders (step 4b folds the payment/settings modals into `JobsSubLaborTab`). **Behavior-preserving.** Jobs.tsx 9,722 → 7,718 lines.
 
 ## Latest Updates (v2.822)
 
