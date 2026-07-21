@@ -974,6 +974,15 @@ export default function DetailJobModal({
     return undefined
   }, [fullJob, limitedJob])
 
+  // Subcontractor-like roles have no /jobs access — the pill stays a plain badge for them.
+  const tradePillOpensStages = Boolean(jobId) && !isSubcontractorLikeRole(authRole as UserRole) && authRole !== null
+
+  const handleTradePillClick = () => {
+    if (!jobId) return
+    onClose()
+    navigate(`/jobs?tab=stages&stagesJob=${encodeURIComponent(jobId)}`)
+  }
+
   const showDetailHeaderRightCluster = headerTradePill != null || showEditJobButton || showWeekDispatchButton
 
   useBodyScrollLock(open && narrowViewport)
@@ -1036,12 +1045,27 @@ export default function DetailJobModal({
           {showDetailHeaderRightCluster ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>
               {headerTradePill ? (
-                <span
-                  style={{ ...headerTradePill.style, marginTop: 0 }}
-                  title={headerTradePillTitleText}
-                >
-                  {headerTradePill.label}
-                </span>
+                tradePillOpensStages ? (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      handleTradePillClick()
+                    }}
+                    title={`${headerTradePillTitleText ?? headerTradePill.label} — open this job in Jobs → Stages`}
+                    aria-label={`${headerTradePillTitleText ?? headerTradePill.label}: open this job in Jobs → Stages`}
+                    style={{ ...headerTradePill.style, marginTop: 0, cursor: 'pointer' }}
+                  >
+                    {headerTradePill.label}
+                  </button>
+                ) : (
+                  <span
+                    style={{ ...headerTradePill.style, marginTop: 0 }}
+                    title={headerTradePillTitleText}
+                  >
+                    {headerTradePill.label}
+                  </span>
+                )
               ) : null}
               {showWeekDispatchButton ? (
                 <button
