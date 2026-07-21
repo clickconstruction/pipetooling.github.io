@@ -20,22 +20,14 @@ import {
   formatCurrencyNoCents,
   formatEstimatedCompletionDisplay,
   formatJobNameTwoLines,
-  formatJobSummaryDurationMinutes,
-  formatJobSummaryInvoiceDate,
-  formatJobSummaryMercuryPostedAt,
-  formatJobSummarySessionDateTime,
-  formatJobSummarySessionTimeOnly,
-  formatPrintDaysSince,
   formatTimeSince,
   formatUsdNoCents,
-  jobSummaryPartsCostIsZero,
 } from '../lib/jobs/jobFormatting'
 import {
   effectiveInvoiceEstBillDate,
   invoiceOpenRemainingOnJob,
   jobBilledUnpaidDollars,
   jobStagesInvoiceJumpChipTargets,
-  printBilledRowReferenceDate,
   sortStageRowsForTotalByNameDetail,
   stageRowBilledAgeDays,
   stageRowBilledLineLabel,
@@ -56,6 +48,10 @@ import type { TallyPartRow } from '../types/tallyPart'
 import { useToastContext } from '../contexts/ToastContext'
 import { withSupabaseRetry } from '../utils/errorHandling'
 import { laborItemsSubtotal, lineLaborCost } from '../lib/peopleLaborJobItemLineCost'
+import { openHtmlPrintWindow } from '../lib/jobsDocuments/printWindow'
+import { buildJobSubSheetHtml, buildLaborFormSubSheetHtml } from '../lib/jobsDocuments/subLaborSheet'
+import { buildBilledAwaitingPaymentReportHtml } from '../lib/jobsDocuments/billedAwaitingPaymentReport'
+import { buildJobSummaryCostBreakdownHtml } from '../lib/jobsDocuments/jobSummaryCostBreakdown'
 import { buildSubLaborOutstandingByPerson, subLaborJobMatchesSearch } from '../lib/subLaborOutstanding'
 import { laborJobSubCost } from '../lib/jobs/subLaborCost'
 import { buildClickToolingUrl, formatAddressTwoLines, googleMapsSearchUrl, resolvedLaborInvoiceLink } from '../lib/jobs/jobAddressUrls'
@@ -117,23 +113,10 @@ import {
 } from '../lib/jobSummaryHcpFilter'
 import { useJobDetailModal } from '../contexts/JobDetailModalContext'
 import { CLOCK_SESSION_LIST_SELECT } from '../lib/clockSessionSelect'
-import { formatWorkDateYmdWeekdayLongFriendly, getDefaultWeekRange } from '../utils/dateUtils'
+import { getDefaultWeekRange } from '../utils/dateUtils'
 import { fetchAttributionsByMercuryTxIds } from '../lib/fetchMercuryRelationsByTxIds'
 import { fetchMercuryJobAllocationsWithAttributionForJob } from '../lib/fetchMercuryJobAllocationsWithAttributionForJob'
 import { formatDecimalWorkHoursToHhMm } from '../lib/formatDecimalWorkHoursHhMm'
-import {
-  buildJobSummaryPersonSummaryRows,
-  partitionUnattributedFromJobSummaryPersonRows,
-} from '../lib/jobSummaryPersonSummaryTable'
-import {
-  buildJobSummaryTeamLaborWorkDateTableRows,
-  isJobSummaryNoWorkDateKey,
-} from '../lib/jobSummaryTeamLaborWorkDateTable'
-import {
-  buildPartsPerPersonCostRows,
-  type TallyLineForPersonRollup,
-} from '../lib/partsPerPersonCostSummary'
-import { normalizePersonNameKey } from '../lib/personNameKey'
 import { loadMercuryAllocModalDataForTransaction, type MercuryAllocModalData } from '../lib/mercuryAllocModalData'
 import {
   PartsUnattributedMercuryListModal,
@@ -152,7 +135,6 @@ import type { SearchableSelectOption } from '../components/SearchableSelect'
 import { isSelectableOption } from '../components/SearchableSelect'
 import { mercuryQuickAssignUserAttribution } from '../lib/mercuryQuickAssignUserAttribution'
 import type { BankingAttributionUser } from '../lib/mercuryCardNicknameUserMatch'
-import { formatMercuryDebitCardIdCompact, mercuryDebitCardIdFromRaw } from '../lib/mercuryRawDebitCard'
 import {
   deriveStagesBillingActivityDetail,
   deriveStagesFieldReferenceYmd,
@@ -2428,111 +2410,17 @@ export default function Jobs() {
   }
 
   function printLaborSubSheet() {
-    const escapeHtml = (s: string) => (s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
-    const dateStr = new Date().toLocaleDateString()
-    const assignedLabel = laborAssignedTo.length > 0 ? laborAssignedTo.join(', ') : 'Labor'
-    const title = escapeHtml(assignedLabel) + ' — ' + escapeHtml(laborAddress || 'Job') + ' — ' + dateStr
-
-    const validRows = laborFixtureRows.filter((r) => (r.fixture ?? '').trim())
-    const printFallbackRate = laborFixtureRows[0]?.labor_rate ?? 20
-    const laborRowsHtml =
-      validRows.length === 0
-        ? '<tr><td colspan="5" style="text-align:center; color:#6b7280;">No labor rows</td></tr>'
-        : validRows
-            .map((row) => {
-              const totalCost = lineLaborCost(row, printFallbackRate)
-              const isDirect =
-                row.direct_labor_amount != null && Number.isFinite(Number(row.direct_labor_amount))
-              if (isDirect) {
-                return `<tr><td>${escapeHtml(row.fixture ?? '')}</td><td style="text-align:center">—</td><td style="text-align:right">—</td><td style="text-align:right">—</td><td style="text-align:right">$${formatCurrency(totalCost)}</td></tr>`
-              }
-              const hrs = Number(row.hrs_per_unit) || 0
-              const laborHrs = (row.is_fixed ?? false) ? hrs : (Number(row.count) || 0) * hrs
-              const rate = row.labor_rate ?? 0
-              return `<tr><td>${escapeHtml(row.fixture ?? '')}</td><td style="text-align:center">${Number(row.count)}</td><td style="text-align:right">${laborHrs.toFixed(2)}</td><td style="text-align:right">$${rate.toFixed(2)}</td><td style="text-align:right">$${formatCurrency(totalCost)}</td></tr>`
-            })
-            .join('')
-
-    let totalCost = 0
-    if (validRows.length > 0) {
-      totalCost = validRows.reduce((sum, row) => sum + lineLaborCost(row, printFallbackRate), 0)
-    }
-
-    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${title}</title><style>
-  body { font-family: sans-serif; margin: 1in; }
-  h1 { font-size: 1.25rem; margin-bottom: 1rem; }
-  table { width: 100%; border-collapse: collapse; margin-top: 0.5rem; }
-  th, td { border: 1px solid #ccc; padding: 0.5rem; text-align: left; }
-  th { background: #f5f5f5; }
-  @media print { body { margin: 0.5in; } }
-</style></head><body>
-  <h1>${title}</h1>
-  <table>
-    <thead><tr><th>Fixture or Tie-in</th><th style="text-align:center">Count</th><th style="text-align:right">Labor Hours</th><th style="text-align:right">Rate ($/hr)</th><th style="text-align:right">Cost</th></tr></thead>
-    <tbody>${laborRowsHtml}<tr style="background:#f9fafb; font-weight:600"><td colspan="4" style="text-align:right">Total:</td><td style="text-align:right">$${formatCurrency(totalCost)}</td></tr></tbody>
-  </table>
-</body></html>`
-    const win = window.open('', '_blank')
-    if (!win) return
-    win.document.write(html)
-    win.document.close()
-    win.focus()
-    win.print()
-    win.onafterprint = () => win.close()
+    openHtmlPrintWindow(
+      buildLaborFormSubSheetHtml({
+        assignedNames: laborAssignedTo,
+        address: laborAddress,
+        rows: laborFixtureRows,
+      }),
+    )
   }
 
   function printJobSubSheet(job: LaborJob) {
-    const escapeHtml = (s: string) => (s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
-    const dateStr = job.job_date ? new Date(job.job_date + 'T12:00:00').toLocaleDateString() : (job.created_at ? new Date(job.created_at).toLocaleDateString() : new Date().toLocaleDateString())
-    const jobNumPart = job.job_number ? escapeHtml(job.job_number) + ' — ' : ''
-    const title = escapeHtml(job.assigned_to_name) + ' — ' + jobNumPart + escapeHtml(job.address) + ' — ' + dateStr
-    const jobRate = job.labor_rate ?? 0
-
-    const items = job.items ?? []
-    const laborRowsHtml =
-      items.length === 0
-        ? '<tr><td colspan="5" style="text-align:center; color:#6b7280;">No labor rows</td></tr>'
-        : items
-            .map((i) => {
-              const totalCost = lineLaborCost(i, jobRate)
-              const isDirect =
-                i.direct_labor_amount != null && Number.isFinite(Number(i.direct_labor_amount))
-              if (isDirect) {
-                return `<tr><td>${escapeHtml(i.fixture ?? '')}</td><td style="text-align:center">—</td><td style="text-align:right">—</td><td style="text-align:right">—</td><td style="text-align:right">$${formatCurrency(totalCost)}</td></tr>`
-              }
-              const hrs = Number(i.hrs_per_unit) || 0
-              const laborHrs = (i.is_fixed ?? false) ? hrs : (Number(i.count) || 0) * hrs
-              const rate = i.labor_rate ?? jobRate
-              return `<tr><td>${escapeHtml(i.fixture ?? '')}</td><td style="text-align:center">${Number(i.count)}</td><td style="text-align:right">${laborHrs.toFixed(2)}</td><td style="text-align:right">$${rate.toFixed(2)}</td><td style="text-align:right">$${formatCurrency(totalCost)}</td></tr>`
-            })
-            .join('')
-
-    let totalCost = 0
-    if (items.length > 0) {
-      totalCost = items.reduce((sum, i) => sum + lineLaborCost(i, jobRate), 0)
-    }
-
-    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${title}</title><style>
-  body { font-family: sans-serif; margin: 1in; }
-  h1 { font-size: 1.25rem; margin-bottom: 1rem; }
-  table { width: 100%; border-collapse: collapse; margin-top: 0.5rem; }
-  th, td { border: 1px solid #ccc; padding: 0.5rem; text-align: left; }
-  th { background: #f5f5f5; }
-  @media print { body { margin: 0.5in; } }
-</style></head><body>
-  <h1>${title}</h1>
-  <table>
-    <thead><tr><th>Fixture or Tie-in</th><th style="text-align:center">Count</th><th style="text-align:right">Labor Hours</th><th style="text-align:right">Rate ($/hr)</th><th style="text-align:right">Cost</th></tr></thead>
-    <tbody>${laborRowsHtml}<tr style="background:#f9fafb; font-weight:600"><td colspan="4" style="text-align:right">Total:</td><td style="text-align:right">$${formatCurrency(totalCost)}</td></tr></tbody>
-  </table>
-</body></html>`
-    const win = window.open('', '_blank')
-    if (!win) return
-    win.document.write(html)
-    win.document.close()
-    win.focus()
-    win.print()
-    win.onafterprint = () => win.close()
+    openHtmlPrintWindow(buildJobSubSheetHtml(job))
   }
 
   async function printJobSummaryCostBreakdown(opts: {
@@ -2550,29 +2438,10 @@ export default function Jobs() {
     mileageCost: number
     timePerMile: number
   }) {
-    const escapeHtml = (s: string) =>
-      (s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
-    const {
-      job,
-      teamLaborRow,
-      teamLaborCost,
-      subLaborJobs,
-      partsFromTally,
-      billedMaterialsSum,
-      invoicesFromSupplyHouses,
-      cardCharges,
-      totalBill,
-      profit,
-      tallyPartsForJob,
-      mileageCost,
-      timePerMile,
-    } = opts
-    const jobId = job.id
-    const generated = new Date().toLocaleString()
-    const headerTitle = `${job.hcp_number ?? '—'} — ${job.job_name ?? '—'} — ${job.job_address ?? '—'}`
+    const jobId = opts.job.id
 
     let invoiceRows: JobSummaryInvoiceAllocationLine[] = []
-    let invoiceNote = ''
+    let invoiceDetailUnavailable = false
     if (jobSummaryInvoiceLinesByJobId.has(jobId)) {
       invoiceRows = jobSummaryInvoiceLinesByJobId.get(jobId) ?? []
     } else {
@@ -2584,13 +2453,13 @@ export default function Jobs() {
         )
         invoiceRows = (data ?? []) as JobSummaryInvoiceAllocationLine[]
       } catch {
-        invoiceNote = '<p class="muted">Invoice line detail unavailable.</p>'
+        invoiceDetailUnavailable = true
         invoiceRows = []
       }
     }
 
     let mRows: JobSummaryMercuryAllocationRow[] = []
-    let mercuryNote = ''
+    let cardDetailUnavailable = false
     if (jobSummaryMercuryAllocationsByJobId.has(jobId)) {
       mRows = jobSummaryMercuryAllocationsByJobId.get(jobId) ?? []
     } else {
@@ -2669,379 +2538,25 @@ export default function Jobs() {
           }
         })
       } catch {
-        mercuryNote = '<p class="muted">Card charge line detail unavailable.</p>'
+        cardDetailUnavailable = true
         mRows = []
       }
     }
 
-    const tallyRollupForPrint: TallyLineForPersonRollup[] = tallyPartsForJob.map((r) => ({
-      part_id: r.part_id,
-      quantity: r.quantity,
-      price_at_time: r.price_at_time,
-      fixture_cost: r.fixture_cost,
-      created_by_user_id: r.created_by_user_id,
-      created_by_name: r.created_by_name,
-    }))
-    const {
-      rows: ppRowsPrint,
-      footer: ppFooterPrint,
-      sumsOk: ppSumsOkPrint,
-    } = buildPartsPerPersonCostRows({
-      parts: tallyRollupForPrint,
-      billedMaterialsSum,
-      invoiceJobTotal: invoicesFromSupplyHouses,
+    const html = buildJobSummaryCostBreakdownHtml({
+      ...opts,
+      invoiceRows,
+      invoiceDetailUnavailable,
       mercuryRows: mRows,
-      parentCardTotal: cardCharges,
+      cardDetailUnavailable,
+      clockSessions: jobSummaryClockSessionsByJobId.get(jobId) ?? [],
+      clockSessionsLoaded: jobSummaryClockSessionsByJobId.has(jobId),
+      nicknameByDebitCard,
     })
-    const teamBreakdownLite = (teamLaborRow?.breakdown ?? []).map((b) => ({
-      personName: b.personName,
-      cost: b.cost,
-      hours: b.hours,
-    }))
-    const personRowsPrint = buildJobSummaryPersonSummaryRows({
-      teamBreakdown: teamBreakdownLite,
-      ppRows: ppRowsPrint,
-    })
-    const { rows: personRowsForTablePrint, unattributedCard: unattributedCardPrint } =
-      partitionUnattributedFromJobSummaryPersonRows(personRowsPrint)
-    const partsCostPrint = partsFromTally + invoicesFromSupplyHouses + billedMaterialsSum + cardCharges
-    const subLaborTotalPrint = subLaborJobs.reduce(
-      (s, lj) => s + laborJobSubCost(lj, mileageCost, timePerMile),
-      0,
-    )
-    const teamLaborCell = teamLaborCost === 0 ? '—' : `$${formatCurrency(teamLaborCost)}`
-    const subLaborCell = jobSummaryPartsCostIsZero(subLaborTotalPrint) ? '—' : `$${formatCurrency(subLaborTotalPrint)}`
-    const partsCostCell = jobSummaryPartsCostIsZero(partsCostPrint) ? '—' : `$${formatCurrency(partsCostPrint)}`
-    const totalBillCell = totalBill === 0 ? '—' : `$${formatCurrency(totalBill)}`
-    const profitCell = `$${formatCurrency(profit)}`
-    const summaryTableHtml = `<h2 class="print-section">Summary</h2>
-<table class="print-key-table"><thead><tr>
-<th>Team labor</th><th>Sub labor</th><th>Parts cost</th><th>Total bill</th><th>Revenue before overhead</th>
-</tr></thead><tbody><tr>
-<td style="text-align:right">${teamLaborCell}</td>
-<td style="text-align:right">${subLaborCell}</td>
-<td style="text-align:right">${partsCostCell}</td>
-<td style="text-align:right">${totalBillCell}</td>
-<td style="text-align:right">${profitCell}</td>
-</tr></tbody></table>`
-
-    const personFilterNote =
-      '<p class="muted print-note">All people. The cost breakdown person search in the app does not apply to this print.</p>'
-
-    const hasUnassignedRowContentPrint =
-      !jobSummaryPartsCostIsZero(invoicesFromSupplyHouses) || !jobSummaryPartsCostIsZero(unattributedCardPrint)
-    const unassignedRowTotalPrint = unattributedCardPrint + Number(invoicesFromSupplyHouses ?? 0)
-    const unassignedSupplyRowPrint = hasUnassignedRowContentPrint
-      ? `<tr>
-<td>Unassigned</td>
-<td style="text-align:right">—</td>
-<td style="text-align:right">—</td>
-<td style="text-align:right">${
-        jobSummaryPartsCostIsZero(unattributedCardPrint) ? '—' : `$${formatCurrency(unattributedCardPrint)}`
-      }</td>
-<td style="text-align:right">${
-        jobSummaryPartsCostIsZero(invoicesFromSupplyHouses) ? '—' : `$${formatCurrency(invoicesFromSupplyHouses)}`
-      }</td>
-<td style="text-align:right">${
-        jobSummaryPartsCostIsZero(unassignedRowTotalPrint) ? '—' : `$${formatCurrency(unassignedRowTotalPrint)}`
-      }</td>
-</tr>`
-      : ''
-
-    let personSummaryHtml = `<h2 class="print-section">Person summary</h2>${personFilterNote}`
-    if (personRowsForTablePrint.length === 0 && !hasUnassignedRowContentPrint) {
-      personSummaryHtml += '<p class="muted">No per-person team labor or card data.</p>'
-    } else {
-      const prTr = personRowsForTablePrint
-        .map((r) => {
-          const rowSum = r.teamLabor + r.card
-          return `<tr>
-<td>${escapeHtml(r.displayName)}</td>
-<td style="text-align:right">${formatDecimalWorkHoursToHhMm(r.hours)}</td>
-<td style="text-align:right">${jobSummaryPartsCostIsZero(r.teamLabor) ? '—' : `$${formatCurrency(r.teamLabor)}`}</td>
-<td style="text-align:right">${jobSummaryPartsCostIsZero(r.card) ? '—' : `$${formatCurrency(r.card)}`}</td>
-<td style="text-align:right;color:#6b7280">—</td>
-<td style="text-align:right">${jobSummaryPartsCostIsZero(rowSum) ? '—' : `$${formatCurrency(rowSum)}`}</td>
-</tr>`
-        })
-        .join('')
-      const sumCardFromRows = personRowsForTablePrint.reduce((s, r) => s + r.card, 0)
-      const footHours = teamLaborRow ? formatDecimalWorkHoursToHhMm(teamLaborRow.manHours) : '—'
-      const footTeam = jobSummaryPartsCostIsZero(teamLaborCost) ? '—' : `$${formatCurrency(teamLaborCost)}`
-      const footCard = jobSummaryPartsCostIsZero(cardCharges) ? '—' : `$${formatCurrency(cardCharges)}`
-      const footTotalNumeric = teamLaborCost + cardCharges + Number(invoicesFromSupplyHouses ?? 0)
-      const footTotal =
-        jobSummaryPartsCostIsZero(footTotalNumeric) ? '—' : `$${formatCurrency(footTotalNumeric)}`
-      personSummaryHtml += `<table>
-<thead><tr>
-<th style="text-align:left">Name</th>
-<th style="text-align:right">Hours</th>
-<th style="text-align:right">Team labor cost</th>
-<th style="text-align:right">Card charges</th>
-<th style="text-align:right">Supply houses</th>
-<th style="text-align:right">Total</th>
-</tr></thead>
-<tbody>${prTr}${unassignedSupplyRowPrint}
-<tr style="font-weight:600">
-<td>Total</td>
-<td style="text-align:right">${footHours}</td>
-<td style="text-align:right">${footTeam}</td>
-<td style="text-align:right">${footCard}</td>
-<td style="text-align:right">${
-        jobSummaryPartsCostIsZero(invoicesFromSupplyHouses) ? '—' : `$${formatCurrency(invoicesFromSupplyHouses)}`
-      }</td>
-<td style="text-align:right">${footTotal}</td>
-</tr>
-</tbody></table>`
-      if (
-        !jobSummaryPartsCostIsZero(cardCharges) &&
-        Math.abs(sumCardFromRows + unattributedCardPrint - cardCharges) > 0.02
-      ) {
-        personSummaryHtml +=
-          '<p class="muted" style="color:#b45309;font-size:0.85rem">Per-person card totals may not match job card total; check attributions.</p>'
-      }
-    }
-
-    const clockSessions = jobSummaryClockSessionsByJobId.get(jobId) ?? []
-    const clockLoaded = jobSummaryClockSessionsByJobId.has(jobId)
-
-    let teamLaborHtml = ''
-    if (teamLaborRow && teamLaborRow.breakdown.length > 0) {
-      const bodyRows = teamLaborRow.breakdown
-        .map(
-          (b) =>
-            `<tr><td>${escapeHtml(b.personName)}</td><td style="text-align:right">${formatCurrency(b.hours)}</td></tr>`,
-        )
-        .join('')
-      teamLaborHtml = `<h2>Team Labor</h2><table><thead><tr><th>Person</th><th style="text-align:right">Hours</th></tr></thead><tbody>${bodyRows}<tr style="font-weight:600"><td>Total</td><td style="text-align:right">${formatCurrency(teamLaborRow.manHours)}</td></tr></tbody></table>`
-      if (clockLoaded && teamLaborRow) {
-        for (const b of teamLaborRow.breakdown) {
-          const sessionsForPerson = clockSessions.filter(
-            (s) => normalizePersonNameKey(s.users?.name ?? '') === normalizePersonNameKey(b.personName),
-          )
-          const printCombinedRows = buildJobSummaryTeamLaborWorkDateTableRows(b.byWorkDate, sessionsForPerson)
-          if (printCombinedRows.length === 0) {
-            teamLaborHtml += `<p class="muted">No crew allocation or clock sessions for this person.</p>`
-          } else {
-            const trs = printCombinedRows
-              .map((row) => {
-                if (row.kind === 'alloc') {
-                  const w = isJobSummaryNoWorkDateKey(row.workDate)
-                    ? '—'
-                    : formatWorkDateYmdWeekdayLongFriendly(row.workDate)
-                  return `<tr><td>${escapeHtml(w)}</td><td>—</td><td>—</td><td>—</td><td style="text-align:right">${formatCurrency(row.hours)}</td><td style="text-align:right">$${formatCurrency(row.cost)}</td></tr>`
-                }
-                const s = row.session
-                const dur =
-                  s.clocked_in_at && s.clocked_out_at
-                    ? formatJobSummaryDurationMinutes(
-                        new Date(s.clocked_out_at).getTime() - new Date(s.clocked_in_at).getTime(),
-                      )
-                    : '—'
-                const w = isJobSummaryNoWorkDateKey(row.workDate)
-                  ? '—'
-                  : formatWorkDateYmdWeekdayLongFriendly(row.workDate)
-                return `<tr><td>${escapeHtml(w)}</td><td>${escapeHtml(formatJobSummarySessionTimeOnly(s.clocked_in_at))}</td><td>${escapeHtml(formatJobSummarySessionTimeOnly(s.clocked_out_at))}</td><td style="text-align:right">${escapeHtml(dur)}</td><td style="text-align:right">—</td><td style="text-align:right">—</td></tr>`
-              })
-              .join('')
-            const printAllocTotals = printCombinedRows.reduce(
-              (acc, r) => {
-                if (r.kind === 'alloc') {
-                  acc.hours += r.hours
-                  acc.cost += r.cost
-                }
-                return acc
-              },
-              { hours: 0, cost: 0 },
-            )
-            const printTfoot = `<tfoot><tr style="font-weight:600;border-top:1px solid #ccc"><td colspan="4">Total</td><td style="text-align:right">${formatCurrency(printAllocTotals.hours)}</td><td style="text-align:right">$${formatCurrency(printAllocTotals.cost)}</td></tr></tfoot>`
-            teamLaborHtml += `<table><thead><tr><th>Work date</th><th>In</th><th>Out</th><th style="text-align:right">Duration</th><th style="text-align:right">Hrs</th><th style="text-align:right">$</th></tr></thead><tbody>${trs}</tbody>${printTfoot}</table>`
-          }
-        }
-        const nameKeys = new Set(teamLaborRow.breakdown.map((x) => normalizePersonNameKey(x.personName)))
-        const orphan = clockSessions.filter((s) => {
-          const kn = normalizePersonNameKey(s.users?.name ?? '')
-          if (!kn) return true
-          return !nameKeys.has(kn)
-        })
-        if (orphan.length > 0) {
-          const or = orphan
-            .map(
-              (s) =>
-                `<tr><td>${escapeHtml(s.users?.name ?? '—')}</td><td>${escapeHtml(s.work_date ? formatWorkDateYmdWeekdayLongFriendly(s.work_date) : '—')}</td><td>${escapeHtml(formatJobSummarySessionDateTime(s.clocked_in_at))}</td><td>${escapeHtml(formatJobSummarySessionDateTime(s.clocked_out_at))}</td></tr>`,
-            )
-            .join('')
-          teamLaborHtml += `<h3 style="font-size:0.95rem;margin:0.75rem 0 0.35rem">Sessions not matched to a name above</h3><table><thead><tr><th>User</th><th>Work date</th><th>In</th><th>Out</th></tr></thead><tbody>${or}</tbody></table>`
-        }
-      }
-    } else if (teamLaborCost === 0) {
-      teamLaborHtml = `<h2>Team Labor</h2><p class="muted">No team labor for this job.</p>`
-    } else {
-      teamLaborHtml = `<h2>Team Labor</h2><p class="muted">Team labor total $${formatCurrency(teamLaborCost)} (no per-person breakdown).</p>`
-    }
-
-    let subLaborHtml = '<h2>Sub Labor</h2>'
-    if (subLaborJobs.length > 0) {
-      subLaborHtml += '<ul style="margin:0.35rem 0;padding-left:1.25rem">'
-      for (const lj of subLaborJobs) {
-        const c = laborJobSubCost(lj, mileageCost, timePerMile)
-        subLaborHtml += `<li>${escapeHtml(lj.assigned_to_name ?? 'Contractor')}${lj.job_date ? ` · ${escapeHtml(lj.job_date)}` : ''}: $${formatCurrency(c)}</li>`
-      }
-      subLaborHtml += '</ul>'
-    } else {
-      subLaborHtml += '<p class="muted">No sub labor for this HCP.</p>'
-    }
-
-    let partsHtml = '<h2>Parts Cost</h2>'
-    if (jobSummaryPartsCostIsZero(partsFromTally)) {
-      partsHtml += `<p><strong>Parts from Tally</strong> $${formatCurrency(partsFromTally)}</p>`
-    } else {
-      partsHtml += `<h3 style="font-size:1rem">Parts from Tally — $${formatCurrency(partsFromTally)}</h3>`
-      if (tallyPartsForJob.length > 0) {
-        const tr = tallyPartsForJob
-          .map((r) => {
-            const lineCost =
-              r.part_id == null
-                ? Number(r.fixture_cost ?? 0) * Number(r.quantity)
-                : Number(r.price_at_time ?? 0) * Number(r.quantity)
-            const label =
-              r.part_id == null
-                ? r.fixture_name || 'Fixture'
-                : [r.part_name, r.fixture_name].filter(Boolean).join(' · ') || 'Part'
-            return `<tr><td>${escapeHtml(label)}</td><td style="text-align:right">${r.quantity}</td><td style="text-align:right">$${formatCurrency(lineCost)}</td></tr>`
-          })
-          .join('')
-        partsHtml += `<table><thead><tr><th>Fixture / Part</th><th style="text-align:right">Qty</th><th style="text-align:right">Line cost</th></tr></thead><tbody>${tr}</tbody></table>`
-      } else {
-        partsHtml += `<p class="muted">${partsFromTally > 0 ? 'Total reflects tally data; no line rows in view.' : 'No tally parts.'}</p>`
-      }
-    }
-    if (jobSummaryPartsCostIsZero(billedMaterialsSum)) {
-      partsHtml += `<p><strong>Other job charges</strong> $${formatCurrency(billedMaterialsSum)}</p>`
-    } else {
-      partsHtml += `<h3 style="font-size:1rem">Other job charges — $${formatCurrency(billedMaterialsSum)}</h3>`
-      const matRows = [...(job.materials ?? [])].sort((a, b) => a.sequence_order - b.sequence_order)
-      if (matRows.length > 0) {
-        const mr = matRows
-          .map(
-            (m) =>
-              `<tr><td>${escapeHtml(m.description?.trim() || '—')}</td><td style="text-align:right">$${formatCurrency(Number(m.amount ?? 0))}</td></tr>`,
-          )
-          .join('')
-        partsHtml += `<table><thead><tr><th>Description</th><th style="text-align:right">Amount</th></tr></thead><tbody>${mr}</tbody></table>`
-      } else {
-        partsHtml += `<p class="muted">${billedMaterialsSum > 0 ? 'No line items on file.' : 'No other job charges.'}</p>`
-      }
-    }
-    if (jobSummaryPartsCostIsZero(invoicesFromSupplyHouses)) {
-      partsHtml += `<p><strong>Invoices from supply houses</strong> $${formatCurrency(invoicesFromSupplyHouses)}</p>
-<p class="muted">No allocated supply house invoices.</p>`
-    } else {
-      partsHtml += `<h3 style="font-size:1rem">Invoices from supply houses — $${formatCurrency(invoicesFromSupplyHouses)}</h3>${invoiceNote}`
-      if (invoiceRows.length > 0) {
-        const ir = invoiceRows
-          .map(
-            (row) =>
-              `<tr><td>${escapeHtml(row.supply_house_name || '—')}</td><td>${escapeHtml(row.invoice_number)}</td><td>${escapeHtml(formatJobSummaryInvoiceDate(row.invoice_date))}</td><td style="text-align:right">$${formatCurrency(row.allocated_amount)}</td></tr>`,
-          )
-          .join('')
-        partsHtml += `<table><thead><tr><th>Supply house</th><th>Invoice</th><th>Date</th><th style="text-align:right">Allocated</th></tr></thead><tbody>${ir}</tbody></table>`
-      } else {
-        partsHtml += `<p class="muted">${invoicesFromSupplyHouses > 0 ? 'No invoice allocation lines returned.' : 'No allocated supply house invoices.'}</p>`
-      }
-    }
-    if (jobSummaryPartsCostIsZero(cardCharges)) {
-      partsHtml += `<p><strong>Card charges</strong> $${formatCurrency(cardCharges)}</p>`
-    } else {
-      partsHtml += `<h3 style="font-size:1rem">Card charges — $${formatCurrency(cardCharges)}</h3>${mercuryNote}`
-      if (mRows.length > 0) {
-        const cr = mRows
-          .map((row) => {
-            const tx = row.mercury_transactions
-            const posted = tx?.posted_at ? formatJobSummaryMercuryPostedAt(tx.posted_at) : '—'
-            const allocAbs = Math.abs(Number(row.amount ?? 0))
-            const debitCardId = mercuryDebitCardIdFromRaw(tx?.raw ?? null)
-            const debitCardDisplay =
-              debitCardId != null
-                ? nicknameByDebitCard[debitCardId] ?? formatMercuryDebitCardIdCompact(debitCardId)
-                : '—'
-            const note = [row.note, tx?.note, tx?.external_memo].filter(Boolean).join(' · ') || '—'
-            return `<tr><td>${escapeHtml(posted)}</td><td>${escapeHtml(tx?.counterparty_name ?? '—')}</td><td>${escapeHtml(row.attributionDisplayName ?? '—')}</td><td>${escapeHtml(debitCardDisplay)}</td><td style="text-align:right">$${formatCurrency(allocAbs)}</td><td>${escapeHtml(note)}</td></tr>`
-          })
-          .join('')
-        partsHtml += `<table><thead><tr><th>Posted</th><th>Counterparty</th><th>User</th><th>Debit Card</th><th style="text-align:right">Allocated</th><th>Note</th></tr></thead><tbody>${cr}</tbody></table>`
-      } else {
-        partsHtml += `<p class="muted">${cardCharges > 0 ? 'No card allocation rows returned.' : 'No Mercury card allocations.'}</p>`
-      }
-    }
-
-    if (!jobSummaryPartsCostIsZero(partsFromTally) || !jobSummaryPartsCostIsZero(cardCharges)) {
-      if (
-        ppRowsPrint.length > 0 ||
-        !jobSummaryPartsCostIsZero(ppFooterPrint.partsFromTally) ||
-        !jobSummaryPartsCostIsZero(ppFooterPrint.cardCharges)
-      ) {
-        partsHtml += `<h3 style="font-size:1rem">Cost by person (tally &amp; card)</h3>`
-        partsHtml +=
-          '<p class="muted" style="font-size:0.85rem">Other job charges and supply house invoices are job-level only (not split by person).</p>'
-        const ppBody = ppRowsPrint
-          .map((row) => {
-            const rt = row.partsFromTally + row.cardCharges
-            const tCell = jobSummaryPartsCostIsZero(row.partsFromTally) ? '—' : `$${formatCurrency(row.partsFromTally)}`
-            const cCell = jobSummaryPartsCostIsZero(row.cardCharges) ? '—' : `$${formatCurrency(row.cardCharges)}`
-            const rtCell = jobSummaryPartsCostIsZero(rt) ? '—' : `$${formatCurrency(rt)}`
-            return `<tr><td>${escapeHtml(row.displayName)}</td><td style="text-align:right">${tCell}</td><td style="text-align:right">${cCell}</td><td style="text-align:right">${rtCell}</td></tr>`
-          })
-          .join('')
-        const footRt = ppFooterPrint.partsFromTally + ppFooterPrint.cardCharges
-        partsHtml += `<table><thead><tr><th>Person</th><th style="text-align:right">Parts from Tally</th><th style="text-align:right">Card charges</th><th style="text-align:right">Row total</th></tr></thead><tbody>${ppBody}<tr style="font-weight:600"><td>${escapeHtml(ppFooterPrint.displayName)}</td><td style="text-align:right">$${formatCurrency(ppFooterPrint.partsFromTally)}</td><td style="text-align:right">$${formatCurrency(ppFooterPrint.cardCharges)}</td><td style="text-align:right">$${formatCurrency(footRt)}</td></tr></tbody></table>`
-        if (billedMaterialsSum > 0 || invoicesFromSupplyHouses > 0) {
-          partsHtml += `<p class="muted" style="font-size:0.85rem">Job-level (not in table above): other job charges $${formatCurrency(billedMaterialsSum)} · supply invoices $${formatCurrency(invoicesFromSupplyHouses)}</p>`
-        }
-        if (!ppSumsOkPrint) {
-          partsHtml +=
-            '<p class="muted" style="color:#b45309;font-size:0.85rem">Row totals may not match job-level parts totals; check attributions and line items.</p>'
-        }
-      }
-    }
-
-    const totalsHtml = `<h2 class="print-section">Total bill</h2>
-<p><strong>Revenue (billing):</strong> ${totalBill === 0 ? '—' : `$${formatCurrency(totalBill)}`}</p>
-<p><strong>Revenue before overhead:</strong> $${formatCurrency(profit)}</p>`
-
-    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${escapeHtml(headerTitle)} — Cost breakdown</title><style>
-body { font-family: sans-serif; margin: 1in; font-size: 0.875rem; }
-h1 { font-size: 1.2rem; margin-bottom: 0.25rem; }
-h2 { font-size: 1.05rem; margin: 1rem 0 0.35rem; }
-.print-section { margin-top: 1.1rem; }
-.print-key-table { max-width: 100%; }
-.print-note { font-size: 0.85rem; margin: 0.25rem 0 0.5rem; }
-.muted { color: #6b7280; margin: 0.35rem 0; }
-table { width: 100%; border-collapse: collapse; margin: 0.35rem 0 0.75rem; font-size: 0.8125rem; }
-th, td { border: 1px solid #ccc; padding: 0.35rem 0.5rem; text-align: left; vertical-align: top; }
-th { background: #f5f5f5; }
-table.print-key-table th, table.print-key-table td { text-align: right; }
-@media print { body { margin: 0.5in; } }
-</style></head><body>
-<h1>${escapeHtml(headerTitle)}</h1>
-<p class="muted" style="margin-top:0">Cost breakdown · ${escapeHtml(generated)}</p>
-${summaryTableHtml}
-${personSummaryHtml}
-${teamLaborHtml}
-${subLaborHtml}
-${partsHtml}
-${totalsHtml}
-</body></html>`
-    const win = window.open('', '_blank')
-    if (!win) {
+    if (!openHtmlPrintWindow(html)) {
       showToast('Allow pop-ups to print the cost breakdown.', 'error')
       return
     }
-    win.document.write(html)
-    win.document.close()
-    win.focus()
-    win.print()
-    win.onafterprint = () => win.close()
   }
 
   function printBilledAwaitingPaymentReport(rows: StageRow[], opts?: { searchFilter?: string }) {
@@ -3049,105 +2564,9 @@ ${totalsHtml}
       showToast('Nothing to print in Billed Awaiting Payment.', 'warning')
       return
     }
-    const escapeHtml = (s: string) => (s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
-    const dateStr = new Date().toLocaleDateString()
-    const title = escapeHtml(`Billed awaiting payment — ${dateStr}`)
-    const filterNote = opts?.searchFilter?.trim()
-      ? `<p style="margin:0.35rem 0 0; font-size:0.9rem; color:#4b5563;">Filtered (stages search): ${escapeHtml(opts.searchFilter.trim())}</p>`
-      : ''
-    const grandTotal = rows.reduce((s, r) => s + stageRowBilledRemainingAmount(r), 0)
-
-    const groups = new Map<string, { displayName: string; rows: StageRow[] }>()
-    for (const r of rows) {
-      const job = r.job
-      const nameNorm = (job.customer_name ?? '').trim().toLowerCase()
-      const key = job.customer_id ?? (nameNorm.length > 0 ? `name:${nameNorm}` : '—')
-      let g = groups.get(key)
-      if (!g) {
-        g = { displayName: (job.customer_name ?? '').trim() || '—', rows: [] }
-        groups.set(key, g)
-      }
-      g.rows.push(r)
-    }
-    for (const g of groups.values()) {
-      const named = g.rows.map((row) => (row.job.customer_name ?? '').trim()).find((n) => n.length > 0)
-      if (named) g.displayName = named
-    }
-
-    const sortedGroups = [...groups.values()].sort((a, b) =>
-      a.displayName.localeCompare(b.displayName, undefined, { sensitivity: 'base' })
-    )
-
-    const sectionsHtml = sortedGroups
-      .map((g) => {
-        const sortedRows = sortStageRowsForTotalByNameDetail(g.rows)
-        const contactJob = sortedRows[0]!.job
-        const phoneRaw = (contactJob.customer_phone ?? '').trim()
-        const emailRaw = (contactJob.customer_email ?? '').trim()
-        const sectionHeading =
-          (g.displayName ?? '').trim() && g.displayName !== '—' ? g.displayName : 'Jobs with no customer linked'
-        const contactBlock =
-          phoneRaw || emailRaw
-            ? `<p style="margin:0 0 0.5rem; font-size:0.875rem; color:#374151">Phone: ${escapeHtml(phoneRaw || '—')} · Email: ${escapeHtml(emailRaw || '—')}</p>`
-            : ''
-        const subtotal = sortedRows.reduce((s, r) => s + stageRowBilledRemainingAmount(r), 0)
-        const linesHtml = sortedRows
-          .map((r) => {
-            const j = r.job
-            const detail =
-              r.kind === 'job' ? 'Job balance' : r.kind === 'job_with_merged_billed' ? 'Billed line' : `Invoice #${r.inv.sequence_order}`
-            const amt = stageRowBilledRemainingAmount(r)
-            const { display: dateDisplay, ageDays } = printBilledRowReferenceDate(r)
-            return `<tr>
-              <td>${escapeHtml(j.hcp_number ?? '—')}</td>
-              <td style="line-height:1.2">${escapeHtml(j.job_name ?? '—')}<br />${escapeHtml(j.job_address ?? '—')}</td>
-              <td>${escapeHtml(detail)}</td>
-              <td style="text-align:center;line-height:1.2">${escapeHtml(dateDisplay)}<br />${escapeHtml(formatPrintDaysSince(ageDays))}</td>
-              <td style="text-align:right">$${formatCurrency(amt)}</td>
-            </tr>`
-          })
-          .join('')
-        return `<section style="margin-bottom:1.25rem; page-break-inside:avoid">
-  <h2 style="font-size:1.05rem; margin:0 0 0.35rem">${escapeHtml(sectionHeading)}</h2>
-  ${contactBlock}
-  <table>
-    <thead><tr>
-      <th>HCP</th><th style="text-align:left;line-height:1.15">Job<br />Address</th><th>Detail</th><th style="text-align:center;line-height:1.15">Billed<br />Days past</th><th style="text-align:right">Amount due</th>
-    </tr></thead>
-    <tbody>${linesHtml}
-      <tr style="background:#f9fafb; font-weight:600">
-        <td colspan="4" style="text-align:right">Subtotal:</td>
-        <td style="text-align:right">$${formatCurrency(subtotal)}</td>
-      </tr>
-    </tbody>
-  </table>
-</section>`
-      })
-      .join('')
-
-    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${title}</title><style>
-  body { font-family: sans-serif; margin: 1in; }
-  h1 { font-size: 1.25rem; margin-bottom: 0.25rem; }
-  table { width: 100%; border-collapse: collapse; margin-top: 0.35rem; font-size: 0.8125rem; }
-  th, td { border: 1px solid #ccc; padding: 0.4rem 0.5rem; text-align: left; vertical-align: top; }
-  th { background: #f5f5f5; }
-  section h2 + p { word-break: break-word; }
-  @media print { body { margin: 0.5in; } }
-</style></head><body>
-  <h1>${title}</h1>${filterNote}
-  ${sectionsHtml}
-  <p style="margin-top:1rem; font-size:1rem; font-weight:600; text-align:right">Grand total: $${formatCurrency(grandTotal)}</p>
-</body></html>`
-    const win = window.open('', '_blank')
-    if (!win) {
+    if (!openHtmlPrintWindow(buildBilledAwaitingPaymentReportHtml(rows, opts))) {
       showToast('Allow pop-ups to print the report.', 'error')
-      return
     }
-    win.document.write(html)
-    win.document.close()
-    win.focus()
-    win.print()
-    win.onafterprint = () => win.close()
   }
 
   const shouldLoadJobsListForActiveTab =
