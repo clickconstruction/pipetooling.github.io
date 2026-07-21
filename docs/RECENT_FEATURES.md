@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-21 (v2.838)
+last_updated: 2026-07-21 (v2.839)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.839)
+
+### People → Hours: first grid entry now always sticks — three reliability fixes (2026-07-21)
+User report: changing a time in the Hours grid took two tries before it updated. Three contributing weaknesses fixed in [`PeopleHoursGrid`](../src/components/people/PeopleHoursGrid.tsx) / [`usePeopleHoursData`](../src/hooks/usePeopleHoursData.ts) / [`peopleHoursPendingByCell`](../src/lib/peopleHoursPendingByCell.ts): **(1) One shared user join for cell + badge** — the grid cell resolved pending sessions with its own per-cell `users.find` name scan while the amber badge used a separately built map; new `buildHoursGridNameJoin` + memoized `buildClosedPendingHoursSumsByCell` give both surfaces the same resolution (tested for agreement), and kill the per-cell O(users) scans. **(2) Blur commits the visible value** — the cell's blur handler saved from `editingHoursValue` state (stale under batching) instead of `e.currentTarget.value`; the first entry now always commits exactly what's in the box. **(3) The silent day-locked guard now toasts** — `saveHours` no-ops on days marked Correct; that guard used to drop the entry with zero feedback, so the cell just reverted. Behavior otherwise unchanged (the positive-entry → manual-session draft flow, approval merge, and pending display rules are untouched).
 
 ## Latest Updates (v2.838)
 

@@ -122,10 +122,11 @@ import {
   toDayEditorSession,
 } from '../lib/peopleHoursProportionalScale'
 import {
+  buildClosedPendingHoursSumsByCell,
+  buildHoursGridNameJoin,
   buildPeopleHoursPendingByCellMap,
   pendingByCellKey,
   summarizePeopleHoursPendingByCell,
-  sumClosedPendingClockHoursForCell,
   type PeopleHoursPendingCellEntry,
 } from '../lib/peopleHoursPendingByCell'
 import { PeopleHoursPendingCellPopover } from '../components/people/PeopleHoursPendingCellPopover'
@@ -505,6 +506,7 @@ export default function People() {
     authUser,
     hoursDaysCorrectRef,
     setError,
+    showToast,
     activeTab,
     hoursDateStart,
     hoursDateEnd,
@@ -2495,9 +2497,14 @@ export default function People() {
    * (which still load via the `approved_at IS NULL AND rejected_at IS NULL` filter because revoke
    * only sets `revoked_at`) so revoked hours drop off the grid as soon as `people_hours` updates.
    */
+  const hoursGridNameJoin = useMemo(() => buildHoursGridNameJoin(users), [users])
+  /** v2.839: one memoized raw-sums map replaces per-cell users.find scans and shares the badge map's join, so cell and badge can never disagree. */
+  const pendingHoursSumsByCell = useMemo(
+    () => buildClosedPendingHoursSumsByCell(pendingClockSessions, hoursGridNameJoin.personNameByUserId),
+    [pendingClockSessions, hoursGridNameJoin],
+  )
   function sumClosedPendingClockHoursForPersonDate(personName: string, workDate: string): number {
-    const uid = users.find((u) => (u.name ?? '').trim() === personName.trim())?.id
-    return sumClosedPendingClockHoursForCell(pendingClockSessions, uid, workDate)
+    return pendingHoursSumsByCell.get(pendingByCellKey(personName.trim(), workDate)) ?? 0
   }
 
   /** Hours matrix: max(people_hours, pending clock) so manual-offer → session path stays visible; salary-only rows unchanged. */

@@ -42,6 +42,55 @@ export function pendingByCellKey(personName: string, workDate: string): string {
 }
 
 /**
+ * Trimmed-name user join shared by the badge map and the Hours grid cell
+ * pending sums (v2.839): ONE resolution of `clock_sessions.user_id` ↔
+ * `people_hours.person_name`, so the two surfaces can never disagree about
+ * who a pending session belongs to.
+ */
+export function buildHoursGridNameJoin(users: Array<{ id: string; name: string | null }>): {
+  userIdByPersonName: Map<string, string>
+  personNameByUserId: Map<string, string>
+} {
+  const userIdByPersonName = new Map<string, string>()
+  const personNameByUserId = new Map<string, string>()
+  for (const u of users) {
+    const trimmed = (u.name ?? '').trim()
+    if (!trimmed || !u.id) continue
+    userIdByPersonName.set(trimmed, u.id)
+    personNameByUserId.set(u.id, trimmed)
+  }
+  return { userIdByPersonName, personNameByUserId }
+}
+
+/**
+ * Raw closed-pending hour sums per (personName, workDate) cell using the
+ * shared join — the grid cell display's source (v2.839). Same inclusion
+ * rules as the badge map: closed, not rejected/revoked, positive finite
+ * duration. Unlike the badge map this has no roster/salary filters and no
+ * pending-exceeds-saved threshold — the cell needs the raw sum.
+ */
+export function buildClosedPendingHoursSumsByCell(
+  pendingClockSessions: readonly ClockSessionRow[],
+  personNameByUserId: Map<string, string>,
+): Map<string, number> {
+  const sums = new Map<string, number>()
+  for (const s of pendingClockSessions) {
+    if (s.clocked_out_at == null) continue
+    if (s.rejected_at || s.revoked_at) continue
+    const personName = personNameByUserId.get(s.user_id)
+    if (!personName) continue
+    const inMs = new Date(s.clocked_in_at).getTime()
+    const outMs = new Date(s.clocked_out_at).getTime()
+    if (!Number.isFinite(inMs) || !Number.isFinite(outMs)) continue
+    const dur = (outMs - inMs) / 3_600_000
+    if (dur <= 0) continue
+    const key = pendingByCellKey(personName, s.work_date)
+    sums.set(key, (sums.get(key) ?? 0) + dur)
+  }
+  return sums
+}
+
+/**
  * Closed pending clock sessions only (`clocked_out_at != null`); excludes rejected/revoked.
  * Salary and non-salary input rows are both kept — caller decides whether to skip salaried people.
  */
@@ -63,15 +112,15 @@ export function buildPeopleHoursPendingByCellMap(args: {
   const personNameSet = new Set(args.peopleNames.map((n) => n.trim()).filter((n) => n.length > 0))
   const workDateSet = new Set(args.workDates)
 
+  // Shared join (v2.839) — roster/salary filters are applied at the use sites
+  // below so the badge keeps its historical scope while the join itself is the
+  // one the grid-cell sums use.
+  const { userIdByPersonName: fullUserIdByName, personNameByUserId } = buildHoursGridNameJoin(args.users)
   const userIdByPersonName = new Map<string, string>()
-  const personNameByUserId = new Map<string, string>()
-  for (const u of args.users) {
-    const trimmed = (u.name ?? '').trim()
-    if (!trimmed || !u.id) continue
-    if (!personNameSet.has(trimmed)) continue
-    if (args.isSalaryOnly(trimmed)) continue
-    userIdByPersonName.set(trimmed, u.id)
-    personNameByUserId.set(u.id, trimmed)
+  for (const [name, id] of fullUserIdByName) {
+    if (!personNameSet.has(name)) continue
+    if (args.isSalaryOnly(name)) continue
+    userIdByPersonName.set(name, id)
   }
   if (userIdByPersonName.size === 0) return out
 
@@ -91,7 +140,7 @@ export function buildPeopleHoursPendingByCellMap(args: {
     if (s.rejected_at || s.revoked_at) continue
     if (!workDateSet.has(s.work_date)) continue
     const personName = personNameByUserId.get(s.user_id)
-    if (!personName) continue
+    if (!personName || !userIdByPersonName.has(personName)) continue
     const inMs = new Date(s.clocked_in_at).getTime()
     const outMs = new Date(s.clocked_out_at).getTime()
     const dur = (outMs - inMs) / 3_600_000
