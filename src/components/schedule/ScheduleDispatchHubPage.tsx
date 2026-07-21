@@ -60,11 +60,11 @@ import {
   companyWeekStartSundayContaining,
   denverCalendarDayKey,
   denverCalendarDaysBetweenInstantAndNow,
+  formatDenverCalendarDayShort,
   formatScheduleDispatchVisibleDateRange,
   getDefaultWeekRange,
   getScheduleDispatchVisibleDayKeys,
   ymdAddDays,
-  APP_CALENDAR_TZ,
 } from '../../utils/dateUtils'
 import { CAN_USE_SCHEDULE_DISPATCH_EDIT_ROLES as CAN_USE_SCHEDULE_DISPATCH } from '../../lib/scheduleDispatchEditRoles'
 import { saveNewScheduleBlockForPersonDay } from '../../lib/scheduleDispatchAddBlockSave'
@@ -83,7 +83,7 @@ import {
 } from '../../lib/userTimeOffByCell'
 import { ScheduleDispatchUndoNotComingInModal } from './ScheduleDispatchUndoNotComingInModal'
 
-/** Picker subline: "<N>d MM/DD | address" (N calendar days since the job was added, app calendar TZ). Either part optional. */
+/** Picker subline: "(<N>d) Mon D | address" (N calendar days since the job was added, app calendar TZ). Either part optional. */
 function hubJobPickerSubline(r: { created_at?: string | null; job_address?: string | null }): string | undefined {
   const dt = (r.created_at ?? '').trim()
   let dateLabel = ''
@@ -91,12 +91,7 @@ function hubJobPickerSubline(r: { created_at?: string | null; job_address?: stri
     const d = new Date(dt)
     if (!Number.isNaN(d.getTime())) {
       const daysAgo = denverCalendarDaysBetweenInstantAndNow(d.getTime())
-      const mmdd = new Intl.DateTimeFormat('en-US', {
-        timeZone: APP_CALENDAR_TZ,
-        month: '2-digit',
-        day: '2-digit',
-      }).format(d)
-      dateLabel = `${daysAgo}d ${mmdd}`
+      dateLabel = `(${daysAgo}d) ${formatDenverCalendarDayShort(d.getTime())}`
     }
   }
   const address = (r.job_address ?? '').trim()

@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-21 (v2.865)
+last_updated: 2026-07-21 (v2.866)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.866)
+
+### Dispatch → People: Add-job subline format revised to "(Nd) Mon D" (2026-07-21)
+Same-day revision of v2.865: the age-plus-date lead of the picker subline is now parenthesized days + short date — e.g. `(49d) Jun 2 | 20027 Park Bluff St San Antonio, TX` (was `49d 06/02`). Uses `formatDenverCalendarDayShort`.
 
 ## Latest Updates (v2.865)
 
