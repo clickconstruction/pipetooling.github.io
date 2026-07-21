@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-21 (v2.846)
+last_updated: 2026-07-21 (v2.847)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.847)
+
+### E2E smoke suite: local runs load credentials from `.env.local` (2026-07-21)
+[`playwright.config.ts`](../playwright.config.ts) now fills missing `E2E_TEST_EMAIL` / `E2E_TEST_PASSWORD` (and any other vars) from the gitignored `.env.local` before defining the config, so `npm run e2e` works locally without exporting credentials by hand. Real environment variables always win, so CI (GitHub Actions secrets) is unaffected. No new dependency — a ~8-line parser, not dotenv. `docs/E2E_SMOKE.md` updated (rule 4 + Running).
 
 ## Latest Updates (v2.846)
 
