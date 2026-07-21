@@ -2495,6 +2495,7 @@ export function ScheduleDispatchHub({
         />
       ) : hubTab === 'day' ? (
         <QuickfillScheduleSection
+          hideConflictPrompt
           initialWorkDateYmd={dayTabWorkDateYmd}
           onBlocksSaved={onDayScheduleChanged}
           showDaySettings

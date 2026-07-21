@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-20 (v2.816)
+last_updated: 2026-07-20 (v2.817)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.817)
+
+### Dispatch Day tab: "Are there any obvious schedule conflicts?" prompt removed (2026-07-20)
+The Schedule Dispatch hub's **Day** tab embeds [`QuickfillScheduleSection`](../src/components/quickfill/QuickfillScheduleSection.tsx), which shows its built-in conflicts prompt by default — the hub call site ([`ScheduleDispatchHub.tsx`](../src/components/schedule/ScheduleDispatchHub.tsx)) now passes the existing `hideConflictPrompt` prop, so the banner no longer renders there. Quickfill's own Schedule and Tomorrow's Schedule sections are unchanged (they already hide the built-in prompt in favor of the section wrapper's dev-configurable banner).
 
 ## Latest Updates (v2.816)
 
