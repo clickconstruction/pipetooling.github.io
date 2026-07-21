@@ -1662,10 +1662,14 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                         payload: {
                           kind: 'invoice',
                           job: jobBillingContextFromJob(inv.job),
+                          // Memo + bundle flag drive the modal's standalone-charge
+                          // pre-fill (riders: hazmat fee, trip charge).
                           invoice: {
                             id: inv.id,
                             amount: inv.amount,
                             status: inv.status,
+                            stripe_invoice_memo: inv.stripe_invoice_memo ?? null,
+                            is_primary_rtb_bundle: inv.is_primary_rtb_bundle ?? null,
                           },
                         },
                         onSuccess: async () => {

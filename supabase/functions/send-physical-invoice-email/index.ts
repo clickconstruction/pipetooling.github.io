@@ -8,6 +8,9 @@ const corsHeaders = {
 }
 
 const MAX_PDF_BASE64_CHARS = 6_000_000
+/** Optional companion documents (e.g. the Biohazard Remediation Fee Notice) sent as separate files. */
+const MAX_EXTRA_ATTACHMENTS = 2
+const MAX_TOTAL_BASE64_CHARS = 9_000_000
 
 function jsonResponse(body: Record<string, unknown>, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -20,13 +23,12 @@ function normalizeEmail(s: string): string {
   return s.trim().toLowerCase()
 }
 
-async function sendEmailWithAttachmentViaResend(
+async function sendEmailWithAttachmentsViaResend(
   to: string,
   subject: string,
   textPlain: string,
   htmlBody: string,
-  filename: string,
-  pdfBase64: string,
+  attachments: Array<{ filename: string; content: string }>,
   resendApiKey: string,
 ): Promise<{ success: boolean; error?: string }> {
   const resendResponse = await fetch('https://api.resend.com/emails', {
@@ -41,7 +43,7 @@ async function sendEmailWithAttachmentViaResend(
       subject,
       html: htmlBody,
       text: textPlain,
-      attachments: [{ filename, content: pdfBase64 }],
+      attachments,
     }),
   })
   if (!resendResponse.ok) {
@@ -96,6 +98,7 @@ serve(async (req) => {
       pdf_filename?: string
       email_html?: string
       email_text?: string
+      extra_attachments?: Array<{ filename?: string; content_base64?: string }>
     }
 
     const invoiceId = typeof body.jobs_ledger_invoice_id === 'string' ? body.jobs_ledger_invoice_id.trim() : ''
@@ -130,6 +133,28 @@ serve(async (req) => {
     }
     if (!pdfBase64 || pdfBase64.length > MAX_PDF_BASE64_CHARS) {
       return jsonResponse({ error: 'Invalid or oversized PDF attachment' }, 400)
+    }
+
+    const extraIn = Array.isArray(body.extra_attachments) ? body.extra_attachments : []
+    if (extraIn.length > MAX_EXTRA_ATTACHMENTS) {
+      return jsonResponse({ error: `At most ${MAX_EXTRA_ATTACHMENTS} extra attachments allowed` }, 400)
+    }
+    const extraAttachments: Array<{ filename: string; content: string }> = []
+    let totalBase64 = pdfBase64.length
+    for (const a of extraIn) {
+      const content = typeof a?.content_base64 === 'string' ? a.content_base64.trim() : ''
+      const filenameRaw = typeof a?.filename === 'string' ? a.filename.trim() : ''
+      if (!content || content.length > MAX_PDF_BASE64_CHARS) {
+        return jsonResponse({ error: 'Invalid or oversized extra attachment' }, 400)
+      }
+      totalBase64 += content.length
+      if (totalBase64 > MAX_TOTAL_BASE64_CHARS) {
+        return jsonResponse({ error: 'Combined attachments too large' }, 400)
+      }
+      extraAttachments.push({
+        filename: (filenameRaw || 'attachment.pdf').replace(/[^a-zA-Z0-9._-]/g, '_'),
+        content,
+      })
     }
 
     const { data: inv, error: invErr } = await userClient
@@ -179,13 +204,12 @@ serve(async (req) => {
         ? body.email_html.trim()
         : `<p>${textPlain.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</p>`
 
-    const sendResult = await sendEmailWithAttachmentViaResend(
+    const sendResult = await sendEmailWithAttachmentsViaResend(
       customerEmailIn,
       subject,
       textPlain,
       htmlBody,
-      pdfFilename.replace(/[^a-zA-Z0-9._-]/g, '_'),
-      pdfBase64,
+      [{ filename: pdfFilename.replace(/[^a-zA-Z0-9._-]/g, '_'), content: pdfBase64 }, ...extraAttachments],
       resendApiKey,
     )
     if (!sendResult.success) {

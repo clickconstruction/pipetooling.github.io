@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-21 (v2.848)
+last_updated: 2026-07-21 (v2.849)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.849)
+
+### Hazmat notice, part 2: the physical invoice email attaches the notice as a separate PDF (2026-07-21)
+When the invoice being billed is a **hazmat rider**, the Bill Customer **Physical Invoice** tab shows a pre-checked "**☣ Attach the Biohazard Remediation Fee Notice**" box ([`SendRecordInvoiceModal`](../src/components/jobs/SendRecordInvoiceModal.tsx) detects the rider by matching `job_hazmat_incidents.invoice_id`); sending emails **two PDFs** — the invoice plus `biohazard-remediation-fee-notice-….pdf` (the v2.848 PDF twin) — via [`send-physical-invoice-email`](../supabase/functions/send-physical-invoice-email/index.ts), which now accepts `extra_attachments` (max 2, per-file and combined size caps; **requires a manual edge-function redeploy**). Also fixes the standalone-charge pre-fill that never fired: the payload type documents that a stored `stripe_invoice_memo` + `is_primary_rtb_bundle=false` pre-fill the memo and Stripe line description, but both "Send bill…" call sites ([`JobFormInvoiceList`](../src/components/jobs/JobFormInvoiceList.tsx), [`JobsStagesTab`](../src/components/jobs/JobsStagesTab.tsx)) passed only `{id, amount, status}` — they now pass the memo fields through, so hazmat riders and turnaway trip charges open Bill Customer with "Hazmat remediation fee — incident {date}" (or the trip-charge memo) already on the line and memo. `EDGE_FUNCTIONS.md` updated.
 
 ## Latest Updates (v2.848)
 

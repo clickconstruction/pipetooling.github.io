@@ -2018,6 +2018,12 @@ interface SendPhysicalInvoiceEmailBody {
   pdf_filename?: string
   email_text?: string
   email_html?: string
+  /**
+   * v2.849: companion documents sent as separate files beside the invoice PDF
+   * (e.g. the Biohazard Remediation Fee Notice for hazmat rider invoices).
+   * Max 2; each ≤ 6M base64 chars; combined with the invoice ≤ 9M.
+   */
+  extra_attachments?: Array<{ filename?: string; content_base64: string }>
 }
 ```
 
