@@ -102,22 +102,16 @@ import { useJobThreadNotes } from '../hooks/useJobThreadNotes'
 import { useSubLaborLedger } from '../hooks/useSubLaborLedger'
 import { CrewJobsBlock } from '../components/CrewJobsBlock'
 import type { Database } from '../types/database'
-import type { JobSummaryClockSessionRow, JobSummaryInvoiceAllocationLine, JobSummaryMercuryAllocationRow, JobSummaryReportRow } from '../types/jobSummary'
+import type { JobSummaryInvoiceAllocationLine, JobSummaryMercuryAllocationRow } from '../types/jobSummary'
 import type { JobWithDetails } from '../types/jobWithDetails'
 import { useJobFormModal, type OpenEditJobOptions } from '../contexts/JobFormModalContext'
 import { useJobsListCache } from '../contexts/JobsListCacheContext'
-import { fetchJobsLedgerWithDetailsForStages } from '../lib/fetchJobsLedgerWithDetailsForStages'
 import { effectiveJobLedgerNumber } from '../lib/ledgerDisplayPrefixes'
 import { getBidServiceTypeTag } from '../utils/unifiedJobBidSearch'
-import {
-  applyMinHcpFilter,
-  readJobSummaryMinHcpExclusiveFromStorage,
-} from '../lib/jobSummaryHcpFilter'
 import { useJobDetailModal } from '../contexts/JobDetailModalContext'
-import { CLOCK_SESSION_LIST_SELECT } from '../lib/clockSessionSelect'
 import { getDefaultWeekRange } from '../utils/dateUtils'
 import { fetchAttributionsByMercuryTxIds } from '../lib/fetchMercuryRelationsByTxIds'
-import { fetchMercuryJobAllocationsWithAttributionForJob } from '../lib/fetchMercuryJobAllocationsWithAttributionForJob'
+import { useJobSummaryData } from '../hooks/useJobSummaryData'
 import { formatDecimalWorkHoursToHhMm } from '../lib/formatDecimalWorkHoursHhMm'
 import { PartsUnattributedMercuryListModal } from '../components/jobs/PartsUnattributedMercuryListModal'
 import { PartsUnattributedAllJobsModal } from '../components/jobs/PartsUnattributedAllJobsModal'
@@ -299,19 +293,33 @@ export default function Jobs() {
   /** Set after Ready to Bill → See in Stages; cleared on timeout, dismiss, tab change, or reopening Edit Job. */
   const [returnEditBannerJobId, setReturnEditBannerJobId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
-  /** Full org job list for Job Summary tab (all statuses, ignores `?customer=`). */
-  const [jobSummaryLedgerAllJobs, setJobSummaryLedgerAllJobs] = useState<JobWithDetails[] | null>(null)
-  const [jobSummaryMinHcpExclusive, setJobSummaryMinHcpExclusive] = useState(() =>
-    readJobSummaryMinHcpExclusiveFromStorage(),
-  )
-  const jobSummaryLedgerJobs = useMemo(() => {
-    if (jobSummaryLedgerAllJobs == null) return null
-    return applyMinHcpFilter(jobSummaryLedgerAllJobs, jobSummaryMinHcpExclusive)
-  }, [jobSummaryLedgerAllJobs, jobSummaryMinHcpExclusive])
-  const [jobSummaryLedgerLoading, setJobSummaryLedgerLoading] = useState(false)
-  const [jobSummaryLedgerError, setJobSummaryLedgerError] = useState<string | null>(null)
-  const loadJobSummaryLedgerRef = useRef<() => void>(() => {})
-  const jobSummaryLedgerSnapshotLoadedRef = useRef(false)
+  // Job Summary data layer (ledger snapshot + lazy per-job caches + loaders) —
+  // seam hook since v2.826; the destructure keeps every downstream name. Called
+  // BEFORE useJobsMercuryAllocations, which consumes jobSummaryLedgerJobs (via
+  // jobListForCardCharges) + touchJobSummaryMercuryAllocations; the
+  // jobSummaryData P&L memo stays page-side because it reads
+  // mercuryCardChargesByJobId back from that later hook.
+  const {
+    jobSummaryLedgerAllJobs,
+    jobSummaryMinHcpExclusive,
+    setJobSummaryMinHcpExclusive,
+    jobSummaryLedgerJobs,
+    jobSummaryLedgerLoading,
+    jobSummaryLedgerError,
+    loadJobSummaryLedger,
+    loadJobSummaryLedgerRef,
+    jobSummaryLedgerSnapshotLoadedRef,
+    jobSummaryClockSessionsByJobId,
+    loadJobSummaryClockSessionsForJob,
+    jobSummaryInvoiceLinesByJobId,
+    loadJobSummaryInvoiceLinesForJob,
+    jobSummaryMercuryAllocationsByJobId,
+    loadJobSummaryMercuryAllocationsForJob,
+    touchJobSummaryMercuryAllocations,
+    jobSummaryReportsByJobId,
+    loadJobSummaryReportsForJob,
+    jobSummaryReportPctByJobId,
+  } = useJobSummaryData({ authUserId: authUser?.id, activeTab })
   /** Debounce timer for post-Stages-mutation refresh (coalesce rapid moves into one fetch). */
   const loadJobsAfterMutationTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   /** Coalesce rapid `useEffect` dependency churn (tab/customer) into one `loadJobs`. */
@@ -321,33 +329,6 @@ export default function Jobs() {
   const loadJobs = useCallback(() => {
     return runFetchJobs(customerFilterForFetch)
   }, [runFetchJobs, customerFilterForFetch])
-
-  const loadJobSummaryLedger = useCallback(async () => {
-    if (!authUser?.id) return
-    setJobSummaryLedgerLoading(true)
-    setJobSummaryLedgerError(null)
-    try {
-      const result = await fetchJobsLedgerWithDetailsForStages({
-        customerFilter: null,
-        statusScope: 'all',
-        jobSummaryEnrich: true,
-        minHcpExclusive: jobSummaryMinHcpExclusive,
-      })
-      if (!result.ok) {
-        setJobSummaryLedgerError(result.error)
-        return
-      }
-      setJobSummaryLedgerAllJobs(result.jobs)
-      jobSummaryLedgerSnapshotLoadedRef.current = true
-    } catch (e: unknown) {
-      setJobSummaryLedgerError(e instanceof Error ? e.message : String(e))
-    } finally {
-      setJobSummaryLedgerLoading(false)
-    }
-  }, [authUser?.id, jobSummaryMinHcpExclusive])
-  loadJobSummaryLedgerRef.current = () => {
-    void loadJobSummaryLedger()
-  }
 
   const jobsListPipelineBusy = jobsListLoading || jobsListRefreshing
 
@@ -469,121 +450,6 @@ export default function Jobs() {
   const [jobSummaryBreakdownPersonSearchByJobId, setJobSummaryBreakdownPersonSearchByJobId] = useState<
     Record<string, string>
   >({})
-  const jobSummaryClockSessionsLoadedRef = useRef<Set<string>>(new Set())
-  const [jobSummaryClockSessionsByJobId, setJobSummaryClockSessionsByJobId] = useState<Map<string, JobSummaryClockSessionRow[]>>(() => new Map())
-  const jobSummaryInvoiceLinesLoadedRef = useRef<Set<string>>(new Set())
-  const [jobSummaryInvoiceLinesByJobId, setJobSummaryInvoiceLinesByJobId] = useState<
-    Map<string, JobSummaryInvoiceAllocationLine[]>
-  >(() => new Map())
-  const jobSummaryMercuryAllocationsLoadedRef = useRef<Set<string>>(new Set())
-  const [jobSummaryMercuryAllocationsByJobId, setJobSummaryMercuryAllocationsByJobId] = useState<
-    Map<string, JobSummaryMercuryAllocationRow[]>
-  >(() => new Map())
-
-  const loadJobSummaryMercuryAllocationsForJob = useCallback(async (jobId: string, force = false) => {
-    if (!force && jobSummaryMercuryAllocationsLoadedRef.current.has(jobId)) return
-    if (force) jobSummaryMercuryAllocationsLoadedRef.current.delete(jobId)
-    try {
-      const rows = await fetchMercuryJobAllocationsWithAttributionForJob(jobId, 'job summary mercury')
-      const mapped: JobSummaryMercuryAllocationRow[] = rows.map((r) => ({
-        id: r.id,
-        mercury_transaction_id: r.mercury_transaction_id,
-        amount: r.amount,
-        note: r.note,
-        attributionDisplayName: r.attributionDisplayName,
-        mercury_transactions: r.mercury_transactions
-          ? {
-              posted_at: r.mercury_transactions.posted_at,
-              counterparty_name: r.mercury_transactions.counterparty_name,
-              amount: r.mercury_transactions.amount,
-              note: r.mercury_transactions.note,
-              external_memo: r.mercury_transactions.external_memo,
-              raw: r.mercury_transactions.raw,
-            }
-          : null,
-      }))
-      setJobSummaryMercuryAllocationsByJobId((prev) => {
-        const next = new Map(prev)
-        next.set(jobId, mapped)
-        return next
-      })
-    } catch {
-      setJobSummaryMercuryAllocationsByJobId((prev) => {
-        const next = new Map(prev)
-        next.set(jobId, [])
-        return next
-      })
-    } finally {
-      jobSummaryMercuryAllocationsLoadedRef.current.add(jobId)
-    }
-  }, [])
-
-  const loadJobSummaryInvoiceLinesForJob = useCallback(async (jobId: string) => {
-    if (jobSummaryInvoiceLinesLoadedRef.current.has(jobId)) return
-    try {
-      const data = await withSupabaseRetry(
-        async () =>
-          await supabase.rpc('get_invoice_allocation_lines_for_jobs', { p_job_ids: [jobId] }),
-        'job summary invoice lines',
-      )
-      const rows = (data ?? []) as JobSummaryInvoiceAllocationLine[]
-      setJobSummaryInvoiceLinesByJobId((prev) => {
-        const next = new Map(prev)
-        next.set(jobId, rows)
-        return next
-      })
-    } catch {
-      setJobSummaryInvoiceLinesByJobId((prev) => {
-        const next = new Map(prev)
-        next.set(jobId, [])
-        return next
-      })
-    } finally {
-      jobSummaryInvoiceLinesLoadedRef.current.add(jobId)
-    }
-  }, [])
-
-  /** Latest field-report completion % per job (Job Summary "%" column; report wins over pct_complete). */
-  const jobSummaryReportPctRequestedRef = useRef<Set<string>>(new Set())
-  const [jobSummaryReportPctByJobId, setJobSummaryReportPctByJobId] = useState<Map<string, number>>(
-    () => new Map(),
-  )
-
-  const jobSummaryReportsLoadedRef = useRef<Set<string>>(new Set())
-  const [jobSummaryReportsByJobId, setJobSummaryReportsByJobId] = useState<Map<string, JobSummaryReportRow[]>>(
-    () => new Map(),
-  )
-
-  /** Field reports for the expanded-row Charges & Value timeline (lazy per expanded job). */
-  const loadJobSummaryReportsForJob = useCallback(async (jobId: string) => {
-    if (jobSummaryReportsLoadedRef.current.has(jobId)) return
-    try {
-      const data = await withSupabaseRetry(
-        async () =>
-          await supabase
-            .from('reports')
-            .select('id, created_at, field_values, users!reports_created_by_user_id_fkey(name)')
-            .eq('job_ledger_id', jobId)
-            .order('created_at', { ascending: true }),
-        'job summary reports',
-      )
-      const rows = (data ?? []) as unknown as JobSummaryReportRow[]
-      setJobSummaryReportsByJobId((prev) => {
-        const next = new Map(prev)
-        next.set(jobId, rows)
-        return next
-      })
-    } catch {
-      setJobSummaryReportsByJobId((prev) => {
-        const next = new Map(prev)
-        next.set(jobId, [])
-        return next
-      })
-    } finally {
-      jobSummaryReportsLoadedRef.current.add(jobId)
-    }
-  }, [])
-
   const [jobSummaryCostDrilldown, setJobSummaryCostDrilldown] = useState<{ title: string; body: ReactNode } | null>(null)
   const jobListForCardCharges = useMemo(
     () => (activeTab === 'job-summary' && jobSummaryLedgerJobs !== null ? jobSummaryLedgerJobs : jobs),
@@ -620,12 +486,10 @@ export default function Jobs() {
     authUserId: authUser?.id,
     showToast,
     unattributedScopeInputs: { jobs, showMyJobsOnly, myJobIds },
-    // Job Summary bridge (temporary until the useJobSummaryData seam): the lazy
-    // Job Summary mercury cache + drilldown modal stay parent-side.
-    onJobSummaryMercuryTouched: (jid) => {
-      jobSummaryMercuryAllocationsLoadedRef.current.delete(jid)
-      void loadJobSummaryMercuryAllocationsForJob(jid, true)
-    },
+    // Job Summary bridge: the lazy mercury cache lives in useJobSummaryData
+    // (v2.826 — its touch function implements the v2.825 invalidate+force-reload
+    // closure); the drilldown modal stays parent-side (quirk #11).
+    onJobSummaryMercuryTouched: touchJobSummaryMercuryAllocations,
     onJobSummaryDrilldownClose: () => setJobSummaryCostDrilldown(null),
   })
   const [pendingScrollToPartsJobId, setPendingScrollToPartsJobId] = useState<string | null>(null)
@@ -2095,37 +1959,9 @@ export default function Jobs() {
     for (const jobId of expandedJobSummaryJobIds) {
       const prefix = `${jobId}::`
       if (!expandedKeys.some((k) => k.startsWith(prefix))) continue
-      if (jobSummaryClockSessionsLoadedRef.current.has(jobId)) continue
-      void (async () => {
-        try {
-          const data = await withSupabaseRetry(
-            async () =>
-              supabase
-                .from('clock_sessions')
-                .select(CLOCK_SESSION_LIST_SELECT)
-                .eq('job_ledger_id', jobId)
-                .order('clocked_in_at', { ascending: true }),
-            'job summary clock sessions',
-          )
-          const raw = (data ?? []) as JobSummaryClockSessionRow[]
-          const filtered = raw.filter((s) => !s.revoked_at)
-          setJobSummaryClockSessionsByJobId((prev) => {
-            const next = new Map(prev)
-            next.set(jobId, filtered)
-            return next
-          })
-        } catch {
-          setJobSummaryClockSessionsByJobId((prev) => {
-            const next = new Map(prev)
-            next.set(jobId, [])
-            return next
-          })
-        } finally {
-          jobSummaryClockSessionsLoadedRef.current.add(jobId)
-        }
-      })()
+      void loadJobSummaryClockSessionsForJob(jobId)
     }
-  }, [activeTab, authUser?.id, expandedJobSummaryJobIds, jobSummaryTeamLaborPersonExpandedKeys])
+  }, [activeTab, authUser?.id, expandedJobSummaryJobIds, jobSummaryTeamLaborPersonExpandedKeys, loadJobSummaryClockSessionsForJob])
 
   useEffect(() => {
     if (activeTab !== 'job-summary') return
@@ -2153,33 +1989,6 @@ export default function Jobs() {
   }, [activeTab, expandedJobSummaryJobIds, loadJobSummaryReportsForJob])
 
   useEffect(() => {
-    if (activeTab !== 'job-summary' || !jobSummaryLedgerJobs) return
-    const missing = jobSummaryLedgerJobs
-      .map((j) => j.id)
-      .filter((id) => !jobSummaryReportPctRequestedRef.current.has(id))
-    if (missing.length === 0) return
-    for (const id of missing) jobSummaryReportPctRequestedRef.current.add(id)
-    void (async () => {
-      try {
-        const data = await withSupabaseRetry(
-          async () => await supabase.rpc('list_latest_report_completion_pct', { p_job_ids: missing }),
-          'job summary report completion pct',
-        )
-        const rows = (data ?? []) as Array<{ job_ledger_id: string; pct: number }>
-        if (rows.length === 0) return
-        setJobSummaryReportPctByJobId((prev) => {
-          const next = new Map(prev)
-          for (const r of rows) next.set(r.job_ledger_id, r.pct)
-          return next
-        })
-      } catch {
-        // Column falls back to jobs_ledger.pct_complete; un-mark so a later visit retries.
-        for (const id of missing) jobSummaryReportPctRequestedRef.current.delete(id)
-      }
-    })()
-  }, [activeTab, jobSummaryLedgerJobs])
-
-  useEffect(() => {
     if (activeTab !== 'job-summary' || !authUser?.id) return
     const t = setTimeout(() => {
       void loadJobSummaryLedger()
@@ -2192,13 +2001,6 @@ export default function Jobs() {
     const q = searchParams.get('jobSummaryHcp')?.trim()
     if (q) setJobSummarySearch(q)
   }, [activeTab, searchParams])
-
-  useEffect(() => {
-    if (authUser?.id) return
-    setJobSummaryLedgerAllJobs(null)
-    setJobSummaryLedgerError(null)
-    jobSummaryLedgerSnapshotLoadedRef.current = false
-  }, [authUser?.id])
 
   useEffect(() => {
     if (activeTab !== 'parts') setAllJobsUnattributedOpen(false)

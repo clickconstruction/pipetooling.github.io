@@ -25,10 +25,11 @@ import type { JobWithDetails } from '../types/jobWithDetails'
  * every downstream reference keeps its name.
  *
  * Stays in the page for now: the parts-tab UI states (search, my-jobs filter,
- * expanded rows), the `activeTab`-keyed effects (close-on-tab-leave,
- * refetch-on-open, auto-load for expanded rows) — those are UI-coupled — and
- * Job Summary's lazy mercury cache, bridged via `onJobSummaryMercuryTouched` /
- * `onJobSummaryDrilldownClose` until the `useJobSummaryData` seam claims it.
+ * expanded rows) and the `activeTab`-keyed effects (close-on-tab-leave,
+ * refetch-on-open, auto-load for expanded rows) — those are UI-coupled. Job
+ * Summary's lazy mercury cache lives in `useJobSummaryData` (v2.826), bridged
+ * via `onJobSummaryMercuryTouched` (its `touchJobSummaryMercuryAllocations`) /
+ * `onJobSummaryDrilldownClose` (the page's drilldown state).
  *
  * The all-jobs unattributed scope memos live here (not parent-side) because
  * they read the hook-owned `mercuryCardChargesByJobId`; their parent-side
@@ -55,7 +56,7 @@ export function useJobsMercuryAllocations({
     showMyJobsOnly: boolean
     myJobIds: Set<string> | null
   }
-  /** Job Summary bridge (temporary until the `useJobSummaryData` seam): invalidate + force-reload the parent's lazy Job Summary mercury cache for one job. */
+  /** Job Summary bridge: invalidate + force-reload the lazy Job Summary mercury cache for one job (`useJobSummaryData`'s `touchJobSummaryMercuryAllocations` since v2.826). */
   onJobSummaryMercuryTouched: (jobId: string) => void
   /** Job Summary bridge: close the parent's cost-drilldown modal. */
   onJobSummaryDrilldownClose: () => void
