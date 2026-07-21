@@ -57,6 +57,12 @@ type SettingsPeopleTabProps = {
   myPeople: PersonRow[]
   nonUserPeople: PersonRow[]
   openFindDuplicatesModal: () => void
+  mergeDuplicatesModalOpen: boolean
+  setMergeDuplicatesModalOpen: Dispatch<SetStateAction<boolean>>
+  mergeDuplicatesLoading: boolean
+  mergeDuplicates: Array<{ personName: string; userDisplayName: string; email: string }>
+  mergingPersonName: string | null
+  handleMergeDuplicate: (dup: { personName: string; userDisplayName: string; email: string }) => void
   onActiveAccountsDataChanged: () => void
   payApprovedError: string | null
   payApprovedMasterIds: Set<string>
@@ -106,6 +112,12 @@ export default function SettingsPeopleTab({
   myPeople,
   nonUserPeople,
   openFindDuplicatesModal,
+  mergeDuplicatesModalOpen,
+  setMergeDuplicatesModalOpen,
+  mergeDuplicatesLoading,
+  mergeDuplicates,
+  mergingPersonName,
+  handleMergeDuplicate,
   onActiveAccountsDataChanged,
   payApprovedError,
   payApprovedMasterIds,
@@ -668,6 +680,44 @@ export default function SettingsPeopleTab({
           </div>
             )}
         </div>
+
+      {mergeDuplicatesModalOpen && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100 }}>
+          <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 320, maxWidth: 480 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+              <h2 style={{ margin: 0, fontSize: '1.25rem' }}>Find duplicates</h2>
+              <button
+                type="button"
+                onClick={() => setMergeDuplicatesModalOpen(false)}
+                style={{ padding: '0.25rem', background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.25rem', lineHeight: 1 }}
+              >
+                ×
+              </button>
+            </div>
+            {mergeDuplicatesLoading ? (
+              <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.875rem' }}>Checking…</p>
+            ) : mergeDuplicates.length === 0 ? (
+              <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.875rem' }}>No duplicates found.</p>
+            ) : (
+              <ul style={{ margin: 0, paddingLeft: '1.25rem' }}>
+                {mergeDuplicates.map((dup) => (
+                  <li key={dup.personName} style={{ marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <span>{dup.personName} → {dup.userDisplayName}</span>
+                    <button
+                      type="button"
+                      onClick={() => handleMergeDuplicate(dup)}
+                      disabled={mergingPersonName === dup.personName}
+                      style={{ padding: '0.25rem 0.5rem', fontSize: '0.875rem', cursor: mergingPersonName === dup.personName ? 'not-allowed' : 'pointer', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4 }}
+                    >
+                      {mergingPersonName === dup.personName ? 'Merging…' : 'Merge'}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </div>
+      )}
     </>
   )
 }

@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-21 (v2.856)
+last_updated: 2026-07-21 (v2.857)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.857)
+
+### Settings decomposition, step 4b: People & accounts directory engine extracted (2026-07-21)
+Second half of order #4 in [`SETTINGS_TABS_ARCHITECTURE.md`](./SETTINGS_TABS_ARCHITECTURE.md), behavior-preserving. The People & accounts engine — Additional People (myPeople/nonUserPeople + person edit/delete with pay-table name cascade), Task Dispatch / Estimator Inbox group toggles, Pay Approved Masters, and the find/merge-duplicates flow (~35 state vars + 9 handlers + loads) — moved into the new [`useSettingsPeopleDirectory`](../src/hooks/useSettingsPeopleDirectory.ts) hook, parent-instantiated (the parent render still gates `TeamFeedbackMasterAggregates` on `payApprovedMasterIds`, and a merge still awaits the parent's full `loadData`). The merge-duplicates modal JSX moved from page level into [`SettingsPeopleTab`](../src/components/settings/SettingsPeopleTab.tsx). `loadData`'s dev branch now loads only the shared `users` list, `loadServiceTypes`, and dashboard-tab data. Settings.tsx shrinks 2,435 → 2,121 lines. No user-facing changes.
 
 ## Latest Updates (v2.856)
 
