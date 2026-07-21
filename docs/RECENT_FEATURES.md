@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-20 (v2.821)
+last_updated: 2026-07-20 (v2.822)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.822)
+
+### Jobs refactor: Sub Labor ledger + payments move into useSubLaborLedger (2026-07-20)
+Step 3 of the mapped [`Jobs.tsx`](../src/pages/Jobs.tsx) decomposition ([`JOBS_TABS_ARCHITECTURE.md`](./JOBS_TABS_ARCHITECTURE.md)): the `people_labor_jobs` data engine — the ledger list (items + payments + the HCP → job-name join), delete/date mutations, and the payment/backcharge CRUD — becomes [`useSubLaborLedger`](../src/hooks/useSubLaborLedger.ts). The page destructures the return so every downstream reference keeps its name; the open Edit Sub Labor modal stays in sync via an `onLaborJobsReloaded` callback. The labor form, labor-book CRUD, roster, and payment-modal open states stay in the page (UI-coupled — they move with the modal in the next step). **Behavior-preserving.** Jobs.tsx 9,852 → 9,722 lines.
 
 ## Latest Updates (v2.821)
 
