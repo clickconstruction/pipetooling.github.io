@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-21 (v2.854)
+last_updated: 2026-07-21 (v2.855)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.855)
+
+### Settings decomposition, step 3: Catalogs & trades engine extracted (2026-07-21)
+Order #3 of the [`SETTINGS_TABS_ARCHITECTURE.md`](./SETTINGS_TABS_ARCHITECTURE.md) plan — the biggest single move, behavior-preserving. Stage A: the takeoff-book fixture-name/alias count matching and orphan-material-price classification moved into [`lib/settingsCatalogs.ts`](../src/lib/settingsCatalogs.ts) with unit tests. Stage B: the five type-CRUD engines (service types, material part types, material assembly types, takeoff/labor/price book names, counts quick-add groups) plus the orphan-prices review — ~60 state vars, ~45 handlers, 9 load effects — moved into the new [`useSettingsCatalogs`](../src/hooks/useSettingsCatalogs.ts) hook. The hook is instantiated by the **parent** (not the tab) because `serviceTypes` is cross-tab substrate (estimator default-selection sync + `visibleServiceTypesForMaterials` + `loadData`'s dev|estimator `loadServiceTypes()` call). The orphan-prices modal JSX moved from page level into [`SettingsCatalogsTab`](../src/components/settings/SettingsCatalogsTab.tsx). Settings.tsx shrinks 3,826 → 2,677 lines. Preserved quirks: the duplicated parts-load/part-counts effects (double-fires kept, now annotated in the hook), catalog load effects that never clear on deselect, and FK-delete failures writing the mostly-invisible shared error. No user-facing changes.
 
 ## Latest Updates (v2.854)
 
