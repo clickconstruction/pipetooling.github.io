@@ -974,9 +974,14 @@ export default function Jobs() {
       stripOpenBankPaymentsParam()
       return
     }
+    // Wait for the jobs list like the other stages deep links: on a cold load
+    // the earliest effect passes run before JobsStagesTab's imperative handle
+    // is attached, so an ungated `stagesTabRef.current?.` call silently no-ops
+    // and the param strips without the modal ever opening (found live, v2.832).
+    if (jobsListLoading) return
     stagesTabRef.current?.openBankPayments()
     stripOpenBankPaymentsParam()
-  }, [openBankPaymentsParam, authRole, activeTab, setSearchParams])
+  }, [openBankPaymentsParam, authRole, activeTab, jobsListLoading, setSearchParams])
 
   // When editLabor=hcp is in URL and labor jobs are loaded, open edit or new labor modal
   const editLaborHcp = searchParams.get('editLabor')
@@ -1083,6 +1088,9 @@ export default function Jobs() {
 
   useEffect(() => {
     if (activeTab === 'stages' && searchParams.get('showBilledTotalByName') === 'true') {
+      // Same cold-load handle race as ?openBankPayments= — wait for the jobs
+      // list so the tab's imperative handle is guaranteed attached (v2.832).
+      if (jobsListLoading) return
       stagesTabRef.current?.showBilledTotalByName()
       setSearchParams((p) => {
         const next = new URLSearchParams(p)
@@ -1090,7 +1098,7 @@ export default function Jobs() {
         return next
       }, { replace: true })
     }
-  }, [activeTab, searchParams, setSearchParams])
+  }, [activeTab, jobsListLoading, searchParams, setSearchParams])
 
 
   useEffect(() => {

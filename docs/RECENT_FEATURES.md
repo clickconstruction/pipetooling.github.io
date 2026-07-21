@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-21 (v2.831)
+last_updated: 2026-07-21 (v2.832)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.832)
+
+### Jobs fix: two Stages deep links no-opped on cold page loads after the v2.831 tab extraction (2026-07-21)
+Found by the post-decomposition live sweep. `?showBilledTotalByName=true` and `?openBankPayments=1` ran their router effects on the **earliest effect passes of a cold load**, before [`JobsStagesTab`](../src/components/jobs/JobsStagesTab.tsx)'s imperative handle attaches — so `stagesTabRef.current?.…()` silently no-opped and the param stripped without the modal opening (pre-v2.831 these set page state directly, which survived; warm SPA navigations were unaffected). The three loading-gated deep links (`?stagesJob=`, `?stagesInvoice=`, `?stagesSection=`) were already safe. Fix in [`Jobs.tsx`](../src/pages/Jobs.tsx): both effects now wait for `jobsListLoading` like their siblings (role-denied strips stay immediate); the map records the rule — **handle-driven router effects must gate on the jobs list load**.
 
 ## Latest Updates (v2.831)
 
