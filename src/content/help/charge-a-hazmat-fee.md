@@ -23,6 +23,8 @@ Generating adds a separate **ready-to-bill line** to the job — a rider invoice
 
 After generating, click {{button:primary|Open printable notice}} for a customer-facing packet: incident summary, photo references, technician statements, the terms clause, and the fee. Include it when you send the bill (attach to the physical-invoice email, or reference it on the Stripe invoice).
 
+You can come back to the notice any time: open **Edit Job** and look for the **Riders** list in the billing section — every hazmat incident shows there with {{button:outline|Open notice}} and {{button:outline|Download PDF}} buttons, and the rider's line in the Invoices table carries a ☣ **Hazmat** tag with its memo so it never reads as an anonymous draft.
+
 ## Notes
 
 - The fee's memo ("Hazmat remediation fee — incident {date}") shows on the Stripe invoice line automatically.

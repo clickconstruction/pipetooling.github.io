@@ -3851,6 +3851,76 @@ export type Database = {
           },
         ]
       }
+      job_hazmat_incidents: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          description: string
+          exposed_people: string
+          fee_amount: number
+          id: string
+          incident_at: string
+          invoice_id: string | null
+          job_id: string
+          photo_links: Json
+          stage_label: string | null
+          testimonials: Json
+          tos_clause_snapshot: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          description: string
+          exposed_people?: string
+          fee_amount: number
+          id?: string
+          incident_at?: string
+          invoice_id?: string | null
+          job_id: string
+          photo_links?: Json
+          stage_label?: string | null
+          testimonials?: Json
+          tos_clause_snapshot: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          description?: string
+          exposed_people?: string
+          fee_amount?: number
+          id?: string
+          incident_at?: string
+          invoice_id?: string | null
+          job_id?: string
+          photo_links?: Json
+          stage_label?: string | null
+          testimonials?: Json
+          tos_clause_snapshot?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_hazmat_incidents_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_hazmat_incidents_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger_invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_hazmat_incidents_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       job_schedule_blocks: {
         Row: {
           assignee_user_id: string

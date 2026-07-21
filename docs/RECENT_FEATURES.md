@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-21 (v2.847)
+last_updated: 2026-07-21 (v2.848)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.848)
+
+### Hazmat notice, part 1: the Biohazard Remediation Fee Notice is re-openable — Riders strip + labeled rider invoices in Edit Job (2026-07-21)
+Foundation for attaching the notice to invoices (parts 2–4 follow; design: root `HAZMAT_NOTICE_INVOICE_ATTACHMENT_BRIEF.md`). Until now the printable notice existed only inside the ☣ wizard's in-memory draft — close the modal and it was gone, though everything it needs is persisted in `job_hazmat_incidents`. New [`hazmatIncidents.ts`](../src/lib/hazmatIncidents.ts) (row→draft adapter tolerant of malformed jsonb + `hazmatNoticeJobInfoFromJob` with the Stages-button fallbacks + loader; unit-tested) re-hydrates the builders from the saved record, and new [`hazmatFeeNoticePdf.ts`](../src/lib/jobsDocuments/hazmatFeeNoticePdf.ts) renders a **real PDF twin** of the notice (jsPDF letter, clickable photo links, block model unit-tested) for downloads and the upcoming email attachments. Surfaces: **(1) Riders strip** in Edit Job's billing section ([`JobFormHazmatRidersStrip`](../src/components/jobs/JobFormHazmatRidersStrip.tsx), render-smoke-tested) — one line per incident ("☣ Biohazard remediation fee — incident {date} · $N · Draft/Billed") with **Open notice** and **Download PDF**; **(2)** the rider's row in [`JobFormInvoiceList`](../src/components/jobs/JobFormInvoiceList.tsx) gains a ☣ **Hazmat** chip, and **drafts now show their memo sub-row** (riders pre-set the memo — it was hidden until billed, leaving the rider indistinguishable from any other draft; also surfaces turnaway trip-charge memos). Also fixes `job_hazmat_incidents` missing from the generated `database.ts` types (hand-added in gen format). Data via new [`useJobHazmatIncidents`](../src/hooks/useJobHazmatIncidents.ts); no DB/RLS changes.
 
 ## Latest Updates (v2.847)
 

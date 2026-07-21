@@ -15,6 +15,7 @@ import { JOB_FORM_SECTION_HEADER_STYLE } from '../../lib/jobFormSectionHeaderSty
 import { supabase } from '../../lib/supabase'
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
 import { useAuth } from '../../hooks/useAuth'
+import { useJobHazmatIncidents } from '../../hooks/useJobHazmatIncidents'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useLedgerPrefixMap } from '../../contexts/LedgerDisplayPrefixContext'
 import { formatBidLedgerDocTitle, type LedgerPrefixMap } from '../../lib/ledgerDisplayPrefixes'
@@ -35,6 +36,7 @@ import { useBreakOffSlider } from './useBreakOffSlider'
 import { useJobCostSnapshot } from './useJobCostSnapshot'
 import { useJobMigrate } from './useJobMigrate'
 import { JobFormInvoiceList } from './JobFormInvoiceList'
+import { JobFormHazmatRidersStrip } from './JobFormHazmatRidersStrip'
 import { JobFormPaymentsTable } from './JobFormPaymentsTable'
 import { JobFormPartsCostSection } from './JobFormPartsCostSection'
 import { JobFormLaborCostPanel } from './JobFormLaborCostPanel'
@@ -220,6 +222,7 @@ export default function JobFormModal({
   const { showToast } = useToastContext()
   const navigate = useNavigate()
   const prefixMap = useLedgerPrefixMap()
+  const { incidents: hazmatIncidents, hazmatInvoiceIds } = useJobHazmatIncidents(editJobId)
   const billCustomer = useBillCustomerModal()
   const jobDetailOpenerBridge = useJobDetailOpenerBridge()
   const newProjectModal = useNewProjectModal()
@@ -3670,10 +3673,12 @@ export default function JobFormModal({
                   moveWorkingJobToReadyToBillFromEdit={moveWorkingJobToReadyToBillFromEdit}
                 />
               ) : null}
+              <JobFormHazmatRidersStrip job={editing} incidents={hazmatIncidents} />
               <JobFormInvoiceList
                 editing={editing}
                 payments={payments}
                 canApplyAgreedWriteDown={canApplyAgreedWriteDown}
+                hazmatInvoiceIds={hazmatInvoiceIds}
                 onClose={onClose}
                 onSavedRef={onSavedRef}
                 setEditing={setEditing}
