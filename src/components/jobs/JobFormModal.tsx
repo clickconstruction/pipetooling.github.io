@@ -11,6 +11,7 @@ import type { CSSProperties, RefObject } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { NO_CUSTOMER_TYPE_LABEL } from '../../constants/customerTypeLabels'
 import { buildServiceTypeTradePill } from '../../lib/serviceTypeTradePill'
+import { JOB_FORM_SECTION_HEADER_STYLE } from '../../lib/jobFormSectionHeaderStyle'
 import { supabase } from '../../lib/supabase'
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
 import { useAuth } from '../../hooks/useAuth'
@@ -718,7 +719,7 @@ export default function JobFormModal({
     return vis
   }, [mode, formServiceTypeId, visibleJobFormServiceTypes, serviceTypes])
 
-  /** Edit-mode header trade pill (PLUM/ELEC/HVAC) — shortcut to this job on Jobs → Stages. */
+  /** Edit-mode trade pill (PLUM/ELEC/HVAC) beside the Service type select — shortcut to this job on Jobs → Stages. */
   const headerTradePill = useMemo(() => {
     if (!editing || !formServiceTypeId) return null
     const name = serviceTypes.find((s) => s.id === formServiceTypeId)?.name ?? null
@@ -2548,21 +2549,6 @@ export default function JobFormModal({
       >
         <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '1rem' }}>
           <h2 style={{ margin: 0, fontSize: '1.25rem', flexShrink: 0 }}>{editing ? 'Edit Job' : 'New Job'}</h2>
-          {headerTradePill && editing ? (
-            <button
-              type="button"
-              onClick={() => {
-                const jobId = editing.id
-                onClose()
-                navigate(`/jobs?tab=stages&stagesJob=${encodeURIComponent(jobId)}`)
-              }}
-              title="Open this job in Jobs → Stages (closes Edit Job without saving)"
-              aria-label="Open this job in Jobs → Stages. Closes Edit Job without saving."
-              style={{ ...headerTradePill.style, marginTop: 0, cursor: 'pointer', flexShrink: 0 }}
-            >
-              {headerTradePill.label}
-            </button>
-          ) : null}
           <div ref={hcpHelpRef} style={{ position: 'relative', flexShrink: 0, display: 'flex', alignItems: 'center' }}>
             <button
               type="button"
@@ -2891,17 +2877,36 @@ export default function JobFormModal({
               >
                 Service type <span style={{ color: 'var(--text-red-700)' }}>*</span>
               </label>
-              <SearchableSelect
-                id="job-form-service-type"
-                value={formServiceTypeId}
-                onChange={setFormServiceTypeId}
-                options={jobFormServiceTypeSelectOptions.map((st) => ({ value: st.id, label: st.name }))}
-                emptyOption={{ value: '', label: 'Select service type…' }}
-                placeholder="Select service type…"
-                required
-                listAriaLabel="Service type"
-                disabled={jobFormServiceTypeSelectOptions.length === 0}
-              />
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                <div style={{ flex: '0 1 240px', minWidth: 170 }}>
+                  <SearchableSelect
+                    id="job-form-service-type"
+                    value={formServiceTypeId}
+                    onChange={setFormServiceTypeId}
+                    options={jobFormServiceTypeSelectOptions.map((st) => ({ value: st.id, label: st.name }))}
+                    emptyOption={{ value: '', label: 'Select service type…' }}
+                    placeholder="Select service type…"
+                    required
+                    listAriaLabel="Service type"
+                    disabled={jobFormServiceTypeSelectOptions.length === 0}
+                  />
+                </div>
+                {headerTradePill && editing ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const jobId = editing.id
+                      onClose()
+                      navigate(`/jobs?tab=stages&stagesJob=${encodeURIComponent(jobId)}`)
+                    }}
+                    title="Open this job in Jobs → Stages (closes Edit Job without saving)"
+                    aria-label="Open this job in Jobs → Stages. Closes Edit Job without saving."
+                    style={{ ...headerTradePill.style, marginTop: 0, cursor: 'pointer', flexShrink: 0 }}
+                  >
+                    {headerTradePill.label}
+                  </button>
+                ) : null}
+              </div>
             </div>
           </div>
           <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
@@ -3556,19 +3561,16 @@ export default function JobFormModal({
           <div style={{ marginBottom: '1rem' }}>
             <div
               style={{
+                ...JOB_FORM_SECTION_HEADER_STYLE,
                 display: 'flex',
                 alignItems: 'baseline',
                 justifyContent: 'space-between',
                 gap: '0.5rem',
                 flexWrap: 'wrap',
                 marginBottom: '0.75rem',
-                background: 'var(--bg-subtle)',
-                border: '1px solid var(--border)',
-                borderRadius: 6,
-                padding: '0.4rem 0.65rem',
               }}
             >
-              <span style={{ fontWeight: 700, fontSize: '0.9375rem', color: 'var(--text-800)' }}>Billing</span>
+              <span>Billing</span>
               {editing?.id && billingAutosaveStatus !== 'idle' && (
                 <span
                   aria-live="polite"

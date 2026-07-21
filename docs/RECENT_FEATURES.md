@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-20 (v2.818)
+last_updated: 2026-07-20 (v2.819)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.819)
+
+### Edit Job: trade pill moves beside a shorter Service type field; Billing / Labor / Parts Cost get real section headers (2026-07-20)
+Two [`JobFormModal`](../src/components/jobs/JobFormModal.tsx) refinements on v2.818. **(1)** The Service type select no longer stretches the full row — it caps at ~240px and the PLUM/ELEC/HVAC pill (the Jobs → Stages shortcut from v2.818) moves from the modal title to **directly right of the select**, updating live with the selection; edit-mode only, same close-without-saving tooltip. **(2)** The **Billing**, **Labor and Parts Cost** (edit mode), and **Parts Cost** (new-job mode) headers now share a distinct section-header band — larger bold text on `var(--bg-muted)` with a 4px brand-orange left edge — via new [`JOB_FORM_SECTION_HEADER_STYLE`](../src/lib/jobFormSectionHeaderStyle.ts) used across `JobFormModal`, [`JobFormLaborCostPanel`](../src/components/jobs/JobFormLaborCostPanel.tsx), and [`JobFormPartsCostSection`](../src/components/jobs/JobFormPartsCostSection.tsx), replacing the three slightly-different subtle boxes. Styling only; no behavior change.
 
 ## Latest Updates (v2.818)
 

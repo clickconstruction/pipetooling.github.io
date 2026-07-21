@@ -2,6 +2,7 @@ import { useNavigate } from 'react-router-dom'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import type { TeamLaborRow } from '../../utils/teamLabor'
 import { formatCurrency } from '../../lib/jobs/jobFormMoney'
+import { JOB_FORM_SECTION_HEADER_STYLE } from '../../lib/jobFormSectionHeaderStyle'
 
 type JobFormLaborCostPanelProps = {
   editing: JobWithDetails | null
@@ -44,18 +45,7 @@ export function JobFormLaborCostPanel({
   return (
     <>
               <hr style={{ margin: '0.75rem auto', border: 'none', borderTop: '1px solid var(--border-400)', width: '50%' }} />
-              <div
-                style={{
-                  fontWeight: 700,
-                  fontSize: '0.9375rem',
-                  color: 'var(--text-800)',
-                  marginBottom: '0.75rem',
-                  background: 'var(--bg-subtle)',
-                  border: '1px solid var(--border)',
-                  borderRadius: 6,
-                  padding: '0.4rem 0.65rem',
-                }}
-              >
+              <div style={{ ...JOB_FORM_SECTION_HEADER_STYLE, marginBottom: '0.75rem' }}>
                 Labor and Parts Cost
               </div>
               <div

@@ -15,6 +15,7 @@ import {
 import { MaterialsCostAccordionRow } from './JobFormMaterialsCostAccordion'
 import JobChargesTimelineStandalone from './JobChargesTimelineStandalone'
 import type { MaterialsAccordionKey } from './useJobCostSnapshot'
+import { JOB_FORM_SECTION_HEADER_STYLE } from '../../lib/jobFormSectionHeaderStyle'
 
 type JobFormPartsCostSectionProps = {
   editing: JobWithDetails | null
@@ -76,7 +77,7 @@ export function JobFormPartsCostSection({
   return (
     <>
           {hideTitle ? null : (
-            <div style={{ fontWeight: 600, fontSize: '0.9375rem', color: 'var(--text-700)', marginBottom: '0.75rem' }}>Parts Cost</div>
+            <div style={{ ...JOB_FORM_SECTION_HEADER_STYLE, marginBottom: '0.75rem' }}>Parts Cost</div>
           )}
           <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, boxShadow: '0 1px 3px rgba(0,0,0,0.05)', marginBottom: '1rem', overflow: 'hidden' }}>
               {editing?.id ? (
