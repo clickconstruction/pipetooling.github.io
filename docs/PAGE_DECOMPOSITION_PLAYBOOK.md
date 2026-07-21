@@ -14,14 +14,14 @@ The repo still has several God components (line counts at 2026-07-20):
 
 | File | Lines | Notes |
 |---|---|---|
-| `src/pages/Jobs.tsx` | 10,610 | map written ([`JOBS_TABS_ARCHITECTURE.md`](./JOBS_TABS_ARCHITECTURE.md)) — extraction can resume |
+| `src/pages/Jobs.tsx` | 10,684 | map written ([`JOBS_TABS_ARCHITECTURE.md`](./JOBS_TABS_ARCHITECTURE.md), refreshed 2026-07-20 vs v2.819) — extraction can resume |
 | `src/pages/Materials.tsx` | 6,935 | map written ([`MATERIALS_TABS_ARCHITECTURE.md`](./MATERIALS_TABS_ARCHITECTURE.md)) — low-churn, no extraction scheduled |
 | `src/components/bids/BidsTakeoffTab.tsx` | 5,641 | already an extracted tab; kept growing — candidate for its own sub-decomposition |
 | `src/pages/Estimates.tsx` | 5,332 | no map yet |
 | `src/pages/Settings.tsx` | 5,171 | map written ([`SETTINGS_TABS_ARCHITECTURE.md`](./SETTINGS_TABS_ARCHITECTURE.md)) — extraction can resume |
 | `src/components/people/PeopleReviewTab.tsx` | 5,007 | already an extracted tab |
 | `src/pages/Workflow.tsx` | 4,782 | no map yet |
-| `src/components/jobs/JobFormModal.tsx` | 4,316 | a modal, not a page — same method applies; shrank from ~7.1k via mapped extraction ([`JOB_FORM_MODAL_ARCHITECTURE.md`](./JOB_FORM_MODAL_ARCHITECTURE.md)) — extraction underway |
+| `src/components/jobs/JobFormModal.tsx` | 4,342 | a modal, not a page — same method applies; shrank from ~7.1k via mapped extraction ([`JOB_FORM_MODAL_ARCHITECTURE.md`](./JOB_FORM_MODAL_ARCHITECTURE.md)) — extraction underway |
 | `src/pages/People.tsx` | 4,269 | decomposition essentially done (see map) |
 | `src/pages/Bids.tsx` | 3,791 | decomposition done (see map) |
 | `src/pages/Dashboard.tsx` | 2,144 | shrank from ~8.9k via mapped extraction ([`DASHBOARD_SECTIONS_ARCHITECTURE.md`](./DASHBOARD_SECTIONS_ARCHITECTURE.md)) — remaining sections tracked there |
