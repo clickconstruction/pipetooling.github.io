@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-21 (v2.867)
+last_updated: 2026-07-21 (v2.868)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.868)
+
+### Dispatch → People: empty person-days show a full-width "+" add bar (2026-07-21)
+When a person has no job scheduled for a day, the cell previously showed only a faint "—" (the whole cell was clickable, but nothing said so; the blue corner "+" triangle only renders on cells that already have blocks). Empty editable cells now render a **full-width blue "+" bar** spanning the column — same action as before (opens the Add-job picker for that person/day). Read-only viewers, time-off days, and cells in placement / multi-select modes still show the plain dash; cells with blocks keep the corner triangle.
 
 ## Latest Updates (v2.867)
 
