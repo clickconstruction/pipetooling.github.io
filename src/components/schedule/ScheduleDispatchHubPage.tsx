@@ -63,6 +63,7 @@ import {
   getDefaultWeekRange,
   getScheduleDispatchVisibleDayKeys,
   ymdAddDays,
+  APP_CALENDAR_TZ,
 } from '../../utils/dateUtils'
 import { CAN_USE_SCHEDULE_DISPATCH_EDIT_ROLES as CAN_USE_SCHEDULE_DISPATCH } from '../../lib/scheduleDispatchEditRoles'
 import { saveNewScheduleBlockForPersonDay } from '../../lib/scheduleDispatchAddBlockSave'
@@ -80,6 +81,26 @@ import {
   type UserTimeOffCellInfo,
 } from '../../lib/userTimeOffByCell'
 import { ScheduleDispatchUndoNotComingInModal } from './ScheduleDispatchUndoNotComingInModal'
+
+/** Picker subline: "MM/DD/YY | address" (date the job was added, app calendar TZ). Either part optional. */
+function hubJobPickerSubline(r: { created_at?: string | null; job_address?: string | null }): string | undefined {
+  const dt = (r.created_at ?? '').trim()
+  let dateLabel = ''
+  if (dt) {
+    const d = new Date(dt)
+    if (!Number.isNaN(d.getTime())) {
+      dateLabel = new Intl.DateTimeFormat('en-US', {
+        timeZone: APP_CALENDAR_TZ,
+        month: '2-digit',
+        day: '2-digit',
+        year: '2-digit',
+      }).format(d)
+    }
+  }
+  const address = (r.job_address ?? '').trim()
+  if (dateLabel && address) return `${dateLabel} | ${address}`
+  return dateLabel || address || undefined
+}
 
 const SCHEDULE_DISPATCH_HIDE_WEEKEND_STORAGE_KEY = 'scheduleDispatchHideWeekend'
 const SCHEDULE_DISPATCH_HIGHLIGHT_LINKED_GROUPS_KEY = 'scheduleDispatchHighlightLinkedGroups'
@@ -1959,7 +1980,7 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
           open={hubAssignJobPickerOpen}
           onClose={closeHubAssignJobPicker}
           subtitle={hubAssignJobPickerSubtitle}
-          jobRows={hubAssignJobPickerRows.map((r) => ({ id: r.id, displayTitle: r.displayTitle }))}
+          jobRows={hubAssignJobPickerRows.map((r) => ({ id: r.id, displayTitle: r.displayTitle, subline: hubJobPickerSubline(r) }))}
           searchValue={hubAssignJobPickerSearch}
           onSearchChange={setHubAssignJobPickerSearch}
           onPickJob={(pickedJobId) => {

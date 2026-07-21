@@ -3,6 +3,8 @@ import { useEffect, useRef, useState, type ReactNode } from 'react'
 export type ScheduleDispatchAssignJobPickerRow = {
   id: string
   displayTitle: string
+  /** Muted second line under the title (e.g. "07/14/26 | 123 Main St" — date added | address). */
+  subline?: string
   /** When set, show a muted hint (e.g. Quickfill: clocked on this job today). */
   sessionToday?: boolean
 }
@@ -226,7 +228,22 @@ export function ScheduleDispatchAssignJobPickerModal({
                       gap: '0.5rem',
                     }}
                   >
-                    <span style={{ minWidth: 0, flex: 1 }}>{r.displayTitle}</span>
+                    <span style={{ minWidth: 0, flex: 1, display: 'flex', flexDirection: 'column', gap: 2 }}>
+                      <span>{r.displayTitle}</span>
+                      {r.subline ? (
+                        <span
+                          style={{
+                            fontSize: '0.75rem',
+                            color: 'var(--text-muted)',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
+                          {r.subline}
+                        </span>
+                      ) : null}
+                    </span>
                     {r.sessionToday ? (
                       <span
                         style={{
