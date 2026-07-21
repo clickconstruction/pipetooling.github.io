@@ -1586,7 +1586,12 @@ export default function Dashboard() {
 
 
       {(assignedJobsLoading || assignedJobs.length > 0) && (
-        <DashboardGroupCard id="dash-assigned-jobs" title={`Assigned Jobs (${assignedJobs.length})`}>
+        <DashboardGroupCard
+          id="dash-assigned-jobs"
+          title={`Assigned Jobs (${assignedJobs.length})`}
+          collapseStorageKey="dash-assigned-jobs-collapsed"
+          defaultCollapsed
+        >
           {assignedJobsLoading && assignedJobs.length === 0 ? (
             <DashboardListRowSkeleton rows={2} />
           ) : (
