@@ -16,6 +16,15 @@ export const ALL_BID_STAGES_ON: Record<SubmissionSectionKey, boolean> = {
   lost: true,
 }
 
+/** Map page default (v2.837): only Won and Started bids shown until the user toggles more on. */
+export const DEFAULT_MAP_BID_STAGES: Record<SubmissionSectionKey, boolean> = {
+  unsent: false,
+  pending: false,
+  won: true,
+  startedOrComplete: true,
+  lost: false,
+}
+
 /** Shape shared with MapPageEntity; structural to keep this kernel dependency-free. */
 export type MapLayerFilterEntity = {
   kind: 'job' | 'bid' | 'estimate'
