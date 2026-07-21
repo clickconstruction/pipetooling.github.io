@@ -29,7 +29,9 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'node',
-    include: ['src/**/*.test.ts'],
+    // *.render.test.tsx files opt into jsdom per-file via `// @vitest-environment jsdom`;
+    // the global environment stays node for the pure-logic *.test.ts suite.
+    include: ['src/**/*.test.ts', 'src/**/*.render.test.tsx'],
   },
   resolve: {
     alias: { '@': resolve(__dirname, 'src') },
