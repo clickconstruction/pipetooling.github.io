@@ -1477,19 +1477,21 @@ export default function Layout() {
     </>
   )
 
-  if (headerSearchEligible) {
-    return (
-      <HeaderGlobalSearchProvider
-        authUserId={authUser?.id ?? null}
-        navOverlayBackground={navSearchOverlayBg}
-        isMobile={isMobile}
-      >
-        {layoutBody}
-      </HeaderGlobalSearchProvider>
-    )
-  }
-
-  return layoutBody
+  // ALWAYS wrap in the provider: on cold load `role` is null and flips to the real
+  // role ~0.5s later — a conditional wrapper here changed the returned tree's type at
+  // that moment, remounting the entire app body (route pages, tabs, open modals) and
+  // re-running every loader. The provider itself is inert when `enabled` is false
+  // (hotkeys + data load gated; the UI entry points above already gate themselves).
+  return (
+    <HeaderGlobalSearchProvider
+      enabled={headerSearchEligible}
+      authUserId={authUser?.id ?? null}
+      navOverlayBackground={navSearchOverlayBg}
+      isMobile={isMobile}
+    >
+      {layoutBody}
+    </HeaderGlobalSearchProvider>
+  )
 }
 
 function PinIcon({ filled: _filled }: { filled: boolean }) {

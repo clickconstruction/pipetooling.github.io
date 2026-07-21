@@ -30,16 +30,18 @@ test('section headers show dollar totals and the capable-to-bill figure', async 
 test('Total by Name modal opens from the toolbar and its Print builds the report popup', async ({ page }) => {
   await page.goto('/jobs?tab=stages')
   await page.getByRole('button', { name: 'Total by Name' }).click()
-  await expect(page.getByRole('heading', { name: 'Billed Awaiting Payment by Job Name' })).toBeVisible()
+  // Scope to the dialog: the board's Billed section header carries a print button
+  // with the SAME accessible name, so page-level lookups are ambiguous.
+  const dialog = page.getByRole('dialog', { name: 'Billed Awaiting Payment by Job Name' })
+  await expect(dialog.getByRole('heading', { name: 'Billed Awaiting Payment by Job Name' })).toBeVisible()
 
   const popupPromise = page.waitForEvent('popup')
-  // Exact accessible name — a bare /Print/ matches other Print buttons on the board.
-  await page.getByRole('button', { name: 'Print billed awaiting payment report' }).click()
+  await dialog.getByRole('button', { name: 'Print billed awaiting payment report' }).click()
   const popup = await popupPromise
   await popup.waitForLoadState('domcontentloaded')
   await expect(popup.locator('h1')).toContainText('Billed awaiting payment')
   await popup.close()
 
-  await page.getByRole('button', { name: 'Close' }).click()
-  await expect(page.getByRole('heading', { name: 'Billed Awaiting Payment by Job Name' })).toBeHidden()
+  await dialog.getByRole('button', { name: 'Close' }).click()
+  await expect(page.getByRole('dialog', { name: 'Billed Awaiting Payment by Job Name' })).toBeHidden()
 })
