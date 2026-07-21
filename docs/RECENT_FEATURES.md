@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-21 (v2.839)
+last_updated: 2026-07-21 (v2.840)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.840)
+
+### Dashboard: Assigned Jobs card is collapsible and starts collapsed (2026-07-21)
+[`DashboardGroupCard`](../src/components/dashboard/DashboardGroupCard.tsx) gains an opt-in collapsible mode (`collapseStorageKey` + `defaultCollapsed`): the title becomes a ▶/▼ toggle, the body hides while collapsed, and the user's last choice persists in localStorage per key. The **Assigned Jobs** card on the [Dashboard](../src/pages/Dashboard.tsx) opts in and **starts collapsed** (key `dash-assigned-jobs-collapsed`) — the count stays visible in the title. Other DashboardGroupCard consumers (My Inbox cards) are unchanged; the section-dock anchor still scrolls to the card. Help guide updated.
 
 ## Latest Updates (v2.839)
 
