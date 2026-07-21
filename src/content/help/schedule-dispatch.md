@@ -69,7 +69,9 @@ On the Dispatch **Day** tab, the {{button:secondary|Visible hours ⚙}} button (
 
 ## When someone isn't coming in
 
-In the **Add job to schedule** modal footer, press {{button:outline|Not coming in today}}. You'll get a confirmation — and a warning if it will remove existing schedule blocks for that day:
+Fastest path: on an empty person-day, click the small orange **off** button beside the blue **+** bar — it immediately marks that person as not coming in for that day (the cell shows the time-off chip; click the chip if you need to undo it).
+
+For a day that already has jobs, use the **Add job to schedule** modal footer instead: press {{button:outline|Not coming in today}}. You'll get a confirmation — and a warning if it will remove existing schedule blocks for that day:
 
 :::example Confirming a day off
 Mark **Mike T** as not coming in on **Wed 7/9**?

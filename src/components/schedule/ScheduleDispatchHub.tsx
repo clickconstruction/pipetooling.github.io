@@ -811,6 +811,7 @@ function HubPeopleDayCell({
   onRequestEditBlockNote,
   timeOffInfo,
   onRequestUndoNotComingIn,
+  onMarkNotComingInForCell,
   linkedCopyMode = null,
   onLinkedCopyToggleBlock,
 }: {
@@ -844,6 +845,7 @@ function HubPeopleDayCell({
   onRequestEditBlockNote?: (b: JobScheduleBlockRow) => void
   timeOffInfo?: UserTimeOffCellInfo | null
   onRequestUndoNotComingIn?: (personUserId: string, workDate: string) => void
+  onMarkNotComingInForCell?: (personUserId: string, workDate: string) => void
   linkedCopyMode?: LinkedCopyMode | null
   onLinkedCopyToggleBlock?: (blockId: string) => void
 }) {
@@ -984,34 +986,65 @@ function HubPeopleDayCell({
         timeOffInfo ? null : emptyCellClickable ? (
           // Empty person-day: the add affordance is a full-width bar (same action
           // as clicking the cell) instead of the corner triangle used on cells
-          // that already have blocks.
-          <button
-            type="button"
-            aria-label="Add job to schedule for this person and day"
-            title="Add job to schedule for this person and day"
-            onClick={(e) => {
-              e.stopPropagation()
-              onEmptyCellClick(personUserId, workDate)
-            }}
-            style={{
-              display: 'block',
-              width: '100%',
-              padding: '0.1rem 0',
-              margin: 0,
-              border: 'none',
-              borderRadius: 4,
-              background: '#1d4ed8',
-              color: '#fff',
-              fontSize: '0.75rem',
-              fontWeight: 700,
-              lineHeight: 1.2,
-              cursor: 'pointer',
-              fontFamily: 'inherit',
-              boxShadow: '0 0 0 1px rgba(255,255,255,0.35)',
-            }}
-          >
-            +
-          </button>
+          // that already have blocks; "off" beside it marks the day not-coming-in.
+          <div style={{ display: 'flex', gap: 4, alignItems: 'stretch' }}>
+            <button
+              type="button"
+              aria-label="Add job to schedule for this person and day"
+              title="Add job to schedule for this person and day"
+              onClick={(e) => {
+                e.stopPropagation()
+                onEmptyCellClick(personUserId, workDate)
+              }}
+              style={{
+                display: 'block',
+                flex: '1 1 auto',
+                minWidth: 0,
+                padding: '0.1rem 0',
+                margin: 0,
+                border: 'none',
+                borderRadius: 4,
+                background: '#1d4ed8',
+                color: '#fff',
+                fontSize: '0.75rem',
+                fontWeight: 700,
+                lineHeight: 1.2,
+                cursor: 'pointer',
+                fontFamily: 'inherit',
+                boxShadow: '0 0 0 1px rgba(255,255,255,0.35)',
+              }}
+            >
+              +
+            </button>
+            {onMarkNotComingInForCell ? (
+              <button
+                type="button"
+                aria-label="Mark as not coming in this day"
+                title="Mark as not coming in this day"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onMarkNotComingInForCell(personUserId, workDate)
+                }}
+                style={{
+                  flex: '0 0 auto',
+                  padding: '0.1rem 0.45rem',
+                  margin: 0,
+                  border: 'none',
+                  borderRadius: 4,
+                  background: '#ea580c',
+                  color: '#fff',
+                  fontSize: '0.7rem',
+                  fontWeight: 700,
+                  lineHeight: 1.2,
+                  cursor: 'pointer',
+                  fontFamily: 'inherit',
+                  boxShadow: '0 0 0 1px rgba(255,255,255,0.35)',
+                }}
+              >
+                off
+              </button>
+            ) : null}
+          </div>
         ) : (
           <span style={{ color: 'var(--text-faint-300)' }}>—</span>
         )
@@ -1165,6 +1198,7 @@ type HubPeoplePanelProps = {
   userTimeOffByCell?: ReadonlyMap<string, UserTimeOffCellInfo>
   /** Optional click handler for the "Not coming in" chip — opens the undo confirm modal. */
   onRequestUndoNotComingIn?: (personUserId: string, workDate: string) => void
+  onMarkNotComingInForCell?: (personUserId: string, workDate: string) => void
 }
 
 function HubPeoplePanel({
@@ -1225,6 +1259,7 @@ function HubPeoplePanel({
   showHideWeekendToggle = true,
   userTimeOffByCell,
   onRequestUndoNotComingIn,
+  onMarkNotComingInForCell,
 }: HubPeoplePanelProps) {
   /** "View" dropdown consolidating Hide Inactive / Hide weekend / Highlight linked. */
   const [viewMenuOpen, setViewMenuOpen] = useState(false)
@@ -1899,6 +1934,7 @@ function HubPeoplePanel({
                         onRequestEditBlockNote={onRequestEditBlockNote}
                         timeOffInfo={timeOffInfo}
                         onRequestUndoNotComingIn={onRequestUndoNotComingIn}
+                        onMarkNotComingInForCell={onMarkNotComingInForCell}
                       />
                     )
                   })}
@@ -2446,6 +2482,7 @@ type Props = {
   userTimeOffByCell?: ReadonlyMap<string, UserTimeOffCellInfo>
   /** Optional click handler for the "Not coming in" chip — opens the undo confirm modal. */
   onRequestUndoNotComingIn?: (personUserId: string, workDate: string) => void
+  onMarkNotComingInForCell?: (personUserId: string, workDate: string) => void
   /** Right-aligned content for the week-nav row (e.g. the Share button). */
   weekNavRightSlot?: ReactNode
 }
@@ -2543,6 +2580,7 @@ export function ScheduleDispatchHub({
   showHideWeekendToggle = true,
   userTimeOffByCell,
   onRequestUndoNotComingIn,
+  onMarkNotComingInForCell,
   weekNavRightSlot,
 }: Props) {
   const tabForKey = showHubViewTabs ? hubTab : 'people'
@@ -2725,6 +2763,7 @@ export function ScheduleDispatchHub({
           showHideWeekendToggle={showHideWeekendToggle}
           userTimeOffByCell={userTimeOffByCell}
           onRequestUndoNotComingIn={onRequestUndoNotComingIn}
+          onMarkNotComingInForCell={onMarkNotComingInForCell}
         />
       ) : hubTab === 'day' ? (
         <QuickfillScheduleSection
@@ -2816,6 +2855,7 @@ export function ScheduleDispatchHub({
           showHideWeekendToggle={showHideWeekendToggle}
           userTimeOffByCell={userTimeOffByCell}
           onRequestUndoNotComingIn={onRequestUndoNotComingIn}
+          onMarkNotComingInForCell={onMarkNotComingInForCell}
         />
       )}
       <DispatchSettingsModal
