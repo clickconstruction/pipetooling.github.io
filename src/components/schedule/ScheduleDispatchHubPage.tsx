@@ -2196,7 +2196,7 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
           open={hubAssignJobPickerOpen}
           onClose={closeHubAssignJobPicker}
           subtitle={hubAssignJobPickerSubtitle}
-          jobRows={hubAssignJobPickerRows.map((r) => ({ id: r.id, displayTitle: r.displayTitle, subline: hubJobPickerSubline(r) }))}
+          jobRows={hubAssignJobPickerRows.map((r) => ({ id: r.id, displayTitle: r.displayTitle, serviceTypeName: r.service_type?.name ?? null, subline: hubJobPickerSubline(r) }))}
           searchValue={hubAssignJobPickerSearch}
           onSearchChange={setHubAssignJobPickerSearch}
           onPickJob={(pickedJobId) => {
