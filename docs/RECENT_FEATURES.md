@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-21 (v2.852)
+last_updated: 2026-07-21 (v2.853)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.853)
+
+### Settings decomposition, step 1: Sharing & Adoption section extracted (2026-07-21)
+Behavior-preserving refactor (order #1 in [`SETTINGS_TABS_ARCHITECTURE.md`](./SETTINGS_TABS_ARCHITECTURE.md)): the last fully-inline JSX section of [`Settings.tsx`](../src/pages/Settings.tsx) — the dev/master "Sharing and Adoption" collapsible (Adopt Assistants / Primaries / Superintendents + Share with other Master) — is now the self-contained [`SettingsSharingAdoptionSection`](../src/components/settings/SettingsSharingAdoptionSection.tsx) backed by the new [`useMasterAdoptions`](../src/hooks/useMasterAdoptions.ts) hook (loads on mount; `loadData` no longer fetches adoption/share data). Settings.tsx shrinks 5,171 → 4,564 lines and sheds 18 state vars. Preserved quirks: controllers fetched into the assistants list via the `'controller' as 'assistant'` cast, three identical dev master-picker `<select>`s, and sharing always acting as self. No user-facing changes.
 
 ## Latest Updates (v2.852)
 
