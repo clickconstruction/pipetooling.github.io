@@ -64,6 +64,16 @@ import {
   physicalInvoicePdfToBase64,
 } from '../../lib/physicalInvoicePdf'
 import {
+  hazmatIncidentRowToDraft,
+  hazmatNoticeJobInfoFromJob,
+  loadJobHazmatIncidents,
+  type JobHazmatIncidentRow,
+} from '../../lib/hazmatIncidents'
+import {
+  buildHazmatFeeNoticePdfBlob,
+  hazmatNoticePdfFilename,
+} from '../../lib/jobsDocuments/hazmatFeeNoticePdf'
+import {
   fetchPhysicalInvoiceFooterPresetsFromAppSettings,
   getPhysicalInvoiceFooterDefaultOnOpen,
   listPhysicalInvoiceFooterPresets,
@@ -414,6 +424,9 @@ export default function SendRecordInvoiceModal({
   const [stripePreview, setStripePreview] = useState<StripeInvoicePreviewSuccess | null>(null)
   const [stripePreviewLoading, setStripePreviewLoading] = useState(false)
   const [stripePreviewError, setStripePreviewError] = useState<string | null>(null)
+  /** Set when the invoice being billed is a hazmat rider — offers attaching the notice. */
+  const [hazmatIncidentForInvoice, setHazmatIncidentForInvoice] = useState<JobHazmatIncidentRow | null>(null)
+  const [attachHazmatNotice, setAttachHazmatNotice] = useState(true)
   const stripePreviewReqId = useRef(0)
   /** Keeps last known “had a preview” for stale-while-revalidate (timeout closure reads current value). */
   const stripePreviewExistsRef = useRef(false)
@@ -517,6 +530,27 @@ export default function SendRecordInvoiceModal({
     }
     setStripeFixtureMultiLineAvailable(null)
   }, [open, job?.id, job?.customer_email, invoice?.id])
+
+  // Hazmat rider detection: when the invoice being billed has a persisted incident,
+  // the physical tab offers attaching the Biohazard Remediation Fee Notice.
+  useEffect(() => {
+    setHazmatIncidentForInvoice(null)
+    setAttachHazmatNotice(true)
+    if (!open || kind !== 'invoice' || !invoice?.id || !job?.id) return
+    let cancelled = false
+    void (async () => {
+      try {
+        const rows = await loadJobHazmatIncidents(job.id)
+        if (cancelled) return
+        setHazmatIncidentForInvoice(rows.find((r) => r.invoice_id === invoice.id) ?? null)
+      } catch {
+        if (!cancelled) setHazmatIncidentForInvoice(null)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [open, kind, invoice?.id, job?.id])
 
   useEffect(() => {
     if (!open) return
@@ -801,6 +835,22 @@ export default function SendRecordInvoiceModal({
         return
       }
 
+      // Hazmat rider: the notice travels as its own PDF beside the invoice.
+      let extraAttachments: Array<{ filename: string; content_base64: string }> | undefined
+      if (hazmatIncidentForInvoice && attachHazmatNotice) {
+        const noticeJobInfo = hazmatNoticeJobInfoFromJob(job)
+        const noticeBlob = await buildHazmatFeeNoticePdfBlob(
+          noticeJobInfo,
+          hazmatIncidentRowToDraft(hazmatIncidentForInvoice),
+        )
+        const noticeBase64 = await physicalInvoicePdfToBase64(noticeBlob)
+        if (pdfBase64.length + noticeBase64.length > 8_500_000) {
+          setPhysicalError('Invoice + notice PDFs are too large to email together')
+          return
+        }
+        extraAttachments = [{ filename: hazmatNoticePdfFilename(noticeJobInfo), content_base64: noticeBase64 }]
+      }
+
       const sentAt = sentDate.trim()
         ? new Date(sentDate.trim() + 'T12:00:00').toISOString()
         : new Date().toISOString()
@@ -818,6 +868,7 @@ export default function SendRecordInvoiceModal({
           pdf_filename: physicalInvoicePdfFilename(job.hcp_number, sentDate.trim()),
           email_text: text,
           email_html: html,
+          ...(extraAttachments ? { extra_attachments: extraAttachments } : {}),
         },
         headers: { Authorization: `Bearer ${token}` },
       })
@@ -1830,6 +1881,34 @@ export default function SendRecordInvoiceModal({
               >
                 {BILL_CUSTOMER_LEADING_LOWERCASE_HINT}
               </p>
+            ) : null}
+            {hazmatIncidentForInvoice ? (
+              <label
+                style={{
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: '0.5rem',
+                  margin: '0.5rem 0 0',
+                  padding: '0.5rem 0.65rem',
+                  border: '1px solid var(--border)',
+                  borderRadius: 6,
+                  background: 'var(--bg-red-tint)',
+                  fontSize: '0.8125rem',
+                  color: 'var(--text-700)',
+                  cursor: 'pointer',
+                }}
+              >
+                <input
+                  type="checkbox"
+                  checked={attachHazmatNotice}
+                  onChange={(e) => setAttachHazmatNotice(e.target.checked)}
+                  style={{ marginTop: 2 }}
+                />
+                <span>
+                  <strong>☣ Attach the Biohazard Remediation Fee Notice</strong> — sends the notice as a
+                  second PDF alongside the invoice (incident summary, photos, statements, terms clause).
+                </span>
+              </label>
             ) : null}
             <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.5rem' }}>
               <button type="button" onClick={onClose} style={{ padding: '0.5rem 1rem', border: '1px solid var(--border-strong)', background: 'var(--surface)', borderRadius: 4, cursor: 'pointer' }}>
