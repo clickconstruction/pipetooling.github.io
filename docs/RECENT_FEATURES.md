@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-21 (v2.851)
+last_updated: 2026-07-21 (v2.852)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.852)
+
+### Dashboard My Schedule: explanatory line for the yellow leave-report reminder (2026-07-21)
+When any of today's schedule rows has the yellow circle-exclamation reminder over its Leave Report button, [My Schedule](../src/components/dashboard/DashboardMyScheduleSection.tsx) now also shows the plain-English reason directly under the **Today** heading: "⚠ Your scheduled time on this job ended today and you haven't filed a report yet. File one". Same trigger as the badge ([`shouldShowLeaveReportScheduleReminder`](../src/lib/leaveReportScheduleReminder.ts): a today block past its end time, no own report in 12h), so filing a report clears both together. The icon moved to a shared `LeaveReportReminderIcon` export in [`DashboardLeaveReportButton`](../src/components/dashboard/DashboardLeaveReportButton.tsx) (no badge behavior change). Help guide `reports.md` updated.
 
 ## Latest Updates (v2.851)
 

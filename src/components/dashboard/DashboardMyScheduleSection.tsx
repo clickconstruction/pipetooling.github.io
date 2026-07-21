@@ -8,7 +8,7 @@ import { useJobDetailModal } from '../../contexts/JobDetailModalContext'
 import type { UserRole } from '../../hooks/useAuth'
 import { DashboardListRowSkeleton } from './DashboardSkeletons'
 import { DashboardJobPicturesLinkRow } from './DashboardJobPicturesLinkRow'
-import { DashboardLeaveReportButton } from './DashboardLeaveReportButton'
+import { DashboardLeaveReportButton, LeaveReportReminderIcon } from './DashboardLeaveReportButton'
 
 export type DashboardMyScheduleSectionProps = {
   role: UserRole | null
@@ -131,6 +131,15 @@ export function DashboardMyScheduleSection({
               which === 'today' ? subScheduleDayPartition.todayBlocks : subScheduleDayPartition.tomorrowBlocks
             const dayTitle = which === 'today' ? 'Today' : 'Tomorrow'
             const sorted = sortSubScheduleBlocksByStart(blocks)
+            const anyLeaveReportReminderToday =
+              which === 'today' &&
+              canLeaveJobFieldReport(role) &&
+              sorted.some((b) => {
+                const fa =
+                  assignedJobs.find((j) => j.id === b.job_id) ??
+                  assignedReadyToBillJobs.find((j) => j.id === b.job_id)
+                return fa ? leaveReportReminderForJobRow(fa) : false
+              })
             return (
               <div key={which} style={{ marginBottom: which === 'today' ? '1.25rem' : 0 }}>
                 <h3 style={{ fontSize: '1rem', fontWeight: 600, margin: '0 0 0.5rem 0', color: 'var(--text-700)', textAlign: 'center' }}>
@@ -139,6 +148,24 @@ export function DashboardMyScheduleSection({
                     {scheduleFormatWeekdayLong(ymd)}
                   </span>
                 </h3>
+                {anyLeaveReportReminderToday && (
+                  <p
+                    role="status"
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '0.375rem',
+                      margin: '0 0 0.5rem 0',
+                      fontSize: '0.8125rem',
+                      color: 'var(--text-muted)',
+                      textAlign: 'center',
+                    }}
+                  >
+                    <LeaveReportReminderIcon size={16} />
+                    Your scheduled time on this job ended today and you haven't filed a report yet. File one
+                  </p>
+                )}
                 {sorted.length === 0 ? (
                   <p style={{ margin: 0, color: 'var(--text-faint)', fontSize: '0.875rem', textAlign: 'center' }}>No blocks scheduled.</p>
                 ) : (
