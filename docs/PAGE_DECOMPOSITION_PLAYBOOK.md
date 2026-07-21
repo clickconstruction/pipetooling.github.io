@@ -14,7 +14,7 @@ The repo still has several God components (line counts at 2026-07-20):
 
 | File | Lines | Notes |
 |---|---|---|
-| `src/pages/Jobs.tsx` | 7,718 | map written ([`JOBS_TABS_ARCHITECTURE.md`](./JOBS_TABS_ARCHITECTURE.md), refreshed 2026-07-20 vs v2.819) — extraction resumed: print builders (v2.820), `JobsBillingTab` (v2.821), `useSubLaborLedger` (v2.822), `JobsSubLaborFormModal` (v2.823) |
+| `src/pages/Jobs.tsx` | 7,598 | map written ([`JOBS_TABS_ARCHITECTURE.md`](./JOBS_TABS_ARCHITECTURE.md), refreshed 2026-07-20 vs v2.819) — extraction resumed: print builders (v2.820), `JobsBillingTab` (v2.821), `useSubLaborLedger` (v2.822), `JobsSubLaborFormModal` (v2.823), `SubLaborPaymentModals` (v2.824) |
 | `src/pages/Materials.tsx` | 6,935 | map written ([`MATERIALS_TABS_ARCHITECTURE.md`](./MATERIALS_TABS_ARCHITECTURE.md)) — low-churn, no extraction scheduled |
 | `src/components/bids/BidsTakeoffTab.tsx` | 5,641 | already an extracted tab; kept growing — candidate for its own sub-decomposition |
 | `src/pages/Estimates.tsx` | 5,332 | no map yet |

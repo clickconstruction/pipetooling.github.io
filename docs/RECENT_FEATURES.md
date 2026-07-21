@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-20 (v2.823)
+last_updated: 2026-07-20 (v2.824)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.824)
+
+### Jobs refactor: payment/backcharge/edit-payment modals extracted to SubLaborPaymentModals (2026-07-20)
+Step 4b of the mapped [`Jobs.tsx`](../src/pages/Jobs.tsx) decomposition ([`JOBS_TABS_ARCHITECTURE.md`](./JOBS_TABS_ARCHITECTURE.md)): the Make Payment / Backcharge / Edit Payment modal trio and its 11 states move verbatim into [`SubLaborPaymentModals`](../src/components/jobs/SubLaborPaymentModals.tsx) (197 lines). Because the trio is opened from **two surfaces** — the [`JobsSubLaborTab`](../src/components/jobs/JobsSubLaborTab.tsx) ledger rows *and* [`JobsSubLaborFormModal`](../src/components/jobs/JobsSubLaborFormModal.tsx)'s payments list — it cannot fold into either one; it becomes an always-mounted sibling driven by an imperative handle (`openMakePayment`/`openBackcharge`/`openEditPayment`/`clearEditPayment`), mirroring the v2.823 form-modal pattern. The form modal's props slim from nine payment setters to three openers + `onClearEditPayment` (its `EditingPaymentTarget` type now lives in, and is exported from, the new component); the parent passes only the four `useSubLaborLedger` mutations. The Drive Settings / Default Labor Rate modals deliberately stay parent-side — their value states are shared with Crew P&L / Job Summary and the form modal. **Behavior-preserving.** Jobs.tsx 7,718 → 7,598 lines.
 
 ## Latest Updates (v2.823)
 

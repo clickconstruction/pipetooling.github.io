@@ -18,6 +18,7 @@ import type { Database } from '../../types/database'
 import type { LaborJob, SubLaborBackchargeTarget, SubLaborPaymentTarget } from '../../types/laborJob'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import type { Person, UserRow } from '../../pages/Jobs'
+import type { EditingPaymentTarget } from './SubLaborPaymentModals'
 
 type PersonKind =
   | 'assistant'
@@ -70,14 +71,6 @@ export type JobsSubLaborFormModalHandle = {
   openWithBillingPrefill: (seed: { jobNumber: string; address: string; teamMemberNames: string[] }) => void
 }
 
-type EditingPaymentTarget = {
-  id: string
-  jobId: string
-  amount: number
-  memo: string | null
-  isBackcharge: boolean
-}
-
 export type JobsSubLaborFormModalProps = {
   /** Parent-owned: the `?editLabor=` deep link and useSubLaborLedger's onLaborJobsReloaded sync need it. */
   editingLaborJob: LaborJob | null
@@ -96,15 +89,11 @@ export type JobsSubLaborFormModalProps = {
   /** Default Labor Rate setting (its modal stays parent-side). */
   defaultLaborRateValue: string
   setActiveTab: (tab: 'sub_sheet_ledger') => void
-  setEditingPayment: Dispatch<SetStateAction<EditingPaymentTarget | null>>
-  setEditPaymentAmount: Dispatch<SetStateAction<string>>
-  setEditPaymentMemo: Dispatch<SetStateAction<string>>
-  setMakePaymentLaborJob: Dispatch<SetStateAction<SubLaborPaymentTarget | null>>
-  setMakePaymentAmount: Dispatch<SetStateAction<string>>
-  setMakePaymentMemo: Dispatch<SetStateAction<string>>
-  setBackchargeLaborJob: Dispatch<SetStateAction<SubLaborBackchargeTarget | null>>
-  setBackchargeAmount: Dispatch<SetStateAction<string>>
-  setBackchargeMemo: Dispatch<SetStateAction<string>>
+  /** Payment modal trio openers — routed to SubLaborPaymentModals' imperative handle by the parent. */
+  onOpenMakePayment: (target: SubLaborPaymentTarget, defaultAmount: string) => void
+  onOpenBackcharge: (target: SubLaborBackchargeTarget) => void
+  onOpenEditPayment: (payment: EditingPaymentTarget, amountSeed: string, memoSeed: string) => void
+  onClearEditPayment: () => void
   authUserId: string | undefined
   /** Saved-job print thunk (stays in the parent; the list view uses it too). */
   printJobSubSheet: (job: LaborJob) => void
@@ -126,15 +115,10 @@ function JobsSubLaborFormModalInner(
     setError,
     defaultLaborRateValue,
     setActiveTab,
-    setEditingPayment,
-    setEditPaymentAmount,
-    setEditPaymentMemo,
-    setMakePaymentLaborJob,
-    setMakePaymentAmount,
-    setMakePaymentMemo,
-    setBackchargeLaborJob,
-    setBackchargeAmount,
-    setBackchargeMemo,
+    onOpenMakePayment,
+    onOpenBackcharge,
+    onOpenEditPayment,
+    onClearEditPayment,
     authUserId,
     printJobSubSheet,
   }: JobsSubLaborFormModalProps,
@@ -809,7 +793,7 @@ function JobsSubLaborFormModalInner(
 
   function closeLaborModal() {
     setEditingLaborJob(null)
-    setEditingPayment(null)
+    onClearEditPayment()
     setLaborModalOpen(false)
     setShowAddSubcontractorModal(false)
     setNewSubcontractor({ name: '', email: '', phone: '', notes: '' })
@@ -1710,7 +1694,7 @@ function JobsSubLaborFormModalInner(
                                   <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', color: Number(p.amount) < 0 ? '#dc2626' : undefined }}>${formatCurrency(Number(p.amount))}</td>
                                   <td style={{ padding: '0.5rem 0.75rem' }}>{p.memo || '—'}</td>
                                   <td style={{ padding: '0.5rem' }}>
-                                    <button type="button" onClick={() => { setEditPaymentAmount(String(Math.abs(Number(p.amount)))); setEditPaymentMemo(p.memo ?? ''); setEditingPayment({ id: p.id, jobId: editingLaborJob.id, amount: Number(p.amount), memo: p.memo, isBackcharge: Number(p.amount) < 0 }) }} style={{ padding: '0.25rem', background: 'var(--bg-200)', color: 'var(--text-700)', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.8125rem' }}>Edit</button>
+                                    <button type="button" onClick={() => onOpenEditPayment({ id: p.id, jobId: editingLaborJob.id, amount: Number(p.amount), memo: p.memo, isBackcharge: Number(p.amount) < 0 }, String(Math.abs(Number(p.amount))), p.memo ?? '')} style={{ padding: '0.25rem', background: 'var(--bg-200)', color: 'var(--text-700)', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.8125rem' }}>Edit</button>
                                   </td>
                                 </tr>
                               ))}
@@ -1721,8 +1705,8 @@ function JobsSubLaborFormModalInner(
                           </table>
                         </div>
                         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                          <button type="button" onClick={() => { setMakePaymentAmount(balance > 0 ? String(balance) : ''); setMakePaymentMemo(''); setMakePaymentLaborJob({ id: editingLaborJob.id, contractor: editingLaborJob.assigned_to_name, hcp: editingLaborJob.job_number ?? '—', totalCost, paid, outstanding: Math.max(0, balance) }) }} style={{ padding: '0.35rem 0.75rem', background: '#059669', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}>Payment</button>
-                          <button type="button" onClick={() => { setBackchargeAmount(''); setBackchargeMemo(''); setBackchargeLaborJob({ id: editingLaborJob.id, contractor: editingLaborJob.assigned_to_name, hcp: editingLaborJob.job_number ?? '—', totalCost, paid }) }} style={{ padding: '0.35rem 0.75rem', background: '#dc2626', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}>Backcharge</button>
+                          <button type="button" onClick={() => onOpenMakePayment({ id: editingLaborJob.id, contractor: editingLaborJob.assigned_to_name, hcp: editingLaborJob.job_number ?? '—', totalCost, paid, outstanding: Math.max(0, balance) }, balance > 0 ? String(balance) : '')} style={{ padding: '0.35rem 0.75rem', background: '#059669', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}>Payment</button>
+                          <button type="button" onClick={() => onOpenBackcharge({ id: editingLaborJob.id, contractor: editingLaborJob.assigned_to_name, hcp: editingLaborJob.job_number ?? '—', totalCost, paid })} style={{ padding: '0.35rem 0.75rem', background: '#dc2626', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}>Backcharge</button>
                         </div>
                       </>
                     )
