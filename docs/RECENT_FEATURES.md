@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-20 (v2.820)
+last_updated: 2026-07-20 (v2.821)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.821)
+
+### Jobs refactor: Billing tab extracted to JobsBillingTab (2026-07-20)
+Step 2 of the mapped [`Jobs.tsx`](../src/pages/Jobs.tsx) decomposition ([`JOBS_TABS_ARCHITECTURE.md`](./JOBS_TABS_ARCHITECTURE.md)). Stage A: the search predicate, numeric HCP sort, and the Specific Work / Other job charges cell text move to [`lib/jobs/billingTab.ts`](../src/lib/jobs/billingTab.ts) (tested). Stage B: the ~235-line inline tab becomes [`JobsBillingTab`](../src/components/jobs/JobsBillingTab.tsx), which owns the search box and the per-user HCP sort toggle (localStorage `jobs_billing_sort_asc_<uid>`); the parent injects the jobs-list cache, the two red-icon sets from the shared labor loaders, and the New/Edit/fill-labor callbacks (the Billing → Sub Labor prefill stays parent-side). **Behavior-preserving.** Jobs.tsx 10,103 → 9,852 lines.
 
 ## Latest Updates (v2.820)
 
