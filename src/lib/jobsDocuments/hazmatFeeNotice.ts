@@ -1,3 +1,4 @@
+import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
 import type { HazmatIncidentDraft } from '../hazmatFee'
 
 /**
@@ -26,7 +27,7 @@ export function buildHazmatFeeNoticeHtml(job: HazmatNoticeJobInfo, draft: Hazmat
   const incidentDate = new Date(draft.incidentAt)
   const dateStr = Number.isNaN(incidentDate.getTime())
     ? draft.incidentAt
-    : incidentDate.toLocaleString('en-US', { timeZone: 'America/Chicago' })
+    : incidentDate.toLocaleString('en-US', { timeZone: APP_CALENDAR_TZ })
   const fee = draft.feeAmount.toLocaleString('en-US', { style: 'currency', currency: 'USD' })
   const photos = draft.photoLinks
     .map((p, i) => `<li><a href="${esc(p)}">Photo ${i + 1}: ${esc(p)}</a></li>`)
@@ -35,7 +36,7 @@ export function buildHazmatFeeNoticeHtml(job: HazmatNoticeJobInfo, draft: Hazmat
     .map(
       (t) =>
         `<div class="stmt"><p class="who">${esc(t.name)} — ${esc(
-          new Date(t.givenAt).toLocaleDateString('en-US', { timeZone: 'America/Chicago' }),
+          new Date(t.givenAt).toLocaleDateString('en-US', { timeZone: APP_CALENDAR_TZ }),
         )}</p><p class="body">${esc(t.statement)}</p></div>`,
     )
     .join('')

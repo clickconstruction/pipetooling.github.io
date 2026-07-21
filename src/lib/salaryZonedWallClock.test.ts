@@ -1,7 +1,8 @@
+import { APP_CALENDAR_TZ } from '../utils/dateUtils'
 import { describe, expect, it } from 'vitest'
 import { salaryPgTimeToHms, salaryZonedWallClockToUtcMs } from './salaryZonedWallClock'
 
-const TZ = 'America/Chicago'
+const TZ = APP_CALENDAR_TZ
 const utc = (iso: string) => new Date(iso).getTime()
 
 describe('salaryPgTimeToHms', () => {

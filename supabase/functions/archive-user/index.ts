@@ -1,5 +1,6 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { APP_CALENDAR_TZ } from "../_shared/appTimeZone.ts"
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -153,7 +154,7 @@ serve(async (req) => {
               month: 'long',
               day: 'numeric',
               year: 'numeric',
-              timeZone: 'America/Chicago',
+              timeZone: APP_CALENDAR_TZ,
             })})`
           } catch {
             archivedOn = ''

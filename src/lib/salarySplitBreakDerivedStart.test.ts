@@ -1,3 +1,4 @@
+import { APP_CALENDAR_TZ } from '../utils/dateUtils'
 import { describe, expect, it } from 'vitest'
 import {
   breakMinutesBetweenAB,
@@ -6,7 +7,7 @@ import {
   validSplitBreakMinutesForAnchor,
 } from './salarySplitBreakDerivedStart'
 
-const TZ = 'America/Chicago'
+const TZ = APP_CALENDAR_TZ
 const MONDAY = '2026-07-06'
 
 describe('breakMinutesBetweenAB', () => {

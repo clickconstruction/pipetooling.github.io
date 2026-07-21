@@ -1,6 +1,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { sendEmailViaResend } from '../_shared/resendSendEmail.ts'
+import { APP_CALENDAR_TZ } from "../_shared/appTimeZone.ts"
 
 /**
  * Emails reports to configured recipients (report_email_subscriptions).
@@ -147,7 +148,7 @@ async function resolveReportContent(admin: AdminClient, report: ReportRow): Prom
 }
 
 function buildReportEmail(content: ReportContent): { subject: string; html: string; text: string } {
-  const when = new Date(content.createdAt).toLocaleString('en-US', { timeZone: 'America/Chicago' })
+  const when = new Date(content.createdAt).toLocaleString('en-US', { timeZone: APP_CALENDAR_TZ })
   const subject = `${content.templateName} — ${content.jobDisplay}`
 
   const fieldEntries = Object.entries(content.fieldValues)

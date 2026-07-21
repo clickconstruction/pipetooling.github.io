@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-21 (v2.861)
+last_updated: 2026-07-21 (v2.862)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.862)
+
+### Timezone-literal drift fixed and the check now runs in CI (2026-07-21)
+`npm run check:timezone` had been failing silently (it ran in no workflow): seven files hardcoded `'America/Chicago'` instead of importing `APP_CALENDAR_TZ` — the hazmat notice HTML/PDF builders (v2.849), three salary kernel tests, and the `archive-user` / `send-report-email` edge functions. All seven now import the constant ([`src/utils/dateUtils.ts`](../src/utils/dateUtils.ts) web-side, [`supabase/functions/_shared/appTimeZone.ts`](../supabase/functions/_shared/appTimeZone.ts) edge-side; zero behavior change — the value is identical), and `deploy.yml` runs the check beside lint/theme so it can't drift again. **The two edge functions require `supabase functions deploy archive-user send-report-email` after merge** (done as part of this change's rollout).
 
 ## Latest Updates (v2.861)
 
