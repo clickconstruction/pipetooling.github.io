@@ -24,6 +24,7 @@ import { SCHEDULE_DISPATCH_DRAG_DISABLED_READONLY_MESSAGE } from '../../lib/sche
 import { scheduleDispatchCellDroppableId } from '../../lib/scheduleDispatchDnd'
 import { ScheduleDispatchBlockNoteIcon } from '../icons/ScheduleDispatchBlockNoteIcon'
 import { ScheduleDispatchLinkedChainsIcon } from '../icons/ScheduleDispatchLinkedChainsIcon'
+import type { LinkedCopyMode } from '../../lib/scheduleDispatchLinkedCopy'
 import type { LinkedGroupCardAccent } from '../../lib/scheduleDispatchLinkedGroupPalette'
 import { hubPersonDayKey, type ScheduleDispatchHubJobRow } from '../../lib/scheduleDispatchHub'
 import {
@@ -356,6 +357,9 @@ const hubPeopleSalarySuffix: CSSProperties = {
 
 function HubPeopleBlockCard({
   block,
+  linkedCopyStage = null,
+  linkedCopySelected = false,
+  onLinkedCopyToggle,
   workDate,
   scheduleTodayYmd,
   canEdit,
@@ -375,6 +379,9 @@ function HubPeopleBlockCard({
   onRequestEditBlockNote,
 }: {
   block: JobScheduleBlockRow
+  linkedCopyStage?: 1 | 2 | null
+  linkedCopySelected?: boolean
+  onLinkedCopyToggle?: (blockId: string) => void
   workDate: string
   scheduleTodayYmd: string
   canEdit: boolean
@@ -410,7 +417,8 @@ function HubPeopleBlockCard({
   const plusColor = surroundingIconColorForRequirement(effectiveRequirement, '#1d4ed8')
   const plusButtonRef = useRef<HTMLButtonElement>(null)
   const placementPickingActive = cardPlacementMode != null
-  const dragDisabled = !canEdit || hubMultiCellAddActive
+  const linkedCopyActive = linkedCopyStage != null
+  const dragDisabled = !canEdit || hubMultiCellAddActive || linkedCopyActive
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: block.id,
     disabled: dragDisabled,
@@ -425,9 +433,9 @@ function HubPeopleBlockCard({
 
   const groupId = block.shared_block_group_id
   const showLinkedFloat = Boolean(groupId && linkPeerCount > 1)
-  const showEditNoteBtn = canEdit && !placementPickingActive && !!onRequestEditBlockNote
+  const showEditNoteBtn = canEdit && !placementPickingActive && !linkedCopyActive && !!onRequestEditBlockNote
   const showTopRightControls = showEditNoteBtn
-  const showMinusPlusButtons = canEdit && !placementPickingActive
+  const showMinusPlusButtons = canEdit && !placementPickingActive && !linkedCopyActive
   const linkedAccent =
     highlightLinkedGroups && groupId && linkPeerCount > 1
       ? linkedGroupAccentByGroupId.get(groupId)
@@ -458,6 +466,8 @@ function HubPeopleBlockCard({
         fontSize: '0.72rem',
         color: 'var(--text-blue-900)',
         overflow: 'visible',
+        ...(linkedCopySelected ? { boxShadow: '0 0 0 2px #4338ca' } : {}),
+        ...(linkedCopyActive && !linkedCopySelected && linkedCopyStage === 2 ? { opacity: 0.55 } : {}),
       }}
       title={
         linkedAccent
@@ -614,9 +624,9 @@ function HubPeopleBlockCard({
       {showLinkedFloat ? (
         <button
           type="button"
-          disabled={placementPickingActive}
+          disabled={placementPickingActive || linkedCopyActive}
           title={
-            placementPickingActive
+            placementPickingActive || linkedCopyActive
               ? undefined
               : 'Linked: time and note stay in sync. Click to see every block in this group.'
           }
@@ -733,6 +743,39 @@ function HubPeopleBlockCard({
           />
         </div>
       ) : null}
+      {linkedCopyStage != null ? (
+        <button
+          type="button"
+          aria-label={
+            linkedCopyStage === 1
+              ? linkedCopySelected
+                ? 'Deselect this block for linked copy'
+                : 'Select this block for linked copy'
+              : linkedCopySelected
+                ? 'Selected for linked copy'
+                : 'Not selected'
+          }
+          aria-pressed={linkedCopySelected}
+          onClick={(e) => {
+            e.stopPropagation()
+            if (linkedCopyStage === 1) onLinkedCopyToggle?.(block.id)
+          }}
+          style={{
+            position: 'absolute',
+            inset: -1,
+            zIndex: 8,
+            padding: 0,
+            margin: 0,
+            borderRadius: 4,
+            border:
+              linkedCopyStage === 1 && !linkedCopySelected
+                ? '2px dashed rgba(67, 56, 202, 0.55)'
+                : 'none',
+            background: linkedCopySelected ? 'rgba(67, 56, 202, 0.14)' : 'transparent',
+            cursor: linkedCopyStage === 1 ? 'pointer' : 'default',
+          }}
+        />
+      ) : null}
     </div>
   )
 }
@@ -768,6 +811,8 @@ function HubPeopleDayCell({
   onRequestEditBlockNote,
   timeOffInfo,
   onRequestUndoNotComingIn,
+  linkedCopyMode = null,
+  onLinkedCopyToggleBlock,
 }: {
   personUserId: string
   workDate: string
@@ -799,6 +844,8 @@ function HubPeopleDayCell({
   onRequestEditBlockNote?: (b: JobScheduleBlockRow) => void
   timeOffInfo?: UserTimeOffCellInfo | null
   onRequestUndoNotComingIn?: (personUserId: string, workDate: string) => void
+  linkedCopyMode?: LinkedCopyMode | null
+  onLinkedCopyToggleBlock?: (blockId: string) => void
 }) {
   const cellHasTimeOff = timeOffInfo != null
   const droppableId = scheduleDispatchCellDroppableId(workDate, personUserId)
@@ -837,6 +884,7 @@ function HubPeopleDayCell({
     !assignJobPickingActive &&
     !placementPickingActive &&
     !hubMultiCellAddActive &&
+    linkedCopyMode == null &&
     !cellHasTimeOff
   const multiSelectCellActive =
     hubMultiCellAddActive && canEdit && onHubMultiCellAddToggle != null && !cellHasTimeOff
@@ -852,6 +900,7 @@ function HubPeopleDayCell({
     !assignJobPickingActive &&
     !placementPickingActive &&
     !hubMultiCellAddActive &&
+    linkedCopyMode == null &&
     !cellHasTimeOff
 
   return (
@@ -974,6 +1023,9 @@ function HubPeopleDayCell({
             <HubPeopleBlockCard
               key={b.id}
               block={b}
+              linkedCopyStage={linkedCopyMode?.stage ?? null}
+              linkedCopySelected={linkedCopyMode?.selectedBlockIds.has(b.id) ?? false}
+              onLinkedCopyToggle={onLinkedCopyToggleBlock}
               workDate={workDate}
               scheduleTodayYmd={scheduleTodayYmd}
               canEdit={canEdit}
@@ -1095,6 +1147,12 @@ type HubPeoplePanelProps = {
   hubMultiCellAddSelectedKeys: ReadonlySet<string>
   onHubMultiCellAddToggle?: (personUserId: string, workDate: string) => void
   onRequestHubAddJob?: () => void
+  /** Two-stage "copy jobs linked to people" flow (toolbar chains button). */
+  linkedCopyMode?: LinkedCopyMode | null
+  onStartLinkedCopyMode?: () => void
+  onLinkedCopyToggleBlock?: (blockId: string) => void
+  onLinkedCopyApplyToPerson?: (personUserId: string) => void
+  linkedCopyApplyBusy?: boolean
   onRequestHubMultiCellAddMode?: () => void
   columnFocusDayYmd: string
   columnScrollKey: string
@@ -1156,6 +1214,11 @@ function HubPeoplePanel({
   hubMultiCellAddSelectedKeys,
   onHubMultiCellAddToggle,
   onRequestHubAddJob,
+  linkedCopyMode = null,
+  onStartLinkedCopyMode,
+  onLinkedCopyToggleBlock,
+  onLinkedCopyApplyToPerson,
+  linkedCopyApplyBusy = false,
   onRequestHubMultiCellAddMode,
   onRequestEditBlockNote,
   showExpectedManpower = true,
@@ -1455,6 +1518,30 @@ function HubPeoplePanel({
                 ++
               </button>
             ) : null}
+            {onStartLinkedCopyMode ? (
+              <button
+                type="button"
+                aria-label={
+                  linkedCopyMode
+                    ? 'Exit copy-jobs-linked mode'
+                    : 'Copy jobs linked to people: pick blocks, then click people'
+                }
+                title={
+                  linkedCopyMode
+                    ? 'Exit copy-jobs-linked mode (Esc)'
+                    : 'Copy jobs linked: pick blocks, then click people'
+                }
+                style={{
+                  ...hubPeopleToolbarIconBtn,
+                  borderColor: linkedCopyMode ? '#4338ca' : '#2563eb',
+                  color: linkedCopyMode ? '#4338ca' : 'var(--text-link)',
+                  background: linkedCopyMode ? 'var(--bg-blue-tint)' : 'var(--surface)',
+                }}
+                onClick={onStartLinkedCopyMode}
+              >
+                <ScheduleDispatchLinkedChainsIcon size={14} />
+              </button>
+            ) : null}
           </div>
         ) : null}
         <label style={{ fontSize: '0.8125rem', color: 'var(--text-700)', display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -1690,6 +1777,8 @@ function HubPeoplePanel({
                   )
                 }
                 const person = item.person
+                const linkedCopyApplyActive =
+                  linkedCopyMode?.stage === 2 && onLinkedCopyApplyToPerson != null
                 return (
                 <tr key={person.userId} id={`hub-person-row-${person.userId}`}>
                   <td
@@ -1718,7 +1807,32 @@ function HubPeoplePanel({
                         : 'inset 1px 0 0 var(--border), inset -1px 0 0 var(--border)',
                     }}
                   >
-                    {isMobile ? (
+                    {linkedCopyApplyActive ? (
+                      <button
+                        type="button"
+                        disabled={linkedCopyApplyBusy}
+                        aria-label={`Apply linked copies to ${person.displayName}`}
+                        title={`Apply the selected linked copies to ${person.displayName}`}
+                        onClick={() => onLinkedCopyApplyToPerson?.(person.userId)}
+                        style={{
+                          display: 'block',
+                          width: '100%',
+                          textAlign: 'left',
+                          padding: '0.15rem 0.35rem',
+                          margin: '-0.15rem -0.35rem',
+                          border: '2px dashed rgba(67, 56, 202, 0.55)',
+                          borderRadius: 4,
+                          background: 'var(--bg-blue-tint)',
+                          color: 'inherit',
+                          font: 'inherit',
+                          fontWeight: 600,
+                          cursor: linkedCopyApplyBusy ? 'wait' : 'pointer',
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        {person.displayName}
+                      </button>
+                    ) : isMobile ? (
                       <span style={{ ...scheduleDispatchMobileNamePill, whiteSpace: 'nowrap' }}>
                         {person.displayName}
                         {salariedUserIds.has(person.userId) ? (
@@ -1755,6 +1869,8 @@ function HubPeoplePanel({
                         key={dk}
                         personUserId={person.userId}
                         workDate={dk}
+                        linkedCopyMode={linkedCopyMode}
+                        onLinkedCopyToggleBlock={onLinkedCopyToggleBlock}
                         scheduleTodayYmd={scheduleTodayYmd}
                         columnFocusDayYmd={columnFocusDayYmd}
                         cellBlocks={cellBlocks}
@@ -2300,6 +2416,11 @@ type Props = {
   hubHourlyWageByUserId: ReadonlyMap<string, number>
   hubAssignJobPlacement: { jobId: string } | null
   onRequestHubAddJob: () => void
+  linkedCopyMode?: LinkedCopyMode | null
+  onStartLinkedCopyMode?: () => void
+  onLinkedCopyToggleBlock?: (blockId: string) => void
+  onLinkedCopyApplyToPerson?: (personUserId: string) => void
+  linkedCopyApplyBusy?: boolean
   onHubAssignJobCellPick: (assigneeUserId: string, workDate: string) => void
   onDeleteBlock: (id: string) => void
   onHubEmptyCellClick?: (personUserId: string, workDate: string) => void
@@ -2400,6 +2521,11 @@ export function ScheduleDispatchHub({
   hubHourlyWageByUserId,
   hubAssignJobPlacement,
   onRequestHubAddJob,
+  linkedCopyMode = null,
+  onStartLinkedCopyMode,
+  onLinkedCopyToggleBlock,
+  onLinkedCopyApplyToPerson,
+  linkedCopyApplyBusy = false,
   onHubAssignJobCellPick,
   onDeleteBlock,
   onHubEmptyCellClick,
@@ -2588,6 +2714,11 @@ export function ScheduleDispatchHub({
           hubMultiCellAddSelectedKeys={hubMultiCellAddSelectedKeys}
           onHubMultiCellAddToggle={onHubMultiCellAddToggle}
           onRequestHubAddJob={onRequestHubAddJob}
+          linkedCopyMode={linkedCopyMode}
+          onStartLinkedCopyMode={onStartLinkedCopyMode}
+          onLinkedCopyToggleBlock={onLinkedCopyToggleBlock}
+          onLinkedCopyApplyToPerson={onLinkedCopyApplyToPerson}
+          linkedCopyApplyBusy={linkedCopyApplyBusy}
           onRequestHubMultiCellAddMode={onRequestHubMultiCellAddMode}
           onRequestEditBlockNote={onRequestEditBlockNote}
           showExpectedManpower={showExpectedManpower}
@@ -2674,6 +2805,11 @@ export function ScheduleDispatchHub({
           hubMultiCellAddSelectedKeys={hubMultiCellAddSelectedKeys}
           onHubMultiCellAddToggle={onHubMultiCellAddToggle}
           onRequestHubAddJob={onRequestHubAddJob}
+          linkedCopyMode={linkedCopyMode}
+          onStartLinkedCopyMode={onStartLinkedCopyMode}
+          onLinkedCopyToggleBlock={onLinkedCopyToggleBlock}
+          onLinkedCopyApplyToPerson={onLinkedCopyApplyToPerson}
+          linkedCopyApplyBusy={linkedCopyApplyBusy}
           onRequestHubMultiCellAddMode={onRequestHubMultiCellAddMode}
           onRequestEditBlockNote={onRequestEditBlockNote}
           showExpectedManpower={showExpectedManpower}

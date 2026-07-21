@@ -30,6 +30,12 @@ import {
 import { scheduleFormatWeekdayLong, scheduleFormatWindow } from '../../lib/jobScheduleChicago'
 import { executeScheduleDispatchBlockReassign } from '../../lib/scheduleDispatchDragEnd'
 import { insertScheduleDispatchCopiedLeg } from '../../lib/scheduleDispatchMirrorInsert'
+import {
+  summarizeLinkedCopyApply,
+  toggleLinkedCopyBlockSelection,
+  type LinkedCopyLegResult,
+  type LinkedCopyMode,
+} from '../../lib/scheduleDispatchLinkedCopy'
 import { fetchSalariedUserIdSetFromUserIds } from '../../lib/salaryPayConfigGate'
 import { ScheduleDispatchAddBlockModal } from './ScheduleDispatchAddBlockModal'
 import { ScheduleDispatchBlockNoteModal } from './ScheduleDispatchBlockNoteModal'
@@ -763,6 +769,9 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
     Record<string, { time_start: string; time_end: string }>
   >({})
   const [cardPlacementMode, setCardPlacementMode] = useState<ScheduleDispatchCardPlacementMode | null>(null)
+  /** Two-stage "copy jobs linked to people" flow (toolbar chains button). */
+  const [linkedCopyMode, setLinkedCopyMode] = useState<LinkedCopyMode | null>(null)
+  const [linkedCopyApplyBusy, setLinkedCopyApplyBusy] = useState(false)
   const [plusMenuBlockId, setPlusMenuBlockId] = useState<string | null>(null)
   const [blockNoteEdit, setBlockNoteEdit] = useState<JobScheduleBlockRow | null>(null)
   const [blockNoteBusy, setBlockNoteBusy] = useState(false)
@@ -818,6 +827,15 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [deleteBlockId, deleteBlockBusy])
+
+  useEffect(() => {
+    if (!linkedCopyMode) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setLinkedCopyMode(null)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [linkedCopyMode])
 
   useEffect(() => {
     if (!hubMultiCellAddActive) return
@@ -909,6 +927,7 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
       setHubAssignJobPlacement(null)
       setHubMultiCellAddActive(false)
       setHubMultiCellAddSelection(new Set())
+      setLinkedCopyMode(null)
       stripPlaceJobFromUrl()
       setCardPlacementMode({ sourceBlockId: source.id, variant })
       const extra =
@@ -1020,6 +1039,7 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
   }, [stripPlaceJobFromUrl])
 
   const onRequestHubAddJob = useCallback(() => {
+    setLinkedCopyMode(null)
     setCardPlacementMode(null)
     setPlusMenuBlockId(null)
     setHubAssignJobPlacement(null)
@@ -1045,6 +1065,7 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
       setHubMultiCellAddSelection(new Set())
       return
     }
+    setLinkedCopyMode(null)
     setCardPlacementMode(null)
     setPlusMenuBlockId(null)
     setHubAssignJobPlacement(null)
@@ -1065,6 +1086,83 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
       return next
     })
   }, [])
+
+  /** Toolbar chains button: enter (or exit) the two-stage linked-copy flow. */
+  const onStartLinkedCopyMode = useCallback(() => {
+    if (linkedCopyMode) {
+      setLinkedCopyMode(null)
+      return
+    }
+    setCardPlacementMode(null)
+    setPlusMenuBlockId(null)
+    setHubAssignJobPlacement(null)
+    setHubCellAddContext(null)
+    setHubAssignJobPickerOpen(false)
+    setHubMultiCellAddActive(false)
+    setHubMultiCellAddSelection(new Set())
+    stripPlaceJobFromUrl()
+    setLinkedCopyMode({ stage: 1, selectedBlockIds: new Set() })
+  }, [linkedCopyMode, stripPlaceJobFromUrl])
+
+  /** Stage 1: card click toggles a source block in/out of the selection. */
+  const onLinkedCopyToggleBlock = useCallback((blockId: string) => {
+    setLinkedCopyMode((m) =>
+      m && m.stage === 1
+        ? { ...m, selectedBlockIds: toggleLinkedCopyBlockSelection(m.selectedBlockIds, blockId) }
+        : m,
+    )
+  }, [])
+
+  const onLinkedCopySetStage = useCallback((stage: 1 | 2) => {
+    setLinkedCopyMode((m) => (m ? { ...m, stage } : m))
+  }, [])
+
+  /** Stage 2: person click applies a linked copy of every selected block to them
+   * (each on its source block's own day; per-leg overlap/duplicate safety lives
+   * in insertScheduleDispatchCopiedLeg). Mode stays active for more people. */
+  const onLinkedCopyApplyToPerson = useCallback(
+    async (personUserId: string) => {
+      if (!linkedCopyMode || linkedCopyMode.stage !== 2 || !authUser?.id || linkedCopyApplyBusy) return
+      const sources = [...linkedCopyMode.selectedBlockIds]
+        .map((id) => hubBlockById.get(id))
+        .filter((b): b is JobScheduleBlockRow => b != null)
+      if (sources.length === 0) return
+      setLinkedCopyApplyBusy(true)
+      try {
+        const results: LinkedCopyLegResult[] = []
+        for (const source of sources) {
+          const allJobBlocks = hubWeekBlocks.filter((b) => b.job_id === source.job_id)
+          const { error } = await insertScheduleDispatchCopiedLeg({
+            jobId: source.job_id,
+            createdBy: authUser.id,
+            source,
+            targetAssigneeUserId: personUserId,
+            targetWorkDate: source.work_date,
+            linkMode: 'linked',
+            allJobBlocks,
+          })
+          results.push({ blockId: source.id, error })
+        }
+        const sum = summarizeLinkedCopyApply(results)
+        const personName = hubPeopleNameById.get(personUserId) ?? 'Person'
+        showToast(`${personName}: ${sum.message}`, sum.tone)
+        await loadHub({ quiet: true })
+      } finally {
+        setLinkedCopyApplyBusy(false)
+      }
+    },
+    [
+      linkedCopyMode,
+      linkedCopyApplyBusy,
+      authUser?.id,
+      hubBlockById,
+      hubWeekBlocks,
+      hubPeopleNameById,
+      loadHub,
+      showToast,
+    ],
+  )
+
 
   const onRequestHubMultiCellAddChooseJob = useCallback(() => {
     if (hubMultiCellAddSelection.size === 0) return
@@ -1776,6 +1874,108 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
             </button>
           </div>
         ) : null}
+        {linkedCopyMode ? (
+          <div
+            role="status"
+            style={{
+              margin: '0 1.25rem',
+              marginBottom: '0.75rem',
+              padding: '0.5rem 0.75rem',
+              background: 'var(--bg-blue-200)',
+              border: '1px solid var(--border-indigo)',
+              borderRadius: 6,
+              fontSize: '0.8125rem',
+              color: 'var(--text-blue-900)',
+              display: 'flex',
+              flexWrap: 'wrap',
+              alignItems: 'center',
+              gap: '0.5rem',
+            }}
+          >
+            {linkedCopyMode.stage === 1 ? (
+              <>
+                <span>
+                  <strong>1 of 2</strong> — Click the job blocks you want to copy linked (
+                  {linkedCopyMode.selectedBlockIds.size} selected). Press Esc to cancel.
+                </span>
+                <button
+                  type="button"
+                  disabled={linkedCopyMode.selectedBlockIds.size === 0}
+                  onClick={() => onLinkedCopySetStage(2)}
+                  style={{
+                    padding: '0.2rem 0.55rem',
+                    fontSize: '0.75rem',
+                    border: '1px solid #4338ca',
+                    borderRadius: 4,
+                    background:
+                      linkedCopyMode.selectedBlockIds.size === 0 ? 'var(--bg-muted)' : '#4338ca',
+                    color: linkedCopyMode.selectedBlockIds.size === 0 ? 'var(--text-muted)' : '#fff',
+                    cursor: linkedCopyMode.selectedBlockIds.size === 0 ? 'not-allowed' : 'pointer',
+                    fontWeight: 600,
+                  }}
+                >
+                  Next: pick people
+                </button>
+              </>
+            ) : (
+              <>
+                <span>
+                  <strong>2 of 2</strong> — Click the people to apply{' '}
+                  <strong>{linkedCopyMode.selectedBlockIds.size}</strong> linked{' '}
+                  {linkedCopyMode.selectedBlockIds.size === 1 ? 'copy' : 'copies'} to
+                  {linkedCopyApplyBusy ? ' (applying…)' : ''}. Each copy lands on its source
+                  block&apos;s day. Press Esc when done.
+                </span>
+                <button
+                  type="button"
+                  onClick={() => onLinkedCopySetStage(1)}
+                  style={{
+                    padding: '0.2rem 0.55rem',
+                    fontSize: '0.75rem',
+                    border: '1px solid #4338ca',
+                    borderRadius: 4,
+                    background: 'var(--surface)',
+                    color: 'var(--text-blue-900)',
+                    cursor: 'pointer',
+                  }}
+                >
+                  Back
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setLinkedCopyMode(null)}
+                  style={{
+                    padding: '0.2rem 0.55rem',
+                    fontSize: '0.75rem',
+                    border: '1px solid #4338ca',
+                    borderRadius: 4,
+                    background: '#4338ca',
+                    color: '#fff',
+                    cursor: 'pointer',
+                    fontWeight: 600,
+                  }}
+                >
+                  Done
+                </button>
+              </>
+            )}
+            <button
+              type="button"
+              onClick={() => setLinkedCopyMode(null)}
+              style={{
+                padding: '0.2rem 0.55rem',
+                fontSize: '0.75rem',
+                border: '1px solid #4338ca',
+                borderRadius: 4,
+                background: 'var(--surface)',
+                color: 'var(--text-blue-900)',
+                cursor: 'pointer',
+              }}
+            >
+              Cancel
+            </button>
+          </div>
+        ) : null}
         {hubAssignJobPlacement ? (
           <div
             style={{
@@ -1892,6 +2092,11 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
             hubHourlyWageByUserId={hubHourlyWageByUserId}
             hubAssignJobPlacement={hubAssignJobPlacement}
             onRequestHubAddJob={onRequestHubAddJob}
+            linkedCopyMode={linkedCopyMode}
+            onStartLinkedCopyMode={onStartLinkedCopyMode}
+            onLinkedCopyToggleBlock={onLinkedCopyToggleBlock}
+            onLinkedCopyApplyToPerson={onLinkedCopyApplyToPerson}
+            linkedCopyApplyBusy={linkedCopyApplyBusy}
             onHubAssignJobCellPick={onHubAssignJobCellPick}
             onDeleteBlock={(id) => void requestDeleteBlock(id)}
             onHubEmptyCellClick={canEdit ? onHubEmptyCellOpenChoice : undefined}

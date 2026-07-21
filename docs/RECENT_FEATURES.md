@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-21 (v2.868)
+last_updated: 2026-07-21 (v2.869)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.869)
+
+### Dispatch → People: two-stage "copy jobs linked to people" flow (2026-07-21)
+New chains button (the "Linked: time and notes" icon) beside **++** in the People toolbar. It opens a floating bar with a two-stage flow: **1 of 2 — click the job blocks you want to copy linked** (blocks get dashed outlines; selected ones highlight; "Next: pick people"), then **2 of 2 — click the people to apply them to** (names in the Person column become click targets; each click immediately creates a **linked** copy of every selected block for that person — same day/times/note, chained via `shared_block_group_id` through the existing [`insertScheduleDispatchCopiedLeg`](../src/lib/scheduleDispatchMirrorInsert.ts) per-leg safety: overlap and already-linked copies are skipped, with an applied/skipped toast per person). Esc / Done / Cancel exit; Back returns to selection; entering any other add/placement mode cancels the flow (and vice versa). New pure kernel [`scheduleDispatchLinkedCopy.ts`](../src/lib/scheduleDispatchLinkedCopy.ts) (selection toggle + toast summary, unit-tested). Help guide `schedule-dispatch.md` gains "Copying jobs to a whole crew (linked)".
 
 ## Latest Updates (v2.868)
 
