@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-21 (v2.859)
+last_updated: 2026-07-21 (v2.860)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.860)
+
+### Cold-load fix: role arrival no longer remounts the whole app body (2026-07-21)
+Found by the E2E smoke suite (the flaky Total-by-Name spec) and traced with an instrumented repro: [`Layout`](../src/components/Layout.tsx) returned **two different trees** — `layoutBody` bare, or wrapped in `HeaderGlobalSearchProvider` when `headerSearchEligible` (dev/master/assistant-like). On every cold load `role` is `null` for ~0.5s and then flips, changing the returned tree's type and **remounting the entire app body** — wiping route/tab state, closing anything the user opened in the first moments, and re-running every page loader (visible as duplicated jobs/users fetches). Now Layout always returns the provider-wrapped tree and [`HeaderGlobalSearchProvider`](../src/components/HeaderGlobalSearch.tsx) takes an `enabled` prop that gates its hotkeys (Cmd-K / S) and data load; the search UI entry points were already role-gated where they render. Also: the Total-by-Name modal container is now a proper `role="dialog"` (its print button shares an accessible name with the Billed section header's, which made page-level test locators ambiguous), and `e2e/stages-board.spec.ts` scopes to that dialog. Verified: 10/10 cold-load early-click runs keep the modal open (previously ~50% died); full e2e suite 20/20 green locally.
 
 ## Latest Updates (v2.859)
 

@@ -78,11 +78,17 @@ const searchIcon = (
 )
 
 export function HeaderGlobalSearchProvider({
+  enabled,
   authUserId,
   navOverlayBackground,
   isMobile,
   children,
 }: {
+  /** Role gate (dev|master|assistant-like). The provider mounts for every role so the
+   * Layout tree stays STABLE across the cold-load null→role transition (a conditional
+   * wrapper remounted the whole app body, wiping page state — v2.860); when false, the
+   * hotkeys and data load are inert and no UI entry points render (they gate themselves). */
+  enabled: boolean
   authUserId: string | null
   navOverlayBackground: string
   isMobile: boolean
@@ -109,7 +115,7 @@ export function HeaderGlobalSearchProvider({
   const toolbarButtonRef = useRef<HTMLButtonElement>(null)
 
   useEffect(() => {
-    if (!authUserId) return
+    if (!authUserId || !enabled) return
     const load = async () => {
       const { data: stData } = await supabase.from('service_types').select('id, name').order('sequence_order', { ascending: true })
       const types = (stData ?? []) as Array<{ id: string; name: string }>
@@ -153,7 +159,7 @@ export function HeaderGlobalSearchProvider({
       setServiceTypes(filtered)
     }
     void load()
-  }, [authUserId])
+  }, [authUserId, enabled])
 
   const setQuery = useCallback((q: string) => {
     setQueryState(q)
@@ -203,6 +209,7 @@ export function HeaderGlobalSearchProvider({
   )
 
   useEffect(() => {
+    if (!enabled) return
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         if (!open) return
@@ -239,7 +246,7 @@ export function HeaderGlobalSearchProvider({
     }
     window.addEventListener('keydown', onKey, true)
     return () => window.removeEventListener('keydown', onKey, true)
-  }, [open, closeSearch, openSearch, isMobile, location.pathname])
+  }, [enabled, open, closeSearch, openSearch, isMobile, location.pathname])
 
   useEffect(() => {
     if (!open) return
