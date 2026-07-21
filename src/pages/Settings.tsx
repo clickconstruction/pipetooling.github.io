@@ -3,8 +3,6 @@ import { useLocation } from 'react-router-dom'
 import { FunctionsHttpError } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import { cascadePersonNameInPayTables, } from '../lib/cascadePersonName'
-import { findPersonUserDuplicates, findNameSimilarDuplicates, mergePersonIntoUser } from '../lib/mergePersonUserDuplicates'
-import type { PayConfigRowForMerge } from '../lib/mergePersonUserDuplicates'
 import { useAuth } from '../hooks/useAuth'
 import {
   impersonationExitDisplayLabel,
@@ -46,10 +44,8 @@ import { useSettingsBackupExports } from '../hooks/useSettingsBackupExports'
 import { useSettingsCatalogs } from '../hooks/useSettingsCatalogs'
 import { useSettingsJobsAdmin } from '../hooks/useSettingsJobsAdmin'
 import { useSettingsProspectsCatalog } from '../hooks/useSettingsProspectsCatalog'
-import type {
-  PersonRow,
-  UserRow,
-} from '../types/settingsRows'
+import { useSettingsPeopleDirectory } from '../hooks/useSettingsPeopleDirectory'
+import type { UserRow } from '../types/settingsRows'
 import { displayLabelForGoalPickerUser } from '../lib/goalPickerUserLabel'
 import { isAssistantLike, isSubcontractorLikeRole } from '../lib/subcontractorLikeRole'
 
@@ -205,9 +201,6 @@ export default function Settings() {
   const [myEstimatorProspectsAccess, setMyEstimatorProspectsAccess] = useState(false)
   const [estimatorServiceTypeIds, setEstimatorServiceTypeIds] = useState<string[] | null>(null)
   const [users, setUsers] = useState<UserRow[]>([])
-  const [myPeople, setMyPeople] = useState<PersonRow[]>([])
-  const [nonUserPeople, setNonUserPeople] = useState<PersonRow[]>([])
-  const [allPeopleCount, setAllPeopleCount] = useState<number>(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [testNotificationSending, setTestNotificationSending] = useState(false)
@@ -250,10 +243,6 @@ export default function Settings() {
   const [passwordChangeError, setPasswordChangeError] = useState<string | null>(null)
   const [passwordChangeSuccess, setPasswordChangeSuccess] = useState(false)
   const [passwordChangeSubmitting, setPasswordChangeSubmitting] = useState(false)
-  const [payApprovedMasterIds, setPayApprovedMasterIds] = useState<Set<string>>(new Set())
-  const [payApprovedMasters, setPayApprovedMasters] = useState<UserRow[]>([])
-  const [payApprovedSaving, setPayApprovedSaving] = useState(false)
-  const [payApprovedError, setPayApprovedError] = useState<string | null>(null)
   const [myProfileName, setMyProfileName] = useState('')
   const [myProfileEmail, setMyProfileEmail] = useState('')
   const [myProfilePhone, setMyProfilePhone] = useState('')
@@ -296,8 +285,6 @@ export default function Settings() {
   const [teamLeaderSortColumn, setTeamLeaderSortColumn] = useState<'leader' | 'member'>('leader')
   const [teamLeaderSortDir, setTeamLeaderSortDir] = useState<'asc' | 'desc'>('asc')
   const [teamLeaderAssignmentsSearchQuery, setTeamLeaderAssignmentsSearchQuery] = useState('')
-  const [taskDispatchSectionOpen, setTaskDispatchSectionOpen] = useState(false)
-  const [estimatorInboxSectionOpen, setEstimatorInboxSectionOpen] = useState(false)
   const [dashboardButtonsSectionOpen, setDashboardButtonsSectionOpen] = useState(false)
   const [salaryWorkdaySectionOpen, setSalaryWorkdaySectionOpen] = useState(true)
   const [allSalariedDevSectionOpen, setAllSalariedDevSectionOpen] = useState(false)
@@ -309,15 +296,7 @@ export default function Settings() {
   const [teamLeadAssignmentsSectionOpen, setTeamLeadAssignmentsSectionOpen] = useState(false)
   const [reportNotificationsSectionOpen, setReportNotificationsSectionOpen] = useState(false)
   const [dataBackupSectionOpen, setDataBackupSectionOpen] = useState(false)
-  const [dispatchMemberIds, setDispatchMemberIds] = useState<Set<string>>(new Set())
-  const [dispatchGroupError, setDispatchGroupError] = useState<string | null>(null)
-  const [dispatchGroupSavingUserId, setDispatchGroupSavingUserId] = useState<string | null>(null)
-  const [estimatorMemberIds, setEstimatorMemberIds] = useState<Set<string>>(new Set())
-  const [estimatorGroupError, setEstimatorGroupError] = useState<string | null>(null)
-  const [estimatorGroupSavingUserId, setEstimatorGroupSavingUserId] = useState<string | null>(null)
 
-  const [roleVisibilityExpanded, setRoleVisibilityExpanded] = useState(false)
-  const [payApprovedMastersSectionOpen, setPayApprovedMastersSectionOpen] = useState(false)
 
   // Catalogs & trades engines (five type-CRUD engines + orphan prices) — extracted
   // to useSettingsCatalogs (v2.855). Instantiated here (not in the tab) because
@@ -505,6 +484,65 @@ export default function Settings() {
     saveEstimateLineItemCatalog,
   } = useSettingsProspectsCatalog({ enabled: myRole === 'dev', setError })
 
+  // People & accounts directory engine — extracted to useSettingsPeopleDirectory (v2.857)
+  const {
+    myPeople,
+    nonUserPeople,
+    allPeopleCount,
+    dispatchMemberIds,
+    dispatchGroupError,
+    dispatchGroupSavingUserId,
+    estimatorMemberIds,
+    estimatorGroupError,
+    estimatorGroupSavingUserId,
+    payApprovedMasterIds,
+    payApprovedMasters,
+    payApprovedSaving,
+    payApprovedError,
+    payApprovedMastersSectionOpen,
+    setPayApprovedMastersSectionOpen,
+    taskDispatchSectionOpen,
+    setTaskDispatchSectionOpen,
+    estimatorInboxSectionOpen,
+    setEstimatorInboxSectionOpen,
+    additionalPeopleSectionOpen,
+    setAdditionalPeopleSectionOpen,
+    roleVisibilityExpanded,
+    setRoleVisibilityExpanded,
+    editingNonUserPerson,
+    setEditingNonUserPerson,
+    editPersonName,
+    setEditPersonName,
+    editPersonEmail,
+    setEditPersonEmail,
+    editPersonPhone,
+    setEditPersonPhone,
+    editPersonNotes,
+    setEditPersonNotes,
+    editPersonSaving,
+    editPersonError,
+    setEditPersonError,
+    deletingPersonId,
+    mergeDuplicatesModalOpen,
+    setMergeDuplicatesModalOpen,
+    mergeDuplicatesLoading,
+    mergeDuplicates,
+    mergingPersonName,
+    toggleDispatchGroupMember,
+    toggleEstimatorGroupMember,
+    saveNonUserPersonEdit,
+    deleteNonUserPerson,
+    togglePayApproved,
+    openFindDuplicatesModal,
+    handleMergeDuplicate,
+  } = useSettingsPeopleDirectory({
+    enabled: myRole === 'dev',
+    authUserId: authUser?.id ?? null,
+    users,
+    setError,
+    onDataChanged: () => loadData(),
+  })
+
   async function handleSignOut() {
     await supabase.auth.signOut()
     // Manually clear Supabase auth keys so full page load sees no session
@@ -580,7 +618,6 @@ export default function Settings() {
     )
   }
 
-  const [additionalPeopleSectionOpen, setAdditionalPeopleSectionOpen] = useState(false)
   const [financialPinsSectionOpen, setFinancialPinsSectionOpen] = useState(false)
   const [notificationHistoryOpen, setNotificationHistoryOpen] = useState(false)
   const [mutedTasksOpen, setMutedTasksOpen] = useState(false)
@@ -598,18 +635,6 @@ export default function Settings() {
   const [notificationHistoryLoading, setNotificationHistoryLoading] = useState(false)
   const [notificationHistoryError, setNotificationHistoryError] = useState<string | null>(null)
   const [hasNotificationHistory, setHasNotificationHistory] = useState<boolean | null>(null)
-  const [editingNonUserPerson, setEditingNonUserPerson] = useState<PersonRow | null>(null)
-  const [editPersonName, setEditPersonName] = useState('')
-  const [editPersonEmail, setEditPersonEmail] = useState('')
-  const [editPersonPhone, setEditPersonPhone] = useState('')
-  const [editPersonNotes, setEditPersonNotes] = useState('')
-  const [editPersonSaving, setEditPersonSaving] = useState(false)
-  const [editPersonError, setEditPersonError] = useState<string | null>(null)
-  const [deletingPersonId, setDeletingPersonId] = useState<string | null>(null)
-  const [mergeDuplicatesModalOpen, setMergeDuplicatesModalOpen] = useState(false)
-  const [mergeDuplicatesLoading, setMergeDuplicatesLoading] = useState(false)
-  const [mergeDuplicates, setMergeDuplicates] = useState<Array<{ personName: string; userDisplayName: string; email: string }>>([])
-  const [mergingPersonName, setMergingPersonName] = useState<string | null>(null)
   const {
     exportProjectsLoading,
     exportMaterialsLoading,
@@ -845,141 +870,15 @@ export default function Settings() {
       .order('name')
     if (eList) setError(eList.message)
     else setUsers((list as UserRow[]) ?? [])
-    
-    // Load all people entries (RLS may restrict, but we'll filter client-side)
-    // Note: RLS policy may need to allow owners to see all people entries
-    const { data: allPeople, error: ePeople } = await supabase
-      .from('people')
-      .select('id, master_user_id, kind, name, email, phone, notes')
-      .is('archived_at', null)
-      .order('name')
+    }
 
-    if (ePeople) {
-      console.error('Error loading people:', ePeople)
-      setError(ePeople.message)
-      setAllPeopleCount(0)
-    } else if (allPeople) {
-      setAllPeopleCount(allPeople.length)
-      
-      // Get all user emails to check if people are users
-      const userEmails = new Set((list as UserRow[] | null)?.map(u => u.email?.toLowerCase()).filter(Boolean) ?? [])
-      
-      // Separate people created by me vs others
-      const peopleFromMe = allPeople.filter(p => p.master_user_id === authUser.id)
-      const peopleFromOthers = allPeople.filter(p => p.master_user_id !== authUser.id)
-      
-      // Process people created by me
-      const myPeopleWithInfo: PersonRow[] = peopleFromMe.map(p => ({
-        ...p,
-        creator_name: null, // Created by me, so no need to show creator
-        creator_email: null,
-        is_user: p.email ? userEmails.has(p.email.toLowerCase()) : false,
-      }))
-      setMyPeople(myPeopleWithInfo)
-      
-      // Process people created by others
-      if (peopleFromOthers.length > 0) {
-        // Get creator information for each person
-        const creatorIds = [...new Set(peopleFromOthers.map(p => p.master_user_id))]
-        const { data: creators, error: eCreators } = await supabase
-          .from('users')
-          .select('id, name, email')
-          .in('id', creatorIds)
-        
-        if (eCreators) {
-          console.error('Error loading creators:', eCreators)
-          setError(eCreators.message)
-        } else {
-          const creatorMap = new Map(
-            (creators as Array<{ id: string; name: string; email: string }> | null)?.map(c => [c.id, c]) ?? []
-          )
-          
-          const peopleWithCreators: PersonRow[] = peopleFromOthers.map(p => ({
-            ...p,
-            creator_name: creatorMap.get(p.master_user_id)?.name ?? null,
-            creator_email: creatorMap.get(p.master_user_id)?.email ?? null,
-            is_user: p.email ? userEmails.has(p.email.toLowerCase()) : false,
-          }))
-          
-          setNonUserPeople(peopleWithCreators)
-        }
-      } else {
-        setNonUserPeople([])
-      }
-    } else {
-      // No people entries at all
-      setMyPeople([])
-      setNonUserPeople([])
-    }
-    }
-    
+    // People directory / groups / pay-approved data is owned by useSettingsPeopleDirectory
+
     // Load email templates and service types if dev; service types also for estimators (Material Part/Assembly Types)
     if (role === 'dev' || role === 'estimator') {
       await loadServiceTypes()
     }
-    if (role === 'dev') {
-      await loadPayApprovedMasters()
-
-      const [dgmRes, egmRes] = await Promise.all([
-        supabase.from('dispatch_group_members').select('user_id'),
-        supabase.from('estimator_group_members').select('user_id'),
-      ])
-
-      if (dgmRes.error) setError(dgmRes.error.message)
-      else setDispatchMemberIds(new Set((dgmRes.data ?? []).map((r: { user_id: string }) => r.user_id)))
-      if (egmRes.error) setError(egmRes.error.message)
-      else setEstimatorMemberIds(new Set((egmRes.data ?? []).map((r: { user_id: string }) => r.user_id)))
-    }
-    
     setLoading(false)
-  }
-
-  async function toggleDispatchGroupMember(userId: string, currentlyMember: boolean) {
-    if (myRole !== 'dev') return
-    setDispatchGroupSavingUserId(userId)
-    setDispatchGroupError(null)
-    try {
-      if (currentlyMember) {
-        const { error } = await supabase.from('dispatch_group_members').delete().eq('user_id', userId)
-        if (error) setDispatchGroupError(error.message)
-        else
-          setDispatchMemberIds((prev) => {
-            const n = new Set(prev)
-            n.delete(userId)
-            return n
-          })
-      } else {
-        const { error } = await supabase.from('dispatch_group_members').insert({ user_id: userId })
-        if (error) setDispatchGroupError(error.message)
-        else setDispatchMemberIds((prev) => new Set(prev).add(userId))
-      }
-    } finally {
-      setDispatchGroupSavingUserId(null)
-    }
-  }
-
-  async function toggleEstimatorGroupMember(userId: string, currentlyMember: boolean) {
-    if (myRole !== 'dev') return
-    setEstimatorGroupSavingUserId(userId)
-    setEstimatorGroupError(null)
-    try {
-      if (currentlyMember) {
-        const { error } = await supabase.from('estimator_group_members').delete().eq('user_id', userId)
-        if (error) setEstimatorGroupError(error.message)
-        else
-          setEstimatorMemberIds((prev) => {
-            const n = new Set(prev)
-            n.delete(userId)
-            return n
-          })
-      } else {
-        const { error } = await supabase.from('estimator_group_members').insert({ user_id: userId })
-        if (error) setEstimatorGroupError(error.message)
-        else setEstimatorMemberIds((prev) => new Set(prev).add(userId))
-      }
-    } finally {
-      setEstimatorGroupSavingUserId(null)
-    }
   }
 
   async function saveMyProfile(e: React.FormEvent) {
@@ -1053,125 +952,6 @@ export default function Settings() {
       else next.add(templateId)
       return next
     })
-  }
-
-  async function loadPeopleForDev() {
-    if (!authUser?.id || myRole !== 'dev') return
-    const { data: list } = await supabase.from('users').select('id, email, name').order('name')
-    const userEmails = new Set((list as UserRow[] | null)?.map(u => u.email?.toLowerCase()).filter(Boolean) ?? [])
-    const { data: allPeople, error: ePeople } = await supabase
-      .from('people')
-      .select('id, master_user_id, kind, name, email, phone, notes')
-      .is('archived_at', null)
-      .order('name')
-    if (ePeople) {
-      setAllPeopleCount(0)
-      return
-    }
-    if (!allPeople) {
-      setMyPeople([])
-      setNonUserPeople([])
-      setAllPeopleCount(0)
-      return
-    }
-    setAllPeopleCount(allPeople.length)
-    type PeopleRow = { id: string; master_user_id: string; kind: string; name: string; email: string | null; phone: string | null; notes: string | null }
-    const peopleFromMe = (allPeople as PeopleRow[]).filter(p => p.master_user_id === authUser.id)
-    const peopleFromOthers = (allPeople as PeopleRow[]).filter(p => p.master_user_id !== authUser.id)
-    setMyPeople(peopleFromMe.map(p => ({
-      ...p,
-      creator_name: null,
-      creator_email: null,
-      is_user: p.email ? userEmails.has(p.email.toLowerCase()) : false,
-    })))
-    if (peopleFromOthers.length === 0) {
-      setNonUserPeople([])
-      return
-    }
-    const creatorIds = [...new Set(peopleFromOthers.map(p => p.master_user_id))]
-    const { data: creators } = await supabase.from('users').select('id, name, email').in('id', creatorIds)
-    const creatorMap = new Map((creators as Array<{ id: string; name: string; email: string }> | null)?.map(c => [c.id, c]) ?? [])
-    setNonUserPeople(peopleFromOthers.map(p => ({
-      ...p,
-      creator_name: creatorMap.get(p.master_user_id)?.name ?? null,
-      creator_email: creatorMap.get(p.master_user_id)?.email ?? null,
-      is_user: p.email ? userEmails.has(p.email.toLowerCase()) : false,
-    })))
-  }
-
-  async function saveNonUserPersonEdit(e: React.FormEvent) {
-    e.preventDefault()
-    if (!editingNonUserPerson) return
-    const trimmedName = editPersonName.trim()
-    if (!trimmedName) {
-      setEditPersonError('Name is required')
-      return
-    }
-    setEditPersonSaving(true)
-    setEditPersonError(null)
-    const { error: err } = await supabase.from('people').update({
-      name: trimmedName,
-      email: editPersonEmail.trim() || null,
-      phone: editPersonPhone.trim() || null,
-      notes: editPersonNotes.trim() || null,
-    }).eq('id', editingNonUserPerson.id)
-    setEditPersonSaving(false)
-    if (err) setEditPersonError(err.message)
-    else {
-      const oldName = editingNonUserPerson.name?.trim()
-      if (oldName && oldName !== trimmedName) {
-        await cascadePersonNameInPayTables(oldName, trimmedName)
-      }
-      setEditingNonUserPerson(null)
-      await loadPeopleForDev()
-    }
-  }
-
-  async function deleteNonUserPerson(p: PersonRow) {
-    if (!confirm(`Delete "${p.name}"? A dev can put them back for 90 days from Settings → Data & migration → Recently deleted.`)) return
-    setDeletingPersonId(p.id)
-    setError(null)
-    const { error: err } = await supabase.from('people').delete().eq('id', p.id)
-    setDeletingPersonId(null)
-    if (err) setError(err.message)
-    else await loadPeopleForDev()
-  }
-
-  async function loadPayApprovedMasters() {
-    const { data: approvedData, error: approvedErr } = await supabase
-      .from('pay_approved_masters')
-      .select('master_id')
-    if (approvedErr) {
-      setPayApprovedError(approvedErr.message)
-      return
-    }
-    setPayApprovedMasterIds(new Set((approvedData ?? []).map((r: { master_id: string }) => r.master_id)))
-    const { data: mastersData, error: mastersErr } = await supabase
-      .from('users')
-      .select('id, email, name, role')
-      .in('role', ['master_technician', 'dev'])
-      .order('name')
-    if (mastersErr) {
-      setPayApprovedError(mastersErr.message)
-    } else {
-      setPayApprovedMasters((mastersData as UserRow[]) ?? [])
-    }
-  }
-
-  async function togglePayApproved(masterId: string, isApproved: boolean) {
-    if (myRole !== 'dev') return
-    setPayApprovedSaving(true)
-    setPayApprovedError(null)
-    if (isApproved) {
-      const { error } = await supabase.from('pay_approved_masters').delete().eq('master_id', masterId)
-      if (error) setPayApprovedError(error.message)
-      else setPayApprovedMasterIds((prev) => { const n = new Set(prev); n.delete(masterId); return n })
-    } else {
-      const { error } = await supabase.from('pay_approved_masters').insert({ master_id: masterId })
-      if (error) setPayApprovedError(error.message)
-      else setPayApprovedMasterIds((prev) => new Set(prev).add(masterId))
-    }
-    setPayApprovedSaving(false)
   }
 
   useEffect(() => {
@@ -1569,69 +1349,6 @@ export default function Settings() {
     setTimeout(() => {
       closePasswordChange()
     }, 2000)
-  }
-
-  async function openFindDuplicatesModal() {
-    setMergeDuplicatesModalOpen(true)
-    setMergeDuplicatesLoading(true)
-    try {
-      const { data } = await supabase
-        .from('people_pay_config')
-        .select('person_name, person_id, hourly_wage, is_salary, record_hours_but_salary')
-      const payConfig: Record<string, PayConfigRowForMerge> = {}
-      for (const r of (data ?? []) as PayConfigRowForMerge[]) {
-        payConfig[r.person_name] = r
-      }
-      const people = [...myPeople, ...nonUserPeople]
-      const emailDups = findPersonUserDuplicates(people, users, payConfig)
-      const nameSimilarDups = findNameSimilarDuplicates(payConfig)
-      const seen = new Set<string>()
-      const dups = [...emailDups]
-      for (const d of emailDups) seen.add(`${d.personName}|${d.userDisplayName}`)
-      for (const d of nameSimilarDups) {
-        const key = `${d.personName}|${d.userDisplayName}`
-        if (!seen.has(key)) {
-          seen.add(key)
-          dups.push(d)
-        }
-      }
-      setMergeDuplicates(dups)
-    } finally {
-      setMergeDuplicatesLoading(false)
-    }
-  }
-
-  async function handleMergeDuplicate(dup: { personName: string; userDisplayName: string; email: string }) {
-    setMergingPersonName(dup.personName)
-    setError(null)
-    let userId: string | undefined
-    if (dup.email?.trim()) {
-      userId = users.find((u) => u.email?.toLowerCase() === dup.email?.toLowerCase())?.id
-    } else {
-      userId = users.find((u) => u.name?.trim() === dup.personName)?.id ?? users.find((u) => u.name?.trim() === dup.userDisplayName)?.id
-    }
-    try {
-      const { data } = await supabase
-        .from('people_pay_config')
-        .select('person_name, person_id, hourly_wage, is_salary, record_hours_but_salary')
-      const payConfig: Record<string, PayConfigRowForMerge> = {}
-      for (const r of (data ?? []) as PayConfigRowForMerge[]) {
-        payConfig[r.person_name] = r
-      }
-      const mergePeople = [...myPeople, ...nonUserPeople].map((p) => ({
-        id: p.id,
-        name: p.name,
-        email: p.email,
-        archived_at: 'archived_at' in p ? (p as { archived_at?: string | null }).archived_at : null,
-      }))
-      await mergePersonIntoUser(dup.personName, dup.userDisplayName, payConfig, userId, mergePeople)
-      await loadData()
-      setMergeDuplicates((prev) => prev.filter((x) => x.personName !== dup.personName))
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Merge failed')
-    } finally {
-      setMergingPersonName(null)
-    }
   }
 
   async function checkDuplicateName(nameToCheck: string, excludeUserId?: string): Promise<boolean> {
@@ -2064,6 +1781,12 @@ export default function Settings() {
           myPeople={myPeople}
           nonUserPeople={nonUserPeople}
           openFindDuplicatesModal={openFindDuplicatesModal}
+          mergeDuplicatesModalOpen={mergeDuplicatesModalOpen}
+          setMergeDuplicatesModalOpen={setMergeDuplicatesModalOpen}
+          mergeDuplicatesLoading={mergeDuplicatesLoading}
+          mergeDuplicates={mergeDuplicates}
+          mergingPersonName={mergingPersonName}
+          handleMergeDuplicate={handleMergeDuplicate}
           payApprovedError={payApprovedError}
           payApprovedMasterIds={payApprovedMasterIds}
           payApprovedMasters={payApprovedMasters}
@@ -2203,43 +1926,6 @@ export default function Settings() {
         />
       )}
 
-      {mergeDuplicatesModalOpen && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100 }}>
-          <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 320, maxWidth: 480 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-              <h2 style={{ margin: 0, fontSize: '1.25rem' }}>Find duplicates</h2>
-              <button
-                type="button"
-                onClick={() => setMergeDuplicatesModalOpen(false)}
-                style={{ padding: '0.25rem', background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.25rem', lineHeight: 1 }}
-              >
-                ×
-              </button>
-            </div>
-            {mergeDuplicatesLoading ? (
-              <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.875rem' }}>Checking…</p>
-            ) : mergeDuplicates.length === 0 ? (
-              <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.875rem' }}>No duplicates found.</p>
-            ) : (
-              <ul style={{ margin: 0, paddingLeft: '1.25rem' }}>
-                {mergeDuplicates.map((dup) => (
-                  <li key={dup.personName} style={{ marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <span>{dup.personName} → {dup.userDisplayName}</span>
-                    <button
-                      type="button"
-                      onClick={() => handleMergeDuplicate(dup)}
-                      disabled={mergingPersonName === dup.personName}
-                      style={{ padding: '0.25rem 0.5rem', fontSize: '0.875rem', cursor: mergingPersonName === dup.personName ? 'not-allowed' : 'pointer', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4 }}
-                    >
-                      {mergingPersonName === dup.personName ? 'Merging…' : 'Merge'}
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-        </div>
-      )}
 
 
 
