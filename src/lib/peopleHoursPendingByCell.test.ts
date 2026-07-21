@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import type { ClockSessionRow } from '../types/clockSessions'
 import {
+  buildClosedPendingHoursSumsByCell,
+  buildHoursGridNameJoin,
   buildPeopleHoursPendingByCellMap,
   pendingByCellKey,
   personPendingExcessHours,
@@ -380,3 +382,49 @@ describe('sumClosedPendingClockHoursForCell', () => {
   })
 })
 
+describe('buildHoursGridNameJoin + buildClosedPendingHoursSumsByCell (v2.839 shared join)', () => {
+  it('joins by trimmed name both directions and skips blank names', () => {
+    const { userIdByPersonName, personNameByUserId } = buildHoursGridNameJoin([
+      { id: 'u1', name: '  Alex ' },
+      { id: 'u2', name: null },
+      { id: 'u3', name: '   ' },
+    ])
+    expect(userIdByPersonName.get('Alex')).toBe('u1')
+    expect(personNameByUserId.get('u1')).toBe('Alex')
+    expect(userIdByPersonName.size).toBe(1)
+  })
+
+  it('sums closed, non-rejected/revoked sessions per cell; open and rejected sessions are excluded', () => {
+    const { personNameByUserId } = buildHoursGridNameJoin([{ id: ALEX_ID, name: 'Alex' }])
+    const sums = buildClosedPendingHoursSumsByCell(
+      [
+        row({ id: 's1', user_id: ALEX_ID, work_date: '2026-07-20', clocked_in_at: '2026-07-20T08:00:00Z', clocked_out_at: '2026-07-20T12:00:00Z' }),
+        row({ id: 's2', user_id: ALEX_ID, work_date: '2026-07-20', clocked_in_at: '2026-07-20T13:00:00Z', clocked_out_at: '2026-07-20T17:30:00Z' }),
+        row({ id: 's3', user_id: ALEX_ID, work_date: '2026-07-20', clocked_in_at: '2026-07-20T18:00:00Z', clocked_out_at: null }),
+        row({ id: 's4', user_id: ALEX_ID, work_date: '2026-07-20', clocked_in_at: '2026-07-20T06:00:00Z', clocked_out_at: '2026-07-20T07:00:00Z', rejected_at: '2026-07-20T08:00:00Z' }),
+      ],
+      personNameByUserId,
+    )
+    expect(sums.get(pendingByCellKey('Alex', '2026-07-20'))).toBeCloseTo(8.5, 5)
+  })
+
+  it('agrees with the badge map: same session resolves to the same person and hours in both surfaces', () => {
+    const sessions = [
+      row({ id: 's1', user_id: ALEX_ID, work_date: '2026-07-20', clocked_in_at: '2026-07-20T08:00:00Z', clocked_out_at: '2026-07-20T16:25:12Z' }),
+    ]
+    const users = [{ id: ALEX_ID, name: 'Alex' }]
+    const { personNameByUserId } = buildHoursGridNameJoin(users)
+    const sums = buildClosedPendingHoursSumsByCell(sessions, personNameByUserId)
+    const badge = buildPeopleHoursPendingByCellMap({
+      pendingClockSessions: sessions,
+      peopleHours: [],
+      peopleNames: ['Alex'],
+      workDates: ['2026-07-20'],
+      users,
+      isSalaryOnly: () => false,
+    })
+    const key = pendingByCellKey('Alex', '2026-07-20')
+    expect(sums.get(key)).toBeDefined()
+    expect(badge.get(key)?.pendingHours).toBeCloseTo(sums.get(key)!, 9)
+  })
+})

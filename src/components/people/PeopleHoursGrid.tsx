@@ -314,8 +314,11 @@ export function PeopleHoursGrid({
                           e.target.select()
                         }}
                         onChange={(e) => setEditingHoursValue(e.target.value)}
-                        onBlur={() => {
-                          const v = hmsToDecimal(editingHoursValue)
+                        onBlur={(e) => {
+                          // v2.839: commit what is visibly in the box, not the
+                          // editingHoursValue state — any staleness there made
+                          // the first entry silently save the wrong value.
+                          const v = hmsToDecimal(e.currentTarget.value)
                           const shouldOfferManualSession = shouldOfferManualHoursSession({
                             hoursDecimal: v,
                             canAccessHours,

@@ -29,6 +29,8 @@ export interface UsePeopleHoursDataDeps {
   /** Live ref of locked ("days correct") work dates; saveHours is a no-op on those. */
   hoursDaysCorrectRef: React.MutableRefObject<Set<string>>
   setError: (msg: string) => void
+  /** v2.839: surface the day-locked save guard instead of silently dropping the entry. */
+  showToast: (text: string, variant: 'success' | 'error' | 'info' | 'warning') => void
   // --- Realtime subscription inputs ---
   activeTab: string
   hoursDateStart: string
@@ -79,6 +81,7 @@ export function usePeopleHoursData(deps: UsePeopleHoursDataDeps): UsePeopleHours
     authUser,
     hoursDaysCorrectRef,
     setError,
+    showToast,
     activeTab,
     hoursDateStart,
     hoursDateEnd,
@@ -199,7 +202,12 @@ export function usePeopleHoursData(deps: UsePeopleHoursDataDeps): UsePeopleHours
 
   async function saveHours(personName: string, workDate: string, hours: number) {
     if (!canAccessHours && !canAccessPay) return
-    if (hoursDaysCorrectRef.current.has(workDate)) return
+    if (hoursDaysCorrectRef.current.has(workDate)) {
+      // v2.839: this guard used to drop the entry with zero feedback — the
+      // grid cell just reverted, reading as "my entry was ignored".
+      showToast(`${workDate} is marked Correct — unlock the day before changing hours.`, 'warning')
+      return
+    }
     const roster = peopleRosterRef.current
     const person_id = resolvePersonIdFromRosterName(roster, personName)
     // Optimistic update: show new value immediately
