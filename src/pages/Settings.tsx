@@ -9,15 +9,13 @@ import {
   impersonationExitTitle,
   impersonationSignedInAsDescription,
 } from '../lib/impersonationUiLabels'
-import { getMergedFilteredPins, getUsersWithPin, type PinnedItem } from '../lib/pinnedTabs'
+import { getMergedFilteredPins, type PinnedItem } from '../lib/pinnedTabs'
 import { resolveSettingsDeepLink } from '../lib/settingsDeepLink'
-import { useWeeklyTeamLaborTotal } from '../hooks/useWeeklyTeamLaborTotal'
-import { fetchSubLaborDueTotal } from '../hooks/useSubLaborDueTotal'
 import { usePushNotifications } from '../hooks/usePushNotifications'
 import { useToastContext } from '../contexts/ToastContext'
 import ReportViewModal from '../components/ReportViewModal'
 import ReportEditModal, { type ReportForEdit } from '../components/ReportEditModal'
-import MyReportsModal, { type ReportForMyReports } from '../components/MyReportsModal'
+import MyReportsModal from '../components/MyReportsModal'
 import ChecklistItemMuteModal from '../components/ChecklistItemMuteModal'
 import type { PayConfigRow } from '../types/peoplePayConfig'
 import { buildSalariedWorkdayPickerRows } from '../lib/buildSalariedWorkdayPickerRows'
@@ -45,8 +43,10 @@ import { useSettingsCatalogs } from '../hooks/useSettingsCatalogs'
 import { useSettingsJobsAdmin } from '../hooks/useSettingsJobsAdmin'
 import { useSettingsProspectsCatalog } from '../hooks/useSettingsProspectsCatalog'
 import { useSettingsPeopleDirectory } from '../hooks/useSettingsPeopleDirectory'
+import { useSettingsFinancialPins } from '../hooks/useSettingsFinancialPins'
+import { useSettingsMyReports } from '../hooks/useSettingsMyReports'
+import { useSettingsTeamLeaderAssignments } from '../hooks/useSettingsTeamLeaderAssignments'
 import type { UserRow } from '../types/settingsRows'
-import { displayLabelForGoalPickerUser } from '../lib/goalPickerUserLabel'
 import { isAssistantLike, isSubcontractorLikeRole } from '../lib/subcontractorLikeRole'
 
 type UserRole =
@@ -212,30 +212,6 @@ export default function Settings() {
   const [myPins, setMyPins] = useState<PinnedItem[]>([])
   const [pinsLoading, setPinsLoading] = useState(true)
   const [pinRemovingId, setPinRemovingId] = useState<string | null>(null)
-  // Billed pin to dashboard (dev-only)
-  const [pinBilledMasterIds, setPinBilledMasterIds] = useState<Set<string>>(new Set())
-  const [pinBilledSaving, setPinBilledSaving] = useState(false)
-  const [pinBilledUnpinSaving, setPinBilledUnpinSaving] = useState(false)
-  const [pinBilledMessage, setPinBilledMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
-  const [billedCount, setBilledCount] = useState<number | null>(null)
-  const [billedTotal, setBilledTotal] = useState<number | null>(null)
-  // Supply Houses AP pin to dashboard (dev-only)
-  const [pinAPMasterIds, setPinAPMasterIds] = useState<Set<string>>(new Set())
-  const [pinAPSaving, setPinAPSaving] = useState(false)
-  const [pinAPUnpinSaving, setPinAPUnpinSaving] = useState(false)
-  const [pinAPMessage, setPinAPMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
-  const [apTotal, setApTotal] = useState<number | null>(null)
-  // External Team pin to dashboard (dev-only)
-  const [pinExternalTeamMasterIds, setPinExternalTeamMasterIds] = useState<Set<string>>(new Set())
-  const [pinExternalTeamSaving, setPinExternalTeamSaving] = useState(false)
-  const [pinExternalTeamUnpinSaving, setPinExternalTeamUnpinSaving] = useState(false)
-  const [pinExternalTeamMessage, setPinExternalTeamMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
-  const [externalTeamTotal, setExternalTeamTotal] = useState<number | null>(null)
-  // Cost matrix pin to dashboard (dev-only)
-  const [pinCostMatrixMasterIds, setPinCostMatrixMasterIds] = useState<Set<string>>(new Set())
-  const [pinCostMatrixSaving, setPinCostMatrixSaving] = useState(false)
-  const [pinCostMatrixUnpinSaving, setPinCostMatrixUnpinSaving] = useState(false)
-  const [pinCostMatrixMessage, setPinCostMatrixMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   const [passwordChangeOpen, setPasswordChangeOpen] = useState(false)
   const [currentPassword, setCurrentPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
@@ -270,21 +246,6 @@ export default function Settings() {
   const [dailyGoalsTargetUserId, setDailyGoalsTargetUserId] = useState('')
   const [dailyGoalsRows, setDailyGoalsRows] = useState<Array<{ id: string; body: string; sort_order: number }>>([])
   const [dailyGoalsLoading, setDailyGoalsLoading] = useState(false)
-  const [teamLeaderAssignments, setTeamLeaderAssignments] = useState<
-    Array<{
-      id: string
-      leader_user_id: string
-      member_user_id: string
-      dashboard_hours_visibility: 'full' | 'strip_only'
-    }>
-  >([])
-  const [teamLeaderVisibilitySavingId, setTeamLeaderVisibilitySavingId] = useState<string | null>(null)
-  const [teamAssignLeaderId, setTeamAssignLeaderId] = useState('')
-  const [teamAssignMemberId, setTeamAssignMemberId] = useState('')
-  const [teamAssignSaving, setTeamAssignSaving] = useState(false)
-  const [teamLeaderSortColumn, setTeamLeaderSortColumn] = useState<'leader' | 'member'>('leader')
-  const [teamLeaderSortDir, setTeamLeaderSortDir] = useState<'asc' | 'desc'>('asc')
-  const [teamLeaderAssignmentsSearchQuery, setTeamLeaderAssignmentsSearchQuery] = useState('')
   const [dashboardButtonsSectionOpen, setDashboardButtonsSectionOpen] = useState(false)
   const [salaryWorkdaySectionOpen, setSalaryWorkdaySectionOpen] = useState(true)
   const [allSalariedDevSectionOpen, setAllSalariedDevSectionOpen] = useState(false)
@@ -543,6 +504,96 @@ export default function Settings() {
     onDataChanged: () => loadData(),
   })
 
+  // Dashboard & alerts residue — three seam hooks (v2.858)
+  const {
+    financialPinsSectionOpen,
+    setFinancialPinsSectionOpen,
+    pinBilledMasterIds,
+    setPinBilledMasterIds,
+    pinBilledSaving,
+    setPinBilledSaving,
+    pinBilledUnpinSaving,
+    setPinBilledUnpinSaving,
+    pinBilledMessage,
+    setPinBilledMessage,
+    billedCount,
+    billedTotal,
+    pinAPMasterIds,
+    setPinAPMasterIds,
+    pinAPSaving,
+    setPinAPSaving,
+    pinAPUnpinSaving,
+    setPinAPUnpinSaving,
+    pinAPMessage,
+    setPinAPMessage,
+    apTotal,
+    pinExternalTeamMasterIds,
+    setPinExternalTeamMasterIds,
+    pinExternalTeamSaving,
+    setPinExternalTeamSaving,
+    pinExternalTeamUnpinSaving,
+    setPinExternalTeamUnpinSaving,
+    pinExternalTeamMessage,
+    setPinExternalTeamMessage,
+    externalTeamTotal,
+    pinCostMatrixMasterIds,
+    setPinCostMatrixMasterIds,
+    pinCostMatrixSaving,
+    setPinCostMatrixSaving,
+    pinCostMatrixUnpinSaving,
+    setPinCostMatrixUnpinSaving,
+    pinCostMatrixMessage,
+    setPinCostMatrixMessage,
+    costMatrixTotal,
+    loadBilledTotalAndPinnedUsers,
+    loadSupplyHousesAPTotalAndPinnedUsers,
+    loadExternalTeamTotalAndPinnedUsers,
+    loadCostMatrixPinnedUsers,
+  } = useSettingsFinancialPins(myRole === 'dev')
+
+  const showMyReports =
+    myRole === 'dev' ||
+    myRole === 'master_technician' ||
+    isAssistantLike(myRole) ||
+    myRole === 'primary' ||
+    isSubcontractorLikeRole(myRole)
+
+  const {
+    myReports,
+    myReportsLoading,
+    myReportsExpanded,
+    setMyReportsExpanded,
+    myReportsReportEditWindowDays,
+    loadMyReportsRef,
+  } = useSettingsMyReports(showMyReports, authUser?.id ?? null)
+
+  const {
+    teamLeaderAssignments,
+    setTeamLeaderAssignments,
+    teamLeaderVisibilitySavingId,
+    setTeamLeaderVisibilitySavingId,
+    teamAssignLeaderId,
+    setTeamAssignLeaderId,
+    teamAssignMemberId,
+    setTeamAssignMemberId,
+    teamAssignSaving,
+    setTeamAssignSaving,
+    teamLeaderSortColumn,
+    setTeamLeaderSortColumn,
+    teamLeaderSortDir,
+    setTeamLeaderSortDir,
+    teamLeaderAssignmentsSearchQuery,
+    setTeamLeaderAssignmentsSearchQuery,
+    filteredTeamLeaderAssignments,
+    teamHoursMemberPickerUsers,
+    teamHoursMemberPickerDisabled,
+    teamHoursMemberPlaceholder,
+  } = useSettingsTeamLeaderAssignments({
+    enabled: myRole === 'dev' || myRole === 'master_technician' || isAssistantLike(myRole),
+    goalPickerUsers,
+    setError,
+  })
+
   async function handleSignOut() {
     await supabase.auth.signOut()
     // Manually clear Supabase auth keys so full page load sees no session
@@ -618,7 +669,6 @@ export default function Settings() {
     )
   }
 
-  const [financialPinsSectionOpen, setFinancialPinsSectionOpen] = useState(false)
   const [notificationHistoryOpen, setNotificationHistoryOpen] = useState(false)
   const [mutedTasksOpen, setMutedTasksOpen] = useState(false)
   const [mutedTasks, setMutedTasks] = useState<Array<{ checklist_item_id: string; task_title: string; muted_until: string }>>([])
@@ -663,16 +713,11 @@ export default function Settings() {
   const [reportTemplates, setReportTemplates] = useState<Array<{ id: string; name: string }>>([])
   const [reportNotificationTemplateIds, setReportNotificationTemplateIds] = useState<Set<string>>(new Set())
   const [reportNotificationSaving, setReportNotificationSaving] = useState(false)
-  const [myReports, setMyReports] = useState<ReportForMyReports[]>([])
-  const [myReportsLoading, setMyReportsLoading] = useState(false)
-  const [myReportsExpanded, setMyReportsExpanded] = useState(false)
   const [myReportsModalOpen, setMyReportsModalOpen] = useState(false)
   const [selectedReport, setSelectedReport] = useState<{ id: string; template_name: string; job_display_name: string; created_at: string; created_by_name: string; field_values?: Record<string, string>; reported_at_lat?: number | null; reported_at_lng?: number | null } | null>(null)
   const [viewReportModalOpen, setViewReportModalOpen] = useState(false)
   const [reportForEdit, setReportForEdit] = useState<ReportForEdit | null>(null)
   const [editReportModalOpen, setEditReportModalOpen] = useState(false)
-  const [myReportsReportEditWindowDays, setMyReportsReportEditWindowDays] = useState<number>(2)
-  const loadMyReportsRef = useRef<(() => void) | null>(null)
   const [impersonating, setImpersonating] = useState(
     () => typeof window !== 'undefined' && !!localStorage.getItem('impersonation_original')
   )
@@ -695,49 +740,6 @@ export default function Settings() {
     window.location.href = '/dashboard'
   }
 
-
-  async function loadBilledTotalAndPinnedUsers() {
-    if (myRole !== 'dev') return
-    const [jobsRes, invoicesRes, pinnedRes] = await Promise.all([
-      supabase.from('jobs_ledger').select('revenue, payments_made').eq('status', 'billed'),
-      supabase.from('jobs_ledger_invoices').select('amount').eq('status', 'billed'),
-      getUsersWithPin('/jobs', 'billed'),
-    ])
-    const jobs = (jobsRes.data ?? []) as Array<{ revenue: number | null; payments_made: number | null }>
-    const invoices = (invoicesRes.data ?? []) as Array<{ amount: number }>
-    const jobsTotal = jobs.reduce((s, j) => s + (Number(j.revenue ?? 0) - Number(j.payments_made ?? 0)), 0)
-    const invoicesTotal = invoices.reduce((s, i) => s + Number(i.amount ?? 0), 0)
-    setBilledCount(jobs.length + invoices.length)
-    setBilledTotal(jobsTotal + invoicesTotal)
-    setPinBilledMasterIds(new Set(pinnedRes.map((r) => r.user_id)))
-  }
-
-  async function loadSupplyHousesAPTotalAndPinnedUsers() {
-    if (myRole !== 'dev') return
-    const [invoicesRes, pinnedRes] = await Promise.all([
-      supabase.from('supply_house_invoices').select('amount, is_paid').eq('is_paid', false),
-      getUsersWithPin('/materials', 'supply-houses'),
-    ])
-    const total = (invoicesRes.data ?? []).reduce((sum, r) => sum + Number((r as { amount: number }).amount ?? 0), 0)
-    setApTotal(total)
-    setPinAPMasterIds(new Set(pinnedRes.map((r) => r.user_id)))
-  }
-
-  async function loadExternalTeamTotalAndPinnedUsers() {
-    if (myRole !== 'dev') return
-    const [subLaborTotal, pinnedRes] = await Promise.all([
-      fetchSubLaborDueTotal(),
-      getUsersWithPin('/jobs', 'sub_sheet_ledger'),
-    ])
-    setExternalTeamTotal(subLaborTotal)
-    setPinExternalTeamMasterIds(new Set(pinnedRes.map((r) => r.user_id)))
-  }
-
-  async function loadCostMatrixPinnedUsers() {
-    if (myRole !== 'dev') return
-    const rows = await getUsersWithPin('/people', 'hours')
-    setPinCostMatrixMasterIds(new Set(rows.map((r) => r.user_id)))
-  }
 
   async function refreshSelfPaySalaryForPayName(payNameRaw: string) {
     const payName = payNameRaw.trim()
@@ -839,26 +841,6 @@ export default function Settings() {
         .order('name')
       setGoalPickerUsers((goalUsers ?? []) as Array<{ id: string; name: string | null; email: string | null }>)
 
-      const { data: tlaRows, error: tlaErr } = await supabase
-        .from('team_leader_assignments')
-        .select('id, leader_user_id, member_user_id, dashboard_hours_visibility')
-        .order('created_at', { ascending: false })
-      if (tlaErr) setError(tlaErr.message)
-      else
-        setTeamLeaderAssignments(
-          ((tlaRows ?? []) as Array<{
-            id: string
-            leader_user_id: string
-            member_user_id: string
-            dashboard_hours_visibility: string | null
-          }>).map((r) => ({
-            id: r.id,
-            leader_user_id: r.leader_user_id,
-            member_user_id: r.member_user_id,
-            dashboard_hours_visibility:
-              r.dashboard_hours_visibility === 'strip_only' ? 'strip_only' : 'full',
-          })),
-        )
     }
     
     // Load dev-only data (users, people, etc.)
@@ -1103,91 +1085,12 @@ export default function Settings() {
     loadIgnoredTaskTypes().finally(() => setIgnoredTaskTypesLoading(false))
   }, [ignoredTaskTypesOpen, authUser?.id, myRole])
 
-  const showMyReports =
-    myRole === 'dev' ||
-    myRole === 'master_technician' ||
-    isAssistantLike(myRole) ||
-    myRole === 'primary' ||
-    isSubcontractorLikeRole(myRole)
-
-  useEffect(() => {
-    if (!authUser?.id || !showMyReports) return
-    setMyReportsLoading(true)
-    const load = async () => {
-      try {
-        const [{ data: reportSettings }, { data }] = await Promise.all([
-          supabase.from('app_settings').select('key, value_num').eq('key', 'report_edit_window_days').maybeSingle(),
-          supabase.rpc('list_my_reports'),
-        ])
-        const editDays = (reportSettings as { value_num?: number } | null)?.value_num ?? 2
-        setMyReportsReportEditWindowDays(typeof editDays === 'number' ? editDays : 2)
-        const arr = Array.isArray(data) ? data : []
-        const list = arr.map(
-          (r: {
-            id: string
-            template_id: string
-            template_name: string
-            job_display_name: string
-            job_ledger_id?: string | null
-            project_id?: string | null
-            bid_id?: string | null
-            created_at: string
-            created_by_name: string
-            field_values?: unknown
-            reported_at_lat?: number | null
-            reported_at_lng?: number | null
-          }) => ({
-            id: r.id,
-            template_id: r.template_id,
-            template_name: r.template_name,
-            job_display_name: r.job_display_name,
-            job_ledger_id: r.job_ledger_id ?? null,
-            project_id: r.project_id ?? null,
-            bid_id: r.bid_id ?? null,
-            created_at: r.created_at,
-            created_by_name: r.created_by_name,
-            field_values: r.field_values as Record<string, string> | undefined,
-            reported_at_lat: r.reported_at_lat ?? null,
-            reported_at_lng: r.reported_at_lng ?? null,
-          }),
-        )
-        setMyReports(list)
-      } finally {
-        setMyReportsLoading(false)
-      }
-    }
-    loadMyReportsRef.current = load
-    load()
-  }, [authUser?.id, showMyReports])
-
-  useEffect(() => {
-    if (!showMyReports) return
-    const channel = supabase
-      .channel('settings-my-reports-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'reports' }, () => {
-        loadMyReportsRef.current?.()
-      })
-      .subscribe()
-    return () => {
-      supabase.removeChannel(channel)
-    }
-  }, [showMyReports])
-
   useEffect(() => {
     if (notificationHistoryOpen) {
       const el = document.getElementById('notification-history-content')
       el?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
     }
   }, [notificationHistoryOpen])
-
-  useEffect(() => {
-    if (myRole === 'dev') {
-      loadBilledTotalAndPinnedUsers()
-      loadSupplyHousesAPTotalAndPinnedUsers()
-      loadExternalTeamTotalAndPinnedUsers()
-      loadCostMatrixPinnedUsers()
-    }
-  }, [myRole])
 
   const loadMyPins = useCallback(async () => {
     if (!authUser?.id) {
@@ -1212,8 +1115,6 @@ export default function Settings() {
     window.addEventListener('pipetooling-pins-changed', onPinsChanged)
     return () => window.removeEventListener('pipetooling-pins-changed', onPinsChanged)
   }, [loadMyPins])
-
-  const { total: costMatrixTotal } = useWeeklyTeamLaborTotal(myRole === 'dev')
 
   // For estimators: sync selected service types to visible list when it changes
   useEffect(() => {
@@ -1372,59 +1273,6 @@ export default function Settings() {
     
     return hasDuplicateInPeople || hasDuplicateInUsers
   }
-
-  const sortedTeamLeaderAssignments = useMemo(() => {
-    const rows = [...teamLeaderAssignments]
-    rows.sort((a, b) => {
-      const aKey =
-        teamLeaderSortColumn === 'leader'
-          ? displayLabelForGoalPickerUser(a.leader_user_id, goalPickerUsers)
-          : displayLabelForGoalPickerUser(a.member_user_id, goalPickerUsers)
-      const bKey =
-        teamLeaderSortColumn === 'leader'
-          ? displayLabelForGoalPickerUser(b.leader_user_id, goalPickerUsers)
-          : displayLabelForGoalPickerUser(b.member_user_id, goalPickerUsers)
-      const base = aKey.localeCompare(bKey, undefined, { sensitivity: 'base' })
-      return teamLeaderSortDir === 'asc' ? base : -base
-    })
-    return rows
-  }, [teamLeaderAssignments, goalPickerUsers, teamLeaderSortColumn, teamLeaderSortDir])
-
-  const filteredTeamLeaderAssignments = useMemo(() => {
-    const q = teamLeaderAssignmentsSearchQuery.trim().toLowerCase()
-    if (!q) return sortedTeamLeaderAssignments
-    return sortedTeamLeaderAssignments.filter((row) => {
-      const leaderLabel = displayLabelForGoalPickerUser(row.leader_user_id, goalPickerUsers).toLowerCase()
-      const memberLabel = displayLabelForGoalPickerUser(row.member_user_id, goalPickerUsers).toLowerCase()
-      return leaderLabel.includes(q) || memberLabel.includes(q)
-    })
-  }, [sortedTeamLeaderAssignments, goalPickerUsers, teamLeaderAssignmentsSearchQuery])
-
-  const teamHoursMemberPickerUsers = useMemo(() => {
-    if (!teamAssignLeaderId) return []
-    const assignedIds = new Set(
-      teamLeaderAssignments
-        .filter((r) => r.leader_user_id === teamAssignLeaderId)
-        .map((r) => r.member_user_id),
-    )
-    return goalPickerUsers.filter((u) => u.id !== teamAssignLeaderId && !assignedIds.has(u.id))
-  }, [teamAssignLeaderId, teamLeaderAssignments, goalPickerUsers])
-
-  useEffect(() => {
-    if (!teamAssignMemberId || !teamAssignLeaderId) return
-    if (!teamHoursMemberPickerUsers.some((u) => u.id === teamAssignMemberId)) {
-      setTeamAssignMemberId('')
-    }
-  }, [teamAssignLeaderId, teamAssignMemberId, teamHoursMemberPickerUsers])
-
-  const teamHoursNoMembersAvailable = Boolean(teamAssignLeaderId && teamHoursMemberPickerUsers.length === 0)
-  const teamHoursMemberPickerDisabled =
-    !teamAssignLeaderId || teamAssignSaving || teamHoursNoMembersAvailable
-  const teamHoursMemberPlaceholder = !teamAssignLeaderId
-    ? 'Choose a leader first…'
-    : teamHoursNoMembersAvailable
-      ? 'No users left to assign'
-      : 'Select user…'
 
   const settingsJumpGroups = useMemo(() => getSettingsJumpGroups(myRole), [myRole])
 
