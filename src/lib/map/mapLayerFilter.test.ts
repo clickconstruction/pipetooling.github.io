@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { ALL_BID_STAGES_ON, mapEntityPassesLayerFilter, type MapLayerFilterState } from './mapLayerFilter'
+import { ALL_BID_STAGES_ON, DEFAULT_MAP_BID_STAGES, mapEntityPassesLayerFilter, type MapLayerFilterState } from './mapLayerFilter'
 
 const allOn: MapLayerFilterState = {
   showJobs: true,
@@ -35,5 +35,17 @@ describe('mapEntityPassesLayerFilter', () => {
   it('unclassified bids stay visible whenever the Bids layer is on', () => {
     const noStages = { ...allOn, bidStages: { unsent: false, pending: false, won: false, startedOrComplete: false, lost: false } }
     expect(mapEntityPassesLayerFilter({ kind: 'bid' }, noStages)).toBe(true)
+  })
+})
+
+describe('DEFAULT_MAP_BID_STAGES', () => {
+  it('starts with only Won and Started selected (v2.837 default)', () => {
+    expect(DEFAULT_MAP_BID_STAGES).toEqual({
+      unsent: false,
+      pending: false,
+      won: true,
+      startedOrComplete: true,
+      lost: false,
+    })
   })
 })

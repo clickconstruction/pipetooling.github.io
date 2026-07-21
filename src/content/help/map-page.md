@@ -18,7 +18,7 @@ A filled pill is on; a grayed-out pill is hidden. The map, the key, and the tabl
 
 ## Filter bids by stage
 
-While the {{chip:yellow|Bids}} pill is on, a row of smaller chips appears next to it — **Unsent**, **Pending**, **Won**, **Started**, and **Lost**. These are the same sections as the Bid Board, so a bid sits in exactly one:
+While the {{chip:yellow|Bids}} pill is on, a row of smaller chips appears next to it — **Unsent**, **Pending**, **Won**, **Started**, and **Lost**. Only **Won** and **Started** start selected — tap any chip to toggle it on or off. These are the same sections as the Bid Board, so a bid sits in exactly one:
 
 - **Unsent** — working bids that haven't been sent yet
 - **Pending** — sent, not yet won or lost

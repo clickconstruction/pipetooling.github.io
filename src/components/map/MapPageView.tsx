@@ -32,7 +32,7 @@ import {
   fetchMapDefaultViewFromAppSettings,
 } from '../../lib/mapDefaultViewSettings'
 import { mapEntityMatchesSearch } from '../../lib/map/mapEntitySearch'
-import { ALL_BID_STAGES_ON, mapEntityPassesLayerFilter } from '../../lib/map/mapLayerFilter'
+import { DEFAULT_MAP_BID_STAGES, mapEntityPassesLayerFilter } from '../../lib/map/mapLayerFilter'
 import type { SubmissionSectionKey } from '../../lib/bids/submissionSections'
 
 const openLinkLikeStyle: CSSProperties = {
@@ -557,7 +557,7 @@ export function MapPageView() {
   const [showJobs, setShowJobs] = useState(true)
   const [showBids, setShowBids] = useState(true)
   const [showEst, setShowEst] = useState(true)
-  const [bidStages, setBidStages] = useState<Record<SubmissionSectionKey, boolean>>(ALL_BID_STAGES_ON)
+  const [bidStages, setBidStages] = useState<Record<SubmissionSectionKey, boolean>>(DEFAULT_MAP_BID_STAGES)
   const [mapSearchQuery, setMapSearchQuery] = useState('')
   const [filterPoly, setFilterPoly] = useState<Feature<Polygon> | null>(null)
   const [clearDraw, setClearDraw] = useState(0)

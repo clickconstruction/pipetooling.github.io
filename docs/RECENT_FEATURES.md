@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-21 (v2.836)
+last_updated: 2026-07-21 (v2.837)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.837)
+
+### Map: bid-stage chips default to Won + Started only (2026-07-21)
+On [`/map`](../src/components/map/MapPageView.tsx), the bid-stage sub-filter chips now start with only **Won** and **Started** selected; **Unsent**, **Pending**, and **Lost** start off (previously all five were on). New tested [`DEFAULT_MAP_BID_STAGES`](../src/lib/map/mapLayerFilter.ts) constant seeds the state; `ALL_BID_STAGES_ON` remains for the filter kernel's tests. Toggling chips works exactly as before, and unclassified bids still show whenever the Bids layer is on. Help guide updated (`map-page.md`).
 
 ## Latest Updates (v2.836)
 
