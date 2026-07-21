@@ -3,6 +3,7 @@
  * Bids "counts" fixture groups/items.
  * Presentational; all state/handlers live in the parent (Settings.tsx) and arrive as props. */
 import type { Dispatch, FormEvent, SetStateAction } from 'react'
+import type { OrphanedPriceRow } from '../../lib/settingsCatalogs'
 import { Link } from 'react-router-dom'
 import type { UserRole } from '../../hooks/useAuth'
 import type {
@@ -120,6 +121,14 @@ type SettingsCatalogsTabProps = {
   setServiceTypeLedgerJobPrefix: Dispatch<SetStateAction<string>>
   setServiceTypeName: Dispatch<SetStateAction<string>>
   setViewingOrphanPrices: Dispatch<SetStateAction<boolean>>
+  viewingOrphanPrices: boolean
+  orphanPrices: OrphanedPriceRow[]
+  setOrphanPrices: Dispatch<SetStateAction<OrphanedPriceRow[]>>
+  loadingOrphanPrices: boolean
+  orphanError: string | null
+  setOrphanError: Dispatch<SetStateAction<string | null>>
+  deleteOrphanPrice: (id: string) => void
+  deleteAllOrphanPrices: () => void
   visibleServiceTypesForMaterials: ServiceType[]
 }
 
@@ -229,6 +238,14 @@ export default function SettingsCatalogsTab({
   setServiceTypeLedgerJobPrefix,
   setServiceTypeName,
   setViewingOrphanPrices,
+  viewingOrphanPrices,
+  orphanPrices,
+  setOrphanPrices,
+  loadingOrphanPrices,
+  orphanError,
+  setOrphanError,
+  deleteOrphanPrice,
+  deleteAllOrphanPrices,
   visibleServiceTypesForMaterials,
 }: SettingsCatalogsTabProps) {
   return (
@@ -1202,6 +1219,91 @@ export default function SettingsCatalogsTab({
           </div>
           )}
         </div>
+
+      {viewingOrphanPrices && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+          <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, maxWidth: '900px', width: '95%', maxHeight: '90vh', overflow: 'auto' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+              <h2 style={{ margin: 0 }}>Orphaned material prices</h2>
+                        <button
+                          type="button"
+                          onClick={() => {
+                  setViewingOrphanPrices(false)
+                  setOrphanError(null)
+                  setOrphanPrices([])
+                }}
+                style={{ padding: '0.25rem 0.5rem', background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: 'var(--text-muted)' }}
+              >
+                ×
+                        </button>
+            </div>
+            <p style={{ marginTop: 0, marginBottom: '0.75rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>
+              These are material prices whose part or supply house no longer exists. They do not appear in the Materials Parts Book.
+            </p>
+            {loadingOrphanPrices && <p>Loading orphaned prices…</p>}
+            {orphanError && <p style={{ color: 'var(--text-red-700)', marginBottom: '0.75rem' }}>{orphanError}</p>}
+            {!loadingOrphanPrices && orphanPrices.length === 0 && !orphanError && (
+              <p style={{ marginBottom: '0.75rem', color: '#16a34a' }}>No orphaned prices found.</p>
+            )}
+            {!loadingOrphanPrices && orphanPrices.length > 0 && (
+              <>
+                <p style={{ marginBottom: '0.75rem', fontSize: '0.875rem', color: 'var(--text-700)' }}>
+                  Found {orphanPrices.length} orphaned price{orphanPrices.length === 1 ? '' : 's'}.
+                </p>
+                <div style={{ marginBottom: '0.75rem' }}>
+                        <button
+                          type="button"
+                    onClick={deleteAllOrphanPrices}
+                    style={{ padding: '0.35rem 0.75rem', background: '#b91c1c', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}
+                        >
+                    Delete all shown
+                        </button>
+                      </div>
+                <div style={{ maxHeight: '60vh', overflow: 'auto', border: '1px solid var(--border)', borderRadius: 4 }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
+                    <thead style={{ background: 'var(--bg-subtle)' }}>
+                      <tr>
+                        <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Part</th>
+                        <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Supply house</th>
+                        <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderBottom: '1px solid var(--border)' }}>Price</th>
+                        <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Effective date</th>
+                        <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Reason</th>
+                        <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {orphanPrices.map((row) => (
+                        <tr key={row.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                          <td style={{ padding: '0.5rem 0.75rem' }}>{row.partName}</td>
+                          <td style={{ padding: '0.5rem 0.75rem' }}>{row.supplyHouseName}</td>
+                          <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>${row.price.toFixed(2)}</td>
+                          <td style={{ padding: '0.5rem 0.75rem' }}>{row.effectiveDate || '—'}</td>
+                          <td style={{ padding: '0.5rem 0.75rem' }}>
+                            {row.reason === 'both'
+                              ? 'Missing part & supply house'
+                              : row.reason === 'missing_part'
+                              ? 'Missing part'
+                              : 'Missing supply house'}
+                          </td>
+                          <td style={{ padding: '0.5rem 0.75rem' }}>
+                            <button
+                              type="button"
+                              onClick={() => deleteOrphanPrice(row.id)}
+                              style={{ padding: '0.25rem 0.5rem', background: 'var(--bg-red-100)', color: 'var(--text-red-700)', border: '1px solid #fecaca', borderRadius: 4, cursor: 'pointer' }}
+                            >
+                              Delete
+                            </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </>
   )
 }
