@@ -932,7 +932,40 @@ function HubPeopleDayCell({
         </div>
       ) : null}
       {cellBlocks.length === 0 ? (
-        timeOffInfo ? null : <span style={{ color: 'var(--text-faint-300)' }}>—</span>
+        timeOffInfo ? null : emptyCellClickable ? (
+          // Empty person-day: the add affordance is a full-width bar (same action
+          // as clicking the cell) instead of the corner triangle used on cells
+          // that already have blocks.
+          <button
+            type="button"
+            aria-label="Add job to schedule for this person and day"
+            title="Add job to schedule for this person and day"
+            onClick={(e) => {
+              e.stopPropagation()
+              onEmptyCellClick(personUserId, workDate)
+            }}
+            style={{
+              display: 'block',
+              width: '100%',
+              padding: '0.1rem 0',
+              margin: 0,
+              border: 'none',
+              borderRadius: 4,
+              background: '#1d4ed8',
+              color: '#fff',
+              fontSize: '0.75rem',
+              fontWeight: 700,
+              lineHeight: 1.2,
+              cursor: 'pointer',
+              fontFamily: 'inherit',
+              boxShadow: '0 0 0 1px rgba(255,255,255,0.35)',
+            }}
+          >
+            +
+          </button>
+        ) : (
+          <span style={{ color: 'var(--text-faint-300)' }}>—</span>
+        )
       ) : (
         cellBlocks.map((b) => {
           const g = b.shared_block_group_id
