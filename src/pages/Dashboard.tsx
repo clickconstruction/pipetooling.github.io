@@ -28,6 +28,7 @@ import {
   stripScopeEligible,
 } from '../lib/dashboardClockStripScopeStorage'
 import { DashboardGroupCard } from '../components/dashboard/DashboardGroupCard'
+import { billingJobMatchesSearch } from '../lib/jobs/billingTab'
 import { DashboardUpcomingInspectionsSection } from '../components/dashboard/DashboardUpcomingInspectionsSection'
 import { DashboardRecentReportsSection } from '../components/dashboard/DashboardRecentReportsSection'
 import { DashboardMyBidsSection } from '../components/dashboard/DashboardMyBidsSection'
@@ -390,6 +391,15 @@ export default function Dashboard() {
     refreshAssignedReadyToBill,
     resyncDashboardAfterUpdateJobStatusFailureRef,
   } = useDashboardAssignedJobs({ authUserId: authUser?.id, role })
+  /** v2.841: Assigned Jobs card search — same predicate as the Jobs → Billing search. */
+  const [assignedJobsSearch, setAssignedJobsSearch] = useState('')
+  const filteredAssignedJobs = useMemo(
+    () =>
+      assignedJobsSearch.trim() === ''
+        ? assignedJobs
+        : assignedJobs.filter((j) => billingJobMatchesSearch(j, assignedJobsSearch)),
+    [assignedJobs, assignedJobsSearch],
+  )
   const [superintendentJobsExpanded, setSuperintendentJobsExpanded] = useState(true)
   const {
     subScheduleLoading,
@@ -1596,12 +1606,33 @@ export default function Dashboard() {
             <DashboardListRowSkeleton rows={2} />
           ) : (
             <div>
-              {assignedJobs.map((j, idx) => (
+              <input
+                type="search"
+                value={assignedJobsSearch}
+                onChange={(e) => setAssignedJobsSearch(e.target.value)}
+                placeholder="Search assigned jobs…"
+                aria-label="Search assigned jobs"
+                style={{
+                  width: '100%',
+                  boxSizing: 'border-box',
+                  padding: '0.5rem 0.75rem',
+                  border: '1px solid var(--border-strong)',
+                  borderRadius: 4,
+                  fontSize: '0.875rem',
+                  marginBottom: '0.25rem',
+                }}
+              />
+              {filteredAssignedJobs.length === 0 && assignedJobsSearch.trim() !== '' && (
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: '0.75rem 0 0.25rem' }}>
+                  No assigned jobs match your search.
+                </p>
+              )}
+              {filteredAssignedJobs.map((j, idx) => (
                 <div
                   key={j.id}
                   style={{
                     padding: '0.85rem 0',
-                    borderBottom: idx < assignedJobs.length - 1 ? '1px solid var(--border)' : 'none',
+                    borderBottom: idx < filteredAssignedJobs.length - 1 ? '1px solid var(--border)' : 'none',
                   }}
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>

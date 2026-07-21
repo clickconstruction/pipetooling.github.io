@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-21 (v2.840)
+last_updated: 2026-07-21 (v2.841)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.841)
+
+### Dashboard: search inside the Assigned Jobs card (2026-07-21)
+The [Assigned Jobs card](../src/pages/Dashboard.tsx) gains a search box at the top of its list: filters as you type across HCP number, job name, and address using the same tested predicate as the Jobs → Billing search ([`billingJobMatchesSearch`](../src/lib/jobs/billingTab.ts)), with a "No assigned jobs match your search" empty state. The title count stays the full list count; the card's v2.840 collapse behavior is unchanged.
 
 ## Latest Updates (v2.840)
 
