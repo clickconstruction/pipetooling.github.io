@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import {
   stagesSectionKeyForJobStatus,
+  buildCapableToBillBreakdownRows,
+  capableToBillTotalFromWorking,
+  jobCapableToBillAmounts,
   buildBilledStageRows,
   buildJobsStagesBoardLists,
   buildReadyToBillStageRows,
@@ -882,5 +885,36 @@ describe('jobBillingUnallocatedDollars / clampPartialInvoiceCentsToUnallocated (
     const job = jobStub({ id: 'job-1', revenue: 600, payments_made: 0, invoices: [primary] })
     expect(jobBillingUnallocatedDollars(job)).toBe(0)
     expect(clampPartialInvoiceCentsToUnallocated(job, 50)).toBe(0)
+  })
+})
+
+describe('capable-to-bill kernel (quirk #8 consolidation)', () => {
+  it('computes valueCreated from pct and toBill net of amounts already off the job', () => {
+    // 1000 bid, 50% done, 200 paid: 500 created − (1000 − 800 remaining) = 300 to bill
+    expect(jobCapableToBillAmounts({ revenue: 1000, payments_made: 200, pct_complete: 50 })).toEqual({
+      toBill: 300,
+      valueCreated: 500,
+    })
+  })
+
+  it('treats null pct as zero value created (toBill 0 when nothing paid — remaining equals the bid)', () => {
+    const r = jobCapableToBillAmounts({ revenue: 1000, payments_made: 0, pct_complete: null })
+    expect(r.valueCreated).toBe(0)
+    expect(r.toBill).toBe(0)
+  })
+
+  it('clamps remaining at zero for overpaid jobs (toBill goes fully negative)', () => {
+    const r = jobCapableToBillAmounts({ revenue: 1000, payments_made: 1200, pct_complete: 50 })
+    expect(r.toBill).toBe(-500)
+  })
+
+  it('total clamps negatives per job; breakdown filters them and sorts descending', () => {
+    const a = { revenue: 1000, payments_made: 200, pct_complete: 50 } // 300
+    const b = { revenue: 2000, payments_made: 0, pct_complete: 40 }  // 800
+    const c = { revenue: 1000, payments_made: 0, pct_complete: null } // -1000
+    expect(capableToBillTotalFromWorking([a, b, c])).toBe(1100)
+    const rows = buildCapableToBillBreakdownRows([a, b, c])
+    expect(rows.map((r) => r.toBill)).toEqual([800, 300])
+    expect(rows[0]!.job).toBe(b)
   })
 })

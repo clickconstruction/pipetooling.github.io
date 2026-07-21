@@ -471,3 +471,39 @@ export function stagesSectionKeyForJobStatus(
       return null
   }
 }
+
+/**
+ * Capable-of-Being-Billed kernel (map quirk #8 — previously computed inline
+ * twice, in the Working section header and the breakdown modal): value created
+ * by % complete minus what has already come off the job. `toBill` may be
+ * negative; aggregations clamp/filter it.
+ */
+export function jobCapableToBillAmounts(
+  j: Pick<JobWithDetails, 'revenue' | 'payments_made' | 'pct_complete'>,
+): { toBill: number; valueCreated: number } {
+  const totalBill = Number(j.revenue ?? 0)
+  const valueCreated = j.pct_complete != null ? (totalBill * j.pct_complete) / 100 : 0
+  const remaining = Math.max(0, totalBill - Number(j.payments_made ?? 0))
+  const toBill = valueCreated - (totalBill - remaining)
+  return { toBill, valueCreated }
+}
+
+/** Working section header total: sum of positive to-bill amounts. */
+export function capableToBillTotalFromWorking(
+  working: Array<Pick<JobWithDetails, 'revenue' | 'payments_made' | 'pct_complete'>>,
+): number {
+  return working.reduce((s, j) => s + Math.max(0, jobCapableToBillAmounts(j).toBill), 0)
+}
+
+/** Breakdown-modal rows: positive to-bill only, sorted by amount descending. */
+export function buildCapableToBillBreakdownRows<
+  T extends Pick<JobWithDetails, 'revenue' | 'payments_made' | 'pct_complete'>,
+>(working: T[]): Array<{ job: T; toBill: number; valueCreated: number }> {
+  return working
+    .map((j) => {
+      const { toBill, valueCreated } = jobCapableToBillAmounts(j)
+      return { job: j, toBill, valueCreated }
+    })
+    .filter((r) => r.toBill > 0)
+    .sort((a, b) => b.toBill - a.toBill)
+}

@@ -14,6 +14,7 @@ import {
   stageRowBilledRemainingAmount,
   stagesJobLevelStripeEmailedHintInvoice,
   sumInvoiceAppliedFromJobPayments,
+  buildBilledAgingBuckets,
 } from './invoiceBilling'
 
 type Inv = ReturnType<typeof inv>
@@ -206,5 +207,32 @@ describe('stagesJobLevelStripeEmailedHintInvoice', () => {
   it('returns undefined when zero or multiple match', () => {
     expect(stagesJobLevelStripeEmailedHintInvoice(job({ invoices: [] }))).toBeUndefined()
     expect(stagesJobLevelStripeEmailedHintInvoice(job({ invoices: [emailed({ id: 'x' }), emailed({ id: 'z' })] }))).toBeUndefined()
+  })
+})
+
+describe('buildBilledAgingBuckets', () => {
+  const NOW = new Date('2026-07-20T12:00:00Z')
+  const billedJob = (id: string, lastBillDate: string | null, revenue: number, payments = 0, extra: Record<string, unknown> = {}) =>
+    job({ id, status: 'billed', last_bill_date: lastBillDate, revenue, payments_made: payments, invoices: [], ...extra })
+
+  it('buckets positive remainders at 30 and 90 days, excluding fresh, zero, and Collections rows', () => {
+    const jobs = [
+      billedJob('a', '2026-06-01', 500),            // ~49 days -> 30-90 bucket
+      billedJob('b', '2026-03-01', 700),            // ~141 days -> 90+ bucket
+      billedJob('c', '2026-07-10', 900),            // 10 days -> too fresh
+      billedJob('d', '2026-06-01', 300, 300),       // zero remainder -> excluded
+      billedJob('e', null, 400),                    // no reference date -> excluded
+      billedJob('f', '2026-03-01', 1000, 0, { collections_at: '2026-07-01T00:00:00Z' }), // Collections -> excluded
+    ]
+    expect(buildBilledAgingBuckets(jobs, NOW)).toEqual({
+      count30_90: 1,
+      sum30_90: 500,
+      count90: 1,
+      sum90: 700,
+    })
+  })
+
+  it('returns all-zero buckets for an empty board', () => {
+    expect(buildBilledAgingBuckets([], NOW)).toEqual({ count30_90: 0, sum30_90: 0, count90: 0, sum90: 0 })
   })
 })
