@@ -33,18 +33,7 @@ import SettingsJobsTab from '../components/settings/SettingsJobsTab'
 import TeamFeedbackMasterAggregates from '../components/team-feedback/TeamFeedbackMasterAggregates'
 import { pageTabStyle } from '../lib/pageTabStyle'
 import type { Database } from '../types/database'
-import {
-  APP_SETTINGS_KEY_FIELD_DISPATCH_PHONE,
-  APP_SETTINGS_KEY_JOB_TALLY_MIN_POSTED_YMD,
-} from '../lib/appSettingsKeys'
 import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
-import {
-  substituteNotificationVariables,
-  WORKFLOW_FN_TEST_PLACEHOLDER_STEP_ID,
-  type EmailTemplate,
-  type NotificationTemplate,
-  type WorkflowFnEmailTemplateType,
-} from '../lib/settingsTemplates'
 import SettingsTemplatesTab from '../components/settings/SettingsTemplatesTab'
 import SettingsPeopleTab from '../components/settings/SettingsPeopleTab'
 import SettingsSharingAdoptionSection from '../components/settings/SettingsSharingAdoptionSection'
@@ -236,15 +225,6 @@ export default function Settings() {
   const [allPeopleCount, setAllPeopleCount] = useState<number>(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [emailTemplates, setEmailTemplates] = useState<EmailTemplate[]>([])
-  const [editingTemplate, setEditingTemplate] = useState<EmailTemplate | null>(null)
-  const [templateSubject, setTemplateSubject] = useState('')
-  const [templateBody, setTemplateBody] = useState('')
-  const [templateSaving, setTemplateSaving] = useState(false)
-  const [templateError, setTemplateError] = useState<string | null>(null)
-  const [testingTemplate, setTestingTemplate] = useState<EmailTemplate | null>(null)
-  const [testSending, setTestSending] = useState(false)
-  const [testError, setTestError] = useState<string | null>(null)
   const [testNotificationSending, setTestNotificationSending] = useState(false)
   const [testNotificationError, setTestNotificationError] = useState<string | null>(null)
   const [testNotificationSuccess, setTestNotificationSuccess] = useState<string | null>(null)
@@ -546,8 +526,6 @@ export default function Settings() {
   const [managePartsSectionOpen, setManagePartsSectionOpen] = useState(false)
   const [additionalPeopleSectionOpen, setAdditionalPeopleSectionOpen] = useState(false)
   const [advancedSectionOpen, setAdvancedSectionOpen] = useState(false)
-  const [emailTemplatesSectionOpen, setEmailTemplatesSectionOpen] = useState(false)
-  const [reportSettingsSectionOpen, setReportSettingsSectionOpen] = useState(false)
   const [financialPinsSectionOpen, setFinancialPinsSectionOpen] = useState(false)
   const [notificationHistoryOpen, setNotificationHistoryOpen] = useState(false)
   const [mutedTasksOpen, setMutedTasksOpen] = useState(false)
@@ -565,33 +543,6 @@ export default function Settings() {
   const [notificationHistoryLoading, setNotificationHistoryLoading] = useState(false)
   const [notificationHistoryError, setNotificationHistoryError] = useState<string | null>(null)
   const [hasNotificationHistory, setHasNotificationHistory] = useState<boolean | null>(null)
-  const [reportEditWindowDays, setReportEditWindowDays] = useState<string>('2')
-  const [reportSubVisibilityMonths, setReportSubVisibilityMonths] = useState<string>('3')
-  const [reportEnabledUserIds, setReportEnabledUserIds] = useState<Set<string>>(new Set())
-  const [reportSettingsSaving, setReportSettingsSaving] = useState(false)
-  const [notificationTemplates, setNotificationTemplates] = useState<NotificationTemplate[]>([])
-  const [notificationTemplatesSectionOpen, setNotificationTemplatesSectionOpen] = useState(false)
-  const [workflowFnEmailSectionOpen, setWorkflowFnEmailSectionOpen] = useState(false)
-  const [templatesJobPartsTallySectionOpen, setTemplatesJobPartsTallySectionOpen] = useState(false)
-  const [editingNotificationTemplate, setEditingNotificationTemplate] = useState<NotificationTemplate | null>(null)
-  const [notificationTemplateTitle, setNotificationTemplateTitle] = useState('')
-  const [notificationTemplateBody, setNotificationTemplateBody] = useState('')
-  const [notificationTemplateSaving, setNotificationTemplateSaving] = useState(false)
-  const [notificationTemplateError, setNotificationTemplateError] = useState<string | null>(null)
-  const [templateTestTargetUserId, setTemplateTestTargetUserId] = useState('')
-  const [notificationTestSending, setNotificationTestSending] = useState<string | null>(null)
-  const [notificationTestError, setNotificationTestError] = useState<string | null>(null)
-  const [notificationTestSuccess, setNotificationTestSuccess] = useState<string | null>(null)
-  const [workflowFnTestTemplateType, setWorkflowFnTestTemplateType] =
-    useState<WorkflowFnEmailTemplateType>('stage_assigned_started')
-  const [workflowFnTestSending, setWorkflowFnTestSending] = useState(false)
-  const [workflowFnTestError, setWorkflowFnTestError] = useState<string | null>(null)
-  const [workflowFnTestSuccess, setWorkflowFnTestSuccess] = useState<string | null>(null)
-  const [jobTallyMinPostedYmdInput, setJobTallyMinPostedYmdInput] = useState('')
-  const [jobTallyMinPostedYmdSaving, setJobTallyMinPostedYmdSaving] = useState(false)
-  const [jobTallyMinPostedYmdError, setJobTallyMinPostedYmdError] = useState<string | null>(null)
-  const [fieldDispatchPhoneInput, setFieldDispatchPhoneInput] = useState('')
-  const [fieldDispatchPhoneSaving, setFieldDispatchPhoneSaving] = useState(false)
   const [editingNonUserPerson, setEditingNonUserPerson] = useState<PersonRow | null>(null)
   const [editPersonName, setEditPersonName] = useState('')
   const [editPersonEmail, setEditPersonEmail] = useState('')
@@ -983,7 +934,7 @@ export default function Settings() {
       await loadServiceTypes()
     }
     if (role === 'dev') {
-      await Promise.all([loadNotificationTemplates(), loadEmailTemplates(), loadPayApprovedMasters()])
+      await loadPayApprovedMasters()
 
       const prospectCopySettingKeys = [
         'prospect_copy_no_response_email',
@@ -998,8 +949,6 @@ export default function Settings() {
         'default_labor_rate',
         ...prospectCopySettingKeys,
         ...estimateCxSettingKeys,
-        'report_edit_window_days',
-        'report_sub_visibility_months',
       ]
 
       const { data: settingsBatchRows } = await supabase
@@ -1045,14 +994,10 @@ export default function Settings() {
       const publicTermsRow = estimateCxRows.find((r) => r.key === ESTIMATE_PUBLIC_TERMS_BODY_APP_KEY)
       setEstimatePublicTermsBody(publicTermsRow?.value_text ?? '')
 
-      setReportEditWindowDays(String(settingsByKey.get('report_edit_window_days')?.value_num ?? 2))
-      setReportSubVisibilityMonths(String(settingsByKey.get('report_sub_visibility_months')?.value_num ?? 3))
-
       const [
         ,
         jobOwnerResult,
         jobCountsResult,
-        enabledRes,
         dgmRes,
         egmRes,
       ] = await Promise.all([
@@ -1076,7 +1021,6 @@ export default function Settings() {
             return []
           }
         })(),
-        supabase.from('report_enabled_users').select('user_id'),
         supabase.from('dispatch_group_members').select('user_id'),
         supabase.from('estimator_group_members').select('user_id'),
       ])
@@ -1095,7 +1039,6 @@ export default function Settings() {
       }
       setJobCountByUserId(counts)
 
-      setReportEnabledUserIds(new Set((enabledRes.data ?? []).map((r: { user_id: string }) => r.user_id)))
       if (dgmRes.error) setError(dgmRes.error.message)
       else setDispatchMemberIds(new Set((dgmRes.data ?? []).map((r: { user_id: string }) => r.user_id)))
       if (egmRes.error) setError(egmRes.error.message)
@@ -1319,41 +1262,6 @@ export default function Settings() {
     showToast('Profile saved.', 'success')
   }
 
-  async function saveReportSettings(e: React.FormEvent) {
-    e.preventDefault()
-    if (myRole !== 'dev') return
-    setReportSettingsSaving(true)
-    const editDays = Math.max(0, Math.floor(parseFloat(reportEditWindowDays) || 0))
-    const visMonths = Math.max(0, Math.floor(parseFloat(reportSubVisibilityMonths) || 0))
-    const { error: appErr } = await supabase.from('app_settings').upsert(
-      [
-        { key: 'report_edit_window_days', value_num: editDays },
-        { key: 'report_sub_visibility_months', value_num: visMonths },
-      ],
-      { onConflict: 'key' }
-    )
-    if (appErr) {
-      setError(appErr.message)
-      setReportSettingsSaving(false)
-      return
-    }
-    const currentIds = reportEnabledUserIds
-    const { data: existing } = await supabase.from('report_enabled_users').select('user_id')
-    const existingIds = new Set((existing ?? []).map((r: { user_id: string }) => r.user_id))
-    for (const uid of currentIds) {
-      if (!existingIds.has(uid)) {
-        await supabase.from('report_enabled_users').insert({ user_id: uid })
-      }
-    }
-    for (const uid of existingIds) {
-      if (!currentIds.has(uid)) {
-        await supabase.from('report_enabled_users').delete().eq('user_id', uid)
-      }
-    }
-    setReportSettingsSaving(false)
-    showToast('Report settings saved.', 'success')
-  }
-
   async function saveReportNotificationPreferences(e: React.FormEvent) {
     e.preventDefault()
     if (!authUser?.id || (myRole !== 'dev' && myRole !== 'master_technician' && !isAssistantLike(myRole))) return
@@ -1383,15 +1291,6 @@ export default function Settings() {
       const next = new Set(prev)
       if (next.has(templateId)) next.delete(templateId)
       else next.add(templateId)
-      return next
-    })
-  }
-
-  function toggleReportEnabledUser(userId: string) {
-    setReportEnabledUserIds((prev) => {
-      const next = new Set(prev)
-      if (next.has(userId)) next.delete(userId)
-      else next.add(userId)
       return next
     })
   }
@@ -1513,506 +1412,6 @@ export default function Settings() {
       else setPayApprovedMasterIds((prev) => new Set(prev).add(masterId))
     }
     setPayApprovedSaving(false)
-  }
-
-  async function loadNotificationTemplates() {
-    const { data, error: e } = await supabase
-      .from('notification_templates')
-      .select('id, template_type, push_title, push_body, updated_at')
-      .order('template_type')
-    if (e) {
-      console.error('Error loading notification templates:', e)
-    } else {
-      setNotificationTemplates((data as NotificationTemplate[]) ?? [])
-    }
-  }
-
-  async function loadEmailTemplates() {
-    const { data, error: eTemplates } = await supabase
-      .from('email_templates')
-      .select('id, template_type, subject, body, updated_at')
-      .order('template_type')
-    
-    if (eTemplates) {
-      console.error('Error loading email templates:', eTemplates)
-      // Don't set error here - templates might not exist yet
-    } else {
-      setEmailTemplates((data as EmailTemplate[]) ?? [])
-    }
-  }
-
-  function openEditNotificationTemplate(template: NotificationTemplate | null) {
-    if (template) {
-      setEditingNotificationTemplate(template)
-      setNotificationTemplateTitle(template.push_title)
-      setNotificationTemplateBody(template.push_body)
-    } else {
-      setEditingNotificationTemplate(null)
-    }
-    setNotificationTemplateError(null)
-  }
-
-  function closeEditNotificationTemplate() {
-    setEditingNotificationTemplate(null)
-    setNotificationTemplateTitle('')
-    setNotificationTemplateBody('')
-    setNotificationTemplateError(null)
-  }
-
-  async function saveNotificationTemplate(e: React.FormEvent) {
-    e.preventDefault()
-    if (!editingNotificationTemplate) return
-    if (!notificationTemplateTitle.trim() || !notificationTemplateBody.trim()) {
-      setNotificationTemplateError('Title and body are required')
-      return
-    }
-    setNotificationTemplateSaving(true)
-    setNotificationTemplateError(null)
-    const { error: err } = await supabase
-      .from('notification_templates')
-      .update({
-        push_title: notificationTemplateTitle.trim(),
-        push_body: notificationTemplateBody.trim(),
-      })
-      .eq('id', editingNotificationTemplate.id)
-    setNotificationTemplateSaving(false)
-    if (err) setNotificationTemplateError(err.message)
-    else {
-      await loadNotificationTemplates()
-      closeEditNotificationTemplate()
-    }
-  }
-
-  async function sendTestNotificationTemplate(template: NotificationTemplate) {
-    if (!templateTestTargetUserId) {
-      setNotificationTestError('Select a test target first')
-      return
-    }
-    const targetUser = users.find((u) => u.id === templateTestTargetUserId)
-    if (!targetUser) {
-      setNotificationTestError('Target user not found')
-      return
-    }
-    setNotificationTestSending(template.template_type)
-    setNotificationTestError(null)
-    setNotificationTestSuccess(null)
-    try {
-      const {
-        data: { session: refreshedSession },
-        error: refreshErr,
-      } = await supabase.auth.refreshSession()
-      if (refreshErr || !refreshedSession?.access_token) {
-        setNotificationTestError('Session expired. Please sign out and sign back in.')
-        return
-      }
-      const { title, body } = substituteNotificationVariables(template, targetUser)
-      const pushUrl =
-        template.template_type === 'checklist_completed'
-          ? '/checklist'
-          : template.template_type === 'test_notification'
-            ? '/settings'
-            : '/workflow'
-      const { data, error } = await supabase.functions.invoke('send-checklist-notification', {
-        headers: {
-          Authorization: `Bearer ${refreshedSession.access_token}`,
-        },
-        body: {
-          recipient_user_id: templateTestTargetUserId,
-          push_title: title,
-          push_body: body,
-          push_url: pushUrl,
-          tag: template.template_type,
-        },
-      })
-      if (error) throw error
-      const res = data as { error?: string; push_sent?: number } | null
-      if (res?.error) throw new Error(res.error)
-      const sent = res?.push_sent ?? 0
-      setNotificationTestSuccess(
-        sent > 0
-          ? `Sent to ${sent} device(s).`
-          : 'Sent. (Target may have no push subscriptions, or on iOS with app open the system notification may not appear.)'
-      )
-    } catch (err) {
-      let msg = err instanceof Error ? err.message : 'Failed to send test notification'
-      if (err instanceof FunctionsHttpError && err.context?.json) {
-        try {
-          const body = (await err.context.json()) as { error?: string } | null
-          if (body?.error) msg = body.error
-        } catch { /* ignore */ }
-      }
-      setNotificationTestError(msg)
-    } finally {
-      setNotificationTestSending(null)
-    }
-  }
-
-  function openEditTemplate(template: EmailTemplate | undefined, templateType: EmailTemplate['template_type']) {
-    if (template) {
-      setEditingTemplate(template)
-      setTemplateSubject(template.subject)
-      setTemplateBody(template.body)
-    } else {
-      // Create new template with defaults
-      const defaults: Record<EmailTemplate['template_type'], { subject: string; body: string }> = {
-        invitation: {
-          subject: 'Invitation to join PipeTooling',
-          body: 'Hi {{name}},\n\nYou\'ve been invited to join PipeTooling as a {{role}}. Click the link below to set up your account:\n\n{{link}}\n\nIf you didn\'t expect this invitation, you can safely ignore this email.',
-        },
-        sign_in: {
-          subject: 'Sign in to PipeTooling',
-          body: 'Hi {{name}},\n\nClick the link below to sign in to your PipeTooling account:\n\n{{link}}\n\nIf you didn\'t request this sign-in link, you can safely ignore this email.',
-        },
-        login_as: {
-          subject: 'Sign in to PipeTooling',
-          body: 'Hi {{name}},\n\nA dev has requested to sign in as you. Click the link below:\n\n{{link}}\n\nIf you didn\'t expect this, please contact your administrator.',
-        },
-        stage_assigned_started: {
-          subject: 'Workflow stage started: {{stage_name}}',
-          body: 'Hi {{assigned_to_name}},\n\nThe workflow stage "{{stage_name}}" for project "{{project_name}}" has been started.\n\nProject: {{project_name}}\nStage: {{stage_name}}\n\nView the workflow: {{workflow_link}}',
-        },
-        stage_assigned_complete: {
-          subject: 'Workflow stage completed: {{stage_name}}',
-          body: 'Hi {{assigned_to_name}},\n\nThe workflow stage "{{stage_name}}" for project "{{project_name}}" has been completed.\n\nProject: {{project_name}}\nStage: {{stage_name}}\n\nView the workflow: {{workflow_link}}',
-        },
-        stage_assigned_reopened: {
-          subject: 'Workflow stage re-opened: {{stage_name}}',
-          body: 'Hi {{assigned_to_name}},\n\nThe workflow stage "{{stage_name}}" for project "{{project_name}}" has been re-opened.\n\nProject: {{project_name}}\nStage: {{stage_name}}\n\nView the workflow: {{workflow_link}}',
-        },
-        stage_me_started: {
-          subject: 'Workflow stage started: {{stage_name}}',
-          body: 'Hi {{name}},\n\nThe workflow stage "{{stage_name}}" for project "{{project_name}}" has been started.\n\nProject: {{project_name}}\nStage: {{stage_name}}\nAssigned to: {{assigned_to_name}}\n\nView the workflow: {{workflow_link}}',
-        },
-        stage_me_complete: {
-          subject: 'Workflow stage completed: {{stage_name}}',
-          body: 'Hi {{name}},\n\nThe workflow stage "{{stage_name}}" for project "{{project_name}}" has been completed.\n\nProject: {{project_name}}\nStage: {{stage_name}}\nAssigned to: {{assigned_to_name}}\n\nView the workflow: {{workflow_link}}',
-        },
-        stage_me_reopened: {
-          subject: 'Workflow stage re-opened: {{stage_name}}',
-          body: 'Hi {{name}},\n\nThe workflow stage "{{stage_name}}" for project "{{project_name}}" has been re-opened.\n\nProject: {{project_name}}\nStage: {{stage_name}}\nAssigned to: {{assigned_to_name}}\n\nView the workflow: {{workflow_link}}',
-        },
-        stage_next_complete_or_approved: {
-          subject: 'Next workflow stage ready: {{stage_name}}',
-          body: 'Hi {{assigned_to_name}},\n\nThe previous workflow stage for project "{{project_name}}" has been completed or approved. Your stage "{{stage_name}}" is now ready to begin.\n\nProject: {{project_name}}\nYour stage: {{stage_name}}\nPrevious stage: {{previous_stage_name}}\n\nView the workflow: {{workflow_link}}',
-        },
-        stage_prior_rejected: {
-          subject: 'Prior work incomplete: {{stage_name}}',
-          body: 'Hi {{assigned_to_name}},\n\nThe workflow stage "{{stage_name}}" for project "{{project_name}}" that you completed has been marked as incomplete.\n\nProject: {{project_name}}\nStage: {{stage_name}}\nReason: {{rejection_reason}}\n\nView the workflow: {{workflow_link}}',
-        },
-      }
-      const defaultTemplate = defaults[templateType]
-      setEditingTemplate({
-        id: '', // Will be created
-        template_type: templateType,
-        subject: defaultTemplate.subject,
-        body: defaultTemplate.body,
-        updated_at: null,
-      })
-      setTemplateSubject(defaultTemplate.subject)
-      setTemplateBody(defaultTemplate.body)
-    }
-    setTemplateError(null)
-  }
-
-  function replaceTemplateVariables(template: EmailTemplate, variables: Record<string, string>): { subject: string; body: string } {
-    let subject = template.subject
-    let body = template.body
-    
-    Object.entries(variables).forEach(([key, value]) => {
-      const regex = new RegExp(`\\{\\{${key}\\}\\}`, 'g')
-      subject = subject.replace(regex, value)
-      body = body.replace(regex, value)
-    })
-    
-    return { subject, body }
-  }
-
-  async function sendTestEmail(e: React.FormEvent) {
-    e.preventDefault()
-    if (!testingTemplate) return
-
-    if (!templateTestTargetUserId) {
-      setTestError('Select a test target first')
-      return
-    }
-    const targetUser = users.find((u) => u.id === templateTestTargetUserId)
-    if (!targetUser) {
-      setTestError('Target user not found')
-      return
-    }
-    const to = targetUser.email.trim()
-    if (!to) {
-      setTestError('Selected user has no email')
-      return
-    }
-
-    setTestSending(true)
-    setTestError(null)
-
-    const {
-      data: { session: refreshedSession },
-      error: refreshErr,
-    } = await supabase.auth.refreshSession()
-    if (refreshErr || !refreshedSession?.access_token) {
-      setTestError('Session expired. Please sign out and sign back in.')
-      setTestSending(false)
-      return
-    }
-
-    const testVariables: Record<string, string> = {
-      name: (targetUser.name || '').trim() || to,
-      email: targetUser.email,
-      role: targetUser.role,
-      link: 'https://example.com/test-link',
-      project_name: 'Test Project',
-      stage_name: 'Test Stage',
-      assigned_to_name: 'John Doe',
-      workflow_link: 'https://example.com/workflow',
-      previous_stage_name: 'Previous Stage',
-      rejection_reason: 'Test rejection reason',
-    }
-
-    const { subject, body } = replaceTemplateVariables(testingTemplate, testVariables)
-
-    const { data, error: eFn } = await supabase.functions.invoke('test-email', {
-      headers: {
-        Authorization: `Bearer ${refreshedSession.access_token}`,
-      },
-      body: {
-        to,
-        subject,
-        body,
-        template_type: testingTemplate.template_type,
-      },
-    })
-
-    setTestSending(false)
-    
-    if (eFn) {
-      let msg = eFn.message
-      let statusCode = ''
-      if (eFn instanceof FunctionsHttpError) {
-        statusCode = ` (Status: ${eFn.context?.status || 'unknown'})`
-        if (eFn.context?.json) {
-          try {
-            const b = (await eFn.context.json()) as { error?: string; message?: string } | null
-            if (b?.error) msg = b.error
-            else if (b?.message) msg = b.message
-          } catch { /* ignore */ }
-        }
-        // Try to get response text as well
-        if (eFn.context?.response) {
-          try {
-            const text = await eFn.context.response.text()
-            if (text) msg += ` - ${text}`
-          } catch { /* ignore */ }
-        }
-      }
-      setTestError(`Error: ${msg}${statusCode}`)
-      return
-    }
-    
-    const err = (data as { error?: string } | null)?.error
-    if (err) {
-      setTestError(err)
-    } else {
-      const recipientLabel = (targetUser.name || '').trim()
-        ? `${targetUser.name} <${to}>`
-        : to
-      alert(`Test email sent to ${recipientLabel}!\n\nSubject: ${subject}\n\nBody:\n${body}`)
-      setTestingTemplate(null)
-    }
-  }
-
-  async function sendWorkflowNotificationEmailTest() {
-    if (!templateTestTargetUserId) {
-      setWorkflowFnTestError('Select a test target first')
-      return
-    }
-    const targetUser = users.find((u) => u.id === templateTestTargetUserId)
-    if (!targetUser) {
-      setWorkflowFnTestError('Target user not found')
-      return
-    }
-    const to = targetUser.email.trim()
-    if (!to) {
-      setWorkflowFnTestError('Selected user has no email')
-      return
-    }
-    const hasTemplate = emailTemplates.some((t) => t.template_type === workflowFnTestTemplateType)
-    if (!hasTemplate) {
-      setWorkflowFnTestError('Create this email template in the list below before testing the Edge Function')
-      return
-    }
-
-    setWorkflowFnTestSending(true)
-    setWorkflowFnTestError(null)
-    setWorkflowFnTestSuccess(null)
-
-    const {
-      data: { session: refreshedSession },
-      error: refreshErr,
-    } = await supabase.auth.refreshSession()
-    if (refreshErr || !refreshedSession?.access_token) {
-      setWorkflowFnTestError('Session expired. Please sign out and sign back in.')
-      setWorkflowFnTestSending(false)
-      return
-    }
-
-    const recipientName = (targetUser.name || '').trim() || to
-    const workflowLink = `${window.location.origin}/settings`
-    const variables: Record<string, string> = {
-      name: recipientName,
-      email: targetUser.email,
-      project_name: 'Test Project',
-      stage_name: 'Test Stage',
-      assigned_to_name: 'Jane Doe',
-      workflow_link: workflowLink,
-    }
-    if (workflowFnTestTemplateType === 'stage_next_complete_or_approved') {
-      variables.previous_stage_name = 'Previous Stage (test)'
-    }
-    if (workflowFnTestTemplateType === 'stage_prior_rejected') {
-      variables.previous_stage_name = 'Previous Stage (test)'
-      variables.rejection_reason = 'Test rejection'
-    }
-
-    const { data, error: eFn } = await supabase.functions.invoke('send-workflow-notification', {
-      headers: {
-        Authorization: `Bearer ${refreshedSession.access_token}`,
-      },
-      body: {
-        template_type: workflowFnTestTemplateType,
-        step_id: WORKFLOW_FN_TEST_PLACEHOLDER_STEP_ID,
-        recipient_email: to,
-        recipient_name: recipientName,
-        variables,
-      },
-    })
-
-    setWorkflowFnTestSending(false)
-
-    if (eFn) {
-      let msg = eFn.message
-      let statusCode = ''
-      if (eFn instanceof FunctionsHttpError) {
-        statusCode = ` (Status: ${eFn.context?.status || 'unknown'})`
-        if (eFn.context?.json) {
-          try {
-            const b = (await eFn.context.json()) as { error?: string; message?: string } | null
-            if (b?.error) msg = b.error
-            else if (b?.message) msg = b.message
-          } catch {
-            /* ignore */
-          }
-        }
-        if (eFn.context?.response) {
-          try {
-            const text = await eFn.context.response.text()
-            if (text) msg += ` - ${text}`
-          } catch {
-            /* ignore */
-          }
-        }
-      }
-      setWorkflowFnTestError(`Error: ${msg}${statusCode}`)
-      return
-    }
-
-    const res = data as { error?: string; email_id?: string; push_sent?: number } | null
-    if (res?.error) {
-      setWorkflowFnTestError(res.error)
-      return
-    }
-    const pushPart =
-      typeof res?.push_sent === 'number' && res.push_sent > 0 ? ` Push sent: ${res.push_sent}.` : ''
-    setWorkflowFnTestSuccess(
-      `Sent via send-workflow-notification to ${to}. Resend id: ${res?.email_id ?? '—'}.${pushPart}`
-    )
-  }
-
-  function openTestEmail(template: EmailTemplate | { template_type: EmailTemplate['template_type']; subject: string; body: string }) {
-    setTestingTemplate(template as EmailTemplate)
-    setTestError(null)
-  }
-
-  function testCurrentTemplate() {
-    if (!editingTemplate || !templateSubject.trim() || !templateBody.trim()) {
-      setTemplateError('Please fill in both subject and body before testing')
-      return
-    }
-    if (!templateTestTargetUserId) {
-      setTemplateError('Select a test target under Templates & testing before testing')
-      return
-    }
-    // Create a temporary template object from current form values
-    const tempTemplate: EmailTemplate = {
-      id: editingTemplate.id || '',
-      template_type: editingTemplate.template_type,
-      subject: templateSubject.trim(),
-      body: templateBody.trim(),
-      updated_at: null,
-    }
-    openTestEmail(tempTemplate)
-  }
-
-  function closeTestEmail() {
-    setTestingTemplate(null)
-    setTestError(null)
-  }
-
-  function closeEditTemplate() {
-    setEditingTemplate(null)
-    setTemplateSubject('')
-    setTemplateBody('')
-    setTemplateError(null)
-  }
-
-  async function saveEmailTemplate(e: React.FormEvent) {
-    e.preventDefault()
-    if (!editingTemplate) return
-    
-    setTemplateSaving(true)
-    setTemplateError(null)
-    
-    if (editingTemplate.id) {
-      // Update existing template
-      const { error: e } = await supabase
-        .from('email_templates')
-        .update({
-          subject: templateSubject.trim(),
-          body: templateBody.trim(),
-        })
-        .eq('id', editingTemplate.id)
-      
-      setTemplateSaving(false)
-      
-      if (e) {
-        setTemplateError(e.message)
-      } else {
-        await loadEmailTemplates()
-        closeEditTemplate()
-      }
-    } else {
-      // Create new template
-      const { error: e } = await supabase
-        .from('email_templates')
-        .insert({
-          template_type: editingTemplate.template_type,
-          subject: templateSubject.trim(),
-          body: templateBody.trim(),
-          updated_at: new Date().toISOString(),
-        })
-      
-      setTemplateSaving(false)
-      
-      if (e) {
-        setTemplateError(e.message)
-      } else {
-        await loadEmailTemplates()
-        closeEditTemplate()
-      }
-    }
   }
 
   // Service Types functions
@@ -3263,68 +2662,6 @@ export default function Settings() {
 
   const { total: costMatrixTotal } = useWeeklyTeamLaborTotal(myRole === 'dev')
 
-  // Default template test target (notifications + email): current user if in list, else first user
-  useEffect(() => {
-    if (myRole !== 'dev' || users.length === 0) return
-    setTemplateTestTargetUserId((prev) => {
-      if (prev) return prev
-      const meInList = authUser?.id && users.some((u) => u.id === authUser.id)
-      return meInList ? authUser!.id : users[0]!.id
-    })
-  }, [myRole, users, authUser?.id])
-
-  useEffect(() => {
-    if (myRole !== 'dev') return
-    let cancelled = false
-    ;(async () => {
-      try {
-        const data = await withSupabaseRetry(
-          async () =>
-            supabase
-              .from('app_settings')
-              .select('value_text')
-              .eq('key', APP_SETTINGS_KEY_JOB_TALLY_MIN_POSTED_YMD)
-              .maybeSingle(),
-          'load job tally min posted app setting',
-        )
-        if (cancelled) return
-        const vt = (data as { value_text: string | null } | null)?.value_text
-        setJobTallyMinPostedYmdInput(vt?.trim() ?? '')
-      } catch {
-        if (!cancelled) setJobTallyMinPostedYmdInput('')
-      }
-    })()
-    return () => {
-      cancelled = true
-    }
-  }, [myRole])
-
-  useEffect(() => {
-    if (myRole !== 'dev') return
-    let cancelled = false
-    ;(async () => {
-      try {
-        const data = await withSupabaseRetry(
-          async () =>
-            supabase
-              .from('app_settings')
-              .select('value_text')
-              .eq('key', APP_SETTINGS_KEY_FIELD_DISPATCH_PHONE)
-              .maybeSingle(),
-          'load field dispatch phone app setting',
-        )
-        if (cancelled) return
-        const vt = (data as { value_text: string | null } | null)?.value_text
-        setFieldDispatchPhoneInput(vt?.trim() ?? '')
-      } catch {
-        if (!cancelled) setFieldDispatchPhoneInput('')
-      }
-    })()
-    return () => {
-      cancelled = true
-    }
-  }, [myRole])
-
   useEffect(() => {
     if (selectedServiceTypeForFixtures) {
       loadFixtureTypes()
@@ -4420,82 +3757,7 @@ export default function Settings() {
         <SettingsTemplatesTab
           authUser={authUser}
           users={users}
-          fieldDispatchPhoneInput={fieldDispatchPhoneInput}
-          setFieldDispatchPhoneInput={setFieldDispatchPhoneInput}
-          fieldDispatchPhoneSaving={fieldDispatchPhoneSaving}
-          setFieldDispatchPhoneSaving={setFieldDispatchPhoneSaving}
-          jobTallyMinPostedYmdInput={jobTallyMinPostedYmdInput}
-          setJobTallyMinPostedYmdInput={setJobTallyMinPostedYmdInput}
-          jobTallyMinPostedYmdSaving={jobTallyMinPostedYmdSaving}
-          setJobTallyMinPostedYmdSaving={setJobTallyMinPostedYmdSaving}
-          jobTallyMinPostedYmdError={jobTallyMinPostedYmdError}
-          setJobTallyMinPostedYmdError={setJobTallyMinPostedYmdError}
-          templatesJobPartsTallySectionOpen={templatesJobPartsTallySectionOpen}
-          setTemplatesJobPartsTallySectionOpen={setTemplatesJobPartsTallySectionOpen}
-          templateTestTargetUserId={templateTestTargetUserId}
-          setTemplateTestTargetUserId={setTemplateTestTargetUserId}
-          notificationTestError={notificationTestError}
-          setNotificationTestError={setNotificationTestError}
-          notificationTestSuccess={notificationTestSuccess}
-          setNotificationTestSuccess={setNotificationTestSuccess}
-          notificationTestSending={notificationTestSending}
-          testError={testError}
-          setTestError={setTestError}
-          workflowFnEmailSectionOpen={workflowFnEmailSectionOpen}
-          setWorkflowFnEmailSectionOpen={setWorkflowFnEmailSectionOpen}
-          workflowFnTestError={workflowFnTestError}
-          setWorkflowFnTestError={setWorkflowFnTestError}
-          workflowFnTestSuccess={workflowFnTestSuccess}
-          setWorkflowFnTestSuccess={setWorkflowFnTestSuccess}
-          workflowFnTestTemplateType={workflowFnTestTemplateType}
-          setWorkflowFnTestTemplateType={setWorkflowFnTestTemplateType}
-          workflowFnTestSending={workflowFnTestSending}
-          emailTemplates={emailTemplates}
-          emailTemplatesSectionOpen={emailTemplatesSectionOpen}
-          setEmailTemplatesSectionOpen={setEmailTemplatesSectionOpen}
-          editingTemplate={editingTemplate}
-          templateSubject={templateSubject}
-          setTemplateSubject={setTemplateSubject}
-          templateBody={templateBody}
-          setTemplateBody={setTemplateBody}
-          templateSaving={templateSaving}
-          templateError={templateError}
-          setTemplateError={setTemplateError}
-          testingTemplate={testingTemplate}
-          testSending={testSending}
-          notificationTemplates={notificationTemplates}
-          notificationTemplatesSectionOpen={notificationTemplatesSectionOpen}
-          setNotificationTemplatesSectionOpen={setNotificationTemplatesSectionOpen}
-          editingNotificationTemplate={editingNotificationTemplate}
-          notificationTemplateTitle={notificationTemplateTitle}
-          setNotificationTemplateTitle={setNotificationTemplateTitle}
-          notificationTemplateBody={notificationTemplateBody}
-          setNotificationTemplateBody={setNotificationTemplateBody}
-          notificationTemplateSaving={notificationTemplateSaving}
-          notificationTemplateError={notificationTemplateError}
-          setNotificationTemplateError={setNotificationTemplateError}
-          reportEditWindowDays={reportEditWindowDays}
-          setReportEditWindowDays={setReportEditWindowDays}
-          reportSubVisibilityMonths={reportSubVisibilityMonths}
-          setReportSubVisibilityMonths={setReportSubVisibilityMonths}
-          reportEnabledUserIds={reportEnabledUserIds}
-          reportSettingsSaving={reportSettingsSaving}
-          reportSettingsSectionOpen={reportSettingsSectionOpen}
-          setReportSettingsSectionOpen={setReportSettingsSectionOpen}
-          closeEditNotificationTemplate={closeEditNotificationTemplate}
-          closeEditTemplate={closeEditTemplate}
-          closeTestEmail={closeTestEmail}
-          openEditTemplate={openEditTemplate}
-          openEditNotificationTemplate={openEditNotificationTemplate}
-          openTestEmail={openTestEmail}
-          saveEmailTemplate={saveEmailTemplate}
-          saveNotificationTemplate={saveNotificationTemplate}
-          saveReportSettings={saveReportSettings}
-          sendTestEmail={sendTestEmail}
-          sendTestNotificationTemplate={sendTestNotificationTemplate}
-          sendWorkflowNotificationEmailTest={sendWorkflowNotificationEmailTest}
-          testCurrentTemplate={testCurrentTemplate}
-          toggleReportEnabledUser={toggleReportEnabledUser}
+          setError={setError}
         />
       )}
       </SettingsGroup>

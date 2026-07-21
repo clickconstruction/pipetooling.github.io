@@ -112,3 +112,71 @@ export function substituteNotificationVariables(
     body: replaceAll(template.push_body),
   }
 }
+
+/** Default subject/body used when creating a new email template of each type
+ * (settings → email templates → "Create"). Product copy — preserve verbatim. */
+export const EMAIL_TEMPLATE_DEFAULTS: Record<EmailTemplate['template_type'], { subject: string; body: string }> = {
+  invitation: {
+    subject: 'Invitation to join PipeTooling',
+    body: 'Hi {{name}},\n\nYou\'ve been invited to join PipeTooling as a {{role}}. Click the link below to set up your account:\n\n{{link}}\n\nIf you didn\'t expect this invitation, you can safely ignore this email.',
+  },
+  sign_in: {
+    subject: 'Sign in to PipeTooling',
+    body: 'Hi {{name}},\n\nClick the link below to sign in to your PipeTooling account:\n\n{{link}}\n\nIf you didn\'t request this sign-in link, you can safely ignore this email.',
+  },
+  login_as: {
+    subject: 'Sign in to PipeTooling',
+    body: 'Hi {{name}},\n\nA dev has requested to sign in as you. Click the link below:\n\n{{link}}\n\nIf you didn\'t expect this, please contact your administrator.',
+  },
+  stage_assigned_started: {
+    subject: 'Workflow stage started: {{stage_name}}',
+    body: 'Hi {{assigned_to_name}},\n\nThe workflow stage "{{stage_name}}" for project "{{project_name}}" has been started.\n\nProject: {{project_name}}\nStage: {{stage_name}}\n\nView the workflow: {{workflow_link}}',
+  },
+  stage_assigned_complete: {
+    subject: 'Workflow stage completed: {{stage_name}}',
+    body: 'Hi {{assigned_to_name}},\n\nThe workflow stage "{{stage_name}}" for project "{{project_name}}" has been completed.\n\nProject: {{project_name}}\nStage: {{stage_name}}\n\nView the workflow: {{workflow_link}}',
+  },
+  stage_assigned_reopened: {
+    subject: 'Workflow stage re-opened: {{stage_name}}',
+    body: 'Hi {{assigned_to_name}},\n\nThe workflow stage "{{stage_name}}" for project "{{project_name}}" has been re-opened.\n\nProject: {{project_name}}\nStage: {{stage_name}}\n\nView the workflow: {{workflow_link}}',
+  },
+  stage_me_started: {
+    subject: 'Workflow stage started: {{stage_name}}',
+    body: 'Hi {{name}},\n\nThe workflow stage "{{stage_name}}" for project "{{project_name}}" has been started.\n\nProject: {{project_name}}\nStage: {{stage_name}}\nAssigned to: {{assigned_to_name}}\n\nView the workflow: {{workflow_link}}',
+  },
+  stage_me_complete: {
+    subject: 'Workflow stage completed: {{stage_name}}',
+    body: 'Hi {{name}},\n\nThe workflow stage "{{stage_name}}" for project "{{project_name}}" has been completed.\n\nProject: {{project_name}}\nStage: {{stage_name}}\nAssigned to: {{assigned_to_name}}\n\nView the workflow: {{workflow_link}}',
+  },
+  stage_me_reopened: {
+    subject: 'Workflow stage re-opened: {{stage_name}}',
+    body: 'Hi {{name}},\n\nThe workflow stage "{{stage_name}}" for project "{{project_name}}" has been re-opened.\n\nProject: {{project_name}}\nStage: {{stage_name}}\nAssigned to: {{assigned_to_name}}\n\nView the workflow: {{workflow_link}}',
+  },
+  stage_next_complete_or_approved: {
+    subject: 'Next workflow stage ready: {{stage_name}}',
+    body: 'Hi {{assigned_to_name}},\n\nThe previous workflow stage for project "{{project_name}}" has been completed or approved. Your stage "{{stage_name}}" is now ready to begin.\n\nProject: {{project_name}}\nYour stage: {{stage_name}}\nPrevious stage: {{previous_stage_name}}\n\nView the workflow: {{workflow_link}}',
+  },
+  stage_prior_rejected: {
+    subject: 'Prior work incomplete: {{stage_name}}',
+    body: 'Hi {{assigned_to_name}},\n\nThe workflow stage "{{stage_name}}" for project "{{project_name}}" that you completed has been marked as incomplete.\n\nProject: {{project_name}}\nStage: {{stage_name}}\nReason: {{rejection_reason}}\n\nView the workflow: {{workflow_link}}',
+  },
+}
+
+/** Substitute {{key}} placeholders in an email template's subject and body.
+ * Every occurrence of each provided variable is replaced; unknown placeholders
+ * are left untouched. */
+export function replaceTemplateVariables(
+  template: { subject: string; body: string },
+  variables: Record<string, string>
+): { subject: string; body: string } {
+  let subject = template.subject
+  let body = template.body
+
+  Object.entries(variables).forEach(([key, value]) => {
+    const regex = new RegExp(`\\{\\{${key}\\}\\}`, 'g')
+    subject = subject.replace(regex, value)
+    body = body.replace(regex, value)
+  })
+
+  return { subject, body }
+}

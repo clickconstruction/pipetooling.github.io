@@ -1,10 +1,10 @@
 /** Settings → Templates & testing tab (dev only): invoice/map dev blocks, dispatch phone,
- * job parts tally min-date, delete-all-estimates, notification/email template test + editors,
+ * job parts tally min-date, notification/email template test + editors,
  * workflow-email Edge Function test, and report settings.
- * Presentational; all state/handlers live in the parent (Settings.tsx) and arrive as props.
+ * Self-contained: state/handlers come from useSettingsTemplatesEngine (v2.854).
  * The SettingsGroup wrapper and the myRole === dev gate stay in the parent. */
-import type { Dispatch, FormEvent, SetStateAction } from 'react'
 import { useToastContext } from '../../contexts/ToastContext'
+import { useSettingsTemplatesEngine } from '../../hooks/useSettingsTemplatesEngine'
 import { supabase } from '../../lib/supabase'
 import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
 import {
@@ -16,8 +16,6 @@ import {
   NOTIFICATION_VARIABLE_HINT,
   VARIABLE_HINT,
   WORKFLOW_FN_EMAIL_TEST_OPTIONS,
-  type EmailTemplate,
-  type NotificationTemplate,
   type WorkflowFnEmailTemplateType,
 } from '../../lib/settingsTemplates'
 import StripeInvoiceFooterDevSettingsBlock from './StripeInvoiceFooterDevSettingsBlock'
@@ -32,174 +30,94 @@ type TemplatesTabUserRow = { id: string; name: string; email: string; role: stri
 type SettingsTemplatesTabProps = {
   authUser: { id: string } | null
   users: TemplatesTabUserRow[]
-  // Field collect payment — dispatch phone
-  fieldDispatchPhoneInput: string
-  setFieldDispatchPhoneInput: Dispatch<SetStateAction<string>>
-  fieldDispatchPhoneSaving: boolean
-  setFieldDispatchPhoneSaving: Dispatch<SetStateAction<boolean>>
-  // Job parts tally min posted date
-  jobTallyMinPostedYmdInput: string
-  setJobTallyMinPostedYmdInput: Dispatch<SetStateAction<string>>
-  jobTallyMinPostedYmdSaving: boolean
-  setJobTallyMinPostedYmdSaving: Dispatch<SetStateAction<boolean>>
-  jobTallyMinPostedYmdError: string | null
-  setJobTallyMinPostedYmdError: Dispatch<SetStateAction<string | null>>
-  templatesJobPartsTallySectionOpen: boolean
-  setTemplatesJobPartsTallySectionOpen: Dispatch<SetStateAction<boolean>>
-  // Test target + notification template testing
-  templateTestTargetUserId: string
-  setTemplateTestTargetUserId: Dispatch<SetStateAction<string>>
-  notificationTestError: string | null
-  setNotificationTestError: Dispatch<SetStateAction<string | null>>
-  notificationTestSuccess: string | null
-  setNotificationTestSuccess: Dispatch<SetStateAction<string | null>>
-  notificationTestSending: string | null
-  testError: string | null
-  setTestError: Dispatch<SetStateAction<string | null>>
-  // Workflow-email Edge Function test
-  workflowFnEmailSectionOpen: boolean
-  setWorkflowFnEmailSectionOpen: Dispatch<SetStateAction<boolean>>
-  workflowFnTestError: string | null
-  setWorkflowFnTestError: Dispatch<SetStateAction<string | null>>
-  workflowFnTestSuccess: string | null
-  setWorkflowFnTestSuccess: Dispatch<SetStateAction<string | null>>
-  workflowFnTestTemplateType: WorkflowFnEmailTemplateType
-  setWorkflowFnTestTemplateType: Dispatch<SetStateAction<WorkflowFnEmailTemplateType>>
-  workflowFnTestSending: boolean
-  // Email templates
-  emailTemplates: EmailTemplate[]
-  emailTemplatesSectionOpen: boolean
-  setEmailTemplatesSectionOpen: Dispatch<SetStateAction<boolean>>
-  editingTemplate: EmailTemplate | null
-  templateSubject: string
-  setTemplateSubject: Dispatch<SetStateAction<string>>
-  templateBody: string
-  setTemplateBody: Dispatch<SetStateAction<string>>
-  templateSaving: boolean
-  templateError: string | null
-  setTemplateError: Dispatch<SetStateAction<string | null>>
-  testingTemplate: EmailTemplate | null
-  testSending: boolean
-  // Notification templates
-  notificationTemplates: NotificationTemplate[]
-  notificationTemplatesSectionOpen: boolean
-  setNotificationTemplatesSectionOpen: Dispatch<SetStateAction<boolean>>
-  editingNotificationTemplate: NotificationTemplate | null
-  notificationTemplateTitle: string
-  setNotificationTemplateTitle: Dispatch<SetStateAction<string>>
-  notificationTemplateBody: string
-  setNotificationTemplateBody: Dispatch<SetStateAction<string>>
-  notificationTemplateSaving: boolean
-  notificationTemplateError: string | null
-  setNotificationTemplateError: Dispatch<SetStateAction<string | null>>
-  // Report settings
-  reportEditWindowDays: string
-  setReportEditWindowDays: Dispatch<SetStateAction<string>>
-  reportSubVisibilityMonths: string
-  setReportSubVisibilityMonths: Dispatch<SetStateAction<string>>
-  reportEnabledUserIds: Set<string>
-  reportSettingsSaving: boolean
-  reportSettingsSectionOpen: boolean
-  setReportSettingsSectionOpen: Dispatch<SetStateAction<boolean>>
-  // Handlers (logic stays in parent)
-  closeEditNotificationTemplate: () => void
-  closeEditTemplate: () => void
-  closeTestEmail: () => void
-  openEditTemplate: (template: EmailTemplate | undefined, templateType: EmailTemplate['template_type']) => void
-  openEditNotificationTemplate: (template: NotificationTemplate | null) => void
-  openTestEmail: (
-    template: EmailTemplate | { template_type: EmailTemplate['template_type']; subject: string; body: string },
-  ) => void
-  saveEmailTemplate: (e: FormEvent) => void
-  saveNotificationTemplate: (e: FormEvent) => void
-  saveReportSettings: (e: FormEvent) => void
-  sendTestEmail: (e: FormEvent) => void
-  sendTestNotificationTemplate: (template: NotificationTemplate) => void
-  sendWorkflowNotificationEmailTest: () => void
-  testCurrentTemplate: () => void
-  toggleReportEnabledUser: (userId: string) => void
+  /** Parent's shared error setter (legacy quirk: saveReportSettings writes the mostly-invisible page error). */
+  setError: (message: string) => void
 }
 
-export default function SettingsTemplatesTab({
-  authUser,
-  users,
-  fieldDispatchPhoneInput,
-  setFieldDispatchPhoneInput,
-  fieldDispatchPhoneSaving,
-  setFieldDispatchPhoneSaving,
-  jobTallyMinPostedYmdInput,
-  setJobTallyMinPostedYmdInput,
-  jobTallyMinPostedYmdSaving,
-  setJobTallyMinPostedYmdSaving,
-  jobTallyMinPostedYmdError,
-  setJobTallyMinPostedYmdError,
-  templatesJobPartsTallySectionOpen,
-  setTemplatesJobPartsTallySectionOpen,
-  templateTestTargetUserId,
-  setTemplateTestTargetUserId,
-  notificationTestError,
-  setNotificationTestError,
-  notificationTestSuccess,
-  setNotificationTestSuccess,
-  notificationTestSending,
-  testError,
-  setTestError,
-  workflowFnEmailSectionOpen,
-  setWorkflowFnEmailSectionOpen,
-  workflowFnTestError,
-  setWorkflowFnTestError,
-  workflowFnTestSuccess,
-  setWorkflowFnTestSuccess,
-  workflowFnTestTemplateType,
-  setWorkflowFnTestTemplateType,
-  workflowFnTestSending,
-  emailTemplates,
-  emailTemplatesSectionOpen,
-  setEmailTemplatesSectionOpen,
-  editingTemplate,
-  templateSubject,
-  setTemplateSubject,
-  templateBody,
-  setTemplateBody,
-  templateSaving,
-  templateError,
-  setTemplateError,
-  testingTemplate,
-  testSending,
-  notificationTemplates,
-  notificationTemplatesSectionOpen,
-  setNotificationTemplatesSectionOpen,
-  editingNotificationTemplate,
-  notificationTemplateTitle,
-  setNotificationTemplateTitle,
-  notificationTemplateBody,
-  setNotificationTemplateBody,
-  notificationTemplateSaving,
-  notificationTemplateError,
-  setNotificationTemplateError,
-  reportEditWindowDays,
-  setReportEditWindowDays,
-  reportSubVisibilityMonths,
-  setReportSubVisibilityMonths,
-  reportEnabledUserIds,
-  reportSettingsSaving,
-  reportSettingsSectionOpen,
-  setReportSettingsSectionOpen,
-  closeEditNotificationTemplate,
-  closeEditTemplate,
-  closeTestEmail,
-  openEditTemplate,
-  openEditNotificationTemplate,
-  openTestEmail,
-  saveEmailTemplate,
-  saveNotificationTemplate,
-  saveReportSettings,
-  sendTestEmail,
-  sendTestNotificationTemplate,
-  sendWorkflowNotificationEmailTest,
-  testCurrentTemplate,
-  toggleReportEnabledUser,
-}: SettingsTemplatesTabProps) {
+export default function SettingsTemplatesTab({ authUser, users, setError }: SettingsTemplatesTabProps) {
+  const {
+    fieldDispatchPhoneInput,
+    setFieldDispatchPhoneInput,
+    fieldDispatchPhoneSaving,
+    setFieldDispatchPhoneSaving,
+    jobTallyMinPostedYmdInput,
+    setJobTallyMinPostedYmdInput,
+    jobTallyMinPostedYmdSaving,
+    setJobTallyMinPostedYmdSaving,
+    jobTallyMinPostedYmdError,
+    setJobTallyMinPostedYmdError,
+    templatesJobPartsTallySectionOpen,
+    setTemplatesJobPartsTallySectionOpen,
+    templateTestTargetUserId,
+    setTemplateTestTargetUserId,
+    notificationTestError,
+    setNotificationTestError,
+    notificationTestSuccess,
+    setNotificationTestSuccess,
+    notificationTestSending,
+    testError,
+    setTestError,
+    workflowFnEmailSectionOpen,
+    setWorkflowFnEmailSectionOpen,
+    workflowFnTestError,
+    setWorkflowFnTestError,
+    workflowFnTestSuccess,
+    setWorkflowFnTestSuccess,
+    workflowFnTestTemplateType,
+    setWorkflowFnTestTemplateType,
+    workflowFnTestSending,
+    emailTemplates,
+    emailTemplatesSectionOpen,
+    setEmailTemplatesSectionOpen,
+    editingTemplate,
+    templateSubject,
+    setTemplateSubject,
+    templateBody,
+    setTemplateBody,
+    templateSaving,
+    templateError,
+    setTemplateError,
+    testingTemplate,
+    testSending,
+    notificationTemplates,
+    notificationTemplatesSectionOpen,
+    setNotificationTemplatesSectionOpen,
+    editingNotificationTemplate,
+    notificationTemplateTitle,
+    setNotificationTemplateTitle,
+    notificationTemplateBody,
+    setNotificationTemplateBody,
+    notificationTemplateSaving,
+    notificationTemplateError,
+    setNotificationTemplateError,
+    reportEditWindowDays,
+    setReportEditWindowDays,
+    reportSubVisibilityMonths,
+    setReportSubVisibilityMonths,
+    reportEnabledUserIds,
+    reportSettingsSaving,
+    reportSettingsSectionOpen,
+    setReportSettingsSectionOpen,
+    closeEditNotificationTemplate,
+    closeEditTemplate,
+    closeTestEmail,
+    openEditTemplate,
+    openEditNotificationTemplate,
+    openTestEmail,
+    saveEmailTemplate,
+    saveNotificationTemplate,
+    saveReportSettings,
+    sendTestEmail,
+    sendTestNotificationTemplate,
+    sendWorkflowNotificationEmailTest,
+    testCurrentTemplate,
+    toggleReportEnabledUser,
+  } = useSettingsTemplatesEngine({
+    enabled: true,
+    authUserId: authUser?.id ?? null,
+    users,
+    onSharedError: setError,
+  })
   const { showToast } = useToastContext()
   return (
     <>
