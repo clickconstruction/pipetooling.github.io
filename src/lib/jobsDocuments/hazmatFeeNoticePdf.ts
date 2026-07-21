@@ -1,3 +1,4 @@
+import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
 import type { HazmatIncidentDraft } from '../hazmatFee'
 import type { HazmatNoticeJobInfo } from './hazmatFeeNotice'
 import { loadJsPDF } from '../loadJsPDF'
@@ -21,7 +22,7 @@ export type HazmatNoticePdfBlock =
 
 export function formatHazmatIncidentDateTime(iso: string): string {
   const d = new Date(iso)
-  return Number.isNaN(d.getTime()) ? iso : d.toLocaleString('en-US', { timeZone: 'America/Chicago' })
+  return Number.isNaN(d.getTime()) ? iso : d.toLocaleString('en-US', { timeZone: APP_CALENDAR_TZ })
 }
 
 export function buildHazmatFeeNoticePdfModel(
@@ -56,7 +57,7 @@ export function buildHazmatFeeNoticePdfModel(
     const given = new Date(t.givenAt)
     const givenStr = Number.isNaN(given.getTime())
       ? t.givenAt
-      : given.toLocaleDateString('en-US', { timeZone: 'America/Chicago' })
+      : given.toLocaleDateString('en-US', { timeZone: APP_CALENDAR_TZ })
     blocks.push({ kind: 'statement', who: `${t.name} — ${givenStr}`, body: t.statement })
   }
   blocks.push({ kind: 'heading', text: 'Contractual basis' })

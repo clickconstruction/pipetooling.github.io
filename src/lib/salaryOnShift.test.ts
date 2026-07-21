@@ -1,3 +1,4 @@
+import { APP_CALENDAR_TZ } from '../utils/dateUtils'
 import { describe, expect, it } from 'vitest'
 import type { Database } from '../types/database'
 import { getSalaryScheduleWindowsUtc, getSalarySyntheticClockInIso } from './salaryOnShift'
@@ -6,7 +7,7 @@ type TemplateRow = Database['public']['Tables']['salary_work_schedule_templates'
 type OverrideRow = Database['public']['Tables']['salary_work_schedule_day_overrides']['Row']
 type TimeOffRow = Database['public']['Tables']['user_time_off']['Row']
 
-const TZ = 'America/Chicago'
+const TZ = APP_CALENDAR_TZ
 const MONDAY = '2026-07-06' // CDT (UTC-5)
 
 function template(partial: Partial<TemplateRow>): TemplateRow {

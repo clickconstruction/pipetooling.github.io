@@ -43,6 +43,9 @@ jobs:
       - name: Theme token check
         run: node scripts/theme-tokenize.mjs --check src
 
+      - name: App calendar timezone check
+        run: npm run check:timezone
+
       - name: Test
         run: npm test
         env:
