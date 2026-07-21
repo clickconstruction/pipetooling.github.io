@@ -18,6 +18,8 @@ type JobFormInvoiceListProps = {
   editing: JobWithDetails
   payments: PaymentRow[]
   canApplyAgreedWriteDown: boolean
+  /** Invoice ids that are hazmat riders (from job_hazmat_incidents) — get a ☣ label. */
+  hazmatInvoiceIds?: Set<string>
   onClose: () => void
   onSavedRef: RefObject<(() => void) | undefined>
   setEditing: (job: JobWithDetails) => void
@@ -37,6 +39,7 @@ export function JobFormInvoiceList({
   editing,
   payments,
   canApplyAgreedWriteDown,
+  hazmatInvoiceIds,
   onClose,
   onSavedRef,
   setEditing,
@@ -84,7 +87,10 @@ export function JobFormInvoiceList({
                 const noteLine = (inv.external_send_note ?? '').trim()
                 const memoLine = (inv.stripe_invoice_memo ?? '').trim()
                 const footerLine = (inv.stripe_invoice_footer ?? '').trim()
-                const hasDetailLine = !isDraft && Boolean(noteLine || memoLine || footerLine)
+                // Drafts show their memo too: riders (hazmat fee, trip charge) pre-set it,
+                // and it is the only thing distinguishing them from an ordinary draft.
+                const hasDetailLine = isDraft ? Boolean(memoLine) : Boolean(noteLine || memoLine || footerLine)
+                const isHazmatRider = hazmatInvoiceIds?.has(inv.id) ?? false
                 const rowSep = idx < arr.length - 1 ? '1px solid var(--border)' : 'none'
                 const parentCellPad = hasDetailLine ? '0.5rem 0.75rem 0.1rem' : '0.5rem 0.75rem'
                 const paidOnInv = payments.filter((p) => p.invoice_id === inv.id).reduce((s, p) => s + (Number(p.amount) || 0), 0)
@@ -114,6 +120,24 @@ export function JobFormInvoiceList({
                         >
                           {isDraft ? 'Draft' : 'Billed'}
                         </span>
+                        {isHazmatRider ? (
+                          <span
+                            title="Hazmat rider — biohazard remediation fee (see Riders above)"
+                            style={{
+                              display: 'inline-block',
+                              marginLeft: '0.3rem',
+                              padding: '0.05rem 0.4rem',
+                              borderRadius: 999,
+                              fontSize: '0.6875rem',
+                              fontWeight: 700,
+                              background: 'var(--bg-red-tint)',
+                              color: 'var(--text-red-600)',
+                              border: '1px solid #dc2626',
+                            }}
+                          >
+                            ☣ Hazmat
+                          </span>
+                        ) : null}
                       </td>
                       <td style={{ padding: parentCellPad, verticalAlign: 'top', wordBreak: 'break-word', color: isDraft ? 'var(--text-muted)' : undefined }}>{dateText}</td>
                       <td style={{ padding: parentCellPad, textAlign: 'right', verticalAlign: 'top' }}>${formatCurrency(Number(inv.amount ?? 0))}</td>
