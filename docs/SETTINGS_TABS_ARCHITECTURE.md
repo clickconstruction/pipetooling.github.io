@@ -10,14 +10,14 @@ last_updated: 2026-07-21
 
 ## Overview
 
-[`src/pages/Settings.tsx`](../src/pages/Settings.tsx) is a ~4,564-line "God component" (as of v2.853: ~265 `useState` declarations; was ~5,132 lines / ~282 `useState` at v2.735). It follows the process in [`PAGE_DECOMPOSITION_PLAYBOOK.md`](./PAGE_DECOMPOSITION_PLAYBOOK.md) and the format of [`BIDS_TABS_ARCHITECTURE.md`](./BIDS_TABS_ARCHITECTURE.md) / [`DASHBOARD_SECTIONS_ARCHITECTURE.md`](./DASHBOARD_SECTIONS_ARCHITECTURE.md).
+[`src/pages/Settings.tsx`](../src/pages/Settings.tsx) is a ~1,703-line page shell (as of v2.859; was ~5,132 lines / ~282 `useState` at v2.735 — the 2026-07-21 campaign below took it from 5,171 to 1,703). It follows the process in [`PAGE_DECOMPOSITION_PLAYBOOK.md`](./PAGE_DECOMPOSITION_PLAYBOOK.md) and the format of [`BIDS_TABS_ARCHITECTURE.md`](./BIDS_TABS_ARCHITECTURE.md) / [`DASHBOARD_SECTIONS_ARCHITECTURE.md`](./DASHBOARD_SECTIONS_ARCHITECTURE.md).
 
 **Settings is unusual: it was already heavily decomposed — without a map.** Two extraction waves happened:
 
 1. **2026-06-01 (PRs #35–#49):** collapsible sections became tabs, then ten Stage-B JSX moves created `src/components/settings/Settings*Tab.tsx` plus `useSettingsBackupExports`. These were **JSX-only moves**: nearly all state, loaders, and handlers **stayed in the parent** and flow down as enormous prop lists (SettingsDashboardTab takes ~120 props, SettingsCatalogsTab ~110, SettingsTemplatesTab ~85).
 2. **June–July feature work:** new sections shipped as **self-contained blocks** (own state via a hook or local `useEffect` + `app_settings` lib fetchers): `ActiveAccountsPanel`, `DeletedRecordsSection`, `BulkDeleteAlertSettingsBlock`, `TripChargeAmountsSettingsBlock`, `MapDefaultViewSettingsBlock`, the invoice/memo dev blocks, `JobBookSettingsSection`, `BidCoverLetterDefaultsSettingsBlock`.
 
-So the remaining ~4.6k lines are **not un-extracted tabs** — they are the *engine rooms* of tabs whose JSX already moved out. The remaining work is mostly **Stage-A/seam work**: push each tab's state + handlers into a hook or into the tab component, collapsing the prop lists. (The last fully-inline JSX section, Sharing & Adoption, was extracted in v2.853.)
+The v2.853–v2.859 campaign then extracted those *engine rooms* into per-tab hooks (see the Recommended extraction order at the bottom for what landed where). What remains in the parent is the projected end-state: tab shell + role router + deep-link glue + a slim `loadData` remnant + the Dashboard-tab prop membrane + cross-tab modal wiring.
 
 It is a **hot file**: 29 commits in the last 10 weeks (controller role v2.662, quick-buttons placement v2.668, theme tokenization, Resend email rebuild, Active Accounts modal, honest-delete v2.707, archive-cover v2.710, employment/cost-matrix retirement v2.672–2.677). Churn-reduction is the value axis for extraction order.
 
