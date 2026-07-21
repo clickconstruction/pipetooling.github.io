@@ -12,6 +12,7 @@ import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useRealtimeChannel } from '../hooks/useRealtimeChannel'
 import { openInExternalBrowser } from '../lib/openInExternalBrowser'
+import { getCurrentUserName as getCurrentUserNameById } from '../lib/getCurrentUserName'
 import { canLeaveJobFieldReport } from '../lib/canLeaveJobFieldReport'
 import { useAuth } from '../hooks/useAuth'
 import { useDocumentVisibility } from '../hooks/useDocumentVisibility'
@@ -1097,15 +1098,7 @@ export default function Dashboard() {
     setViewReportsJob,
   }
 
-  async function getCurrentUserName(): Promise<string> {
-    if (!authUser?.id) return 'Unknown'
-    const { data: userData } = await supabase
-      .from('users')
-      .select('name, email')
-      .eq('id', authUser.id)
-      .single()
-    return (userData as { name: string | null; email: string | null } | null)?.name || (userData as { email: string | null } | null)?.email || 'Unknown'
-  }
+  const getCurrentUserName = () => getCurrentUserNameById(authUser?.id)
 
   const showAssigned = assignedLoading || assignedSteps.length > 0
   const showSubscribed = role === 'dev' || role === 'master_technician' || isAssistantLike(role)

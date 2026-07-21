@@ -11,6 +11,7 @@ import DashboardTallyStaleStaffBanner from '../components/DashboardTallyStaleSta
 import { DashboardStaleTallyStaffFollowUpModal } from '../components/DashboardStaleTallyStaffFollowUpModal'
 import { BilledAwaitingPaymentSection } from '../components/quickfill/BilledAwaitingPaymentSection'
 import { CantReachSection } from '../components/quickfill/CantReachSection'
+import { QuickfillMyInboxSection } from '../components/quickfill/QuickfillMyInboxSection'
 import { CrewJobsSection } from '../components/quickfill/CrewJobsSection'
 import { JobsBillingReminderSection } from '../components/quickfill/JobsBillingReminderSection'
 import { QuickfillCompleteNoBillSection } from '../components/quickfill/QuickfillCompleteNoBillSection'
@@ -64,6 +65,7 @@ import { CAN_USE_SCHEDULE_DISPATCH_EDIT_ROLES as CAN_USE_SCHEDULE_DISPATCH_FOR_Q
 const SECTIONS: { id: string; sectionId: string; label: string }[] = [
   { id: 'quickfill-warnings', sectionId: 'warnings', label: 'Warnings' },
   { id: 'quickfill-office-arriving', sectionId: 'office-arriving', label: 'Office Arriving' },
+  { id: 'quickfill-my-inbox', sectionId: 'my-inbox', label: 'My Inbox' },
   { id: 'quickfill-hours', sectionId: 'hours', label: 'People Hours (Old)' },
   { id: 'quickfill-people-hours-new', sectionId: 'people-hours-new', label: 'People Hours (new)' },
   {
@@ -646,6 +648,7 @@ function QuickfillPage() {
   const sectionWouldRenderOnPage = useCallback(
     (sectionId: string): boolean => {
       if (!isSectionVisible(sectionId)) return false
+      if (sectionId === 'my-inbox') return Boolean(authUser?.id)
       if (sectionId === 'cant-reach') {
         return quickfillCantReach.fetchEnabled && !quickfillCantReach.loading && quickfillCantReach.prospects.length > 0
       }
@@ -673,6 +676,7 @@ function QuickfillPage() {
       warningsSectionEligible,
       dispatchInboxEligible,
       role,
+      authUser,
       canAccessProspects,
       quickfillNoCustomerStages.fetchEnabled,
       quickfillCompleteNoBill.fetchEnabled,
@@ -903,6 +907,31 @@ function QuickfillPage() {
             onOpenHistory={() => setMarkHistoryModal({ sectionId: 'office-arriving', label: 'Office Arriving' })}
           >
             <QuickfillOfficeSection variant="arriving" />
+          </QuickfillSectionWrapper>
+        )
+      case 'my-inbox':
+        // Per-user section: the org-wide mark system must not apply (one user's mark
+        // would collapse it for everyone), so no mark button, history, stamp, or
+        // collapse — its "done" state is checking off the actual tasks.
+        return (
+          <QuickfillSectionWrapper
+            id={id}
+            sectionId={sectionId}
+            label={label}
+            bannerText={bannerText}
+            withTopDivider={withTopDivider}
+            color={getButtonColor(null)}
+            collapsed={false}
+            mark={undefined}
+            omitDefaultMarkButton
+            showOutstandingInHeader={false}
+            showMarkHistoryButton={false}
+            showLastMarked={false}
+            onMarkUpToDate={() => {}}
+            onOpenNow={() => {}}
+            onOpenHistory={() => {}}
+          >
+            <QuickfillMyInboxSection />
           </QuickfillSectionWrapper>
         )
       case 'office-leaving':
@@ -1449,7 +1478,14 @@ function QuickfillPage() {
           const color = getButtonColor(mark?.marked_at ?? null)
           const byName = mark?.marked_by_name?.trim() ?? ''
           const markRelative = mark ? formatRelativeTime(mark.marked_at) : ''
-          const lastMarkedTitle = mark ? `Last marked ${markRelative}${byName ? ` by ${byName}` : ''}` : 'Never marked'
+          // Per-user sections are never marked — neutral chip instead of the
+          // freshness palette (permanently red would misread as neglected).
+          const isPersonalSection = sectionId === 'my-inbox'
+          const lastMarkedTitle = isPersonalSection
+            ? 'Personal section — items are completed individually'
+            : mark
+              ? `Last marked ${markRelative}${byName ? ` by ${byName}` : ''}`
+              : 'Never marked'
           return (
             <div key={id} style={{ position: 'relative' }}>
               <button
@@ -1460,8 +1496,8 @@ function QuickfillPage() {
                 style={{
                   padding: '0.5rem 0.75rem',
                   borderRadius: 6,
-                  background: BUTTON_BG[color],
-                  border: `1px solid ${BUTTON_BORDER[color]}`,
+                  background: isPersonalSection ? 'var(--surface)' : BUTTON_BG[color],
+                  border: `1px solid ${isPersonalSection ? 'var(--border-strong)' : BUTTON_BORDER[color]}`,
                   cursor: 'pointer',
                   fontSize: '0.875rem',
                   fontWeight: 500,
@@ -1705,6 +1741,7 @@ function QuickfillSectionWrapper({
   omitDefaultMarkButton = false,
   showOutstandingInHeader = true,
   showMarkHistoryButton = true,
+  showLastMarked = true,
   onMarkUpToDate,
   onOpenNow,
   onOpenHistory,
@@ -1724,6 +1761,8 @@ function QuickfillSectionWrapper({
   showOutstandingInHeader?: boolean
   /** When false, omit the Mark history control. */
   showMarkHistoryButton?: boolean
+  /** When false, omit the "Last marked:" header stamp (per-user sections are never marked). */
+  showLastMarked?: boolean
   onMarkUpToDate: () => void
   onOpenNow: () => void
   onOpenHistory: () => void
@@ -1896,9 +1935,11 @@ function QuickfillSectionWrapper({
             </span>
           )
         ) : null}
-        <span style={{ fontSize: '0.8125rem', color: 'var(--text-slate-500)' }} title="Last time this section was marked up to date">
-          Last marked: {formatHeaderLastMarked(mark?.marked_at ?? null)}
-        </span>
+        {showLastMarked ? (
+          <span style={{ fontSize: '0.8125rem', color: 'var(--text-slate-500)' }} title="Last time this section was marked up to date">
+            Last marked: {formatHeaderLastMarked(mark?.marked_at ?? null)}
+          </span>
+        ) : null}
         {showMarkHistoryButton ? (
           <button
             type="button"
