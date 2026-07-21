@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-20 (v2.829)
+last_updated: 2026-07-20 (v2.830)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.830)
+
+### Jobs refactor: Stages section tables extracted to JobsStagesTable + JobsStagesUnifiedTable (2026-07-20)
+Step 9(a) of the mapped [`Jobs.tsx`](../src/pages/Jobs.tsx) decomposition ([`JOBS_TABS_ARCHITECTURE.md`](./JOBS_TABS_ARCHITECTURE.md)) — the highest-risk Stage B move: the two Stages section renderers leave the IIFE as components. `renderStagesTable(...)` (the job-only table behind Waiting / Working / Paid in Full) becomes [`JobsStagesTable`](../src/components/jobs/JobsStagesTable.tsx) (611 lines, 54 props) and `renderUnifiedStagesTable(rows, options)` (the mixed job/invoice table behind Ready to Bill / Billed Awaiting Payment / Collections) becomes [`JobsStagesUnifiedTable`](../src/components/jobs/JobsStagesUnifiedTable.tsx) (1,328 lines, 72 props — the former ~20-key options object flattened into same-named props, defaults preserved). Every closure both renderers shared moved once into [`jobsStagesRowShared.tsx`](../src/components/jobs/jobsStagesRowShared.tsx) (899 lines) as exported helpers taking an explicit `StagesRowRenderContext` argument: `renderStagesJobHcpSubline`, `renderStagesFieldAndBillingLines`, `renderJobAddressWithMap`, `renderJobCustomerLine` (+ `customerListImpliesLinkedRow`), `shouldSuppressStagesRowJobThreadToggle`, `renderStagesThreadExpandButton`, `renderStagesLastActivityCell` (with the whole quick-action stack + Stripe hint + invoice jump chips + Reports footer nested inside, as before), `stagesRowHasProjectBanner`, `renderStagesProjectBannerRow`, `renderStagesJobColumnEstimateFooter`, and the module-scope `renderStagesThreeLineHeader`. Every captured page value became a **same-named prop** (wide prop lists accepted for this step — the step-9b `JobsStagesTab` becomes the single caller and absorbs them); only `useNavigate` + the app-global `useDispatchTaskModal`/`useChecklistAddModal` contexts are consumed inside the components instead of via props. **Machine-verified fidelity:** every moved region is byte-identical to the v2.829 source modulo the prop/ctx destructure headers (single deviation: one internal `renderStagesThreadExpandButton(jobId)` call now passes `ctx`). Focus/flash `data-stages-job-id`/`data-stages-invoice-id` attributes, row `key=`s, ham gates, send-back variants, and both % complete commit paths (quirk #17) preserved verbatim; `toggleStages`, `toggleStagesJobThreadExpanded`, section wiring, totals, and the inline modals stay in the IIFE. **Behavior-preserving.** Jobs.tsx 6,875 → 4,786 lines.
 
 ## Latest Updates (v2.829)
 
