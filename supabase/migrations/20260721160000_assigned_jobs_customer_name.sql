@@ -1,8 +1,12 @@
 -- Assigned Jobs card (Dashboard): show the customer under each job row.
 -- Appends customer_name to list_assigned_jobs_for_dashboard — column added at
 -- the END of RETURNS TABLE so existing name-based readers are unaffected.
--- Idempotent (CREATE OR REPLACE); body otherwise identical to
--- 20260619160000_click_number_remaining_rpcs_2.sql section 11.
+-- DROP + CREATE (not just OR REPLACE): Postgres refuses to change an existing
+-- function's return type (42P13). Grants restated below because DROP discards
+-- the baseline's explicit grants. Idempotent as a unit; body otherwise
+-- identical to 20260619160000_click_number_remaining_rpcs_2.sql section 11.
+
+DROP FUNCTION IF EXISTS public.list_assigned_jobs_for_dashboard();
 
 CREATE OR REPLACE FUNCTION public.list_assigned_jobs_for_dashboard()
  RETURNS TABLE(id uuid, hcp_number text, job_name text, job_address text, google_drive_link text, job_plans_link text, job_pictures_link text, revenue numeric, master_user_id uuid, created_at timestamp with time zone, last_report_at timestamp with time zone, my_last_report_at timestamp with time zone, last_thread_note_at timestamp with time zone, last_clock_activity_at timestamp with time zone, last_schedule_activity_at timestamp with time zone, last_job_activity_at timestamp with time zone, project_id uuid, in_progress_stage_name text, in_progress_step_id uuid, status text, service_type_id uuid, service_type_name text, customer_name text)
@@ -45,3 +49,7 @@ AS $function$
   WHERE jl.status IN ('waiting', 'working')
   ORDER BY COALESCE(NULLIF(jl.hcp_number, ''), NULLIF(jl.click_number, ''), '') DESC, jl.job_name;
 $function$;
+
+GRANT ALL ON FUNCTION public.list_assigned_jobs_for_dashboard() TO anon;
+GRANT ALL ON FUNCTION public.list_assigned_jobs_for_dashboard() TO authenticated;
+GRANT ALL ON FUNCTION public.list_assigned_jobs_for_dashboard() TO service_role;
