@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-20 (v2.830)
+last_updated: 2026-07-21 (v2.831)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.831)
+
+### Jobs refactor: Stages tab extracted to JobsStagesTab — Jobs.tsx exits God-component territory (2026-07-21)
+Steps 9(b)+9(c) — the **final move** of the mapped [`Jobs.tsx`](../src/pages/Jobs.tsx) decomposition ([`JOBS_TABS_ARCHITECTURE.md`](./JOBS_TABS_ARCHITECTURE.md)). The entire `activeTab === 'stages'` surface — toolbar + jump nav + loading block + the section-wiring IIFE (headers, totals, `canManageCollections` gate, the six table call sites) + the three inline modals (Total by Name / Capable of Being Billed / est-bill-date) — plus the Stages-owned state cluster (~53 vars: search + the 350 ms schedule-session debounce + paid-list prefetch, section open/close + jump-nav scroll, the `jobs-stages-ham-mode` / `jobs-stages-follow-moves` / `jobs-stages-search-include-schedule-time` localStorage toggles, the job/invoice focus+flash pairs with the 700 ms scroll retry, the assigned-edit dropdown + `updateJobTeamMembers`, the return-to-edit banner, `createInvoiceFromModal`, the collections confirm handler, and every single-opener modal state incl. the **dead `confirmJobStatusJob` modal — moved wholesale, still dead** per quirk #3) — plus the Stages-only modal tail (`JobReportsModal`, the `BankPaymentsModal` mount, `BilledBillViewModal`, `LienToolingPrefillModal`, `AiaG702G703Modal`, `HazmatFeeModal`, `ManageJobPeopleModal`, `BilledPaymentConfirmationModal` ×2, `ScheduleJobModal`, `JobBookModal`, `JobsCombineSeparateModal`, and the inline send-back ×3 / RTB double-checkbox / partial-invoice / collections / dead-confirm modals) move to [`JobsStagesTab`](../src/components/jobs/JobsStagesTab.tsx) (3,092 lines, 52 props + a forwardRef handle) — now the **single caller** of `JobsStagesTable` / `JobsStagesUnifiedTable`, absorbing their wide v2.830 prop lists into its own scope. **Always mounted:** the page renders it unconditionally with `active={activeTab === 'stages'}` (the tab body is gated on `active`; the modal tail renders regardless, exactly its old always-rendered shape), so Stages state survives tab switches precisely as it did at page level; effects formerly keyed on `activeTab === 'stages'` are keyed on `active` verbatim. The page keeps the URL deep-link router, the jobs cache wiring, `customers`/`users`, the global `error` (quirk #7), the app modal contexts, and the `useJobsStagesMutations` / `useJobThreadNotes` call sites — and drives the tab through an **imperative handle**: `followMovedJob` (input to the page-side mutations hook) plus `focusSection` / `focusJob` / `focusInvoice` / `openBankPayments` / `showBilledTotalByName` (the router effects' deep-link writes). `useArBankUnallocatedCount` (its `enabled` was exactly `activeTab === 'stages'`, now `active`) and `useSendBackCollectPaymentFlowNotice` moved with their tab-owned inputs; `bankPaymentsModalBilledRows` moved intact (quirk #9 — the AR page's verbatim copy untouched). **Machine-verified fidelity:** 24 slices / 2,784 lines byte-identical to the v2.830 source modulo the enumerated `activeTab`→`active` keys, one comment restamp, and the handle rewires. **Behavior-preserving.** Jobs.tsx 4,786 → 1,990 lines (29 `useState` / 31 `useEffect`) — a tab router + contexts + shared loaders + thin wrappers, no longer a God component.
 
 ## Latest Updates (v2.830)
 

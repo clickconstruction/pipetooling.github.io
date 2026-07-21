@@ -5,7 +5,7 @@ file: docs/PAGE_DECOMPOSITION_PLAYBOOK.md
 type: Engineering / Refactor Process
 purpose: A repeatable, generic process for breaking a multi-thousand-line "God component" page into per-tab components + shared hooks + tested pure logic, without re-deriving the strategy each time. Generalizes the method proven on Bids.tsx (~18,800 → ~3,787 lines) and People.tsx (~21,435 → ~4,269).
 audience: Developers, AI Agents
-last_updated: 2026-07-20
+last_updated: 2026-07-21
 ---
 
 ## What this is
@@ -14,7 +14,7 @@ The repo still has several God components (line counts at 2026-07-20):
 
 | File | Lines | Notes |
 |---|---|---|
-| `src/pages/Jobs.tsx` | 4,786 | map written ([`JOBS_TABS_ARCHITECTURE.md`](./JOBS_TABS_ARCHITECTURE.md), refreshed 2026-07-20 vs v2.819) — extraction resumed: print builders (v2.820), `JobsBillingTab` (v2.821), `useSubLaborLedger` (v2.822), `JobsSubLaborFormModal` (v2.823), `SubLaborPaymentModals` (v2.824), `useJobsMercuryAllocations` (v2.825), `useJobSummaryData` (v2.826), `useJobsStagesMutations` (v2.828), Stages math → lib (v2.829), `JobsStagesTable` + `JobsStagesUnifiedTable` + `jobsStagesRowShared` (v2.830) |
+| `src/pages/Jobs.tsx` | 1,990 | decomposition essentially done (see map) — shrank from ~15k via mapped extraction ([`JOBS_TABS_ARCHITECTURE.md`](./JOBS_TABS_ARCHITECTURE.md)); the v2.831 `JobsStagesTab` move was the final tab; remaining step-10 cleanups tracked there |
 | `src/pages/Materials.tsx` | 6,935 | map written ([`MATERIALS_TABS_ARCHITECTURE.md`](./MATERIALS_TABS_ARCHITECTURE.md)) — low-churn, no extraction scheduled |
 | `src/components/bids/BidsTakeoffTab.tsx` | 5,641 | already an extracted tab; kept growing — candidate for its own sub-decomposition |
 | `src/pages/Estimates.tsx` | 5,332 | no map yet |
