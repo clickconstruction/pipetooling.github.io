@@ -42,6 +42,7 @@ function makeIncident(overrides: Partial<JobHazmatIncidentRow> = {}): JobHazmatI
     tos_clause_snapshot: '11. Biohazard / Hazmat Exposure Fee — …',
     fee_amount: 500,
     invoice_id: 'inv-rider',
+    public_token: '11111111-1111-4111-8111-111111111111',
     created_at: '2026-07-20T16:05:00.000Z',
     ...overrides,
   }
