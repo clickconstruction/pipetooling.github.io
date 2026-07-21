@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-21 (v2.842)
+last_updated: 2026-07-21 (v2.843)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.843)
+
+### Dashboard: team Ready to Bill section boxed like the other cards (2026-07-21)
+[`DashboardTeamReadyToBillSection`](../src/components/dashboard/DashboardTeamReadyToBillSection.tsx)'s bare ▼ header now sits in the same bordered card shell as Assigned Jobs and the rest of the Dashboard, via the shared [`DashboardGroupCard`](../src/components/dashboard/DashboardGroupCard.tsx) collapsible mode. Still open by default; the toggle now also persists your choice (localStorage `dash-ready-to-bill-collapsed`); the `dash-ready-to-bill` section-dock anchor is unchanged. The Billing Pipeline's own Ready to Bill stage is untouched.
 
 ## Latest Updates (v2.842)
 
