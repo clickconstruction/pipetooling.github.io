@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-21 (v2.860)
+last_updated: 2026-07-21 (v2.861)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.861)
+
+### E2E: Settings tabs smoke spec (2026-07-21)
+[`e2e/settings-tabs.spec.ts`](../e2e/settings-tabs.spec.ts) joins the Tier-1 suite: as the dev test user, every Settings tab cold-loads its distinctive marker with zero page errors, the `?tab=settings-data` deep link activates its tab, the Sharing & Adoption section (v2.853 extraction) expands to its four adoption blocks, and the Catalogs engines (v2.855 extraction) render the five type-CRUD sections. Read-only and structural per the suite rules — pins the surfaces the v2.853–v2.859 decomposition moved into hooks. `E2E_SMOKE.md` coverage list updated.
 
 ## Latest Updates (v2.860)
 
