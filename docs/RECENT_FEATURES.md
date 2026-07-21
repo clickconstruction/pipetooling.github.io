@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-21 (v2.844)
+last_updated: 2026-07-21 (v2.846)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.846)
+
+### Dashboard: redundant "Job: Ready to Bill" status line removed from Ready to Bill cards (2026-07-21)
+Job cards in the team [Ready to Bill section](../src/components/dashboard/DashboardTeamReadyToBillSection.tsx) no longer show the `Job: <status>` line that subcontractor-like roles saw under the address — every row in this section is by definition Ready to Bill (RPC `list_ready_to_bill_assigned_jobs_for_dashboard`), so the line only repeated the section heading. The equivalent status line on Assigned Jobs rows (where the status varies) is unchanged, as are the section's actions, activity block, and "Open" age.
 
 ## Latest Updates (v2.844)
 
