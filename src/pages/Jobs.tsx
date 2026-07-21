@@ -972,6 +972,11 @@ export default function Jobs() {
       )
     }
 
+    // authRole resolves AFTER auth loading (same class as the v2.833
+    // role-bounce): null means "not known yet", not "denied" — stripping here
+    // would eat the param before the role arrives. Wait; the effect re-runs
+    // when authRole lands. (Found by the e2e smoke suite's cold-load test.)
+    if (authRole == null) return
     if (!canRoleSeeArBankUnallocatedOrgNudge(authRole)) {
       stripOpenBankPaymentsParam()
       return

@@ -33,7 +33,8 @@ test('Total by Name modal opens from the toolbar and its Print builds the report
   await expect(page.getByRole('heading', { name: 'Billed Awaiting Payment by Job Name' })).toBeVisible()
 
   const popupPromise = page.waitForEvent('popup')
-  await page.getByRole('button', { name: /Print/ }).first().click()
+  // Exact accessible name — a bare /Print/ matches other Print buttons on the board.
+  await page.getByRole('button', { name: 'Print billed awaiting payment report' }).click()
   const popup = await popupPromise
   await popup.waitForLoadState('domcontentloaded')
   await expect(popup.locator('h1')).toContainText('Billed awaiting payment')

@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-21 (v2.837)
+last_updated: 2026-07-21 (v2.838)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.838)
+
+### Jobs fix: cold `?openBankPayments=` no longer strips while the role is still resolving (2026-07-21)
+Found by the new e2e smoke suite's cold-load test (its first catch): the [`?openBankPayments=`](../src/pages/Jobs.tsx) deep-link effect's **role-denial branch ran while `authRole` was still `null`** — on cold loads the role resolves after auth loading (the v2.833 role-bounce class), so the param was stripped as "denied" before the role ever arrived, and the Accounts Receivable modal never opened. The effect now waits for a non-null role before deciding (it re-runs when the role lands); the v2.832 jobs-list gate is unchanged. Also in this PR, smoke-suite corrections from the first full run: `.first()` on the two ambiguous Accounts Receivable headings, the Total-by-Name print button targeted by its exact aria-label, and the Stages tab-switch persistence spec quarantined (`test.fixme`) pending investigation of a CI-only value reset.
 
 ## Latest Updates (v2.837)
 

@@ -14,9 +14,10 @@ test('?showBilledTotalByName=true opens the Total by Name modal (v2.832 regressi
   await expect.poll(() => new URL(page.url()).searchParams.get('showBilledTotalByName')).toBeNull()
 })
 
-test('?openBankPayments=1 opens the Accounts Receivable modal (v2.832 regression)', async ({ page }) => {
+test('?openBankPayments=1 opens the Accounts Receivable modal (v2.832/v2.838 regressions)', async ({ page }) => {
   await page.goto('/jobs?tab=stages&openBankPayments=1')
-  await expect(page.getByRole('heading', { name: /Accounts Receivable/ })).toBeVisible()
+  // .first(): the AR surface can render more than one 'Accounts Receivable' heading.
+  await expect(page.getByRole('heading', { name: /Accounts Receivable/ }).first()).toBeVisible()
   await expect.poll(() => new URL(page.url()).searchParams.get('openBankPayments')).toBeNull()
 })
 
@@ -41,7 +42,8 @@ test('?stagesSection=billed opens and anchors the Billed section', async ({ page
 
 test('/accounts-receivable loads directly instead of bouncing to the dashboard (v2.833 regression)', async ({ page }) => {
   await page.goto('/accounts-receivable')
-  await expect(page.getByRole('heading', { name: 'Accounts Receivable' })).toBeVisible()
+  // .first(): the page h1 AND the always-open BankPaymentsModal both carry this heading.
+  await expect(page.getByRole('heading', { name: 'Accounts Receivable' }).first()).toBeVisible()
   expect(new URL(page.url()).pathname).toBe('/accounts-receivable')
 })
 
