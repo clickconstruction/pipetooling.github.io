@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import CollectPaymentModal from '../jobs/CollectPaymentModal'
+import { DashboardGroupCard } from './DashboardGroupCard'
 import { canLeaveJobFieldReport } from '../../lib/canLeaveJobFieldReport'
 import { isAssistantLike, isSubcontractorLikeRole } from '../../lib/subcontractorLikeRole'
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
@@ -72,7 +73,6 @@ export function DashboardTeamReadyToBillSection({
   setLeaveReportJob,
   setSubcontractorJobActivityModalJob,
 }: DashboardTeamReadyToBillSectionProps) {
-  const [assignedReadyToBillExpanded, setAssignedReadyToBillExpanded] = useState(true)
   const [collectPaymentJob, setCollectPaymentJob] = useState<{
     id: string
     hcpNumber: string
@@ -83,19 +83,12 @@ export function DashboardTeamReadyToBillSection({
   return (
     <>
       {isDashboardTeamReadyToBillRole(role) && (assignedReadyToBillLoading || assignedReadyToBillJobs.length > 0) && (
-        <div id="dash-ready-to-bill" style={{ marginTop: '2rem', scrollMarginTop: 8 }}>
-          <button
-            type="button"
-            onClick={() => setAssignedReadyToBillExpanded((prev) => !prev)}
-            aria-expanded={assignedReadyToBillExpanded}
-            style={{ margin: 0, padding: 0, border: 'none', background: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: assignedReadyToBillExpanded ? '0.75rem' : 0 }}
-          >
-            <span aria-hidden>{assignedReadyToBillExpanded ? '\u25BC' : '\u25B6'}</span>
-            <h2 style={{ fontSize: '1.125rem', margin: 0 }}>
-              Ready to Bill ({assignedReadyToBillJobs.length})
-            </h2>
-          </button>
-          {assignedReadyToBillExpanded && (assignedReadyToBillLoading && assignedReadyToBillJobs.length === 0 ? (
+        <DashboardGroupCard
+          id="dash-ready-to-bill"
+          title={`Ready to Bill (${assignedReadyToBillJobs.length})`}
+          collapseStorageKey="dash-ready-to-bill-collapsed"
+        >
+          {(assignedReadyToBillLoading && assignedReadyToBillJobs.length === 0 ? (
             <DashboardListRowSkeleton rows={2} />
           ) : (
             <div>
@@ -375,7 +368,7 @@ export function DashboardTeamReadyToBillSection({
               ))}
             </div>
           ))}
-        </div>
+        </DashboardGroupCard>
       )}
       {collectPaymentJob ? (
         <CollectPaymentModal

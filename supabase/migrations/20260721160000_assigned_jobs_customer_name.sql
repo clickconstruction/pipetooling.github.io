@@ -1,0 +1,47 @@
+-- Assigned Jobs card (Dashboard): show the customer under each job row.
+-- Appends customer_name to list_assigned_jobs_for_dashboard — column added at
+-- the END of RETURNS TABLE so existing name-based readers are unaffected.
+-- Idempotent (CREATE OR REPLACE); body otherwise identical to
+-- 20260619160000_click_number_remaining_rpcs_2.sql section 11.
+
+CREATE OR REPLACE FUNCTION public.list_assigned_jobs_for_dashboard()
+ RETURNS TABLE(id uuid, hcp_number text, job_name text, job_address text, google_drive_link text, job_plans_link text, job_pictures_link text, revenue numeric, master_user_id uuid, created_at timestamp with time zone, last_report_at timestamp with time zone, my_last_report_at timestamp with time zone, last_thread_note_at timestamp with time zone, last_clock_activity_at timestamp with time zone, last_schedule_activity_at timestamp with time zone, last_job_activity_at timestamp with time zone, project_id uuid, in_progress_stage_name text, in_progress_step_id uuid, status text, service_type_id uuid, service_type_name text, customer_name text)
+ LANGUAGE sql STABLE SECURITY DEFINER SET search_path TO 'public'
+AS $function$
+  SELECT
+    jl.id,
+    COALESCE(NULLIF(jl.hcp_number, ''), NULLIF(jl.click_number, ''), ''),
+    jl.job_name,
+    jl.job_address,
+    jl.google_drive_link,
+    jl.job_plans_link,
+    jl.job_pictures_link,
+    jl.revenue,
+    jl.master_user_id,
+    jl.created_at,
+    (SELECT MAX(r.created_at) FROM public.reports r WHERE r.job_ledger_id = jl.id) AS last_report_at,
+    (SELECT MAX(r.created_at) FROM public.reports r WHERE r.job_ledger_id = jl.id AND r.created_by_user_id = auth.uid()) AS my_last_report_at,
+    (SELECT max(n.created_at) FROM public.jobs_ledger_thread_notes n WHERE n.job_id = jl.id) AS last_thread_note_at,
+    (SELECT max(coalesce(cs.clocked_out_at, cs.clocked_in_at)) FROM public.clock_sessions cs WHERE cs.job_ledger_id = jl.id AND cs.approved_at IS NOT NULL AND cs.rejected_at IS NULL AND cs.revoked_at IS NULL) AS last_clock_activity_at,
+    (SELECT max(greatest(jb.created_at, jb.updated_at)) FROM public.job_schedule_blocks jb WHERE jb.job_id = jl.id) AS last_schedule_activity_at,
+    (SELECT max(x.v) FROM (
+      SELECT (SELECT max(n2.created_at) FROM public.jobs_ledger_thread_notes n2 WHERE n2.job_id = jl.id) AS v
+      UNION ALL
+      SELECT (SELECT max(r2.created_at) FROM public.reports r2 WHERE r2.job_ledger_id = jl.id) AS v
+      UNION ALL
+      SELECT (SELECT max(coalesce(cs2.clocked_out_at, cs2.clocked_in_at)) FROM public.clock_sessions cs2 WHERE cs2.job_ledger_id = jl.id AND cs2.approved_at IS NOT NULL AND cs2.rejected_at IS NULL AND cs2.revoked_at IS NULL) AS v
+      UNION ALL
+      SELECT (SELECT max(greatest(jb2.created_at, jb2.updated_at)) FROM public.job_schedule_blocks jb2 WHERE jb2.job_id = jl.id) AS v
+    ) x) AS last_job_activity_at,
+    jl.project_id,
+    (SELECT s.name FROM public.project_workflows pw JOIN public.project_workflow_steps s ON s.workflow_id = pw.id AND s.status = 'in_progress' WHERE pw.project_id = jl.project_id LIMIT 1) AS in_progress_stage_name,
+    (SELECT s.id FROM public.project_workflows pw JOIN public.project_workflow_steps s ON s.workflow_id = pw.id AND s.status = 'in_progress' WHERE pw.project_id = jl.project_id LIMIT 1) AS in_progress_step_id,
+    jl.status::text,
+    jl.service_type_id,
+    (SELECT stn.name FROM public.service_types stn WHERE stn.id = jl.service_type_id LIMIT 1) AS service_type_name,
+    jl.customer_name
+  FROM public.jobs_ledger jl
+  INNER JOIN public.jobs_ledger_team_members jtm ON jtm.job_id = jl.id AND jtm.user_id = auth.uid()
+  WHERE jl.status IN ('waiting', 'working')
+  ORDER BY COALESCE(NULLIF(jl.hcp_number, ''), NULLIF(jl.click_number, ''), '') DESC, jl.job_name;
+$function$;

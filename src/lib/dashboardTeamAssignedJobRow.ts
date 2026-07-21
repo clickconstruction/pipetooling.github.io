@@ -28,6 +28,8 @@ export type DashboardTeamAssignedJobRow = {
   in_progress_step_id?: string | null
   collect_payment_button_variant?: string | null
   status?: string | null
+  /** v2.842: shown under the address on the Dashboard Assigned Jobs rows. */
+  customer_name?: string | null
 }
 
 /**

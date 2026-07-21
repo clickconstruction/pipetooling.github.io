@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-21 (v2.841)
+last_updated: 2026-07-21 (v2.843)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,16 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.843)
+
+### Dashboard: team Ready to Bill section boxed like the other cards (2026-07-21)
+[`DashboardTeamReadyToBillSection`](../src/components/dashboard/DashboardTeamReadyToBillSection.tsx)'s bare ▼ header now sits in the same bordered card shell as Assigned Jobs and the rest of the Dashboard, via the shared [`DashboardGroupCard`](../src/components/dashboard/DashboardGroupCard.tsx) collapsible mode. Still open by default; the toggle now also persists your choice (localStorage `dash-ready-to-bill-collapsed`); the `dash-ready-to-bill` section-dock anchor is unchanged. The Billing Pipeline's own Ready to Bill stage is untouched.
+
+## Latest Updates (v2.842)
+
+### Dashboard: customer shown under each Assigned Jobs row (2026-07-21)
+Each [Assigned Jobs](../src/pages/Dashboard.tsx) row gains a third line under the address — the Stages contact-card icon + the job's customer name (hidden when the job has no customer). Plumbing: migration `20260721160000_assigned_jobs_customer_name.sql` appends `customer_name` to the **end** of `list_assigned_jobs_for_dashboard`'s RETURNS TABLE (name-based readers unaffected; idempotent CREATE OR REPLACE), and [`DashboardTeamAssignedJobRow`](../src/lib/dashboardTeamAssignedJobRow.ts) gains the optional field. Superintendent Jobs rows are unchanged (their RPC doesn't return the column, so the line simply doesn't render). **Deploy note: run `supabase db push` after merge** — safe in either order (the client hides the line until the column exists).
 
 ## Latest Updates (v2.841)
 
