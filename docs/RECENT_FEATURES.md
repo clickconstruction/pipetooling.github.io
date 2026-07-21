@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-20 (v2.825)
+last_updated: 2026-07-20 (v2.826)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.826)
+
+### Jobs refactor: Job Summary data layer extracted to useJobSummaryData (2026-07-20)
+Step 6 of the mapped [`Jobs.tsx`](../src/pages/Jobs.tsx) decomposition ([`JOBS_TABS_ARCHITECTURE.md`](./JOBS_TABS_ARCHITECTURE.md)): the Job Summary data layer moves verbatim into [`useJobSummaryData`](../src/hooks/useJobSummaryData.ts) (304 lines) — the full-org ledger snapshot (`jobSummaryLedgerAllJobs` + the min-HCP filter memo and its localStorage-backed `jobSummaryMinHcpExclusive` state, returned as value+setter since [`JobsJobSummaryTab`](../src/components/jobs/JobsJobSummaryTab.tsx) takes both as props), `loadJobSummaryLedger` + its ref/snapshot-loaded ref (still driven by the page's `scheduleLoadJobsAfterMutation`), the reset-on-signout effect, and the five lazy per-job caches + loaded/requested refs + loaders (clock sessions, invoice lines, mercury allocations, reports, report-completion %). The page destructures the return so every downstream reference keeps its name (the v2.822/v2.825 seam pattern). The report-% batch RPC effect moved **into** the hook taking `activeTab` as an input (its only page-side dep; the body transfers byte-identical), while the expanded-row lazy-load effects stay in the page calling hook loaders — the clock-sessions effect's inline fetch body became the hook's `loadJobSummaryClockSessionsForJob`, with its loaded-ref `continue` check now the loader's early-return guard (matching the other four loaders). The v2.825 temporary mercury bridge closure is absorbed: the hook exposes `touchJobSummaryMercuryAllocations` (invalidate + force-reload one job's mercury cache) and the page passes it straight to `useJobsMercuryAllocations` as `onJobSummaryMercuryTouched`; `onJobSummaryDrilldownClose` stays a page closure (the quirk-#11 drilldown ReactNode state stays parent-side, as do `jobSummarySearch` + its `?jobSummaryHcp=` seeding, the expanded sets, and `printJobSummaryCostBreakdown`). **Hook order + the one spec deviation:** `useJobSummaryData` is called before `useJobsMercuryAllocations` (which consumes its `jobSummaryLedgerJobs` via `jobListForCardCharges`, plus the touch function), so the big `jobSummaryData` P&L memo — which reads `mercuryCardChargesByJobId` back from that later hook, a render-time value that cannot flow backward — stays in the page as a join over both hooks' outputs instead of moving into the hook. **Behavior-preserving.** Jobs.tsx 7,339 → 7,141 lines.
 
 ## Latest Updates (v2.825)
 
