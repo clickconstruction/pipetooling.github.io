@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-20 (v2.814)
+last_updated: 2026-07-20 (v2.815)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.815)
+
+### White-screen fix, part 4 (optional hardening): each Pages deploy keeps one release of asset overlap (2026-07-20)
+Completes the v2.811–v2.813 series' optional fix 4. [`deploy.yml`](../.github/workflows/deploy.yml)'s build job gains a **"Merge previous deploy's assets"** step (after build verification, before the artifact upload): it fetches the live site's `sw.js`, extracts the embedded precache manifest's `assets/*` entries, and downloads any the new build doesn't already have into `dist/assets/` — so a tab still running the just-superseded build keeps fetching its hashed route chunks instead of 404ing (and never even needs the v2.811 auto-reload). Exactly **one** release of history with no accumulation: the live `sw.js` manifest lists only that deploy's own build output, never previously merged-in files. Best-effort by design — any fetch failure logs a warning and the deploy proceeds (first deploy / site unreachable just skips). Verified locally against prod: manifest extraction found 111 assets and a sample previous-asset download succeeded. CI-only change; no client code, DB, or types.
 
 ## Latest Updates (v2.814)
 
