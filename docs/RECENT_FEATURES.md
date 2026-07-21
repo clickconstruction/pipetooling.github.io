@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-21 (v2.864)
+last_updated: 2026-07-21 (v2.865)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.865)
+
+### Dispatch → People: Add-job subline shows age in days (2026-07-21)
+Follow-up to v2.864: the picker subline's date is now **`<N>d MM/DD`** — calendar days since the job was added (app calendar timezone, via `denverCalendarDaysBetweenInstantAndNow`) plus the month/day, e.g. `49d 06/02 | 20027 Park Bluff St San Antonio, TX`. A job added today reads `0d`.
 
 ## Latest Updates (v2.864)
 
