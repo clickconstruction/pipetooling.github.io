@@ -66,6 +66,7 @@ import {
 import {
   hazmatIncidentRowToDraft,
   hazmatNoticeJobInfoFromJob,
+  hazmatNoticePublicUrl,
   loadJobHazmatIncidents,
   type JobHazmatIncidentRow,
 } from '../../lib/hazmatIncidents'
@@ -548,7 +549,18 @@ export default function SendRecordInvoiceModal({
       try {
         const rows = await loadJobHazmatIncidents(job.id)
         if (cancelled) return
-        setHazmatIncidentForInvoice(rows.find((r) => r.invoice_id === invoice.id) ?? null)
+        const found = rows.find((r) => r.invoice_id === invoice.id) ?? null
+        setHazmatIncidentForInvoice(found)
+        // Stripe carries no attachments — put the public notice link in the footer
+        // (visible + editable in the Footer disclosure before sending).
+        if (found?.public_token) {
+          const noticeLine = `Biohazard Remediation Fee Notice: ${hazmatNoticePublicUrl(found.public_token)}`
+          setStripeInvoiceFooter((f) => {
+            if (f.includes('/hazmat-notice?token=')) return f
+            const next = f.trim().length > 0 ? `${f.trimEnd()}\n\n${noticeLine}` : noticeLine
+            return next.length <= STRIPE_INVOICE_FOOTER_MAX_CHARS ? next : f
+          })
+        }
       } catch {
         if (!cancelled) setHazmatIncidentForInvoice(null)
       }

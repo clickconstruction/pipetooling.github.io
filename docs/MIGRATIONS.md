@@ -103,6 +103,14 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 ### July 2026
 
+#### July 21, 2026
+
+**`20260721174539_hazmat_notice_public_token.sql`** _(apply via `supabase db push` after the file is on `main`)_
+- **Purpose**: **Hazmat notice public link** (v2.851). Adds `job_hazmat_incidents.public_token uuid NOT NULL DEFAULT gen_random_uuid()` (unique index; existing rows backfilled by the default) + anon-callable read-only SECURITY DEFINER RPC `get_hazmat_notice_by_token(p_token uuid) → jsonb` returning the notice payload (incident fields + job display fields via `jobs_ledger` join). The Stripe invoice footer links customers to `/hazmat-notice?token=…` since Stripe emails cannot carry attachments.
+- **Security**: access requires the exact uuid token; the public payload strips testimonial `user_id`s; EXECUTE granted to `anon, authenticated`, revoked from PUBLIC. No table policies change (still office/billing SELECT, RPC-only writes). No CREATE TABLE → read-only-block footer not required.
+- **Ordering**: apply BEFORE the v2.851 client deploys ideally (the footer append and Copy-link read `public_token`; until applied those surfaces simply don't render). Client handles missing column gracefully only by TS types — apply promptly.
+- **Category**: Jobs / billing / feature
+
 #### July 20, 2026
 
 **`20260720212209_hazmat_fee_incidents.sql`** _(apply via `supabase db push` after the file is on `main`)_

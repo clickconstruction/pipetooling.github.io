@@ -17,6 +17,7 @@ function baseRow(overrides: Partial<JobHazmatIncidentRow> = {}): JobHazmatIncide
     tos_clause_snapshot: '11. Biohazard / Hazmat Exposure Fee — the customer agrees…',
     fee_amount: 500,
     invoice_id: 'inv-1',
+    public_token: '11111111-1111-4111-8111-111111111111',
     created_at: '2026-07-20T16:05:00.000Z',
     ...overrides,
   }

@@ -4,6 +4,7 @@ import type { JobWithDetails } from '../../types/jobWithDetails'
 import {
   hazmatIncidentRowToDraft,
   hazmatNoticeJobInfoFromJob,
+  hazmatNoticePublicUrl,
   type JobHazmatIncidentRow,
 } from '../../lib/hazmatIncidents'
 import { buildHazmatFeeNoticeHtml } from '../../lib/jobsDocuments/hazmatFeeNotice'
@@ -177,6 +178,21 @@ export function JobFormHazmatRidersStrip({
               >
                 {emailBusyId === row.id ? 'Sending…' : 'Email notice…'}
               </button>
+              {row.public_token ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    void navigator.clipboard
+                      .writeText(hazmatNoticePublicUrl(row.public_token))
+                      .then(() => showToast('Public notice link copied.', 'success'))
+                      .catch(() => showToast('Could not copy the link.', 'error'))
+                  }}
+                  style={smallBtn}
+                  title="Copy the public notice link (what the Stripe invoice footer carries)"
+                >
+                  Copy link
+                </button>
+              ) : null}
             </div>
           )
         })}

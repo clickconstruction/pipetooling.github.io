@@ -69,6 +69,12 @@ export function hazmatNoticeJobInfoFromJob(job: {
   }
 }
 
+/** Public tokenized notice URL (linked from the Stripe invoice footer). */
+export function hazmatNoticePublicUrl(publicToken: string, origin?: string): string {
+  const base = origin ?? (typeof window !== 'undefined' ? window.location.origin : 'https://pipetooling.com')
+  return `${base}/hazmat-notice?token=${encodeURIComponent(publicToken)}`
+}
+
 /** All incidents for a job, newest first. Office/billing roles only (RLS). */
 export async function loadJobHazmatIncidents(jobId: string): Promise<JobHazmatIncidentRow[]> {
   const data = await withSupabaseRetry(

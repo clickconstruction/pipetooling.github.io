@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-21 (v2.850)
+last_updated: 2026-07-21 (v2.851)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.851)
+
+### Hazmat notice, part 4: public tokenized notice link in the Stripe invoice footer (2026-07-21)
+Final part of the series — the Stripe invoice itself now points at the notice. Migration [`20260721174539_hazmat_notice_public_token.sql`](../supabase/migrations/20260721174539_hazmat_notice_public_token.sql) (**requires `supabase db push` after merge**) adds `job_hazmat_incidents.public_token` (uuid, unique, backfilled) and anon-callable read-only RPC `get_hazmat_notice_by_token` (exact-token lookup; testimonial user_ids stripped from the public payload). New public SPA route **`/hazmat-notice?token=…`** ([`HazmatNoticePublic`](../src/pages/HazmatNoticePublic.tsx), registered beside `/estimate/terms`) renders the same printable document in an iframe with a Print button — invalid/unknown tokens get a friendly error. Bill Customer's **Stripe** tab auto-appends "**Biohazard Remediation Fee Notice: <link>**" to the invoice **footer** when billing a hazmat rider (visible and editable in the Footer disclosure; skipped if it would exceed the 5000-char cap), and Edit Job's **Riders** strip gains **Copy link**. Customer path is now complete: physical email carries the notice PDF as a second attachment (v2.849), Stripe sends a companion email (v2.850) *and* links the notice from the invoice footer (v2.851). `MIGRATIONS.md` + help guide updated.
 
 ## Latest Updates (v2.850)
 

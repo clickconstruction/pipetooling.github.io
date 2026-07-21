@@ -3863,6 +3863,7 @@ export type Database = {
           invoice_id: string | null
           job_id: string
           photo_links: Json
+          public_token: string
           stage_label: string | null
           testimonials: Json
           tos_clause_snapshot: string
@@ -3878,6 +3879,7 @@ export type Database = {
           invoice_id?: string | null
           job_id: string
           photo_links?: Json
+          public_token?: string
           stage_label?: string | null
           testimonials?: Json
           tos_clause_snapshot: string
@@ -3893,6 +3895,7 @@ export type Database = {
           invoice_id?: string | null
           job_id?: string
           photo_links?: Json
+          public_token?: string
           stage_label?: string | null
           testimonials?: Json
           tos_clause_snapshot?: string
@@ -11251,6 +11254,10 @@ export type Database = {
           invoice_amount: number
           job_id: string
         }[]
+      }
+      get_hazmat_notice_by_token: {
+        Args: { p_token: string }
+        Returns: Json
       }
       get_job_display_for_report: {
         Args: { p_id: string; p_source: string }
