@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-20 (v2.817)
+last_updated: 2026-07-20 (v2.818)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.818)
+
+### Job Detail + Edit Job: the PLUM/ELEC/HVAC pill is now a shortcut to the job on Jobs → Stages (2026-07-20)
+The service-type trade pill in [`DetailJobModal`](../src/components/jobs/DetailJobModal.tsx)'s header becomes a **button**: clicking it closes the modal and lands on the Jobs page's Stages board **scrolled to and flashing that job's row** (subcontractor-like roles keep the plain badge — they have no `/jobs` access). [`JobFormModal`](../src/components/jobs/JobFormModal.tsx) (Edit Job) gains the same pill next to its title in edit mode (reflects the current Service-type selection; tooltip warns it closes Edit Job without saving). Plumbing: new **`?stagesJob=<jobId>`** deep-link param on [`Jobs.tsx`](../src/pages/Jobs.tsx) — waits for the jobs list, opens the job's section via `stagesSectionKeyForJobStatus`, reuses the existing follow-moved-job focus/flash machinery (`pendingStagesJobFocusId` scroll + `data-stages-job-id` rows), strips itself like `stagesInvoice`/`stagesSection`, and toasts when the job isn't on the board. Works from any page since both modals are app-global singletons.
 
 ## Latest Updates (v2.817)
 

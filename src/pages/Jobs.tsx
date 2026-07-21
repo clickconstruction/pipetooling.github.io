@@ -3576,6 +3576,30 @@ ${totalsHtml}
     }, { replace: true })
   }, [stagesSectionParam, jobsListLoading, activeTab, focusStagesSection, setSearchParams])
 
+  // ?stagesJob=<jobId> — deep link (Job Detail / Edit Job trade-pill shortcut) that opens
+  // the job's Stages section, scrolls to + flashes the job row, then strips itself.
+  const stagesJobParam = searchParams.get('stagesJob')
+  useEffect(() => {
+    const raw = stagesJobParam?.trim()
+    if (!raw || jobsListLoading || activeTab !== 'stages') return
+
+    const job = jobs.find((j) => j.id === raw)
+    if (job) {
+      const section = stagesSectionKeyForJobStatus(job.status)
+      if (section) setStagesSectionOpen((prev) => ({ ...prev, [section]: true }))
+      setPendingStagesJobFocusId(raw)
+      setStagesJobFlashId(raw)
+    } else {
+      showToast('That job isn’t on the Stages board right now.', 'info')
+    }
+    setSearchParams((p) => {
+      const next = new URLSearchParams(p)
+      next.delete('stagesJob')
+      if (!next.get('tab')) next.set('tab', 'stages')
+      return next
+    }, { replace: true })
+  }, [stagesJobParam, jobsListLoading, activeTab, jobs, showToast, setSearchParams])
+
   useEffect(() => {
     if (activeTab !== 'stages') {
       setReturnEditBannerJobId(null)

@@ -8,8 +8,9 @@ import {
   useState,
 } from 'react'
 import type { CSSProperties, RefObject } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { NO_CUSTOMER_TYPE_LABEL } from '../../constants/customerTypeLabels'
+import { buildServiceTypeTradePill } from '../../lib/serviceTypeTradePill'
 import { supabase } from '../../lib/supabase'
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
 import { useAuth } from '../../hooks/useAuth'
@@ -216,6 +217,7 @@ export default function JobFormModal({
 }: JobFormModalProps) {
   const { user: authUser, role: authRole } = useAuth()
   const { showToast } = useToastContext()
+  const navigate = useNavigate()
   const prefixMap = useLedgerPrefixMap()
   const billCustomer = useBillCustomerModal()
   const jobDetailOpenerBridge = useJobDetailOpenerBridge()
@@ -715,6 +717,13 @@ export default function JobFormModal({
     }
     return vis
   }, [mode, formServiceTypeId, visibleJobFormServiceTypes, serviceTypes])
+
+  /** Edit-mode header trade pill (PLUM/ELEC/HVAC) — shortcut to this job on Jobs → Stages. */
+  const headerTradePill = useMemo(() => {
+    if (!editing || !formServiceTypeId) return null
+    const name = serviceTypes.find((s) => s.id === formServiceTypeId)?.name ?? null
+    return buildServiceTypeTradePill(name)
+  }, [editing, formServiceTypeId, serviceTypes])
 
   const jobFormMissingFields = useMemo(() => {
     const m: string[] = []
@@ -2539,6 +2548,21 @@ export default function JobFormModal({
       >
         <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '1rem' }}>
           <h2 style={{ margin: 0, fontSize: '1.25rem', flexShrink: 0 }}>{editing ? 'Edit Job' : 'New Job'}</h2>
+          {headerTradePill && editing ? (
+            <button
+              type="button"
+              onClick={() => {
+                const jobId = editing.id
+                onClose()
+                navigate(`/jobs?tab=stages&stagesJob=${encodeURIComponent(jobId)}`)
+              }}
+              title="Open this job in Jobs → Stages (closes Edit Job without saving)"
+              aria-label="Open this job in Jobs → Stages. Closes Edit Job without saving."
+              style={{ ...headerTradePill.style, marginTop: 0, cursor: 'pointer', flexShrink: 0 }}
+            >
+              {headerTradePill.label}
+            </button>
+          ) : null}
           <div ref={hcpHelpRef} style={{ position: 'relative', flexShrink: 0, display: 'flex', alignItems: 'center' }}>
             <button
               type="button"
