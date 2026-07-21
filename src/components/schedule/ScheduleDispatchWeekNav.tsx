@@ -26,6 +26,8 @@ type ScheduleDispatchWeekNavProps = {
   onHideWeekendChange?: (hide: boolean) => void
   /** Right-aligned content (e.g. a Share button) shown across from "This week". */
   rightSlot?: ReactNode
+  /** Render as a flex item inside another toolbar row (drops the bottom margin). */
+  inline?: boolean
 }
 
 export function ScheduleDispatchWeekNav({
@@ -36,6 +38,7 @@ export function ScheduleDispatchWeekNav({
   hideWeekend = true,
   onHideWeekendChange,
   rightSlot,
+  inline = false,
 }: ScheduleDispatchWeekNavProps) {
   const weekEnd = useMemo(() => ymdAddDays(weekStart, 6), [weekStart])
   const { weekTitle, dateRange } = useMemo(
@@ -51,7 +54,7 @@ export function ScheduleDispatchWeekNav({
         alignItems: 'center',
         flexWrap: 'wrap',
         gap: '0.35rem',
-        marginBottom: '0.75rem',
+        marginBottom: inline ? 0 : '0.75rem',
       }}
     >
       <button type="button" onClick={() => onWeekShift(-1)} style={btnNeutral} aria-label="Previous week">

@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-21 (v2.862)
+last_updated: 2026-07-21 (v2.863)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.863)
+
+### Dispatch → People: week nav and toolbar share one line on wide screens (2026-07-21)
+On the Dispatch hub's People tab, the week navigation cluster (← Week N / date range / → / This week) previously sat on its own row above the toolbar (+ / ++ / Search Person or Job / Hide Inactive / Hide weekend / Highlight linked). [`ScheduleDispatchWeekNav`](../src/components/schedule/ScheduleDispatchWeekNav.tsx) gains an `inline` mode and [`ScheduleDispatchHub`](../src/components/schedule/ScheduleDispatchHub.tsx)'s People panel a `weekNav` slot: on the People tab the nav now renders as the first item of the toolbar's wrapping flex row, so everything shares **one line when the viewport is wide** and wraps naturally when narrow. The Jobs tab and the Quickfill-tomorrow variant keep the standalone nav row unchanged.
 
 ## Latest Updates (v2.862)
 
