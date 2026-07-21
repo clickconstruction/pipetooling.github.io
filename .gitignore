@@ -40,3 +40,8 @@ docs/runbooks/supabase-inspect-snapshot/
 
 # Claude Code local session data (worktrees, local settings)
 .claude/
+
+# Playwright E2E artifacts
+e2e/.auth/
+playwright-report/
+test-results/

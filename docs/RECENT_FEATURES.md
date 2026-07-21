@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-21 (v2.835)
+last_updated: 2026-07-21 (v2.836)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.836)
+
+### Playwright E2E smoke suite: cold-load regressions pinned against production (2026-07-21)
+Phase 4 of the post-decomposition verification plan — see the new [`docs/E2E_SMOKE.md`](./E2E_SMOKE.md). A read-only, structural-assertion Playwright suite (`e2e/`, 15 tests) runs against the deployed site as the dedicated test user (credentials via `E2E_TEST_EMAIL`/`E2E_TEST_PASSWORD` GitHub Actions secrets; storageState login in `e2e/auth.setup.ts`): the full **cold-load deep-link matrix** that the live sweep's three bug-fix rounds (v2.832/v2.833/v2.835) came from, all nine Jobs tabs with zero-page-error checks, the Stages always-mounted persistence contract, and the print-popup path (`window.print` stubbed). New non-gating workflow [`e2e-smoke.yml`](../.github/workflows/e2e-smoke.yml) runs it post-deploy, nightly, and on demand — deliberately not a PR check until it proves flake-free. Rule added: new handle-driven deep links must land with their cold-load spec (per the map's handle-gating rule).
 
 ## Latest Updates (v2.835)
 
