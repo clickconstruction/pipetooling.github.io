@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-20 (v2.819)
+last_updated: 2026-07-20 (v2.820)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.820)
+
+### Jobs refactor: the four print builders move to lib/jobsDocuments/ with tests (2026-07-20)
+Step 1 of the mapped [`Jobs.tsx`](../src/pages/Jobs.tsx) decomposition ([`JOBS_TABS_ARCHITECTURE.md`](./JOBS_TABS_ARCHITECTURE.md)): the inline print builders become pure, tested HTML builders — [`subLaborSheet.ts`](../src/lib/jobsDocuments/subLaborSheet.ts) (one parameterized core replaces the near-duplicate `printLaborSubSheet`/`printJobSubSheet`, quirk #10), [`billedAwaitingPaymentReport.ts`](../src/lib/jobsDocuments/billedAwaitingPaymentReport.ts), and [`jobSummaryCostBreakdown.ts`](../src/lib/jobsDocuments/jobSummaryCostBreakdown.ts) (the page still resolves the lazy caches / fetch fallbacks and passes rows in), plus shared [`printWindow.ts`](../src/lib/jobsDocuments/printWindow.ts) window.open/print glue. **Behavior-preserving: same output bytes, same toasts.** Jobs.tsx shrinks ~580 lines (10,684 → 10,103); the four per-function `escapeHtml` copies collapse into the lib.
 
 ## Latest Updates (v2.819)
 
