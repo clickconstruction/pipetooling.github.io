@@ -3823,4 +3823,4 @@ supabase db diff
 - Audit trigger for sensitive operations
 
 ### 20260721160000_assigned_jobs_customer_name.sql (v2.842)
-Appends `customer_name` to the END of `list_assigned_jobs_for_dashboard`'s RETURNS TABLE and selects `jl.customer_name`, for the Dashboard Assigned Jobs rows' customer line. Idempotent `CREATE OR REPLACE`; body otherwise identical to section 11 of `20260619160000_click_number_remaining_rpcs_2.sql`. No table/RLS changes.
+Appends `customer_name` to the END of `list_assigned_jobs_for_dashboard`'s RETURNS TABLE and selects `jl.customer_name`, for the Dashboard Assigned Jobs rows' customer line. **DROP + CREATE + re-GRANT** (amended pre-apply, v2.845: `CREATE OR REPLACE` cannot change a return type — 42P13 — and DROP discards the baseline's explicit grants, so they're restated). Body otherwise identical to section 11 of `20260619160000_click_number_remaining_rpcs_2.sql`. No table/RLS changes.
