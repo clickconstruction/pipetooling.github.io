@@ -4,9 +4,21 @@ import { isAssistantLike } from '../lib/subcontractorLikeRole'
 import { MapPageView } from '../components/map/MapPageView'
 
 export default function Map() {
-  const { role, loading } = useAuth()
+  const { user, role, loading } = useAuth()
 
   if (loading) {
+    return <div style={{ padding: '2rem', textAlign: 'center' }}>Loading…</div>
+  }
+
+  // Signed out: role stays null forever — keep the old bounce.
+  if (!user) {
+    return <Navigate to="/dashboard" replace />
+  }
+
+  // useAuth resolves `loading` before the users-row role fetch lands — treat a
+  // null role as still-loading (like ScheduleDispatch) so cold loads don't
+  // bounce allowed roles to the dashboard.
+  if (role == null) {
     return <div style={{ padding: '2rem', textAlign: 'center' }}>Loading…</div>
   }
 

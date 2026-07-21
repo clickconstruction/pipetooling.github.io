@@ -38,6 +38,17 @@ export default function JobsAccountsReceivable() {
     return <Navigate to="/sign-in" replace />
   }
 
+  // useAuth resolves `loading` before the users-row role fetch lands, so on a
+  // cold load there's a window where user is set but role is still null —
+  // bouncing then would redirect EVERY role (dev included) to the dashboard.
+  // Wait for the role like ScheduleDispatch does; redirect only a known-
+  // disallowed role.
+  if (authRole == null) {
+    return (
+      <div style={{ padding: '2rem', textAlign: 'center' }}>Loading…</div>
+    )
+  }
+
   if (!canRoleSeeArBankUnallocatedOrgNudge(authRole)) {
     return <Navigate to="/dashboard" replace />
   }
