@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-21 (v2.843)
+last_updated: 2026-07-21 (v2.844)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.844)
+
+### Dashboard: the whole Last-activity block opens Activity on this job (2026-07-21)
+On the [Assigned Jobs](../src/pages/Dashboard.tsx) and team [Ready to Bill](../src/components/dashboard/DashboardTeamReadyToBillSection.tsx) rows, the desktop "Last activity: / N ago / <sources>" column is now ONE click target opening the **Activity on this job** modal — previously only the third line (e.g. "Schedule") was clickable. Hover underlines the whole block; keyboard focus ring via the existing `subcontractorLastActivityTypeBtn` class; rows with no activity yet stay non-clickable. Mobile rows were already fully clickable and are unchanged.
 
 ## Latest Updates (v2.843)
 
