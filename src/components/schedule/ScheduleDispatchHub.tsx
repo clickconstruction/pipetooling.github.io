@@ -1130,6 +1130,24 @@ function HubPeoplePanel({
   userTimeOffByCell,
   onRequestUndoNotComingIn,
 }: HubPeoplePanelProps) {
+  /** "View" dropdown consolidating Hide Inactive / Hide weekend / Highlight linked. */
+  const [viewMenuOpen, setViewMenuOpen] = useState(false)
+  const viewMenuRef = useRef<HTMLDivElement | null>(null)
+  useEffect(() => {
+    if (!viewMenuOpen) return
+    const onDown = (e: globalThis.MouseEvent) => {
+      if (viewMenuRef.current && !viewMenuRef.current.contains(e.target as Node)) setViewMenuOpen(false)
+    }
+    const onKey = (e: globalThis.KeyboardEvent) => {
+      if (e.key === 'Escape') setViewMenuOpen(false)
+    }
+    document.addEventListener('mousedown', onDown)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('mousedown', onDown)
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [viewMenuOpen])
   const isMobile = useIsMobile()
   const peopleScrollRef = useRef<HTMLDivElement>(null)
   useScrollScheduleDispatchColumnIntoView({
@@ -1416,34 +1434,78 @@ function HubPeoplePanel({
             style={{ padding: '0.35rem 0.5rem', fontSize: '0.875rem', minWidth: 200 }}
           />
         </label>
-        <label style={{ fontSize: '0.8125rem', color: 'var(--text-700)', display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
-          <input
-            type="checkbox"
-            checked={onlyWithBlocksThisWeek}
-            onChange={(e) => setOnlyWithBlocksThisWeek(e.target.checked)}
-          />
-          Hide Inactive
-        </label>
-        {showHideWeekendToggle ? (
-          <label style={{ fontSize: '0.8125rem', color: 'var(--text-700)', display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
-            <input
-              type="checkbox"
-              checked={hideWeekend}
-              onChange={(e) => onHideWeekendChange(e.target.checked)}
-              aria-label="Hide Saturday and Sunday columns"
-            />
-            Hide weekend
-          </label>
-        ) : null}
-        <label style={{ fontSize: '0.8125rem', color: 'var(--text-700)', display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
-          <input
-            type="checkbox"
-            checked={highlightLinkedGroups}
-            onChange={(e) => onHighlightLinkedGroupsChange(e.target.checked)}
-            aria-label="Highlight linked: matching border and background on mirrored crew blocks"
-          />
-          Highlight linked
-        </label>
+        <div ref={viewMenuRef} style={{ position: 'relative' }}>
+          <button
+            type="button"
+            aria-haspopup="true"
+            aria-expanded={viewMenuOpen}
+            aria-label="View options: hide inactive, hide weekend, highlight linked"
+            onClick={() => setViewMenuOpen((o) => !o)}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+              padding: '0.35rem 0.6rem',
+              fontSize: '0.8125rem',
+              border: '1px solid var(--border-strong)',
+              borderRadius: 4,
+              background: viewMenuOpen ? 'var(--bg-blue-tint)' : 'var(--surface)',
+              color: 'var(--text-700)',
+              cursor: 'pointer',
+            }}
+          >
+            View
+            <span aria-hidden style={{ fontSize: '0.65rem' }}>{viewMenuOpen ? '\u25B2' : '\u25BC'}</span>
+          </button>
+          {viewMenuOpen ? (
+            <div
+              style={{
+                position: 'absolute',
+                top: 'calc(100% + 4px)',
+                left: 0,
+                zIndex: 60,
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 10,
+                padding: '0.6rem 0.85rem',
+                background: 'var(--surface)',
+                border: '1px solid var(--border-strong)',
+                borderRadius: 6,
+                boxShadow: '0 6px 20px rgba(0,0,0,0.15)',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              <label style={{ fontSize: '0.8125rem', color: 'var(--text-700)', display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  checked={onlyWithBlocksThisWeek}
+                  onChange={(e) => setOnlyWithBlocksThisWeek(e.target.checked)}
+                />
+                Hide Inactive
+              </label>
+              {showHideWeekendToggle ? (
+                <label style={{ fontSize: '0.8125rem', color: 'var(--text-700)', display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    checked={hideWeekend}
+                    onChange={(e) => onHideWeekendChange(e.target.checked)}
+                    aria-label="Hide Saturday and Sunday columns"
+                  />
+                  Hide weekend
+                </label>
+              ) : null}
+              <label style={{ fontSize: '0.8125rem', color: 'var(--text-700)', display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  checked={highlightLinkedGroups}
+                  onChange={(e) => onHighlightLinkedGroupsChange(e.target.checked)}
+                  aria-label="Highlight linked: matching border and background on mirrored crew blocks"
+                />
+                Highlight linked
+              </label>
+            </div>
+          ) : null}
+        </div>
       </div>
 
       {loading ? <p style={{ color: 'var(--text-muted)' }}>Loading…</p> : null}

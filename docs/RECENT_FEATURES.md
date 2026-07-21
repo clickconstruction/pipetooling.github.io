@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-21 (v2.863)
+last_updated: 2026-07-21 (v2.864)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.864)
+
+### Dispatch → People: "View" menu consolidates the display toggles; Add-job picker gains job sublines (2026-07-21)
+Two toolbar refinements on the Dispatch hub's People tab. (1) The three display checkboxes — Hide Inactive, Hide weekend, Highlight linked — are consolidated into a single **View ▾** dropdown on the toolbar row (same checkboxes, one control; outside-click and Esc close it), shortening the header line that v2.863 merged. (2) In the **Add job to schedule** modal, every job row now shows a muted subline: **date the job was added | job address** (e.g. `06/02/26 | 20027 Park Bluff St San Antonio, TX`), formatted in the app calendar timezone. [`fetchJobsLedgerForScheduleDispatchHub`](../src/lib/scheduleDispatchHub.ts) now selects `created_at` + `job_address`; the picker row type gains an optional `subline` (other pickers using the modal are unchanged).
 
 ## Latest Updates (v2.863)
 

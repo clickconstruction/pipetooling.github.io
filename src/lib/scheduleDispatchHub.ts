@@ -15,6 +15,8 @@ export type ScheduleDispatchHubJobRow = {
   click_number?: string | null
   job_name: string | null
   project_id: string | null
+  created_at?: string | null
+  job_address?: string | null
 }
 
 export function formatScheduleDispatchHubJobTitle(
@@ -34,7 +36,7 @@ export async function fetchJobsLedgerForScheduleDispatchHub(): Promise<{
       async () =>
         await supabase
           .from('jobs_ledger')
-          .select('id, hcp_number, click_number, job_name, project_id')
+          .select('id, hcp_number, click_number, job_name, project_id, created_at, job_address')
           .order('hcp_number', { ascending: false }),
       'fetchJobsLedgerForScheduleDispatchHub',
     )
