@@ -121,6 +121,7 @@ when_to_read:
    - [test-email](#test-email)
    - [create-stripe-invoice](#create-stripe-invoice)
    - [send-physical-invoice-email](#send-physical-invoice-email)
+   - [send-hazmat-notice-email](#send-hazmat-notice-email)
    - [send-stripe-invoice](#send-stripe-invoice)
    - [update-collect-payment-stripe-customer-email](#update-collect-payment-stripe-customer-email)
    - [get-stripe-invoice-details](#get-stripe-invoice-details)
@@ -2043,6 +2044,51 @@ interface SendPhysicalInvoiceEmailBody {
 **Client**: [`SendRecordInvoiceModal.tsx`](../src/components/jobs/SendRecordInvoiceModal.tsx) (**Physical invoice** tab) invokes this Edge Function, then **`maybePromoteJobToBilledAfterCustomerInvoice`** on success. **`subject`** is **[`physicalInvoiceEmailSubject`](../src/lib/physicalInvoiceDocument.ts)** (**`Click Plumbing Invoice [#…]`**). **`email_text`** / **`email_html`** are built by **[`buildPhysicalInvoiceEmailBodies`](../src/lib/physicalInvoiceDocument.ts)** (HTML summary: bold issuer **tagline** under the intro; no **Service date** or **Issuer** block—PDF is authoritative).
 
 **Deploy**: `supabase functions deploy send-physical-invoice-email --no-verify-jwt` if the hosted gateway still enforces JWT.
+
+---
+
+### send-hazmat-notice-email
+
+**Purpose** (v2.850): Email the customer the **Biohazard Remediation Fee Notice PDF** as its own message — the **Stripe companion channel** (Stripe invoices cannot carry attachments) and the **re-send** path from Edit Job's **Riders** strip. The PDF is built client-side ([`hazmatFeeNoticePdf.ts`](../src/lib/jobsDocuments/hazmatFeeNoticePdf.ts)) from the persisted `job_hazmat_incidents` row; the function validates and attaches it. **No DB writes** — safe to re-send any time.
+
+**Endpoint**: `POST /functions/v1/send-hazmat-notice-email`
+
+**Authentication**: Bearer JWT; **`auth.getUser`** in the function; all reads via the **user-scoped** client (**RLS** applies — `job_hazmat_incidents` is readable by office/billing roles only). **`verify_jwt = false`** on the gateway (same pattern as **`send-physical-invoice-email`**).
+
+**Secrets**: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, **`RESEND_API_KEY`**.
+
+#### Request body
+
+```typescript
+interface SendHazmatNoticeEmailBody {
+  job_id: string
+  incident_id: string // job_hazmat_incidents.id; must belong to job_id
+  /** Must match jobs_ledger.customer_email (trimmed, case-insensitive). */
+  customer_email: string
+  subject?: string
+  pdf_base64: string // ≤ 6M base64 chars
+  pdf_filename?: string
+  email_text?: string
+  email_html?: string
+}
+```
+
+#### Success (200)
+
+```json
+{ "success": true }
+```
+
+#### Errors
+
+- **400** — Missing fields, invalid email, incident/job mismatch, **`customer_email`** mismatch, oversized PDF.
+- **401** — Missing or invalid JWT.
+- **403** — Incident or job not visible under RLS.
+- **502** — Resend API error.
+
+**Client**: [`sendHazmatNoticeEmail.ts`](../src/lib/sendHazmatNoticeEmail.ts), called from the Bill Customer **Stripe** tab ("Also email the Biohazard Remediation Fee Notice", pre-checked for hazmat riders) after a successful `create-stripe-invoice`, and from Edit Job's **Riders** strip **Email notice…** button (confirm prompt; any time).
+
+**Deploy**: `supabase functions deploy send-hazmat-notice-email --no-verify-jwt` if the hosted gateway still enforces JWT.
 
 ---
 

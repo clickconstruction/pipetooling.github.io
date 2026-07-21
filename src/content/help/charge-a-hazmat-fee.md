@@ -23,7 +23,15 @@ Generating adds a separate **ready-to-bill line** to the job — a rider invoice
 
 After generating, click {{button:primary|Open printable notice}} for a customer-facing packet: incident summary, photo references, technician statements, the terms clause, and the fee. Include it when you send the bill (attach to the physical-invoice email, or reference it on the Stripe invoice).
 
-You can come back to the notice any time: open **Edit Job** and look for the **Riders** list in the billing section — every hazmat incident shows there with {{button:outline|Open notice}} and {{button:outline|Download PDF}} buttons, and the rider's line in the Invoices table carries a ☣ **Hazmat** tag with its memo so it never reads as an anonymous draft.
+You can come back to the notice any time: open **Edit Job** and look for the **Riders** list in the billing section — every hazmat incident shows there with {{button:outline|Open notice}}, {{button:outline|Download PDF}}, and {{button:outline|Email notice…}} buttons, and the rider's line in the Invoices table carries a ☣ **Hazmat** tag with its memo so it never reads as an anonymous draft.
+
+## Getting the notice to the customer
+
+When you bill the rider through **Bill Customer**, the notice travels with the bill:
+
+- **Physical Invoice** tab — a pre-checked **☣ Attach the Biohazard Remediation Fee Notice** box sends the notice as a second PDF beside the invoice in the same email.
+- **Stripe** tab — Stripe invoices can't carry attachments, so a pre-checked **☣ Also email the notice** box sends it to the customer as its own email right after the Stripe invoice is created.
+- Missed it or need it again? **Edit Job → Riders → {{button:outline|Email notice…}}** re-sends it any time (it confirms the recipient first).
 
 ## Notes
 

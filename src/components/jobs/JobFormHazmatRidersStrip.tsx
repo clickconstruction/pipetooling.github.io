@@ -13,6 +13,7 @@ import {
 } from '../../lib/jobsDocuments/hazmatFeeNoticePdf'
 import { formatCurrency } from '../../lib/jobs/jobFormMoney'
 import { formatWorkDateYmdMonthDayShort } from '../../utils/dateUtils'
+import { sendHazmatNoticeEmailToCustomer } from '../../lib/sendHazmatNoticeEmail'
 
 /**
  * "Riders" strip in the Edit Job billing section: one line per hazmat incident
@@ -30,6 +31,7 @@ export function JobFormHazmatRidersStrip({
 }) {
   const { showToast } = useToastContext()
   const [pdfBusyId, setPdfBusyId] = useState<string | null>(null)
+  const [emailBusyId, setEmailBusyId] = useState<string | null>(null)
 
   if (incidents.length === 0) return null
 
@@ -59,6 +61,32 @@ export function JobFormHazmatRidersStrip({
       showToast('Could not build the notice PDF. Try again.', 'error')
     } finally {
       setPdfBusyId(null)
+    }
+  }
+
+  const customerEmail = (job.customer_email ?? '').trim()
+
+  const emailNotice = async (row: JobHazmatIncidentRow) => {
+    if (!customerEmail) {
+      showToast('Job has no customer email; add it on Edit Job first.', 'error')
+      return
+    }
+    if (!window.confirm(`Email the Biohazard Remediation Fee Notice to ${customerEmail}?`)) return
+    setEmailBusyId(row.id)
+    try {
+      const res = await sendHazmatNoticeEmailToCustomer({
+        jobId: job.id,
+        incident: row,
+        jobInfo,
+        customerEmail,
+      })
+      if (res.ok) {
+        showToast(`Notice emailed to ${customerEmail}.`, 'success')
+      } else {
+        showToast(res.error ?? 'Notice email failed', 'error')
+      }
+    } finally {
+      setEmailBusyId(null)
     }
   }
 
@@ -135,6 +163,19 @@ export function JobFormHazmatRidersStrip({
                 title="Download the notice as a PDF"
               >
                 {pdfBusyId === row.id ? 'Building…' : 'Download PDF'}
+              </button>
+              <button
+                type="button"
+                disabled={emailBusyId === row.id}
+                onClick={() => void emailNotice(row)}
+                style={{ ...smallBtn, cursor: emailBusyId === row.id ? 'wait' : 'pointer' }}
+                title={
+                  customerEmail
+                    ? `Email the notice PDF to ${customerEmail}`
+                    : 'Job has no customer email'
+                }
+              >
+                {emailBusyId === row.id ? 'Sending…' : 'Email notice…'}
               </button>
             </div>
           )

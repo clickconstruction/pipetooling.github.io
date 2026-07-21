@@ -69,6 +69,7 @@ import {
   loadJobHazmatIncidents,
   type JobHazmatIncidentRow,
 } from '../../lib/hazmatIncidents'
+import { sendHazmatNoticeEmailToCustomer } from '../../lib/sendHazmatNoticeEmail'
 import {
   buildHazmatFeeNoticePdfBlob,
   hazmatNoticePdfFilename,
@@ -427,6 +428,9 @@ export default function SendRecordInvoiceModal({
   /** Set when the invoice being billed is a hazmat rider — offers attaching the notice. */
   const [hazmatIncidentForInvoice, setHazmatIncidentForInvoice] = useState<JobHazmatIncidentRow | null>(null)
   const [attachHazmatNotice, setAttachHazmatNotice] = useState(true)
+  /** Stripe path: Stripe invoices can't carry attachments — companion email instead. */
+  const [emailHazmatNoticeWithStripe, setEmailHazmatNoticeWithStripe] = useState(true)
+  const [hazmatNoticeEmailStatus, setHazmatNoticeEmailStatus] = useState<'sent' | string | null>(null)
   const stripePreviewReqId = useRef(0)
   /** Keeps last known “had a preview” for stale-while-revalidate (timeout closure reads current value). */
   const stripePreviewExistsRef = useRef(false)
@@ -536,6 +540,8 @@ export default function SendRecordInvoiceModal({
   useEffect(() => {
     setHazmatIncidentForInvoice(null)
     setAttachHazmatNotice(true)
+    setEmailHazmatNoticeWithStripe(true)
+    setHazmatNoticeEmailStatus(null)
     if (!open || kind !== 'invoice' || !invoice?.id || !job?.id) return
     let cancelled = false
     void (async () => {
@@ -1026,6 +1032,19 @@ export default function SendRecordInvoiceModal({
       if (!promote.ok) {
         setStripeError(promote.error)
         return
+      }
+
+      // Companion notice email (Stripe can't attach files). Failure never rolls back
+      // the created invoice — the Riders strip in Edit Job re-sends any time.
+      if (hazmatIncidentForInvoice && emailHazmatNoticeWithStripe && (job.customer_email ?? '').trim()) {
+        const noticeRes = await sendHazmatNoticeEmailToCustomer({
+          jobId: job.id,
+          incident: hazmatIncidentForInvoice,
+          jobInfo: hazmatNoticeJobInfoFromJob(job),
+          customerEmail: (job.customer_email ?? '').trim(),
+          invoiceReference: `Stripe invoice for job ${(job.hcp_number ?? '').trim() || (job.click_number ?? '').trim() || job.job_name}`,
+        })
+        setHazmatNoticeEmailStatus(noticeRes.ok ? 'sent' : noticeRes.error ?? 'Notice email failed')
       }
 
       const fresh = await fetchJobWithDetailsById(job.id)
@@ -1951,6 +1970,20 @@ export default function SendRecordInvoiceModal({
                     : ''}
                   .
                 </p>
+                {hazmatNoticeEmailStatus ? (
+                  <p
+                    role="status"
+                    style={{
+                      margin: '-0.35rem 0 0.75rem',
+                      fontSize: '0.8125rem',
+                      color: hazmatNoticeEmailStatus === 'sent' ? 'var(--text-green-800)' : 'var(--text-red-700)',
+                    }}
+                  >
+                    {hazmatNoticeEmailStatus === 'sent'
+                      ? '☣ Biohazard notice emailed to the customer.'
+                      : `☣ Notice email failed: ${hazmatNoticeEmailStatus} — re-send from Edit Job → Riders.`}
+                  </p>
+                ) : null}
                 <HostedStripeBillPanel
                   invoice={stripeSuccessInvoice}
                   onAfterOobUnwindSuccess={handleHostedStripeOobUnwindSuccess}
@@ -2388,6 +2421,49 @@ export default function SendRecordInvoiceModal({
                     }}
                   >
                     {BILL_CUSTOMER_LEADING_LOWERCASE_HINT}
+                  </p>
+                ) : null}
+                {hazmatIncidentForInvoice ? (
+                  <label
+                    style={{
+                      display: 'flex',
+                      alignItems: 'flex-start',
+                      gap: '0.5rem',
+                      margin: '0.5rem 0 0',
+                      padding: '0.5rem 0.65rem',
+                      border: '1px solid var(--border)',
+                      borderRadius: 6,
+                      background: 'var(--bg-red-tint)',
+                      fontSize: '0.8125rem',
+                      color: 'var(--text-700)',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={emailHazmatNoticeWithStripe}
+                      onChange={(e) => setEmailHazmatNoticeWithStripe(e.target.checked)}
+                      style={{ marginTop: 2 }}
+                    />
+                    <span>
+                      <strong>☣ Also email the Biohazard Remediation Fee Notice</strong> — Stripe invoices
+                      can't carry attachments, so the notice PDF goes to the customer as its own email.
+                      Re-send any time from Edit Job → Riders.
+                    </span>
+                  </label>
+                ) : null}
+                {hazmatNoticeEmailStatus ? (
+                  <p
+                    role="status"
+                    style={{
+                      margin: '0.35rem 0 0',
+                      fontSize: '0.8125rem',
+                      color: hazmatNoticeEmailStatus === 'sent' ? 'var(--text-green-800)' : 'var(--text-red-700)',
+                    }}
+                  >
+                    {hazmatNoticeEmailStatus === 'sent'
+                      ? 'Notice emailed to the customer.'
+                      : `Notice email failed: ${hazmatNoticeEmailStatus} — re-send from Edit Job → Riders.`}
                   </p>
                 ) : null}
                 <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.5rem' }}>
