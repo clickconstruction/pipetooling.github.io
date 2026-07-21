@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-21 (v2.849)
+last_updated: 2026-07-21 (v2.850)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.850)
+
+### Hazmat notice, part 3: Stripe companion email + re-send from Edit Job's Riders strip (2026-07-21)
+Stripe invoices **cannot carry attachments**, so the notice travels as its own email: new edge function [`send-hazmat-notice-email`](../supabase/functions/send-hazmat-notice-email/index.ts) (Resend, notice PDF attached; JWT + RLS in-body — `job_hazmat_incidents` reads are office/billing-gated; recipient must match the job's customer email; **no DB writes**, so it is safely re-sendable; `verify_jwt=false` in `config.toml`; **requires deploy**). Client helper [`sendHazmatNoticeEmail.ts`](../src/lib/sendHazmatNoticeEmail.ts) builds the PDF from the persisted incident and invokes it from two places: **(1)** the Bill Customer **Stripe** tab gains a pre-checked "**☣ Also email the Biohazard Remediation Fee Notice**" box for hazmat riders — fires right after a successful `create-stripe-invoice`, with a sent/failed status line in the success view (failure never rolls back the invoice); **(2)** Edit Job's **Riders** strip gains **Email notice…** (confirm prompt with the recipient address) so the office can send or re-send the notice any time — the "easily send again from Edit Job" ask. `EDGE_FUNCTIONS.md` + help guide updated.
 
 ## Latest Updates (v2.849)
 

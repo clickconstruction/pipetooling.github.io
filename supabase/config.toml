@@ -462,6 +462,10 @@ verify_jwt = false
 [functions.send-physical-invoice-email]
 verify_jwt = false
 
+# Hazmat notice companion email (Stripe can't carry attachments): Resend email with the notice PDF; JWT + RLS in function.
+[functions.send-hazmat-notice-email]
+verify_jwt = false
+
 # Staff: JWT validated in function (getUser). Heuristic probe for Google Drive/Docs attachment URLs.
 [functions.check-estimate-attachment-url]
 verify_jwt = false
