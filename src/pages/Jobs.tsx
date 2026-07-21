@@ -5,37 +5,20 @@ import {
   useMemo,
   useRef,
   useState,
-  type CSSProperties,
-  type KeyboardEvent,
   type ReactNode,
 } from 'react'
-import { FileSpreadsheet } from 'lucide-react'
-import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
-import {
-  formatCurrency,
-  formatCurrencyNoCents,
-  formatEstimatedCompletionDisplay,
-  formatJobNameTwoLines,
-  formatTimeSince,
-  formatUsdNoCents,
-} from '../lib/jobs/jobFormatting'
+import { formatCurrency, formatCurrencyNoCents, formatJobNameTwoLines } from '../lib/jobs/jobFormatting'
 import {
   buildBilledAgingBuckets,
-  effectiveInvoiceEstBillDate,
-  invoiceOpenRemainingOnJob,
-  jobBilledUnpaidDollars,
-  jobStagesInvoiceJumpChipTargets,
   sortStageRowsForTotalByNameDetail,
   stageRowBilledAgeDays,
   stageRowBilledLineLabel,
   stageRowBilledRemainingAmount,
-  stagesJobLevelStripeEmailedHintInvoice,
-  sumInvoiceAppliedFromJobPayments,
 } from '../lib/jobs/invoiceBilling'
 import { pageTabStyle } from '../lib/pageTabStyle'
 import { filterActiveCustomersForPicker } from '../lib/customerArchive'
-import { openInExternalBrowser } from '../lib/openInExternalBrowser'
 import { useAuth } from '../hooks/useAuth'
 import { isAssistantLike } from '../lib/subcontractorLikeRole'
 import { useMatchMedia } from '../hooks/useMatchMedia'
@@ -51,25 +34,19 @@ import { buildBilledAwaitingPaymentReportHtml } from '../lib/jobsDocuments/bille
 import { buildJobSummaryCostBreakdownHtml } from '../lib/jobsDocuments/jobSummaryCostBreakdown'
 import { buildSubLaborOutstandingByPerson, subLaborJobMatchesSearch } from '../lib/subLaborOutstanding'
 import { laborJobSubCost } from '../lib/jobs/subLaborCost'
-import { buildClickToolingUrl, formatAddressTwoLines, googleMapsSearchUrl } from '../lib/jobs/jobAddressUrls'
 import JobsCrewPnlTab from '../components/jobs/JobsCrewPnlTab'
 import JobsSubLaborTab from '../components/jobs/JobsSubLaborTab'
 import JobsSubLaborFormModal, { type JobsSubLaborFormModalHandle } from '../components/jobs/JobsSubLaborFormModal'
 import SubLaborPaymentModals, { type SubLaborPaymentModalsHandle } from '../components/jobs/SubLaborPaymentModals'
 import type { LaborJob } from '../types/laborJob'
-import { formatDispatchNoteDaysAgoShortPhrase, formatDispatchNoteWeekdayShortTimeChicago, getDispatchNoteDisplayMeta } from '../utils/dispatchNoteDisplay'
-import { buildStagesMoneyBarModel } from '../lib/stagesMoneyBar'
-import StagesProgressPaymentCell from '../components/jobs/StagesProgressPaymentCell'
-import { JobAddressText } from '../components/jobs/JobAddressText'
 import { ManageJobPeopleModal } from '../components/jobs/ManageJobPeopleModal'
-import { useChecklistAddModal } from '../contexts/ChecklistAddModalContext'
-import { useDispatchTaskModal } from '../contexts/DispatchTaskModalContext'
-import { showTaskDispatchButton } from '../lib/headerTaskDispatchEstimatorEligible'
 import JobReportsModal from '../components/JobReportsModal'
 import JobsInspectionsTab from '../components/jobs/JobsInspectionsTab'
 import JobsReportsTab from '../components/jobs/JobsReportsTab'
 import JobsPartsTab from '../components/jobs/JobsPartsTab'
 import JobsBillingTab from '../components/jobs/JobsBillingTab'
+import JobsStagesTable from '../components/jobs/JobsStagesTable'
+import JobsStagesUnifiedTable from '../components/jobs/JobsStagesUnifiedTable'
 import JobsJobSummaryTab from '../components/jobs/JobsJobSummaryTab'
 import { ErrorBoundary } from '../components/ErrorBoundary'
 import { jobBillingContextFromJob } from '../lib/jobBillingContext'
@@ -93,8 +70,6 @@ import { HazmatFeeModal, type HazmatFeeModalJob } from '../components/jobs/Hazma
 import {
   JobSummaryCostCellDrilldownModal,
 } from '../components/jobs/JobSummaryCostCellDrilldownModal'
-import { StripeInvoiceSendFromStripeButton } from '../components/jobs/StripeInvoiceSendFromStripeButton'
-import { JobThreadNotesPanel } from '../components/JobThreadNotesPanel'
 import { ScheduleJobModal } from '../components/jobs/ScheduleJobModal'
 import { useJobThreadNotes } from '../hooks/useJobThreadNotes'
 import { useSubLaborLedger } from '../hooks/useSubLaborLedger'
@@ -104,22 +79,13 @@ import type { JobSummaryInvoiceAllocationLine, JobSummaryMercuryAllocationRow } 
 import type { JobWithDetails } from '../types/jobWithDetails'
 import { useJobFormModal, type OpenEditJobOptions } from '../contexts/JobFormModalContext'
 import { useJobsListCache } from '../contexts/JobsListCacheContext'
-import { effectiveJobLedgerNumber } from '../lib/ledgerDisplayPrefixes'
-import { getBidServiceTypeTag } from '../utils/unifiedJobBidSearch'
 import { useJobDetailModal } from '../contexts/JobDetailModalContext'
-import { getDefaultWeekRange } from '../utils/dateUtils'
 import { fetchAttributionsByMercuryTxIds } from '../lib/fetchMercuryRelationsByTxIds'
 import { useJobSummaryData } from '../hooks/useJobSummaryData'
-import { formatDecimalWorkHoursToHhMm } from '../lib/formatDecimalWorkHoursHhMm'
 import { PartsUnattributedMercuryListModal } from '../components/jobs/PartsUnattributedMercuryListModal'
 import { PartsUnattributedAllJobsModal } from '../components/jobs/PartsUnattributedAllJobsModal'
 import { MercuryTransactionAllocationsModal } from '../components/MercuryTransactionAllocationsModal'
 import { useJobsMercuryAllocations } from '../hooks/useJobsMercuryAllocations'
-import {
-  deriveStagesBillingActivityDetail,
-  deriveStagesFieldReferenceYmd,
-  deriveStagesFieldTooltip,
-} from '../lib/stagesJobReferenceDates'
 import {
   clearReturnEditJobFromStages,
   peekReturnEditJobFromStages,
@@ -156,7 +122,6 @@ import {
   shouldFetchStagesScheduleSessionSearch,
   STAGES_SCHEDULE_SESSION_SEARCH_MIN_CHARS,
 } from '../lib/jobsStagesScheduleSessionSearch'
-import { showAiaG702G703 } from '../lib/aiaG702G703Eligibility'
 
 type CustomerRow = Database['public']['Tables']['customers']['Row']
 type JobsLedgerInvoice = Database['public']['Tables']['jobs_ledger_invoices']['Row']
@@ -186,20 +151,6 @@ type TeamLaborRow = {
   manHours: number
   jobCost: number
   breakdown: TeamLaborBreakdownEntry[]
-}
-
-
-/** Stages table headers: one visual line per phrase when the table is narrow (no mid-phrase wrap). */
-const stagesThreeLineHeaderLineStyle: CSSProperties = { display: 'block', whiteSpace: 'nowrap' }
-
-function renderStagesThreeLineHeader(line1: string, line2: string, line3: string) {
-  return (
-    <>
-      <span style={stagesThreeLineHeaderLineStyle}>{line1}</span>
-      <span style={stagesThreeLineHeaderLineStyle}>{line2}</span>
-      <span style={stagesThreeLineHeaderLineStyle}>{line3}</span>
-    </>
-  )
 }
 
 const JOBS_TABS: JobsTab[] = ['reports', 'stages', 'billing', 'sub_sheet_ledger', 'combined-labor', 'teams-summary', 'parts', 'job-summary', 'inspections', 'billed']
@@ -261,8 +212,6 @@ export default function Jobs() {
   const { nicknameByDebitCard, nicknameByAccount } = useMercuryLedgerNicknames()
   const { showToast } = useToastContext()
   const jobFormModal = useJobFormModal()
-  const checklistAddModal = useChecklistAddModal()
-  const dispatchTaskModal = useDispatchTaskModal()
   const billCustomer = useBillCustomerModal()
   const {
     jobs,
@@ -824,17 +773,6 @@ export default function Jobs() {
     if (!authUser?.id || activeTab !== 'job-summary' || expandedJobSummaryJobIds.size === 0) return
     void refreshJobThreadStatsForJobIds([...expandedJobSummaryJobIds])
   }, [authUser?.id, activeTab, expandedJobSummaryJobIds, refreshJobThreadStatsForJobIds])
-
-  /** True when loaded customers include exactly one row matching name (prefer same master_user_id as the job). */
-  function customerListImpliesLinkedRow(customersList: CustomerRow[], jobMasterUserId: string, customerNameTrimmed: string): boolean {
-    const nameKey = customerNameTrimmed.trim().toLowerCase()
-    if (!nameKey) return false
-    const byName = customersList.filter((c) => (c.name ?? '').trim().toLowerCase() === nameKey)
-    const byMaster = byName.filter((c) => c.master_user_id === jobMasterUserId)
-    if (byMaster.length === 1) return true
-    if (byMaster.length === 0 && byName.length === 1) return true
-    return false
-  }
 
   useEffect(() => {
     return () => {
@@ -2894,2352 +2832,12 @@ export default function Jobs() {
           {(() => {
             const { waiting, working, paid, readyToBillRows, billedActiveRows, collectionsRows } = stagesBoardLists
 
-            /** Shared metrics so Job HCP badge and service-type pill match box height. */
-            const stagesJobSublinePillBoxBase: CSSProperties = {
-              display: 'inline-block',
-              boxSizing: 'border-box',
-              padding: '0.15rem 0.4rem',
-              fontSize: '0.6875rem',
-              fontWeight: 600,
-              lineHeight: 1.2,
-              borderRadius: 4,
-              fontFamily: 'inherit',
-            }
-            const stagesJobHcpBadgeStyle: CSSProperties = {
-              ...stagesJobSublinePillBoxBase,
-              border: '1px solid rgba(255,255,255,0.5)',
-              background: '#2563eb',
-              color: 'white',
-            }
-
-            function renderStagesJobHcpSubline(job: JobWithDetails, extraWrap?: CSSProperties) {
-              const t = effectiveJobLedgerNumber(job.hcp_number, job.click_number)
-              if (t) {
-                const stName = job.serviceType?.name?.trim()
-                const tagInfo = stName ? getBidServiceTypeTag(stName) : null
-                const serviceLabel = stName
-                  ? (tagInfo?.tag ?? stName.slice(0, 4)).toUpperCase()
-                  : ''
-                const borderColor = tagInfo?.color ?? '#d1d5db'
-                const servicePillStyle: CSSProperties | null = stName
-                  ? {
-                      ...stagesJobSublinePillBoxBase,
-                      marginTop: '0.15rem',
-                      letterSpacing: '0.02em',
-                      border: `1px solid ${borderColor}`,
-                      background: tagInfo ? borderColor : 'var(--bg-muted)',
-                      color: tagInfo ? '#fff' : 'var(--text-700)',
-                    }
-                  : null
-                return (
-                  <div style={extraWrap}>
-                    <span style={stagesJobHcpBadgeStyle}>Job: {t}</span>
-                    {servicePillStyle ? <span style={servicePillStyle}>{serviceLabel}</span> : null}
-                  </div>
-                )
-              }
-              return (
-                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', ...extraWrap }}>—</div>
-              )
-            }
-
             function toggleStages(key: keyof typeof stagesSectionOpen) {
               setStagesSectionOpen((prev) => ({ ...prev, [key]: !prev[key] }))
             }
 
-            function renderStagesFieldAndBillingLines(job: JobWithDetails) {
-              const jYmd = deriveStagesFieldReferenceYmd({
-                lastWorkDate: job.last_work_date,
-                lastScheduleWorkDate: job.last_schedule_work_date ?? null,
-              })
-              const bDetail = deriveStagesBillingActivityDetail(job)
-              const jDisplay = jYmd ? formatEstimatedCompletionDisplay(jYmd) : null
-              const bDisplay = bDetail ? formatEstimatedCompletionDisplay(bDetail.ymd) : null
-              const jTitle = deriveStagesFieldTooltip({
-                lastWorkDate: job.last_work_date,
-                lastScheduleWorkDate: job.last_schedule_work_date ?? null,
-                resolvedYmd: jYmd,
-              })
-              const lineStyle = {
-                fontSize: '0.75rem',
-                color: 'var(--text-muted)',
-                marginTop: '0.15rem',
-              } as const
-              const jbLineButtonStyle: CSSProperties = {
-                ...lineStyle,
-                display: 'block',
-                width: '100%',
-                border: 'none',
-                background: 'transparent',
-                padding: 0,
-                cursor: 'pointer',
-                textAlign: 'inherit',
-                font: 'inherit',
-              }
-              return (
-                <>
-                  <button
-                    type="button"
-                    style={jbLineButtonStyle}
-                    title={jTitle ?? undefined}
-                    aria-label="Field / job-activity date (click for explanation)"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      showToast('Field / job-activity date', 'info', 2000, { clientX: e.clientX, clientY: e.clientY })
-                    }}
-                  >
-                    j: {jDisplay ?? '—'}
-                  </button>
-                  <button
-                    type="button"
-                    style={jbLineButtonStyle}
-                    title={bDetail?.tooltip}
-                    aria-label="Billing-activity date (click for explanation)"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      showToast('Billing-activity date', 'info', 2000, { clientX: e.clientX, clientY: e.clientY })
-                    }}
-                  >
-                    b: {bDisplay ?? '—'}
-                  </button>
-                  {(() => {
-                    const known = stagesManHoursByJobId.has(job.id)
-                    const total = stagesManHoursByJobId.get(job.id) ?? 0
-                    const display =
-                      stagesManHoursLoading && !known ? '…' : formatDecimalWorkHoursToHhMm(total)
-                    const breakdown = stagesLaborBreakdownByJobId.get(job.id) ?? []
-                    const tip = breakdown.length
-                      ? breakdown
-                          .map((p) => `${p.personName} ${formatDecimalWorkHoursToHhMm(p.hours)}`)
-                          .join(' · ')
-                      : 'Man-hours applied (crew assignments)'
-                    return (
-                      <div
-                        style={{ ...lineStyle, display: 'flex', alignItems: 'center', gap: '0.3rem' }}
-                        title={tip}
-                        aria-label={`Man-hours applied: ${display === '…' ? 'loading' : display}`}
-                      >
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          viewBox="0 0 24 24"
-                          width={11}
-                          height={11}
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth={2.5}
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          aria-hidden
-                          style={{ flexShrink: 0 }}
-                        >
-                          <circle cx="12" cy="12" r="9" />
-                          <path d="M12 7v5l3 2" />
-                        </svg>
-                        {display}
-                      </div>
-                    )
-                  })()}
-                </>
-              )
-            }
-
-            /** Job-column address: red map-pin icon + two-line address, linking to Google Maps. */
-            function renderJobAddressWithMap(address: string | null | undefined) {
-              const fmt = formatAddressTwoLines(address ?? null)
-              if (!fmt) return null
-              return (
-                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>
-                  {/* inline-flex so the clickable area hugs the icon + text instead of
-                      stretching across the whole Job cell. */}
-                  <a
-                    href={googleMapsSearchUrl(address)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    title="Open in Google Maps"
-                    style={{
-                      color: 'inherit',
-                      textDecoration: 'none',
-                      display: 'inline-flex',
-                      alignItems: 'flex-start',
-                      gap: '0.3rem',
-                      maxWidth: '100%',
-                    }}
-                  >
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      viewBox="0 0 640 640"
-                      width={12}
-                      height={12}
-                      fill="currentColor"
-                      aria-hidden="true"
-                      style={{ flexShrink: 0, marginTop: 1, color: 'var(--text-red-600)' }}
-                    >
-                      <path d="M128 252.6C128 148.4 214 64 320 64C426 64 512 148.4 512 252.6C512 371.9 391.8 514.9 341.6 569.4C329.8 582.2 310.1 582.2 298.3 569.4C248.1 514.9 127.9 371.9 127.9 252.6zM320 320C355.3 320 384 291.3 384 256C384 220.7 355.3 192 320 192C284.7 192 256 220.7 256 256C256 291.3 284.7 320 320 320z" />
-                    </svg>
-                    <JobAddressText line1={fmt.line1} line2={fmt.line2} />
-                  </a>
-                </div>
-              )
-            }
-
-            function renderJobCustomerLine(job: JobWithDetails) {
-              const hasCustomerInfo = ((job.customer_name ?? '').trim() || (job.customer_email ?? '').trim() || (job.customer_phone ?? '').trim())
-              if (!hasCustomerInfo) return null
-              const cn = (job.customer_name ?? '').trim()
-              const impliedCustomerLink = !job.customer_id && customerListImpliesLinkedRow(customers, job.master_user_id, cn)
-              const showNotInCustomersBadge = !job.customer_id && !impliedCustomerLink
-              return (
-                <div
-                  style={{
-                    fontSize: '0.75rem',
-                    color: 'var(--text-muted)',
-                    marginTop: '0.15rem',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'flex-start',
-                    gap: '0.25rem',
-                  }}
-                >
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      viewBox="0 0 640 640"
-                      width={13}
-                      height={13}
-                      fill="currentColor"
-                      aria-hidden="true"
-                      style={{ flexShrink: 0 }}
-                    >
-                      <path d="M160 64C124.7 64 96 92.7 96 128L96 512C96 547.3 124.7 576 160 576L448 576C483.3 576 512 547.3 512 512L512 128C512 92.7 483.3 64 448 64L160 64zM272 352L336 352C380.2 352 416 387.8 416 432C416 440.8 408.8 448 400 448L208 448C199.2 448 192 440.8 192 432C192 387.8 227.8 352 272 352zM248 256C248 225.1 273.1 200 304 200C334.9 200 360 225.1 360 256C360 286.9 334.9 312 304 312C273.1 312 248 286.9 248 256zM576 144C576 135.2 568.8 128 560 128C551.2 128 544 135.2 544 144L544 208C544 216.8 551.2 224 560 224C568.8 224 576 216.8 576 208L576 144zM576 272C576 263.2 568.8 256 560 256C551.2 256 544 263.2 544 272L544 336C544 344.8 551.2 352 560 352C568.8 352 576 344.8 576 336L576 272zM560 384C551.2 384 544 391.2 544 400L544 464C544 472.8 551.2 480 560 480C568.8 480 576 472.8 576 464L576 400C576 391.2 568.8 384 560 384z" />
-                    </svg>
-                    <span>{(job.customer_name ?? '').trim() || '—'}</span>
-                  </span>
-                  {showNotInCustomersBadge ? (
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        openEditJobAndCreateCustomerFlow(job)
-                      }}
-                      aria-label="Open Edit Job and create customer from job"
-                      style={{
-                        padding: '0.1rem 0.3rem',
-                        fontSize: '0.6875rem',
-                        fontWeight: 500,
-                        fontFamily: 'inherit',
-                        background: 'var(--bg-amber-100)',
-                        color: 'var(--text-amber-800)',
-                        border: 'none',
-                        borderRadius: 4,
-                        cursor: 'pointer',
-                        textAlign: 'left',
-                      }}
-                    >
-                      Not in Customers
-                    </button>
-                  ) : null}
-                </div>
-              )
-            }
-
             function toggleStagesJobThreadExpanded(id: string) {
               setExpandedJobThreadId((prev) => (prev === id ? null : id))
-            }
-
-            function shouldSuppressStagesRowJobThreadToggle(target: EventTarget | null): boolean {
-              const el = target instanceof Element ? target : null
-              if (!el) return false
-              return !!el.closest('button, a, input, textarea, select, label, [role="button"]')
-            }
-
-            function renderStagesThreadExpandButton(jobId: string) {
-              const expanded = expandedJobThreadId === jobId
-              const stat = jobThreadStatsByJobId[jobId]
-              const count = stat?.note_count ?? 0
-              return (
-                <button
-                  type="button"
-                  onClick={() => toggleStagesJobThreadExpanded(jobId)}
-                  aria-expanded={expanded}
-                  title={count > 0 ? `${count} thread note(s)` : 'Job notes thread'}
-                  style={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    gap: 2,
-                    padding: '0.25rem',
-                    border: 'none',
-                    background: 'none',
-                    cursor: 'pointer',
-                    color: 'var(--text-700)',
-                    fontSize: '0.75rem',
-                    lineHeight: 1.1,
-                    flexShrink: 0,
-                    alignSelf: 'flex-start',
-                  }}
-                >
-                  <span aria-hidden>{expanded ? '\u25BC' : '\u25B6'}</span>
-                  {count > 0 ? (
-                    <span style={{ fontSize: '0.65rem', color: 'var(--text-link)', fontWeight: 600 }}>{count}</span>
-                  ) : null}
-                </button>
-              )
-            }
-
-            function renderStagesLastActivityCell(
-              job: JobWithDetails,
-              billingLineForStripeHint?: JobsLedgerInvoice | null,
-            ) {
-              const jobId = job.id
-              const stat = jobThreadStatsByJobId[jobId]
-              const count = stat?.note_count ?? 0
-              const activity = jobThreadActivityByJobId[jobId]
-              let fromThreadBody = ''
-              let lastChronologicalNoteAuthor: string | undefined
-              if (activity?.length) {
-                for (let i = activity.length - 1; i >= 0; i--) {
-                  const it = activity[i]
-                  if (it == null) continue
-                  if (it.kind === 'note') {
-                    fromThreadBody = (it.note.body ?? '').trim()
-                    lastChronologicalNoteAuthor = it.note.author?.name?.trim() || undefined
-                    break
-                  }
-                }
-              }
-              const titleForEmpty = 'Job notes thread'
-              const reportCount = stat?.report_count ?? 0
-              const titleParts: string[] = []
-              if (count > 0) titleParts.push(`${count} thread note(s)`)
-              if (reportCount > 0) titleParts.push(`${reportCount} field report(s)`)
-              const titleWithNotes = titleParts.length > 0 ? titleParts.join(' · ') : titleForEmpty
-              const expanded = expandedJobThreadId === jobId
-              const scheduleNoTeam = (job.team_members?.length ?? 0) === 0
-              const cellReportCount = job.report_count ?? 0
-
-              function renderStagesViewReportsFooterButton() {
-                return (
-                  <div style={{ display: 'flex', justifyContent: 'flex-start', flexShrink: 0 }}>
-                    <button
-                      type="button"
-                      onClick={() => setViewReportsJob({ id: job.id, hcpNumber: job.hcp_number ?? '—', jobName: job.job_name ?? '—', jobAddress: job.job_address ?? '—' })}
-                      style={{
-                        padding: '0.2rem 0.5rem',
-                        fontSize: '0.75rem',
-                        background: 'none',
-                        color: 'var(--text-link)',
-                        border: '1px solid #2563eb',
-                        borderRadius: 4,
-                        cursor: 'pointer',
-                        whiteSpace: 'nowrap',
-                      }}
-                    >
-                      {cellReportCount} Report{cellReportCount !== 1 ? 's' : ''}
-                    </button>
-                  </div>
-                )
-              }
-
-              const stagesInvoiceJumpAmountChipStyle: CSSProperties = {
-                padding: '0.15rem 0.4rem',
-                fontSize: '0.6875rem',
-                fontWeight: 600,
-                border: '1px solid rgba(255,255,255,0.5)',
-                borderRadius: 4,
-                background: '#16a34a',
-                color: 'white',
-                cursor: 'pointer',
-                lineHeight: 1.2,
-                fontFamily: 'inherit',
-              }
-
-              function renderStagesInvoiceJumpChips(forJob: JobWithDetails) {
-                const invs = jobStagesInvoiceJumpChipTargets(forJob)
-                if (invs.length === 0) return null
-                return (
-                  <div
-                    style={{
-                      display: 'flex',
-                      flexWrap: 'wrap',
-                      alignItems: 'center',
-                      gap: '0.3rem',
-                      marginTop: 'auto',
-                      flexShrink: 0,
-                      alignSelf: 'stretch',
-                      maxWidth: '100%',
-                    }}
-                  >
-                    <span
-                      style={{
-                        fontSize: '0.6875rem',
-                        fontWeight: 500,
-                        color: 'var(--text-700)',
-                        lineHeight: 1.2,
-                        flexShrink: 0,
-                      }}
-                    >
-                      {invs.length === 1 ? 'Open Invoice:' : 'Open Invoices:'}
-                    </span>
-                    {invs.map((inv) => {
-                      const amt = formatUsdNoCents(Number(inv.amount ?? 0))
-                      const openCents = Math.round(invoiceOpenRemainingOnJob(inv, forJob) * 100)
-                      const paidLabel = openCents === 0 ? 'Paid' : 'Unpaid'
-                      const statusLabel = inv.status === 'billed' ? 'Billed' : 'Ready to bill'
-                      return (
-                        <button
-                          key={inv.id}
-                          type="button"
-                          onClick={() => {
-                            applyStagesInvoiceFocus(inv.id)
-                          }}
-                          title={`Go to this invoice row on Stages (${statusLabel}, ${paidLabel})`}
-                          aria-label={`Go to invoice ${inv.sequence_order} for ${amt}, ${paidLabel}, on Stages`}
-                          style={stagesInvoiceJumpAmountChipStyle}
-                        >
-                          {amt}
-                        </button>
-                      )
-                    })}
-                  </div>
-                )
-              }
-
-              const lastActivityMainColumnStyle: CSSProperties = {
-                flex: 1,
-                minWidth: 0,
-                alignSelf: 'stretch',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '0.25rem',
-                alignItems: 'stretch',
-              }
-
-              const tdShellStyle: CSSProperties = {
-                padding: '0.75rem',
-                verticalAlign: 'top',
-                display: 'flex',
-                flexDirection: 'row',
-                alignItems: 'stretch',
-                gap: '0.35rem',
-              }
-
-              function renderStagesLastActivityLeadingControls() {
-                const quickIconButtonStyle: CSSProperties = {
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  padding: '0.25rem',
-                  border: 'none',
-                  background: 'none',
-                  flexShrink: 0,
-                }
-                const customerPhone = (job.customer_phone ?? '').trim()
-                return (
-                  <div
-                    style={{
-                      display: 'flex',
-                      flexDirection: 'row',
-                      alignItems: 'flex-start',
-                      gap: 2,
-                      flexShrink: 0,
-                      alignSelf: 'flex-start',
-                    }}
-                  >
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
-                      {canOpenJobScheduleModal ? (
-                        <button
-                          type="button"
-                          onClick={() => setScheduleModalJob(job)}
-                          disabled={scheduleNoTeam}
-                          title={scheduleNoTeam ? 'Assign team members to open schedule' : 'Open schedule'}
-                          aria-label={scheduleNoTeam ? 'Schedule: assign team members first' : 'Open schedule'}
-                          style={{
-                            ...quickIconButtonStyle,
-                            cursor: scheduleNoTeam ? 'not-allowed' : 'pointer',
-                            color: scheduleNoTeam ? 'var(--text-faint)' : '#16a34a',
-                          }}
-                        >
-                          <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            viewBox="0 0 640 640"
-                            width={16}
-                            height={16}
-                            fill="currentColor"
-                            aria-hidden
-                          >
-                            <path d="M224 64C206.3 64 192 78.3 192 96L192 128L160 128C124.7 128 96 156.7 96 192L96 240L544 240L544 192C544 156.7 515.3 128 480 128L448 128L448 96C448 78.3 433.7 64 416 64C398.3 64 384 78.3 384 96L384 128L256 128L256 96C256 78.3 241.7 64 224 64zM96 288L96 480C96 515.3 124.7 544 160 544L480 544C515.3 544 544 515.3 544 480L544 288L96 288z" />
-                          </svg>
-                        </button>
-                      ) : null}
-                      {canOpenJobScheduleModal ? (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const week = getDefaultWeekRange().start
-                            navigate(`/schedule-dispatch?jobId=${encodeURIComponent(job.id)}&week=${encodeURIComponent(week)}`)
-                          }}
-                          disabled={scheduleNoTeam}
-                          title={scheduleNoTeam ? 'Assign team members to open week dispatch' : 'Open week dispatch'}
-                          aria-label={scheduleNoTeam ? 'Week dispatch: assign team members first' : 'Open week dispatch'}
-                          style={{
-                            ...quickIconButtonStyle,
-                            cursor: scheduleNoTeam ? 'not-allowed' : 'pointer',
-                            color: scheduleNoTeam ? 'var(--text-faint)' : 'var(--text-link)',
-                          }}
-                        >
-                          <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            viewBox="0 0 640 640"
-                            width={16}
-                            height={16}
-                            fill="currentColor"
-                            aria-hidden
-                          >
-                            <path d="M128 96L512 96C547.3 96 576 124.7 576 160L576 480C576 515.3 547.3 544 512 544L128 544C92.7 544 64 515.3 64 480L64 160C64 124.7 92.7 96 128 96zM128 192L128 480L232 480L232 192L128 192zM280 192L280 480L360 480L360 192L280 192zM408 192L408 480L512 480L512 192L408 192z" />
-                          </svg>
-                        </button>
-                      ) : null}
-                      {customerPhone ? (
-                        <a
-                          href={`tel:${customerPhone}`}
-                          title={`Call customer: ${customerPhone}`}
-                          aria-label={`Call customer at ${customerPhone}`}
-                          style={{ ...quickIconButtonStyle, color: '#0f766e', cursor: 'pointer' }}
-                        >
-                          <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            viewBox="0 0 640 640"
-                            width={16}
-                            height={16}
-                            fill="currentColor"
-                            aria-hidden
-                          >
-                            <path d="M224.2 89C216.3 70.1 195.7 60.1 176.1 65.4L170.6 66.9C106 84.5 50.8 147.1 66.9 223.3C104 398.3 241.7 536 416.7 573.1C492.9 589.2 555.5 534 573.1 469.4L574.6 463.9C579.9 444.2 569.9 423.7 551 415.8L453.8 375.3C437.3 368.4 418.2 373.2 406.8 387.1L368.2 434.3C297.9 399.4 240.7 342.2 205.8 271.9L253 233.3C266.9 221.9 271.7 202.9 264.8 186.3L224.2 89z" />
-                          </svg>
-                        </a>
-                      ) : null}
-                      {showTaskDispatchButton(authRole) ? (
-                        <button
-                          type="button"
-                          onClick={() =>
-                            dispatchTaskModal?.openDispatchModal({
-                              reference: {
-                                source: 'job',
-                                id: job.id,
-                                hcp_number: job.hcp_number ?? '',
-                                click_number: job.click_number ?? null,
-                                job_name: job.job_name ?? '',
-                                job_address: job.job_address ?? '',
-                              },
-                            })
-                          }
-                          title="Send this job to Dispatch with a note"
-                          aria-label="Send job to Dispatch"
-                          style={{ ...quickIconButtonStyle, color: '#0ea5e9', cursor: 'pointer' }}
-                        >
-                          <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            viewBox="0 0 640 640"
-                            width={16}
-                            height={16}
-                            fill="currentColor"
-                            aria-hidden
-                          >
-                            <path d="M280 128C266.7 128 256 138.7 256 152C256 165.3 266.7 176 280 176L296 176L296 209.3C188.8 220.7 104.2 307.7 96.6 416L543.5 416C535.8 307.7 451.2 220.7 344 209.3L344 176L360 176C373.3 176 384 165.3 384 152C384 138.7 373.3 128 360 128L280 128zM88 464C74.7 464 64 474.7 64 488C64 501.3 74.7 512 88 512L552 512C565.3 512 576 501.3 576 488C576 474.7 565.3 464 552 464L88 464z" />
-                          </svg>
-                        </button>
-                      ) : null}
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const numLabel = effectiveJobLedgerNumber(job.hcp_number, job.click_number)
-                          const label = `${(numLabel ?? '').trim() || '—'} · ${(job.job_name ?? '').trim() || 'Job'}`
-                          checklistAddModal?.openAddModal({
-                            preset: {
-                              title: `{{1:${label}}} — `,
-                              links: [`${window.location.origin}/jobs?jobDetail=${encodeURIComponent(job.id)}`],
-                            },
-                          })
-                        }}
-                        title="Send this job to someone as a task"
-                        aria-label="Send job as a task"
-                        style={{ ...quickIconButtonStyle, color: '#7c3aed', cursor: 'pointer' }}
-                      >
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          viewBox="0 0 640 640"
-                          width={16}
-                          height={16}
-                          fill="currentColor"
-                          aria-hidden
-                        >
-                          <path d="M576 64L64 288L240 352L240 496L328 400L472 512L576 64z" />
-                        </svg>
-                      </button>
-                    </div>
-                    {renderStagesThreadExpandButton(jobId)}
-                  </div>
-                )
-              }
-
-              function lastActivityBodyInteractiveProps(title: string): {
-                role: 'button'
-                tabIndex: 0
-                title: string
-                'aria-expanded': boolean
-                onClick: () => void
-                onKeyDown: (e: KeyboardEvent<HTMLDivElement>) => void
-                style: CSSProperties
-              } {
-                return {
-                  role: 'button',
-                  tabIndex: 0,
-                  title,
-                  'aria-expanded': expanded,
-                  onClick: () => toggleStagesJobThreadExpanded(jobId),
-                  onKeyDown: (e: KeyboardEvent<HTMLDivElement>) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                      e.preventDefault()
-                      toggleStagesJobThreadExpanded(jobId)
-                    }
-                  },
-                  style: {
-                    flex: 1,
-                    minWidth: 0,
-                    cursor: 'pointer',
-                  },
-                }
-              }
-
-              function renderStagesStripeEmailedCustomerHint(): ReactNode {
-                const line = billingLineForStripeHint
-                if (!line) return null
-                if (line.external_send_channel !== 'stripe') return null
-                if (!String(line.stripe_invoice_id ?? '').trim()) return null
-                const sentRaw = line.sent_to_customer_at
-                if (sentRaw == null || !String(sentRaw).trim()) return null
-                const sentMeta = getDispatchNoteDisplayMeta(String(sentRaw))
-                const stripePaid =
-                  String(line.stripe_invoice_status ?? '').toLowerCase() === 'paid'
-                return (
-                  <div
-                    style={{
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      gap: '0.2rem',
-                      width: '100%',
-                      fontSize: '0.6875rem',
-                      color: 'var(--text-muted)',
-                      lineHeight: 1.2,
-                      textAlign: 'center',
-                    }}
-                  >
-                    <span>Stripe emailed customer</span>
-                    <span>
-                      {sentMeta.weekdayTimeChicago} ({sentMeta.daysAgoLabel})
-                    </span>
-                    <StripeInvoiceSendFromStripeButton
-                      jobsLedgerInvoiceId={line.id}
-                      stripeInvoiceId={String(line.stripe_invoice_id).trim()}
-                      customerEmail={job.customer_email ?? null}
-                      stripeModeForBilling={stripeModeForBillingFromRole(authRole)}
-                      onSent={() => void loadJobs()}
-                      compact
-                      micro
-                      unboxed
-                      hideInlineSuccessLine
-                      recordedLastSendAt={line.sent_to_customer_at}
-                      buttonLabel="Resend invoice email"
-                      sendDisabled={stripePaid}
-                      sendDisabledTitle="This Stripe invoice is paid; Stripe will not send another email."
-                    />
-                  </div>
-                )
-              }
-
-              function threadActivityWireMs(iso: string | null | undefined): number | null {
-                if (iso == null || !String(iso).trim()) return null
-                const t = Date.parse(String(iso))
-                return Number.isNaN(t) ? null : t
-              }
-
-              if (!stat) {
-                return (
-                  <td style={tdShellStyle}>
-                    {renderStagesLastActivityLeadingControls()}
-                    <div style={lastActivityMainColumnStyle}>
-                      <div {...lastActivityBodyInteractiveProps(titleForEmpty)}>
-                        <span style={{ fontSize: '0.8125rem', color: 'var(--text-faint)' }}>—</span>
-                      </div>
-                      {renderStagesStripeEmailedCustomerHint()}
-                      {renderStagesInvoiceJumpChips(job)}
-                      {renderStagesViewReportsFooterButton()}
-                    </div>
-                  </td>
-                )
-              }
-              const tNote = threadActivityWireMs(stat.last_note_at)
-              const tReport = threadActivityWireMs(stat.last_report_at)
-              if (tNote == null && tReport == null) {
-                return (
-                  <td style={tdShellStyle}>
-                    {renderStagesLastActivityLeadingControls()}
-                    <div style={lastActivityMainColumnStyle}>
-                      <div {...lastActivityBodyInteractiveProps(titleForEmpty)}>
-                        <span style={{ fontSize: '0.8125rem', color: 'var(--text-faint)' }}>—</span>
-                      </div>
-                      {renderStagesStripeEmailedCustomerHint()}
-                      {renderStagesInvoiceJumpChips(job)}
-                      {renderStagesViewReportsFooterButton()}
-                    </div>
-                  </td>
-                )
-              }
-              const useReport = tReport != null && (tNote == null || tReport > tNote)
-              const atIso = useReport ? stat.last_report_at! : stat.last_note_at!
-              const author = useReport
-                ? stat.last_report_author_name?.trim() || ''
-                : stat.last_note_author_name?.trim() || lastChronologicalNoteAuthor || ''
-              const body = useReport
-                ? (() => {
-                    const tmpl = (stat.last_report_template_name ?? '').trim() || 'Report'
-                    const prev = (stat.last_report_preview ?? '').trim()
-                    return prev ? `Report: ${tmpl}\n${prev}` : `Report: ${tmpl}`
-                  })()
-                : (stat.last_note_body ?? '').trim() || fromThreadBody
-              return (
-                <td style={{ ...tdShellStyle, maxWidth: 280 }}>
-                  {renderStagesLastActivityLeadingControls()}
-                  <div style={lastActivityMainColumnStyle}>
-                    <div {...lastActivityBodyInteractiveProps(titleWithNotes)}>
-                      <div style={{ fontSize: '0.6875rem', color: 'var(--text-muted)', marginBottom: '0.2rem' }}>
-                        {author ? <span>{author}</span> : null}
-                        {author ? <span style={{ margin: '0 0.35rem' }}>·</span> : null}
-                        <span>{formatDispatchNoteWeekdayShortTimeChicago(atIso)}</span>
-                        <span style={{ marginLeft: '0.35rem' }}>({formatDispatchNoteDaysAgoShortPhrase(atIso)})</span>
-                      </div>
-                      <div
-                        style={{
-                          fontSize: '0.8125rem',
-                          color: 'var(--text-700)',
-                          lineHeight: 1.35,
-                          wordBreak: 'break-word',
-                          whiteSpace: 'pre-wrap',
-                          maxHeight: '4.2em',
-                          overflow: 'hidden',
-                        }}
-                      >
-                        {body || '—'}
-                      </div>
-                    </div>
-                    {renderStagesStripeEmailedCustomerHint()}
-                    {renderStagesInvoiceJumpChips(job)}
-                    {renderStagesViewReportsFooterButton()}
-                  </div>
-                </td>
-              )
-            }
-
-            function stagesRowHasProjectBanner(
-              projectId: string | null,
-              project: { name: string } | null | undefined
-            ): boolean {
-              return !!(projectId && project)
-            }
-
-            function renderStagesProjectBannerRow(
-              projectId: string | null,
-              project: { name: string } | null | undefined,
-              colSpan: number
-            ): React.ReactElement | null {
-              if (!projectId || !project) return null
-              return (
-                <tr style={{ borderBottom: '1px solid var(--border)' }}>
-                  <td
-                    colSpan={colSpan}
-                    style={{
-                      padding: '0.5rem 0.75rem',
-                      background: 'var(--bg-blue-tint)',
-                      fontSize: '0.8125rem',
-                    }}
-                  >
-                    <Link to={`/workflows/${projectId}`} style={{ color: 'var(--text-blue-700)', textDecoration: 'none', fontWeight: 500 }}>
-                      Project: {project.name}
-                    </Link>
-                  </td>
-                </tr>
-              )
-            }
-
-            const STAGES_JOB_COLUMN_ESTIMATE_TITLE_MAX = 56
-            function renderStagesJobColumnEstimateFooter(linked: JobWithDetails['linkedEstimateForStages']): React.ReactElement | null {
-              if (!linked) return null
-              const raw = linked.title?.trim() ?? ''
-              const title =
-                raw.length > STAGES_JOB_COLUMN_ESTIMATE_TITLE_MAX
-                  ? `${raw.slice(0, STAGES_JOB_COLUMN_ESTIMATE_TITLE_MAX)}…`
-                  : raw
-              return (
-                <div style={{ marginTop: '0.35rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                  <Link
-                    to={`/estimates/${linked.estimate_number}`}
-                    style={{ color: '#15803d', textDecoration: 'none', fontWeight: 500 }}
-                  >
-                    Quote #{linked.estimate_number}
-                    {title ? ` — ${title}` : ''}
-                  </Link>
-                </div>
-              )
-            }
-
-            function renderStagesTable(jobList: JobWithDetails[], actionLabel: React.ReactNode | null, onAction: (j: JobWithDetails) => void, showTimeOpen?: boolean, onSendBack?: (j: JobWithDetails) => void, onSendBackSimple?: (j: JobWithDetails) => void, showPctComplete?: boolean) {
-              const stagesTableColCount = 5
-              return (
-                <div style={{ border: '1px solid var(--border)', borderRadius: 4, overflowX: 'auto', WebkitOverflowScrolling: 'touch', minWidth: 0 }}>
-                  <table style={{ width: '100%', minWidth: 700, borderCollapse: 'collapse', fontSize: '0.875rem' }}>
-                    <thead style={{ background: 'var(--bg-subtle)' }}>
-                      <tr>
-                        <th
-                          style={{
-                            padding: '0.75rem',
-                            textAlign: 'left',
-                            borderBottom: '1px solid var(--border)',
-                            minWidth: '6.75rem',
-                          }}
-                        >
-                          {renderStagesThreeLineHeader('Assigned', 'HCP', 'Last-Activity')}
-                        </th>
-                        <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Job</th>
-                        <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)', minWidth: 200 }}>Last activity</th>
-                        <th
-                          style={{
-                            padding: '0.75rem',
-                            textAlign: 'center',
-                            borderBottom: '1px solid var(--border)',
-                            minWidth: '12rem',
-                          }}
-                        >
-                          Progress & payment
-                        </th>
-                        <th style={{ padding: '0.75rem', width: 140, borderBottom: '1px solid var(--border)' }} />
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {jobList.length === 0 ? (
-                        <tr>
-                          <td colSpan={stagesTableColCount} style={{ padding: '0.75rem', color: 'var(--text-muted)' }}>
-                            No jobs in this group
-                          </td>
-                        </tr>
-                      ) : (
-                        jobList.map((j) => (
-                          <Fragment key={j.id}>
-                          <tr
-                            data-stages-job-id={j.id}
-                            style={{
-                              borderBottom: stagesRowHasProjectBanner(j.project_id, j.project) ? 'none' : '1px solid #e5e7eb',
-                              ...(stagesJobFlashId === j.id
-                                ? { backgroundColor: 'var(--bg-amber-100)', outline: '2px solid #f59e0b', outlineOffset: -2, transition: 'background-color 0.35s ease' }
-                                : {}),
-                            }}
-                            onClick={(e) => {
-                              if (shouldSuppressStagesRowJobThreadToggle(e.target)) return
-                              toggleStagesJobThreadExpanded(j.id)
-                            }}
-                          >
-                            <td style={{ padding: '0.75rem', position: 'relative', verticalAlign: 'top' }}>
-                              {stagesHamMode ? (
-                                <div ref={assignedEditJobId === j.id ? assignedEditDropdownRef : undefined} style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
-                                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'wrap' }}>
-                                    <span>{(j.team_members ?? []).map((t) => t.users?.name?.trim()).filter(Boolean).join(', ') || '—'}</span>
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        if (assignedEditJobId === j.id) {
-                                          setAssignedEditJobId(null)
-                                        } else {
-                                          setAssignedEditJobId(j.id)
-                                          setAssignedEditSelectedIds((j.team_members ?? []).map((t) => t.user_id))
-                                        }
-                                      }}
-                                      disabled={assignedEditSavingId === j.id}
-                                      title="Change assigned"
-                                      aria-label="Change assigned"
-                                      style={{
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        width: 24,
-                                        height: 24,
-                                        padding: 0,
-                                        border: 'none',
-                                        borderRadius: 4,
-                                        background: 'none',
-                                        cursor: assignedEditSavingId === j.id ? 'not-allowed' : 'pointer',
-                                        color: 'var(--text-muted)',
-                                      }}
-                                    >
-                                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={16} height={16} fill="currentColor" aria-hidden>
-                                        <path d="M100.4 417.2C104.5 402.6 112.2 389.3 123 378.5L304.2 197.3L338.1 163.4C354.7 180 389.4 214.7 442.1 267.4L476 301.3L442.1 335.2L260.9 516.4C250.2 527.1 236.8 534.9 222.2 539L94.4 574.6C86.1 576.9 77.1 574.6 71 568.4C64.9 562.2 62.6 553.3 64.9 545L100.4 417.2zM156 413.5C151.6 418.2 148.4 423.9 146.7 430.1L122.6 517L209.5 492.9C215.9 491.1 221.7 487.8 226.5 483.2L155.9 413.5zM510 267.4C493.4 250.8 458.7 216.1 406 163.4L372 129.5C398.5 103 413.4 88.1 416.9 84.6C430.4 71 448.8 63.4 468 63.4C487.2 63.4 505.6 71 519.1 84.6L554.8 120.3C568.4 133.9 576 152.3 576 171.4C576 190.5 568.4 209 554.8 222.5C551.3 226 536.4 240.9 509.9 267.4z" />
-                                      </svg>
-                                    </button>
-                                    {assignedEditJobId === j.id && (
-                                      <div
-                                        style={{
-                                          position: 'absolute',
-                                          top: '100%',
-                                          left: 0,
-                                          marginTop: 4,
-                                          zIndex: 50,
-                                          background: 'var(--surface)',
-                                          border: '1px solid var(--border-strong)',
-                                          borderRadius: 4,
-                                          boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
-                                          padding: '0.5rem',
-                                          minWidth: 180,
-                                          maxHeight: 200,
-                                          overflowY: 'auto',
-                                        }}
-                                      >
-                                        <div style={{ fontSize: '0.8125rem', fontWeight: 600, marginBottom: '0.5rem' }}>Assigned</div>
-                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                                          {users.map((u) => (
-                                            <label key={u.id} style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer', fontSize: '0.875rem' }}>
-                                              <input
-                                                type="checkbox"
-                                                checked={assignedEditSelectedIds.includes(u.id)}
-                                                onChange={() => {
-                                                  setAssignedEditSelectedIds((prev) =>
-                                                    prev.includes(u.id) ? prev.filter((x) => x !== u.id) : [...prev, u.id]
-                                                  )
-                                                }}
-                                                style={{ width: '0.875rem', height: '0.875rem', margin: 0 }}
-                                              />
-                                              <span>{u.name}</span>
-                                            </label>
-                                          ))}
-                                        </div>
-                                        <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
-                                          <button
-                                            type="button"
-                                            onClick={() => updateJobTeamMembers(j.id, assignedEditSelectedIds)}
-                                            disabled={assignedEditSavingId === j.id}
-                                            style={{
-                                              padding: '0.35rem 0.75rem',
-                                              fontSize: '0.8125rem',
-                                              background: '#3b82f6',
-                                              color: 'white',
-                                              border: 'none',
-                                              borderRadius: 4,
-                                              cursor: assignedEditSavingId === j.id ? 'not-allowed' : 'pointer',
-                                            }}
-                                          >
-                                            {assignedEditSavingId === j.id ? '…' : 'Apply'}
-                                          </button>
-                                          <button
-                                            type="button"
-                                            onClick={() => setAssignedEditJobId(null)}
-                                            style={{
-                                              padding: '0.35rem 0.75rem',
-                                              fontSize: '0.8125rem',
-                                              background: 'none',
-                                              color: 'var(--text-muted)',
-                                              border: '1px solid var(--border-strong)',
-                                              borderRadius: 4,
-                                              cursor: 'pointer',
-                                            }}
-                                          >
-                                            Cancel
-                                          </button>
-                                        </div>
-                                      </div>
-                                    )}
-                                  </div>
-                                  {renderStagesJobHcpSubline(j)}
-                                  {renderStagesFieldAndBillingLines(j)}
-                                </div>
-                              ) : (
-                                <>
-                                  <div>{(j.team_members ?? []).map((t) => t.users?.name?.trim()).filter(Boolean).join(', ') || '—'}</div>
-                                  {renderStagesJobHcpSubline(j, { marginTop: '0.15rem' })}
-                                  {renderStagesFieldAndBillingLines(j)}
-                                </>
-                              )}
-                            </td>
-                            <td style={{ padding: '0.75rem' }}>
-                              {renderStagesOpenDetailJobName(j)}
-                              {renderJobAddressWithMap(j.job_address)}
-                              {renderJobCustomerLine(j)}
-                              {renderStagesJobColumnEstimateFooter(j.linkedEstimateForStages)}
-                            </td>
-                            {renderStagesLastActivityCell(j, stagesJobLevelStripeEmailedHintInvoice(j))}
-                            <td style={{ padding: '0.75rem', textAlign: 'center', verticalAlign: 'middle' }}>
-                              <StagesProgressPaymentCell
-                                model={buildStagesMoneyBarModel({
-                                  totalBill: j.revenue != null ? Number(j.revenue) : null,
-                                  paymentsMade: j.payments_made != null ? Number(j.payments_made) : null,
-                                  pctComplete: j.pct_complete ?? null,
-                                  billedUnpaid: jobBilledUnpaidDollars(j),
-                                })}
-                                pctComplete={j.pct_complete ?? null}
-                                pctSaving={showPctComplete ? pctCompleteSavingId === j.id : undefined}
-                                onPctCommit={showPctComplete ? (n) => updateJobPctComplete(j.id, n) : undefined}
-                              />
-                            </td>
-                            <td style={{ padding: '0.75rem', verticalAlign: 'top' }}>
-                              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', justifyContent: 'center' }}>
-                                  {showTimeOpen && (
-                                      <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', display: 'block', textAlign: 'center', minWidth: '5rem' }} title="Time since job created">
-                                        Open {formatTimeSince(j.created_at ?? null)}
-                                      </span>
-                                    )}
-                                    {onSendBack && (
-                                      <button
-                                        type="button"
-                                        onClick={() => onSendBack(j)}
-                                        disabled={stagesStatusUpdatingId === j.id}
-                                        style={{
-                                          padding: '0.35rem 0.75rem',
-                                          fontSize: '0.8125rem',
-                                          background: 'none',
-                                          color: 'var(--text-muted)',
-                                          border: '1px solid var(--border-strong)',
-                                          borderRadius: 4,
-                                          cursor: stagesStatusUpdatingId === j.id ? 'not-allowed' : 'pointer',
-                                        }}
-                                      >
-                                        Send back
-                                      </button>
-                                    )}
-                                    {onSendBackSimple && (
-                                      <button
-                                        type="button"
-                                        onClick={() => onSendBackSimple(j)}
-                                        disabled={stagesStatusUpdatingId === j.id}
-                                        style={{
-                                          padding: '0.35rem 0.75rem',
-                                          fontSize: '0.8125rem',
-                                          background: 'none',
-                                          color: 'var(--text-muted)',
-                                          border: '1px solid var(--border-strong)',
-                                          borderRadius: 4,
-                                          cursor: stagesStatusUpdatingId === j.id ? 'not-allowed' : 'pointer',
-                                        }}
-                                      >
-                                        Send back
-                                      </button>
-                                    )}
-                                    {actionLabel && (
-                                      <button
-                                        type="button"
-                                        onClick={() => onAction(j)}
-                                        disabled={stagesStatusUpdatingId === j.id}
-                                        style={{
-                                          padding: '0.35rem 0.75rem',
-                                          fontSize: '0.8125rem',
-                                          background: '#3b82f6',
-                                          color: 'white',
-                                          border: 'none',
-                                          borderRadius: 4,
-                                          cursor: stagesStatusUpdatingId === j.id ? 'not-allowed' : 'pointer',
-                                        }}
-                                      >
-                                        {stagesStatusUpdatingId === j.id ? '…' : actionLabel}
-                                      </button>
-                                    )}
-                                  </div>
-                                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem', alignItems: 'flex-end' }}>
-                                    <div style={{ display: 'flex', gap: '0.35rem', alignItems: 'center' }}>
-                                        {(() => {
-                                          const rem = jobBillingUnallocatedDollars(j)
-                                          return (
-                                            <button
-                                              type="button"
-                                              onClick={() => { setCreatePartialInvoiceAmount(''); setCreatePartialInvoiceJob(j) }}
-                                              disabled={rem <= 0}
-                                              title={rem <= 0 ? 'No remaining amount' : 'Create partial invoice'}
-                                              aria-label="Create partial invoice"
-                                              style={{ padding: '0.25rem', background: 'none', border: 'none', cursor: rem <= 0 ? 'not-allowed' : 'pointer', color: rem <= 0 ? 'var(--text-faint)' : '#16a34a', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
-                                            >
-                                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="16" height="16" fill="currentColor" aria-hidden="true">
-                                                <path d="M128 128C128 92.7 156.7 64 192 64L341.5 64C358.5 64 374.8 70.7 386.8 82.7L493.3 189.3C505.3 201.3 512 217.6 512 234.6L512 512C512 547.3 483.3 576 448 576L192 576C156.7 576 128 547.3 128 512L128 128zM336 122.5L336 216C336 229.3 346.7 240 360 240L453.5 240L336 122.5zM248 320C234.7 320 224 330.7 224 344C224 357.3 234.7 368 248 368L392 368C405.3 368 416 357.3 416 344C416 330.7 405.3 320 392 320L248 320zM248 416C234.7 416 224 426.7 224 440C224 453.3 234.7 464 248 464L392 464C405.3 464 416 453.3 416 440C416 426.7 405.3 416 392 416L248 416z" />
-                                              </svg>
-                                            </button>
-                                          )
-                                        })()}
-                                        <button
-                                          type="button"
-                                          onClick={() => openEdit(j)}
-                                          title="Edit"
-                                          aria-label="Edit"
-                                          style={{ padding: '0.25rem', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-700)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
-                                        >
-                                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="16" height="16" fill="currentColor" aria-hidden="true">
-                                            <path d="M128.1 64C92.8 64 64.1 92.7 64.1 128L64.1 512C64.1 547.3 92.8 576 128.1 576L274.3 576L285.2 521.5C289.5 499.8 300.2 479.9 315.8 464.3L448 332.1L448 234.6C448 217.6 441.3 201.3 429.3 189.3L322.8 82.7C310.8 70.7 294.5 64 277.6 64L128.1 64zM389.6 240L296.1 240C282.8 240 272.1 229.3 272.1 216L272.1 122.5L389.6 240zM332.3 530.9L320.4 590.5C320.2 591.4 320.1 592.4 320.1 593.4C320.1 601.4 326.6 608 334.7 608C335.7 608 336.6 607.9 337.6 607.7L397.2 595.8C409.6 593.3 421 587.2 429.9 578.3L548.8 459.4L468.8 379.4L349.9 498.3C341 507.2 334.9 518.6 332.4 531zM600.1 407.9C622.2 385.8 622.2 350 600.1 327.9C578 305.8 542.2 305.8 520.1 327.9L491.3 356.7L571.3 436.7L600.1 407.9z" />
-                                          </svg>
-                                        </button>
-                                        <button
-                                          type="button"
-                                          onClick={() => openStagesDetailJobModal(j)}
-                                          title="Job detail"
-                                          aria-label={`Open job detail for ${(j.job_name ?? '').trim() || 'Job'}`}
-                                          style={{ padding: '0.25rem', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-700)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
-                                        >
-                                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="16" height="16" fill="currentColor" aria-hidden="true">
-                                            <path d="M264 112L376 112C380.4 112 384 115.6 384 120L384 160L256 160L256 120C256 115.6 259.6 112 264 112zM208 120L208 160L128 160C92.7 160 64 188.7 64 224L64 320L576 320L576 224C576 188.7 547.3 160 512 160L432 160L432 120C432 89.1 406.9 64 376 64L264 64C233.1 64 208 89.1 208 120zM576 368L384 368L384 384C384 401.7 369.7 416 352 416L288 416C270.3 416 256 401.7 256 384L256 368L64 368L64 480C64 515.3 92.7 544 128 544L512 544C547.3 544 576 515.3 576 480L576 368z" />
-                                          </svg>
-                                        </button>
-                                    </div>
-                                    <div style={{ display: 'flex', gap: '0.35rem', alignItems: 'center' }}>
-                                        <button
-                                          type="button"
-                                          onClick={() => openInExternalBrowser(buildClickToolingUrl(j))}
-                                          title="Open Click Tooling report (pre-fill customer info)"
-                                          aria-label="Open Click Tooling"
-                                          style={{ padding: '0.25rem', background: 'none', border: 'none', cursor: 'pointer', color: '#FF6600', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
-                                        >
-                                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="16" height="16" fill="currentColor" aria-hidden="true">
-                                            <path d="M541.4 162.6C549 155 561.7 156.9 565.5 166.9C572.3 184.6 576 203.9 576 224C576 312.4 504.4 384 416 384C398.5 384 381.6 381.2 365.8 376L178.9 562.9C150.8 591 105.2 591 77.1 562.9C49 534.8 49 489.2 77.1 461.1L264 274.2C258.8 258.4 256 241.6 256 224C256 135.6 327.6 64 416 64C436.1 64 455.4 67.7 473.1 74.5C483.1 78.3 484.9 91 477.4 98.6L388.7 187.3C385.7 190.3 384 194.4 384 198.6L384 240C384 248.8 391.2 256 400 256L441.4 256C445.6 256 449.7 254.3 452.7 251.3L541.4 162.6z" />
-                                          </svg>
-                                        </button>
-                                        {showAiaG702G703(authRole, j) ? (
-                                          <button
-                                            type="button"
-                                            onClick={() => setAiaG702StagesJob(j)}
-                                            title="AIA G702-G703"
-                                            aria-label="Open AIA G702-G703 workbook generator"
-                                            style={{
-                                              padding: '0.25rem',
-                                              background: 'none',
-                                              border: 'none',
-                                              cursor: 'pointer',
-                                              color: '#16a34a',
-                                              display: 'inline-flex',
-                                              alignItems: 'center',
-                                              justifyContent: 'center',
-                                            }}
-                                          >
-                                            <FileSpreadsheet size={16} aria-hidden />
-                                          </button>
-                                        ) : null}
-                                        {canCreateHazmatFee ? (
-                                          <button
-                                            type="button"
-                                            onClick={() => openHazmatFee(j)}
-                                            title="Hazmat Fee — document a biohazard incident and bill the customer"
-                                            aria-label="Create a hazmat fee for this job"
-                                            style={{ padding: '0.25rem', background: 'none', border: 'none', cursor: 'pointer', color: '#FF6600', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
-                                          >
-                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M292 76.6C292 68.3 284.4 62.1 276.5 64.5C215.6 83.3 171.4 140.3 171.4 207.6C171.4 232.7 177.5 256.3 188.4 277.1C167.4 278.9 146.4 285.3 126.9 296.6C69 330.2 42.1 396.8 56 459.1C57.9 467.5 67.4 471.1 74.9 466.7C79.9 463.8 82.5 458.1 82 452.3C81.7 449 81.6 445.7 81.6 442.2C81.6 318.7 266 318.7 266 442.2C266 530.6 171.5 555.8 117.8 517.6C113.3 514.4 107.3 513.7 102.5 516.5C95.5 520.6 93.9 530.1 99.8 535.6C146.4 579.4 217.8 589.5 275.9 555.8C293.8 545.4 308.7 531.9 320.4 516.4C332.1 532 347 545.5 364.9 555.8C423 589.5 494.4 579.4 541 535.6C546.9 530.1 545.3 520.5 538.3 516.5C533.5 513.7 527.5 514.4 523 517.6C469.3 555.8 374.8 530.6 374.8 442.2C374.8 318.7 559.2 318.7 559.2 442.2C559.2 445.6 559.1 449 558.8 452.3C558.3 458.1 560.9 463.8 565.9 466.7C573.3 471 582.9 467.5 584.8 459.1C598.7 396.9 571.8 330.2 513.9 296.6C494.4 285.3 473.5 278.9 452.4 277.1C463.3 256.3 469.4 232.7 469.4 207.6C469.4 140.3 425.2 83.3 364.3 64.5C356.4 62.1 348.8 68.3 348.8 76.6C348.8 82.5 352.8 87.6 358.3 89.8C441.7 123.4 429.1 268.2 320.5 268.2C211.9 268.2 199.1 123.4 282.5 89.8C288 87.6 292 82.5 292 76.6zM280.4 352C280.4 329.9 298.3 312 320.4 312C342.5 312 360.4 329.9 360.4 352C360.4 374.1 342.5 392 320.4 392C298.3 392 280.4 374.1 280.4 352zM467 381.7C450.8 381.7 435.6 387.2 424.9 396.7C414.8 405.8 406.8 420.1 406.8 442.3C406.8 463.4 414 477.3 423.3 486.4C455.5 461.8 478.8 425.9 487.2 384.6C480.9 382.7 474 381.6 467 381.6zM234 442.3C234 420 226 405.7 215.9 396.7C205.2 387.1 190 381.7 173.8 381.7C166.8 381.7 159.9 382.7 153.6 384.7C162 426 185.2 461.9 217.5 486.5C226.9 477.4 234 463.4 234 442.3zM275.2 218C284.2 228.2 298.4 236.2 320.4 236.2C342.4 236.2 356.6 228.2 365.6 218C372.3 210.4 377.1 200.5 379.2 189.6C360.9 182.8 341 179.1 320.4 179.1C299.8 179.1 279.9 182.8 261.6 189.6C263.8 200.5 268.5 210.4 275.2 218.1z" /></svg>
-                                          </button>
-                                        ) : null}
-                                    </div>
-                                  </div>
-                                </div>
-                              </td>
-                          </tr>
-                          {expandedJobThreadId === j.id && (
-                            <tr>
-                              <td
-                                colSpan={stagesTableColCount}
-                                style={{
-                                  padding: '0.5rem 0.75rem',
-                                  background: 'var(--bg-subtle)',
-                                  borderBottom: '1px solid var(--border)',
-                                }}
-                              >
-                                <JobThreadNotesPanel
-                                  pctComplete={j.pct_complete ?? null}
-                                  canEditPct={canEditJobPctComplete}
-                                  pctSaving={pctCompleteSavingId === j.id}
-                                  onCommitPct={(value, note) => commitStagesPctWithNote(j.id, value, note)}
-                                  teamMembers={j.team_members?.map((t) => ({ user_id: t.user_id, name: t.users?.name ?? null })) ?? []}
-                                  peopleAction={
-                                    canManageJobPeople
-                                      ? {
-                                          onClick: () =>
-                                            setManageJobPeople({
-                                              jobId: j.id,
-                                              jobLabel: `${(j.hcp_number ?? '').trim() || '—'} · ${(j.job_name ?? '').trim() || 'Job'}`,
-                                              currentTeamUserIds: j.team_members?.map((t) => t.user_id) ?? [],
-                                            }),
-                                        }
-                                      : undefined
-                                  }
-                                  activity={jobThreadActivityByJobId[j.id] ?? []}
-                                  loading={jobThreadNotesLoadingId === j.id}
-                                  canPost={!!authUser}
-                                  draft={jobThreadDraft}
-                                  submitting={jobThreadSubmittingId === j.id}
-                                  onDraftChange={setJobThreadDraft}
-                                  onSubmit={() => void submitJobThreadNote(j.id)}
-                                  scheduleAction={
-                                    canOpenJobScheduleModal
-                                      ? {
-                                          onClick: () => setScheduleModalJob(j),
-                                          disabled: (j.team_members?.length ?? 0) === 0,
-                                        }
-                                      : undefined
-                                  }
-                                  scheduleDispatchAction={
-                                    canOpenJobScheduleModal
-                                      ? {
-                                          onClick: () => {
-                                            const week = getDefaultWeekRange().start
-                                            navigate(
-                                              `/schedule-dispatch?jobId=${encodeURIComponent(j.id)}&week=${encodeURIComponent(week)}`,
-                                            )
-                                          },
-                                          disabled: (j.team_members?.length ?? 0) === 0,
-                                        }
-                                      : undefined
-                                  }
-                                  viewerRole={authRole}
-                                />
-                              </td>
-                            </tr>
-                          )}
-                          {renderStagesProjectBannerRow(j.project_id, j.project, stagesTableColCount)}
-                          </Fragment>
-                        ))
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              )
-            }
-
-            function renderUnifiedStagesTable(
-              rows: StageRow[],
-              options: {
-                actionLabel: React.ReactNode | null
-                onJobAction: (j: JobWithDetails) => void
-                onInvoiceAction: (inv: InvoiceWithJob) => void
-                /** Billed Awaiting Payment: open read-only bill (Stripe or outside). */
-                onViewBill?: (inv: InvoiceWithJob) => void
-                onJobSendBack?: (j: JobWithDetails) => void
-                onInvoiceSendBack: (inv: InvoiceWithJob) => void
-                showRemaining?: boolean
-                showTimeOpen?: boolean
-                sendBackBelowRemaining?: boolean
-                showCreatePartialInvoice?: boolean
-                jobSendBackLabel?: string
-                invoiceBundleActionLabel?: string
-                invoiceStandaloneActionLabel?: string
-                /** Deep-link flash: row matching this invoice id gets a brief highlight. */
-                flashInvoiceId?: string | null
-                /** When false, hide the Click Tooling (wrench) shortcut (e.g. Billed Awaiting Payment). Default true. */
-                showClickTooling?: boolean
-                /** Billed Awaiting Payment: open Lien Tooling prefill modal. */
-                onOpenLienTooling?: (ctx: { job: JobWithDetails; invoice: JobsLedgerInvoice | null }) => void
-                /** Billed Awaiting Payment: flag the row's job as difficult-to-collect (Collections section). */
-                onJobMoveToCollections?: (j: JobWithDetails) => void
-                /** Collections: short muted note line under the amounts (e.g. the stored collections reason). */
-                jobNoteLine?: (j: JobWithDetails) => string | null
-              }
-            ) {
-              const {
-                actionLabel,
-                onJobAction,
-                onInvoiceAction,
-                onViewBill,
-                onJobSendBack,
-                onInvoiceSendBack,
-                showRemaining,
-                showTimeOpen,
-                sendBackBelowRemaining,
-                showCreatePartialInvoice,
-                jobSendBackLabel = 'Send back',
-                invoiceBundleActionLabel = 'Remove line',
-                invoiceStandaloneActionLabel = 'Send back',
-                flashInvoiceId = null,
-                showClickTooling = true,
-                onOpenLienTooling,
-                onJobMoveToCollections,
-                jobNoteLine,
-              } = options
-              const renderJobNoteLine = (j: JobWithDetails) => {
-                const note = jobNoteLine?.(j)
-                if (!note) return null
-                return (
-                  <span
-                    title={note}
-                    style={{
-                      fontSize: '0.75rem',
-                      color: 'var(--text-red-700)',
-                      fontStyle: 'italic',
-                      maxWidth: '11rem',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      whiteSpace: 'nowrap',
-                    }}
-                  >
-                    {note}
-                  </span>
-                )
-              }
-              const unifiedStagesColCount = 5
-              const flashRowStyle = (invoiceId: string): CSSProperties =>
-                flashInvoiceId === invoiceId
-                  ? {
-                      backgroundColor: 'var(--bg-amber-100)',
-                      outline: '2px solid #f59e0b',
-                      outlineOffset: -2,
-                      transition: 'background-color 0.35s ease',
-                    }
-                  : {}
-              const stagesSecondaryOutlineButtonBase: CSSProperties = {
-                padding: '0.25rem 0.5rem',
-                fontSize: '0.8125rem',
-                lineHeight: 1.2,
-                textAlign: 'center',
-                background: 'none',
-                color: 'var(--text-muted)',
-                border: '1px solid var(--border-strong)',
-                borderRadius: 4,
-                width: 'fit-content',
-                maxWidth: '100%',
-                boxSizing: 'border-box',
-              }
-              const stagesInvoiceHcpBadgeStyle: CSSProperties = {
-                display: 'inline-block',
-                padding: '0.15rem 0.4rem',
-                fontSize: '0.6875rem',
-                fontWeight: 600,
-                border: '1px solid rgba(255,255,255,0.5)',
-                borderRadius: 4,
-                background: '#16a34a',
-                color: 'white',
-                lineHeight: 1.2,
-                fontFamily: 'inherit',
-              }
-              return (
-                <div style={{ border: '1px solid var(--border)', borderRadius: 4, overflowX: 'auto', WebkitOverflowScrolling: 'touch', minWidth: 0 }}>
-                  <table style={{ width: '100%', minWidth: 700, borderCollapse: 'collapse', fontSize: '0.875rem' }}>
-                    <thead style={{ background: 'var(--bg-subtle)' }}>
-                      <tr>
-                        <th
-                          style={{
-                            padding: '0.75rem',
-                            textAlign: 'left',
-                            borderBottom: '1px solid var(--border)',
-                            minWidth: '6.75rem',
-                          }}
-                        >
-                          {renderStagesThreeLineHeader('Assigned', 'HCP', 'Last-Activity')}
-                        </th>
-                        <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Job</th>
-                        <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)', minWidth: 200 }}>Last activity</th>
-                        <th
-                          style={{
-                            padding: '0.75rem',
-                            textAlign: 'center',
-                            borderBottom: '1px solid var(--border)',
-                            minWidth: '12rem',
-                          }}
-                        >
-                          Progress & payment
-                        </th>
-                        <th style={{ padding: '0.75rem', width: 140, borderBottom: '1px solid var(--border)' }} />
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {rows.length === 0 ? (
-                        <tr>
-                          <td colSpan={unifiedStagesColCount} style={{ padding: '0.75rem', color: 'var(--text-muted)' }}>
-                            No jobs or invoices in this group
-                          </td>
-                        </tr>
-                      ) : (
-                        rows.map((row) => {
-                          if (
-                            row.kind === 'job' ||
-                            row.kind === 'job_with_merged_billed' ||
-                            row.kind === 'job_with_primary_rtb'
-                          ) {
-                            const j = row.job
-                            const bundleInv =
-                              row.kind === 'job_with_merged_billed' || row.kind === 'job_with_primary_rtb'
-                                ? row.inv
-                                : null
-                            const bundleInvWithJob: InvoiceWithJob | null =
-                              bundleInv != null ? { ...bundleInv, job: j } : null
-                            const bundleRowKey =
-                              bundleInv != null
-                                ? row.kind === 'job_with_primary_rtb'
-                                  ? `job-${j.id}-rtb-${bundleInv.id}`
-                                  : `job-${j.id}-billed-${bundleInv.id}`
-                                : `job-${j.id}`
-                            return (
-                              <Fragment key={bundleRowKey}>
-                              <tr
-                                data-stages-invoice-id={bundleInv != null ? bundleInv.id : undefined}
-                                data-stages-job-id={j.id}
-                                style={{
-                                  borderBottom: stagesRowHasProjectBanner(j.project_id, j.project) ? 'none' : '1px solid #e5e7eb',
-                                  ...(bundleInv != null ? flashRowStyle(bundleInv.id) : {}),
-                                  ...(stagesJobFlashId === j.id
-                                    ? { backgroundColor: 'var(--bg-amber-100)', outline: '2px solid #f59e0b', outlineOffset: -2, transition: 'background-color 0.35s ease' }
-                                    : {}),
-                                }}
-                                onClick={(e) => {
-                                  if (shouldSuppressStagesRowJobThreadToggle(e.target)) return
-                                  toggleStagesJobThreadExpanded(j.id)
-                                }}
-                              >
-                                <td style={{ padding: '0.75rem', verticalAlign: 'top', position: 'relative' }}>
-                                  {stagesHamMode ? (
-                                    <div ref={assignedEditJobId === j.id ? assignedEditDropdownRef : undefined} style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
-                                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'wrap' }}>
-                                        <span>{(j.team_members ?? []).map((t) => t.users?.name?.trim()).filter(Boolean).join(', ') || '—'}</span>
-                                      <button
-                                        type="button"
-                                        onClick={() => {
-                                          if (assignedEditJobId === j.id) {
-                                            setAssignedEditJobId(null)
-                                          } else {
-                                            setAssignedEditJobId(j.id)
-                                            setAssignedEditSelectedIds((j.team_members ?? []).map((t) => t.user_id))
-                                          }
-                                        }}
-                                        disabled={assignedEditSavingId === j.id}
-                                        title="Change assigned"
-                                        aria-label="Change assigned"
-                                        style={{
-                                          display: 'flex',
-                                          alignItems: 'center',
-                                          justifyContent: 'center',
-                                          width: 24,
-                                          height: 24,
-                                          padding: 0,
-                                          border: 'none',
-                                          borderRadius: 4,
-                                          background: 'none',
-                                          cursor: assignedEditSavingId === j.id ? 'not-allowed' : 'pointer',
-                                          color: 'var(--text-muted)',
-                                        }}
-                                      >
-                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={16} height={16} fill="currentColor" aria-hidden>
-                                          <path d="M100.4 417.2C104.5 402.6 112.2 389.3 123 378.5L304.2 197.3L338.1 163.4C354.7 180 389.4 214.7 442.1 267.4L476 301.3L442.1 335.2L260.9 516.4C250.2 527.1 236.8 534.9 222.2 539L94.4 574.6C86.1 576.9 77.1 574.6 71 568.4C64.9 562.2 62.6 553.3 64.9 545L100.4 417.2zM156 413.5C151.6 418.2 148.4 423.9 146.7 430.1L122.6 517L209.5 492.9C215.9 491.1 221.7 487.8 226.5 483.2L155.9 413.5zM510 267.4C493.4 250.8 458.7 216.1 406 163.4L372 129.5C398.5 103 413.4 88.1 416.9 84.6C430.4 71 448.8 63.4 468 63.4C487.2 63.4 505.6 71 519.1 84.6L554.8 120.3C568.4 133.9 576 152.3 576 171.4C576 190.5 568.4 209 554.8 222.5C551.3 226 536.4 240.9 509.9 267.4z" />
-                                        </svg>
-                                      </button>
-                                      {assignedEditJobId === j.id && (
-                                        <div
-                                          style={{
-                                            position: 'absolute',
-                                            top: '100%',
-                                            left: 0,
-                                            marginTop: 4,
-                                            zIndex: 50,
-                                            background: 'var(--surface)',
-                                            border: '1px solid var(--border-strong)',
-                                            borderRadius: 4,
-                                            boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
-                                            padding: '0.5rem',
-                                            minWidth: 180,
-                                            maxHeight: 200,
-                                            overflowY: 'auto',
-                                          }}
-                                        >
-                                          <div style={{ fontSize: '0.8125rem', fontWeight: 600, marginBottom: '0.5rem' }}>Assigned</div>
-                                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                                            {users.map((u) => (
-                                              <label key={u.id} style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer', fontSize: '0.875rem' }}>
-                                                <input
-                                                  type="checkbox"
-                                                  checked={assignedEditSelectedIds.includes(u.id)}
-                                                  onChange={() => {
-                                                    setAssignedEditSelectedIds((prev) =>
-                                                      prev.includes(u.id) ? prev.filter((x) => x !== u.id) : [...prev, u.id]
-                                                    )
-                                                  }}
-                                                  style={{ width: '0.875rem', height: '0.875rem', margin: 0 }}
-                                                />
-                                                <span>{u.name}</span>
-                                              </label>
-                                            ))}
-                                          </div>
-                                          <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
-                                            <button
-                                              type="button"
-                                              onClick={() => updateJobTeamMembers(j.id, assignedEditSelectedIds)}
-                                              disabled={assignedEditSavingId === j.id}
-                                              style={{
-                                                padding: '0.35rem 0.75rem',
-                                                fontSize: '0.8125rem',
-                                                background: '#3b82f6',
-                                                color: 'white',
-                                                border: 'none',
-                                                borderRadius: 4,
-                                                cursor: assignedEditSavingId === j.id ? 'not-allowed' : 'pointer',
-                                              }}
-                                            >
-                                              {assignedEditSavingId === j.id ? '…' : 'Apply'}
-                                            </button>
-                                            <button
-                                              type="button"
-                                              onClick={() => setAssignedEditJobId(null)}
-                                              style={{
-                                                padding: '0.35rem 0.75rem',
-                                                fontSize: '0.8125rem',
-                                                background: 'none',
-                                                color: 'var(--text-muted)',
-                                                border: '1px solid var(--border-strong)',
-                                                borderRadius: 4,
-                                                cursor: 'pointer',
-                                              }}
-                                            >
-                                              Cancel
-                                            </button>
-                                          </div>
-                                        </div>
-                                      )}
-                                    </div>
-                                    {renderStagesJobHcpSubline(j, { marginTop: '0.15rem' })}
-                                    {renderStagesFieldAndBillingLines(j)}
-                                  </div>
-                                  ) : (
-                                    <>
-                                      <div>{(j.team_members ?? []).map((t) => t.users?.name?.trim()).filter(Boolean).join(', ') || '—'}</div>
-                                      {renderStagesJobHcpSubline(j, { marginTop: '0.15rem' })}
-                                      {renderStagesFieldAndBillingLines(j)}
-                                    </>
-                                  )}
-                                </td>
-                                <td style={{ padding: '0.75rem' }}>
-                                  {renderStagesOpenDetailJobName(j)}
-                                  {renderJobAddressWithMap(j.job_address)}
-                                  {renderJobCustomerLine(j)}
-                                  {bundleInv != null ? (
-                                    <div
-                                      style={{ fontSize: '0.75rem', color: 'var(--text-blue-800)', marginTop: '0.25rem' }}
-                                      title="Single billing line for this job (Stripe or external send)"
-                                    >
-                                      {row.kind === 'job_with_merged_billed' ? (
-                                        <>
-                                          Billed line: {formatCurrency(invoiceOpenRemainingOnJob(bundleInv, j))} open
-                                        </>
-                                      ) : (
-                                        <>Billing line: {formatCurrency(Number(bundleInv.amount))}</>
-                                      )}
-                                    </div>
-                                  ) : null}
-                                  {renderStagesJobColumnEstimateFooter(j.linkedEstimateForStages)}
-                                </td>
-                                {renderStagesLastActivityCell(j, bundleInv ?? undefined)}
-                                <td style={{ padding: '0.75rem', textAlign: 'center', verticalAlign: 'middle' }}>
-                                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
-                                    {!bundleInv ? (
-                                      <>
-                                        <StagesProgressPaymentCell
-                                          model={buildStagesMoneyBarModel({
-                                            totalBill: j.revenue != null ? Number(j.revenue) : null,
-                                            paymentsMade: j.payments_made != null ? Number(j.payments_made) : null,
-                                            pctComplete: j.pct_complete ?? null,
-                                            billedUnpaid: jobBilledUnpaidDollars(j),
-                                          })}
-                                          pctComplete={j.pct_complete ?? null}
-                                          pctSaving={pctCompleteSavingId === j.id}
-                                          onPctCommit={(n) => updateJobPctComplete(j.id, n)}
-                                          footnote={showRemaining ? (() => {
-                                            const u = jobBillingUnallocatedDollars(j)
-                                            return u > 0 ? (
-                                              <span title="Left on the job after draft and billed invoice lines">{`${formatUsdNoCents(u)} unallocated`}</span>
-                                            ) : null
-                                          })() : null}
-                                        />
-                                        {sendBackBelowRemaining && onJobSendBack && (
-                                          <button
-                                            type="button"
-                                            onClick={() => onJobSendBack(j)}
-                                            disabled={stagesStatusUpdatingId === j.id}
-                                            style={{
-                                              ...stagesSecondaryOutlineButtonBase,
-                                              cursor: stagesStatusUpdatingId === j.id ? 'not-allowed' : 'pointer',
-                                            }}
-                                          >
-                                            {jobSendBackLabel}
-                                          </button>
-                                        )}
-                                        {onJobMoveToCollections && (
-                                          <button
-                                            type="button"
-                                            onClick={() => onJobMoveToCollections(j)}
-                                            title="Flag this job as difficult to collect (moves to the Collections section; stays Billed)"
-                                            style={{ ...stagesSecondaryOutlineButtonBase, cursor: 'pointer' }}
-                                          >
-                                            Move to Collections
-                                          </button>
-                                        )}
-                                        {renderJobNoteLine(j)}
-                                      </>
-                                    ) : (
-                                      <>
-                                        <StagesProgressPaymentCell
-                                          model={buildStagesMoneyBarModel({
-                                            totalBill: j.revenue != null ? Number(j.revenue) : null,
-                                            paymentsMade: j.payments_made != null ? Number(j.payments_made) : null,
-                                            pctComplete: j.pct_complete ?? null,
-                                            billedUnpaid: jobBilledUnpaidDollars(j),
-                                          })}
-                                          pctComplete={j.pct_complete ?? null}
-                                          pctSaving={pctCompleteSavingId === j.id}
-                                          onPctCommit={(n) => updateJobPctComplete(j.id, n)}
-                                          footnote={
-                                            row.kind === 'job_with_merged_billed'
-                                              ? (() => {
-                                                  const ap = sumInvoiceAppliedFromJobPayments(j, bundleInv.id)
-                                                  return (
-                                                    <span title="This row's billed line">
-                                                      {`This bill: ${formatUsdNoCents(ap)} paid · ${formatUsdNoCents(invoiceOpenRemainingOnJob(bundleInv, j))} left`}
-                                                    </span>
-                                                  )
-                                                })()
-                                              : (
-                                                  <span title="Amount on this billing line">{`${formatUsdNoCents(Number(bundleInv.amount))} remainder`}</span>
-                                                )
-                                          }
-                                        />
-                                        {sendBackBelowRemaining && onInvoiceSendBack && bundleInvWithJob != null && (
-                                          <button
-                                            type="button"
-                                            onClick={() => onInvoiceSendBack(bundleInvWithJob)}
-                                            disabled={stagesInvoiceUpdatingId === bundleInv.id}
-                                            title="Remove this billing line (partial invoice row)"
-                                            style={{
-                                              ...stagesSecondaryOutlineButtonBase,
-                                              cursor: stagesInvoiceUpdatingId === bundleInv.id ? 'not-allowed' : 'pointer',
-                                            }}
-                                          >
-                                            {invoiceBundleActionLabel}
-                                          </button>
-                                        )}
-                                        {onJobMoveToCollections && (
-                                          <button
-                                            type="button"
-                                            onClick={() => onJobMoveToCollections(j)}
-                                            title="Flag this job as difficult to collect (moves to the Collections section; stays Billed)"
-                                            style={{ ...stagesSecondaryOutlineButtonBase, cursor: 'pointer' }}
-                                          >
-                                            Move to Collections
-                                          </button>
-                                        )}
-                                        {renderJobNoteLine(j)}
-                                      </>
-                                    )}
-                                  </div>
-                                </td>
-                                <td style={{ padding: '0.75rem', verticalAlign: 'top' }}>
-                                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
-                                    {onViewBill && bundleInvWithJob != null && row.kind === 'job_with_merged_billed' ? (
-                                      <button
-                                        type="button"
-                                        onClick={() => onViewBill(bundleInvWithJob)}
-                                        style={{
-                                          padding: '0.35rem 0.75rem',
-                                          fontSize: '0.8125rem',
-                                          background: 'var(--surface)',
-                                          color: 'var(--text-link)',
-                                          border: '1px solid #2563eb',
-                                          borderRadius: 4,
-                                          cursor: 'pointer',
-                                          fontWeight: 500,
-                                        }}
-                                      >
-                                        View Bill
-                                      </button>
-                                    ) : null}
-                                    {onViewBill && !bundleInv && (j.invoices ?? []).filter((i) => i.status === 'billed').length === 1 ? (
-                                      <button
-                                        type="button"
-                                        onClick={() => {
-                                          const b = (j.invoices ?? []).filter((i) => i.status === 'billed')
-                                          onViewBill({ ...b[0], job: j } as InvoiceWithJob)
-                                        }}
-                                        style={{
-                                          padding: '0.35rem 0.75rem',
-                                          fontSize: '0.8125rem',
-                                          background: 'var(--surface)',
-                                          color: 'var(--text-link)',
-                                          border: '1px solid #2563eb',
-                                          borderRadius: 4,
-                                          cursor: 'pointer',
-                                          fontWeight: 500,
-                                        }}
-                                      >
-                                        View Bill
-                                      </button>
-                                    ) : null}
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', justifyContent: 'center' }}>
-                                      {actionLabel && bundleInvWithJob != null ? (
-                                        <button
-                                          type="button"
-                                          onClick={() => onInvoiceAction(bundleInvWithJob)}
-                                          disabled={
-                                            stagesStatusUpdatingId === j.id ||
-                                            stagesInvoiceUpdatingId === bundleInvWithJob.id
-                                          }
-                                          title="Billing action for this invoice line (job + invoice merged row)"
-                                          style={{
-                                            padding: '0.35rem 0.75rem',
-                                            paddingLeft: '0.6rem',
-                                            fontSize: '0.8125rem',
-                                            background: '#3b82f6',
-                                            color: 'white',
-                                            border: 'none',
-                                            borderLeft: '4px solid #16a34a',
-                                            borderRadius: 4,
-                                            cursor:
-                                              stagesStatusUpdatingId === j.id ||
-                                              stagesInvoiceUpdatingId === bundleInvWithJob.id
-                                                ? 'not-allowed'
-                                                : 'pointer',
-                                          }}
-                                        >
-                                          {stagesStatusUpdatingId === j.id ||
-                                          stagesInvoiceUpdatingId === bundleInvWithJob.id
-                                            ? '…'
-                                            : actionLabel}
-                                        </button>
-                                      ) : actionLabel ? (
-                                        <button
-                                          type="button"
-                                          onClick={() => onJobAction(j)}
-                                          disabled={stagesStatusUpdatingId === j.id}
-                                          style={{
-                                            padding: '0.35rem 0.75rem',
-                                            fontSize: '0.8125rem',
-                                            background: '#3b82f6',
-                                            color: 'white',
-                                            border: 'none',
-                                            borderRadius: 4,
-                                            cursor: stagesStatusUpdatingId === j.id ? 'not-allowed' : 'pointer',
-                                          }}
-                                        >
-                                          {stagesStatusUpdatingId === j.id ? '…' : actionLabel}
-                                        </button>
-                                      ) : null}
-                                      {showTimeOpen && (
-                                        <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', display: 'block', textAlign: 'center', minWidth: '5rem' }} title="Time since job created">
-                                          Open {formatTimeSince(j.created_at ?? null)}
-                                        </span>
-                                      )}
-                                      {!sendBackBelowRemaining && onJobSendBack && (
-                                        <button
-                                          type="button"
-                                          onClick={() => onJobSendBack(j)}
-                                          disabled={stagesStatusUpdatingId === j.id}
-                                          style={{
-                                            ...stagesSecondaryOutlineButtonBase,
-                                            cursor: stagesStatusUpdatingId === j.id ? 'not-allowed' : 'pointer',
-                                          }}
-                                        >
-                                          {jobSendBackLabel}
-                                        </button>
-                                      )}
-                                      {!sendBackBelowRemaining && onInvoiceSendBack && bundleInvWithJob != null && (
-                                        <button
-                                          type="button"
-                                          onClick={() => onInvoiceSendBack(bundleInvWithJob)}
-                                          disabled={stagesInvoiceUpdatingId === bundleInvWithJob.id}
-                                          title="Remove billing line (partial invoice)"
-                                          style={{
-                                            ...stagesSecondaryOutlineButtonBase,
-                                            cursor: stagesInvoiceUpdatingId === bundleInvWithJob.id ? 'not-allowed' : 'pointer',
-                                          }}
-                                        >
-                                          {invoiceBundleActionLabel}
-                                        </button>
-                                      )}
-                                    </div>
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem', alignItems: 'flex-end' }}>
-                                      <div style={{ display: 'flex', gap: '0.35rem', alignItems: 'center' }}>
-                                          {showCreatePartialInvoice && (() => {
-                                            const rem = jobBillingUnallocatedDollars(j)
-                                            return (
-                                              <button
-                                                type="button"
-                                                onClick={() => { setCreatePartialInvoiceAmount(''); setCreatePartialInvoiceJob(j) }}
-                                                disabled={rem <= 0}
-                                                title={rem <= 0 ? 'No remaining amount' : 'Create partial invoice'}
-                                                aria-label="Create partial invoice"
-                                                style={{ padding: '0.25rem', background: 'none', border: 'none', cursor: rem <= 0 ? 'not-allowed' : 'pointer', color: rem <= 0 ? 'var(--text-faint)' : '#16a34a', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
-                                              >
-                                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="16" height="16" fill="currentColor" aria-hidden="true">
-                                                  <path d="M128 128C128 92.7 156.7 64 192 64L341.5 64C358.5 64 374.8 70.7 386.8 82.7L493.3 189.3C505.3 201.3 512 217.6 512 234.6L512 512C512 547.3 483.3 576 448 576L192 576C156.7 576 128 547.3 128 512L128 128zM336 122.5L336 216C336 229.3 346.7 240 360 240L453.5 240L336 122.5zM248 320C234.7 320 224 330.7 224 344C224 357.3 234.7 368 248 368L392 368C405.3 368 416 357.3 416 344C416 330.7 405.3 320 392 320L248 320zM248 416C234.7 416 224 426.7 224 440C224 453.3 234.7 464 248 464L392 464C405.3 464 416 453.3 416 440C416 426.7 405.3 416 392 416L248 416z" />
-                                                </svg>
-                                              </button>
-                                            )
-                                          })()}
-                                          <button
-                                            type="button"
-                                            onClick={() => openEdit(j)}
-                                            title="Edit"
-                                            aria-label="Edit"
-                                            style={{ padding: '0.25rem', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-700)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
-                                          >
-                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="16" height="16" fill="currentColor" aria-hidden="true">
-                                              <path d="M128.1 64C92.8 64 64.1 92.7 64.1 128L64.1 512C64.1 547.3 92.8 576 128.1 576L274.3 576L285.2 521.5C289.5 499.8 300.2 479.9 315.8 464.3L448 332.1L448 234.6C448 217.6 441.3 201.3 429.3 189.3L322.8 82.7C310.8 70.7 294.5 64 277.6 64L128.1 64zM389.6 240L296.1 240C282.8 240 272.1 229.3 272.1 216L272.1 122.5L389.6 240zM332.3 530.9L320.4 590.5C320.2 591.4 320.1 592.4 320.1 593.4C320.1 601.4 326.6 608 334.7 608C335.7 608 336.6 607.9 337.6 607.7L397.2 595.8C409.6 593.3 421 587.2 429.9 578.3L548.8 459.4L468.8 379.4L349.9 498.3C341 507.2 334.9 518.6 332.4 531zM600.1 407.9C622.2 385.8 622.2 350 600.1 327.9C578 305.8 542.2 305.8 520.1 327.9L491.3 356.7L571.3 436.7L600.1 407.9z" />
-                                            </svg>
-                                          </button>
-                                          <button
-                                            type="button"
-                                            onClick={() => openStagesDetailJobModal(j)}
-                                            title="Job detail"
-                                            aria-label={`Open job detail for ${(j.job_name ?? '').trim() || 'Job'}`}
-                                            style={{ padding: '0.25rem', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-700)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
-                                          >
-                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="16" height="16" fill="currentColor" aria-hidden="true">
-                                              <path d="M264 112L376 112C380.4 112 384 115.6 384 120L384 160L256 160L256 120C256 115.6 259.6 112 264 112zM208 120L208 160L128 160C92.7 160 64 188.7 64 224L64 320L576 320L576 224C576 188.7 547.3 160 512 160L432 160L432 120C432 89.1 406.9 64 376 64L264 64C233.1 64 208 89.1 208 120zM576 368L384 368L384 384C384 401.7 369.7 416 352 416L288 416C270.3 416 256 401.7 256 384L256 368L64 368L64 480C64 515.3 92.7 544 128 544L512 544C547.3 544 576 515.3 576 480L576 368z" />
-                                            </svg>
-                                          </button>
-                                      </div>
-                                      <div style={{ display: 'flex', gap: '0.35rem', alignItems: 'center' }}>
-                                          {showClickTooling && (
-                                            <button
-                                              type="button"
-                                              onClick={() => openInExternalBrowser(buildClickToolingUrl(j))}
-                                              title="Open Click Tooling report (pre-fill customer info)"
-                                              aria-label="Open Click Tooling"
-                                              style={{ padding: '0.25rem', background: 'none', border: 'none', cursor: 'pointer', color: '#FF6600', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
-                                            >
-                                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="16" height="16" fill="currentColor" aria-hidden="true">
-                                                <path d="M541.4 162.6C549 155 561.7 156.9 565.5 166.9C572.3 184.6 576 203.9 576 224C576 312.4 504.4 384 416 384C398.5 384 381.6 381.2 365.8 376L178.9 562.9C150.8 591 105.2 591 77.1 562.9C49 534.8 49 489.2 77.1 461.1L264 274.2C258.8 258.4 256 241.6 256 224C256 135.6 327.6 64 416 64C436.1 64 455.4 67.7 473.1 74.5C483.1 78.3 484.9 91 477.4 98.6L388.7 187.3C385.7 190.3 384 194.4 384 198.6L384 240C384 248.8 391.2 256 400 256L441.4 256C445.6 256 449.7 254.3 452.7 251.3L541.4 162.6z" />
-                                              </svg>
-                                            </button>
-                                          )}
-                                          {onOpenLienTooling &&
-                                            (() => {
-                                              let invForLien: JobsLedgerInvoice | null = bundleInv ?? null
-                                              if (!invForLien) {
-                                                const billedOnly = (j.invoices ?? []).filter((i) => i.status === 'billed')
-                                                invForLien = billedOnly.length === 1 ? billedOnly[0]! : null
-                                              }
-                                              return (
-                                                <button
-                                                  type="button"
-                                                  onClick={() => onOpenLienTooling({ job: j, invoice: invForLien })}
-                                                  title="Lien Tooling — review and open demand / lien forms"
-                                                  aria-label="Lien Tooling prefill"
-                                                  style={{
-                                                    padding: '0.25rem',
-                                                    background: 'none',
-                                                    border: 'none',
-                                                    cursor: 'pointer',
-                                                    color: '#FF6600',
-                                                    display: 'inline-flex',
-                                                    alignItems: 'center',
-                                                    justifyContent: 'center',
-                                                  }}
-                                                >
-                                                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="16" height="16" fill="currentColor" aria-hidden="true">
-                                                    <path d="M201.6 217.4L182.9 198.7C170.4 186.2 170.4 165.9 182.9 153.4L297.6 38.6C310.1 26.1 330.4 26.1 342.9 38.6L361.6 57.4C374.1 69.9 374.1 90.2 361.6 102.7L246.9 217.4C234.4 229.9 214.1 229.9 201.6 217.4zM308 275.7L276.6 244.3L388.6 132.3L508 251.7L396 363.7L364.6 332.3L132.6 564.3C117 579.9 91.7 579.9 76 564.3C60.3 548.7 60.4 523.4 76 507.7L308 275.7zM422.9 438.6C410.4 426.1 410.4 405.8 422.9 393.3L537.6 278.6C550.1 266.1 570.4 266.1 582.9 278.6L601.6 297.3C614.1 309.8 614.1 330.1 601.6 342.6L486.9 457.4C474.4 469.9 454.1 469.9 441.6 457.4L422.9 438.7z" />
-                                                  </svg>
-                                                </button>
-                                              )
-                                            })()}
-                                          {showAiaG702G703(authRole, j) ? (
-                                            <button
-                                              type="button"
-                                              onClick={() => setAiaG702StagesJob(j)}
-                                              title="AIA G702-G703"
-                                              aria-label="Open AIA G702-G703 workbook generator"
-                                              style={{
-                                                padding: '0.25rem',
-                                                background: 'none',
-                                                border: 'none',
-                                                cursor: 'pointer',
-                                                color: '#16a34a',
-                                                display: 'inline-flex',
-                                                alignItems: 'center',
-                                                justifyContent: 'center',
-                                              }}
-                                            >
-                                              <FileSpreadsheet size={16} aria-hidden />
-                                            </button>
-                                          ) : null}
-                                          {canCreateHazmatFee ? (
-                                            <button
-                                              type="button"
-                                              onClick={() => openHazmatFee(j)}
-                                              title="Hazmat Fee — document a biohazard incident and bill the customer"
-                                              aria-label="Create a hazmat fee for this job"
-                                              style={{ padding: '0.25rem', background: 'none', border: 'none', cursor: 'pointer', color: '#FF6600', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
-                                            >
-                                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M292 76.6C292 68.3 284.4 62.1 276.5 64.5C215.6 83.3 171.4 140.3 171.4 207.6C171.4 232.7 177.5 256.3 188.4 277.1C167.4 278.9 146.4 285.3 126.9 296.6C69 330.2 42.1 396.8 56 459.1C57.9 467.5 67.4 471.1 74.9 466.7C79.9 463.8 82.5 458.1 82 452.3C81.7 449 81.6 445.7 81.6 442.2C81.6 318.7 266 318.7 266 442.2C266 530.6 171.5 555.8 117.8 517.6C113.3 514.4 107.3 513.7 102.5 516.5C95.5 520.6 93.9 530.1 99.8 535.6C146.4 579.4 217.8 589.5 275.9 555.8C293.8 545.4 308.7 531.9 320.4 516.4C332.1 532 347 545.5 364.9 555.8C423 589.5 494.4 579.4 541 535.6C546.9 530.1 545.3 520.5 538.3 516.5C533.5 513.7 527.5 514.4 523 517.6C469.3 555.8 374.8 530.6 374.8 442.2C374.8 318.7 559.2 318.7 559.2 442.2C559.2 445.6 559.1 449 558.8 452.3C558.3 458.1 560.9 463.8 565.9 466.7C573.3 471 582.9 467.5 584.8 459.1C598.7 396.9 571.8 330.2 513.9 296.6C494.4 285.3 473.5 278.9 452.4 277.1C463.3 256.3 469.4 232.7 469.4 207.6C469.4 140.3 425.2 83.3 364.3 64.5C356.4 62.1 348.8 68.3 348.8 76.6C348.8 82.5 352.8 87.6 358.3 89.8C441.7 123.4 429.1 268.2 320.5 268.2C211.9 268.2 199.1 123.4 282.5 89.8C288 87.6 292 82.5 292 76.6zM280.4 352C280.4 329.9 298.3 312 320.4 312C342.5 312 360.4 329.9 360.4 352C360.4 374.1 342.5 392 320.4 392C298.3 392 280.4 374.1 280.4 352zM467 381.7C450.8 381.7 435.6 387.2 424.9 396.7C414.8 405.8 406.8 420.1 406.8 442.3C406.8 463.4 414 477.3 423.3 486.4C455.5 461.8 478.8 425.9 487.2 384.6C480.9 382.7 474 381.6 467 381.6zM234 442.3C234 420 226 405.7 215.9 396.7C205.2 387.1 190 381.7 173.8 381.7C166.8 381.7 159.9 382.7 153.6 384.7C162 426 185.2 461.9 217.5 486.5C226.9 477.4 234 463.4 234 442.3zM275.2 218C284.2 228.2 298.4 236.2 320.4 236.2C342.4 236.2 356.6 228.2 365.6 218C372.3 210.4 377.1 200.5 379.2 189.6C360.9 182.8 341 179.1 320.4 179.1C299.8 179.1 279.9 182.8 261.6 189.6C263.8 200.5 268.5 210.4 275.2 218.1z" /></svg>
-                                            </button>
-                                          ) : null}
-                                      </div>
-                                    </div>
-                                  </div>
-                                </td>
-                              </tr>
-                              {expandedJobThreadId === j.id && (
-                                <tr>
-                                  <td
-                                    colSpan={unifiedStagesColCount}
-                                    style={{
-                                      padding: '0.5rem 0.75rem',
-                                      background: 'var(--bg-subtle)',
-                                      borderBottom: '1px solid var(--border)',
-                                    }}
-                                  >
-                                    <JobThreadNotesPanel
-                                      pctComplete={j.pct_complete ?? null}
-                                      canEditPct={canEditJobPctComplete}
-                                      pctSaving={pctCompleteSavingId === j.id}
-                                      onCommitPct={(value, note) => commitStagesPctWithNote(j.id, value, note)}
-                                      teamMembers={j.team_members?.map((t) => ({ user_id: t.user_id, name: t.users?.name ?? null })) ?? []}
-                                      peopleAction={
-                                        canManageJobPeople
-                                          ? {
-                                              onClick: () =>
-                                                setManageJobPeople({
-                                                  jobId: j.id,
-                                                  jobLabel: `${(j.hcp_number ?? '').trim() || '—'} · ${(j.job_name ?? '').trim() || 'Job'}`,
-                                                  currentTeamUserIds: j.team_members?.map((t) => t.user_id) ?? [],
-                                                }),
-                                            }
-                                          : undefined
-                                      }
-                                      activity={jobThreadActivityByJobId[j.id] ?? []}
-                                      loading={jobThreadNotesLoadingId === j.id}
-                                      canPost={!!authUser}
-                                      draft={jobThreadDraft}
-                                      submitting={jobThreadSubmittingId === j.id}
-                                      onDraftChange={setJobThreadDraft}
-                                      onSubmit={() => void submitJobThreadNote(j.id)}
-                                      scheduleAction={
-                                        canOpenJobScheduleModal
-                                          ? {
-                                              onClick: () => setScheduleModalJob(j),
-                                              disabled: (j.team_members?.length ?? 0) === 0,
-                                            }
-                                          : undefined
-                                      }
-                                      scheduleDispatchAction={
-                                        canOpenJobScheduleModal
-                                          ? {
-                                              onClick: () => {
-                                                const week = getDefaultWeekRange().start
-                                                navigate(
-                                                  `/schedule-dispatch?jobId=${encodeURIComponent(j.id)}&week=${encodeURIComponent(week)}`,
-                                                )
-                                              },
-                                              disabled: (j.team_members?.length ?? 0) === 0,
-                                            }
-                                          : undefined
-                                      }
-                                      viewerRole={authRole}
-                                    />
-                                  </td>
-                                </tr>
-                              )}
-                              {renderStagesProjectBannerRow(j.project_id, j.project, unifiedStagesColCount)}
-                              </Fragment>
-                            )
-                          } else {
-                            const { inv, job } = row
-                            const invWithJob: InvoiceWithJob = { ...inv, job }
-                            const stagesInvoiceHcpTrimmed = (job.hcp_number ?? '').trim()
-                            const stagesInvoiceRowHcpLabel = stagesInvoiceHcpTrimmed
-                              ? `Invoice: ${stagesInvoiceHcpTrimmed}`
-                              : '—'
-                            return (
-                              <Fragment key={`inv-${inv.id}`}>
-                              <tr
-                                data-stages-invoice-id={inv.id}
-                                data-stages-job-id={job.id}
-                                style={{
-                                  borderBottom: stagesRowHasProjectBanner(job.project_id, job.project) ? 'none' : '1px solid #e5e7eb',
-                                  ...flashRowStyle(inv.id),
-                                  ...(stagesJobFlashId === job.id
-                                    ? { backgroundColor: 'var(--bg-amber-100)', outline: '2px solid #f59e0b', outlineOffset: -2, transition: 'background-color 0.35s ease' }
-                                    : {}),
-                                }}
-                                onClick={(e) => {
-                                  if (shouldSuppressStagesRowJobThreadToggle(e.target)) return
-                                  toggleStagesJobThreadExpanded(job.id)
-                                }}
-                              >
-                                <td style={{ padding: '0.75rem', verticalAlign: 'top' }}>
-                                  <div>{(job.team_members ?? []).map((t) => t.users?.name?.trim()).filter(Boolean).join(', ') || '—'}</div>
-                                  {stagesInvoiceHcpTrimmed ? (
-                                    <div style={{ marginTop: '0.15rem' }}>
-                                      <span style={stagesInvoiceHcpBadgeStyle}>{stagesInvoiceRowHcpLabel}</span>
-                                    </div>
-                                  ) : (
-                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>
-                                      {stagesInvoiceRowHcpLabel}
-                                    </div>
-                                  )}
-                                  {renderStagesFieldAndBillingLines(job)}
-                                  {(() => {
-                                    const eff = effectiveInvoiceEstBillDate(inv, job)
-                                    const display = formatEstimatedCompletionDisplay(eff)
-                                    return (
-                                      <>
-                                        {display ? (
-                                          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>{display}</div>
-                                        ) : null}
-                                        {stagesHamMode ? (
-                                          <div
-                                            style={{
-                                              display: 'flex',
-                                              alignItems: 'center',
-                                              gap: '0.25rem',
-                                              marginTop: '0.15rem',
-                                            }}
-                                          >
-                                            <button
-                                              type="button"
-                                              onClick={() => {
-                                                void bumpInvoiceEstimatedBillDate(inv.id, job.id, inv, job, -1)
-                                              }}
-                                              disabled={invoiceEstimatedBillDateSavingId === inv.id}
-                                              style={{
-                                                padding: '0.25rem 0.5rem',
-                                                fontSize: '0.75rem',
-                                                border: '1px solid var(--border-strong)',
-                                                borderRadius: 4,
-                                                background: 'none',
-                                                cursor: invoiceEstimatedBillDateSavingId === inv.id ? 'not-allowed' : 'pointer',
-                                                color: 'var(--text-muted)',
-                                              }}
-                                            >
-                                              -1
-                                            </button>
-                                            <button
-                                              type="button"
-                                              onClick={() => {
-                                                void bumpInvoiceEstimatedBillDate(inv.id, job.id, inv, job, 1)
-                                              }}
-                                              disabled={invoiceEstimatedBillDateSavingId === inv.id}
-                                              style={{
-                                                padding: '0.25rem 0.5rem',
-                                                fontSize: '0.75rem',
-                                                border: '1px solid var(--border-strong)',
-                                                borderRadius: 4,
-                                                background: 'none',
-                                                cursor: invoiceEstimatedBillDateSavingId === inv.id ? 'not-allowed' : 'pointer',
-                                                color: 'var(--text-muted)',
-                                              }}
-                                            >
-                                              +1
-                                            </button>
-                                            <button
-                                              type="button"
-                                              onClick={() => {
-                                                setWhenInvoiceBillModal({
-                                                  invoiceId: inv.id,
-                                                  jobId: job.id,
-                                                  jobName: job.job_name ?? '—',
-                                                  hcpNumber: job.hcp_number ?? '—',
-                                                })
-                                                setWhenInvoiceBillModalDate(
-                                                  inv.estimated_bill_date?.trim().slice(0, 10) ??
-                                                    job.last_bill_date?.trim().slice(0, 10) ??
-                                                    ''
-                                                )
-                                              }}
-                                              disabled={invoiceEstimatedBillDateSavingId === inv.id}
-                                              title="Edit est. bill date"
-                                              aria-label="Edit est. bill date"
-                                              style={{
-                                                padding: '0.25rem',
-                                                background: 'none',
-                                                border: 'none',
-                                                cursor: invoiceEstimatedBillDateSavingId === inv.id ? 'not-allowed' : 'pointer',
-                                                color: 'var(--text-700)',
-                                                display: 'inline-flex',
-                                                alignItems: 'center',
-                                                justifyContent: 'center',
-                                              }}
-                                            >
-                                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={16} height={16} fill="currentColor" aria-hidden="true">
-                                                <path d="M128.1 64C92.8 64 64.1 92.7 64.1 128L64.1 512C64.1 547.3 92.8 576 128.1 576L274.3 576L285.2 521.5C289.5 499.8 300.2 479.9 315.8 464.3L448 332.1L448 234.6C448 217.6 441.3 201.3 429.3 189.3L322.8 82.7C310.8 70.7 294.5 64 277.6 64L128.1 64zM389.6 240L296.1 240C282.8 240 272.1 229.3 272.1 216L272.1 122.5L389.6 240zM332.3 530.9L320.4 590.5C320.2 591.4 320.1 592.4 320.1 593.4C320.1 601.4 326.6 608 334.7 608C335.7 608 336.6 607.9 337.6 607.7L397.2 595.8C409.6 593.3 421 587.2 429.9 578.3L548.8 459.4L468.8 379.4L349.9 498.3C341 507.2 334.9 518.6 332.4 531zM600.1 407.9C622.2 385.8 622.2 350 600.1 327.9C578 305.8 542.2 305.8 520.1 327.9L491.3 356.7L571.3 436.7L600.1 407.9z" />
-                                              </svg>
-                                            </button>
-                                          </div>
-                                        ) : null}
-                                      </>
-                                    )
-                                  })()}
-                                </td>
-                                <td style={{ padding: '0.75rem' }}>
-                                  {(() => {
-                                    const fmt = formatJobNameTwoLines(job.job_name)
-                                    if (!fmt) return <div>—</div>
-                                    return (
-                                      <>
-                                        <div>{fmt.line1}</div>
-                                        {fmt.line2 && <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>{fmt.line2}</div>}
-                                      </>
-                                    )
-                                  })()}
-                                  {renderJobAddressWithMap(job.job_address)}
-                                  {renderJobCustomerLine(job)}
-                                  {renderStagesJobColumnEstimateFooter(job.linkedEstimateForStages)}
-                                </td>
-                                {renderStagesLastActivityCell(job, inv)}
-                                <td style={{ padding: '0.75rem', textAlign: 'center', verticalAlign: 'middle' }}>
-                                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
-                                    <StagesProgressPaymentCell
-                                      model={buildStagesMoneyBarModel({
-                                        totalBill: job.revenue != null ? Number(job.revenue) : null,
-                                        paymentsMade: job.payments_made != null ? Number(job.payments_made) : null,
-                                        pctComplete: job.pct_complete ?? null,
-                                        billedUnpaid: jobBilledUnpaidDollars(job),
-                                      })}
-                                      pctComplete={job.pct_complete ?? null}
-                                      pctSaving={pctCompleteSavingId === job.id}
-                                      onPctCommit={(n) => updateJobPctComplete(job.id, n)}
-                                      footnote={(() => {
-                                        const u = showRemaining ? jobBillingUnallocatedDollars(job) : 0
-                                        return (
-                                          <span>
-                                            <span title="Amount on this draft billing line">{`${formatUsdNoCents(Number(inv.amount))} draft`}</span>
-                                            {u > 0 ? (
-                                              <span title="Left on the job after all draft and billed lines">{` · ${formatUsdNoCents(u)} unallocated`}</span>
-                                            ) : null}
-                                          </span>
-                                        )
-                                      })()}
-                                    />
-                                    {sendBackBelowRemaining && (
-                                      <button
-                                        type="button"
-                                        onClick={() => onInvoiceSendBack(invWithJob)}
-                                        disabled={stagesInvoiceUpdatingId === inv.id}
-                                        style={{
-                                          ...stagesSecondaryOutlineButtonBase,
-                                          cursor: stagesInvoiceUpdatingId === inv.id ? 'not-allowed' : 'pointer',
-                                        }}
-                                      >
-                                        {invoiceStandaloneActionLabel}
-                                      </button>
-                                    )}
-                                    {onJobMoveToCollections && (
-                                      <button
-                                        type="button"
-                                        onClick={() => onJobMoveToCollections(job)}
-                                        title="Flag this job as difficult to collect (moves all its billed lines to the Collections section; stays Billed)"
-                                        style={{ ...stagesSecondaryOutlineButtonBase, cursor: 'pointer' }}
-                                      >
-                                        Move to Collections
-                                      </button>
-                                    )}
-                                    {renderJobNoteLine(job)}
-                                  </div>
-                                </td>
-                                <td style={{ padding: '0.75rem', verticalAlign: 'top' }}>
-                                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
-                                    {onViewBill ? (
-                                      <button
-                                        type="button"
-                                        onClick={() => onViewBill(invWithJob)}
-                                        style={{
-                                          padding: '0.35rem 0.75rem',
-                                          fontSize: '0.8125rem',
-                                          background: 'var(--surface)',
-                                          color: 'var(--text-link)',
-                                          border: '1px solid #2563eb',
-                                          borderRadius: 4,
-                                          cursor: 'pointer',
-                                          fontWeight: 500,
-                                        }}
-                                      >
-                                        View Bill
-                                      </button>
-                                    ) : null}
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', justifyContent: 'center' }}>
-                                      {actionLabel && (
-                                        <button
-                                          type="button"
-                                          onClick={() => onInvoiceAction(invWithJob)}
-                                          disabled={stagesInvoiceUpdatingId === inv.id}
-                                          style={{
-                                            padding: '0.35rem 0.75rem',
-                                            fontSize: '0.8125rem',
-                                            background: '#16a34a',
-                                            color: 'white',
-                                            border: 'none',
-                                            borderRadius: 4,
-                                            cursor: stagesInvoiceUpdatingId === inv.id ? 'not-allowed' : 'pointer',
-                                          }}
-                                        >
-                                          {stagesInvoiceUpdatingId === inv.id ? '…' : actionLabel}
-                                        </button>
-                                      )}
-                                      {!sendBackBelowRemaining && (
-                                        <button
-                                          type="button"
-                                          onClick={() => onInvoiceSendBack(invWithJob)}
-                                          disabled={stagesInvoiceUpdatingId === inv.id}
-                                          style={{
-                                            ...stagesSecondaryOutlineButtonBase,
-                                            cursor: stagesInvoiceUpdatingId === inv.id ? 'not-allowed' : 'pointer',
-                                          }}
-                                        >
-                                          {invoiceStandaloneActionLabel}
-                                        </button>
-                                      )}
-                                    </div>
-                                    <div style={{ display: 'flex', gap: '0.35rem', alignItems: 'center' }}>
-                                      {showClickTooling && (
-                                        <button
-                                          type="button"
-                                          onClick={() => openInExternalBrowser(buildClickToolingUrl(job))}
-                                          title="Open Click Tooling report (pre-fill customer info)"
-                                          aria-label="Open Click Tooling"
-                                          style={{ padding: '0.25rem', background: 'none', border: 'none', cursor: 'pointer', color: '#FF6600', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
-                                        >
-                                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="16" height="16" fill="currentColor" aria-hidden="true">
-                                            <path d="M541.4 162.6C549 155 561.7 156.9 565.5 166.9C572.3 184.6 576 203.9 576 224C576 312.4 504.4 384 416 384C398.5 384 381.6 381.2 365.8 376L178.9 562.9C150.8 591 105.2 591 77.1 562.9C49 534.8 49 489.2 77.1 461.1L264 274.2C258.8 258.4 256 241.6 256 224C256 135.6 327.6 64 416 64C436.1 64 455.4 67.7 473.1 74.5C483.1 78.3 484.9 91 477.4 98.6L388.7 187.3C385.7 190.3 384 194.4 384 198.6L384 240C384 248.8 391.2 256 400 256L441.4 256C445.6 256 449.7 254.3 452.7 251.3L541.4 162.6z" />
-                                          </svg>
-                                        </button>
-                                      )}
-                                      {onOpenLienTooling ? (
-                                        <button
-                                          type="button"
-                                          onClick={() => onOpenLienTooling({ job, invoice: inv })}
-                                          title="Lien Tooling — review and open demand / lien forms"
-                                          aria-label="Lien Tooling prefill"
-                                          style={{
-                                            padding: '0.25rem',
-                                            background: 'none',
-                                            border: 'none',
-                                            cursor: 'pointer',
-                                            color: '#FF6600',
-                                            display: 'inline-flex',
-                                            alignItems: 'center',
-                                            justifyContent: 'center',
-                                          }}
-                                        >
-                                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="16" height="16" fill="currentColor" aria-hidden="true">
-                                            <path d="M201.6 217.4L182.9 198.7C170.4 186.2 170.4 165.9 182.9 153.4L297.6 38.6C310.1 26.1 330.4 26.1 342.9 38.6L361.6 57.4C374.1 69.9 374.1 90.2 361.6 102.7L246.9 217.4C234.4 229.9 214.1 229.9 201.6 217.4zM308 275.7L276.6 244.3L388.6 132.3L508 251.7L396 363.7L364.6 332.3L132.6 564.3C117 579.9 91.7 579.9 76 564.3C60.3 548.7 60.4 523.4 76 507.7L308 275.7zM422.9 438.6C410.4 426.1 410.4 405.8 422.9 393.3L537.6 278.6C550.1 266.1 570.4 266.1 582.9 278.6L601.6 297.3C614.1 309.8 614.1 330.1 601.6 342.6L486.9 457.4C474.4 469.9 454.1 469.9 441.6 457.4L422.9 438.7z" />
-                                          </svg>
-                                        </button>
-                                      ) : null}
-                                      {showAiaG702G703(authRole, job, inv) ? (
-                                        <button
-                                          type="button"
-                                          onClick={() => setAiaG702StagesJob(job)}
-                                          title="AIA G702-G703"
-                                          aria-label="Open AIA G702-G703 workbook generator"
-                                          style={{
-                                            padding: '0.25rem',
-                                            background: 'none',
-                                            border: 'none',
-                                            cursor: 'pointer',
-                                            color: '#16a34a',
-                                            display: 'inline-flex',
-                                            alignItems: 'center',
-                                            justifyContent: 'center',
-                                          }}
-                                        >
-                                          <FileSpreadsheet size={16} aria-hidden />
-                                        </button>
-                                      ) : null}
-                                      <button
-                                        type="button"
-                                        onClick={() => openEdit(job)}
-                                        title="Edit"
-                                        aria-label="Edit"
-                                        style={{ padding: '0.25rem', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-700)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
-                                      >
-                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="16" height="16" fill="currentColor" aria-hidden="true">
-                                          <path d="M128.1 64C92.8 64 64.1 92.7 64.1 128L64.1 512C64.1 547.3 92.8 576 128.1 576L274.3 576L285.2 521.5C289.5 499.8 300.2 479.9 315.8 464.3L448 332.1L448 234.6C448 217.6 441.3 201.3 429.3 189.3L322.8 82.7C310.8 70.7 294.5 64 277.6 64L128.1 64zM389.6 240L296.1 240C282.8 240 272.1 229.3 272.1 216L272.1 122.5L389.6 240zM332.3 530.9L320.4 590.5C320.2 591.4 320.1 592.4 320.1 593.4C320.1 601.4 326.6 608 334.7 608C335.7 608 336.6 607.9 337.6 607.7L397.2 595.8C409.6 593.3 421 587.2 429.9 578.3L548.8 459.4L468.8 379.4L349.9 498.3C341 507.2 334.9 518.6 332.4 531zM600.1 407.9C622.2 385.8 622.2 350 600.1 327.9C578 305.8 542.2 305.8 520.1 327.9L491.3 356.7L571.3 436.7L600.1 407.9z" />
-                                        </svg>
-                                      </button>
-                                      <button
-                                        type="button"
-                                        onClick={() => openStagesDetailJobModal(job)}
-                                        title="Job detail"
-                                        aria-label={`Open job detail for ${(job.job_name ?? '').trim() || 'Job'}`}
-                                        style={{ padding: '0.25rem', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-700)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
-                                      >
-                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="16" height="16" fill="currentColor" aria-hidden="true">
-                                          <path d="M264 112L376 112C380.4 112 384 115.6 384 120L384 160L256 160L256 120C256 115.6 259.6 112 264 112zM208 120L208 160L128 160C92.7 160 64 188.7 64 224L64 320L576 320L576 224C576 188.7 547.3 160 512 160L432 160L432 120C432 89.1 406.9 64 376 64L264 64C233.1 64 208 89.1 208 120zM576 368L384 368L384 384C384 401.7 369.7 416 352 416L288 416C270.3 416 256 401.7 256 384L256 368L64 368L64 480C64 515.3 92.7 544 128 544L512 544C547.3 544 576 515.3 576 480L576 368z" />
-                                        </svg>
-                                      </button>
-                                    </div>
-                                  </div>
-                                </td>
-                              </tr>
-                              {expandedJobThreadId === job.id && (
-                                <tr>
-                                  <td
-                                    colSpan={unifiedStagesColCount}
-                                    style={{
-                                      padding: '0.5rem 0.75rem',
-                                      background: 'var(--bg-subtle)',
-                                      borderBottom: '1px solid var(--border)',
-                                    }}
-                                  >
-                                    <JobThreadNotesPanel
-                                      pctComplete={job.pct_complete ?? null}
-                                      canEditPct={canEditJobPctComplete}
-                                      pctSaving={pctCompleteSavingId === job.id}
-                                      onCommitPct={(value, note) => commitStagesPctWithNote(job.id, value, note)}
-                                      teamMembers={job.team_members?.map((t) => ({ user_id: t.user_id, name: t.users?.name ?? null })) ?? []}
-                                      peopleAction={
-                                        canManageJobPeople
-                                          ? {
-                                              onClick: () =>
-                                                setManageJobPeople({
-                                                  jobId: job.id,
-                                                  jobLabel: `${(job.hcp_number ?? '').trim() || '—'} · ${(job.job_name ?? '').trim() || 'Job'}`,
-                                                  currentTeamUserIds: job.team_members?.map((t) => t.user_id) ?? [],
-                                                }),
-                                            }
-                                          : undefined
-                                      }
-                                      activity={jobThreadActivityByJobId[job.id] ?? []}
-                                      loading={jobThreadNotesLoadingId === job.id}
-                                      canPost={!!authUser}
-                                      draft={jobThreadDraft}
-                                      submitting={jobThreadSubmittingId === job.id}
-                                      onDraftChange={setJobThreadDraft}
-                                      onSubmit={() => void submitJobThreadNote(job.id)}
-                                      scheduleAction={
-                                        canOpenJobScheduleModal
-                                          ? {
-                                              onClick: () => setScheduleModalJob(job),
-                                              disabled: (job.team_members?.length ?? 0) === 0,
-                                            }
-                                          : undefined
-                                      }
-                                      scheduleDispatchAction={
-                                        canOpenJobScheduleModal
-                                          ? {
-                                              onClick: () => {
-                                                const week = getDefaultWeekRange().start
-                                                navigate(
-                                                  `/schedule-dispatch?jobId=${encodeURIComponent(job.id)}&week=${encodeURIComponent(week)}`,
-                                                )
-                                              },
-                                              disabled: (job.team_members?.length ?? 0) === 0,
-                                            }
-                                          : undefined
-                                      }
-                                      viewerRole={authRole}
-                                    />
-                                  </td>
-                                </tr>
-                              )}
-                              {renderStagesProjectBannerRow(job.project_id, job.project, unifiedStagesColCount)}
-                              </Fragment>
-                            )
-                          }
-                        })
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              )
             }
 
             const workingTotal = working.reduce((s, j) => s + (Number(j.revenue ?? 0) - Number(j.payments_made ?? 0)), 0)
@@ -5264,11 +2862,63 @@ export default function Jobs() {
                     Waiting ({waiting.length}) - ${formatCurrency(waitingTotal)}
                   </button>
                 </div>
-                {stagesSectionOpen.waiting && renderStagesTable(
-                  waiting,
-                  'Move to Working',
-                  (j) => void updateJobStatus(j.id, 'working'),
-                  true, undefined, undefined, true
+                {stagesSectionOpen.waiting && (
+                  <JobsStagesTable
+                    jobList={waiting}
+                    actionLabel={'Move to Working'}
+                    onAction={(j) => void updateJobStatus(j.id, 'working')}
+                    showTimeOpen={true}
+                    onSendBack={undefined}
+                    onSendBackSimple={undefined}
+                    showPctComplete={true}
+                    stagesJobFlashId={stagesJobFlashId}
+                    stagesHamMode={stagesHamMode}
+                    assignedEditJobId={assignedEditJobId}
+                    setAssignedEditJobId={setAssignedEditJobId}
+                    assignedEditSelectedIds={assignedEditSelectedIds}
+                    setAssignedEditSelectedIds={setAssignedEditSelectedIds}
+                    assignedEditSavingId={assignedEditSavingId}
+                    assignedEditDropdownRef={assignedEditDropdownRef}
+                    users={users}
+                    updateJobTeamMembers={updateJobTeamMembers}
+                    renderStagesOpenDetailJobName={renderStagesOpenDetailJobName}
+                    stagesStatusUpdatingId={stagesStatusUpdatingId}
+                    pctCompleteSavingId={pctCompleteSavingId}
+                    updateJobPctComplete={updateJobPctComplete}
+                    commitStagesPctWithNote={commitStagesPctWithNote}
+                    setCreatePartialInvoiceAmount={setCreatePartialInvoiceAmount}
+                    setCreatePartialInvoiceJob={setCreatePartialInvoiceJob}
+                    openEdit={openEdit}
+                    openStagesDetailJobModal={openStagesDetailJobModal}
+                    setAiaG702StagesJob={setAiaG702StagesJob}
+                    canCreateHazmatFee={canCreateHazmatFee}
+                    openHazmatFee={openHazmatFee}
+                    canEditJobPctComplete={canEditJobPctComplete}
+                    canManageJobPeople={canManageJobPeople}
+                    setManageJobPeople={setManageJobPeople}
+                    jobThreadNotesLoadingId={jobThreadNotesLoadingId}
+                    jobThreadDraft={jobThreadDraft}
+                    jobThreadSubmittingId={jobThreadSubmittingId}
+                    setJobThreadDraft={setJobThreadDraft}
+                    submitJobThreadNote={submitJobThreadNote}
+                    authUser={authUser}
+                    showToast={showToast}
+                    customers={customers}
+                    openEditJobAndCreateCustomerFlow={openEditJobAndCreateCustomerFlow}
+                    stagesManHoursByJobId={stagesManHoursByJobId}
+                    stagesManHoursLoading={stagesManHoursLoading}
+                    stagesLaborBreakdownByJobId={stagesLaborBreakdownByJobId}
+                    expandedJobThreadId={expandedJobThreadId}
+                    toggleStagesJobThreadExpanded={toggleStagesJobThreadExpanded}
+                    jobThreadStatsByJobId={jobThreadStatsByJobId}
+                    jobThreadActivityByJobId={jobThreadActivityByJobId}
+                    setViewReportsJob={setViewReportsJob}
+                    applyStagesInvoiceFocus={applyStagesInvoiceFocus}
+                    canOpenJobScheduleModal={canOpenJobScheduleModal}
+                    setScheduleModalJob={setScheduleModalJob}
+                    authRole={authRole}
+                    loadJobs={loadJobs}
+                  />
                 )}
 
                 <div id="stages-working" style={{ margin: '1.5rem 0 0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
@@ -5289,19 +2939,68 @@ export default function Jobs() {
                     Capable of Being Billed: <span style={{ fontWeight: 600 }}>${formatCurrencyNoCents(capableToBillTotal)}</span>
                   </button>
                 </div>
-                {stagesSectionOpen.working && renderStagesTable(
-                  working,
-                  'Ready to Bill',
-                  (j) =>
-                    stagesHamMode
-                      ? void moveJobToReadyToBillWithStripePrep(j.id)
-                      : (setReadyForBillingChecked1(false), setReadyForBillingChecked2(false), setReadyForBillingJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—' })),
-                  true,
-                  undefined,
-                  stagesHamMode
-                    ? (j) => void updateJobStatus(j.id, 'waiting')
-                    : (j) => setSendBackConfirmJob({ id: j.id, toStatus: 'waiting' }),
-                  true
+                {stagesSectionOpen.working && (
+                  <JobsStagesTable
+                    jobList={working}
+                    actionLabel={'Ready to Bill'}
+                    onAction={(j) =>
+                      stagesHamMode
+                        ? void moveJobToReadyToBillWithStripePrep(j.id)
+                        : (setReadyForBillingChecked1(false), setReadyForBillingChecked2(false), setReadyForBillingJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—' }))}
+                    showTimeOpen={true}
+                    onSendBack={undefined}
+                    onSendBackSimple={stagesHamMode
+                      ? (j) => void updateJobStatus(j.id, 'waiting')
+                      : (j) => setSendBackConfirmJob({ id: j.id, toStatus: 'waiting' })}
+                    showPctComplete={true}
+                    stagesJobFlashId={stagesJobFlashId}
+                    stagesHamMode={stagesHamMode}
+                    assignedEditJobId={assignedEditJobId}
+                    setAssignedEditJobId={setAssignedEditJobId}
+                    assignedEditSelectedIds={assignedEditSelectedIds}
+                    setAssignedEditSelectedIds={setAssignedEditSelectedIds}
+                    assignedEditSavingId={assignedEditSavingId}
+                    assignedEditDropdownRef={assignedEditDropdownRef}
+                    users={users}
+                    updateJobTeamMembers={updateJobTeamMembers}
+                    renderStagesOpenDetailJobName={renderStagesOpenDetailJobName}
+                    stagesStatusUpdatingId={stagesStatusUpdatingId}
+                    pctCompleteSavingId={pctCompleteSavingId}
+                    updateJobPctComplete={updateJobPctComplete}
+                    commitStagesPctWithNote={commitStagesPctWithNote}
+                    setCreatePartialInvoiceAmount={setCreatePartialInvoiceAmount}
+                    setCreatePartialInvoiceJob={setCreatePartialInvoiceJob}
+                    openEdit={openEdit}
+                    openStagesDetailJobModal={openStagesDetailJobModal}
+                    setAiaG702StagesJob={setAiaG702StagesJob}
+                    canCreateHazmatFee={canCreateHazmatFee}
+                    openHazmatFee={openHazmatFee}
+                    canEditJobPctComplete={canEditJobPctComplete}
+                    canManageJobPeople={canManageJobPeople}
+                    setManageJobPeople={setManageJobPeople}
+                    jobThreadNotesLoadingId={jobThreadNotesLoadingId}
+                    jobThreadDraft={jobThreadDraft}
+                    jobThreadSubmittingId={jobThreadSubmittingId}
+                    setJobThreadDraft={setJobThreadDraft}
+                    submitJobThreadNote={submitJobThreadNote}
+                    authUser={authUser}
+                    showToast={showToast}
+                    customers={customers}
+                    openEditJobAndCreateCustomerFlow={openEditJobAndCreateCustomerFlow}
+                    stagesManHoursByJobId={stagesManHoursByJobId}
+                    stagesManHoursLoading={stagesManHoursLoading}
+                    stagesLaborBreakdownByJobId={stagesLaborBreakdownByJobId}
+                    expandedJobThreadId={expandedJobThreadId}
+                    toggleStagesJobThreadExpanded={toggleStagesJobThreadExpanded}
+                    jobThreadStatsByJobId={jobThreadStatsByJobId}
+                    jobThreadActivityByJobId={jobThreadActivityByJobId}
+                    setViewReportsJob={setViewReportsJob}
+                    applyStagesInvoiceFocus={applyStagesInvoiceFocus}
+                    canOpenJobScheduleModal={canOpenJobScheduleModal}
+                    setScheduleModalJob={setScheduleModalJob}
+                    authRole={authRole}
+                    loadJobs={loadJobs}
+                  />
                 )}
 
                 <div id="stages-ready-to-bill" style={{ margin: '1.5rem 0 0.5rem' }}>
@@ -5315,70 +3014,125 @@ export default function Jobs() {
                     Ready to Bill ({readyToBillRows.length}) - ${formatCurrency(readyToBillTotal)}
                   </button>
                 </div>
-                {stagesSectionOpen.readyToBill && renderUnifiedStagesTable(readyToBillRows, {
-                  actionLabel: 'Bill Customer',
-                  onJobAction: (j) => {
-                    if (!jobLedgerHasCustomerForBilling(j.customer_id)) {
-                      showToast('Link this job to a customer before billing.', 'error')
-                      openEdit(j, { billingCustomerHighlight: true })
-                      return
-                    }
-                    billCustomer?.openBillCustomer({
-                      payload: { kind: 'job', job: jobBillingContextFromJob(j) },
-                      onSuccess: async () => {
-                        await loadJobs()
-                        followMovedJob(j.id, 'billed')
-                      },
-                      onAfterEnsureSuccess: async () => {
-                        await loadJobs()
-                      },
-                    })
-                  },
-                  onInvoiceAction: (inv) => {
-                    if (!jobLedgerHasCustomerForBilling(inv.job.customer_id)) {
-                      showToast('Link this job to a customer before billing.', 'error')
-                      openEdit(inv.job, { billingCustomerHighlight: true })
-                      return
-                    }
-                    billCustomer?.openBillCustomer({
-                      payload: {
-                        kind: 'invoice',
-                        job: jobBillingContextFromJob(inv.job),
-                        invoice: {
-                          id: inv.id,
-                          amount: inv.amount,
-                          status: inv.status,
+                {stagesSectionOpen.readyToBill && (
+                  <JobsStagesUnifiedTable
+                    rows={readyToBillRows}
+                    actionLabel={'Bill Customer'}
+                    onJobAction={(j) => {
+                      if (!jobLedgerHasCustomerForBilling(j.customer_id)) {
+                        showToast('Link this job to a customer before billing.', 'error')
+                        openEdit(j, { billingCustomerHighlight: true })
+                        return
+                      }
+                      billCustomer?.openBillCustomer({
+                        payload: { kind: 'job', job: jobBillingContextFromJob(j) },
+                        onSuccess: async () => {
+                          await loadJobs()
+                          followMovedJob(j.id, 'billed')
                         },
-                      },
-                      onSuccess: async () => {
-                        await loadJobs()
-                        followMovedJob(inv.job.id, 'billed')
-                      },
-                      onAfterEnsureSuccess: async () => {
-                        await loadJobs()
-                      },
-                    })
-                  },
-                  onJobSendBack: (j) =>
-                    stagesHamMode
-                      ? void updateJobStatus(j.id, 'working')
-                      : (setSendBackChecked(false),
-                        setSendBackJob({
-                          id: j.id,
-                          hcpNumber: j.hcp_number ?? '—',
-                          jobName: j.job_name ?? '—',
-                          toStatus: 'working',
-                          rtbDraftCount: (j.invoices ?? []).filter((i) => i.status === 'ready_to_bill').length,
-                        })),
-                  onInvoiceSendBack: (inv) => stagesHamMode ? deleteInvoice(inv.id) : (setSendBackChecked(false), setSendBackInvoice({ inv, action: 'delete' })),
-                  showRemaining: true,
-                  showTimeOpen: true,
-                  showCreatePartialInvoice: true,
-                  jobSendBackLabel: 'Send Job Back',
-                  invoiceBundleActionLabel: DELETE_DRAFT_BILL_LABEL,
-                  invoiceStandaloneActionLabel: DELETE_DRAFT_BILL_LABEL,
-                  flashInvoiceId: stagesInvoiceFlashId,
-                })}
+                        onAfterEnsureSuccess: async () => {
+                          await loadJobs()
+                        },
+                      })
+                    }}
+                    onInvoiceAction={(inv) => {
+                      if (!jobLedgerHasCustomerForBilling(inv.job.customer_id)) {
+                        showToast('Link this job to a customer before billing.', 'error')
+                        openEdit(inv.job, { billingCustomerHighlight: true })
+                        return
+                      }
+                      billCustomer?.openBillCustomer({
+                        payload: {
+                          kind: 'invoice',
+                          job: jobBillingContextFromJob(inv.job),
+                          invoice: {
+                            id: inv.id,
+                            amount: inv.amount,
+                            status: inv.status,
+                          },
+                        },
+                        onSuccess: async () => {
+                          await loadJobs()
+                          followMovedJob(inv.job.id, 'billed')
+                        },
+                        onAfterEnsureSuccess: async () => {
+                          await loadJobs()
+                        },
+                      })
+                    }}
+                    onJobSendBack={(j) =>
+                      stagesHamMode
+                        ? void updateJobStatus(j.id, 'working')
+                        : (setSendBackChecked(false),
+                          setSendBackJob({
+                            id: j.id,
+                            hcpNumber: j.hcp_number ?? '—',
+                            jobName: j.job_name ?? '—',
+                            toStatus: 'working',
+                            rtbDraftCount: (j.invoices ?? []).filter((i) => i.status === 'ready_to_bill').length,
+                          }))}
+                    onInvoiceSendBack={(inv) => stagesHamMode ? deleteInvoice(inv.id) : (setSendBackChecked(false), setSendBackInvoice({ inv, action: 'delete' }))}
+                    showRemaining={true}
+                    showTimeOpen={true}
+                    showCreatePartialInvoice={true}
+                    jobSendBackLabel={'Send Job Back'}
+                    invoiceBundleActionLabel={DELETE_DRAFT_BILL_LABEL}
+                    invoiceStandaloneActionLabel={DELETE_DRAFT_BILL_LABEL}
+                    flashInvoiceId={stagesInvoiceFlashId}
+                    stagesJobFlashId={stagesJobFlashId}
+                    stagesHamMode={stagesHamMode}
+                    assignedEditJobId={assignedEditJobId}
+                    setAssignedEditJobId={setAssignedEditJobId}
+                    assignedEditSelectedIds={assignedEditSelectedIds}
+                    setAssignedEditSelectedIds={setAssignedEditSelectedIds}
+                    assignedEditSavingId={assignedEditSavingId}
+                    assignedEditDropdownRef={assignedEditDropdownRef}
+                    users={users}
+                    updateJobTeamMembers={updateJobTeamMembers}
+                    renderStagesOpenDetailJobName={renderStagesOpenDetailJobName}
+                    stagesStatusUpdatingId={stagesStatusUpdatingId}
+                    pctCompleteSavingId={pctCompleteSavingId}
+                    updateJobPctComplete={updateJobPctComplete}
+                    commitStagesPctWithNote={commitStagesPctWithNote}
+                    setCreatePartialInvoiceAmount={setCreatePartialInvoiceAmount}
+                    setCreatePartialInvoiceJob={setCreatePartialInvoiceJob}
+                    openEdit={openEdit}
+                    openStagesDetailJobModal={openStagesDetailJobModal}
+                    setAiaG702StagesJob={setAiaG702StagesJob}
+                    canCreateHazmatFee={canCreateHazmatFee}
+                    openHazmatFee={openHazmatFee}
+                    canEditJobPctComplete={canEditJobPctComplete}
+                    canManageJobPeople={canManageJobPeople}
+                    setManageJobPeople={setManageJobPeople}
+                    jobThreadNotesLoadingId={jobThreadNotesLoadingId}
+                    jobThreadDraft={jobThreadDraft}
+                    jobThreadSubmittingId={jobThreadSubmittingId}
+                    setJobThreadDraft={setJobThreadDraft}
+                    submitJobThreadNote={submitJobThreadNote}
+                    authUser={authUser}
+                    showToast={showToast}
+                    customers={customers}
+                    openEditJobAndCreateCustomerFlow={openEditJobAndCreateCustomerFlow}
+                    stagesManHoursByJobId={stagesManHoursByJobId}
+                    stagesManHoursLoading={stagesManHoursLoading}
+                    stagesLaborBreakdownByJobId={stagesLaborBreakdownByJobId}
+                    expandedJobThreadId={expandedJobThreadId}
+                    toggleStagesJobThreadExpanded={toggleStagesJobThreadExpanded}
+                    jobThreadStatsByJobId={jobThreadStatsByJobId}
+                    jobThreadActivityByJobId={jobThreadActivityByJobId}
+                    setViewReportsJob={setViewReportsJob}
+                    applyStagesInvoiceFocus={applyStagesInvoiceFocus}
+                    canOpenJobScheduleModal={canOpenJobScheduleModal}
+                    setScheduleModalJob={setScheduleModalJob}
+                    authRole={authRole}
+                    loadJobs={loadJobs}
+                    stagesInvoiceUpdatingId={stagesInvoiceUpdatingId}
+                    invoiceEstimatedBillDateSavingId={invoiceEstimatedBillDateSavingId}
+                    bumpInvoiceEstimatedBillDate={bumpInvoiceEstimatedBillDate}
+                    setWhenInvoiceBillModal={setWhenInvoiceBillModal}
+                    setWhenInvoiceBillModalDate={setWhenInvoiceBillModalDate}
+                  />
+                )}
 
                 <div id="stages-billed" style={{ margin: '1.5rem 0 0.5rem', display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap', flex: 1, minWidth: 0 }}>
@@ -5503,42 +3257,97 @@ export default function Jobs() {
                     Print
                   </button>
                 </div>
-                {stagesSectionOpen.billed && renderUnifiedStagesTable(billedActiveRows, {
-                  actionLabel: 'Mark Paid',
-                  onJobAction: (j) => setMarkPaidJob(j),
-                  onInvoiceAction: (inv) => setMarkPaidInvoice(inv),
-                  onViewBill: (inv) => setViewBillInvoice(inv),
-                  showClickTooling: false,
-                  onOpenLienTooling: (ctx) =>
-                    setLienToolingPrefillModal({ job: ctx.job, invoice: ctx.invoice }),
-                  onJobSendBack: (j) =>
-                    stagesHamMode
-                      ? void moveJobToReadyToBillWithStripePrep(j.id)
-                      : (setSendBackChecked(false),
-                        setSendBackJob({
-                          id: j.id,
-                          hcpNumber: j.hcp_number ?? '—',
-                          jobName: j.job_name ?? '—',
-                          toStatus: 'ready_to_bill',
-                          rtbDraftCount: 0,
-                        })),
-                  onInvoiceSendBack: (inv) =>
-                    stagesHamMode
-                      ? void revertBilledInvoiceToReadyToBill(inv)
-                      : (setSendBackChecked(false), setSendBackInvoice({ inv, action: 'revert' })),
-                  showRemaining: true,
-                  showTimeOpen: true,
-                  sendBackBelowRemaining: true,
-                  showCreatePartialInvoice: false,
-                  invoiceBundleActionLabel: 'Send back',
-                  flashInvoiceId: stagesInvoiceFlashId,
-                  onJobMoveToCollections: canManageCollections
-                    ? (j) => {
-                        setCollectionsNoteDraft('')
-                        setCollectionsConfirm({ job: j, direction: 'to' })
-                      }
-                    : undefined,
-                })}
+                {stagesSectionOpen.billed && (
+                  <JobsStagesUnifiedTable
+                    rows={billedActiveRows}
+                    actionLabel={'Mark Paid'}
+                    onJobAction={(j) => setMarkPaidJob(j)}
+                    onInvoiceAction={(inv) => setMarkPaidInvoice(inv)}
+                    onViewBill={(inv) => setViewBillInvoice(inv)}
+                    showClickTooling={false}
+                    onOpenLienTooling={(ctx) =>
+                      setLienToolingPrefillModal({ job: ctx.job, invoice: ctx.invoice })}
+                    onJobSendBack={(j) =>
+                      stagesHamMode
+                        ? void moveJobToReadyToBillWithStripePrep(j.id)
+                        : (setSendBackChecked(false),
+                          setSendBackJob({
+                            id: j.id,
+                            hcpNumber: j.hcp_number ?? '—',
+                            jobName: j.job_name ?? '—',
+                            toStatus: 'ready_to_bill',
+                            rtbDraftCount: 0,
+                          }))}
+                    onInvoiceSendBack={(inv) =>
+                      stagesHamMode
+                        ? void revertBilledInvoiceToReadyToBill(inv)
+                        : (setSendBackChecked(false), setSendBackInvoice({ inv, action: 'revert' }))}
+                    showRemaining={true}
+                    showTimeOpen={true}
+                    sendBackBelowRemaining={true}
+                    showCreatePartialInvoice={false}
+                    invoiceBundleActionLabel={'Send back'}
+                    flashInvoiceId={stagesInvoiceFlashId}
+                    onJobMoveToCollections={canManageCollections
+                      ? (j) => {
+                          setCollectionsNoteDraft('')
+                          setCollectionsConfirm({ job: j, direction: 'to' })
+                        }
+                      : undefined}
+                    stagesJobFlashId={stagesJobFlashId}
+                    stagesHamMode={stagesHamMode}
+                    assignedEditJobId={assignedEditJobId}
+                    setAssignedEditJobId={setAssignedEditJobId}
+                    assignedEditSelectedIds={assignedEditSelectedIds}
+                    setAssignedEditSelectedIds={setAssignedEditSelectedIds}
+                    assignedEditSavingId={assignedEditSavingId}
+                    assignedEditDropdownRef={assignedEditDropdownRef}
+                    users={users}
+                    updateJobTeamMembers={updateJobTeamMembers}
+                    renderStagesOpenDetailJobName={renderStagesOpenDetailJobName}
+                    stagesStatusUpdatingId={stagesStatusUpdatingId}
+                    pctCompleteSavingId={pctCompleteSavingId}
+                    updateJobPctComplete={updateJobPctComplete}
+                    commitStagesPctWithNote={commitStagesPctWithNote}
+                    setCreatePartialInvoiceAmount={setCreatePartialInvoiceAmount}
+                    setCreatePartialInvoiceJob={setCreatePartialInvoiceJob}
+                    openEdit={openEdit}
+                    openStagesDetailJobModal={openStagesDetailJobModal}
+                    setAiaG702StagesJob={setAiaG702StagesJob}
+                    canCreateHazmatFee={canCreateHazmatFee}
+                    openHazmatFee={openHazmatFee}
+                    canEditJobPctComplete={canEditJobPctComplete}
+                    canManageJobPeople={canManageJobPeople}
+                    setManageJobPeople={setManageJobPeople}
+                    jobThreadNotesLoadingId={jobThreadNotesLoadingId}
+                    jobThreadDraft={jobThreadDraft}
+                    jobThreadSubmittingId={jobThreadSubmittingId}
+                    setJobThreadDraft={setJobThreadDraft}
+                    submitJobThreadNote={submitJobThreadNote}
+                    authUser={authUser}
+                    showToast={showToast}
+                    customers={customers}
+                    openEditJobAndCreateCustomerFlow={openEditJobAndCreateCustomerFlow}
+                    stagesManHoursByJobId={stagesManHoursByJobId}
+                    stagesManHoursLoading={stagesManHoursLoading}
+                    stagesLaborBreakdownByJobId={stagesLaborBreakdownByJobId}
+                    expandedJobThreadId={expandedJobThreadId}
+                    toggleStagesJobThreadExpanded={toggleStagesJobThreadExpanded}
+                    jobThreadStatsByJobId={jobThreadStatsByJobId}
+                    jobThreadActivityByJobId={jobThreadActivityByJobId}
+                    setViewReportsJob={setViewReportsJob}
+                    applyStagesInvoiceFocus={applyStagesInvoiceFocus}
+                    canOpenJobScheduleModal={canOpenJobScheduleModal}
+                    setScheduleModalJob={setScheduleModalJob}
+                    authRole={authRole}
+                    loadJobs={loadJobs}
+                    stagesInvoiceUpdatingId={stagesInvoiceUpdatingId}
+                    invoiceEstimatedBillDateSavingId={invoiceEstimatedBillDateSavingId}
+                    bumpInvoiceEstimatedBillDate={bumpInvoiceEstimatedBillDate}
+                    setWhenInvoiceBillModal={setWhenInvoiceBillModal}
+                    setWhenInvoiceBillModalDate={setWhenInvoiceBillModalDate}
+                  />
+                )}
 
                 <div id="stages-collections" style={{ margin: '1.5rem 0 0.5rem', display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
                   <button
@@ -5558,26 +3367,81 @@ export default function Jobs() {
                   <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: '0 0 0.75rem' }}>
                     No jobs in Collections. Use “Move to Collections” on a Billed Awaiting Payment row to park a hard-to-collect job here.
                   </p>
-                ) : renderUnifiedStagesTable(collectionsRows, {
-                  actionLabel: 'Mark Paid',
-                  onJobAction: (j) => setMarkPaidJob(j),
-                  onInvoiceAction: (inv) => setMarkPaidInvoice(inv),
-                  onViewBill: (inv) => setViewBillInvoice(inv),
-                  showClickTooling: false,
-                  onOpenLienTooling: (ctx) =>
-                    setLienToolingPrefillModal({ job: ctx.job, invoice: ctx.invoice }),
-                  onJobSendBack: (j) => setCollectionsConfirm({ job: j, direction: 'from' }),
-                  onInvoiceSendBack: (inv) => setCollectionsConfirm({ job: inv.job, direction: 'from' }),
-                  showRemaining: true,
-                  showTimeOpen: true,
-                  sendBackBelowRemaining: true,
-                  showCreatePartialInvoice: false,
-                  jobSendBackLabel: 'Send back to Billed',
-                  invoiceBundleActionLabel: 'Send back to Billed',
-                  invoiceStandaloneActionLabel: 'Send back to Billed',
-                  flashInvoiceId: stagesInvoiceFlashId,
-                  jobNoteLine: (j) => j.collections_note ?? null,
-                }))}
+                ) : (
+                  <JobsStagesUnifiedTable
+                    rows={collectionsRows}
+                    actionLabel={'Mark Paid'}
+                    onJobAction={(j) => setMarkPaidJob(j)}
+                    onInvoiceAction={(inv) => setMarkPaidInvoice(inv)}
+                    onViewBill={(inv) => setViewBillInvoice(inv)}
+                    showClickTooling={false}
+                    onOpenLienTooling={(ctx) =>
+                      setLienToolingPrefillModal({ job: ctx.job, invoice: ctx.invoice })}
+                    onJobSendBack={(j) => setCollectionsConfirm({ job: j, direction: 'from' })}
+                    onInvoiceSendBack={(inv) => setCollectionsConfirm({ job: inv.job, direction: 'from' })}
+                    showRemaining={true}
+                    showTimeOpen={true}
+                    sendBackBelowRemaining={true}
+                    showCreatePartialInvoice={false}
+                    jobSendBackLabel={'Send back to Billed'}
+                    invoiceBundleActionLabel={'Send back to Billed'}
+                    invoiceStandaloneActionLabel={'Send back to Billed'}
+                    flashInvoiceId={stagesInvoiceFlashId}
+                    jobNoteLine={(j) => j.collections_note ?? null}
+                    stagesJobFlashId={stagesJobFlashId}
+                    stagesHamMode={stagesHamMode}
+                    assignedEditJobId={assignedEditJobId}
+                    setAssignedEditJobId={setAssignedEditJobId}
+                    assignedEditSelectedIds={assignedEditSelectedIds}
+                    setAssignedEditSelectedIds={setAssignedEditSelectedIds}
+                    assignedEditSavingId={assignedEditSavingId}
+                    assignedEditDropdownRef={assignedEditDropdownRef}
+                    users={users}
+                    updateJobTeamMembers={updateJobTeamMembers}
+                    renderStagesOpenDetailJobName={renderStagesOpenDetailJobName}
+                    stagesStatusUpdatingId={stagesStatusUpdatingId}
+                    pctCompleteSavingId={pctCompleteSavingId}
+                    updateJobPctComplete={updateJobPctComplete}
+                    commitStagesPctWithNote={commitStagesPctWithNote}
+                    setCreatePartialInvoiceAmount={setCreatePartialInvoiceAmount}
+                    setCreatePartialInvoiceJob={setCreatePartialInvoiceJob}
+                    openEdit={openEdit}
+                    openStagesDetailJobModal={openStagesDetailJobModal}
+                    setAiaG702StagesJob={setAiaG702StagesJob}
+                    canCreateHazmatFee={canCreateHazmatFee}
+                    openHazmatFee={openHazmatFee}
+                    canEditJobPctComplete={canEditJobPctComplete}
+                    canManageJobPeople={canManageJobPeople}
+                    setManageJobPeople={setManageJobPeople}
+                    jobThreadNotesLoadingId={jobThreadNotesLoadingId}
+                    jobThreadDraft={jobThreadDraft}
+                    jobThreadSubmittingId={jobThreadSubmittingId}
+                    setJobThreadDraft={setJobThreadDraft}
+                    submitJobThreadNote={submitJobThreadNote}
+                    authUser={authUser}
+                    showToast={showToast}
+                    customers={customers}
+                    openEditJobAndCreateCustomerFlow={openEditJobAndCreateCustomerFlow}
+                    stagesManHoursByJobId={stagesManHoursByJobId}
+                    stagesManHoursLoading={stagesManHoursLoading}
+                    stagesLaborBreakdownByJobId={stagesLaborBreakdownByJobId}
+                    expandedJobThreadId={expandedJobThreadId}
+                    toggleStagesJobThreadExpanded={toggleStagesJobThreadExpanded}
+                    jobThreadStatsByJobId={jobThreadStatsByJobId}
+                    jobThreadActivityByJobId={jobThreadActivityByJobId}
+                    setViewReportsJob={setViewReportsJob}
+                    applyStagesInvoiceFocus={applyStagesInvoiceFocus}
+                    canOpenJobScheduleModal={canOpenJobScheduleModal}
+                    setScheduleModalJob={setScheduleModalJob}
+                    authRole={authRole}
+                    loadJobs={loadJobs}
+                    stagesInvoiceUpdatingId={stagesInvoiceUpdatingId}
+                    invoiceEstimatedBillDateSavingId={invoiceEstimatedBillDateSavingId}
+                    bumpInvoiceEstimatedBillDate={bumpInvoiceEstimatedBillDate}
+                    setWhenInvoiceBillModal={setWhenInvoiceBillModal}
+                    setWhenInvoiceBillModalDate={setWhenInvoiceBillModalDate}
+                  />
+                ))}
 
                 <button
                   type="button"
@@ -5620,17 +3484,64 @@ export default function Jobs() {
                         Loading paid jobs…
                       </p>
                     ) : null}
-                    {renderStagesTable(
-                      paid,
-                      null,
-                      () => {},
-                      true,
-                      undefined,
-                      stagesHamMode
+                    <JobsStagesTable
+                      jobList={paid}
+                      actionLabel={null}
+                      onAction={() => {}}
+                      showTimeOpen={true}
+                      onSendBack={undefined}
+                      onSendBackSimple={stagesHamMode
                         ? (j) => updateJobStatus(j.id, 'billed')
-                        : (j) => setSendBackConfirmJob({ id: j.id, toStatus: 'billed' }),
-                      true,
-                    )}
+                        : (j) => setSendBackConfirmJob({ id: j.id, toStatus: 'billed' })}
+                      showPctComplete={true}
+                      stagesJobFlashId={stagesJobFlashId}
+                      stagesHamMode={stagesHamMode}
+                      assignedEditJobId={assignedEditJobId}
+                      setAssignedEditJobId={setAssignedEditJobId}
+                      assignedEditSelectedIds={assignedEditSelectedIds}
+                      setAssignedEditSelectedIds={setAssignedEditSelectedIds}
+                      assignedEditSavingId={assignedEditSavingId}
+                      assignedEditDropdownRef={assignedEditDropdownRef}
+                      users={users}
+                      updateJobTeamMembers={updateJobTeamMembers}
+                      renderStagesOpenDetailJobName={renderStagesOpenDetailJobName}
+                      stagesStatusUpdatingId={stagesStatusUpdatingId}
+                      pctCompleteSavingId={pctCompleteSavingId}
+                      updateJobPctComplete={updateJobPctComplete}
+                      commitStagesPctWithNote={commitStagesPctWithNote}
+                      setCreatePartialInvoiceAmount={setCreatePartialInvoiceAmount}
+                      setCreatePartialInvoiceJob={setCreatePartialInvoiceJob}
+                      openEdit={openEdit}
+                      openStagesDetailJobModal={openStagesDetailJobModal}
+                      setAiaG702StagesJob={setAiaG702StagesJob}
+                      canCreateHazmatFee={canCreateHazmatFee}
+                      openHazmatFee={openHazmatFee}
+                      canEditJobPctComplete={canEditJobPctComplete}
+                      canManageJobPeople={canManageJobPeople}
+                      setManageJobPeople={setManageJobPeople}
+                      jobThreadNotesLoadingId={jobThreadNotesLoadingId}
+                      jobThreadDraft={jobThreadDraft}
+                      jobThreadSubmittingId={jobThreadSubmittingId}
+                      setJobThreadDraft={setJobThreadDraft}
+                      submitJobThreadNote={submitJobThreadNote}
+                      authUser={authUser}
+                      showToast={showToast}
+                      customers={customers}
+                      openEditJobAndCreateCustomerFlow={openEditJobAndCreateCustomerFlow}
+                      stagesManHoursByJobId={stagesManHoursByJobId}
+                      stagesManHoursLoading={stagesManHoursLoading}
+                      stagesLaborBreakdownByJobId={stagesLaborBreakdownByJobId}
+                      expandedJobThreadId={expandedJobThreadId}
+                      toggleStagesJobThreadExpanded={toggleStagesJobThreadExpanded}
+                      jobThreadStatsByJobId={jobThreadStatsByJobId}
+                      jobThreadActivityByJobId={jobThreadActivityByJobId}
+                      setViewReportsJob={setViewReportsJob}
+                      applyStagesInvoiceFocus={applyStagesInvoiceFocus}
+                      canOpenJobScheduleModal={canOpenJobScheduleModal}
+                      setScheduleModalJob={setScheduleModalJob}
+                      authRole={authRole}
+                      loadJobs={loadJobs}
+                    />
                   </>
                 ) : null}
 
