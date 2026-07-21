@@ -56,7 +56,8 @@ import { buildClickToolingUrl, formatAddressTwoLines, googleMapsSearchUrl } from
 import JobsCrewPnlTab from '../components/jobs/JobsCrewPnlTab'
 import JobsSubLaborTab from '../components/jobs/JobsSubLaborTab'
 import JobsSubLaborFormModal, { type JobsSubLaborFormModalHandle } from '../components/jobs/JobsSubLaborFormModal'
-import type { LaborJob, SubLaborBackchargeTarget, SubLaborPaymentTarget } from '../types/laborJob'
+import SubLaborPaymentModals, { type SubLaborPaymentModalsHandle } from '../components/jobs/SubLaborPaymentModals'
+import type { LaborJob } from '../types/laborJob'
 import { formatDispatchNoteDaysAgoShortPhrase, formatDispatchNoteWeekdayShortTimeChicago, getDispatchNoteDisplayMeta } from '../utils/dispatchNoteDisplay'
 import { buildStagesMoneyBarModel } from '../lib/stagesMoneyBar'
 import StagesProgressPaymentCell from '../components/jobs/StagesProgressPaymentCell'
@@ -394,25 +395,7 @@ export default function Jobs() {
   const [createPartialInvoiceAmount, setCreatePartialInvoiceAmount] = useState('')
   const [creatingPartialInvoiceFromModal, setCreatingPartialInvoiceFromModal] = useState(false)
 
-  // Sub Sheet Ledger state
-  const [makePaymentLaborJob, setMakePaymentLaborJob] = useState<SubLaborPaymentTarget | null>(null)
-  const [makePaymentAmount, setMakePaymentAmount] = useState('')
-  const [makePaymentMemo, setMakePaymentMemo] = useState('')
-  const [makePaymentSaving, setMakePaymentSaving] = useState(false)
-  const [backchargeLaborJob, setBackchargeLaborJob] = useState<SubLaborBackchargeTarget | null>(null)
-  const [backchargeAmount, setBackchargeAmount] = useState('')
-  const [backchargeMemo, setBackchargeMemo] = useState('')
-  const [backchargeSaving, setBackchargeSaving] = useState(false)
-  const [editingPayment, setEditingPayment] = useState<{
-    id: string
-    jobId: string
-    amount: number
-    memo: string | null
-    isBackcharge: boolean
-  } | null>(null)
-  const [editPaymentAmount, setEditPaymentAmount] = useState('')
-  const [editPaymentMemo, setEditPaymentMemo] = useState('')
-  const [editPaymentSaving, setEditPaymentSaving] = useState(false)
+  // Sub Sheet Ledger state (the payment/backcharge/edit-payment modal states moved to SubLaborPaymentModals in v2.824)
   const [editingLaborJob, setEditingLaborJob] = useState<LaborJob | null>(null)
   const [driveSettingsOpen, setDriveSettingsOpen] = useState(false)
   const [driveMileageCost, setDriveMileageCost] = useState<number | null>(null)
@@ -448,6 +431,7 @@ export default function Jobs() {
   })
   const [myRole, setMyRole] = useState<string | null>(null)
   const subLaborFormRef = useRef<JobsSubLaborFormModalHandle>(null)
+  const subLaborPaymentModalsRef = useRef<SubLaborPaymentModalsHandle>(null)
 
   const canAccessBankingForParts = useMemo(
     () =>
@@ -6722,8 +6706,8 @@ export default function Jobs() {
           onOpenDefaultLaborRate={() => { loadDefaultLaborRate(); setDefaultLaborRateModalOpen(true); }}
           onPrintJobSubSheet={printJobSubSheet}
           onUpdateLaborJobDate={updateLaborJobDate}
-          onOpenMakePayment={(target, defaultAmount) => { setMakePaymentAmount(defaultAmount); setMakePaymentMemo(''); setMakePaymentLaborJob(target) }}
-          onOpenBackcharge={(target) => { setBackchargeAmount(''); setBackchargeMemo(''); setBackchargeLaborJob(target) }}
+          onOpenMakePayment={(target, defaultAmount) => subLaborPaymentModalsRef.current?.openMakePayment(target, defaultAmount)}
+          onOpenBackcharge={(target) => subLaborPaymentModalsRef.current?.openBackcharge(target)}
         />
       )}
 
@@ -6868,15 +6852,10 @@ export default function Jobs() {
         setError={setError}
         defaultLaborRateValue={defaultLaborRateValue}
         setActiveTab={setActiveTab}
-        setEditingPayment={setEditingPayment}
-        setEditPaymentAmount={setEditPaymentAmount}
-        setEditPaymentMemo={setEditPaymentMemo}
-        setMakePaymentLaborJob={setMakePaymentLaborJob}
-        setMakePaymentAmount={setMakePaymentAmount}
-        setMakePaymentMemo={setMakePaymentMemo}
-        setBackchargeLaborJob={setBackchargeLaborJob}
-        setBackchargeAmount={setBackchargeAmount}
-        setBackchargeMemo={setBackchargeMemo}
+        onOpenMakePayment={(target, defaultAmount) => subLaborPaymentModalsRef.current?.openMakePayment(target, defaultAmount)}
+        onOpenBackcharge={(target) => subLaborPaymentModalsRef.current?.openBackcharge(target)}
+        onOpenEditPayment={(payment, amountSeed, memoSeed) => subLaborPaymentModalsRef.current?.openEditPayment(payment, amountSeed, memoSeed)}
+        onClearEditPayment={() => subLaborPaymentModalsRef.current?.clearEditPayment()}
         authUserId={authUser?.id}
         printJobSubSheet={printJobSubSheet}
       />
@@ -7133,112 +7112,13 @@ export default function Jobs() {
           await loadJobs()
         }}
       />
-      {makePaymentLaborJob && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60 }}>
-          <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 400, maxWidth: 480 }}>
-            <h2 style={{ margin: '0 0 1rem', fontSize: '1.25rem' }}>Make Payment</h2>
-            <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>{makePaymentLaborJob.contractor} · {makePaymentLaborJob.hcp}</p>
-            <p style={{ margin: '0 0 1rem', fontSize: '0.875rem' }}>Total: ${formatCurrency(makePaymentLaborJob.totalCost)} · Paid: ${formatCurrency(makePaymentLaborJob.paid)} · Outstanding: ${formatCurrency(makePaymentLaborJob.outstanding)}</p>
-            <div style={{ marginBottom: '1rem' }}>
-              <label style={{ display: 'block', marginBottom: 4, fontWeight: 500 }}>Amount ($)</label>
-              <input
-                type="number"
-                min={0}
-                step={0.01}
-                value={makePaymentAmount}
-                onChange={(e) => setMakePaymentAmount(e.target.value)}
-                placeholder="0"
-                style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem', boxSizing: 'border-box' }}
-              />
-            </div>
-            <div style={{ marginBottom: '1rem' }}>
-              <label style={{ display: 'block', marginBottom: 4, fontWeight: 500 }}>Memo (optional)</label>
-              <textarea
-                value={makePaymentMemo}
-                onChange={(e) => setMakePaymentMemo(e.target.value)}
-                placeholder="Optional note"
-                rows={2}
-                style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem', boxSizing: 'border-box', resize: 'vertical' }}
-              />
-            </div>
-            <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-              <button type="button" onClick={() => { setMakePaymentLaborJob(null); setMakePaymentAmount(''); setMakePaymentMemo('') }} style={{ padding: '0.5rem 1rem', border: '1px solid var(--border-strong)', background: 'var(--surface)', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
-              <button type="button" disabled={makePaymentSaving || !(parseFloat(makePaymentAmount) > 0)} onClick={async () => { if (!makePaymentLaborJob) return; const amt = parseFloat(makePaymentAmount); if (!(amt > 0)) return; setMakePaymentSaving(true); await recordLaborJobPayment(makePaymentLaborJob.id, amt, makePaymentMemo || null); setMakePaymentLaborJob(null); setMakePaymentAmount(''); setMakePaymentMemo(''); setMakePaymentSaving(false) }} style={{ padding: '0.5rem 1rem', background: makePaymentSaving || !(parseFloat(makePaymentAmount) > 0) ? '#9ca3af' : '#059669', color: 'white', border: 'none', borderRadius: 4, cursor: makePaymentSaving || !(parseFloat(makePaymentAmount) > 0) ? 'not-allowed' : 'pointer' }}>{makePaymentSaving ? '…' : 'Record Payment'}</button>
-            </div>
-          </div>
-        </div>
-      )}
-      {backchargeLaborJob && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60 }}>
-          <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 400, maxWidth: 480 }}>
-            <h2 style={{ margin: '0 0 1rem', fontSize: '1.25rem' }}>Backcharge</h2>
-            <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>{backchargeLaborJob.contractor} · {backchargeLaborJob.hcp}</p>
-            <p style={{ margin: '0 0 1rem', fontSize: '0.875rem' }}>Total: ${formatCurrency(backchargeLaborJob.totalCost)} · Paid: ${formatCurrency(backchargeLaborJob.paid)}</p>
-            <div style={{ marginBottom: '1rem' }}>
-              <label style={{ display: 'block', marginBottom: 4, fontWeight: 500 }}>Amount ($)</label>
-              <input
-                type="number"
-                min={0}
-                step={0.01}
-                value={backchargeAmount}
-                onChange={(e) => setBackchargeAmount(e.target.value)}
-                placeholder="0"
-                style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem', boxSizing: 'border-box' }}
-              />
-            </div>
-            <div style={{ marginBottom: '1rem' }}>
-              <label style={{ display: 'block', marginBottom: 4, fontWeight: 500 }}>Memo <span style={{ color: 'var(--text-red-700)' }}>*</span></label>
-              <textarea
-                value={backchargeMemo}
-                onChange={(e) => setBackchargeMemo(e.target.value)}
-                placeholder="Required for backcharges"
-                rows={2}
-                style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem', boxSizing: 'border-box', resize: 'vertical' }}
-              />
-            </div>
-            <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-              <button type="button" onClick={() => { setBackchargeLaborJob(null); setBackchargeAmount(''); setBackchargeMemo('') }} style={{ padding: '0.5rem 1rem', border: '1px solid var(--border-strong)', background: 'var(--surface)', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
-              <button type="button" disabled={backchargeSaving || !(parseFloat(backchargeAmount) > 0) || !backchargeMemo.trim()} onClick={async () => { if (!backchargeLaborJob) return; const amt = parseFloat(backchargeAmount); if (!(amt > 0) || !backchargeMemo.trim()) return; setBackchargeSaving(true); await recordLaborJobBackcharge(backchargeLaborJob.id, amt, backchargeMemo); setBackchargeLaborJob(null); setBackchargeAmount(''); setBackchargeMemo(''); setBackchargeSaving(false) }} style={{ padding: '0.5rem 1rem', background: backchargeSaving || !(parseFloat(backchargeAmount) > 0) || !backchargeMemo.trim() ? '#9ca3af' : '#dc2626', color: 'white', border: 'none', borderRadius: 4, cursor: backchargeSaving || !(parseFloat(backchargeAmount) > 0) || !backchargeMemo.trim() ? 'not-allowed' : 'pointer' }}>{backchargeSaving ? '…' : 'Record Backcharge'}</button>
-            </div>
-          </div>
-        </div>
-      )}
-      {editingPayment && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60 }}>
-          <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 400, maxWidth: 480 }}>
-            <h2 style={{ margin: '0 0 1rem', fontSize: '1.25rem' }}>{editingPayment.isBackcharge ? 'Edit Backcharge' : 'Edit Payment'}</h2>
-            <div style={{ marginBottom: '1rem' }}>
-              <label style={{ display: 'block', marginBottom: 4, fontWeight: 500 }}>Amount ($)</label>
-              <input
-                type="number"
-                min={0}
-                step={0.01}
-                value={editPaymentAmount}
-                onChange={(e) => setEditPaymentAmount(e.target.value)}
-                placeholder="0"
-                style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem', boxSizing: 'border-box' }}
-              />
-            </div>
-            <div style={{ marginBottom: '1rem' }}>
-              <label style={{ display: 'block', marginBottom: 4, fontWeight: 500 }}>Memo {editingPayment.isBackcharge ? <span style={{ color: 'var(--text-red-700)' }}>*</span> : '(optional)'}</label>
-              <textarea
-                value={editPaymentMemo}
-                onChange={(e) => setEditPaymentMemo(e.target.value)}
-                placeholder={editingPayment.isBackcharge ? 'Required for backcharges' : 'Optional note'}
-                rows={2}
-                style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem', boxSizing: 'border-box', resize: 'vertical' }}
-              />
-            </div>
-            <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'space-between', flexWrap: 'wrap' }}>
-              <button type="button" disabled={editPaymentSaving} onClick={async () => { if (!editingPayment || !confirm('Remove this payment?')) return; setEditPaymentSaving(true); await deleteLaborJobPayment(editingPayment.id); setEditingPayment(null); setEditPaymentAmount(''); setEditPaymentMemo(''); setEditPaymentSaving(false) }} style={{ padding: '0.5rem 1rem', background: editPaymentSaving ? '#9ca3af' : 'var(--bg-red-100)', color: '#991b1c', border: 'none', borderRadius: 4, cursor: editPaymentSaving ? 'not-allowed' : 'pointer' }}>Remove</button>
-              <div style={{ display: 'flex', gap: '0.5rem' }}>
-                <button type="button" onClick={() => { setEditingPayment(null); setEditPaymentAmount(''); setEditPaymentMemo('') }} style={{ padding: '0.5rem 1rem', border: '1px solid var(--border-strong)', background: 'var(--surface)', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
-                <button type="button" disabled={editPaymentSaving || !(parseFloat(editPaymentAmount) > 0) || (editingPayment.isBackcharge && !editPaymentMemo.trim())} onClick={async () => { if (!editingPayment) return; const amt = parseFloat(editPaymentAmount); if (!(amt > 0)) return; if (editingPayment.isBackcharge && !editPaymentMemo.trim()) return; setEditPaymentSaving(true); await updateLaborJobPayment(editingPayment.id, amt, editPaymentMemo || null, editingPayment.isBackcharge); setEditingPayment(null); setEditPaymentAmount(''); setEditPaymentMemo(''); setEditPaymentSaving(false) }} style={{ padding: '0.5rem 1rem', background: editPaymentSaving || !(parseFloat(editPaymentAmount) > 0) || (editingPayment.isBackcharge && !editPaymentMemo.trim()) ? '#9ca3af' : '#059669', color: 'white', border: 'none', borderRadius: 4, cursor: editPaymentSaving || !(parseFloat(editPaymentAmount) > 0) || (editingPayment.isBackcharge && !editPaymentMemo.trim()) ? 'not-allowed' : 'pointer' }}>{editPaymentSaving ? '…' : 'Save'}</button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      <SubLaborPaymentModals
+        ref={subLaborPaymentModalsRef}
+        recordLaborJobPayment={recordLaborJobPayment}
+        recordLaborJobBackcharge={recordLaborJobBackcharge}
+        deleteLaborJobPayment={deleteLaborJobPayment}
+        updateLaborJobPayment={updateLaborJobPayment}
+      />
       {sendBackInvoice && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60 }}>
           <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 400, maxWidth: 480 }}>
