@@ -11,7 +11,7 @@ Field reports are how what happened on site becomes something the office can act
 
 Tap {{button:blue|Leave Report}} — on the Job Mode card, or during clock-out. Pick the job if it isn't pre-filled, choose a report type, fill in the fields, and submit. Your location is attached automatically.
 
-If your scheduled time on a job ended today and you haven't filed a report in the last 12 hours, the Dashboard nudges you: a yellow ⚠ badge appears over that job's {{button:blue|Leave Report}} button, and My Schedule shows the same note under **Today** — *"Your scheduled time on this job ended today and you haven't filed a report yet. File one."* Filing a report clears both.
+If your scheduled time on a job ended today and you haven't filed a report in the last 12 hours, the Dashboard nudges you: a yellow ⚠ badge appears over that job's {{button:blue|Leave Report}} button, and My Schedule shows the same note under **Today** — *"You haven't filed a report yet. File one."* Filing a report clears both.
 
 :::example Picking a report type
 Report type: &nbsp;{{button:outline-blue|Job Complete}} &nbsp; {{button:outline-blue|Status Report}} &nbsp; {{button:outline|Materials Needed}}

@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-21 (v2.884)
+last_updated: 2026-07-21 (v2.885)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.885)
+
+### My Schedule: shorter missing-report nudge (2026-07-21)
+The Dashboard My Schedule reminder under **Today** now reads *"You haven't filed a report yet. File one"* (was the wordier "Your scheduled time on this job ended today and…"). Trigger logic unchanged (scheduled time ended today, no report in the last 12h); reports help guide quote updated.
 
 ## Latest Updates (v2.884)
 
