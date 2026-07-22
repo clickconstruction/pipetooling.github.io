@@ -30,3 +30,14 @@ describe('isPathAllowedForRole', () => {
     expect(isPathAllowedForRole(null, '/help', false)).toBe(false)
   })
 })
+
+describe('job-mode tab paths (v2.911 fix: allowlists bounced field roles)', () => {
+  const jobModePaths = ['/job-mode/schedule', '/job-mode/inbox', '/job-mode/customers']
+  it('allowed for every Job-Mode-eligible restricted role', () => {
+    for (const role of ['subcontractor', 'helpers', 'primary', 'superintendent', 'estimator'] as const) {
+      for (const p of jobModePaths) {
+        expect(isPathAllowedForRole(role, p, false), `${role} ${p}`).toBe(true)
+      }
+    }
+  })
+})

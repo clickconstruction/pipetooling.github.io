@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-22 (v2.910)
+last_updated: 2026-07-22 (v2.911)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.911)
+
+### Fix: Job Mode tabs bounced subcontractors, helpers, primaries, superintendents, and estimators (2026-07-22)
+The Job Mode footer's Schedule / Inbox / Customers tabs navigated fine — and then Layout's per-role **path allowlists** instantly redirected restricted roles back to `/dashboard`, so the tabs felt "not clickable". The `/job-mode/*` paths are now in `SUBCONTRACTOR_PATHS`, `PRIMARY_PATHS`, and `SUPERINTENDENT_PATHS` (both the Layout copies and the `layoutRouteAccess.ts` copies) and in the estimator allowlist (`/job-mode` prefix). New unit test asserts all five Job-Mode-eligible restricted roles can reach all three paths.
 
 ## Latest Updates (v2.910)
 
