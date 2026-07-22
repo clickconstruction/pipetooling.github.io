@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { useAuth } from '../../hooks/useAuth'
+import { useJobFormModal } from '../../contexts/JobFormModalContext'
 import { useToastContext } from '../../contexts/ToastContext'
 import {
   ScheduleDispatchAssignJobPickerModal,
@@ -24,10 +25,12 @@ import {
 } from '../../lib/dispatchModeSchedule'
 import {
   dispatchMinutesToHHmm,
+  formatBlockDurationMinutes,
   formatDispatchQuickTimeLabel,
   timeInputToMinutesSafe,
   timeInputToPg,
 } from '../../lib/dispatchAddBlockTime'
+import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import {
   ribbonSpanPct,
   suggestCommonWindows,
@@ -91,6 +94,7 @@ export default function QuickAssignSheet({
 }) {
   const { user: authUser, role } = useAuth()
   const { showToast } = useToastContext()
+  const jobFormModal = useJobFormModal()
 
   const todayYmd = denverCalendarDayKey(Date.now())
   const [job, setJob] = useState<ScheduleDispatchHubJobRow | null>(null)
@@ -110,6 +114,40 @@ export default function QuickAssignSheet({
   const [instructions, setInstructions] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  /** Long-press detail: who to show + label; null = closed. */
+  const [detail, setDetail] = useState<{ label: string; userIds: string[] } | null>(null)
+  const pressStartRef = useRef<number | null>(null)
+  const longPressFiredRef = useRef(false)
+
+  // Long-press opens ON RELEASE (>=450ms held): opening mid-hold would put the
+  // detail overlay under the pointer and the release-click would hit it.
+  const longPressHandlers = (label: string, userIds: string[]) => ({
+    onPointerDown: () => {
+      longPressFiredRef.current = false
+      pressStartRef.current = Date.now()
+    },
+    onPointerUp: () => {
+      const start = pressStartRef.current
+      pressStartRef.current = null
+      if (start != null && Date.now() - start >= 450) {
+        longPressFiredRef.current = true
+        setDetail({ label, userIds })
+      }
+    },
+    onPointerLeave: () => {
+      pressStartRef.current = null
+    },
+    onContextMenu: (e: { preventDefault: () => void }) => e.preventDefault(),
+  })
+
+  /** True once per long-press: the click that follows it must not toggle. */
+  const consumeLongPress = () => {
+    if (longPressFiredRef.current) {
+      longPressFiredRef.current = false
+      return true
+    }
+    return false
+  }
 
   // Reset per open; job picker starts the flow.
   useEffect(() => {
@@ -208,6 +246,7 @@ export default function QuickAssignSheet({
   const weeks = useMemo(() => dispatchModeTwoWeekGrid(todayYmd), [todayYmd])
 
   const togglePerson = (id: string) => {
+    if (consumeLongPress()) return
     setSelected((prev) => {
       const next = new Set(prev)
       if (next.has(id)) next.delete(id)
@@ -218,6 +257,7 @@ export default function QuickAssignSheet({
   }
 
   const toggleLane = (memberIds: string[]) => {
+    if (consumeLongPress()) return
     setSelected((prev) => {
       const next = new Set(prev)
       const allIn = memberIds.every((id) => next.has(id))
@@ -331,7 +371,10 @@ export default function QuickAssignSheet({
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', minWidth: 0 }}>
           <div style={{ minWidth: 0, flex: 1 }}>
             <h2 id="quick-assign-title" style={{ margin: 0, fontSize: '1rem', color: 'var(--text-strong)' }}>
-              Assign work
+              Assign work{' '}
+              <span style={{ fontSize: '0.6875rem', fontWeight: 400, color: 'var(--text-muted)' }}>
+                (tip: long press to see details)
+              </span>
             </h2>
             {job ? (
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0, marginTop: 2 }}>
@@ -412,6 +455,7 @@ export default function QuickAssignSheet({
                       <button
                         type="button"
                         onClick={() => toggleLane(memberIds)}
+                        {...longPressHandlers(sec.label, memberIds)}
                         aria-pressed={allIn}
                         aria-label={`Select everyone in ${sec.label}`}
                         style={{
@@ -442,6 +486,7 @@ export default function QuickAssignSheet({
                           key={p.userId}
                           type="button"
                           onClick={() => togglePerson(p.userId)}
+                          {...longPressHandlers(p.displayName, [p.userId])}
                           aria-pressed={isSel}
                           aria-label={`${isSel ? 'Deselect' : 'Select'} ${p.displayName}${conflict ? ' (time conflict)' : ''}`}
                           style={{
@@ -464,6 +509,8 @@ export default function QuickAssignSheet({
                                 : 'var(--surface)',
                             cursor: 'pointer',
                             textAlign: 'left',
+                            WebkitUserSelect: 'none',
+                            userSelect: 'none',
                           }}
                         >
                           <span
@@ -685,6 +732,25 @@ export default function QuickAssignSheet({
           setJobPickerOpen(false)
           if (!job) onClose()
         }}
+        onCreateNewJob={
+          jobFormModal
+            ? () =>
+                jobFormModal.openNewJob({
+                  onCreatedJobId: (newJobId) => {
+                    // Refetch the ledger so the just-created job exists in our
+                    // rows, auto-pick it, and move the user to the next step.
+                    void fetchJobsLedgerForScheduleDispatchHub().then(({ data }) => {
+                      setJobRows(data)
+                      const created = data.find((r) => r.id === newJobId) ?? null
+                      if (created) {
+                        setJob(created)
+                        setJobPickerOpen(false)
+                      }
+                    })
+                  },
+                })
+            : undefined
+        }
         subtitle={null}
         jobRows={pickerRows}
         searchValue={jobSearch}
@@ -696,6 +762,121 @@ export default function QuickAssignSheet({
           setJobPickerOpen(false)
         }}
       />
+      {detail ? (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.45)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1006,
+            padding: '1rem',
+          }}
+          onClick={(e) => {
+            e.stopPropagation()
+            setDetail(null)
+          }}
+          role="presentation"
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label={`Schedule details for ${detail.label}`}
+            style={{
+              background: 'var(--surface)',
+              borderRadius: 12,
+              width: '96%',
+              maxWidth: 480,
+              maxHeight: '80vh',
+              overflowY: 'auto',
+              padding: '0.85rem',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '0.5rem',
+              boxShadow: '0 10px 40px rgba(0,0,0,0.3)',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+              <h3 style={{ margin: 0, fontSize: '0.9375rem', color: 'var(--text-strong)' }}>
+                {detail.label} — {selectedYmd}
+              </h3>
+              <button
+                type="button"
+                onClick={() => setDetail(null)}
+                aria-label="Close schedule details"
+                style={{ ...chip(false), padding: '0.25rem 0.6rem' }}
+              >
+                ✕
+              </button>
+            </div>
+            {detail.userIds.map((uid) => {
+              const person = roster.find((p) => p.userId === uid)
+              const personBlocks = dayBlocks
+                .filter((b) => b.assigneeUserId === uid)
+                .sort((a, b) => a.timeStart.localeCompare(b.timeStart))
+              return (
+                <div key={uid}>
+                  {detail.userIds.length > 1 ? (
+                    <div style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--text-blue-700)', margin: '0.25rem 0' }}>
+                      {person?.displayName ?? 'Unknown'}
+                    </div>
+                  ) : null}
+                  {personBlocks.length === 0 ? (
+                    <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+                      Nothing scheduled this day.
+                    </p>
+                  ) : (
+                    personBlocks.map((b) => {
+                      const pill = buildServiceTypeTradePill(b.serviceTypeName)
+                      const num = effectiveJobLedgerNumber(b.hcpNumber, b.clickNumber) || '—'
+                      return (
+                        <div
+                          key={b.id}
+                          style={{
+                            display: 'flex',
+                            gap: '0.6rem',
+                            padding: '0.45rem 0',
+                            borderBottom: '1px solid var(--border)',
+                            alignItems: 'flex-start',
+                          }}
+                        >
+                          <span style={{ flexShrink: 0, width: 66, fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-strong)' }}>
+                            {formatDispatchQuickTimeLabel(b.timeStart)}
+                            <span style={{ display: 'block', fontWeight: 400, color: 'var(--text-faint)', fontSize: '0.75rem' }}>
+                              {formatBlockDurationMinutes(
+                                Math.max(0, timeInputToMinutesSafe(b.timeEnd) - timeInputToMinutesSafe(b.timeStart)),
+                              )}
+                            </span>
+                          </span>
+                          <span style={{ minWidth: 0, flex: 1, display: 'flex', flexDirection: 'column', gap: 2 }}>
+                            <span style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+                              {pill ? (
+                                <span style={{ ...pill.style, marginTop: 0, flexShrink: 0 }}>{pill.label}</span>
+                              ) : null}
+                              <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-strong)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                {num} · {b.jobName}
+                              </span>
+                            </span>
+                            {b.customerName ? (
+                              <span style={{ fontSize: '0.75rem', color: 'var(--text-600)' }}>{b.customerName}</span>
+                            ) : null}
+                            {b.jobAddress ? (
+                              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{b.jobAddress}</span>
+                            ) : null}
+                          </span>
+                        </div>
+                      )
+                    })
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      ) : null}
     </div>
   )
 }
