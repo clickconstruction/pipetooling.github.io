@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.951',
+    date: '2026-07-22',
+    title: 'Reflect shows tenure and rating trends',
+    kind: 'feature',
+    highlights: [
+      'Each person’s Reflect card now shows how long they’ve been at the company.',
+      'Click a person to expand a chart of their Ability, Drive, and Integrity ratings over time.',
+    ],
+  },
+  {
     version: 'v2.950',
     date: '2026-07-22',
     title: 'Team reviews flow card to card',

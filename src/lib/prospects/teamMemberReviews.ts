@@ -138,6 +138,57 @@ export function nextUnratedIndex(
   return null
 }
 
+export type TenureRow = { user_id: string; started_on: string; source: string }
+
+/** "2 yr 4 mo" / "7 mo" / "under a month" from an ISO start date to now; null for missing/future dates. */
+export function formatTenure(startedOn: string | null | undefined, now: Date): string | null {
+  if (!startedOn) return null
+  const [y, m, d] = startedOn.split('-').map(Number)
+  if (!y || !m || !d) return null
+  const start = new Date(Date.UTC(y, m - 1, d))
+  const months = (now.getUTCFullYear() - start.getUTCFullYear()) * 12 + (now.getUTCMonth() - start.getUTCMonth()) - (now.getUTCDate() < start.getUTCDate() ? 1 : 0)
+  if (months < 0) return null
+  if (months === 0) return 'under a month'
+  const years = Math.floor(months / 12)
+  const rem = months % 12
+  if (years === 0) return `${rem} mo`
+  return rem === 0 ? `${years} yr` : `${years} yr ${rem} mo`
+}
+
+export type MonthlyRatingPoint = {
+  /** First-of-month ISO, ascending. */
+  month: string
+  ability: number | null
+  drive: number | null
+  integrity: number | null
+  reviewerCount: number
+}
+
+/** Per-month cross-reviewer averages of a subject's ratings, oldest first — the ratings-over-time chart series. */
+export function monthlyRatingSeries(reviews: TeamMemberReviewRow[], subjectUserId: string): MonthlyRatingPoint[] {
+  const byMonth = new Map<string, TeamMemberReviewRow[]>()
+  for (const r of reviews) {
+    if (r.subject_user_id !== subjectUserId) continue
+    const list = byMonth.get(r.review_month)
+    if (list) list.push(r)
+    else byMonth.set(r.review_month, [r])
+  }
+  return [...byMonth.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([month, rows]) => {
+      const averages = averageLatestRatings(rows)
+      return { month, ability: averages.ability, drive: averages.drive, integrity: averages.integrity, reviewerCount: rows.length }
+    })
+}
+
+/** "Jul '26" from "2026-07-01" — compact chart axis label. */
+export function formatReviewMonthShort(reviewMonth: string): string {
+  const [y, m] = reviewMonth.split('-')
+  const names = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+  const name = names[Number(m) - 1]
+  return name && y ? `${name} '${y.slice(2)}` : reviewMonth
+}
+
 /** All of a subject's reviews, newest month first then reviewer id — the Reflect history list. */
 export function subjectReviewHistory(reviews: TeamMemberReviewRow[], subjectUserId: string): TeamMemberReviewRow[] {
   return reviews

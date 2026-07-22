@@ -105,6 +105,12 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 #### July 22, 2026
 
+**`20260722254000_team_member_start_dates.sql`** _(apply via `supabase db push` after the file is on `main`)_
+- **Purpose**: Team member tenure (v2.951) — SECURITY DEFINER RPC `list_team_member_start_dates()`: per active user, `people.start_date` (account link first, then trimmed-name match) or earliest approved clock-session `work_date`. Feeds "time at company" on Reflect cards.
+- **Security**: zero rows without `user_has_prospects_staff_access()` (v2.914 no-raise pattern); EXECUTE revoked from anon. No table changes.
+- **Ordering**: any order — the client hides tenure if the RPC is missing.
+- **Category**: Prospects / feature
+
 **`20260722252000_team_member_reviews.sql`** _(apply via `supabase db push` after the file is on `main`)_
 - **Purpose**: Team member reviews (v2.948) — `team_member_reviews` table: monthly per-reviewer ratings of CURRENT team members (Prospects → Team → Review). One row per (subject_user_id, reviewer_user_id, review_month); first-of-month CHECK; same three 0–100 dimensions + per-dimension comments as `team_prospect_reviews`. Plus SECURITY DEFINER RPC `list_team_member_recent_jobs()` (last 5 distinct approved-clock-session jobs per user, joined by user_id; zero rows without prospects access).
 - **Security**: RLS — SELECT for `user_has_prospects_staff_access()`; INSERT/UPDATE/DELETE only own rows (`reviewer_user_id = auth.uid()`). CREATE TABLE ends with both read-only-block calls. RPC: EXECUTE revoked from anon, granted to authenticated; access gate inside.

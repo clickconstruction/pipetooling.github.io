@@ -100,4 +100,4 @@ The **Review** stage tab (after Hire) turns the same three dimensions on your ex
 Reviews are monthly: saving again in the same month updates that month's review; a new month starts a fresh one. Over time that builds a track record — the card reminds you when you last rated each person.
 :::
 
-**Reflect** shows the whole picture: for each person, every reviewer's latest scores and notes side by side, a team **average** of the three dimensions, and a **History** toggle with the earlier months. Everyone who can see the Team board sees everyone's reviews — no blind reviewing, same as candidate reviews.
+**Reflect** shows the whole picture: for each person, every reviewer's latest scores and notes side by side, a team **average** of the three dimensions, how long they've been **at the company**, and a **History** toggle with the earlier months. **Click a person's card** to expand a chart of their three ratings over time — each point is the team's average for that month. Everyone who can see the Team board sees everyone's reviews — no blind reviewing, same as candidate reviews.

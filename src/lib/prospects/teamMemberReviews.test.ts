@@ -4,8 +4,11 @@ import {
   averageLatestRatings,
   currentReviewMonth,
   formatReviewMonthLabel,
+  formatReviewMonthShort,
+  formatTenure,
   hasMonthReview,
   latestReviewsByReviewer,
+  monthlyRatingSeries,
   myLatestReview,
   nextUnratedIndex,
   orderUsersForRating,
@@ -130,6 +133,49 @@ describe('hasMonthReview / nextUnratedIndex', () => {
     expect(nextUnratedIndex(roster, [mine('u1'), mine('u2'), mine('u3')], 'me', month, 1)).toBeNull()
     // Other months and other reviewers don't count.
     expect(nextUnratedIndex(roster, [review({ subject_user_id: 'u1', reviewer_user_id: 'me', review_month: '2026-06-01' })], 'me', month, 0)).toBe(1)
+  })
+})
+
+describe('formatTenure', () => {
+  const now = new Date('2026-07-22T12:00:00Z')
+  it('formats years and months', () => {
+    expect(formatTenure('2024-03-10', now)).toBe('2 yr 4 mo')
+    expect(formatTenure('2025-07-22', now)).toBe('1 yr')
+    expect(formatTenure('2025-12-01', now)).toBe('7 mo')
+    expect(formatTenure('2026-07-05', now)).toBe('under a month')
+  })
+  it('counts partial months conservatively (day-of-month not reached yet)', () => {
+    expect(formatTenure('2025-07-23', now)).toBe('11 mo')
+  })
+  it('returns null for missing, malformed, or future dates', () => {
+    expect(formatTenure(null, now)).toBeNull()
+    expect(formatTenure('not-a-date', now)).toBeNull()
+    expect(formatTenure('2027-01-01', now)).toBeNull()
+  })
+})
+
+describe('monthlyRatingSeries', () => {
+  it('averages per month across reviewers, oldest first', () => {
+    const rows = [
+      review({ id: '1', review_month: '2026-07-01', reviewer_user_id: 'a', rating_ability: 80, rating_drive: 60, rating_integrity: null }),
+      review({ id: '2', review_month: '2026-07-01', reviewer_user_id: 'b', rating_ability: 71, rating_drive: null, rating_integrity: 90 }),
+      review({ id: '3', review_month: '2026-05-01', reviewer_user_id: 'a', rating_ability: 40, rating_drive: 40, rating_integrity: 40 }),
+      review({ id: 'other', subject_user_id: 'someone-else', review_month: '2026-06-01' }),
+    ]
+    expect(monthlyRatingSeries(rows, 'subject')).toEqual([
+      { month: '2026-05-01', ability: 40, drive: 40, integrity: 40, reviewerCount: 1 },
+      { month: '2026-07-01', ability: 76, drive: 60, integrity: 90, reviewerCount: 2 },
+    ])
+  })
+  it('is empty for a subject with no reviews', () => {
+    expect(monthlyRatingSeries([], 'subject')).toEqual([])
+  })
+})
+
+describe('formatReviewMonthShort', () => {
+  it('renders compact month labels', () => {
+    expect(formatReviewMonthShort('2026-07-01')).toBe("Jul '26")
+    expect(formatReviewMonthShort('2025-12-01')).toBe("Dec '25")
   })
 })
 
