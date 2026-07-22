@@ -55,6 +55,7 @@ export function DispatchSettingsModal({
   const [jobLabels, setJobLabels] = useState<Map<string, string>>(new Map())
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [noteSectionOpen, setNoteSectionOpen] = useState(false)
 
   useEffect(() => {
     if (!open) return
@@ -63,6 +64,7 @@ export function DispatchSettingsModal({
     setSkipJobIds([...config.skip_note_job_ids])
     setError(null)
     setBusy(false)
+    setNoteSectionOpen(false)
   }, [open, config])
 
   useEffect(() => {
@@ -233,6 +235,44 @@ export function DispatchSettingsModal({
         <h2 id="dispatch-settings-modal-title" style={{ margin: 0, fontSize: '1.05rem' }}>
           Dispatch settings
         </h2>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <button
+            type="button"
+            aria-expanded={noteSectionOpen}
+            aria-controls="dispatch-settings-note-requirements"
+            onClick={() => setNoteSectionOpen((v) => !v)}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              padding: 0,
+              border: 'none',
+              background: 'none',
+              cursor: 'pointer',
+              textAlign: 'left',
+              fontSize: '0.875rem',
+              fontWeight: 600,
+              color: 'var(--text-strong)',
+            }}
+          >
+            <span aria-hidden="true" style={{ fontSize: '0.7rem' }}>
+              {noteSectionOpen ? '▼' : '▶'}
+            </span>
+            Note requirements
+            {!noteSectionOpen ? (
+              <span style={{ fontWeight: 400, fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                {requireIds.length} require · {skipIds.length} people skip · {skipJobIds.length}{' '}
+                {skipJobIds.length === 1 ? 'job skips' : 'jobs skip'}
+              </span>
+            ) : null}
+          </button>
+        </div>
+
+        {noteSectionOpen ? (
+        <div
+          id="dispatch-settings-note-requirements"
+          style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}
+        >
         <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-600)' }}>
           Configure note requirements for schedule blocks. A person can appear in at most one of the
           two people lists; jobs are an independent list.
@@ -317,6 +357,8 @@ export function DispatchSettingsModal({
             disabled={busy}
           />
         </div>
+        </div>
+        ) : null}
 
         <DispatchSwimLanesSettingsSection roster={roster} onChanged={onSwimLanesChanged} />
 
