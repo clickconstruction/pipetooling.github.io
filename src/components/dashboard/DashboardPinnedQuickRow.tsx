@@ -72,6 +72,12 @@ export interface DashboardPinnedQuickRowProps {
    * so banner tap-throughs (e.g. staff tally follow-up) keep working.
    */
   bannersOnly?: boolean
+  /**
+   * Job Mode Dashboard: skip the notification banners (they render in the Job
+   * Mode Inbox tab instead, via bannersOnly) but keep the Job Report row,
+   * pins/quick actions, and slots.
+   */
+  hideBanners?: boolean
 }
 
 /**
@@ -97,6 +103,7 @@ export function DashboardPinnedQuickRow({
   afterJobReportRow,
   interstitial,
   bannersOnly = false,
+  hideBanners = false,
 }: DashboardPinnedQuickRowProps) {
   const navigate = useNavigate()
   const { showToast } = useToastContext()
@@ -317,7 +324,7 @@ export function DashboardPinnedQuickRow({
     <>
       {!bannersOnly && jobReportFirst && jobReportRow}
       {!bannersOnly && afterJobReportRow}
-      {arBankCountEnabled && (
+      {!hideBanners && arBankCountEnabled && (
         <DashboardArBankUnallocatedBanner
           count={arBankUnallocatedCount ?? 0}
           loading={arBankUnallocatedCount === null}
@@ -327,7 +334,7 @@ export function DashboardPinnedQuickRow({
           }}
         />
       )}
-      {role != null && (
+      {!hideBanners && role != null && (
         <DashboardTallyStaleBanner
           staleCount={typeof tallyStaleUnlinkedCount === 'number' ? tallyStaleUnlinkedCount : 0}
           loading={tallyStaleUnlinkedCount === null}
@@ -335,17 +342,19 @@ export function DashboardPinnedQuickRow({
           onGoToTally={() => navigate('/tally?tab=transactions')}
         />
       )}
-      <DashboardLostBidsMissingReasonBanner
-        count={lostMissingLossReasonCount}
-        loading={lostMissingLossReasonLoading}
-        onGoToLostSummary={() => {
-          if (!authUserId) return
-          navigate(
-            `/bids?tab=bid-board&lostSummary=1&lostSummaryTab=${encodeURIComponent(authUserId)}`,
-          )
-        }}
-      />
-      {(role === 'dev' || role === 'master_technician' || isAssistantLike(role)) && (
+      {!hideBanners && (
+        <DashboardLostBidsMissingReasonBanner
+          count={lostMissingLossReasonCount}
+          loading={lostMissingLossReasonLoading}
+          onGoToLostSummary={() => {
+            if (!authUserId) return
+            navigate(
+              `/bids?tab=bid-board&lostSummary=1&lostSummaryTab=${encodeURIComponent(authUserId)}`,
+            )
+          }}
+        />
+      )}
+      {!hideBanners && (role === 'dev' || role === 'master_technician' || isAssistantLike(role)) && (
         <DashboardTallyStaleStaffBanner
           peopleCount={typeof tallyStaffStalePeopleCount === 'number' ? tallyStaffStalePeopleCount : 0}
           transactionCount={typeof tallyStaffStaleTxCount === 'number' ? tallyStaffStaleTxCount : 0}
@@ -355,9 +364,9 @@ export function DashboardPinnedQuickRow({
         />
       )}
       {/* Dev-only and self-gating: renders nothing unless a burst of deletions was detected. */}
-      <DashboardBulkDeleteAlertBanner />
+      {!hideBanners && <DashboardBulkDeleteAlertBanner />}
       {/* Dev-only and self-gating: renders nothing unless someone was refused the break-glass dev code. */}
-      <DashboardClaimDevAttemptsBanner />
+      {!hideBanners && <DashboardClaimDevAttemptsBanner />}
       {!bannersOnly && !jobReportFirst && jobReportRow}
       {!bannersOnly && interstitial}
       {!bannersOnly && showPinnedRowWithQuickActions && (

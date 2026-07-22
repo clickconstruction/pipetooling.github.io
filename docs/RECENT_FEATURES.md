@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-22 (v2.916)
+last_updated: 2026-07-22 (v2.917)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.917)
+
+### Job Mode: notification banners move from Dashboard to Inbox (2026-07-22)
+With Job Mode on, the Dashboard's notification banners (stale tally, AR unallocated, lost-bid reasons, dev alerts) no longer render above the job card — they now show at the top of the **Job Mode Inbox** tab, mirroring Dispatch Mode's Inbox. New `hideBanners` prop on `DashboardPinnedQuickRow` (keeps the Job Report row / pins / slots, skips banners) used by the Job Mode early return in `Dashboard.tsx`; `JobModeInbox.tsx` mounts the row with the existing `bannersOnly` prop above My Inbox. Help guide `job-mode-clocking.md` updated.
 
 ## Latest Updates (v2.916)
 
