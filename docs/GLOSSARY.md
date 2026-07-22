@@ -245,6 +245,11 @@ A per-user, per-device toggle in the header gear menu (**[`Layout.tsx`](../src/c
 
 **See also** — **`RECENT_FEATURES.md`** **v2.545**, **`PROJECT_DOCUMENTATION.md`** Dashboard **Job Mode**.
 
+### Dispatch Mode (app-wide)
+The office-side companion to Job Mode: a per-user, per-device gear-menu toggle (**[`Layout.tsx`](../src/components/Layout.tsx)**, cohort = schedule-dispatch edit roles) that mounts a fixed bottom tab bar (**[`DispatchModeFooter`](../src/components/dispatchMode/DispatchModeFooter.tsx)**) on every page: **Dashboard** (clock in/out + compact Job Stages list), **Schedule** (month mini-calendar + all-people day agenda + Task Dispatch bell), **Inbox** (My + Dispatch + Estimator inboxes stacked, live badge), **Customers** (searchable list with job counts), **More** (the regular app with the bar persisting). Routes live under `/dispatch-mode`; tab screens in **[`src/components/dispatchMode/`](../src/components/dispatchMode/)**.
+
+**See also** — **`RECENT_FEATURES.md`** **v2.888–v2.893**, help guide `dispatch-mode.md`.
+
 ### User Review modal
 A global, full-screen modal (**[`UserReviewModal`](../src/components/UserReviewModal.tsx)** + **[`UserReviewModalContext`](../src/contexts/UserReviewModalContext.tsx)**) opened by clicking a person's **name** on the Dashboard's **`DashboardTeamActiveClockStrip`** (the "Currently In" / "Clocked in today" strip). It pairs a read-only **schedule view** with an optional **Mercury transaction summary** for the same date window, all keyed to one subject user.
 

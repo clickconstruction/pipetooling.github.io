@@ -53,7 +53,7 @@ import {
 } from '../lib/headerTaskDispatchEstimatorEligible'
 import { impersonationExitDisplayLabel, impersonationExitTitle } from '../lib/impersonationUiLabels'
 import { useDispatchModeEnabled } from '../hooks/useDispatchModeEnabled'
-import { DispatchModeFooter, DISPATCH_MODE_FOOTER_HEIGHT_PX } from './dispatchMode/DispatchModeFooter'
+import { DispatchModeFooterLive, DISPATCH_MODE_FOOTER_HEIGHT_PX } from './dispatchMode/DispatchModeFooter'
 import { CAN_USE_SCHEDULE_DISPATCH_EDIT_ROLES } from '../lib/scheduleDispatchEditRoles'
 import { IMPERSONATION_CHROME_BUTTON_STYLE } from '../lib/impersonationSession'
 
@@ -1522,7 +1522,7 @@ export default function Layout() {
           </div>
         )}
       </main>
-      {dispatchModeActive ? <DispatchModeFooter /> : null}
+      {dispatchModeActive ? <DispatchModeFooterLive /> : null}
       <ChecklistAddModal />
       <DispatchTaskModal />
       <EstimatorTaskModal />

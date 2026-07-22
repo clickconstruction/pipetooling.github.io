@@ -1,0 +1,27 @@
+---
+title: run the day from your phone with Dispatch Mode
+category: Scheduling & Dispatch
+roles: dev, master_technician, assistant, controller, superintendent
+keywords: dispatch mode, mobile, footer, tabs, schedule, inbox, customers, bell, note to dispatch
+order: 30
+---
+Dispatch Mode is a phone-first shell for whoever's running the day — the office-side companion to Job Mode. Turn it on and a tab bar pins to the bottom of every screen: **Dashboard · Schedule · Inbox · Customers · More**.
+
+## Turning Dispatch Mode on
+
+1. Tap the {{icon:gear}} **gear menu** in the top-right of the header.
+2. Toggle **Dispatch Mode**.
+
+It's per-person and per-device, so switching it on for yourself on your phone changes nothing for anyone else (or for you on your desktop).
+
+## The tabs
+
+- **Dashboard** — your clock in/out control up top, then **Job Stages**: every open job grouped under Waiting, Working, Ready to bill, Billed awaiting payment, and Collections. Tap a job to open its Job Detail.
+- **Schedule** — a month calendar with dots on days that have work, and the selected day's agenda below: every person's blocks with time, duration, job, customer, address, and who's assigned. Tap a visit to open the job. The {{icon:help|bell}} **bell** in the top-left sends a note to dispatch (it opens the Task Dispatch flow), and **Today** jumps back to today.
+- **Inbox** — **My Inbox**, the **Dispatch inbox**, and the **Estimator inbox** stacked in one scroll, working exactly like their Dashboard versions. The tab's red badge counts open dispatch + estimator requests.
+- **Customers** — a searchable customer list; each row shows how many jobs that customer has had. Tap through to the full customer record.
+- **More** — drops you into the regular app (starting at the Dashboard). The tab bar stays put, so you can browse anywhere and hop back to a tab in one tap.
+
+## Turning it off
+
+Same gear menu, tap **Dispatch Mode** again — the tab bar disappears and the app is exactly as before.

@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-21 (v2.892)
+last_updated: 2026-07-21 (v2.893)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.893)
+
+### Dispatch Mode part 6: live Inbox badge, help guide, docs (2026-07-21)
+Polish pass completing the feature: the footer's **Inbox tab badge** is now live — `DispatchModeFooterLive` mounts the `useDispatchInbox`/`useEstimatorInbox` engines (only while the mode is on) and shows the open dispatch + estimator request count. New help guide **`dispatch-mode.md`** ("run the day from your phone with Dispatch Mode") covering the toggle and all five tabs; `GLOSSARY.md` and `PROJECT_DOCUMENTATION.md` gain Dispatch Mode entries alongside Job Mode.
 
 ## Latest Updates (v2.892)
 
