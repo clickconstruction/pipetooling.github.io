@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-22 (v2.894)
+last_updated: 2026-07-22 (v2.895)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.895)
+
+### Dispatch Mode Customers: last-interaction label + Name/Interacted sort (2026-07-22)
+Each customer row now shows **how long since their jobs were last worked** ("today" / "3d ago", hover shows the date) left of the job-count pill — derived as max `jobs_ledger.last_work_date` (last approved clock session) across the customer's jobs, one extra column on the existing fetch. New **Sort By: Name / Interacted** chips above the search box: Interacted puts the most recently worked customers first, never-worked customers last, ties alphabetical. Pure unit-tested kernel [`dispatchModeCustomers.ts`](../src/lib/dispatchModeCustomers.ts) (5 tests).
 
 ## Latest Updates (v2.894)
 
