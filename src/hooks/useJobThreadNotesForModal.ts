@@ -14,6 +14,10 @@ import type { JobThreadEventActivityItem } from '../lib/jobActivityEvent'
 import { fetchJobActivityEventsForJobLedger } from '../lib/fetchJobActivityEventsForJobLedger'
 import { jobActivityEventsFromRpc } from '../lib/jobActivityEventsFromRpc'
 import { sortJobThreadActivity } from '../lib/jobThreadActivitySort'
+import {
+  reportForViewFromJobLedgerRow,
+  type ReportForJobLedgerRow,
+} from '../lib/reportForViewFromJobLedgerRow'
 
 export type { JobThreadStampKind } from '../lib/jobThreadNoteStampBody'
 
@@ -32,6 +36,7 @@ function makeOptimisticThreadNote(body: string, authorDisplayName: string | null
 
 function mergeNotesAndScheduleIntoActivity(
   noteRows: JobThreadNoteRow[],
+  reportRows: ReportForJobLedgerRow[],
   scheduleBlockRows: JobScheduleBlockWithAssigneeName[],
   clockRows: JobDetailClockSessionRow[],
   eventItems: JobThreadEventActivityItem[],
@@ -39,7 +44,24 @@ function mergeNotesAndScheduleIntoActivity(
   const scheduleItems = scheduleBlocksToScheduleActivityItems(scheduleBlockRows)
   const clockItems = clockSessionsToActivityItems(clockRows)
   const noteItems: JobThreadActivityItem[] = noteRows.map((n) => ({ kind: 'note' as const, note: n }))
-  return sortJobThreadActivity([...noteItems, ...scheduleItems, ...clockItems, ...eventItems])
+  const reportItems: JobThreadActivityItem[] = reportRows.map((r) => ({
+    kind: 'report' as const,
+    report: reportForViewFromJobLedgerRow(r),
+  }))
+  return sortJobThreadActivity([...noteItems, ...reportItems, ...scheduleItems, ...clockItems, ...eventItems])
+}
+
+/** Field reports for the job (same role-aware RPC the Stages thread uses; errors → []). */
+async function queryReportsForJob(jobId: string): Promise<ReportForJobLedgerRow[]> {
+  try {
+    const data = await withSupabaseRetry(
+      async () => supabase.rpc('list_reports_for_job_ledger', { p_job_id: jobId }),
+      'list_reports_for_job_ledger modal',
+    )
+    return (data as ReportForJobLedgerRow[] | null) ?? []
+  } catch {
+    return []
+  }
 }
 
 /** Fetch + map the job activity ledger for one job (single role-aware RPC; errors → []). */
@@ -89,8 +111,9 @@ export function useJobThreadNotesForModal(
 
   const reloadActivityQuiet = useCallback(async (id: string) => {
     try {
-      const [rows, blocksPack, clockPack, eventItems] = await Promise.all([
+      const [rows, reportRows, blocksPack, clockPack, eventItems] = await Promise.all([
         queryNotesForJob(id),
+        queryReportsForJob(id),
         fetchJobScheduleBlocksForJob(id),
         fetchClockSessionsForJobLedger(id),
         fetchJobEventItems(id),
@@ -100,7 +123,7 @@ export function useJobThreadNotesForModal(
       const clockRows = clockPack.error ? [] : clockPack.data
       setActivity((prev) => {
         const flight = inFlightThreadNoteRef.current
-        let combined = mergeNotesAndScheduleIntoActivity(rows, scheduleRows, clockRows, eventItems)
+        let combined = mergeNotesAndScheduleIntoActivity(rows, reportRows, scheduleRows, clockRows, eventItems)
         if (flight) {
           const opt = prev.find((i) => i.kind === 'note' && i.note.id === flight.optimisticId)
           if (opt && opt.kind === 'note' && !rows.some((r) => r.id === opt.note.id)) {
@@ -129,8 +152,9 @@ export function useJobThreadNotesForModal(
     setLoading(true)
     ;(async () => {
       try {
-        const [rows, blocksPack, clockPack, eventItems] = await Promise.all([
+        const [rows, reportRows, blocksPack, clockPack, eventItems] = await Promise.all([
           queryNotesForJob(jobId),
+          queryReportsForJob(jobId),
           fetchJobScheduleBlocksForJob(jobId),
           fetchClockSessionsForJobLedger(jobId),
           fetchJobEventItems(jobId),
@@ -138,7 +162,7 @@ export function useJobThreadNotesForModal(
         if (cancelled) return
         const scheduleRows = blocksPack.error ? [] : blocksPack.data
         const clockRows = clockPack.error ? [] : clockPack.data
-        setActivity(mergeNotesAndScheduleIntoActivity(rows, scheduleRows, clockRows, eventItems))
+        setActivity(mergeNotesAndScheduleIntoActivity(rows, reportRows, scheduleRows, clockRows, eventItems))
       } catch (e: unknown) {
         if (!cancelled)
           showToast(appendToastRefreshHint(formatErrorMessage(e, 'Failed to load job notes')), 'error')

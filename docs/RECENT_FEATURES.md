@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-22 (v2.895)
+last_updated: 2026-07-22 (v2.896)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.896)
+
+### Job Detail: field reports inline in the updates thread + a Reports filter chip (2026-07-22)
+The Job Detail modal's activity thread now includes the job's **field reports** (same role-aware `list_reports_for_job_ledger` RPC the Stages thread uses; `useJobThreadNotesForModal` merges them as report rows with template name, author, and tap-to-view). The segmented filter gains a **Reports** chip — All / Notes / **Reports** / Status / Billing / Crew — and reports now live under it instead of being lumped into Notes (`jobActivityFilter.ts` bucket split; tests updated). Motivated by the HCP notes import: imported "[HCP]" reports are now visible right in the thread where users look first.
 
 ## Latest Updates (v2.895)
 
