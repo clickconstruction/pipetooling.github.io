@@ -8,6 +8,7 @@ import { CustomerNotesTable } from '../components/customerNotes/CustomerNotesTab
 import { isCustomerArchived, partitionCustomersByArchived } from '../lib/customerArchive'
 import type { Database } from '../types/database'
 import type { Json } from '../types/database'
+import { findSimilarCustomerGroups } from '../lib/customerSimilarity'
 
 type Customer = Database['public']['Tables']['customers']['Row']
 type CustomerWithMaster = Customer & {
@@ -67,6 +68,8 @@ export default function Customers() {
   const [expandedNotesCustomerId, setExpandedNotesCustomerId] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [showArchived, setShowArchived] = useState(false)
+  /** "Show similar" mode: cluster likely duplicates (shared name/address/phone/email) for quick merging. */
+  const [showSimilar, setShowSimilar] = useState(false)
 
   async function refreshNoteCountsForCustomers(ids: string[]) {
     if (ids.length === 0) return
@@ -224,6 +227,24 @@ export default function Customers() {
       })
     : byType
 
+  const similarGroups = findSimilarCustomerGroups(
+    visibleCustomers.map((c) => {
+      const { phone, email } = extractContactInfo(c.contact_info)
+      return { id: c.id, name: c.name, address: c.address, phone, email }
+    }),
+  )
+  const customersById = new Map(visibleCustomers.map((c) => [c.id, c]))
+  /** Similar mode ignores search/type filters — it's a dedicated dedupe view over everything visible. */
+  const similarDisplay = similarGroups.flatMap((g) => g.ids.map((id) => customersById.get(id)!).filter(Boolean))
+  const similarGroupHeaderById = new Map<string, string>()
+  for (const g of similarGroups) {
+    similarGroupHeaderById.set(
+      g.ids[0]!,
+      `Possible duplicates (${g.ids.length}) — matching ${g.matchedBy.join(' + ') || 'details'}`,
+    )
+  }
+  const displayCustomers = showSimilar ? similarDisplay : filteredCustomers
+
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
@@ -287,6 +308,24 @@ export default function Customers() {
               {NO_CUSTOMER_TYPE_LABEL} ({defaultTypeCount})
             </button>
           ) : null}
+          <button
+            type="button"
+            onClick={() => setShowSimilar((prev) => !prev)}
+            aria-pressed={showSimilar}
+            title="Cluster customers sharing a name, address, phone, or email so duplicates are easy to spot and merge"
+            style={{
+              padding: '0.35rem 0.75rem',
+              border: showSimilar ? '1px solid #2563eb' : '1px solid var(--border-strong)',
+              borderRadius: 4,
+              background: showSimilar ? 'var(--bg-blue-tint)' : 'var(--surface)',
+              color: showSimilar ? 'var(--text-blue-700)' : 'var(--text-700)',
+              cursor: 'pointer',
+              fontSize: '0.875rem',
+              marginLeft: 'auto',
+            }}
+          >
+            {showSimilar ? 'Show all' : 'Show similar'} ({similarGroups.length})
+          </button>
           {archivedCustomers.length > 0 ? (
             <button
               type="button"
@@ -300,7 +339,6 @@ export default function Customers() {
                 color: 'var(--text-700)',
                 cursor: 'pointer',
                 fontSize: '0.875rem',
-                marginLeft: 'auto',
               }}
             >
               {showArchived ? 'Hide archived' : 'Show archived'} ({archivedCustomers.length})
@@ -332,11 +370,13 @@ export default function Customers() {
             Add one
           </button>
           .</p>
-      ) : filteredCustomers.length === 0 ? (
+      ) : showSimilar && displayCustomers.length === 0 ? (
+        <p>No potential duplicates found — no two customers share a name, address, phone, or email. 🎉</p>
+      ) : displayCustomers.length === 0 ? (
         <p>No customers match your search.</p>
       ) : (
         <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-          {filteredCustomers.map((c) => (
+          {displayCustomers.map((c) => (
             <li
               key={c.id}
               style={{
@@ -347,6 +387,23 @@ export default function Customers() {
                 alignItems: 'stretch',
               }}
             >
+              {showSimilar && similarGroupHeaderById.has(c.id) ? (
+                <div
+                  style={{
+                    margin: '0 0 0.5rem',
+                    padding: '0.25rem 0.6rem',
+                    fontSize: '0.75rem',
+                    fontWeight: 700,
+                    color: '#d97706',
+                    background: 'var(--bg-amber-tint)',
+                    border: '1px solid #d97706',
+                    borderRadius: 6,
+                    alignSelf: 'flex-start',
+                  }}
+                >
+                  {similarGroupHeaderById.get(c.id)}
+                </div>
+              ) : null}
               <div
                 style={{
                   display: 'flex',

@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-22 (v2.933)
+last_updated: 2026-07-22 (v2.934)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.934)
+
+### Customers: "Show similar" duplicate finder (2026-07-22)
+Follow-up to the John Ingram duplicate incident. New toggle on the Customers page (next to Show archived): **Show similar (N)** switches the list to likely-duplicate groups, each headed by an amber tag naming the evidence ("Possible duplicates (2) — matching name + address"). Grouping is a pure kernel (`src/lib/customerSimilarity.ts`, 9 tests): customers cluster when they share any normalized signal — name, address (≥8 chars), phone (digits, US country code stripped, ≥7), or email — with transitive union-find and no fuzzy matching, so every group is explainable. First run against prod surfaced 17 groups. Rows keep their normal click-through to Edit → Merge. New help guide `find-duplicate-customers.md`.
 
 ## Latest Updates (v2.933)
 
