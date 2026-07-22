@@ -10,6 +10,8 @@ export type Person = {
   email: string | null
   phone: string | null
   notes: string | null
+  /** App account (users.id) this roster row is linked to; folds the external row into the account row. */
+  account_user_id: string | null
 }
 export type UserRow = {
   id: string
@@ -77,7 +79,7 @@ export function usePeopleRoster(
     }
     deps.setError(null)
     const [peopleRes, usersRes, meRes] = await Promise.all([
-      supabase.from('people').select('id, master_user_id, kind, name, email, phone, notes').is('archived_at', null).order('kind').order('name'),
+      supabase.from('people').select('id, master_user_id, kind, name, email, phone, notes, account_user_id').is('archived_at', null).order('kind').order('name'),
       supabase.from('users').select('id, email, name, role, notes, phone').is('archived_at', null).in('role', ['assistant', 'master_technician', 'subcontractor', 'helpers', 'estimator', 'primary', 'superintendent', 'controller' as 'assistant']),
       supabase.from('users').select('role').eq('id', authUserId).single(),
     ])
@@ -116,6 +118,17 @@ export function usePeopleRoster(
 
     await loadArchivedPeople(myRole === 'dev')
     deps.setLoading(false)
+  }
+
+  /** Link (or unlink with null) an external roster person to an app account. RLS: dev or the row's creator. */
+  async function linkPersonToAccount(personId: string, userId: string | null): Promise<boolean> {
+    const { error } = await supabase.from('people').update({ account_user_id: userId }).eq('id', personId)
+    if (error) {
+      depsRef.current.setError(error.message)
+      return false
+    }
+    await loadPeople()
+    return true
   }
 
   function openAdd(k: PersonKind) {
@@ -220,7 +233,7 @@ export function usePeopleRoster(
         closeForm()
       }
     } else {
-      const { data, error: err } = await supabase.from('people').insert({ master_user_id: authUserId, ...payload }).select('id, master_user_id, kind, name, email, phone, notes').single()
+      const { data, error: err } = await supabase.from('people').insert({ master_user_id: authUserId, ...payload }).select('id, master_user_id, kind, name, email, phone, notes, account_user_id').single()
       if (err) deps.setError(err.message)
       else if (data) {
         setPeople((prev) => [...prev, data as Person].sort((a, b) => a.kind.localeCompare(b.kind) || a.name.localeCompare(b.name)))
@@ -234,7 +247,7 @@ export function usePeopleRoster(
     if (!authUserId) return
     const { data } = await supabase
       .from('people')
-      .select('id, master_user_id, kind, name, email, phone, notes, archived_at')
+      .select('id, master_user_id, kind, name, email, phone, notes, account_user_id, archived_at')
       .not('archived_at', 'is', null)
       .order('archived_at', { ascending: false })
     const list = (data ?? []) as Array<Person & { archived_at: string }>
@@ -273,6 +286,7 @@ export function usePeopleRoster(
     setSaving,
     loadPeople,
     loadArchivedPeople,
+    linkPersonToAccount,
     handleSave,
     openAdd,
     openEdit,
