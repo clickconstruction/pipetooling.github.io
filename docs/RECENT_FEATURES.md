@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-22 (v2.898)
+last_updated: 2026-07-22 (v2.899)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.899)
+
+### Dispatch Mode Schedule: person filter chips (2026-07-22)
+A horizontally scrollable chip row above the agenda — **Everyone** plus one chip per person scheduled that day (alphabetical) — lets dispatchers isolate one or more people; multi-select toggles, Everyone clears, and the selection survives day switches (absent people just contribute nothing). The empty state distinguishes "Nothing scheduled" from "Nothing scheduled for the selected people". Row hidden when the day has 0–1 people. Help guide updated.
 
 ## Latest Updates (v2.898)
 
