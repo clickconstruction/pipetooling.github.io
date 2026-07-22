@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.947',
+    date: '2026-07-22',
+    title: 'Internal: database type definitions refreshed',
+    kind: 'infra',
+    highlights: [
+      'Developer-facing only — the app’s database type definitions were re-synced with the live schema. No visible changes.',
+    ],
+  },
+  {
     version: 'v2.946',
     date: '2026-07-22',
     title: 'Comment on each interview rating',

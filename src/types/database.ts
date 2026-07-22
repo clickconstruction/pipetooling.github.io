@@ -1790,6 +1790,33 @@ export type Database = {
           },
         ]
       }
+      company_documents: {
+        Row: {
+          created_at: string | null
+          id: string
+          link_url: string
+          name: string
+          position: number
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          link_url: string
+          name: string
+          position?: number
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          link_url?: string
+          name?: string
+          position?: number
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       contract_template_documents: {
         Row: {
           book_body_format: string
@@ -2367,33 +2394,6 @@ export type Database = {
           },
         ]
       }
-      company_documents: {
-        Row: {
-          created_at: string | null
-          id: string
-          link_url: string
-          name: string
-          position: number
-          updated_at: string | null
-        }
-        Insert: {
-          created_at?: string | null
-          id?: string
-          link_url: string
-          name: string
-          position?: number
-          updated_at?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          id?: string
-          link_url?: string
-          name?: string
-          position?: number
-          updated_at?: string | null
-        }
-        Relationships: []
-      }
       customers: {
         Row: {
           address: string | null
@@ -2712,6 +2712,74 @@ export type Database = {
             columns: ["job_ledger_id"]
             isOneToOne: false
             referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dispatch_swim_lane_members: {
+        Row: {
+          created_at: string
+          lane_id: string
+          sort_order: number
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          lane_id: string
+          sort_order?: number
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          lane_id?: string
+          sort_order?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dispatch_swim_lane_members_lane_id_fkey"
+            columns: ["lane_id"]
+            isOneToOne: false
+            referencedRelation: "dispatch_swim_lanes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dispatch_swim_lane_members_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dispatch_swim_lanes: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          name: string
+          sort_order: number
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name: string
+          sort_order?: number
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name?: string
+          sort_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dispatch_swim_lanes_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
@@ -4051,6 +4119,48 @@ export type Database = {
           {
             foreignKeyName: "job_status_events_job_id_fkey"
             columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      job_travel_times: {
+        Row: {
+          computed_at: string
+          distance_meters: number
+          duration_seconds: number
+          from_job_id: string
+          source: string
+          to_job_id: string
+        }
+        Insert: {
+          computed_at?: string
+          distance_meters: number
+          duration_seconds: number
+          from_job_id: string
+          source?: string
+          to_job_id: string
+        }
+        Update: {
+          computed_at?: string
+          distance_meters?: number
+          duration_seconds?: number
+          from_job_id?: string
+          source?: string
+          to_job_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_travel_times_from_job_id_fkey"
+            columns: ["from_job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_travel_times_to_job_id_fkey"
+            columns: ["to_job_id"]
             isOneToOne: false
             referencedRelation: "jobs_ledger"
             referencedColumns: ["id"]
@@ -9856,14 +9966,14 @@ export type Database = {
           id: string
           last_contact: string | null
           links: Json
-          rating_ability: number | null
-          rating_drive: number | null
-          rating_integrity: number | null
           master_user_id: string
           name: string
           notes: string | null
           phone_number: string | null
           rank_order: number
+          rating_ability: number | null
+          rating_drive: number | null
+          rating_integrity: number | null
           role_id: string | null
           source: string | null
           status: string
@@ -9877,14 +9987,14 @@ export type Database = {
           id?: string
           last_contact?: string | null
           links?: Json
-          rating_ability?: number | null
-          rating_drive?: number | null
-          rating_integrity?: number | null
           master_user_id: string
           name: string
           notes?: string | null
           phone_number?: string | null
           rank_order?: number
+          rating_ability?: number | null
+          rating_drive?: number | null
+          rating_integrity?: number | null
           role_id?: string | null
           source?: string | null
           status?: string
@@ -9898,14 +10008,14 @@ export type Database = {
           id?: string
           last_contact?: string | null
           links?: Json
-          rating_ability?: number | null
-          rating_drive?: number | null
-          rating_integrity?: number | null
           master_user_id?: string
           name?: string
           notes?: string | null
           phone_number?: string | null
           rank_order?: number
+          rating_ability?: number | null
+          rating_drive?: number | null
+          rating_integrity?: number | null
           role_id?: string | null
           source?: string | null
           status?: string
@@ -10444,6 +10554,7 @@ export type Database = {
         Row: {
           archived_at: string | null
           created_at: string | null
+          dispatch_mode_enabled: boolean | null
           email: string
           estimator_prospects_access: boolean
           estimator_service_type_ids: string[] | null
@@ -10464,6 +10575,7 @@ export type Database = {
         Insert: {
           archived_at?: string | null
           created_at?: string | null
+          dispatch_mode_enabled?: boolean | null
           email: string
           estimator_prospects_access?: boolean
           estimator_service_type_ids?: string[] | null
@@ -10484,6 +10596,7 @@ export type Database = {
         Update: {
           archived_at?: string | null
           created_at?: string | null
+          dispatch_mode_enabled?: boolean | null
           email?: string
           estimator_prospects_access?: boolean
           estimator_service_type_ids?: string[] | null
@@ -11183,6 +11296,10 @@ export type Database = {
         }
         Returns: string
       }
+      create_hazmat_fee_incident: {
+        Args: { p_amount: number; p_incident: Json; p_job_id: string }
+        Returns: Json
+      }
       create_job_from_estimate:
         | {
             Args: {
@@ -11233,10 +11350,6 @@ export type Database = {
           p_items: Json
           p_page: string
         }
-        Returns: Json
-      }
-      create_hazmat_fee_incident: {
-        Args: { p_amount: number; p_incident: Json; p_job_id: string }
         Returns: Json
       }
       create_turnaway_trip_charge: {
@@ -11411,6 +11524,7 @@ export type Database = {
         Returns: Json
       }
       get_dashboard_payroll_totals: { Args: never; Returns: Json }
+      get_hazmat_notice_by_token: { Args: { p_token: string }; Returns: Json }
       get_invoice_allocation_lines_for_jobs: {
         Args: { p_job_ids: string[] }
         Returns: {
@@ -11432,10 +11546,6 @@ export type Database = {
           invoice_amount: number
           job_id: string
         }[]
-      }
-      get_hazmat_notice_by_token: {
-        Args: { p_token: string }
-        Returns: Json
       }
       get_job_display_for_report: {
         Args: { p_id: string; p_source: string }
@@ -11694,6 +11804,7 @@ export type Database = {
         Args: never
         Returns: {
           created_at: string
+          customer_name: string
           google_drive_link: string
           hcp_number: string
           id: string
@@ -12730,6 +12841,7 @@ export type Database = {
         Args: { p_job_ledger_id: string }
         Returns: boolean
       }
+      sync_company_access_grants: { Args: never; Returns: undefined }
       sync_crew_bids_from_clock: {
         Args: { p_person_name: string; p_work_date: string }
         Returns: undefined
@@ -12830,6 +12942,10 @@ export type Database = {
         Returns: boolean
       }
       user_has_prospects_staff_access: { Args: never; Returns: boolean }
+      user_has_schedule_block_for_customer: {
+        Args: { p_customer_id: string }
+        Returns: boolean
+      }
       user_has_team_prospects_access: { Args: never; Returns: boolean }
       user_is_bid_estimator_or_account_manager: {
         Args: { bid_uuid: string }
