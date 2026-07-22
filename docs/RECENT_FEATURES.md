@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-22 (v2.932)
+last_updated: 2026-07-22 (v2.933)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.933)
+
+### P0 fix: Edit Job saves failed with "malformed array literal" (2026-07-22)
+Since the consolidated field-edit activity trigger (`20260719120000`), **any Edit-Job save that changed a watched field** aborted with `malformed array literal: "customer email"` (22P02): `changed || 'label'` with an untyped literal resolves `||` as array‖array and Postgres parses the label as an array literal. Saves that changed nothing skipped every branch — which is why it hid for three days until a user changed a customer email. Migration `20260722242000_fix_job_activity_array_literal.sql` (**requires `supabase db push` after merge — apply immediately**) rewrites every append as `array_append` (the documented fix); trigger body otherwise identical. Rider fix: Edit Job team chips showed a **raw uuid** when a crew member's user is outside the picker's role-filtered list (e.g. a dev, invisible to non-dev viewers) — the modal now fetches any referenced ids missing from its user list so chips always show names.
 
 ## Latest Updates (v2.932)
 

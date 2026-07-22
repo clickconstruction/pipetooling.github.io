@@ -609,6 +609,26 @@ export default function JobFormModal({
   // output is consumed by JobFormBreakOffSection via the `breakOff` prop.
   const { newInvoiceAmount, setNewInvoiceAmount, setNewInvoiceAmountInputFocused } = breakOff
   const [teamMemberIds, setTeamMemberIds] = useState<string[]>([])
+  // Team chips can reference users outside the picker's role-filtered list (e.g. a
+  // dev on the crew, invisible to non-dev viewers) — fetch those by id so a chip
+  // never renders a raw uuid.
+  useEffect(() => {
+    const missing = teamMemberIds.filter((id) => !users.some((u) => u.id === id))
+    if (missing.length === 0) return
+    let cancelled = false
+    void (async () => {
+      const { data } = await supabase.from('users').select('id, name, email, role').in('id', missing)
+      if (cancelled || !data?.length) return
+      setUsers((prev) => {
+        const have = new Set(prev.map((u) => u.id))
+        const add = (data as UserRow[]).filter((u) => !have.has(u.id))
+        return add.length ? [...prev, ...add] : prev
+      })
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [teamMemberIds, users])
   const newJobImportBlockedByContent = useMemo(() => {
     if (mode !== 'new' || editing) return false
     return newJobFormHasBlockingContent({
