@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-22 (v2.935)
+last_updated: 2026-07-22 (v2.936)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.936)
+
+### Billing: missing-customer-email guardrails at all three funnel points (2026-07-22)
+Stripe/emailed invoices need `jobs_ledger.customer_email`, but the gap only surfaced at send time ("Add it on Edit Job" round-trip). Three guardrails, earliest-first: **(1)** Jobs → Stages gets an amber **No email (N)** chip beside the No-customer/No-pictures chips (new `stagesReadyToBillJobsWithoutEmail` helper over the Ready-to-Bill rows; chip opens a `StagesAlertJobListModal` list → Edit Job). **(2)** The **Bill Customer** modal shows an amber banner when the job has no email with an **inline email input** — Save writes the job's `customer_email` (optionally also filling the linked customer's blank `contact_info.email`) and overlays the payload via a single-derivation-point override, so every gate/send in the modal unlocks immediately without reopening. **(3)** Marking a job **Ready to Bill** (both the ham-mode shortcut and the confirm-modal path) fires a heads-up toast when the email is missing. Verified live: chip "No email (3)" listing the real gap jobs; job 905's Bill Customer shows the banner with input + "also add to Wildflower Springs's record" checkbox; job 917 (has email) shows none. Help guide `ready-to-bill-pipeline.md` gains "When there's no customer email".
 
 ## Latest Updates (v2.935)
 

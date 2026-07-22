@@ -107,3 +107,11 @@ Jobs that are billed but proving hard to collect can be flagged for **Collection
 - **Dashboard** — Ready to Bill and Billed Waiting for Payment queues, plus the Financials cards (Accounts Receivable / Accounts Payable / Not Billed Out).
 - **Jobs → Stages** — the full board, every status.
 - **Quickfill** — the **Jobs Billing** and **Billing Awaiting Payments** sections put billing review into the office's daily loop.
+
+## When there's no customer email
+
+Stripe and emailed invoices need a customer email, and the app now flags the gap early:
+
+- On **Jobs → Stages**, an amber {{chip:yellow|No email (N)}} chip appears by the section chips whenever Ready to Bill jobs are missing one — click it for the list, then open Edit Job to fix.
+- Marking a job **Ready to Bill** without an email shows a heads-up toast right then.
+- If you reach **Bill Customer** anyway, an amber banner at the top lets you **type the email right there** — it saves to the job (and optionally to the customer's record if that's blank too) and Stripe billing unlocks immediately, no reopening.
