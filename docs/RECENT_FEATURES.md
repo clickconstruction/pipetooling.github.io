@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-21 (v2.881)
+last_updated: 2026-07-21 (v2.882)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.882)
+
+### Add checklist item: Tab now cycles Save → Cancel → back to the title (2026-07-21)
+Completes the v2.880 keyboard path into a closed loop: **title → Search people → Save → Cancel → title**, with Shift+Tab walking the same ring backwards (title wraps to Cancel). Focus never escapes into the page behind the modal. Same targeted-keydown approach in `ChecklistAddModal` (new `cancelButtonRef`).
 
 ## Latest Updates (v2.881)
 
