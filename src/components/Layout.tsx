@@ -52,6 +52,9 @@ import {
   showTaskDispatchButton,
 } from '../lib/headerTaskDispatchEstimatorEligible'
 import { impersonationExitDisplayLabel, impersonationExitTitle } from '../lib/impersonationUiLabels'
+import { useDispatchModeEnabled } from '../hooks/useDispatchModeEnabled'
+import { DispatchModeFooter, DISPATCH_MODE_FOOTER_HEIGHT_PX } from './dispatchMode/DispatchModeFooter'
+import { CAN_USE_SCHEDULE_DISPATCH_EDIT_ROLES } from '../lib/scheduleDispatchEditRoles'
 import { IMPERSONATION_CHROME_BUTTON_STYLE } from '../lib/impersonationSession'
 
 const navStyle = ({ isActive }: { isActive: boolean }) => ({
@@ -97,6 +100,9 @@ export default function Layout() {
   useAssistantDispatchLanding()
   const [jobModeEnabled, setJobModeEnabled] = useJobModeEnabled(authUser?.id ?? null)
   const jobModeMenuEligible = canLeaveJobFieldReport(role)
+  const [dispatchModeEnabled, setDispatchModeEnabled] = useDispatchModeEnabled(authUser?.id ?? null)
+  const dispatchModeMenuEligible = role != null && CAN_USE_SCHEDULE_DISPATCH_EDIT_ROLES.has(role)
+  const dispatchModeActive = dispatchModeEnabled && dispatchModeMenuEligible
   const { gateOpen: dailyGoalsGateOpen } = useDailyGoalsGate()
   const [impersonating, setImpersonating] = useState(
     () => typeof window !== 'undefined' && !!localStorage.getItem(IMPERSONATION_KEY)
@@ -940,6 +946,55 @@ export default function Layout() {
                     </span>
                   </button>
                 )}
+                {dispatchModeMenuEligible && authUser?.id && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDispatchModeEnabled(!dispatchModeEnabled)
+                      setGearOpen(false)
+                    }}
+                    title={dispatchModeEnabled ? 'Turn Dispatch Mode off' : 'Turn Dispatch Mode on'}
+                    aria-label="Toggle Dispatch Mode"
+                    aria-pressed={dispatchModeEnabled}
+                    style={{
+                      display: 'flex',
+                      width: '100%',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: '0.5rem',
+                      padding: '0.5rem 1rem',
+                      textAlign: 'left',
+                      background: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                      fontSize: 'inherit',
+                      color: 'inherit',
+                      borderBottom: '1px solid var(--chrome-border)',
+                      boxSizing: 'border-box',
+                      fontWeight: dispatchModeEnabled ? 600 : 400,
+                    }}
+                  >
+                    <span>Dispatch Mode</span>
+                    <span
+                      aria-hidden="true"
+                      style={{
+                        display: 'inline-flex',
+                        width: 16,
+                        height: 16,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        borderRadius: 3,
+                        border: '1px solid var(--border-400)',
+                        background: dispatchModeEnabled ? '#0ea5e9' : 'var(--surface)',
+                        color: 'white',
+                        fontSize: '0.75rem',
+                        lineHeight: 1,
+                      }}
+                    >
+                      {dispatchModeEnabled ? '✓' : ''}
+                    </span>
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={() => setThemeOverride(theme === 'dark' ? 'light' : 'dark')}
@@ -1272,6 +1327,9 @@ export default function Layout() {
           display: 'flex',
           flexDirection: 'column',
           flex: 1,
+          paddingBottom: dispatchModeActive
+            ? `calc(${DISPATCH_MODE_FOOTER_HEIGHT_PX}px + env(safe-area-inset-bottom))`
+            : undefined,
         }}
       >
         <div
@@ -1464,6 +1522,7 @@ export default function Layout() {
           </div>
         )}
       </main>
+      {dispatchModeActive ? <DispatchModeFooter /> : null}
       <ChecklistAddModal />
       <DispatchTaskModal />
       <EstimatorTaskModal />
