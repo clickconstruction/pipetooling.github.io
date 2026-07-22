@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-21 (v2.871)
+last_updated: 2026-07-21 (v2.872)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.872)
+
+### Dispatch swim lanes, part 1: schema + data layer (2026-07-21)
+Foundation for office-wide person groups ("crews") on Dispatch → People. Migration [`20260721230000_dispatch_swim_lanes.sql`](../supabase/migrations/20260721230000_dispatch_swim_lanes.sql) (**requires `supabase db push` after merge**) adds `dispatch_swim_lanes` + `dispatch_swim_lane_members` with strict one-lane-per-person (DB unique index), universal authenticated read, and writes gated to the schedule-dispatch edit cohort; both read-only-mode blocks applied. Client: [`lib/dispatchSwimLanes.ts`](../src/lib/dispatchSwimLanes.ts) (fetch/create/rename/delete/reorder/assign — assigning MOVES a person) and the pure, unit-tested [`buildSwimLaneDisplaySections`](../src/lib/dispatchSwimLaneSections.ts) kernel (lane sections + automatic "Everyone else" tail) + `personMatchesLaneQuery` for the upcoming lane search filter. No UI yet — the grid mode and Dispatch Settings manager land next. `MIGRATIONS.md` updated.
 
 ## Latest Updates (v2.871)
 

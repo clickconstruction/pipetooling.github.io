@@ -105,6 +105,12 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 #### July 21, 2026
 
+**`20260721230000_dispatch_swim_lanes.sql`** _(apply via `supabase db push` after the file is on `main`)_
+- **Purpose**: **Dispatch swim lanes** (v2.872): named, ordered, office-wide person groups ("crews") for Dispatch → People. Two additive tables — `dispatch_swim_lanes` (id, name, sort_order, created_by, created_at) and `dispatch_swim_lane_members` (lane_id → lanes CASCADE, user_id → users CASCADE, sort_order; PK (lane_id, user_id)) — plus a **unique index on `user_id`** enforcing strict one-lane-per-person (assigning moves a person).
+- **Security**: RLS enabled on both. SELECT for any authenticated user (universal share); ALL writes gated to the schedule-dispatch edit cohort (`dev, master_technician, assistant, controller, superintendent` — client parity with `CAN_USE_SCHEDULE_DISPATCH_EDIT_ROLES`). Ends with BOTH `apply_read_only_write_blocks()` and `apply_read_only_stmt_blocks()` (CREATE TABLE rule).
+- **Ordering**: purely additive; safe before or after the client deploy (old clients ignore the tables; the lanes UI ships in the follow-up PR).
+- **Category**: Dispatch / feature
+
 **`20260721174539_hazmat_notice_public_token.sql`** _(apply via `supabase db push` after the file is on `main`)_
 - **Purpose**: **Hazmat notice public link** (v2.851). Adds `job_hazmat_incidents.public_token uuid NOT NULL DEFAULT gen_random_uuid()` (unique index; existing rows backfilled by the default) + anon-callable read-only SECURITY DEFINER RPC `get_hazmat_notice_by_token(p_token uuid) → jsonb` returning the notice payload (incident fields + job display fields via `jobs_ledger` join). The Stripe invoice footer links customers to `/hazmat-notice?token=…` since Stripe emails cannot carry attachments.
 - **Security**: access requires the exact uuid token; the public payload strips testimonial `user_id`s; EXECUTE granted to `anon, authenticated`, revoked from PUBLIC. No table policies change (still office/billing SELECT, RPC-only writes). No CREATE TABLE → read-only-block footer not required.
