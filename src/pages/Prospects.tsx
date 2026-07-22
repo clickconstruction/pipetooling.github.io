@@ -1633,7 +1633,7 @@ export default function Prospects() {
       )}
 
       {topTab === 'team' && teamProspectsAccess && authUser?.id && (
-        <TeamProspectsTab authUserId={authUser.id} resolveMasterId={getEffectiveMasterId} />
+        <TeamProspectsTab authUserId={authUser.id} isDev={authRole === 'dev'} resolveMasterId={getEffectiveMasterId} />
       )}
 
       {topTab === 'customers' && activeTab === 'follow-up' && (

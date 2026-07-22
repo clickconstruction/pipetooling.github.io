@@ -75,8 +75,27 @@ type ReviewDraft = {
 
 const EMPTY_REVIEW_DRAFT: ReviewDraft = { rating_ability: null, rating_drive: null, rating_integrity: null, remarks: '' }
 
+/** Dev-defined onboarding checklist item (Hire tab). */
+export type TeamOnboardingItem = {
+  id: string
+  label: string
+  link_url: string | null
+  position: number
+}
+
+type OnboardingStatusValue = 'pending' | 'requested' | 'done'
+
+/** Box colors: red = pending, yellow = requested (asked, waiting), green = done. */
+const ONBOARDING_STATUS_META: Record<OnboardingStatusValue, { label: string; color: string; next: OnboardingStatusValue }> = {
+  pending: { label: 'Not started', color: 'var(--text-red-600)', next: 'requested' },
+  requested: { label: 'Requested — waiting', color: '#d97706', next: 'done' },
+  done: { label: 'Done', color: '#16a34a', next: 'pending' },
+}
+
 type Props = {
   authUserId: string
+  /** Devs manage the Hire tab's onboarding checklist items. */
+  isDev: boolean
   resolveMasterId: () => Promise<string | null>
 }
 
@@ -466,7 +485,7 @@ function RoleColumn({
 }
 
 /** Prospects → Team: prospective hires on a board — one drag-ranked column per role being hired for. */
-export default function TeamProspectsTab({ authUserId, resolveMasterId }: Props) {
+export default function TeamProspectsTab({ authUserId, isDev, resolveMasterId }: Props) {
   const { showToast } = useToastContext()
   const [rows, setRows] = useState<TeamProspect[]>([])
   const [roles, setRoles] = useState<TeamProspectRole[]>([])
@@ -486,6 +505,13 @@ export default function TeamProspectsTab({ authUserId, resolveMasterId }: Props)
 
   /** Which stage sub-tab is showing: Screen (board) / Interview (calls+reviews) / Hire. */
   const [stage, setStage] = useState<'screen' | 'interview' | 'hire'>('screen')
+  const [onboardingItems, setOnboardingItems] = useState<TeamOnboardingItem[]>([])
+  /** `${prospectId}:${itemId}` → status; missing key = pending. */
+  const [onboardingStatuses, setOnboardingStatuses] = useState<Map<string, OnboardingStatusValue>>(() => new Map())
+  const [onboardingSettingsOpen, setOnboardingSettingsOpen] = useState(false)
+  const [newItemLabel, setNewItemLabel] = useState('')
+  const [newItemLink, setNewItemLink] = useState('')
+  const [itemDrafts, setItemDrafts] = useState<Record<string, { label: string; link_url: string }>>({})
   const [passedOpen, setPassedOpen] = useState(false)
   const [reviews, setReviews] = useState<TeamProspectReview[]>([])
   const [reviewerNames, setReviewerNames] = useState<Map<string, string>>(() => new Map())
@@ -498,10 +524,12 @@ export default function TeamProspectsTab({ authUserId, resolveMasterId }: Props)
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }))
 
   const load = useCallback(async () => {
-    const [candidatesRes, rolesRes, reviewsRes] = await Promise.all([
+    const [candidatesRes, rolesRes, reviewsRes, itemsRes, statusesRes] = await Promise.all([
       supabase.from('team_prospects').select('*').order('rank_order', { ascending: true }),
       supabase.from('team_prospect_roles').select('*').order('position', { ascending: true }).order('created_at', { ascending: true }),
       supabase.from('team_prospect_reviews').select('*').order('updated_at', { ascending: false }),
+      supabase.from('team_onboarding_items').select('*').order('position', { ascending: true }).order('created_at', { ascending: true }),
+      supabase.from('team_prospect_onboarding_statuses').select('*'),
     ])
     if (candidatesRes.error || rolesRes.error) {
       showToast(`Failed to load candidates: ${(candidatesRes.error ?? rolesRes.error)!.message}`, 'error')
@@ -518,6 +546,15 @@ export default function TeamProspectsTab({ authUserId, resolveMasterId }: Props)
       } else {
         setReviewerNames(new Map())
       }
+      // Onboarding is additive UI; load errors (e.g. migration pending) just hide it.
+      setOnboardingItems((itemsRes.error ? [] : ((itemsRes.data ?? []) as TeamOnboardingItem[])))
+      const statusMap = new Map<string, OnboardingStatusValue>()
+      if (!statusesRes.error) {
+        for (const r of (statusesRes.data ?? []) as Array<{ team_prospect_id: string; item_id: string; status: string }>) {
+          statusMap.set(`${r.team_prospect_id}:${r.item_id}`, r.status as OnboardingStatusValue)
+        }
+      }
+      setOnboardingStatuses(statusMap)
     }
     setLoading(false)
   }, [showToast])
@@ -768,6 +805,92 @@ export default function TeamProspectsTab({ authUserId, resolveMasterId }: Props)
     }
     showToast(`${hireTarget.name} added to the roster — see People → Users`, 'success')
     setHireTarget(null)
+  }
+
+  /** Cycle one onboarding box: red (pending) → yellow (requested) → green (done) → red. */
+  async function cycleOnboardingStatus(prospectId: string, itemId: string) {
+    if (busy) return
+    const key = `${prospectId}:${itemId}`
+    const next = ONBOARDING_STATUS_META[onboardingStatuses.get(key) ?? 'pending'].next
+    // Optimistic: boxes should feel instant while working down a checklist.
+    setOnboardingStatuses((prev) => new Map(prev).set(key, next))
+    const { error } = await supabase.from('team_prospect_onboarding_statuses').upsert(
+      { team_prospect_id: prospectId, item_id: itemId, status: next, updated_by: authUserId },
+      { onConflict: 'team_prospect_id,item_id' },
+    )
+    if (error) {
+      showToast(`Failed to save: ${error.message}`, 'error')
+      await load()
+    }
+  }
+
+  async function addOnboardingItem() {
+    if (busy || !newItemLabel.trim()) return
+    setBusy(true)
+    const maxPos = onboardingItems.reduce((m, i) => Math.max(m, i.position), 0)
+    const { error } = await supabase.from('team_onboarding_items').insert({
+      label: newItemLabel.trim(),
+      link_url: newItemLink.trim() || null,
+      position: maxPos + 1,
+    })
+    setBusy(false)
+    if (error) {
+      showToast(`Failed to add: ${error.message}`, 'error')
+      return
+    }
+    setNewItemLabel('')
+    setNewItemLink('')
+    await load()
+  }
+
+  async function saveOnboardingItem(item: TeamOnboardingItem) {
+    const draft = itemDrafts[item.id]
+    if (busy || !draft || !draft.label.trim()) return
+    setBusy(true)
+    const { error } = await supabase
+      .from('team_onboarding_items')
+      .update({ label: draft.label.trim(), link_url: draft.link_url.trim() || null })
+      .eq('id', item.id)
+    setBusy(false)
+    if (error) {
+      showToast(`Failed to save: ${error.message}`, 'error')
+      return
+    }
+    setItemDrafts((prev) => {
+      const next = { ...prev }
+      delete next[item.id]
+      return next
+    })
+    await load()
+  }
+
+  async function moveOnboardingItem(item: TeamOnboardingItem, delta: -1 | 1) {
+    if (busy) return
+    const idx = onboardingItems.findIndex((i) => i.id === item.id)
+    const other = onboardingItems[idx + delta]
+    if (!other) return
+    setBusy(true)
+    // Swap normalized positions (index-based so legacy duplicate positions untangle).
+    const results = await Promise.all([
+      supabase.from('team_onboarding_items').update({ position: idx + delta + 1 }).eq('id', item.id),
+      supabase.from('team_onboarding_items').update({ position: idx + 1 }).eq('id', other.id),
+    ])
+    setBusy(false)
+    const err = results.find((r) => r.error)?.error
+    if (err) showToast(`Failed to reorder: ${err.message}`, 'error')
+    await load()
+  }
+
+  async function deleteOnboardingItem(item: TeamOnboardingItem) {
+    if (busy) return
+    setBusy(true)
+    const { error } = await supabase.from('team_onboarding_items').delete().eq('id', item.id)
+    setBusy(false)
+    if (error) {
+      showToast(`Failed to delete: ${error.message}`, 'error')
+      return
+    }
+    await load()
   }
 
   async function markContacted(candidate: TeamProspect) {
@@ -1147,32 +1270,118 @@ export default function TeamProspectsTab({ authUserId, resolveMasterId }: Props)
         )
       )}
       {stage === 'hire' && !loading && (
-        hired.length === 0 ? (
-          <p style={{ padding: '1.5rem', textAlign: 'center', color: 'var(--text-muted)' }}>
-            No hires yet — Advance someone from Interview when they're a fit.
-          </p>
-        ) : (
-          <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-            {hired.map((c) => (
-              <li key={c.id} style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.45rem 0.75rem', background: 'var(--bg-subtle)', borderRadius: 6, border: '1px solid var(--border)', flexWrap: 'wrap' }}>
-                <span style={{ fontWeight: 600 }}>{c.name}</span>
-                {c.role_id && roleNameById.has(c.role_id) && (
-                  <span style={{ fontSize: '0.7rem', padding: '0.05rem 0.4rem', borderRadius: 999, background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text-muted)' }}>
-                    {roleNameById.get(c.role_id)}
-                  </span>
-                )}
-                {c.trade && <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{c.trade}</span>}
-                <span style={{ flex: 1 }} />
-                <button type="button" disabled={busy} onClick={() => openEdit(c)} style={smallButtonStyle(busy)}>
-                  Edit
-                </button>
-                <button type="button" disabled={busy} onClick={() => setStatus(c, 'calling')} style={{ ...smallButtonStyle(busy), color: 'var(--text-blue-500)' }}>
-                  Back to Interview
-                </button>
-              </li>
-            ))}
-          </ul>
-        )
+        <>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.75rem' }}>
+            <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.875rem' }}>
+              Onboarding: each box goes red → yellow (requested) → green (done). Tap a box to move it along; tap 🔗 to open that item&apos;s document.
+            </p>
+            {isDev && (
+              <button
+                type="button"
+                onClick={() => setOnboardingSettingsOpen(true)}
+                style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'var(--surface)', color: 'var(--text-muted)', border: '1px solid var(--border-strong)', borderRadius: 6, cursor: 'pointer', fontWeight: 500 }}
+              >
+                ⚙ Onboarding settings
+              </button>
+            )}
+          </div>
+          {hired.length === 0 ? (
+            <p style={{ padding: '1.5rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+              No hires yet — Advance someone from Interview when they're a fit.
+            </p>
+          ) : (
+            <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+              {hired.map((c) => {
+                const doneCount = onboardingItems.filter((i) => onboardingStatuses.get(`${c.id}:${i.id}`) === 'done').length
+                return (
+                  <li key={c.id} style={{ padding: '0.55rem 0.75rem', background: 'var(--bg-subtle)', borderRadius: 8, border: '1px solid var(--border)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
+                      <span style={{ fontWeight: 600 }}>{c.name}</span>
+                      {c.role_id && roleNameById.has(c.role_id) && (
+                        <span style={{ fontSize: '0.7rem', padding: '0.05rem 0.4rem', borderRadius: 999, background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text-muted)' }}>
+                          {roleNameById.get(c.role_id)}
+                        </span>
+                      )}
+                      {c.trade && <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{c.trade}</span>}
+                      {onboardingItems.length > 0 && (
+                        <span style={{ fontSize: '0.75rem', fontWeight: 600, color: doneCount === onboardingItems.length ? '#16a34a' : 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>
+                          {doneCount}/{onboardingItems.length} done
+                        </span>
+                      )}
+                      <span style={{ flex: 1 }} />
+                      <button type="button" disabled={busy} onClick={() => openEdit(c)} style={smallButtonStyle(busy)}>
+                        Edit
+                      </button>
+                      <button type="button" disabled={busy} onClick={() => setStatus(c, 'calling')} style={{ ...smallButtonStyle(busy), color: 'var(--text-blue-500)' }}>
+                        Back to Interview
+                      </button>
+                    </div>
+                    {onboardingItems.length > 0 && (
+                      <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap', marginTop: '0.5rem' }}>
+                        {onboardingItems.map((item) => {
+                          const st = onboardingStatuses.get(`${c.id}:${item.id}`) ?? 'pending'
+                          const meta = ONBOARDING_STATUS_META[st]
+                          return (
+                            <span key={item.id} style={{ display: 'inline-flex', alignItems: 'stretch' }}>
+                              <button
+                                type="button"
+                                onClick={() => void cycleOnboardingStatus(c.id, item.id)}
+                                title={`${item.label} — ${meta.label}. Tap: ${ONBOARDING_STATUS_META[meta.next].label.toLowerCase()}.`}
+                                aria-label={`${item.label} for ${c.name}: ${meta.label}. Tap to change.`}
+                                style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: 6,
+                                  padding: '0.25rem 0.55rem',
+                                  fontSize: '0.75rem',
+                                  fontWeight: 600,
+                                  border: `1px solid ${meta.color}`,
+                                  borderRadius: item.link_url ? '6px 0 0 6px' : 6,
+                                  background: 'var(--surface)',
+                                  color: 'var(--text-strong)',
+                                  cursor: 'pointer',
+                                }}
+                              >
+                                <span aria-hidden style={{ width: 9, height: 9, borderRadius: 999, background: meta.color, flexShrink: 0 }} />
+                                {item.label}
+                              </button>
+                              {item.link_url ? (
+                                <a
+                                  href={item.link_url}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  title={`Open the document for: ${item.label}`}
+                                  style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    padding: '0.25rem 0.4rem',
+                                    fontSize: '0.75rem',
+                                    border: `1px solid ${meta.color}`,
+                                    borderLeft: 'none',
+                                    borderRadius: '0 6px 6px 0',
+                                    background: 'var(--surface)',
+                                    textDecoration: 'none',
+                                  }}
+                                >
+                                  🔗
+                                </a>
+                              ) : null}
+                            </span>
+                          )
+                        })}
+                      </div>
+                    )}
+                  </li>
+                )
+              })}
+            </ul>
+          )}
+          {onboardingItems.length === 0 && hired.length > 0 && (
+            <p style={{ marginTop: '0.75rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+              No onboarding items defined yet{isDev ? ' — set them up in ⚙ Onboarding settings.' : '.'}
+            </p>
+          )}
+        </>
       )}
       {stage === 'screen' && !loading && passed.length > 0 && bucketSection('Passed', passed, passedOpen, setPassedOpen)}
 
@@ -1372,6 +1581,100 @@ export default function TeamProspectsTab({ authUserId, resolveMasterId }: Props)
             </div>
           </>,
           () => setHireTarget(null),
+        )}
+
+      {onboardingSettingsOpen &&
+        modal(
+          'Onboarding settings',
+          <>
+            <p style={{ margin: '0 0 0.75rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+              Each item becomes a red/yellow/green box on every hire. The optional link is the document to
+              share (or where to find it) — onboarders get a 🔗 next to the box.
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', marginBottom: '1rem' }}>
+              {onboardingItems.length === 0 && (
+                <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)' }}>No items yet — add the first one below.</p>
+              )}
+              {onboardingItems.map((item, idx) => {
+                const draft = itemDrafts[item.id] ?? { label: item.label, link_url: item.link_url ?? '' }
+                const dirty = draft.label !== item.label || draft.link_url !== (item.link_url ?? '')
+                return (
+                  <div key={item.id} style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '0.5rem 0.6rem', display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                    <input
+                      type="text"
+                      value={draft.label}
+                      onChange={(e) => setItemDrafts((prev) => ({ ...prev, [item.id]: { ...draft, label: e.target.value } }))}
+                      aria-label={`Item ${idx + 1} question`}
+                      style={inputStyle}
+                    />
+                    <input
+                      type="url"
+                      value={draft.link_url}
+                      placeholder="Link (optional) — document to share or where to find it"
+                      onChange={(e) => setItemDrafts((prev) => ({ ...prev, [item.id]: { ...draft, link_url: e.target.value } }))}
+                      aria-label={`Item ${idx + 1} link`}
+                      style={inputStyle}
+                    />
+                    <div style={{ display: 'flex', gap: '0.3rem', alignItems: 'center' }}>
+                      <button type="button" disabled={busy || idx === 0} onClick={() => void moveOnboardingItem(item, -1)} style={smallButtonStyle(busy)}>
+                        ↑
+                      </button>
+                      <button type="button" disabled={busy || idx === onboardingItems.length - 1} onClick={() => void moveOnboardingItem(item, 1)} style={smallButtonStyle(busy)}>
+                        ↓
+                      </button>
+                      <span style={{ flex: 1 }} />
+                      {dirty && (
+                        <button type="button" disabled={busy || !draft.label.trim()} onClick={() => void saveOnboardingItem(item)} style={{ ...smallButtonStyle(busy), background: '#3b82f6', color: 'white', border: 'none', fontWeight: 600 }}>
+                          Save
+                        </button>
+                      )}
+                      <button type="button" disabled={busy} onClick={() => void deleteOnboardingItem(item)} title="Delete this item (clears its boxes on every hire)" style={{ ...smallButtonStyle(busy), color: 'var(--text-red-600)' }}>
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+            <div style={{ borderTop: '1px solid var(--border)', paddingTop: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+              <input
+                type="text"
+                value={newItemLabel}
+                placeholder="New item — e.g. Did we collect a copy of their driver's license?"
+                onChange={(e) => setNewItemLabel(e.target.value)}
+                aria-label="New onboarding item question"
+                style={inputStyle}
+              />
+              <input
+                type="url"
+                value={newItemLink}
+                placeholder="Link (optional)"
+                onChange={(e) => setNewItemLink(e.target.value)}
+                aria-label="New onboarding item link"
+                style={inputStyle}
+              />
+              <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+                <button
+                  type="button"
+                  disabled={busy || !newItemLabel.trim()}
+                  onClick={() => void addOnboardingItem()}
+                  style={{ padding: '0.45rem 0.9rem', background: busy || !newItemLabel.trim() ? '#9ca3af' : '#3b82f6', color: 'white', border: 'none', borderRadius: 6, cursor: busy || !newItemLabel.trim() ? 'not-allowed' : 'pointer', fontWeight: 600 }}
+                >
+                  Add item
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setOnboardingSettingsOpen(false)}
+                  disabled={busy}
+                  style={{ padding: '0.45rem 0.9rem', border: '1px solid var(--border-strong)', background: 'var(--surface)', borderRadius: 6, cursor: 'pointer' }}
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </>,
+          () => setOnboardingSettingsOpen(false),
+          { wide: true },
         )}
     </div>
   )

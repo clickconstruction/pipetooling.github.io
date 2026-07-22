@@ -105,6 +105,12 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 #### July 22, 2026
 
+**`20260722240000_team_onboarding.sql`** _(apply via `supabase db push` after the file is on `main`)_
+- **Purpose**: Hire-stage onboarding (v2.931) — `team_onboarding_items` (dev-defined checklist: label, optional `link_url`, position) and `team_prospect_onboarding_statuses` (per hire × item: `pending`/`requested`/`done`, UNIQUE pair, `updated_by`; no row = pending).
+- **Security**: RLS — prospects staff read both; items writable by devs only (`is_dev()`); statuses writable by prospects staff. Both CREATE TABLEs end with the two read-only-block calls.
+- **Ordering**: client tolerates the tables being absent (onboarding UI hides); apply promptly after merge.
+- **Category**: Recruiting / feature
+
 **`20260722238000_team_prospect_reviews.sql`** _(apply via `supabase db push` after the file is on `main`)_
 - **Purpose**: Team prospect screening (v2.927) — `team_prospect_reviews` table (one row per candidate+reviewer: three 0-100 CHECKed nullable ratings + remarks; UNIQUE pair) and widens the `team_prospects.status` CHECK to include `'calling'` (the Call list stage).
 - **Security**: RLS — prospects staff read all reviews; reviewers insert/update/delete only their own. CREATE TABLE ends with both read-only-block calls per house rules.
