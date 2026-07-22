@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-22 (v2.909)
+last_updated: 2026-07-22 (v2.910)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.910)
+
+### Job Mode: details section also shows for the Ready-to-start job (2026-07-22)
+The v2.886 details tail (customer contact + Job detail button, Street View, updates thread) previously required being clocked in; it now also renders for the **Ready to start** next job, so a tech can review the customer, address photo, and office updates before heading out. Clocked-in states unchanged; bid/no-schedule states still show no details.
 
 ## Latest Updates (v2.909)
 
