@@ -80,6 +80,12 @@ const headerNum: CSSProperties = {
   lineHeight: 1.1,
 }
 
+const headerNumNameSep: CSSProperties = {
+  margin: '0 0.45rem',
+  fontWeight: 400,
+  color: 'var(--text-faint)',
+}
+
 const headerName: CSSProperties = {
   fontSize: '1.05rem',
   fontWeight: 600,
@@ -385,8 +391,11 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
       const num = jobNumberLabel(cb.service_type_id, cb.hcp_number)
       return (
         <div style={headerWrap}>
-          <div style={headerNum}>{num}</div>
-          <div style={headerName}>{safeTrim(cb.job_name) || '—'}</div>
+          <div style={headerNum}>
+            {num}
+            <span style={headerNumNameSep}>|</span>
+            <span style={headerName}>{safeTrim(cb.job_name) || '—'}</span>
+          </div>
           <div style={headerAddr}>{safeTrim(cb.job_address) || '—'}</div>
         </div>
       )
@@ -396,8 +405,11 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
       const num = jobNumberLabel(currentJobInfo.service_type_id, currentJobInfo.hcp_number)
       return (
         <div style={headerWrap}>
-          <div style={headerNum}>{num}</div>
-          <div style={headerName}>{safeTrim(currentJobInfo.job_name) || '—'}</div>
+          <div style={headerNum}>
+            {num}
+            <span style={headerNumNameSep}>|</span>
+            <span style={headerName}>{safeTrim(currentJobInfo.job_name) || '—'}</span>
+          </div>
           <div style={headerAddr}>{safeTrim(currentJobInfo.job_address) || '—'}</div>
           <div style={headerStatusLine}>Not on today&rsquo;s schedule</div>
         </div>
@@ -438,8 +450,11 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
       return (
         <div style={headerWrap}>
           <div style={headerStatusLine}>Ready to start</div>
-          <div style={headerNum}>{num}</div>
-          <div style={headerName}>{safeTrim(nb.job_name) || '—'}</div>
+          <div style={headerNum}>
+            {num}
+            <span style={headerNumNameSep}>|</span>
+            <span style={headerName}>{safeTrim(nb.job_name) || '—'}</span>
+          </div>
           <div style={headerAddr}>{safeTrim(nb.job_address) || '—'}</div>
         </div>
       )
