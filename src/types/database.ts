@@ -2367,6 +2367,33 @@ export type Database = {
           },
         ]
       }
+      company_documents: {
+        Row: {
+          created_at: string | null
+          id: string
+          link_url: string
+          name: string
+          position: number
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          link_url: string
+          name: string
+          position?: number
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          link_url?: string
+          name?: string
+          position?: number
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       customers: {
         Row: {
           address: string | null

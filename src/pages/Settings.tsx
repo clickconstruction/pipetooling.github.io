@@ -44,6 +44,7 @@ import { useSettingsTeamLeaderAssignments } from '../hooks/useSettingsTeamLeader
 import { useSettingsAccount } from '../hooks/useSettingsAccount'
 import type { UserRow } from '../types/settingsRows'
 import { isAssistantLike, isSubcontractorLikeRole } from '../lib/subcontractorLikeRole'
+import SettingsCompanyDocumentsSection from '../components/settings/SettingsCompanyDocumentsSection'
 
 type UserRole =
   | 'dev'
@@ -1175,6 +1176,9 @@ export default function Settings() {
           testNotificationSending={testNotificationSending}
           testNotificationSuccess={testNotificationSuccess}
         />
+        {(myRole === 'dev' || myRole === 'master_technician' || isAssistantLike(myRole) || myRole === 'estimator') && (
+          <SettingsCompanyDocumentsSection isDev={myRole === 'dev'} />
+        )}
       </SettingsGroup>
 
       {activeSettingsTab === 'settings-account' && authUser?.id && (
