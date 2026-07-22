@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { useIsMobile } from '../../hooks/useIsMobile'
 import ClockInOutButton from '../ClockInOutButton'
 import { useAuth } from '../../hooks/useAuth'
 import { useJobDetailModal } from '../../contexts/JobDetailModalContext'
@@ -34,6 +35,7 @@ const groupHeaderBtn: CSSProperties = {
 /** Dispatch Mode → Dashboard tab: clock in/out on top, compact Stages list below. */
 export default function DispatchModeHome() {
   const { user: authUser, profileName } = useAuth()
+  const isMobile = useIsMobile()
   const jobDetailModal = useJobDetailModal()
 
   const [jobs, setJobs] = useState<JobWithDetails[]>([])
@@ -124,6 +126,11 @@ export default function DispatchModeHome() {
                         const num = effectiveJobLedgerNumber(j.hcp_number, j.click_number) || '—'
                         const name = (j.job_name ?? '').trim() || 'Job'
                         const pill = buildServiceTypeTradePill(j.serviceType?.name)
+                        const customer = (j.customer_name ?? '').trim()
+                        const address = (j.job_address ?? '').trim()
+                        const team = (j.team_members ?? [])
+                          .map((tm) => (tm.users?.name ?? '').trim())
+                          .filter(Boolean)
                         return (
                           <button
                             key={j.id}
@@ -133,9 +140,9 @@ export default function DispatchModeHome() {
                             style={{
                               display: 'flex',
                               width: '100%',
-                              alignItems: 'center',
-                              gap: 8,
-                              padding: '0.55rem 0.75rem',
+                              alignItems: 'flex-start',
+                              gap: '0.6rem',
+                              padding: '0.6rem 0.75rem',
                               border: 'none',
                               borderTop: '1px solid var(--border)',
                               background: 'var(--surface)',
@@ -146,22 +153,54 @@ export default function DispatchModeHome() {
                               minWidth: 0,
                             }}
                           >
-                            {pill ? (
-                              <span aria-label={`Service type ${pill.label}`} style={{ ...pill.style, marginTop: 0, flexShrink: 0 }}>
-                                {pill.label}
+                            <span style={{ minWidth: 0, flex: 1, display: 'flex', flexDirection: 'column', gap: 2 }}>
+                              <span style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+                                {pill ? (
+                                  <span aria-label={`Service type ${pill.label}`} style={{ ...pill.style, marginTop: 0, flexShrink: 0 }}>
+                                    {pill.label}
+                                  </span>
+                                ) : null}
+                                <span
+                                  style={{
+                                    fontWeight: 600,
+                                    fontSize: '0.9375rem',
+                                    minWidth: 0,
+                                    overflow: 'hidden',
+                                    textOverflow: 'ellipsis',
+                                    whiteSpace: 'nowrap',
+                                  }}
+                                >
+                                  {num} · {name}
+                                </span>
+                              </span>
+                              {customer ? (
+                                <span style={{ fontSize: '0.875rem', color: 'var(--text-600)' }}>{customer}</span>
+                              ) : null}
+                              {address ? (
+                                <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{address}</span>
+                              ) : null}
+                              {isMobile && team.length > 0 ? (
+                                <span style={{ fontSize: '0.8125rem', color: 'var(--text-blue-700)', fontWeight: 600 }}>
+                                  {team.join(', ')}
+                                </span>
+                              ) : null}
+                            </span>
+                            {!isMobile && team.length > 0 ? (
+                              <span
+                                style={{
+                                  flexShrink: 0,
+                                  alignSelf: 'center',
+                                  fontSize: '0.875rem',
+                                  color: 'var(--text-blue-700)',
+                                  fontWeight: 600,
+                                  maxWidth: '12rem',
+                                  textAlign: 'right',
+                                }}
+                              >
+                                {team.slice(0, 4).join(', ')}
+                                {team.length > 4 ? ` +${team.length - 4}` : ''}
                               </span>
                             ) : null}
-                            <span style={{ fontWeight: 600, flexShrink: 0 }}>{num}</span>
-                            <span
-                              style={{
-                                minWidth: 0,
-                                overflow: 'hidden',
-                                textOverflow: 'ellipsis',
-                                whiteSpace: 'nowrap',
-                              }}
-                            >
-                              {name}
-                            </span>
                           </button>
                         )
                       })
