@@ -4953,7 +4953,7 @@ export default function PeopleReviewTab({
                             return (
                               <tr
                                 key={r.personName}
-                                style={{ borderBottom: '1px solid var(--border)', background: isYou ? '#fef3c7' : undefined }}
+                                style={{ borderBottom: '1px solid var(--border)', background: isYou ? 'var(--bg-amber-100)' : undefined }}
                               >
                                 <td style={{ padding: '0.5rem 0.75rem' }}>
                                   <div style={{ fontWeight: isYou ? 600 : 400 }}>

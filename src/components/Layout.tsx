@@ -142,7 +142,7 @@ export default function Layout() {
   }, [checklistAddModal, location.search, location.pathname, navigate])
   const headerSearchEligible =
     role === 'dev' || role === 'master_technician' || isAssistantLike(role)
-  const navSearchOverlayBg = impersonating && isMobile ? '#fef3c7' : 'var(--chrome-bg)'
+  const navSearchOverlayBg = impersonating && isMobile ? 'var(--bg-amber-100)' : 'var(--chrome-bg)'
 
   const scheduleDashboardPrefetch = useCallback(() => {
     if (!authUser?.id) return
@@ -571,7 +571,7 @@ export default function Layout() {
         className="appNav"
         style={{
           borderBottom: impersonating && isMobile ? '1px solid #f59e0b' : '1px solid var(--chrome-border)',
-          background: impersonating && isMobile ? '#fef3c7' : undefined,
+          background: impersonating && isMobile ? 'var(--bg-amber-100)' : undefined,
           display: 'flex',
           gap: '0.5rem',
           alignItems: 'center',
