@@ -45,6 +45,8 @@ While you're clocked into a job, the card keeps going below the buttons:
 - Moving on? Tap {{button:green|Next Job}} — you'll be asked for brief notes about the job you're leaving, then your clock switches to the new job in one step.
 - Your location is captured when you punch, and your hours flow to the office automatically for approval.
 
+The details section (customer contact, Street View, updates) also shows for your **Ready to start** job before you clock in — review the visit before you head out.
+
 ## The Job Mode tab bar
 
 With Job Mode on, a tab bar pins to the bottom of the screen — everything on it is **yours only**:

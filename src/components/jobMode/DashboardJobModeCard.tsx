@@ -619,13 +619,24 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
           Turnaway — not ready / not home
         </button>
       </div>
-      {leaveReportTarget ? (
-        <JobModeDetailsSection
-          key={leaveReportTarget.id}
-          jobId={leaveReportTarget.id}
-          jobAddress={leaveReportTarget.jobAddress === '—' ? '' : leaveReportTarget.jobAddress}
-        />
-      ) : null}
+      {(() => {
+        // Details for the clocked-in job, else the Ready-to-start next job.
+        const detailsTarget =
+          leaveReportTarget ??
+          (picked.state === 'not-clocked-in-with-schedule' && picked.nextBlock
+            ? {
+                id: picked.nextBlock.job_id,
+                jobAddress: safeTrim(picked.nextBlock.job_address),
+              }
+            : null)
+        return detailsTarget ? (
+          <JobModeDetailsSection
+            key={detailsTarget.id}
+            jobId={detailsTarget.id}
+            jobAddress={detailsTarget.jobAddress === '—' ? '' : detailsTarget.jobAddress}
+          />
+        ) : null
+      })()}
       <JobModeAdvanceNotesModal
         open={advanceModalOpen}
         destinationLabel={destinationLabelForNext()}
