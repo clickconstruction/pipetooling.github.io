@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-22 (v2.920)
+last_updated: 2026-07-22 (v2.921)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.921)
+
+### Company-wide access: adoption/sharing grants are now automatic (2026-07-22)
+First step of the company-owned-customers simplification. Migration `20260722234000_company_access_grants.sql` (**requires `supabase db push` after merge**) seeds the four grant tables (`master_assistants`, `master_primaries`, `master_superintendents`, `master_shares`) with every eligible live pair and installs a `users` trigger that re-syncs on hire/role change/restore. Every one of the 82 policies and ~50 functions that consult those tables now behaves role-based — office roles see all customers/projects — with zero policy rewrites and no access ever removed. Prevents the "new office hire sees no customers because nobody adopted them" class of bug. The Settings → Sharing and Adoption UI becomes obsolete (removed in the next PR). `MIGRATIONS.md` updated.
 
 ## Latest Updates (v2.920)
 
