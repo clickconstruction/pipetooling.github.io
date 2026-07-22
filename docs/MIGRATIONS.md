@@ -105,6 +105,12 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 #### July 22, 2026
 
+**`20260722210000_customers_field_schedule_select.sql`** _(apply via `supabase db push` after the file is on `main`)_
+- **Purpose**: **Job Mode Customers visibility for field crew** (v2.913). The Job Mode Customers tab lists customers whose jobs are on the tech's schedule, but `customers` SELECT policies covered only the owning master / dev / master_technician / adopted assistants — subcontractors and helpers saw an empty list. Adds SECURITY DEFINER `user_has_schedule_block_for_customer(uuid)` (bypasses inner RLS on `jobs_ledger`/`job_schedule_blocks` so a block on a non-team job still counts) + a `customers` SELECT policy calling it.
+- **Security**: read-only; EXECUTE granted to `authenticated` only; exposes a customer row exactly when one of their jobs has a schedule block assigned to the caller (the tech is being sent to that customer). Both join columns are indexed (`idx_job_schedule_blocks_assignee_work_date`, `idx_jobs_ledger_customer_id`). No CREATE TABLE → read-only-block footer not required.
+- **Ordering**: client already ships (v2.901); apply promptly — the tab is empty for field roles until applied.
+- **Category**: Job Mode / RLS / fix
+
 **`20260722190000_dispatch_mode_default_assistants.sql`** _(apply via `supabase db push` after the file is on `main`)_
 - **Purpose**: **Dispatch Mode default-on for assistants** (v2.912). `users.dispatch_mode_enabled` becomes nullable with no default: `NULL` = "no explicit choice", which the client resolves to **ON for assistant-like roles and master technicians** and off for everyone else. Existing `false` rows are set to `NULL` (nobody had explicitly opted out in the hours since v2.905) so current and future assistants inherit the default until they toggle.
 - **Security**: no policy changes; same self-update path. Idempotent ALTERs; the UPDATE only touches explicit-false rows.
