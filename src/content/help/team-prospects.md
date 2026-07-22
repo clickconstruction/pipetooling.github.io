@@ -55,21 +55,25 @@ A role column can be deleted only once **every candidate in it has been individu
 
 The Team tab is granted **per person**, on top of normal Prospects access. If you don't see the tab, you haven't been granted it. A dev can turn it on for someone under {{icon:gear}} **Settings → Active accounts → Edit** with the **Can see Prospects → Team (hiring board)** checkbox.
 
-## The pipeline at a glance
+## The three stages
 
-Across the top of the tab: **Sourcing & Screening → Interviews → Hired**, each with a live count. Tap a stage to jump to it — Sourcing lands on the board, Interviews on the amber section, and Hired expands and opens that bucket.
+Across the top of the tab: **Screen → Interview → Hire** — live counts under each, and the stage you're on gets the blue box. Each stage is its own view:
 
-## Screening calls (Interviews)
+- **Screen** — the sourcing board: role columns, drag-ranking, and the rating sliders. When someone's worth a call, hit {{button:blue|Advance}} on their card.
+- **Interview** — the same role columns, now amber: each candidate shows a tap-to-call phone, the sourcing scores, and everyone's reviews. Anyone can {{button:green|Advance}} them to Hire (or send them Back to Screen).
+- **Hire** — everyone you've hired, with a jump Back to Interview if a hire falls through.
 
-When a candidate looks promising, hit {{button:outline|📞 Pull up}} on their card. They leave the sourcing board and appear in the amber **Interviews** section — the queue for a master or dev to actually call them:
+## Interview calls
+
+When a candidate looks promising, hit {{button:blue|Advance}} on their Screen card. They move to the **Interview** stage — the queue for a master or dev to actually call them:
 
 - Their phone number is a **tap-to-call** button, with the last-contact stamp next to it ({{button:outline|Talked today}} updates it).
 - After the call, hit {{button:outline|My review}} and leave **your own** three ratings plus remarks. Each reviewer gets exactly one review per candidate (open it again to revise). Everyone's reviews show on the row — sourcing scores and reviewer verdicts side by side.
-- Then decide: {{button:green|Hired}}, **Passed**, or **Back to board** if they need more sourcing time.
+- Then decide: {{button:green|Advance}} (to Hire), **Passed**, or **Back to Screen** if they need more sourcing time.
 
 ## Hiring someone onto the roster
 
-Marking a candidate **Hired** offers to add them straight to the **People roster** — pick Subcontractor or Helper and their name, phone, and email carry over. They appear under People → Users (External), ready for sub labor sheets and payments; when they get an app login later, use **Link account** there to tie it together.
+Advancing a candidate to **Hire** offers to add them straight to the **People roster** — pick Subcontractor or Helper and their name, phone, and email carry over. They appear under People → Users (External), ready for sub labor sheets and payments; when they get an app login later, use **Link account** there to tie it together.
 
 ## Rating candidates
 
