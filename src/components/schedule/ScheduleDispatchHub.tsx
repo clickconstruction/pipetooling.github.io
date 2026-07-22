@@ -42,6 +42,7 @@ import {
 import { QuickfillScheduleSection } from '../quickfill/QuickfillScheduleSection'
 import { ScheduleDispatchPlusCopyMenu } from './ScheduleDispatchPlusCopyMenu'
 import { ScheduleDispatchWeekNav } from './ScheduleDispatchWeekNav'
+import QuickAssignSheet from '../dispatchMode/QuickAssignSheet'
 import type { ScheduleDispatchCardPlacementMode } from './ScheduleDispatchGrid'
 import {
   SCHEDULE_DISPATCH_TODAY_COLUMN_BG,
@@ -1200,6 +1201,8 @@ type HubPeoplePanelProps = {
   onLinkedCopyApplyToPerson?: (personUserId: string) => void
   /** Stage 2 + lanes grouping: lane-heading click applies to every member. */
   onLinkedCopyApplyToLane?: (laneLabel: string, memberUserIds: string[]) => void
+  /** Refetch after Quick Assign writes blocks (mobile phone entry point). */
+  onQuickAssignScheduled?: () => void
   linkedCopyApplyBusy?: boolean
   /** Office-wide swim lanes for the 'lanes' person grouping (null until loaded). */
   swimLanes?: DispatchSwimLanesData | null
@@ -1271,6 +1274,7 @@ function HubPeoplePanel({
   onLinkedCopyToggleBlock,
   onLinkedCopyApplyToPerson,
   onLinkedCopyApplyToLane,
+  onQuickAssignScheduled,
   linkedCopyApplyBusy = false,
   swimLanes = null,
   onRequestHubMultiCellAddMode,
@@ -1438,6 +1442,7 @@ function HubPeoplePanel({
 
   /** Person-header sort cycle: alphabetical (default) ↔ grouped by role like the Day view. Per-device. */
   const PEOPLE_SORT_STORAGE_KEY = 'pipetooling_dispatch_people_sort_v1'
+  const [quickAssignOpen, setQuickAssignOpen] = useState(false)
   const [personSort, setPersonSort] = useState<'alpha' | 'role' | 'lanes'>(() => {
     try {
       const stored = localStorage.getItem(PEOPLE_SORT_STORAGE_KEY)
@@ -1623,6 +1628,21 @@ function HubPeoplePanel({
                 onClick={onStartLinkedCopyMode}
               >
                 <ScheduleDispatchLinkedChainsIcon size={14} />
+              </button>
+            ) : null}
+            {isMobile && canEdit ? (
+              <button
+                type="button"
+                aria-label="Assign work — pick a job, people, and a time"
+                title="Assign work (Quick Assign)"
+                style={{
+                  ...hubPeopleToolbarIconBtn,
+                  borderColor: '#16a34a',
+                  color: 'var(--text-green-600)',
+                }}
+                onClick={() => setQuickAssignOpen(true)}
+              >
+                ⚡
               </button>
             ) : null}
           </div>
@@ -2045,6 +2065,13 @@ function HubPeoplePanel({
         </table>
       </div>
 
+      {isMobile && canEdit ? (
+        <QuickAssignSheet
+          open={quickAssignOpen}
+          onClose={() => setQuickAssignOpen(false)}
+          onScheduled={onQuickAssignScheduled}
+        />
+      ) : null}
       {visibleDayKeys.length > 0 && showExpectedManpower ? (
         <section
           style={{ marginTop: '1.25rem' }}
@@ -2571,6 +2598,8 @@ type Props = {
   onLinkedCopyApplyToPerson?: (personUserId: string) => void
   /** Stage 2 + lanes grouping: lane-heading click applies to every member. */
   onLinkedCopyApplyToLane?: (laneLabel: string, memberUserIds: string[]) => void
+  /** Refetch after Quick Assign writes blocks (mobile phone entry point). */
+  onQuickAssignScheduled?: () => void
   linkedCopyApplyBusy?: boolean
   /** Office-wide swim lanes for the 'lanes' person grouping (null until loaded). */
   swimLanes?: DispatchSwimLanesData | null
@@ -2681,6 +2710,7 @@ export function ScheduleDispatchHub({
   onLinkedCopyToggleBlock,
   onLinkedCopyApplyToPerson,
   onLinkedCopyApplyToLane,
+  onQuickAssignScheduled,
   linkedCopyApplyBusy = false,
   swimLanes = null,
   onSwimLanesChanged,
@@ -2878,6 +2908,7 @@ export function ScheduleDispatchHub({
           onLinkedCopyToggleBlock={onLinkedCopyToggleBlock}
           onLinkedCopyApplyToPerson={onLinkedCopyApplyToPerson}
           onLinkedCopyApplyToLane={onLinkedCopyApplyToLane}
+          onQuickAssignScheduled={onQuickAssignScheduled}
           linkedCopyApplyBusy={linkedCopyApplyBusy}
           swimLanes={swimLanes}
           onRequestHubMultiCellAddMode={onRequestHubMultiCellAddMode}
@@ -2972,6 +3003,7 @@ export function ScheduleDispatchHub({
           onLinkedCopyToggleBlock={onLinkedCopyToggleBlock}
           onLinkedCopyApplyToPerson={onLinkedCopyApplyToPerson}
           onLinkedCopyApplyToLane={onLinkedCopyApplyToLane}
+          onQuickAssignScheduled={onQuickAssignScheduled}
           linkedCopyApplyBusy={linkedCopyApplyBusy}
           swimLanes={swimLanes}
           onRequestHubMultiCellAddMode={onRequestHubMultiCellAddMode}

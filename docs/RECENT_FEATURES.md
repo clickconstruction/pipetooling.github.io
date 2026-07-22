@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-22 (v2.901)
+last_updated: 2026-07-22 (v2.902)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.902)
+
+### Quick Assign: mobile job → people → time flow with availability ribbons (2026-07-22)
+New phone-first scheduling flow for dispatchers ([`QuickAssignSheet`](../src/components/dispatchMode/QuickAssignSheet.tsx)): **pick a job** (the Add-job picker, address/customer search included) → **pick a day** (two-week strip) → **pick people** — every roster person renders an **availability ribbon** (their 6a–6p day with blocks shaded) grouped by swim lanes, lane names tap-select the whole crew → **pick a time** from suggested windows where *everyone selected is free* (pure unit-tested kernel [`quickAssignFreeWindows.ts`](../src/lib/quickAssignFreeWindows.ts): merge/gaps/intersection/ranking, 11 tests) or a custom window with per-person amber **overlap warnings** (warn, never block) → optional **job instructions** + **Linked crew** toggle → one confirm writes a `job_schedule_blocks` row per person (shared block group when linked — same shapes the People grid makes). Entry points: a blue **+** FAB on the Dispatch Mode Schedule tab (dispatch cohort) and a green **⚡** button on the People toolbar on phones. Help guides updated.
 
 ## Latest Updates (v2.901)
 

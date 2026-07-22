@@ -10,6 +10,9 @@ import {
 import { buildServiceTypeTradePill } from '../../lib/serviceTypeTradePill'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import { useIsMobile } from '../../hooks/useIsMobile'
+import { useAuth } from '../../hooks/useAuth'
+import { CAN_USE_SCHEDULE_DISPATCH_EDIT_ROLES } from '../../lib/scheduleDispatchEditRoles'
+import QuickAssignSheet from './QuickAssignSheet'
 import {
   dispatchModeAgendaHeading,
   dispatchModeTwoWeekGrid,
@@ -35,6 +38,9 @@ export default function DispatchModeSchedule({ selfUserId }: { selfUserId?: stri
   const dispatchTaskModal = useDispatchTaskModal()
   const jobDetailModal = useJobDetailModal()
 
+  const { role } = useAuth()
+  const canQuickAssign = !selfUserId && role != null && CAN_USE_SCHEDULE_DISPATCH_EDIT_ROLES.has(role)
+  const [quickAssignOpen, setQuickAssignOpen] = useState(false)
   const todayYmd = denverCalendarDayKey(Date.now())
   const [selectedYmd, setSelectedYmd] = useState<string>(todayYmd)
   const isMobile = useIsMobile()
@@ -390,6 +396,39 @@ export default function DispatchModeSchedule({ selfUserId }: { selfUserId?: stri
           })}
         </ul>
       )}
+      {canQuickAssign ? (
+        <button
+          type="button"
+          onClick={() => setQuickAssignOpen(true)}
+          aria-label="Assign work — pick a job, people, and a time"
+          title="Assign work"
+          style={{
+            position: 'fixed',
+            right: 16,
+            bottom: 'calc(76px + env(safe-area-inset-bottom))',
+            width: 52,
+            height: 52,
+            borderRadius: '50%',
+            border: 'none',
+            background: '#2563eb',
+            color: '#fff',
+            fontSize: '1.6rem',
+            lineHeight: 1,
+            cursor: 'pointer',
+            boxShadow: '0 4px 14px rgba(0,0,0,0.25)',
+            zIndex: 1001,
+          }}
+        >
+          +
+        </button>
+      ) : null}
+      {canQuickAssign ? (
+        <QuickAssignSheet
+          open={quickAssignOpen}
+          onClose={() => setQuickAssignOpen(false)}
+          onScheduled={() => void loadDay(selectedYmd)}
+        />
+      ) : null}
     </div>
   )
 }
