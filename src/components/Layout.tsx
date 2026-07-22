@@ -78,9 +78,9 @@ const dropdownLinkStyle = ({ isActive }: { isActive: boolean }) => ({
 
 const IMPERSONATION_KEY = 'impersonation_original'
 
-const SUBCONTRACTOR_PATHS = ['/', '/dashboard', '/calendar', '/checklist', '/settings', '/tally', '/help']
-const PRIMARY_PATHS = ['/dashboard', '/materials', '/estimates', '/jobs', '/bids', '/calendar', '/checklist', '/settings', '/tally', '/help']
-const SUPERINTENDENT_PATHS = ['/dashboard', '/projects', '/workflows', '/jobs', '/schedule-dispatch', '/bids', '/materials', '/estimates', '/documents', '/calendar', '/checklist', '/settings', '/tally', '/help']
+const SUBCONTRACTOR_PATHS = ['/', '/dashboard', '/calendar', '/checklist', '/settings', '/tally', '/help', '/job-mode/schedule', '/job-mode/inbox', '/job-mode/customers']
+const PRIMARY_PATHS = ['/dashboard', '/materials', '/estimates', '/jobs', '/bids', '/calendar', '/checklist', '/settings', '/tally', '/help', '/job-mode/schedule', '/job-mode/inbox', '/job-mode/customers']
+const SUPERINTENDENT_PATHS = ['/dashboard', '/projects', '/workflows', '/jobs', '/schedule-dispatch', '/bids', '/materials', '/estimates', '/documents', '/calendar', '/checklist', '/settings', '/tally', '/help', '/job-mode/schedule', '/job-mode/inbox', '/job-mode/customers']
 
 const HEADER_ACTION_BUTTON_HEIGHT = 'calc(1rem + 1.25em)'
 
