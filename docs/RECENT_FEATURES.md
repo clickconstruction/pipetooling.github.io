@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-22 (v2.940)
+last_updated: 2026-07-22 (v2.941)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.941)
+
+### Settings: Company documents — dev-managed current-copy links (2026-07-22)
+New **Company documents** block on Settings → Your account (the one tab every office role sees): dev-maintained name+link rows (Bank Deposit Details, I-9, Certificate of Insurance, …) rendered as 📄 buttons that open the current copy, each with an "updated <date>" freshness label (the `updated_at` trigger refreshes it whenever the dev swaps the link). Devs get inline edit/reorder/delete and an add row; assistants, controllers, estimators, and masters see the click-to-open list only (block hidden for them when empty). Migration `20260722248000_company_documents.sql` (applied): office-read/dev-write RLS. New help guide `company-documents.md`. (Entry landed separately — the feature PR #624 auto-merged before the changelog amend.)
 
 ## Latest Updates (v2.940)
 
