@@ -105,6 +105,12 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 #### July 22, 2026
 
+**`20260722248000_company_documents.sql`** _(apply via `supabase db push` after the file is on `main`)_
+- **Purpose**: Company documents (v2.941) — `company_documents` table (name, link_url, position) for the dev-maintained "current copy" links surfaced in Settings → Your account.
+- **Security**: RLS — office roles (dev/master/assistant/controller/estimator) read; devs write. CREATE TABLE ends with both read-only-block calls.
+- **Ordering**: client tolerates the table being absent (section shows empty); apply promptly after merge.
+- **Category**: Office / feature
+
 **`20260722244000_team_prospect_links.sql`** _(apply via `supabase db push` after the file is on `main`)_
 - **Purpose**: Team prospect links (v2.937) — `team_prospects.links` jsonb array of `{type, url}` (NOT NULL default `[]`). Edited in Add/Edit candidate; rendered as chips on Screen/Interview cards.
 - **Ordering**: apply promptly after merge — the client's candidate saves include the column once deployed.
