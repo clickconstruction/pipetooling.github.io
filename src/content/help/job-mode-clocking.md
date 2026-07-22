@@ -21,7 +21,7 @@ The header also changes: the three task buttons become a **Contact:** row — a 
 Here's what the card looks like during a working day:
 
 :::example The Job Mode card
-**J512** &nbsp; Smith House Repipe
+**PLUM 512** | Smith House Repipe
 123 Main St
 *Clocked in since 8:02 AM*
 

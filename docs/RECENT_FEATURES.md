@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-22 (v2.918)
+last_updated: 2026-07-22 (v2.919)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.919)
+
+### Job Mode card: trade-tag job label ("PLUM 902") (2026-07-22)
+The Job Mode card header (and its Next Job destination labels) now shows the trade-tag job number — `PLUM 902 | Richard Visiko` (or ELEC / HVAC) — matching the trade pills on other job cards, instead of the ledger-prefix form (`JP902`). `DashboardJobModeCard` loads `service_types (id, name)` once and derives the tag via `getBidServiceTypeTag`; unknown service types fall back to the ledger-prefix label. Help guide example updated.
 
 ## Latest Updates (v2.918)
 
