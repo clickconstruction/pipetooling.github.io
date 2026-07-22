@@ -74,7 +74,7 @@ export function RatingSliders({
                 onChange={(e) => onCommentChange(def.key, e.target.value)}
                 placeholder={`Why this ${def.short} score? (optional)`}
                 aria-label={`${def.short} comment`}
-                style={{ width: '100%', boxSizing: 'border-box', marginTop: '0.25rem', padding: '0.35rem 0.5rem', fontSize: '0.8125rem', background: 'var(--surface)', color: 'var(--text-base)', border: '1px solid var(--border)', borderRadius: 4 }}
+                style={{ width: '100%', boxSizing: 'border-box', marginTop: '0.25rem', padding: '0.45rem 0.6rem', fontSize: '0.8125rem', background: 'var(--surface)', color: 'var(--text-base)', border: '1px solid var(--border-strong)', borderRadius: 4, boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.06)' }}
               />
             )}
           </div>

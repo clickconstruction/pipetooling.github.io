@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-22 (v2.948)
+last_updated: 2026-07-22 (v2.949)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.949)
+
+### Prospects reviews: per-rating comment boxes read as entry fields (2026-07-22)
+The "Why this Ability/Drive/Integrity score? (optional)" inputs under the rating sliders (candidate My review modal + Team → Review Rate cards — both render shared [`ratingDimensions.tsx`](../src/components/prospects/ratingDimensions.tsx)) used the hairline `var(--border)` and tight padding, blending into the card. They now match the app's standard input affordance: `var(--border-strong)` border, roomier padding (0.45rem 0.6rem), and a subtle inset shadow. Style-only.
 
 ## Latest Updates (v2.948)
 
