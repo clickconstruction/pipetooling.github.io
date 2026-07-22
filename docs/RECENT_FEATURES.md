@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-21 (v2.885)
+last_updated: 2026-07-21 (v2.886)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.886)
+
+### Job Mode: current-job details under the card — customer contact, Street View, updates thread (2026-07-21)
+While clocked into a job, the Job Mode card now continues below the action buttons with a new [`JobModeDetailsSection`](../src/components/jobMode/JobModeDetailsSection.tsx): **customer contact** (name + tap-to-call `tel:` / tap-to-email `mailto:` links from `jobs_ledger.customer_*`), a **Job detail** button (briefcase, opens `DetailJobModal` via the app-wide `useJobDetailModal` context), the address **Street View photo** (edge-function meta + blob pattern reused from DetailJobModal; tap opens the Google pano), and the **Job updates** thread — the same `useJobThreadNotesForModal` + `JobThreadNotesPanel` feed/composer as Job Detail, so techs read office updates and post notes in place. Hidden when not clocked into a job (schedule-only and bid states unchanged). Help guide section added.
 
 ## Latest Updates (v2.885)
 

@@ -14,6 +14,7 @@ import {
   type JobModeScheduleBlock,
 } from '../../lib/jobModePickCurrentNext'
 import JobModeAdvanceNotesModal from './JobModeAdvanceNotesModal'
+import JobModeDetailsSection from './JobModeDetailsSection'
 
 type LeaveReportJobPick = {
   id: string
@@ -603,6 +604,13 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
           Turnaway — not ready / not home
         </button>
       </div>
+      {leaveReportTarget ? (
+        <JobModeDetailsSection
+          key={leaveReportTarget.id}
+          jobId={leaveReportTarget.id}
+          jobAddress={leaveReportTarget.jobAddress === '—' ? '' : leaveReportTarget.jobAddress}
+        />
+      ) : null}
       <JobModeAdvanceNotesModal
         open={advanceModalOpen}
         destinationLabel={destinationLabelForNext()}
