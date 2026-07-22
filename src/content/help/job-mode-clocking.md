@@ -14,6 +14,8 @@ Job Mode turns the Dashboard into one big card built for working in the field: i
 
 With Job Mode on, the Dashboard shows the Job Mode card first. You can always tap {{button:outline|Show full dashboard}} underneath it to see everything else.
 
+The header also changes: the three task buttons become a **Contact:** row — a green phone button that calls the office, plus {{button:blue|dispatch}}, {{button:purple|estimating}}, and {{button:blue|teammate}} spelled out. On a narrow phone screen they stay as the compact icon buttons, with the phone button on the left.
+
 ## The Job Mode card
 
 Here's what the card looks like during a working day:

@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-22 (v2.917)
+last_updated: 2026-07-22 (v2.918)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.918)
+
+### Job Mode: header "Contact:" row (2026-07-22)
+With Job Mode on and the viewport above the 640px mobile breakpoint, the header's three task icon buttons (Task Dispatch / Estimator Inbox / Task) become a labeled row: **Contact:** + a green phone button that `tel:`-dials the office (first assistant/controller phone via `useFirstAssistantDispatchPhone`, same number as My Schedule's "call dispatch") + **dispatch** / **estimating** / **teammate** spelled out in their existing colors, opening the same modals. On narrow viewports the compact icon buttons return, with the phone button kept on their left. `Layout.tsx` only; gated by `jobModeFooterActive` (non-Job-Mode headers unchanged). Help guide `job-mode-clocking.md` updated.
 
 ## Latest Updates (v2.917)
 

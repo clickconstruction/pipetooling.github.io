@@ -53,6 +53,7 @@ import {
 } from '../lib/headerTaskDispatchEstimatorEligible'
 import { impersonationExitDisplayLabel, impersonationExitTitle } from '../lib/impersonationUiLabels'
 import { useDispatchModeEnabled } from '../hooks/useDispatchModeEnabled'
+import { useFirstAssistantDispatchPhone } from '../hooks/useFirstAssistantDispatchPhone'
 import { DispatchModeFooter, DispatchModeFooterLive, DISPATCH_MODE_FOOTER_HEIGHT_PX } from './dispatchMode/DispatchModeFooter'
 import { CAN_USE_SCHEDULE_DISPATCH_EDIT_ROLES } from '../lib/scheduleDispatchEditRoles'
 import {
@@ -144,6 +145,10 @@ export default function Layout() {
     }
   }, [dispatchScheduleReturnEligible, navigate])
   const jobModeFooterActive = jobModeEnabled && jobModeMenuEligible && !dispatchModeActive
+  // Job Mode header "Contact:" row — the dispatch line phone plus the three task
+  // buttons spelled out; falls back to the icon buttons (with the phone kept on
+  // the left) when the viewport is too narrow to fit the labels.
+  const jobModeContactPhone = useFirstAssistantDispatchPhone(jobModeFooterActive)
   const { gateOpen: dailyGoalsGateOpen } = useDailyGoalsGate()
   const [impersonating, setImpersonating] = useState(
     () => typeof window !== 'undefined' && !!localStorage.getItem(IMPERSONATION_KEY)
@@ -158,6 +163,7 @@ export default function Layout() {
   const [isMobile, setIsMobile] = useState(
     () => typeof window !== 'undefined' && window.matchMedia('(max-width: 640px)').matches
   )
+  const jobModeContactRowFits = jobModeFooterActive && !isMobile
   const [pinForUsers, setPinForUsers] = useState<Array<{ id: string; name: string; email: string }>>([])
   const [pinForUserId, setPinForUserId] = useState('')
   const [pinForMessage, setPinForMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
@@ -737,7 +743,86 @@ export default function Layout() {
         )}
         <span style={{ marginLeft: 'auto', display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
           {headerSearchEligible && <HeaderGlobalSearchOpenButton placement="toolbar" isMobile={isMobile} />}
-          {showTaskDispatchButton(role) && (
+          {/* Job Mode: the three task buttons become a labeled "Contact:" row when the
+              viewport fits; small viewports keep the icon buttons with a phone on the left. */}
+          {jobModeContactRowFits && (
+            <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--chrome-muted, var(--text-muted))' }}>
+              Contact:
+            </span>
+          )}
+          {jobModeFooterActive && jobModeContactPhone && (
+            <a
+              href={jobModeContactPhone.telHref}
+              title={`Call the office at ${jobModeContactPhone.display}`}
+              aria-label={`Call the office at ${jobModeContactPhone.display}`}
+              style={{
+                ...headerActionButtonBase,
+                padding: '0.5rem 0.5rem',
+                background: '#16a34a',
+                color: 'white',
+                textDecoration: 'none',
+              }}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="1.25em" height="1.25em" fill="currentColor" aria-hidden="true">
+                <path d="M164.9 24.6c-7.7-18.6-28-28.5-47.4-23.2L31.4 24.9C13.4 29.8 0 46.3 0 64C0 311.4 200.6 512 448 512c17.7 0 34.2-13.4 39.1-31.4l23.5-86.1c5.3-19.4-4.6-39.7-23.2-47.4l-96-40c-16.3-6.8-35.2-2.1-46.3 11.6L304.7 368C234.3 334.7 177.3 277.7 144 207.3L193.3 167c13.7-11.2 18.4-30 11.6-46.3l-40-96z" />
+              </svg>
+            </a>
+          )}
+          {showTaskDispatchButton(role) && jobModeContactRowFits && (
+            <button
+              type="button"
+              onClick={() => dispatchTaskModal?.openDispatchModal()}
+              title="Task Dispatch"
+              aria-label="Task Dispatch"
+              style={{
+                ...headerActionButtonBase,
+                padding: '0.5rem 0.75rem',
+                background: '#0ea5e9',
+                color: 'white',
+                fontWeight: 600,
+                fontSize: '0.875rem',
+              }}
+            >
+              dispatch
+            </button>
+          )}
+          {showEstimatorInboxButton(role) && jobModeContactRowFits && (
+            <button
+              type="button"
+              onClick={() => estimatorTaskModal?.openEstimatorModal()}
+              title="Estimator Inbox"
+              aria-label="Estimator Inbox"
+              style={{
+                ...headerActionButtonBase,
+                padding: '0.5rem 0.75rem',
+                background: '#7c3aed',
+                color: 'white',
+                fontWeight: 600,
+                fontSize: '0.875rem',
+              }}
+            >
+              estimating
+            </button>
+          )}
+          {showHeaderTaskChecklistButton(role) && jobModeContactRowFits && (
+            <button
+              type="button"
+              onClick={() => checklistAddModal?.openAddModal()}
+              title="Task"
+              aria-label="Task"
+              style={{
+                ...headerActionButtonBase,
+                padding: '0.5rem 0.75rem',
+                background: '#3b82f6',
+                color: 'white',
+                fontWeight: 600,
+                fontSize: '0.875rem',
+              }}
+            >
+              teammate
+            </button>
+          )}
+          {showTaskDispatchButton(role) && !jobModeContactRowFits && (
             <button
               type="button"
               onClick={() => dispatchTaskModal?.openDispatchModal()}
@@ -755,7 +840,7 @@ export default function Layout() {
               </svg>
             </button>
           )}
-          {showEstimatorInboxButton(role) && (
+          {showEstimatorInboxButton(role) && !jobModeContactRowFits && (
             <button
               type="button"
               onClick={() => estimatorTaskModal?.openEstimatorModal()}
@@ -773,7 +858,7 @@ export default function Layout() {
               </svg>
             </button>
           )}
-          {showHeaderTaskChecklistButton(role) && (
+          {showHeaderTaskChecklistButton(role) && !jobModeContactRowFits && (
             <button
               type="button"
               onClick={() => checklistAddModal?.openAddModal()}
