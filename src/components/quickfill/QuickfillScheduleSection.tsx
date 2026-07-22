@@ -90,6 +90,8 @@ import { formatBidLedgerShortLine } from '../../lib/ledgerDisplayPrefixes'
 import { QUICKFILL_SECTION_BANNER_BOX_STYLE } from '../../lib/quickfillSectionBannerStyle'
 import { groupRosterUsersByAuthRoleSection } from '../../lib/usersTabRosterRoleSections'
 import { blocksToSegments } from '../../lib/quickfillScheduleSegments'
+import { reorderDayScheduleBlocks, scheduleTimeToMinutes as reorderTimeToMinutes, minutesToScheduleTime as reorderMinutesToTime } from '../../lib/reorderDayScheduleBlocks'
+import ReorderDayBlocksModal from '../schedule/ReorderDayBlocksModal'
 import { isAssistantLike } from '../../lib/subcontractorLikeRole'
 import {
   QuickfillScheduleUserRow,
@@ -415,6 +417,9 @@ export function QuickfillScheduleSection({
   const [assignJobPickerOpen, setAssignJobPickerOpen] = useState(false)
   const [assignJobPickerSearch, setAssignJobPickerSearch] = useState('')
   const [blockModalState, setBlockModalState] = useState<QuickfillBlockModalState | null>(null)
+  const [reorderUserId, setReorderUserId] = useState<string | null>(null)
+  const [reorderSaving, setReorderSaving] = useState(false)
+  const [reorderError, setReorderError] = useState<string | null>(null)
   const [addBlockTimelineSegments, setAddBlockTimelineSegments] = useState<AddBlockTimelineSegment[]>([])
   const [addBlockDraftByBlockId, setAddBlockDraftByBlockId] = useState<
     Record<string, { time_start: string; time_end: string }>
@@ -1000,6 +1005,74 @@ export function QuickfillScheduleSection({
     [blocksByUserId, dotSaving, loadData, showToast, onBlocksSaved],
   )
 
+  /** Reorder-day save: persist changed windows for this person, then shift every
+      other leg of any linked group by the same delta so crews stay in sync. */
+  const saveReorderedDay = useCallback(
+    async (newOrderedIds: string[]) => {
+      const userId = reorderUserId
+      if (!userId) return
+      const rows = blocksByUserId.get(userId) ?? []
+      let changes: ReturnType<typeof reorderDayScheduleBlocks>
+      try {
+        changes = reorderDayScheduleBlocks(
+          rows.map((r) => ({ id: r.id, time_start: r.time_start, time_end: r.time_end })),
+          newOrderedIds,
+        )
+      } catch {
+        setReorderError('The job list changed — close and reopen to reorder.')
+        return
+      }
+      if (changes.length === 0) {
+        setReorderUserId(null)
+        return
+      }
+      setReorderSaving(true)
+      setReorderError(null)
+      try {
+        const rowById = new Map(rows.map((r) => [r.id, r]))
+        for (const c of changes) {
+          const { error } = await updateJobScheduleBlock(c.id, {
+            time_start: c.time_start,
+            time_end: c.time_end,
+          })
+          if (error) {
+            setReorderError(error)
+            return
+          }
+          // Linked crew legs: same job, other assignees — shift by the same delta.
+          const source = rowById.get(c.id)
+          const groupId = source?.shared_block_group_id
+          if (source && groupId) {
+            const deltaMin = reorderTimeToMinutes(c.time_start) - reorderTimeToMinutes(source.time_start)
+            if (deltaMin !== 0) {
+              for (const [otherUserId, otherRows] of blocksByUserId) {
+                if (otherUserId === userId) continue
+                for (const leg of otherRows) {
+                  if (leg.shared_block_group_id !== groupId) continue
+                  const { error: legError } = await updateJobScheduleBlock(leg.id, {
+                    time_start: reorderMinutesToTime(reorderTimeToMinutes(leg.time_start) + deltaMin),
+                    time_end: reorderMinutesToTime(reorderTimeToMinutes(leg.time_end) + deltaMin),
+                  })
+                  if (legError) {
+                    setReorderError(legError)
+                    return
+                  }
+                }
+              }
+            }
+          }
+        }
+        showToast('Day reordered', 'success')
+        setReorderUserId(null)
+        await loadData({ quiet: true })
+        onBlocksSaved?.()
+      } finally {
+        setReorderSaving(false)
+      }
+    },
+    [reorderUserId, blocksByUserId, loadData, onBlocksSaved, showToast],
+  )
+
   const saveQuickfillBlockModal = useCallback(async () => {
     if (!blockModalState || !authUser?.id) return
     setAddSaving(true)
@@ -1367,6 +1440,14 @@ export function QuickfillScheduleSection({
                               }
                             : undefined
                         }
+                        onReorderClick={
+                          canEditSchedule && rows.length >= 2
+                            ? () => {
+                                setReorderError(null)
+                                setReorderUserId(id)
+                              }
+                            : undefined
+                        }
                         onOpenMyTimeForSessionStrip={
                           showStripSubjectMyTimeEditor ? openMyTimeForSessionStrip : undefined
                         }
@@ -1398,6 +1479,21 @@ export function QuickfillScheduleSection({
             jobId,
           })
         }}
+      />
+      <ReorderDayBlocksModal
+        open={reorderUserId != null}
+        onClose={() => setReorderUserId(null)}
+        personName={(reorderUserId ? nameById.get(reorderUserId) : null) ?? 'this person'}
+        blocks={(reorderUserId ? blocksByUserId.get(reorderUserId) ?? [] : []).map((r) => ({
+          id: r.id,
+          label: jobTitleById.get(r.job_id) ?? 'Job',
+          time_start: r.time_start,
+          time_end: r.time_end,
+          linked: r.shared_block_group_id != null,
+        }))}
+        saving={reorderSaving}
+        error={reorderError}
+        onSave={(ids) => void saveReorderedDay(ids)}
       />
       <ScheduleDispatchAddBlockModal
         open={blockModalState != null}

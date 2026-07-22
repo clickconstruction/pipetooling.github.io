@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-22 (v2.924)
+last_updated: 2026-07-22 (v2.925)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.925)
+
+### Dispatch Day view: reorder a person's jobs (2026-07-22)
+Steps 2+3 of the reorder feature (kernel: v2.924). Each person's Day-view row gets a **⇅** button (editors, 2+ blocks; stacked under the + in the same column so the orientation labels stay aligned) opening `ReorderDayBlocksModal`: the day's jobs with ▲▼ controls and a live old→new time preview (`previewReorderedDay`). Save persists only the changed windows via `updateJobScheduleBlock`, and **linked crew legs move together** — every other assignee's block in the same `shared_block_group_id` shifts by the same delta. Travel-time chips/warnings recompute automatically from the new times. Modal guards a first-render race (state syncs to the blocks prop via effect; renders from live day order until then). Help guide `schedule-dispatch.md` gains a "Reordering a person's day" section.
 
 ## Latest Updates (v2.924)
 
