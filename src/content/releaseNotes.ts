@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.945',
+    date: '2026-07-22',
+    title: 'Prospects card actions look like buttons',
+    kind: 'fix',
+    highlights: [
+      'Talked today, Passed, and the other candidate-card actions on the hiring boards now render as raised buttons instead of flat labels.',
+    ],
+  },
+  {
     version: 'v2.944',
     date: '2026-07-22',
     title: 'Release notes arrive in Settings',

@@ -260,13 +260,16 @@ function CandidateRatingBars({ candidate }: { candidate: TeamProspect }) {
 const inputStyle = { width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 } as const
 const labelSpanStyle = { display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' } as const
 const smallButtonStyle = (busy: boolean) => ({
-  padding: '0.25rem 0.5rem',
+  padding: '0.3rem 0.65rem',
   fontSize: '0.75rem',
-  background: 'none',
-  color: 'var(--text-muted)',
-  border: '1px solid var(--border)',
-  borderRadius: 4,
+  fontWeight: 600,
+  background: 'var(--bg-subtle)',
+  color: 'var(--text-700)',
+  border: '1px solid var(--border-strong)',
+  borderRadius: 6,
+  boxShadow: '0 1px 2px rgba(0,0,0,0.08)',
   cursor: busy ? 'not-allowed' : 'pointer',
+  opacity: busy ? 0.65 : 1,
 }) as const
 
 function dropId(roleKey: string): string {

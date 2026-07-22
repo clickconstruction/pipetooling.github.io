@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-22 (v2.944)
+last_updated: 2026-07-22 (v2.945)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.945)
+
+### Team Prospects: candidate card actions look like buttons (2026-07-22)
+The card actions on the Screen and Interview boards — **Talked today**, **Passed**, **Back to Screen**, **Edit my review** — previously rendered `background: none` with muted text and a hairline border, reading as chips/labels rather than tappable actions. The shared `smallButtonStyle` helper in [`src/components/prospects/TeamProspectsTab.tsx`](../src/components/prospects/TeamProspectsTab.tsx) now renders a raised button: `var(--bg-subtle)` fill, `var(--border-strong)` border, `var(--text-700)` text at weight 600, radius 6, a 1px shadow, slightly larger padding, and 0.65 opacity when busy. The filled **Advance** buttons (blue on Screen, green on Interview) keep their solid fills and inherit the weight/shadow; **Passed** keeps its red text on the new base. Style-only — no handlers, DB, or role changes.
 
 ## Latest Updates (v2.944)
 
