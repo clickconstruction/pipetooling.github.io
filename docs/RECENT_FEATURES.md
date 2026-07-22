@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-21 (v2.889)
+last_updated: 2026-07-21 (v2.890)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.890)
+
+### Dispatch Mode part 3: Schedule tab — month calendar + all-people agenda + dispatch bell (2026-07-21)
+`/dispatch-mode/schedule` renders [`DispatchModeSchedule`](../src/components/dispatchMode/DispatchModeSchedule.tsx), modeled on the HCP-style mobile schedule: header with a **bell** (opens the existing **Task Dispatch** modal — "send a note to dispatch"), **Today** jump, and a Sunday-first **month mini-calendar** (‹ › month nav, blue selected circle, dots on days with any schedule block via a one-column `job_schedule_blocks` range query). Below, the selected day's agenda lists **every person's** blocks sorted by time/assignee: time + duration | trade pill, number · job, customer, address, assignee — tap opens Job Detail. Pure unit-tested kernel [`dispatchModeSchedule.ts`](../src/lib/dispatchModeSchedule.ts) (month grid, date math, agenda heading/sort) + day/busy-days fetches. Person-filter drawer is a later phase.
 
 ## Latest Updates (v2.889)
 
