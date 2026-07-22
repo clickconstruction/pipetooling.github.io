@@ -5,7 +5,7 @@ import { useEstimatorInbox } from '../../hooks/useEstimatorInbox'
 
 export const DISPATCH_MODE_FOOTER_HEIGHT_PX = 60
 
-type TabKey = 'dashboard' | 'schedule' | 'inbox' | 'customers' | 'more'
+type TabKey = 'dashboard' | 'schedule' | 'inbox' | 'customers' | 'more' | 'po'
 
 type TabDef = {
   key: TabKey
@@ -70,6 +70,17 @@ const DISPATCH_TABS: TabDef[] = [
   },
 ]
 
+/** Gear-menu opt-in (Dispatch Mode only): mint material PO codes on the fly. Slots before More. */
+const PO_TAB: TabDef = {
+  key: 'po',
+  label: 'PO',
+  to: '/dispatch-mode/po',
+  // receipt
+  icon: svg(
+    'M168 64C137.1 64 112 89.1 112 120L112 552C112 561.1 117.1 569.4 125.3 573.5C133.5 577.6 143.2 576.6 150.4 571.2L197.4 536L262.6 571.2C270.7 577.6 282.2 577.6 290.3 571.2L342.6 536L400.6 571.2C408.7 577.6 420.2 577.6 428.3 571.2L475.3 536L489.6 571.2C496.8 576.6 506.5 577.6 514.7 573.5C522.9 569.4 528 561.1 528 552L528 120C528 89.1 502.9 64 472 64L168 64zM192 160L448 160C461.3 160 472 170.7 472 184C472 197.3 461.3 208 448 208L192 208C178.7 208 168 197.3 168 184C168 170.7 178.7 160 192 160zM192 256L448 256C461.3 256 472 266.7 472 280C472 293.3 461.3 304 448 304L192 304C178.7 304 168 293.3 168 280C168 266.7 178.7 256 192 256zM192 352L352 352C365.3 352 376 362.7 376 376C376 389.3 365.3 400 352 400L192 400C178.7 400 168 389.3 168 376C168 362.7 178.7 352 192 352z',
+  ),
+}
+
 /** Job Mode: the tech's own four tabs — Dashboard is the Job Mode card on /dashboard. */
 const JOB_TABS: TabDef[] = [
   { key: 'dashboard', label: 'Dashboard', to: '/dashboard', icon: DISPATCH_TABS[0]!.icon },
@@ -81,6 +92,7 @@ const JOB_TABS: TabDef[] = [
 export type ModeFooterVariant = 'dispatch' | 'job'
 
 function activeTabForPath(pathname: string, variant: ModeFooterVariant): TabKey | null {
+  if (variant === 'dispatch' && pathname.startsWith('/dispatch-mode/po')) return 'po'
   if (variant === 'job') {
     if (pathname === '/dashboard') return 'dashboard'
     if (pathname.startsWith('/job-mode/schedule')) return 'schedule'
@@ -120,14 +132,22 @@ const tabBtnBase: CSSProperties = {
 export function DispatchModeFooter({
   inboxBadgeCount = 0,
   variant = 'dispatch',
+  showPoTab = false,
 }: {
   inboxBadgeCount?: number
   variant?: ModeFooterVariant
+  /** Gear-menu opt-in: adds the PO tab (dispatch variant only). */
+  showPoTab?: boolean
 }) {
   const navigate = useNavigate()
   const location = useLocation()
   const active = activeTabForPath(location.pathname, variant)
-  const TABS = variant === 'job' ? JOB_TABS : DISPATCH_TABS
+  const TABS =
+    variant === 'job'
+      ? JOB_TABS
+      : showPoTab
+        ? [...DISPATCH_TABS.slice(0, -1), PO_TAB, DISPATCH_TABS[DISPATCH_TABS.length - 1]!]
+        : DISPATCH_TABS
 
   return (
     <nav
@@ -199,11 +219,11 @@ export function DispatchModeFooter({
  * Footer + live Inbox badge (open dispatch + estimator requests). Mounted only
  * while Dispatch Mode is on, so the inbox engines don't run for everyone.
  */
-export function DispatchModeFooterLive() {
+export function DispatchModeFooterLive({ showPoTab = false }: { showPoTab?: boolean }) {
   const dispatchInbox = useDispatchInbox()
   const estimatorInbox = useEstimatorInbox()
   const count =
     (dispatchInbox.dispatchInboxEligible ? dispatchInbox.dispatchRequests.length : 0) +
     (estimatorInbox.estimatorInboxEligible ? estimatorInbox.estimatorRequests.length : 0)
-  return <DispatchModeFooter inboxBadgeCount={count} />
+  return <DispatchModeFooter inboxBadgeCount={count} showPoTab={showPoTab} />
 }
