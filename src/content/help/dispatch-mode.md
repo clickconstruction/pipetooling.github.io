@@ -19,7 +19,7 @@ It's per-person and per-device, so switching it on for yourself on your phone ch
 - **Dashboard** — your clock in/out control up top, then **Job Stages**: every open job grouped under Waiting, Working, Ready to bill, Billed awaiting payment, and Collections. Tap a job to open its Job Detail.
 - **Schedule** — a month calendar with dots on days that have work, and the selected day's agenda below: every person's blocks with time, duration, job, customer, address, and who's assigned. Tap a visit to open the job. The {{icon:help|bell}} **bell** in the top-left sends a note to dispatch (it opens the Task Dispatch flow), and **Today** jumps back to today.
 - **Inbox** — **My Inbox**, the **Dispatch inbox**, and the **Estimator inbox** stacked in one scroll, working exactly like their Dashboard versions. The tab's red badge counts open dispatch + estimator requests.
-- **Customers** — a searchable customer list; each row shows how many jobs that customer has had. Tap through to the full customer record.
+- **Customers** — a searchable customer list; each row shows how many jobs that customer has had and when they were last worked (or "in Nd" when a visit is scheduled). Tapping a customer opens the **Customer Summary**: their details up top, then every interaction across all their jobs — notes, reports, schedule, clock sessions, and system events — with the same All / Notes / Reports / Status / Billing / Crew filter buttons as Job Detail, and each line tagged with its job number and address.
 - **More** — drops you into the regular app (starting at the Dashboard). The tab bar stays put, so you can browse anywhere and hop back to a tab in one tap.
 
 ## Turning it off
