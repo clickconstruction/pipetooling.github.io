@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-21 (v2.875)
+last_updated: 2026-07-21 (v2.876)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.876)
+
+### Dispatch → People: today's column gets an orange outline on top of the yellow tint (2026-07-21)
+The existing yellow today tint was easy to miss; the whole column is now also boxed in orange (`#ea580c`, saturated status literal). Implemented as inset box-shadow rails — new pure helper [`scheduleDispatchTodayColumnBoxShadow`](../src/lib/scheduleDispatchColumnFocus.ts) (unit-tested) gives the header cell a top edge, every body cell left/right rails, and the last grid row a bottom edge (`isBottomRow` prop on `HubPeopleDayCell`), joining into one closed rectangle. Composes with the column-focus underline; heading rows in role/lanes grouping span full width so the rails skip them. Help guide sentence updated.
 
 ## Latest Updates (v2.875)
 

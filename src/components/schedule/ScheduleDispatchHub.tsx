@@ -47,6 +47,7 @@ import {
   SCHEDULE_DISPATCH_TODAY_COLUMN_BG,
   scheduleDispatchDayColumnCellIdleBg,
   scheduleDispatchDayColumnHeaderStyle,
+  scheduleDispatchTodayColumnBoxShadow,
   scheduleDispatchDayColumnJobsSummaryCellBg,
   useScrollScheduleDispatchColumnIntoView,
 } from '../../lib/scheduleDispatchColumnFocus'
@@ -820,6 +821,7 @@ function HubPeopleDayCell({
   onMarkNotComingInForCell,
   linkedCopyMode = null,
   onLinkedCopyToggleBlock,
+  isBottomRow = false,
 }: {
   personUserId: string
   workDate: string
@@ -854,6 +856,8 @@ function HubPeopleDayCell({
   onMarkNotComingInForCell?: (personUserId: string, workDate: string) => void
   linkedCopyMode?: LinkedCopyMode | null
   onLinkedCopyToggleBlock?: (blockId: string) => void
+  /** Last grid row closes the orange today-column outline with a bottom edge. */
+  isBottomRow?: boolean
 }) {
   const cellHasTimeOff = timeOffInfo != null
   const droppableId = scheduleDispatchCellDroppableId(workDate, personUserId)
@@ -938,6 +942,9 @@ function HubPeopleDayCell({
         isolation: 'isolate',
         padding: '0.35rem',
         border: isMultiSelected && multiSelectCellActive ? '2px solid #ca8a04' : '1px solid var(--border)',
+        boxShadow: scheduleDispatchTodayColumnBoxShadow(workDate === scheduleTodayYmd, {
+          bottom: isBottomRow,
+        }),
         verticalAlign: 'top',
         maxWidth: 200,
         maxHeight: 180,
@@ -1771,7 +1778,16 @@ function HubPeoplePanel({
                   </span>
                 </button>
               </th>
-              {visibleDayKeys.map((dk) => (
+              {visibleDayKeys.map((dk) => {
+                const headerStyle = scheduleDispatchDayColumnHeaderStyle(
+                  dk,
+                  { scheduleTodayYmd, columnFocusDayYmd },
+                  'var(--bg-muted)',
+                )
+                const todayEdges = scheduleDispatchTodayColumnBoxShadow(dk === scheduleTodayYmd, {
+                  top: true,
+                })
+                return (
                 <th
                   key={dk}
                   data-schedule-column-day={dk}
@@ -1779,7 +1795,9 @@ function HubPeoplePanel({
                     textAlign: 'center',
                     padding: '0.35rem',
                     border: '1px solid var(--border)',
-                    ...scheduleDispatchDayColumnHeaderStyle(dk, { scheduleTodayYmd, columnFocusDayYmd }, 'var(--bg-muted)'),
+                    ...headerStyle,
+                    boxShadow:
+                      [headerStyle.boxShadow, todayEdges].filter(Boolean).join(', ') || undefined,
                     fontSize: '0.75rem',
                     minWidth: 104,
                   }}
@@ -1812,7 +1830,8 @@ function HubPeoplePanel({
                     ) : null}
                   </span>
                 </th>
-              ))}
+                )
+              })}
             </tr>
           </thead>
           <tbody>
@@ -1826,7 +1845,7 @@ function HubPeoplePanel({
                 </td>
               </tr>
             ) : (
-              peopleDisplayRows.map((item) => {
+              peopleDisplayRows.map((item, itemIndex) => {
                 if (item.kind === 'heading') {
                   const laneApplyActive =
                     linkedCopyMode?.stage === 2 &&
@@ -2014,6 +2033,7 @@ function HubPeoplePanel({
                         timeOffInfo={timeOffInfo}
                         onRequestUndoNotComingIn={onRequestUndoNotComingIn}
                         onMarkNotComingInForCell={onMarkNotComingInForCell}
+                        isBottomRow={itemIndex === peopleDisplayRows.length - 1}
                       />
                     )
                   })}
