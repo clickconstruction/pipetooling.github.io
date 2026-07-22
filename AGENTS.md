@@ -67,7 +67,7 @@ Full index: [docs/README.md](./docs/README.md). Fast pointers for the most commo
 8. **Realtime subscriptions** — use `useRealtimeChannel` from `src/hooks/useRealtimeChannel.ts` for every `postgres_changes` listener; filter server-side via the `filter` string; don't add tables to the `supabase_realtime` publication casually.
 9. **Branch + PR workflow** — `main` is branch-protected. Branch → PR (`gh pr create --fill`) → CI `checks` (typecheck + lint + test) green → squash-merge. Run `npm run typecheck && npm run lint && npm test && npm run build` locally first. Never `git add -A` — stage specific files (parallel sessions leave WIP in the tree).
 10. **Theme tokens, not raw hexes** — use CSS variables from `src/index.css`; CI fails on raw neutral hexes (`node scripts/theme-tokenize.mjs --check src`).
-11. **Docs ship with the PR** — `docs/RECENT_FEATURES.md` entry (next `v2.NNN`), plus the matching specialist doc and help guide when the change warrants it (see `CLAUDE.md` → Working conventions). Do **not** append feature detail to this file, `docs/AI_CONTEXT.md`, or `docs/README.md`.
+11. **Docs ship with the PR** — `docs/RECENT_FEATURES.md` entry (next `v2.NNN`) **+ a matching `src/content/releaseNotes.ts` entry with the same version** (user-readable; CI-enforced by `src/lib/releaseNotes.test.ts`), plus the matching specialist doc and help guide when the change warrants it (see `CLAUDE.md` → Working conventions). Do **not** append feature detail to this file, `docs/AI_CONTEXT.md`, or `docs/README.md`.
 
 ---
 

@@ -5,7 +5,7 @@ file: docs/SETTINGS_TABS_ARCHITECTURE.md
 type: Engineering / Refactor Map
 purpose: Step-0 map for the Settings.tsx decomposition (per PAGE_DECOMPOSITION_PLAYBOOK.md) — inventory what is ALREADY extracted (Settings shrank ~12k → ~5.1k lines without a map) and what remains inline in src/pages/Settings.tsx (state, loaders, handlers, supabase tables/RPCs, role gates, coupling), to drive the remaining multi-PR extraction.
 audience: Developers, AI Agents
-last_updated: 2026-07-21
+last_updated: 2026-07-22
 ---
 
 ## Overview
@@ -56,6 +56,7 @@ Tabs in `getSettingsJumpGroups` order. "Engine location" = where the tab's state
 | 8 | Templates & testing (`settings-templates`) | `SettingsTemplatesTab` (+ 6 self-contained dev blocks inside) | extracted | **self-contained** via `useSettingsTemplatesEngine` (v2.854) | 3 (`authUser`, `users`, `setError`) | — | ~~Order #2~~ **done (v2.854)** |
 | 9 | Advanced (`settings-advanced-tools`) | `SettingsAdvancedTab` | extracted | parent (`handleClaimCode`, 3 state) | 8 | low | Move claim-code state/handler into the tab (tiny) |
 | 10 | How it works (`settings-how-it-works`) | `SettingsHowItWorksTab` | extracted | stateless | 1 (`active`) | — | Done |
+| 11 | Release notes (`settings-release-notes`) | `SettingsReleaseNotesSection` | extracted (born) | **self-contained** (static data from `src/content/releaseNotes.ts`) | 0 | — | Done (v2.944) |
 | — | Page shell (banner, header, tab bar, jump groups) | inline | — | parent | — | — | **Stays in parent permanently** |
 | — | Cross-tab modals (report view/edit, MyReports, mute) | extracted components, wiring inline | — | parent | — | — | Stays (opened from Dashboard tab, shared `loadMyReportsRef`) |
 
@@ -195,6 +196,13 @@ Nine runtime roles: `dev`, `master_technician`, `assistant`, `controller`, `esti
 ### 10. How it works
 
 - **Render:** `<SettingsHowItWorksTab active={...} />` (~5129). All roles. **Done** — stateless static copy.
+
+---
+
+### 11. Release notes (v2.944)
+
+- **Render:** `SettingsGroup id="settings-release-notes"` wrapping `<SettingsReleaseNotesSection />`, between Advanced and How it works. All roles. **Done — born extracted, self-contained** (zero parent props; renders the static `RELEASE_NOTES` array from [`src/content/releaseNotes.ts`](../src/content/releaseNotes.ts), local `showAll` state only).
+- **Convention this tab carries:** every feature/fix PR adds a `releaseNotes.ts` entry with the same `v2.NNN` as its `RECENT_FEATURES.md` entry; the drift test in `src/lib/releaseNotes.test.ts` fails CI when the newest versions diverge. No supabase tables/RPCs.
 
 ---
 
