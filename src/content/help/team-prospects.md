@@ -61,7 +61,7 @@ Across the top of the tab: **Screen → Interview → Hire** — live counts und
 
 - **Screen** — the sourcing board: role columns, drag-ranking, and the rating sliders. When someone's worth a call, hit {{button:blue|Advance}} on their card.
 - **Interview** — the same role columns, now amber: each candidate shows a tap-to-call phone, the sourcing scores, and everyone's reviews. Anyone can {{button:green|Advance}} them to Hire (or send them Back to Screen).
-- **Hire** — everyone you've hired, with a jump Back to Interview if a hire falls through.
+- **Hire** — onboarding: every hire shows a row of red/yellow/green boxes for the company's checklist (collect the driver's license, signed contract, …). Tap a box to move it along: red (not started) → yellow (requested — you've asked and are waiting) → green (done); tapping again from green resets it. A {{chip:gray|🔗}} next to a box opens that item's document — the thing to share, or where the person finds their copy. A **n/N done** counter sits on each hire, and devs manage the checklist itself (questions, links, order) under **⚙ Onboarding settings** on this tab.
 
 ## Interview calls
 

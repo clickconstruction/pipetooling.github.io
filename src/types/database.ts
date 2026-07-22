@@ -9637,6 +9637,85 @@ export type Database = {
           },
         ]
       }
+      team_onboarding_items: {
+        Row: {
+          created_at: string | null
+          id: string
+          label: string
+          link_url: string | null
+          position: number
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          label: string
+          link_url?: string | null
+          position?: number
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          label?: string
+          link_url?: string | null
+          position?: number
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      team_prospect_onboarding_statuses: {
+        Row: {
+          created_at: string | null
+          id: string
+          item_id: string
+          status: string
+          team_prospect_id: string
+          updated_at: string | null
+          updated_by: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          item_id: string
+          status?: string
+          team_prospect_id: string
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          item_id?: string
+          status?: string
+          team_prospect_id?: string
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_prospect_onboarding_statuses_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "team_onboarding_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "team_prospect_onboarding_statuses_team_prospect_id_fkey"
+            columns: ["team_prospect_id"]
+            isOneToOne: false
+            referencedRelation: "team_prospects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "team_prospect_onboarding_statuses_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       team_prospect_reviews: {
         Row: {
           created_at: string | null

@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-22 (v2.930)
+last_updated: 2026-07-22 (v2.931)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.931)
+
+### Team Prospects: Hire tab becomes an onboarding tracker (2026-07-22)
+The Hire stage now tracks onboarding. Devs define checklist items under **⚙ Onboarding settings** (question + optional link to the document to share / where to find it + ▲▼ order). Every hire shows one **box per item**: red (pending) → tap → yellow (requested) → tap → green (done) → tap → reset; optimistic updates (upsert `team_prospect_onboarding_statuses` on conflict), a 🔗 segment opens the item's link in a new tab, and each hire carries an **n/N done** counter that turns green when complete. Migration `20260722240000_team_onboarding.sql` (**requires `supabase db push` after merge**): items table (dev-managed via RLS) + statuses (prospects staff; no row = pending). Tables added to `database.ts`; `TeamProspectsTab` gains an `isDev` prop. Help guide's Hire bullet rewritten.
 
 ## Latest Updates (v2.930)
 
