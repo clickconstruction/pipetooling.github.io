@@ -2,8 +2,10 @@ import { useCallback, useEffect, useState } from 'react'
 import {
   DISPATCH_MODE_CHANGED_EVENT,
   dispatchModeStorageKey,
+  fetchDispatchModeEnabledFromServer,
   readDispatchModeEnabled,
   writeDispatchModeEnabled,
+  writeDispatchModeEnabledToServer,
 } from '../lib/dispatchModeToggle'
 
 /**
@@ -17,6 +19,20 @@ export function useDispatchModeEnabled(
 
   useEffect(() => {
     setEnabled(readDispatchModeEnabled(userId))
+    // Server is the cross-device truth; reconcile the per-device cache to it.
+    if (!userId) return
+    let cancelled = false
+    void fetchDispatchModeEnabledFromServer(userId).then((server) => {
+      if (cancelled || server == null) return
+      if (server !== readDispatchModeEnabled(userId)) {
+        writeDispatchModeEnabled(userId, server)
+        setEnabled(server)
+        window.dispatchEvent(new Event(DISPATCH_MODE_CHANGED_EVENT))
+      }
+    })
+    return () => {
+      cancelled = true
+    }
   }, [userId])
 
   useEffect(() => {
@@ -42,6 +58,7 @@ export function useDispatchModeEnabled(
       writeDispatchModeEnabled(userId, next)
       setEnabled(next)
       window.dispatchEvent(new Event(DISPATCH_MODE_CHANGED_EVENT))
+      if (userId) void writeDispatchModeEnabledToServer(userId, next)
     },
     [userId],
   )

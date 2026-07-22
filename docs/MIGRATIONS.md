@@ -5,7 +5,7 @@ file: MIGRATIONS.md
 type: Reference/Changelog
 purpose: Complete database migration history organized by date and category
 audience: Developers, Database Administrators, AI Agents
-last_updated: 2026-07-21
+last_updated: 2026-07-22
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate to Advanced
 
@@ -102,6 +102,14 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 > **Reading older entries:** filenames beginning **`2027…`** are **typo-dated** (the real work happened March–June 2026). All of them predate the **2026-06-04 baseline squash** — the files now live in [`supabase/archive/migrations-pre-baseline/`](../supabase/archive/migrations-pre-baseline/) and their schema is part of [`20250101000000_baseline.sql`](../supabase/migrations/20250101000000_baseline.sql). Entries below keep the original filenames so they match the archive. The prod ledger was fully reconciled on **2026-07-04** (backup: `supabase_migrations._schema_migrations_backup_20260704`); since then, migrations apply **only** via `supabase db push` (see `CLAUDE.md`).
 
 ### July 2026
+
+#### July 22, 2026
+
+**`20260722120000_users_dispatch_mode.sql`** _(apply via `supabase db push` after the file is on `main`)_
+- **Purpose**: **Dispatch Mode server persistence** (v2.905). Adds `users.dispatch_mode_enabled boolean NOT NULL DEFAULT false` — the mode was per-device localStorage only; the flag now follows the user across browsers/computers (the client keeps localStorage as the instant-boot cache and reconciles to the server on mount).
+- **Security**: rides the existing "Users can update own profile" RLS policy (row-scoped self-update); no policy changes. `ADD COLUMN IF NOT EXISTS` — idempotent, additive, no CREATE TABLE → read-only-block footer not required.
+- **Ordering**: safe before or after the client deploy — old clients ignore the column; the new client degrades gracefully (fetch/write errors keep the per-device cache) until the column exists.
+- **Category**: Dispatch Mode / preference
 
 #### July 21, 2026
 

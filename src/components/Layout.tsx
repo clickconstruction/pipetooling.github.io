@@ -55,6 +55,11 @@ import { impersonationExitDisplayLabel, impersonationExitTitle } from '../lib/im
 import { useDispatchModeEnabled } from '../hooks/useDispatchModeEnabled'
 import { DispatchModeFooter, DispatchModeFooterLive, DISPATCH_MODE_FOOTER_HEIGHT_PX } from './dispatchMode/DispatchModeFooter'
 import { CAN_USE_SCHEDULE_DISPATCH_EDIT_ROLES } from '../lib/scheduleDispatchEditRoles'
+import {
+  isDispatchModeReturnAfterAway,
+  readDispatchModeLastActive,
+  stampDispatchModeActivity,
+} from '../lib/dispatchModeReturnFocus'
 import { IMPERSONATION_CHROME_BUTTON_STYLE } from '../lib/impersonationSession'
 
 const navStyle = ({ isActive }: { isActive: boolean }) => ({
@@ -103,6 +108,37 @@ export default function Layout() {
   const [dispatchModeEnabled, setDispatchModeEnabled] = useDispatchModeEnabled(authUser?.id ?? null)
   const dispatchModeMenuEligible = role != null && CAN_USE_SCHEDULE_DISPATCH_EDIT_ROLES.has(role)
   const dispatchModeActive = dispatchModeEnabled && dispatchModeMenuEligible
+
+  /**
+   * Assistants in Dispatch Mode: opening the app after 5+ minutes away lands on
+   * the Schedule tab. Activity is stamped continuously; the check runs once on
+   * mount and again whenever the tab becomes visible.
+   */
+  const dispatchScheduleReturnEligible = dispatchModeActive && isAssistantLike(role)
+  const dispatchReturnCheckedRef = useRef(false)
+  useEffect(() => {
+    if (!dispatchScheduleReturnEligible) return
+    const maybeJump = () => {
+      if (isDispatchModeReturnAfterAway(readDispatchModeLastActive(), Date.now())) {
+        navigate('/dispatch-mode/schedule')
+      }
+      stampDispatchModeActivity(Date.now())
+    }
+    if (!dispatchReturnCheckedRef.current) {
+      dispatchReturnCheckedRef.current = true
+      maybeJump()
+    }
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') maybeJump()
+      else stampDispatchModeActivity(Date.now())
+    }
+    const interval = window.setInterval(() => stampDispatchModeActivity(Date.now()), 60_000)
+    document.addEventListener('visibilitychange', onVisibility)
+    return () => {
+      window.clearInterval(interval)
+      document.removeEventListener('visibilitychange', onVisibility)
+    }
+  }, [dispatchScheduleReturnEligible, navigate])
   const jobModeFooterActive = jobModeEnabled && jobModeMenuEligible && !dispatchModeActive
   const { gateOpen: dailyGoalsGateOpen } = useDailyGoalsGate()
   const [impersonating, setImpersonating] = useState(
