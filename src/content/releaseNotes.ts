@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.946',
+    date: '2026-07-22',
+    title: 'Comment on each interview rating',
+    kind: 'feature',
+    highlights: [
+      'My review on the hiring boards now takes an optional note under each rating — Ability, Drive, and Integrity each get their own "why this score" comment.',
+      'Comments show under your numbers on the candidate card, alongside your overall remarks.',
+    ],
+  },
+  {
     version: 'v2.945',
     date: '2026-07-22',
     title: 'Prospects card actions look like buttons',

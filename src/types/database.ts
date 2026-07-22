@@ -9745,6 +9745,9 @@ export type Database = {
       }
       team_prospect_reviews: {
         Row: {
+          comment_ability: string | null
+          comment_drive: string | null
+          comment_integrity: string | null
           created_at: string | null
           id: string
           rating_ability: number | null
@@ -9756,6 +9759,9 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          comment_ability?: string | null
+          comment_drive?: string | null
+          comment_integrity?: string | null
           created_at?: string | null
           id?: string
           rating_ability?: number | null
@@ -9767,6 +9773,9 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          comment_ability?: string | null
+          comment_drive?: string | null
+          comment_integrity?: string | null
           created_at?: string | null
           id?: string
           rating_ability?: number | null
