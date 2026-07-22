@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-21 (v2.893)
+last_updated: 2026-07-22 (v2.895)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,16 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.895)
+
+### Dispatch Mode Customers: last-interaction label + Name/Interacted sort (2026-07-22)
+Each customer row now shows **how long since their jobs were last worked** ("today" / "3d ago", hover shows the date) left of the job-count pill — derived as max `jobs_ledger.last_work_date` (last approved clock session) across the customer's jobs, one extra column on the existing fetch. New **Sort By: Name / Interacted** chips above the search box: Interacted puts the most recently worked customers first, never-worked customers last, ties alphabetical. Pure unit-tested kernel [`dispatchModeCustomers.ts`](../src/lib/dispatchModeCustomers.ts) (5 tests).
+
+## Latest Updates (v2.894)
+
+### Dispatch Mode tweaks: Waiting collapsed, two-week strip, assignee on the right (2026-07-22)
+Three follow-ups from first use: **(1)** the Dashboard tab's **Waiting** stage group starts collapsed (usually the longest, least actionable list — still one tap to open); **(2)** the Schedule tab's month calendar is replaced by a **two-week strip** — the current week and the next (Sunday-first, dots preserved, `dispatchModeTwoWeekGrid` kernel + test) — with the month title/arrows removed; **(3)** on viewports wider than mobile (>640px), the agenda card shows the **assignee's name on the right edge**, vertically centered, instead of under the address (mobile keeps the stacked layout).
 
 ## Latest Updates (v2.893)
 
