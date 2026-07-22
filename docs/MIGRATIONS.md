@@ -105,6 +105,12 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 #### July 22, 2026
 
+**`20260722230000_pay_flags_no_raise.sql`** _(apply via `supabase db push` after the file is on `main`)_
+- **Purpose**: **Postgres log-noise fix** (v2.914). `list_people_pay_flags()` raised exceptions for unauthenticated callers and for roles outside dev/master/assistant/controller — ~2,000 ERROR log lines/day, since labor-math paths run for field roles and swallow the error client-side. Disallowed callers now get **zero rows** instead of an exception; the access boundary (which roles see the flags) is unchanged.
+- **Security**: identical data exposure; SECURITY DEFINER + guard retained, only the failure mode changes (empty vs raise).
+- **Ordering**: independent of client deploys.
+- **Category**: Payroll / observability / fix
+
 **`20260722210000_customers_field_schedule_select.sql`** _(apply via `supabase db push` after the file is on `main`)_
 - **Purpose**: **Job Mode Customers visibility for field crew** (v2.913). The Job Mode Customers tab lists customers whose jobs are on the tech's schedule, but `customers` SELECT policies covered only the owning master / dev / master_technician / adopted assistants — subcontractors and helpers saw an empty list. Adds SECURITY DEFINER `user_has_schedule_block_for_customer(uuid)` (bypasses inner RLS on `jobs_ledger`/`job_schedule_blocks` so a block on a non-team job still counts) + a `customers` SELECT policy calling it.
 - **Security**: read-only; EXECUTE granted to `authenticated` only; exposes a customer row exactly when one of their jobs has a schedule block assigned to the caller (the tech is being sent to that customer). Both join columns are indexed (`idx_job_schedule_blocks_assignee_work_date`, `idx_jobs_ledger_customer_id`). No CREATE TABLE → read-only-block footer not required.
