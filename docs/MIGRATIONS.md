@@ -105,6 +105,12 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 #### July 22, 2026
 
+**`20260722238000_team_prospect_reviews.sql`** _(apply via `supabase db push` after the file is on `main`)_
+- **Purpose**: Team prospect screening (v2.927) — `team_prospect_reviews` table (one row per candidate+reviewer: three 0-100 CHECKed nullable ratings + remarks; UNIQUE pair) and widens the `team_prospects.status` CHECK to include `'calling'` (the Call list stage).
+- **Security**: RLS — prospects staff read all reviews; reviewers insert/update/delete only their own. CREATE TABLE ends with both read-only-block calls per house rules.
+- **Ordering**: client tolerates the table being absent (reviews hidden) but "Pull up" needs the widened CHECK — apply promptly after merge.
+- **Category**: Recruiting / feature
+
 **`20260722236000_team_prospect_ratings.sql`** _(apply via `supabase db push` after the file is on `main`)_
 - **Purpose**: Team prospect ratings (v2.926) — three nullable 0-100 integer columns on `team_prospects` (`rating_ability`, `rating_drive`, `rating_integrity`) with CHECK constraints. NULL = unrated (distinct from a deliberate 0). Rated via sliders in the Edit candidate modal; shown as narrow bars on board cards.
 - **Security**: additive; existing team_prospects RLS covers the columns.

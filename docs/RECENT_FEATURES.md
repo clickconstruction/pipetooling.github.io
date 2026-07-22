@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-22 (v2.926)
+last_updated: 2026-07-22 (v2.927)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.927)
+
+### Team Prospects: Call list, per-reviewer reviews, Hired→roster handoff (2026-07-22)
+The sourcing board becomes a full pipeline. **📞 Pull up** on any card moves the candidate to a new amber **Call list** section (new `'calling'` status; they leave their role column and free their rank) with a tap-to-call phone button. Reviewers (e.g. master/dev) each leave **their own** three 0-100 ratings + remarks via **My review** (`team_prospect_reviews`, unique per candidate+reviewer, upsert; everyone's reviews display on the row alongside William's sourcing bars — no blind reviewing). **Hired** (from anywhere) now offers "Add to the People roster" — kind picker (sub/helper), name/phone/email carried over — landing them in People → Users (External) ready for sub payments, with the v2.920 Link account flow tying in a login later. Migration `20260722238000_team_prospect_reviews.sql` (**requires `supabase db push` after merge**). `groupTeamProspects` gains the `calling` bucket (+ test); `RatingSliders` generalized for reuse; `team_prospect_reviews` added to `database.ts`. Help guide gains "Screening calls" and "Hiring someone onto the roster".
 
 ## Latest Updates (v2.926)
 
