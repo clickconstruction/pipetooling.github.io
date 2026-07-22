@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-22 (v2.947)
+last_updated: 2026-07-22 (v2.948)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.948)
+
+### Prospects → Team: Review stage — monthly ratings of current team members (2026-07-22)
+Fourth stage tab **Review** after Screen → Interview → Hire, with two sub-tabs. **Rate**: a card deck of every **active user of every role** (People → Users section order via `AUTH_USER_ROLE_SECTION_ORDER`), ◀ ▶ / arrow-key navigation with wrap-around, a jump-to-person dropdown, and "N of M". Each card shows name, role, the person's **last 5 jobs** (from approved `clock_sessions` joined by `user_id` — no name joins — via new SECURITY DEFINER RPC `list_team_member_recent_jobs()`, zero rows for callers without prospects access per the v2.914 no-raise pattern), then the same three 0–100 sliders as candidate reviews (`RATING_DEFS`) with per-dimension comments. Sliders prefill from your latest review of that person; **Save upserts one row per (subject, reviewer, month)** (`review_month` = first-of-month in `APP_CALENDAR_TZ`) — a monthly time series, re-saves within a month update that month's row. **Reflect**: per-person cards with a **cross-reviewer average** of each reviewer's latest ratings, every reviewer's latest review (numbers + comments + month), and a History toggle of all months. Migration [`20260722252000_team_member_reviews.sql`](../supabase/migrations/20260722252000_team_member_reviews.sql): `team_member_reviews` table (UNIQUE subject+reviewer+month, first-of-month CHECK, both read-only-block calls) + the RPC; RLS = `user_has_prospects_staff_access()` reads, reviewer-owned writes. Client: new self-contained [`TeamReviewSection.tsx`](../src/components/prospects/TeamReviewSection.tsx); rating defs/sliders moved verbatim from `TeamProspectsTab.tsx` to shared [`ratingDimensions.tsx`](../src/components/prospects/ratingDimensions.tsx); kernel [`src/lib/prospects/teamMemberReviews.ts`](../src/lib/prospects/teamMemberReviews.ts) (ordering, month math, latest-per-reviewer, averages — 14 tests). Long-term slot: People → Review performance context can join by `subject_user_id` later. Help guide + ACCESS_CONTROL + GLOSSARY updated.
 
 ## Latest Updates (v2.947)
 

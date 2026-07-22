@@ -146,6 +146,9 @@ Prospective **hires** — candidates for the crew, tracked separately from custo
 
 **Key Fields**: name, trade, source, status, role_id, rank_order (per-column), last_contact, master_user_id
 
+### Team member review (vs prospect review)
+Two review tables share the three rating dimensions (Ability / Drive / Integrity, 0–100 + per-dimension comments) but differ in shape. **`team_prospect_reviews`** (v2.927): one **editable** row per (candidate, reviewer) — a screening-call verdict on a prospective hire. **`team_member_reviews`** (v2.948): a **monthly time series** on CURRENT team members — one row per (subject `users.id`, reviewer, `review_month` first-of-month in company time); re-saving within a month updates that month's row. Surfaced at Prospects → Team → **Review** (Rate = card deck of all active users with their last-5-jobs context via `list_team_member_recent_jobs()`; Reflect = everyone's latest reviews + cross-reviewer averages + history). Same visibility gate as the rest of the Team board; writes are reviewer-owned.
+
 ### Project
 A job site or construction project for a specific customer. Each project has one workflow. The project owner automatically matches the customer owner (enforced by database trigger).
 

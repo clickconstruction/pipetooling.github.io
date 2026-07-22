@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.948',
+    date: '2026-07-22',
+    title: 'Rate your current team, monthly',
+    kind: 'feature',
+    highlights: [
+      'New Review stage on the Team board: flip through a card for each team member — name, role, their last 5 jobs — and score Ability, Drive, and Integrity with a note per rating.',
+      'One review per person per month builds a track record over time.',
+      'The Reflect view shows everyone’s latest reviews side by side with a team average per person.',
+    ],
+  },
+  {
     version: 'v2.947',
     date: '2026-07-22',
     title: 'Internal: database type definitions refreshed',

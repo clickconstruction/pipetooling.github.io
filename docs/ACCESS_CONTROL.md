@@ -301,6 +301,7 @@ Pipetooling implements comprehensive role-based access control (RBAC) using nine
 **Prospects**:
 - Activity tab (formerly "Team"; under the top-level Customers tab): Visible to dev and assistant; shows last 30 days of prospect activity (User | Cards Marked | Cards Updated)
 - Team tab (top-level, v2.709/v2.712/v2.714): prospective-hires board (`team_prospects` + `team_prospect_roles`) — **per-user**: requires `users.team_prospects_access` (dev-set in Settings → Active accounts, default off for everyone including devs) on top of prospects staff access; enforced by `user_has_team_prospects_access()` in RLS and guarded against self-granting by `users_guard_privileged_columns`
+- Team → Review stage (v2.948): `team_member_reviews` (monthly ratings of current team members) rides the same gates — SELECT for `user_has_prospects_staff_access()`, INSERT/UPDATE/DELETE only own rows (`reviewer_user_id = auth.uid()`); RPC `list_team_member_recent_jobs()` returns zero rows without prospects access
 
 ---
 

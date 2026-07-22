@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react'
+import { COMMENT_KEY_BY_RATING, RATING_DEFS, RatingSliders, type RatingKey } from './ratingDimensions'
+import TeamReviewSection from './TeamReviewSection'
 import {
   DndContext,
   PointerSensor,
@@ -185,84 +187,8 @@ function CandidateLinkChips({ links }: { links: CandidateLink[] }) {
   )
 }
 
-/** The three candidate rating dimensions (Edit modal sliders + card bars). */
-const RATING_DEFS = [
-  { key: 'rating_ability', short: 'Ability', label: 'Evidence of Exceptional Ability (Talent / Problem-Solving)', color: 'var(--text-blue-500)' },
-  { key: 'rating_drive', short: 'Drive', label: 'Drive / Work Ethic / Intrinsic Motivation', color: '#f59e0b' },
-  { key: 'rating_integrity', short: 'Integrity', label: 'Trustworthiness / Goodness of Heart / Integrity', color: '#16a34a' },
-] as const
-type RatingKey = (typeof RATING_DEFS)[number]['key']
-
-type RatingValues = Record<RatingKey, number | null>
-
-/** team_prospect_reviews comment column for each rating dimension (v2.946). */
-const COMMENT_KEY_BY_RATING = {
-  rating_ability: 'comment_ability',
-  rating_drive: 'comment_drive',
-  rating_integrity: 'comment_integrity',
-} as const
-
-/** 0-100 sliders per dimension, with an unrated state and a clear affordance (Edit candidate + My review modals). */
-function RatingSliders({
-  values,
-  onChange,
-  comments,
-  onCommentChange,
-}: {
-  values: RatingValues
-  onChange: (key: RatingKey, value: number | null) => void
-  /** When provided (My review modal), each slider gets its own comment box (v2.946). */
-  comments?: Record<RatingKey, string>
-  onCommentChange?: (key: RatingKey, value: string) => void
-}) {
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem', marginTop: '0.75rem' }}>
-      {RATING_DEFS.map((def) => {
-        const value = values[def.key]
-        return (
-          <div key={def.key}>
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', marginBottom: '0.25rem' }}>
-              <span style={{ fontSize: '0.875rem', flex: 1 }}>{def.label}</span>
-              <span style={{ fontSize: '0.875rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: value == null ? 'var(--text-faint)' : 'var(--text-strong)' }}>
-                {value == null ? 'unrated' : value}
-              </span>
-              {value != null && (
-                <button
-                  type="button"
-                  onClick={() => onChange(def.key, null)}
-                  title="Clear rating (back to unrated)"
-                  style={{ background: 'none', border: 'none', color: 'var(--text-faint)', cursor: 'pointer', fontSize: '0.75rem', padding: 0 }}
-                >
-                  clear
-                </button>
-              )}
-            </div>
-            <input
-              type="range"
-              min={0}
-              max={100}
-              step={1}
-              value={value ?? 50}
-              onChange={(e) => onChange(def.key, Number(e.target.value))}
-              aria-label={`${def.label}: ${value == null ? 'unrated' : value} out of 100`}
-              style={{ width: '100%', accentColor: def.color, opacity: value == null ? 0.45 : 1 }}
-            />
-            {comments && onCommentChange && (
-              <input
-                type="text"
-                value={comments[def.key]}
-                onChange={(e) => onCommentChange(def.key, e.target.value)}
-                placeholder={`Why this ${def.short} score? (optional)`}
-                aria-label={`${def.short} comment`}
-                style={{ width: '100%', boxSizing: 'border-box', marginTop: '0.25rem', padding: '0.35rem 0.5rem', fontSize: '0.8125rem', background: 'var(--surface)', color: 'var(--text-base)', border: '1px solid var(--border)', borderRadius: 4 }}
-              />
-            )}
-          </div>
-        )
-      })}
-    </div>
-  )
-}
+// RATING_DEFS / RatingKey / RatingValues / COMMENT_KEY_BY_RATING / RatingSliders
+// moved to ./ratingDimensions (v2.948) — shared with Team → Review.
 
 /** Card-footer read-only bars — deliberately NOT range inputs so they can't fight the drag-to-rank gesture. */
 function CandidateRatingBars({ candidate }: { candidate: TeamProspect }) {
@@ -652,8 +578,9 @@ export default function TeamProspectsTab({ authUserId, isDev, resolveMasterId }:
   const [newRoleName, setNewRoleName] = useState('')
   const [confirmDeleteRoleId, setConfirmDeleteRoleId] = useState<string | null>(null)
 
-  /** Which stage sub-tab is showing: Screen (board) / Interview (calls+reviews) / Hire. */
-  const [stage, setStage] = useState<'screen' | 'interview' | 'hire'>('screen')
+  /** Which stage sub-tab is showing: Screen (board) / Interview (calls+reviews) / Hire / Review (current team, v2.948). */
+  const [stage, setStage] = useState<'screen' | 'interview' | 'hire' | 'review'>('screen')
+  const [activeUserCount, setActiveUserCount] = useState(0)
   const [onboardingItems, setOnboardingItems] = useState<TeamOnboardingItem[]>([])
   /** `${prospectId}:${itemId}` → status; missing key = pending. */
   const [onboardingStatuses, setOnboardingStatuses] = useState<Map<string, OnboardingStatusValue>>(() => new Map())
@@ -673,13 +600,15 @@ export default function TeamProspectsTab({ authUserId, isDev, resolveMasterId }:
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }))
 
   const load = useCallback(async () => {
-    const [candidatesRes, rolesRes, reviewsRes, itemsRes, statusesRes] = await Promise.all([
+    const [candidatesRes, rolesRes, reviewsRes, itemsRes, statusesRes, activeUsersRes] = await Promise.all([
       supabase.from('team_prospects').select('*').order('rank_order', { ascending: true }),
       supabase.from('team_prospect_roles').select('*').order('position', { ascending: true }).order('created_at', { ascending: true }),
       supabase.from('team_prospect_reviews').select('*').order('updated_at', { ascending: false }),
       supabase.from('team_onboarding_items').select('*').order('position', { ascending: true }).order('created_at', { ascending: true }),
       supabase.from('team_prospect_onboarding_statuses').select('*'),
+      supabase.from('users').select('id', { count: 'exact', head: true }).is('archived_at', null),
     ])
+    setActiveUserCount(activeUsersRes.count ?? 0)
     if (candidatesRes.error || rolesRes.error) {
       showToast(`Failed to load candidates: ${(candidatesRes.error ?? rolesRes.error)!.message}`, 'error')
     } else {
@@ -1212,10 +1141,11 @@ export default function TeamProspectsTab({ authUserId, isDev, resolveMasterId }:
   const boardEmpty = roles.length === 0 && rows.length === 0
 
   const activeCount = Object.values(activeByRole).reduce((n, list) => n + list.length, 0)
-  const stageTabs: Array<{ key: 'screen' | 'interview' | 'hire'; label: string; count: number }> = [
+  const stageTabs: Array<{ key: 'screen' | 'interview' | 'hire' | 'review'; label: string; count: number }> = [
     { key: 'screen', label: 'Screen', count: activeCount },
     { key: 'interview', label: 'Interview', count: calling.length },
     { key: 'hire', label: 'Hire', count: hired.length },
+    { key: 'review', label: 'Review', count: activeUserCount },
   ]
 
   return (
@@ -1554,6 +1484,7 @@ export default function TeamProspectsTab({ authUserId, isDev, resolveMasterId }:
           )}
         </>
       )}
+      {stage === 'review' && <TeamReviewSection authUserId={authUserId} />}
       {stage === 'screen' && !loading && passed.length > 0 && bucketSection('Passed', passed, passedOpen, setPassedOpen)}
 
       {stage === 'screen' && !loading && sourceSummary.length > 0 && (
