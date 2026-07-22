@@ -24,7 +24,7 @@ function normalizeEmail(s: string): string {
 }
 
 async function sendEmailWithAttachmentsViaResend(
-  to: string,
+  to: string[],
   subject: string,
   textPlain: string,
   htmlBody: string,
@@ -39,7 +39,7 @@ async function sendEmailWithAttachmentsViaResend(
     },
     body: JSON.stringify({
       from: 'PipeTooling <team@noreply.pipetooling.com>',
-      to: [to],
+      to,
       subject,
       html: htmlBody,
       text: textPlain,
@@ -131,6 +131,21 @@ serve(async (req) => {
     if (!emailRegex.test(customerEmailIn)) {
       return jsonResponse({ error: 'Valid customer_email required' }, 400)
     }
+    // Extra recipients (customer contact persons picked in Bill Customer) ride
+    // on the SAME email — one send, one recorded event.
+    const additionalIn = Array.isArray(body.additional_emails) ? body.additional_emails : []
+    if (additionalIn.length > 10) {
+      return jsonResponse({ error: 'At most 10 additional emails allowed' }, 400)
+    }
+    const additionalEmails: string[] = []
+    for (const e of additionalIn) {
+      if (typeof e !== 'string') continue
+      const n = normalizeEmail(e)
+      if (!emailRegex.test(n)) {
+        return jsonResponse({ error: `Invalid additional email: ${String(e).slice(0, 60)}` }, 400)
+      }
+      if (n !== normalizeEmail(customerEmailIn) && !additionalEmails.includes(n)) additionalEmails.push(n)
+    }
     if (!pdfBase64 || pdfBase64.length > MAX_PDF_BASE64_CHARS) {
       return jsonResponse({ error: 'Invalid or oversized PDF attachment' }, 400)
     }
@@ -205,7 +220,7 @@ serve(async (req) => {
         : `<p>${textPlain.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</p>`
 
     const sendResult = await sendEmailWithAttachmentsViaResend(
-      customerEmailIn,
+      [customerEmailIn, ...additionalEmails],
       subject,
       textPlain,
       htmlBody,

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth, type UserRole } from '../hooks/useAuth'
 import { useToastContext } from '../contexts/ToastContext'
@@ -155,6 +155,79 @@ export default function EditCustomerForm({ customerId, onSaved, onCancel, onDele
   const [archivedAt, setArchivedAt] = useState<string | null>(null)
   const [archiveConfirmOpen, setArchiveConfirmOpen] = useState(false)
   const [archiving, setArchiving] = useState(false)
+
+  /** Contacts (customer_contact_persons): the named people at this customer —
+      PM, AP clerk, owner — each with their own email/phone. Saved per row,
+      independent of the form's Save. */
+  const [contacts, setContacts] = useState<Array<{ id: string; name: string; phone: string | null; email: string | null; note: string | null }>>([])
+  const [contactsExpanded, setContactsExpanded] = useState(false)
+  const [contactDrafts, setContactDrafts] = useState<Record<string, { name: string; phone: string; email: string; note: string }>>({})
+  const [newContact, setNewContact] = useState({ name: '', phone: '', email: '', note: '' })
+  const [contactsBusy, setContactsBusy] = useState(false)
+
+  const loadContacts = useCallback(async () => {
+    const { data } = await supabase
+      .from('customer_contact_persons')
+      .select('id, name, phone, email, note')
+      .eq('customer_id', customerId)
+      .order('created_at', { ascending: true })
+    setContacts((data ?? []) as typeof contacts)
+  }, [customerId])
+  useEffect(() => {
+    void loadContacts()
+  }, [loadContacts])
+
+  async function addContact() {
+    if (contactsBusy || !newContact.name.trim()) return
+    setContactsBusy(true)
+    const { error: err } = await supabase.from('customer_contact_persons').insert({
+      customer_id: customerId,
+      name: newContact.name.trim(),
+      phone: newContact.phone.trim() || null,
+      email: newContact.email.trim() || null,
+      note: newContact.note.trim() || null,
+    })
+    setContactsBusy(false)
+    if (err) {
+      showToast(`Failed to add contact: ${err.message}`, 'error')
+      return
+    }
+    setNewContact({ name: '', phone: '', email: '', note: '' })
+    await loadContacts()
+  }
+
+  async function saveContact(id: string) {
+    const d = contactDrafts[id]
+    if (contactsBusy || !d || !d.name.trim()) return
+    setContactsBusy(true)
+    const { error: err } = await supabase
+      .from('customer_contact_persons')
+      .update({ name: d.name.trim(), phone: d.phone.trim() || null, email: d.email.trim() || null, note: d.note.trim() || null })
+      .eq('id', id)
+    setContactsBusy(false)
+    if (err) {
+      showToast(`Failed to save contact: ${err.message}`, 'error')
+      return
+    }
+    setContactDrafts((prev) => {
+      const next = { ...prev }
+      delete next[id]
+      return next
+    })
+    await loadContacts()
+  }
+
+  async function deleteContact(id: string) {
+    if (contactsBusy) return
+    setContactsBusy(true)
+    const { error: err } = await supabase.from('customer_contact_persons').delete().eq('id', id)
+    setContactsBusy(false)
+    if (err) {
+      showToast(`Failed to delete contact: ${err.message}`, 'error')
+      return
+    }
+    await loadContacts()
+  }
 
   const [mergeExpanded, setMergeExpanded] = useState(false)
   const [mergeCustomers, setMergeCustomers] = useState<CustomerPickRow[]>([])
@@ -601,6 +674,66 @@ export default function EditCustomerForm({ customerId, onSaved, onCancel, onDele
             onChange={(e) => setEmail(e.target.value)}
             style={{ width: '100%', padding: '0.5rem' }}
           />
+        </div>
+        <div style={{ marginBottom: '1rem' }}>
+          <button
+            type="button"
+            onClick={() => setContactsExpanded((v) => !v)}
+            aria-expanded={contactsExpanded}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, font: 'inherit', fontWeight: 600, color: 'inherit', display: 'flex', alignItems: 'center', gap: '0.35rem' }}
+          >
+            <span aria-hidden style={{ fontSize: '0.75rem' }}>{contactsExpanded ? '▼' : '▶'}</span>
+            Contacts ({contacts.length})
+          </button>
+          {!contactsExpanded && contacts.length === 0 ? (
+            <p style={{ margin: '0.25rem 0 0', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+              More than one person at this customer? Add each with their own email and phone — invoices can be sent to them too.
+            </p>
+          ) : null}
+          {contactsExpanded ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', marginTop: '0.5rem' }}>
+              {contacts.map((c) => {
+                const d = contactDrafts[c.id] ?? { name: c.name, phone: c.phone ?? '', email: c.email ?? '', note: c.note ?? '' }
+                const dirty = d.name !== c.name || d.phone !== (c.phone ?? '') || d.email !== (c.email ?? '') || d.note !== (c.note ?? '')
+                const setD = (patch: Partial<typeof d>) => setContactDrafts((prev) => ({ ...prev, [c.id]: { ...d, ...patch } }))
+                return (
+                  <div key={c.id} style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '0.5rem 0.6rem', display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                    <div style={{ display: 'flex', gap: '0.35rem' }}>
+                      <input type="text" value={d.name} onChange={(e) => setD({ name: e.target.value })} placeholder="Name" aria-label="Contact name" style={{ flex: 1, padding: '0.4rem 0.5rem' }} />
+                      <input type="tel" value={d.phone} onChange={(e) => setD({ phone: e.target.value })} placeholder="Phone" aria-label="Contact phone" style={{ flex: 1, padding: '0.4rem 0.5rem' }} />
+                    </div>
+                    <div style={{ display: 'flex', gap: '0.35rem' }}>
+                      <input type="email" value={d.email} onChange={(e) => setD({ email: e.target.value })} placeholder="Email" aria-label="Contact email" style={{ flex: 2, padding: '0.4rem 0.5rem' }} />
+                      <input type="text" value={d.note} onChange={(e) => setD({ note: e.target.value })} placeholder="Role / note (e.g. AP clerk)" aria-label="Contact note" style={{ flex: 1, padding: '0.4rem 0.5rem' }} />
+                    </div>
+                    <div style={{ display: 'flex', gap: '0.35rem', justifyContent: 'flex-end' }}>
+                      {dirty ? (
+                        <button type="button" disabled={contactsBusy || !d.name.trim()} onClick={() => void saveContact(c.id)} style={{ padding: '0.25rem 0.7rem', fontSize: '0.8125rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 600 }}>
+                          Save contact
+                        </button>
+                      ) : null}
+                      <button type="button" disabled={contactsBusy} onClick={() => void deleteContact(c.id)} style={{ padding: '0.25rem 0.7rem', fontSize: '0.8125rem', background: 'none', color: 'var(--text-red-600)', border: '1px solid var(--border)', borderRadius: 4, cursor: 'pointer' }}>
+                        Remove
+                      </button>
+                    </div>
+                  </div>
+                )
+              })}
+              <div style={{ border: '1px dashed var(--border-strong)', borderRadius: 8, padding: '0.5rem 0.6rem', display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                <div style={{ display: 'flex', gap: '0.35rem' }}>
+                  <input type="text" value={newContact.name} onChange={(e) => setNewContact({ ...newContact, name: e.target.value })} placeholder="Name" aria-label="New contact name" style={{ flex: 1, padding: '0.4rem 0.5rem' }} />
+                  <input type="tel" value={newContact.phone} onChange={(e) => setNewContact({ ...newContact, phone: e.target.value })} placeholder="Phone" aria-label="New contact phone" style={{ flex: 1, padding: '0.4rem 0.5rem' }} />
+                </div>
+                <div style={{ display: 'flex', gap: '0.35rem' }}>
+                  <input type="email" value={newContact.email} onChange={(e) => setNewContact({ ...newContact, email: e.target.value })} placeholder="Email" aria-label="New contact email" style={{ flex: 2, padding: '0.4rem 0.5rem' }} />
+                  <input type="text" value={newContact.note} onChange={(e) => setNewContact({ ...newContact, note: e.target.value })} placeholder="Role / note" aria-label="New contact note" style={{ flex: 1, padding: '0.4rem 0.5rem' }} />
+                </div>
+                <button type="button" disabled={contactsBusy || !newContact.name.trim()} onClick={() => void addContact()} style={{ alignSelf: 'flex-start', padding: '0.25rem 0.7rem', fontSize: '0.8125rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', color: 'var(--text-muted)', cursor: 'pointer' }}>
+                  + Add contact
+                </button>
+              </div>
+            </div>
+          ) : null}
         </div>
         <div style={{ marginBottom: '1rem' }}>
           <label htmlFor="edit-dateMet" style={{ display: 'block', marginBottom: 4 }}>
