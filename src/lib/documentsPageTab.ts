@@ -1,6 +1,7 @@
 /** Documents page primary tab (`?tab=`). Legacy `?tab=ledger` + `?ledger=` supported. */
 
 export type DocumentsPageTab =
+  | 'company'
   | 'search'
   | 'estimates'
   | 'bid-proposals'
@@ -13,6 +14,7 @@ export function parseDocumentsPageTabFromSearch(search: string): DocumentsPageTa
   const t = p.get('tab')
   const l = p.get('ledger')
 
+  if (t === 'company') return 'company'
   if (t === 'upload') return 'upload'
   if (t === 'search') return 'search'
   if (t === 'supply-invoices') return 'supply-invoices'

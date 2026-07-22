@@ -24,6 +24,7 @@ import DocumentsJobBilledInvoiceModal from '../components/documents/DocumentsJob
 import { billingTypeLabel } from '../components/jobs/HostedStripeBillPanel'
 import { useLedgerPrefixMap } from '../contexts/LedgerDisplayPrefixContext'
 import { formatBidLedgerDocTitle, formatJobLedgerDocTitle } from '../lib/ledgerDisplayPrefixes'
+import SettingsCompanyDocumentsSection from '../components/settings/SettingsCompanyDocumentsSection'
 
 type LedgerEstimateRow = Tables<'estimates'> & {
   customers: { name: string | null; address: string | null; contact_info: unknown } | null
@@ -1493,7 +1494,15 @@ function DocumentsUnifiedSearchTab() {
 export default function Documents() {
   const location = useLocation()
   const [searchParams, setSearchParams] = useSearchParams()
+  const { role: documentsAuthRole } = useAuth()
   const documentsTab = parseDocumentsPageTabFromSearch(location.search)
+  /** Company docs are office-only (matches company_documents RLS) — hide the tab for other roles. */
+  const companyTabVisible =
+    documentsAuthRole === 'dev' ||
+    documentsAuthRole === 'master_technician' ||
+    documentsAuthRole === 'assistant' ||
+    documentsAuthRole === 'controller' ||
+    documentsAuthRole === 'estimator'
 
   function setDocumentsTab(next: DocumentsPageTab) {
     const nextParams = new URLSearchParams(searchParams)
@@ -1507,6 +1516,15 @@ export default function Documents() {
       <h1 style={documentsPageVisuallyHiddenH1Style}>Documents</h1>
 
       <div style={{ display: 'flex', gap: '0.25rem', marginBottom: '0.75rem', flexWrap: 'wrap' }}>
+        {companyTabVisible ? (
+          <button
+            type="button"
+            style={pageTabStyle(documentsTab === 'company')}
+            onClick={() => setDocumentsTab('company')}
+          >
+            Company
+          </button>
+        ) : null}
         <button
           type="button"
           style={pageTabStyle(documentsTab === 'search')}
@@ -1547,6 +1565,9 @@ export default function Documents() {
         </button>
       </div>
 
+      {documentsTab === 'company' && companyTabVisible ? (
+        <SettingsCompanyDocumentsSection isDev={documentsAuthRole === 'dev'} />
+      ) : null}
       {documentsTab === 'upload' ? (
         <p style={{ color: 'var(--text-muted)', margin: 0 }}>Upload coming soon.</p>
       ) : null}

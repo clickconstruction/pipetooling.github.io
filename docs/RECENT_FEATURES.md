@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-22 (v2.941)
+last_updated: 2026-07-22 (v2.942)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.942)
+
+### Documents page: Company tab (2026-07-22)
+The v2.941 Company documents list is also exposed on **/documents** as a new far-left **Company** tab (`?tab=company`), reusing `SettingsCompanyDocumentsSection` (devs get the inline editor there too; office staff get the 📄 open-current-copy list). Tab hidden for roles outside the `company_documents` RLS read set. Help guide updated to name both locations.
 
 ## Latest Updates (v2.941)
 
