@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-21 (v2.891)
+last_updated: 2026-07-21 (v2.892)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.892)
+
+### Dispatch Mode part 5: Customers tab — searchable list with job counts (2026-07-21)
+`/dispatch-mode/customers` renders [`DispatchModeCustomers`](../src/components/dispatchMode/DispatchModeCustomers.tsx): non-archived customers alphabetized with a name/address search box, each row showing an **N jobs** pill (client-side count over `jobs_ledger.customer_id`). Tapping a customer routes to the full Customers page with that customer's edit view opened (existing `openEditCustomer` navigation state).
 
 ## Latest Updates (v2.891)
 
