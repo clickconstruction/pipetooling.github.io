@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-22 (v2.896)
+last_updated: 2026-07-22 (v2.897)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.897)
+
+### Dispatch Mode Customers: upcoming schedule supersedes last interaction (2026-07-22)
+When a customer has a job on the schedule (any `job_schedule_blocks` row from today forward), their row now shows **"in Nd"** (blue, bold; hover shows the date) instead of the "Nd ago" last-worked label — the nearest upcoming date wins the label. The **Interacted** sort puts scheduled customers on top, ranked **farthest-future first**, then past-work customers by recency, then never-worked. Kernel + 2 new tests in [`dispatchModeCustomers.ts`](../src/lib/dispatchModeCustomers.ts); one extra range query on the tab load.
 
 ## Latest Updates (v2.896)
 
