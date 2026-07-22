@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-22 (v2.923)
+last_updated: 2026-07-22 (v2.924)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.924)
+
+### Reorder day blocks, step 1: pure kernel (2026-07-22)
+Groundwork for reordering a person's jobs on the Dispatch Day tab (order = time order; there is no position column, so reordering assigns new windows). New `src/lib/reorderDayScheduleBlocks.ts`: **duration + gaps rule** — the first block keeps its start, every job keeps its own duration, and the gaps between consecutive slots stay where they were; overlapping originals collapse to zero-gap so a reorder never widens an overlap. `reorderDayScheduleBlocks` returns only changed windows, `previewReorderedDay` powers the upcoming modal's live preview. 13 unit tests. UI lands next.
 
 ## Latest Updates (v2.923)
 
