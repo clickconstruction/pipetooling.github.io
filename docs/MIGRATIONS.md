@@ -105,6 +105,11 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 #### July 22, 2026
 
+**`20260722244000_team_prospect_links.sql`** _(apply via `supabase db push` after the file is on `main`)_
+- **Purpose**: Team prospect links (v2.937) — `team_prospects.links` jsonb array of `{type, url}` (NOT NULL default `[]`). Edited in Add/Edit candidate; rendered as chips on Screen/Interview cards.
+- **Ordering**: apply promptly after merge — the client's candidate saves include the column once deployed.
+- **Category**: Recruiting / feature
+
 **`20260722242000_fix_job_activity_array_literal.sql`** _(apply via `supabase db push` after the file is on `main`)_
 - **Purpose**: **P0 fix** (v2.933). Since `20260719120000`, every Edit-Job save that changed a watched field failed with `malformed array literal` (22P02): `changed || 'customer email'` resolves `||` as array-to-array for an untyped literal, so Postgres tried to parse the label as an array. Every append now uses `array_append`; body otherwise identical (`CREATE OR REPLACE`, idempotent).
 - **Ordering**: apply IMMEDIATELY after merge — job field edits are broken until it lands.

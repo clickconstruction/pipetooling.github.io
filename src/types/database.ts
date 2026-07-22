@@ -9819,6 +9819,10 @@ export type Database = {
           email: string | null
           id: string
           last_contact: string | null
+          links: Json
+          rating_ability: number | null
+          rating_drive: number | null
+          rating_integrity: number | null
           master_user_id: string
           name: string
           notes: string | null
@@ -9836,6 +9840,10 @@ export type Database = {
           email?: string | null
           id?: string
           last_contact?: string | null
+          links?: Json
+          rating_ability?: number | null
+          rating_drive?: number | null
+          rating_integrity?: number | null
           master_user_id: string
           name: string
           notes?: string | null
@@ -9853,6 +9861,10 @@ export type Database = {
           email?: string | null
           id?: string
           last_contact?: string | null
+          links?: Json
+          rating_ability?: number | null
+          rating_drive?: number | null
+          rating_integrity?: number | null
           master_user_id?: string
           name?: string
           notes?: string | null

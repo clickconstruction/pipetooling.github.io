@@ -45,6 +45,7 @@ export type TeamProspect = {
   rating_ability: number | null
   rating_drive: number | null
   rating_integrity: number | null
+  links: unknown
 }
 
 export type TeamProspectRole = {
@@ -110,11 +111,69 @@ type CandidateDraft = {
   rating_ability: number | null
   rating_drive: number | null
   rating_integrity: number | null
+  links: Array<{ type: string; url: string }>
 }
 
 const EMPTY_DRAFT: CandidateDraft = {
   name: '', phone_number: '', email: '', trade: '', source: '', notes: '', role_id: '',
-  rating_ability: null, rating_drive: null, rating_integrity: null,
+  rating_ability: null, rating_drive: null, rating_integrity: null, links: [],
+}
+
+export type CandidateLink = { type: string; url: string }
+
+const CANDIDATE_LINK_TYPE_SUGGESTIONS = ['Indeed', 'Resume', 'LinkedIn', 'Facebook', 'Website', 'References', 'Other']
+
+/** Parse the jsonb links column defensively (old rows have none; bad shapes are dropped). */
+function parseCandidateLinks(raw: unknown): CandidateLink[] {
+  if (!Array.isArray(raw)) return []
+  const out: CandidateLink[] = []
+  for (const item of raw) {
+    if (item && typeof item === 'object' && typeof (item as { url?: unknown }).url === 'string') {
+      const url = (item as { url: string }).url.trim()
+      if (!url) continue
+      const t = typeof (item as { type?: unknown }).type === 'string' ? ((item as { type: string }).type).trim() : ''
+      out.push({ type: t || 'Link', url })
+    }
+  }
+  return out
+}
+
+/** Normalize for save: drop empty urls, default the type, ensure a protocol so chips open off-site. */
+function serializeCandidateLinks(links: CandidateLink[]): CandidateLink[] {
+  return links
+    .map((l) => ({ type: l.type.trim() || 'Link', url: l.url.trim() }))
+    .filter((l) => l.url)
+    .map((l) => ({ ...l, url: /^https?:\/\//i.test(l.url) ? l.url : `https://${l.url}` }))
+}
+
+/** Candidate link chips (board + interview cards): type name opens the url in a new tab. */
+function CandidateLinkChips({ links }: { links: CandidateLink[] }) {
+  if (links.length === 0) return null
+  return (
+    <div style={{ display: 'flex', gap: '0.3rem', flexWrap: 'wrap', margin: '0.35rem 0 0 1.35rem' }}>
+      {links.map((l, i) => (
+        <a
+          key={`${l.url}-${i}`}
+          href={l.url}
+          target="_blank"
+          rel="noreferrer"
+          title={l.url}
+          style={{
+            fontSize: '0.7rem',
+            fontWeight: 600,
+            padding: '0.1rem 0.45rem',
+            borderRadius: 999,
+            border: '1px solid var(--border-strong)',
+            background: 'var(--bg-subtle)',
+            color: 'var(--text-link)',
+            textDecoration: 'none',
+          }}
+        >
+          🔗 {l.type}
+        </a>
+      ))}
+    </div>
+  )
 }
 
 /** The three candidate rating dimensions (Edit modal sliders + card bars). */
@@ -279,6 +338,53 @@ function CandidateFields({
           ))}
         </datalist>
       </label>
+      <div>
+        <span style={labelSpanStyle}>Links</span>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+          {draft.links.map((l, i) => (
+            <div key={i} style={{ display: 'flex', gap: '0.35rem' }}>
+              <input
+                type="text"
+                list="team-prospect-link-type-options"
+                value={l.type}
+                placeholder="Type"
+                aria-label={`Link ${i + 1} type`}
+                onChange={(e) => setDraft({ ...draft, links: draft.links.map((x, j) => (j === i ? { ...x, type: e.target.value } : x)) })}
+                style={{ ...inputStyle, width: '7.5rem', flexShrink: 0 }}
+              />
+              <input
+                type="url"
+                value={l.url}
+                placeholder="https://…"
+                aria-label={`Link ${i + 1} URL`}
+                onChange={(e) => setDraft({ ...draft, links: draft.links.map((x, j) => (j === i ? { ...x, url: e.target.value } : x)) })}
+                style={inputStyle}
+              />
+              <button
+                type="button"
+                onClick={() => setDraft({ ...draft, links: draft.links.filter((_, j) => j !== i) })}
+                title="Remove link"
+                aria-label={`Remove link ${i + 1}`}
+                style={{ border: 'none', background: 'none', color: 'var(--text-red-600)', cursor: 'pointer', padding: '0 0.25rem', flexShrink: 0 }}
+              >
+                ✕
+              </button>
+            </div>
+          ))}
+          <datalist id="team-prospect-link-type-options">
+            {CANDIDATE_LINK_TYPE_SUGGESTIONS.map((t) => (
+              <option key={t} value={t} />
+            ))}
+          </datalist>
+          <button
+            type="button"
+            onClick={() => setDraft({ ...draft, links: [...draft.links, { type: '', url: '' }] })}
+            style={{ alignSelf: 'flex-start', padding: '0.25rem 0.6rem', fontSize: '0.8125rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', color: 'var(--text-muted)', cursor: 'pointer' }}
+          >
+            + Add link
+          </button>
+        </div>
+      </div>
       <label>
         <span style={labelSpanStyle}>Notes</span>
         <textarea value={draft.notes} onChange={(e) => setDraft({ ...draft, notes: e.target.value })} rows={3} style={{ ...inputStyle, resize: 'vertical', fontFamily: 'inherit' }} />
@@ -337,6 +443,17 @@ function SortableCandidateCard({
             {candidate.trade}
           </span>
         )}
+        <span style={{ flex: 1 }} />
+        <button
+          type="button"
+          disabled={busy}
+          onClick={onEdit}
+          title={`Edit ${candidate.name}`}
+          aria-label={`Edit ${candidate.name}`}
+          style={{ background: 'none', border: 'none', cursor: busy ? 'not-allowed' : 'pointer', color: 'var(--text-faint)', padding: 0, fontSize: '0.9375rem', lineHeight: 1, alignSelf: 'flex-start' }}
+        >
+          ⚙
+        </button>
       </div>
       <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', gap: '0.5rem', flexWrap: 'wrap', margin: '0.25rem 0 0 1.35rem' }}>
         {candidate.phone_number && <span>{candidate.phone_number}</span>}
@@ -350,9 +467,6 @@ function SortableCandidateCard({
       <div style={{ display: 'flex', gap: '0.3rem', flexWrap: 'wrap', margin: '0.4rem 0 0 1.35rem' }}>
         <button type="button" disabled={busy} onClick={onMarkContacted} title="Stamp last contact as now" style={smallButtonStyle(busy)}>
           Talked today
-        </button>
-        <button type="button" disabled={busy} onClick={onEdit} style={smallButtonStyle(busy)}>
-          Edit
         </button>
         <button
           type="button"
@@ -372,6 +486,7 @@ function SortableCandidateCard({
           Passed
         </button>
       </div>
+      <CandidateLinkChips links={parseCandidateLinks(candidate.links)} />
       <CandidateRatingBars candidate={candidate} />
     </li>
   )
@@ -669,6 +784,7 @@ export default function TeamProspectsTab({ authUserId, isDev, resolveMasterId }:
       trade: addDraft.trade.trim() || null,
       source: addDraft.source.trim() || null,
       notes: addDraft.notes.trim() || null,
+      links: serializeCandidateLinks(addDraft.links) as unknown as string,
       status: 'active',
       role_id: roleId,
       rank_order: nextTeamProspectRank(rows, roleId),
@@ -703,6 +819,7 @@ export default function TeamProspectsTab({ authUserId, isDev, resolveMasterId }:
       rating_ability: editDraft.rating_ability,
       rating_drive: editDraft.rating_drive,
       rating_integrity: editDraft.rating_integrity,
+      links: serializeCandidateLinks(editDraft.links) as unknown as string,
     }
     if (roleChanged) {
       // Moving via the modal appends to the bottom of the target column
@@ -965,6 +1082,7 @@ export default function TeamProspectsTab({ authUserId, isDev, resolveMasterId }:
       rating_ability: candidate.rating_ability,
       rating_drive: candidate.rating_drive,
       rating_integrity: candidate.rating_integrity,
+      links: parseCandidateLinks(candidate.links),
     })
     setModalError(null)
     setConfirmingDelete(false)
@@ -1226,6 +1344,7 @@ export default function TeamProspectsTab({ authUserId, isDev, resolveMasterId }:
                               )}
                               <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{formatLastContact(c.last_contact)}</span>
                             </div>
+                            <CandidateLinkChips links={parseCandidateLinks(c.links)} />
                             <CandidateRatingBars candidate={c} />
                             {candidateReviews.length > 0 && (
                               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', margin: '0.45rem 0 0 0' }}>

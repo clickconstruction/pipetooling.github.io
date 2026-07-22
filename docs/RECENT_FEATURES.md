@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-22 (v2.936)
+last_updated: 2026-07-22 (v2.937)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.937)
+
+### Team Prospects: multiple typed links per candidate; card Edit becomes a ⚙ gear (2026-07-22)
+Add/Edit candidate gains a **Links** list — any number of `{type, url}` rows (type free-text with datalist suggestions: Indeed, Resume, LinkedIn, …; urls get `https://` prepended when missing a protocol). Stored in new jsonb `team_prospects.links` (migration `20260722244000`, **requires `supabase db push` after merge**); parsed defensively (`parseCandidateLinks`) so old rows and bad shapes render as none. Cards on the Screen board and Interview stage show the links as 🔗 type-chips opening in a new tab. Also per request: the board card's **Edit** text button moves to a **⚙ gear in the card's top-right** (matching the app's gear affordances); the action row keeps Talked today / Advance / Passed. `database.ts` team_prospects entry also gains the v2.926 rating columns it was missing. Help guide gains "Candidate links".
 
 ## Latest Updates (v2.936)
 

@@ -75,6 +75,10 @@ When a candidate looks promising, hit {{button:blue|Advance}} on their Screen ca
 
 Advancing a candidate to **Hire** offers to add them straight to the **People roster** — pick Subcontractor or Helper and their name, phone, and email carry over. They appear under People → Users (External), ready for sub labor sheets and payments; when they get an app login later, use **Link account** there to tie it together.
 
+## Candidate links
+
+Add/Edit candidate has a **Links** list — as many as you need, each with its own type ("Indeed", "Resume", "LinkedIn", or anything you type) and URL. They show on the candidate's card as {{chip:gray|🔗 Indeed}}-style chips that open in a new tab, on both the Screen board and the Interview stage. The card's edit control is the small ⚙ gear in its top-right corner.
+
 ## Rating candidates
 
 Open {{button:outline|Edit}} on any candidate and you'll find three 0–100 sliders under the contact fields:
