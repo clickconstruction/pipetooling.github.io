@@ -537,13 +537,13 @@ export default function Layout() {
             {role === 'superintendent' && (
               <NavLink to="/projects" style={linkStyle} onClick={onNavClick}>Projects</NavLink>
             )}
-            {role === 'master_technician' && (
+            {role === 'master_technician' && onNavClick ? (
               <>
                 <NavLink to="/checklist" style={linkStyle} onClick={onNavClick}>Checklist</NavLink>
                 <NavLink to="/customers" style={linkStyle} onClick={onNavClick}>Customers</NavLink>
                 <NavLink to="/people" style={linkStyle} onClick={onNavClick}>People</NavLink>
               </>
-            )}
+            ) : null}
           </>
         )}
       </>
@@ -804,7 +804,7 @@ export default function Layout() {
                 {materialsIcon}
               </NavLink>
             )}
-          {canShowChecklistNav && !isMobile && role !== 'master_technician' && (
+          {canShowChecklistNav && !isMobile && (
           <NavLink
             to="/checklist"
             style={({ isActive }) => ({
@@ -823,7 +823,7 @@ export default function Layout() {
           )}
           {role != null && !isSubcontractorLikeRole(role) && role !== 'primary' && (
             <>
-              {!(isMobile && role === 'dev') && role !== 'master_technician' && (
+              {!(isMobile && (role === 'dev' || role === 'master_technician')) && (
                 <NavLink
                   to="/customers"
                   style={({ isActive }) => ({
@@ -842,7 +842,7 @@ export default function Layout() {
                   </svg>
                 </NavLink>
               )}
-              {!(role === 'estimator' && isMobile) && role !== 'master_technician' && (
+              {!(role === 'estimator' && isMobile) && (
               <NavLink
               to="/people"
               style={({ isActive }) => ({

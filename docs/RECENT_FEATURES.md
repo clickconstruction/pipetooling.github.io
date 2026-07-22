@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-22 (v2.903)
+last_updated: 2026-07-22 (v2.904)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.904)
+
+### Header: master technicians get the Checklist / Customers / People icons (2026-07-22)
+Masters previously saw those three as spelled-out text links crowding the nav row; they now share the dev-style **icon links on the right side** of the header (`role !== 'master_technician'` exclusions removed from the shared icon cluster; the text links survive only inside the mobile hamburger menu, and the Customers icon hides on mobile exactly as it does for devs). Same destinations, same permissions — presentation only.
 
 ## Latest Updates (v2.903)
 
