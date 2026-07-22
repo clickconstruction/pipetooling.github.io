@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-21 (v2.876)
+last_updated: 2026-07-21 (v2.877)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.877)
+
+### Dispatch: "This week" hides on the current week; Dispatch Settings fully collapsible (2026-07-21)
+Two small dispatch polish items. **(1)** `ScheduleDispatchWeekNav` hides the **This week** button whenever the viewed week already is the current week (`weekStart === getDefaultWeekRange().start`) — it was a no-op there; applies to the Dispatch hub and the Quickfill schedule grid alike. **(2)** The remaining Dispatch Settings sections join the v2.875 pattern: **Swim lanes (People grid crews)** and the dev-only **Travel time hints (Day view)** are now disclosure sections, collapsed by default, with collapsed-state summaries ("4 lanes"; "on · 35 mph" / "on · live routing" / "off"). All three sections reset to collapsed each open; save/immediate-write semantics unchanged.
 
 ## Latest Updates (v2.876)
 

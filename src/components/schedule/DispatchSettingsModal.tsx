@@ -56,6 +56,7 @@ export function DispatchSettingsModal({
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [noteSectionOpen, setNoteSectionOpen] = useState(false)
+  const [travelSectionOpen, setTravelSectionOpen] = useState(false)
 
   useEffect(() => {
     if (!open) return
@@ -65,6 +66,7 @@ export function DispatchSettingsModal({
     setError(null)
     setBusy(false)
     setNoteSectionOpen(false)
+    setTravelSectionOpen(false)
   }, [open, config])
 
   useEffect(() => {
@@ -364,9 +366,40 @@ export function DispatchSettingsModal({
 
         {isDev ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6, borderTop: '1px solid var(--border)', paddingTop: '0.75rem' }}>
-            <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-strong)' }}>
+            <button
+              type="button"
+              aria-expanded={travelSectionOpen}
+              aria-controls="dispatch-settings-travel-hints"
+              onClick={() => setTravelSectionOpen((v) => !v)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                padding: 0,
+                border: 'none',
+                background: 'none',
+                cursor: 'pointer',
+                textAlign: 'left',
+                fontSize: '0.875rem',
+                fontWeight: 600,
+                color: 'var(--text-strong)',
+              }}
+            >
+              <span aria-hidden="true" style={{ fontSize: '0.7rem' }}>
+                {travelSectionOpen ? '▼' : '▶'}
+              </span>
               Travel time hints (Day view)
-            </span>
+              {!travelSectionOpen ? (
+                <span style={{ fontWeight: 400, fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                  {travel.enabled ? `on · ${travel.useRouting ? 'live routing' : `${travel.assumedMph} mph`}` : 'off'}
+                </span>
+              ) : null}
+            </button>
+            {travelSectionOpen ? (
+            <div
+              id="dispatch-settings-travel-hints"
+              style={{ display: 'flex', flexDirection: 'column', gap: 6 }}
+            >
             <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-muted)' }}>
               🚗 chips between a person&rsquo;s jobs and red dots on impossible back-to-backs. Live
               routing asks Google for real drive times and falls back to the straight-line minimum
@@ -407,6 +440,8 @@ export function DispatchSettingsModal({
               />
               Use live routing (Google) with straight-line fallback
             </label>
+            </div>
+            ) : null}
           </div>
         ) : null}
 

@@ -1,6 +1,6 @@
 import type { CSSProperties, ReactNode } from 'react'
 import { useMemo } from 'react'
-import { getScheduleDispatchWeekNavParts, ymdAddDays } from '../../utils/dateUtils'
+import { getDefaultWeekRange, getScheduleDispatchWeekNavParts, ymdAddDays } from '../../utils/dateUtils'
 
 const btnNeutral: CSSProperties = {
   padding: '0.4rem 0.75rem',
@@ -46,6 +46,8 @@ export function ScheduleDispatchWeekNav({
     [weekStart, weekEnd],
   )
   const displayDateRange = dateRangeOverride ?? dateRange
+  // Hide "This week" while already on it — the button would be a no-op.
+  const isCurrentWeek = weekStart === getDefaultWeekRange().start
 
   return (
     <div
@@ -85,9 +87,11 @@ export function ScheduleDispatchWeekNav({
       <button type="button" onClick={() => onWeekShift(1)} style={btnNeutral} aria-label="Next week">
         →
       </button>
-      <button type="button" onClick={onThisWeek} style={btnPrimary}>
-        This week
-      </button>
+      {!isCurrentWeek ? (
+        <button type="button" onClick={onThisWeek} style={btnPrimary}>
+          This week
+        </button>
+      ) : null}
       {onHideWeekendChange ? (
         <label
           style={{

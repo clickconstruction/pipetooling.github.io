@@ -47,6 +47,7 @@ export function DispatchSwimLanesSettingsSection({
   const [lanes, setLanes] = useState<DispatchSwimLanesData | null>(null)
   const [busy, setBusy] = useState(false)
   const [newLaneName, setNewLaneName] = useState('')
+  const [sectionOpen, setSectionOpen] = useState(false)
   const [renamingLaneId, setRenamingLaneId] = useState<string | null>(null)
   const [renameValue, setRenameValue] = useState('')
 
@@ -83,9 +84,40 @@ export function DispatchSwimLanesSettingsSection({
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8, borderTop: '1px solid var(--border)', paddingTop: '0.75rem' }}>
-      <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-strong)' }}>
+      <button
+        type="button"
+        aria-expanded={sectionOpen}
+        aria-controls="dispatch-settings-swim-lanes"
+        onClick={() => setSectionOpen((v) => !v)}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+          padding: 0,
+          border: 'none',
+          background: 'none',
+          cursor: 'pointer',
+          textAlign: 'left',
+          fontSize: '0.875rem',
+          fontWeight: 600,
+          color: 'var(--text-strong)',
+        }}
+      >
+        <span aria-hidden="true" style={{ fontSize: '0.7rem' }}>
+          {sectionOpen ? '▼' : '▶'}
+        </span>
         Swim lanes (People grid crews)
-      </span>
+        {!sectionOpen && lanes != null ? (
+          <span style={{ fontWeight: 400, fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+            {lanes.lanes.length} {lanes.lanes.length === 1 ? 'lane' : 'lanes'}
+          </span>
+        ) : null}
+      </button>
+      {sectionOpen ? (
+      <div
+        id="dispatch-settings-swim-lanes"
+        style={{ display: 'flex', flexDirection: 'column', gap: 8 }}
+      >
       <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-muted)' }}>
         Named groups shown as sections on the People grid (cycle the <strong>Person</strong> header
         to <em>lanes</em>). A person belongs to <strong>one</strong> lane — assigning them moves
@@ -264,6 +296,8 @@ export function DispatchSwimLanesSettingsSection({
           </div>
         </>
       )}
+      </div>
+      ) : null}
     </div>
   )
 }
