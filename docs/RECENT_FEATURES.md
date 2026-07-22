@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-22 (v2.904)
+last_updated: 2026-07-22 (v2.905)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.905)
+
+### Dispatch Mode: server persistence + assistants land on Schedule after 5 minutes away (2026-07-22)
+Two behaviors. **(1) Persistence**: Dispatch Mode was per-device localStorage; migration `20260722120000_users_dispatch_mode.sql` (**requires `supabase db push` after merge**) adds `users.dispatch_mode_enabled` and the toggle now writes it (self-update RLS) while the hook reconciles the per-device cache from the server on mount — turn it on at the office, it's on at home. Graceful pre-migration degradation (errors keep the cache). **(2) Return focus**: **assistants** with Dispatch Mode on who open the app after **5+ minutes away** (fresh load or tab refocus; activity stamped continuously in localStorage) land on `/dispatch-mode/schedule` — the pure predicate lives in [`dispatchModeReturnFocus.ts`](../src/lib/dispatchModeReturnFocus.ts) (4 tests). `MIGRATIONS.md` updated.
 
 ## Latest Updates (v2.904)
 
