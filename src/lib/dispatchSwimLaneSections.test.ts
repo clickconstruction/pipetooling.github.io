@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   buildSwimLaneDisplaySections,
   personMatchesLaneQuery,
+  summarizeExpectedManpowerByLane,
   SWIM_LANE_EVERYONE_ELSE_LABEL,
 } from './dispatchSwimLaneSections'
 import type { DispatchSwimLanesData } from './dispatchSwimLanes'
@@ -66,5 +67,35 @@ describe('personMatchesLaneQuery', () => {
     expect(personMatchesLaneQuery('a', 'crew', data)).toBe(true)
     expect(personMatchesLaneQuery('b', 'north', data)).toBe(false)
     expect(personMatchesLaneQuery('a', '', data)).toBe(false)
+  })
+})
+
+describe('summarizeExpectedManpowerByLane', () => {
+  const data = lanesData(
+    [
+      { id: 'L1', name: 'North crew', sort_order: 0 },
+      { id: 'L2', name: 'South crew', sort_order: 1 },
+    ],
+    [
+      ['L1', 'a'],
+      ['L1', 'b'],
+      ['L2', 'c'],
+    ],
+  )
+  const R = (uid: string, h: number) => ({ assigneeUserId: uid, personHours: h })
+
+  it('groups hours + distinct people per lane in lane order, Everyone else tail', () => {
+    const rows = [R('a', 4), R('a', 2), R('b', 8), R('z', 3)]
+    expect(summarizeExpectedManpowerByLane(rows, data)).toEqual([
+      { laneId: 'L1', label: 'North crew', personHours: 14, distinctPeople: 2 },
+      { laneId: null, label: SWIM_LANE_EVERYONE_ELSE_LABEL, personHours: 3, distinctPeople: 1 },
+    ])
+  })
+
+  it('skips lanes with no scheduled hours; empty when no lanes configured', () => {
+    expect(summarizeExpectedManpowerByLane([R('c', 5)], data).map((r) => r.label)).toEqual([
+      'South crew',
+    ])
+    expect(summarizeExpectedManpowerByLane([R('a', 5)], lanesData([], []))).toEqual([])
   })
 })

@@ -49,12 +49,14 @@ To manage the lanes, open {{button:outline|Dispatch Settings}} and find **Swim l
 - A person belongs to **one** lane at a time — picking someone who's already in another lane moves them (the picker warns "(moves from …)").
 - Changes save **immediately** and everyone sees the same lanes; deleting a lane just returns its people to **Everyone else**.
 
+Lanes do more than group the grid: typing a lane's name in the **Search Person or Job** box filters to that crew, and the **Expected manpower** readout adds a per-lane line so you can see each crew's scheduled hours at a glance.
+
 ## Copying jobs to a whole crew (linked)
 
 To put the same jobs on several people at once, use the chains button (two links of a chain) next to the **++** in the People toolbar. A bar appears at the top and walks you through two steps:
 
 1. **1 of 2 — Click the job blocks you want to copy linked.** Every block gets a dashed outline; click the ones to copy (they highlight), then press {{button:blue|Next: pick people}}.
-2. **2 of 2 — Click the people to apply them to.** Names in the left column become click targets. Each click instantly gives that person a **linked** copy of every selected block — same day, same times, same note, chained to the original so time and note changes stay in sync (the {{chip:blue|linked}} chains marker appears on the cards).
+2. **2 of 2 — Click the people to apply them to.** Names in the left column become click targets. Each click instantly gives that person a **linked** copy of every selected block — same day, same times, same note, chained to the original so time and note changes stay in sync (the {{chip:blue|linked}} chains marker appears on the cards). If the grid is grouped by swim lanes, the lane headings become targets too — clicking "**<lane> — whole crew**" applies the blocks to every member of that lane in one click, with a single toast summing up what copied and what was skipped.
 
 Copies that would overlap something already on that person's day — or that the person already has — are skipped, and the toast tells you how many applied. Click as many people as you need, then press {{chip:gray|Esc}} or **Done**.
 

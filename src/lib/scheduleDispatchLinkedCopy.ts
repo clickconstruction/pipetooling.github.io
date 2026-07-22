@@ -56,3 +56,16 @@ export function summarizeLinkedCopyApply(results: LinkedCopyLegResult[]): {
     tone: 'error',
   }
 }
+
+/** Combined toast for a stage-2 LANE click (one apply per member × source
+ * block). Flattens every leg result into the standard summary and prefixes the
+ * lane name + crew size: "Underground crew (3 people): Applied 6 linked copies." */
+export function summarizeLinkedCopyLaneApply(
+  laneLabel: string,
+  peopleCount: number,
+  results: LinkedCopyLegResult[],
+): { applied: number; skipped: number; message: string; tone: 'success' | 'info' | 'error' } {
+  const sum = summarizeLinkedCopyApply(results)
+  const who = `${laneLabel} (${peopleCount} ${peopleCount === 1 ? 'person' : 'people'})`
+  return { ...sum, message: `${who}: ${sum.message}` }
+}

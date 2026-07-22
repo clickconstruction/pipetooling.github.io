@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-21 (v2.873)
+last_updated: 2026-07-21 (v2.874)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.874)
+
+### Dispatch swim lanes, part 3: crew targets in linked copy + lane manpower + lane search (2026-07-21)
+Completes the swim-lanes feature (#556/#557). Three lane-aware behaviors on Dispatch → People: **(1)** in stage 2 of the linked-copy flow with the lanes grouping active, each lane heading becomes a dashed click target ("<lane> — whole crew") that applies the selected blocks to **every member** in one click — one `onLinkedCopyApplyToLane` pass through the existing per-leg safety (`insertScheduleDispatchCopiedLeg`), one combined toast via the new unit-tested [`summarizeLinkedCopyLaneApply`](../src/lib/scheduleDispatchLinkedCopy.ts); **(2)** the Expected Manpower panel adds a per-lane breakdown line (hours + people per lane, "Everyone else" tail) via [`summarizeExpectedManpowerByLane`](../src/lib/dispatchSwimLaneSections.ts); **(3)** the **Search Person or Job** box now also matches lane names (`personMatchesLaneQuery`), so typing a crew name filters to its members. Help guide updated. (Deliberately NOT built: seeding lanes from `team_leader_assignments`.)
 
 ## Latest Updates (v2.873)
 

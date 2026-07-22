@@ -33,6 +33,7 @@ import { insertScheduleDispatchCopiedLeg } from '../../lib/scheduleDispatchMirro
 import { fetchDispatchSwimLanes, type DispatchSwimLanesData } from '../../lib/dispatchSwimLanes'
 import {
   summarizeLinkedCopyApply,
+  summarizeLinkedCopyLaneApply,
   toggleLinkedCopyBlockSelection,
   type LinkedCopyLegResult,
   type LinkedCopyMode,
@@ -1177,6 +1178,51 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
   )
 
 
+  /** Stage 2 + lanes grouping: lane-heading click = the person apply for every
+   * crew member, one combined toast (per-leg safety unchanged). */
+  const onLinkedCopyApplyToLane = useCallback(
+    async (laneLabel: string, memberUserIds: string[]) => {
+      if (!linkedCopyMode || linkedCopyMode.stage !== 2 || !authUser?.id || linkedCopyApplyBusy) return
+      const sources = [...linkedCopyMode.selectedBlockIds]
+        .map((id) => hubBlockById.get(id))
+        .filter((b): b is JobScheduleBlockRow => b != null)
+      if (sources.length === 0 || memberUserIds.length === 0) return
+      setLinkedCopyApplyBusy(true)
+      try {
+        const results: LinkedCopyLegResult[] = []
+        for (const memberUserId of memberUserIds) {
+          for (const source of sources) {
+            const allJobBlocks = hubWeekBlocks.filter((b) => b.job_id === source.job_id)
+            const { error } = await insertScheduleDispatchCopiedLeg({
+              jobId: source.job_id,
+              createdBy: authUser.id,
+              source,
+              targetAssigneeUserId: memberUserId,
+              targetWorkDate: source.work_date,
+              linkMode: 'linked',
+              allJobBlocks,
+            })
+            results.push({ blockId: source.id, error })
+          }
+        }
+        const sum = summarizeLinkedCopyLaneApply(laneLabel, memberUserIds.length, results)
+        showToast(sum.message, sum.tone)
+        await loadHub({ quiet: true })
+      } finally {
+        setLinkedCopyApplyBusy(false)
+      }
+    },
+    [
+      linkedCopyMode,
+      linkedCopyApplyBusy,
+      authUser?.id,
+      hubBlockById,
+      hubWeekBlocks,
+      loadHub,
+      showToast,
+    ],
+  )
+
   const onRequestHubMultiCellAddChooseJob = useCallback(() => {
     if (hubMultiCellAddSelection.size === 0) return
     setHubCellAddContext(null)
@@ -1950,7 +1996,8 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
                   <strong>{linkedCopyMode.selectedBlockIds.size}</strong> linked{' '}
                   {linkedCopyMode.selectedBlockIds.size === 1 ? 'copy' : 'copies'} to
                   {linkedCopyApplyBusy ? ' (applying…)' : ''}. Each copy lands on its source
-                  block&apos;s day. Press Esc when done.
+                  block&apos;s day. In the swim-lanes grouping, clicking a lane heading applies
+                  to the whole crew. Press Esc when done.
                 </span>
                 <button
                   type="button"
@@ -2122,6 +2169,7 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
             onStartLinkedCopyMode={onStartLinkedCopyMode}
             onLinkedCopyToggleBlock={onLinkedCopyToggleBlock}
             onLinkedCopyApplyToPerson={onLinkedCopyApplyToPerson}
+            onLinkedCopyApplyToLane={onLinkedCopyApplyToLane}
             linkedCopyApplyBusy={linkedCopyApplyBusy}
             swimLanes={swimLanes}
             onSwimLanesChanged={() => void refetchSwimLanes()}

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   summarizeLinkedCopyApply,
+  summarizeLinkedCopyLaneApply,
   toggleLinkedCopyBlockSelection,
 } from './scheduleDispatchLinkedCopy'
 
@@ -52,5 +53,27 @@ describe('summarizeLinkedCopyApply', () => {
       skipped: 1,
       tone: 'error',
     })
+  })
+})
+
+describe('summarizeLinkedCopyLaneApply', () => {
+  it('prefixes lane label and crew size onto the flattened summary', () => {
+    const out = summarizeLinkedCopyLaneApply('North crew', 3, [
+      { blockId: 'a', error: null },
+      { blockId: 'a', error: null },
+      { blockId: 'b', error: 'overlap' },
+    ])
+    expect(out).toEqual({
+      applied: 2,
+      skipped: 1,
+      message: 'North crew (3 people): Applied 2 linked copies · skipped 1 (overlap or already linked).',
+      tone: 'info',
+    })
+  })
+
+  it('singular person', () => {
+    expect(summarizeLinkedCopyLaneApply('Solo', 1, [{ blockId: 'a', error: null }]).message).toBe(
+      'Solo (1 person): Applied 1 linked copy.',
+    )
   })
 })
