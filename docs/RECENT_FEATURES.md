@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-22 (v2.914)
+last_updated: 2026-07-22 (v2.915)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.915)
+
+### Fix: Dispatch Mode help guide shipped with raw git conflict markers (2026-07-22)
+`src/content/help/dispatch-mode.md` was committed with unresolved `<<<<<<<`/`>>>>>>>` conflict blocks (a stash-pop casualty), so the in-app guide showed literal marker lines and three competing drafts of the Dashboard/Schedule bullets. Resolved into one accurate description: Dashboard = clock → My Schedule → financial cards → Job Stages with crew on the right; Schedule = two-week strip with month **‹ ›** navigation and week numbers (w30, w31…), person filter chips, and the full **Assign work** flow (availability ribbons, all-free time suggestions, create-new-job from the picker, long-press schedule peek). The stale bell mention is gone — v2.908 replaced the bell with the month navigator.
 
 ## Latest Updates (v2.914)
 
