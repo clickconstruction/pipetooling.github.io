@@ -535,6 +535,7 @@ export default function ChecklistAddModal({
                   }
                   listAriaLabel="Assign to"
                   pinSelectedToTop
+                  keyboardSelect
                 />
               </div>
             </div>

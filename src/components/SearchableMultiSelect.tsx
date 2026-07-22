@@ -1,4 +1,4 @@
-import { useId, useMemo, useState } from 'react'
+import { useId, useMemo, useState, type KeyboardEvent } from 'react'
 import {
   filterSearchableSelectOptionsByQuery,
   isSelectableOption,
@@ -23,6 +23,12 @@ export type SearchableMultiSelectProps = {
    * Skipped when the filtered list contains separator rows.
    */
   pinSelectedToTop?: boolean
+  /**
+   * When true, the search input drives the list: ↓/↑ move a highlight and Space
+   * toggles the highlighted option (or the first one before any arrowing).
+   * NOTE: Space then no longer types into the query.
+   */
+  keyboardSelect?: boolean
 }
 
 function toggleId(selected: string[], id: string, checked: boolean): string[] {
@@ -43,6 +49,7 @@ export function SearchableMultiSelect({
   listAriaLabel = 'Options',
   searchPlaceholder = 'Search…',
   pinSelectedToTop = false,
+  keyboardSelect = false,
 }: SearchableMultiSelectProps) {
   const reactId = useId()
   const baseId = idProp ?? reactId
@@ -50,6 +57,8 @@ export function SearchableMultiSelect({
   const listId = `${baseId}-list`
 
   const [query, setQuery] = useState('')
+  /** Keyboard highlight, tracked by option value so pin-to-top reorders keep following the same person. */
+  const [activeValue, setActiveValue] = useState<string | null>(null)
 
   const filtered = useMemo(
     () => filterSearchableSelectOptionsByQuery(options, query),
@@ -79,6 +88,35 @@ export function SearchableMultiSelect({
     return [...top, ...rest]
   }, [filtered, value, pinSelectedToTop])
 
+  const selectableRows = useMemo(() => rowsToRender.filter(isSelectableOption), [rowsToRender])
+  const activeIndex = activeValue == null ? -1 : selectableRows.findIndex((o) => o.value === activeValue)
+
+  const onSearchKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+    if (!keyboardSelect || disabled) return
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault()
+      const n = selectableRows.length
+      if (n === 0) return
+      const delta = e.key === 'ArrowDown' ? 1 : -1
+      const cur = activeIndex
+      const next = cur < 0 ? (delta > 0 ? 0 : n - 1) : (cur + delta + n) % n
+      const row = selectableRows[next]
+      if (!row) return
+      setActiveValue(row.value)
+      queueMicrotask(() =>
+        document.getElementById(`${listId}-opt-${row.value}`)?.scrollIntoView({ block: 'nearest' }),
+      )
+      return
+    }
+    if (e.key === ' ') {
+      e.preventDefault()
+      const row = activeIndex >= 0 ? selectableRows[activeIndex] : selectableRows[0]
+      if (!row) return
+      onChange(toggleId(value, row.value, !value.includes(row.value)))
+      if (activeIndex < 0) setActiveValue(row.value)
+    }
+  }
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
       <input
@@ -88,8 +126,17 @@ export function SearchableMultiSelect({
         placeholder={searchPlaceholder}
         value={query}
         disabled={disabled}
-        onChange={(e) => setQuery(e.target.value)}
+        onChange={(e) => {
+          setQuery(e.target.value)
+          setActiveValue(null)
+        }}
+        onKeyDown={onSearchKeyDown}
         aria-controls={listId}
+        aria-activedescendant={
+          keyboardSelect && activeIndex >= 0 && selectableRows[activeIndex]
+            ? `${listId}-opt-${selectableRows[activeIndex].value}`
+            : undefined
+        }
         style={{
           width: '100%',
           boxSizing: 'border-box',
@@ -143,6 +190,10 @@ export function SearchableMultiSelect({
                     cursor: disabled ? 'not-allowed' : 'pointer',
                     fontSize: '0.875rem',
                     color: 'var(--text-strong)',
+                    background:
+                      keyboardSelect && row.value === activeValue ? 'var(--bg-blue-tint)' : undefined,
+                    boxShadow:
+                      keyboardSelect && row.value === activeValue ? 'inset 0 0 0 2px #2563eb' : undefined,
                   }}
                 >
                   <input
