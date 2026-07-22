@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-22 (v2.938)
+last_updated: 2026-07-22 (v2.939)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.939)
+
+### Fix: Add Invoice job-allocation picker opened behind its modal (2026-07-22)
+Quickfill / Supply Houses → Add Invoice → Job allocations **+**: the "Add job for invoice" search modal rendered at z-index 1001 while its parent Add Invoice modal sits at 1003, so the picker appeared behind it and couldn't be used (reported by Taunya with a screenshot). Bumped to 1004; verified the search input now receives pointer hits and searching works.
 
 ## Latest Updates (v2.938)
 
