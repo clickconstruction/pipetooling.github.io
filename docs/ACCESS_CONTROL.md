@@ -437,7 +437,7 @@ Pipetooling implements comprehensive role-based access control (RBAC) using nine
 - **Non-empty array** = primary sees only those service types in Materials
 
 **Master-Primaries Adoption**:
-- Masters can adopt primaries via `master_primaries` table (**Settings → People & accounts** → Sharing and Adoption)
+- Primaries are adopted via the `master_primaries` table — **auto-maintained company-wide since v2.921** (`sync_company_access_grants()` seeds every live dev/master × primary pair; the former Settings → Sharing and Adoption UI was removed in v2.922)
 - Adopted primaries can add materials to jobs in Jobs Billing tab
 - Primaries appear in task assignee dropdown when adopted by the viewing user's master
 
@@ -502,7 +502,7 @@ Pipetooling implements comprehensive role-based access control (RBAC) using nine
 - Superintendents gain access **only** via project assignment. Adoption (`master_superintendents`) no longer grants project access.
 
 **Master-Superintendents Adoption** (legacy; does not grant project access):
-- Masters can adopt superintendents via `master_superintendents` (**Settings → People & accounts** → Sharing and Adoption) for other purposes
+- Superintendents are adopted via `master_superintendents` — **auto-maintained company-wide since v2.921** (see `sync_company_access_grants()`)
 - Project access is via `project_superintendents` only
 
 **Permissions**:
@@ -804,6 +804,8 @@ Route access for the restricted roles above comes from the per-role allowed-path
 ### Master-Assistant Adoption
 
 **Pattern**: Masters grant assistants access to their customers and projects
+
+> **v2.921 — grants are automatic.** `sync_company_access_grants()` (+ a `users` trigger on role/archived_at changes) keeps `master_assistants`, `master_primaries`, `master_superintendents`, and `master_shares` filled with every eligible live pair, so all four tables behave as company-wide role-based access. The Settings → Sharing and Adoption UI was removed in v2.922. The tables and the policies that consult them are unchanged.
 
 **Mechanism**: `master_assistants` table (many-to-many)
 
