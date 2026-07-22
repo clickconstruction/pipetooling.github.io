@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { useLocation } from 'react-router-dom'
 import DispatchModeHome from '../components/dispatchMode/DispatchModeHome'
 import DispatchModeSchedule from '../components/dispatchMode/DispatchModeSchedule'
+import DispatchModeInbox from '../components/dispatchMode/DispatchModeInbox'
 
 /**
  * Dispatch Mode tab pages (/dispatch-mode + /schedule /inbox /customers).
@@ -24,7 +25,7 @@ export default function DispatchMode() {
     return <DispatchModeSchedule />
   }
   if (pathname.startsWith('/dispatch-mode/inbox')) {
-    return <Placeholder title="Inbox">The Dispatch Mode inbox is coming soon.</Placeholder>
+    return <DispatchModeInbox />
   }
   if (pathname.startsWith('/dispatch-mode/customers')) {
     return <Placeholder title="Customers">The Dispatch Mode customer list is coming soon.</Placeholder>
