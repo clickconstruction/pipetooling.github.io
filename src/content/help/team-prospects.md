@@ -68,7 +68,7 @@ Across the top of the tab: **Screen → Interview → Hire** — live counts und
 When a candidate looks promising, hit {{button:blue|Advance}} on their Screen card. They move to the **Interview** stage — the queue for a master or dev to actually call them:
 
 - Their phone number is a **tap-to-call** button, with the last-contact stamp next to it ({{button:outline|Talked today}} updates it).
-- After the call, hit {{button:outline|My review}} and leave **your own** three ratings plus remarks. Each reviewer gets exactly one review per candidate (open it again to revise). Everyone's reviews show on the row — sourcing scores and reviewer verdicts side by side.
+- After the call, hit {{button:outline|My review}} and leave **your own** three ratings plus remarks. Under each rating slider there's an optional comment box — say *why* you scored Ability, Drive, or Integrity the way you did, right where you set the number. Each reviewer gets exactly one review per candidate (open it again to revise). Everyone's reviews show on the row — sourcing scores, reviewer verdicts, and any per-rating comments side by side.
 - Then decide: {{button:green|Advance}} (to Hire), **Passed**, or **Back to Screen** if they need more sourcing time.
 
 ## Hiring someone onto the roster

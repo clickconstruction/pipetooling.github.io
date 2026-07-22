@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-22 (v2.945)
+last_updated: 2026-07-22 (v2.946)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.946)
+
+### Team Prospects: per-rating review comments (2026-07-22)
+Each reviewer's **My review** (Interview stage) now takes an optional free-text comment under **each** of the three rating sliders — Ability, Drive, Integrity — answering "why this score?" right where the score is set; the overall **Remarks** box stays for the general read. Migration [`20260722250000_team_prospect_review_dimension_comments.sql`](../supabase/migrations/20260722250000_team_prospect_review_dimension_comments.sql) adds nullable `comment_ability` / `comment_drive` / `comment_integrity` to `team_prospect_reviews` (row-scoped RLS already covers them; one row per candidate+reviewer stays the shape, so every user's commented review lives on that prospect's record). Client ([`TeamProspectsTab.tsx`](../src/components/prospects/TeamProspectsTab.tsx)): `RatingSliders` gains optional `comments`/`onCommentChange` props (only the review modal passes them — the Edit-candidate sourcing sliders are unchanged); the review upsert trims empties to NULL; the Interview card's review lines render each non-empty comment as an indented `Ability — <text>` line under the reviewer's `A · D · I` numbers. Types patched in `database.ts` (verify with `gen-types:linked` after push). Help guide `team-prospects.md` updated.
 
 ## Latest Updates (v2.945)
 

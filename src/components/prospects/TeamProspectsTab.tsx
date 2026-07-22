@@ -63,6 +63,9 @@ export type TeamProspectReview = {
   rating_ability: number | null
   rating_drive: number | null
   rating_integrity: number | null
+  comment_ability: string | null
+  comment_drive: string | null
+  comment_integrity: string | null
   remarks: string | null
   updated_at: string | null
 }
@@ -71,10 +74,16 @@ type ReviewDraft = {
   rating_ability: number | null
   rating_drive: number | null
   rating_integrity: number | null
+  comment_ability: string
+  comment_drive: string
+  comment_integrity: string
   remarks: string
 }
 
-const EMPTY_REVIEW_DRAFT: ReviewDraft = { rating_ability: null, rating_drive: null, rating_integrity: null, remarks: '' }
+const EMPTY_REVIEW_DRAFT: ReviewDraft = {
+  rating_ability: null, rating_drive: null, rating_integrity: null,
+  comment_ability: '', comment_drive: '', comment_integrity: '', remarks: '',
+}
 
 /** Dev-defined onboarding checklist item (Hire tab). */
 export type TeamOnboardingItem = {
@@ -186,13 +195,25 @@ type RatingKey = (typeof RATING_DEFS)[number]['key']
 
 type RatingValues = Record<RatingKey, number | null>
 
+/** team_prospect_reviews comment column for each rating dimension (v2.946). */
+const COMMENT_KEY_BY_RATING = {
+  rating_ability: 'comment_ability',
+  rating_drive: 'comment_drive',
+  rating_integrity: 'comment_integrity',
+} as const
+
 /** 0-100 sliders per dimension, with an unrated state and a clear affordance (Edit candidate + My review modals). */
 function RatingSliders({
   values,
   onChange,
+  comments,
+  onCommentChange,
 }: {
   values: RatingValues
   onChange: (key: RatingKey, value: number | null) => void
+  /** When provided (My review modal), each slider gets its own comment box (v2.946). */
+  comments?: Record<RatingKey, string>
+  onCommentChange?: (key: RatingKey, value: string) => void
 }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem', marginTop: '0.75rem' }}>
@@ -226,6 +247,16 @@ function RatingSliders({
               aria-label={`${def.label}: ${value == null ? 'unrated' : value} out of 100`}
               style={{ width: '100%', accentColor: def.color, opacity: value == null ? 0.45 : 1 }}
             />
+            {comments && onCommentChange && (
+              <input
+                type="text"
+                value={comments[def.key]}
+                onChange={(e) => onCommentChange(def.key, e.target.value)}
+                placeholder={`Why this ${def.short} score? (optional)`}
+                aria-label={`${def.short} comment`}
+                style={{ width: '100%', boxSizing: 'border-box', marginTop: '0.25rem', padding: '0.35rem 0.5rem', fontSize: '0.8125rem', background: 'var(--surface)', color: 'var(--text-base)', border: '1px solid var(--border)', borderRadius: 4 }}
+              />
+            )}
           </div>
         )
       })}
@@ -875,7 +906,11 @@ export default function TeamProspectsTab({ authUserId, isDev, resolveMasterId }:
     const mine = reviews.find((r) => r.team_prospect_id === candidate.id && r.reviewer_user_id === authUserId)
     setReviewDraft(
       mine
-        ? { rating_ability: mine.rating_ability, rating_drive: mine.rating_drive, rating_integrity: mine.rating_integrity, remarks: mine.remarks ?? '' }
+        ? {
+            rating_ability: mine.rating_ability, rating_drive: mine.rating_drive, rating_integrity: mine.rating_integrity,
+            comment_ability: mine.comment_ability ?? '', comment_drive: mine.comment_drive ?? '', comment_integrity: mine.comment_integrity ?? '',
+            remarks: mine.remarks ?? '',
+          }
         : EMPTY_REVIEW_DRAFT,
     )
     setModalError(null)
@@ -893,6 +928,9 @@ export default function TeamProspectsTab({ authUserId, isDev, resolveMasterId }:
         rating_ability: reviewDraft.rating_ability,
         rating_drive: reviewDraft.rating_drive,
         rating_integrity: reviewDraft.rating_integrity,
+        comment_ability: reviewDraft.comment_ability.trim() || null,
+        comment_drive: reviewDraft.comment_drive.trim() || null,
+        comment_integrity: reviewDraft.comment_integrity.trim() || null,
         remarks: reviewDraft.remarks.trim() || null,
       },
       { onConflict: 'team_prospect_id,reviewer_user_id' },
@@ -1351,16 +1389,27 @@ export default function TeamProspectsTab({ authUserId, isDev, resolveMasterId }:
                             <CandidateRatingBars candidate={c} />
                             {candidateReviews.length > 0 && (
                               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', margin: '0.45rem 0 0 0' }}>
-                                {candidateReviews.map((r) => (
-                                  <div key={r.id} style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-                                    <span style={{ fontWeight: 600, color: 'var(--text-strong)' }}>{reviewerNames.get(r.reviewer_user_id) ?? 'Reviewer'}</span>
-                                    {': '}
-                                    <span style={{ fontVariantNumeric: 'tabular-nums' }} title="Ability · Drive · Integrity">
-                                      {[r.rating_ability, r.rating_drive, r.rating_integrity].map((v) => (v == null ? '—' : v)).join(' · ')}
-                                    </span>
-                                    {r.remarks ? <span> — {r.remarks}</span> : null}
-                                  </div>
-                                ))}
+                                {candidateReviews.map((r) => {
+                                  const dimensionComments = RATING_DEFS.flatMap((def) => {
+                                    const text = r[COMMENT_KEY_BY_RATING[def.key]]
+                                    return text != null && text.trim() !== '' ? [{ short: def.short, text }] : []
+                                  })
+                                  return (
+                                    <div key={r.id} style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+                                      <span style={{ fontWeight: 600, color: 'var(--text-strong)' }}>{reviewerNames.get(r.reviewer_user_id) ?? 'Reviewer'}</span>
+                                      {': '}
+                                      <span style={{ fontVariantNumeric: 'tabular-nums' }} title="Ability · Drive · Integrity">
+                                        {[r.rating_ability, r.rating_drive, r.rating_integrity].map((v) => (v == null ? '—' : v)).join(' · ')}
+                                      </span>
+                                      {r.remarks ? <span> — {r.remarks}</span> : null}
+                                      {dimensionComments.map((d) => (
+                                        <div key={d.short} style={{ margin: '0.1rem 0 0 1rem' }}>
+                                          <span style={{ fontWeight: 600 }}>{d.short}</span> — {d.text}
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )
+                                })}
                               </div>
                             )}
                             <div style={{ display: 'flex', gap: '0.3rem', flexWrap: 'wrap', marginTop: '0.45rem' }}>
@@ -1634,7 +1683,16 @@ export default function TeamProspectsTab({ authUserId, isDev, resolveMasterId }:
             <p style={{ margin: '0 0 0.5rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
               Your own read after talking to them — shown alongside everyone else&rsquo;s under Interviews.
             </p>
-            <RatingSliders values={reviewDraft} onChange={(k, v) => setReviewDraft({ ...reviewDraft, [k]: v })} />
+            <RatingSliders
+              values={reviewDraft}
+              onChange={(k, v) => setReviewDraft({ ...reviewDraft, [k]: v })}
+              comments={{
+                rating_ability: reviewDraft.comment_ability,
+                rating_drive: reviewDraft.comment_drive,
+                rating_integrity: reviewDraft.comment_integrity,
+              }}
+              onCommentChange={(k, v) => setReviewDraft({ ...reviewDraft, [COMMENT_KEY_BY_RATING[k]]: v })}
+            />
             <label style={{ display: 'block', marginTop: '0.85rem' }}>
               <span style={labelSpanStyle}>Remarks</span>
               <textarea

@@ -105,6 +105,13 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 #### July 22, 2026
 
+**`20260722250000_team_prospect_review_dimension_comments.sql`** _(apply via `supabase db push` after the file is on `main`)_
+- **Purpose**: Per-dimension review comments (v2.946) — three nullable text columns on `team_prospect_reviews` (`comment_ability`, `comment_drive`, `comment_integrity`) so each reviewer can note "why this score" beside each 0–100 rating; `remarks` stays as the overall note.
+- **Security**: no policy changes — the table's row-scoped RLS (staff read, reviewer-owned writes) covers the new columns.
+- **Ordering**: apply promptly after merge — the new client's review upsert/select includes the columns once deployed (old clients unaffected; additive).
+- **Category**: Prospects / feature
+- **Note**: version number continues main's hand-rolled ascending sequence (…244000, 248000 → 250000) so it sorts after the latest applied version.
+
 **`20260722248000_company_documents.sql`** _(apply via `supabase db push` after the file is on `main`)_
 - **Purpose**: Company documents (v2.941) — `company_documents` table (name, link_url, position) for the dev-maintained "current copy" links surfaced in Settings → Your account.
 - **Security**: RLS — office roles (dev/master/assistant/controller/estimator) read; devs write. CREATE TABLE ends with both read-only-block calls.
