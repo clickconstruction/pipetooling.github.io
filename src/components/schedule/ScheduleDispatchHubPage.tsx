@@ -2175,6 +2175,7 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
             linkedCopyApplyBusy={linkedCopyApplyBusy}
             swimLanes={swimLanes}
             onSwimLanesChanged={() => void refetchSwimLanes()}
+            onQuickAssignScheduled={() => void loadHub({ quiet: true })}
             onHubAssignJobCellPick={onHubAssignJobCellPick}
             onDeleteBlock={(id) => void requestDeleteBlock(id)}
             onHubEmptyCellClick={canEdit ? onHubEmptyCellOpenChoice : undefined}
