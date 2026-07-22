@@ -56,6 +56,8 @@ export default function DispatchModeSchedule() {
   }, [gridStart, gridEnd])
 
   const [blocks, setBlocks] = useState<DispatchModeAgendaBlock[]>([])
+  /** Empty set = everyone. Person ids survive day switches; absent people just contribute nothing. */
+  const [personFilter, setPersonFilter] = useState<Set<string>>(() => new Set())
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -74,6 +76,29 @@ export default function DispatchModeSchedule() {
 
   const goToday = () => {
     setSelectedYmd(todayYmd)
+  }
+
+  /** Unique assignees on the selected day, alphabetical — the filter chip row. */
+  const dayPeople = useMemo(() => {
+    const byId = new Map<string, string>()
+    for (const b of blocks) byId.set(b.assigneeUserId, b.assigneeName)
+    return [...byId.entries()]
+      .map(([id, name]) => ({ id, name }))
+      .sort((a, b) => a.name.localeCompare(b.name))
+  }, [blocks])
+
+  const visibleBlocks = useMemo(
+    () => (personFilter.size === 0 ? blocks : blocks.filter((b) => personFilter.has(b.assigneeUserId))),
+    [blocks, personFilter],
+  )
+
+  const togglePerson = (id: string) => {
+    setPersonFilter((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
   }
 
   return (
@@ -175,6 +200,65 @@ export default function DispatchModeSchedule() {
         </div>
       </div>
 
+      {/* Person filter */}
+      {dayPeople.length > 1 ? (
+        <div
+          role="group"
+          aria-label="Filter schedule by person"
+          style={{
+            display: 'flex',
+            gap: 6,
+            alignItems: 'center',
+            overflowX: 'auto',
+            padding: '0 0.75rem 0.5rem',
+          }}
+        >
+          <button
+            type="button"
+            aria-pressed={personFilter.size === 0}
+            onClick={() => setPersonFilter(new Set())}
+            style={{
+              flexShrink: 0,
+              padding: '0.25rem 0.7rem',
+              fontSize: '0.8125rem',
+              fontWeight: 600,
+              border: personFilter.size === 0 ? '1px solid #2563eb' : '1px solid var(--border-strong)',
+              borderRadius: 999,
+              background: personFilter.size === 0 ? '#2563eb' : 'var(--surface)',
+              color: personFilter.size === 0 ? '#fff' : 'var(--text-700)',
+              cursor: 'pointer',
+            }}
+          >
+            Everyone
+          </button>
+          {dayPeople.map((p) => {
+            const active = personFilter.has(p.id)
+            return (
+              <button
+                key={p.id}
+                type="button"
+                aria-pressed={active}
+                onClick={() => togglePerson(p.id)}
+                style={{
+                  flexShrink: 0,
+                  padding: '0.25rem 0.7rem',
+                  fontSize: '0.8125rem',
+                  fontWeight: 600,
+                  border: active ? '1px solid #2563eb' : '1px solid var(--border-strong)',
+                  borderRadius: 999,
+                  background: active ? 'var(--bg-blue-tint)' : 'var(--surface)',
+                  color: active ? 'var(--text-blue-700)' : 'var(--text-700)',
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {p.name}
+              </button>
+            )
+          })}
+        </div>
+      ) : null}
+
       {/* Agenda */}
       <div
         style={{
@@ -195,13 +279,13 @@ export default function DispatchModeSchedule() {
         <p style={{ margin: 0, padding: '1rem 0.75rem', fontSize: '0.875rem', color: 'var(--text-red-700)' }}>
           {error}
         </p>
-      ) : blocks.length === 0 ? (
+      ) : visibleBlocks.length === 0 ? (
         <p style={{ margin: 0, padding: '1rem 0.75rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-          Nothing scheduled.
+          {blocks.length === 0 ? 'Nothing scheduled.' : 'Nothing scheduled for the selected people.'}
         </p>
       ) : (
         <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
-          {blocks.map((b) => {
+          {visibleBlocks.map((b) => {
             const durationMin = Math.max(
               0,
               timeInputToMinutesSafe(b.timeEnd) - timeInputToMinutesSafe(b.timeStart),
