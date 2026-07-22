@@ -3,6 +3,7 @@ import { useIsMobile } from '../../hooks/useIsMobile'
 import { useDashboardBoot } from '../../hooks/useDashboardBoot'
 import { getCurrentUserName as getCurrentUserNameById } from '../../lib/getCurrentUserName'
 import { DashboardMyInboxCard } from '../dashboard/DashboardMyInboxCard'
+import { DashboardPinnedQuickRow } from '../dashboard/DashboardPinnedQuickRow'
 import SettingsRecentPushNotifications from '../settings/SettingsRecentPushNotifications'
 
 /**
@@ -25,6 +26,23 @@ export default function JobModeInbox() {
       <h1 style={{ margin: 0, fontSize: '1.1rem', color: 'var(--text-strong)', textAlign: 'center' }}>
         Inbox
       </h1>
+      {/* The Dashboard's notification banners (stale tally, AR unallocated, lost-bid
+          reasons …) — hidden on the Job Mode Dashboard (hideBanners), shown here instead. */}
+      <DashboardPinnedQuickRow
+        authUserId={authUser?.id}
+        role={role}
+        visiblePins={[]}
+        quickActionDefs={[]}
+        quickButtonsPlacement="top"
+        showDashboardQuickButtons={false}
+        costMatrixTotal={null}
+        billedCount={null}
+        billedTotal={null}
+        supplyHousesAPTotal={null}
+        subLaborDueTotal={null}
+        renderModals
+        bannersOnly
+      />
       <DashboardMyInboxCard
         authUserId={authUser?.id}
         role={role}

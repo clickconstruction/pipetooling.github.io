@@ -55,7 +55,7 @@ With Job Mode on, a tab bar pins to the bottom of the screen — everything on i
 
 - **Dashboard** — the Job Mode card you know.
 - **Schedule** — a two-week strip plus your own day agenda: your visits with times, customer, and address. Tap one to open the job.
-- **Inbox** — your **My Inbox** tasks and your recent push notifications.
+- **Inbox** — any notification banners meant for you (like stale tally transactions) up top, then your **My Inbox** tasks and your recent push notifications.
 - **Customers** — just the customers whose jobs have been on your schedule; tap one for its full interaction summary.
 
 ## Good habits

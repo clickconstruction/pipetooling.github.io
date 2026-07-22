@@ -1130,8 +1130,9 @@ export default function Dashboard() {
   if (jobModeEnabled && !jobModeShowFullDashboard && authUser?.id) {
     return (
       <div>
-        {/* renderModals={false}: the tail modals never mounted in this early return (their openers are inert in Job Mode) — preserved. */}
-        <DashboardPinnedQuickRow {...pinnedQuickRowSharedProps} renderModals={false} />
+        {/* renderModals={false}: the tail modals never mounted in this early return (their openers are inert in Job Mode) — preserved.
+            hideBanners: notification banners live in the Job Mode Inbox tab instead (v2.917). */}
+        <DashboardPinnedQuickRow {...pinnedQuickRowSharedProps} renderModals={false} hideBanners />
         <DashboardJobModeCard
           userId={authUser.id}
           onLeaveReport={(j) => setLeaveReportJob(j)}
