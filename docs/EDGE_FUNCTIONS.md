@@ -1995,6 +1995,8 @@ If **`stripe_invoice_id`** and **`hosted_invoice_url`** are already set, returns
 
 ### send-physical-invoice-email
 
+> **v2.940**: accepts optional `additional_emails: string[]` (≤10, validated, deduped against `customer_email`) — extra recipients ride on the same Resend send (`to` array), so one email and one recorded send event regardless of recipient count.
+
 **Purpose**: Email the customer a **PDF invoice** (generated in the app to match the on-screen preview) via **Resend**, then persist the **`jobs_ledger_invoices`** billing fields as a **Physical** send (**`status: billed`**, **`external_send_channel: physical`**, **`sent_to_customer_at`**, **`external_send_note`**, **`amount`**). It does **not** call **`update_job_status`** on **`jobs_ledger`**. After a **200** response, **[`SendRecordInvoiceModal`](../src/components/jobs/SendRecordInvoiceModal.tsx)** runs **`maybePromoteJobToBilledAfterCustomerInvoice`** ([`promoteJobToBilledIfFullyInvoiced.ts`](../src/lib/promoteJobToBilledIfFullyInvoiced.ts)) — the same helper used after **Stripe** **`create-stripe-invoice`** and **HouseCall Pro** manual bill — so when the job is **fully invoiced out** (no **`ready_to_bill`** rows; **`jobBillingUnallocatedDollars`** ~ 0), the **job** moves to **billed** together with the invoice line regardless of billing channel. The client may send a **detailed** multi-section PDF (Specific Work + materials + payment history) built from the job ledger; the Edge function only validates and attaches **`pdf_base64`**.
 
 **Endpoint**: `POST /functions/v1/send-physical-invoice-email`

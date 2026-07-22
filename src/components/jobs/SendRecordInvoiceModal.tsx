@@ -456,6 +456,47 @@ export default function SendRecordInvoiceModal({
     setEmailFixError(null)
   }, [open, jobRaw?.id])
 
+  /** Customer contact persons with emails (v2.940): offered as extra recipients on the
+      physical-invoice email — one send, extra addresses in the same email's `to`. */
+  const [customerContacts, setCustomerContacts] = useState<Array<{ id: string; name: string; email: string }>>([])
+  const [extraRecipientIds, setExtraRecipientIds] = useState<Set<string>>(() => new Set())
+  const [oneOffEmail, setOneOffEmail] = useState('')
+  useEffect(() => {
+    setExtraRecipientIds(new Set())
+    setOneOffEmail('')
+    if (!open || !jobRaw?.customer_id) {
+      setCustomerContacts([])
+      return
+    }
+    let cancelled = false
+    void supabase
+      .from('customer_contact_persons')
+      .select('id, name, email')
+      .eq('customer_id', jobRaw.customer_id)
+      .order('created_at', { ascending: true })
+      .then(({ data }) => {
+        if (cancelled) return
+        setCustomerContacts(
+          ((data ?? []) as Array<{ id: string; name: string | null; email: string | null }>)
+            .filter((c) => (c.email ?? '').trim())
+            .map((c) => ({ id: c.id, name: (c.name ?? '').trim() || 'Contact', email: (c.email ?? '').trim() })),
+        )
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [open, jobRaw?.customer_id])
+
+  function physicalAdditionalEmails(): string[] {
+    const out: string[] = []
+    for (const c of customerContacts) {
+      if (extraRecipientIds.has(c.id) && !out.includes(c.email.toLowerCase())) out.push(c.email.toLowerCase())
+    }
+    const oneOff = oneOffEmail.trim().toLowerCase()
+    if (oneOff && oneOff.includes('@') && !out.includes(oneOff)) out.push(oneOff)
+    return out.slice(0, 10)
+  }
+
   async function saveMissingCustomerEmail() {
     if (!jobRaw || emailFixSaving) return
     const email = emailFixDraft.trim()
@@ -937,6 +978,7 @@ export default function SendRecordInvoiceModal({
           sent_to_customer_at: sentAt,
           external_send_note: externalNote.trim() || null,
           customer_email: (job.customer_email ?? '').trim(),
+          ...(physicalAdditionalEmails().length > 0 ? { additional_emails: physicalAdditionalEmails() } : {}),
           subject: physicalInvoiceEmailSubject(doc),
           pdf_base64: pdfBase64,
           pdf_filename: physicalInvoicePdfFilename(job.hcp_number, sentDate.trim()),
@@ -1637,6 +1679,41 @@ export default function SendRecordInvoiceModal({
                 Customer email is required to send a physical invoice by email. Add it on Edit Job.
               </p>
             ) : null}
+            {(customerContacts.length > 0 || (job.customer_email ?? '').trim()) && (
+              <div style={{ marginBottom: '0.75rem' }}>
+                <div style={{ fontSize: '0.875rem', fontWeight: 500, marginBottom: '0.25rem' }}>Send to</div>
+                <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginBottom: customerContacts.length > 0 ? '0.25rem' : 0 }}>
+                  {(job.customer_email ?? '').trim() || '—'} <span style={{ color: 'var(--text-faint)' }}>(primary)</span>
+                </div>
+                {customerContacts.map((c) => (
+                  <label key={c.id} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8125rem', cursor: 'pointer', padding: '0.1rem 0' }}>
+                    <input
+                      type="checkbox"
+                      checked={extraRecipientIds.has(c.id)}
+                      onChange={(e) => {
+                        setExtraRecipientIds((prev) => {
+                          const next = new Set(prev)
+                          if (e.target.checked) next.add(c.id)
+                          else next.delete(c.id)
+                          return next
+                        })
+                      }}
+                    />
+                    <span>
+                      {c.name} <span style={{ color: 'var(--text-muted)' }}>{c.email}</span>
+                    </span>
+                  </label>
+                ))}
+                <input
+                  type="email"
+                  value={oneOffEmail}
+                  onChange={(e) => setOneOffEmail(e.target.value)}
+                  placeholder="Also send to… (one-off email)"
+                  aria-label="Additional one-off email recipient"
+                  style={{ width: '100%', padding: '0.35rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, marginTop: '0.25rem', boxSizing: 'border-box', fontSize: '0.8125rem' }}
+                />
+              </div>
+            )}
             <div style={BILL_CUSTOMER_INVOICE_MODIFICATIONS_SHELL_STYLE}>
               <div style={BILL_CUSTOMER_INVOICE_MODIFICATIONS_TITLE_STYLE}>
                 Invoice Modifications (optional)

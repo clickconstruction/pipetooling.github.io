@@ -108,6 +108,12 @@ Jobs that are billed but proving hard to collect can be flagged for **Collection
 - **Jobs → Stages** — the full board, every status.
 - **Quickfill** — the **Jobs Billing** and **Billing Awaiting Payments** sections put billing review into the office's daily loop.
 
+## Sending to more than one person
+
+Commercial customers are usually several people — the PM, the AP clerk, the owner. Open the customer (Customers → click their name) and expand **Contacts**: add each person with their own name, email, phone, and a role note like "AP clerk". Then, when emailing a **physical invoice** from Bill Customer, a **Send to** list shows the primary email plus a checkbox for every contact — tick who should get a copy, or type a one-off address. One email goes out with everyone on it.
+
+The primary **Email** field stays the billing identity: **Stripe hosted invoices always go to that one address** — contacts get copies only on the emails the app sends itself.
+
 ## When there's no customer email
 
 Stripe and emailed invoices need a customer email, and the app now flags the gap early:

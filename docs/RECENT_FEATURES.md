@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-22 (v2.939)
+last_updated: 2026-07-22 (v2.940)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.940)
+
+### Customers: named Contacts + multi-recipient invoice emails (2026-07-22)
+Taunya's multi-email ask, built on the model that already existed. **Edit Customer** gains a collapsible **Contacts (N)** editor over the existing `customer_contact_persons` table (name required; phone, email, role-note optional; per-row save/remove) — commercial customers are *people*, not comma lists, so each contact keeps a name. **Bill Customer → Physical invoice** gains a **Send to** block: the primary email labeled (primary) plus a checkbox per contact-with-email and a one-off address field; selections go to `send-physical-invoice-email` as new `additional_emails[]` (edge function updated + **needs `supabase functions deploy send-physical-invoice-email`**: ≤10, validated, deduped, merged into the same Resend `to` — one email, one recorded send). Stripe hosted invoices still go to the single primary email (Stripe models one address per customer); the guide says so explicitly. No migration — the table existed. Help guide `ready-to-bill-pipeline.md` gains "Sending to more than one person"; `EDGE_FUNCTIONS.md` updated.
 
 ## Latest Updates (v2.939)
 
