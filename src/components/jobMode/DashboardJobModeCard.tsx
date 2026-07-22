@@ -4,9 +4,11 @@ import { useRealtimeChannel } from '../../hooks/useRealtimeChannel'
 import { useUpdateFocusOpenerBridge } from '../../contexts/UpdateFocusOpenerBridgeContext'
 import { useLedgerDisplayPrefixes } from '../../contexts/LedgerDisplayPrefixContext'
 import {
+  effectiveJobLedgerNumber,
   formatJobLedgerNumberLabel,
   resolveJobLedgerPrefix,
 } from '../../lib/ledgerDisplayPrefixes'
+import { getBidServiceTypeTag } from '../../utils/unifiedJobBidSearch'
 import { withSupabaseRetry, formatErrorMessage } from '../../utils/errorHandling'
 import { denverCalendarDayKey } from '../../utils/dateUtils'
 import {
@@ -168,6 +170,27 @@ function safeTrim(s: string | null | undefined): string {
 
 export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway }: Props) {
   const { prefixMap } = useLedgerDisplayPrefixes()
+  // Service-type names by id, for the trade-tag job label ("PLUM 902") in the header.
+  const [serviceTypeNames, setServiceTypeNames] = useState<Record<string, string>>({})
+  useEffect(() => {
+    let cancelled = false
+    void (async () => {
+      try {
+        const { data } = await supabase.from('service_types').select('id, name')
+        if (cancelled) return
+        const map: Record<string, string> = {}
+        for (const r of (data ?? []) as Array<{ id: string; name: string | null }>) {
+          if (r.name?.trim()) map[r.id] = r.name.trim()
+        }
+        setServiceTypeNames(map)
+      } catch {
+        // fall back to the ledger-prefix label
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
   const { requestOpenUpdateFocus, applyUpdateFocusDirect } = useUpdateFocusOpenerBridge()
 
   const [workDateYmd, setWorkDateYmd] = useState<string>(() => denverCalendarDayKey(Date.now()))
@@ -372,6 +395,11 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
   )
 
   function jobNumberLabel(serviceTypeId: string | null, hcp: string | null): string {
+    // Trade-tag label ("PLUM 902" / "ELEC 31" / "HVAC 12") matching other job
+    // cards; ledger-prefix label ("JP902") when the service type is unknown.
+    const stName = serviceTypeId ? serviceTypeNames[serviceTypeId] : undefined
+    const tag = getBidServiceTypeTag(stName)?.tag ?? (stName ? stName.slice(0, 4) : null)
+    if (tag) return `${tag.toUpperCase()} ${effectiveJobLedgerNumber(hcp) || '—'}`
     return formatJobLedgerNumberLabel(resolveJobLedgerPrefix(serviceTypeId, prefixMap), hcp)
   }
 
