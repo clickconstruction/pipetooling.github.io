@@ -105,6 +105,12 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 #### July 22, 2026
 
+**`20260722234000_company_access_grants.sql`** _(apply via `supabase db push` after the file is on `main`)_
+- **Purpose**: **Company-wide access grants** (v2.921). Fills `master_assistants` / `master_primaries` / `master_superintendents` / `master_shares` with every eligible live pair (owners = live dev + master_technician; grantees by role) and installs `sync_company_access_grants()` + a statement trigger on `users` (INSERT / UPDATE OF role, archived_at) that keeps them full as people are hired, restored, or change roles. The 82 policies / ~50 functions that consult the grant tables become effectively role-based ("office sees everything") without rewriting any of them.
+- **Security**: additive only — rows are inserted with `ON CONFLICT DO NOTHING`, never removed; nothing loses access. Field crew (subs/helpers) are not in any grant table and keep schedule-scoped visibility.
+- **Ordering**: independent of client deploys (the Sharing & Adoption UI removal lands separately).
+- **Category**: Access control / simplification
+
 **`20260722230000_pay_flags_no_raise.sql`** _(apply via `supabase db push` after the file is on `main`)_
 - **Purpose**: **Postgres log-noise fix** (v2.914). `list_people_pay_flags()` raised exceptions for unauthenticated callers and for roles outside dev/master/assistant/controller — ~2,000 ERROR log lines/day, since labor-math paths run for field roles and swallow the error client-side. Disallowed callers now get **zero rows** instead of an exception; the access boundary (which roles see the flags) is unchanged.
 - **Security**: identical data exposure; SECURITY DEFINER + guard retained, only the failure mode changes (empty vs raise).
