@@ -1,8 +1,11 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { buildServiceTypeTradePill } from '../../lib/serviceTypeTradePill'
 
 export type ScheduleDispatchAssignJobPickerRow = {
   id: string
   displayTitle: string
+  /** Service type name (e.g. Plumbing) — rendered as the PLUM/ELEC/HVAC trade pill. */
+  serviceTypeName?: string | null
   /** Muted second line under the title (e.g. "07/14/26 | 123 Main St" — date added | address). */
   subline?: string
   /** When set, show a muted hint (e.g. Quickfill: clocked on this job today). */
@@ -229,7 +232,17 @@ export function ScheduleDispatchAssignJobPickerModal({
                     }}
                   >
                     <span style={{ minWidth: 0, flex: 1, display: 'flex', flexDirection: 'column', gap: 2 }}>
-                      <span>{r.displayTitle}</span>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.displayTitle}</span>
+                        {(() => {
+                          const pill = buildServiceTypeTradePill(r.serviceTypeName)
+                          return pill ? (
+                            <span aria-label={`Service type ${pill.label}`} style={{ ...pill.style, marginTop: 0, flexShrink: 0 }}>
+                              {pill.label}
+                            </span>
+                          ) : null
+                        })()}
+                      </span>
                       {r.subline ? (
                         <span
                           style={{
