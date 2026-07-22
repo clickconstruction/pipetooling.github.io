@@ -55,9 +55,13 @@ A role column can be deleted only once **every candidate in it has been individu
 
 The Team tab is granted **per person**, on top of normal Prospects access. If you don't see the tab, you haven't been granted it. A dev can turn it on for someone under {{icon:gear}} **Settings → Active accounts → Edit** with the **Can see Prospects → Team (hiring board)** checkbox.
 
-## Screening calls (the Call list)
+## The pipeline at a glance
 
-When a candidate looks promising, hit {{button:outline|📞 Pull up}} on their card. They leave the sourcing board and appear in the amber **Call list** — the queue for a master or dev to actually call them:
+Across the top of the tab: **Sourcing & Screening → Interviews → Hired**, each with a live count. Tap a stage to jump to it — Sourcing lands on the board, Interviews on the amber section, and Hired expands and opens that bucket.
+
+## Screening calls (Interviews)
+
+When a candidate looks promising, hit {{button:outline|📞 Pull up}} on their card. They leave the sourcing board and appear in the amber **Interviews** section — the queue for a master or dev to actually call them:
 
 - Their phone number is a **tap-to-call** button, with the last-contact stamp next to it ({{button:outline|Talked today}} updates it).
 - After the call, hit {{button:outline|My review}} and leave **your own** three ratings plus remarks. Each reviewer gets exactly one review per candidate (open it again to revise). Everyone's reviews show on the row — sourcing scores and reviewer verdicts side by side.

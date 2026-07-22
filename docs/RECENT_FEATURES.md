@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-22 (v2.928)
+last_updated: 2026-07-22 (v2.929)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.929)
+
+### Team Prospects: pipeline header + Call list renamed to Interviews (2026-07-22)
+The Team tab opens with a stage stepper — **Sourcing & Screening → Interviews → Hired** — live counts big under each label, chips clickable: Sourcing scrolls to the board, Interviews to the amber section, Hired scrolls to and expands the bucket (scroll fires before the expand state-update, which would cancel a queued scroll; instant not smooth — React re-renders cancel in-flight smooth scrolling). The v2.927 "📞 Call list" section is renamed **📞 Interviews** everywhere (section header, pull-up tooltip, review-modal copy) so the header and sections share one vocabulary. Help guide updated ("The pipeline at a glance" + renames).
 
 ## Latest Updates (v2.928)
 
