@@ -9,7 +9,7 @@
  * (dense 1..n ranks per column, minimal update sets) are unit-tested.
  */
 
-export type TeamProspectStatus = 'active' | 'hired' | 'passed'
+export type TeamProspectStatus = 'active' | 'calling' | 'hired' | 'passed'
 
 export type RankableTeamProspect = {
   id: string
@@ -29,6 +29,8 @@ export type TeamProspectRankUpdate = {
 export type GroupedTeamProspects<T> = {
   /** Active candidates per column, rank order. Key = role id, or UNSORTED_ROLE_KEY for role_id NULL. */
   activeByRole: Record<string, T[]>
+  /** Pulled up for screening calls (status 'calling'), newest first. */
+  calling: T[]
   hired: T[]
   passed: T[]
 }
@@ -58,15 +60,18 @@ function compareByNewestFirst(a: RankableTeamProspect, b: RankableTeamProspect):
 
 /** Split rows into per-column active lists (rank order) and hired/passed buckets (newest first). */
 export function groupTeamProspects<T extends RankableTeamProspect>(rows: T[]): GroupedTeamProspects<T> {
-  const active = rows.filter((r) => r.status !== 'hired' && r.status !== 'passed').sort(compareByRank)
+  const active = rows
+    .filter((r) => r.status !== 'hired' && r.status !== 'passed' && r.status !== 'calling')
+    .sort(compareByRank)
   const activeByRole: Record<string, T[]> = {}
   for (const row of active) {
     const key = roleKeyOf(row)
     ;(activeByRole[key] ??= []).push(row)
   }
+  const calling = rows.filter((r) => r.status === 'calling').sort(compareByNewestFirst)
   const hired = rows.filter((r) => r.status === 'hired').sort(compareByNewestFirst)
   const passed = rows.filter((r) => r.status === 'passed').sort(compareByNewestFirst)
-  return { activeByRole, hired, passed }
+  return { activeByRole, calling, hired, passed }
 }
 
 /** Rank for a candidate appended at the bottom of one column's active list. */
@@ -74,7 +79,7 @@ export function nextTeamProspectRank(rows: RankableTeamProspect[], roleId: strin
   const key = roleId ?? UNSORTED_ROLE_KEY
   let max = 0
   for (const r of rows) {
-    if (r.status === 'hired' || r.status === 'passed') continue
+    if (r.status === 'hired' || r.status === 'passed' || r.status === 'calling') continue
     if (roleKeyOf(r) !== key) continue
     if (r.rank_order > max) max = r.rank_order
   }

@@ -9637,6 +9637,57 @@ export type Database = {
           },
         ]
       }
+      team_prospect_reviews: {
+        Row: {
+          created_at: string | null
+          id: string
+          rating_ability: number | null
+          rating_drive: number | null
+          rating_integrity: number | null
+          remarks: string | null
+          reviewer_user_id: string
+          team_prospect_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          rating_ability?: number | null
+          rating_drive?: number | null
+          rating_integrity?: number | null
+          remarks?: string | null
+          reviewer_user_id: string
+          team_prospect_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          rating_ability?: number | null
+          rating_drive?: number | null
+          rating_integrity?: number | null
+          remarks?: string | null
+          reviewer_user_id?: string
+          team_prospect_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_prospect_reviews_reviewer_user_id_fkey"
+            columns: ["reviewer_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "team_prospect_reviews_team_prospect_id_fkey"
+            columns: ["team_prospect_id"]
+            isOneToOne: false
+            referencedRelation: "team_prospects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       team_prospect_roles: {
         Row: {
           created_at: string | null

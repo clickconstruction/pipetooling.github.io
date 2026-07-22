@@ -54,6 +54,27 @@ export type TeamProspectRole = {
   created_at: string | null
 }
 
+/** One reviewer's screening-call verdict (team_prospect_reviews; unique per candidate+reviewer). */
+export type TeamProspectReview = {
+  id: string
+  team_prospect_id: string
+  reviewer_user_id: string
+  rating_ability: number | null
+  rating_drive: number | null
+  rating_integrity: number | null
+  remarks: string | null
+  updated_at: string | null
+}
+
+type ReviewDraft = {
+  rating_ability: number | null
+  rating_drive: number | null
+  rating_integrity: number | null
+  remarks: string
+}
+
+const EMPTY_REVIEW_DRAFT: ReviewDraft = { rating_ability: null, rating_drive: null, rating_integrity: null, remarks: '' }
+
 type Props = {
   authUserId: string
   resolveMasterId: () => Promise<string | null>
@@ -85,18 +106,20 @@ const RATING_DEFS = [
 ] as const
 type RatingKey = (typeof RATING_DEFS)[number]['key']
 
-/** Edit-modal sliders: 0-100 per dimension, with an unrated state and a clear affordance. */
+type RatingValues = Record<RatingKey, number | null>
+
+/** 0-100 sliders per dimension, with an unrated state and a clear affordance (Edit candidate + My review modals). */
 function RatingSliders({
-  draft,
-  setDraft,
+  values,
+  onChange,
 }: {
-  draft: CandidateDraft
-  setDraft: (d: CandidateDraft) => void
+  values: RatingValues
+  onChange: (key: RatingKey, value: number | null) => void
 }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem', marginTop: '0.75rem' }}>
       {RATING_DEFS.map((def) => {
-        const value = draft[def.key]
+        const value = values[def.key]
         return (
           <div key={def.key}>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', marginBottom: '0.25rem' }}>
@@ -107,7 +130,7 @@ function RatingSliders({
               {value != null && (
                 <button
                   type="button"
-                  onClick={() => setDraft({ ...draft, [def.key]: null })}
+                  onClick={() => onChange(def.key, null)}
                   title="Clear rating (back to unrated)"
                   style={{ background: 'none', border: 'none', color: 'var(--text-faint)', cursor: 'pointer', fontSize: '0.75rem', padding: 0 }}
                 >
@@ -121,7 +144,7 @@ function RatingSliders({
               max={100}
               step={1}
               value={value ?? 50}
-              onChange={(e) => setDraft({ ...draft, [def.key]: Number(e.target.value) })}
+              onChange={(e) => onChange(def.key, Number(e.target.value))}
               aria-label={`${def.label}: ${value == null ? 'unrated' : value} out of 100`}
               style={{ width: '100%', accentColor: def.color, opacity: value == null ? 0.45 : 1 }}
             />
@@ -253,6 +276,7 @@ function SortableCandidateCard({
   onEdit,
   onMarkContacted,
   onSetStatus,
+  onPullUp,
 }: {
   candidate: TeamProspect
   rank: number
@@ -260,6 +284,7 @@ function SortableCandidateCard({
   onEdit: () => void
   onMarkContacted: () => void
   onSetStatus: (status: 'hired' | 'passed') => void
+  onPullUp: () => void
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: candidate.id })
   return (
@@ -325,6 +350,15 @@ function SortableCandidateCard({
           style={{ ...smallButtonStyle(busy), color: 'var(--text-red-600)' }}
         >
           Passed
+        </button>
+        <button
+          type="button"
+          disabled={busy}
+          onClick={onPullUp}
+          title="Pull up to the Call list for screening calls"
+          style={{ ...smallButtonStyle(busy), color: 'var(--text-blue-500)' }}
+        >
+          📞 Pull up
         </button>
       </div>
       <CandidateRatingBars candidate={candidate} />
@@ -460,20 +494,37 @@ export default function TeamProspectsTab({ authUserId, resolveMasterId }: Props)
 
   const [hiredOpen, setHiredOpen] = useState(false)
   const [passedOpen, setPassedOpen] = useState(false)
+  const [reviews, setReviews] = useState<TeamProspectReview[]>([])
+  const [reviewerNames, setReviewerNames] = useState<Map<string, string>>(() => new Map())
+  const [reviewTarget, setReviewTarget] = useState<TeamProspect | null>(null)
+  const [reviewDraft, setReviewDraft] = useState<ReviewDraft>(EMPTY_REVIEW_DRAFT)
+  const [hireTarget, setHireTarget] = useState<TeamProspect | null>(null)
+  const [hireKind, setHireKind] = useState<'sub' | 'helper'>('sub')
   const [sourcesOpen, setSourcesOpen] = useState(false)
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }))
 
   const load = useCallback(async () => {
-    const [candidatesRes, rolesRes] = await Promise.all([
+    const [candidatesRes, rolesRes, reviewsRes] = await Promise.all([
       supabase.from('team_prospects').select('*').order('rank_order', { ascending: true }),
       supabase.from('team_prospect_roles').select('*').order('position', { ascending: true }).order('created_at', { ascending: true }),
+      supabase.from('team_prospect_reviews').select('*').order('updated_at', { ascending: false }),
     ])
     if (candidatesRes.error || rolesRes.error) {
       showToast(`Failed to load candidates: ${(candidatesRes.error ?? rolesRes.error)!.message}`, 'error')
     } else {
       setRows((candidatesRes.data ?? []) as TeamProspect[])
       setRoles((rolesRes.data ?? []) as TeamProspectRole[])
+      // Reviews are additive UI; a load error (e.g. migration not applied yet) just hides them.
+      const reviewRows = (reviewsRes.error ? [] : (reviewsRes.data ?? [])) as TeamProspectReview[]
+      setReviews(reviewRows)
+      const reviewerIds = [...new Set(reviewRows.map((r) => r.reviewer_user_id))]
+      if (reviewerIds.length > 0) {
+        const { data: reviewers } = await supabase.from('users').select('id, name').in('id', reviewerIds)
+        setReviewerNames(new Map(((reviewers ?? []) as Array<{ id: string; name: string | null }>).map((u) => [u.id, (u.name ?? '').trim() || 'Reviewer'])))
+      } else {
+        setReviewerNames(new Map())
+      }
     }
     setLoading(false)
   }, [showToast])
@@ -482,7 +533,11 @@ export default function TeamProspectsTab({ authUserId, resolveMasterId }: Props)
     load()
   }, [load])
 
-  const { activeByRole, hired, passed } = groupTeamProspects(rows)
+  const { activeByRole, calling, hired, passed } = groupTeamProspects(rows)
+  const reviewsByProspect = new Map<string, TeamProspectReview[]>()
+  for (const r of reviews) {
+    ;(reviewsByProspect.get(r.team_prospect_id) ?? reviewsByProspect.set(r.team_prospect_id, []).get(r.team_prospect_id)!).push(r)
+  }
   const roleNameById = new Map(roles.map((r) => [r.id, r.name]))
   const referencedCountByRole = new Map<string, number>()
   for (const r of rows) {
@@ -647,7 +702,7 @@ export default function TeamProspectsTab({ authUserId, resolveMasterId }: Props)
     await load()
   }
 
-  async function setStatus(candidate: TeamProspect, status: 'active' | 'hired' | 'passed') {
+  async function setStatus(candidate: TeamProspect, status: 'active' | 'calling' | 'hired' | 'passed') {
     if (busy) return
     setBusy(true)
     const payload: { status: string; rank_order?: number } = { status }
@@ -658,7 +713,68 @@ export default function TeamProspectsTab({ authUserId, resolveMasterId }: Props)
       showToast(`Failed to update: ${error.message}`, 'error')
       return
     }
+    // Hiring means we're about to give them constant work — offer the roster handoff.
+    if (status === 'hired') {
+      setHireKind('sub')
+      setHireTarget(candidate)
+    }
     await load()
+  }
+
+  function openReview(candidate: TeamProspect) {
+    const mine = reviews.find((r) => r.team_prospect_id === candidate.id && r.reviewer_user_id === authUserId)
+    setReviewDraft(
+      mine
+        ? { rating_ability: mine.rating_ability, rating_drive: mine.rating_drive, rating_integrity: mine.rating_integrity, remarks: mine.remarks ?? '' }
+        : EMPTY_REVIEW_DRAFT,
+    )
+    setModalError(null)
+    setReviewTarget(candidate)
+  }
+
+  async function saveReview() {
+    if (!reviewTarget || busy) return
+    setBusy(true)
+    setModalError(null)
+    const { error } = await supabase.from('team_prospect_reviews').upsert(
+      {
+        team_prospect_id: reviewTarget.id,
+        reviewer_user_id: authUserId,
+        rating_ability: reviewDraft.rating_ability,
+        rating_drive: reviewDraft.rating_drive,
+        rating_integrity: reviewDraft.rating_integrity,
+        remarks: reviewDraft.remarks.trim() || null,
+      },
+      { onConflict: 'team_prospect_id,reviewer_user_id' },
+    )
+    setBusy(false)
+    if (error) {
+      setModalError(error.message)
+      return
+    }
+    setReviewTarget(null)
+    await load()
+  }
+
+  async function addHireToRoster() {
+    if (!hireTarget || busy) return
+    setBusy(true)
+    setModalError(null)
+    const { error } = await supabase.from('people').insert({
+      master_user_id: authUserId,
+      kind: hireKind,
+      name: hireTarget.name,
+      phone: hireTarget.phone_number,
+      email: hireTarget.email,
+      notes: 'Hired from Team Prospects',
+    })
+    setBusy(false)
+    if (error) {
+      setModalError(error.message)
+      return
+    }
+    showToast(`${hireTarget.name} added to the roster — see People → Users`, 'success')
+    setHireTarget(null)
   }
 
   async function markContacted(candidate: TeamProspect) {
@@ -813,6 +929,7 @@ export default function TeamProspectsTab({ authUserId, resolveMasterId }: Props)
       onEdit={() => openEdit(c)}
       onMarkContacted={() => markContacted(c)}
       onSetStatus={(s) => setStatus(c, s)}
+      onPullUp={() => setStatus(c, 'calling')}
     />
   )
 
@@ -902,6 +1019,76 @@ export default function TeamProspectsTab({ authUserId, resolveMasterId }: Props)
         </DndContext>
       )}
 
+      {!loading && calling.length > 0 && (
+        <section style={{ marginTop: '1.25rem', border: '1px solid #d97706', borderRadius: 8, background: 'var(--bg-amber-tint)', padding: '0.75rem' }}>
+          <h3 style={{ margin: '0 0 0.15rem', fontSize: '1rem' }}>📞 Call list ({calling.length})</h3>
+          <p style={{ margin: '0 0 0.6rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+            Pulled up for screening calls — call them, then leave your own rating and remarks.
+          </p>
+          <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+            {calling.map((c) => {
+              const candidateReviews = reviewsByProspect.get(c.id) ?? []
+              const mine = candidateReviews.find((r) => r.reviewer_user_id === authUserId)
+              return (
+                <li key={c.id} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, padding: '0.6rem 0.75rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                    <span style={{ fontWeight: 700 }}>{c.name}</span>
+                    {c.role_id && roleNameById.has(c.role_id) && (
+                      <span style={{ fontSize: '0.7rem', padding: '0.05rem 0.4rem', borderRadius: 999, background: 'var(--bg-subtle)', border: '1px solid var(--border)', color: 'var(--text-muted)' }}>
+                        {roleNameById.get(c.role_id)}
+                      </span>
+                    )}
+                    {c.phone_number ? (
+                      <a
+                        href={`tel:${c.phone_number.replace(/[^0-9+]/g, '')}`}
+                        style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#16a34a', textDecoration: 'none', border: '1px solid #16a34a', borderRadius: 999, padding: '0.1rem 0.55rem' }}
+                      >
+                        📞 {c.phone_number}
+                      </a>
+                    ) : (
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-faint)' }}>no phone on file</span>
+                    )}
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{formatLastContact(c.last_contact)}</span>
+                    <span style={{ flex: 1 }} />
+                    <button type="button" disabled={busy} onClick={() => openReview(c)} style={{ ...smallButtonStyle(busy), color: 'var(--text-blue-500)', fontWeight: 600 }}>
+                      {mine ? 'Edit my review' : 'My review'}
+                    </button>
+                    <button type="button" disabled={busy} onClick={() => markContacted(c)} title="Stamp last contact as now" style={smallButtonStyle(busy)}>
+                      Talked today
+                    </button>
+                    <button type="button" disabled={busy} onClick={() => setStatus(c, 'active')} title="Put back on the sourcing board" style={smallButtonStyle(busy)}>
+                      Back to board
+                    </button>
+                    <button type="button" disabled={busy} onClick={() => setStatus(c, 'hired')} style={{ ...smallButtonStyle(busy), background: '#16a34a', color: 'white', border: 'none' }}>
+                      Hired
+                    </button>
+                    <button type="button" disabled={busy} onClick={() => setStatus(c, 'passed')} style={{ ...smallButtonStyle(busy), color: 'var(--text-red-600)' }}>
+                      Passed
+                    </button>
+                  </div>
+                  <div style={{ maxWidth: 420 }}>
+                    <CandidateRatingBars candidate={c} />
+                  </div>
+                  {candidateReviews.length > 0 && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', margin: '0.45rem 0 0 0' }}>
+                      {candidateReviews.map((r) => (
+                        <div key={r.id} style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+                          <span style={{ fontWeight: 600, color: 'var(--text-strong)' }}>{reviewerNames.get(r.reviewer_user_id) ?? 'Reviewer'}</span>
+                          {': '}
+                          <span style={{ fontVariantNumeric: 'tabular-nums' }} title="Ability · Drive · Integrity">
+                            {[r.rating_ability, r.rating_drive, r.rating_integrity].map((v) => (v == null ? '—' : v)).join(' · ')}
+                          </span>
+                          {r.remarks ? <span> — {r.remarks}</span> : null}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </li>
+              )
+            })}
+          </ul>
+        </section>
+      )}
       {!loading && hired.length > 0 && bucketSection('Hired', hired, hiredOpen, setHiredOpen)}
       {!loading && passed.length > 0 && bucketSection('Passed', passed, passedOpen, setPassedOpen)}
 
@@ -981,7 +1168,7 @@ export default function TeamProspectsTab({ authUserId, resolveMasterId }: Props)
           'Edit candidate',
           <>
             <CandidateFields draft={editDraft} setDraft={setEditDraft} roles={roles} knownSources={knownSources} />
-            <RatingSliders draft={editDraft} setDraft={setEditDraft} />
+            <RatingSliders values={editDraft} onChange={(k, v) => setEditDraft({ ...editDraft, [k]: v })} />
             <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
               <button
                 type="button"
@@ -1023,6 +1210,84 @@ export default function TeamProspectsTab({ authUserId, resolveMasterId }: Props)
           </>,
           () => setEditTarget(null),
           { wide: true },
+        )}
+
+      {reviewTarget &&
+        modal(
+          `My review — ${reviewTarget.name}`,
+          <>
+            <p style={{ margin: '0 0 0.5rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+              Your own read after talking to them — shown alongside everyone else&rsquo;s on the Call list.
+            </p>
+            <RatingSliders values={reviewDraft} onChange={(k, v) => setReviewDraft({ ...reviewDraft, [k]: v })} />
+            <label style={{ display: 'block', marginTop: '0.85rem' }}>
+              <span style={labelSpanStyle}>Remarks</span>
+              <textarea
+                value={reviewDraft.remarks}
+                onChange={(e) => setReviewDraft({ ...reviewDraft, remarks: e.target.value })}
+                rows={3}
+                style={{ ...inputStyle, resize: 'vertical', fontFamily: 'inherit' }}
+              />
+            </label>
+            <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
+              <button
+                type="button"
+                onClick={saveReview}
+                disabled={busy}
+                style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: busy ? 'not-allowed' : 'pointer' }}
+              >
+                {busy ? 'Saving…' : 'Save review'}
+              </button>
+              <button
+                type="button"
+                onClick={() => setReviewTarget(null)}
+                disabled={busy}
+                style={{ padding: '0.5rem 1rem', background: 'none', color: 'var(--text-muted)', border: '1px solid var(--border)', borderRadius: 4, cursor: busy ? 'not-allowed' : 'pointer' }}
+              >
+                Cancel
+              </button>
+            </div>
+          </>,
+          () => setReviewTarget(null),
+          { wide: true },
+        )}
+
+      {hireTarget &&
+        modal(
+          `Add ${hireTarget.name} to the People roster?`,
+          <>
+            <p style={{ margin: '0 0 0.75rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
+              They&rsquo;re hired — adding them to the roster makes them available for sub labor sheets and
+              payments under People → Users (External). When they get an app login later, use{' '}
+              <strong>Link account</strong> there to tie it together.
+            </p>
+            <label>
+              <span style={labelSpanStyle}>Roster kind</span>
+              <select value={hireKind} onChange={(e) => setHireKind(e.target.value as 'sub' | 'helper')} style={inputStyle}>
+                <option value="sub">Subcontractor</option>
+                <option value="helper">Helper</option>
+              </select>
+            </label>
+            <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
+              <button
+                type="button"
+                onClick={addHireToRoster}
+                disabled={busy}
+                style={{ padding: '0.5rem 1rem', background: '#16a34a', color: 'white', border: 'none', borderRadius: 4, cursor: busy ? 'not-allowed' : 'pointer' }}
+              >
+                {busy ? 'Adding…' : 'Add to roster'}
+              </button>
+              <button
+                type="button"
+                onClick={() => setHireTarget(null)}
+                disabled={busy}
+                style={{ padding: '0.5rem 1rem', background: 'none', color: 'var(--text-muted)', border: '1px solid var(--border)', borderRadius: 4, cursor: busy ? 'not-allowed' : 'pointer' }}
+              >
+                Not now
+              </button>
+            </div>
+          </>,
+          () => setHireTarget(null),
         )}
     </div>
   )

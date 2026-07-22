@@ -195,3 +195,18 @@ describe('moveTeamProspectAcrossRoles', () => {
     expect(office).toEqual(beforeDest)
   })
 })
+
+describe('calling bucket (v2.927)', () => {
+  it('calling rows leave the board, group newest-first, and free their ranks', () => {
+    const rows = [
+      { id: 'a', status: 'active', rank_order: 1, role_id: 'r1', created_at: '2026-07-01' },
+      { id: 'b', status: 'calling', rank_order: 2, role_id: 'r1', created_at: '2026-07-02' },
+      { id: 'c', status: 'calling', rank_order: 3, role_id: null, created_at: '2026-07-03' },
+      { id: 'd', status: 'hired', rank_order: 0, role_id: 'r1', created_at: '2026-07-04' },
+    ]
+    const g = groupTeamProspects(rows)
+    expect((g.activeByRole['r1'] ?? []).map((r) => r.id)).toEqual(['a'])
+    expect(g.calling.map((r) => r.id)).toEqual(['c', 'b'])
+    expect(nextTeamProspectRank(rows, 'r1')).toBe(2)
+  })
+})
