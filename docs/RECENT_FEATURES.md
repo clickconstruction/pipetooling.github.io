@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-22 (v2.927)
+last_updated: 2026-07-22 (v2.928)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.928)
+
+### Fix: Assign-work long-press hardened for mobile (2026-07-22)
+The Quick Assign long-press (schedule details for a person/crew) works on touch — verified with simulated touch pointer events (hold ≥450ms → release opens the modal; the trailing click is consumed) — but two mobile gaps were closed: lane-header crew names lacked `user-select: none`/`-webkit-touch-callout: none`, so an iOS hold could start text selection (native gesture fires `pointercancel`, never `pointerup` → nothing opened); and `onPointerCancel` wasn't handled, so a scroll-interrupted hold left a stale press-start that a later quick tap could misread as a long-press. Both fixed in `QuickAssignSheet.tsx`; behavior otherwise unchanged (fails safe: a drifting-finger hold does nothing rather than mis-toggling).
 
 ## Latest Updates (v2.927)
 

@@ -137,6 +137,11 @@ export default function QuickAssignSheet({
     onPointerLeave: () => {
       pressStartRef.current = null
     },
+    // Mobile: scrolling or a native gesture mid-hold fires pointercancel (no
+    // pointerup) — clear the press so a later tap can't read a stale start.
+    onPointerCancel: () => {
+      pressStartRef.current = null
+    },
     onContextMenu: (e: { preventDefault: () => void }) => e.preventDefault(),
   })
 
@@ -471,6 +476,9 @@ export default function QuickAssignSheet({
                           fontWeight: 700,
                           color: allIn ? 'var(--text-blue-700)' : 'var(--text-muted)',
                           textAlign: 'left',
+                          WebkitUserSelect: 'none',
+                          userSelect: 'none',
+                          WebkitTouchCallout: 'none',
                         }}
                       >
                         {sec.label}
@@ -511,6 +519,7 @@ export default function QuickAssignSheet({
                             textAlign: 'left',
                             WebkitUserSelect: 'none',
                             userSelect: 'none',
+                            WebkitTouchCallout: 'none',
                           }}
                         >
                           <span
