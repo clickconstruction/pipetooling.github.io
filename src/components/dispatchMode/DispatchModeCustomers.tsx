@@ -37,6 +37,7 @@ export default function DispatchModeCustomers() {
   const [customers, setCustomers] = useState<CustomerRow[]>([])
   const [jobCounts, setJobCounts] = useState<Map<string, number>>(new Map())
   const [lastWorkByCustomer, setLastWorkByCustomer] = useState<Map<string, string>>(new Map())
+  const [nextScheduledByCustomer, setNextScheduledByCustomer] = useState<Map<string, string>>(new Map())
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [search, setSearch] = useState('')
@@ -48,7 +49,8 @@ export default function DispatchModeCustomers() {
       setLoading(true)
       setError(null)
       try {
-        const [customersRaw, jobsRaw] = await Promise.all([
+        const todayKey = denverCalendarDayKey(Date.now())
+        const [customersRaw, jobsRaw, upcomingRaw] = await Promise.all([
           withSupabaseRetry(
             async () =>
               supabase
@@ -61,6 +63,14 @@ export default function DispatchModeCustomers() {
           withSupabaseRetry(
             async () => supabase.from('jobs_ledger').select('customer_id, last_work_date'),
             'dispatch mode customer job counts',
+          ),
+          withSupabaseRetry(
+            async () =>
+              supabase
+                .from('job_schedule_blocks')
+                .select('work_date, jobs_ledger(customer_id)')
+                .gte('work_date', todayKey),
+            'dispatch mode customer upcoming blocks',
           ),
         ])
         if (cancelled) return
@@ -77,6 +87,17 @@ export default function DispatchModeCustomers() {
         }
         setJobCounts(counts)
         setLastWorkByCustomer(lastWork)
+        const nextSched = new Map<string, string>()
+        for (const r of (upcomingRaw ?? []) as Array<{
+          work_date: string
+          jobs_ledger: { customer_id: string | null } | null
+        }>) {
+          const cid = r?.jobs_ledger?.customer_id
+          if (!cid || !r.work_date) continue
+          const prev = nextSched.get(cid)
+          if (!prev || r.work_date < prev) nextSched.set(cid, r.work_date)
+        }
+        setNextScheduledByCustomer(nextSched)
       } catch (e) {
         if (!cancelled) setError(formatErrorMessage(e))
       } finally {
@@ -100,9 +121,10 @@ export default function DispatchModeCustomers() {
         address: c.address,
         jobCount: jobCounts.get(c.id) ?? 0,
         lastWorkYmd: lastWorkByCustomer.get(c.id) ?? null,
+        nextScheduledYmd: nextScheduledByCustomer.get(c.id) ?? null,
       }))
     return sortDispatchModeCustomers(rows, sort)
-  }, [customers, search, sort, jobCounts, lastWorkByCustomer])
+  }, [customers, search, sort, jobCounts, lastWorkByCustomer, nextScheduledByCustomer])
 
   return (
     <div style={{ padding: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
@@ -155,7 +177,7 @@ export default function DispatchModeCustomers() {
         >
           {filtered.map((c, idx) => {
             const count = c.jobCount
-            const interacted = customerLastInteractionLabel(c.lastWorkYmd, todayYmd)
+            const interacted = customerLastInteractionLabel(c.lastWorkYmd, todayYmd, c.nextScheduledYmd)
             return (
               <li key={c.id} style={{ borderTop: idx === 0 ? 'none' : '1px solid var(--border)' }}>
                 <button
@@ -204,8 +226,13 @@ export default function DispatchModeCustomers() {
                   </span>
                   {interacted ? (
                     <span
-                      title={`Last worked ${c.lastWorkYmd}`}
-                      style={{ flexShrink: 0, fontSize: '0.8125rem', color: 'var(--text-muted)' }}
+                      title={c.nextScheduledYmd ? `Scheduled ${c.nextScheduledYmd}` : `Last worked ${c.lastWorkYmd}`}
+                      style={{
+                        flexShrink: 0,
+                        fontSize: '0.8125rem',
+                        fontWeight: c.nextScheduledYmd ? 600 : 400,
+                        color: c.nextScheduledYmd ? 'var(--text-blue-700)' : 'var(--text-muted)',
+                      }}
                     >
                       {interacted}
                     </span>
