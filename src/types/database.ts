@@ -12381,6 +12381,14 @@ export type Database = {
           user_id: string
         }[]
       }
+      list_team_member_start_dates: {
+        Args: never
+        Returns: {
+          source: string
+          started_on: string
+          user_id: string
+        }[]
+      }
       list_unlabeled_mercury_transactions: {
         Args: { p_limit?: number }
         Returns: {

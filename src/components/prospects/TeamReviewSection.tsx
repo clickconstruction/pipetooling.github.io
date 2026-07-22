@@ -4,10 +4,12 @@ import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
 import { displayLabelForUserRole } from '../../lib/userRoleDisplay'
 import type { UserRole } from '../../hooks/useAuth'
 import { COMMENT_KEY_BY_RATING, RATING_DEFS, RatingSliders, type RatingKey } from './ratingDimensions'
+import TeamMemberRatingChart from './TeamMemberRatingChart'
 import {
   averageLatestRatings,
   currentReviewMonth,
   formatReviewMonthLabel,
+  formatTenure,
   hasMonthReview,
   latestReviewsByReviewer,
   myLatestReview,
@@ -16,7 +18,7 @@ import {
   recentJobsByUser,
   subjectReviewHistory,
 } from '../../lib/prospects/teamMemberReviews'
-import type { RatableUser, RecentJobRow, TeamMemberReviewRow } from '../../lib/prospects/teamMemberReviews'
+import type { RatableUser, RecentJobRow, TeamMemberReviewRow, TenureRow } from '../../lib/prospects/teamMemberReviews'
 
 type ReviewDraft = {
   rating_ability: number | null
@@ -66,15 +68,21 @@ export default function TeamReviewSection({ authUserId }: { authUserId: string }
   const [busy, setBusy] = useState(false)
   const [savedFor, setSavedFor] = useState<string | null>(null)
   const [openHistories, setOpenHistories] = useState<Set<string>>(() => new Set())
+  const [openCharts, setOpenCharts] = useState<Set<string>>(() => new Set())
+  const [startedOnByUser, setStartedOnByUser] = useState<Map<string, string>>(() => new Map())
 
   const load = useCallback(async () => {
     setLoading(true)
     setError(null)
-    const [usersRes, reviewsRes, jobsRes] = await Promise.all([
+    const [usersRes, reviewsRes, jobsRes, tenureRes] = await Promise.all([
       supabase.from('users').select('id, name, role').is('archived_at', null),
       supabase.from('team_member_reviews').select('*'),
       supabase.rpc('list_team_member_recent_jobs'),
+      supabase.rpc('list_team_member_start_dates'),
     ])
+    // Tenure is additive UI — a load error (e.g. migration not applied yet) just hides it.
+    const tenureRows = (tenureRes.error ? [] : (tenureRes.data ?? [])) as TenureRow[]
+    setStartedOnByUser(new Map(tenureRows.map((t) => [t.user_id, t.started_on])))
     const firstError = usersRes.error ?? reviewsRes.error ?? jobsRes.error
     if (firstError) {
       setError(firstError.message)
@@ -310,19 +318,39 @@ export default function TeamReviewSection({ authUserId }: { authUserId: string }
             const history = subjectReviewHistory(reviews, u.id)
             const historyOpen = openHistories.has(u.id)
             const reviewerName = (id: string) => roster.find((r) => r.id === id)?.name ?? 'Former teammate'
+            const chartOpen = openCharts.has(u.id)
+            const tenure = formatTenure(startedOnByUser.get(u.id), new Date())
             return (
               <div key={u.id} style={cardStyle}>
-                <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  onClick={() => setOpenCharts((prev) => {
+                    const next = new Set(prev)
+                    if (next.has(u.id)) next.delete(u.id)
+                    else next.add(u.id)
+                    return next
+                  })}
+                  aria-expanded={chartOpen}
+                  title={chartOpen ? 'Hide ratings over time' : 'Show ratings over time'}
+                  style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', flexWrap: 'wrap', width: '100%', background: 'none', border: 'none', padding: 0, cursor: 'pointer', textAlign: 'left', font: 'inherit', color: 'inherit' }}
+                >
                   <span style={{ fontWeight: 700 }}>{u.name ?? 'Unnamed'}</span>
                   <span style={{ fontSize: '0.75rem', padding: '0.05rem 0.5rem', borderRadius: 999, background: 'var(--bg-subtle)', border: '1px solid var(--border)', color: 'var(--text-muted)' }}>
                     {displayLabelForUserRole(u.role as UserRole)}
                   </span>
+                  {tenure && (
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }} title={`At the company since ${startedOnByUser.get(u.id) ?? ''}`}>
+                      {tenure} at company
+                    </span>
+                  )}
                   <span style={{ marginLeft: 'auto', fontSize: '0.8125rem', color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }} title="Team average of each reviewer's latest ratings: Ability · Drive · Integrity">
                     {averages.reviewerCount === 0
                       ? 'No reviews yet'
                       : `Avg ${[averages.ability, averages.drive, averages.integrity].map((v) => (v == null ? '—' : v)).join(' · ')} (${averages.reviewerCount} reviewer${averages.reviewerCount === 1 ? '' : 's'})`}
                   </span>
-                </div>
+                  <span aria-hidden style={{ fontSize: '0.75rem', color: 'var(--text-faint)' }}>{chartOpen ? '▾' : '📈'}</span>
+                </button>
+                {chartOpen && <TeamMemberRatingChart reviews={reviews} subjectUserId={u.id} />}
                 {latest.length > 0 && (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', marginTop: '0.45rem' }}>
                     {latest.map((r) => (

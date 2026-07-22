@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-22 (v2.950)
+last_updated: 2026-07-22 (v2.951)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.951)
+
+### Team → Review Reflect: time at company + ratings-over-time chart (2026-07-22)
+Each Reflect card now shows the person's **tenure** ("2 yr 4 mo at company") beside the role chip, and the whole card header is a click target that expands a **ratings-over-time line chart** — one recharts line per dimension (Ability blue / Drive amber / Integrity green, dims matching `RATING_DEFS`), each point the cross-reviewer average for that month (new kernel fns `monthlyRatingSeries` / `formatReviewMonthShort` / `formatTenure`, +9 tests; chart in new [`TeamMemberRatingChart.tsx`](../src/components/prospects/TeamMemberRatingChart.tsx)). Tenure source: migration [`20260722254000_team_member_start_dates.sql`](../supabase/migrations/20260722254000_team_member_start_dates.sql) adds SECURITY DEFINER RPC `list_team_member_start_dates()` — prefers roster `people.start_date` (account link `people.account_user_id` first, then legacy trimmed-name match), falls back to the user's **earliest approved clock-session** `work_date`; zero rows without prospects access (v2.914 pattern). Client treats the RPC as additive (load error just hides tenure), so deploy order is safe either way.
 
 ## Latest Updates (v2.950)
 
