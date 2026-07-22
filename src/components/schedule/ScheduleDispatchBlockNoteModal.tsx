@@ -5,7 +5,7 @@ const NOTE_MAX = 500
 export function ScheduleDispatchBlockNoteModal({
   open,
   initialNote,
-  title = 'Schedule block note',
+  title = 'Job instructions',
   busy,
   error,
   onClose,
@@ -83,7 +83,7 @@ export function ScheduleDispatchBlockNoteModal({
           maxLength={NOTE_MAX}
           rows={5}
           disabled={busy}
-          aria-label="Block note"
+          aria-label="Job instructions"
           style={{
             width: '100%',
             boxSizing: 'border-box',
