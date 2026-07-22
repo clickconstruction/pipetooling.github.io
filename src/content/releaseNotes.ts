@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.949',
+    date: '2026-07-22',
+    title: 'Review comment boxes look like fields',
+    kind: 'fix',
+    highlights: [
+      'The "why this score?" comment boxes under the Ability, Drive, and Integrity sliders now clearly read as places you can type.',
+    ],
+  },
+  {
     version: 'v2.948',
     date: '2026-07-22',
     title: 'Rate your current team, monthly',
