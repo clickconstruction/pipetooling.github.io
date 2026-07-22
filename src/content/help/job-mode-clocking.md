@@ -32,6 +32,13 @@ Here's what the card looks like during a working day:
 - The green button changes with your day: {{button:green|Clock In}}, {{button:green|Start First Job}}, {{button:green|Next Job}}, or {{button:gray|Last job of the day}} when there's nowhere left to go.
 - {{button:amber|Turnaway — not ready / not home}} — for when you arrive and can't do the work (see the Turnaways guide).
 
+While you're clocked into a job, the card keeps going below the buttons:
+
+- **Customer** — the customer's name with tap-to-call phone and tap-to-email links, so reaching them is one tap.
+- {{button:outline|Job detail}} — opens the full **Job Detail** modal right over the card.
+- A **Street View photo** of the job address — tap it to open Street View in Google Maps.
+- **Job updates** — the same updates thread as Job Detail: read what the office posted and add your own note without leaving the card.
+
 ## Clocking in and out
 
 - Tap {{button:green|Clock In}} to start your day. If you have a schedule, the card offers your scheduled job; otherwise you can pick a job manually.
