@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-22 (v2.925)
+last_updated: 2026-07-22 (v2.926)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.926)
+
+### Team Prospects: candidate rating sliders + card bars (2026-07-22)
+Prospects → Team: the **Edit candidate** modal widens (420 → 680px) and gains three 0-100 sliders — **Evidence of Exceptional Ability (Talent / Problem-Solving)**, **Drive / Work Ethic / Intrinsic Motivation**, **Trustworthiness / Goodness of Heart / Integrity** — each with a live readout, distinct accent color, an explicit **unrated** state (NULL, not 0) and a **clear** affordance. Every board card shows the three scores as narrow read-only fill bars at the bottom (deliberately not range inputs, so they can't fight the drag-to-rank gesture); unrated dimensions render dimmed with "—". Ratings are informational — drag order remains the ranking. Migration `20260722236000_team_prospect_ratings.sql` (**requires `supabase db push` after merge**) adds the three CHECKed nullable columns. Help guide `team-prospects.md` gains "Rating candidates".
 
 ## Latest Updates (v2.925)
 

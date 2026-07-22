@@ -42,6 +42,9 @@ export type TeamProspect = {
   last_contact: string | null
   created_at: string | null
   updated_at: string | null
+  rating_ability: number | null
+  rating_drive: number | null
+  rating_integrity: number | null
 }
 
 export type TeamProspectRole = {
@@ -64,9 +67,94 @@ type CandidateDraft = {
   source: string
   notes: string
   role_id: string // '' = Unsorted
+  rating_ability: number | null
+  rating_drive: number | null
+  rating_integrity: number | null
 }
 
-const EMPTY_DRAFT: CandidateDraft = { name: '', phone_number: '', email: '', trade: '', source: '', notes: '', role_id: '' }
+const EMPTY_DRAFT: CandidateDraft = {
+  name: '', phone_number: '', email: '', trade: '', source: '', notes: '', role_id: '',
+  rating_ability: null, rating_drive: null, rating_integrity: null,
+}
+
+/** The three candidate rating dimensions (Edit modal sliders + card bars). */
+const RATING_DEFS = [
+  { key: 'rating_ability', short: 'Ability', label: 'Evidence of Exceptional Ability (Talent / Problem-Solving)', color: '#3b82f6' },
+  { key: 'rating_drive', short: 'Drive', label: 'Drive / Work Ethic / Intrinsic Motivation', color: '#f59e0b' },
+  { key: 'rating_integrity', short: 'Integrity', label: 'Trustworthiness / Goodness of Heart / Integrity', color: '#16a34a' },
+] as const
+type RatingKey = (typeof RATING_DEFS)[number]['key']
+
+/** Edit-modal sliders: 0-100 per dimension, with an unrated state and a clear affordance. */
+function RatingSliders({
+  draft,
+  setDraft,
+}: {
+  draft: CandidateDraft
+  setDraft: (d: CandidateDraft) => void
+}) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem', marginTop: '0.75rem' }}>
+      {RATING_DEFS.map((def) => {
+        const value = draft[def.key]
+        return (
+          <div key={def.key}>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', marginBottom: '0.25rem' }}>
+              <span style={{ fontSize: '0.875rem', flex: 1 }}>{def.label}</span>
+              <span style={{ fontSize: '0.875rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: value == null ? 'var(--text-faint)' : 'var(--text-strong)' }}>
+                {value == null ? 'unrated' : value}
+              </span>
+              {value != null && (
+                <button
+                  type="button"
+                  onClick={() => setDraft({ ...draft, [def.key]: null })}
+                  title="Clear rating (back to unrated)"
+                  style={{ background: 'none', border: 'none', color: 'var(--text-faint)', cursor: 'pointer', fontSize: '0.75rem', padding: 0 }}
+                >
+                  clear
+                </button>
+              )}
+            </div>
+            <input
+              type="range"
+              min={0}
+              max={100}
+              step={1}
+              value={value ?? 50}
+              onChange={(e) => setDraft({ ...draft, [def.key]: Number(e.target.value) })}
+              aria-label={`${def.label}: ${value == null ? 'unrated' : value} out of 100`}
+              style={{ width: '100%', accentColor: def.color, opacity: value == null ? 0.45 : 1 }}
+            />
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+/** Card-footer read-only bars — deliberately NOT range inputs so they can't fight the drag-to-rank gesture. */
+function CandidateRatingBars({ candidate }: { candidate: TeamProspect }) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem', margin: '0.45rem 0 0 1.35rem' }}>
+      {RATING_DEFS.map((def) => {
+        const value = candidate[def.key as RatingKey]
+        return (
+          <div key={def.key} title={`${def.label}: ${value == null ? 'unrated' : `${value}/100`}`} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+            <span style={{ fontSize: '0.65rem', color: value == null ? 'var(--text-faint)' : 'var(--text-muted)', width: '3.4rem', flexShrink: 0 }}>
+              {def.short}
+            </span>
+            <span aria-hidden style={{ flex: 1, height: 4, borderRadius: 999, background: 'var(--bg-muted)', overflow: 'hidden' }}>
+              <span style={{ display: 'block', height: '100%', width: `${value ?? 0}%`, background: def.color, borderRadius: 999 }} />
+            </span>
+            <span style={{ fontSize: '0.65rem', color: value == null ? 'var(--text-faint)' : 'var(--text-muted)', fontVariantNumeric: 'tabular-nums', width: '1.6rem', textAlign: 'right', flexShrink: 0 }}>
+              {value == null ? '—' : value}
+            </span>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
 
 const inputStyle = { width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 } as const
 const labelSpanStyle = { display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' } as const
@@ -239,6 +327,7 @@ function SortableCandidateCard({
           Passed
         </button>
       </div>
+      <CandidateRatingBars candidate={candidate} />
     </li>
   )
 }
@@ -526,6 +615,9 @@ export default function TeamProspectsTab({ authUserId, resolveMasterId }: Props)
       trade: editDraft.trade.trim() || null,
       source: editDraft.source.trim() || null,
       notes: editDraft.notes.trim() || null,
+      rating_ability: editDraft.rating_ability,
+      rating_drive: editDraft.rating_drive,
+      rating_integrity: editDraft.rating_integrity,
     }
     if (roleChanged) {
       // Moving via the modal appends to the bottom of the target column
@@ -638,6 +730,9 @@ export default function TeamProspectsTab({ authUserId, resolveMasterId }: Props)
       source: candidate.source ?? '',
       notes: candidate.notes ?? '',
       role_id: candidate.role_id ?? '',
+      rating_ability: candidate.rating_ability,
+      rating_drive: candidate.rating_drive,
+      rating_integrity: candidate.rating_integrity,
     })
     setModalError(null)
     setConfirmingDelete(false)
@@ -649,13 +744,13 @@ export default function TeamProspectsTab({ authUserId, resolveMasterId }: Props)
     setAddOpen(true)
   }
 
-  const modal = (title: string, body: ReactNode, onClose: () => void) => (
+  const modal = (title: string, body: ReactNode, onClose: () => void, opts?: { wide?: boolean }) => (
     <div
       style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50 }}
       onClick={() => !busy && onClose()}
     >
       <div
-        style={{ background: 'var(--surface)', borderRadius: 8, padding: '1.5rem', maxWidth: 420, width: '90%', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }}
+        style={{ background: 'var(--surface)', borderRadius: 8, padding: '1.5rem', maxWidth: opts?.wide ? 680 : 420, width: opts?.wide ? '95%' : '90%', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }}
         onClick={(e) => e.stopPropagation()}
       >
         <h3 style={{ margin: '0 0 1rem 0' }}>{title}</h3>
@@ -886,6 +981,7 @@ export default function TeamProspectsTab({ authUserId, resolveMasterId }: Props)
           'Edit candidate',
           <>
             <CandidateFields draft={editDraft} setDraft={setEditDraft} roles={roles} knownSources={knownSources} />
+            <RatingSliders draft={editDraft} setDraft={setEditDraft} />
             <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
               <button
                 type="button"
@@ -926,6 +1022,7 @@ export default function TeamProspectsTab({ authUserId, resolveMasterId }: Props)
             </div>
           </>,
           () => setEditTarget(null),
+          { wide: true },
         )}
     </div>
   )

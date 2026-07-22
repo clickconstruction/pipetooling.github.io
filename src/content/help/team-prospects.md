@@ -54,3 +54,13 @@ A role column can be deleted only once **every candidate in it has been individu
 ## Who can see this
 
 The Team tab is granted **per person**, on top of normal Prospects access. If you don't see the tab, you haven't been granted it. A dev can turn it on for someone under {{icon:gear}} **Settings → Active accounts → Edit** with the **Can see Prospects → Team (hiring board)** checkbox.
+
+## Rating candidates
+
+Open {{button:outline|Edit}} on any candidate and you'll find three 0–100 sliders under the contact fields:
+
+- **Evidence of Exceptional Ability** (Talent / Problem-Solving)
+- **Drive / Work Ethic** (Intrinsic Motivation)
+- **Trustworthiness / Goodness of Heart** (Integrity)
+
+Slide to score, or leave a dimension **unrated** — a candidate you haven't evaluated yet shows "—" rather than a misleading zero, and **clear** puts a rating back to unrated. Every board card shows the three scores as narrow bars at the bottom, so you can compare candidates at a glance while you drag-rank. The sliders are information only — your drag order stays the ranking.
