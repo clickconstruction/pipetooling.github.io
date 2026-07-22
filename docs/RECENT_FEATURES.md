@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-22 (v2.922)
+last_updated: 2026-07-22 (v2.923)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.923)
+
+### Fix: iOS no longer zooms in when tapping an input (2026-07-22)
+iOS Safari auto-zooms the page when a focused input's font-size is under 16px (most of the app's fields are 14px), leaving users pinch-zooming back out after every field. An inline script in `index.html` appends `maximum-scale=1` to the viewport meta **on iOS only** (UA + iPadOS `MacIntel`+touch detection) — since iOS 10 Safari ignores that cap for pinch gestures, so manual zoom still works; Android is untouched because Chrome honors the cap and would lose pinch-zoom.
 
 ## Latest Updates (v2.922)
 
