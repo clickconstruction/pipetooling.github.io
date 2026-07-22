@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-21 (v2.886)
+last_updated: 2026-07-21 (v2.887)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.887)
+
+### Job Mode: job number and name on one line (2026-07-21)
+The card header now reads **JP834 | Larry Morrison** on a single line (number keeps its large weight, name its own, faint pipe between) instead of stacking them — in all three job states (clocked in, off-schedule, Ready to start). Bid headers unchanged.
 
 ## Latest Updates (v2.886)
 
