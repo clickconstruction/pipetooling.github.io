@@ -4,6 +4,7 @@ import {
   dispatchModeAddMonths,
   dispatchModeAgendaHeading,
   dispatchModeMonthGrid,
+  dispatchModeTwoWeekGrid,
   dispatchModeMonthTitle,
   sortDispatchModeAgendaBlocks,
   type DispatchModeAgendaBlock,
@@ -81,5 +82,17 @@ describe('sortDispatchModeAgendaBlocks', () => {
       '09:00-Amy-Z job',
       '09:00-Zed-A job',
     ])
+  })
+})
+
+describe('dispatchModeTwoWeekGrid', () => {
+  it('week containing today plus the next, Sunday-first', () => {
+    const weeks = dispatchModeTwoWeekGrid('2026-07-21') // a Tuesday
+    expect(weeks).toHaveLength(2)
+    expect(weeks[0]?.[0]?.ymd).toBe('2026-07-19') // Sunday
+    expect(weeks[0]?.[2]?.ymd).toBe('2026-07-21')
+    expect(weeks[1]?.[0]?.ymd).toBe('2026-07-26')
+    expect(weeks[1]?.[6]?.ymd).toBe('2026-08-01') // crosses the month boundary
+    for (const w of weeks) expect(w).toHaveLength(7)
   })
 })

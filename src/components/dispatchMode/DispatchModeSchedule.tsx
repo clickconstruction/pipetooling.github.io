@@ -9,11 +9,10 @@ import {
 } from '../../lib/dispatchAddBlockTime'
 import { buildServiceTypeTradePill } from '../../lib/serviceTypeTradePill'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
+import { useIsMobile } from '../../hooks/useIsMobile'
 import {
-  dispatchModeAddMonths,
   dispatchModeAgendaHeading,
-  dispatchModeMonthGrid,
-  dispatchModeMonthTitle,
+  dispatchModeTwoWeekGrid,
   fetchDispatchModeBusyDays,
   fetchDispatchModeDayBlocks,
   type DispatchModeAgendaBlock,
@@ -38,12 +37,12 @@ export default function DispatchModeSchedule() {
 
   const todayYmd = denverCalendarDayKey(Date.now())
   const [selectedYmd, setSelectedYmd] = useState<string>(todayYmd)
-  /** First-of-month anchor for the visible month. */
-  const [monthAnchorYmd, setMonthAnchorYmd] = useState<string>(todayYmd)
+  const isMobile = useIsMobile()
 
-  const weeks = useMemo(() => dispatchModeMonthGrid(monthAnchorYmd), [monthAnchorYmd])
-  const gridStart = weeks[0]?.[0]?.ymd ?? monthAnchorYmd
-  const gridEnd = weeks[weeks.length - 1]?.[6]?.ymd ?? monthAnchorYmd
+  /** This week + next (Sunday-first) — the whole visible strip. */
+  const weeks = useMemo(() => dispatchModeTwoWeekGrid(todayYmd), [todayYmd])
+  const gridStart = weeks[0]?.[0]?.ymd ?? todayYmd
+  const gridEnd = weeks[weeks.length - 1]?.[6]?.ymd ?? todayYmd
 
   const [busyDays, setBusyDays] = useState<Set<string>>(() => new Set())
   useEffect(() => {
@@ -75,7 +74,6 @@ export default function DispatchModeSchedule() {
 
   const goToday = () => {
     setSelectedYmd(todayYmd)
-    setMonthAnchorYmd(todayYmd)
   }
 
   return (
@@ -107,29 +105,8 @@ export default function DispatchModeSchedule() {
         </button>
       </div>
 
-      {/* Month mini-calendar */}
+      {/* This week + next week strip */}
       <div style={{ padding: '0 0.75rem 0.5rem' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <button
-            type="button"
-            aria-label="Previous month"
-            style={headerBtn}
-            onClick={() => setMonthAnchorYmd((m) => dispatchModeAddMonths(m, -1))}
-          >
-            ‹
-          </button>
-          <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-700)' }}>
-            {dispatchModeMonthTitle(monthAnchorYmd)}
-          </span>
-          <button
-            type="button"
-            aria-label="Next month"
-            style={headerBtn}
-            onClick={() => setMonthAnchorYmd((m) => dispatchModeAddMonths(m, 1))}
-          >
-            ›
-          </button>
-        </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', textAlign: 'center' }}>
           {WEEKDAY_LETTERS.map((w, i) => (
             <span
@@ -294,10 +271,29 @@ export default function DispatchModeSchedule() {
                     {b.jobAddress ? (
                       <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{b.jobAddress}</span>
                     ) : null}
-                    <span style={{ fontSize: '0.8125rem', color: 'var(--text-blue-700)', fontWeight: 600 }}>
+                    {isMobile ? (
+                      <span style={{ fontSize: '0.8125rem', color: 'var(--text-blue-700)', fontWeight: 600 }}>
+                        {b.assigneeName}
+                      </span>
+                    ) : null}
+                  </span>
+                  {!isMobile ? (
+                    <span
+                      style={{
+                        flexShrink: 0,
+                        alignSelf: 'center',
+                        fontSize: '0.875rem',
+                        color: 'var(--text-blue-700)',
+                        fontWeight: 600,
+                        maxWidth: '10rem',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
                       {b.assigneeName}
                     </span>
-                  </span>
+                  ) : null}
                 </button>
               </li>
             )

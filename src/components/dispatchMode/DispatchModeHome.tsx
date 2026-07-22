@@ -39,7 +39,8 @@ export default function DispatchModeHome() {
   const [jobs, setJobs] = useState<JobWithDetails[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [collapsedStages, setCollapsedStages] = useState<Set<string>>(() => new Set())
+  // Waiting is usually the longest and least actionable group — start it closed.
+  const [collapsedStages, setCollapsedStages] = useState<Set<string>>(() => new Set(['waiting']))
 
   const reload = useCallback(async () => {
     setLoading(true)

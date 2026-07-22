@@ -66,6 +66,24 @@ export function dispatchModeMonthGrid(anchorYmd: string): DispatchModeMonthDay[]
   return weeks
 }
 
+/** Sunday-first rows for the week containing `todayYmd` plus the next week. */
+export function dispatchModeTwoWeekGrid(todayYmd: string): DispatchModeMonthDay[][] {
+  const today = ymdToUtc(todayYmd)
+  const weekStart = new Date(today)
+  weekStart.setUTCDate(today.getUTCDate() - today.getUTCDay())
+  const weeks: DispatchModeMonthDay[][] = []
+  const cursor = new Date(weekStart)
+  for (let w = 0; w < 2; w++) {
+    const week: DispatchModeMonthDay[] = []
+    for (let i = 0; i < 7; i++) {
+      week.push({ ymd: utcToYmd(cursor), dayNum: cursor.getUTCDate(), inMonth: true })
+      cursor.setUTCDate(cursor.getUTCDate() + 1)
+    }
+    weeks.push(week)
+  }
+  return weeks
+}
+
 /** "Today · Tue Jul 21" / "Wed Jul 22" agenda heading. */
 export function dispatchModeAgendaHeading(selectedYmd: string, todayYmd: string): string {
   const d = ymdToUtc(selectedYmd)
