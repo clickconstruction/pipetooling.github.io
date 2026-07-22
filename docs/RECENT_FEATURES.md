@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-21 (v2.887)
+last_updated: 2026-07-21 (v2.888)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.888)
+
+### Dispatch Mode part 1: gear toggle + bottom tab bar scaffold (2026-07-21)
+New phone-first shell for running the day (companion to Job Mode). A **Dispatch Mode** gear-menu toggle (per-user/per-device localStorage via `dispatchModeToggle.ts` + `useDispatchModeEnabled`, incl. the same-tab change event) for the schedule-dispatch edit cohort mounts a fixed bottom tab bar ([`DispatchModeFooter`](../src/components/dispatchMode/DispatchModeFooter.tsx)) on EVERY page: **Dashboard · Schedule · Inbox · Customers · More** (safe-area aware; Inbox badge slot ready). Routes `/dispatch-mode{,/schedule,/inbox,/customers}` render placeholders for now; **More** returns to the regular app with the bar persisting. Real tab screens land in parts 2–5.
 
 ## Latest Updates (v2.887)
 
