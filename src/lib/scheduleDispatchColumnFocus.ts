@@ -5,6 +5,26 @@ import { getScheduleDispatchVisibleDayKeys } from '../utils/dateUtils'
 export const SCHEDULE_DISPATCH_TODAY_COLUMN_BG = 'var(--bg-yellow-tint)'
 export const SCHEDULE_DISPATCH_COLUMN_FOCUS_BG = 'var(--bg-blue-200)'
 
+/** Saturated status orange (literal by convention — not a neutral theme token). */
+export const SCHEDULE_DISPATCH_TODAY_OUTLINE_COLOR = '#ea580c'
+
+/**
+ * Inset box-shadow that draws the orange "today" column outline on top of the
+ * yellow tint. Header cells pass `top: true`, the last body row passes
+ * `bottom: true`, so the per-cell left/right rails join into one closed box.
+ */
+export function scheduleDispatchTodayColumnBoxShadow(
+  isToday: boolean,
+  edges: { top?: boolean; bottom?: boolean } = {},
+): string | undefined {
+  if (!isToday) return undefined
+  const c = SCHEDULE_DISPATCH_TODAY_OUTLINE_COLOR
+  const parts = [`inset 2px 0 0 ${c}`, `inset -2px 0 0 ${c}`]
+  if (edges.top) parts.push(`inset 0 2px 0 ${c}`)
+  if (edges.bottom) parts.push(`inset 0 -2px 0 ${c}`)
+  return parts.join(', ')
+}
+
 export const SCHEDULE_DISPATCH_COLUMN_DAY_DATA_ATTR = 'data-schedule-column-day'
 
 export function pickDayForScheduleDispatchUrl(
