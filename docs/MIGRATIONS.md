@@ -105,6 +105,18 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 #### July 22, 2026
 
+**`20260722236000_team_prospect_ratings.sql`** _(apply via `supabase db push` after the file is on `main`)_
+- **Purpose**: Team prospect ratings (v2.926) — three nullable 0-100 integer columns on `team_prospects` (`rating_ability`, `rating_drive`, `rating_integrity`) with CHECK constraints. NULL = unrated (distinct from a deliberate 0). Rated via sliders in the Edit candidate modal; shown as narrow bars on board cards.
+- **Security**: additive; existing team_prospects RLS covers the columns.
+- **Ordering**: client tolerates missing columns until applied (bars show unrated); apply promptly after merge.
+- **Category**: Recruiting / feature
+
+**`20260722236000_team_prospect_ratings.sql`** _(apply via `supabase db push` after the file is on `main`)_
+- **Purpose**: Team prospect ratings (v2.926) — three nullable 0-100 integer columns on `team_prospects` (`rating_ability`, `rating_drive`, `rating_integrity`) with CHECK constraints. NULL = unrated (distinct from a deliberate 0). Rated via sliders in the Edit candidate modal; shown as narrow bars on board cards.
+- **Security**: additive; existing team_prospects RLS covers the columns.
+- **Ordering**: client tolerates missing columns until applied (bars show unrated); apply promptly after merge.
+- **Category**: Recruiting / feature
+
 **`20260722234000_company_access_grants.sql`** _(apply via `supabase db push` after the file is on `main`)_
 - **Purpose**: **Company-wide access grants** (v2.921). Fills `master_assistants` / `master_primaries` / `master_superintendents` / `master_shares` with every eligible live pair (owners = live dev + master_technician; grantees by role) and installs `sync_company_access_grants()` + a statement trigger on `users` (INSERT / UPDATE OF role, archived_at) that keeps them full as people are hired, restored, or change roles. The 82 policies / ~50 functions that consult the grant tables become effectively role-based ("office sees everything") without rewriting any of them.
 - **Security**: additive only — rows are inserted with `ON CONFLICT DO NOTHING`, never removed; nothing loses access. Field crew (subs/helpers) are not in any grant table and keep schedule-scoped visibility.
