@@ -26,7 +26,11 @@ import { ScheduleDispatchBlockNoteIcon } from '../icons/ScheduleDispatchBlockNot
 import { ScheduleDispatchLinkedChainsIcon } from '../icons/ScheduleDispatchLinkedChainsIcon'
 import type { LinkedCopyMode } from '../../lib/scheduleDispatchLinkedCopy'
 import type { DispatchSwimLanesData } from '../../lib/dispatchSwimLanes'
-import { buildSwimLaneDisplaySections } from '../../lib/dispatchSwimLaneSections'
+import {
+  buildSwimLaneDisplaySections,
+  personMatchesLaneQuery,
+  summarizeExpectedManpowerByLane,
+} from '../../lib/dispatchSwimLaneSections'
 import type { LinkedGroupCardAccent } from '../../lib/scheduleDispatchLinkedGroupPalette'
 import { hubPersonDayKey, type ScheduleDispatchHubJobRow } from '../../lib/scheduleDispatchHub'
 import {
@@ -1187,6 +1191,8 @@ type HubPeoplePanelProps = {
   onStartLinkedCopyMode?: () => void
   onLinkedCopyToggleBlock?: (blockId: string) => void
   onLinkedCopyApplyToPerson?: (personUserId: string) => void
+  /** Stage 2 + lanes grouping: lane-heading click applies to every member. */
+  onLinkedCopyApplyToLane?: (laneLabel: string, memberUserIds: string[]) => void
   linkedCopyApplyBusy?: boolean
   /** Office-wide swim lanes for the 'lanes' person grouping (null until loaded). */
   swimLanes?: DispatchSwimLanesData | null
@@ -1257,6 +1263,7 @@ function HubPeoplePanel({
   onStartLinkedCopyMode,
   onLinkedCopyToggleBlock,
   onLinkedCopyApplyToPerson,
+  onLinkedCopyApplyToLane,
   linkedCopyApplyBusy = false,
   swimLanes = null,
   onRequestHubMultiCellAddMode,
@@ -1365,6 +1372,12 @@ function HubPeoplePanel({
     }
   }, [expectedManpowerDayRows])
 
+  /** Lane-scoped manpower breakdown — [] hides the line (no lanes configured). */
+  const expectedManpowerLaneRows = useMemo(() => {
+    if (!swimLanes || expectedManpowerDayRows.length === 0) return []
+    return summarizeExpectedManpowerByLane(expectedManpowerDayRows, swimLanes)
+  }, [swimLanes, expectedManpowerDayRows])
+
   /** Scroll the ?focusPerson row into view once rows are rendered. */
   useEffect(() => {
     if (!focusPersonUserId || loading) return
@@ -1405,6 +1418,7 @@ function HubPeoplePanel({
     if (!q) return afterBlockFilter
     return afterBlockFilter.filter((row) => {
       if (row.displayName.toLowerCase().includes(q)) return true
+      if (swimLanes && personMatchesLaneQuery(row.userId, q, swimLanes)) return true
       for (const dk of visibleDayKeys) {
         const blocks = personDayBlocks.get(hubPersonDayKey(row.userId, dk)) ?? []
         for (const b of blocks) {
@@ -1413,7 +1427,7 @@ function HubPeoplePanel({
       }
       return false
     })
-  }, [afterBlockFilter, search, visibleDayKeys, personDayBlocks, getJobDisplayTitle])
+  }, [afterBlockFilter, search, visibleDayKeys, personDayBlocks, getJobDisplayTitle, swimLanes])
 
   /** Person-header sort cycle: alphabetical (default) ↔ grouped by role like the Day view. Per-device. */
   const PEOPLE_SORT_STORAGE_KEY = 'pipetooling_dispatch_people_sort_v1'
@@ -1437,7 +1451,7 @@ function HubPeoplePanel({
     })
   }
   const peopleDisplayRows = useMemo((): Array<
-    | { kind: 'heading'; key: string; label: string }
+    | { kind: 'heading'; key: string; label: string; laneMemberUserIds?: string[] }
     | { kind: 'person'; person: { userId: string; displayName: string } }
   > => {
     if (personSort === 'lanes' && swimLanes) {
@@ -1446,11 +1460,16 @@ function HubPeoplePanel({
         filteredAssignees.map((p) => ({ userId: p.userId, displayName: p.displayName })),
       )
       const out: Array<
-        | { kind: 'heading'; key: string; label: string }
+        | { kind: 'heading'; key: string; label: string; laneMemberUserIds?: string[] }
         | { kind: 'person'; person: { userId: string; displayName: string } }
       > = []
       for (const sec of sections) {
-        out.push({ kind: 'heading', key: `lane:${sec.laneId ?? 'rest'}`, label: sec.label })
+        out.push({
+          kind: 'heading',
+          key: `lane:${sec.laneId ?? 'rest'}`,
+          label: sec.label,
+          laneMemberUserIds: sec.laneId != null ? sec.people.map((p) => p.userId) : undefined,
+        })
         for (const person of sec.people) out.push({ kind: 'person', person })
       }
       return out
@@ -1464,7 +1483,7 @@ function HubPeoplePanel({
     )
     const byId = new Map(filteredAssignees.map((person) => [person.userId, person]))
     const out: Array<
-      | { kind: 'heading'; key: string; label: string }
+      | { kind: 'heading'; key: string; label: string; laneMemberUserIds?: string[] }
       | { kind: 'person'; person: { userId: string; displayName: string } }
     > = []
     for (const sec of sections) {
@@ -1809,6 +1828,11 @@ function HubPeoplePanel({
             ) : (
               peopleDisplayRows.map((item) => {
                 if (item.kind === 'heading') {
+                  const laneApplyActive =
+                    linkedCopyMode?.stage === 2 &&
+                    onLinkedCopyApplyToLane != null &&
+                    item.laneMemberUserIds != null &&
+                    item.laneMemberUserIds.length > 0
                   return (
                     <tr key={`people-role-heading-${item.key}`}>
                       <td
@@ -1820,19 +1844,48 @@ function HubPeoplePanel({
                           background: 'var(--bg-subtle)',
                         }}
                       >
-                        <span
-                          style={{
-                            position: 'sticky',
-                            left: 8,
-                            display: 'inline-block',
-                            fontWeight: 700,
-                            textDecoration: 'underline',
-                            color: 'var(--text-strong)',
-                            fontSize: '0.9rem',
-                          }}
-                        >
-                          {item.label}
-                        </span>
+                        {laneApplyActive ? (
+                          <button
+                            type="button"
+                            disabled={linkedCopyApplyBusy}
+                            aria-label={`Apply linked copies to everyone in ${item.label}`}
+                            title={`Apply the selected linked copies to every member of ${item.label}`}
+                            onClick={() =>
+                              onLinkedCopyApplyToLane?.(item.label, item.laneMemberUserIds ?? [])
+                            }
+                            style={{
+                              position: 'sticky',
+                              left: 8,
+                              display: 'inline-block',
+                              padding: '0.1rem 0.4rem',
+                              border: '2px dashed rgba(67, 56, 202, 0.55)',
+                              borderRadius: 4,
+                              background: 'var(--bg-blue-tint)',
+                              color: 'var(--text-strong)',
+                              font: 'inherit',
+                              fontWeight: 700,
+                              fontSize: '0.9rem',
+                              textDecoration: 'underline',
+                              cursor: linkedCopyApplyBusy ? 'wait' : 'pointer',
+                            }}
+                          >
+                            {item.label} — whole crew
+                          </button>
+                        ) : (
+                          <span
+                            style={{
+                              position: 'sticky',
+                              left: 8,
+                              display: 'inline-block',
+                              fontWeight: 700,
+                              textDecoration: 'underline',
+                              color: 'var(--text-strong)',
+                              fontSize: '0.9rem',
+                            }}
+                          >
+                            {item.label}
+                          </span>
+                        )}
                       </td>
                     </tr>
                   )
@@ -2089,6 +2142,20 @@ function HubPeoplePanel({
                     {expectedManpowerDayStats.jobCount === 1 ? 'job' : 'jobs'} ·{' '}
                     {expectedManpowerDayStats.distinctPeople}{' '}
                     {expectedManpowerDayStats.distinctPeople === 1 ? 'person' : 'people'}
+                  </p>
+                ) : null}
+                {expectedManpowerLaneRows.length > 0 ? (
+                  <p style={{ margin: '-0.35rem 0 0.65rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+                    {expectedManpowerLaneRows.map((lane, i) => (
+                      <span key={lane.laneId ?? 'rest'}>
+                        {i > 0 ? ' · ' : ''}
+                        {lane.label}{' '}
+                        <strong style={{ color: 'var(--text-700)' }}>
+                          {formatExpectedManpowerPersonHours(lane.personHours)}
+                        </strong>{' '}
+                        ({lane.distinctPeople} {lane.distinctPeople === 1 ? 'person' : 'people'})
+                      </span>
+                    ))}
                   </p>
                 ) : null}
                 <div
@@ -2482,6 +2549,8 @@ type Props = {
   onStartLinkedCopyMode?: () => void
   onLinkedCopyToggleBlock?: (blockId: string) => void
   onLinkedCopyApplyToPerson?: (personUserId: string) => void
+  /** Stage 2 + lanes grouping: lane-heading click applies to every member. */
+  onLinkedCopyApplyToLane?: (laneLabel: string, memberUserIds: string[]) => void
   linkedCopyApplyBusy?: boolean
   /** Office-wide swim lanes for the 'lanes' person grouping (null until loaded). */
   swimLanes?: DispatchSwimLanesData | null
@@ -2591,6 +2660,7 @@ export function ScheduleDispatchHub({
   onStartLinkedCopyMode,
   onLinkedCopyToggleBlock,
   onLinkedCopyApplyToPerson,
+  onLinkedCopyApplyToLane,
   linkedCopyApplyBusy = false,
   swimLanes = null,
   onSwimLanesChanged,
@@ -2787,6 +2857,7 @@ export function ScheduleDispatchHub({
           onStartLinkedCopyMode={onStartLinkedCopyMode}
           onLinkedCopyToggleBlock={onLinkedCopyToggleBlock}
           onLinkedCopyApplyToPerson={onLinkedCopyApplyToPerson}
+          onLinkedCopyApplyToLane={onLinkedCopyApplyToLane}
           linkedCopyApplyBusy={linkedCopyApplyBusy}
           swimLanes={swimLanes}
           onRequestHubMultiCellAddMode={onRequestHubMultiCellAddMode}
@@ -2880,6 +2951,7 @@ export function ScheduleDispatchHub({
           onStartLinkedCopyMode={onStartLinkedCopyMode}
           onLinkedCopyToggleBlock={onLinkedCopyToggleBlock}
           onLinkedCopyApplyToPerson={onLinkedCopyApplyToPerson}
+          onLinkedCopyApplyToLane={onLinkedCopyApplyToLane}
           linkedCopyApplyBusy={linkedCopyApplyBusy}
           swimLanes={swimLanes}
           onRequestHubMultiCellAddMode={onRequestHubMultiCellAddMode}

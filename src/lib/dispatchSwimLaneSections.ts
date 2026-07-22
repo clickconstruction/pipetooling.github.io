@@ -55,3 +55,57 @@ export function personMatchesLaneQuery(
   const lane = lanesData.lanes.find((l) => l.id === laneId)
   return lane != null && lane.name.toLowerCase().includes(lowerQuery)
 }
+
+export type SwimLaneManpowerRow = {
+  /** null for the "Everyone else" tail. */
+  laneId: string | null
+  label: string
+  personHours: number
+  distinctPeople: number
+}
+
+/**
+ * Lane-scoped Expected Manpower breakdown: one row per lane that has scheduled
+ * person-hours (lane order), plus an "Everyone else" tail for hours from people
+ * outside every lane. Returns [] when there are no lanes configured — the
+ * caller hides the breakdown entirely then.
+ */
+export function summarizeExpectedManpowerByLane(
+  rows: Array<{ assigneeUserId: string; personHours: number }>,
+  lanesData: DispatchSwimLanesData,
+): SwimLaneManpowerRow[] {
+  if (lanesData.lanes.length === 0) return []
+  const hoursByLane = new Map<string | null, number>()
+  const peopleByLane = new Map<string | null, Set<string>>()
+  for (const r of rows) {
+    const laneId = lanesData.laneIdByUserId.get(r.assigneeUserId) ?? null
+    hoursByLane.set(laneId, (hoursByLane.get(laneId) ?? 0) + r.personHours)
+    let set = peopleByLane.get(laneId)
+    if (!set) {
+      set = new Set()
+      peopleByLane.set(laneId, set)
+    }
+    set.add(r.assigneeUserId)
+  }
+  const out: SwimLaneManpowerRow[] = []
+  for (const lane of lanesData.lanes) {
+    const people = peopleByLane.get(lane.id)
+    if (!people || people.size === 0) continue
+    out.push({
+      laneId: lane.id,
+      label: lane.name,
+      personHours: hoursByLane.get(lane.id) ?? 0,
+      distinctPeople: people.size,
+    })
+  }
+  const restPeople = peopleByLane.get(null)
+  if (restPeople && restPeople.size > 0) {
+    out.push({
+      laneId: null,
+      label: SWIM_LANE_EVERYONE_ELSE_LABEL,
+      personHours: hoursByLane.get(null) ?? 0,
+      distinctPeople: restPeople.size,
+    })
+  }
+  return out
+}
