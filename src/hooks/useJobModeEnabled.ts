@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import {
+  JOB_MODE_CHANGED_EVENT,
   jobModeStorageKey,
   readJobModeEnabled,
   writeJobModeEnabled,
@@ -25,14 +26,22 @@ export function useJobModeEnabled(
       if (e.key !== key) return
       setEnabled(e.newValue === '1')
     }
+    function onLocalChange() {
+      setEnabled(readJobModeEnabled(userId))
+    }
     window.addEventListener('storage', onStorage)
-    return () => window.removeEventListener('storage', onStorage)
+    window.addEventListener(JOB_MODE_CHANGED_EVENT, onLocalChange)
+    return () => {
+      window.removeEventListener('storage', onStorage)
+      window.removeEventListener(JOB_MODE_CHANGED_EVENT, onLocalChange)
+    }
   }, [userId])
 
   const set = useCallback(
     (next: boolean) => {
       writeJobModeEnabled(userId, next)
       setEnabled(next)
+      window.dispatchEvent(new Event(JOB_MODE_CHANGED_EVENT))
     },
     [userId],
   )
