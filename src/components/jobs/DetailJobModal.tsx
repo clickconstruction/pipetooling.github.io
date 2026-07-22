@@ -1046,8 +1046,9 @@ export default function DetailJobModal({
           >
             {modalTitle}
           </h2>
-          {showDetailHeaderRightCluster ? (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', flexShrink: 0 }}>
+            {showDetailHeaderRightCluster ? (
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.15rem' }}>
               {headerTradePill ? (
                 tradePillOpensStages ? (
                   <button
@@ -1071,6 +1072,7 @@ export default function DetailJobModal({
                   </span>
                 )
               ) : null}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.15rem' }}>
               {showWeekDispatchButton ? (
                 <button
                   type="button"
@@ -1139,8 +1141,35 @@ export default function DetailJobModal({
                   </svg>
                 </button>
               ) : null}
+              </div>
             </div>
-          ) : null}
+            ) : null}
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation()
+                onClose()
+              }}
+              title="Close"
+              aria-label="Close job detail"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '0.3rem 0.5rem',
+                margin: 0,
+                border: 'none',
+                background: 'none',
+                cursor: 'pointer',
+                color: 'var(--text-muted)',
+                fontSize: '1.15rem',
+                lineHeight: 1,
+                borderRadius: 4,
+              }}
+            >
+              ✕
+            </button>
+          </div>
         </div>
 
         {showTopBand ? (
