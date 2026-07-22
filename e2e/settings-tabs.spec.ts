@@ -11,7 +11,7 @@ const TABS: Array<{ label: string; marker: RegExp | string; expand?: string }> =
   { label: 'Recent push', marker: 'Most recent push notifications' },
   { label: 'Your account', marker: 'My Profile' },
   { label: 'Dashboard & alerts', marker: 'Dashboard buttons' },
-  { label: 'People & accounts', marker: 'Sharing and Adoption' },
+  { label: 'People & accounts', marker: 'Additional People' },
   { label: 'Data & migration', marker: /[Bb]ackup/ },
   { label: 'Jobs & dispatch', marker: 'Job creation overrides' },
   { label: 'Catalogs & trades', marker: 'Manage Parts' },
@@ -43,17 +43,6 @@ test('deep link ?tab=settings-data activates the Data & migration tab', async ({
   await expect(page.getByRole('tab', { name: 'Data & migration' })).toHaveAttribute('aria-selected', 'true', {
     timeout: 15_000,
   })
-})
-
-test('Sharing and Adoption expands and lists the adoption blocks (v2.853 extraction)', async ({ page }) => {
-  await page.goto('/settings?tab=settings-people')
-  await page.getByRole('button', { name: 'Sharing and Adoption' }).click()
-  const main = page.locator('main')
-  for (const heading of ['Adopt Assistants', 'Adopt Primaries', 'Adopt Superintendents', 'Share with other Master']) {
-    await expect(main).toContainText(heading)
-  }
-  // Collapse again (still read-only).
-  await page.getByRole('button', { name: 'Sharing and Adoption' }).click()
 })
 
 test('Catalogs engines load type lists per service type (v2.855 extraction)', async ({ page }) => {

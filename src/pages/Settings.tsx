@@ -27,7 +27,6 @@ import type { Database } from '../types/database'
 import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
 import SettingsTemplatesTab from '../components/settings/SettingsTemplatesTab'
 import SettingsPeopleTab from '../components/settings/SettingsPeopleTab'
-import SettingsSharingAdoptionSection from '../components/settings/SettingsSharingAdoptionSection'
 import SettingsDashboardTab from '../components/settings/SettingsDashboardTab'
 import SettingsCatalogsTab from '../components/settings/SettingsCatalogsTab'
 import SettingsCatalogsProspectsTab from '../components/settings/SettingsCatalogsProspectsTab'
@@ -742,7 +741,6 @@ export default function Settings() {
 
     await refreshSelfPaySalaryForPayName(loadedName)
 
-    // Sharing & Adoption data is owned by SettingsSharingAdoptionSection (useMasterAdoptions)
 
     // Load dashboard button visibility for dev, master, assistant
     if (role === 'dev' || role === 'master_technician' || isAssistantLike(role)) {
@@ -1397,9 +1395,6 @@ export default function Settings() {
         />
       )}
 
-      {(myRole === 'master_technician' || myRole === 'dev') && (
-        <SettingsSharingAdoptionSection isDev={myRole === 'dev'} authUserId={authUser?.id ?? null} />
-      )}
 
       {myRole === 'master_technician' && authUser?.id && payApprovedMasterIds.has(authUser.id) && (
         <TeamFeedbackMasterAggregates />

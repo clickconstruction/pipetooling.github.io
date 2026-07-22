@@ -24,7 +24,7 @@ A job collects everything about the work in one place — schedule blocks, clock
 
 ## Sharing
 
-- Masters can choose to **adopt assistants** in Settings — assistants can manage stages and see private notes, but not financial totals.
+- Office staff (assistants, controllers) automatically have access to the company's customers and projects — assistants can manage stages and see private notes, but not financial totals.
 - Masters can choose to **share with other Masters** — shared masters have the same permissions as assistants.
 
 ## Subcontractors

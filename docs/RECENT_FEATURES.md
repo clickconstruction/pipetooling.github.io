@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-22 (v2.921)
+last_updated: 2026-07-22 (v2.922)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.922)
+
+### Settings: Sharing and Adoption section removed (2026-07-22)
+With v2.921 keeping the grant tables full automatically, the dev/master **Sharing and Adoption** collapsible in Settings → People & accounts had nothing left to manage — hand-unchecking a box would just be re-synced later. Removed: `SettingsSharingAdoptionSection.tsx`, `useMasterAdoptions.ts`, the Settings render, and the e2e pin (`settings-tabs.spec.ts` now uses the "Additional People" marker for the tab). Docs updated: `ACCESS_CONTROL.md` (adoption/sharing patterns note the auto-maintenance), `E2E_SMOKE.md`, and the "how the app works" guide. Archive User & Reassign Customers stays — `customers.master_user_id` still exists and archiving a master still re-homes rows.
 
 ## Latest Updates (v2.921)
 
