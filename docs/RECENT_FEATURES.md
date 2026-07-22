@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-22 (v2.931)
+last_updated: 2026-07-22 (v2.932)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.932)
+
+### Dispatch Day view: travel-hint geocoding is self-healing (2026-07-22)
+Travel hints silently skipped any scheduled job whose address wasn't in `address_geocodes` — and the cache filler was the rarely-visited Map page (root cause of "hints for some jobs but not all"). The Day view's coords loader now geocodes missing scheduled addresses itself via the same `geocode-address-batch` edge function the Map uses (chunks of 20, once per address per page load), refetches the cache, and shows a "📍 Mapping N new addresses…" status while running; failures render an amber note naming each address with the geocoder's reason on hover, so a bad job address is immediately actionable. No behavior change when the cache is already complete. Help guide travel-hints section updated.
 
 ## Latest Updates (v2.931)
 

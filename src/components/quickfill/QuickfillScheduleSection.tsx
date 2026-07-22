@@ -38,6 +38,7 @@ import {
 } from '../../lib/routedTravelTimes'
 import { normalizeAddressForGeocodeKey } from '../../lib/map/normalizeAddressForGeocode'
 import { batchGeocodeCacheKeys } from '../../lib/map/geocodeCacheBatches'
+import { mapGeocodeErrorMessage } from '../../lib/map/geocodeErrorMessage'
 import {
   fetchJobsLedgerForScheduleDispatchHub,
   fetchUserNamesForIds,
@@ -262,6 +263,15 @@ export function QuickfillScheduleSection({
     for (const [, rows] of blocksByUserId) for (const r of rows) ids.add(r.job_id)
     return [...ids].sort().join(',')
   }, [blocksByUserId, travelConfig.enabled])
+  /** Self-healing geocodes (v2.932): scheduled addresses missing from the cache
+      are geocoded right here — the Map page (the previous filler) is visited too
+      rarely to keep travel hints complete. Small status chip while running;
+      failures listed so a bad job address is actionable. */
+  const [geocodeFill, setGeocodeFill] = useState<{
+    running: number
+    failures: Array<{ address: string; message: string }>
+  }>({ running: 0, failures: [] })
+  const geocodeAttemptedKeysRef = useRef<Set<string>>(new Set())
   useEffect(() => {
     if (!travelJobIdsKey) {
       setJobCoordsByJobId(new Map())
@@ -276,26 +286,70 @@ export function QuickfillScheduleSection({
           'load day travel job addresses',
         )
         const keyByJobId = new Map<string, string>()
+        const displayByKey = new Map<string, string>()
         for (const j of jobRows ?? []) {
           const addr = (j.job_address ?? '').trim()
-          if (addr) keyByJobId.set(j.id, normalizeAddressForGeocodeKey(addr))
+          if (addr) {
+            const key = normalizeAddressForGeocodeKey(addr)
+            keyByJobId.set(j.id, key)
+            displayByKey.set(key, addr)
+          }
         }
         const uniqueKeys = [...new Set(keyByJobId.values())]
         const coordByKey = new Map<string, LatLng>()
-        for (const batch of batchGeocodeCacheKeys(uniqueKeys)) {
-          const rows = await withSupabaseRetry<
-            Array<{ address_normalized: string; lat: number; lng: number }>
-          >(
-            async () =>
-              supabase
-                .from('address_geocodes')
-                .select('address_normalized, lat, lng')
-                .in('address_normalized', batch),
-            'load day travel geocodes',
-          )
-          for (const r of rows ?? []) coordByKey.set(r.address_normalized, { lat: r.lat, lng: r.lng })
+        const loadCached = async (keys: string[]) => {
+          for (const batch of batchGeocodeCacheKeys(keys)) {
+            const rows = await withSupabaseRetry<
+              Array<{ address_normalized: string; lat: number; lng: number }>
+            >(
+              async () =>
+                supabase
+                  .from('address_geocodes')
+                  .select('address_normalized, lat, lng')
+                  .in('address_normalized', batch),
+              'load day travel geocodes',
+            )
+            for (const r of rows ?? []) coordByKey.set(r.address_normalized, { lat: r.lat, lng: r.lng })
+          }
         }
+        await loadCached(uniqueKeys)
         if (cancelled) return
+
+        // Fill the cache for anything missing (once per address per page load).
+        const missing = uniqueKeys.filter(
+          (k) => !coordByKey.has(k) && !geocodeAttemptedKeysRef.current.has(k),
+        )
+        if (missing.length > 0) {
+          for (const k of missing) geocodeAttemptedKeysRef.current.add(k)
+          setGeocodeFill((prev) => ({ ...prev, running: missing.length }))
+          const failures: Array<{ address: string; message: string }> = []
+          for (let i = 0; i < missing.length; i += 20) {
+            const chunk = missing.slice(i, i + 20)
+            try {
+              const { data, error: fnErr } = await supabase.functions.invoke<{
+                failures?: Array<{ address_normalized: string; error_code: string; detail?: string }>
+              }>('geocode-address-batch', {
+                body: { addresses: chunk.map((k) => displayByKey.get(k) ?? k) },
+              })
+              if (fnErr) {
+                failures.push(...chunk.map((k) => ({ address: displayByKey.get(k) ?? k, message: fnErr.message })))
+              } else {
+                for (const f of data?.failures ?? []) {
+                  failures.push({
+                    address: displayByKey.get(f.address_normalized) ?? f.address_normalized,
+                    message: mapGeocodeErrorMessage(f.error_code, f.detail),
+                  })
+                }
+              }
+            } catch (e) {
+              failures.push(...chunk.map((k) => ({ address: displayByKey.get(k) ?? k, message: e instanceof Error ? e.message : 'Geocoding failed' })))
+            }
+          }
+          await loadCached(missing)
+          if (cancelled) return
+          setGeocodeFill({ running: 0, failures })
+        }
+
         const out = new Map<string, LatLng>()
         for (const [jobId, key] of keyByJobId) {
           const c = coordByKey.get(key)
@@ -1258,6 +1312,21 @@ export function QuickfillScheduleSection({
         <div role="note" style={QUICKFILL_SECTION_BANNER_BOX_STYLE}>
           {SCHEDULE_CONFLICTS_DEFAULT_PROMPT}
         </div>
+      ) : null}
+      {geocodeFill.running > 0 ? (
+        <p role="status" style={{ margin: '0 0 0.5rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+          📍 Mapping {geocodeFill.running} new address{geocodeFill.running === 1 ? '' : 'es'} for travel hints…
+        </p>
+      ) : geocodeFill.failures.length > 0 ? (
+        <p
+          role="status"
+          title={geocodeFill.failures.map((f) => `${f.address} — ${f.message}`).join('\n')}
+          style={{ margin: '0 0 0.5rem', fontSize: '0.8125rem', color: '#d97706', cursor: 'help' }}
+        >
+          📍 {geocodeFill.failures.length} address{geocodeFill.failures.length === 1 ? '' : 'es'} couldn&rsquo;t be
+          mapped ({geocodeFill.failures.map((f) => f.address).join('; ')}) — fix the job address to get travel
+          hints. Hover for details.
+        </p>
       ) : null}
       <div
         style={{

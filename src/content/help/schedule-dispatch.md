@@ -84,7 +84,7 @@ Jobs tagged {{chip:gray|linked crew}} move for the whole crew — everyone's cop
 
 ## Travel-time hints on the Day view
 
-When two of a person's jobs have known locations, the Day view estimates the drive between them. By default that's a straight-line minimum (real traffic can only be worse, shown as {{chip:gray|🚗 ≥18m}}); with live routing on, it's a real road estimate (shown as {{chip:gray|🚗 ~22m}}) that quietly falls back to the straight-line number whenever routing is unavailable. Devs control all of this under {{button:secondary|Dispatch Settings}} → **Travel time hints**: turn hints on/off, set the assumed average speed, and enable live routing.
+When two of a person's jobs have known locations, the Day view estimates the drive between them. Locations fill in automatically: opening the Day view maps any scheduled address it doesn't know yet (a small "📍 Mapping…" note shows while it works), and if an address can't be found you'll see an amber note naming it — fix the job's address and the hints appear. By default that's a straight-line minimum (real traffic can only be worse, shown as {{chip:gray|🚗 ≥18m}}); with live routing on, it's a real road estimate (shown as {{chip:gray|🚗 ~22m}}) that quietly falls back to the straight-line number whenever routing is unavailable. Devs control all of this under {{button:secondary|Dispatch Settings}} → **Travel time hints**: turn hints on/off, set the assumed average speed, and enable live routing.
 
 - An open gap between jobs shows a 🚗 chip like {{chip:gray|🚗 ≥18m}} — red when the gap is shorter than the drive.
 - Back-to-back jobs that are far apart turn their connecting dot **red**; hover it for the estimate.
