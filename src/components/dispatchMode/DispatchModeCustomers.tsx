@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState, type CSSProperties } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { withSupabaseRetry, formatErrorMessage } from '../../utils/errorHandling'
 import { denverCalendarDayKey } from '../../utils/dateUtils'
+import CustomerSummaryModal from './CustomerSummaryModal'
 import {
   customerLastInteractionLabel,
   sortDispatchModeCustomers,
@@ -33,7 +33,7 @@ const sortChipBtn = (active: boolean): CSSProperties => ({
  * full Customers page focused on them (existing edit flow).
  */
 export default function DispatchModeCustomers() {
-  const navigate = useNavigate()
+  const [summaryCustomerId, setSummaryCustomerId] = useState<string | null>(null)
   const [customers, setCustomers] = useState<CustomerRow[]>([])
   const [jobCounts, setJobCounts] = useState<Map<string, number>>(new Map())
   const [lastWorkByCustomer, setLastWorkByCustomer] = useState<Map<string, string>>(new Map())
@@ -182,7 +182,7 @@ export default function DispatchModeCustomers() {
               <li key={c.id} style={{ borderTop: idx === 0 ? 'none' : '1px solid var(--border)' }}>
                 <button
                   type="button"
-                  onClick={() => navigate('/customers', { state: { openEditCustomer: c.id } })}
+                  onClick={() => setSummaryCustomerId(c.id)}
                   aria-label={`Open customer ${c.name}, ${count} ${count === 1 ? 'job' : 'jobs'}${interacted ? `, last worked ${interacted}` : ''}`}
                   style={{
                     display: 'flex',
@@ -256,6 +256,9 @@ export default function DispatchModeCustomers() {
           })}
         </ul>
       )}
+      {summaryCustomerId ? (
+        <CustomerSummaryModal customerId={summaryCustomerId} onClose={() => setSummaryCustomerId(null)} />
+      ) : null}
     </div>
   )
 }

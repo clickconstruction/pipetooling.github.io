@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-22 (v2.897)
+last_updated: 2026-07-22 (v2.898)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.898)
+
+### Dispatch Mode: Customer Summary modal — all interactions across a customer's jobs (2026-07-22)
+Tapping a customer on the Customers tab now opens **Customer Summary** instead of the edit flow: customer details (name, tappable address, contact info, job count) on top, then a newest-first feed of EVERY interaction across all their jobs — thread notes, field reports (tap → `ReportViewModal`), schedule blocks, clock sessions, and system events — with the Job Detail filter chips (**All / Notes / Reports / Status / Billing / Crew**) and each line tagged **#job · address**. New aggregation lib [`customerSummaryActivity.ts`](../src/lib/customerSummaryActivity.ts) reuses the exact per-job fetchers/mappers the Job Detail thread uses (role-aware RPCs included), capped at the newest 60 jobs. Help guide updated.
 
 ## Latest Updates (v2.897)
 
