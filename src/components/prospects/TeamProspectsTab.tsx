@@ -1065,7 +1065,7 @@ export default function TeamProspectsTab({ authUserId, isDev, resolveMasterId }:
       <div
         role="tablist"
         aria-label="Hiring stages"
-        style={{ display: 'flex', alignItems: 'stretch', gap: '0.4rem', flexWrap: 'wrap', marginBottom: '1rem' }}
+        style={{ display: 'flex', alignItems: 'stretch', justifyContent: 'center', gap: '0.4rem', flexWrap: 'wrap', marginBottom: '1rem' }}
       >
         {stageTabs.map((tab, i) => {
           const active = stage === tab.key
