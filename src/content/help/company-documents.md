@@ -13,4 +13,4 @@ Need the current Bank Deposit Details, I-9, or Certificate of Insurance? They li
 
 ## Keeping them current (devs)
 
-Devs see edit fields next to each document: change the link when a new version exists (the "updated" date refreshes automatically), rename, reorder with ↑ ↓, delete, or add a new one at the bottom — a name plus a link is all it takes. Everyone in the office sees the change immediately; there's nothing to send around.
+On **Documents → Company**, devs see a {{icon:gear}} gear at the top right of the tab — it opens the manager: change a link when a new version exists (the "updated" date refreshes automatically), rename, reorder with ↑ ↓, delete, or add a new one — a name plus a link is all it takes. Everyone in the office sees the change immediately; there's nothing to send around.

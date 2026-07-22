@@ -1566,7 +1566,7 @@ export default function Documents() {
       </div>
 
       {documentsTab === 'company' && companyTabVisible ? (
-        <SettingsCompanyDocumentsSection isDev={documentsAuthRole === 'dev'} />
+        <SettingsCompanyDocumentsSection isDev={documentsAuthRole === 'dev'} showManage />
       ) : null}
       {documentsTab === 'upload' ? (
         <p style={{ color: 'var(--text-muted)', margin: 0 }}>Upload coming soon.</p>

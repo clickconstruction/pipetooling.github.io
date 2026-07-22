@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-22 (v2.942)
+last_updated: 2026-07-22 (v2.943)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.943)
+
+### Company documents: dev editing moves behind a ⚙ gear on Documents → Company (2026-07-22)
+The inline dev editor is gone from both surfaces — the list is read-only everywhere, and devs manage it via a **⚙ gear at the top-right of the Documents → Company tab** opening a "Manage company documents" modal (add / rename / re-link / reorder / delete, same behaviors). The Settings → Your account block stays view-only with a "Manage the list on Documents → Company (⚙)" pointer for devs. `SettingsCompanyDocumentsSection` gains a `showManage` prop (Documents passes it; Settings doesn't). Help guide updated.
 
 ## Latest Updates (v2.942)
 
