@@ -34,6 +34,21 @@ Pick the job — a schedule block appears in the cell. Jobs the person already c
 
 Each block can carry a note: click the pencil ("Edit block note") to open the **Schedule block note** modal and {{button:blue|Save}}. Notes are what the tech sees about the assignment, so use them for gate codes, scope reminders, and arrival instructions.
 
+## Grouping people into swim lanes
+
+Swim lanes are named crews everyone in the office shares — useful when the same people tend to ride together. Click the **Person** header cell to cycle how the left column is grouped: alphabetical → by role → **by swim lanes**. In lanes mode each lane appears as its own section (in your office's lane order), with anyone unassigned collected under **Everyone else**.
+
+To manage the lanes, open {{button:outline|Dispatch Settings}} and find **Swim lanes (People grid crews)**:
+
+:::example Swim lanes manager
+**Underground crew** &nbsp; {{button:outline|↑}} {{button:outline|↓}} {{button:outline|Rename}} {{button:outline|Delete}}
+{{chip:blue|Marcus D ×}} {{chip:blue|Ray T ×}} &nbsp; Add person…
+:::
+
+- {{button:blue|Add lane}} creates a crew; **↑/↓** set the order lanes appear on the grid.
+- A person belongs to **one** lane at a time — picking someone who's already in another lane moves them (the picker warns "(moves from …)").
+- Changes save **immediately** and everyone sees the same lanes; deleting a lane just returns its people to **Everyone else**.
+
 ## Copying jobs to a whole crew (linked)
 
 To put the same jobs on several people at once, use the chains button (two links of a chain) next to the **++** in the People toolbar. A bar appears at the top and walks you through two steps:

@@ -11,6 +11,7 @@ import {
 } from '../../lib/dispatchSettingsJobsSearch'
 import { filterRosterByQuery } from '../../lib/dispatchSettingsPeopleSearch'
 import { ChipsWithSearchPicker, type ChipsWithSearchPickerOption } from './ChipsWithSearchPicker'
+import { DispatchSwimLanesSettingsSection } from './DispatchSwimLanesSettingsSection'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { useAuth } from '../../hooks/useAuth'
 import {
@@ -33,10 +34,13 @@ export function DispatchSettingsModal({
   open,
   onClose,
   roster,
+  onSwimLanesChanged,
 }: {
   open: boolean
   onClose: () => void
   roster: DispatchSettingsModalRosterRow[]
+  /** Fired after any swim-lane mutation so the grid refreshes its lane grouping. */
+  onSwimLanesChanged?: () => void
 }) {
   const { showToast } = useToastContext()
   const { config, reload } = useDispatchNoteRequirements()
@@ -313,6 +317,8 @@ export function DispatchSettingsModal({
             disabled={busy}
           />
         </div>
+
+        <DispatchSwimLanesSettingsSection roster={roster} onChanged={onSwimLanesChanged} />
 
         {isDev ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6, borderTop: '1px solid var(--border)', paddingTop: '0.75rem' }}>

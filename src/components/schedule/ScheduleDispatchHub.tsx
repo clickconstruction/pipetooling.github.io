@@ -25,6 +25,8 @@ import { scheduleDispatchCellDroppableId } from '../../lib/scheduleDispatchDnd'
 import { ScheduleDispatchBlockNoteIcon } from '../icons/ScheduleDispatchBlockNoteIcon'
 import { ScheduleDispatchLinkedChainsIcon } from '../icons/ScheduleDispatchLinkedChainsIcon'
 import type { LinkedCopyMode } from '../../lib/scheduleDispatchLinkedCopy'
+import type { DispatchSwimLanesData } from '../../lib/dispatchSwimLanes'
+import { buildSwimLaneDisplaySections } from '../../lib/dispatchSwimLaneSections'
 import type { LinkedGroupCardAccent } from '../../lib/scheduleDispatchLinkedGroupPalette'
 import { hubPersonDayKey, type ScheduleDispatchHubJobRow } from '../../lib/scheduleDispatchHub'
 import {
@@ -1186,6 +1188,9 @@ type HubPeoplePanelProps = {
   onLinkedCopyToggleBlock?: (blockId: string) => void
   onLinkedCopyApplyToPerson?: (personUserId: string) => void
   linkedCopyApplyBusy?: boolean
+  /** Office-wide swim lanes for the 'lanes' person grouping (null until loaded). */
+  swimLanes?: DispatchSwimLanesData | null
+  onSwimLanesChanged?: () => void
   onRequestHubMultiCellAddMode?: () => void
   columnFocusDayYmd: string
   columnScrollKey: string
@@ -1253,6 +1258,7 @@ function HubPeoplePanel({
   onLinkedCopyToggleBlock,
   onLinkedCopyApplyToPerson,
   linkedCopyApplyBusy = false,
+  swimLanes = null,
   onRequestHubMultiCellAddMode,
   onRequestEditBlockNote,
   showExpectedManpower = true,
@@ -1411,16 +1417,17 @@ function HubPeoplePanel({
 
   /** Person-header sort cycle: alphabetical (default) ↔ grouped by role like the Day view. Per-device. */
   const PEOPLE_SORT_STORAGE_KEY = 'pipetooling_dispatch_people_sort_v1'
-  const [personSort, setPersonSort] = useState<'alpha' | 'role'>(() => {
+  const [personSort, setPersonSort] = useState<'alpha' | 'role' | 'lanes'>(() => {
     try {
-      return localStorage.getItem(PEOPLE_SORT_STORAGE_KEY) === 'role' ? 'role' : 'alpha'
+      const stored = localStorage.getItem(PEOPLE_SORT_STORAGE_KEY)
+      return stored === 'role' || stored === 'lanes' ? stored : 'alpha'
     } catch {
       return 'alpha'
     }
   })
   const cyclePersonSort = () => {
     setPersonSort((prev) => {
-      const next = prev === 'alpha' ? 'role' : 'alpha'
+      const next = prev === 'alpha' ? 'role' : prev === 'role' ? 'lanes' : 'alpha'
       try {
         localStorage.setItem(PEOPLE_SORT_STORAGE_KEY, next)
       } catch {
@@ -1433,6 +1440,21 @@ function HubPeoplePanel({
     | { kind: 'heading'; key: string; label: string }
     | { kind: 'person'; person: { userId: string; displayName: string } }
   > => {
+    if (personSort === 'lanes' && swimLanes) {
+      const sections = buildSwimLaneDisplaySections(
+        swimLanes,
+        filteredAssignees.map((p) => ({ userId: p.userId, displayName: p.displayName })),
+      )
+      const out: Array<
+        | { kind: 'heading'; key: string; label: string }
+        | { kind: 'person'; person: { userId: string; displayName: string } }
+      > = []
+      for (const sec of sections) {
+        out.push({ kind: 'heading', key: `lane:${sec.laneId ?? 'rest'}`, label: sec.label })
+        for (const person of sec.people) out.push({ kind: 'person', person })
+      }
+      return out
+    }
     if (personSort !== 'role' || !roleByUserId || roleByUserId.size === 0) {
       return filteredAssignees.map((person) => ({ kind: 'person' as const, person }))
     }
@@ -1453,7 +1475,7 @@ function HubPeoplePanel({
       }
     }
     return out
-  }, [personSort, roleByUserId, filteredAssignees])
+  }, [personSort, roleByUserId, filteredAssignees, swimLanes])
 
   const emptyMessage = useMemo(() => {
     if (allPeopleRows.length === 0) {
@@ -1701,12 +1723,16 @@ function HubPeoplePanel({
                   title={
                     personSort === 'alpha'
                       ? 'Sorted alphabetically — click to group by role'
-                      : 'Grouped by role — click to sort alphabetically'
+                      : personSort === 'role'
+                        ? 'Grouped by role — click to group by swim lanes'
+                        : 'Grouped by swim lanes — click to sort alphabetically'
                   }
                   aria-label={
                     personSort === 'alpha'
                       ? 'People sorted alphabetically. Click to group by role.'
-                      : 'People grouped by role. Click to sort alphabetically.'
+                      : personSort === 'role'
+                        ? 'People grouped by role. Click to group by swim lanes.'
+                        : 'People grouped by swim lanes. Click to sort alphabetically.'
                   }
                   style={{
                     padding: 0,
@@ -1722,7 +1748,7 @@ function HubPeoplePanel({
                 >
                   {isMobile ? <span style={scheduleDispatchMobileNamePill}>Person</span> : 'Person'}
                   <span aria-hidden style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontWeight: 400 }}>
-                    {personSort === 'alpha' ? 'A–Z' : 'by role'}
+                    {personSort === 'alpha' ? 'A–Z' : personSort === 'role' ? 'by role' : 'by lanes'}
                   </span>
                 </button>
               </th>
@@ -2457,6 +2483,9 @@ type Props = {
   onLinkedCopyToggleBlock?: (blockId: string) => void
   onLinkedCopyApplyToPerson?: (personUserId: string) => void
   linkedCopyApplyBusy?: boolean
+  /** Office-wide swim lanes for the 'lanes' person grouping (null until loaded). */
+  swimLanes?: DispatchSwimLanesData | null
+  onSwimLanesChanged?: () => void
   onHubAssignJobCellPick: (assigneeUserId: string, workDate: string) => void
   onDeleteBlock: (id: string) => void
   onHubEmptyCellClick?: (personUserId: string, workDate: string) => void
@@ -2563,6 +2592,8 @@ export function ScheduleDispatchHub({
   onLinkedCopyToggleBlock,
   onLinkedCopyApplyToPerson,
   linkedCopyApplyBusy = false,
+  swimLanes = null,
+  onSwimLanesChanged,
   onHubAssignJobCellPick,
   onDeleteBlock,
   onHubEmptyCellClick,
@@ -2757,6 +2788,7 @@ export function ScheduleDispatchHub({
           onLinkedCopyToggleBlock={onLinkedCopyToggleBlock}
           onLinkedCopyApplyToPerson={onLinkedCopyApplyToPerson}
           linkedCopyApplyBusy={linkedCopyApplyBusy}
+          swimLanes={swimLanes}
           onRequestHubMultiCellAddMode={onRequestHubMultiCellAddMode}
           onRequestEditBlockNote={onRequestEditBlockNote}
           showExpectedManpower={showExpectedManpower}
@@ -2849,6 +2881,7 @@ export function ScheduleDispatchHub({
           onLinkedCopyToggleBlock={onLinkedCopyToggleBlock}
           onLinkedCopyApplyToPerson={onLinkedCopyApplyToPerson}
           linkedCopyApplyBusy={linkedCopyApplyBusy}
+          swimLanes={swimLanes}
           onRequestHubMultiCellAddMode={onRequestHubMultiCellAddMode}
           onRequestEditBlockNote={onRequestEditBlockNote}
           showExpectedManpower={showExpectedManpower}
@@ -2862,6 +2895,7 @@ export function ScheduleDispatchHub({
         open={dispatchSettingsOpen}
         onClose={() => setDispatchSettingsOpen(false)}
         roster={dispatchSettingsRoster}
+        onSwimLanesChanged={onSwimLanesChanged}
       />
     </div>
   )

@@ -30,6 +30,7 @@ import {
 import { scheduleFormatWeekdayLong, scheduleFormatWindow } from '../../lib/jobScheduleChicago'
 import { executeScheduleDispatchBlockReassign } from '../../lib/scheduleDispatchDragEnd'
 import { insertScheduleDispatchCopiedLeg } from '../../lib/scheduleDispatchMirrorInsert'
+import { fetchDispatchSwimLanes, type DispatchSwimLanesData } from '../../lib/dispatchSwimLanes'
 import {
   summarizeLinkedCopyApply,
   toggleLinkedCopyBlockSelection,
@@ -771,6 +772,8 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
   const [cardPlacementMode, setCardPlacementMode] = useState<ScheduleDispatchCardPlacementMode | null>(null)
   /** Two-stage "copy jobs linked to people" flow (toolbar chains button). */
   const [linkedCopyMode, setLinkedCopyMode] = useState<LinkedCopyMode | null>(null)
+  /** Office-wide swim lanes (People grid 'lanes' grouping + Dispatch Settings manager). */
+  const [swimLanes, setSwimLanes] = useState<DispatchSwimLanesData | null>(null)
   const [linkedCopyApplyBusy, setLinkedCopyApplyBusy] = useState(false)
   const [plusMenuBlockId, setPlusMenuBlockId] = useState<string | null>(null)
   const [blockNoteEdit, setBlockNoteEdit] = useState<JobScheduleBlockRow | null>(null)
@@ -827,6 +830,16 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [deleteBlockId, deleteBlockBusy])
+
+  const refetchSwimLanes = useCallback(async () => {
+    const { data, error } = await fetchDispatchSwimLanes()
+    if (!error) setSwimLanes(data)
+  }, [])
+
+  useEffect(() => {
+    if (!authUser?.id) return
+    void refetchSwimLanes()
+  }, [authUser?.id, refetchSwimLanes])
 
   useEffect(() => {
     if (!linkedCopyMode) return
@@ -2110,6 +2123,8 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
             onLinkedCopyToggleBlock={onLinkedCopyToggleBlock}
             onLinkedCopyApplyToPerson={onLinkedCopyApplyToPerson}
             linkedCopyApplyBusy={linkedCopyApplyBusy}
+            swimLanes={swimLanes}
+            onSwimLanesChanged={() => void refetchSwimLanes()}
             onHubAssignJobCellPick={onHubAssignJobCellPick}
             onDeleteBlock={(id) => void requestDeleteBlock(id)}
             onHubEmptyCellClick={canEdit ? onHubEmptyCellOpenChoice : undefined}
