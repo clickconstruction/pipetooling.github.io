@@ -163,7 +163,7 @@ export function DashboardMyScheduleSection({
                     }}
                   >
                     <LeaveReportReminderIcon size={16} />
-                    Your scheduled time on this job ended today and you haven't filed a report yet. File one
+                    You haven't filed a report yet. File one
                   </p>
                 )}
                 {sorted.length === 0 ? (
