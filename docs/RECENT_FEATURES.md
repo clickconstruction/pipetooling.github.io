@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-21 (v2.874)
+last_updated: 2026-07-21 (v2.875)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.875)
+
+### Dispatch Settings: note requirements collapse into an expandable section (2026-07-21)
+The three note-requirement pickers (Require a note / Don't require a note / Jobs that don't require a note) in the **Dispatch Settings** modal now live under a single **Note requirements** disclosure header, **collapsed by default** — the modal opens straight to the more-used Swim lanes manager (and Travel hints for devs). The collapsed header shows a count summary ("2 require · 5 people skip · 1 job skips"); expanding reveals the original intro copy and pickers unchanged (aria-expanded/aria-controls wired; collapse state resets each open). Save semantics untouched — collapsed lists still save.
 
 ## Latest Updates (v2.874)
 
