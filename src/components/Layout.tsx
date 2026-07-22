@@ -54,6 +54,11 @@ import {
 import { impersonationExitDisplayLabel, impersonationExitTitle } from '../lib/impersonationUiLabels'
 import { useDispatchModeEnabled } from '../hooks/useDispatchModeEnabled'
 import { useFirstAssistantDispatchPhone } from '../hooks/useFirstAssistantDispatchPhone'
+import {
+  DISPATCH_MODE_PO_CHANGED_EVENT,
+  readDispatchModePoEnabled,
+  writeDispatchModePoEnabled,
+} from '../lib/dispatchModePoToggle'
 import { DispatchModeFooter, DispatchModeFooterLive, DISPATCH_MODE_FOOTER_HEIGHT_PX } from './dispatchMode/DispatchModeFooter'
 import { CAN_USE_SCHEDULE_DISPATCH_EDIT_ROLES } from '../lib/scheduleDispatchEditRoles'
 import {
@@ -149,6 +154,21 @@ export default function Layout() {
   // buttons spelled out; falls back to the icon buttons (with the phone kept on
   // the left) when the viewport is too narrow to fit the labels.
   const jobModeContactPhone = useFirstAssistantDispatchPhone(jobModeFooterActive)
+  // Dispatch Mode PO tab: gear-menu opt-in (only offered while Dispatch Mode is on);
+  // tab itself is limited to the roles the PO-minting RPC allows.
+  const [dispatchModePoStored, setDispatchModePoStored] = useState<boolean | null>(() =>
+    readDispatchModePoEnabled(authUser?.id ?? null),
+  )
+  useEffect(() => {
+    setDispatchModePoStored(readDispatchModePoEnabled(authUser?.id ?? null))
+    const onChange = () => setDispatchModePoStored(readDispatchModePoEnabled(authUser?.id ?? null))
+    window.addEventListener(DISPATCH_MODE_PO_CHANGED_EVENT, onChange)
+    return () => window.removeEventListener(DISPATCH_MODE_PO_CHANGED_EVENT, onChange)
+  }, [authUser?.id])
+  const dispatchModePoRoleAllowed = role === 'dev' || role === 'master_technician' || role === 'assistant'
+  // No explicit choice yet → assistants get the tab by default; everyone else opts in.
+  const dispatchModePoEnabled = dispatchModePoStored ?? isAssistantLike(role)
+  const dispatchModePoTabActive = dispatchModeActive && dispatchModePoRoleAllowed && dispatchModePoEnabled
   const { gateOpen: dailyGoalsGateOpen } = useDailyGoalsGate()
   const [impersonating, setImpersonating] = useState(
     () => typeof window !== 'undefined' && !!localStorage.getItem(IMPERSONATION_KEY)
@@ -1121,6 +1141,55 @@ export default function Layout() {
                     </span>
                   </button>
                 )}
+                {dispatchModeActive && dispatchModePoRoleAllowed && authUser?.id && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      writeDispatchModePoEnabled(authUser.id, !dispatchModePoEnabled)
+                      setGearOpen(false)
+                    }}
+                    title={dispatchModePoEnabled ? 'Hide the PO tab from the Dispatch Mode footer' : 'Add a PO tab to the Dispatch Mode footer'}
+                    aria-label="Toggle Dispatch Mode PO tab"
+                    aria-pressed={dispatchModePoEnabled}
+                    style={{
+                      display: 'flex',
+                      width: '100%',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: '0.5rem',
+                      padding: '0.5rem 1rem 0.5rem 1.75rem',
+                      textAlign: 'left',
+                      background: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                      fontSize: 'inherit',
+                      color: 'inherit',
+                      borderBottom: '1px solid var(--chrome-border)',
+                      boxSizing: 'border-box',
+                      fontWeight: dispatchModePoEnabled ? 600 : 400,
+                    }}
+                  >
+                    <span>PO tab</span>
+                    <span
+                      aria-hidden="true"
+                      style={{
+                        display: 'inline-flex',
+                        width: 16,
+                        height: 16,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        borderRadius: 3,
+                        border: '1px solid var(--border-400)',
+                        background: dispatchModePoEnabled ? '#0ea5e9' : 'var(--surface)',
+                        color: 'white',
+                        fontSize: '0.75rem',
+                        lineHeight: 1,
+                      }}
+                    >
+                      {dispatchModePoEnabled ? '✓' : ''}
+                    </span>
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={() => setThemeOverride(theme === 'dark' ? 'light' : 'dark')}
@@ -1649,7 +1718,7 @@ export default function Layout() {
           </div>
         )}
       </main>
-      {dispatchModeActive ? <DispatchModeFooterLive /> : null}
+      {dispatchModeActive ? <DispatchModeFooterLive showPoTab={dispatchModePoTabActive} /> : null}
       {jobModeFooterActive ? <DispatchModeFooter variant="job" /> : null}
       <ChecklistAddModal />
       <DispatchTaskModal />

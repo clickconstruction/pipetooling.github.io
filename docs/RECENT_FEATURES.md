@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-22 (v2.937)
+last_updated: 2026-07-22 (v2.938)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.938)
+
+### Dispatch Mode: PO tab — phone PO minting, gear-menu gated (2026-07-22)
+New optional **PO** footer tab in Dispatch Mode (`/dispatch-mode/po`, `DispatchModePo.tsx`): mint a material PO code in three taps — job (today's scheduled jobs chip-listed first; `search_jobs_ledger` for the rest), **For** person (the picked job's crew floats first), optional supply house (last-used remembered per device) and note — via the same `insert_material_po_generator_entry` RPC + ledger as Materials → PO Generator. Result screen shows the code at 4.5rem with **Copy** and **Text to {person}** (`sms:` prefilled) plus a **Recent POs** list (last 25 ledger rows). Availability: a **PO tab** toggle in the gear menu, rendered only while Dispatch Mode is on and only for the RPC-allowed roles (dev/master/assistant); per-device localStorage (`dispatchModePoToggle.ts`), **null = assistants default ON**, everyone else opts in. Footer gains the receipt-icon tab before More. Help guide updated.
 
 ## Latest Updates (v2.937)
 

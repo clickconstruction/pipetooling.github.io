@@ -245,6 +245,8 @@ function AppContent() {
           <Route path="dispatch-mode/schedule" element={<DispatchMode />} />
           <Route path="dispatch-mode/inbox" element={<DispatchMode />} />
           <Route path="dispatch-mode/customers" element={<DispatchMode />} />
+
+          <Route path="dispatch-mode/po" element={<DispatchMode />} />
           <Route path="job-mode/schedule" element={<JobModeTabs />} />
           <Route path="job-mode/inbox" element={<JobModeTabs />} />
           <Route path="job-mode/customers" element={<JobModeTabs />} />
