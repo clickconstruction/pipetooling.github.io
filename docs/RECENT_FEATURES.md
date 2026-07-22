@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-22 (v2.946)
+last_updated: 2026-07-22 (v2.947)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.947)
+
+### Types catch-up: regenerate database.ts from prod (2026-07-22)
+`npm run gen-types:linked` after the v2.946 push revealed the committed [`src/types/database.ts`](../src/types/database.ts) had drifted from prod: `dispatch_swim_lanes` + `dispatch_swim_lane_members` (v2.872), `job_travel_times` (v2.801), `users.dispatch_mode_enabled` (v2.905), and the `sync_company_access_grants` (v2.921) / `user_has_schedule_block_for_customer` (v2.913) functions were applied to prod but never regenerated into the file — their PRs skipped the gen-types step. This commit is the regenerated file verbatim (strict superset: the v2.946 `comment_*` columns matched codegen byte-for-byte; no existing type changed, so no code changes needed). Reminder the drift came from: **regenerate types in every schema-touching PR** (AGENTS.md constraint #3).
 
 ## Latest Updates (v2.946)
 
