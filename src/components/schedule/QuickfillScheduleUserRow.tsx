@@ -117,6 +117,7 @@ export const QuickfillScheduleUserRow = memo(function QuickfillScheduleUserRow({
   segments,
   secondaryBands,
   onScheduleAddClick,
+  onReorderClick,
   onOpenMyTimeForSessionStrip,
   onOpenPersonMyTime,
   onNameColumnClick,
@@ -141,6 +142,8 @@ export const QuickfillScheduleUserRow = memo(function QuickfillScheduleUserRow({
   segments: AddBlockTimelineSegment[]
   secondaryBands?: DispatchSecondaryBand[]
   onScheduleAddClick?: () => void
+  /** Day view, editors with 2+ blocks: opens the Reorder-day modal. Renders a ⇅ button stacked under the + (same column, so orientation labels stay aligned). */
+  onReorderClick?: () => void
   onOpenMyTimeForSessionStrip?: (uid: string, name: string) => void
   /** Opens My Time day editor (NCNS / Not coming in) from the person name — same handler as strip when provided. */
   onOpenPersonMyTime?: (uid: string, name: string) => void
@@ -323,32 +326,60 @@ export const QuickfillScheduleUserRow = memo(function QuickfillScheduleUserRow({
         />
       </div>
       {onScheduleAddClick ? (
-        <button
-          type="button"
-          onClick={onScheduleAddClick}
-          title={`Add job to schedule for ${displayName}`}
-          aria-label={`Add schedule block for ${displayName} on this day`}
-          style={{
-            width: QUICKFILL_SCHEDULE_ADD_COL_WIDTH,
-            flexShrink: 0,
-            height: QUICKFILL_SCHEDULE_ADD_COL_WIDTH,
-            padding: 0,
-            margin: 0,
-            border: 'none',
-            borderRadius: 6,
-            background: 'var(--bg-muted)',
-            color: 'var(--text-faint)',
-            fontSize: '1.125rem',
-            fontWeight: 600,
-            lineHeight: 1,
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        >
-          +
-        </button>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', flexShrink: 0 }}>
+          <button
+            type="button"
+            onClick={onScheduleAddClick}
+            title={`Add job to schedule for ${displayName}`}
+            aria-label={`Add schedule block for ${displayName} on this day`}
+            style={{
+              width: QUICKFILL_SCHEDULE_ADD_COL_WIDTH,
+              height: QUICKFILL_SCHEDULE_ADD_COL_WIDTH,
+              padding: 0,
+              margin: 0,
+              border: 'none',
+              borderRadius: 6,
+              background: 'var(--bg-muted)',
+              color: 'var(--text-faint)',
+              fontSize: '1.125rem',
+              fontWeight: 600,
+              lineHeight: 1,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            +
+          </button>
+          {onReorderClick ? (
+            <button
+              type="button"
+              onClick={onReorderClick}
+              title={`Reorder ${displayName}'s jobs for this day`}
+              aria-label={`Reorder ${displayName}'s jobs on this day`}
+              style={{
+                width: QUICKFILL_SCHEDULE_ADD_COL_WIDTH,
+                height: QUICKFILL_SCHEDULE_ADD_COL_WIDTH,
+                padding: 0,
+                margin: 0,
+                border: 'none',
+                borderRadius: 6,
+                background: 'var(--bg-muted)',
+                color: 'var(--text-faint)',
+                fontSize: '0.9375rem',
+                fontWeight: 600,
+                lineHeight: 1,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              ⇅
+            </button>
+          ) : null}
+        </div>
       ) : null}
     </div>
   )

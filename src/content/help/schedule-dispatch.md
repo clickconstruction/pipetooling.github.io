@@ -72,6 +72,16 @@ On the **Day** view, every scheduled job bar has an orange dot at its start and 
 Two jobs meet at 2:30 PM under one dot. Hold the dot — the second job now starts at 2:45 PM, ending at its same time. Drag its start dot back onto 2:30 to rejoin them.
 :::
 
+## Reordering a person's day
+
+Need job 3 to happen before job 2? On the **Day** view, tap the **⇅** button at the right end of a person's row (it appears when they have two or more jobs). Their jobs list in order with {{button:outline|▲}} {{button:outline|▼}} buttons — move one and the new times preview instantly:
+
+:::example How the times move
+Every job **keeps its own duration**, and the gaps between jobs stay where they were. If the day was 807 (8–10), 920 (10:30–12:30), 902 (1–4) and you move 902 up, it becomes 807 (8–10), 902 (10:30–1:30), 902's three hours intact, then 920 (2–4).
+:::
+
+Jobs tagged {{chip:gray|linked crew}} move for the whole crew — everyone's copy of that job shifts by the same amount, so the crew stays together. Hit {{button:blue|Save new order}} and every schedule surface (techs' Job Mode, My Schedule, emails) reflects the new order immediately, since they all sort by time.
+
 ## Travel-time hints on the Day view
 
 When two of a person's jobs have known locations, the Day view estimates the drive between them. By default that's a straight-line minimum (real traffic can only be worse, shown as {{chip:gray|🚗 ≥18m}}); with live routing on, it's a real road estimate (shown as {{chip:gray|🚗 ~22m}}) that quietly falls back to the straight-line number whenever routing is unavailable. Devs control all of this under {{button:secondary|Dispatch Settings}} → **Travel time hints**: turn hints on/off, set the assumed average speed, and enable live routing.
