@@ -1,5 +1,14 @@
 import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { useIsMobile } from '../../hooks/useIsMobile'
+import { useToastContext } from '../../contexts/ToastContext'
+import { useDashboardAssignedJobs } from '../../hooks/useDashboardAssignedJobs'
+import { useDashboardSubSchedule } from '../../hooks/useDashboardSubSchedule'
+import { useFirstAssistantDispatchPhone } from '../../hooks/useFirstAssistantDispatchPhone'
+import { isSubcontractorLikeRole, isAssistantLike } from '../../lib/subcontractorLikeRole'
+import { DashboardMyScheduleSection } from '../dashboard/DashboardMyScheduleSection'
+import DashboardFinancialsSection from '../DashboardFinancialsSection'
+import AdditionalReportModal from '../AdditionalReportModal'
+import { submitLinkJobPicturesDispatchRequestForJob } from '../../lib/linkJobPicturesDispatchRequest'
 import ClockInOutButton from '../ClockInOutButton'
 import { useAuth } from '../../hooks/useAuth'
 import { useJobDetailModal } from '../../contexts/JobDetailModalContext'
@@ -34,8 +43,37 @@ const groupHeaderBtn: CSSProperties = {
 
 /** Dispatch Mode → Dashboard tab: clock in/out on top, compact Stages list below. */
 export default function DispatchModeHome() {
-  const { user: authUser, profileName } = useAuth()
+  const { user: authUser, profileName, role } = useAuth()
   const isMobile = useIsMobile()
+  const { showToast } = useToastContext()
+
+  // My Schedule: same engine pair the main Dashboard uses.
+  const { assignedJobs, assignedReadyToBillJobs, refreshDashboardAssignedJobLists } =
+    useDashboardAssignedJobs({ authUserId: authUser?.id, role })
+  const {
+    subScheduleLoading,
+    subScheduleLabels,
+    subSchedulePhones,
+    subScheduleDayPartition,
+    leaveReportReminderForJobRow,
+  } = useDashboardSubSchedule({
+    authUserId: authUser?.id,
+    role,
+    assignedJobs,
+    assignedReadyToBillJobs,
+  })
+  const firstAssistantDispatchPhone = useFirstAssistantDispatchPhone(isSubcontractorLikeRole(role))
+  const detailModalAssignedJobsRows = useMemo(
+    () => [...assignedJobs, ...assignedReadyToBillJobs],
+    [assignedJobs, assignedReadyToBillJobs],
+  )
+  const [leaveReportJob, setLeaveReportJob] = useState<{
+    id: string
+    hcpNumber: string
+    jobName: string
+    jobAddress: string
+  } | null>(null)
+  const showFinancials = role === 'dev' || role === 'master_technician' || isAssistantLike(role)
   const jobDetailModal = useJobDetailModal()
 
   const [jobs, setJobs] = useState<JobWithDetails[]>([])
@@ -82,6 +120,27 @@ export default function DispatchModeHome() {
       {authUser?.id ? (
         <ClockInOutButton userId={authUser.id} userName={profileName ?? null} />
       ) : null}
+
+      <section aria-label="My schedule">
+        <DashboardMyScheduleSection
+          role={role}
+          firstAssistantDispatchPhone={firstAssistantDispatchPhone}
+          subScheduleLoading={subScheduleLoading}
+          subScheduleDayPartition={subScheduleDayPartition}
+          subScheduleLabels={subScheduleLabels}
+          subSchedulePhones={subSchedulePhones}
+          leaveReportReminderForJobRow={leaveReportReminderForJobRow}
+          assignedJobs={assignedJobs}
+          assignedReadyToBillJobs={assignedReadyToBillJobs}
+          detailModalAssignedJobsRows={detailModalAssignedJobsRows}
+          submitLinkJobPicturesDispatchRequest={(args) =>
+            submitLinkJobPicturesDispatchRequestForJob(authUser?.id, showToast, args)
+          }
+          setLeaveReportJob={setLeaveReportJob}
+        />
+      </section>
+
+      {showFinancials ? <DashboardFinancialsSection /> : null}
 
       <section aria-label="Job stages">
         <h2 style={{ margin: '0 0 0.5rem', fontSize: '1rem', color: 'var(--text-strong)' }}>
@@ -211,6 +270,23 @@ export default function DispatchModeHome() {
           </div>
         )}
       </section>
+      {leaveReportJob ? (
+        <AdditionalReportModal
+          open={!!leaveReportJob}
+          onClose={() => setLeaveReportJob(null)}
+          onSaved={() => {
+            setLeaveReportJob(null)
+            void refreshDashboardAssignedJobLists()
+          }}
+          onReportSaved={() => void refreshDashboardAssignedJobLists()}
+          authUserId={authUser?.id ?? null}
+          userRole={role}
+          jobId={leaveReportJob.id}
+          hcpNumber={leaveReportJob.hcpNumber}
+          jobName={leaveReportJob.jobName}
+          jobAddress={leaveReportJob.jobAddress}
+        />
+      ) : null}
     </div>
   )
 }

@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-22 (v2.902)
+last_updated: 2026-07-22 (v2.903)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.903)
+
+### Dispatch Mode: Dashboard reordered (My Schedule + financials) and Inbox gains the dashboard notification banners (2026-07-22)
+**Dashboard tab** now reads clock → **My Schedule** (`DashboardMyScheduleSection` powered by the same `useDashboardAssignedJobs` + `useDashboardSubSchedule` engines as the main Dashboard, Leave Report modal included) → the **financial cards** for eligible roles (`DashboardFinancialsSection`, self-contained) → the existing **Job Stages** list. The "send job pictures to Dispatch" callback moved to a shared lib ([`linkJobPicturesDispatchRequest.ts`](../src/lib/linkJobPicturesDispatchRequest.ts)) used by both dashboards. **Inbox tab** now leads with the Dashboard's **notification banners** (stale tally, lost-bids-need-a-reason, AR bank unallocated, staff tally, bulk-delete/dev alerts) via a new `bannersOnly` mode on `DashboardPinnedQuickRow` — banners only, no pins/quick actions/Job Report row; banner tap-throughs and their modals work. Help guide updated.
 
 ## Latest Updates (v2.902)
 
