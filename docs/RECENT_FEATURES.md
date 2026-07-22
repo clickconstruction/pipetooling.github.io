@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-22 (v2.908)
+last_updated: 2026-07-22 (v2.909)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.909)
+
+### Quick Assign: create-a-job in the picker, long-press schedule details, header tip (2026-07-22)
+Three additions to the v2.902 flow. **(1)** The Add-job picker's **Create new job** button opens the real New Job form on top; on save, `onCreatedJobId` refetches the ledger, auto-picks the new job, and drops the user onto the people step. **(2)** **Long-press** (≥450ms, fires on release so the release-tap can't hit the new overlay) any person row or swim-lane header opens a detail modal of that person's/crew's day — agenda-style rows (time, duration, pill, job, customer, address) built from the already-loaded day blocks; a quick tap still toggles selection (the follow-up click is consumed). **(3)** Helper text beside the title: *(tip: long press to see details)*. Rows get `user-select: none` + context-menu suppression for clean mobile long-presses.
 
 ## Latest Updates (v2.908)
 
