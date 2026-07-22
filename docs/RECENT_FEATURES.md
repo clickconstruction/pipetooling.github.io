@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-21 (v2.883)
+last_updated: 2026-07-21 (v2.884)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.884)
+
+### Fix: Job Mode toggle did nothing until a page reload (2026-07-21)
+Toggling **Job Mode** in the gear menu while ON the Dashboard appeared to do nothing: the gear toggle and the Dashboard each own a `useJobModeEnabled` instance, and they only synced via the `storage` event — which browsers fire in OTHER tabs, never the writing tab. The Dashboard's instance stayed stale until a reload or route remount. Fix: `set()` also dispatches a same-tab `JOB_MODE_CHANGED_EVENT` (new export in `jobModeToggle.ts`) that every hook instance listens for and re-reads. Reproduced and re-verified via Playwright: toggle → Job Mode card renders immediately; toggle off → full dashboard returns.
 
 ## Latest Updates (v2.883)
 

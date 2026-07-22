@@ -8,6 +8,11 @@
 
 const PREFIX = 'dashboard_job_mode'
 
+/** Same-tab change signal: `storage` events only fire in OTHER tabs, so the
+ * gear-menu toggle dispatches this for hook instances in the same tab
+ * (e.g. the Dashboard's) to re-read. */
+export const JOB_MODE_CHANGED_EVENT = 'dashboard_job_mode_changed'
+
 export function jobModeStorageKey(userId: string): string {
   return `${PREFIX}_${userId}`
 }
