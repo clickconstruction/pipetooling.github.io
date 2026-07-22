@@ -47,6 +47,8 @@ While you're clocked into a job, the card keeps going below the buttons:
 
 The details section (customer contact, Street View, updates) also shows for your **Ready to start** job before you clock in — review the visit before you head out.
 
+Below the card, **My Schedule** shows your upcoming visits — the same section as the full Dashboard — so you can see what's next without leaving Job Mode. {{button:outline|Show full dashboard}} sits just under it.
+
 ## The Job Mode tab bar
 
 With Job Mode on, a tab bar pins to the bottom of the screen — everything on it is **yours only**:

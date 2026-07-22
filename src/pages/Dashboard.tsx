@@ -1104,6 +1104,26 @@ export default function Dashboard() {
     subLaborDueTotal,
   }
 
+  /** Above-the-fold: quick actions and clock first; checklist/assigned use skeletons until data arrives. */
+  /** Mounted directly below the Job Report row via DashboardPinnedQuickRow's afterJobReportRow slot (all roles),
+   *  and again in the Job Mode early return between the job card and "Show full dashboard". */
+  const myScheduleSection = (
+    <DashboardMyScheduleSection
+      role={role}
+      firstAssistantDispatchPhone={firstAssistantDispatchPhone}
+      subScheduleLoading={subScheduleLoading}
+      subScheduleDayPartition={subScheduleDayPartition}
+      subScheduleLabels={subScheduleLabels}
+      subSchedulePhones={subSchedulePhones}
+      leaveReportReminderForJobRow={leaveReportReminderForJobRow}
+      assignedJobs={assignedJobs}
+      assignedReadyToBillJobs={assignedReadyToBillJobs}
+      detailModalAssignedJobsRows={detailModalAssignedJobsRows}
+      submitLinkJobPicturesDispatchRequest={submitLinkJobPicturesDispatchRequest}
+      setLeaveReportJob={setLeaveReportJob}
+    />
+  )
+
   // Job Mode focused view: replaces top of Dashboard with one big card; rest of
   // Dashboard is hidden until user taps "Show full dashboard" (component-local;
   // resets every page load). Toggle lives in the header gear menu (Layout.tsx).
@@ -1117,6 +1137,7 @@ export default function Dashboard() {
           onLeaveReport={(j) => setLeaveReportJob(j)}
           onTurnaway={(j) => setTurnawayJob(j)}
         />
+        <div style={{ marginTop: '0.75rem' }}>{myScheduleSection}</div>
         <div style={{ display: 'flex', justifyContent: 'center', marginTop: '0.75rem' }}>
           <button
             type="button"
@@ -1212,25 +1233,6 @@ export default function Dashboard() {
     { id: 'dash-projects', label: 'Projects', visible: projectsCardVisible },
     { id: 'dash-me', label: 'Me', visible: Boolean(authUser?.id) },
   ].filter((sec) => sec.visible)
-
-  /** Above-the-fold: quick actions and clock first; checklist/assigned use skeletons until data arrives. */
-  /** Mounted directly below the Job Report row via DashboardPinnedQuickRow's afterJobReportRow slot (all roles). */
-  const myScheduleSection = (
-    <DashboardMyScheduleSection
-      role={role}
-      firstAssistantDispatchPhone={firstAssistantDispatchPhone}
-      subScheduleLoading={subScheduleLoading}
-      subScheduleDayPartition={subScheduleDayPartition}
-      subScheduleLabels={subScheduleLabels}
-      subSchedulePhones={subSchedulePhones}
-      leaveReportReminderForJobRow={leaveReportReminderForJobRow}
-      assignedJobs={assignedJobs}
-      assignedReadyToBillJobs={assignedReadyToBillJobs}
-      detailModalAssignedJobsRows={detailModalAssignedJobsRows}
-      submitLinkJobPicturesDispatchRequest={submitLinkJobPicturesDispatchRequest}
-      setLeaveReportJob={setLeaveReportJob}
-    />
-  )
 
   const myInboxCard = (
     <DashboardMyInboxCard
