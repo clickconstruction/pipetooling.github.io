@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-21 (v2.882)
+last_updated: 2026-07-21 (v2.883)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.883)
+
+### Fix: impersonation header unreadable in dark mode on mobile (2026-07-21)
+While a dev impersonates a user ("login as" from People → Users) on mobile, the nav bar (and its search overlay) used the hard-coded light amber `#fef3c7` — in dark mode the nav's light text colors landed on that cream background and the header was unreadable. Both now use the theme token `var(--bg-amber-100)` (identical `#fef3c7` in light mode; dark amber `#45390f` in dark mode, so light text reads). Same-literal sweep: the "you" row highlight on People → Review tokenized too.
 
 ## Latest Updates (v2.882)
 
