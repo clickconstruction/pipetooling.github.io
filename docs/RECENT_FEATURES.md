@@ -2048,8 +2048,8 @@ when_to_read:
 
 ## Latest Updates (v2.912)
 
-### Dispatch Mode: on by default for all assistants (2026-07-22)
-Migration `20260722190000_dispatch_mode_default_assistants.sql` (**requires `supabase db push` after merge**) makes `users.dispatch_mode_enabled` nullable — `NULL` = "never chose" — and the client resolves NULL to **ON for assistant-like roles**, off for everyone else (`useDispatchModeEnabled` gains a `defaultEnabled` param; Layout passes `isAssistantLike(role)`; the per-device cache now stores explicit '0' so an assistant's deliberate off sticks). Explicit toggles write the server as before and win over the default everywhere. `MIGRATIONS.md` updated.
+### Dispatch Mode: on by default for all assistants and master technicians (2026-07-22)
+Migration `20260722190000_dispatch_mode_default_assistants.sql` (**requires `supabase db push` after merge**) makes `users.dispatch_mode_enabled` nullable — `NULL` = "never chose" — and the client resolves NULL to **ON for assistant-like roles and master technicians**, off for everyone else (`useDispatchModeEnabled` gains a `defaultEnabled` param; Layout passes `isAssistantLike(role)`; the per-device cache now stores explicit '0' so an assistant's deliberate off sticks). Explicit toggles write the server as before and win over the default everywhere. `MIGRATIONS.md` updated.
 
 ## Latest Updates (v2.911)
 
