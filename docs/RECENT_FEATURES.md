@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-22 (v2.905)
+last_updated: 2026-07-22 (v2.906)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.906)
+
+### Job Detail: grey ✕ close button + stacked header cluster (2026-07-22)
+The modal header's right side is restructured: a **grey ✕** (always present, calls the same close as the backdrop) sits at the top-right corner, and to its left the old one-row `PLUM [schedule] [edit]` cluster becomes a **two-row stack** — trade pill on top, the week-dispatch and edit-job icons right-aligned beneath it. Presentation only.
 
 ## Latest Updates (v2.905)
 
