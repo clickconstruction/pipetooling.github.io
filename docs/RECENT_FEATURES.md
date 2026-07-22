@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-22 (v2.943)
+last_updated: 2026-07-22 (v2.944)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.944)
+
+### Settings: Release notes tab — one note per PR, CI-enforced (2026-07-22)
+New **Release notes** tab in Settings, visible to **every role** (between Advanced and How it works), rendering the in-app update feed: current version line, then one card per release (version, date, New/Fix/Infra badge, title, 1–4 plain-language highlight bullets), newest first, with the tail collapsed behind "Show N earlier updates". Data lives in [`src/content/releaseNotes.ts`](../src/content/releaseNotes.ts) (seeded back to v2.930); types + validation in the pure kernel [`src/lib/releaseNotes.ts`](../src/lib/releaseNotes.ts); UI in [`src/components/settings/SettingsReleaseNotesSection.tsx`](../src/components/settings/SettingsReleaseNotesSection.tsx) (self-contained, no parent state). **New convention: every feature/fix PR adds a release-note entry with the same `v2.NNN` as its RECENT_FEATURES entry** — enforced by [`src/lib/releaseNotes.test.ts`](../src/lib/releaseNotes.test.ts), whose drift test parses this file's newest `## Latest Updates (v2.NNN)` heading and fails `npm test` (CI) until the matching entry exists. Deep link `/settings?tab=settings-release-notes` works via the existing `resolveSettingsDeepLink`; e2e marker added to `settings-tabs.spec.ts`; new help guide `release-notes.md`. Client-only — no DB/migration/edge changes. Conventions documented in `CLAUDE.md` + `AGENTS.md` #11; tab dossier added to `SETTINGS_TABS_ARCHITECTURE.md`.
 
 ## Latest Updates (v2.943)
 

@@ -17,6 +17,7 @@ const TABS: Array<{ label: string; marker: RegExp | string; expand?: string }> =
   { label: 'Catalogs & trades', marker: 'Manage Parts' },
   { label: 'Templates & testing', marker: 'Notification Templates' },
   { label: 'Advanced', marker: 'Fix app', expand: 'Advanced' },
+  { label: 'Release notes', marker: 'Current version' },
   { label: 'How it works', marker: 'How It Works' },
 ]
 

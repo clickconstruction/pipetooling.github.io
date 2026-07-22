@@ -7,7 +7,7 @@ file: GLOSSARY.md
 type: Reference
 purpose: Comprehensive definitions of all domain-specific terms and technical concepts
 audience: All users (especially new developers and AI agents)
-last_updated: 2026-07-18
+last_updated: 2026-07-22
 estimated_read_time: 15-20 minutes (reference only)
 difficulty: Beginner
 
@@ -1200,6 +1200,9 @@ React pattern for sharing state across component tree without prop drilling.
 ---
 
 ## UI/UX Terms
+
+### Release note (vs `RECENT_FEATURES.md` entry)
+The short, user-readable summary of a release shown at **Settings → Release notes** (all roles), one per PR, stored in `src/content/releaseNotes.ts` with the same `v2.NNN` as the PR's `docs/RECENT_FEATURES.md` entry. Do not confuse the two: the **release note** is 1–4 plain-language bullets for users (no file paths); the **`RECENT_FEATURES.md` entry** is the full technical changelog record for developers/agents. A vitest drift test (`src/lib/releaseNotes.test.ts`) fails CI when the newest versions of the two diverge (v2.944).
 
 ### Protected Route
 Route component that requires authentication. Redirects to sign-in if user not authenticated.

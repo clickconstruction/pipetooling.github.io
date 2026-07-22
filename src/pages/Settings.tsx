@@ -45,6 +45,7 @@ import { useSettingsAccount } from '../hooks/useSettingsAccount'
 import type { UserRow } from '../types/settingsRows'
 import { isAssistantLike, isSubcontractorLikeRole } from '../lib/subcontractorLikeRole'
 import SettingsCompanyDocumentsSection from '../components/settings/SettingsCompanyDocumentsSection'
+import SettingsReleaseNotesSection from '../components/settings/SettingsReleaseNotesSection'
 
 type UserRole =
   | 'dev'
@@ -169,6 +170,7 @@ function getSettingsJumpGroups(myRole: UserRole | null): { id: string; label: st
   if (r === 'dev' || r === 'estimator') groups.push({ id: 'settings-catalogs', label: 'Catalogs & trades' })
   if (r === 'dev') groups.push({ id: 'settings-templates', label: 'Templates & testing' })
   if (!isSubcontractorLikeRole(r)) groups.push({ id: 'settings-advanced-tools', label: 'Advanced' })
+  groups.push({ id: 'settings-release-notes', label: 'Release notes' })
   groups.push({ id: 'settings-how-it-works', label: 'How it works' })
   return groups
 }
@@ -1695,6 +1697,14 @@ export default function Settings() {
         onClose={() => setMuteModalItemId(null)}
         onSaved={() => loadMutedTasks()}
       />
+
+      <SettingsGroup
+        id="settings-release-notes"
+        hidden={activeSettingsTab !== 'settings-release-notes'}
+        title="Release notes"
+      >
+        <SettingsReleaseNotesSection />
+      </SettingsGroup>
 
       <SettingsHowItWorksTab active={activeSettingsTab === 'settings-how-it-works'} />
     </div>
