@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-22 (v2.919)
+last_updated: 2026-07-22 (v2.920)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.920)
+
+### People: link an external person to an app account (2026-07-22)
+External subcontractors/helpers (roster `people` rows without a login) duplicated in People → Users once the person got a real account. New **Link account** button on external rows (devs + the row's creator, matching the `people` UPDATE RLS) opens a picker of same-role accounts not already linked and writes `people.account_user_id` — the column the pay pipeline (`resolve_pay_person_id_from_clock_user`) already resolves through, so clock time, pay history, crew records, and sub payments stay on one identity. `buildUsersTabKindRoster` now also folds external rows whose `account_user_id` matches a live user (previously email-match only). No migration — the column existed; there was just no UI to set it. Also fixes the v2.918 Job Mode header phone link missing its `tel:` scheme. New help guide `link-external-person-to-account.md`.
 
 ## Latest Updates (v2.919)
 

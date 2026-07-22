@@ -8,6 +8,7 @@ import { PeopleUserTagsPanel } from './PeopleUserTagsPanel'
 import {
   buildUsersTabKindRoster,
   KIND_LABELS,
+  KIND_TO_USER_ROLE,
   USERS_TAB_SECTIONS,
   usersTabContactRowStyle,
   usersTabRowMatchesSearch,
@@ -44,6 +45,8 @@ interface PeopleUsersTabProps {
   setEditingUserNote: (value: EditingUserNote | null) => void
   openAdd: (kind: PersonKind) => void
   openEdit: (item: Person) => void
+  /** Sets people.account_user_id so the external row folds into the account row. */
+  linkPersonToAccount: (personId: string, userId: string | null) => Promise<boolean>
   archivePerson: (id: string) => void
   archivingId: string | null
   restorePerson: (id: string) => void
@@ -83,6 +86,7 @@ export function PeopleUsersTab({
   setEditingUserNote,
   openAdd,
   openEdit,
+  linkPersonToAccount,
   archivePerson,
   archivingId,
   restorePerson,
@@ -100,6 +104,10 @@ export function PeopleUsersTab({
   const [usersTabSearch, setUsersTabSearch] = useState('')
   const usersTabSearchQ = useMemo(() => usersTabSearch.trim().toLowerCase(), [usersTabSearch])
   const [externalSubsExpanded, setExternalSubsExpanded] = useState(false)
+  // Link-to-account modal (external roster rows → app account).
+  const [linkTarget, setLinkTarget] = useState<Person | null>(null)
+  const [linkUserId, setLinkUserId] = useState('')
+  const [linkSaving, setLinkSaving] = useState(false)
 
   const byKind = useCallback(
     (k: PersonKind) => buildUsersTabKindRoster(k, users, people),
@@ -427,6 +435,20 @@ export function PeopleUsersTab({
             <button type="button" onClick={() => openEdit(item as Person)} style={{ padding: '2px 6px', fontSize: '0.8125rem' }}>
               Edit
             </button>
+            {/* Owner always; devs on anyone's row (RLS: "Devs can update any people"). */}
+            {(item.master_user_id === authUserId || isDev) && (
+              <button
+                type="button"
+                onClick={() => {
+                  setLinkTarget(item as Person)
+                  setLinkUserId('')
+                }}
+                title="Link this person to an app account so only one row shows"
+                style={{ padding: '2px 6px', fontSize: '0.8125rem' }}
+              >
+                Link account
+              </button>
+            )}
             {/* Owner always; devs on anyone's row (RLS: "Devs can update any people"). */}
             {(item.master_user_id === authUserId || isDev) && (
               <button
@@ -968,6 +990,77 @@ export function PeopleUsersTab({
           )}
         </>
       )}
+      {linkTarget && (() => {
+        const wantedRole = KIND_TO_USER_ROLE[linkTarget.kind as PersonKind] ?? null
+        const alreadyLinkedUserIds = new Set(
+          people.filter((p) => p.id !== linkTarget.id && p.account_user_id).map((p) => p.account_user_id as string),
+        )
+        const candidates = users
+          .filter((u) => (wantedRole ? u.role === wantedRole : true) && !alreadyLinkedUserIds.has(u.id))
+          .sort((a, b) => a.name.localeCompare(b.name))
+        return (
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label={`Link ${linkTarget.name} to an app account`}
+            style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60 }}
+          >
+            <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 320, maxWidth: 440 }}>
+              <h2 style={{ margin: '0 0 0.5rem', fontSize: '1.125rem' }}>Link {linkTarget.name} to an account</h2>
+              <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
+                Their pay history, crew records, and payments stay on this person and follow the account —
+                afterwards only the account row shows in the roster.
+              </p>
+              {candidates.length === 0 ? (
+                <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: 'var(--text-red-700)' }}>
+                  No unlinked {wantedRole ?? ''} accounts to link. Create the account first (Manage accounts).
+                </p>
+              ) : (
+                <select
+                  value={linkUserId}
+                  onChange={(e) => setLinkUserId(e.target.value)}
+                  aria-label="Account to link"
+                  style={{ width: '100%', padding: '0.45rem 0.6rem', border: '1px solid var(--border-strong)', borderRadius: 6, marginBottom: '1rem', boxSizing: 'border-box' }}
+                >
+                  <option value="">Choose an account…</option>
+                  {candidates.map((u) => (
+                    <option key={u.id} value={u.id}>
+                      {u.name}{u.email ? ` — ${u.email}` : ''}
+                    </option>
+                  ))}
+                </select>
+              )}
+              <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+                <button
+                  type="button"
+                  onClick={() => setLinkTarget(null)}
+                  disabled={linkSaving}
+                  style={{ padding: '0.45rem 0.9rem', border: '1px solid var(--border-strong)', background: 'var(--surface)', borderRadius: 6, cursor: 'pointer' }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  disabled={!linkUserId || linkSaving}
+                  onClick={async () => {
+                    if (!linkUserId) return
+                    setLinkSaving(true)
+                    const ok = await linkPersonToAccount(linkTarget.id, linkUserId)
+                    setLinkSaving(false)
+                    if (ok) {
+                      showToast(`${linkTarget.name} linked — one row now shows in the roster`, 'success')
+                      setLinkTarget(null)
+                    }
+                  }}
+                  style={{ padding: '0.45rem 0.9rem', background: !linkUserId || linkSaving ? '#9ca3af' : '#3b82f6', color: 'white', border: 'none', borderRadius: 6, cursor: !linkUserId || linkSaving ? 'not-allowed' : 'pointer', fontWeight: 600 }}
+                >
+                  {linkSaving ? 'Linking…' : 'Link'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )
+      })()}
     </>
   )
 }

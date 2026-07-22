@@ -752,7 +752,7 @@ export default function Layout() {
           )}
           {jobModeFooterActive && jobModeContactPhone && (
             <a
-              href={jobModeContactPhone.telHref}
+              href={`tel:${jobModeContactPhone.telHref}`}
               title={`Call the office at ${jobModeContactPhone.display}`}
               aria-label={`Call the office at ${jobModeContactPhone.display}`}
               style={{

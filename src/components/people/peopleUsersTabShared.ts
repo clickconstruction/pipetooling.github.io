@@ -100,8 +100,15 @@ export function buildUsersTabKindRoster(k: PersonKind, users: UserRow[], people:
       phone: u.phone ?? null,
       notes: u.notes,
     }))
+  const liveUserIds = new Set(users.map((u) => u.id))
   const fromPeople = people
-    .filter((p) => p.kind === k && !isAlreadyUserEmail(p.email, users))
+    .filter(
+      (p) =>
+        p.kind === k &&
+        !isAlreadyUserEmail(p.email, users) &&
+        // A person linked to a live account folds into that account's row.
+        !(p.account_user_id && liveUserIds.has(p.account_user_id)),
+    )
     .map((p) => ({ source: 'people' as const, ...p }))
   return [...fromUsers, ...fromPeople].sort((a, b) => a.name.localeCompare(b.name))
 }

@@ -248,6 +248,7 @@ export default function People() {
     saving,
     loadPeople,
     loadArchivedPeople,
+    linkPersonToAccount,
     handleSave,
     openAdd,
     openEdit,
@@ -3135,6 +3136,7 @@ export default function People() {
           setEditingUserNote={setEditingUserNote}
           openAdd={openAdd}
           openEdit={openEdit}
+          linkPersonToAccount={linkPersonToAccount}
           archivePerson={archivePerson}
           archivingId={archivingId}
           restorePerson={restorePerson}
