@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-22 (v2.913)
+last_updated: 2026-07-22 (v2.914)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.914)
+
+### Fix: ~2,000 Postgres ERROR log lines/day from list_people_pay_flags (2026-07-22)
+Log analysis (Management API, 48h window) showed `list_people_pay_flags: not allowed` was **95% of all Postgres errors** (1,973 of ~2,000): the RPC raises for every role outside dev/master/assistant/controller, but labor-math code paths (`teamLabor`, `CrewJobsBlock`, `usePayConfig`, `HoursUnassignedModal`) run for field roles too and swallow the error client-side — every such page view logged a database ERROR. Migration `20260722230000_pay_flags_no_raise.sql` (**requires `supabase db push` after merge**) keeps the exact access boundary but returns **zero rows** instead of raising (callers already handle an empty map). Remaining error tail is negligible: a few boot-race "not authenticated" RPC calls, 2 `report_reads` RLS denials, 1 draft-key uuid parse. `MIGRATIONS.md` updated.
 
 ## Latest Updates (v2.913)
 
