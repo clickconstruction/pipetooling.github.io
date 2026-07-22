@@ -79,7 +79,7 @@ const EMPTY_DRAFT: CandidateDraft = {
 
 /** The three candidate rating dimensions (Edit modal sliders + card bars). */
 const RATING_DEFS = [
-  { key: 'rating_ability', short: 'Ability', label: 'Evidence of Exceptional Ability (Talent / Problem-Solving)', color: '#3b82f6' },
+  { key: 'rating_ability', short: 'Ability', label: 'Evidence of Exceptional Ability (Talent / Problem-Solving)', color: 'var(--text-blue-500)' },
   { key: 'rating_drive', short: 'Drive', label: 'Drive / Work Ethic / Intrinsic Motivation', color: '#f59e0b' },
   { key: 'rating_integrity', short: 'Integrity', label: 'Trustworthiness / Goodness of Heart / Integrity', color: '#16a34a' },
 ] as const
