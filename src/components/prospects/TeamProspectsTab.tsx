@@ -87,7 +87,7 @@ type OnboardingStatusValue = 'pending' | 'requested' | 'done'
 
 /** Box colors: red = pending, yellow = requested (asked, waiting), green = done. */
 const ONBOARDING_STATUS_META: Record<OnboardingStatusValue, { label: string; color: string; next: OnboardingStatusValue }> = {
-  pending: { label: 'Not started', color: '#dc2626', next: 'requested' },
+  pending: { label: 'Not started', color: 'var(--text-red-600)', next: 'requested' },
   requested: { label: 'Requested — waiting', color: '#d97706', next: 'done' },
   done: { label: 'Done', color: '#16a34a', next: 'pending' },
 }
