@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-22 (v2.900)
+last_updated: 2026-07-22 (v2.901)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.901)
+
+### Job Mode: bottom tab bar — self-scoped Schedule, Inbox, and Customers (2026-07-22)
+Job Mode grows the Dispatch Mode shell, everything scoped to the signed-in tech. While Job Mode is on, `Layout` mounts the shared footer in a new **job variant** (`DispatchModeFooter variant="job"`, aria "Job Mode tabs", four tabs, no More; Dispatch Mode wins when both modes are on): **Dashboard** = the existing Job Mode card (`/dashboard`); **Schedule** = the Dispatch Mode schedule screen with a new `selfUserId` prop — only the tech's own blocks (`assignee_user_id` filter on both fetches), person chips and the dispatch bell hidden; **Inbox** = new [`JobModeInbox`](../src/components/jobMode/JobModeInbox.tsx): My Inbox card + the user's recent push notifications (`SettingsRecentPushNotifications` reused; no team inboxes); **Customers** = the Customers tab with a new `scheduleUserId` scope — only customers whose jobs have ever been on the tech's schedule (blocks → customer ids), Customer Summary modal included. Routes `/job-mode/{schedule,inbox,customers}` via [`JobModeTabs`](../src/pages/JobModeTabs.tsx). Help guide section added.
 
 ## Latest Updates (v2.900)
 

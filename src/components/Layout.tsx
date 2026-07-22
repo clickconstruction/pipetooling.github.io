@@ -53,7 +53,7 @@ import {
 } from '../lib/headerTaskDispatchEstimatorEligible'
 import { impersonationExitDisplayLabel, impersonationExitTitle } from '../lib/impersonationUiLabels'
 import { useDispatchModeEnabled } from '../hooks/useDispatchModeEnabled'
-import { DispatchModeFooterLive, DISPATCH_MODE_FOOTER_HEIGHT_PX } from './dispatchMode/DispatchModeFooter'
+import { DispatchModeFooter, DispatchModeFooterLive, DISPATCH_MODE_FOOTER_HEIGHT_PX } from './dispatchMode/DispatchModeFooter'
 import { CAN_USE_SCHEDULE_DISPATCH_EDIT_ROLES } from '../lib/scheduleDispatchEditRoles'
 import { IMPERSONATION_CHROME_BUTTON_STYLE } from '../lib/impersonationSession'
 
@@ -103,6 +103,7 @@ export default function Layout() {
   const [dispatchModeEnabled, setDispatchModeEnabled] = useDispatchModeEnabled(authUser?.id ?? null)
   const dispatchModeMenuEligible = role != null && CAN_USE_SCHEDULE_DISPATCH_EDIT_ROLES.has(role)
   const dispatchModeActive = dispatchModeEnabled && dispatchModeMenuEligible
+  const jobModeFooterActive = jobModeEnabled && jobModeMenuEligible && !dispatchModeActive
   const { gateOpen: dailyGoalsGateOpen } = useDailyGoalsGate()
   const [impersonating, setImpersonating] = useState(
     () => typeof window !== 'undefined' && !!localStorage.getItem(IMPERSONATION_KEY)
@@ -1327,9 +1328,10 @@ export default function Layout() {
           display: 'flex',
           flexDirection: 'column',
           flex: 1,
-          paddingBottom: dispatchModeActive
-            ? `calc(${DISPATCH_MODE_FOOTER_HEIGHT_PX}px + env(safe-area-inset-bottom))`
-            : undefined,
+          paddingBottom:
+            dispatchModeActive || jobModeFooterActive
+              ? `calc(${DISPATCH_MODE_FOOTER_HEIGHT_PX}px + env(safe-area-inset-bottom))`
+              : undefined,
         }}
       >
         <div
@@ -1523,6 +1525,7 @@ export default function Layout() {
         )}
       </main>
       {dispatchModeActive ? <DispatchModeFooterLive /> : null}
+      {jobModeFooterActive ? <DispatchModeFooter variant="job" /> : null}
       <ChecklistAddModal />
       <DispatchTaskModal />
       <EstimatorTaskModal />

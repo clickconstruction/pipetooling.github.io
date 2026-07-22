@@ -32,7 +32,12 @@ const sortChipBtn = (active: boolean): CSSProperties => ({
  * assigned-job count (jobs_ledger.customer_id). Tapping a customer opens the
  * full Customers page focused on them (existing edit flow).
  */
-export default function DispatchModeCustomers() {
+export default function DispatchModeCustomers({
+  scheduleUserId,
+}: {
+  /** When set, only customers whose jobs have appeared on this user's schedule (any date). */
+  scheduleUserId?: string
+} = {}) {
   const [summaryCustomerId, setSummaryCustomerId] = useState<string | null>(null)
   const [customers, setCustomers] = useState<CustomerRow[]>([])
   const [jobCounts, setJobCounts] = useState<Map<string, number>>(new Map())
@@ -50,6 +55,23 @@ export default function DispatchModeCustomers() {
       setError(null)
       try {
         const todayKey = denverCalendarDayKey(Date.now())
+        // Job Mode scope: customers whose jobs have ever been on my schedule.
+        let scopedCustomerIds: Set<string> | null = null
+        if (scheduleUserId) {
+          const myBlocks = await withSupabaseRetry(
+            async () =>
+              supabase
+                .from('job_schedule_blocks')
+                .select('jobs_ledger(customer_id)')
+                .eq('assignee_user_id', scheduleUserId),
+            'job mode customer scope blocks',
+          )
+          scopedCustomerIds = new Set(
+            ((myBlocks ?? []) as Array<{ jobs_ledger: { customer_id: string | null } | null }>)
+              .map((r) => r?.jobs_ledger?.customer_id)
+              .filter((v): v is string => Boolean(v)),
+          )
+        }
         const [customersRaw, jobsRaw, upcomingRaw] = await Promise.all([
           withSupabaseRetry(
             async () =>
@@ -74,7 +96,11 @@ export default function DispatchModeCustomers() {
           ),
         ])
         if (cancelled) return
-        setCustomers(((customersRaw ?? []) as CustomerRow[]).filter((c) => c?.id))
+        setCustomers(
+          ((customersRaw ?? []) as CustomerRow[]).filter(
+            (c) => c?.id && (scopedCustomerIds == null || scopedCustomerIds.has(c.id)),
+          ),
+        )
         const counts = new Map<string, number>()
         const lastWork = new Map<string, string>()
         for (const r of (jobsRaw ?? []) as Array<{ customer_id: string | null; last_work_date: string | null }>) {
@@ -107,7 +133,7 @@ export default function DispatchModeCustomers() {
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [scheduleUserId])
 
   const todayYmd = denverCalendarDayKey(Date.now())
 

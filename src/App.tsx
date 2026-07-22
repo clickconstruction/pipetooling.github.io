@@ -20,6 +20,7 @@ const Calendar = lazy(() => import('./pages/Calendar'))
 const Map = lazy(() => import('./pages/Map'))
 const Dashboard = lazy(() => import('./pages/Dashboard'))
 const DispatchMode = lazy(() => import('./pages/DispatchMode'))
+const JobModeTabs = lazy(() => import('./pages/JobModeTabs'))
 const Templates = lazy(() => import('./pages/Templates'))
 const People = lazy(() => import('./pages/People'))
 const Jobs = lazy(() => import('./pages/Jobs'))
@@ -244,6 +245,9 @@ function AppContent() {
           <Route path="dispatch-mode/schedule" element={<DispatchMode />} />
           <Route path="dispatch-mode/inbox" element={<DispatchMode />} />
           <Route path="dispatch-mode/customers" element={<DispatchMode />} />
+          <Route path="job-mode/schedule" element={<JobModeTabs />} />
+          <Route path="job-mode/inbox" element={<JobModeTabs />} />
+          <Route path="job-mode/customers" element={<JobModeTabs />} />
           <Route path="customers" element={<Customers />} />
           <Route path="customers/new" element={<Navigate to="/customers" state={{ openNewCustomer: true }} replace />} />
           <Route path="customers/:id/edit" element={<NavigateToEditCustomer />} />

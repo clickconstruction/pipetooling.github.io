@@ -22,7 +22,7 @@ function svg(path: string): ReactNode {
   )
 }
 
-const TABS: TabDef[] = [
+const DISPATCH_TABS: TabDef[] = [
   {
     key: 'dashboard',
     label: 'Dashboard',
@@ -70,7 +70,24 @@ const TABS: TabDef[] = [
   },
 ]
 
-function activeTabForPath(pathname: string): TabKey {
+/** Job Mode: the tech's own four tabs — Dashboard is the Job Mode card on /dashboard. */
+const JOB_TABS: TabDef[] = [
+  { key: 'dashboard', label: 'Dashboard', to: '/dashboard', icon: DISPATCH_TABS[0]!.icon },
+  { key: 'schedule', label: 'Schedule', to: '/job-mode/schedule', icon: DISPATCH_TABS[1]!.icon },
+  { key: 'inbox', label: 'Inbox', to: '/job-mode/inbox', icon: DISPATCH_TABS[2]!.icon },
+  { key: 'customers', label: 'Customers', to: '/job-mode/customers', icon: DISPATCH_TABS[3]!.icon },
+]
+
+export type ModeFooterVariant = 'dispatch' | 'job'
+
+function activeTabForPath(pathname: string, variant: ModeFooterVariant): TabKey | null {
+  if (variant === 'job') {
+    if (pathname === '/dashboard') return 'dashboard'
+    if (pathname.startsWith('/job-mode/schedule')) return 'schedule'
+    if (pathname.startsWith('/job-mode/inbox')) return 'inbox'
+    if (pathname.startsWith('/job-mode/customers')) return 'customers'
+    return null
+  }
   if (pathname === '/dispatch-mode') return 'dashboard'
   if (pathname.startsWith('/dispatch-mode/schedule')) return 'schedule'
   if (pathname.startsWith('/dispatch-mode/inbox')) return 'inbox'
@@ -100,14 +117,21 @@ const tabBtnBase: CSSProperties = {
  * mode is on; "More" is active on any route outside the /dispatch-mode tabs so
  * the whole regular app stays reachable with the bar present.
  */
-export function DispatchModeFooter({ inboxBadgeCount = 0 }: { inboxBadgeCount?: number }) {
+export function DispatchModeFooter({
+  inboxBadgeCount = 0,
+  variant = 'dispatch',
+}: {
+  inboxBadgeCount?: number
+  variant?: ModeFooterVariant
+}) {
   const navigate = useNavigate()
   const location = useLocation()
-  const active = activeTabForPath(location.pathname)
+  const active = activeTabForPath(location.pathname, variant)
+  const TABS = variant === 'job' ? JOB_TABS : DISPATCH_TABS
 
   return (
     <nav
-      aria-label="Dispatch Mode tabs"
+      aria-label={variant === 'job' ? 'Job Mode tabs' : 'Dispatch Mode tabs'}
       style={{
         position: 'fixed',
         left: 0,
