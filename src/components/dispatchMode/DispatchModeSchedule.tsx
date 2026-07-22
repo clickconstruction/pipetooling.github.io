@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { useJobDetailModal } from '../../contexts/JobDetailModalContext'
-import { denverCalendarDayKey } from '../../utils/dateUtils'
+import { denverCalendarDayKey, isoWeekNumberFromGregorianYmd, ymdAddDays } from '../../utils/dateUtils'
 import {
   formatBlockDurationMinutes,
   formatDispatchQuickTimeLabel,
@@ -186,7 +186,8 @@ export default function DispatchModeSchedule({ selfUserId }: { selfUserId?: stri
 
       {/* This week + next week strip */}
       <div style={{ padding: '0 0.75rem 0.5rem' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', textAlign: 'center' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'auto repeat(7, 1fr)', textAlign: 'center', alignItems: 'center' }}>
+          <span aria-hidden="true" />
           {WEEKDAY_LETTERS.map((w, i) => (
             <span
               key={`${w}-${i}`}
@@ -196,7 +197,23 @@ export default function DispatchModeSchedule({ selfUserId }: { selfUserId?: stri
               {w}
             </span>
           ))}
-          {weeks.flat().map((day) => {
+          {weeks.map((week) => {
+            const sunday = week[0]?.ymd
+            const weekNum = sunday ? isoWeekNumberFromGregorianYmd(ymdAddDays(sunday, 4)) : null
+            return [
+              <span
+                key={`wk-${sunday}`}
+                title={weekNum != null ? `Week ${weekNum}` : undefined}
+                style={{
+                  fontSize: '0.6875rem',
+                  fontWeight: 600,
+                  color: 'var(--text-faint)',
+                  paddingRight: 4,
+                }}
+              >
+                {weekNum != null ? `w${weekNum}` : ''}
+              </span>,
+              ...week.map((day) => {
             const selected = day.ymd === selectedYmd
             const isToday = day.ymd === todayYmd
             return (
@@ -249,7 +266,9 @@ export default function DispatchModeSchedule({ selfUserId }: { selfUserId?: stri
                   }}
                 />
               </button>
-            )
+                )
+              }),
+            ]
           })}
         </div>
       </div>

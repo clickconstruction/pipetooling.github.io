@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-22 (v2.907)
+last_updated: 2026-07-22 (v2.908)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.908)
+
+### Dispatch Mode Schedule: week numbers on the strip (2026-07-22)
+Each week row in the two-week strip now carries its ISO week number on the left — **w30**, **w31**, … (same Thursday-based `isoWeekNumberFromGregorianYmd` the Dispatch hub's "Week 30" title uses; hover shows the long form) — so navigating across months always says where you are. Grid gained a narrow leading column; applies to the dispatch and Job Mode variants alike.
 
 ## Latest Updates (v2.907)
 
