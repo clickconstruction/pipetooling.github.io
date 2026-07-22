@@ -2,11 +2,12 @@ import type { JobThreadActivityItem } from '../components/JobThreadNotesPanel'
 import { bucketForEvent } from './jobActivityEvent'
 
 /** Segmented filter buckets for the Job activity / notes panel. */
-export type ActivityFilter = 'all' | 'notes' | 'status' | 'billing' | 'crew'
+export type ActivityFilter = 'all' | 'notes' | 'reports' | 'status' | 'billing' | 'crew'
 
 export const ACTIVITY_FILTERS: { value: ActivityFilter; label: string }[] = [
   { value: 'all', label: 'All' },
   { value: 'notes', label: 'Notes' },
+  { value: 'reports', label: 'Reports' },
   { value: 'status', label: 'Status' },
   { value: 'billing', label: 'Billing' },
   { value: 'crew', label: 'Crew' },
@@ -14,7 +15,8 @@ export const ACTIVITY_FILTERS: { value: ActivityFilter; label: string }[] = [
 
 /**
  * Membership of a timeline item in a filter bucket:
- * - notes  → thread notes + field reports
+ * - notes  → thread notes
+ * - reports→ field reports
  * - status → status-change events
  * - billing→ payment/invoice events
  * - crew   → crew events + clock sessions + dispatch schedule blocks
@@ -24,8 +26,9 @@ export function activityItemMatchesFilter(item: JobThreadActivityItem, filter: A
   if (filter === 'all') return true
   switch (item.kind) {
     case 'note':
-    case 'report':
       return filter === 'notes'
+    case 'report':
+      return filter === 'reports'
     case 'schedule_block':
     case 'clock_session':
       return filter === 'crew'

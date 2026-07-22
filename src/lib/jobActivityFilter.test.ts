@@ -33,7 +33,14 @@ describe('activityItemMatchesFilter', () => {
 
   it('routes each kind/bucket to its segment', () => {
     expect(activityItemMatchesFilter(note, 'notes')).toBe(true)
+    expect(activityItemMatchesFilter(note, 'reports')).toBe(false)
     expect(activityItemMatchesFilter(note, 'status')).toBe(false)
+    const report = {
+      kind: 'report',
+      report: { id: 'r1', template_name: 'Note', job_display_name: '', created_at: '2026-01-01T00:00:00Z', created_by_name: 'A', field_values: {}, reported_at_lat: null, reported_at_lng: null },
+    } as const
+    expect(activityItemMatchesFilter(report, 'reports')).toBe(true)
+    expect(activityItemMatchesFilter(report, 'notes')).toBe(false)
     expect(activityItemMatchesFilter(ev('status_change'), 'status')).toBe(true)
     expect(activityItemMatchesFilter(ev('payment_added'), 'billing')).toBe(true)
     expect(activityItemMatchesFilter(ev('invoice_sent'), 'billing')).toBe(true)
@@ -44,7 +51,7 @@ describe('activityItemMatchesFilter', () => {
   it("'other' events appear only under all", () => {
     const fieldEdit = ev('field_edited')
     expect(activityItemMatchesFilter(fieldEdit, 'all')).toBe(true)
-    for (const f of ['notes', 'status', 'billing', 'crew'] as const) {
+    for (const f of ['notes', 'reports', 'status', 'billing', 'crew'] as const) {
       expect(activityItemMatchesFilter(fieldEdit, f)).toBe(false)
     }
   })
