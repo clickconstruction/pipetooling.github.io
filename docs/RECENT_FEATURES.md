@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-22 (v2.906)
+last_updated: 2026-07-22 (v2.907)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.907)
+
+### Dispatch Mode Schedule: month + window navigation replaces the bell (2026-07-22)
+The top-left **send-a-note-to-dispatch bell is gone** (Task Dispatch stays reachable from the app header); in its place, the visible **month label** ("July 2026", or "July – August 2026" when the strip spans months) with **‹ ›** arrows that slide the two-week window ±14 days — so any day in any month is reachable. If the selected day scrolls out of the window, selection snaps to the window's first day; **Today** resets both. Busy-day dots re-query per window. Applies to both the dispatch and Job Mode (self) variants. Help guide updated.
 
 ## Latest Updates (v2.906)
 

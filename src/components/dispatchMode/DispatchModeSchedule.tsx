@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
-import { useDispatchTaskModal } from '../../contexts/DispatchTaskModalContext'
 import { useJobDetailModal } from '../../contexts/JobDetailModalContext'
 import { denverCalendarDayKey } from '../../utils/dateUtils'
 import {
@@ -14,7 +13,9 @@ import { useAuth } from '../../hooks/useAuth'
 import { CAN_USE_SCHEDULE_DISPATCH_EDIT_ROLES } from '../../lib/scheduleDispatchEditRoles'
 import QuickAssignSheet from './QuickAssignSheet'
 import {
+  dispatchModeAddDays,
   dispatchModeAgendaHeading,
+  dispatchModeMonthTitle,
   dispatchModeTwoWeekGrid,
   fetchDispatchModeBusyDays,
   fetchDispatchModeDayBlocks,
@@ -35,7 +36,6 @@ const headerBtn: CSSProperties = {
 
 /** Dispatch Mode → Schedule tab: month mini-calendar + all-people day agenda. */
 export default function DispatchModeSchedule({ selfUserId }: { selfUserId?: string } = {}) {
-  const dispatchTaskModal = useDispatchTaskModal()
   const jobDetailModal = useJobDetailModal()
 
   const { role } = useAuth()
@@ -43,10 +43,12 @@ export default function DispatchModeSchedule({ selfUserId }: { selfUserId?: stri
   const [quickAssignOpen, setQuickAssignOpen] = useState(false)
   const todayYmd = denverCalendarDayKey(Date.now())
   const [selectedYmd, setSelectedYmd] = useState<string>(todayYmd)
+  /** Anchor for the visible two-week window; ‹ › shift it ±14 days across months. */
+  const [anchorYmd, setAnchorYmd] = useState<string>(todayYmd)
   const isMobile = useIsMobile()
 
-  /** This week + next (Sunday-first) — the whole visible strip. */
-  const weeks = useMemo(() => dispatchModeTwoWeekGrid(todayYmd), [todayYmd])
+  /** Anchor's week + the next (Sunday-first) — the visible strip. */
+  const weeks = useMemo(() => dispatchModeTwoWeekGrid(anchorYmd), [anchorYmd])
   const gridStart = weeks[0]?.[0]?.ymd ?? todayYmd
   const gridEnd = weeks[weeks.length - 1]?.[6]?.ymd ?? todayYmd
 
@@ -85,7 +87,31 @@ export default function DispatchModeSchedule({ selfUserId }: { selfUserId?: stri
 
   const goToday = () => {
     setSelectedYmd(todayYmd)
+    setAnchorYmd(todayYmd)
   }
+
+  const shiftWindow = (deltaDays: number) => {
+    const nextAnchor = dispatchModeAddDays(anchorYmd, deltaDays)
+    setAnchorYmd(nextAnchor)
+    const nextWeeks = dispatchModeTwoWeekGrid(nextAnchor)
+    const flat = nextWeeks.flat()
+    if (!flat.some((d) => d.ymd === selectedYmd)) {
+      setSelectedYmd(flat[0]?.ymd ?? nextAnchor)
+    }
+  }
+
+  const monthLabel = useMemo(() => {
+    const first = weeks[0]?.[0]?.ymd
+    const last = weeks[weeks.length - 1]?.[6]?.ymd
+    if (!first || !last) return ''
+    const a = dispatchModeMonthTitle(first)
+    const b = dispatchModeMonthTitle(last)
+    if (a === b) return a
+    // "July – August 2026" (drop the first year when both match)
+    const [am, ay] = a.split(' ')
+    const [bm, by] = b.split(' ')
+    return ay === by ? `${am} – ${bm} ${by}` : `${a} – ${b}`
+  }, [weeks])
 
   /** Unique assignees on the selected day, alphabetical — the filter chip row. */
   const dayPeople = useMemo(() => {
@@ -122,20 +148,36 @@ export default function DispatchModeSchedule({ selfUserId }: { selfUserId?: stri
           gap: '0.5rem',
         }}
       >
-        {selfUserId ? <span style={{ width: 32 }} aria-hidden="true" /> : null}
-        {!selfUserId ? (
-        <button
-          type="button"
-          onClick={() => dispatchTaskModal?.openDispatchModal()}
-          title="Send a note to dispatch"
-          aria-label="Send a note to dispatch"
-          style={{ ...headerBtn, padding: '0.35rem' }}
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="22" height="22" fill="currentColor" aria-hidden="true">
-            <path d="M320 64C302.3 64 288 78.3 288 96L288 99.2C215 114 160 178.6 160 256L160 277.7C160 325.8 143.6 372.5 113.6 410.1L103.8 422.3C98.7 428.6 96 436.4 96 444.5C96 464.1 111.9 480 131.5 480L508.4 480C528 480 543.9 464.1 543.9 444.5C543.9 436.4 541.2 428.6 536.1 422.3L526.3 410.1C496.4 372.5 480 325.8 480 277.7L480 256C480 178.6 425 114 352 99.2L352 96C352 78.3 337.7 64 320 64zM258 528C266.2 555.7 291.4 576 321.2 576C351 576 376.2 555.7 384.4 528L258 528z" />
-          </svg>
-        </button>
-        ) : null}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 2, minWidth: 0 }}>
+          <button
+            type="button"
+            aria-label="Previous two weeks"
+            onClick={() => shiftWindow(-14)}
+            style={{ ...headerBtn, padding: '0.35rem 0.4rem' }}
+          >
+            ‹
+          </button>
+          <span
+            style={{
+              fontSize: '0.8125rem',
+              fontWeight: 600,
+              color: 'var(--text-700)',
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+            }}
+          >
+            {monthLabel}
+          </span>
+          <button
+            type="button"
+            aria-label="Next two weeks"
+            onClick={() => shiftWindow(14)}
+            style={{ ...headerBtn, padding: '0.35rem 0.4rem' }}
+          >
+            ›
+          </button>
+        </div>
         <h1 style={{ margin: 0, fontSize: '1.1rem', color: 'var(--text-strong)' }}>Schedule</h1>
         <button type="button" onClick={goToday} style={headerBtn}>
           Today
