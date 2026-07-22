@@ -599,8 +599,8 @@ function HubPeopleBlockCard({
           {showEditNoteBtn ? (
             <button
               type="button"
-              title="Edit block note"
-              aria-label="Edit block note"
+              title="Edit job instructions"
+              aria-label="Edit job instructions"
               onClick={(e) => {
                 e.stopPropagation()
                 onRequestEditBlockNote?.(block)
@@ -635,7 +635,7 @@ function HubPeopleBlockCard({
           title={
             placementPickingActive || linkedCopyActive
               ? undefined
-              : 'Linked: time and note stay in sync. Click to see every block in this group.'
+              : 'Linked: time and instructions stay in sync. Click to see every block in this group.'
           }
           aria-label="View linked schedule group details"
           onClick={(e) => {
@@ -1814,8 +1814,8 @@ function HubPeoplePanel({
                     <span>{hubDayColumnHeaderLabel(dk)}</span>
                     {dk === missingNoteDayYmd && missingNoteCount > 0 ? (
                       <span
-                        title={`${missingNoteCount} card${missingNoteCount === 1 ? '' : 's'} missing a note for ${hubDayColumnHeaderLabel(dk)}`}
-                        aria-label={`${missingNoteCount} card${missingNoteCount === 1 ? '' : 's'} missing a note for ${hubDayColumnHeaderLabel(dk)}`}
+                        title={`${missingNoteCount} card${missingNoteCount === 1 ? '' : 's'} missing job instructions for ${hubDayColumnHeaderLabel(dk)}`}
+                        aria-label={`${missingNoteCount} card${missingNoteCount === 1 ? '' : 's'} missing job instructions for ${hubDayColumnHeaderLabel(dk)}`}
                         style={{
                           display: 'inline-flex',
                           alignItems: 'center',

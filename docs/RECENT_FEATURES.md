@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-21 (v2.878)
+last_updated: 2026-07-21 (v2.879)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.879)
+
+### Dispatch: "Schedule block note" renamed to "Job instructions" everywhere users see it (2026-07-21)
+The per-block note is what a tech reads before heading to a job, so every user-facing string now says **job instructions**: the edit modal title + textarea label, the pencil tooltips ("Edit job instructions") on the People grid and Quickfill grid, the day-header missing-count chip, the Dispatch Settings section (header, intro, all three list labels + picker aria-labels), the linked-block tooltips ("Linked: time and instructions stay in sync" on hub/grid/LinkedScheduleGroupModal/ScheduleJobModal), and the Schedule-Job form's field label ("Job instructions (optional)"). Code identifiers, the `note` DB column, and the `dispatch_note_requirements` app-settings key are unchanged — display-only rename. Help guide wording updated.
 
 ## Latest Updates (v2.878)
 

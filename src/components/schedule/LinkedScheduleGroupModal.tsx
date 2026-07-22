@@ -114,7 +114,7 @@ export function LinkedScheduleGroupModal({
           Linked schedule blocks
         </h3>
         <p style={{ margin: '0 0 1rem', fontSize: '0.8125rem', color: 'var(--text-600)' }}>
-          Mirrored crew blocks share time and note. This list includes every block in the group you can read, even
+          Mirrored crew blocks share time and instructions. This list includes every block in the group you can read, even
           outside the week shown in the hub grid.
         </p>
 

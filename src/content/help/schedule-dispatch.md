@@ -32,7 +32,7 @@ Search: `Search HCP or job name`
 
 Pick the job — a schedule block appears in the cell. Jobs the person already clocked into today show a {{chip:blue|Clocked today}} badge. Each row leads with its trade pill ({{chip:orange|PLUM}}, ELEC, HVAC) and shows how long ago the job was added plus its address; the search box matches HCP number, job name, **address, and customer**. The small briefcase button at the left of a row opens that job's **Job Detail** right on top of the picker — from there **Edit job** swaps to the Edit Job form and back, and closing either one returns you to the picker exactly where you left it.
 
-Each block can carry a note: click the pencil ("Edit block note") to open the **Schedule block note** modal and {{button:blue|Save}}. Notes are what the tech sees about the assignment, so use them for gate codes, scope reminders, and arrival instructions.
+Each block can carry **job instructions**: click the pencil ("Edit job instructions") to open the **Job instructions** modal and {{button:blue|Save}}. Instructions are what the tech sees about the assignment, so use them for gate codes, scope reminders, and arrival details.
 
 ## Grouping people into swim lanes
 
@@ -56,7 +56,7 @@ Lanes do more than group the grid: typing a lane's name in the **Search Person o
 To put the same jobs on several people at once, use the chains button (two links of a chain) next to the **++** in the People toolbar. A bar appears at the top and walks you through two steps:
 
 1. **1 of 2 — Click the job blocks you want to copy linked.** Every block gets a dashed outline; click the ones to copy (they highlight), then press {{button:blue|Next: pick people}}.
-2. **2 of 2 — Click the people to apply them to.** Names in the left column become click targets. Each click instantly gives that person a **linked** copy of every selected block — same day, same times, same note, chained to the original so time and note changes stay in sync (the {{chip:blue|linked}} chains marker appears on the cards). If the grid is grouped by swim lanes, the lane headings become targets too — clicking "**<lane> — whole crew**" applies the blocks to every member of that lane in one click, with a single toast summing up what copied and what was skipped.
+2. **2 of 2 — Click the people to apply them to.** Names in the left column become click targets. Each click instantly gives that person a **linked** copy of every selected block — same day, same times, same instructions, chained to the original so time and instruction changes stay in sync (the {{chip:blue|linked}} chains marker appears on the cards). If the grid is grouped by swim lanes, the lane headings become targets too — clicking "**<lane> — whole crew**" applies the blocks to every member of that lane in one click, with a single toast summing up what copied and what was skipped.
 
 Copies that would overlap something already on that person's day — or that the person already has — are skipped, and the toast tells you how many applied. Click as many people as you need, then press {{chip:gray|Esc}} or **Done**.
 

@@ -606,7 +606,7 @@ export function ScheduleJobModal({
             <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
               <div style={{ marginBottom: 4 }}>Team members</div>
               <div style={{ fontSize: '0.7rem', color: 'var(--text-faint)', marginBottom: 6 }}>
-                Linked: same time and note for everyone selected ({assigneeUserIds.length} selected).
+                Linked: same time and instructions for everyone selected ({assigneeUserIds.length} selected).
               </div>
               <SearchableMultiSelect
                 id="schedule-job-assignee"
@@ -684,7 +684,7 @@ export function ScheduleJobModal({
               </label>
             </div>
             <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-              Note (optional)
+              Job instructions (optional)
               <input
                 type="text"
                 value={note}

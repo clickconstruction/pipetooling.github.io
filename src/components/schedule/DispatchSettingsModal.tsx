@@ -260,7 +260,7 @@ export function DispatchSettingsModal({
             <span aria-hidden="true" style={{ fontSize: '0.7rem' }}>
               {noteSectionOpen ? '▼' : '▶'}
             </span>
-            Note requirements
+            Job instructions
             {!noteSectionOpen ? (
               <span style={{ fontWeight: 400, fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                 {requireIds.length} require · {skipIds.length} people skip · {skipJobIds.length}{' '}
@@ -276,7 +276,7 @@ export function DispatchSettingsModal({
           style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}
         >
         <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-600)' }}>
-          Configure note requirements for schedule blocks. A person can appear in at most one of the
+          Configure job-instruction requirements for schedule blocks. A person can appear in at most one of the
           two people lists; jobs are an independent list.
         </p>
 
@@ -285,12 +285,12 @@ export function DispatchSettingsModal({
             htmlFor="dispatch-settings-require-search"
             style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-strong)' }}
           >
-            Require a note
+            Require job instructions
           </label>
           <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-            When the assignee is in this list, the edit-note icon turns{' '}
+            When the assignee is in this list, the job-instructions pencil turns{' '}
             <span style={{ color: 'var(--text-red-600)', fontWeight: 600 }}>red</span> for blocks that have no
-            note.
+            instructions.
           </p>
           <ChipsWithSearchPicker
             id="dispatch-settings-require"
@@ -299,8 +299,8 @@ export function DispatchSettingsModal({
             getLabelForId={getLabelForUserId}
             search={searchRoster}
             placeholder="Search people…"
-            searchInputAriaLabel="Search people who require a schedule-block note"
-            resultsListAriaLabel="People who require a schedule-block note"
+            searchInputAriaLabel="Search people who require job instructions"
+            resultsListAriaLabel="People who require job instructions"
             disabled={busy}
           />
         </div>
@@ -310,10 +310,10 @@ export function DispatchSettingsModal({
             htmlFor="dispatch-settings-skip-search"
             style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-strong)' }}
           >
-            Don&apos;t require a note
+            Don&apos;t require job instructions
           </label>
           <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-            When the assignee is in this list, the edit-note icon and the surrounding chains,{' '}
+            When the assignee is in this list, the job-instructions pencil and the surrounding chains,{' '}
             <span style={{ fontFamily: 'monospace' }}>−</span>, and{' '}
             <span style={{ fontFamily: 'monospace' }}>+</span> icons all render{' '}
             <span style={{ color: 'var(--text-muted)', fontWeight: 600 }}>grey</span>. Click handlers still
@@ -326,8 +326,8 @@ export function DispatchSettingsModal({
             getLabelForId={getLabelForUserId}
             search={searchRoster}
             placeholder="Search people…"
-            searchInputAriaLabel="Search people who don't require a schedule-block note"
-            resultsListAriaLabel="People who don't require a schedule-block note"
+            searchInputAriaLabel="Search people who don't require job instructions"
+            resultsListAriaLabel="People who don't require job instructions"
             disabled={busy}
           />
         </div>
@@ -337,12 +337,12 @@ export function DispatchSettingsModal({
             htmlFor="dispatch-settings-skip-jobs-search"
             style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-strong)' }}
           >
-            Jobs that don&apos;t require a note
+            Jobs that don&apos;t require job instructions
           </label>
           <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-muted)' }}>
             When a schedule block is for one of these jobs, the icon cluster renders{' '}
             <span style={{ color: 'var(--text-muted)', fontWeight: 600 }}>grey</span>. The{' '}
-            <span style={{ fontWeight: 600 }}>Require a note</span> list above still wins for users
+            <span style={{ fontWeight: 600 }}>Require job instructions</span> list above still wins for users
             on it.
           </p>
           <ChipsWithSearchPicker
@@ -354,8 +354,8 @@ export function DispatchSettingsModal({
             onOptionPicked={onJobPicked}
             debounceMs={250}
             placeholder="Search jobs by HCP # or name…"
-            searchInputAriaLabel="Search jobs that don't require a schedule-block note"
-            resultsListAriaLabel="Jobs that don't require a schedule-block note"
+            searchInputAriaLabel="Search jobs that don't require job instructions"
+            resultsListAriaLabel="Jobs that don't require job instructions"
             disabled={busy}
           />
         </div>

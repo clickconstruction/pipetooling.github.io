@@ -219,7 +219,7 @@ function ScheduleDispatchBlockCard({
             <span
               role="img"
               aria-label="Linked"
-              title="Linked: time and note stay in sync for this crew block"
+              title="Linked: time and instructions stay in sync for this crew block"
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
@@ -312,8 +312,8 @@ function ScheduleDispatchBlockCard({
           {showEditNoteBtn ? (
             <button
               type="button"
-              title="Edit block note"
-              aria-label="Edit block note"
+              title="Edit job instructions"
+              aria-label="Edit job instructions"
               onClick={(e) => {
                 e.stopPropagation()
                 onRequestEditBlockNote?.(block)
