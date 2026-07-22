@@ -960,6 +960,10 @@ export default function DetailJobModal({
         onEditJobSaved?.()
       },
     })
+    // Edit Job replaces (not stacks on) Job Detail: closing/saving Edit lands on
+    // whatever was under Job Detail (e.g. the Add-job picker); its own "job
+    // detail" footer button reopens Job Detail via the opener bridge.
+    onClose()
   }
 
   const headerTradePill = useMemo(() => {

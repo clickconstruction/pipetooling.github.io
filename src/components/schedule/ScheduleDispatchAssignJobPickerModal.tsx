@@ -20,7 +20,9 @@ export function ScheduleDispatchAssignJobPickerModal({
   searchValue,
   onSearchChange,
   onPickJob,
+  onOpenJobDetail,
   onCreateNewJob,
+  searchPlaceholder = 'Search HCP or job name',
   notComingIn,
 }: {
   open: boolean
@@ -30,7 +32,10 @@ export function ScheduleDispatchAssignJobPickerModal({
   searchValue: string
   onSearchChange: (v: string) => void
   onPickJob: (jobId: string) => void
+  /** When set, each row gets a "Job detail" briefcase button (opens above this modal). */
+  onOpenJobDetail?: (jobId: string) => void
   onCreateNewJob?: () => void
+  searchPlaceholder?: string
   /**
    * When provided, the footer offers a "Not coming in today" action with an inline confirm step.
    * Only meaningful when the picker is being opened for a single person on a single day
@@ -183,7 +188,7 @@ export function ScheduleDispatchAssignJobPickerModal({
               }
             }
           }}
-          placeholder="Search HCP or job name"
+          placeholder={searchPlaceholder}
           aria-label="Search jobs"
           role="combobox"
           aria-expanded={jobRows.length > 0}
@@ -207,8 +212,37 @@ export function ScheduleDispatchAssignJobPickerModal({
                   id={`assign-job-picker-option-${idx}`}
                   role="option"
                   aria-selected={idx === activeIndex}
-                  style={{ borderBottom: '1px solid var(--border)' }}
+                  style={{
+                    borderBottom: '1px solid var(--border)',
+                    display: 'flex',
+                    alignItems: 'stretch',
+                    background: r.sessionToday ? 'var(--bg-blue-tint)' : 'var(--surface)',
+                  }}
                 >
+                  {onOpenJobDetail ? (
+                    <button
+                      type="button"
+                      onClick={() => onOpenJobDetail(r.id)}
+                      tabIndex={-1}
+                      title="Job detail"
+                      aria-label={`Open job detail for ${r.displayTitle}`}
+                      style={{
+                        flexShrink: 0,
+                        padding: '0 0.45rem 0 0.6rem',
+                        border: 'none',
+                        background: 'none',
+                        cursor: 'pointer',
+                        color: 'var(--text-700)',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="16" height="16" fill="currentColor" aria-hidden="true">
+                        <path d="M264 112L376 112C380.4 112 384 115.6 384 120L384 160L256 160L256 120C256 115.6 259.6 112 264 112zM208 120L208 160L128 160C92.7 160 64 188.7 64 224L64 320L576 320L576 224C576 188.7 547.3 160 512 160L432 160L432 120C432 89.1 406.9 64 376 64L264 64C233.1 64 208 89.1 208 120zM576 368L384 368L384 384C384 401.7 369.7 416 352 416L288 416C270.3 416 256 401.7 256 384L256 368L64 368L64 480C64 515.3 92.7 544 128 544L512 544C547.3 544 576 515.3 576 480L576 368z" />
+                      </svg>
+                    </button>
+                  ) : null}
                   <button
                     type="button"
                     onClick={() => onPickJob(r.id)}
@@ -218,10 +252,12 @@ export function ScheduleDispatchAssignJobPickerModal({
                     }
                     style={{
                       width: '100%',
+                      minWidth: 0,
+                      flex: 1,
                       textAlign: 'left',
-                      padding: '0.55rem 0.75rem',
+                      padding: onOpenJobDetail ? '0.55rem 0.75rem 0.55rem 0.25rem' : '0.55rem 0.75rem',
                       border: 'none',
-                      background: r.sessionToday ? 'var(--bg-blue-tint)' : 'var(--surface)',
+                      background: 'none',
                       boxShadow: idx === activeIndex ? 'inset 0 0 0 2px #2563eb' : undefined,
                       cursor: 'pointer',
                       fontSize: '0.875rem',
@@ -233,7 +269,6 @@ export function ScheduleDispatchAssignJobPickerModal({
                   >
                     <span style={{ minWidth: 0, flex: 1, display: 'flex', flexDirection: 'column', gap: 2 }}>
                       <span style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
-                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.displayTitle}</span>
                         {(() => {
                           const pill = buildServiceTypeTradePill(r.serviceTypeName)
                           return pill ? (
@@ -242,6 +277,7 @@ export function ScheduleDispatchAssignJobPickerModal({
                             </span>
                           ) : null
                         })()}
+                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.displayTitle}</span>
                       </span>
                       {r.subline ? (
                         <span

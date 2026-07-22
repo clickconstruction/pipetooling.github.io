@@ -91,7 +91,7 @@ import {
 } from '../../lib/userTimeOffByCell'
 import { ScheduleDispatchUndoNotComingInModal } from './ScheduleDispatchUndoNotComingInModal'
 
-/** Picker subline: "(<N>d) Mon D | address" (N calendar days since the job was added, app calendar TZ). Either part optional. */
+/** Picker subline: "<N>d Mon D | address" (N calendar days since the job was added, app calendar TZ). Either part optional. */
 function hubJobPickerSubline(r: { created_at?: string | null; job_address?: string | null }): string | undefined {
   const dt = (r.created_at ?? '').trim()
   let dateLabel = ''
@@ -99,7 +99,7 @@ function hubJobPickerSubline(r: { created_at?: string | null; job_address?: stri
     const d = new Date(dt)
     if (!Number.isNaN(d.getTime())) {
       const daysAgo = denverCalendarDaysBetweenInstantAndNow(d.getTime())
-      dateLabel = `(${daysAgo}d) ${formatDenverCalendarDayShort(d.getTime())}`
+      dateLabel = `${daysAgo}d ${formatDenverCalendarDayShort(d.getTime())}`
     }
   }
   const address = (r.job_address ?? '').trim()
@@ -1277,7 +1277,9 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
         (r) =>
           (r.hcp_number ?? '').toLowerCase().includes(q) ||
           (r.job_name ?? '').toLowerCase().includes(q) ||
-          r.displayTitle.toLowerCase().includes(q),
+          r.displayTitle.toLowerCase().includes(q) ||
+          (r.job_address ?? '').toLowerCase().includes(q) ||
+          (r.customer_name ?? '').toLowerCase().includes(q),
       )
     }
     return list
@@ -2262,6 +2264,19 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
           jobRows={hubAssignJobPickerRows.map((r) => ({ id: r.id, displayTitle: r.displayTitle, serviceTypeName: r.service_type?.name ?? null, subline: hubJobPickerSubline(r) }))}
           searchValue={hubAssignJobPickerSearch}
           onSearchChange={setHubAssignJobPickerSearch}
+          searchPlaceholder="Search HCP, job, address, or customer"
+          onOpenJobDetail={(pickedJobId) => {
+            const row = hubMergedRows.find((r) => r.id === pickedJobId)
+            // Picker stays open underneath — Job Detail (and Edit Job from it)
+            // stack above it, so closing them lands back on this picker.
+            jobDetailModal?.openJobDetail({
+              jobId: pickedJobId,
+              prefillRowLabel: row?.displayTitle ?? null,
+              prefillAddress: row?.job_address ?? null,
+              assignedJobsRows: [],
+              onEditJobSaved: () => void loadHub(),
+            })
+          }}
           onPickJob={(pickedJobId) => {
             if (hubAssignJobPickerIntent === 'multi') {
               void applyHubMultiCellJob(pickedJobId, [...hubMultiCellAddSelection])

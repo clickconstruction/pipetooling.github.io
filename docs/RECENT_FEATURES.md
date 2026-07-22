@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-21 (v2.877)
+last_updated: 2026-07-21 (v2.878)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.878)
+
+### Dispatch → People: Add-job picker gets Job Detail buttons, pill-first rows, address/customer search (2026-07-21)
+Three upgrades to the **Add job to schedule** picker: **(1)** every row gains the Stages-board briefcase button (left edge) that opens **Job Detail** stacked above the picker (z 1004 > 1003); **Edit job** inside Job Detail now CLOSES Job Detail as it opens the Edit Job form (`DetailJobModal.handleEditJobClick` + `onClose()` — app-wide change), and Edit Job's existing "Job Detail" footer button swaps back, so detail ↔ edit ping-pong above the picker and closing either lands back on it, search intact. **(2)** Row layout flips to trade-pill-first (`PLUM 000 · Office`) and the subline drops the parens (`136d Mar 7 | address`). **(3)** The picker search also matches **job address** and **customer name** (`jobs_ledger.customer_name` added to `fetchJobsLedgerForScheduleDispatchHub`; placeholder now "Search HCP, job, address, or customer" via a new `searchPlaceholder` prop — Quickfill's picker keeps its old placeholder/filter). Help guide updated.
 
 ## Latest Updates (v2.877)
 
