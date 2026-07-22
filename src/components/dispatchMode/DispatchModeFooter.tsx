@@ -1,5 +1,7 @@
 import type { CSSProperties, ReactNode } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
+import { useDispatchInbox } from '../../hooks/useDispatchInbox'
+import { useEstimatorInbox } from '../../hooks/useEstimatorInbox'
 
 export const DISPATCH_MODE_FOOTER_HEIGHT_PX = 60
 
@@ -167,4 +169,17 @@ export function DispatchModeFooter({ inboxBadgeCount = 0 }: { inboxBadgeCount?: 
       })}
     </nav>
   )
+}
+
+/**
+ * Footer + live Inbox badge (open dispatch + estimator requests). Mounted only
+ * while Dispatch Mode is on, so the inbox engines don't run for everyone.
+ */
+export function DispatchModeFooterLive() {
+  const dispatchInbox = useDispatchInbox()
+  const estimatorInbox = useEstimatorInbox()
+  const count =
+    (dispatchInbox.dispatchInboxEligible ? dispatchInbox.dispatchRequests.length : 0) +
+    (estimatorInbox.estimatorInboxEligible ? estimatorInbox.estimatorRequests.length : 0)
+  return <DispatchModeFooter inboxBadgeCount={count} />
 }
