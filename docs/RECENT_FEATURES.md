@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-21 (v2.890)
+last_updated: 2026-07-21 (v2.891)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.891)
+
+### Dispatch Mode part 4: Inbox tab — My + Dispatch + Estimator inboxes stacked (2026-07-21)
+`/dispatch-mode/inbox` renders [`DispatchModeInbox`](../src/components/dispatchMode/DispatchModeInbox.tsx): the Dashboard's `DashboardMyInboxCard` (checklist state via `useDashboardBoot`, `loadOnMount`) followed by `DashboardTeamsInboxCard` (Dispatch + Estimator sections via the existing `useDispatchInbox` / `useEstimatorInbox` engines) — notes, dismiss, dismissed-archive modal, link-job-pictures, and trip-charge flows all reused verbatim, so behavior matches the Dashboard exactly. Role-ineligible users see a friendly empty note instead of the teams card.
 
 ## Latest Updates (v2.890)
 
