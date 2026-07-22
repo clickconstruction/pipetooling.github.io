@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-21 (v2.879)
+last_updated: 2026-07-21 (v2.880)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.880)
+
+### Add checklist item: Tab hops title → people search → Save (2026-07-21)
+In the **Add checklist item** modal, Tab from the "What needs to be done?" field now jumps straight to the **Search people** box, and Tab again lands on **Save** — skipping the recent-assignee links, Links disclosure, checkbox list, Advanced, and notify toggle (all still mouse/Shift-Tab reachable). Shift+Tab reverses the same three-stop path (Save → search → title). Implemented as targeted keydown redirects in `ChecklistAddModal` (the people search input keeps its deterministic `checklist-add-assign-search` id from `SearchableMultiSelect`); no shared-component changes.
 
 ## Latest Updates (v2.879)
 

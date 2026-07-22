@@ -77,6 +77,9 @@ export default function ChecklistAddModal({
   const [formError, setFormError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const titleInputRef = useRef<HTMLTextAreaElement | null>(null)
+  const saveButtonRef = useRef<HTMLButtonElement>(null)
+  /** Tab hops title → people search → Save (Shift+Tab reverses); the modal's other controls stay mouse-reachable. */
+  const ASSIGN_SEARCH_ID = 'checklist-add-assign-search'
   const [form, setForm] = useState({
     title: '',
     links: [] as string[],
@@ -388,6 +391,10 @@ export default function ChecklistAddModal({
                 }}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') e.preventDefault()
+                  if (e.key === 'Tab' && !e.shiftKey) {
+                    e.preventDefault()
+                    document.getElementById(ASSIGN_SEARCH_ID)?.focus()
+                  }
                 }}
                 rows={1}
                 placeholder="What needs to be done?"
@@ -500,7 +507,17 @@ export default function ChecklistAddModal({
                   ) : null}
                 </button>
               </div>
-              <div style={{ marginTop: '0.25rem' }}>
+              <div
+                style={{ marginTop: '0.25rem' }}
+                onKeyDown={(e) => {
+                  if (e.key !== 'Tab') return
+                  const target = e.target as HTMLElement
+                  if (target.id !== ASSIGN_SEARCH_ID) return
+                  e.preventDefault()
+                  if (e.shiftKey) titleInputRef.current?.focus()
+                  else saveButtonRef.current?.focus()
+                }}
+              >
                 <SearchableMultiSelect
                   id="checklist-add-assign"
                   searchPlaceholder="Search people…"
@@ -860,7 +877,19 @@ export default function ChecklistAddModal({
           <button type="button" onClick={() => modalContext.closeModal()} style={{ padding: '0.5rem 1rem', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}>
             Cancel
           </button>
-          <button type="button" onClick={saveItem} disabled={submitting} style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: submitting ? 'not-allowed' : 'pointer', opacity: submitting ? 0.7 : 1 }}>
+          <button
+            type="button"
+            ref={saveButtonRef}
+            onClick={saveItem}
+            disabled={submitting}
+            onKeyDown={(e) => {
+              if (e.key === 'Tab' && e.shiftKey) {
+                e.preventDefault()
+                document.getElementById(ASSIGN_SEARCH_ID)?.focus()
+              }
+            }}
+            style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: submitting ? 'not-allowed' : 'pointer', opacity: submitting ? 0.7 : 1 }}
+          >
             {submitting ? 'Saving…' : 'Save'}
           </button>
         </div>
