@@ -30,7 +30,7 @@ Search: `Search HCP or job name`
 {{button:outline|Create new job}} &nbsp;·&nbsp; {{button:outline|Not coming in today}}
 :::
 
-Pick the job — a schedule block appears in the cell. Jobs the person already clocked into today show a {{chip:blue|Clocked today}} badge.
+Pick the job — a schedule block appears in the cell. Jobs the person already clocked into today show a {{chip:blue|Clocked today}} badge. Each row leads with its trade pill ({{chip:orange|PLUM}}, ELEC, HVAC) and shows how long ago the job was added plus its address; the search box matches HCP number, job name, **address, and customer**. The small briefcase button at the left of a row opens that job's **Job Detail** right on top of the picker — from there **Edit job** swaps to the Edit Job form and back, and closing either one returns you to the picker exactly where you left it.
 
 Each block can carry a note: click the pencil ("Edit block note") to open the **Schedule block note** modal and {{button:blue|Save}}. Notes are what the tech sees about the assignment, so use them for gate codes, scope reminders, and arrival instructions.
 
