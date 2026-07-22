@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-22 (v2.949)
+last_updated: 2026-07-22 (v2.950)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.950)
+
+### Team → Review Rate: save-and-advance + "All rated!" finish (2026-07-22)
+The Rate card's save button now drives the monthly flow: **"Save July 2026 review, go to next"** saves and jumps to the next person you haven't rated this month (wrap-around search via new kernel fns `hasMonthReview` / `nextUnratedIndex` in [`teamMemberReviews.ts`](../src/lib/prospects/teamMemberReviews.ts), +7 tests). Once every active user has your current-month review the button turns green — **"All rated! Go to Reflect"** — which saves any last tweaks on the open card and switches to the Reflect sub-tab. ◀ ▶ / dropdown navigation unchanged. `saveCurrent` now returns the updated reviews list so the advance targets fresh state; [`TeamReviewSection.tsx`](../src/components/prospects/TeamReviewSection.tsx) only.
 
 ## Latest Updates (v2.949)
 

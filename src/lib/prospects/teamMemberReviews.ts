@@ -106,6 +106,38 @@ export function recentJobsByUser(rows: RecentJobRow[]): Map<string, RecentJobRow
   return map
 }
 
+/** Whether the reviewer already saved a review of the subject for the given month. */
+export function hasMonthReview(
+  reviews: TeamMemberReviewRow[],
+  subjectUserId: string,
+  reviewerUserId: string,
+  reviewMonth: string,
+): boolean {
+  return reviews.some(
+    (r) => r.subject_user_id === subjectUserId && r.reviewer_user_id === reviewerUserId && r.review_month === reviewMonth,
+  )
+}
+
+/**
+ * Index of the next roster member the reviewer hasn't rated this month,
+ * searching forward from fromIndex+1 with wrap-around (fromIndex itself is
+ * checked last). Null when everyone is rated.
+ */
+export function nextUnratedIndex(
+  roster: RatableUser[],
+  reviews: TeamMemberReviewRow[],
+  reviewerUserId: string,
+  reviewMonth: string,
+  fromIndex: number,
+): number | null {
+  for (let step = 1; step <= roster.length; step++) {
+    const i = (fromIndex + step) % roster.length
+    const user = roster[i]
+    if (user && !hasMonthReview(reviews, user.id, reviewerUserId, reviewMonth)) return i
+  }
+  return null
+}
+
 /** All of a subject's reviews, newest month first then reviewer id — the Reflect history list. */
 export function subjectReviewHistory(reviews: TeamMemberReviewRow[], subjectUserId: string): TeamMemberReviewRow[] {
   return reviews

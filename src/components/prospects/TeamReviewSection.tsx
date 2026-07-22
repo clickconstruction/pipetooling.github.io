@@ -8,8 +8,10 @@ import {
   averageLatestRatings,
   currentReviewMonth,
   formatReviewMonthLabel,
+  hasMonthReview,
   latestReviewsByReviewer,
   myLatestReview,
+  nextUnratedIndex,
   orderUsersForRating,
   recentJobsByUser,
   subjectReviewHistory,
@@ -94,12 +96,12 @@ export default function TeamReviewSection({ authUserId }: { authUserId: string }
 
   const subject = roster[index] ?? null
 
-  function goTo(nextIndex: number) {
+  function goTo(nextIndex: number, reviewsList: TeamMemberReviewRow[] = reviews) {
     if (roster.length === 0) return
     const wrapped = (nextIndex + roster.length) % roster.length
     setIndex(wrapped)
     const next = roster[wrapped]
-    if (next) setDraft(draftFromReview(myLatestReview(reviews, next.id, authUserId)))
+    if (next) setDraft(draftFromReview(myLatestReview(reviewsList, next.id, authUserId)))
     setSavedFor(null)
   }
 
@@ -117,8 +119,9 @@ export default function TeamReviewSection({ authUserId }: { authUserId: string }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [subTab, index, roster, reviews])
 
-  async function saveCurrent() {
-    if (!subject || busy) return
+  /** Upserts the current card's review; returns the updated reviews list, or null on failure. */
+  async function saveCurrent(): Promise<TeamMemberReviewRow[] | null> {
+    if (!subject || busy) return null
     setBusy(true)
     setError(null)
     const reviewMonth = currentReviewMonth(APP_CALENDAR_TZ)
@@ -143,11 +146,33 @@ export default function TeamReviewSection({ authUserId }: { authUserId: string }
     setBusy(false)
     if (saveError) {
       setError(saveError.message)
-      return
+      return null
     }
     const saved = data as TeamMemberReviewRow
-    setReviews((prev) => [...prev.filter((r) => r.id !== saved.id && !(r.subject_user_id === saved.subject_user_id && r.reviewer_user_id === saved.reviewer_user_id && r.review_month === saved.review_month)), saved])
+    const updated = [
+      ...reviews.filter((r) => r.id !== saved.id && !(r.subject_user_id === saved.subject_user_id && r.reviewer_user_id === saved.reviewer_user_id && r.review_month === saved.review_month)),
+      saved,
+    ]
+    setReviews(updated)
     setSavedFor(subject.id)
+    return updated
+  }
+
+  /** Save, then advance to the next person you haven't rated this month (the button flips to "All rated!" when none remain). */
+  async function saveAndAdvance() {
+    if (!subject) return
+    const updated = await saveCurrent()
+    if (!updated) return
+    const month = currentReviewMonth(APP_CALENDAR_TZ)
+    const next = nextUnratedIndex(roster, updated, authUserId, month, index)
+    if (next != null) goTo(next, updated)
+  }
+
+  /** Everyone's rated: save any last tweaks on this card, then switch to Reflect. */
+  async function finishToReflect() {
+    const updated = await saveCurrent()
+    if (!updated) return
+    setSubTab('reflect')
   }
 
   const cardStyle = { border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)', padding: '0.9rem 1rem' } as const
@@ -256,14 +281,20 @@ export default function TeamReviewSection({ authUserId }: { authUserId: string }
               />
 
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '1rem' }}>
-                <button
-                  type="button"
-                  onClick={saveCurrent}
-                  disabled={busy}
-                  style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: busy ? 'not-allowed' : 'pointer', fontWeight: 600 }}
-                >
-                  {busy ? 'Saving…' : `Save ${formatReviewMonthLabel(currentReviewMonth(APP_CALENDAR_TZ))} review`}
-                </button>
+                {(() => {
+                  const month = currentReviewMonth(APP_CALENDAR_TZ)
+                  const allRated = roster.every((u) => hasMonthReview(reviews, u.id, authUserId, month))
+                  return (
+                    <button
+                      type="button"
+                      onClick={allRated ? finishToReflect : saveAndAdvance}
+                      disabled={busy}
+                      style={{ padding: '0.5rem 1rem', background: allRated ? '#16a34a' : '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: busy ? 'not-allowed' : 'pointer', fontWeight: 600 }}
+                    >
+                      {busy ? 'Saving…' : allRated ? 'All rated! Go to Reflect' : `Save ${formatReviewMonthLabel(month)} review, go to next`}
+                    </button>
+                  )
+                })()}
                 {savedFor === subject.id && <span style={{ fontSize: '0.8125rem', color: 'var(--text-green-600)', fontWeight: 600 }}>Saved ✓</span>}
               </div>
             </div>

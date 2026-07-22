@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.950',
+    date: '2026-07-22',
+    title: 'Team reviews flow card to card',
+    kind: 'feature',
+    highlights: [
+      'Saving a team review now jumps straight to the next person you haven’t rated this month.',
+      'When everyone’s done, the button turns green — "All rated! Go to Reflect" — and takes you to the team overview.',
+    ],
+  },
+  {
     version: 'v2.949',
     date: '2026-07-22',
     title: 'Review comment boxes look like fields',
