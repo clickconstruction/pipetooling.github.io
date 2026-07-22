@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-21 (v2.880)
+last_updated: 2026-07-21 (v2.881)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.881)
+
+### Add checklist item: Space + arrow keys drive the Assign-to list from the search box (2026-07-21)
+With focus in the **Search people** box, **Space** now toggles the top person in the Assign-to list, and **↓/↑** move a highlighted row (blue outline, auto-scrolled into view, `aria-activedescendant` wired) so Space can toggle any person — assign several without touching the mouse. Typing still filters (and resets the highlight); Space no longer types into the query in this picker. Implemented as an opt-in `keyboardSelect` prop on the shared `SearchableMultiSelect` (highlight tracked by option value so the pin-selected-to-top reorder keeps following the same person); the other five usages are unchanged. Pairs with the v2.880 Tab hops: title → search → Space/arrows to assign → Tab → Save.
 
 ## Latest Updates (v2.880)
 
