@@ -355,7 +355,7 @@ function SortableCandidateCard({
           type="button"
           disabled={busy}
           onClick={onPullUp}
-          title="Pull up to the Call list for screening calls"
+          title="Pull up to Interviews for screening calls"
           style={{ ...smallButtonStyle(busy), color: 'var(--text-blue-500)' }}
         >
           📞 Pull up
@@ -881,8 +881,9 @@ export default function TeamProspectsTab({ authUserId, resolveMasterId }: Props)
     list: TeamProspect[],
     open: boolean,
     setOpen: (v: boolean) => void,
+    id?: string,
   ) => (
-    <section style={{ marginTop: '1rem' }}>
+    <section id={id} style={{ marginTop: '1rem' }}>
       <button
         type="button"
         onClick={() => setOpen(!open)}
@@ -935,8 +936,70 @@ export default function TeamProspectsTab({ authUserId, resolveMasterId }: Props)
 
   const boardEmpty = roles.length === 0 && rows.length === 0
 
+  const activeCount = Object.values(activeByRole).reduce((n, list) => n + list.length, 0)
+  const pipelineStages: Array<{ label: string; count: number; onClick: () => void }> = [
+    {
+      label: 'Sourcing & Screening',
+      count: activeCount,
+      onClick: () => document.getElementById('team-pipeline-board')?.scrollIntoView({ block: 'start' }),
+    },
+    {
+      label: 'Interviews',
+      count: calling.length,
+      onClick: () => document.getElementById('team-pipeline-interviews')?.scrollIntoView({ block: 'start' }),
+    },
+    {
+      label: 'Hired',
+      count: hired.length,
+      onClick: () => {
+        // The section renders whenever hired.length > 0 — scroll first, then expand
+        // (state-update re-render can cancel a scroll queued after it).
+        document.getElementById('team-pipeline-hired')?.scrollIntoView({ block: 'start' })
+        setHiredOpen(true)
+      },
+    },
+  ]
+
   return (
     <div>
+      {/* Pipeline summary: the hiring flow left to right, with live counts. Chips jump to their section. */}
+      <div
+        role="navigation"
+        aria-label="Hiring pipeline stages"
+        style={{ display: 'flex', alignItems: 'stretch', gap: '0.4rem', flexWrap: 'wrap', marginBottom: '1rem' }}
+      >
+        {pipelineStages.map((stage, i) => (
+          <span key={stage.label} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+            <button
+              type="button"
+              onClick={stage.onClick}
+              title={`Jump to ${stage.label}`}
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: 2,
+                padding: '0.45rem 0.9rem',
+                border: '1px solid var(--border-strong)',
+                borderRadius: 8,
+                background: 'var(--bg-subtle)',
+                cursor: 'pointer',
+                minWidth: '5.5rem',
+              }}
+            >
+              <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+                {stage.label}
+              </span>
+              <span style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--text-strong)', fontVariantNumeric: 'tabular-nums', lineHeight: 1.1 }}>
+                {stage.count}
+              </span>
+            </button>
+            {i < pipelineStages.length - 1 ? (
+              <span aria-hidden style={{ color: 'var(--text-faint)', fontSize: '1.1rem' }}>→</span>
+            ) : null}
+          </span>
+        ))}
+      </div>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
         <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.875rem' }}>
           One column per role you&apos;re hiring for — drag cards to re-rank (#1 is the top candidate) or to move between roles.
@@ -983,7 +1046,7 @@ export default function TeamProspectsTab({ authUserId, resolveMasterId }: Props)
         </p>
       ) : (
         <DndContext sensors={sensors} collisionDetection={boardCollisionDetection} onDragEnd={handleDragEnd}>
-          <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'stretch', overflowX: 'auto', paddingBottom: '0.5rem' }}>
+          <div id="team-pipeline-board" style={{ display: 'flex', gap: '0.75rem', alignItems: 'stretch', overflowX: 'auto', paddingBottom: '0.5rem' }}>
             {roles.map((role) => (
               <RoleColumn
                 key={role.id}
@@ -1020,8 +1083,8 @@ export default function TeamProspectsTab({ authUserId, resolveMasterId }: Props)
       )}
 
       {!loading && calling.length > 0 && (
-        <section style={{ marginTop: '1.25rem', border: '1px solid #d97706', borderRadius: 8, background: 'var(--bg-amber-tint)', padding: '0.75rem' }}>
-          <h3 style={{ margin: '0 0 0.15rem', fontSize: '1rem' }}>📞 Call list ({calling.length})</h3>
+        <section id="team-pipeline-interviews" style={{ marginTop: '1.25rem', border: '1px solid #d97706', borderRadius: 8, background: 'var(--bg-amber-tint)', padding: '0.75rem' }}>
+          <h3 style={{ margin: '0 0 0.15rem', fontSize: '1rem' }}>📞 Interviews ({calling.length})</h3>
           <p style={{ margin: '0 0 0.6rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
             Pulled up for screening calls — call them, then leave your own rating and remarks.
           </p>
@@ -1089,7 +1152,7 @@ export default function TeamProspectsTab({ authUserId, resolveMasterId }: Props)
           </ul>
         </section>
       )}
-      {!loading && hired.length > 0 && bucketSection('Hired', hired, hiredOpen, setHiredOpen)}
+      {!loading && hired.length > 0 && bucketSection('Hired', hired, hiredOpen, setHiredOpen, 'team-pipeline-hired')}
       {!loading && passed.length > 0 && bucketSection('Passed', passed, passedOpen, setPassedOpen)}
 
       {!loading && sourceSummary.length > 0 && (
@@ -1217,7 +1280,7 @@ export default function TeamProspectsTab({ authUserId, resolveMasterId }: Props)
           `My review — ${reviewTarget.name}`,
           <>
             <p style={{ margin: '0 0 0.5rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-              Your own read after talking to them — shown alongside everyone else&rsquo;s on the Call list.
+              Your own read after talking to them — shown alongside everyone else&rsquo;s under Interviews.
             </p>
             <RatingSliders values={reviewDraft} onChange={(k, v) => setReviewDraft({ ...reviewDraft, [k]: v })} />
             <label style={{ display: 'block', marginTop: '0.85rem' }}>
