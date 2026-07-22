@@ -143,17 +143,20 @@ type BlockRowRaw = {
 /** Every person's schedule blocks for one calendar day (dispatcher view). */
 export async function fetchDispatchModeDayBlocks(
   ymd: string,
+  assigneeUserId?: string,
 ): Promise<{ data: DispatchModeAgendaBlock[]; error: string | null }> {
   try {
     const rows = await withSupabaseRetry(
-      async () =>
-        supabase
+      async () => {
+        let q = supabase
           .from('job_schedule_blocks')
           .select(
             'id, assignee_user_id, time_start, time_end, job_id, users!job_schedule_blocks_assignee_user_id_fkey(name), jobs_ledger(hcp_number, click_number, job_name, job_address, customer_name, service_type:service_types(name))',
           )
           .eq('work_date', ymd)
-          .order('time_start', { ascending: true }),
+        if (assigneeUserId) q = q.eq('assignee_user_id', assigneeUserId)
+        return q.order('time_start', { ascending: true })
+      },
       'dispatch mode day blocks',
     )
     const out: DispatchModeAgendaBlock[] = []
@@ -185,15 +188,19 @@ export async function fetchDispatchModeDayBlocks(
 export async function fetchDispatchModeBusyDays(
   startYmd: string,
   endYmd: string,
+  assigneeUserId?: string,
 ): Promise<{ data: Set<string>; error: string | null }> {
   try {
     const rows = await withSupabaseRetry(
-      async () =>
-        supabase
+      async () => {
+        let q = supabase
           .from('job_schedule_blocks')
           .select('work_date')
           .gte('work_date', startYmd)
-          .lte('work_date', endYmd),
+          .lte('work_date', endYmd)
+        if (assigneeUserId) q = q.eq('assignee_user_id', assigneeUserId)
+        return q
+      },
       'dispatch mode busy days',
     )
     const set = new Set<string>()

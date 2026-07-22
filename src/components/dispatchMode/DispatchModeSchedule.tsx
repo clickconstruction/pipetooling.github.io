@@ -31,7 +31,7 @@ const headerBtn: CSSProperties = {
 }
 
 /** Dispatch Mode → Schedule tab: month mini-calendar + all-people day agenda. */
-export default function DispatchModeSchedule() {
+export default function DispatchModeSchedule({ selfUserId }: { selfUserId?: string } = {}) {
   const dispatchTaskModal = useDispatchTaskModal()
   const jobDetailModal = useJobDetailModal()
 
@@ -47,13 +47,13 @@ export default function DispatchModeSchedule() {
   const [busyDays, setBusyDays] = useState<Set<string>>(() => new Set())
   useEffect(() => {
     let cancelled = false
-    void fetchDispatchModeBusyDays(gridStart, gridEnd).then(({ data }) => {
+    void fetchDispatchModeBusyDays(gridStart, gridEnd, selfUserId).then(({ data }) => {
       if (!cancelled) setBusyDays(data)
     })
     return () => {
       cancelled = true
     }
-  }, [gridStart, gridEnd])
+  }, [gridStart, gridEnd, selfUserId])
 
   const [blocks, setBlocks] = useState<DispatchModeAgendaBlock[]>([])
   /** Empty set = everyone. Person ids survive day switches; absent people just contribute nothing. */
@@ -61,14 +61,17 @@ export default function DispatchModeSchedule() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  const loadDay = useCallback(async (ymd: string) => {
-    setLoading(true)
-    setError(null)
-    const { data, error: err } = await fetchDispatchModeDayBlocks(ymd)
-    setBlocks(data)
-    setError(err)
-    setLoading(false)
-  }, [])
+  const loadDay = useCallback(
+    async (ymd: string) => {
+      setLoading(true)
+      setError(null)
+      const { data, error: err } = await fetchDispatchModeDayBlocks(ymd, selfUserId)
+      setBlocks(data)
+      setError(err)
+      setLoading(false)
+    },
+    [selfUserId],
+  )
 
   useEffect(() => {
     void loadDay(selectedYmd)
@@ -113,6 +116,8 @@ export default function DispatchModeSchedule() {
           gap: '0.5rem',
         }}
       >
+        {selfUserId ? <span style={{ width: 32 }} aria-hidden="true" /> : null}
+        {!selfUserId ? (
         <button
           type="button"
           onClick={() => dispatchTaskModal?.openDispatchModal()}
@@ -124,6 +129,7 @@ export default function DispatchModeSchedule() {
             <path d="M320 64C302.3 64 288 78.3 288 96L288 99.2C215 114 160 178.6 160 256L160 277.7C160 325.8 143.6 372.5 113.6 410.1L103.8 422.3C98.7 428.6 96 436.4 96 444.5C96 464.1 111.9 480 131.5 480L508.4 480C528 480 543.9 464.1 543.9 444.5C543.9 436.4 541.2 428.6 536.1 422.3L526.3 410.1C496.4 372.5 480 325.8 480 277.7L480 256C480 178.6 425 114 352 99.2L352 96C352 78.3 337.7 64 320 64zM258 528C266.2 555.7 291.4 576 321.2 576C351 576 376.2 555.7 384.4 528L258 528z" />
           </svg>
         </button>
+        ) : null}
         <h1 style={{ margin: 0, fontSize: '1.1rem', color: 'var(--text-strong)' }}>Schedule</h1>
         <button type="button" onClick={goToday} style={headerBtn}>
           Today
@@ -201,7 +207,7 @@ export default function DispatchModeSchedule() {
       </div>
 
       {/* Person filter */}
-      {dayPeople.length > 1 ? (
+      {!selfUserId && dayPeople.length > 1 ? (
         <div
           role="group"
           aria-label="Filter schedule by person"
