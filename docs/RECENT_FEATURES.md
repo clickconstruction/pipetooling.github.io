@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-22 (v2.915)
+last_updated: 2026-07-22 (v2.916)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.916)
+
+### Job Mode: My Schedule section below the job card (2026-07-22)
+With Job Mode on, the Dashboard's focused view now renders the **My Schedule** section (the same `DashboardMyScheduleSection` the full Dashboard mounts) directly below the Job Mode card's details, just above the **Show full dashboard** button — field users see their upcoming visits without leaving Job Mode. Implementation: the `myScheduleSection` JSX in `src/pages/Dashboard.tsx` is hoisted above the Job Mode early return and mounted in both places (all its data hooks already ran before the early return). Help guide `job-mode-clocking.md` updated.
 
 ## Latest Updates (v2.915)
 
