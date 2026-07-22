@@ -12,6 +12,8 @@ export type DispatchModeCustomerListRow = {
   jobCount: number
   /** Max jobs_ledger.last_work_date (YYYY-MM-DD) across the customer's jobs; null = never worked. */
   lastWorkYmd: string | null
+  /** Nearest upcoming job_schedule_blocks.work_date (>= today) across the customer's jobs; null = nothing scheduled. */
+  nextScheduledYmd: string | null
 }
 
 export type DispatchModeCustomerSort = 'name' | 'interacted'
@@ -27,19 +29,29 @@ export function daysSinceYmd(ymd: string, todayYmd: string): number {
   return Math.max(0, diff)
 }
 
-/** "today" / "1d ago" / "45d ago"; null when the customer has no worked job. */
+/**
+ * Interaction label. A SCHEDULED upcoming job supersedes past work:
+ * "in 3d" / "today" (scheduled) beats "3d ago" (last clock session); null when
+ * the customer has neither.
+ */
 export function customerLastInteractionLabel(
   lastWorkYmd: string | null,
   todayYmd: string,
+  nextScheduledYmd: string | null = null,
 ): string | null {
+  if (nextScheduledYmd) {
+    const days = daysSinceYmd(todayYmd, nextScheduledYmd)
+    return days === 0 ? 'today' : `in ${days}d`
+  }
   if (!lastWorkYmd) return null
   const days = daysSinceYmd(lastWorkYmd, todayYmd)
   return days === 0 ? 'today' : `${days}d ago`
 }
 
 /**
- * Sort rows: 'name' = alphabetical; 'interacted' = most recent last-work date
- * first, never-worked customers last, ties alphabetical.
+ * Sort rows: 'name' = alphabetical. 'interacted' = scheduled customers first —
+ * the FARTHER in the future the next job, the higher it ranks — then past-work
+ * customers by recency, then never-worked; ties alphabetical.
  */
 export function sortDispatchModeCustomers(
   rows: DispatchModeCustomerListRow[],
@@ -51,6 +63,14 @@ export function sortDispatchModeCustomers(
     return out
   }
   out.sort((a, b) => {
+    if (a.nextScheduledYmd || b.nextScheduledYmd) {
+      if (a.nextScheduledYmd && !b.nextScheduledYmd) return -1
+      if (!a.nextScheduledYmd && b.nextScheduledYmd) return 1
+      if (a.nextScheduledYmd !== b.nextScheduledYmd) {
+        return b.nextScheduledYmd!.localeCompare(a.nextScheduledYmd!)
+      }
+      return a.name.localeCompare(b.name)
+    }
     if (a.lastWorkYmd && b.lastWorkYmd && a.lastWorkYmd !== b.lastWorkYmd) {
       return b.lastWorkYmd.localeCompare(a.lastWorkYmd)
     }

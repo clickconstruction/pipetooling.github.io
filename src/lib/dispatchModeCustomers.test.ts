@@ -12,12 +12,14 @@ const R = (
   name: string,
   lastWorkYmd: string | null,
   jobCount = 1,
+  nextScheduledYmd: string | null = null,
 ): DispatchModeCustomerListRow => ({
   id: name,
   name,
   address: null,
   jobCount,
   lastWorkYmd,
+  nextScheduledYmd,
 })
 
 describe('daysSinceYmd / customerLastInteractionLabel', () => {
@@ -28,6 +30,12 @@ describe('daysSinceYmd / customerLastInteractionLabel', () => {
     expect(customerLastInteractionLabel('2026-07-21', TODAY)).toBe('1d ago')
     expect(customerLastInteractionLabel('2026-06-22', TODAY)).toBe('30d ago')
     expect(customerLastInteractionLabel(null, TODAY)).toBeNull()
+  })
+
+  it('an upcoming scheduled job supersedes past work', () => {
+    expect(customerLastInteractionLabel('2026-07-01', TODAY, '2026-07-23')).toBe('in 1d')
+    expect(customerLastInteractionLabel(null, TODAY, '2026-07-27')).toBe('in 5d')
+    expect(customerLastInteractionLabel('2026-07-01', TODAY, '2026-07-22')).toBe('today')
   })
 
   it('clamps future dates to today (clock skew safety)', () => {
@@ -53,6 +61,21 @@ describe('sortDispatchModeCustomers', () => {
       'Dana',
       'Charlie',
       'Alice',
+    ])
+  })
+
+  it('interacted sort: scheduled customers rank first, farthest future highest', () => {
+    const mixed = [
+      R('PastOnly', '2026-07-21'),
+      R('SoonSched', '2026-07-01', 1, '2026-07-23'),
+      R('FarSched', null, 1, '2026-07-30'),
+      R('Never', null),
+    ]
+    expect(sortDispatchModeCustomers(mixed, 'interacted').map((r) => r.name)).toEqual([
+      'FarSched',
+      'SoonSched',
+      'PastOnly',
+      'Never',
     ])
   })
 
