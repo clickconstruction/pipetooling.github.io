@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-21 (v2.872)
+last_updated: 2026-07-21 (v2.873)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.873)
+
+### Dispatch swim lanes, part 2: People grid lanes grouping + Dispatch Settings manager (2026-07-21)
+The **Person** header sort toggle on Dispatch → People now cycles three ways: alphabetical → grouped by role → **grouped by swim lanes** (persisted per device). The lanes mode renders each lane as a section heading in lane order, members in member order, with an automatic **Everyone else** tail — via the v2.872 [`buildSwimLaneDisplaySections`](../src/lib/dispatchSwimLaneSections.ts) kernel. New [`DispatchSwimLanesSettingsSection`](../src/components/schedule/DispatchSwimLanesSettingsSection.tsx) inside **Dispatch Settings**: create/rename/delete/reorder lanes and add/remove people (assigning someone already in a lane MOVES them — the picker says "(moves from X)"); every change saves immediately and refreshes the open grid live (`onSwimLanesChanged` threading through `ScheduleDispatchHubPage` → `ScheduleDispatchHub` → `DispatchSettingsModal`). Help guide gains a "Grouping people into swim lanes" section. Lane-aware linked-copy targets, manpower totals, and search land next.
 
 ## Latest Updates (v2.872)
 
