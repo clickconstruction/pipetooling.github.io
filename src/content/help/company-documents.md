@@ -9,7 +9,7 @@ Need the current Bank Deposit Details, I-9, or Certificate of Insurance? They li
 
 ## Where to find them
 
-**Settings → Your account → Company documents.** Each document is a {{button:outline|📄 Name}} button — click it and the current copy opens in a new tab. The grey date next to each shows when it was last updated, so you know how fresh it is.
+**Documents → Company** (the far-left tab), or **Settings → Your account → Company documents** — same list in both places. Each document is a {{button:outline|📄 Name}} button — click it and the current copy opens in a new tab. The grey date next to each shows when it was last updated, so you know how fresh it is.
 
 ## Keeping them current (devs)
 
