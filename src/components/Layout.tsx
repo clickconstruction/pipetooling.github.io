@@ -105,7 +105,11 @@ export default function Layout() {
   useAssistantDispatchLanding()
   const [jobModeEnabled, setJobModeEnabled] = useJobModeEnabled(authUser?.id ?? null)
   const jobModeMenuEligible = canLeaveJobFieldReport(role)
-  const [dispatchModeEnabled, setDispatchModeEnabled] = useDispatchModeEnabled(authUser?.id ?? null)
+  // Assistants and masters get Dispatch Mode ON by default (until they explicitly turn it off).
+  const [dispatchModeEnabled, setDispatchModeEnabled] = useDispatchModeEnabled(
+    authUser?.id ?? null,
+    isAssistantLike(role) || role === 'master_technician',
+  )
   const dispatchModeMenuEligible = role != null && CAN_USE_SCHEDULE_DISPATCH_EDIT_ROLES.has(role)
   const dispatchModeActive = dispatchModeEnabled && dispatchModeMenuEligible
 

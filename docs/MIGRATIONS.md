@@ -105,6 +105,12 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 #### July 22, 2026
 
+**`20260722190000_dispatch_mode_default_assistants.sql`** _(apply via `supabase db push` after the file is on `main`)_
+- **Purpose**: **Dispatch Mode default-on for assistants** (v2.912). `users.dispatch_mode_enabled` becomes nullable with no default: `NULL` = "no explicit choice", which the client resolves to **ON for assistant-like roles and master technicians** and off for everyone else. Existing `false` rows are set to `NULL` (nobody had explicitly opted out in the hours since v2.905) so current and future assistants inherit the default until they toggle.
+- **Security**: no policy changes; same self-update path. Idempotent ALTERs; the UPDATE only touches explicit-false rows.
+- **Ordering**: apply with/after the v2.912 client (older clients coerce NULL to false harmlessly).
+- **Category**: Dispatch Mode / preference
+
 **`20260722120000_users_dispatch_mode.sql`** _(apply via `supabase db push` after the file is on `main`)_
 - **Purpose**: **Dispatch Mode server persistence** (v2.905). Adds `users.dispatch_mode_enabled boolean NOT NULL DEFAULT false` — the mode was per-device localStorage only; the flag now follows the user across browsers/computers (the client keeps localStorage as the instant-boot cache and reconciles to the server on mount).
 - **Security**: rides the existing "Users can update own profile" RLS policy (row-scoped self-update); no policy changes. `ADD COLUMN IF NOT EXISTS` — idempotent, additive, no CREATE TABLE → read-only-block footer not required.

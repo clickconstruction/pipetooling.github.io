@@ -16,13 +16,15 @@ export function dispatchModeStorageKey(userId: string): string {
   return `${PREFIX}_${userId}`
 }
 
-export function readDispatchModeEnabled(userId: string | null | undefined): boolean {
-  if (!userId) return false
+/** Cached per-device value; null = this device has no cached choice yet. */
+export function readDispatchModeEnabled(userId: string | null | undefined): boolean | null {
+  if (!userId) return null
   try {
-    if (typeof localStorage === 'undefined') return false
-    return localStorage.getItem(dispatchModeStorageKey(userId)) === '1'
+    if (typeof localStorage === 'undefined') return null
+    const v = localStorage.getItem(dispatchModeStorageKey(userId))
+    return v == null ? null : v === '1'
   } catch {
-    return false
+    return null
   }
 }
 
@@ -30,11 +32,7 @@ export function writeDispatchModeEnabled(userId: string | null | undefined, enab
   if (!userId) return
   try {
     if (typeof localStorage === 'undefined') return
-    if (enabled) {
-      localStorage.setItem(dispatchModeStorageKey(userId), '1')
-    } else {
-      localStorage.removeItem(dispatchModeStorageKey(userId))
-    }
+    localStorage.setItem(dispatchModeStorageKey(userId), enabled ? '1' : '0')
   } catch {
     // ignore
   }
@@ -47,15 +45,16 @@ export function writeDispatchModeEnabled(userId: string | null | undefined, enab
  */
 export async function fetchDispatchModeEnabledFromServer(
   userId: string,
-): Promise<boolean | null> {
+): Promise<{ value: boolean | null } | null> {
   try {
     const row = await withSupabaseRetry(
       async () =>
         supabase.from('users').select('dispatch_mode_enabled').eq('id', userId).maybeSingle(),
       'fetch dispatch_mode_enabled',
     )
-    const v = (row as { dispatch_mode_enabled?: boolean } | null)?.dispatch_mode_enabled
-    return typeof v === 'boolean' ? v : null
+    const v = (row as { dispatch_mode_enabled?: boolean | null } | null)?.dispatch_mode_enabled
+    // value null = the user has never explicitly chosen (assistants default ON).
+    return { value: typeof v === 'boolean' ? v : null }
   } catch {
     return null
   }
