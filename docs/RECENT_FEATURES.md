@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-21 (v2.888)
+last_updated: 2026-07-21 (v2.889)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.889)
+
+### Dispatch Mode part 2: Dashboard tab — clock in/out + compact Job Stages list (2026-07-21)
+`/dispatch-mode` now renders [`DispatchModeHome`](../src/components/dispatchMode/DispatchModeHome.tsx): the full existing `ClockInOutButton` pinned at top (same component as the Dashboard — clock in/out, Update Focus, today totals), then **Job Stages** as a phone-sized list: collapsible stage groups (Waiting / Working / Ready to bill / Billed awaiting payment / Collections, counts in the headers, empty groups hidden) built from the same `fetchJobsLedgerWithDetailsForStages` + `buildJobsStagesBoardLists` data as the desktop board (`statusScope: 'non_paid'`). Rows show the trade pill + number + name; tapping opens the Job Detail modal.
 
 ## Latest Updates (v2.888)
 
