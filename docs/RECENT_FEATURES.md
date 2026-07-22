@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-22 (v2.912)
+last_updated: 2026-07-22 (v2.913)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.913)
+
+### Fix: Job Mode Customers tab was empty for subcontractors and helpers (2026-07-22)
+Confirmed report: the tab scopes to "customers on my schedule", but the `customers` SELECT RLS (owning master / dev / master / adopted assistants) gave field roles no read at all, so every query returned nothing. Migration `20260722210000_customers_field_schedule_select.sql` (**requires `supabase db push` after merge**) adds SECURITY DEFINER `user_has_schedule_block_for_customer()` + a `customers` SELECT policy: a user may read a customer when any of that customer's jobs has a schedule block assigned to them. No client change needed. `MIGRATIONS.md` updated; `ACCESS_CONTROL.md` note added.
 
 ## Latest Updates (v2.912)
 

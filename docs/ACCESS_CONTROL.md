@@ -387,6 +387,7 @@ Pipetooling implements comprehensive role-based access control (RBAC) using nine
 - Manage labor book and price book assignments
 - Track submissions and outcomes
 - Can see all customers in GC/Builder dropdown (RLS SELECT permission)
+- **All roles** (v2.913): any user can READ a customer whose job has a `job_schedule_blocks` row assigned to them (SECURITY DEFINER `user_has_schedule_block_for_customer()` + `customers` SELECT policy) — powers the Job Mode Customers tab for subcontractors/helpers
 - **Can create new customers** via "+ Add new customer" modal or **Customers** page:
   - Must assign Customer Owner (Master) - sees all masters and devs in dropdown (RLS policy `allow_estimators_see_masters`)
   - RLS allows INSERT when `master_user_id` set to valid master
