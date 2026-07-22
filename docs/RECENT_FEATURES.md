@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-22 (v2.899)
+last_updated: 2026-07-22 (v2.900)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.900)
+
+### Dispatch Mode Dashboard: Job Stages rows become schedule-style cards (2026-07-22)
+The compact number-and-name rows now match the Schedule tab's agenda cards: trade pill + **number · name**, then **customer** and **address** lines, with the **assigned team members on the right edge** on viewports wider than mobile (first four names + "+N"; mobile stacks them under the address, matching the Schedule card behavior). Data was already on the stages fetch (`customer_name`, `job_address`, `team_members`) — display only. Help guide sentence updated.
 
 ## Latest Updates (v2.899)
 
