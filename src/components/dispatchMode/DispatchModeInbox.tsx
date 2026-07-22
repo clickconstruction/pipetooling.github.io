@@ -7,6 +7,7 @@ import { useEstimatorInbox } from '../../hooks/useEstimatorInbox'
 import { useJobFormModal } from '../../contexts/JobFormModalContext'
 import { getCurrentUserName as getCurrentUserNameById } from '../../lib/getCurrentUserName'
 import { DashboardMyInboxCard } from '../dashboard/DashboardMyInboxCard'
+import { DashboardPinnedQuickRow } from '../dashboard/DashboardPinnedQuickRow'
 import { DashboardTeamsInboxCard } from '../dashboard/DashboardTeamsInboxCard'
 import { DispatchDismissedItemsModal } from '../DispatchDismissedItemsModal'
 import CreateTripChargeModal, { type CreateTripChargeTarget } from '../CreateTripChargeModal'
@@ -42,6 +43,23 @@ export default function DispatchModeInbox() {
       <h1 style={{ margin: 0, fontSize: '1.1rem', color: 'var(--text-strong)', textAlign: 'center' }}>
         Inbox
       </h1>
+      {/* The Dashboard's notification banners (stale tally, AR unallocated, lost-bid
+          reasons, bulk-delete/dev alerts …) — bannersOnly skips pins/quick actions. */}
+      <DashboardPinnedQuickRow
+        authUserId={authUser?.id}
+        role={role}
+        visiblePins={[]}
+        quickActionDefs={[]}
+        quickButtonsPlacement="top"
+        showDashboardQuickButtons={false}
+        costMatrixTotal={null}
+        billedCount={null}
+        billedTotal={null}
+        supplyHousesAPTotal={null}
+        subLaborDueTotal={null}
+        renderModals
+        bannersOnly
+      />
       <DashboardMyInboxCard
         authUserId={authUser?.id}
         role={role}

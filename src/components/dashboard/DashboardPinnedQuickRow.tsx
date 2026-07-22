@@ -66,6 +66,12 @@ export interface DashboardPinnedQuickRowProps {
    * (the main dashboard passes the finance section here). Omitted in Job Mode.
    */
   interstitial?: ReactNode
+  /**
+   * Dispatch Mode Inbox: render ONLY the notification banners (skip the Job
+   * Report row, pins/quick actions, and slots). Modals still follow renderModals
+   * so banner tap-throughs (e.g. staff tally follow-up) keep working.
+   */
+  bannersOnly?: boolean
 }
 
 /**
@@ -90,6 +96,7 @@ export function DashboardPinnedQuickRow({
   jobReportFirst = false,
   afterJobReportRow,
   interstitial,
+  bannersOnly = false,
 }: DashboardPinnedQuickRowProps) {
   const navigate = useNavigate()
   const { showToast } = useToastContext()
@@ -308,8 +315,8 @@ export function DashboardPinnedQuickRow({
 
   return (
     <>
-      {jobReportFirst && jobReportRow}
-      {afterJobReportRow}
+      {!bannersOnly && jobReportFirst && jobReportRow}
+      {!bannersOnly && afterJobReportRow}
       {arBankCountEnabled && (
         <DashboardArBankUnallocatedBanner
           count={arBankUnallocatedCount ?? 0}
@@ -351,9 +358,9 @@ export function DashboardPinnedQuickRow({
       <DashboardBulkDeleteAlertBanner />
       {/* Dev-only and self-gating: renders nothing unless someone was refused the break-glass dev code. */}
       <DashboardClaimDevAttemptsBanner />
-      {!jobReportFirst && jobReportRow}
-      {interstitial}
-      {showPinnedRowWithQuickActions && (
+      {!bannersOnly && !jobReportFirst && jobReportRow}
+      {!bannersOnly && interstitial}
+      {!bannersOnly && showPinnedRowWithQuickActions && (
         <div style={{ marginBottom: '1rem' }}>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center' }}>
             {quickButtonsPlacement === 'with_pins' &&
