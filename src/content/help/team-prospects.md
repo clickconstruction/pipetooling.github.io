@@ -94,7 +94,7 @@ Slide to score, or leave a dimension **unrated** — a candidate you haven't eva
 
 The **Review** stage tab (after Hire) turns the same three dimensions on your existing team — every active account, every role.
 
-**Rate** deals you a card per person: their name, role, and the last 5 jobs they clocked approved time on, then the three sliders with an optional "why this score?" note under each. Use the **◀ ▶** buttons (or arrow keys) to flip between people, or jump straight to someone with the dropdown.
+**Rate** deals you a card per person: their name, role, and the last 5 jobs they clocked approved time on, then the three sliders with an optional "why this score?" note under each. {{button:blue|Save … review, go to next}} saves the card and jumps to the next person you haven't rated this month; when everyone's done the button turns green — {{button:green|All rated! Go to Reflect}}. You can also flip freely with the **◀ ▶** buttons (or arrow keys), or jump straight to someone with the dropdown.
 
 :::example One review per person per month
 Reviews are monthly: saving again in the same month updates that month's review; a new month starts a fresh one. Over time that builds a track record — the card reminds you when you last rated each person.

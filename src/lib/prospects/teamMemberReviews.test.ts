@@ -4,8 +4,10 @@ import {
   averageLatestRatings,
   currentReviewMonth,
   formatReviewMonthLabel,
+  hasMonthReview,
   latestReviewsByReviewer,
   myLatestReview,
+  nextUnratedIndex,
   orderUsersForRating,
   recentJobsByUser,
   subjectReviewHistory,
@@ -97,6 +99,37 @@ describe('recentJobsByUser', () => {
     const map = recentJobsByUser([row('u1', 'j1'), row('u2', 'j2'), row('u1', 'j3')])
     expect(map.get('u1')?.map((r) => r.job_ledger_id)).toEqual(['j1', 'j3'])
     expect(map.get('u2')?.map((r) => r.job_ledger_id)).toEqual(['j2'])
+  })
+})
+
+describe('hasMonthReview / nextUnratedIndex', () => {
+  const roster = [
+    { id: 'u1', name: 'A', role: 'dev' },
+    { id: 'u2', name: 'B', role: 'dev' },
+    { id: 'u3', name: 'C', role: 'dev' },
+  ]
+  const month = '2026-07-01'
+  const mine = (subject: string) => review({ id: `me-${subject}`, subject_user_id: subject, reviewer_user_id: 'me', review_month: month })
+
+  it('hasMonthReview matches subject+reviewer+month exactly', () => {
+    expect(hasMonthReview([mine('u1')], 'u1', 'me', month)).toBe(true)
+    expect(hasMonthReview([mine('u1')], 'u1', 'me', '2026-06-01')).toBe(false)
+    expect(hasMonthReview([mine('u1')], 'u1', 'someone-else', month)).toBe(false)
+    expect(hasMonthReview([mine('u1')], 'u2', 'me', month)).toBe(false)
+  })
+
+  it('nextUnratedIndex searches forward with wrap-around, skipping rated people', () => {
+    expect(nextUnratedIndex(roster, [], 'me', month, 0)).toBe(1)
+    expect(nextUnratedIndex(roster, [mine('u2')], 'me', month, 0)).toBe(2)
+    expect(nextUnratedIndex(roster, [mine('u2'), mine('u3')], 'me', month, 1)).toBe(0)
+    // Only the current card left unrated: wraps all the way back to it.
+    expect(nextUnratedIndex(roster, [mine('u2'), mine('u3')], 'me', month, 0)).toBe(0)
+  })
+
+  it('returns null when everyone is rated this month', () => {
+    expect(nextUnratedIndex(roster, [mine('u1'), mine('u2'), mine('u3')], 'me', month, 1)).toBeNull()
+    // Other months and other reviewers don't count.
+    expect(nextUnratedIndex(roster, [review({ subject_user_id: 'u1', reviewer_user_id: 'me', review_month: '2026-06-01' })], 'me', month, 0)).toBe(1)
   })
 })
 
