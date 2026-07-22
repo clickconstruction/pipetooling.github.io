@@ -78,7 +78,8 @@ export default function ChecklistAddModal({
   const [submitting, setSubmitting] = useState(false)
   const titleInputRef = useRef<HTMLTextAreaElement | null>(null)
   const saveButtonRef = useRef<HTMLButtonElement>(null)
-  /** Tab hops title → people search → Save (Shift+Tab reverses); the modal's other controls stay mouse-reachable. */
+  const cancelButtonRef = useRef<HTMLButtonElement>(null)
+  /** Tab cycles title → people search → Save → Cancel → title (Shift+Tab reverses); other controls stay mouse-reachable. */
   const ASSIGN_SEARCH_ID = 'checklist-add-assign-search'
   const [form, setForm] = useState({
     title: '',
@@ -391,9 +392,10 @@ export default function ChecklistAddModal({
                 }}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') e.preventDefault()
-                  if (e.key === 'Tab' && !e.shiftKey) {
+                  if (e.key === 'Tab') {
                     e.preventDefault()
-                    document.getElementById(ASSIGN_SEARCH_ID)?.focus()
+                    if (e.shiftKey) cancelButtonRef.current?.focus()
+                    else document.getElementById(ASSIGN_SEARCH_ID)?.focus()
                   }
                 }}
                 rows={1}
@@ -875,7 +877,18 @@ export default function ChecklistAddModal({
             boxSizing: 'border-box',
           }}
         >
-          <button type="button" onClick={() => modalContext.closeModal()} style={{ padding: '0.5rem 1rem', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}>
+          <button
+            type="button"
+            ref={cancelButtonRef}
+            onClick={() => modalContext.closeModal()}
+            onKeyDown={(e) => {
+              if (e.key !== 'Tab') return
+              e.preventDefault()
+              if (e.shiftKey) saveButtonRef.current?.focus()
+              else titleInputRef.current?.focus()
+            }}
+            style={{ padding: '0.5rem 1rem', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}
+          >
             Cancel
           </button>
           <button
@@ -884,10 +897,10 @@ export default function ChecklistAddModal({
             onClick={saveItem}
             disabled={submitting}
             onKeyDown={(e) => {
-              if (e.key === 'Tab' && e.shiftKey) {
-                e.preventDefault()
-                document.getElementById(ASSIGN_SEARCH_ID)?.focus()
-              }
+              if (e.key !== 'Tab') return
+              e.preventDefault()
+              if (e.shiftKey) document.getElementById(ASSIGN_SEARCH_ID)?.focus()
+              else cancelButtonRef.current?.focus()
             }}
             style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: submitting ? 'not-allowed' : 'pointer', opacity: submitting ? 0.7 : 1 }}
           >
