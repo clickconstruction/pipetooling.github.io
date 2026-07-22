@@ -338,10 +338,11 @@ function SortableCandidateCard({
         <button
           type="button"
           disabled={busy}
-          onClick={() => onSetStatus('hired')}
-          style={{ ...smallButtonStyle(busy), background: '#16a34a', color: 'white', border: 'none' }}
+          onClick={onPullUp}
+          title="Advance to Interview"
+          style={{ ...smallButtonStyle(busy), background: '#2563eb', color: 'white', border: 'none' }}
         >
-          Hired
+          Advance
         </button>
         <button
           type="button"
@@ -350,15 +351,6 @@ function SortableCandidateCard({
           style={{ ...smallButtonStyle(busy), color: 'var(--text-red-600)' }}
         >
           Passed
-        </button>
-        <button
-          type="button"
-          disabled={busy}
-          onClick={onPullUp}
-          title="Pull up to Interviews for screening calls"
-          style={{ ...smallButtonStyle(busy), color: 'var(--text-blue-500)' }}
-        >
-          📞 Pull up
         </button>
       </div>
       <CandidateRatingBars candidate={candidate} />
@@ -492,7 +484,8 @@ export default function TeamProspectsTab({ authUserId, resolveMasterId }: Props)
   const [newRoleName, setNewRoleName] = useState('')
   const [confirmDeleteRoleId, setConfirmDeleteRoleId] = useState<string | null>(null)
 
-  const [hiredOpen, setHiredOpen] = useState(false)
+  /** Which stage sub-tab is showing: Screen (board) / Interview (calls+reviews) / Hire. */
+  const [stage, setStage] = useState<'screen' | 'interview' | 'hire'>('screen')
   const [passedOpen, setPassedOpen] = useState(false)
   const [reviews, setReviews] = useState<TeamProspectReview[]>([])
   const [reviewerNames, setReviewerNames] = useState<Map<string, string>>(() => new Map())
@@ -937,72 +930,60 @@ export default function TeamProspectsTab({ authUserId, resolveMasterId }: Props)
   const boardEmpty = roles.length === 0 && rows.length === 0
 
   const activeCount = Object.values(activeByRole).reduce((n, list) => n + list.length, 0)
-  const pipelineStages: Array<{ label: string; count: number; onClick: () => void }> = [
-    {
-      label: 'Sourcing & Screening',
-      count: activeCount,
-      onClick: () => document.getElementById('team-pipeline-board')?.scrollIntoView({ block: 'start' }),
-    },
-    {
-      label: 'Interviews',
-      count: calling.length,
-      onClick: () => document.getElementById('team-pipeline-interviews')?.scrollIntoView({ block: 'start' }),
-    },
-    {
-      label: 'Hired',
-      count: hired.length,
-      onClick: () => {
-        // The section renders whenever hired.length > 0 — scroll first, then expand
-        // (state-update re-render can cancel a scroll queued after it).
-        document.getElementById('team-pipeline-hired')?.scrollIntoView({ block: 'start' })
-        setHiredOpen(true)
-      },
-    },
+  const stageTabs: Array<{ key: 'screen' | 'interview' | 'hire'; label: string; count: number }> = [
+    { key: 'screen', label: 'Screen', count: activeCount },
+    { key: 'interview', label: 'Interview', count: calling.length },
+    { key: 'hire', label: 'Hire', count: hired.length },
   ]
 
   return (
     <div>
-      {/* Pipeline summary: the hiring flow left to right, with live counts. Chips jump to their section. */}
+      {/* Stage sub-tabs: the hiring flow left to right with live counts; the active stage gets the blue box. */}
       <div
-        role="navigation"
-        aria-label="Hiring pipeline stages"
+        role="tablist"
+        aria-label="Hiring stages"
         style={{ display: 'flex', alignItems: 'stretch', gap: '0.4rem', flexWrap: 'wrap', marginBottom: '1rem' }}
       >
-        {pipelineStages.map((stage, i) => (
-          <span key={stage.label} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-            <button
-              type="button"
-              onClick={stage.onClick}
-              title={`Jump to ${stage.label}`}
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                gap: 2,
-                padding: '0.45rem 0.9rem',
-                border: '1px solid var(--border-strong)',
-                borderRadius: 8,
-                background: 'var(--bg-subtle)',
-                cursor: 'pointer',
-                minWidth: '5.5rem',
-              }}
-            >
-              <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
-                {stage.label}
-              </span>
-              <span style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--text-strong)', fontVariantNumeric: 'tabular-nums', lineHeight: 1.1 }}>
-                {stage.count}
-              </span>
-            </button>
-            {i < pipelineStages.length - 1 ? (
-              <span aria-hidden style={{ color: 'var(--text-faint)', fontSize: '1.1rem' }}>→</span>
-            ) : null}
-          </span>
-        ))}
+        {stageTabs.map((tab, i) => {
+          const active = stage === tab.key
+          return (
+            <span key={tab.key} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={active}
+                onClick={() => setStage(tab.key)}
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: 2,
+                  padding: '0.45rem 0.9rem',
+                  border: active ? '2px solid #2563eb' : '1px solid var(--border-strong)',
+                  borderRadius: 8,
+                  background: active ? 'var(--bg-blue-tint)' : 'var(--bg-subtle)',
+                  cursor: 'pointer',
+                  minWidth: '5.5rem',
+                }}
+              >
+                <span style={{ fontSize: '0.75rem', fontWeight: 600, color: active ? 'var(--text-blue-700)' : 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+                  {tab.label}
+                </span>
+                <span style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--text-strong)', fontVariantNumeric: 'tabular-nums', lineHeight: 1.1 }}>
+                  {tab.count}
+                </span>
+              </button>
+              {i < stageTabs.length - 1 ? (
+                <span aria-hidden style={{ color: 'var(--text-faint)', fontSize: '1.1rem' }}>→</span>
+              ) : null}
+            </span>
+          )
+        })}
       </div>
+      {stage === 'screen' && (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
         <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.875rem' }}>
-          One column per role you&apos;re hiring for — drag cards to re-rank (#1 is the top candidate) or to move between roles.
+          One column per role you&apos;re hiring for — drag cards to re-rank (#1 is the top candidate), then Advance the ones worth interviewing.
         </p>
         {addingRole ? (
           <span style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
@@ -1037,10 +1018,11 @@ export default function TeamProspectsTab({ authUserId, resolveMasterId }: Props)
           </button>
         )}
       </div>
+      )}
 
       {loading ? (
         <p style={{ color: 'var(--text-muted)' }}>Loading…</p>
-      ) : boardEmpty ? (
+      ) : stage !== 'screen' ? null : boardEmpty ? (
         <p style={{ padding: '1.5rem', textAlign: 'center', color: 'var(--text-muted)' }}>
           No roles yet. Add a column for each role you&apos;re hiring for, then add candidates to it.
         </p>
@@ -1082,80 +1064,119 @@ export default function TeamProspectsTab({ authUserId, resolveMasterId }: Props)
         </DndContext>
       )}
 
-      {!loading && calling.length > 0 && (
-        <section id="team-pipeline-interviews" style={{ marginTop: '1.25rem', border: '1px solid #d97706', borderRadius: 8, background: 'var(--bg-amber-tint)', padding: '0.75rem' }}>
-          <h3 style={{ margin: '0 0 0.15rem', fontSize: '1rem' }}>📞 Interviews ({calling.length})</h3>
-          <p style={{ margin: '0 0 0.6rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-            Pulled up for screening calls — call them, then leave your own rating and remarks.
+      {stage === 'interview' && !loading && (
+        calling.length === 0 ? (
+          <p style={{ padding: '1.5rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+            No one in Interview yet — hit <strong>Advance</strong> on a Screen card to move them here.
           </p>
-          <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-            {calling.map((c) => {
-              const candidateReviews = reviewsByProspect.get(c.id) ?? []
-              const mine = candidateReviews.find((r) => r.reviewer_user_id === authUserId)
+        ) : (
+          <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-start', overflowX: 'auto', paddingBottom: '0.5rem' }}>
+            {[...roles.map((r) => ({ key: r.id as string, title: r.name })), { key: UNSORTED_ROLE_KEY, title: 'Unsorted' }].map(({ key, title }) => {
+              const list = calling.filter((c) => (c.role_id ?? UNSORTED_ROLE_KEY) === key)
+              if (key === UNSORTED_ROLE_KEY && list.length === 0) return null
               return (
-                <li key={c.id} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, padding: '0.6rem 0.75rem' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-                    <span style={{ fontWeight: 700 }}>{c.name}</span>
-                    {c.role_id && roleNameById.has(c.role_id) && (
-                      <span style={{ fontSize: '0.7rem', padding: '0.05rem 0.4rem', borderRadius: 999, background: 'var(--bg-subtle)', border: '1px solid var(--border)', color: 'var(--text-muted)' }}>
-                        {roleNameById.get(c.role_id)}
-                      </span>
-                    )}
-                    {c.phone_number ? (
-                      <a
-                        href={`tel:${c.phone_number.replace(/[^0-9+]/g, '')}`}
-                        style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#16a34a', textDecoration: 'none', border: '1px solid #16a34a', borderRadius: 999, padding: '0.1rem 0.55rem' }}
-                      >
-                        📞 {c.phone_number}
-                      </a>
-                    ) : (
-                      <span style={{ fontSize: '0.75rem', color: 'var(--text-faint)' }}>no phone on file</span>
-                    )}
-                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{formatLastContact(c.last_contact)}</span>
-                    <span style={{ flex: 1 }} />
-                    <button type="button" disabled={busy} onClick={() => openReview(c)} style={{ ...smallButtonStyle(busy), color: 'var(--text-blue-500)', fontWeight: 600 }}>
-                      {mine ? 'Edit my review' : 'My review'}
-                    </button>
-                    <button type="button" disabled={busy} onClick={() => markContacted(c)} title="Stamp last contact as now" style={smallButtonStyle(busy)}>
-                      Talked today
-                    </button>
-                    <button type="button" disabled={busy} onClick={() => setStatus(c, 'active')} title="Put back on the sourcing board" style={smallButtonStyle(busy)}>
-                      Back to board
-                    </button>
-                    <button type="button" disabled={busy} onClick={() => setStatus(c, 'hired')} style={{ ...smallButtonStyle(busy), background: '#16a34a', color: 'white', border: 'none' }}>
-                      Hired
-                    </button>
-                    <button type="button" disabled={busy} onClick={() => setStatus(c, 'passed')} style={{ ...smallButtonStyle(busy), color: 'var(--text-red-600)' }}>
-                      Passed
-                    </button>
-                  </div>
-                  <div style={{ maxWidth: 420 }}>
-                    <CandidateRatingBars candidate={c} />
-                  </div>
-                  {candidateReviews.length > 0 && (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', margin: '0.45rem 0 0 0' }}>
-                      {candidateReviews.map((r) => (
-                        <div key={r.id} style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-                          <span style={{ fontWeight: 600, color: 'var(--text-strong)' }}>{reviewerNames.get(r.reviewer_user_id) ?? 'Reviewer'}</span>
-                          {': '}
-                          <span style={{ fontVariantNumeric: 'tabular-nums' }} title="Ability · Drive · Integrity">
-                            {[r.rating_ability, r.rating_drive, r.rating_integrity].map((v) => (v == null ? '—' : v)).join(' · ')}
-                          </span>
-                          {r.remarks ? <span> — {r.remarks}</span> : null}
-                        </div>
-                      ))}
-                    </div>
+                <div key={key} style={{ minWidth: 280, flex: '1 0 280px', border: '1px solid #d97706', borderRadius: 8, background: 'var(--bg-amber-tint)', padding: '0.5rem' }}>
+                  <header style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.15rem 0.25rem 0.4rem' }}>
+                    <span style={{ fontWeight: 700, fontSize: '0.9375rem' }}>{title}</span>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>({list.length})</span>
+                  </header>
+                  {list.length === 0 ? (
+                    <p style={{ margin: 0, padding: '0.25rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>No one yet.</p>
+                  ) : (
+                    <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                      {list.map((c) => {
+                        const candidateReviews = reviewsByProspect.get(c.id) ?? []
+                        const mine = candidateReviews.find((r) => r.reviewer_user_id === authUserId)
+                        return (
+                          <li key={c.id} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, padding: '0.6rem 0.75rem' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                              <span style={{ fontWeight: 700 }}>{c.name}</span>
+                              {c.phone_number ? (
+                                <a
+                                  href={`tel:${c.phone_number.replace(/[^0-9+]/g, '')}`}
+                                  style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#16a34a', textDecoration: 'none', border: '1px solid #16a34a', borderRadius: 999, padding: '0.1rem 0.55rem' }}
+                                >
+                                  📞 {c.phone_number}
+                                </a>
+                              ) : (
+                                <span style={{ fontSize: '0.75rem', color: 'var(--text-faint)' }}>no phone on file</span>
+                              )}
+                              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{formatLastContact(c.last_contact)}</span>
+                            </div>
+                            <CandidateRatingBars candidate={c} />
+                            {candidateReviews.length > 0 && (
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', margin: '0.45rem 0 0 0' }}>
+                                {candidateReviews.map((r) => (
+                                  <div key={r.id} style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+                                    <span style={{ fontWeight: 600, color: 'var(--text-strong)' }}>{reviewerNames.get(r.reviewer_user_id) ?? 'Reviewer'}</span>
+                                    {': '}
+                                    <span style={{ fontVariantNumeric: 'tabular-nums' }} title="Ability · Drive · Integrity">
+                                      {[r.rating_ability, r.rating_drive, r.rating_integrity].map((v) => (v == null ? '—' : v)).join(' · ')}
+                                    </span>
+                                    {r.remarks ? <span> — {r.remarks}</span> : null}
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                            <div style={{ display: 'flex', gap: '0.3rem', flexWrap: 'wrap', marginTop: '0.45rem' }}>
+                              <button type="button" disabled={busy} onClick={() => openReview(c)} style={{ ...smallButtonStyle(busy), color: 'var(--text-blue-500)', fontWeight: 600 }}>
+                                {mine ? 'Edit my review' : 'My review'}
+                              </button>
+                              <button type="button" disabled={busy} onClick={() => markContacted(c)} title="Stamp last contact as now" style={smallButtonStyle(busy)}>
+                                Talked today
+                              </button>
+                              <button type="button" disabled={busy} onClick={() => setStatus(c, 'active')} title="Send back to the Screen board" style={smallButtonStyle(busy)}>
+                                Back to Screen
+                              </button>
+                              <button type="button" disabled={busy} onClick={() => setStatus(c, 'hired')} title="Advance to Hire" style={{ ...smallButtonStyle(busy), background: '#16a34a', color: 'white', border: 'none' }}>
+                                Advance
+                              </button>
+                              <button type="button" disabled={busy} onClick={() => setStatus(c, 'passed')} style={{ ...smallButtonStyle(busy), color: 'var(--text-red-600)' }}>
+                                Passed
+                              </button>
+                            </div>
+                          </li>
+                        )
+                      })}
+                    </ul>
                   )}
-                </li>
+                </div>
               )
             })}
-          </ul>
-        </section>
+          </div>
+        )
       )}
-      {!loading && hired.length > 0 && bucketSection('Hired', hired, hiredOpen, setHiredOpen, 'team-pipeline-hired')}
-      {!loading && passed.length > 0 && bucketSection('Passed', passed, passedOpen, setPassedOpen)}
+      {stage === 'hire' && !loading && (
+        hired.length === 0 ? (
+          <p style={{ padding: '1.5rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+            No hires yet — Advance someone from Interview when they're a fit.
+          </p>
+        ) : (
+          <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+            {hired.map((c) => (
+              <li key={c.id} style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.45rem 0.75rem', background: 'var(--bg-subtle)', borderRadius: 6, border: '1px solid var(--border)', flexWrap: 'wrap' }}>
+                <span style={{ fontWeight: 600 }}>{c.name}</span>
+                {c.role_id && roleNameById.has(c.role_id) && (
+                  <span style={{ fontSize: '0.7rem', padding: '0.05rem 0.4rem', borderRadius: 999, background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text-muted)' }}>
+                    {roleNameById.get(c.role_id)}
+                  </span>
+                )}
+                {c.trade && <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{c.trade}</span>}
+                <span style={{ flex: 1 }} />
+                <button type="button" disabled={busy} onClick={() => openEdit(c)} style={smallButtonStyle(busy)}>
+                  Edit
+                </button>
+                <button type="button" disabled={busy} onClick={() => setStatus(c, 'calling')} style={{ ...smallButtonStyle(busy), color: 'var(--text-blue-500)' }}>
+                  Back to Interview
+                </button>
+              </li>
+            ))}
+          </ul>
+        )
+      )}
+      {stage === 'screen' && !loading && passed.length > 0 && bucketSection('Passed', passed, passedOpen, setPassedOpen)}
 
-      {!loading && sourceSummary.length > 0 && (
+      {stage === 'screen' && !loading && sourceSummary.length > 0 && (
         <section style={{ marginTop: '1rem' }}>
           <button
             type="button"

@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-22 (v2.929)
+last_updated: 2026-07-22 (v2.930)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.930)
+
+### Team Prospects: stages become sub-tabs — Screen → Interview → Hire (2026-07-22)
+The v2.929 stepper is now real navigation: the three stages are **sub-tabs** (active one boxed blue), each rendering its own view. **Screen** = the sourcing board; the card's Hired button is replaced by blue **Advance** (→ Interview; the separate Pull up button is gone). **Interview** = the same role columns in amber — tap-to-call, sourcing bars, everyone's reviews inline, My review, and green **Advance** (→ Hire, still triggering the add-to-roster offer) / Passed / Back to Screen. **Hire** = the hired list (Edit + Back to Interview) — the dedicated hiring tool comes next. Passed bucket and Source success stay on Screen. Help guide rewritten around the three stages.
 
 ## Latest Updates (v2.929)
 
