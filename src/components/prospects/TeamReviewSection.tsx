@@ -1,0 +1,353 @@
+import { useCallback, useEffect, useState } from 'react'
+import { supabase } from '../../lib/supabase'
+import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
+import { displayLabelForUserRole } from '../../lib/userRoleDisplay'
+import type { UserRole } from '../../hooks/useAuth'
+import { COMMENT_KEY_BY_RATING, RATING_DEFS, RatingSliders, type RatingKey } from './ratingDimensions'
+import {
+  averageLatestRatings,
+  currentReviewMonth,
+  formatReviewMonthLabel,
+  latestReviewsByReviewer,
+  myLatestReview,
+  orderUsersForRating,
+  recentJobsByUser,
+  subjectReviewHistory,
+} from '../../lib/prospects/teamMemberReviews'
+import type { RatableUser, RecentJobRow, TeamMemberReviewRow } from '../../lib/prospects/teamMemberReviews'
+
+type ReviewDraft = {
+  rating_ability: number | null
+  rating_drive: number | null
+  rating_integrity: number | null
+  comment_ability: string
+  comment_drive: string
+  comment_integrity: string
+}
+
+const EMPTY_DRAFT: ReviewDraft = {
+  rating_ability: null, rating_drive: null, rating_integrity: null,
+  comment_ability: '', comment_drive: '', comment_integrity: '',
+}
+
+function draftFromReview(mine: TeamMemberReviewRow | null): ReviewDraft {
+  if (!mine) return EMPTY_DRAFT
+  return {
+    rating_ability: mine.rating_ability, rating_drive: mine.rating_drive, rating_integrity: mine.rating_integrity,
+    comment_ability: mine.comment_ability ?? '', comment_drive: mine.comment_drive ?? '', comment_integrity: mine.comment_integrity ?? '',
+  }
+}
+
+/** Non-empty per-dimension comments of a review, in RATING_DEFS order. */
+function dimensionComments(r: TeamMemberReviewRow): Array<{ short: string; text: string }> {
+  return RATING_DEFS.flatMap((def) => {
+    const text = r[COMMENT_KEY_BY_RATING[def.key]]
+    return text != null && text.trim() !== '' ? [{ short: def.short, text }] : []
+  })
+}
+
+/**
+ * Prospects → Team → Review (v2.948): rate CURRENT team members monthly on the
+ * three candidate dimensions. Rate = one card per active user (◀ ▶ deck);
+ * Reflect = everyone's latest reviews + cross-reviewer averages + history.
+ * Self-contained: loads its own roster, reviews, and recent-jobs context.
+ */
+export default function TeamReviewSection({ authUserId }: { authUserId: string }) {
+  const [subTab, setSubTab] = useState<'rate' | 'reflect'>('rate')
+  const [roster, setRoster] = useState<RatableUser[]>([])
+  const [reviews, setReviews] = useState<TeamMemberReviewRow[]>([])
+  const [jobsByUser, setJobsByUser] = useState<Map<string, RecentJobRow[]>>(() => new Map())
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [index, setIndex] = useState(0)
+  const [draft, setDraft] = useState<ReviewDraft>(EMPTY_DRAFT)
+  const [busy, setBusy] = useState(false)
+  const [savedFor, setSavedFor] = useState<string | null>(null)
+  const [openHistories, setOpenHistories] = useState<Set<string>>(() => new Set())
+
+  const load = useCallback(async () => {
+    setLoading(true)
+    setError(null)
+    const [usersRes, reviewsRes, jobsRes] = await Promise.all([
+      supabase.from('users').select('id, name, role').is('archived_at', null),
+      supabase.from('team_member_reviews').select('*'),
+      supabase.rpc('list_team_member_recent_jobs'),
+    ])
+    const firstError = usersRes.error ?? reviewsRes.error ?? jobsRes.error
+    if (firstError) {
+      setError(firstError.message)
+      setLoading(false)
+      return
+    }
+    const ordered = orderUsersForRating(usersRes.data ?? [])
+    setRoster(ordered)
+    setReviews((reviewsRes.data ?? []) as TeamMemberReviewRow[])
+    setJobsByUser(recentJobsByUser((jobsRes.data ?? []) as RecentJobRow[]))
+    setLoading(false)
+    const first = ordered[0]
+    if (first) setDraft(draftFromReview(myLatestReview((reviewsRes.data ?? []) as TeamMemberReviewRow[], first.id, authUserId)))
+  }, [authUserId])
+
+  useEffect(() => {
+    void load()
+  }, [load])
+
+  const subject = roster[index] ?? null
+
+  function goTo(nextIndex: number) {
+    if (roster.length === 0) return
+    const wrapped = (nextIndex + roster.length) % roster.length
+    setIndex(wrapped)
+    const next = roster[wrapped]
+    if (next) setDraft(draftFromReview(myLatestReview(reviews, next.id, authUserId)))
+    setSavedFor(null)
+  }
+
+  // ◀ ▶ with the keyboard on the Rate deck, but never while typing in a field.
+  useEffect(() => {
+    if (subTab !== 'rate') return
+    const onKey = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement | null)?.tagName
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return
+      if (e.key === 'ArrowRight') goTo(index + 1)
+      if (e.key === 'ArrowLeft') goTo(index - 1)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [subTab, index, roster, reviews])
+
+  async function saveCurrent() {
+    if (!subject || busy) return
+    setBusy(true)
+    setError(null)
+    const reviewMonth = currentReviewMonth(APP_CALENDAR_TZ)
+    const { data, error: saveError } = await supabase
+      .from('team_member_reviews')
+      .upsert(
+        {
+          subject_user_id: subject.id,
+          reviewer_user_id: authUserId,
+          review_month: reviewMonth,
+          rating_ability: draft.rating_ability,
+          rating_drive: draft.rating_drive,
+          rating_integrity: draft.rating_integrity,
+          comment_ability: draft.comment_ability.trim() || null,
+          comment_drive: draft.comment_drive.trim() || null,
+          comment_integrity: draft.comment_integrity.trim() || null,
+        },
+        { onConflict: 'subject_user_id,reviewer_user_id,review_month' },
+      )
+      .select()
+      .single()
+    setBusy(false)
+    if (saveError) {
+      setError(saveError.message)
+      return
+    }
+    const saved = data as TeamMemberReviewRow
+    setReviews((prev) => [...prev.filter((r) => r.id !== saved.id && !(r.subject_user_id === saved.subject_user_id && r.reviewer_user_id === saved.reviewer_user_id && r.review_month === saved.review_month)), saved])
+    setSavedFor(subject.id)
+  }
+
+  const cardStyle = { border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)', padding: '0.9rem 1rem' } as const
+
+  if (loading) return <p style={{ color: 'var(--text-muted)' }}>Loading team…</p>
+
+  return (
+    <div>
+      {/* Rate | Reflect sub-tabs */}
+      <div role="tablist" aria-label="Review modes" style={{ display: 'flex', justifyContent: 'center', gap: '0.4rem', marginBottom: '1rem' }}>
+        {(['rate', 'reflect'] as const).map((key) => {
+          const active = subTab === key
+          return (
+            <button
+              key={key}
+              type="button"
+              role="tab"
+              aria-selected={active}
+              onClick={() => setSubTab(key)}
+              style={{
+                padding: '0.35rem 1rem',
+                border: active ? '2px solid #2563eb' : '1px solid var(--border-strong)',
+                borderRadius: 999,
+                background: active ? 'var(--bg-blue-tint)' : 'var(--bg-subtle)',
+                color: active ? 'var(--text-blue-700)' : 'var(--text-muted)',
+                fontWeight: 600,
+                fontSize: '0.8125rem',
+                cursor: 'pointer',
+              }}
+            >
+              {key === 'rate' ? 'Rate' : 'Reflect'}
+            </button>
+          )
+        })}
+      </div>
+
+      {error && <p style={{ color: 'var(--text-red-600)', marginTop: 0 }}>{error}</p>}
+
+      {subTab === 'rate' && (
+        roster.length === 0 ? (
+          <p style={{ color: 'var(--text-muted)' }}>No active team members found.</p>
+        ) : subject ? (
+          <div style={{ maxWidth: 560, margin: '0 auto' }}>
+            {/* Deck navigation */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+              <button type="button" onClick={() => goTo(index - 1)} aria-label="Previous person" style={{ padding: '0.35rem 0.7rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--bg-subtle)', cursor: 'pointer', fontWeight: 700 }}>
+                ◀
+              </button>
+              <select
+                value={subject.id}
+                onChange={(e) => goTo(roster.findIndex((u) => u.id === e.target.value))}
+                aria-label="Jump to person"
+                style={{ flex: 1, padding: '0.35rem 0.5rem', border: '1px solid var(--border)', borderRadius: 6, background: 'var(--surface)', color: 'var(--text-base)' }}
+              >
+                {roster.map((u) => (
+                  <option key={u.id} value={u.id}>
+                    {u.name ?? 'Unnamed'} — {displayLabelForUserRole(u.role as UserRole)}
+                  </option>
+                ))}
+              </select>
+              <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
+                {index + 1} of {roster.length}
+              </span>
+              <button type="button" onClick={() => goTo(index + 1)} aria-label="Next person" style={{ padding: '0.35rem 0.7rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--bg-subtle)', cursor: 'pointer', fontWeight: 700 }}>
+                ▶
+              </button>
+            </div>
+
+            <div style={cardStyle}>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', flexWrap: 'wrap' }}>
+                <span style={{ fontWeight: 700, fontSize: '1.05rem' }}>{subject.name ?? 'Unnamed'}</span>
+                <span style={{ fontSize: '0.75rem', padding: '0.05rem 0.5rem', borderRadius: 999, background: 'var(--bg-subtle)', border: '1px solid var(--border)', color: 'var(--text-muted)' }}>
+                  {displayLabelForUserRole(subject.role as UserRole)}
+                </span>
+                <span style={{ marginLeft: 'auto', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                  {(() => {
+                    const mine = myLatestReview(reviews, subject.id, authUserId)
+                    return mine ? `You last rated: ${formatReviewMonthLabel(mine.review_month)}` : 'You haven’t rated them yet'
+                  })()}
+                </span>
+              </div>
+
+              {(() => {
+                const jobs = jobsByUser.get(subject.id) ?? []
+                return jobs.length > 0 ? (
+                  <div style={{ marginTop: '0.5rem' }}>
+                    <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '0.15rem' }}>Recent jobs</div>
+                    <ul style={{ margin: 0, paddingLeft: '1.1rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+                      {jobs.map((j) => (
+                        <li key={j.job_ledger_id}>
+                          {j.job_display || 'Unnamed job'} <span style={{ color: 'var(--text-faint)' }}>· {j.last_worked_date}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : (
+                  <p style={{ margin: '0.5rem 0 0', fontSize: '0.8125rem', color: 'var(--text-faint)' }}>No approved job time on record.</p>
+                )
+              })()}
+
+              <RatingSliders
+                values={draft}
+                onChange={(k: RatingKey, v) => setDraft({ ...draft, [k]: v })}
+                comments={{ rating_ability: draft.comment_ability, rating_drive: draft.comment_drive, rating_integrity: draft.comment_integrity }}
+                onCommentChange={(k, v) => setDraft({ ...draft, [COMMENT_KEY_BY_RATING[k]]: v })}
+              />
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '1rem' }}>
+                <button
+                  type="button"
+                  onClick={saveCurrent}
+                  disabled={busy}
+                  style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: busy ? 'not-allowed' : 'pointer', fontWeight: 600 }}
+                >
+                  {busy ? 'Saving…' : `Save ${formatReviewMonthLabel(currentReviewMonth(APP_CALENDAR_TZ))} review`}
+                </button>
+                {savedFor === subject.id && <span style={{ fontSize: '0.8125rem', color: 'var(--text-green-600)', fontWeight: 600 }}>Saved ✓</span>}
+              </div>
+            </div>
+          </div>
+        ) : null
+      )}
+
+      {subTab === 'reflect' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', maxWidth: 720, margin: '0 auto' }}>
+          {roster.map((u) => {
+            const latest = latestReviewsByReviewer(reviews, u.id)
+            const averages = averageLatestRatings(latest)
+            const history = subjectReviewHistory(reviews, u.id)
+            const historyOpen = openHistories.has(u.id)
+            const reviewerName = (id: string) => roster.find((r) => r.id === id)?.name ?? 'Former teammate'
+            return (
+              <div key={u.id} style={cardStyle}>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', flexWrap: 'wrap' }}>
+                  <span style={{ fontWeight: 700 }}>{u.name ?? 'Unnamed'}</span>
+                  <span style={{ fontSize: '0.75rem', padding: '0.05rem 0.5rem', borderRadius: 999, background: 'var(--bg-subtle)', border: '1px solid var(--border)', color: 'var(--text-muted)' }}>
+                    {displayLabelForUserRole(u.role as UserRole)}
+                  </span>
+                  <span style={{ marginLeft: 'auto', fontSize: '0.8125rem', color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }} title="Team average of each reviewer's latest ratings: Ability · Drive · Integrity">
+                    {averages.reviewerCount === 0
+                      ? 'No reviews yet'
+                      : `Avg ${[averages.ability, averages.drive, averages.integrity].map((v) => (v == null ? '—' : v)).join(' · ')} (${averages.reviewerCount} reviewer${averages.reviewerCount === 1 ? '' : 's'})`}
+                  </span>
+                </div>
+                {latest.length > 0 && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', marginTop: '0.45rem' }}>
+                    {latest.map((r) => (
+                      <div key={r.id} style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+                        <span style={{ fontWeight: 600, color: 'var(--text-strong)' }}>{reviewerName(r.reviewer_user_id)}</span>
+                        <span style={{ color: 'var(--text-faint)' }}> ({formatReviewMonthLabel(r.review_month)})</span>
+                        {': '}
+                        <span style={{ fontVariantNumeric: 'tabular-nums' }} title="Ability · Drive · Integrity">
+                          {[r.rating_ability, r.rating_drive, r.rating_integrity].map((v) => (v == null ? '—' : v)).join(' · ')}
+                        </span>
+                        {dimensionComments(r).map((d) => (
+                          <div key={d.short} style={{ margin: '0.1rem 0 0 1rem' }}>
+                            <span style={{ fontWeight: 600 }}>{d.short}</span> — {d.text}
+                          </div>
+                        ))}
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {history.length > latest.length && (
+                  <button
+                    type="button"
+                    onClick={() => setOpenHistories((prev) => {
+                      const next = new Set(prev)
+                      if (next.has(u.id)) next.delete(u.id)
+                      else next.add(u.id)
+                      return next
+                    })}
+                    style={{ marginTop: '0.4rem', padding: 0, background: 'none', border: 'none', color: 'var(--text-blue-500)', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 600 }}
+                  >
+                    {historyOpen ? 'Hide history' : `History (${history.length})`}
+                  </button>
+                )}
+                {historyOpen && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem', marginTop: '0.3rem', paddingLeft: '0.5rem', borderLeft: '2px solid var(--border)' }}>
+                    {history.map((r) => (
+                      <div key={r.id} style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                        <span style={{ fontWeight: 600 }}>{formatReviewMonthLabel(r.review_month)}</span>
+                        {' · '}
+                        {reviewerName(r.reviewer_user_id)}
+                        {': '}
+                        <span style={{ fontVariantNumeric: 'tabular-nums' }}>
+                          {[r.rating_ability, r.rating_drive, r.rating_integrity].map((v) => (v == null ? '—' : v)).join(' · ')}
+                        </span>
+                        {dimensionComments(r).map((d) => (
+                          <span key={d.short}> · {d.short}: {d.text}</span>
+                        ))}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+}

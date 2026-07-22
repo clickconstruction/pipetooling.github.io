@@ -105,6 +105,12 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 #### July 22, 2026
 
+**`20260722252000_team_member_reviews.sql`** _(apply via `supabase db push` after the file is on `main`)_
+- **Purpose**: Team member reviews (v2.948) — `team_member_reviews` table: monthly per-reviewer ratings of CURRENT team members (Prospects → Team → Review). One row per (subject_user_id, reviewer_user_id, review_month); first-of-month CHECK; same three 0–100 dimensions + per-dimension comments as `team_prospect_reviews`. Plus SECURITY DEFINER RPC `list_team_member_recent_jobs()` (last 5 distinct approved-clock-session jobs per user, joined by user_id; zero rows without prospects access).
+- **Security**: RLS — SELECT for `user_has_prospects_staff_access()`; INSERT/UPDATE/DELETE only own rows (`reviewer_user_id = auth.uid()`). CREATE TABLE ends with both read-only-block calls. RPC: EXECUTE revoked from anon, granted to authenticated; access gate inside.
+- **Ordering**: apply promptly after merge — the new Review tab's loads reference the table and RPC (old clients unaffected; additive).
+- **Category**: Prospects / feature
+
 **`20260722250000_team_prospect_review_dimension_comments.sql`** _(apply via `supabase db push` after the file is on `main`)_
 - **Purpose**: Per-dimension review comments (v2.946) — three nullable text columns on `team_prospect_reviews` (`comment_ability`, `comment_drive`, `comment_integrity`) so each reviewer can note "why this score" beside each 0–100 rating; `remarks` stays as the overall note.
 - **Security**: no policy changes — the table's row-scoped RLS (staff read, reviewer-owned writes) covers the new columns.

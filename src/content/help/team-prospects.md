@@ -55,13 +55,14 @@ A role column can be deleted only once **every candidate in it has been individu
 
 The Team tab is granted **per person**, on top of normal Prospects access. If you don't see the tab, you haven't been granted it. A dev can turn it on for someone under {{icon:gear}} **Settings → Active accounts → Edit** with the **Can see Prospects → Team (hiring board)** checkbox.
 
-## The three stages
+## The four stages
 
-Across the top of the tab: **Screen → Interview → Hire** — live counts under each, and the stage you're on gets the blue box. Each stage is its own view:
+Across the top of the tab: **Screen → Interview → Hire → Review** — live counts under each, and the stage you're on gets the blue box. Each stage is its own view:
 
 - **Screen** — the sourcing board: role columns, drag-ranking, and the rating sliders. When someone's worth a call, hit {{button:blue|Advance}} on their card.
 - **Interview** — the same role columns, now amber: each candidate shows a tap-to-call phone, the sourcing scores, and everyone's reviews. Anyone can {{button:green|Advance}} them to Hire (or send them Back to Screen).
 - **Hire** — onboarding: every hire shows a row of red/yellow/green boxes for the company's checklist (collect the driver's license, signed contract, …). Tap a box to move it along: red (not started) → yellow (requested — you've asked and are waiting) → green (done); tapping again from green resets it. A {{chip:gray|🔗}} next to a box opens that item's document — the thing to share, or where the person finds their copy. A **n/N done** counter sits on each hire, and devs manage the checklist itself (questions, links, order) under **⚙ Onboarding settings** on this tab.
+- **Review** — not about candidates at all: monthly reviews of your **current team**. See "Reviewing your current team" below.
 
 ## Interview calls
 
@@ -88,3 +89,15 @@ Open {{button:outline|Edit}} on any candidate and you'll find three 0–100 slid
 - **Trustworthiness / Goodness of Heart** (Integrity)
 
 Slide to score, or leave a dimension **unrated** — a candidate you haven't evaluated yet shows "—" rather than a misleading zero, and **clear** puts a rating back to unrated. Every board card shows the three scores as narrow bars at the bottom, so you can compare candidates at a glance while you drag-rank. The sliders are information only — your drag order stays the ranking.
+
+## Reviewing your current team
+
+The **Review** stage tab (after Hire) turns the same three dimensions on your existing team — every active account, every role.
+
+**Rate** deals you a card per person: their name, role, and the last 5 jobs they clocked approved time on, then the three sliders with an optional "why this score?" note under each. Use the **◀ ▶** buttons (or arrow keys) to flip between people, or jump straight to someone with the dropdown.
+
+:::example One review per person per month
+Reviews are monthly: saving again in the same month updates that month's review; a new month starts a fresh one. Over time that builds a track record — the card reminds you when you last rated each person.
+:::
+
+**Reflect** shows the whole picture: for each person, every reviewer's latest scores and notes side by side, a team **average** of the three dimensions, and a **History** toggle with the earlier months. Everyone who can see the Team board sees everyone's reviews — no blind reviewing, same as candidate reviews.

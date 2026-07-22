@@ -9774,6 +9774,66 @@ export type Database = {
           },
         ]
       }
+      team_member_reviews: {
+        Row: {
+          comment_ability: string | null
+          comment_drive: string | null
+          comment_integrity: string | null
+          created_at: string | null
+          id: string
+          rating_ability: number | null
+          rating_drive: number | null
+          rating_integrity: number | null
+          review_month: string
+          reviewer_user_id: string
+          subject_user_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          comment_ability?: string | null
+          comment_drive?: string | null
+          comment_integrity?: string | null
+          created_at?: string | null
+          id?: string
+          rating_ability?: number | null
+          rating_drive?: number | null
+          rating_integrity?: number | null
+          review_month: string
+          reviewer_user_id: string
+          subject_user_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          comment_ability?: string | null
+          comment_drive?: string | null
+          comment_integrity?: string | null
+          created_at?: string | null
+          id?: string
+          rating_ability?: number | null
+          rating_drive?: number | null
+          rating_integrity?: number | null
+          review_month?: string
+          reviewer_user_id?: string
+          subject_user_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_member_reviews_reviewer_user_id_fkey"
+            columns: ["reviewer_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "team_member_reviews_subject_user_id_fkey"
+            columns: ["subject_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       team_onboarding_items: {
         Row: {
           created_at: string | null
@@ -12310,6 +12370,15 @@ export type Database = {
           purchase_order_name: string
           purchase_order_status: string
           quantity: number
+        }[]
+      }
+      list_team_member_recent_jobs: {
+        Args: never
+        Returns: {
+          job_display: string
+          job_ledger_id: string
+          last_worked_date: string
+          user_id: string
         }[]
       }
       list_unlabeled_mercury_transactions: {
