@@ -76,6 +76,7 @@ import {
   stagesInvoiceVisibleWithEmptySearch,
   stagesJobsWithoutCustomerFromFiltered,
   stagesSectionKeyForJobStatus,
+  stagesReadyToBillJobsWithoutEmail,
   stagesWorkingJobsWithoutPicturesFromWorking,
   type InvoiceWithJob,
   type StageRow,
@@ -453,6 +454,17 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     [jobs, stagesSearchQuery, stagesSearchExtraJobIds],
   )
 
+  /** #3 of the billing-email guardrails: soft heads-up the moment a job is marked Ready to Bill. */
+  const nudgeMissingBillingEmail = useCallback(
+    (jobId: string) => {
+      const j = jobs.find((x) => x.id === jobId)
+      if (j && !(j.customer_email ?? '').trim()) {
+        showToast('Heads up: no customer email on this job — Stripe invoices will need one.', 'info', 6000)
+      }
+    },
+    [jobs, showToast],
+  )
+
   const stagesJobsWithoutCustomer = useMemo(
     () => stagesJobsWithoutCustomerFromFiltered(stagesBoardLists.filtered),
     [stagesBoardLists.filtered],
@@ -462,6 +474,13 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     () => stagesWorkingJobsWithoutPicturesFromWorking(stagesBoardLists.working),
     [stagesBoardLists.working],
   )
+
+  const stagesReadyToBillNoEmailJobs = useMemo(
+    () => stagesReadyToBillJobsWithoutEmail(stagesBoardLists.readyToBillRows),
+    [stagesBoardLists.readyToBillRows],
+  )
+  const [stagesNoEmailModalOpen, setStagesNoEmailModalOpen] = useState(false)
+  const [stagesNoEmailBtnHover, setStagesNoEmailBtnHover] = useState(false)
 
   const openStagesNoCustomerEditJob = useCallback(
     (jobId: string) => {
@@ -490,6 +509,12 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
       setStagesNoJobPicturesModalOpen(false)
     }
   }, [stagesWorkingJobsWithoutPictures.length])
+
+  useEffect(() => {
+    if (stagesReadyToBillNoEmailJobs.length === 0) {
+      setStagesNoEmailModalOpen(false)
+    }
+  }, [stagesReadyToBillNoEmailJobs.length])
 
   const focusStagesSection = useCallback((key: 'waiting' | 'working' | 'readyToBill' | 'billed' | 'collections') => {
     setStagesSectionOpen((prev) => ({ ...prev, [key]: true }))
@@ -1406,9 +1431,43 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     No customer pictures ({stagesWorkingJobsWithoutPictures.length})
                   </button>
                 ) : null}
+                {stagesReadyToBillNoEmailJobs.length > 0 ? (
+                  <button
+                    type="button"
+                    onClick={() => setStagesNoEmailModalOpen(true)}
+                    onMouseEnter={() => setStagesNoEmailBtnHover(true)}
+                    onMouseLeave={() => setStagesNoEmailBtnHover(false)}
+                    title="Ready to Bill jobs with no customer email — Stripe and emailed invoices need one"
+                    aria-label={`Ready to Bill jobs with no customer email: ${stagesReadyToBillNoEmailJobs.length} jobs. Open list.`}
+                    style={{
+                      padding: '0.35rem 0.65rem',
+                      fontSize: '0.8125rem',
+                      fontWeight: 500,
+                      border: `1px solid ${stagesNoEmailBtnHover ? '#d97706' : '#fcd34d'}`,
+                      borderRadius: 4,
+                      background: 'var(--bg-amber-tint)',
+                      color: stagesNoEmailBtnHover ? 'var(--text-amber-800)' : 'var(--text-amber-700)',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    No email ({stagesReadyToBillNoEmailJobs.length})
+                  </button>
+                ) : null}
               </div>
             ) : null}
           </div>
+          <StagesAlertJobListModal
+            open={stagesNoEmailModalOpen}
+            onClose={() => setStagesNoEmailModalOpen(false)}
+            jobs={stagesReadyToBillNoEmailJobs}
+            onSelectJob={(jobId) => {
+              setStagesNoEmailModalOpen(false)
+              tryOpenEditJob(jobId, { onSaved: () => void loadJobs() })
+            }}
+            titleId="stages-no-email-modal-title"
+            title="Ready to Bill jobs without a customer email"
+            description="Stripe and emailed invoices need a customer email. Open Edit Job to add one."
+          />
           <StagesNoCustomerJobsModal
             open={stagesNoCustomerModalOpen}
             onClose={() => setStagesNoCustomerModalOpen(false)}
@@ -1562,7 +1621,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     actionLabel={'Ready to Bill'}
                     onAction={(j) =>
                       stagesHamMode
-                        ? void moveJobToReadyToBillWithStripePrep(j.id)
+                        ? (nudgeMissingBillingEmail(j.id), void moveJobToReadyToBillWithStripePrep(j.id))
                         : (setReadyForBillingChecked1(false), setReadyForBillingChecked2(false), setReadyForBillingJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—' }))}
                     showTimeOpen={true}
                     onSendBack={undefined}
@@ -1890,7 +1949,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                       setLienToolingPrefillModal({ job: ctx.job, invoice: ctx.invoice })}
                     onJobSendBack={(j) =>
                       stagesHamMode
-                        ? void moveJobToReadyToBillWithStripePrep(j.id)
+                        ? (nudgeMissingBillingEmail(j.id), void moveJobToReadyToBillWithStripePrep(j.id))
                         : (setSendBackChecked(false),
                           setSendBackJob({
                             id: j.id,
@@ -2528,7 +2587,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
             </div>
             <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
               <button type="button" onClick={() => { setReadyForBillingJob(null); setReadyForBillingChecked1(false); setReadyForBillingChecked2(false) }} style={{ padding: '0.5rem 1rem', border: '1px solid var(--border-strong)', background: 'var(--surface)', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
-              <button type="button" disabled={!readyForBillingChecked1 || !readyForBillingChecked2 || stagesStatusUpdatingId === readyForBillingJob.id} onClick={async () => { if (!readyForBillingJob) return; const ok = await moveJobToReadyToBillWithStripePrep(readyForBillingJob.id); if (!ok) return; setReadyForBillingJob(null); setReadyForBillingChecked1(false); setReadyForBillingChecked2(false) }} style={{ padding: '0.5rem 1rem', background: readyForBillingChecked1 && readyForBillingChecked2 && stagesStatusUpdatingId !== readyForBillingJob.id ? '#3b82f6' : '#9ca3af', color: 'white', border: 'none', borderRadius: 4, cursor: readyForBillingChecked1 && readyForBillingChecked2 && stagesStatusUpdatingId !== readyForBillingJob.id ? 'pointer' : 'not-allowed' }}>{stagesStatusUpdatingId === readyForBillingJob.id ? '…' : 'Confirm'}</button>
+              <button type="button" disabled={!readyForBillingChecked1 || !readyForBillingChecked2 || stagesStatusUpdatingId === readyForBillingJob.id} onClick={async () => { if (!readyForBillingJob) return; nudgeMissingBillingEmail(readyForBillingJob.id); const ok = await moveJobToReadyToBillWithStripePrep(readyForBillingJob.id); if (!ok) return; setReadyForBillingJob(null); setReadyForBillingChecked1(false); setReadyForBillingChecked2(false) }} style={{ padding: '0.5rem 1rem', background: readyForBillingChecked1 && readyForBillingChecked2 && stagesStatusUpdatingId !== readyForBillingJob.id ? '#3b82f6' : '#9ca3af', color: 'white', border: 'none', borderRadius: 4, cursor: readyForBillingChecked1 && readyForBillingChecked2 && stagesStatusUpdatingId !== readyForBillingJob.id ? 'pointer' : 'not-allowed' }}>{stagesStatusUpdatingId === readyForBillingJob.id ? '…' : 'Confirm'}</button>
             </div>
           </div>
         </div>

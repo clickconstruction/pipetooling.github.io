@@ -507,3 +507,16 @@ export function buildCapableToBillBreakdownRows<
     .filter((r) => r.toBill > 0)
     .sort((a, b) => b.toBill - a.toBill)
 }
+
+/** Ready-to-Bill jobs (distinct, row order) missing a customer email — Stripe/emailed invoices will need one. */
+export function stagesReadyToBillJobsWithoutEmail(readyToBillRows: readonly StageRow[]): JobWithDetails[] {
+  const seen = new Set<string>()
+  const out: JobWithDetails[] = []
+  for (const row of readyToBillRows) {
+    const job = row.job
+    if (seen.has(job.id)) continue
+    seen.add(job.id)
+    if (!(job.customer_email ?? '').trim()) out.push(job)
+  }
+  return out
+}

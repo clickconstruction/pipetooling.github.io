@@ -440,7 +440,63 @@ export default function SendRecordInvoiceModal({
 
   const open = payload !== null
   const kind = payload?.kind ?? 'job'
-  const job = payload?.job ?? null
+  const jobRaw = payload?.job ?? null
+  /** Inline email fix (v2.936): a just-saved email overlays the payload so every
+      gate and send in this modal sees it immediately — no reopen needed. */
+  const [emailOverride, setEmailOverride] = useState<string | null>(null)
+  const [emailFixDraft, setEmailFixDraft] = useState('')
+  const [emailFixAlsoCustomer, setEmailFixAlsoCustomer] = useState(true)
+  const [emailFixSaving, setEmailFixSaving] = useState(false)
+  const [emailFixError, setEmailFixError] = useState<string | null>(null)
+  const job = jobRaw && emailOverride ? { ...jobRaw, customer_email: emailOverride } : jobRaw
+  useEffect(() => {
+    setEmailOverride(null)
+    setEmailFixDraft('')
+    setEmailFixAlsoCustomer(true)
+    setEmailFixError(null)
+  }, [open, jobRaw?.id])
+
+  async function saveMissingCustomerEmail() {
+    if (!jobRaw || emailFixSaving) return
+    const email = emailFixDraft.trim()
+    if (!email || !email.includes('@')) {
+      setEmailFixError('Enter a valid email address.')
+      return
+    }
+    setEmailFixSaving(true)
+    setEmailFixError(null)
+    const { error } = await supabase.from('jobs_ledger').update({ customer_email: email }).eq('id', jobRaw.id)
+    if (error) {
+      setEmailFixSaving(false)
+      setEmailFixError(error.message)
+      return
+    }
+    // Best-effort: also fill the customer record's email when it's blank.
+    if (emailFixAlsoCustomer && jobRaw.customer_id) {
+      try {
+        const { data: cust } = await supabase
+          .from('customers')
+          .select('contact_info')
+          .eq('id', jobRaw.customer_id)
+          .maybeSingle()
+        const ci =
+          cust?.contact_info && typeof cust.contact_info === 'object' && !Array.isArray(cust.contact_info)
+            ? (cust.contact_info as Record<string, unknown>)
+            : {}
+        const existing = typeof ci.email === 'string' ? ci.email.trim() : ''
+        if (!existing) {
+          await supabase
+            .from('customers')
+            .update({ contact_info: { ...ci, email } as never })
+            .eq('id', jobRaw.customer_id)
+        }
+      } catch {
+        // job-level email saved; customer fill is a bonus
+      }
+    }
+    setEmailFixSaving(false)
+    setEmailOverride(email)
+  }
   const invoice = payload?.kind === 'invoice' ? payload.invoice : null
   // A stored memo (e.g. Turnaway trip charges) beats the preset default on open.
   const storedInvoiceMemo = (invoice?.stripe_invoice_memo ?? '').trim()
@@ -1399,6 +1455,61 @@ export default function SendRecordInvoiceModal({
             </div>
           )}
         </div>
+
+        {!(job.customer_email ?? '').trim() ? (
+          <div
+            role="group"
+            aria-label="Customer email missing"
+            style={{
+              border: '1px solid #d97706',
+              background: 'var(--bg-amber-tint)',
+              borderRadius: 8,
+              padding: '0.6rem 0.75rem',
+              marginBottom: '1rem',
+            }}
+          >
+            <p style={{ margin: '0 0 0.4rem', fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-amber-700)' }}>
+              No customer email on this job — Stripe and emailed invoices need one.
+            </p>
+            <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+              <input
+                type="email"
+                value={emailFixDraft}
+                onChange={(e) => setEmailFixDraft(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault()
+                    void saveMissingCustomerEmail()
+                  }
+                }}
+                placeholder="customer@email.com"
+                aria-label="Customer email"
+                style={{ flex: '1 1 200px', padding: '0.4rem 0.6rem', border: '1px solid var(--border-strong)', borderRadius: 6 }}
+              />
+              <button
+                type="button"
+                onClick={() => void saveMissingCustomerEmail()}
+                disabled={emailFixSaving || !emailFixDraft.trim()}
+                style={{ padding: '0.4rem 0.9rem', background: emailFixSaving || !emailFixDraft.trim() ? '#9ca3af' : '#2563eb', color: 'white', border: 'none', borderRadius: 6, cursor: emailFixSaving || !emailFixDraft.trim() ? 'not-allowed' : 'pointer', fontWeight: 600 }}
+              >
+                {emailFixSaving ? 'Saving…' : 'Save'}
+              </button>
+            </div>
+            {jobRaw?.customer_id ? (
+              <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', marginTop: '0.4rem', fontSize: '0.8125rem', color: 'var(--text-muted)', cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  checked={emailFixAlsoCustomer}
+                  onChange={(e) => setEmailFixAlsoCustomer(e.target.checked)}
+                />
+                Also add to {job.customer_name ?? 'the customer'}&rsquo;s record if it has no email
+              </label>
+            ) : null}
+            {emailFixError ? (
+              <p style={{ margin: '0.4rem 0 0', fontSize: '0.8125rem', color: 'var(--text-red-700)' }}>{emailFixError}</p>
+            ) : null}
+          </div>
+        ) : null}
 
         <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem', borderBottom: '1px solid var(--border)', flexWrap: 'wrap' }}>
           <button type="button" onClick={() => setTab('stripe')} style={billCustomerTopTabButtonStyle(tab === 'stripe')}>
