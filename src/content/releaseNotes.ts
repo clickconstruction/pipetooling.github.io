@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.980',
+    date: '2026-07-23',
+    title: 'Jobs Stages fits phone screens again',
+    kind: 'fix',
+    highlights: [
+      'The Stages toolbar and alert chips now wrap on narrow screens instead of stretching the whole page sideways, so scrolling and zooming on a phone no longer drifts into cut-off tables.',
+    ],
+  },
+  {
     version: 'v2.979',
     date: '2026-07-23',
     title: 'Crew P&L billing works on first load',

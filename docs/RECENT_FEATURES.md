@@ -7,8 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-23 (v2.979)
-last_updated: 2026-07-23 (v2.979)
+last_updated: 2026-07-23 (v2.980)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2046,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.980)
+
+### Jobs Stages: toolbar wraps on phones — page no longer overflows sideways (2026-07-23)
+On a ~390px phone the Stages tab forced the page's layout viewport to ~649px, so scrolling + pinch-zooming panned around a 1.7×-wide page with tables cut off at both edges. Two causes in [`JobsStagesTab`](../src/components/jobs/JobsStagesTab.tsx): the toolbar row (New Job, search, Job Book / schedule-search / ham toggles, "Follow cards I move", Total by Name, Combine / Separate) was `display: flex` with **no `flexWrap`**, and the alert-chips row (No customer / No customer pictures / No email) had `flexShrink: 0`, which pins its flex-basis at max-content so its own `flexWrap` never engaged. Fix: toolbar gets `flexWrap: 'wrap'` (search input `flex: '1 1 10rem'` + `minWidth: 0` so it shares the first line and the buttons wrap below), chips row swaps `flexShrink: 0` → `minWidth: 0`. Verified with a Playwright iPhone-13 probe: `document.scrollWidth` 649 → **390** (the group tables stay inside their own `overflowX: auto` scrollers, unchanged). Version note: v2.979 is the parallel Crew P&L linking-map PR (#663).
 
 ## Latest Updates (v2.979)
 
