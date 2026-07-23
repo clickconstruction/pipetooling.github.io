@@ -32,7 +32,9 @@ import {
   compositeScore,
   monthlyCompositeSeries,
   parseCompositeWeights,
+  serializeCompositeWeights,
 } from '../../lib/prospects/teamComposite'
+import { buildRoleLeaderboards, replaceFocusEntries } from '../../lib/prospects/teamLeaderboard'
 import type { CompositeWeights } from '../../lib/prospects/teamComposite'
 import { APP_SETTINGS_KEY_TEAM_REVIEW_COMPOSITE_WEIGHTS } from '../../lib/appSettingsKeys'
 
@@ -72,8 +74,17 @@ function dimensionComments(r: TeamMemberReviewRow): Array<{ short: string; text:
  * Reflect = everyone's latest reviews + cross-reviewer averages + history.
  * Self-contained: loads its own roster, reviews, and recent-jobs context.
  */
-export default function TeamReviewSection({ authUserId }: { authUserId: string }) {
-  const [subTab, setSubTab] = useState<'rate' | 'reflect'>('rate')
+export default function TeamReviewSection({
+  authUserId,
+  isDev,
+  onOpenScreenBoard,
+}: {
+  authUserId: string
+  isDev: boolean
+  /** Jump to the hiring board's Screen stage (the pipeline for roles the leaderboard flags). */
+  onOpenScreenBoard?: () => void
+}) {
+  const [subTab, setSubTab] = useState<'rate' | 'reflect' | 'leaderboard'>('rate')
   const [roster, setRoster] = useState<RatableUser[]>([])
   const [reviews, setReviews] = useState<TeamMemberReviewRow[]>([])
   const [jobsByUser, setJobsByUser] = useState<Map<string, RecentJobRow[]>>(() => new Map())
@@ -88,6 +99,9 @@ export default function TeamReviewSection({ authUserId }: { authUserId: string }
   const [startedOnByUser, setStartedOnByUser] = useState<Map<string, string>>(() => new Map())
   const [tendenciesOpen, setTendenciesOpen] = useState(false)
   const [weights, setWeights] = useState<CompositeWeights>(DEFAULT_COMPOSITE_WEIGHTS)
+  const [weightsEditorOpen, setWeightsEditorOpen] = useState(false)
+  const [weightsDraft, setWeightsDraft] = useState<{ ability: string; drive: string; integrity: string }>({ ability: '', drive: '', integrity: '' })
+  const [weightsSaving, setWeightsSaving] = useState(false)
 
   const baselines = useMemo(() => reviewerBaselines(reviews), [reviews])
   const company = useMemo(() => companyDimensionMeans(reviews), [reviews])
@@ -211,6 +225,38 @@ export default function TeamReviewSection({ authUserId }: { authUserId: string }
     setSubTab('reflect')
   }
 
+  function openWeightsEditor() {
+    setWeightsDraft({
+      ability: String(Math.round(weights.ability * 100)),
+      drive: String(Math.round(weights.drive * 100)),
+      integrity: String(Math.round(weights.integrity * 100)),
+    })
+    setWeightsEditorOpen(true)
+  }
+
+  /** Dev-only: persist relative dimension weights to app_settings (normalized on read). */
+  async function saveWeights() {
+    if (weightsSaving) return
+    const raw = { ability: Number(weightsDraft.ability), drive: Number(weightsDraft.drive), integrity: Number(weightsDraft.integrity) }
+    const parsed = parseCompositeWeights(JSON.stringify(raw))
+    if (!parsed) {
+      setError('Weights must be non-negative numbers with a positive total.')
+      return
+    }
+    setWeightsSaving(true)
+    setError(null)
+    const { error: saveError } = await supabase
+      .from('app_settings')
+      .upsert({ key: APP_SETTINGS_KEY_TEAM_REVIEW_COMPOSITE_WEIGHTS, value_text: serializeCompositeWeights(parsed) }, { onConflict: 'key' })
+    setWeightsSaving(false)
+    if (saveError) {
+      setError(saveError.message)
+      return
+    }
+    setWeights(parsed)
+    setWeightsEditorOpen(false)
+  }
+
   const cardStyle = { border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)', padding: '0.9rem 1rem' } as const
 
   if (loading) return <p style={{ color: 'var(--text-muted)' }}>Loading team…</p>
@@ -219,7 +265,7 @@ export default function TeamReviewSection({ authUserId }: { authUserId: string }
     <div>
       {/* Rate | Reflect sub-tabs */}
       <div role="tablist" aria-label="Review modes" style={{ display: 'flex', justifyContent: 'center', gap: '0.4rem', marginBottom: '1rem' }}>
-        {(['rate', 'reflect'] as const).map((key) => {
+        {(['rate', 'reflect', 'leaderboard'] as const).map((key) => {
           const active = subTab === key
           return (
             <button
@@ -239,7 +285,7 @@ export default function TeamReviewSection({ authUserId }: { authUserId: string }
                 cursor: 'pointer',
               }}
             >
-              {key === 'rate' ? 'Rate' : 'Reflect'}
+              {key === 'rate' ? 'Rate' : key === 'reflect' ? 'Reflect' : 'Leaderboard'}
             </button>
           )
         })}
@@ -520,6 +566,123 @@ export default function TeamReviewSection({ authUserId }: { authUserId: string }
           })}
         </div>
       )}
+
+      {subTab === 'leaderboard' && (() => {
+        const boards = buildRoleLeaderboards(roster, reviews, baselines, company, weights, currentReviewMonth(APP_CALENDAR_TZ))
+        const focus = replaceFocusEntries(boards, 3)
+        const compositePill = (score: number) => (
+          <span style={{ fontSize: '0.8125rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: 'var(--text-strong)', border: '1px solid var(--border-strong)', borderRadius: 999, padding: '0 0.5rem' }}>
+            {score}
+          </span>
+        )
+        return (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', maxWidth: 720, margin: '0 auto' }}>
+            {isDev && (
+              <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                {weightsEditorOpen ? (
+                  <div style={{ ...cardStyle, display: 'flex', alignItems: 'flex-end', gap: '0.5rem', flexWrap: 'wrap' }}>
+                    {(['ability', 'drive', 'integrity'] as const).map((dim) => (
+                      <label key={dim} style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                        <span style={{ display: 'block', marginBottom: '0.15rem', textTransform: 'capitalize' }}>{dim}</span>
+                        <input
+                          type="number"
+                          min={0}
+                          value={weightsDraft[dim]}
+                          onChange={(e) => setWeightsDraft({ ...weightsDraft, [dim]: e.target.value })}
+                          style={{ width: '4.5rem', padding: '0.3rem 0.4rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', color: 'var(--text-base)' }}
+                        />
+                      </label>
+                    ))}
+                    <button type="button" onClick={saveWeights} disabled={weightsSaving} style={{ padding: '0.35rem 0.8rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: weightsSaving ? 'not-allowed' : 'pointer', fontWeight: 600, fontSize: '0.8125rem' }}>
+                      {weightsSaving ? 'Saving…' : 'Save weights'}
+                    </button>
+                    <button type="button" onClick={() => setWeightsEditorOpen(false)} disabled={weightsSaving} style={{ padding: '0.35rem 0.8rem', background: 'none', color: 'var(--text-muted)', border: '1px solid var(--border)', borderRadius: 4, cursor: 'pointer', fontSize: '0.8125rem' }}>
+                      Cancel
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={openWeightsEditor}
+                    title={`Dimension weights: Ability ${Math.round(weights.ability * 100)} · Drive ${Math.round(weights.drive * 100)} · Integrity ${Math.round(weights.integrity * 100)}`}
+                    style={{ background: 'none', border: 'none', color: 'var(--text-faint)', cursor: 'pointer', fontSize: '0.9375rem', padding: 0 }}
+                    aria-label="Edit composite weights"
+                  >
+                    ⚙
+                  </button>
+                )}
+              </div>
+            )}
+
+            {focus.length > 0 && (
+              <div style={{ ...cardStyle, borderColor: 'var(--border-strong)' }}>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', flexWrap: 'wrap' }}>
+                  <span style={{ fontWeight: 700 }}>Replace-priority focus</span>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>lowest confident composites company-wide</span>
+                  {onOpenScreenBoard && (
+                    <button type="button" onClick={onOpenScreenBoard} style={{ marginLeft: 'auto', padding: '0.25rem 0.6rem', background: 'var(--bg-subtle)', color: 'var(--text-700)', border: '1px solid var(--border-strong)', borderRadius: 6, cursor: 'pointer', fontSize: '0.75rem', fontWeight: 600 }}>
+                      Open hiring board →
+                    </button>
+                  )}
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', marginTop: '0.45rem' }}>
+                  {focus.map((e, i) => (
+                    <div key={e.user.id} style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', fontSize: '0.8125rem' }}>
+                      <span style={{ color: 'var(--text-faint)', fontVariantNumeric: 'tabular-nums' }}>{i + 1}.</span>
+                      <span style={{ fontWeight: 600 }}>{e.user.name ?? 'Unnamed'}</span>
+                      <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>{e.roleLabel}</span>
+                      {(() => {
+                        const tenure = formatTenure(startedOnByUser.get(e.user.id), new Date())
+                        return tenure ? <span style={{ color: 'var(--text-faint)', fontSize: '0.75rem' }}>{tenure}</span> : null
+                      })()}
+                      <span style={{ marginLeft: 'auto' }}>{e.composite.score != null && compositePill(e.composite.score)}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {boards.map((board) => (
+              <div key={board.sectionKey} style={cardStyle}>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', flexWrap: 'wrap' }}>
+                  <span style={{ fontWeight: 700 }}>{board.label}</span>
+                  <span style={{ marginLeft: 'auto', fontSize: '0.8125rem', color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>
+                    {board.roleAverage == null ? 'no rankable members' : `role avg ${board.roleAverage}`}
+                  </span>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', marginTop: '0.45rem' }}>
+                  {board.entries.map((e, i) => {
+                    const rankable = e.composite.confident && e.composite.score != null
+                    const weakest = board.weakestUserId === e.user.id
+                    const tenure = formatTenure(startedOnByUser.get(e.user.id), new Date())
+                    return (
+                      <div key={e.user.id} style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', fontSize: '0.8125rem' }}>
+                        <span style={{ color: 'var(--text-faint)', fontVariantNumeric: 'tabular-nums', minWidth: '1.2rem' }}>{rankable ? `${i + 1}.` : '—'}</span>
+                        <span style={{ fontWeight: 600 }}>{e.user.name ?? 'Unnamed'}</span>
+                        {tenure && <span style={{ color: 'var(--text-faint)', fontSize: '0.75rem' }}>{tenure}</span>}
+                        {weakest && (
+                          <span style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-red-600)', border: '1px solid var(--text-red-600)', borderRadius: 999, padding: '0 0.4rem' }}>
+                            weakest
+                          </span>
+                        )}
+                        <span style={{ marginLeft: 'auto' }}>
+                          {rankable && e.composite.score != null ? (
+                            compositePill(e.composite.score)
+                          ) : (
+                            <span style={{ fontSize: '0.75rem', color: 'var(--text-faint)' }} title="Needs at least 2 reviewers before the composite is rankable">
+                              insufficient data ({e.composite.reviewerCount} reviewer{e.composite.reviewerCount === 1 ? '' : 's'})
+                            </span>
+                          )}
+                        </span>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+        )
+      })()}
     </div>
   )
 }

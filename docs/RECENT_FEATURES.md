@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-22 (v2.953)
+last_updated: 2026-07-22 (v2.954)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.954)
+
+### Team → Review: Leaderboard — replace-priority focus by role (2026-07-22)
+Phase 3 of the calibrated-leaderboard arc: third sub-tab **Rate | Reflect | Leaderboard** (same per-user Team gate). New kernel [`teamLeaderboard.ts`](../src/lib/prospects/teamLeaderboard.ts) (4 tests): role-grouped boards in People → Users section order — confident composites ranked best-first, insufficient-data members listed unranked below, **role average** over confident members, a **weakest** flag (only when a role has ≥2 confident members), and `replaceFocusEntries` — the bottom-3 confident composites company-wide. UI: **Replace-priority focus** strip up top (rank, name, role, tenure, composite; **"Open hiring board →"** jumps to the Screen stage via a parent callback — the leaderboard says *where* the bench is thin, the pipeline shows *who's available*); per-role cards with rank/tenure/composite rows and the red **weakest** chip; **dev-only ⚙ weights editor** persisting relative Ability/Drive/Integrity weights to `app_settings` `team_review_composite_weights_v1` (upsert; normalized on read). Client-only.
 
 ## Latest Updates (v2.953)
 
