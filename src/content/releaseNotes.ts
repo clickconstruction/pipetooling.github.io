@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.984',
+    date: '2026-07-23',
+    title: 'Jobs Stages tables readable on phones',
+    kind: 'fix',
+    highlights: [
+      'On phones the Stages tables no longer squeeze the Job column into an unreadable overlap — job names, addresses, and action icons each keep their own space (swipe the table sideways for the other columns).',
+      'The expanded Job activity / notes panel now stays fully on-screen even when the table is scrolled sideways.',
+    ],
+  },
+  {
     version: 'v2.983',
     date: '2026-07-23',
     title: 'Combine duplicate people',

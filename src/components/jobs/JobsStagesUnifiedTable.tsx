@@ -34,6 +34,7 @@ import type { UserRow } from '../../pages/Jobs'
 import {
   renderJobAddressWithMap,
   renderJobCustomerLine as renderJobCustomerLineWithCtx,
+  renderStagesExpandedRowPanel,
   renderStagesFieldAndBillingLines as renderStagesFieldAndBillingLinesWithCtx,
   renderStagesJobColumnEstimateFooter,
   renderStagesJobHcpSubline,
@@ -42,6 +43,7 @@ import {
   renderStagesTwoLineHeader,
   shouldSuppressStagesRowJobThreadToggle,
   stagesRowHasProjectBanner,
+  STAGES_TABLE_MIN_WIDTH,
   type StagesRowRenderContext,
 } from './jobsStagesRowShared'
 
@@ -305,8 +307,9 @@ export default function JobsStagesUnifiedTable(props: JobsStagesUnifiedTableProp
     <div style={{ border: '1px solid var(--border)', borderRadius: 4, overflowX: 'auto', WebkitOverflowScrolling: 'touch', minWidth: 0 }}>
       {/* tableLayout: fixed (v2.971, matching JobsStagesTable v2.967): widths come from the
           colgroup, never from content measurement — Billed/Collections rows loading or search
-          filtering used to re-measure auto layout and jitter the Job / Last activity columns. */}
-      <table style={{ width: '100%', minWidth: 700, borderCollapse: 'collapse', fontSize: '0.875rem', tableLayout: 'fixed' }}>
+          filtering used to re-measure auto layout and jitter the Job / Last activity columns.
+          minWidth must exceed the colgroup's sized total (see STAGES_TABLE_MIN_WIDTH). */}
+      <table style={{ width: '100%', minWidth: STAGES_TABLE_MIN_WIDTH, borderCollapse: 'collapse', fontSize: '0.875rem', tableLayout: 'fixed' }}>
         <colgroup>
           <col style={{ width: '9rem' }} />
           <col />
@@ -882,6 +885,7 @@ export default function JobsStagesUnifiedTable(props: JobsStagesUnifiedTableProp
                           borderBottom: '1px solid var(--border)',
                         }}
                       >
+                        {renderStagesExpandedRowPanel(
                         <JobThreadNotesPanel
                           pctComplete={j.pct_complete ?? null}
                           canEditPct={canEditJobPctComplete}
@@ -929,7 +933,8 @@ export default function JobsStagesUnifiedTable(props: JobsStagesUnifiedTableProp
                               : undefined
                           }
                           viewerRole={authRole}
-                        />
+                        />,
+                        )}
                       </td>
                     </tr>
                   )}
@@ -1275,6 +1280,7 @@ export default function JobsStagesUnifiedTable(props: JobsStagesUnifiedTableProp
                           borderBottom: '1px solid var(--border)',
                         }}
                       >
+                        {renderStagesExpandedRowPanel(
                         <JobThreadNotesPanel
                           pctComplete={job.pct_complete ?? null}
                           canEditPct={canEditJobPctComplete}
@@ -1322,7 +1328,8 @@ export default function JobsStagesUnifiedTable(props: JobsStagesUnifiedTableProp
                               : undefined
                           }
                           viewerRole={authRole}
-                        />
+                        />,
+                        )}
                       </td>
                     </tr>
                   )}

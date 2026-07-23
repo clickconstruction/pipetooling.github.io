@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-23 (v2.983)
+last_updated: 2026-07-23 (v2.984)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.984)
+
+### Jobs Stages: tables no longer collapse the Job column into a mash on phones; expanded notes panel stays on-screen (2026-07-23)
+The v2.967/v2.971 anti-jitter switch to `table-layout: fixed` had a phone-width side effect: both Stages tables' colgroups size four columns to a fixed 676px total and let the Job column take "the rest" — but at the old `minWidth: 700` the rest was **~24px**, so Job-column content (name link, address, customer) overflowed invisibly under the Activity column: mashed "JobActivity" headers, action icons drawn on top of job names. Fix in [`jobsStagesRowShared`](../src/components/jobs/jobsStagesRowShared.tsx): shared `STAGES_TABLE_MIN_WIDTH = 940` (Job column ≥ ~264px; the table scrolls sideways inside its own wrapper, page never overflows) used by both [`JobsStagesTable`](../src/components/jobs/JobsStagesTable.tsx) and [`JobsStagesUnifiedTable`](../src/components/jobs/JobsStagesUnifiedTable.tsx). Second half: the expanded **Job activity / notes** row spans the full 940px table, so scrolling right used to clip it half off-screen — new `renderStagesExpandedRowPanel` wraps all three panel sites in a `position: sticky; left: 0; max-width: calc(100vw - 2rem)` div that pins the panel to the visible strip at any horizontal scroll position. Verified on a 375px viewport: columns clean, panel fully visible while the table is scrolled to Progress & payment; desktop unchanged.
 
 ## Latest Updates (v2.983)
 
