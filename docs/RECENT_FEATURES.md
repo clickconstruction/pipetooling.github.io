@@ -7,8 +7,8 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-23 (v2.973)
-last_updated: 2026-07-23 (v2.973)
+last_updated: 2026-07-23 (v2.974)
+last_updated: 2026-07-23 (v2.974)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2046,6 +2046,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.974)
+
+### Crew P&L: sub labor gets its revenue share — equivalent-hours weighting (2026-07-23)
+Per-job subs (e.g. Jonathan Bartlett) previously showed cost with **zero revenue credit**: sub sheets pushed `billing: 0` with `jobId: null`, and revenue split over clocked crew hours only. Now ([`crewPnlSummary.ts`](../src/lib/crewPnlSummary.ts), +5 tests incl. the worked example): (1) sheets **link to jobs** by matching `job_number` against HCP **and** C#; (2) each sheet gets **effective hours** — real sheet hours when present, else `cost ÷ equivalent rate` (flagged `estimated`, the ≈ affordance); (3) those hours join the **same revenue-split denominator** as clocked crew — a $3,000 flat sheet at $30/hr weighs exactly like 100 clocked hours (50/50 on a mixed job, test-asserted), a sub-only job's revenue goes wholly to the sub, and the equal-split fallback yields to hours-weighting when subs carry hours. The **equivalent rate** is dev-tunable inline on the (dev-only) Crew P&L toolbar ("Sub $/hr eq.", `app_settings` `crew_pnl_sub_equivalent_rate_v1`, default `DEFAULT_SUB_LABOR_EQUIVALENT_RATE = 30`). Unlinked sheets keep today's cost-only behavior. `billingPerHour` now works for subs (revenue per equivalent hour).
 
 ## Latest Updates (v2.973)
 

@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.974',
+    date: '2026-07-23',
+    title: 'Crew P&L finally counts sub labor fairly',
+    kind: 'feature',
+    highlights: [
+      'Per-job subs now get their share of job revenue: a $3,000 flat job at the $30/hr equivalent rate weighs the same as 100 clocked hours.',
+      'Estimated shares are marked with ≈, and devs can tune the equivalent rate right on the Crew P&L toolbar.',
+    ],
+  },
+  {
     version: 'v2.973',
     date: '2026-07-23',
     title: 'Stages headers show compact totals',

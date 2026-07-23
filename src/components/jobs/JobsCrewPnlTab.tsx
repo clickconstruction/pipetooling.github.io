@@ -13,11 +13,13 @@ import {
   type CrewPnlRangePreset,
   type CrewPnlRosterPerson,
   type CrewPnlSubLaborInput,
+  DEFAULT_SUB_LABOR_EQUIVALENT_RATE,
 } from '../../lib/crewPnlSummary'
 import { laborJobSubCost } from '../../lib/jobs/subLaborCost'
 import { formatCurrency } from '../../lib/jobs/jobFormatting'
 import { formatDecimalWorkHoursToHhMm } from '../../lib/formatDecimalWorkHoursHhMm'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
+import { APP_SETTINGS_KEY_CREW_PNL_SUB_EQUIVALENT_RATE } from '../../lib/appSettingsKeys'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import type { LaborJob } from '../../types/laborJob'
@@ -68,6 +70,44 @@ export default function JobsCrewPnlTab({
   const [search, setSearch] = useState('')
   const [sortKey, setSortKey] = useState<SortKey>('profit')
   const [sortAsc, setSortAsc] = useState(false)
+  // v2.974: $/hr that converts a flat-rate sub sheet's cost into equivalent hours.
+  const [subEquivalentRate, setSubEquivalentRate] = useState<number>(DEFAULT_SUB_LABOR_EQUIVALENT_RATE)
+  const [rateDraft, setRateDraft] = useState('')
+  const [rateSaving, setRateSaving] = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+    void (async () => {
+      const { data } = await supabase
+        .from('app_settings')
+        .select('value_num')
+        .eq('key', APP_SETTINGS_KEY_CREW_PNL_SUB_EQUIVALENT_RATE)
+        .maybeSingle()
+      if (cancelled) return
+      const n = Number(data?.value_num)
+      if (Number.isFinite(n) && n > 0) setSubEquivalentRate(n)
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  async function saveEquivalentRate() {
+    if (rateSaving) return
+    const raw = rateDraft.trim()
+    const n = Number(raw)
+    const valueNum = raw !== '' && Number.isFinite(n) && n > 0 ? n : null
+    setRateSaving(true)
+    try {
+      const { error } = await supabase
+        .from('app_settings')
+        .upsert({ key: APP_SETTINGS_KEY_CREW_PNL_SUB_EQUIVALENT_RATE, value_num: valueNum }, { onConflict: 'key' })
+      if (error) throw error
+      setSubEquivalentRate(valueNum ?? DEFAULT_SUB_LABOR_EQUIVALENT_RATE)
+    } finally {
+      setRateSaving(false)
+    }
+  }
   const [expandedKeys, setExpandedKeys] = useState<Set<string>>(new Set())
 
   useEffect(() => {
@@ -113,8 +153,18 @@ export default function JobsCrewPnlTab({
       })),
       fallbackDate: j.last_work_date ?? null,
     }))
+    // Sheet job_number → jobs_ledger id: match the HCP number first, then the C#
+    // (sheets written against HCP-less jobs match via the C# since v2.962).
+    const jobIdByNumber = new Map<string, string>()
+    for (const j of jobs) {
+      const hcp = (j.hcp_number ?? '').trim().toLowerCase()
+      const click = (j.click_number ?? '').trim().toLowerCase()
+      if (hcp && !jobIdByNumber.has(hcp)) jobIdByNumber.set(hcp, j.id)
+      if (click && !jobIdByNumber.has(click)) jobIdByNumber.set(click, j.id)
+    }
     const subInputs: CrewPnlSubLaborInput[] = laborJobs.map((lj) => ({
       id: lj.id,
+      jobId: jobIdByNumber.get((lj.job_number ?? '').trim().toLowerCase()) ?? null,
       jobLabel: `Sub sheet ${lj.job_number?.trim() || lj.assigned_to_name || lj.id}`,
       jobDate: (lj.job_date ?? lj.created_at ?? '').slice(0, 10) || null,
       assignedNames: (lj.assigned_to_name ?? '')
@@ -133,8 +183,9 @@ export default function JobsCrewPnlTab({
       subLabor: subInputs,
       people,
       range,
+      subLaborEquivalentRate: subEquivalentRate,
     })
-  }, [people, jobs, laborJobs, teamLaborData, range, driveMileageCost, driveTimePerMile])
+  }, [people, jobs, laborJobs, teamLaborData, range, driveMileageCost, driveTimePerMile, subEquivalentRate])
 
   const visibleRows = useMemo(() => {
     if (!summary) return []
@@ -183,6 +234,23 @@ export default function JobsCrewPnlTab({
           <option value="this_year">This year</option>
           <option value="custom">Custom…</option>
         </select>
+        <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }} title="Flat-rate sub sheets count as cost ÷ this rate in equivalent hours — weighing a $3,000 sheet at $30/hr like 100 clocked hours">
+          Sub $/hr eq.
+          <input
+            type="number"
+            min={1}
+            value={rateDraft}
+            onChange={(e) => setRateDraft(e.target.value)}
+            onBlur={() => void saveEquivalentRate()}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') void saveEquivalentRate()
+            }}
+            placeholder={String(subEquivalentRate)}
+            aria-label="Sub labor equivalent hourly rate"
+            style={{ width: '4.5rem', padding: '0.35rem 0.45rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.8125rem', background: 'var(--surface)', color: 'var(--text-base)' }}
+          />
+          {rateSaving ? <span>…</span> : null}
+        </label>
         {preset === 'custom' && (
           <>
             <input

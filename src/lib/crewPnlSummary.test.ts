@@ -157,7 +157,8 @@ describe('buildCrewPnlSummary', () => {
       {
         id: 'lj1',
         jobLabel: 'sub 42',
-        jobDate: '2026-06-03',
+        jobId: null,
+      jobDate: '2026-06-03',
         assignedNames: ['mike z', 'Stray Person'],
         cost: 400,
         hours: 10,
@@ -204,5 +205,100 @@ describe('crewPnlRangeForPreset', () => {
     expect(crewPnlRangeForPreset('2026-07-12', 'this_quarter')).toEqual({ start: '2026-07-01', end: '2026-07-12' })
     expect(crewPnlRangeForPreset('2026-05-02', 'this_quarter')).toEqual({ start: '2026-04-01', end: '2026-05-02' })
     expect(crewPnlRangeForPreset('2026-07-12', 'this_year')).toEqual({ start: '2026-01-01', end: '2026-07-12' })
+  })
+})
+
+describe('sub labor revenue share via equivalent hours (v2.974)', () => {
+  const sub = (partial: Partial<CrewPnlSubLaborInput>): CrewPnlSubLaborInput => ({
+    id: 'sheet-1',
+    jobId: null,
+    jobLabel: 'Sub sheet 769',
+    jobDate: '2026-06-10',
+    assignedNames: ['Paige'],
+    cost: 3000,
+    hours: 0,
+    ...partial,
+  })
+  const crewRow = (jobId: string, hours: number, cost: number): CrewPnlTeamLaborInput => ({
+    jobId,
+    breakdown: [{ personName: 'Mike Z', byWorkDate: [{ workDate: '2026-06-10', hours, cost }] }],
+  })
+
+  it('the worked example: 100 clocked hours and a $3,000 flat sheet at $30/hr split revenue 50/50', () => {
+    const summary = buildCrewPnlSummary({
+      jobs: [job({ id: 'j1', revenue: 10_000 })],
+      teamLabor: [crewRow('j1', 100, 3000)],
+      subLabor: [sub({ jobId: 'j1' })],
+      people,
+      range: ALL,
+      subLaborEquivalentRate: 30,
+    })
+    const mike = summary.rows.find((r) => r.displayName === 'Mike Z')
+    const paige = summary.rows.find((r) => r.displayName === 'Paige')
+    expect(mike?.billing).toBeCloseTo(5000)
+    expect(paige?.billing).toBeCloseTo(5000)
+    expect(paige?.hours).toBeCloseTo(100) // imputed equivalent hours
+    expect(paige?.hasEstimatedBilling).toBe(true) // ≈ affordance
+    expect(mike?.hasEstimatedBilling).toBe(false)
+  })
+
+  it('a sub-only job gives its whole revenue to the sub', () => {
+    const summary = buildCrewPnlSummary({
+      jobs: [job({ id: 'j1', revenue: 4_500 })],
+      teamLabor: [],
+      subLabor: [sub({ jobId: 'j1', cost: 1500 })],
+      people,
+      range: ALL,
+      subLaborEquivalentRate: 30,
+    })
+    const paige = summary.rows.find((r) => r.displayName === 'Paige')
+    expect(paige?.billing).toBeCloseTo(4500)
+    expect(paige?.laborCost).toBeCloseTo(1500)
+    expect(paige?.profit).toBeCloseTo(3000)
+  })
+
+  it('real sheet hours win over imputation and are not flagged estimated', () => {
+    const summary = buildCrewPnlSummary({
+      jobs: [job({ id: 'j1', revenue: 8_000 })],
+      teamLabor: [crewRow('j1', 60, 1800)],
+      subLabor: [sub({ jobId: 'j1', cost: 3000, hours: 20 })],
+      people,
+      range: ALL,
+      subLaborEquivalentRate: 30,
+    })
+    const paige = summary.rows.find((r) => r.displayName === 'Paige')
+    expect(paige?.hours).toBeCloseTo(20)
+    expect(paige?.billing).toBeCloseTo(8000 * (20 / 80))
+    expect(paige?.hasEstimatedBilling).toBe(false)
+  })
+
+  it('unlinked sheets keep cost-only behavior (no billing) and imputed hours', () => {
+    const summary = buildCrewPnlSummary({
+      jobs: [job({ id: 'j1', revenue: 10_000 })],
+      teamLabor: [],
+      subLabor: [sub({ jobId: null })],
+      people,
+      range: ALL,
+      subLaborEquivalentRate: 30,
+    })
+    const paige = summary.rows.find((r) => r.displayName === 'Paige')
+    expect(paige?.billing).toBe(0)
+    expect(paige?.laborCost).toBeCloseTo(3000)
+    expect(paige?.hours).toBeCloseTo(100)
+  })
+
+  it('sub equivalent hours suppress the equal-split fallback on their job', () => {
+    const summary = buildCrewPnlSummary({
+      jobs: [job({ id: 'j1', revenue: 6_000, teamMembers: [{ userId: 'user-mike', userName: 'Mike Z' }], fallbackDate: '2026-06-10' })],
+      teamLabor: [],
+      subLabor: [sub({ jobId: 'j1', cost: 600 })],
+      people,
+      range: ALL,
+      subLaborEquivalentRate: 30,
+    })
+    const mike = summary.rows.find((r) => r.displayName === 'Mike Z')
+    const paige = summary.rows.find((r) => r.displayName === 'Paige')
+    expect(mike?.billing ?? 0).toBe(0) // no fallback share — hours-weighted world now
+    expect(paige?.billing).toBeCloseTo(6000)
   })
 })
