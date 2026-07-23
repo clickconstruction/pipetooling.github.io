@@ -144,11 +144,28 @@ export default function JobsCrewPnlTab({
   useEffect(() => {
     let cancelled = false
     void (async () => {
-      const { data, error } = await supabase
-        .from('jobs_ledger')
-        .select('id, hcp_number, click_number, job_name, revenue, last_work_date, team_members:jobs_ledger_team_members(user_id, users(name))')
-      if (cancelled) return
-      setAllJobs(error ? null : ((data ?? []) as unknown as CrewPnlAllJobRow[]))
+      // PAGINATED (v2.978): PostgREST caps responses at config max_rows (1000).
+      // A single fetch silently returned an arbitrary 1,000-job subset — most
+      // clock sessions then found no revenue and every profit went negative.
+      const PAGE = 1000
+      const acc: CrewPnlAllJobRow[] = []
+      for (let from = 0; ; from += PAGE) {
+        const { data, error } = await supabase
+          .from('jobs_ledger')
+          .select('id, hcp_number, click_number, job_name, revenue, last_work_date, team_members:jobs_ledger_team_members(user_id, users(name))')
+          .order('created_at', { ascending: true })
+          .range(from, from + PAGE - 1)
+        if (cancelled) return
+        if (error) {
+          // Partial data is WORSE than the cache fallback — discard on any page error.
+          setAllJobs(null)
+          return
+        }
+        const rows = (data ?? []) as unknown as CrewPnlAllJobRow[]
+        acc.push(...rows)
+        if (rows.length < PAGE) break
+      }
+      if (!cancelled) setAllJobs(acc)
     })()
     return () => {
       cancelled = true

@@ -7,8 +7,8 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-23 (v2.977)
-last_updated: 2026-07-23 (v2.977)
+last_updated: 2026-07-23 (v2.978)
+last_updated: 2026-07-23 (v2.978)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2046,6 +2046,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.978)
+
+### Crew P&L: all-negative profits fixed — the jobs fetch was silently capped at 1,000 rows (2026-07-23)
+The v2.976 self-loaded "complete" jobs list used a single fetch, which PostgREST caps at config `max_rows = 1000` — an **arbitrary 1,000-job subset**, so most clock sessions found no revenue and **every profit went negative**. [`JobsCrewPnlTab`](../src/components/jobs/JobsCrewPnlTab.tsx) now **paginates in 1000-row pages** (ordered by `created_at`, discards everything on any page error — partial data is worse than the cache fallback). Companion: new [`docs/CREW_PNL_DATA_FLOW.md`](./CREW_PNL_DATA_FLOW.md) mapping all six inputs, every transform, the kernel math, and the incident log (v2.976 lazy-cache gap, v2.978 row cap) — the "check the jobs-universe size first" runbook for next time.
 
 ## Latest Updates (v2.977)
 

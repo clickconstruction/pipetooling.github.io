@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.978',
+    date: '2026-07-23',
+    title: 'Crew P&L negative-profit bug fixed',
+    kind: 'fix',
+    highlights: [
+      'The jobs list behind Crew P&L was silently cut off at 1,000 rows, starving most people of revenue credit — it now loads every job.',
+    ],
+  },
+  {
     version: 'v2.977',
     date: '2026-07-23',
     title: 'Crew P&L weighs subs by dollars and audits sheet links',
