@@ -16,6 +16,7 @@ import {
   formatUsdNoCents,
   formatYmdOrIsoDateForPrintDisplay,
   jobSummaryPartsCostIsZero,
+  formatCurrencyAbbrevTruncated,
   personMatchesJobSummaryBreakdownFilter,
 } from './jobFormatting'
 
@@ -161,5 +162,18 @@ describe('formatJobNameTwoLines', () => {
   })
   it('returns single line when no comma', () => {
     expect(formatJobNameTwoLines('Smith Job')).toEqual({ line1: 'Smith Job' })
+  })
+})
+
+describe('formatCurrencyAbbrevTruncated', () => {
+  it('truncates — never rounds — with k/m units', () => {
+    expect(formatCurrencyAbbrevTruncated(144869.25)).toBe('144.8k')
+    expect(formatCurrencyAbbrevTruncated(144999.99)).toBe('144.9k')
+    expect(formatCurrencyAbbrevTruncated(1950)).toBe('1.9k')
+    expect(formatCurrencyAbbrevTruncated(1000)).toBe('1k')
+    expect(formatCurrencyAbbrevTruncated(1_250_000)).toBe('1.2m')
+    expect(formatCurrencyAbbrevTruncated(999.99)).toBe('999')
+    expect(formatCurrencyAbbrevTruncated(0)).toBe('0')
+    expect(formatCurrencyAbbrevTruncated(-144869.25)).toBe('-144.8k')
   })
 })

@@ -70,6 +70,22 @@ export function formatCurrency(n: number): string {
   return n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
+/**
+ * Abbreviated money for the Stages section headers (v2.973): "144.8k", "1.2m",
+ * "950" — TRUNCATED, never rounded ($144,869.25 → 144.8k, not 144.9k), sign
+ * preserved, trailing ".0" trimmed. Caller prefixes the "$".
+ */
+export function formatCurrencyAbbrevTruncated(n: number): string {
+  const v = Number.isFinite(n) ? n : 0
+  const sign = v < 0 ? '-' : ''
+  const abs = Math.abs(v)
+  if (abs < 1000) return `${sign}${Math.trunc(abs).toLocaleString('en-US')}`
+  const scaled = abs < 1_000_000 ? Math.trunc(abs / 100) / 10 : Math.trunc(abs / 100_000) / 10
+  const unit = abs < 1_000_000 ? 'k' : 'm'
+  const numText = (scaled % 1 === 0 ? String(Math.trunc(scaled)) : scaled.toFixed(1))
+  return `${sign}${numText}${unit}`
+}
+
 export function jobSummaryPartsCostIsZero(n: number): boolean {
   const x = Number(n)
   return Number.isFinite(x) && Math.abs(x) < 1e-6

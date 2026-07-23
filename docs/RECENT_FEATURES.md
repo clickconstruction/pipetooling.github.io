@@ -7,8 +7,8 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-23 (v2.972)
-last_updated: 2026-07-23 (v2.972)
+last_updated: 2026-07-23 (v2.973)
+last_updated: 2026-07-23 (v2.973)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2046,6 +2046,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.973)
+
+### Jobs Stages: section header totals abbreviate — truncated, never rounded (2026-07-23)
+"Waiting (39) - $144,869.25" becomes **"Waiting (39) - $144.8k"** across all five money-bearing section headers (Waiting, Working, Ready to Bill, Billed Awaiting Payment incl. its 30+/90+ aging sums, Collections). New kernel [`formatCurrencyAbbrevTruncated`](../src/lib/jobs/jobFormatting.ts) (8 test assertions): k/m units with one decimal **truncated** ($144,999.99 → 144.9k, never 145.0k), trailing ".0" trimmed, <$1k as whole dollars, sign preserved. Table cell amounts stay exact.
 
 ## Latest Updates (v2.972)
 
