@@ -200,6 +200,7 @@ export default function JobsCrewPnlTab({
     const subInputs: CrewPnlSubLaborInput[] = laborJobs.map((lj) => ({
       id: lj.id,
       jobId: jobIdByNumber.get((lj.job_number ?? '').trim().toLowerCase()) ?? null,
+      jobNumberText: lj.job_number ?? null,
       jobLabel: `Sub sheet ${lj.job_number?.trim() || lj.assigned_to_name || lj.id}`,
       jobDate: (lj.job_date ?? lj.created_at ?? '').slice(0, 10) || null,
       assignedNames: (lj.assigned_to_name ?? '')
@@ -377,11 +378,35 @@ export default function JobsCrewPnlTab({
               </tbody>
             </table>
           </div>
+          {summary.subLabor.total > 0 && (
+            <div style={{ margin: '0.6rem 0 0', fontSize: '0.8125rem' }}>
+              <span style={{ color: 'var(--text-700)' }}>
+                Sub labor: <strong>${formatCurrency(summary.subLabor.total)}</strong> in range ·{' '}
+                <strong>${formatCurrency(summary.subLabor.linkedTotal)}</strong> linked to jobs (
+                {Math.round((summary.subLabor.linkedTotal / summary.subLabor.total) * 100)}%)
+              </span>
+              {summary.subLabor.unlinkedSheets.length > 0 && (
+                <details style={{ marginTop: '0.25rem' }}>
+                  <summary style={{ cursor: 'pointer', color: 'var(--text-red-700)', fontSize: '0.8125rem' }}>
+                    {summary.subLabor.unlinkedSheets.length} unlinked sheet{summary.subLabor.unlinkedSheets.length === 1 ? '' : 's'} — no billing credit until the job # matches
+                  </summary>
+                  <ul style={{ margin: '0.25rem 0 0', paddingLeft: '1.2rem', color: 'var(--text-muted)', fontSize: '0.8125rem' }}>
+                    {summary.subLabor.unlinkedSheets.map((sheet) => (
+                      <li key={sheet.id}>
+                        Job # {sheet.jobNumberText ? `"${sheet.jobNumberText}"` : '(blank)'} · {sheet.assignedNames.join(', ') || '—'} · ${formatCurrency(sheet.cost)}
+                      </li>
+                    ))}
+                  </ul>
+                </details>
+              )}
+            </div>
+          )}
           <p style={{ color: 'var(--text-faint)', fontSize: '0.6875rem', margin: '0.5rem 0 0' }}>
-            Billing credit is weighted by clocked crew hours (job total × person's share of the
-            job's hours). ≈ marks equal-split estimates for jobs with no clocked hours. Sub-sheet
-            labor is split evenly across its assigned names. The date range filters work dates;
-            billing follows the hours worked in the range.
+            Billing credit is hours-weighted: clocked hours for crew, and for sub sheets their cost ÷
+            the Sub $/hr rate ("equivalent hours" — always ≈, sheet unit-hours are display-only).
+            ≈ also marks equal-split estimates for jobs with no hours at all. Sub-sheet labor and
+            credit split evenly across assigned names; unlinked sheets carry cost but no credit.
+            The date range filters work dates; billing follows the hours worked in the range.
           </p>
         </>
       )}
@@ -416,6 +441,14 @@ function CrewPnlRow({
               style={{ marginLeft: '0.4rem', fontSize: '0.6875rem', color: 'var(--text-amber-700)' }}
             >
               unmatched
+            </span>
+          )}
+          {row.unlinkedSubCost > 0 && (
+            <span
+              title="Sub-sheet dollars whose job number matched no job — cost counted, no billing credit. Fix the sheet's job # (see the audit below the table)."
+              style={{ marginLeft: '0.4rem', fontSize: '0.6875rem', color: 'var(--text-red-700)' }}
+            >
+              ${formatCurrency(row.unlinkedSubCost)} unlinked
             </span>
           )}
         </td>
