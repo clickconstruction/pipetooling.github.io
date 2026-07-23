@@ -32,6 +32,7 @@
 | [`MATERIALS_TABS_ARCHITECTURE.md`](./MATERIALS_TABS_ARCHITECTURE.md) | Same map for `src/pages/Materials.tsx` (written proactively — low-churn, no extraction scheduled). |
 | [`SETTINGS_TABS_ARCHITECTURE.md`](./SETTINGS_TABS_ARCHITECTURE.md) | Same map for `src/pages/Settings.tsx` (documents what's already extracted + what remains). |
 | [`PAGE_DECOMPOSITION_PLAYBOOK.md`](./PAGE_DECOMPOSITION_PLAYBOOK.md) | The method for breaking down god components + current large-file inventory. Start here for extraction work. |
+| [`CREW_PNL_DATA_FLOW.md`](./CREW_PNL_DATA_FLOW.md) | Crew P&L inputs/transforms/outputs + incident log (partial-data failures). |
 | [`SALARY_CLOCK_SESSIONS.md`](./SALARY_CLOCK_SESSIONS.md) | Salaried auto-session sync behavior runbook. |
 | [`TIME_AND_ZONES.md`](./TIME_AND_ZONES.md) | Company timezone rules (`APP_CALENDAR_TZ`), instants vs wall-clock. |
 | [`WORKFLOW_FEATURES.md`](./WORKFLOW_FEATURES.md) | Workflow page: stage management, line items, financials. |
