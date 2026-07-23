@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.956',
+    date: '2026-07-22',
+    title: 'PO job step says where its list comes from',
+    kind: 'fix',
+    highlights: [
+      'The phone PO screen\'s first step now reads "Job (On schedule today)" — the quick picks are today\'s scheduled jobs; anything else is a search away.',
+    ],
+  },
+  {
     version: 'v2.955',
     date: '2026-07-22',
     title: 'Tidy the PO pickers with an Other bucket',

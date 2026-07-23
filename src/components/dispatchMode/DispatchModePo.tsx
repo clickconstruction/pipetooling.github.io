@@ -403,7 +403,7 @@ export default function DispatchModePo() {
     <div style={{ padding: '0.75rem', display: 'flex', flexDirection: 'column' }}>
       <h1 style={{ margin: 0, fontSize: '1.1rem', color: 'var(--text-strong)', textAlign: 'center' }}>PO</h1>
 
-      {stepLabel(1, 'Job')}
+      {stepLabel(1, 'Job (On schedule today)')}
       {job ? (
         <button type="button" onClick={() => setJob(null)} style={{ ...chipStyle(true), textAlign: 'left' }}>
           {(buildServiceTypeTradePill(job.serviceTypeName)?.label ?? '').toUpperCase()} {job.hcpNumber?.trim() || '—'} · {job.jobName}
