@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-23 (v2.986)
+last_updated: 2026-07-23 (v2.987)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.987)
+
+### Jobs Stages: Billed Awaiting Payment header stacks into three rows on phones (2026-07-23)
+On a phone the section header crammed the title, the aging summary, and the Accounts Receivable + Print buttons into one flex row: the title block had `flex: 1; min-width: 0` while both buttons were `flex-shrink: 0`, so the title shrank instead of the buttons wrapping — "Billed Awaiting Payment (48) - $165.8k" broke across three ragged lines with the buttons jammed alongside. [`JobsStagesTab`](../src/components/jobs/JobsStagesTab.tsx) now uses [`useIsMobile`](../src/hooks/useIsMobile.ts) (≤640px): the header container and its title/aging child both switch to `flexDirection: column`, and AR + Print gained a shared flex-row wrapper so they stay side by side rather than each becoming its own stacked row. Result on a phone — row 1 title, row 2 aging summary, row 3 the two buttons. Above 640px the wrapper is inert and the layout is byte-for-byte the old single row (verified at 1280px: title block 966px left, buttons 250px right, same line).
 
 ## Latest Updates (v2.986)
 

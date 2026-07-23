@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.987',
+    date: '2026-07-23',
+    title: 'Billed Awaiting Payment header reads cleanly on phones',
+    kind: 'fix',
+    highlights: [
+      'On phones the Billed Awaiting Payment heading now stacks into three tidy rows — the title, the 30+/90+ day summary, then the Accounts Receivable and Print buttons — instead of squeezing the title into a jumble.',
+    ],
+  },
+  {
     version: 'v2.986',
     date: '2026-07-23',
     title: 'App updates flowing again',
