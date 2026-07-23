@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-22 (v2.954)
+last_updated: 2026-07-22 (v2.955)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.955)
+
+### Dispatch Mode PO: "Other" buckets for the For and Supply house pickers (2026-07-22)
+Mobile declutter for the phone PO flow: both chip lists gain a company-wide **Other** bucket. **Hold** (≥450ms, the Quick Assign release-measured pattern — cancel-safe, trailing click swallowed) any chip → a confirm modal with a new **slide-to-confirm** control ([`SwipeToConfirm.tsx`](../src/components/shared/SwipeToConfirm.tsx), drag ≥85% of the track — accidental-tap-proof by construction) moves it under the **Other (N)** chip at the end of the list. **Tap Other (N)** → bottom sheet listing the demoted options: tap one to use it for this PO, hold one to slide it back to the main list. **Today's crew on the picked job never hides under Other** (the crew-first pick stays one tap). Migration [`20260722256000_dispatch_po_other_items.sql`](../supabase/migrations/20260722256000_dispatch_po_other_items.sql): `dispatch_po_other_items` (kind `for_person`|`supply_house` + `item_id`, UNIQUE pair, read-only-block footers) — **any authenticated user can read/insert/delete** (deliberate: move-only, no destructive path; recorded in ACCESS_CONTROL.md). Client loads flags additively (missing table → no buckets), so deploy order is safe. Kernel [`dispatchPoOther.ts`](../src/lib/dispatchPoOther.ts) (partition + crew override, 4 tests). Help guide `dispatch-mode.md` updated.
 
 ## Latest Updates (v2.954)
 

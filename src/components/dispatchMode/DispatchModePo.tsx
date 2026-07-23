@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
 import { useToastContext } from '../../contexts/ToastContext'
@@ -6,6 +6,9 @@ import { withSupabaseRetry, formatErrorMessage } from '../../utils/errorHandling
 import { denverCalendarDayKey } from '../../utils/dateUtils'
 import { fetchDispatchModeDayBlocks, type DispatchModeAgendaBlock } from '../../lib/dispatchModeSchedule'
 import { buildServiceTypeTradePill } from '../../lib/serviceTypeTradePill'
+import SwipeToConfirm from '../shared/SwipeToConfirm'
+import { PO_LONG_PRESS_MS, otherIdSet, partitionByOther } from '../../lib/dispatchPoOther'
+import type { DispatchPoOtherKind, DispatchPoOtherRow } from '../../lib/dispatchPoOther'
 
 /**
  * Dispatch Mode → PO tab (gear-menu opt-in): mint a material PO code from a
@@ -90,6 +93,76 @@ export default function DispatchModePo() {
   const [generating, setGenerating] = useState(false)
   const [result, setResult] = useState<PoResult | null>(null)
 
+  // "Other" buckets (v2.955): company-wide demotion flags for the For / Supply house pickers.
+  const [otherRows, setOtherRows] = useState<DispatchPoOtherRow[]>([])
+  const [otherListOpen, setOtherListOpen] = useState<DispatchPoOtherKind | null>(null)
+  const [moveTarget, setMoveTarget] = useState<{ kind: DispatchPoOtherKind; id: string; name: string; direction: 'to-other' | 'to-main' } | null>(null)
+  const [moving, setMoving] = useState(false)
+  const pressStartRef = useRef<number | null>(null)
+  const longPressFiredRef = useRef(false)
+
+  // Long-press fires ON RELEASE (matches Quick Assign): opening a modal
+  // mid-hold would put it under the pointer; pointercancel clears mid-scroll.
+  const longPressHandlers = (kind: DispatchPoOtherKind, id: string, name: string, direction: 'to-other' | 'to-main') => ({
+    onPointerDown: () => {
+      longPressFiredRef.current = false
+      pressStartRef.current = Date.now()
+    },
+    onPointerUp: () => {
+      const start = pressStartRef.current
+      pressStartRef.current = null
+      if (start != null && Date.now() - start >= PO_LONG_PRESS_MS) {
+        longPressFiredRef.current = true
+        setMoveTarget({ kind, id, name, direction })
+      }
+    },
+    onPointerLeave: () => {
+      pressStartRef.current = null
+    },
+    onPointerCancel: () => {
+      pressStartRef.current = null
+    },
+    onContextMenu: (e: { preventDefault: () => void }) => e.preventDefault(),
+  })
+
+  /** True once per long-press: the click that follows it must not also select. */
+  const consumeLongPress = () => {
+    if (longPressFiredRef.current) {
+      longPressFiredRef.current = false
+      return true
+    }
+    return false
+  }
+
+  const loadOtherRows = useCallback(async () => {
+    // Additive UI — a load error (e.g. migration not applied yet) just means no Other buckets.
+    const { data, error } = await supabase.from('dispatch_po_other_items').select('id, kind, item_id')
+    setOtherRows(error ? [] : ((data ?? []) as DispatchPoOtherRow[]))
+  }, [])
+
+  /** Move an option into or out of Other (insert/delete — no destructive path). */
+  async function executeMove(target: { kind: DispatchPoOtherKind; id: string; direction: 'to-other' | 'to-main' }) {
+    if (moving) return
+    setMoving(true)
+    try {
+      if (target.direction === 'to-other') {
+        const { error } = await supabase
+          .from('dispatch_po_other_items')
+          .upsert({ kind: target.kind, item_id: target.id, created_by: authUser?.id ?? null }, { onConflict: 'kind,item_id' })
+        if (error) throw error
+      } else {
+        const { error } = await supabase.from('dispatch_po_other_items').delete().eq('kind', target.kind).eq('item_id', target.id)
+        if (error) throw error
+      }
+      await loadOtherRows()
+      setMoveTarget(null)
+    } catch (e) {
+      showToast(formatErrorMessage(e, 'Failed to move'), 'error')
+    } finally {
+      setMoving(false)
+    }
+  }
+
   const loadLedger = useCallback(async () => {
     setLedgerLoading(true)
     try {
@@ -117,6 +190,7 @@ export default function DispatchModePo() {
 
   useEffect(() => {
     void loadLedger()
+    void loadOtherRows()
     void fetchDispatchModeDayBlocks(todayYmd).then(({ data }) => setTodayBlocks(data))
     void withSupabaseRetry(
       () => supabase.from('supply_houses').select('id, name').order('name'),
@@ -155,7 +229,7 @@ export default function DispatchModePo() {
         ),
       )
       .catch(() => setPeople([]))
-  }, [todayYmd, authUser?.id, loadLedger])
+  }, [todayYmd, authUser?.id, loadLedger, loadOtherRows])
 
   // Job search (debounced) via the same RPC the desktop PO Generator uses.
   useEffect(() => {
@@ -226,6 +300,17 @@ export default function DispatchModePo() {
     const onJob = new Set(todayBlocks.filter((b) => b.jobId === job.id).map((b) => b.assigneeUserId))
     return [...people.filter((p) => onJob.has(p.id)), ...people.filter((p) => !onJob.has(p.id))]
   }, [people, job, todayBlocks])
+
+  /** Main vs Other split for the For picker; today's crew on the picked job never hides under Other. */
+  const peoplePartition = useMemo(() => {
+    const crewIds = job ? new Set(todayBlocks.filter((b) => b.jobId === job.id).map((b) => b.assigneeUserId)) : undefined
+    return partitionByOther(orderedPeople, otherIdSet(otherRows, 'for_person'), crewIds)
+  }, [orderedPeople, otherRows, job, todayBlocks])
+
+  const supplyHousePartition = useMemo(
+    () => partitionByOther(supplyHouses, otherIdSet(otherRows, 'supply_house')),
+    [supplyHouses, otherRows],
+  )
 
   async function generate() {
     if (!job || !person || generating) return
@@ -363,20 +448,52 @@ export default function DispatchModePo() {
 
       {stepLabel(2, 'For')}
       <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
-        {orderedPeople.map((p) => (
-          <button key={p.id} type="button" onClick={() => setPerson(person?.id === p.id ? null : p)} aria-pressed={person?.id === p.id} style={chipStyle(person?.id === p.id)}>
+        {peoplePartition.main.map((p) => (
+          <button
+            key={p.id}
+            type="button"
+            onClick={() => {
+              if (consumeLongPress()) return
+              setPerson(person?.id === p.id ? null : p)
+            }}
+            aria-pressed={person?.id === p.id}
+            title="Hold to move to Other"
+            style={{ ...chipStyle(person?.id === p.id), touchAction: 'manipulation', userSelect: 'none', WebkitUserSelect: 'none' }}
+            {...longPressHandlers('for_person', p.id, p.name, 'to-other')}
+          >
             {p.name}
           </button>
         ))}
+        {peoplePartition.other.length > 0 && (
+          <button type="button" onClick={() => setOtherListOpen('for_person')} style={{ ...chipStyle(false), color: 'var(--text-muted)' }}>
+            Other ({peoplePartition.other.length})
+          </button>
+        )}
       </div>
 
       {stepLabel(3, 'Supply house (optional)')}
       <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
-        {supplyHouses.map((s) => (
-          <button key={s.id} type="button" onClick={() => setSupplyHouse(supplyHouse?.id === s.id ? null : s)} aria-pressed={supplyHouse?.id === s.id} style={chipStyle(supplyHouse?.id === s.id)}>
+        {supplyHousePartition.main.map((s) => (
+          <button
+            key={s.id}
+            type="button"
+            onClick={() => {
+              if (consumeLongPress()) return
+              setSupplyHouse(supplyHouse?.id === s.id ? null : s)
+            }}
+            aria-pressed={supplyHouse?.id === s.id}
+            title="Hold to move to Other"
+            style={{ ...chipStyle(supplyHouse?.id === s.id), touchAction: 'manipulation', userSelect: 'none', WebkitUserSelect: 'none' }}
+            {...longPressHandlers('supply_house', s.id, s.name, 'to-other')}
+          >
             {s.name}
           </button>
         ))}
+        {supplyHousePartition.other.length > 0 && (
+          <button type="button" onClick={() => setOtherListOpen('supply_house')} style={{ ...chipStyle(false), color: 'var(--text-muted)' }}>
+            Other ({supplyHousePartition.other.length})
+          </button>
+        )}
       </div>
 
       {stepLabel(4, 'Note (optional)')}
@@ -430,6 +547,84 @@ export default function DispatchModePo() {
             </li>
           ))}
         </ul>
+      )}
+
+      {otherListOpen && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Other options"
+          onClick={() => setOtherListOpen(null)}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 1010, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{ width: '100%', maxWidth: 480, maxHeight: '70vh', overflowY: 'auto', background: 'var(--surface)', borderRadius: '12px 12px 0 0', padding: '1rem', boxSizing: 'border-box' }}
+          >
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', marginBottom: '0.6rem' }}>
+              <span style={{ fontWeight: 700 }}>Other {otherListOpen === 'for_person' ? 'people' : 'supply houses'}</span>
+              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>tap to use · hold to move back to the main list</span>
+              <button type="button" onClick={() => setOtherListOpen(null)} aria-label="Close" style={{ marginLeft: 'auto', background: 'none', border: 'none', fontSize: '1.1rem', color: 'var(--text-muted)', cursor: 'pointer', padding: 0 }}>
+                ✕
+              </button>
+            </div>
+            <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+              {(otherListOpen === 'for_person' ? peoplePartition.other : supplyHousePartition.other).map((item) => {
+                const selected = otherListOpen === 'for_person' ? person?.id === item.id : supplyHouse?.id === item.id
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => {
+                      if (consumeLongPress()) return
+                      if (otherListOpen === 'for_person') setPerson(item as PoPersonPick)
+                      else setSupplyHouse(item as PoSupplyHousePick)
+                      setOtherListOpen(null)
+                    }}
+                    aria-pressed={selected}
+                    title="Hold to move back to the main list"
+                    style={{ ...chipStyle(selected), touchAction: 'manipulation', userSelect: 'none', WebkitUserSelect: 'none' }}
+                    {...longPressHandlers(otherListOpen, item.id, item.name, 'to-main')}
+                  >
+                    {item.name}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {moveTarget && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Confirm move"
+          onClick={() => (moving ? null : setMoveTarget(null))}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 1011, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}
+        >
+          <div onClick={(e) => e.stopPropagation()} style={{ width: '100%', maxWidth: 380, background: 'var(--surface)', borderRadius: 12, padding: '1rem', boxSizing: 'border-box' }}>
+            <p style={{ margin: '0 0 0.25rem', fontWeight: 700 }}>
+              {moveTarget.direction === 'to-other' ? `Move ${moveTarget.name} to Other?` : `Move ${moveTarget.name} back to the main list?`}
+            </p>
+            <p style={{ margin: '0 0 0.75rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+              This changes the list for everyone. Nothing is deleted — it can always be moved back.
+            </p>
+            <SwipeToConfirm
+              label={moving ? 'Moving…' : moveTarget.direction === 'to-other' ? 'Slide to move to Other' : 'Slide to move back'}
+              disabled={moving}
+              onConfirm={() => void executeMove(moveTarget)}
+            />
+            <button
+              type="button"
+              onClick={() => setMoveTarget(null)}
+              disabled={moving}
+              style={{ marginTop: '0.75rem', width: '100%', padding: '0.6rem', background: 'none', color: 'var(--text-muted)', border: '1px solid var(--border)', borderRadius: 8, cursor: moving ? 'not-allowed' : 'pointer', fontWeight: 600 }}
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
       )}
     </div>
   )

@@ -105,6 +105,12 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 #### July 22, 2026
 
+**`20260722256000_dispatch_po_other_items.sql`** _(apply via `supabase db push` after the file is on `main`)_
+- **Purpose**: Dispatch PO "Other" buckets (v2.955) — `dispatch_po_other_items` (kind `for_person`|`supply_house`, `item_id`, UNIQUE pair): company-wide demotion flags for the Dispatch Mode PO pickers.
+- **Security**: RLS — **any authenticated user** may SELECT/INSERT/DELETE (deliberate: move-only categorization, no update path, no data loss). CREATE TABLE ends with both read-only-block calls.
+- **Ordering**: any order — the client treats a missing table as "no Other buckets".
+- **Category**: Dispatch / feature
+
 **`20260722254000_team_member_start_dates.sql`** _(apply via `supabase db push` after the file is on `main`)_
 - **Purpose**: Team member tenure (v2.951) — SECURITY DEFINER RPC `list_team_member_start_dates()`: per active user, `people.start_date` (account link first, then trimmed-name match) or earliest approved clock-session `work_date`. Feeds "time at company" on Reflect cards.
 - **Security**: zero rows without `user_has_prospects_staff_access()` (v2.914 no-raise pattern); EXECUTE revoked from anon. No table changes.

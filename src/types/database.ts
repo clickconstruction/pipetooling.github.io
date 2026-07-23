@@ -2568,6 +2568,38 @@ export type Database = {
           },
         ]
       }
+      dispatch_po_other_items: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          id: string
+          item_id: string
+          kind: string
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          item_id: string
+          kind: string
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          item_id?: string
+          kind?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dispatch_po_other_items_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       dispatch_request_dismissals: {
         Row: {
           dismissed_at: string

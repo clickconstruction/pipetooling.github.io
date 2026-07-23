@@ -889,6 +889,10 @@ master_user_id = auth.uid()
 
 ## Special Relationships
 
+### Dispatch PO "Other" buckets — any-authenticated writes (v2.955)
+
+`dispatch_po_other_items` (Dispatch Mode → PO picker demotion flags) deliberately lets **any authenticated user** SELECT/INSERT/DELETE: the table is pure company-wide categorization (a row = "this person/supply house lives under Other"), there is no UPDATE path, and moving an item back is the undo — no destructive action exists. This is the app's loosest write policy; do not copy it for tables holding real data.
+
 ### Project Owner Follows Customer
 
 **Rule**: `projects.master_user_id` always matches `customers.master_user_id`
