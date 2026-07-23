@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-23 (v2.984)
+last_updated: 2026-07-23 (v2.985)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.985)
+
+### Dispatch/Job Mode footer hides while the mobile keyboard is open (2026-07-23)
+The bottom tab bar (Dashboard / Schedule / Inbox / Customers) is `position: fixed`, which anchors to the *layout* viewport — so when the on-screen keyboard opened it floated mid-screen (iOS pans the visual viewport) or rode on top of the keyboard (Android resizes it). Now it slides out of view while typing, native-app style. New kernel [`onScreenKeyboardOcclusion.ts`](../src/lib/onScreenKeyboardOcclusion.ts) (8 tests): keyboard = `window.innerHeight − visualViewport.height × visualViewport.scale ≥ 150px` — the scale factor keeps pinch-zoom (height shrinks but scale rises; product unchanged) and browser-chrome collapse (both sides move together) from false-positiving. New hook [`useOnScreenKeyboardOpen`](../src/hooks/useOnScreenKeyboardOpen.ts) (visualViewport + window resize listeners; false where `visualViewport` is unsupported) consumed by [`DispatchModeFooter`](../src/components/dispatchMode/DispatchModeFooter.tsx): `translateY(calc(100% + 1px))` + 0.15s ease, `pointer-events: none`, `aria-hidden`. Verified live at 375px by faking the viewport gap: bar slides fully off-screen and returns when the gap closes. Known residual: the bar can still drift under pinch-zoom or on any page that overflows sideways (layout-viewport anchoring) — fixing remaining overflow pages fixes the drift per page.
 
 ## Latest Updates (v2.984)
 

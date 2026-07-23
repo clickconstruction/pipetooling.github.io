@@ -2,6 +2,7 @@ import type { CSSProperties, ReactNode } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useDispatchInbox } from '../../hooks/useDispatchInbox'
 import { useEstimatorInbox } from '../../hooks/useEstimatorInbox'
+import { useOnScreenKeyboardOpen } from '../../hooks/useOnScreenKeyboardOpen'
 
 export const DISPATCH_MODE_FOOTER_HEIGHT_PX = 60
 
@@ -133,6 +134,7 @@ export function DispatchModeFooter({
 }) {
   const navigate = useNavigate()
   const location = useLocation()
+  const keyboardOpen = useOnScreenKeyboardOpen()
   const active = activeTabForPath(location.pathname, variant)
   const TABS =
     variant === 'job'
@@ -144,6 +146,7 @@ export function DispatchModeFooter({
   return (
     <nav
       aria-label={variant === 'job' ? 'Job Mode tabs' : 'Dispatch Mode tabs'}
+      aria-hidden={keyboardOpen || undefined}
       style={{
         position: 'fixed',
         left: 0,
@@ -156,6 +159,12 @@ export function DispatchModeFooter({
         paddingBottom: 'env(safe-area-inset-bottom)',
         background: 'var(--chrome-bg)',
         borderTop: '1px solid var(--chrome-border)',
+        // Slide out of view while the mobile keyboard is up: position: fixed
+        // anchors to the layout viewport, so the bar would otherwise float
+        // mid-screen (iOS pans) or ride on top of the keyboard (Android).
+        transform: keyboardOpen ? 'translateY(calc(100% + 1px))' : undefined,
+        transition: 'transform 0.15s ease',
+        pointerEvents: keyboardOpen ? 'none' : undefined,
       }}
     >
       {TABS.map((tab) => {
