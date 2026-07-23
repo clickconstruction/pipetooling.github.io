@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-22 (v2.956)
+last_updated: 2026-07-22 (v2.957)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.957)
+
+### Dispatch Mode PO: selection polish — Other picks collapse, orange ring, hold-to-sort hint (2026-07-22)
+Three refinements to the PO pickers ([`DispatchModePo.tsx`](../src/components/dispatchMode/DispatchModePo.tsx)): (1) picking a person/supply house **from the Other sheet** now collapses that row to just the selected name ("— tap to change"; hold still offers move-back-to-main) — previously an Other pick was invisible in the list; deselecting restores the full list. (2) **Selected chips get a 2px orange ring** (`#f97316`, the app's theme orange; padding compensates the border so chips don't shift) replacing the blue tint — applies to the Job/For/Supply chips alike. (3) A muted **"Hold down a name to sort it into Other"** hint sits under the PO title so the long-press affordance is discoverable. Client-only, no schema changes.
 
 ## Latest Updates (v2.956)
 
