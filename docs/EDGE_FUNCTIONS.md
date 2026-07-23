@@ -1610,13 +1610,14 @@ Per-recipient **`activity_scope`** + **`crew_filter`** + **`include_costs`** (fr
 
 ### paid-job-email
 
-**Purpose**: "Customer paid" notifications (v2.965) — when a `jobs_ledger` row hits **`status = 'paid'`**, the `enqueue_paid_job_email()` DB trigger queues a `paid_job_email_queue` row; this function drains the queue and emails the configured recipients. **dev / master_technician** recipients get the **DETAILED** financial review (PAID IN FULL badge, Job Start / Last Work dates, Revenue / Payments / Costs / Profit scoreboard with per-person team-labor rows, monthly labor/parts/payments timeline); everyone else gets the **STERILIZED** summary — job identity + dates, **zero dollar figures**. Money math comes from the service-role-only RPC **`get_paid_job_email_payload(p_job_id)`**. Renderers live in [`paid-job-email/render.ts`](../supabase/functions/paid-job-email/render.ts).
+**Purpose**: "Customer paid" notifications (v2.965) — when a `jobs_ledger` row hits **`status = 'paid'`**, the `enqueue_paid_job_email()` DB trigger queues a `paid_job_email_queue` row; this function drains the queue and emails the configured recipients. **dev / master_technician** recipients get the **DETAILED** financial review (PAID IN FULL badge, Job Start / Last Work dates, Revenue / Payments / Costs / Profit scoreboard with per-person team-labor rows, monthly labor/parts/payments timeline); everyone else gets the **STERILIZED** summary — job identity + dates, **the exact paid amount/time (v2.969) but no cost or profit figures**. Money math comes from the service-role-only RPC **`get_paid_job_email_payload(p_job_id)`**. Renderers live in [`paid-job-email/render.ts`](../supabase/functions/paid-job-email/render.ts).
 
 **Endpoint**: `POST /functions/v1/paid-job-email`
 
 **Three modes** (JSON body):
 - `{ "mode": "preview", "job_id": "<uuid>", "variant": "detailed" | "summary" }` — Bearer JWT, role **dev/master_technician** (non-archived); returns `{ "html": "..." }`. No DB writes, no send.
 - `{ "mode": "test_send", "job_id": "<uuid>" }` — same role gate; sends the **detailed** variant via Resend to the **caller's own `users.email` only**, subject prefixed **`[TEST]`**.
+- `{ "mode": "send_to", "job_id": "<uuid>", "recipient_user_id": "<uuid>" }` (v2.970) — same role gate; sends the **real** email (no `[TEST]`) to the chosen **active** user; the **recipient's role** picks detailed vs sterilized, and both variants carry a *"Sent manually by {sender}"* footer. Driven by the Job Detail ✉ modal.
 - cron (no `mode` or `{ "mode": "dispatch" }`) — **`X-Cron-Secret`** (or body `cron_secret`) must equal **`CRON_SECRET`**. Loads pending queue rows (`sent_at IS NULL`, `attempts < 5`, limit 20); per row fetches the payload, loads recipients from `app_settings` key **`paid_job_email_recipients_v1`** (JSON array of user ids) joined to non-archived `users`, sends detailed vs summary by role, stamps `sent_at` on success or bumps `error`/`attempts`. **Empty recipient list stamps `sent_at` with `no recipients configured`** so rows never retry forever.
 
 **Success (cron)**: `{ "ok": true, "processed": n, "sent": k, "errors": [] }`

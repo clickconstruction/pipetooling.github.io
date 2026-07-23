@@ -10,6 +10,7 @@ import {
   serializePaidJobEmailRecipients,
 } from '../../lib/paidJobEmail'
 import { APP_SETTINGS_KEY_PAID_JOB_EMAIL_RECIPIENTS } from '../../lib/appSettingsKeys'
+import { fetchPaidJobEmailPreview, openHtmlInNewTab, sendPaidJobEmailTest } from '../../lib/paidJobEmailClient'
 import { isAssistantLike } from '../../lib/subcontractorLikeRole'
 
 /**
@@ -45,18 +46,6 @@ function isOfficeCapableRole(role: string | null): boolean {
   return role === 'dev' || role === 'master_technician' || isAssistantLike(role) || role === 'primary'
 }
 
-function openHtmlInNewTab(html: string) {
-  const w = window.open('', '_blank')
-  if (w) {
-    w.document.write(html)
-    w.document.close()
-    return
-  }
-  // Popup-blocked fallback: Blob URL.
-  const url = URL.createObjectURL(new Blob([html], { type: 'text/html' }))
-  window.open(url, '_blank')
-  setTimeout(() => URL.revokeObjectURL(url), 60_000)
-}
 
 export default function PaidInFullEmailSettingsModal({ onClose }: { onClose: () => void }) {
   const { role: authRole } = useAuth()
@@ -182,13 +171,7 @@ export default function PaidInFullEmailSettingsModal({ onClose }: { onClose: () 
     if (!pickedJob || previewBusy) return
     setPreviewBusy(variant)
     try {
-      const { data, error } = await supabase.functions.invoke('paid-job-email', {
-        body: { mode: 'preview', job_id: pickedJob.id, variant },
-      })
-      if (error) throw error
-      const html = (data as { html?: string } | null)?.html
-      if (!html) throw new Error((data as { error?: string } | null)?.error || 'No HTML returned')
-      openHtmlInNewTab(html)
+      openHtmlInNewTab(await fetchPaidJobEmailPreview(pickedJob.id, variant))
     } catch (e) {
       showToast(formatErrorMessage(e, 'Preview failed'), 'error')
     } finally {
@@ -200,13 +183,7 @@ export default function PaidInFullEmailSettingsModal({ onClose }: { onClose: () 
     if (!pickedJob || previewBusy) return
     setPreviewBusy('test')
     try {
-      const { data, error } = await supabase.functions.invoke('paid-job-email', {
-        body: { mode: 'test_send', job_id: pickedJob.id },
-      })
-      if (error) throw error
-      if ((data as { success?: boolean } | null)?.success !== true) {
-        throw new Error((data as { error?: string } | null)?.error || 'Send failed')
-      }
+      await sendPaidJobEmailTest(pickedJob.id)
       showToast('Test email sent to your address.', 'success')
     } catch (e) {
       showToast(formatErrorMessage(e, 'Test send failed'), 'error')

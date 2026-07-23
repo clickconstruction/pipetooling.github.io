@@ -38,6 +38,7 @@ import { useJobFormModal } from '../../contexts/JobFormModalContext'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useUpdateFocusOpenerBridge } from '../../contexts/UpdateFocusOpenerBridgeContext'
 import { useAuth, type UserRole } from '../../hooks/useAuth'
+import PaidJobEmailSendModal from './PaidJobEmailSendModal'
 import { useBodyScrollLock } from '../../hooks/useBodyScrollLock'
 import { useNarrowViewport640 } from '../../hooks/useNarrowViewport640'
 import { useJobMaterialsCostSnapshot } from '../../hooks/useJobMaterialsCostSnapshot'
@@ -531,6 +532,7 @@ export default function DetailJobModal({
   const [streetViewImgUrl, setStreetViewImgUrl] = useState<string | null>(null)
   const [streetViewLatLng, setStreetViewLatLng] = useState<{ lat: number; lng: number } | null>(null)
   const [streetViewLoading, setStreetViewLoading] = useState(false)
+  const [paidEmailModalOpen, setPaidEmailModalOpen] = useState(false)
   const streetViewBlobUrlRef = useRef<string | null>(null)
   const detailFetchIdRef = useRef(0)
   const [materialsCostRefreshKey, setMaterialsCostRefreshKey] = useState(0)
@@ -1105,6 +1107,33 @@ export default function DetailJobModal({
                   >
                     <path d="M224 64C206.3 64 192 78.3 192 96L192 128L160 128C124.7 128 96 156.7 96 192L96 240L544 240L544 192C544 156.7 515.3 128 480 128L448 128L448 96C448 78.3 433.7 64 416 64C398.3 64 384 78.3 384 96L384 128L256 128L256 96C256 78.3 241.7 64 224 64zM96 288L96 480C96 515.3 124.7 544 160 544L480 544C515.3 544 544 515.3 544 480L544 288L96 288z" />
                   </svg>
+                </button>
+              ) : null}
+              {(authRole === 'dev' || authRole === 'master_technician') && jobId ? (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setPaidEmailModalOpen(true)
+                  }}
+                  title="Send paid-in-full email"
+                  aria-label="Send paid-in-full email"
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    padding: '0.35rem',
+                    margin: 0,
+                    border: 'none',
+                    background: 'none',
+                    cursor: 'pointer',
+                    color: 'var(--text-600)',
+                    borderRadius: 4,
+                    fontSize: 18,
+                    lineHeight: 1,
+                  }}
+                >
+                  <span aria-hidden>✉</span>
                 </button>
               ) : null}
               {showEditJobButton ? (
@@ -1951,6 +1980,14 @@ export default function DetailJobModal({
           authUserId={authUser?.id ?? null}
           userRole={authRole as UserRole | null}
           zIndex={1100}
+        />
+      ) : null}
+      {paidEmailModalOpen && jobId ? (
+        <PaidJobEmailSendModal
+          jobId={jobId}
+          jobLabel={modalTitle}
+          jobStatus={fullJob?.status ?? null}
+          onClose={() => setPaidEmailModalOpen(false)}
         />
       ) : null}
     </div>
