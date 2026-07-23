@@ -54,4 +54,5 @@ Rows table (sortable), totals row, per-job drilldown (`crew` / `sub` / `billing-
 
 - **v2.976**: tab read the lazily-loaded shared cache → paid jobs (most of a P&L!) missing → UUID labels, zero billing. Fix: self-loaded complete list.
 - **v2.978**: that self-load hit PostgREST's 1000-row cap unpaginated → arbitrary subset → *all* profits negative. Fix: paginate; discard on partial error.
+- **v2.979**: two v2.976 edits had silently no-opped — the linking map read the empty cache prop (0% linked) and `allJobs` was missing from the memo deps (billing $0 until remount). Caught by live-reading the audit footer; fixed with asserted edits.
 - Lesson both times: **this tab must see the complete jobs universe, and silent truncation anywhere upstream shows up as "billing is missing", not as an error.** When Crew P&L looks wrong, check the audit footer and the jobs-universe size first.
