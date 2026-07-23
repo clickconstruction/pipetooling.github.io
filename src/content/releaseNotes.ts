@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.971',
+    date: '2026-07-23',
+    title: 'Collections columns stop wiggling too',
+    kind: 'fix',
+    highlights: [
+      'The Billed and Collections sections on Jobs → Stages get the same pinned column widths as the other sections — no more shifting while rows load or you search.',
+    ],
+  },
+  {
     version: 'v2.970',
     date: '2026-07-23',
     title: 'Send the paid email from Job Detail',
