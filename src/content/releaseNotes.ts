@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.967',
+    date: '2026-07-23',
+    title: 'Stages tables stop wiggling',
+    kind: 'fix',
+    highlights: [
+      'The job column on Jobs → Stages no longer shifts a few pixels when sections load or you search — column widths are pinned.',
+    ],
+  },
+  {
     version: 'v2.966',
     date: '2026-07-23',
     title: 'Job number columns say "Job #"',
