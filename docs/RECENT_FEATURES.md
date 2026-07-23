@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-23 (v2.980)
+last_updated: 2026-07-23 (v2.981)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.981)
+
+### Crew P&L: sub equivalent rate defaults to $50/hr (2026-07-23)
+`DEFAULT_SUB_LABOR_EQUIVALENT_RATE` 30 → **50** ([`crewPnlSummary.ts`](../src/lib/crewPnlSummary.ts); comments in [`appSettingsKeys.ts`](../src/lib/appSettingsKeys.ts) and [`CREW_PNL_DATA_FLOW.md`](./CREW_PNL_DATA_FLOW.md) updated). The app_settings override still wins; blank now means $50.
 
 ## Latest Updates (v2.980)
 

@@ -19,7 +19,7 @@ Surface: [`src/components/jobs/JobsCrewPnlTab.tsx`](../src/components/jobs/JobsC
 | 3 | `teamLaborData` prop (`TeamLaborRow[]`, [`utils/teamLabor.ts`](../src/utils/teamLabor.ts)) | Jobs page | Per job: per-person clock-session hours+cost by work date. Approved sessions; **wages join `people_pay_config` by trimmed name** (the app-wide name-join fragility — renames silently zero wages). |
 | 4 | `laborJobs` prop (`people_labor_jobs` + items) | Jobs page (Sub Labor data) | Sub sheets. Cost = [`laborJobSubCost`](../src/lib/jobs/subLaborCost.ts) (line items + drive cost from app_settings `drive_mileage_cost` / `drive_time_per_mile`). Assigned names split on the sheet's delimiter. Sheet date = `job_date ?? created_at`. |
 | 5 | `people` roster | The tab (in-tab fetch) | Feeds `buildCrewPnlPersonResolver`: unifies account users, roster names, and free-text spellings; unresolvable names flagged `unmatched`. |
-| 6 | app_settings `crew_pnl_sub_equivalent_rate_v1` | The tab | `value_num`, default `DEFAULT_SUB_LABOR_EQUIVALENT_RATE = 30`. Editable inline ("Sub $/hr eq."). |
+| 6 | app_settings `crew_pnl_sub_equivalent_rate_v1` | The tab | `value_num`, default `DEFAULT_SUB_LABOR_EQUIVALENT_RATE = 50`. Editable inline ("Sub $/hr eq."). |
 
 ## 2. Transforms (component, before the kernel)
 
