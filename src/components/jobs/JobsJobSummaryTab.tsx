@@ -191,7 +191,7 @@ function JobSummaryExpandedHeader({
         )}
       </div>
       <div style={{ minWidth: 120 }}>
-        <div style={expandedHeaderLabelStyle}>HCP</div>
+        <div style={expandedHeaderLabelStyle}>Job #</div>
         <div style={{ ...infoValueStyle, fontWeight: 600 }}>
           Job: {num}
           {serviceName ? (
@@ -487,7 +487,7 @@ export default function JobsJobSummaryTab({
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
                 <thead style={{ background: 'var(--bg-subtle)' }}>
                   <tr>
-                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>HCP #</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Job #</th>
                     <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Name</th>
                     <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Address</th>
                     <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid var(--border)' }}>Team Labor</th>

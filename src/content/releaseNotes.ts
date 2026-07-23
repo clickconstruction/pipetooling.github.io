@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.966',
+    date: '2026-07-23',
+    title: 'Job number columns say "Job #"',
+    kind: 'fix',
+    highlights: [
+      'The "HCP" column headers across the Jobs tabs now read "Job #" — the number shown can be an HCP number or a C#.',
+    ],
+  },
+  {
     version: 'v2.965',
     date: '2026-07-22',
     title: 'Get an email when a job is paid in full',

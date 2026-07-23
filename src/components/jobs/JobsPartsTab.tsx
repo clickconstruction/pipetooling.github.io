@@ -147,7 +147,7 @@ export default function JobsPartsTab({
             <thead style={{ background: 'var(--bg-subtle)' }}>
               <tr>
                 <th style={{ padding: '0.75rem', width: 32, borderBottom: '1px solid var(--border)' }}></th>
-                <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>HCP</th>
+                <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Job #</th>
                 <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Job</th>
                 <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid var(--border)' }}>Parts from Tally</th>
                 <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid var(--border)' }}>Other job charges</th>
