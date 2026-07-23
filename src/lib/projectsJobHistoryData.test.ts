@@ -10,6 +10,7 @@ import {
 const JOB_A: ProjectsJobHistoryJob = {
   id: 'job-a',
   hcp_number: '101',
+  click_number: 'C101',
   job_name: 'Acme HVAC',
   job_address: '100 Acme Way',
   service_type_id: 'st-1',
@@ -18,6 +19,7 @@ const JOB_A: ProjectsJobHistoryJob = {
 const JOB_B: ProjectsJobHistoryJob = {
   id: 'job-b',
   hcp_number: '102',
+  click_number: 'C102',
   job_name: 'Bravo Plumbing',
   job_address: '200 Bravo Blvd',
   service_type_id: 'st-2',
@@ -26,6 +28,7 @@ const JOB_B: ProjectsJobHistoryJob = {
 const JOB_C: ProjectsJobHistoryJob = {
   id: 'job-c',
   hcp_number: '103',
+  click_number: 'C103',
   job_name: 'Cobra Build',
   job_address: '',
   service_type_id: null,

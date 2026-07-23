@@ -208,17 +208,19 @@ export function ReviewHoursModal({
 
     const jobsMap = new Map<
       string,
-      { hcp_number: string; job_name: string; job_address: string; service_type_id: string | null }
+      { hcp_number: string; click_number: string; job_name: string; job_address: string; service_type_id: string | null }
     >()
     for (const j of (jobsRes.data ?? []) as Array<{
       id: string
       hcp_number: string
+      click_number: string
       job_name: string
       job_address: string
       service_type_id: string | null
     }>) {
       jobsMap.set(j.id, {
         hcp_number: j.hcp_number,
+        click_number: j.click_number,
         job_name: j.job_name,
         job_address: j.job_address,
         service_type_id: j.service_type_id,
@@ -253,7 +255,7 @@ export function ReviewHoursModal({
       if (group.type === 'job' && group.jobId) {
         const j = jobsMap.get(group.jobId)
         label = j
-          ? formatJobLedgerSummaryLine(prefixMap, j.service_type_id, j.hcp_number, j.job_name, j.job_address)
+          ? formatJobLedgerSummaryLine(prefixMap, j.service_type_id, j.hcp_number, j.job_name, j.job_address, j.click_number)
           : `Job ${group.jobId.slice(0, 8)}…`
       } else if (group.type === 'bid' && group.bidId) {
         const b = bidsMap.get(group.bidId)

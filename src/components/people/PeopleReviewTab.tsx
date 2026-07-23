@@ -129,6 +129,7 @@ export default function PeopleReviewTab({
     hoursInfo: string
     hours: number
     job_number: string | null
+    click_number: string | null
     job_id: string | null
     job_name: string
     service_type_id: string | null
@@ -1004,6 +1005,7 @@ export default function PeopleReviewTab({
         hoursInfo,
         hours: totalHrs,
         job_number: r.job_number,
+        click_number: job?.click_number ?? null,
         job_id: jobId,
         job_name: job?.job_name ?? '—',
         service_type_id: job?.service_type_id ?? null,
@@ -3970,7 +3972,7 @@ export default function PeopleReviewTab({
                                       <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.35rem' }}>
                                         <span style={{ fontSize: '0.75em', color: 'var(--text-muted)', lineHeight: '1.4' }}>{expanded ? '▾' : '▸'}</span>
                                         <div>
-                                          <div style={{ fontWeight: 600 }}>{(j.job_number ?? '').trim() ? formatJobLedgerNumberLabel(resolveJobLedgerPrefix(j.service_type_id, prefixMap), j.job_number) : '—'}</div>
+                                          <div style={{ fontWeight: 600 }}>{(j.job_number ?? '').trim() ? formatJobLedgerNumberLabel(resolveJobLedgerPrefix(j.service_type_id, prefixMap), j.job_number, j.click_number) : '—'}</div>
                                           <div style={{ fontSize: '0.8em', color: 'var(--text-muted)' }}>{formatDateWithDay(j.job_date)}</div>
                                         </div>
                                       </div>
@@ -3986,7 +3988,7 @@ export default function PeopleReviewTab({
                                         e.stopPropagation()
                                         const personName = showPeopleForReview[selectedReviewPersonIndex] ?? ''
                                         const numberLabel = j.job_number
-                                          ? formatJobLedgerNumberLabel(resolveJobLedgerPrefix(j.service_type_id, prefixMap), j.job_number)
+                                          ? formatJobLedgerNumberLabel(resolveJobLedgerPrefix(j.service_type_id, prefixMap), j.job_number, j.click_number)
                                           : ''
                                         setReviewLaborBreakdownContext({
                                           mode: 'labor',
@@ -4020,7 +4022,7 @@ export default function PeopleReviewTab({
                                         e.stopPropagation()
                                         const personName = showPeopleForReview[selectedReviewPersonIndex] ?? ''
                                         const numberLabel = j.job_number
-                                          ? formatJobLedgerNumberLabel(resolveJobLedgerPrefix(j.service_type_id, prefixMap), j.job_number)
+                                          ? formatJobLedgerNumberLabel(resolveJobLedgerPrefix(j.service_type_id, prefixMap), j.job_number, j.click_number)
                                           : ''
                                         setReviewLaborBreakdownContext({
                                           mode: 'profit',
@@ -4095,10 +4097,10 @@ export default function PeopleReviewTab({
                                           <span style={{ color: 'var(--text-muted)' }}>Job Gross Revenue (total bill)</span>
                                           <span>{j.totalBill > 0 ? `$${formatCurrency(j.totalBill)}` : '—'}</span>
                                           <span style={{ color: 'var(--text-muted)' }}>{(() => {
-                                            const numFields = j as { job_number?: string | null; hcp_number?: string | null }
+                                            const numFields = j as { job_number?: string | null; hcp_number?: string | null; click_number?: string | null }
                                             const rawNum = (numFields.job_number ?? numFields.hcp_number ?? '').trim()
                                             const numLabel = rawNum && rawNum !== '—'
-                                              ? formatJobLedgerNumberLabel(resolveJobLedgerPrefix(j.service_type_id, prefixMap), rawNum)
+                                              ? formatJobLedgerNumberLabel(resolveJobLedgerPrefix(j.service_type_id, prefixMap), rawNum, numFields.click_number ?? null)
                                               : 'Job'
                                             return `${numLabel} Progress`
                                           })()}</span>
@@ -4114,10 +4116,10 @@ export default function PeopleReviewTab({
                                           <span style={{ gridColumn: '1 / -1', height: '0.5rem', display: 'block' }} />
                                           <span style={{ gridColumn: '1 / -1', fontWeight: 600, marginTop: '0.25rem', marginBottom: '0.25rem' }}>Costs</span>
                                           <span style={{ color: 'var(--text-muted)' }}>{(() => {
-                                            const numFields = j as { job_number?: string | null; hcp_number?: string | null }
+                                            const numFields = j as { job_number?: string | null; hcp_number?: string | null; click_number?: string | null }
                                             const rawNum = (numFields.job_number ?? numFields.hcp_number ?? '').trim()
                                             const numLabel = rawNum && rawNum !== '—'
-                                              ? formatJobLedgerNumberLabel(resolveJobLedgerPrefix(j.service_type_id, prefixMap), rawNum)
+                                              ? formatJobLedgerNumberLabel(resolveJobLedgerPrefix(j.service_type_id, prefixMap), rawNum, numFields.click_number ?? null)
                                               : 'this job'
                                             return `Total Labor on ${numLabel}`
                                           })()}</span>
@@ -4137,10 +4139,10 @@ export default function PeopleReviewTab({
                                           })()}</span>
                                           <span style={{ color: 'var(--text-muted)', paddingLeft: '1rem' }}>{(() => {
                                             const name = showPeopleForReview[selectedReviewPersonIndex] ?? 'User'
-                                            const numFields = j as { job_number?: string | null; hcp_number?: string | null }
+                                            const numFields = j as { job_number?: string | null; hcp_number?: string | null; click_number?: string | null }
                                             const rawNum = (numFields.job_number ?? numFields.hcp_number ?? '').trim()
                                             const numLabel = rawNum && rawNum !== '—'
-                                              ? formatJobLedgerNumberLabel(resolveJobLedgerPrefix(j.service_type_id, prefixMap), rawNum)
+                                              ? formatJobLedgerNumberLabel(resolveJobLedgerPrefix(j.service_type_id, prefixMap), rawNum, numFields.click_number ?? null)
                                               : 'this job'
                                             return `${name}'s labor on ${numLabel}`
                                           })()}</span>
@@ -4151,10 +4153,10 @@ export default function PeopleReviewTab({
                                           })()}</span>
                                           <span style={{ color: 'var(--text-muted)', paddingLeft: '1rem' }}>{(() => {
                                             const name = showPeopleForReview[selectedReviewPersonIndex] ?? 'User'
-                                            const numFields = j as { job_number?: string | null; hcp_number?: string | null }
+                                            const numFields = j as { job_number?: string | null; hcp_number?: string | null; click_number?: string | null }
                                             const rawNum = (numFields.job_number ?? numFields.hcp_number ?? '').trim()
                                             const numLabel = rawNum && rawNum !== '—'
-                                              ? formatJobLedgerNumberLabel(resolveJobLedgerPrefix(j.service_type_id, prefixMap), rawNum)
+                                              ? formatJobLedgerNumberLabel(resolveJobLedgerPrefix(j.service_type_id, prefixMap), rawNum, numFields.click_number ?? null)
                                               : 'this job'
                                             return `${name}'s labor on ${numLabel} this day`
                                           })()}</span>
@@ -4437,10 +4439,10 @@ export default function PeopleReviewTab({
                                           <span style={{ color: 'var(--text-muted)' }}>Job Gross Revenue (total bill)</span>
                                           <span>{j.totalBill > 0 ? `$${formatCurrency(j.totalBill)}` : '—'}</span>
                                           <span style={{ color: 'var(--text-muted)' }}>{(() => {
-                                            const numFields = j as { job_number?: string | null; hcp_number?: string | null }
+                                            const numFields = j as { job_number?: string | null; hcp_number?: string | null; click_number?: string | null }
                                             const rawNum = (numFields.job_number ?? numFields.hcp_number ?? '').trim()
                                             const numLabel = rawNum && rawNum !== '—'
-                                              ? formatJobLedgerNumberLabel(resolveJobLedgerPrefix(j.service_type_id, prefixMap), rawNum)
+                                              ? formatJobLedgerNumberLabel(resolveJobLedgerPrefix(j.service_type_id, prefixMap), rawNum, numFields.click_number ?? null)
                                               : 'Job'
                                             return `${numLabel} Progress`
                                           })()}</span>
@@ -4456,10 +4458,10 @@ export default function PeopleReviewTab({
                                           <span style={{ gridColumn: '1 / -1', height: '0.5rem', display: 'block' }} />
                                           <span style={{ gridColumn: '1 / -1', fontWeight: 600, marginTop: '0.25rem', marginBottom: '0.25rem' }}>Costs</span>
                                           <span style={{ color: 'var(--text-muted)' }}>{(() => {
-                                            const numFields = j as { job_number?: string | null; hcp_number?: string | null }
+                                            const numFields = j as { job_number?: string | null; hcp_number?: string | null; click_number?: string | null }
                                             const rawNum = (numFields.job_number ?? numFields.hcp_number ?? '').trim()
                                             const numLabel = rawNum && rawNum !== '—'
-                                              ? formatJobLedgerNumberLabel(resolveJobLedgerPrefix(j.service_type_id, prefixMap), rawNum)
+                                              ? formatJobLedgerNumberLabel(resolveJobLedgerPrefix(j.service_type_id, prefixMap), rawNum, numFields.click_number ?? null)
                                               : 'this job'
                                             return `Total Labor on ${numLabel}`
                                           })()}</span>
@@ -4479,10 +4481,10 @@ export default function PeopleReviewTab({
                                           })()}</span>
                                           <span style={{ color: 'var(--text-muted)', paddingLeft: '1rem' }}>{(() => {
                                             const name = showPeopleForReview[selectedReviewPersonIndex] ?? 'User'
-                                            const numFields = j as { job_number?: string | null; hcp_number?: string | null }
+                                            const numFields = j as { job_number?: string | null; hcp_number?: string | null; click_number?: string | null }
                                             const rawNum = (numFields.job_number ?? numFields.hcp_number ?? '').trim()
                                             const numLabel = rawNum && rawNum !== '—'
-                                              ? formatJobLedgerNumberLabel(resolveJobLedgerPrefix(j.service_type_id, prefixMap), rawNum)
+                                              ? formatJobLedgerNumberLabel(resolveJobLedgerPrefix(j.service_type_id, prefixMap), rawNum, numFields.click_number ?? null)
                                               : 'this job'
                                             return `${name}'s labor on ${numLabel}`
                                           })()}</span>
@@ -4493,10 +4495,10 @@ export default function PeopleReviewTab({
                                           })()}</span>
                                           <span style={{ color: 'var(--text-muted)', paddingLeft: '1rem' }}>{(() => {
                                             const name = showPeopleForReview[selectedReviewPersonIndex] ?? 'User'
-                                            const numFields = j as { job_number?: string | null; hcp_number?: string | null }
+                                            const numFields = j as { job_number?: string | null; hcp_number?: string | null; click_number?: string | null }
                                             const rawNum = (numFields.job_number ?? numFields.hcp_number ?? '').trim()
                                             const numLabel = rawNum && rawNum !== '—'
-                                              ? formatJobLedgerNumberLabel(resolveJobLedgerPrefix(j.service_type_id, prefixMap), rawNum)
+                                              ? formatJobLedgerNumberLabel(resolveJobLedgerPrefix(j.service_type_id, prefixMap), rawNum, numFields.click_number ?? null)
                                               : 'this job'
                                             return `${name}'s labor on ${numLabel} this day`
                                           })()}</span>

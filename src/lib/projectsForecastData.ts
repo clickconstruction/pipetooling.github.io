@@ -31,6 +31,7 @@ export type ForecastStageStatus = Database['public']['Enums']['step_status']
 export type ForecastJob = {
   id: string
   hcp_number: string
+  click_number: string
   job_name: string
   job_address: string | null
   status: ForecastJobStatus
@@ -59,6 +60,7 @@ export type ForecastStage = {
 type JobsLedgerRow = {
   id: string
   hcp_number: string
+  click_number: string
   job_name: string
   job_address: string | null
   status: ForecastJobStatus
@@ -90,7 +92,7 @@ export async function fetchForecastJobs(opts: { customerId?: string | null } = {
   let jobsQuery = supabase
     .from('jobs_ledger')
     .select(
-      'id, hcp_number, job_name, job_address, status, service_type_id, project_id, projects:project_id(id, name)',
+      'id, hcp_number, click_number, job_name, job_address, status, service_type_id, project_id, projects:project_id(id, name)',
     )
     .not('project_id', 'is', null)
     .order('hcp_number', { ascending: false })
@@ -136,6 +138,7 @@ export async function fetchForecastJobs(opts: { customerId?: string | null } = {
     .map((r) => ({
       id: r.id,
       hcp_number: r.hcp_number,
+      click_number: r.click_number,
       job_name: r.job_name,
       job_address: r.job_address ?? null,
       status: r.status,

@@ -23,6 +23,7 @@ import {
 
 export type ForecastJobSearchInput = {
   hcp_number: string
+  click_number?: string | null
   job_name: string
   job_address: string | null
   service_type_id: string | null
@@ -45,7 +46,7 @@ export function forecastJobMatchesSearch<T extends ForecastJobSearchInput>(
   if (q.length === 0) return true
 
   const prefix = resolveJobLedgerPrefix(job.service_type_id, prefixMap)
-  const hcpLabel = formatJobLedgerNumberLabel(prefix, job.hcp_number)
+  const hcpLabel = formatJobLedgerNumberLabel(prefix, job.hcp_number, job.click_number)
   const jobName = (job.job_name ?? '').trim()
   const jobAddress = (job.job_address ?? '').trim()
   const projectName = (job.project_name ?? '').trim()

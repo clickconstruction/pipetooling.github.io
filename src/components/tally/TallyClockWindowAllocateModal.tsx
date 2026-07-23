@@ -149,7 +149,7 @@ export function TallyClockWindowAllocateModal({
             async () =>
               supabase
                 .from('jobs_ledger')
-                .select('id, hcp_number, job_name, job_address, service_type_id')
+                .select('id, hcp_number, click_number, job_name, job_address, service_type_id')
                 .in('id', [...jobIds]),
             'TallyClockWindowAllocateModal jobs_ledger',
           )
@@ -158,6 +158,7 @@ export function TallyClockWindowAllocateModal({
             const row = j as {
               id: string
               hcp_number: string | null
+              click_number: string | null
               job_name: string | null
               job_address: string | null
               service_type_id: string | null
@@ -165,7 +166,7 @@ export function TallyClockWindowAllocateModal({
             const hn = row.hcp_number?.trim() ?? ''
             const jn = row.job_name?.trim() ?? ''
             const ja = row.job_address?.trim() ?? ''
-            const main = formatJobLedgerShortLine(ledgerPrefixMap, row.service_type_id, hn || null, jn || null).trim() || row.id
+            const main = formatJobLedgerShortLine(ledgerPrefixMap, row.service_type_id, hn || null, jn || null, row.click_number).trim() || row.id
             jobLabelById.set(row.id, ja ? `${main} — ${ja}` : main)
           }
         }

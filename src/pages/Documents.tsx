@@ -466,6 +466,7 @@ type LedgerJobRow = Pick<
   Tables<'jobs_ledger'>,
   | 'id'
   | 'hcp_number'
+  | 'click_number'
   | 'service_type_id'
   | 'job_name'
   | 'job_address'
@@ -515,6 +516,7 @@ type SupplyHouseInvoiceLedgerAllocation = {
   jobs_ledger: {
     id: string
     hcp_number: string | null
+    click_number: string | null
     job_name: string | null
     job_address: string | null
     service_type_id: string | null
@@ -639,7 +641,7 @@ function DocumentsJobsLedger({ embedSearch }: DocumentsLedgerEmbedProps = {}) {
           await supabase
             .from('jobs_ledger')
             .select(
-              'id, hcp_number, service_type_id, job_name, job_address, status, revenue, google_drive_link, updated_at, customer_name, customer_email, customers(name, address)',
+              'id, hcp_number, click_number, service_type_id, job_name, job_address, status, revenue, google_drive_link, updated_at, customer_name, customer_email, customers(name, address)',
             )
             .order('updated_at', { ascending: false, nullsFirst: false })
             .limit(200),
@@ -774,7 +776,7 @@ function DocumentsJobsLedger({ embedSearch }: DocumentsLedgerEmbedProps = {}) {
                 const hcp = (r.hcp_number ?? '').trim()
                 const jn = (r.job_name ?? '').trim()
                 const titleText = hcp
-                  ? formatJobLedgerDocTitle(prefixMap, r.service_type_id ?? null, hcp, jn)
+                  ? formatJobLedgerDocTitle(prefixMap, r.service_type_id ?? null, hcp, jn, r.click_number)
                   : jn || '—'
                 const addr = (r.job_address ?? '').trim()
                 const filesLink = (r.google_drive_link ?? '').trim()
@@ -1200,7 +1202,7 @@ function DocumentsSupplyHouseInvoicesLedger({ embedSearch }: DocumentsLedgerEmbe
               supply_house_invoice_job_allocations(
                 job_id,
                 pct,
-                jobs_ledger(id, hcp_number, job_name, job_address, service_type_id)
+                jobs_ledger(id, hcp_number, click_number, job_name, job_address, service_type_id)
               )`,
             )
             .order('invoice_date', { ascending: false })
@@ -1315,7 +1317,7 @@ function DocumentsSupplyHouseInvoicesLedger({ embedSearch }: DocumentsLedgerEmbe
                     const pctStr = Number.isFinite(pct) && pct > 0 ? ` · ${pct}%` : ''
                     const line1 =
                       (hcp
-                        ? formatJobLedgerDocTitle(prefixMap, jl?.service_type_id ?? null, hcp, jn)
+                        ? formatJobLedgerDocTitle(prefixMap, jl?.service_type_id ?? null, hcp, jn, jl?.click_number ?? null)
                         : `— | ${jn || '—'}`) + pctStr
                     return ja ? `${line1} — ${ja}` : line1
                   })
@@ -1368,7 +1370,7 @@ function DocumentsSupplyHouseInvoicesLedger({ embedSearch }: DocumentsLedgerEmbe
                             const pctStr = Number.isFinite(pct) && pct > 0 ? ` · ${pct}%` : ''
                             const line1 =
                       (hcp
-                        ? formatJobLedgerDocTitle(prefixMap, jl?.service_type_id ?? null, hcp, jn)
+                        ? formatJobLedgerDocTitle(prefixMap, jl?.service_type_id ?? null, hcp, jn, jl?.click_number ?? null)
                         : `— | ${jn || '—'}`) + pctStr
                             return (
                               <Link

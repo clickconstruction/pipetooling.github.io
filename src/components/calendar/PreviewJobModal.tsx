@@ -223,7 +223,8 @@ export function PreviewJobModal({
                   }}
                 >
                   <div style={{ fontWeight: 600 }}>
-                    {effectiveJobLedgerNumber(j.hcp_number) || '—'} · {(j.job_name ?? '').trim() || 'Job'}
+                    {/* RPC doesn't return click_number — no C# fallback here */}
+                    {effectiveJobLedgerNumber(j.hcp_number, null) || '—'} · {(j.job_name ?? '').trim() || 'Job'}
                   </div>
                   <div style={{ color: 'var(--text-600)', marginTop: 2 }}>{j.job_address}</div>
                   {showJobsDeepLink ? (

@@ -137,7 +137,7 @@ function buildDayDigits(dayKeys: readonly string[], tz: string): DayDigit[] {
  *  title tooltips, and canvas measurement in compact mode. */
 function buildBarLabelText(bar: ProjectsJobHistoryBar, prefixMap: LedgerPrefixMap): string {
   const prefix = resolveJobLedgerPrefix(bar.serviceTypeId, prefixMap)
-  const hcpLabel = formatJobLedgerNumberLabel(prefix, bar.hcpNumber)
+  const hcpLabel = formatJobLedgerNumberLabel(prefix, bar.hcpNumber, bar.clickNumber)
   return `${hcpLabel} · ${(bar.jobName ?? '').trim() || '—'}`
 }
 

@@ -12,6 +12,7 @@ const JOB_C = '00000000-0000-0000-0000-00000000cccc'
 function block(overrides: Partial<JobModeScheduleBlock> & { id: string; job_id: string; time_start: string; time_end: string }): JobModeScheduleBlock {
   return {
     hcp_number: '100',
+    click_number: null,
     job_name: 'Test Job',
     job_address: '123 Main',
     service_type_id: null,

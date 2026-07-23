@@ -193,7 +193,7 @@ function writeShowDates(value: boolean) {
 
 function buildJobLabel(job: ForecastJob, prefixMap: LedgerPrefixMap): string {
   const prefix = resolveJobLedgerPrefix(job.service_type_id, prefixMap)
-  const hcpLabel = formatJobLedgerNumberLabel(prefix, job.hcp_number)
+  const hcpLabel = formatJobLedgerNumberLabel(prefix, job.hcp_number, job.click_number)
   return `${hcpLabel} · ${(job.job_name ?? '').trim() || '—'}`
 }
 
