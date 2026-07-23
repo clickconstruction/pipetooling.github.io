@@ -20,6 +20,15 @@ export const RELEASE_NOTES: ReleaseNote[] = [
     ],
   },
   {
+    version: 'v2.979',
+    date: '2026-07-23',
+    title: 'Crew P&L billing works on first load',
+    kind: 'fix',
+    highlights: [
+      'Billing no longer shows empty until you switch tabs, and sub sheets now actually link to their jobs — verified live: 93% of sub labor linked, profits positive.',
+    ],
+  },
+  {
     version: 'v2.978',
     date: '2026-07-23',
     title: 'Crew P&L negative-profit bug fixed',

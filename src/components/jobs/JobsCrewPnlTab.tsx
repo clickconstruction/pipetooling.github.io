@@ -208,7 +208,7 @@ export default function JobsCrewPnlTab({
     // Sheet job_number → jobs_ledger id: match the HCP number first, then the C#
     // (sheets written against HCP-less jobs match via the C# since v2.962).
     const jobIdByNumber = new Map<string, string>()
-    for (const j of jobs) {
+    for (const j of pnlJobs) {
       const hcp = (j.hcp_number ?? '').trim().toLowerCase()
       const click = (j.click_number ?? '').trim().toLowerCase()
       if (hcp && !jobIdByNumber.has(hcp)) jobIdByNumber.set(hcp, j.id)
@@ -238,7 +238,7 @@ export default function JobsCrewPnlTab({
       range,
       subLaborEquivalentRate: subEquivalentRate,
     })
-  }, [people, jobs, laborJobs, teamLaborData, range, driveMileageCost, driveTimePerMile, subEquivalentRate])
+  }, [people, jobs, allJobs, laborJobs, teamLaborData, range, driveMileageCost, driveTimePerMile, subEquivalentRate])
 
   const visibleRows = useMemo(() => {
     if (!summary) return []
