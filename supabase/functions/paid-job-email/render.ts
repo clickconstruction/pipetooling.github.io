@@ -253,7 +253,7 @@ function renderTimeline(p: PaidJobEmailPayload): string {
 }
 
 /** Detailed variant (dev / master_technician): full financial review. */
-export function renderPaidJobEmailDetailed(p: PaidJobEmailPayload): string {
+export function renderPaidJobEmailDetailed(p: PaidJobEmailPayload, manualNote?: string): string {
   return `
   <div style="background:#f5f5f4;padding:16px;">
     <div style="${WRAP_STYLE}">
@@ -262,13 +262,14 @@ export function renderPaidJobEmailDetailed(p: PaidJobEmailPayload): string {
       ${renderDatesBlock(p)}
       ${renderScoreboard(p)}
       ${renderTimeline(p)}
+      ${manualNote ? `<p style="margin:16px 0 0;font-size:11px;color:#a8a29e;text-align:center;">${esc(manualNote)}</p>` : ''}
       <p style="margin:16px 0 0;font-size:11px;color:#a8a29e;text-align:center;">PipeTooling &mdash; sent when a job reaches Paid in Full.</p>
     </div>
   </div>`
 }
 
 /** Sterilized variant (everyone else): job identity + dates, zero dollar figures. */
-export function renderPaidJobEmailSummary(p: PaidJobEmailPayload): string {
+export function renderPaidJobEmailSummary(p: PaidJobEmailPayload, manualNote?: string): string {
   return `
   <div style="background:#f5f5f4;padding:16px;">
     <div style="${WRAP_STYLE}">
@@ -276,6 +277,7 @@ export function renderPaidJobEmailSummary(p: PaidJobEmailPayload): string {
       ${renderPaidLine(p)}
       ${renderDatesBlock(p)}
       <p style="margin:0;font-size:13px;color:#44403c;text-align:center;">This job has been paid in full. Nice work.</p>
+      ${manualNote ? `<p style="margin:16px 0 0;font-size:11px;color:#a8a29e;text-align:center;">${esc(manualNote)}</p>` : ''}
       <p style="margin:16px 0 0;font-size:11px;color:#a8a29e;text-align:center;">PipeTooling &mdash; sent when a job reaches Paid in Full.</p>
     </div>
   </div>`

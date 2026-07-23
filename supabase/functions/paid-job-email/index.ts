@@ -7,6 +7,9 @@
  *
  * - { mode: 'preview', job_id, variant: 'detailed' | 'summary' } — caller JWT,
  *   role dev/master_technician; returns { html }. No DB writes, no send.
+ * - { mode: 'send_to', job_id, recipient_user_id } — same role gate; sends the
+ *   REAL email to the chosen active user, variant decided by the RECIPIENT's
+ *   role, with a 'Sent manually by …' footer (v2.970).
  * - { mode: 'test_send', job_id } — same role gate; sends the DETAILED variant
  *   via Resend to the CALLER's own email only, subject prefixed [TEST].
  * - cron (no mode or { mode: 'dispatch' }) — X-Cron-Secret header must equal
@@ -65,7 +68,7 @@ async function fetchPayload(admin: Admin, jobId: string): Promise<PaidJobEmailPa
 async function requireDevOrMaster(
   req: Request,
   admin: Admin,
-): Promise<{ userId: string; email: string | null } | Response> {
+): Promise<{ userId: string; email: string | null; name: string | null } | Response> {
   const authHeader = req.headers.get('Authorization')
   if (!authHeader?.startsWith('Bearer ')) return jsonResponse({ error: 'Unauthorized' }, 401)
   const token = authHeader.replace(/^Bearer\s+/i, '')
@@ -82,13 +85,17 @@ async function requireDevOrMaster(
 
   const { data: meRow } = await admin
     .from('users')
-    .select('role, email, archived_at')
+    .select('role, email, name, archived_at')
     .eq('id', user.id)
     .maybeSingle()
   if (!meRow || meRow.archived_at || !DETAILED_ROLES.has(String(meRow.role))) {
     return jsonResponse({ error: 'Forbidden' }, 403)
   }
-  return { userId: user.id, email: typeof meRow.email === 'string' ? meRow.email.trim() || null : null }
+  return {
+    userId: user.id,
+    email: typeof meRow.email === 'string' ? meRow.email.trim() || null : null,
+    name: typeof meRow.name === 'string' ? meRow.name.trim() || null : null,
+  }
 }
 
 type RecipientRow = { id: string; email: string | null; name: string | null; role: string | null }
@@ -211,7 +218,7 @@ serve(async (req) => {
     }
     const mode = typeof body.mode === 'string' ? body.mode : 'dispatch'
 
-    if (mode === 'preview' || mode === 'test_send') {
+    if (mode === 'preview' || mode === 'test_send' || mode === 'send_to') {
       const gate = await requireDevOrMaster(req, admin)
       if (gate instanceof Response) return gate
 
@@ -225,6 +232,31 @@ serve(async (req) => {
         const html =
           variant === 'summary' ? renderPaidJobEmailSummary(payload) : renderPaidJobEmailDetailed(payload)
         return jsonResponse({ html, variant })
+      }
+
+      if (mode === 'send_to') {
+        // Real send to a chosen active user; the RECIPIENT's role picks the
+        // variant (a sender can never mail financials to a summary-tier role).
+        const recipientId = typeof body.recipient_user_id === 'string' ? body.recipient_user_id.trim() : ''
+        if (!recipientId) return jsonResponse({ error: 'recipient_user_id required' }, 400)
+        const { data: rec } = await admin
+          .from('users')
+          .select('id, email, name, role, archived_at')
+          .eq('id', recipientId)
+          .maybeSingle()
+        if (!rec || rec.archived_at) return jsonResponse({ error: 'Recipient not found or archived' }, 404)
+        const recEmail = typeof rec.email === 'string' ? rec.email.trim() : ''
+        if (!recEmail) return jsonResponse({ error: 'Recipient has no email on file' }, 400)
+        const resendKey = Deno.env.get('RESEND_API_KEY')
+        if (!resendKey) return jsonResponse({ error: 'RESEND_API_KEY not configured' }, 500)
+        const detailed = DETAILED_ROLES.has(String(rec.role))
+        const manualNote = `Sent manually by ${gate.name ?? 'a teammate'}`
+        const html = detailed
+          ? renderPaidJobEmailDetailed(payload, manualNote)
+          : renderPaidJobEmailSummary(payload, manualNote)
+        const mail = await sendEmailViaResend(recEmail, paidJobEmailSubject(payload), paidJobEmailText(payload), html, resendKey)
+        if (!mail.success) return jsonResponse({ error: mail.error ?? 'Send failed' }, 502)
+        return jsonResponse({ success: true, variant: detailed ? 'detailed' : 'summary' })
       }
 
       // test_send — detailed variant to the caller's own email only.

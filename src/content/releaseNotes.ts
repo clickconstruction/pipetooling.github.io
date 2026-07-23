@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.970',
+    date: '2026-07-23',
+    title: 'Send the paid email from Job Detail',
+    kind: 'feature',
+    highlights: [
+      'A ✉ next to Edit job lets devs and masters send the paid-in-full email for that job to anyone — the recipient\'s role decides whether they get the detailed or summary version.',
+      'Preview either version in a new tab or email yourself a test first; manual sends are footnoted "Sent manually by …".',
+    ],
+  },
+  {
     version: 'v2.969',
     date: '2026-07-23',
     title: 'Paid emails show the exact payment',

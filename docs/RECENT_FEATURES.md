@@ -7,8 +7,8 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-23 (v2.969)
-last_updated: 2026-07-23 (v2.969)
+last_updated: 2026-07-23 (v2.970)
+last_updated: 2026-07-23 (v2.970)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2046,6 +2046,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.970)
+
+### Job Detail: ✉ send/preview the paid-in-full email for any job (2026-07-23)
+New **✉** button left of Edit job in [`DetailJobModal`](../src/components/jobs/DetailJobModal.tsx) (dev + master_technician) opens [`PaidJobEmailSendModal`](../src/components/jobs/PaidJobEmailSendModal.tsx): **Preview detailed / Preview summary** (new tab), **Email me a test**, and — the new capability — **send the real email to a chosen person**: searchable picker of active users with emails, each badged Detailed/Summary; new edge mode `send_to { job_id, recipient_user_id }` where the **recipient's role picks the variant** (a sender can never mail financials to a summary-tier role) and both variants gain a *"Sent manually by {sender}"* footer distinguishing manual sends from the automatic trigger. Amber warn-don't-block when the job isn't `paid` ("the email will still say it is" — previewing an unpaid job doubles as a free job-financials report). Shared client plumbing extracted to [`src/lib/paidJobEmailClient.ts`](../src/lib/paidJobEmailClient.ts) (preview/test/send_to + open-tab helper; the Stages gear modal now uses it too, so the two surfaces can't drift). No migration. **Needs `supabase functions deploy paid-job-email` after merge.**
 
 ## Latest Updates (v2.969)
 
