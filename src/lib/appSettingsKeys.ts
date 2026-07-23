@@ -144,3 +144,10 @@ export function parseBulkDeleteAlertEnabled(valueText: string | null | undefined
  * @see `src/lib/prospects/teamComposite.ts`
  */
 export const APP_SETTINGS_KEY_TEAM_REVIEW_COMPOSITE_WEIGHTS = 'team_review_composite_weights_v1' as const
+
+/**
+ * `value_num`: days between team-member reviews before the Dashboard/Dispatch Inbox reminder fires
+ * (default 30 via `parseTeamReviewCadenceDays`). Dev writes (Settings → Dashboard & alerts); all authenticated read.
+ * @see `src/lib/prospects/teamReviewDue.ts`
+ */
+export const APP_SETTINGS_KEY_TEAM_REVIEW_CADENCE_DAYS = 'team_review_cadence_days_v1' as const
