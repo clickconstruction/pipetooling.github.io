@@ -99,7 +99,7 @@ export function formatClockSessionJobOrBidModalLinesFromEmbeds(
     const st = jl.service_type_id ?? null
     const name = (jl.job_name || '—').trim()
     const addr = (jl.job_address || '').trim()
-    const num = formatJobLedgerNumberLabel(resolveJobLedgerPrefix(st, prefixMap), jl.hcp_number)
+    const num = formatJobLedgerNumberLabel(resolveJobLedgerPrefix(st, prefixMap), jl.hcp_number, jl.click_number)
     return {
       line1: `${num} · ${name}`,
       line2: addr.length > 0 ? addr : null,
@@ -132,6 +132,7 @@ export function formatClockSessionJobOrBidLabelFromEmbeds(
       jl.hcp_number,
       jl.job_name,
       jl.job_address,
+      jl.click_number,
     )
   }
   if (embeds.bids) {
@@ -151,7 +152,7 @@ export function formatClockSessionJobOrBidLabelFromEmbeds(
 export function shortJobOrBidLabelFromEmbeds(embeds: ClockSessionJobBidEmbeds, prefixMap: LedgerPrefixMap): string | null {
   if (embeds.jobs_ledger) {
     const jl = embeds.jobs_ledger
-    return formatJobLedgerShortLine(prefixMap, jl.service_type_id ?? null, jl.hcp_number, jl.job_name)
+    return formatJobLedgerShortLine(prefixMap, jl.service_type_id ?? null, jl.hcp_number, jl.job_name, jl.click_number)
   }
   if (embeds.bids) {
     const b = embeds.bids

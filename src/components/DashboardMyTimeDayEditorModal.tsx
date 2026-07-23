@@ -903,6 +903,7 @@ export function DashboardMyTimeDayEditorModal({
         type JobRow = {
           id: string
           hcp_number: string
+          click_number: string
           job_name: string
           job_address: string
           service_type_id: string | null
@@ -935,7 +936,7 @@ export function DashboardMyTimeDayEditorModal({
         for (const id of needJobs) {
           const j = byJobId.get(id)
           nextJ[id] = j
-            ? formatJobLedgerSummaryLine(prefixMap, j.service_type_id, j.hcp_number, j.job_name, j.job_address)
+            ? formatJobLedgerSummaryLine(prefixMap, j.service_type_id, j.hcp_number, j.job_name, j.job_address, j.click_number)
             : `Job ${id.slice(0, 8)}…`
         }
         const bidRows = (bidsData ?? []) as BidRow[]

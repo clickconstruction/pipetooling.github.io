@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-22 (v2.961)
+last_updated: 2026-07-22 (v2.962)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.962)
+
+### Jobs without an HCP number display their C# app-wide (2026-07-22)
+Jobs with a blank `hcp_number` showed "—" everywhere even though every job has a `click_number` (C#). The fallback already existed — `effectiveJobLedgerNumber()` in [`ledgerDisplayPrefixes.ts`](../src/lib/ledgerDisplayPrefixes.ts) — but its `clickNumber` parameter was optional, so ~43 call sites across 19 files silently skipped it. **`clickNumber` is now required** (compiler-enforced adoption); every helper call site threads the real `click_number` (row types + supabase selects extended where needed: clockSessions shared builder, projects Forecast/Job History data + search kernels, Documents, Banking transaction modal, My Time / hours / review / tally modals, Job Mode card, People Review, Dispatch PO — whose four raw `hcp || '—'` sites also converted to the helper). One known gap: the Calendar job preview's `list_assigned_jobs_for_dashboard` RPC doesn't return `click_number` (commented; needs an RPC change to close). Fallback now test-asserted (`''`+`'C123'` → `C123`, HCP still wins). Remaining raw `hcp || '—'` bypass sites (NewReportModal, AddInspectionModal, Billing Pipeline, etc.) tracked as a follow-up sweep.
 
 ## Latest Updates (v2.961)
 

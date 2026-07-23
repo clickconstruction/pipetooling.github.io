@@ -31,15 +31,15 @@ describe('ledgerDisplayPrefixes', () => {
   })
 
   it('formats number labels', () => {
-    expect(formatJobLedgerNumberLabel('JP', '501')).toBe('JP501')
+    expect(formatJobLedgerNumberLabel('JP', '501', 'C77')).toBe('JP501')
     expect(formatBidLedgerNumberLabel('BH', '12')).toBe('BH12')
-    expect(formatJobLedgerNumberLabel('', null)).toBe(`${DEFAULT_JOB_LEDGER_PREFIX}—`)
+    expect(formatJobLedgerNumberLabel('', null, null)).toBe(`${DEFAULT_JOB_LEDGER_PREFIX}—`)
   })
 
   it('formats summary lines with map', () => {
     const map = buildLedgerPrefixMap([{ id: 'st1', ledger_job_prefix: 'JP', ledger_bid_prefix: 'BP' }])
-    expect(formatJobLedgerSummaryLine(map, 'st1', '9', 'A', 'Addr')).toBe('JP9 · A - Addr')
-    expect(formatJobLedgerSummaryLine(map, null, '9', 'A', 'Addr')).toBe('J9 · A - Addr')
+    expect(formatJobLedgerSummaryLine(map, 'st1', '9', 'A', 'Addr', 'C77')).toBe('JP9 · A - Addr')
+    expect(formatJobLedgerSummaryLine(map, null, '9', 'A', 'Addr', null)).toBe('J9 · A - Addr')
   })
 
   describe('effectiveJobLedgerNumber (HCP wins, Click falls back)', () => {
@@ -49,6 +49,7 @@ describe('ledgerDisplayPrefixes', () => {
       expect(effectiveJobLedgerNumber('  861 ', '123')).toBe('861')
     })
     it('falls back to Click when HCP empty/blank', () => {
+      expect(effectiveJobLedgerNumber('', 'C123')).toBe('C123')
       expect(effectiveJobLedgerNumber('', '123')).toBe('123')
       expect(effectiveJobLedgerNumber('   ', '123')).toBe('123')
       expect(effectiveJobLedgerNumber(null, ' 123 ')).toBe('123')
@@ -66,6 +67,7 @@ describe('ledgerDisplayPrefixes', () => {
     // HCP wins
     expect(formatJobLedgerNumberLabel('JP', '861', '123')).toBe('JP861')
     // Click fallback
+    expect(formatJobLedgerNumberLabel('J', '', 'C123')).toBe('JC123')
     expect(formatJobLedgerNumberLabel('JP', '', '123')).toBe('JP123')
     expect(formatJobLedgerShortLine(map, 'st1', '', 'A', '123')).toBe('JP123 · A')
     expect(formatJobLedgerSummaryLine(map, 'st1', '', 'A', 'Addr', '123')).toBe('JP123 · A - Addr')

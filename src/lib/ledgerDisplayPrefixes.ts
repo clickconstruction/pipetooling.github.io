@@ -58,7 +58,7 @@ export function bidNumberMatchesQuery(
  */
 export function effectiveJobLedgerNumber(
   hcpNumber: string | null | undefined,
-  clickNumber?: string | null | undefined,
+  clickNumber: string | null | undefined,
 ): string {
   return (hcpNumber ?? '').trim() || (clickNumber ?? '').trim() || ''
 }
@@ -66,7 +66,7 @@ export function effectiveJobLedgerNumber(
 export function formatJobLedgerNumberLabel(
   prefix: string,
   hcpNumber: string | null | undefined,
-  clickNumber?: string | null | undefined,
+  clickNumber: string | null | undefined,
 ): string {
   const pref = (prefix ?? '').trim() || DEFAULT_JOB_LEDGER_PREFIX
   const n = effectiveJobLedgerNumber(hcpNumber, clickNumber) || '—'
@@ -86,7 +86,7 @@ export function formatJobLedgerSummaryLine(
   hcpNumber: string | null | undefined,
   jobName: string | null | undefined,
   jobAddress: string | null | undefined,
-  clickNumber?: string | null | undefined,
+  clickNumber: string | null | undefined,
 ): string {
   const num = formatJobLedgerNumberLabel(resolveJobLedgerPrefix(serviceTypeId, map), hcpNumber, clickNumber)
   const name = (jobName ?? '').trim() || '—'
@@ -114,7 +114,7 @@ export function formatJobLedgerShortLine(
   serviceTypeId: string | null | undefined,
   hcpNumber: string | null | undefined,
   jobName: string | null | undefined,
-  clickNumber?: string | null | undefined,
+  clickNumber: string | null | undefined,
 ): string {
   const num = formatJobLedgerNumberLabel(resolveJobLedgerPrefix(serviceTypeId, map), hcpNumber, clickNumber)
   const name = (jobName ?? '').trim() || '—'
@@ -139,7 +139,7 @@ export function formatJobLedgerDocTitle(
   serviceTypeId: string | null | undefined,
   hcpNumber: string | null | undefined,
   jobName: string | null | undefined,
-  clickNumber?: string | null | undefined,
+  clickNumber: string | null | undefined,
 ): string {
   const num = formatJobLedgerNumberLabel(resolveJobLedgerPrefix(serviceTypeId, map), hcpNumber, clickNumber)
   const jn = (jobName ?? '').trim() || '—'

@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.962',
+    date: '2026-07-22',
+    title: 'Jobs without an HCP number show their C#',
+    kind: 'fix',
+    highlights: [
+      'Anywhere a job used to show "—" because it had no HCP number, it now falls back to its C# — My Time, Projects history, Documents, Banking, Dispatch PO, and more.',
+    ],
+  },
+  {
     version: 'v2.961',
     date: '2026-07-22',
     title: 'Candidate links stay short and clickable',

@@ -5,6 +5,7 @@ import { useToastContext } from '../../contexts/ToastContext'
 import { withSupabaseRetry, formatErrorMessage } from '../../utils/errorHandling'
 import { denverCalendarDayKey } from '../../utils/dateUtils'
 import { fetchDispatchModeDayBlocks, type DispatchModeAgendaBlock } from '../../lib/dispatchModeSchedule'
+import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import { buildServiceTypeTradePill } from '../../lib/serviceTypeTradePill'
 import SwipeToConfirm from '../shared/SwipeToConfirm'
 import { PO_LONG_PRESS_MS, applyOtherMoveLocally, otherIdSet, partitionByOther } from '../../lib/dispatchPoOther'
@@ -21,6 +22,7 @@ import type { DispatchPoOtherKind, DispatchPoOtherRow } from '../../lib/dispatch
 type PoJobPick = {
   id: string
   hcpNumber: string | null
+  clickNumber: string | null
   jobName: string
   jobAddress: string
   customerName: string
@@ -36,7 +38,7 @@ type PoLedgerRow = {
   po_code: number
   notes: string | null
   created_at: string | null
-  job: { hcp_number: string | null; job_name: string | null } | null
+  job: { hcp_number: string | null; click_number: string | null; job_name: string | null } | null
   for_user: { name: string | null } | null
   supply_house: { name: string | null } | null
 }
@@ -190,7 +192,7 @@ export default function DispatchModePo() {
             .from('material_po_generator_entries')
             .select(
               `id, po_code, notes, created_at,
-              job:jobs_ledger(hcp_number, job_name),
+              job:jobs_ledger(hcp_number, click_number, job_name),
               for_user:users!material_po_generator_entries_for_user_id_fkey(name),
               supply_house:supply_houses(name)`,
             )
@@ -261,7 +263,7 @@ export default function DispatchModePo() {
     const t = setTimeout(() => {
       void withSupabaseRetry(() => supabase.rpc('search_jobs_ledger', { search_text: q }), 'dispatch po job search')
         .then(async (jobRows) => {
-          const jobs = (jobRows ?? []) as Array<{ id: string; hcp_number: string | null; job_name: string | null; job_address: string | null }>
+          const jobs = (jobRows ?? []) as Array<{ id: string; hcp_number: string | null; click_number: string | null; job_name: string | null; job_address: string | null }>
           const ids = jobs.map((j) => j.id)
           const meta = ids.length
             ? await withSupabaseRetry(
@@ -280,6 +282,7 @@ export default function DispatchModePo() {
             jobs.slice(0, 12).map((j) => ({
               id: j.id,
               hcpNumber: j.hcp_number,
+              clickNumber: j.click_number,
               jobName: (j.job_name ?? '').trim() || '—',
               jobAddress: (j.job_address ?? '').trim(),
               customerName: (metaById.get(j.id)?.customer_name ?? '').trim(),
@@ -303,6 +306,7 @@ export default function DispatchModePo() {
       out.push({
         id: b.jobId,
         hcpNumber: b.hcpNumber,
+        clickNumber: b.clickNumber,
         jobName: b.jobName,
         jobAddress: b.jobAddress,
         customerName: b.customerName,
@@ -353,7 +357,7 @@ export default function DispatchModePo() {
       }
       setResult({
         code: row.out_po_code,
-        jobLabel: `${(buildServiceTypeTradePill(job.serviceTypeName)?.label ?? 'JOB')} ${job.hcpNumber?.trim() || '—'} · ${job.jobName}`,
+        jobLabel: `${(buildServiceTypeTradePill(job.serviceTypeName)?.label ?? 'JOB')} ${effectiveJobLedgerNumber(job.hcpNumber, job.clickNumber) || '—'} · ${job.jobName}`,
         personName: person.name,
         personPhone: person.phone,
         supplyHouseName: supplyHouse?.name ?? null,
@@ -427,7 +431,7 @@ export default function DispatchModePo() {
       {stepLabel(1, 'Job (On schedule today)')}
       {job ? (
         <button type="button" onClick={() => setJob(null)} className="dispatch-po-chip" style={{ ...chipStyle(true), textAlign: 'left' }}>
-          {(buildServiceTypeTradePill(job.serviceTypeName)?.label ?? '').toUpperCase()} {job.hcpNumber?.trim() || '—'} · {job.jobName}
+          {(buildServiceTypeTradePill(job.serviceTypeName)?.label ?? '').toUpperCase()} {effectiveJobLedgerNumber(job.hcpNumber, job.clickNumber) || '—'} · {job.jobName}
           <span style={{ display: 'block', fontSize: '0.75rem', fontWeight: 400, color: 'var(--text-muted)' }}>
             {job.jobAddress || job.customerName} — tap to change
           </span>
@@ -438,7 +442,7 @@ export default function DispatchModePo() {
             <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', marginBottom: '0.5rem' }}>
               {todaysJobs.map((j) => (
                 <button key={j.id} type="button" onClick={() => setJob(j)} className="dispatch-po-chip" style={chipStyle(false)}>
-                  {j.hcpNumber?.trim() || '—'} · {j.jobName}
+                  {effectiveJobLedgerNumber(j.hcpNumber, j.clickNumber) || '—'} · {j.jobName}
                 </button>
               ))}
             </div>
@@ -456,7 +460,7 @@ export default function DispatchModePo() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem', marginTop: '0.4rem' }}>
               {jobResults.map((j) => (
                 <button key={j.id} type="button" onClick={() => { setJob(j); setJobSearch(''); setJobResults([]) }} className="dispatch-po-chip" style={{ ...chipStyle(false), borderRadius: 8, textAlign: 'left' }}>
-                  {j.hcpNumber?.trim() || '—'} · {j.jobName}
+                  {effectiveJobLedgerNumber(j.hcpNumber, j.clickNumber) || '—'} · {j.jobName}
                   <span style={{ display: 'block', fontSize: '0.75rem', fontWeight: 400, color: 'var(--text-muted)' }}>
                     {[j.customerName, j.jobAddress].filter(Boolean).join(' · ')}
                   </span>
@@ -598,7 +602,7 @@ export default function DispatchModePo() {
             <li key={r.id} style={{ padding: '0.45rem 0.6rem', border: '1px solid var(--border)', borderRadius: 8, background: 'var(--bg-subtle)', fontSize: '0.8125rem', display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'baseline' }}>
               <span style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>PO {r.po_code}</span>
               <span>
-                {r.job?.hcp_number?.trim() || '—'} · {r.job?.job_name?.trim() || '—'}
+                {effectiveJobLedgerNumber(r.job?.hcp_number, r.job?.click_number) || '—'} · {r.job?.job_name?.trim() || '—'}
               </span>
               <span style={{ color: 'var(--text-muted)' }}>for {r.for_user?.name ?? '—'}</span>
               {r.supply_house?.name ? <span style={{ color: 'var(--text-muted)' }}>@ {r.supply_house.name}</span> : null}

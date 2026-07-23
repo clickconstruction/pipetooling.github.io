@@ -26,6 +26,7 @@ import {
 
 export type BarSearchInput = {
   hcpNumber: string
+  clickNumber?: string | null
   jobName: string
   jobAddress: string
   serviceTypeId: string | null
@@ -54,7 +55,7 @@ export function barMatchesSearch<T extends BarSearchInput>(
   if (q.length === 0) return true
 
   const prefix = resolveJobLedgerPrefix(bar.serviceTypeId, prefixMap)
-  const hcpLabel = formatJobLedgerNumberLabel(prefix, bar.hcpNumber)
+  const hcpLabel = formatJobLedgerNumberLabel(prefix, bar.hcpNumber, bar.clickNumber)
   const jobName = (bar.jobName ?? '').trim()
   const jobAddress = (bar.jobAddress ?? '').trim()
 

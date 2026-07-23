@@ -165,7 +165,7 @@ export function ProjectsJobHistoryTab({ customerId }: Props) {
       try {
         let query = supabase
           .from('jobs_ledger')
-          .select('id, hcp_number, job_name, job_address, service_type_id, project_id, customer_id, status')
+          .select('id, hcp_number, click_number, job_name, job_address, service_type_id, project_id, customer_id, status')
           .eq('status', 'working')
           .order('hcp_number', { ascending: false })
         if (customerId) query = query.eq('customer_id', customerId)
@@ -175,6 +175,7 @@ export function ProjectsJobHistoryTab({ customerId }: Props) {
         )) as unknown as Array<{
           id: string
           hcp_number: string
+          click_number: string
           job_name: string
           job_address: string | null
           service_type_id: string | null
@@ -187,6 +188,7 @@ export function ProjectsJobHistoryTab({ customerId }: Props) {
         const slim: ProjectsJobHistoryJob[] = rows.map((r) => ({
           id: r.id,
           hcp_number: r.hcp_number,
+          click_number: r.click_number,
           job_name: r.job_name,
           job_address: r.job_address ?? '',
           service_type_id: r.service_type_id ?? null,
@@ -365,7 +367,7 @@ export function ProjectsJobHistoryTab({ customerId }: Props) {
   const buildJobLabel = useCallback(
     (bar: ProjectsJobHistoryBar): string => {
       const prefix = resolveJobLedgerPrefix(bar.serviceTypeId, prefixMap)
-      const hcpLabel = formatJobLedgerNumberLabel(prefix, bar.hcpNumber)
+      const hcpLabel = formatJobLedgerNumberLabel(prefix, bar.hcpNumber, bar.clickNumber)
       return `${hcpLabel} · ${(bar.jobName ?? '').trim() || '—'}`
     },
     [prefixMap],

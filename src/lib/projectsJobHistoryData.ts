@@ -20,6 +20,7 @@ export type ProjectsJobHistoryClockRow = {
 export type ProjectsJobHistoryJob = {
   id: string
   hcp_number: string
+  click_number: string
   job_name: string
   job_address: string
   service_type_id: string | null
@@ -33,6 +34,7 @@ export type ProjectsJobHistoryJob = {
 export type ProjectsJobHistoryBar = {
   jobId: string
   hcpNumber: string
+  clickNumber: string
   jobName: string
   jobAddress: string
   serviceTypeId: string | null
@@ -137,6 +139,7 @@ export function aggregateClockSessionsToBars(
     bars.push({
       jobId,
       hcpNumber: job.hcp_number,
+      clickNumber: job.click_number,
       jobName: job.job_name,
       jobAddress: job.job_address ?? '',
       serviceTypeId: job.service_type_id ?? null,

@@ -42,6 +42,7 @@ type OpenSessionState = {
 type CurrentClockJobInfo = {
   id: string
   hcp_number: string | null
+  click_number: string | null
   job_name: string | null
   job_address: string | null
   service_type_id: string | null
@@ -222,7 +223,7 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
             supabase
               .from('job_schedule_blocks')
               .select(
-                'id, job_id, time_start, time_end, jobs_ledger(hcp_number, job_name, job_address, service_type_id)',
+                'id, job_id, time_start, time_end, jobs_ledger(hcp_number, click_number, job_name, job_address, service_type_id)',
               )
               .eq('assignee_user_id', userId)
               .eq('work_date', today)
@@ -254,6 +255,7 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
         time_end: string
         jobs_ledger: {
           hcp_number: string | null
+          click_number: string | null
           job_name: string | null
           job_address: string | null
           service_type_id: string | null
@@ -267,6 +269,7 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
           time_start: r.time_start,
           time_end: r.time_end,
           hcp_number: jl?.hcp_number ?? null,
+          click_number: jl?.click_number ?? null,
           job_name: jl?.job_name ?? null,
           job_address: jl?.job_address ?? null,
           service_type_id: jl?.service_type_id ?? null,
@@ -293,6 +296,7 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
           setCurrentJobInfo({
             id: sessionJobId,
             hcp_number: onSchedule.hcp_number,
+            click_number: onSchedule.click_number,
             job_name: onSchedule.job_name,
             job_address: onSchedule.job_address,
             service_type_id: onSchedule.service_type_id,
@@ -303,7 +307,7 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
               async () =>
                 supabase
                   .from('jobs_ledger')
-                  .select('id, hcp_number, job_name, job_address, service_type_id')
+                  .select('id, hcp_number, click_number, job_name, job_address, service_type_id')
                   .eq('id', sessionJobId)
                   .maybeSingle(),
               'job mode load off-schedule job info',
@@ -394,19 +398,19 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
     [scheduleBlocks, openSession],
   )
 
-  function jobNumberLabel(serviceTypeId: string | null, hcp: string | null): string {
+  function jobNumberLabel(serviceTypeId: string | null, hcp: string | null, click: string | null): string {
     // Trade-tag label ("PLUM 902" / "ELEC 31" / "HVAC 12") matching other job
     // cards; ledger-prefix label ("JP902") when the service type is unknown.
     const stName = serviceTypeId ? serviceTypeNames[serviceTypeId] : undefined
     const tag = getBidServiceTypeTag(stName)?.tag ?? (stName ? stName.slice(0, 4) : null)
-    if (tag) return `${tag.toUpperCase()} ${effectiveJobLedgerNumber(hcp) || '—'}`
-    return formatJobLedgerNumberLabel(resolveJobLedgerPrefix(serviceTypeId, prefixMap), hcp)
+    if (tag) return `${tag.toUpperCase()} ${effectiveJobLedgerNumber(hcp, click) || '—'}`
+    return formatJobLedgerNumberLabel(resolveJobLedgerPrefix(serviceTypeId, prefixMap), hcp, click)
   }
 
   function destinationLabelForNext(): string {
     const nb = picked.nextBlock
     if (!nb) return ''
-    const num = jobNumberLabel(nb.service_type_id, nb.hcp_number)
+    const num = jobNumberLabel(nb.service_type_id, nb.hcp_number, nb.click_number)
     const name = safeTrim(nb.job_name) || '—'
     return `${num} · ${name}`
   }
@@ -416,7 +420,7 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
     // Clocked into a job that matches today's schedule.
     if (picked.currentBlock) {
       const cb = picked.currentBlock
-      const num = jobNumberLabel(cb.service_type_id, cb.hcp_number)
+      const num = jobNumberLabel(cb.service_type_id, cb.hcp_number, cb.click_number)
       return (
         <div style={headerWrap}>
           <div style={headerNum}>
@@ -430,7 +434,7 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
     }
     // Clocked on a job NOT on today's schedule.
     if (picked.state === 'on-off-schedule-job' && currentJobInfo) {
-      const num = jobNumberLabel(currentJobInfo.service_type_id, currentJobInfo.hcp_number)
+      const num = jobNumberLabel(currentJobInfo.service_type_id, currentJobInfo.hcp_number, currentJobInfo.click_number)
       return (
         <div style={headerWrap}>
           <div style={headerNum}>
@@ -474,7 +478,7 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
     // Not clocked in but has schedule.
     if (picked.state === 'not-clocked-in-with-schedule' && picked.nextBlock) {
       const nb = picked.nextBlock
-      const num = jobNumberLabel(nb.service_type_id, nb.hcp_number)
+      const num = jobNumberLabel(nb.service_type_id, nb.hcp_number, nb.click_number)
       return (
         <div style={headerWrap}>
           <div style={headerStatusLine}>Ready to start</div>

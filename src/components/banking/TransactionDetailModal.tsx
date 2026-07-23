@@ -43,7 +43,7 @@ import {
 } from './AccountingRuleFormModal'
 
 type MercuryTxRow = Database['public']['Tables']['mercury_transactions']['Row']
-type JobSearchRow = { id: string; hcp_number: string; job_name: string; job_address: string; service_type_id: string | null }
+type JobSearchRow = { id: string; hcp_number: string; click_number: string; job_name: string; job_address: string; service_type_id: string | null }
 
 type ReplaceSplitsCall = {
   p_mercury_transaction_id: string
@@ -171,11 +171,11 @@ export function TransactionDetailModal({
         const jobLabelById = new Map<string, string>()
         if (jobIds.length > 0) {
           const jobRows = await withSupabaseRetry(
-            async () => supabase.from('jobs_ledger').select('id, hcp_number, job_name, service_type_id').in('id', jobIds),
+            async () => supabase.from('jobs_ledger').select('id, hcp_number, click_number, job_name, service_type_id').in('id', jobIds),
             'tx detail job labels',
           )
-          for (const j of (jobRows ?? []) as { id: string; hcp_number: string | null; job_name: string | null; service_type_id: string | null }[]) {
-            jobLabelById.set(j.id, formatJobLedgerShortLine(ledgerPrefixMap, j.service_type_id, j.hcp_number, j.job_name).trim() || j.id)
+          for (const j of (jobRows ?? []) as { id: string; hcp_number: string | null; click_number: string | null; job_name: string | null; service_type_id: string | null }[]) {
+            jobLabelById.set(j.id, formatJobLedgerShortLine(ledgerPrefixMap, j.service_type_id, j.hcp_number, j.job_name, j.click_number).trim() || j.id)
           }
         }
         if (cancelled) return
@@ -268,7 +268,7 @@ export function TransactionDetailModal({
     (row: JobSearchRow) => {
       setLines((prev) => {
         if (prev.some((p) => p.jobId === row.id)) return prev
-        const label = formatJobLedgerShortLine(ledgerPrefixMap, row.service_type_id, row.hcp_number, row.job_name).trim()
+        const label = formatJobLedgerShortLine(ledgerPrefixMap, row.service_type_id, row.hcp_number, row.job_name, row.click_number).trim()
         return redistributeEqualSplit([...prev, { jobId: row.id, jobLabel: label, mode: 'dollars', valueStr: '', note: '' }], displayTotal)
       })
       setJobSearch('')
@@ -520,7 +520,7 @@ export function TransactionDetailModal({
                 <div style={{ maxHeight: 140, overflow: 'auto', border: '1px solid var(--border)', borderRadius: 4, marginBottom: '0.5rem', fontSize: '0.8125rem' }}>
                   {jobResults.map((r) => (
                     <button key={r.id} type="button" onClick={() => addJobLine(r)} style={{ display: 'block', width: '100%', textAlign: 'left', padding: '0.45rem 0.65rem', border: 'none', borderBottom: '1px solid var(--border)', background: 'var(--surface)', cursor: 'pointer' }}>
-                      <span style={{ fontWeight: 600 }}>{formatJobLedgerShortLine(ledgerPrefixMap, r.service_type_id, r.hcp_number, r.job_name)}</span>
+                      <span style={{ fontWeight: 600 }}>{formatJobLedgerShortLine(ledgerPrefixMap, r.service_type_id, r.hcp_number, r.job_name, r.click_number)}</span>
                       <span style={{ color: 'var(--text-muted)' }}> · {r.job_address}</span>
                     </button>
                   ))}

@@ -104,6 +104,7 @@ export function PeopleHoursDayAuditModal({
           type: 'job'
           id: string
           hcp_number: string
+          click_number: string
           job_name: string
           job_address: string
           service_type_id?: string | null
@@ -205,6 +206,7 @@ export function PeopleHoursDayAuditModal({
                   data: Array<{
                     id: string
                     hcp_number: string
+                    click_number: string
                     job_name: string
                     job_address: string
                     service_type_id: string | null
@@ -218,6 +220,7 @@ export function PeopleHoursDayAuditModal({
             for (const j of list ?? []) {
               jobMap[j.id] = {
                 hcp_number: j.hcp_number ?? '',
+                click_number: j.click_number ?? '',
                 job_name: j.job_name ?? '',
                 job_address: j.job_address ?? '',
                 service_type_id: j.service_type_id,
@@ -297,6 +300,7 @@ export function PeopleHoursDayAuditModal({
           const jobs = (jobsRes.data ?? []) as Array<{
             id: string
             hcp_number: string
+            click_number: string
             job_name: string
             job_address: string
             service_type_id: string | null
@@ -345,6 +349,7 @@ export function PeopleHoursDayAuditModal({
           type: 'job'
           id: string
           hcp_number: string
+          click_number: string
           job_name: string
           job_address: string
           service_type_id?: string | null
@@ -373,6 +378,7 @@ export function PeopleHoursDayAuditModal({
         ...prev,
         [item.id]: {
           hcp_number: item.hcp_number,
+          click_number: item.click_number,
           job_name: item.job_name,
           job_address: item.job_address,
           service_type_id: item.service_type_id ?? null,
@@ -523,7 +529,7 @@ export function PeopleHoursDayAuditModal({
       if (s.job_ledger_id) {
         const j = jobDetailsMap[s.job_ledger_id]
         label = j
-          ? formatJobLedgerShortLine(prefixMap, j.service_type_id ?? null, j.hcp_number, j.job_name)
+          ? formatJobLedgerShortLine(prefixMap, j.service_type_id ?? null, j.hcp_number, j.job_name, j.click_number)
           : 'a job'
       } else if (s.bid_id) {
         const b = bidDetailsMap[s.bid_id]
@@ -846,7 +852,7 @@ export function PeopleHoursDayAuditModal({
                 let linkLabel: string | null = null
                 if (s.job_ledger_id) {
                   linkLabel = job
-                    ? formatJobLedgerShortLine(prefixMap, job.service_type_id ?? null, job.hcp_number, job.job_name)
+                    ? formatJobLedgerShortLine(prefixMap, job.service_type_id ?? null, job.hcp_number, job.job_name, job.click_number)
                     : 'Job'
                 } else if (s.bid_id) {
                   linkLabel = bid
@@ -1099,6 +1105,7 @@ export function PeopleHoursDayAuditModal({
                                           type: 'job',
                                           id: item.id,
                                           hcp_number: item.hcp_number,
+                                          click_number: item.click_number,
                                           job_name: item.job_name,
                                           job_address: item.job_address,
                                           service_type_id: item.service_type_id ?? null,
@@ -1128,7 +1135,7 @@ export function PeopleHoursDayAuditModal({
                                     ) : null
                                   })()}
                                   {item.type === 'job'
-                                    ? formatJobLedgerShortLine(prefixMap, item.service_type_id ?? null, item.hcp_number, item.job_name)
+                                    ? formatJobLedgerShortLine(prefixMap, item.service_type_id ?? null, item.hcp_number, item.job_name, item.click_number)
                                     : formatBidLedgerShortLine(prefixMap, item.service_type_id ?? null, item.bid_number, item.project_name)}
                                 </div>
                                 {(item.type === 'job' ? item.job_address : item.address) ? (
