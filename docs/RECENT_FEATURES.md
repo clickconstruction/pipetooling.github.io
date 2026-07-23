@@ -7,8 +7,8 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-23 (v2.974)
-last_updated: 2026-07-23 (v2.974)
+last_updated: 2026-07-23 (v2.976)
+last_updated: 2026-07-23 (v2.976)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2046,6 +2046,16 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.976)
+
+### Crew P&L: complete jobs list — paid jobs stop showing as UUIDs with no billing (2026-07-23)
+Crew P&L read the shared Jobs cache, which **lazily omits Paid in Full** (the "Expand to load" section) — fatal for a P&L, which is mostly finished jobs: clock sessions on paid jobs found no job row (drilldown showed the raw `jobId` UUID, zero revenue credit), and v2.974's sub-sheet matching couldn't link paid jobs either. [`JobsCrewPnlTab`](../src/components/jobs/JobsCrewPnlTab.tsx) now **loads its own complete `jobs_ledger` list** (all statuses; id/numbers/name/revenue/last_work_date/team members; cache prop as fallback while loading), so paid-job revenue splits, sub-sheet links, and labels all resolve. Kernel: a job genuinely missing (deleted) now labels **"Unknown job"** instead of the raw UUID.
+
+## Latest Updates (v2.975)
+
+### Jobs polish: Stages headers renamed; reports stop showing raw job-id names (2026-07-23)
+(Entry landed a PR late — the v2.975 PR #659 shipped without it.) Stages (both tables): the stacked first-column header **Assigned / Job # / Last-Activity** becomes **Team & / Last-update**, and the **Last activity** column is now **Activity**. Reports: jobs whose `job_name` is a raw UUID + suffix (import artifacts like "…-a37229a015fd - [HCP]") now display **"Job {number}"** via [`looksLikeRawJobIdName`](../src/lib/jobs/jobFormatting.ts) (tested); rename the job in Edit Job to fix the name everywhere else.
 
 ## Latest Updates (v2.974)
 

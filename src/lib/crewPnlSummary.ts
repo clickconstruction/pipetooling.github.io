@@ -213,7 +213,7 @@ export function buildCrewPnlSummary(args: {
       a.perJob.push({
         kind: 'crew',
         jobId: row.jobId,
-        label: job?.jobLabel ?? row.jobId,
+        label: job?.jobLabel ?? 'Unknown job',
         hours: inHours,
         laborCost: inCost,
         billing,

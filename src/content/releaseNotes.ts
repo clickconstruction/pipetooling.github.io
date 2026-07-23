@@ -11,6 +11,25 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.976',
+    date: '2026-07-23',
+    title: 'Crew P&L sees every job',
+    kind: 'fix',
+    highlights: [
+      'Crew P&L now loads the complete jobs list — paid jobs no longer show as ID strings with missing billing, and per-job subs get credit on finished work.',
+    ],
+  },
+  {
+    version: 'v2.975',
+    date: '2026-07-23',
+    title: 'Cleaner Stages headers and report names',
+    kind: 'fix',
+    highlights: [
+      'Stages columns now read "Team & Last-update" and "Activity".',
+      'Reports show the job number instead of raw ID strings for oddly-named imported jobs.',
+    ],
+  },
+  {
     version: 'v2.974',
     date: '2026-07-23',
     title: 'Crew P&L finally counts sub labor fairly',

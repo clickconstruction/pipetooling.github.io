@@ -46,6 +46,16 @@ function sortValue(row: CrewPnlPersonRow, key: SortKey): number | string {
   return row.profit
 }
 
+type CrewPnlAllJobRow = {
+  id: string
+  hcp_number: string
+  click_number: string
+  job_name: string | null
+  revenue: number | null
+  last_work_date: string | null
+  team_members: Array<{ user_id: string | null; users: { name: string } | null }>
+}
+
 export default function JobsCrewPnlTab({
   jobs,
   laborJobs,
@@ -64,6 +74,8 @@ export default function JobsCrewPnlTab({
   onOpenJobDetail: (jobId: string) => void
 }) {
   const [people, setPeople] = useState<CrewPnlRosterPerson[] | null>(null)
+  /** Complete jobs list, all statuses (v2.976) — the shared cache lazily omits Paid in Full. */
+  const [allJobs, setAllJobs] = useState<CrewPnlAllJobRow[] | null>(null)
   const [preset, setPreset] = useState<CrewPnlRangePreset | 'custom'>('all')
   const [customStart, setCustomStart] = useState('')
   const [customEnd, setCustomEnd] = useState('')
@@ -129,6 +141,20 @@ export default function JobsCrewPnlTab({
     }
   }, [])
 
+  useEffect(() => {
+    let cancelled = false
+    void (async () => {
+      const { data, error } = await supabase
+        .from('jobs_ledger')
+        .select('id, hcp_number, click_number, job_name, revenue, last_work_date, team_members:jobs_ledger_team_members(user_id, users(name))')
+      if (cancelled) return
+      setAllJobs(error ? null : ((data ?? []) as unknown as CrewPnlAllJobRow[]))
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
   const range: CrewPnlRange = useMemo(() => {
     if (preset === 'custom') {
       return {
@@ -143,7 +169,16 @@ export default function JobsCrewPnlTab({
     if (!people) return null
     const mileageCost = driveMileageCost ?? 0.7
     const timePerMile = driveTimePerMile ?? 0.02
-    const jobInputs: CrewPnlJobInput[] = jobs.map((j) => ({
+    const pnlJobs: CrewPnlAllJobRow[] = allJobs ?? jobs.map((j) => ({
+      id: j.id,
+      hcp_number: j.hcp_number,
+      click_number: j.click_number,
+      job_name: j.job_name,
+      revenue: j.revenue,
+      last_work_date: j.last_work_date,
+      team_members: (j.team_members ?? []).map((tm) => ({ user_id: tm.user_id ?? null, users: tm.users })),
+    }))
+    const jobInputs: CrewPnlJobInput[] = pnlJobs.map((j) => ({
       id: j.id,
       jobLabel: effectiveJobLedgerNumber(j.hcp_number, j.click_number) || (j.job_name ?? '').trim() || j.id,
       revenue: j.revenue != null ? Number(j.revenue) : null,
