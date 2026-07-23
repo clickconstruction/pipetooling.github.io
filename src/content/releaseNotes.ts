@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.981',
+    date: '2026-07-23',
+    title: 'Header menu collapses whenever it runs out of room',
+    kind: 'fix',
+    highlights: [
+      'On mid-size screens (small tablets, split-screen, narrow windows) the top navigation no longer spills off the right edge — it now switches to the compact menu the moment it doesn\'t fit, and switches back when there\'s room.',
+    ],
+  },
+  {
     version: 'v2.980',
     date: '2026-07-23',
     title: 'Jobs Stages fits phone screens again',
