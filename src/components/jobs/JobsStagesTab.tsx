@@ -59,6 +59,7 @@ import {
   peekReturnEditJobFromStages,
 } from '../../lib/returnEditJobFromStages'
 import { DELETE_DRAFT_BILL_LABEL } from '../../lib/deleteDraftBillLabel'
+import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import { formatMoveIntoStageByOnLine } from '../../lib/formatMoveIntoStageByOnLine'
 import {
   invoiceNeedsStripeVoidForRevert,
@@ -1622,7 +1623,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     onAction={(j) =>
                       stagesHamMode
                         ? (nudgeMissingBillingEmail(j.id), void moveJobToReadyToBillWithStripePrep(j.id))
-                        : (setReadyForBillingChecked1(false), setReadyForBillingChecked2(false), setReadyForBillingJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—' }))}
+                        : (setReadyForBillingChecked1(false), setReadyForBillingChecked2(false), setReadyForBillingJob({ id: j.id, hcpNumber: effectiveJobLedgerNumber(j.hcp_number, j.click_number) || '—', jobName: j.job_name ?? '—' }))}
                     showTimeOpen={true}
                     onSendBack={undefined}
                     onSendBackSimple={stagesHamMode
@@ -1746,7 +1747,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                         : (setSendBackChecked(false),
                           setSendBackJob({
                             id: j.id,
-                            hcpNumber: j.hcp_number ?? '—',
+                            hcpNumber: effectiveJobLedgerNumber(j.hcp_number, j.click_number) || '—',
                             jobName: j.job_name ?? '—',
                             toStatus: 'working',
                             rtbDraftCount: (j.invoices ?? []).filter((i) => i.status === 'ready_to_bill').length,
@@ -1953,7 +1954,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                         : (setSendBackChecked(false),
                           setSendBackJob({
                             id: j.id,
-                            hcpNumber: j.hcp_number ?? '—',
+                            hcpNumber: effectiveJobLedgerNumber(j.hcp_number, j.click_number) || '—',
                             jobName: j.job_name ?? '—',
                             toStatus: 'ready_to_bill',
                             rtbDraftCount: 0,
@@ -2435,7 +2436,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                                 <tr key={job.id} style={{ borderBottom: '1px solid var(--border)' }}>
                                   <td style={{ padding: '0.5rem 0.75rem' }}>
                                     <div>{job.job_name || '—'}</div>
-                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{job.hcp_number || '—'}</div>
+                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{effectiveJobLedgerNumber(job.hcp_number, job.click_number) || '—'}</div>
                                   </td>
                                   <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center' }}>{job.pct_complete != null ? `${job.pct_complete}%` : '—'}</td>
                                   <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>{formatCurrency(valueCreated)}</td>
@@ -2596,7 +2597,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60 }}>
           <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 400, maxWidth: 480 }}>
             <h2 style={{ margin: '0 0 1rem', fontSize: '1.25rem' }}>Create partial invoice</h2>
-            <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>{createPartialInvoiceJob.hcp_number ?? '—'} · {createPartialInvoiceJob.job_name ?? '—'}</p>
+            <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>{effectiveJobLedgerNumber(createPartialInvoiceJob.hcp_number, createPartialInvoiceJob.click_number) || '—'} · {createPartialInvoiceJob.job_name ?? '—'}</p>
             <div style={{ marginBottom: '1rem' }}>
               <div style={{ marginBottom: '0.5rem', fontSize: '0.875rem' }}>Remaining: ${formatCurrency(jobBillingUnallocatedDollars(createPartialInvoiceJob))}</div>
               <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>
@@ -2705,6 +2706,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
             ? {
                 id: markPaidJob.id,
                 hcp_number: markPaidJob.hcp_number,
+                click_number: markPaidJob.click_number,
                 job_name: markPaidJob.job_name,
                 revenue: markPaidJob.revenue,
                 payments_made: markPaidJob.payments_made,
@@ -2733,7 +2735,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
           <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 400, maxWidth: 480 }}>
             <h2 style={{ margin: '0 0 1rem', fontSize: '1.25rem' }}>{sendBackInvoice.action === 'delete' ? DELETE_DRAFT_BILL_LABEL : 'Send back'}</h2>
             <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-              {`Job ${sendBackInvoice.inv.job.hcp_number || '—'} · ${sendBackInvoice.inv.job.job_name || '—'} · $${Number(sendBackInvoice.inv.amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}`}
+              {`Job ${effectiveJobLedgerNumber(sendBackInvoice.inv.job.hcp_number, sendBackInvoice.inv.job.click_number) || '—'} · ${sendBackInvoice.inv.job.job_name || '—'} · $${Number(sendBackInvoice.inv.amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}`}
             </p>
             {sendBackInvoice.action === 'delete' && (
               <p style={{ margin: '0 0 1rem', fontSize: '0.875rem' }}>This will remove the invoice from Ready to Bill.</p>

@@ -105,6 +105,12 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 #### July 22, 2026
 
+**`20260722258000_click_number_dashboard_rpcs.sql`** _(apply via `supabase db push` after the file is on `main`)_
+- **Purpose**: HCP→C# fallback tail (v2.963) — appends a `click_number` column to the END of RETURNS TABLE for `list_assigned_jobs_for_dashboard`, `list_ready_to_bill_assigned_jobs_for_dashboard`, and `list_superintendent_jobs_for_dashboard` so client display sites can apply `effectiveJobLedgerNumber()` explicitly (their `hcp_number` output stays the server-baked COALESCE from `20260619160000`). DROP+CREATE per function (return-type change, 42P13); grants restated.
+- **Security**: no policy changes — same SECURITY DEFINER bodies and team-membership/role gates as before; grants restated identically (anon/authenticated/service_role).
+- **Ordering**: any order — the client types `click_number` as optional and renders identically until the RPCs return it.
+- **Category**: Jobs / fix
+
 **`20260722256000_dispatch_po_other_items.sql`** _(apply via `supabase db push` after the file is on `main`)_
 - **Purpose**: Dispatch PO "Other" buckets (v2.955) — `dispatch_po_other_items` (kind `for_person`|`supply_house`, `item_id`, UNIQUE pair): company-wide demotion flags for the Dispatch Mode PO pickers.
 - **Security**: RLS — **any authenticated user** may SELECT/INSERT/DELETE (deliberate: move-only categorization, no update path, no data loss). CREATE TABLE ends with both read-only-block calls.

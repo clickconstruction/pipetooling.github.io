@@ -30,6 +30,12 @@ export type DashboardTeamAssignedJobRow = {
   status?: string | null
   /** v2.842: shown under the address on the Dashboard Assigned Jobs rows. */
   customer_name?: string | null
+  /**
+   * Raw jobs_ledger click number (C#). Optional at runtime until the
+   * 20260722258000 migration is pushed — the older prod RPCs omit it (their
+   * hcp_number is already the server-baked HCP-else-C# COALESCE).
+   */
+  click_number?: string | null
 }
 
 /**

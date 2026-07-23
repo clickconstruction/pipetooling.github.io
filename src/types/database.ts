@@ -11895,6 +11895,7 @@ export type Database = {
       list_assigned_jobs_for_dashboard: {
         Args: never
         Returns: {
+          click_number: string
           created_at: string
           customer_name: string
           google_drive_link: string
@@ -12231,6 +12232,7 @@ export type Database = {
       list_ready_to_bill_assigned_jobs_for_dashboard: {
         Args: never
         Returns: {
+          click_number: string
           created_at: string
           google_drive_link: string
           hcp_number: string
@@ -12348,6 +12350,7 @@ export type Database = {
       list_superintendent_jobs_for_dashboard: {
         Args: never
         Returns: {
+          click_number: string
           created_at: string
           google_drive_link: string
           hcp_number: string

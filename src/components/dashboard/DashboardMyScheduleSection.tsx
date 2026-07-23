@@ -4,6 +4,7 @@ import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
 import { scheduleFormatWeekdayLong, scheduleFormatWindow } from '../../lib/jobScheduleChicago'
 import { sortSubScheduleBlocksByStart, type SubScheduleDayPartition } from '../../lib/dashboardSubSchedule'
 import type { DashboardTeamAssignedJobRow } from '../../lib/dashboardTeamAssignedJobRow'
+import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import { useJobDetailModal } from '../../contexts/JobDetailModalContext'
 import type { UserRole } from '../../hooks/useAuth'
 import { DashboardListRowSkeleton } from './DashboardSkeletons'
@@ -336,7 +337,7 @@ export function DashboardMyScheduleSection({
                                     e.stopPropagation()
                                     setLeaveReportJob({
                                       id: b.job_id,
-                                      hcpNumber: fromAssigned?.hcp_number ?? '—',
+                                      hcpNumber: effectiveJobLedgerNumber(fromAssigned?.hcp_number, fromAssigned?.click_number) || '—',
                                       jobName: fromAssigned?.job_name ?? rowLabel,
                                       jobAddress: fromAssigned?.job_address ?? '—',
                                     })

@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-22 (v2.962)
+last_updated: 2026-07-22 (v2.963)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.963)
+
+### HCP→C# fallback: remaining raw bypass sites converted + dashboard RPCs return click_number (2026-07-22)
+Tail of the v2.962 sweep — the raw `hcp_number || '—'` / `?? '—'` display sites that bypassed [`effectiveJobLedgerNumber()`](../src/lib/ledgerDisplayPrefixes.ts) now use the helper (or store an already-effective label): Dashboard Assigned/Superintendent rows + Billing Pipeline (rows, View Reports/Send Back/Leave Report/Ready for Billing modal labels), Team Ready to Bill, My Schedule leave-report label, Jobs Stages (board line labels, bank-payment targets, unified-table bill-date modal, partial-invoice + send-back modals, `%`-complete table), Jobs Billing + Parts tabs, `BilledPaymentConfirmationModal` subtitle, the Billed Awaiting Payment print + Job Summary cost-breakdown headers ([`invoiceBilling.ts`](../src/lib/jobs/invoiceBilling.ts), [`jobsStagesBoard.ts`](../src/lib/jobsStagesBoard.ts), [`jobsDocuments/*`](../src/lib/jobsDocuments/billedAwaitingPaymentReport.ts)), People Review/Overhead labels, and Materials PO Generator (its three `J`-prefixed sites keep the prefix). Data plumbed: `click_number` added to `DASHBOARD_INVOICES_JOBS_LEDGER_SELECT` (+ drift-test fixtures), `InvoiceForDashboard`/`JobForDashboard`/`DashboardTeamAssignedJobRow`/`JobLikeForPayment`, and the Materials PO selects. **Migration [`20260722258000_click_number_dashboard_rpcs.sql`](../supabase/migrations/20260722258000_click_number_dashboard_rpcs.sql)** (needs `supabase db push` after merge) appends a `click_number` column to `list_assigned_jobs_for_dashboard`, `list_ready_to_bill_assigned_jobs_for_dashboard`, and `list_superintendent_jobs_for_dashboard` (DROP+CREATE, grants restated; their `hcp_number` stays the server-baked COALESCE) — closing the v2.962 known gap: the Calendar job preview now threads the real `click_number` (typed optional so old prod RPC responses still render). Left alone on purpose: `NewReportModal`/`AddInspectionModal`/`JobTally` (their RPCs already return the effective number in `hcp_number` since `20260619160000`) and `utils/teamLabor.ts` `hcpNumber` (keyed joins on raw HCP elsewhere).
 
 ## Latest Updates (v2.962)
 

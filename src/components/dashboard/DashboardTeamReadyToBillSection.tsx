@@ -9,6 +9,7 @@ import { formatDatetime } from '../../lib/dashboardProjectsCard'
 import { subcontractorLastActivityMobileLine } from '../../lib/subcontractorLastActivityCompact'
 import { formatTimeSince, subcontractorLastActivityBlock } from '../../lib/dashboardJobRowActivity'
 import { stripeModeForBillingFromRole } from '../../lib/voidStripeInvoiceForRevert'
+import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import {
   isDashboardTeamReadyToBillRole,
   type DashboardTeamAssignedJobRow,
@@ -114,7 +115,7 @@ export function DashboardTeamReadyToBillSection({
                             openJobDetailFromDashboardJobRow(j)
                           }
                         }}
-                        aria-label={`Job details: ${(j.hcp_number ?? '').trim() || '—'} · ${(j.job_name ?? '').trim() || '—'}`}
+                        aria-label={`Job details: ${effectiveJobLedgerNumber(j.hcp_number, j.click_number) || '—'} · ${(j.job_name ?? '').trim() || '—'}`}
                         style={{
                           fontWeight: 600,
                           cursor: 'pointer',
@@ -122,7 +123,7 @@ export function DashboardTeamReadyToBillSection({
                           width: 'fit-content',
                         }}
                       >
-                        {j.hcp_number || '—'} · {j.job_name || '—'}
+                        {effectiveJobLedgerNumber(j.hcp_number, j.click_number) || '—'} · {j.job_name || '—'}
                       </div>
                       <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginTop: 4 }}>
                         {j.job_address?.trim() ? (
@@ -179,7 +180,7 @@ export function DashboardTeamReadyToBillSection({
                         <>
                           <button
                             type="button"
-                            onClick={() => setViewReportsJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', jobAddress: j.job_address ?? '—' })}
+                            onClick={() => setViewReportsJob({ id: j.id, hcpNumber: effectiveJobLedgerNumber(j.hcp_number, j.click_number) || '—', jobName: j.job_name ?? '—', jobAddress: j.job_address ?? '—' })}
                             style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: 'var(--text-link)', border: '1px solid #2563eb', borderRadius: 4, cursor: 'pointer' }}
                           >
                             View<br />Reports
@@ -189,7 +190,7 @@ export function DashboardTeamReadyToBillSection({
                       {role === 'superintendent' && (
                         <button
                           type="button"
-                          onClick={() => setViewReportsJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', jobAddress: j.job_address ?? '—' })}
+                          onClick={() => setViewReportsJob({ id: j.id, hcpNumber: effectiveJobLedgerNumber(j.hcp_number, j.click_number) || '—', jobName: j.job_name ?? '—', jobAddress: j.job_address ?? '—' })}
                           style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: 'var(--text-link)', border: '1px solid #2563eb', borderRadius: 4, cursor: 'pointer' }}
                         >
                           View<br />Reports
@@ -217,7 +218,7 @@ export function DashboardTeamReadyToBillSection({
                               onClick={() =>
                                   setSubcontractorJobActivityModalJob({
                                     id: j.id,
-                                    hcpNumber: j.hcp_number ?? '—',
+                                    hcpNumber: effectiveJobLedgerNumber(j.hcp_number, j.click_number) || '—',
                                     jobName: j.job_name ?? '—',
                                   })
                               }
@@ -254,7 +255,7 @@ export function DashboardTeamReadyToBillSection({
                           onClick={() =>
                             setLeaveReportJob({
                               id: j.id,
-                              hcpNumber: j.hcp_number ?? '—',
+                              hcpNumber: effectiveJobLedgerNumber(j.hcp_number, j.click_number) || '—',
                               jobName: j.job_name ?? '—',
                               jobAddress: j.job_address ?? '—',
                             })
@@ -267,7 +268,7 @@ export function DashboardTeamReadyToBillSection({
                           onClick={() =>
                             setCollectPaymentJob({
                               id: j.id,
-                              hcpNumber: j.hcp_number ?? '—',
+                              hcpNumber: effectiveJobLedgerNumber(j.hcp_number, j.click_number) || '—',
                               jobName: j.job_name ?? '—',
                               buttonVariant: j.collect_payment_button_variant ?? 'default',
                             })
@@ -336,7 +337,7 @@ export function DashboardTeamReadyToBillSection({
                                 onClick={() =>
                                   setSubcontractorJobActivityModalJob({
                                     id: j.id,
-                                    hcpNumber: j.hcp_number ?? '—',
+                                    hcpNumber: effectiveJobLedgerNumber(j.hcp_number, j.click_number) || '—',
                                     jobName: j.job_name ?? '—',
                                   })
                                 }

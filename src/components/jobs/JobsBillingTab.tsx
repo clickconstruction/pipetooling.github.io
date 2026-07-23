@@ -4,6 +4,7 @@ import type { UserRole } from '../../hooks/useAuth'
 import { formatCurrency } from '../../lib/jobs/jobFormatting'
 import { formatAddressTwoLines } from '../../lib/jobs/jobAddressUrls'
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
+import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import {
   billingFixturesCellText,
   billingJobMatchesSearch,
@@ -187,7 +188,7 @@ export default function JobsBillingTab({
               {sortedBillingJobs.map((job) => (
                 <tr key={job.id} style={{ borderBottom: '1px solid var(--border)' }}>
                   <td style={{ padding: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                    {job.hcp_number || '—'}
+                    {effectiveJobLedgerNumber(job.hcp_number, job.click_number) || '—'}
                     {job.hcp_number && authRole !== 'primary' && !laborJobHcps.has((job.hcp_number ?? '').trim().toLowerCase()) && (
                       <button
                         type="button"

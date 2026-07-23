@@ -6,6 +6,7 @@ import type { Database } from '../../types/database'
 import type { BillingStripeModePref } from '../../lib/billingStripeModePref'
 import { stripeModeInvokeBody } from '../../lib/billingStripeModePref'
 import { readEdgeFunctionErrorBody } from '../../lib/readEdgeFunctionErrorBody'
+import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 
 type JobsLedgerInvoice = Database['public']['Tables']['jobs_ledger_invoices']['Row']
 type JobsLedgerPayment = Database['public']['Tables']['jobs_ledger_payments']['Row']
@@ -13,6 +14,7 @@ type JobsLedgerPayment = Database['public']['Tables']['jobs_ledger_payments']['R
 export type JobLikeForPayment = {
   id: string
   hcp_number: string | null
+  click_number?: string | null
   job_name: string | null
   revenue: number | null
   payments_made: number | null
@@ -227,9 +229,9 @@ export default function BilledPaymentConfirmationModal({
 
   const subtitle =
     mode === 'invoice' && inv
-      ? `${inv.job.hcp_number ?? '—'} · ${inv.job.job_name ?? '—'}`
+      ? `${effectiveJobLedgerNumber(inv.job.hcp_number, inv.job.click_number) || '—'} · ${inv.job.job_name ?? '—'}`
       : jb
-        ? `${jb.hcp_number ?? '—'} · ${jb.job_name ?? '—'}`
+        ? `${effectiveJobLedgerNumber(jb.hcp_number, jb.click_number) || '—'} · ${jb.job_name ?? '—'}`
         : '—'
 
   const outsideOrStripe =
