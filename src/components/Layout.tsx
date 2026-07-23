@@ -3,6 +3,7 @@ import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import { useAssistantDispatchLanding } from '../hooks/useAssistantDispatchLanding'
+import { useNavFitCollapse } from '../hooks/useNavFitCollapse'
 import { useForceReload } from '../contexts/ForceReloadContext'
 import { useTheme } from '../contexts/ThemeContext'
 import { useChecklistAddModal } from '../contexts/ChecklistAddModalContext'
@@ -180,9 +181,15 @@ export default function Layout() {
   // The current user's pins (unfiltered) — drives the pin button's pinned state. Loaded from
   // Supabase so pins sync across devices; refreshed on the pins-changed event + window focus.
   const [pins, setPins] = useState<PinnedItem[]>([])
-  const [isMobile, setIsMobile] = useState(
+  const [viewportNarrow, setViewportNarrow] = useState(
     () => typeof window !== 'undefined' && window.matchMedia('(max-width: 640px)').matches
   )
+  // The desktop header's width varies by role (dev shows far more items than a
+  // sub), so above the 640px floor we collapse based on whether the row
+  // actually fits rather than a second fixed breakpoint.
+  const navRef = useRef<HTMLElement | null>(null)
+  const navOverflowCollapsed = useNavFitCollapse(navRef, !viewportNarrow)
+  const isMobile = viewportNarrow || navOverflowCollapsed
   const jobModeContactRowFits = jobModeFooterActive && !isMobile
   const [pinForUsers, setPinForUsers] = useState<Array<{ id: string; name: string; email: string }>>([])
   const [pinForUserId, setPinForUserId] = useState('')
@@ -234,7 +241,7 @@ export default function Layout() {
 
   useEffect(() => {
     const mql = window.matchMedia('(max-width: 640px)')
-    const handler = () => setIsMobile(mql.matches)
+    const handler = () => setViewportNarrow(mql.matches)
     handler()
     mql.addEventListener('change', handler)
     return () => mql.removeEventListener('change', handler)
@@ -641,6 +648,7 @@ export default function Layout() {
       )}
       <div className="appNavChrome">
       <nav
+        ref={navRef}
         className="appNav"
         style={{
           borderBottom: impersonating && isMobile ? '1px solid #f59e0b' : '1px solid var(--chrome-border)',

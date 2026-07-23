@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-23 (v2.981)
+last_updated: 2026-07-23 (v2.982)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.982)
+
+### Header nav collapses when it doesn't fit — no more sideways overflow at mid widths (2026-07-23)
+The header switched to the mobile hamburger only at ≤640px, but the desktop header's width varies by role — for dev it needs ~950px+ — so viewports between ~641px and that requirement rendered a desktop header wider than the page, pushing buttons off-screen and (on touch devices) widening the whole layout viewport. Now [`Layout`](../src/components/Layout.tsx) collapses on **measured fit**: new kernel [`navFitCollapse.ts`](../src/lib/navFitCollapse.ts) (tested state machine — collapse on real overflow, remember the viewport width the desktop row needed, expand again at that width + 24px hysteresis) driven by [`useNavFitCollapse`](../src/hooks/useNavFitCollapse.ts) (`useLayoutEffect` measure pre-paint on mount, then window/visualViewport resize + a `ResizeObserver` on the nav row, its children, and `documentElement` — content changes and emulated viewport changes both re-measure; viewport width read from `documentElement.clientWidth` because overflowing layout viewports inflate `innerWidth`). The ≤640px floor still forces mobile unconditionally; the single `isMobile` value downstream is now `narrow || doesn't-fit`, so the whole header (links, search placement, gear) flips coherently.
 
 ## Latest Updates (v2.981)
 
