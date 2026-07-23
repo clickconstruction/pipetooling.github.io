@@ -7,8 +7,8 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-23 (v2.966)
-last_updated: 2026-07-23 (v2.966)
+last_updated: 2026-07-23 (v2.967)
+last_updated: 2026-07-23 (v2.967)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2046,6 +2046,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.967)
+
+### Jobs Stages: job column stops jittering on load/search (2026-07-23)
+The Stages tables ([`JobsStagesTable.tsx`](../src/components/jobs/JobsStagesTable.tsx) — Waiting/Working/Paid in Full) used browser auto table layout with the Job column as the only unsized column, so every content change — the Paid in Full lazy load landing, search narrowing the rows — re-measured the other columns and shifted the Job column's edge a few pixels. Now `tableLayout: 'fixed'` + a `<colgroup>` (9rem stacked-header col, flexible Job col, 200px last-activity, 12rem progress, 140px actions): widths never derive from content, so nothing can re-measure. Text wraps within columns as before; the assigned-editor popover is position-absolute and unaffected.
 
 ## Latest Updates (v2.966)
 
