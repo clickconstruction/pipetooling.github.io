@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.961',
+    date: '2026-07-22',
+    title: 'Candidate links stay short and clickable',
+    kind: 'fix',
+    highlights: [
+      'Long URLs pasted into a candidate\'s source or notes no longer spill off the screen — they show as short clickable links like "🔗 indeed.com".',
+    ],
+  },
+  {
     version: 'v2.960',
     date: '2026-07-22',
     title: 'Reminders keep team reviews on schedule',

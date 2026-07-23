@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react'
 import { useSearchParams } from 'react-router-dom'
+import LinkifiedText from './LinkifiedText'
 import { COMMENT_KEY_BY_RATING, RATING_DEFS, RatingSliders, type RatingKey } from './ratingDimensions'
 import TeamReviewSection from './TeamReviewSection'
 import {
@@ -419,11 +420,17 @@ function SortableCandidateCard({
       <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', gap: '0.5rem', flexWrap: 'wrap', margin: '0.25rem 0 0 1.35rem' }}>
         {candidate.phone_number && <span>{candidate.phone_number}</span>}
         {candidate.email && <span style={{ overflowWrap: 'anywhere' }}>{candidate.email}</span>}
-        {candidate.source && <span>via {candidate.source}</span>}
+        {candidate.source && (
+          <span style={{ overflowWrap: 'anywhere' }}>
+            via <LinkifiedText text={candidate.source} />
+          </span>
+        )}
         <span>{formatLastContact(candidate.last_contact)}</span>
       </div>
       {candidate.notes && (
-        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: '0.25rem 0 0 1.35rem', whiteSpace: 'pre-wrap' }}>{candidate.notes}</div>
+        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: '0.25rem 0 0 1.35rem', whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>
+          <LinkifiedText text={candidate.notes} />
+        </div>
       )}
       <div style={{ display: 'flex', gap: '0.3rem', flexWrap: 'wrap', margin: '0.4rem 0 0 1.35rem' }}>
         <button type="button" disabled={busy} onClick={onMarkContacted} title="Stamp last contact as now" style={smallButtonStyle(busy)}>
@@ -1347,7 +1354,12 @@ export default function TeamProspectsTab({ authUserId, isDev, resolveMasterId }:
                                       <span style={{ fontVariantNumeric: 'tabular-nums' }} title="Ability · Drive · Integrity">
                                         {[r.rating_ability, r.rating_drive, r.rating_integrity].map((v) => (v == null ? '—' : v)).join(' · ')}
                                       </span>
-                                      {r.remarks ? <span> — {r.remarks}</span> : null}
+                                      {r.remarks ? (
+                                        <span style={{ overflowWrap: 'anywhere' }}>
+                                          {' — '}
+                                          <LinkifiedText text={r.remarks} />
+                                        </span>
+                                      ) : null}
                                       {dimensionComments.map((d) => (
                                         <div key={d.short} style={{ margin: '0.1rem 0 0 1rem' }}>
                                           <span style={{ fontWeight: 600 }}>{d.short}</span> — {d.text}

@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-22 (v2.960)
+last_updated: 2026-07-22 (v2.961)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.961)
+
+### Team Prospects: pasted URLs render as short links, text stops overflowing cards (2026-07-22)
+Full URLs pasted into a candidate's **Source** or **Notes** (e.g. Indeed applicant links with mile-long query strings) overflowed the Screen-board cards on mobile and were unclickable. New kernel [`linkifySegments.ts`](../src/lib/linkifySegments.ts) (7 tests) splits text into text/link segments — each URL renders as a **🔗 hostname** anchor (opens in a new tab; sentence-trailing punctuation stays text; pointer events stopped so links inside draggable/long-pressable cards never trigger card behavior) via new [`LinkifiedText.tsx`](../src/components/prospects/LinkifiedText.tsx). Applied to the Screen card's source line + notes and Interview review remarks, all with `overflowWrap: anywhere` so no unbroken token can escape a card again.
 
 ## Latest Updates (v2.960)
 
