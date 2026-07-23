@@ -46,6 +46,7 @@ import type { UserRow } from '../types/settingsRows'
 import { isAssistantLike, isSubcontractorLikeRole } from '../lib/subcontractorLikeRole'
 import SettingsCompanyDocumentsSection from '../components/settings/SettingsCompanyDocumentsSection'
 import SettingsReleaseNotesSection from '../components/settings/SettingsReleaseNotesSection'
+import TeamReviewCadenceSettingsBlock from '../components/settings/TeamReviewCadenceSettingsBlock'
 
 type UserRole =
   | 'dev'
@@ -1340,6 +1341,7 @@ export default function Settings() {
           toggleReportNotificationTemplate={toggleReportNotificationTemplate}
           users={users}
         />
+        {myRole === 'dev' && <TeamReviewCadenceSettingsBlock />}
       </SettingsGroup>
 
       <SettingsGroup id="settings-people" hidden={activeSettingsTab !== 'settings-people'} title="People & accounts">

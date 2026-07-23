@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.960',
+    date: '2026-07-22',
+    title: 'Reminders keep team reviews on schedule',
+    kind: 'feature',
+    highlights: [
+      'A "Team reviews due" notice appears on your Dashboard and Dispatch Inbox when teammates haven\'t had your review in 30+ days — tap it to land right on the Rate deck.',
+      'Devs can change the 30-day cadence in Settings → Dashboard & alerts.',
+    ],
+  },
+  {
     version: 'v2.959',
     date: '2026-07-22',
     title: 'PO screen titled "PO Generator"',

@@ -100,6 +100,8 @@ The **Review** stage tab (after Hire) turns the same three dimensions on your ex
 Reviews are monthly: saving again in the same month updates that month's review; a new month starts a fresh one. Over time that builds a track record — the card reminds you when you last rated each person.
 :::
 
+You don't have to remember the cadence: when teammates go 30+ days without your review, a **Team reviews due** notice appears on your Dashboard and in the Dispatch Mode Inbox — tap it to land right here. A dev can change the 30-day interval under Settings → Dashboard & alerts.
+
 **Reflect** shows the whole picture: for each person, every reviewer's latest scores and notes side by side, a team **average** of the three dimensions, how long they've been **at the company**, and a **History** toggle with the earlier months. **Click a person's card** to expand a chart of their three ratings over time — each point is the team's average for that month. Everyone who can see the Team board sees everyone's reviews — no blind reviewing, same as candidate reviews.
 
 Some people grade tough and some grade easy, so Reflect also corrects for it: the **Reviewer tendencies** panel shows each reviewer's own average, every score carries a small "+6 vs their norm" anchor, and each person gets a blue **adj** average that re-centers every reviewer's scores around the company norm (a reviewer needs at least 3 people rated before their correction kicks in). While you rate, the deck shows **your own running average** so you can keep yourself calibrated.

@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-22 (v2.959)
+last_updated: 2026-07-22 (v2.960)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.960)
+
+### Team review cadence: dev-set interval + "Team reviews due" inbox banner (2026-07-22)
+Everyone with Team access is nudged to review everyone else every N days. New kernel [`teamReviewDue.ts`](../src/lib/prospects/teamReviewDue.ts) (5 tests): a subject is **overdue** when the signed-in reviewer never reviewed them or hasn't touched their review (max `updated_at` per subject, `review_month` fallback) in more than the cadence; self excluded. **Cadence** = `app_settings` `team_review_cadence_days_v1` (`value_num`, default 30 via `parseTeamReviewCadenceDays`), dev-edited in a new self-contained **Team review cadence** block on Settings → Dashboard & alerts ([`TeamReviewCadenceSettingsBlock.tsx`](../src/components/settings/TeamReviewCadenceSettingsBlock.tsx); blank = default). **Banner** [`DashboardTeamReviewsDueBanner.tsx`](../src/components/DashboardTeamReviewsDueBanner.tsx) renders in [`DashboardPinnedQuickRow`](../src/components/dashboard/DashboardPinnedQuickRow.tsx)'s banner block — so it appears on the **Dashboard and the Dispatch Mode Inbox** like the other notices; gated on `users.team_prospects_access` (one cheap query for everyone else), blue family, count pill + first 3 names, tap → `/prospects?tab=team&stage=review` via a new **stage deep-link** in `TeamProspectsTab` (applied once then stripped). No migrations — all derived client-side.
 
 ## Latest Updates (v2.959)
 

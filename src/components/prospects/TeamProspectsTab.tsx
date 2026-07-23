@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { COMMENT_KEY_BY_RATING, RATING_DEFS, RatingSliders, type RatingKey } from './ratingDimensions'
 import TeamReviewSection from './TeamReviewSection'
 import {
@@ -580,6 +581,21 @@ export default function TeamProspectsTab({ authUserId, isDev, resolveMasterId }:
 
   /** Which stage sub-tab is showing: Screen (board) / Interview (calls+reviews) / Hire / Review (current team, v2.948). */
   const [stage, setStage] = useState<'screen' | 'interview' | 'hire' | 'review'>('screen')
+  const [searchParams, setSearchParams] = useSearchParams()
+
+  // Deep link (v2.960): ?stage=review (etc.) lands on that stage — used by the
+  // "Team reviews due" banner. Applied once, then stripped so tab-hopping
+  // afterwards doesn't snap back.
+  useEffect(() => {
+    const wanted = searchParams.get('stage')
+    if (wanted === 'screen' || wanted === 'interview' || wanted === 'hire' || wanted === 'review') {
+      setStage(wanted)
+      const next = new URLSearchParams(searchParams)
+      next.delete('stage')
+      setSearchParams(next, { replace: true })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams])
   const [activeUserCount, setActiveUserCount] = useState(0)
   const [onboardingItems, setOnboardingItems] = useState<TeamOnboardingItem[]>([])
   /** `${prospectId}:${itemId}` → status; missing key = pending. */
