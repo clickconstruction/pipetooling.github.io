@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.968',
+    date: '2026-07-23',
+    title: 'Paid notifications gear gets a label',
+    kind: 'fix',
+    highlights: [
+      'The gear across from Paid in Full on Jobs → Stages now says "Paid notifications" so it\'s clear what it configures.',
+    ],
+  },
+  {
     version: 'v2.967',
     date: '2026-07-23',
     title: 'Stages tables stop wiggling',

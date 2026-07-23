@@ -2172,10 +2172,11 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     style={{
                       flexShrink: 0,
                       height: 32,
-                      width: 32,
+                      padding: '0 0.6rem',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
+                      gap: '0.35rem',
                       border: '1px solid var(--border-strong)',
                       borderRadius: 4,
                       background: 'var(--surface)',
@@ -2185,6 +2186,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     }}
                   >
                     <span aria-hidden>⚙</span>
+                    <span style={{ fontSize: '0.8125rem', fontWeight: 600, whiteSpace: 'nowrap' }}>Paid notifications</span>
                   </button>
                 )}
                 </div>
