@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-22 (v2.957)
+last_updated: 2026-07-22 (v2.958)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.958)
+
+### Dispatch Mode PO: reactive feel — optimistic moves, motion, haptics (2026-07-22)
+The Other-bucket interactions stop waiting on the network: `executeMove` is now **optimistic** — the list flips and the confirm modal closes the instant the swipe lands (new pure `applyOtherMoveLocally` in [`dispatchPoOther.ts`](../src/lib/dispatchPoOther.ts), synthetic-id row deduped, +2 tests); the write runs behind it, reconciles real ids via refetch, and **rolls back with a toast** on failure ("Failed to move — change undone"). The now-pointless `moving` state and disabled Cancel are gone. **Motion**: new `dispatch-po-*` classes in [`index.css`](../src/index.css) — bottom sheet slides up, overlays fade, the confirm dialog pops, chips scale down 6% on press (`:active`), all disabled under `prefers-reduced-motion`. **Haptics**: `navigator.vibrate` ticks on long-press arm (10ms) and swipe confirm (15ms) where supported (Android; iOS ignores). Client-only.
 
 ## Latest Updates (v2.957)
 

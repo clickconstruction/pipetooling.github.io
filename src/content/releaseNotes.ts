@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.958',
+    date: '2026-07-22',
+    title: 'The PO screen feels instant',
+    kind: 'fix',
+    highlights: [
+      'Sorting into Other happens the moment your swipe lands — no waiting on the network (and it undoes itself with a message if the save fails).',
+      'Sheets slide, dialogs pop, and chips respond to your touch; phones that support it get a small haptic tick.',
+    ],
+  },
+  {
     version: 'v2.957',
     date: '2026-07-22',
     title: 'Clearer picks on the phone PO screen',

@@ -1878,3 +1878,27 @@ body.my-time-boundary-dragging {
     gap: 0.5rem;
   }
 }
+
+/* Dispatch PO reactive polish (v2.958): sheet/dialog entrances, touch feedback. */
+@keyframes dispatch-po-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes dispatch-po-sheet-up {
+  from { transform: translateY(28px); opacity: 0.5; }
+  to { transform: none; opacity: 1; }
+}
+@keyframes dispatch-po-pop-in {
+  from { transform: scale(0.94); opacity: 0.5; }
+  to { transform: none; opacity: 1; }
+}
+.dispatch-po-overlay { animation: dispatch-po-fade-in 0.15s ease-out; }
+.dispatch-po-sheet { animation: dispatch-po-sheet-up 0.2s ease-out; }
+.dispatch-po-dialog { animation: dispatch-po-pop-in 0.15s ease-out; }
+.dispatch-po-chip { transition: transform 0.08s ease-out; }
+.dispatch-po-chip:active { transform: scale(0.94); }
+@media (prefers-reduced-motion: reduce) {
+  .dispatch-po-overlay, .dispatch-po-sheet, .dispatch-po-dialog { animation: none; }
+  .dispatch-po-chip { transition: none; }
+  .dispatch-po-chip:active { transform: none; }
+}
