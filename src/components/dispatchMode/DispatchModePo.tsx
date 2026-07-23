@@ -53,13 +53,14 @@ const LAST_SUPPLY_HOUSE_KEY_PREFIX = 'dispatch_po_last_sh_'
 
 function chipStyle(selected: boolean): React.CSSProperties {
   return {
-    padding: '0.45rem 0.8rem',
+    // Selected = bold orange ring (v2.957); padding compensates the wider border so chips don't shift.
+    padding: selected ? 'calc(0.45rem - 1px) calc(0.8rem - 1px)' : '0.45rem 0.8rem',
     fontSize: '0.875rem',
     fontWeight: selected ? 700 : 500,
-    border: selected ? '1px solid #2563eb' : '1px solid var(--border-strong)',
+    border: selected ? '2px solid #f97316' : '1px solid var(--border-strong)',
     borderRadius: 999,
-    background: selected ? 'var(--bg-blue-tint)' : 'var(--surface)',
-    color: selected ? 'var(--text-blue-700)' : 'var(--text-700)',
+    background: selected ? 'var(--bg-subtle)' : 'var(--surface)',
+    color: selected ? 'var(--text-strong)' : 'var(--text-700)',
     cursor: 'pointer',
   }
 }
@@ -402,6 +403,9 @@ export default function DispatchModePo() {
   return (
     <div style={{ padding: '0.75rem', display: 'flex', flexDirection: 'column' }}>
       <h1 style={{ margin: 0, fontSize: '1.1rem', color: 'var(--text-strong)', textAlign: 'center' }}>PO</h1>
+      <p style={{ margin: '0.25rem 0 0', fontSize: '0.75rem', color: 'var(--text-faint)', textAlign: 'center' }}>
+        Hold down a name to sort it into Other
+      </p>
 
       {stepLabel(1, 'Job (On schedule today)')}
       {job ? (
@@ -448,6 +452,25 @@ export default function DispatchModePo() {
 
       {stepLabel(2, 'For')}
       <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+        {/* A pick from the Other sheet isn't in the main list — show just that name; deselecting restores the full list (v2.957). */}
+        {person && peoplePartition.other.some((p) => p.id === person.id) ? (
+          <button
+            key={person.id}
+            type="button"
+            onClick={() => {
+              if (consumeLongPress()) return
+              setPerson(null)
+            }}
+            aria-pressed
+            title="Tap to change · hold to move back to the main list"
+            style={{ ...chipStyle(true), touchAction: 'manipulation', userSelect: 'none', WebkitUserSelect: 'none' }}
+            {...longPressHandlers('for_person', person.id, person.name, 'to-main')}
+          >
+            {person.name}
+            <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}> — tap to change</span>
+          </button>
+        ) : (
+          <>
         {peoplePartition.main.map((p) => (
           <button
             key={p.id}
@@ -469,10 +492,30 @@ export default function DispatchModePo() {
             Other ({peoplePartition.other.length})
           </button>
         )}
+          </>
+        )}
       </div>
 
       {stepLabel(3, 'Supply house (optional)')}
       <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+        {supplyHouse && supplyHousePartition.other.some((s) => s.id === supplyHouse.id) ? (
+          <button
+            key={supplyHouse.id}
+            type="button"
+            onClick={() => {
+              if (consumeLongPress()) return
+              setSupplyHouse(null)
+            }}
+            aria-pressed
+            title="Tap to change · hold to move back to the main list"
+            style={{ ...chipStyle(true), touchAction: 'manipulation', userSelect: 'none', WebkitUserSelect: 'none' }}
+            {...longPressHandlers('supply_house', supplyHouse.id, supplyHouse.name, 'to-main')}
+          >
+            {supplyHouse.name}
+            <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}> — tap to change</span>
+          </button>
+        ) : (
+          <>
         {supplyHousePartition.main.map((s) => (
           <button
             key={s.id}
@@ -493,6 +536,8 @@ export default function DispatchModePo() {
           <button type="button" onClick={() => setOtherListOpen('supply_house')} style={{ ...chipStyle(false), color: 'var(--text-muted)' }}>
             Other ({supplyHousePartition.other.length})
           </button>
+        )}
+          </>
         )}
       </div>
 

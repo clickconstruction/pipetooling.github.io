@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.957',
+    date: '2026-07-22',
+    title: 'Clearer picks on the phone PO screen',
+    kind: 'fix',
+    highlights: [
+      'Picking someone from Other now shows just their name — deselect to see the full list again.',
+      'Selected choices get a bold orange ring.',
+      'A hint under the title explains hold-to-sort.',
+    ],
+  },
+  {
     version: 'v2.956',
     date: '2026-07-22',
     title: 'PO job step says where its list comes from',
