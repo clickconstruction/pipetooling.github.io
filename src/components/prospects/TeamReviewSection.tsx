@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
 import { displayLabelForUserRole } from '../../lib/userRoleDisplay'
@@ -19,6 +19,14 @@ import {
   subjectReviewHistory,
 } from '../../lib/prospects/teamMemberReviews'
 import type { RatableUser, RecentJobRow, TeamMemberReviewRow, TenureRow } from '../../lib/prospects/teamMemberReviews'
+import {
+  CALIBRATION_MIN_SUBJECTS,
+  adjustedAverages,
+  companyDimensionMeans,
+  deviationsFromNorm,
+  formatDeviations,
+  reviewerBaselines,
+} from '../../lib/prospects/reviewerCalibration'
 
 type ReviewDraft = {
   rating_ability: number | null
@@ -70,6 +78,10 @@ export default function TeamReviewSection({ authUserId }: { authUserId: string }
   const [openHistories, setOpenHistories] = useState<Set<string>>(() => new Set())
   const [openCharts, setOpenCharts] = useState<Set<string>>(() => new Set())
   const [startedOnByUser, setStartedOnByUser] = useState<Map<string, string>>(() => new Map())
+  const [tendenciesOpen, setTendenciesOpen] = useState(false)
+
+  const baselines = useMemo(() => reviewerBaselines(reviews), [reviews])
+  const company = useMemo(() => companyDimensionMeans(reviews), [reviews])
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -219,6 +231,16 @@ export default function TeamReviewSection({ authUserId }: { authUserId: string }
 
       {error && <p style={{ color: 'var(--text-red-600)', marginTop: 0 }}>{error}</p>}
 
+      {subTab === 'rate' && (() => {
+        const myBaseline = baselines.get(authUserId)
+        return myBaseline && myBaseline.overallMean != null ? (
+          <p style={{ textAlign: 'center', margin: '0 0 0.75rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }} title="Knowing your own center of gravity keeps ratings calibrated across reviewers">
+            Your average: <strong style={{ color: 'var(--text-strong)' }}>{myBaseline.overallMean}</strong> across {myBaseline.subjectCount}{' '}
+            {myBaseline.subjectCount === 1 ? 'person' : 'people'}
+          </p>
+        ) : null
+      })()}
+
       {subTab === 'rate' && (
         roster.length === 0 ? (
           <p style={{ color: 'var(--text-muted)' }}>No active team members found.</p>
@@ -312,6 +334,40 @@ export default function TeamReviewSection({ authUserId }: { authUserId: string }
 
       {subTab === 'reflect' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', maxWidth: 720, margin: '0 auto' }}>
+          {baselines.size > 0 && (
+            <div style={cardStyle}>
+              <button
+                type="button"
+                onClick={() => setTendenciesOpen((v) => !v)}
+                aria-expanded={tendenciesOpen}
+                style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', width: '100%', background: 'none', border: 'none', padding: 0, cursor: 'pointer', textAlign: 'left', font: 'inherit', color: 'inherit' }}
+              >
+                <span style={{ fontWeight: 700 }}>Reviewer tendencies</span>
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>some reviewers rate high, some low — read scores against each reviewer&rsquo;s own average</span>
+                <span aria-hidden style={{ marginLeft: 'auto', fontSize: '0.75rem', color: 'var(--text-faint)' }}>{tendenciesOpen ? '▾' : '▸'}</span>
+              </button>
+              {tendenciesOpen && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', marginTop: '0.5rem' }}>
+                  {[...baselines.values()]
+                    .sort((a, b) => (b.overallMean ?? -1) - (a.overallMean ?? -1))
+                    .map((b) => (
+                      <div key={b.reviewer_user_id} style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+                        <span style={{ fontWeight: 600, color: 'var(--text-strong)' }}>
+                          {roster.find((r) => r.id === b.reviewer_user_id)?.name ?? 'Former teammate'}
+                        </span>
+                        {' — avg '}
+                        <span style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{b.overallMean ?? '—'}</span>
+                        {` across ${b.subjectCount} ${b.subjectCount === 1 ? 'person' : 'people'}`}
+                        {b.overallMin != null && b.overallMax != null && ` (range ${b.overallMin}–${b.overallMax})`}
+                        {!b.calibrated && (
+                          <span style={{ color: 'var(--text-amber-700)' }}> · uncalibrated — fewer than {CALIBRATION_MIN_SUBJECTS} rated</span>
+                        )}
+                      </div>
+                    ))}
+                </div>
+              )}
+            </div>
+          )}
           {roster.map((u) => {
             const latest = latestReviewsByReviewer(reviews, u.id)
             const averages = averageLatestRatings(latest)
@@ -348,6 +404,19 @@ export default function TeamReviewSection({ authUserId }: { authUserId: string }
                       ? 'No reviews yet'
                       : `Avg ${[averages.ability, averages.drive, averages.integrity].map((v) => (v == null ? '—' : v)).join(' · ')} (${averages.reviewerCount} reviewer${averages.reviewerCount === 1 ? '' : 's'})`}
                   </span>
+                  {(() => {
+                    if (latest.length === 0) return null
+                    const adjusted = adjustedAverages(latest, baselines, company)
+                    if (adjusted.calibratedCount === 0) return null
+                    return (
+                      <span
+                        style={{ fontSize: '0.8125rem', color: 'var(--text-blue-700)', fontVariantNumeric: 'tabular-nums' }}
+                        title={`Corrected for each reviewer's own rating tendency (mean-centering; ${adjusted.calibratedCount} calibrated, ${adjusted.uncalibratedCount} raw)`}
+                      >
+                        {`adj ${[adjusted.ability, adjusted.drive, adjusted.integrity].map((v) => (v == null ? '—' : v)).join(' · ')}`}
+                      </span>
+                    )
+                  })()}
                   <span aria-hidden style={{ fontSize: '0.75rem', color: 'var(--text-faint)' }}>{chartOpen ? '▾' : '📈'}</span>
                 </button>
                 {chartOpen && <TeamMemberRatingChart reviews={reviews} subjectUserId={u.id} />}
@@ -361,6 +430,12 @@ export default function TeamReviewSection({ authUserId }: { authUserId: string }
                         <span style={{ fontVariantNumeric: 'tabular-nums' }} title="Ability · Drive · Integrity">
                           {[r.rating_ability, r.rating_drive, r.rating_integrity].map((v) => (v == null ? '—' : v)).join(' · ')}
                         </span>
+                        {(() => {
+                          const anchored = formatDeviations(deviationsFromNorm(r, baselines.get(r.reviewer_user_id)))
+                          return anchored ? (
+                            <span style={{ fontSize: '0.75rem', color: 'var(--text-faint)', fontVariantNumeric: 'tabular-nums' }}> ({anchored})</span>
+                          ) : null
+                        })()}
                         {dimensionComments(r).map((d) => (
                           <div key={d.short} style={{ margin: '0.1rem 0 0 1rem' }}>
                             <span style={{ fontWeight: 600 }}>{d.short}</span> — {d.text}

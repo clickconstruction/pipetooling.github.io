@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-22 (v2.951)
+last_updated: 2026-07-22 (v2.952)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.952)
+
+### Team → Review: reviewer calibration — show and correct rater skew (2026-07-22)
+Phase 1 of the calibrated-leaderboard arc. New kernel [`reviewerCalibration.ts`](../src/lib/prospects/reviewerCalibration.ts) (9 tests): per-reviewer baselines over their latest review of each subject (per-dimension means, overall mean/range, subject count), `CALIBRATION_MIN_SUBJECTS = 3` floor, mean-centering `adjusted = company mean + (rating − reviewer mean)` clamped 0–100 (uncalibrated reviewers pass through raw), per-review deviations from the reviewer's norm. Reflect UI: collapsible **Reviewer tendencies** panel ("Alice — avg 82 across 14 people (range 65–95)", uncalibrated flagged); each review line gains a muted **"(+6 · +1 · −4 vs their norm)"** anchor; person headers show **"adj A · D · I"** in blue beside the raw average (tooltip explains; hidden until ≥1 calibrated reviewer). Rate deck gains the self-calibration nudge **"Your average: 78 across 9 people"**. Valid because the Rate deck has every reviewer rate everyone — reviewer-mean differences are ~pure leniency bias. Client-only, no schema changes.
 
 ## Latest Updates (v2.951)
 
