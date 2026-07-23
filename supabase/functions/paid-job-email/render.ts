@@ -22,6 +22,7 @@ export type PaidJobEmailPayload = {
     revenue: number
     payments: Array<{ amount: number; payment_date: string | null; method: string | null }>
     payments_total: number
+    last_payment: { amount: number; at: string | null } | null
   }
   costs: {
     team_labor: {
@@ -68,6 +69,22 @@ function weekdayDate(iso: string | null): string {
   })
 }
 
+/** Weekday date + exact Chicago time, e.g. "Wednesday, Jul 23, 2026 · 2:41 PM". */
+function weekdayDateTime(iso: string | null): string {
+  if (!iso) return ''
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return ''
+  const date = d.toLocaleDateString('en-US', {
+    weekday: 'long',
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    timeZone: 'America/Chicago',
+  })
+  const time = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'America/Chicago' })
+  return `${date} &middot; ${time}`
+}
+
 function daysAgoNote(iso: string | null): string {
   if (!iso) return ''
   const d = new Date(iso.length === 10 ? `${iso}T12:00:00Z` : iso)
@@ -87,6 +104,22 @@ const WRAP_STYLE =
 
 const BADGE =
   '<span style="display:inline-block;background:#dcfce7;color:#166534;border:1px solid #86efac;border-radius:9999px;padding:4px 14px;font-size:13px;font-weight:bold;letter-spacing:0.04em;">PAID IN FULL</span>'
+
+/**
+ * The completing payment's exact amount + timestamp (v2.969) — shown on BOTH
+ * variants: the paid amount is cleared for all recipients; every other dollar
+ * figure stays detailed-only. Falls back to payments_total + queue paid_at.
+ */
+function renderPaidLine(p: PaidJobEmailPayload): string {
+  const lp = p.money.last_payment
+  const amount = lp?.amount ?? p.money.payments_total
+  const at = weekdayDateTime(lp?.at ?? p.dates.paid_at)
+  if (!Number.isFinite(amount) || amount <= 0) return ''
+  return `
+    <p style="margin:0 0 16px;text-align:center;font-size:15px;color:#166534;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:6px;padding:10px 12px;">
+      Paid <strong>${money(amount)}</strong>${at ? ` &mdash; ${at}` : ''}
+    </p>`
+}
 
 /** Job identity header + PAID IN FULL badge + paid date (both variants). */
 function renderHeader(p: PaidJobEmailPayload): string {
@@ -225,6 +258,7 @@ export function renderPaidJobEmailDetailed(p: PaidJobEmailPayload): string {
   <div style="background:#f5f5f4;padding:16px;">
     <div style="${WRAP_STYLE}">
       ${renderHeader(p)}
+      ${renderPaidLine(p)}
       ${renderDatesBlock(p)}
       ${renderScoreboard(p)}
       ${renderTimeline(p)}
@@ -239,6 +273,7 @@ export function renderPaidJobEmailSummary(p: PaidJobEmailPayload): string {
   <div style="background:#f5f5f4;padding:16px;">
     <div style="${WRAP_STYLE}">
       ${renderHeader(p)}
+      ${renderPaidLine(p)}
       ${renderDatesBlock(p)}
       <p style="margin:0;font-size:13px;color:#44403c;text-align:center;">This job has been paid in full. Nice work.</p>
       <p style="margin:16px 0 0;font-size:11px;color:#a8a29e;text-align:center;">PipeTooling &mdash; sent when a job reaches Paid in Full.</p>
@@ -252,6 +287,13 @@ export function paidJobEmailText(p: PaidJobEmailPayload): string {
   const parts = [
     `${j.display_number ?? ''} ${j.job_name ?? ''}`.trim(),
     'PAID IN FULL',
+    (() => {
+      const lp = p.money.last_payment
+      const amount = lp?.amount ?? p.money.payments_total
+      if (!Number.isFinite(amount) || amount <= 0) return ''
+      const at = weekdayDateTime(lp?.at ?? p.dates.paid_at).replace('&middot;', '\u00b7')
+      return `Paid ${money(amount)}${at ? ` — ${at}` : ''}`
+    })(),
     j.customer_name ? `Customer: ${j.customer_name}` : '',
     j.job_address ? `Address: ${j.job_address}` : '',
   ].filter(Boolean)
@@ -261,5 +303,7 @@ export function paidJobEmailText(p: PaidJobEmailPayload): string {
 export function paidJobEmailSubject(p: PaidJobEmailPayload): string {
   const j = p.job
   const id = [j.display_number, j.job_name].filter(Boolean).join(' · ')
-  return `Paid in full — ${id || 'job'}`
+  const amount = p.money.last_payment?.amount ?? p.money.payments_total
+  const amountPart = Number.isFinite(amount) && amount > 0 ? ` — ${money(amount)}` : ''
+  return `Paid in full — ${id || 'job'}${amountPart}`
 }

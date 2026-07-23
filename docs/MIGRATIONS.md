@@ -105,6 +105,12 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 #### July 22, 2026
 
+**`20260722262000_paid_email_last_payment.sql`** _(apply via `supabase db push` after the file is on `main`)_
+- **Purpose**: Paid-email payload v2 (v2.969) — `money.last_payment` (completing payment's exact amount + timestamp) added to `get_paid_job_email_payload`; shown on both email variants per the 2026-07-23 amount-visibility decision.
+- **Security**: unchanged — service_role-only EXECUTE; CREATE OR REPLACE, same signature.
+- **Ordering**: deploy `paid-job-email` function alongside; old function ignores the new key, old RPC leaves the line blank — either order safe.
+- **Category**: Billing / feature
+
 **`20260722260000_paid_job_email.sql`** _(apply via `supabase db push` after the file is on `main`; the companion edge function needs `supabase functions deploy paid-job-email`)_
 - **Purpose**: "Customer paid" emails (v2.965) — `paid_job_email_queue` table + `enqueue_paid_job_email()` AFTER UPDATE OF status trigger on `jobs_ledger` (fires on transition to `'paid'`, the single choke point for every writer); SECURITY DEFINER RPC `get_paid_job_email_payload(p_job_id)` returning the full money payload (revenue, payments, team labor via approved clock sessions × `people_pay_config.hourly_wage` name join, sub labor mirroring `laborJobSubCost`, parts = Mercury allocation SUM(ABS(amount)), profit, monthly timeline, job start/last work dates); pg_cron `paid-job-email` every 15 min posting to `/functions/v1/paid-job-email` with Vault `PROJECT_URL` + `CRON_SECRET` (same pattern as `20260430054614`).
 - **Security**: queue RLS — SELECT for `public.is_dev()` only, NO client write policies (SECURITY DEFINER trigger + service role write). RPC EXECUTE revoked from anon/authenticated, granted to service_role only (the edge function role-gates callers). CREATE TABLE ends with both read-only-block calls.
