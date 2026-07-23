@@ -2,6 +2,7 @@ import type { Database } from '../../types/database'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import { buildBilledStageRows, jobInCollections, stagesMergedBillingInvoiceId, type StageRow } from '../jobsStagesBoard'
 import { calendarDaysSinceDateUtc, formatYmdOrIsoDateForPrintDisplay } from './jobFormatting'
+import { effectiveJobLedgerNumber } from '../ledgerDisplayPrefixes'
 
 type JobsLedgerInvoice = Database['public']['Tables']['jobs_ledger_invoices']['Row']
 
@@ -56,7 +57,7 @@ export function stageRowBilledAgeDays(r: StageRow, now = new Date()): number | n
 }
 
 export function stageRowBilledLineLabel(r: StageRow): string {
-  const hcp = r.job.hcp_number || '—'
+  const hcp = effectiveJobLedgerNumber(r.job.hcp_number, r.job.click_number) || '—'
   if (r.kind === 'job') return `${hcp} · Job balance`
   if (r.kind === 'job_with_merged_billed') return `${hcp} · Billed line`
   return `${hcp} · Invoice #${r.inv.sequence_order}`

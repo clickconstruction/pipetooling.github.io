@@ -178,13 +178,13 @@ export default function PeopleOverheadTab({
         if (id) {
           const jobRow = (await withSupabaseRetry(
             async () =>
-              supabase.from('jobs_ledger').select('hcp_number, job_name').eq('id', id).maybeSingle(),
+              supabase.from('jobs_ledger').select('hcp_number, click_number, job_name').eq('id', id).maybeSingle(),
             'fetch overhead office job label',
-          )) as { hcp_number: string | null; job_name: string | null } | null
+          )) as { hcp_number: string | null; click_number: string | null; job_name: string | null } | null
           if (cancelled) return
           if (jobRow) {
             setOverheadOfficeJobLabel({
-              hcp_number: jobRow.hcp_number ?? null,
+              hcp_number: effectiveJobLedgerNumber(jobRow.hcp_number, jobRow.click_number) || null,
               job_name: jobRow.job_name ?? null,
             })
           } else {
@@ -1991,7 +1991,7 @@ export default function PeopleOverheadTab({
                               await upsertOverheadOfficeJobLedgerId(j.id)
                               setOverheadOfficeJobLedgerId(j.id)
                               setOverheadOfficeJobLabel({
-                                hcp_number: j.hcp_number ?? null,
+                                hcp_number: effectiveJobLedgerNumber(j.hcp_number, j.click_number) || null,
                                 job_name: j.job_name ?? null,
                               })
                               setOverheadJobPickerOpen(false)

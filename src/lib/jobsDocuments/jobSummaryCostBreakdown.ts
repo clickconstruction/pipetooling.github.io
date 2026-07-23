@@ -30,6 +30,7 @@ import { normalizePersonNameKey } from '../personNameKey'
 import { formatWorkDateYmdWeekdayLongFriendly } from '../../utils/dateUtils'
 import { formatMercuryDebitCardIdCompact, mercuryDebitCardIdFromRaw } from '../mercuryRawDebitCard'
 import { laborJobSubCost } from '../jobs/subLaborCost'
+import { effectiveJobLedgerNumber } from '../ledgerDisplayPrefixes'
 
 /**
  * Jobs → Job Summary "Print cost breakdown" (Stage A of the Jobs.tsx
@@ -104,7 +105,7 @@ export function buildJobSummaryCostBreakdownHtml(input: JobSummaryCostBreakdownI
     nicknameByDebitCard,
   } = input
   const generated = input.generated ?? new Date().toLocaleString()
-  const headerTitle = `${job.hcp_number ?? '—'} — ${job.job_name ?? '—'} — ${job.job_address ?? '—'}`
+  const headerTitle = `${effectiveJobLedgerNumber(job.hcp_number, job.click_number) || '—'} — ${job.job_name ?? '—'} — ${job.job_address ?? '—'}`
   const invoiceNote = input.invoiceDetailUnavailable ? '<p class="muted">Invoice line detail unavailable.</p>' : ''
   const mercuryNote = input.cardDetailUnavailable ? '<p class="muted">Card charge line detail unavailable.</p>' : ''
   const mRows = mercuryRows

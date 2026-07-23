@@ -5,6 +5,7 @@ import {
   sortStageRowsForTotalByNameDetail,
   stageRowBilledRemainingAmount,
 } from '../jobs/invoiceBilling'
+import { effectiveJobLedgerNumber } from '../ledgerDisplayPrefixes'
 
 /**
  * Stages → Billed Awaiting Payment "Print" report (Stage A of the Jobs.tsx
@@ -69,7 +70,7 @@ export function buildBilledAwaitingPaymentReportHtml(
           const amt = stageRowBilledRemainingAmount(r)
           const { display: dateDisplay, ageDays } = printBilledRowReferenceDate(r)
           return `<tr>
-              <td>${escapeHtml(j.hcp_number ?? '—')}</td>
+              <td>${escapeHtml(effectiveJobLedgerNumber(j.hcp_number, j.click_number) || '—')}</td>
               <td style="line-height:1.2">${escapeHtml(j.job_name ?? '—')}<br />${escapeHtml(j.job_address ?? '—')}</td>
               <td>${escapeHtml(detail)}</td>
               <td style="text-align:center;line-height:1.2">${escapeHtml(dateDisplay)}<br />${escapeHtml(formatPrintDaysSince(ageDays))}</td>

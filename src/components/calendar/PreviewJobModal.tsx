@@ -12,6 +12,8 @@ type CalendarStepLite = PreviewJobModalStepLite
 type AssignedJobRow = {
   id: string
   hcp_number: string
+  /** Optional at runtime until the 20260722258000 migration is pushed (older prod RPC omits it). */
+  click_number?: string | null
   job_name: string
   job_address: string
   google_drive_link: string | null
@@ -223,8 +225,7 @@ export function PreviewJobModal({
                   }}
                 >
                   <div style={{ fontWeight: 600 }}>
-                    {/* RPC doesn't return click_number — no C# fallback here */}
-                    {effectiveJobLedgerNumber(j.hcp_number, null) || '—'} · {(j.job_name ?? '').trim() || 'Job'}
+                    {effectiveJobLedgerNumber(j.hcp_number, j.click_number ?? null) || '—'} · {(j.job_name ?? '').trim() || 'Job'}
                   </div>
                   <div style={{ color: 'var(--text-600)', marginTop: 2 }}>{j.job_address}</div>
                   {showJobsDeepLink ? (

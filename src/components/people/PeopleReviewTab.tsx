@@ -1056,7 +1056,7 @@ export default function PeopleReviewTab({
         source: 'crew',
         job_id: c.job_id,
         work_date: c.work_date,
-        hcp_number: j?.hcp_number ?? '—',
+        hcp_number: effectiveJobLedgerNumber(j?.hcp_number, j?.click_number) || '—',
         click_number: j?.click_number ?? '',
         job_name: j?.job_name ?? '—',
         job_address: j?.job_address ?? '—',

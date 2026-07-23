@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.963',
+    date: '2026-07-22',
+    title: 'C# fallback reaches the last few screens',
+    kind: 'fix',
+    highlights: [
+      'Jobs without an HCP number now show their C# on the Dashboard billing pipeline, Jobs Stages/Billing/Parts, printed billing reports, and the Materials PO Generator — instead of "—".',
+      'Confirmation and report pop-ups opened from those screens carry the same number.',
+    ],
+  },
+  {
     version: 'v2.962',
     date: '2026-07-22',
     title: 'Jobs without an HCP number show their C#',

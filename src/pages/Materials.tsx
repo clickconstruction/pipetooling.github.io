@@ -3,6 +3,7 @@ import { pageTabStyle } from '../lib/pageTabStyle'
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { addExpandedPartsToPO, expandTemplate } from '../lib/materialPOUtils'
+import { effectiveJobLedgerNumber } from '../lib/ledgerDisplayPrefixes'
 import { useAuth } from '../hooks/useAuth'
 import { isAssistantLike } from '../lib/subcontractorLikeRole'
 import { Database } from '../types/database'
@@ -76,6 +77,7 @@ type PurchaseOrderWithItems = PurchaseOrder & {
 type PoGeneratorJobPick = {
   id: string
   hcp_number: string
+  click_number: string | null
   job_name: string
   job_address: string
   service_type_id: string
@@ -97,7 +99,7 @@ type PoGeneratorLedgerRow = {
   po_code: number
   notes: string | null
   created_at: string
-  jobs_ledger: { job_name: string; hcp_number: string; service_type_id: string }
+  jobs_ledger: { job_name: string; hcp_number: string; click_number: string | null; service_type_id: string }
   for_user: { name: string | null; email: string | null }
   supply_houses: { name: string } | null
   created_by_user: { name: string | null; email: string | null }
@@ -480,7 +482,7 @@ export default function Materials() {
             .from('material_po_generator_entries')
             .select(
               `id, po_code, notes, created_at,
-              jobs_ledger!inner(job_name, hcp_number, service_type_id),
+              jobs_ledger!inner(job_name, hcp_number, click_number, service_type_id),
               for_user:users!material_po_generator_entries_for_user_id_fkey(name, email),
               supply_houses(name),
               created_by_user:users!material_po_generator_entries_created_by_fkey(name, email)`,
@@ -1279,6 +1281,7 @@ export default function Materials() {
           const jobs = (jobRows ?? []) as Array<{
             id: string
             hcp_number: string
+            click_number: string | null
             job_name: string
             job_address: string
           }>
@@ -6005,7 +6008,7 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
                     }}
                   >
                     <span style={{ fontSize: '0.875rem' }}>
-                      J{poGenSelectedJob.hcp_number?.trim() || '—'} · {poGenSelectedJob.job_name?.trim() || '—'}
+                      J{effectiveJobLedgerNumber(poGenSelectedJob.hcp_number, poGenSelectedJob.click_number) || '—'} · {poGenSelectedJob.job_name?.trim() || '—'}
                       <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>
                         {poGenSelectedJob.job_address?.trim() || '—'}
                       </span>
@@ -6080,7 +6083,7 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
                                 fontSize: '0.875rem',
                               }}
                             >
-                              <span style={{ fontWeight: 600 }}>J{j.hcp_number?.trim() || '—'} · {j.job_name?.trim() || '—'}</span>
+                              <span style={{ fontWeight: 600 }}>J{effectiveJobLedgerNumber(j.hcp_number, j.click_number) || '—'} · {j.job_name?.trim() || '—'}</span>
                               <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)' }}>{j.job_address?.trim() || '—'}</span>
                             </button>
                           </li>
@@ -6365,7 +6368,7 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
                       <tr key={row.id} style={{ borderBottom: '1px solid var(--border)', verticalAlign: 'top' }}>
                         <td style={{ padding: '0.6rem 0.5rem', fontWeight: 600 }}>{row.po_code}</td>
                         <td style={{ padding: '0.6rem 0.5rem' }}>
-                          J{jl?.hcp_number?.trim() || '—'} · {jl?.job_name?.trim() || '—'}
+                          J{effectiveJobLedgerNumber(jl?.hcp_number, jl?.click_number) || '—'} · {jl?.job_name?.trim() || '—'}
                         </td>
                         <td style={{ padding: '0.6rem 0.5rem' }}>{fuLabel}</td>
                         <td style={{ padding: '0.6rem 0.5rem' }}>{row.supply_houses?.name ?? '—'}</td>

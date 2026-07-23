@@ -53,6 +53,7 @@ const BASE_INVOICE_FIELDS = {
 
 const BASE_JOBS_LEDGER = {
   hcp_number: 'HCP-9',
+  click_number: 'C-77',
   job_name: 'Repipe',
   job_address: '1 Main St',
   google_drive_link: 'https://drive',
@@ -88,6 +89,7 @@ function mkJob(over: Partial<JobForDashboard> = {}): JobForDashboard {
   return {
     id: 'job-1',
     hcp_number: 'HCP-9',
+    click_number: 'C-77',
     job_name: 'Repipe',
     job_address: '1 Main St',
     revenue: 1000,
@@ -129,6 +131,7 @@ describe('mapJoinedInvoiceToDashboard', () => {
     expect(out.amount).toBe(500)
     expect(out.status).toBe('billed')
     expect(out.hcp_number).toBe('HCP-9')
+    expect(out.click_number).toBe('C-77')
     expect(out.job_name).toBe('Repipe')
     expect(out.job_address).toBe('1 Main St')
     expect(out.master_user_id).toBe('master-1')
@@ -159,6 +162,7 @@ describe('mapJoinedInvoiceToDashboard', () => {
     const row = { ...BASE_INVOICE_FIELDS, jobs_ledger: null } as unknown as DashboardInvoiceJoinRow
     const out = mapJoinedInvoiceToDashboard(row, new Map())
     expect(out.hcp_number).toBe('')
+    expect(out.click_number).toBeNull()
     expect(out.job_name).toBe('')
     expect(out.job_address).toBe('')
     expect(out.master_user_id).toBe('')
@@ -225,6 +229,7 @@ describe('dashboardInvoiceToPaymentModal', () => {
     expect(out.job).toEqual({
       id: 'job-1',
       hcp_number: 'HCP-9',
+      click_number: 'C-77',
       job_name: 'Repipe',
       revenue: null,
       payments_made: null,
@@ -235,6 +240,7 @@ describe('dashboardInvoiceToPaymentModal', () => {
     const out = dashboardInvoiceToPaymentModal(mkInvoice()) as unknown as Record<string, unknown>
     for (const stripped of [
       'hcp_number',
+      'click_number',
       'job_name',
       'job_address',
       'google_drive_link',

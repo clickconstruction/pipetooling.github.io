@@ -149,7 +149,7 @@ export function billedStageRowRemainingAmount(r: StageRow): number {
 
 /** Short label for Bank Payments / Stages (HCP + line type). */
 export function billedStageRowLineLabel(r: StageRow): string {
-  const hcp = r.job.hcp_number || '—'
+  const hcp = effectiveJobLedgerNumber(r.job.hcp_number, r.job.click_number) || '—'
   if (r.kind === 'job') return `${hcp} · Job balance`
   if (r.kind === 'job_with_merged_billed') return `${hcp} · Billed line`
   return `${hcp} · Invoice #${r.inv.sequence_order}`
@@ -185,7 +185,7 @@ function bankPaymentTargetMoneyStr(n: number): string {
 }
 
 function bankPaymentTargetSearchLabel(job: JobWithDetails, shortLabel: string, remaining: number): string {
-  const hcp = (job.hcp_number ?? '').trim() || '—'
+  const hcp = effectiveJobLedgerNumber(job.hcp_number, job.click_number) || '—'
   const name = (job.job_name ?? '').trim()
   const addr = (job.job_address ?? '').trim()
   const rem = bankPaymentTargetMoneyStr(remaining)
@@ -237,7 +237,7 @@ export function bankPaymentTargetsFromStageRows(rows: StageRow[]): BankPaymentTa
         remaining: rem,
         invoiceId: r.inv.id,
         jobId: job.id,
-        hcpNumber: (job.hcp_number ?? '').trim() || '—',
+        hcpNumber: effectiveJobLedgerNumber(job.hcp_number, job.click_number) || '—',
         jobName: (job.job_name ?? '').trim(),
         jobAddress: (job.job_address ?? '').trim(),
         lineKind,
@@ -255,7 +255,7 @@ export function bankPaymentTargetsFromStageRows(rows: StageRow[]): BankPaymentTa
         remaining: rem,
         invoiceId: null,
         jobId: job.id,
-        hcpNumber: (job.hcp_number ?? '').trim() || '—',
+        hcpNumber: effectiveJobLedgerNumber(job.hcp_number, job.click_number) || '—',
         jobName: (job.job_name ?? '').trim(),
         jobAddress: (job.job_address ?? '').trim(),
         lineKind: 'job_balance',

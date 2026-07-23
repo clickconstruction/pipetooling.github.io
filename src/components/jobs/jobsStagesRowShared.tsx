@@ -427,7 +427,7 @@ export function renderStagesLastActivityCell(
       <div style={{ display: 'flex', justifyContent: 'flex-start', flexShrink: 0 }}>
         <button
           type="button"
-          onClick={() => setViewReportsJob({ id: job.id, hcpNumber: job.hcp_number ?? '—', jobName: job.job_name ?? '—', jobAddress: job.job_address ?? '—' })}
+          onClick={() => setViewReportsJob({ id: job.id, hcpNumber: effectiveJobLedgerNumber(job.hcp_number, job.click_number) || '—', jobName: job.job_name ?? '—', jobAddress: job.job_address ?? '—' })}
           style={{
             padding: '0.2rem 0.5rem',
             fontSize: '0.75rem',

@@ -4,6 +4,7 @@ import { type UserRole } from '../../hooks/useAuth'
 import { isSubcontractorLikeRole } from '../../lib/subcontractorLikeRole'
 import { formatCurrency } from '../../lib/jobs/jobFormatting'
 import { buildPartsPerPersonCostRows } from '../../lib/partsPerPersonCostSummary'
+import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import type { TallyPartRow } from '../../types/tallyPart'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import type { MercuryJobAllocationWithAttributionRow } from '../../lib/fetchMercuryJobAllocationsWithAttributionForJob'
@@ -206,13 +207,13 @@ export default function JobsPartsTab({
                 )
                 const materialsOnlyRows = materialsOnlyJobs.map((j) => ({
                   jobId: j.id,
-                  hcpNumber: j.hcp_number ?? null,
+                  hcpNumber: effectiveJobLedgerNumber(j.hcp_number, j.click_number) || null,
                   jobName: j.job_name ?? null,
                   parts: [] as TallyPartRow[],
                 }))
                 const invoicesOnlyRows = invoicesOnlyJobs.map((j) => ({
                   jobId: j.id,
-                  hcpNumber: j.hcp_number ?? null,
+                  hcpNumber: effectiveJobLedgerNumber(j.hcp_number, j.click_number) || null,
                   jobName: j.job_name ?? null,
                   parts: [] as TallyPartRow[],
                 }))
@@ -231,7 +232,7 @@ export default function JobsPartsTab({
                 )
                 const cardChargesOnlyRows = cardChargesOnlyJobs.map((j) => ({
                   jobId: j.id,
-                  hcpNumber: j.hcp_number ?? null,
+                  hcpNumber: effectiveJobLedgerNumber(j.hcp_number, j.click_number) || null,
                   jobName: j.job_name ?? null,
                   parts: [] as TallyPartRow[],
                 }))

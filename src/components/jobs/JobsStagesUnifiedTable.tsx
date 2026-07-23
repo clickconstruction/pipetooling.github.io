@@ -15,6 +15,7 @@ import {
   sumInvoiceAppliedFromJobPayments,
 } from '../../lib/jobs/invoiceBilling'
 import { jobBillingUnallocatedDollars, type InvoiceWithJob, type StageRow } from '../../lib/jobsStagesBoard'
+import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import { buildStagesMoneyBarModel } from '../../lib/stagesMoneyBar'
 import StagesProgressPaymentCell from './StagesProgressPaymentCell'
 import { JobThreadNotesPanel } from '../JobThreadNotesPanel'
@@ -1021,7 +1022,7 @@ export default function JobsStagesUnifiedTable(props: JobsStagesUnifiedTableProp
                                       invoiceId: inv.id,
                                       jobId: job.id,
                                       jobName: job.job_name ?? '—',
-                                      hcpNumber: job.hcp_number ?? '—',
+                                      hcpNumber: effectiveJobLedgerNumber(job.hcp_number, job.click_number) || '—',
                                     })
                                     setWhenInvoiceBillModalDate(
                                       inv.estimated_bill_date?.trim().slice(0, 10) ??
