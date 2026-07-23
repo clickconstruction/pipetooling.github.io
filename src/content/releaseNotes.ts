@@ -11,6 +11,13 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.959',
+    date: '2026-07-22',
+    title: 'PO screen titled "PO Generator"',
+    kind: 'fix',
+    highlights: ['The phone PO screen\'s title now matches the desktop PO Generator it shares numbering with.'],
+  },
+  {
     version: 'v2.958',
     date: '2026-07-22',
     title: 'The PO screen feels instant',

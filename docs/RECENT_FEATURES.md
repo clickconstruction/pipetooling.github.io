@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-22 (v2.958)
+last_updated: 2026-07-22 (v2.959)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.959)
+
+### Dispatch Mode PO: page title reads "PO Generator" (2026-07-22)
+The tab body's heading goes from **"PO"** to **"PO Generator"**, matching the desktop Materials → PO Generator it shares a ledger with. Label-only change in [`DispatchModePo.tsx`](../src/components/dispatchMode/DispatchModePo.tsx).
 
 ## Latest Updates (v2.958)
 
