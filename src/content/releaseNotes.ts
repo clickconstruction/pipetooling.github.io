@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.988',
+    date: '2026-07-23',
+    title: 'New jobs start in Working',
+    kind: 'feature',
+    highlights: [
+      'Jobs now land in Working the moment they are created — both from New Job and from an accepted estimate — instead of sitting in Waiting until someone clocked out on them.',
+      'Waiting is still there as a parking stage you can send a job back to.',
+    ],
+  },
+  {
     version: 'v2.987',
     date: '2026-07-23',
     title: 'Billed Awaiting Payment header reads cleanly on phones',

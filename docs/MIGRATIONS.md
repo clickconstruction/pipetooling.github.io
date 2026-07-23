@@ -5,11 +5,11 @@ file: MIGRATIONS.md
 type: Reference/Changelog
 purpose: Complete database migration history organized by date and category
 audience: Developers, Database Administrators, AI Agents
-last_updated: 2026-07-22
+last_updated: 2026-07-23
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate to Advanced
 
-total_migrations: "110 live in supabase/migrations/ (baseline + post-baseline) + 847 archived pre-baseline files (squashed into the 2026-06-04 baseline)"
+total_migrations: "112 live in supabase/migrations/ (baseline + post-baseline) + 847 archived pre-baseline files (squashed into the 2026-06-04 baseline)"
 date_range: "Through July 22, 2026 — the latest real migration. Archive filenames dated 2027 are typos; that work happened March–June 2026 (see the note atop Recent Migrations)."
 categories: "Bids, Materials, Workflow, RLS, Database Improvements"
 
@@ -104,6 +104,12 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 ### July 2026
 
 #### July 22, 2026
+
+**`20260722264000_new_jobs_start_working.sql`** _(apply via `supabase db push` after the file is on `main`)_
+- **Purpose**: New jobs start in **Working**, not Waiting (v2.988) — flips `jobs_ledger.status` DEFAULT `'waiting'` → `'working'`. Both creation paths omit `status` and inherit the default (New Job modal client insert in `JobFormModal.tsx`; `create_job_from_estimate`, both the 6-arg and 7-arg/`p_fixtures` overloads — verified against prod that neither sets `status`), so one default covers both. `split_job_ledger_fixtures_to_new_job` sets `status` explicitly (copies the source job's stage) and is deliberately unaffected.
+- **Security**: unchanged — no RLS, policy, or grant touched.
+- **Ordering**: either order safe — the client only reads `status`, and existing rows keep their current stage (default affects new inserts only). Reversible with `SET DEFAULT 'waiting'`.
+- **Category**: Jobs / behavior change
 
 **`20260722262000_paid_email_last_payment.sql`** _(apply via `supabase db push` after the file is on `main`)_
 - **Purpose**: Paid-email payload v2 (v2.969) — `money.last_payment` (completing payment's exact amount + timestamp) added to `get_paid_job_email_payload`; shown on both email variants per the 2026-07-23 amount-visibility decision.

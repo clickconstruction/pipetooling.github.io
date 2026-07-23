@@ -20,6 +20,8 @@ Day-to-day service work runs through **Jobs**: each job belongs to a customer an
 {{chip:gray|Waiting}} → {{chip:blue|Working}} → {{chip:yellow|Ready to bill}} → {{chip:red|Billed}} → {{chip:green|Paid}}
 :::
 
+**New jobs start in Working** — whether you add them with New Job or they come out of an accepted estimate. **Waiting** is the parking stage you send a job *back* to when it isn't live yet.
+
 A job collects everything about the work in one place — schedule blocks, clock time, reports, materials, and billing.
 
 ## Sharing

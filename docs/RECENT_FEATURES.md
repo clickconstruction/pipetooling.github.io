@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-23 (v2.987)
+last_updated: 2026-07-23 (v2.988)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.988)
+
+### Jobs: new jobs start in Working, not Waiting (2026-07-23)
+Both creation paths — the **New Job** modal ([`JobFormModal`](../src/components/jobs/JobFormModal.tsx) client insert) and **create job from estimate** ([`create_job_from_estimate`](../src/lib/createJobFromEstimateSubmit.ts), both the 6-arg and 7-arg/`p_fixtures` overloads) — omit `status` and inherit the `jobs_ledger.status` column default, so one migration moves both: [`20260722264000_new_jobs_start_working.sql`](../supabase/migrations/20260722264000_new_jobs_start_working.sql) flips the default `'waiting'` → `'working'` (+ column comment). Verified against prod before writing it: default was `'waiting'::text` and neither live overload sets `status`. `split_job_ledger_fixtures_to_new_job` sets `status` explicitly (copies the source job's stage) and is deliberately unchanged, and no edge function inserts jobs. **Waiting keeps its place in the pipeline** as a manual send-back parking stage — the `clock_sessions_promote_job_waiting_to_working` clock-out trigger still promotes those, it just no longer fires for freshly created jobs. Existing rows keep their current stage (a default only affects new inserts); reversible with `SET DEFAULT 'waiting'`. Help guides `how-the-app-works` + `ready-to-bill-pipeline` updated to say where new jobs land. This reverses the original "new jobs start in Waiting" rule that shipped with the Waiting stage itself ([PR #82](https://github.com/clickconstruction/pipetooling.github.io/pull/82)).
 
 ## Latest Updates (v2.987)
 
