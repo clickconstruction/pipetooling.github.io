@@ -53,7 +53,7 @@ type LaborFixtureRow = {
   direct_labor_amount: number | null
 }
 
-const LABOR_ASSIGNED_DELIMITER = ' | '
+import { LABOR_ASSIGNED_DELIMITER } from '../../lib/combinePeople'
 
 /**
  * Imperative handle the parent (Jobs.tsx) uses to drive the always-mounted modal.

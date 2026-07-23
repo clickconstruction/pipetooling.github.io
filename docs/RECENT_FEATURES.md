@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-23 (v2.982)
+last_updated: 2026-07-23 (v2.983)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.983)
+
+### People: "Combine…" folds duplicate identities together + person-id migration plan (2026-07-23)
+Name-variant duplicates ("Behar Kraja (Rough In)") are separate identities everywhere pay/labor joins on name text. New **Combine…** on People → Users rows (owner or dev, next to Link account): pick the keeper → **preview counts** what will move (per-table rows + sub sheets) → confirm → [`executeCombinePeople`](../src/lib/combinePeople.ts) renames the 10 name-keyed pay tables, **repoints `person_id`** on the 5 tables that already have it, rewrites `people_labor_jobs.assigned_to_name` with an exact-segment, dedupe-aware kernel (`replaceNameInAssignedList`, 5 tests; the `' | '` delimiter now has one shared home), carries the account link when only the duplicate had one, **blocks when both sides have accounts** (Merge users first), and archives — never deletes — the duplicate via the tab's own archive flow. Companion: [`docs/PERSON_IDENTITY_PLAN.md`](./PERSON_IDENTITY_PLAN.md) — the staged migration off name-text identity onto `people.id` (columns already exist on 5 tables; measure → backfill+triggers → flip readers → flip writers → enforce), indexed in docs/README.
 
 ## Latest Updates (v2.982)
 
