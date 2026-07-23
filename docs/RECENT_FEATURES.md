@@ -7,8 +7,8 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-23 (v2.967)
-last_updated: 2026-07-23 (v2.967)
+last_updated: 2026-07-23 (v2.968)
+last_updated: 2026-07-23 (v2.968)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2046,6 +2046,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.968)
+
+### Jobs Stages: Paid in Full gear gains a "Paid notifications" label (2026-07-23)
+The v2.965 ⚙ across from the Paid in Full section header was icon-only; it now reads **⚙ Paid notifications** (dev + master_technician, same [`PaidInFullEmailSettingsModal`](../src/components/jobs/PaidInFullEmailSettingsModal.tsx) behind it). Label-only change in [`JobsStagesTab.tsx`](../src/components/jobs/JobsStagesTab.tsx).
 
 ## Latest Updates (v2.967)
 
