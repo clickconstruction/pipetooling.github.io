@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.952',
+    date: '2026-07-22',
+    title: 'Team reviews correct for tough and easy graders',
+    kind: 'feature',
+    highlights: [
+      'Reflect shows each reviewer’s own average, so a 60 from a tough grader reads differently than a 60 from an easy one.',
+      'Every score is anchored to its reviewer’s norm ("+6 vs their norm"), and each person gets an adjusted average that corrects for grader skew.',
+      'While rating, you see your own running average to keep yourself calibrated.',
+    ],
+  },
+  {
     version: 'v2.951',
     date: '2026-07-22',
     title: 'Reflect shows tenure and rating trends',
