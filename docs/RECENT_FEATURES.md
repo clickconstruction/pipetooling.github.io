@@ -7,8 +7,8 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-23 (v2.978)
-last_updated: 2026-07-23 (v2.978)
+last_updated: 2026-07-23 (v2.979)
+last_updated: 2026-07-23 (v2.979)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2046,6 +2046,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.979)
+
+### Crew P&L: billing computes on first load; sheet linking uses the real jobs list (2026-07-23)
+Live-debugged on localhost with the audit footer as the guide — two v2.976 edits had silently no-opped: (1) the sheet-linking map was still built from the **empty cache prop** instead of the self-loaded list → **0% linked, always**; (2) the summary memo's deps were **missing `allJobs`** → when the fetch landed nothing recomputed, so billing stayed $0 until a remount (the "all profits negative" screen). Both fixed in [`JobsCrewPnlTab`](../src/components/jobs/JobsCrewPnlTab.tsx). Verified cold-load in the browser: total billing $1.56M, profit positive, sub linkage **0% → 93%** (49 unlinked sheets → 2 — one blank job #, one unmatched "814"). [`docs/CREW_PNL_DATA_FLOW.md`](./CREW_PNL_DATA_FLOW.md) incident log updated.
 
 ## Latest Updates (v2.978)
 
