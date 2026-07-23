@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-22 (v2.952)
+last_updated: 2026-07-22 (v2.953)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.953)
+
+### Team → Review: weighted composite score with recency decay + confidence (2026-07-22)
+Phase 2 of the calibrated-leaderboard arc. New kernel [`teamComposite.ts`](../src/lib/prospects/teamComposite.ts) (9 tests): per-month weighted composite of **calibration-adjusted** cross-reviewer averages (weights renormalize over rated dimensions), blended with **exponential recency decay** (`COMPOSITE_DECAY_HALF_LIFE_MONTHS = 3`) into one score per person; **confidence gate** `COMPOSITE_MIN_REVIEWERS = 2` distinct reviewers — below it the UI shows "insufficient data (N reviewer)" instead of a rankable number. Dimension **weights** ship equal-thirds and read from `app_settings` key `team_review_composite_weights_v1` ([`appSettingsKeys.ts`](../src/lib/appSettingsKeys.ts); `parseCompositeWeights` normalizes to sum 1, invalid → default; editor UI lands with the Leaderboard in v2.954). Reflect cards show the composite as a bordered pill (tooltip: months covered + reviewer count); the click-chart gains a **dashed Composite line**. Client-only.
 
 ## Latest Updates (v2.952)
 

@@ -137,3 +137,10 @@ export function parseBulkDeleteAlertThreshold(
 export function parseBulkDeleteAlertEnabled(valueText: string | null | undefined): boolean {
   return (valueText ?? '').trim() !== 'false'
 }
+
+/**
+ * JSON in `value_text`: `{ability,drive,integrity}` dimension weights for the Team → Review composite
+ * (normalized by `parseCompositeWeights`; missing = equal thirds). Dev writes; all authenticated read.
+ * @see `src/lib/prospects/teamComposite.ts`
+ */
+export const APP_SETTINGS_KEY_TEAM_REVIEW_COMPOSITE_WEIGHTS = 'team_review_composite_weights_v1' as const
