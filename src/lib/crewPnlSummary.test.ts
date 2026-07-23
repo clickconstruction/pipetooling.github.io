@@ -164,10 +164,11 @@ describe('buildCrewPnlSummary', () => {
         hours: 10,
       },
     ]
-    const s = buildCrewPnlSummary({ jobs: [], teamLabor, subLabor, people, range: ALL })
+    const s = buildCrewPnlSummary({ jobs: [], teamLabor, subLabor, people, range: ALL, subLaborEquivalentRate: 30 })
     const mike = s.rows.find((r) => r.key === 'p:per-mike')!
     expect(mike.laborCost).toBeCloseTo(240 + 200, 5) // crew cost + sub share
-    expect(mike.hours).toBeCloseTo(8 + 5, 5)
+    // v2.977: sub hours are dollar-derived ($400 ÷ $30/hr = 13.33 eq hours, half each), not sheet unit-hours.
+    expect(mike.hours).toBeCloseTo(8 + 400 / 30 / 2, 5)
     expect(mike.perJob.some((l) => l.kind === 'sub')).toBe(true)
   })
 
@@ -257,7 +258,8 @@ describe('sub labor revenue share via equivalent hours (v2.974)', () => {
     expect(paige?.profit).toBeCloseTo(3000)
   })
 
-  it('real sheet hours win over imputation and are not flagged estimated', () => {
+  it('dollars always win (v2.977): sheet unit-hours never dilute the share', () => {
+    // $3,000 at $30/hr = 100 equivalent hours even though the sheet lists 20 unit-hours.
     const summary = buildCrewPnlSummary({
       jobs: [job({ id: 'j1', revenue: 8_000 })],
       teamLabor: [crewRow('j1', 60, 1800)],
@@ -267,9 +269,30 @@ describe('sub labor revenue share via equivalent hours (v2.974)', () => {
       subLaborEquivalentRate: 30,
     })
     const paige = summary.rows.find((r) => r.displayName === 'Paige')
-    expect(paige?.hours).toBeCloseTo(20)
-    expect(paige?.billing).toBeCloseTo(8000 * (20 / 80))
-    expect(paige?.hasEstimatedBilling).toBe(false)
+    expect(paige?.hours).toBeCloseTo(100)
+    expect(paige?.billing).toBeCloseTo(8000 * (100 / 160))
+    expect(paige?.hasEstimatedBilling).toBe(true)
+  })
+
+  it('reports the linkage audit: totals, linked share, and unlinked sheet details', () => {
+    const summary = buildCrewPnlSummary({
+      jobs: [job({ id: 'j1', revenue: 8_000 })],
+      teamLabor: [],
+      subLabor: [
+        sub({ id: 's-linked', jobId: 'j1', cost: 3000 }),
+        sub({ id: 's-lost', jobId: null, cost: 1200, jobNumberText: 'HCP 769' }),
+      ],
+      people,
+      range: ALL,
+      subLaborEquivalentRate: 30,
+    })
+    expect(summary.subLabor.total).toBeCloseTo(4200)
+    expect(summary.subLabor.linkedTotal).toBeCloseTo(3000)
+    expect(summary.subLabor.unlinkedSheets).toEqual([
+      { id: 's-lost', jobNumberText: 'HCP 769', assignedNames: ['Paige'], cost: 1200 },
+    ])
+    const paige = summary.rows.find((r) => r.displayName === 'Paige')
+    expect(paige?.unlinkedSubCost).toBeCloseTo(1200)
   })
 
   it('unlinked sheets keep cost-only behavior (no billing) and imputed hours', () => {

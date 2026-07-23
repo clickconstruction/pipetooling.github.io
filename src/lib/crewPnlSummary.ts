@@ -36,6 +36,8 @@ export type CrewPnlTeamLaborInput = {
 }
 
 export type CrewPnlSubLaborInput = {
+  /** Raw sheet job_number text (audit display for unlinked sheets). */
+  jobNumberText?: string | null
   /** jobs_ledger id when the sheet's job_number matched a job (HCP or C#); null = unlinked. */
   jobId: string | null
   id: string
@@ -73,12 +75,20 @@ export type CrewPnlPersonRow = {
   hasEstimatedBilling: boolean
   /** True when the identity did not resolve to a roster person. */
   unmatched: boolean
+  /** Sub-sheet dollars in range that matched NO job — cost with no billing credit (v2.977). */
+  unlinkedSubCost: number
   perJob: CrewPnlJobLine[]
 }
 
 export type CrewPnlSummary = {
   rows: CrewPnlPersonRow[]
   totals: { hours: number; laborCost: number; billing: number; profit: number }
+  /** Sub-labor linkage audit (v2.977): how much sub money actually reached a job. */
+  subLabor: {
+    total: number
+    linkedTotal: number
+    unlinkedSheets: Array<{ id: string; jobNumberText: string | null; assignedNames: string[]; cost: number }>
+  }
 }
 
 export function ymdInRange(ymd: string | null | undefined, range: CrewPnlRange): boolean {
@@ -155,12 +165,12 @@ export function buildCrewPnlSummary(args: {
   const resolver = buildCrewPnlPersonResolver(people)
   const jobById = new Map(jobs.map((j) => [j.id, j]))
 
-  type Acc = { hours: number; laborCost: number; billing: number; perJob: CrewPnlJobLine[]; hasEstimated: boolean }
+  type Acc = { hours: number; laborCost: number; billing: number; perJob: CrewPnlJobLine[]; hasEstimated: boolean; unlinkedSubCost: number }
   const byKey = new Map<string, Acc>()
   function acc(key: string): Acc {
     let a = byKey.get(key)
     if (!a) {
-      a = { hours: 0, laborCost: 0, billing: 0, perJob: [], hasEstimated: false }
+      a = { hours: 0, laborCost: 0, billing: 0, perJob: [], hasEstimated: false, unlinkedSubCost: 0 }
       byKey.set(key, a)
     }
     return a
@@ -169,13 +179,15 @@ export function buildCrewPnlSummary(args: {
   // Sub-sheet effective hours per linked job (v2.974): real sheet hours when
   // present, else cost ÷ equivalentRate — the common unit that lets flat-rate
   // subs share revenue with clocked crews on equal footing.
+  // v2.977: sub shares weight by DOLLARS, always — sheet unit-hours are
+  // piece-rate accounting, not effort, and underweighted mixed sheets. All
+  // sub equivalent hours are estimates (the ≈ affordance).
   type SubEff = { input: CrewPnlSubLaborInput; effHours: number; imputed: boolean }
   const subEffBySheet = new Map<string, SubEff>()
   const subEffHoursByJob = new Map<string, number>()
   for (const lj of subLabor) {
-    const realHours = lj.hours > 0 ? lj.hours : 0
-    const effHours = realHours > 0 ? realHours : lj.cost > 0 ? lj.cost / equivalentRate : 0
-    const imputed = realHours <= 0 && effHours > 0
+    const effHours = lj.cost > 0 ? lj.cost / equivalentRate : 0
+    const imputed = effHours > 0
     subEffBySheet.set(lj.id, { input: lj, effHours, imputed })
     if (lj.jobId && effHours > 0) {
       subEffHoursByJob.set(lj.jobId, (subEffHoursByJob.get(lj.jobId) ?? 0) + effHours)
@@ -250,9 +262,15 @@ export function buildCrewPnlSummary(args: {
   // hours-weighted revenue share from the same denominator as clocked crew —
   // a $3,000 flat sheet at the equivalent rate weighs like 100 clocked hours.
   // Imputed hours/billing carry estimated=true (the ≈ affordance).
+  let subTotal = 0
+  let subLinkedTotal = 0
+  const unlinkedSheets: CrewPnlSummary['subLabor']['unlinkedSheets'] = []
   for (const lj of subLabor) {
     if (lj.assignedNames.length === 0 || lj.cost <= 0) continue
     if (!ymdInRange(lj.jobDate, range)) continue
+    subTotal += lj.cost
+    if (lj.jobId) subLinkedTotal += lj.cost
+    else unlinkedSheets.push({ id: lj.id, jobNumberText: (lj.jobNumberText ?? '').trim() || null, assignedNames: lj.assignedNames, cost: lj.cost })
     const eff = subEffBySheet.get(lj.id)
     const effHours = eff?.effHours ?? 0
     const imputed = eff?.imputed ?? false
@@ -269,6 +287,7 @@ export function buildCrewPnlSummary(args: {
       a.laborCost += costShare
       a.hours += hoursShare
       a.billing += billingShare
+      if (!lj.jobId) a.unlinkedSubCost += costShare
       if (imputed && (hoursShare > 0 || billingShare > 0)) a.hasEstimated = true
       a.perJob.push({
         kind: 'sub',
@@ -294,6 +313,7 @@ export function buildCrewPnlSummary(args: {
       billingPerHour: a.hours > 0 ? a.billing / a.hours : null,
       hasEstimatedBilling: a.hasEstimated,
       unmatched: resolver.isUnmatched(key),
+      unlinkedSubCost: a.unlinkedSubCost,
       perJob: a.perJob,
     }
   })
@@ -309,7 +329,8 @@ export function buildCrewPnlSummary(args: {
     { hours: 0, laborCost: 0, billing: 0, profit: 0 },
   )
 
-  return { rows, totals }
+  unlinkedSheets.sort((a, b) => b.cost - a.cost)
+  return { rows, totals, subLabor: { total: subTotal, linkedTotal: subLinkedTotal, unlinkedSheets } }
 }
 
 export type CrewPnlRangePreset = 'all' | 'this_month' | 'last_month' | 'this_quarter' | 'this_year'

@@ -7,8 +7,8 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-23 (v2.976)
-last_updated: 2026-07-23 (v2.976)
+last_updated: 2026-07-23 (v2.977)
+last_updated: 2026-07-23 (v2.977)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2046,6 +2046,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.977)
+
+### Crew P&L: sub shares weight by dollars, always + sub-labor linkage audit (2026-07-23)
+Two-part follow-through on the "subs still at the bottom" analysis. **Math** ([`crewPnlSummary.ts`](../src/lib/crewPnlSummary.ts)): sub equivalent hours are now **always `cost ÷ rate`** — v2.974's real-sheet-hours preference underweighted mixed sheets, because sheet unit-hours are piece-rate accounting units, not effort ($3,000 with 20 unit-hours now weighs 100 eq-hours at $30/hr, test-asserted); all sub shares carry the ≈ estimated flag; sheet unit-hours are display-only. **Audit**: the summary reports `subLabor { total, linkedTotal, unlinkedSheets }` and each person row an `unlinkedSubCost`; the tab shows a footer "Sub labor: $X in range · $Y linked to jobs (Z%)" with a collapsible list of unlinked sheets (raw job # text, names, $) and a red **"$N unlinked"** badge on affected rows — so a sub at the bottom is immediately attributable to bad sheet job #s vs real performance. Explainer copy updated.
 
 ## Latest Updates (v2.976)
 

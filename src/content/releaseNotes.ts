@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.977',
+    date: '2026-07-23',
+    title: 'Crew P&L weighs subs by dollars and audits sheet links',
+    kind: 'feature',
+    highlights: [
+      'Sub revenue shares now always come from what they were paid — sheet unit-hours can no longer shrink a sub\'s credit.',
+      'A new audit line shows how much sub money is linked to jobs, lists sheets whose job # matched nothing, and flags affected people with a red "unlinked" badge.',
+    ],
+  },
+  {
     version: 'v2.976',
     date: '2026-07-23',
     title: 'Crew P&L sees every job',
