@@ -314,7 +314,7 @@ export default function JobsStagesUnifiedTable(props: JobsStagesUnifiedTableProp
                 minWidth: '6.75rem',
               }}
             >
-              {renderStagesThreeLineHeader('Assigned', 'HCP', 'Last-Activity')}
+              {renderStagesThreeLineHeader('Assigned', 'Job #', 'Last-Activity')}
             </th>
             <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Job</th>
             <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)', minWidth: 200 }}>Last activity</th>

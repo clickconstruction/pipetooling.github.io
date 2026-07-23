@@ -7,8 +7,8 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-23 (v2.965)
-last_updated: 2026-07-23 (v2.965)
+last_updated: 2026-07-23 (v2.966)
+last_updated: 2026-07-23 (v2.966)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2046,6 +2046,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.966)
+
+### Jobs tabs: "HCP" column headers become "Job #" (2026-07-23)
+Now that job numbers fall back to the C# when there's no HCP number (v2.962/963), the column name "HCP" was a lie. Renamed to **Job #**: Job Summary's table + expanded header, Parts, Billing, and Team Labor (`CrewJobsBlock`) `<th>`s, the shared Stages three-line header (both `JobsStagesTable` and `JobsStagesUnifiedTable`), and Reports' "(HCP: N)" suffix → "(Job: N)". Deliberately unchanged: Job Summary's numeric HCP-range filter copy (it genuinely operates on HCP numbers) and the Edit Job "HCP # vs C#" explainer (it's about the distinction itself).
 
 ## Latest Updates (v2.965)
 

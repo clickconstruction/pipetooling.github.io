@@ -565,7 +565,7 @@ export default function JobsReportsTab({
                                     <span style={{ fontWeight: 600 }}>{displayReportTemplateName(r.template_name, authRole)}</span>
                                     <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginLeft: '0.5rem' }}>
                                       {new Date(r.created_at).toLocaleString()} · {r.job_display_name || 'Unknown job'}
-                                      {r.job_hcp_number ? ` (HCP: ${r.job_hcp_number})` : ''}
+                                      {r.job_hcp_number ? ` (Job: ${r.job_hcp_number})` : ''}
                                     </span>
                                   </div>
                                   {myRole === 'dev' && (
@@ -621,7 +621,7 @@ export default function JobsReportsTab({
                 {jobGroups.map(({ key, reps }) => {
                   const job = reps[0]!
                   const displayName = job.job_display_name || 'Unknown job'
-                  const hcp = job.job_hcp_number ? ` (HCP: ${job.job_hcp_number})` : ''
+                  const hcp = job.job_hcp_number ? ` (Job: ${job.job_hcp_number})` : ''
                   const isExpanded = reportsExpandedJobs.has(key)
                   return (
                     <div key={key} style={{ border: '1px solid var(--border)', borderRadius: 4, overflow: 'hidden' }}>
