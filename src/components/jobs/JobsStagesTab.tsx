@@ -14,7 +14,7 @@ import {
 } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
-import { formatCurrency, formatCurrencyNoCents, formatJobNameTwoLines } from '../../lib/jobs/jobFormatting'
+import { formatCurrency, formatCurrencyAbbrevTruncated, formatCurrencyNoCents, formatJobNameTwoLines } from '../../lib/jobs/jobFormatting'
 import {
   buildBilledAgingBuckets,
   sortStageRowsForTotalByNameDetail,
@@ -1539,7 +1539,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     style={{ fontSize: '1rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem', padding: 0, border: 'none', background: 'none', cursor: 'pointer', color: 'inherit' }}
                   >
                     <span aria-hidden>{stagesSectionOpen.waiting ? '▼' : '▶'}</span>
-                    Waiting ({waiting.length}) - ${formatCurrency(waitingTotal)}
+                    Waiting ({waiting.length}) - ${formatCurrencyAbbrevTruncated(waitingTotal)}
                   </button>
                 </div>
                 {stagesSectionOpen.waiting && (
@@ -1609,7 +1609,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     style={{ fontSize: '1rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem', padding: 0, border: 'none', background: 'none', cursor: 'pointer', color: 'inherit' }}
                   >
                     <span aria-hidden>{stagesSectionOpen.working ? '\u25BC' : '\u25B6'}</span>
-                    Working ({working.length}) - ${formatCurrency(workingTotal)}
+                    Working ({working.length}) - ${formatCurrencyAbbrevTruncated(workingTotal)}
                   </button>
                   <button
                     type="button"
@@ -1691,7 +1691,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     style={{ fontSize: '1rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem', padding: 0, border: 'none', background: 'none', cursor: 'pointer', color: 'inherit' }}
                   >
                     <span aria-hidden>{stagesSectionOpen.readyToBill ? '\u25BC' : '\u25B6'}</span>
-                    Ready to Bill ({readyToBillRows.length}) - ${formatCurrency(readyToBillTotal)}
+                    Ready to Bill ({readyToBillRows.length}) - ${formatCurrencyAbbrevTruncated(readyToBillTotal)}
                   </button>
                 </div>
                 {stagesSectionOpen.readyToBill && (
@@ -1827,10 +1827,10 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                       style={{ fontSize: '1rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem', padding: 0, border: 'none', background: 'none', cursor: 'pointer', color: 'inherit' }}
                     >
                       <span aria-hidden>{stagesSectionOpen.billed ? '\u25BC' : '\u25B6'}</span>
-                      Billed Awaiting Payment ({billedActiveRows.length}) - ${formatCurrency(billedTotal)}
+                      Billed Awaiting Payment ({billedActiveRows.length}) - ${formatCurrencyAbbrevTruncated(billedTotal)}
                     </button>
                     <span style={{ fontSize: '0.875rem', fontWeight: 400, color: 'var(--text-muted)' }}>
-                      {`30+ days: ${billedAgingBuckets.count30_90} | $${formatCurrency(billedAgingBuckets.sum30_90)} — 90+ days: ${billedAgingBuckets.count90} | $${formatCurrency(billedAgingBuckets.sum90)} · est. bill date`}
+                      {`30+ days: ${billedAgingBuckets.count30_90} | $${formatCurrencyAbbrevTruncated(billedAgingBuckets.sum30_90)} — 90+ days: ${billedAgingBuckets.count90} | $${formatCurrencyAbbrevTruncated(billedAgingBuckets.sum90)} · est. bill date`}
                     </span>
                   </div>
                   <div style={{ position: 'relative', flexShrink: 0, width: 'fit-content' }}>
@@ -2041,7 +2041,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     style={{ fontSize: '1rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem', padding: 0, border: 'none', background: 'none', cursor: 'pointer', color: 'inherit' }}
                   >
                     <span aria-hidden>{stagesSectionOpen.collections ? '▼' : '▶'}</span>
-                    Collections ({collectionsRows.length}) - ${formatCurrency(collectionsTotal)}
+                    Collections ({collectionsRows.length}) - ${formatCurrencyAbbrevTruncated(collectionsTotal)}
                   </button>
                   <span style={{ fontSize: '0.875rem', fontWeight: 400, color: 'var(--text-muted)' }}>
                     Billed jobs flagged difficult to collect — still awaiting payment

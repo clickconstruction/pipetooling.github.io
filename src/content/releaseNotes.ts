@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.973',
+    date: '2026-07-23',
+    title: 'Stages headers show compact totals',
+    kind: 'fix',
+    highlights: [
+      'Section totals on Jobs → Stages read like "$144.8k" instead of "$144,869.25" — truncated, never rounded up. Row amounts stay exact.',
+    ],
+  },
+  {
     version: 'v2.972',
     date: '2026-07-23',
     title: 'Fix missing job info right from Quickfill',
