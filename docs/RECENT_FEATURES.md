@@ -7,8 +7,8 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-23 (v2.970)
-last_updated: 2026-07-23 (v2.970)
+last_updated: 2026-07-23 (v2.971)
+last_updated: 2026-07-23 (v2.971)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2046,6 +2046,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.971)
+
+### Jobs Stages: Billed/Collections columns stop jittering too (2026-07-23)
+Same fix as v2.967, same disease, sibling table: [`JobsStagesUnifiedTable.tsx`](../src/components/jobs/JobsStagesUnifiedTable.tsx) (Billed Awaiting Payment + Collections) still used auto table layout, so its Job / Last activity column edges wobbled as rows loaded or search changed content. Now `tableLayout: 'fixed'` + the identical `<colgroup>` (9rem / flexible / 200px / 12rem / 140px) — widths can never re-measure.
 
 ## Latest Updates (v2.970)
 

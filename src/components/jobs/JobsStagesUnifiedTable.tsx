@@ -303,7 +303,17 @@ export default function JobsStagesUnifiedTable(props: JobsStagesUnifiedTableProp
   }
   return (
     <div style={{ border: '1px solid var(--border)', borderRadius: 4, overflowX: 'auto', WebkitOverflowScrolling: 'touch', minWidth: 0 }}>
-      <table style={{ width: '100%', minWidth: 700, borderCollapse: 'collapse', fontSize: '0.875rem' }}>
+      {/* tableLayout: fixed (v2.971, matching JobsStagesTable v2.967): widths come from the
+          colgroup, never from content measurement — Billed/Collections rows loading or search
+          filtering used to re-measure auto layout and jitter the Job / Last activity columns. */}
+      <table style={{ width: '100%', minWidth: 700, borderCollapse: 'collapse', fontSize: '0.875rem', tableLayout: 'fixed' }}>
+        <colgroup>
+          <col style={{ width: '9rem' }} />
+          <col />
+          <col style={{ width: 200 }} />
+          <col style={{ width: '12rem' }} />
+          <col style={{ width: 140 }} />
+        </colgroup>
         <thead style={{ background: 'var(--bg-subtle)' }}>
           <tr>
             <th
