@@ -3,20 +3,20 @@
 ---
 file: EDGE_FUNCTIONS.md
 type: API Reference
-purpose: Complete API documentation for all 57 Supabase Edge Functions
+purpose: Complete API documentation for all 58 Supabase Edge Functions
 audience: Developers, DevOps, AI Agents
-last_updated: 2026-07-20
+last_updated: 2026-07-22
 estimated_read_time: 20-25 minutes
 difficulty: Intermediate
 
 runtime: "Deno (TypeScript)"
 authentication: "In-function JWT / signature / cron-secret validation for most functions (see Overview for the two gateway-verified exceptions)"
-total_functions: 57
+total_functions: 58
 
 key_sections:
   - name: "Functions"
     anchor: "#functions"
-    description: "Per-function reference (all 57), user admin through Stripe/Mercury"
+    description: "Per-function reference (all 58), user admin through Stripe/Mercury"
   - name: "create-user"
     anchor: "#create-user"
     description: "Create users with roles (dev-only)"
@@ -115,6 +115,7 @@ when_to_read:
    - [recurring-job-report-dispatch](#recurring-job-report-dispatch)
    - [schedule-day-email-dispatch](#schedule-day-email-dispatch)
    - [schedule-share-dispatch](#schedule-share-dispatch)
+   - [paid-job-email](#paid-job-email)
    - [sync-salary-sessions](#sync-salary-sessions)
    - [set-user-password](#set-user-password)
    - [claim-dev](#claim-dev)
@@ -1604,6 +1605,29 @@ Per-recipient **`activity_scope`** + **`crew_filter`** + **`include_costs`** (fr
 **Cron**: archived migration `20270605160000_schedule_share.sql` registers pg_cron job **`schedule-share-dispatch`** (`*/15 * * * *`) posting with the vault `CRON_SECRET` as `X-Cron-Secret`. Shared kernels: [`_shared/scheduleShareCore.ts`](../supabase/functions/_shared/scheduleShareCore.ts) (dates + email build), [`_shared/recurringJobReportTimezone.ts`](../supabase/functions/_shared/recurringJobReportTimezone.ts) (wall-quarter matching).
 
 **Used by**: Schedule → [`ScheduleShareModal.tsx`](../src/components/schedule/ScheduleShareModal.tsx) (instant sends + managing recurring subscriptions).
+
+---
+
+### paid-job-email
+
+**Purpose**: "Customer paid" notifications (v2.965) — when a `jobs_ledger` row hits **`status = 'paid'`**, the `enqueue_paid_job_email()` DB trigger queues a `paid_job_email_queue` row; this function drains the queue and emails the configured recipients. **dev / master_technician** recipients get the **DETAILED** financial review (PAID IN FULL badge, Job Start / Last Work dates, Revenue / Payments / Costs / Profit scoreboard with per-person team-labor rows, monthly labor/parts/payments timeline); everyone else gets the **STERILIZED** summary — job identity + dates, **zero dollar figures**. Money math comes from the service-role-only RPC **`get_paid_job_email_payload(p_job_id)`**. Renderers live in [`paid-job-email/render.ts`](../supabase/functions/paid-job-email/render.ts).
+
+**Endpoint**: `POST /functions/v1/paid-job-email`
+
+**Three modes** (JSON body):
+- `{ "mode": "preview", "job_id": "<uuid>", "variant": "detailed" | "summary" }` — Bearer JWT, role **dev/master_technician** (non-archived); returns `{ "html": "..." }`. No DB writes, no send.
+- `{ "mode": "test_send", "job_id": "<uuid>" }` — same role gate; sends the **detailed** variant via Resend to the **caller's own `users.email` only**, subject prefixed **`[TEST]`**.
+- cron (no `mode` or `{ "mode": "dispatch" }`) — **`X-Cron-Secret`** (or body `cron_secret`) must equal **`CRON_SECRET`**. Loads pending queue rows (`sent_at IS NULL`, `attempts < 5`, limit 20); per row fetches the payload, loads recipients from `app_settings` key **`paid_job_email_recipients_v1`** (JSON array of user ids) joined to non-archived `users`, sends detailed vs summary by role, stamps `sent_at` on success or bumps `error`/`attempts`. **Empty recipient list stamps `sent_at` with `no recipients configured`** so rows never retry forever.
+
+**Success (cron)**: `{ "ok": true, "processed": n, "sent": k, "errors": [] }`
+
+**Verify JWT**: `false` in `supabase/config.toml` (in-function JWT/role or cron-secret validation).
+
+**Cron**: [`20260722260000_paid_job_email.sql`](../supabase/migrations/20260722260000_paid_job_email.sql) registers pg_cron job **`paid-job-email`** (`*/15 * * * *`) with vault **`PROJECT_URL`** + **`CRON_SECRET`** (same pattern as `recurring-job-report-dispatch`).
+
+**Secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY`, `RESEND_API_KEY`, `CRON_SECRET`
+
+**Used by**: Jobs → Stages → ⚙ across from the Paid in Full header → [`PaidInFullEmailSettingsModal.tsx`](../src/components/jobs/PaidInFullEmailSettingsModal.tsx) (recipient config + Preview detailed / Preview summary / Email me a test).
 
 ---
 

@@ -9,8 +9,8 @@ last_updated: 2026-07-22
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate to Advanced
 
-total_migrations: "84 live in supabase/migrations/ (baseline + post-baseline) + 847 archived pre-baseline files (squashed into the 2026-06-04 baseline)"
-date_range: "Through July 17, 2026 — the latest real migration. Archive filenames dated 2027 are typos; that work happened March–June 2026 (see the note atop Recent Migrations)."
+total_migrations: "110 live in supabase/migrations/ (baseline + post-baseline) + 847 archived pre-baseline files (squashed into the 2026-06-04 baseline)"
+date_range: "Through July 22, 2026 — the latest real migration. Archive filenames dated 2027 are typos; that work happened March–June 2026 (see the note atop Recent Migrations)."
 categories: "Bids, Materials, Workflow, RLS, Database Improvements"
 
 key_sections:
@@ -104,6 +104,12 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 ### July 2026
 
 #### July 22, 2026
+
+**`20260722260000_paid_job_email.sql`** _(apply via `supabase db push` after the file is on `main`; the companion edge function needs `supabase functions deploy paid-job-email`)_
+- **Purpose**: "Customer paid" emails (v2.965) — `paid_job_email_queue` table + `enqueue_paid_job_email()` AFTER UPDATE OF status trigger on `jobs_ledger` (fires on transition to `'paid'`, the single choke point for every writer); SECURITY DEFINER RPC `get_paid_job_email_payload(p_job_id)` returning the full money payload (revenue, payments, team labor via approved clock sessions × `people_pay_config.hourly_wage` name join, sub labor mirroring `laborJobSubCost`, parts = Mercury allocation SUM(ABS(amount)), profit, monthly timeline, job start/last work dates); pg_cron `paid-job-email` every 15 min posting to `/functions/v1/paid-job-email` with Vault `PROJECT_URL` + `CRON_SECRET` (same pattern as `20260430054614`).
+- **Security**: queue RLS — SELECT for `public.is_dev()` only, NO client write policies (SECURITY DEFINER trigger + service role write). RPC EXECUTE revoked from anon/authenticated, granted to service_role only (the edge function role-gates callers). CREATE TABLE ends with both read-only-block calls.
+- **Ordering**: deploy the edge function alongside — the cron job starts POSTing to `/functions/v1/paid-job-email` on the next quarter-hour after `db push` (a 404 until deploy is harmless; queue rows just wait, attempts only bump on function-level failures).
+- **Category**: Jobs / feature
 
 **`20260722258000_click_number_dashboard_rpcs.sql`** _(apply via `supabase db push` after the file is on `main`)_
 - **Purpose**: HCP→C# fallback tail (v2.963) — appends a `click_number` column to the END of RETURNS TABLE for `list_assigned_jobs_for_dashboard`, `list_ready_to_bill_assigned_jobs_for_dashboard`, and `list_superintendent_jobs_for_dashboard` so client display sites can apply `effectiveJobLedgerNumber()` explicitly (their `hcp_number` output stays the server-baked COALESCE from `20260619160000`). DROP+CREATE per function (return-type change, 42P13); grants restated.

@@ -146,6 +146,14 @@ export function parseBulkDeleteAlertEnabled(valueText: string | null | undefined
 export const APP_SETTINGS_KEY_TEAM_REVIEW_COMPOSITE_WEIGHTS = 'team_review_composite_weights_v1' as const
 
 /**
+ * JSON array of `users.id` uuid strings in `value_text`: who receives the "Customer paid" email
+ * when a job hits Paid in Full (devs/masters get the detailed variant, others the sterilized one —
+ * `paidEmailVariantForRole`). Dev writes; all authenticated read.
+ * @see `src/lib/paidJobEmail.ts`
+ */
+export const APP_SETTINGS_KEY_PAID_JOB_EMAIL_RECIPIENTS = 'paid_job_email_recipients_v1' as const
+
+/**
  * `value_num`: days between team-member reviews before the Dashboard/Dispatch Inbox reminder fires
  * (default 30 via `parseTeamReviewCadenceDays`). Dev writes (Settings → Dashboard & alerts); all authenticated read.
  * @see `src/lib/prospects/teamReviewDue.ts`

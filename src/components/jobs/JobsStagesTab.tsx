@@ -38,6 +38,7 @@ import JobsStagesTable from './JobsStagesTable'
 import JobsStagesUnifiedTable from './JobsStagesUnifiedTable'
 import { jobBillingContextFromJob } from '../../lib/jobBillingContext'
 import BankPaymentsModal from './BankPaymentsModal'
+import PaidInFullEmailSettingsModal from './PaidInFullEmailSettingsModal'
 import JobBookModal from './JobBookModal'
 import JobsCombineSeparateModal from './JobsCombineSeparateModal'
 import StagesNoCustomerJobsModal from './StagesNoCustomerJobsModal'
@@ -341,6 +342,8 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   const [markPaidJob, setMarkPaidJob] = useState<JobWithDetails | null>(null)
   const [markPaidInvoice, setMarkPaidInvoice] = useState<InvoiceWithJob | null>(null)
   const [bankPaymentsModalOpen, setBankPaymentsModalOpen] = useState(false)
+  /** ⚙ across from the Paid in Full header: "Customer paid" email recipients + preview/test (v2.965). */
+  const [paidEmailSettingsOpen, setPaidEmailSettingsOpen] = useState(false)
   const { count: arBankTxUnallocatedCount } = useArBankUnallocatedCount({
     enabled: active,
     authUserId: authUser?.id,
@@ -2124,6 +2127,8 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                   />
                 ))}
 
+                {/* Header row mirrors the Billed section: toggle on the left, affordances flushed right. */}
+                <div style={{ margin: '1.5rem 0 0.5rem', display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
                 <button
                   type="button"
                   onClick={() => {
@@ -2136,7 +2141,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     })
                   }}
                   aria-expanded={stagesSectionOpen.paid}
-                  style={{ margin: '1.5rem 0 0.5rem', fontSize: '1rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem', padding: 0, border: 'none', background: 'none', cursor: 'pointer', color: 'inherit' }}
+                  style={{ fontSize: '1rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem', padding: 0, border: 'none', background: 'none', cursor: 'pointer', color: 'inherit', flex: 1, minWidth: 0 }}
                 >
                   <span aria-hidden>{stagesSectionOpen.paid ? '\u25BC' : '\u25B6'}</span>
                   {(() => {
@@ -2158,6 +2163,31 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     return `Paid in Full (${countPart})${suffix}`
                   })()}
                 </button>
+                {(authRole === 'dev' || authRole === 'master_technician') && (
+                  <button
+                    type="button"
+                    onClick={() => setPaidEmailSettingsOpen(true)}
+                    title="Paid in Full email settings"
+                    aria-label="Paid in Full email settings"
+                    style={{
+                      flexShrink: 0,
+                      height: 32,
+                      width: 32,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      border: '1px solid var(--border-strong)',
+                      borderRadius: 4,
+                      background: 'var(--surface)',
+                      cursor: 'pointer',
+                      color: 'var(--text-700)',
+                      fontSize: '1rem',
+                    }}
+                  >
+                    <span aria-hidden>⚙</span>
+                  </button>
+                )}
+                </div>
                 {stagesSectionOpen.paid ? (
                   <>
                     {paidJobsLoading ? (
@@ -2631,6 +2661,9 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
             </div>
           </div>
         </div>
+      )}
+      {paidEmailSettingsOpen && (
+        <PaidInFullEmailSettingsModal onClose={() => setPaidEmailSettingsOpen(false)} />
       )}
       <BankPaymentsModal
         open={bankPaymentsModalOpen}

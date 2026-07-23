@@ -557,6 +557,10 @@ verify_jwt = false
 [functions.notify-team-lead-clock]
 verify_jwt = false
 
+# Same gateway pattern as recurring-job-report-*: cron secret or in-function JWT/role gate.
+[functions.paid-job-email]
+verify_jwt = false
+
 [edge_runtime]
 enabled = true
 # Supported request policies: `oneshot`, `per_worker`.
