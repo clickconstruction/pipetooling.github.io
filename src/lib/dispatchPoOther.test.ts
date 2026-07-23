@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { otherIdSet, partitionByOther } from './dispatchPoOther'
+import { applyOtherMoveLocally, otherIdSet, partitionByOther } from './dispatchPoOther'
 import type { DispatchPoOtherRow } from './dispatchPoOther'
 
 const rows: DispatchPoOtherRow[] = [
@@ -13,6 +13,22 @@ describe('otherIdSet', () => {
   it('filters by kind and ignores unknown kinds', () => {
     expect([...otherIdSet(rows, 'for_person')].sort()).toEqual(['p1', 'p2'])
     expect([...otherIdSet(rows, 'supply_house')]).toEqual(['s1'])
+  })
+})
+
+describe('applyOtherMoveLocally', () => {
+  it('to-other adds a synthetic row without duplicating an existing flag', () => {
+    const once = applyOtherMoveLocally(rows, 'for_person', 'p9', 'to-other')
+    expect(otherIdSet(once, 'for_person').has('p9')).toBe(true)
+    const twice = applyOtherMoveLocally(once, 'for_person', 'p9', 'to-other')
+    expect(twice.filter((r) => r.item_id === 'p9')).toHaveLength(1)
+  })
+
+  it('to-main removes the pair and only that pair', () => {
+    const result = applyOtherMoveLocally(rows, 'for_person', 'p1', 'to-main')
+    expect(otherIdSet(result, 'for_person').has('p1')).toBe(false)
+    expect(otherIdSet(result, 'for_person').has('p2')).toBe(true)
+    expect(otherIdSet(result, 'supply_house').has('s1')).toBe(true)
   })
 })
 

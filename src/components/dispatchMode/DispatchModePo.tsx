@@ -7,7 +7,7 @@ import { denverCalendarDayKey } from '../../utils/dateUtils'
 import { fetchDispatchModeDayBlocks, type DispatchModeAgendaBlock } from '../../lib/dispatchModeSchedule'
 import { buildServiceTypeTradePill } from '../../lib/serviceTypeTradePill'
 import SwipeToConfirm from '../shared/SwipeToConfirm'
-import { PO_LONG_PRESS_MS, otherIdSet, partitionByOther } from '../../lib/dispatchPoOther'
+import { PO_LONG_PRESS_MS, applyOtherMoveLocally, otherIdSet, partitionByOther } from '../../lib/dispatchPoOther'
 import type { DispatchPoOtherKind, DispatchPoOtherRow } from '../../lib/dispatchPoOther'
 
 /**
@@ -50,6 +50,15 @@ type PoResult = {
 }
 
 const LAST_SUPPLY_HOUSE_KEY_PREFIX = 'dispatch_po_last_sh_'
+
+/** Haptic tick where supported (Android Chrome; iOS Safari ignores). */
+function buzz(ms: number) {
+  try {
+    navigator.vibrate?.(ms)
+  } catch {
+    // ignore
+  }
+}
 
 function chipStyle(selected: boolean): React.CSSProperties {
   return {
@@ -98,7 +107,6 @@ export default function DispatchModePo() {
   const [otherRows, setOtherRows] = useState<DispatchPoOtherRow[]>([])
   const [otherListOpen, setOtherListOpen] = useState<DispatchPoOtherKind | null>(null)
   const [moveTarget, setMoveTarget] = useState<{ kind: DispatchPoOtherKind; id: string; name: string; direction: 'to-other' | 'to-main' } | null>(null)
-  const [moving, setMoving] = useState(false)
   const pressStartRef = useRef<number | null>(null)
   const longPressFiredRef = useRef(false)
 
@@ -114,6 +122,7 @@ export default function DispatchModePo() {
       pressStartRef.current = null
       if (start != null && Date.now() - start >= PO_LONG_PRESS_MS) {
         longPressFiredRef.current = true
+        buzz(10)
         setMoveTarget({ kind, id, name, direction })
       }
     },
@@ -141,27 +150,35 @@ export default function DispatchModePo() {
     setOtherRows(error ? [] : ((data ?? []) as DispatchPoOtherRow[]))
   }, [])
 
-  /** Move an option into or out of Other (insert/delete — no destructive path). */
-  async function executeMove(target: { kind: DispatchPoOtherKind; id: string; direction: 'to-other' | 'to-main' }) {
-    if (moving) return
-    setMoving(true)
-    try {
-      if (target.direction === 'to-other') {
-        const { error } = await supabase
-          .from('dispatch_po_other_items')
-          .upsert({ kind: target.kind, item_id: target.id, created_by: authUser?.id ?? null }, { onConflict: 'kind,item_id' })
-        if (error) throw error
-      } else {
-        const { error } = await supabase.from('dispatch_po_other_items').delete().eq('kind', target.kind).eq('item_id', target.id)
-        if (error) throw error
+  /**
+   * Move an option into or out of Other — OPTIMISTIC (v2.958): the list flips
+   * and the modal closes the instant the swipe lands; the write runs behind
+   * it and rolls back with a toast if it fails. Insert/delete only — no
+   * destructive path.
+   */
+  function executeMove(target: { kind: DispatchPoOtherKind; id: string; direction: 'to-other' | 'to-main' }) {
+    const previous = otherRows
+    setOtherRows(applyOtherMoveLocally(previous, target.kind, target.id, target.direction))
+    setMoveTarget(null)
+    buzz(15)
+    void (async () => {
+      try {
+        if (target.direction === 'to-other') {
+          const { error } = await supabase
+            .from('dispatch_po_other_items')
+            .upsert({ kind: target.kind, item_id: target.id, created_by: authUser?.id ?? null }, { onConflict: 'kind,item_id' })
+          if (error) throw error
+        } else {
+          const { error } = await supabase.from('dispatch_po_other_items').delete().eq('kind', target.kind).eq('item_id', target.id)
+          if (error) throw error
+        }
+        // Reconcile the synthetic optimistic row with the real one.
+        await loadOtherRows()
+      } catch (e) {
+        setOtherRows(previous)
+        showToast(formatErrorMessage(e, 'Failed to move — change undone'), 'error')
       }
-      await loadOtherRows()
-      setMoveTarget(null)
-    } catch (e) {
-      showToast(formatErrorMessage(e, 'Failed to move'), 'error')
-    } finally {
-      setMoving(false)
-    }
+    })()
   }
 
   const loadLedger = useCallback(async () => {
@@ -409,7 +426,7 @@ export default function DispatchModePo() {
 
       {stepLabel(1, 'Job (On schedule today)')}
       {job ? (
-        <button type="button" onClick={() => setJob(null)} style={{ ...chipStyle(true), textAlign: 'left' }}>
+        <button type="button" onClick={() => setJob(null)} className="dispatch-po-chip" style={{ ...chipStyle(true), textAlign: 'left' }}>
           {(buildServiceTypeTradePill(job.serviceTypeName)?.label ?? '').toUpperCase()} {job.hcpNumber?.trim() || '—'} · {job.jobName}
           <span style={{ display: 'block', fontSize: '0.75rem', fontWeight: 400, color: 'var(--text-muted)' }}>
             {job.jobAddress || job.customerName} — tap to change
@@ -420,7 +437,7 @@ export default function DispatchModePo() {
           {todaysJobs.length > 0 && (
             <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', marginBottom: '0.5rem' }}>
               {todaysJobs.map((j) => (
-                <button key={j.id} type="button" onClick={() => setJob(j)} style={chipStyle(false)}>
+                <button key={j.id} type="button" onClick={() => setJob(j)} className="dispatch-po-chip" style={chipStyle(false)}>
                   {j.hcpNumber?.trim() || '—'} · {j.jobName}
                 </button>
               ))}
@@ -438,7 +455,7 @@ export default function DispatchModePo() {
           {jobResults.length > 0 && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem', marginTop: '0.4rem' }}>
               {jobResults.map((j) => (
-                <button key={j.id} type="button" onClick={() => { setJob(j); setJobSearch(''); setJobResults([]) }} style={{ ...chipStyle(false), borderRadius: 8, textAlign: 'left' }}>
+                <button key={j.id} type="button" onClick={() => { setJob(j); setJobSearch(''); setJobResults([]) }} className="dispatch-po-chip" style={{ ...chipStyle(false), borderRadius: 8, textAlign: 'left' }}>
                   {j.hcpNumber?.trim() || '—'} · {j.jobName}
                   <span style={{ display: 'block', fontSize: '0.75rem', fontWeight: 400, color: 'var(--text-muted)' }}>
                     {[j.customerName, j.jobAddress].filter(Boolean).join(' · ')}
@@ -463,7 +480,7 @@ export default function DispatchModePo() {
             }}
             aria-pressed
             title="Tap to change · hold to move back to the main list"
-            style={{ ...chipStyle(true), touchAction: 'manipulation', userSelect: 'none', WebkitUserSelect: 'none' }}
+            className="dispatch-po-chip" style={{ ...chipStyle(true), touchAction: 'manipulation', userSelect: 'none', WebkitUserSelect: 'none' }}
             {...longPressHandlers('for_person', person.id, person.name, 'to-main')}
           >
             {person.name}
@@ -481,14 +498,14 @@ export default function DispatchModePo() {
             }}
             aria-pressed={person?.id === p.id}
             title="Hold to move to Other"
-            style={{ ...chipStyle(person?.id === p.id), touchAction: 'manipulation', userSelect: 'none', WebkitUserSelect: 'none' }}
+            className="dispatch-po-chip" style={{ ...chipStyle(person?.id === p.id), touchAction: 'manipulation', userSelect: 'none', WebkitUserSelect: 'none' }}
             {...longPressHandlers('for_person', p.id, p.name, 'to-other')}
           >
             {p.name}
           </button>
         ))}
         {peoplePartition.other.length > 0 && (
-          <button type="button" onClick={() => setOtherListOpen('for_person')} style={{ ...chipStyle(false), color: 'var(--text-muted)' }}>
+          <button type="button" onClick={() => setOtherListOpen('for_person')} className="dispatch-po-chip" style={{ ...chipStyle(false), color: 'var(--text-muted)' }}>
             Other ({peoplePartition.other.length})
           </button>
         )}
@@ -508,7 +525,7 @@ export default function DispatchModePo() {
             }}
             aria-pressed
             title="Tap to change · hold to move back to the main list"
-            style={{ ...chipStyle(true), touchAction: 'manipulation', userSelect: 'none', WebkitUserSelect: 'none' }}
+            className="dispatch-po-chip" style={{ ...chipStyle(true), touchAction: 'manipulation', userSelect: 'none', WebkitUserSelect: 'none' }}
             {...longPressHandlers('supply_house', supplyHouse.id, supplyHouse.name, 'to-main')}
           >
             {supplyHouse.name}
@@ -526,14 +543,14 @@ export default function DispatchModePo() {
             }}
             aria-pressed={supplyHouse?.id === s.id}
             title="Hold to move to Other"
-            style={{ ...chipStyle(supplyHouse?.id === s.id), touchAction: 'manipulation', userSelect: 'none', WebkitUserSelect: 'none' }}
+            className="dispatch-po-chip" style={{ ...chipStyle(supplyHouse?.id === s.id), touchAction: 'manipulation', userSelect: 'none', WebkitUserSelect: 'none' }}
             {...longPressHandlers('supply_house', s.id, s.name, 'to-other')}
           >
             {s.name}
           </button>
         ))}
         {supplyHousePartition.other.length > 0 && (
-          <button type="button" onClick={() => setOtherListOpen('supply_house')} style={{ ...chipStyle(false), color: 'var(--text-muted)' }}>
+          <button type="button" onClick={() => setOtherListOpen('supply_house')} className="dispatch-po-chip" style={{ ...chipStyle(false), color: 'var(--text-muted)' }}>
             Other ({supplyHousePartition.other.length})
           </button>
         )}
@@ -599,10 +616,12 @@ export default function DispatchModePo() {
           role="dialog"
           aria-modal="true"
           aria-label="Other options"
+          className="dispatch-po-overlay"
           onClick={() => setOtherListOpen(null)}
           style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 1010, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}
         >
           <div
+            className="dispatch-po-sheet"
             onClick={(e) => e.stopPropagation()}
             style={{ width: '100%', maxWidth: 480, maxHeight: '70vh', overflowY: 'auto', background: 'var(--surface)', borderRadius: '12px 12px 0 0', padding: '1rem', boxSizing: 'border-box' }}
           >
@@ -628,7 +647,7 @@ export default function DispatchModePo() {
                     }}
                     aria-pressed={selected}
                     title="Hold to move back to the main list"
-                    style={{ ...chipStyle(selected), touchAction: 'manipulation', userSelect: 'none', WebkitUserSelect: 'none' }}
+                    className="dispatch-po-chip" style={{ ...chipStyle(selected), touchAction: 'manipulation', userSelect: 'none', WebkitUserSelect: 'none' }}
                     {...longPressHandlers(otherListOpen, item.id, item.name, 'to-main')}
                   >
                     {item.name}
@@ -645,10 +664,11 @@ export default function DispatchModePo() {
           role="dialog"
           aria-modal="true"
           aria-label="Confirm move"
-          onClick={() => (moving ? null : setMoveTarget(null))}
+          className="dispatch-po-overlay"
+          onClick={() => setMoveTarget(null)}
           style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 1011, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}
         >
-          <div onClick={(e) => e.stopPropagation()} style={{ width: '100%', maxWidth: 380, background: 'var(--surface)', borderRadius: 12, padding: '1rem', boxSizing: 'border-box' }}>
+          <div className="dispatch-po-dialog" onClick={(e) => e.stopPropagation()} style={{ width: '100%', maxWidth: 380, background: 'var(--surface)', borderRadius: 12, padding: '1rem', boxSizing: 'border-box' }}>
             <p style={{ margin: '0 0 0.25rem', fontWeight: 700 }}>
               {moveTarget.direction === 'to-other' ? `Move ${moveTarget.name} to Other?` : `Move ${moveTarget.name} back to the main list?`}
             </p>
@@ -656,15 +676,13 @@ export default function DispatchModePo() {
               This changes the list for everyone. Nothing is deleted — it can always be moved back.
             </p>
             <SwipeToConfirm
-              label={moving ? 'Moving…' : moveTarget.direction === 'to-other' ? 'Slide to move to Other' : 'Slide to move back'}
-              disabled={moving}
+              label={moveTarget.direction === 'to-other' ? 'Slide to move to Other' : 'Slide to move back'}
               onConfirm={() => void executeMove(moveTarget)}
             />
             <button
               type="button"
               onClick={() => setMoveTarget(null)}
-              disabled={moving}
-              style={{ marginTop: '0.75rem', width: '100%', padding: '0.6rem', background: 'none', color: 'var(--text-muted)', border: '1px solid var(--border)', borderRadius: 8, cursor: moving ? 'not-allowed' : 'pointer', fontWeight: 600 }}
+              style={{ marginTop: '0.75rem', width: '100%', padding: '0.6rem', background: 'none', color: 'var(--text-muted)', border: '1px solid var(--border)', borderRadius: 8, cursor: 'pointer', fontWeight: 600 }}
             >
               Cancel
             </button>
