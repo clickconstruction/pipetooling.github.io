@@ -427,11 +427,13 @@ function QuickfillPage() {
     const ids = new Set<string>()
     for (const j of quickfillNoCustomerStages.jobsWithoutCustomer) ids.add(j.id)
     for (const j of quickfillNoCustomerStages.workingJobsWithoutPictures) ids.add(j.id)
+    for (const j of quickfillNoCustomerStages.readyToBillNoEmailJobs) ids.add(j.id)
     return ids.size
   }, [
     quickfillNoCustomerStages.fetchEnabled,
     quickfillNoCustomerStages.jobsWithoutCustomer,
     quickfillNoCustomerStages.workingJobsWithoutPictures,
+    quickfillNoCustomerStages.readyToBillNoEmailJobs,
   ])
   useReportQuickfillSectionMetric(
     'no-customer-stages',
@@ -1221,6 +1223,7 @@ function QuickfillPage() {
             <QuickfillStagesNoCustomerSection
               jobsWithoutCustomer={quickfillNoCustomerStages.jobsWithoutCustomer}
               workingJobsWithoutPictures={quickfillNoCustomerStages.workingJobsWithoutPictures}
+              readyToBillNoEmailJobs={quickfillNoCustomerStages.readyToBillNoEmailJobs}
               jobsListBusy={quickfillNoCustomerStages.jobsListBusy}
             />
           </QuickfillSectionWrapper>

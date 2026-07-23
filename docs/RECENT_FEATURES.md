@@ -7,8 +7,8 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-23 (v2.971)
-last_updated: 2026-07-23 (v2.971)
+last_updated: 2026-07-23 (v2.972)
+last_updated: 2026-07-23 (v2.972)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2046,6 +2046,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.972)
+
+### Quickfill: "Missing job info" becomes an inline desktop fixer — all three Stages chips (2026-07-23)
+The Quickfill section that mirrored two of the Jobs → Stages completeness chips via list modals now covers **all three** ("No linked customer", "No customer pictures", new **"No billing email"** — the v2.936 Ready-to-Bill guardrail) and works the way a desk session actually flows: **every gap is a row** with the full job identity (Job # via the C# fallback, name, customer, address) and the fix **inline** — paste the pictures link or type the customer email right in the row (Enter or Save writes `jobs_ledger.job_pictures_link` / `customer_email`, toast + refresh, row disappears); customer linking keeps its one-click **Open Edit Job →**. New jobs-cache kernel [`buildStagesReadyToBillNoEmailList`](../src/lib/jobsStagesBoard.ts); hook + section + union metric extended; the two list modals are no longer used here (Stages keeps its own). All-clear state celebrates 🎉.
 
 ## Latest Updates (v2.971)
 

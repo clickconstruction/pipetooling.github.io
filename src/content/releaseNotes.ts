@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.972',
+    date: '2026-07-23',
+    title: 'Fix missing job info right from Quickfill',
+    kind: 'feature',
+    highlights: [
+      'The Quickfill section now lists every job missing a customer link, pictures link, or billing email — with the job number, name, customer, and address on each row.',
+      'Type the missing link or email right in the row and hit Save; rows disappear as you fix them.',
+    ],
+  },
+  {
     version: 'v2.971',
     date: '2026-07-23',
     title: 'Collections columns stop wiggling too',

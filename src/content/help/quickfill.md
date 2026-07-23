@@ -59,3 +59,7 @@ Devs can reorder sections, hide them, and edit each section's banner prompt — 
 ## The habit
 
 The page is built for one pass in the morning and a lighter pass after lunch. If every bar is green by mid-morning, the office is caught up; anything {{button:red|red}} is exactly where to spend attention next.
+
+## Missing job info
+
+The **Missing job info** section lists every job that's missing a **linked customer**, a **customer pictures link**, or (for Ready to Bill jobs) a **billing email** — the same three chips that appear at the top of Jobs → Stages. Each row shows the job number, name, customer, and address so you know exactly which job it is. For pictures and email, type the value right in the row and press **Save** (or Enter) — the row disappears once it's fixed. Linking a customer opens Edit Job with one click.
