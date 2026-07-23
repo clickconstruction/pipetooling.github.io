@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.983',
+    date: '2026-07-23',
+    title: 'Combine duplicate people',
+    kind: 'feature',
+    highlights: [
+      'A new Combine button on People → Users folds a duplicate identity (like a name typed with a stage suffix) into the real person — hours, pay, crew records, and sub sheets move with them.',
+      'You see exactly how many rows will move before confirming, and the duplicate is archived, never deleted.',
+    ],
+  },
+  {
     version: 'v2.982',
     date: '2026-07-23',
     title: 'Header menu collapses whenever it runs out of room',

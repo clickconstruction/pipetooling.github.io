@@ -15,6 +15,7 @@ import {
   type UsersTabRosterListRow,
   type UsersTabSection,
 } from './peopleUsersTabShared'
+import CombinePeopleModal from './CombinePeopleModal'
 
 type PersonActiveProject = { id: string; name: string }
 
@@ -108,6 +109,8 @@ export function PeopleUsersTab({
   const [linkTarget, setLinkTarget] = useState<Person | null>(null)
   const [linkUserId, setLinkUserId] = useState('')
   const [linkSaving, setLinkSaving] = useState(false)
+  // Combine-people modal (fold a duplicate roster identity into the keeper, v2.982).
+  const [combineSource, setCombineSource] = useState<Person | null>(null)
 
   const byKind = useCallback(
     (k: PersonKind) => buildUsersTabKindRoster(k, users, people),
@@ -447,6 +450,16 @@ export function PeopleUsersTab({
                 style={{ padding: '2px 6px', fontSize: '0.8125rem' }}
               >
                 Link account
+              </button>
+            )}
+            {(item.master_user_id === authUserId || isDev) && (
+              <button
+                type="button"
+                onClick={() => setCombineSource(item as Person)}
+                title="Fold this duplicate identity into another person — hours, pay, crew records, and sub sheets move; this row is archived"
+                style={{ padding: '2px 6px', fontSize: '0.8125rem' }}
+              >
+                Combine…
               </button>
             )}
             {/* Owner always; devs on anyone's row (RLS: "Devs can update any people"). */}
@@ -1061,6 +1074,16 @@ export function PeopleUsersTab({
           </div>
         )
       })()}
+      {combineSource && (
+        <CombinePeopleModal
+          source={{ id: combineSource.id, name: combineSource.name, account_user_id: combineSource.account_user_id ?? null }}
+          candidates={people
+            .filter((p) => p.id !== combineSource.id)
+            .map((p) => ({ id: p.id, name: p.name, account_user_id: p.account_user_id ?? null }))}
+          onClose={() => setCombineSource(null)}
+          onCombined={() => archivePerson(combineSource.id)}
+        />
+      )}
     </>
   )
 }

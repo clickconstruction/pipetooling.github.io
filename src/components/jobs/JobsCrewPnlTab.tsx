@@ -25,7 +25,7 @@ import type { JobWithDetails } from '../../types/jobWithDetails'
 import type { LaborJob } from '../../types/laborJob'
 import type { TeamLaborRow } from '../../utils/teamLabor'
 
-const LABOR_ASSIGNED_DELIMITER = ' | '
+import { LABOR_ASSIGNED_DELIMITER } from '../../lib/combinePeople'
 
 type SortKey = 'name' | 'hours' | 'laborCost' | 'billing' | 'profit' | 'rate'
 
