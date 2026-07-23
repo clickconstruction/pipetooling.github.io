@@ -5,7 +5,7 @@ import { useEstimatorInbox } from '../../hooks/useEstimatorInbox'
 
 export const DISPATCH_MODE_FOOTER_HEIGHT_PX = 60
 
-type TabKey = 'dashboard' | 'schedule' | 'inbox' | 'customers' | 'more' | 'po'
+type TabKey = 'dashboard' | 'schedule' | 'inbox' | 'customers' | 'po'
 
 type TabDef = {
   key: TabKey
@@ -59,18 +59,9 @@ const DISPATCH_TABS: TabDef[] = [
       'M320 320C390.7 320 448 262.7 448 192C448 121.3 390.7 64 320 64C249.3 64 192 121.3 192 192C192 262.7 249.3 320 320 320zM290.3 368C191.8 368 112 447.8 112 546.3C112 562.7 125.3 576 141.7 576L498.3 576C514.7 576 528 562.7 528 546.3C528 447.8 448.2 368 349.7 368L290.3 368z',
     ),
   },
-  {
-    key: 'more',
-    label: 'More',
-    to: '/dashboard',
-    // ellipsis
-    icon: svg(
-      'M144 272C117.5 272 96 293.5 96 320C96 346.5 117.5 368 144 368C170.5 368 192 346.5 192 320C192 293.5 170.5 272 144 272zM320 272C293.5 272 272 293.5 272 320C272 346.5 293.5 368 320 368C346.5 368 368 346.5 368 320C368 293.5 346.5 272 320 272zM448 320C448 293.5 469.5 272 496 272C522.5 272 544 293.5 544 320C544 346.5 522.5 368 496 368C469.5 368 448 346.5 448 320z',
-    ),
-  },
 ]
 
-/** Gear-menu opt-in (Dispatch Mode only): mint material PO codes on the fly. Slots before More. */
+/** Gear-menu opt-in (Dispatch Mode only): mint material PO codes on the fly. Slots last. */
 const PO_TAB: TabDef = {
   key: 'po',
   label: 'PO',
@@ -104,7 +95,8 @@ function activeTabForPath(pathname: string, variant: ModeFooterVariant): TabKey 
   if (pathname.startsWith('/dispatch-mode/schedule')) return 'schedule'
   if (pathname.startsWith('/dispatch-mode/inbox')) return 'inbox'
   if (pathname.startsWith('/dispatch-mode/customers')) return 'customers'
-  return 'more'
+  // No More tab (v2.964): outside the dispatch tabs nothing is active — the top nav covers the rest of the app.
+  return null
 }
 
 const tabBtnBase: CSSProperties = {
@@ -126,8 +118,8 @@ const tabBtnBase: CSSProperties = {
 
 /**
  * The Dispatch Mode bottom tab bar. Rendered by Layout on every page while the
- * mode is on; "More" is active on any route outside the /dispatch-mode tabs so
- * the whole regular app stays reachable with the bar present.
+ * mode is on; on routes outside the /dispatch-mode tabs no tab is active — the
+ * regular top nav keeps the whole app reachable with the bar present.
  */
 export function DispatchModeFooter({
   inboxBadgeCount = 0,
@@ -146,7 +138,7 @@ export function DispatchModeFooter({
     variant === 'job'
       ? JOB_TABS
       : showPoTab
-        ? [...DISPATCH_TABS.slice(0, -1), PO_TAB, DISPATCH_TABS[DISPATCH_TABS.length - 1]!]
+        ? [...DISPATCH_TABS, PO_TAB]
         : DISPATCH_TABS
 
   return (

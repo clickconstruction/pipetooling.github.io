@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-22 (v2.963)
+last_updated: 2026-07-23 (v2.964)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.964)
+
+### Dispatch Mode: More tab removed (2026-07-23)
+The bottom bar's **More** tab (→ /dashboard) was redundant — the regular top nav stays visible in Dispatch Mode, so the whole app is already reachable. Removed from [`DispatchModeFooter.tsx`](../src/components/dispatchMode/DispatchModeFooter.tsx): the `more` TabKey is gone, the PO tab simply appends last, and on routes outside the dispatch tabs no tab shows active (previously More lit up). Job Mode's footer is untouched. Help guide `dispatch-mode.md` updated.
 
 ## Latest Updates (v2.963)
 

@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.964',
+    date: '2026-07-23',
+    title: 'Dispatch Mode loses the redundant More tab',
+    kind: 'fix',
+    highlights: [
+      'The bottom bar drops "More" — the regular navigation at the top already takes you everywhere else.',
+    ],
+  },
+  {
     version: 'v2.963',
     date: '2026-07-22',
     title: 'C# fallback reaches the last few screens',
