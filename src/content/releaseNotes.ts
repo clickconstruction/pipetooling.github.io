@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.955',
+    date: '2026-07-22',
+    title: 'Tidy the PO pickers with an Other bucket',
+    kind: 'feature',
+    highlights: [
+      'On the phone PO screen, hold any person or supply house and slide to confirm — it tucks under an "Other" entry at the end of the list, for everyone.',
+      'Tap Other to pick from the tucked-away options, or hold one and slide to bring it back.',
+      'People working the picked job today always stay in the main list.',
+    ],
+  },
+  {
     version: 'v2.954',
     date: '2026-07-22',
     title: 'Team leaderboard',
