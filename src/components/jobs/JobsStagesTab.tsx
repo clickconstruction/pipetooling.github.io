@@ -1023,7 +1023,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
               When Schedule and time in search is enabled, results can include jobs matched by dispatch schedule or clock
               session notes, people, or dates.
             </span>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
             <button
               type="button"
               onClick={openNew}
@@ -1054,7 +1054,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
               aria-describedby={
                 stagesIncludeScheduleTimeInSearch ? 'stages-search-supplemental-desc' : undefined
               }
-              style={{ flex: 1, padding: '0.5rem 0.75rem', border: '1px solid var(--border-strong)', borderRadius: 4, boxSizing: 'border-box' }}
+              style={{ flex: '1 1 10rem', minWidth: 0, padding: '0.5rem 0.75rem', border: '1px solid var(--border-strong)', borderRadius: 4, boxSizing: 'border-box' }}
             />
             {(['dev', 'master_technician', 'assistant', 'controller'] as const).some(
               (r) => r === authRole || r === myRole,
@@ -1384,7 +1384,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
               <div
                 style={{
                   marginLeft: 'auto',
-                  flexShrink: 0,
+                  minWidth: 0,
                   display: 'flex',
                   flexWrap: 'wrap',
                   gap: '0.5rem',
