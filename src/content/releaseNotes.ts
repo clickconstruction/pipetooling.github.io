@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.986',
+    date: '2026-07-23',
+    title: 'App updates flowing again',
+    kind: 'fix',
+    highlights: [
+      'A build check had been silently blocking every site update since v2.965 — today\'s phone fixes (Stages tables, header, bottom tab bar) actually reach your device with this release.',
+    ],
+  },
+  {
     version: 'v2.985',
     date: '2026-07-23',
     title: 'Bottom tab bar gets out of the way while typing',

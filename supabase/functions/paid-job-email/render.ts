@@ -9,6 +9,8 @@
  * assets (matches the other Resend emails in this repo).
  */
 
+import { APP_CALENDAR_TZ } from '../_shared/appTimeZone.ts'
+
 export type PaidJobEmailPayload = {
   job: {
     id: string
@@ -65,7 +67,7 @@ function weekdayDate(iso: string | null): string {
     month: 'short',
     day: 'numeric',
     year: 'numeric',
-    timeZone: 'America/Chicago',
+    timeZone: APP_CALENDAR_TZ,
   })
 }
 
@@ -79,9 +81,9 @@ function weekdayDateTime(iso: string | null): string {
     month: 'short',
     day: 'numeric',
     year: 'numeric',
-    timeZone: 'America/Chicago',
+    timeZone: APP_CALENDAR_TZ,
   })
-  const time = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'America/Chicago' })
+  const time = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: APP_CALENDAR_TZ })
   return `${date} &middot; ${time}`
 }
 

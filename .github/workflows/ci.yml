@@ -34,6 +34,12 @@ jobs:
       - name: Theme token check
         run: node scripts/theme-tokenize.mjs --check src
 
+      # Must mirror deploy.yml's checks job: this check missing here let a raw
+      # 'America/Chicago' literal merge green (PR #649) and then fail every
+      # main deploy from v2.965 to v2.985.
+      - name: App calendar timezone check
+        run: npm run check:timezone
+
       - name: Test
         run: npm test
         env:

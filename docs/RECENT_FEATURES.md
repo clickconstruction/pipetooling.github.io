@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-23 (v2.985)
+last_updated: 2026-07-23 (v2.986)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.986)
+
+### Deploy unblocked: tz literal in paid-job-email + the missing CI check that let it merge (2026-07-23)
+**Every main deploy from v2.965 through v2.985 failed** — prod sat on the v2.963 build all day (reported as "the Stages fixes aren't on my phone"; the phone was current, prod was stale). Cause: [`paid-job-email/render.ts`](../supabase/functions/paid-job-email/render.ts) (PR #649) hardcoded `'America/Chicago'` three times, which fails `npm run check:timezone` — but that check runs **only in deploy.yml's checks job, not in ci.yml's**, so every PR merged green while every subsequent deploy died. Fix: the literals now import `APP_CALENDAR_TZ` from [`_shared/appTimeZone.ts`](../supabase/functions/_shared/appTimeZone.ts) (behavior-identical — the constant is the same string; the deployed function needs no urgent redeploy), and **ci.yml now runs the App calendar timezone check** so the PR gate mirrors the deploy gate. Lesson recorded in the workflow comment: any check added to deploy.yml's checks job must be added to ci.yml too.
 
 ## Latest Updates (v2.985)
 
