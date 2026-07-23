@@ -147,7 +147,7 @@ export function buildCrewPnlPersonResolver(people: CrewPnlRosterPerson[]): CrewP
 }
 
 /** $/hr used to impute "equivalent hours" for flat-rate sub sheets (dev-tunable via app_settings). */
-export const DEFAULT_SUB_LABOR_EQUIVALENT_RATE = 30
+export const DEFAULT_SUB_LABOR_EQUIVALENT_RATE = 50
 
 export function buildCrewPnlSummary(args: {
   jobs: CrewPnlJobInput[]
@@ -155,7 +155,7 @@ export function buildCrewPnlSummary(args: {
   subLabor: CrewPnlSubLaborInput[]
   people: CrewPnlRosterPerson[]
   range: CrewPnlRange
-  /** cost ÷ this rate = a flat-rate sub sheet's equivalent hours (default 30). */
+  /** cost ÷ this rate = a flat-rate sub sheet's equivalent hours (default 50). */
   subLaborEquivalentRate?: number
 }): CrewPnlSummary {
   const { jobs, teamLabor, subLabor, people, range } = args

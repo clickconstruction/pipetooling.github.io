@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.981',
+    date: '2026-07-23',
+    title: 'Sub equivalent rate defaults to $50',
+    kind: 'fix',
+    highlights: [
+      'Crew P&L\'s Sub $/hr equivalent rate now defaults to $50 when not set.',
+    ],
+  },
+  {
     version: 'v2.980',
     date: '2026-07-23',
     title: 'Jobs Stages fits phone screens again',
