@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.954',
+    date: '2026-07-22',
+    title: 'Team leaderboard',
+    kind: 'feature',
+    highlights: [
+      'New Leaderboard view on Team → Review: every role ranked by the skew-corrected composite, with each role’s average and weakest link.',
+      'A replace-priority strip surfaces the lowest scores company-wide, one click from the hiring board.',
+      'Devs can tune how much Ability, Drive, and Integrity each count.',
+    ],
+  },
+  {
     version: 'v2.953',
     date: '2026-07-22',
     title: 'One score per person',

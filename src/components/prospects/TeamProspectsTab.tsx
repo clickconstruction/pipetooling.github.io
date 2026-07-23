@@ -1484,7 +1484,7 @@ export default function TeamProspectsTab({ authUserId, isDev, resolveMasterId }:
           )}
         </>
       )}
-      {stage === 'review' && <TeamReviewSection authUserId={authUserId} />}
+      {stage === 'review' && <TeamReviewSection authUserId={authUserId} isDev={isDev} onOpenScreenBoard={() => setStage('screen')} />}
       {stage === 'screen' && !loading && passed.length > 0 && bucketSection('Passed', passed, passedOpen, setPassedOpen)}
 
       {stage === 'screen' && !loading && sourceSummary.length > 0 && (
