@@ -64,6 +64,25 @@ export type StagesRowRenderContext = {
 }
 
 
+/**
+ * Minimum width for both Stages tables (JobsStagesTable + JobsStagesUnifiedTable).
+ * They use table-layout: fixed with a colgroup whose sized columns total 676px,
+ * so the flexible Job column only ever gets `minWidth − 676`. At the old 700px
+ * minimum the Job column collapsed to ~24px on phones and its content overlapped
+ * the Activity column; 940 keeps the Job column ≥ ~264px (the table scrolls
+ * sideways inside its own wrapper instead).
+ */
+export const STAGES_TABLE_MIN_WIDTH = 940
+
+/**
+ * Wrapper for full-width expanded-row panels (Job activity / notes): pins the
+ * panel to the visible strip of the horizontally scrollable table so it stays
+ * on-screen when the table is scrolled sideways on a phone.
+ */
+export function renderStagesExpandedRowPanel(children: ReactNode) {
+  return <div style={{ position: 'sticky', left: 0, maxWidth: 'calc(100vw - 2rem)' }}>{children}</div>
+}
+
 /** Stages table headers: one visual line per phrase when the table is narrow (no mid-phrase wrap). */
 const stagesThreeLineHeaderLineStyle: CSSProperties = { display: 'block', whiteSpace: 'nowrap' }
 
