@@ -25,6 +25,7 @@ import {
 import { isAssistantLike } from '../../lib/subcontractorLikeRole'
 import { useSendBackCollectPaymentFlowNotice } from '../../hooks/useSendBackCollectPaymentFlowNotice'
 import { useArBankUnallocatedCount } from '../../hooks/useArBankUnallocatedCount'
+import { useIsMobile } from '../../hooks/useIsMobile'
 import { useAuth } from '../../hooks/useAuth'
 import { useJobThreadNotes } from '../../hooks/useJobThreadNotes'
 import { useJobsStagesMutations } from '../../hooks/useJobsStagesMutations'
@@ -350,6 +351,10 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     authRole,
     bankPaymentsModalOpen,
   })
+  // Phones stack the Billed Awaiting Payment header: title / aging summary /
+  // buttons on three rows, instead of squeezing the title to shreds beside the
+  // Accounts Receivable + Print buttons.
+  const isMobile = useIsMobile()
   const [viewBillInvoice, setViewBillInvoice] = useState<InvoiceWithJob | null>(null)
   const [lienToolingPrefillModal, setLienToolingPrefillModal] = useState<{
     job: JobWithDetails
@@ -1818,8 +1823,8 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                   />
                 )}
 
-                <div id="stages-billed" style={{ margin: '1.5rem 0 0.5rem', display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap', flex: 1, minWidth: 0 }}>
+                <div id="stages-billed" style={{ margin: '1.5rem 0 0.5rem', display: 'flex', flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'stretch' : 'center', gap: isMobile ? '0.5rem' : '1rem', flexWrap: 'wrap' }}>
+                  <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'flex-start' : 'center', gap: isMobile ? '0.25rem' : '0.75rem', flexWrap: 'wrap', flex: 1, minWidth: 0 }}>
                     <button
                       type="button"
                       onClick={() => toggleStages('billed')}
@@ -1833,6 +1838,8 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                       {`30+ days: ${billedAgingBuckets.count30_90} | $${formatCurrencyAbbrevTruncated(billedAgingBuckets.sum30_90)} — 90+ days: ${billedAgingBuckets.count90} | $${formatCurrencyAbbrevTruncated(billedAgingBuckets.sum90)} · est. bill date`}
                     </span>
                   </div>
+                  {/* AR + Print stay together as the third row on mobile — the wrapper keeps them side by side instead of stacking each on its own row. */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '0.5rem' : '1rem', flexWrap: 'wrap' }}>
                   <div style={{ position: 'relative', flexShrink: 0, width: 'fit-content' }}>
                     <button
                       type="button"
@@ -1940,6 +1947,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     </svg>
                     Print
                   </button>
+                  </div>
                 </div>
                 {stagesSectionOpen.billed && (
                   <JobsStagesUnifiedTable
