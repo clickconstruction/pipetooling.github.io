@@ -6216,6 +6216,41 @@ export type Database = {
         }
         Relationships: []
       }
+      paid_job_email_queue: {
+        Row: {
+          attempts: number | null
+          error: string | null
+          id: string
+          job_ledger_id: string
+          queued_at: string | null
+          sent_at: string | null
+        }
+        Insert: {
+          attempts?: number | null
+          error?: string | null
+          id?: string
+          job_ledger_id: string
+          queued_at?: string | null
+          sent_at?: string | null
+        }
+        Update: {
+          attempts?: number | null
+          error?: string | null
+          id?: string
+          job_ledger_id?: string
+          queued_at?: string | null
+          sent_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "paid_job_email_queue_job_ledger_id_fkey"
+            columns: ["job_ledger_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       part_types: {
         Row: {
           category: string | null
@@ -11732,6 +11767,10 @@ export type Database = {
           man_hours: number
           person_name: string
         }[]
+      }
+      get_paid_job_email_payload: {
+        Args: { p_job_id: string }
+        Returns: Json
       }
       get_parts_ordered_by_price_count:
         | {

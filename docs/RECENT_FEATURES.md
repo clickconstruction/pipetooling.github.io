@@ -7,7 +7,8 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-23 (v2.964)
+last_updated: 2026-07-23 (v2.965)
+last_updated: 2026-07-23 (v2.965)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2046,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.965)
+
+### "Customer paid" email notifications + Paid in Full email settings gear (2026-07-22)
+When a `jobs_ledger` row transitions to `status='paid'` (any writer — `update_job_status`, `mark_invoice_paid`, `mark_job_paid`, the stripe-webhook's `mark_invoice_paid_from_stripe`, `apply_mercury_bank_payment_allocations`), a new DB trigger `enqueue_paid_job_email()` (single choke point) inserts into `paid_job_email_queue`; a pg_cron `*/15` job drains it through the new [`supabase/functions/paid-job-email/index.ts`](../supabase/functions/paid-job-email/index.ts) edge function. Recipients come from `app_settings` key `paid_job_email_recipients_v1` (JSON array of user ids; empty list stamps the row `sent` with "no recipients configured" so it never retries forever): **dev/master_technician recipients get the DETAILED financial review** (PAID IN FULL badge, Job Start / Last Work with "(N days ago)", a Revenue / Payments / Costs / Profit scoreboard with per-person team-labor rows `hours × $wage = $cost`, sub-labor + Mercury parts totals, payments with dates, and a month-by-month labor/parts/payments timeline), **everyone else a STERILIZED copy** — job identity + dates, zero dollar figures. Money math lives in the new SECURITY DEFINER RPC `get_paid_job_email_payload(p_job_id)` (service_role-only EXECUTE; the function role-gates callers): team labor = approved non-revoked `clock_sessions` × `people_pay_config.hourly_wage` (trimmed-name join per docs/SALARY_CLOCK_SESSIONS.md), sub labor mirrors `laborJobSubCost` over `people_labor_jobs`/`people_labor_job_items` (+ drive cost from `drive_mileage_cost`/`drive_time_per_mile`), parts = `mercury_transaction_job_allocations` SUM(ABS(amount)) (the Job Summary cardCharges figure — tally/supply-house/billed-materials additions intentionally not mirrored, noted in SQL). Client: a **⚙ across from the "Paid in Full" section header** on Jobs → Stages (dev + master) opens the new [`PaidInFullEmailSettingsModal`](../src/components/jobs/PaidInFullEmailSettingsModal.tsx) — recipient checkboxes over active office-capable users with Detailed/Summary badges (`paidEmailVariantForRole` in the new [`src/lib/paidJobEmail.ts`](../src/lib/paidJobEmail.ts) kernel + tests; editor is dev-only since app_settings RLS is dev-write, masters read-only) plus a **Preview & test** block (dev AND master): job search via `search_jobs_ledger`, then Preview detailed / Preview summary (edge `mode:'preview'` returns `{ html }`, opened in a new tab) and **Email me a test** (`mode:'test_send'`, detailed variant to the caller's own address, `[TEST]` subject). Migration [`20260722260000_paid_job_email.sql`](../supabase/migrations/20260722260000_paid_job_email.sql) (queue table + RLS dev-read, trigger, RPC, pg_cron registration with Vault `PROJECT_URL`/`CRON_SECRET`); `supabase/config.toml` gains `[functions.paid-job-email] verify_jwt = false`. **Post-merge: needs BOTH `supabase db push` AND `supabase functions deploy paid-job-email`.** Types hand-patched in [`src/types/database.ts`](../src/types/database.ts) (`paid_job_email_queue`, `get_paid_job_email_payload`).
 
 ## Latest Updates (v2.964)
 

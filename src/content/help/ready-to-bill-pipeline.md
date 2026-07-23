@@ -102,6 +102,20 @@ Once billed, the job shows under **Billed Waiting for Payment** on the Dashboard
 
 Jobs that are billed but proving hard to collect can be flagged for **Collections** — they get their own section so the AR picture stays honest.
 
+## The "paid in full" email
+
+The moment a job lands in {{chip:green|Paid}}, the app can email the good news automatically. Devs and masters on the list get the **detailed review** — a {{chip:green|PAID IN FULL}} banner, job start and last-work dates, then the full scoreboard: revenue, every payment with its date, team labor person by person (hours × wage), sub labor, parts, and the profit line, plus a month-by-month timeline. Everyone else on the list gets the **summary** — same banner and dates, no dollar amounts anywhere.
+
+Who gets it lives behind the {{icon:gear}} button across from the **Paid in Full** section header on Jobs → Stages (devs and masters can open it; only devs can change the list — each person shows a Detailed or Summary badge so there are no surprises). The same window has a **Preview & test** block: search for any job, then
+
+:::example Preview & test
+Selected: **J512** · Smith House Repipe
+
+{{button:outline|Preview detailed}} &nbsp; {{button:outline|Preview summary}} &nbsp; {{button:outline|Email me a test}}
+:::
+
+The previews open the exact email in a new tab; **Email me a test** sends the detailed version to your own address with a `[TEST]` subject, so you can check it in a real inbox before anyone else ever sees one.
+
 ## Where to watch it all
 
 - **Dashboard** — Ready to Bill and Billed Waiting for Payment queues, plus the Financials cards (Accounts Receivable / Accounts Payable / Not Billed Out).

@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.965',
+    date: '2026-07-22',
+    title: 'Get an email when a job is paid in full',
+    kind: 'feature',
+    highlights: [
+      'When a job reaches Paid in Full, chosen people get an email automatically — devs and masters see the full financial review (labor, parts, payments, profit), everyone else gets a summary with no dollar amounts.',
+      'A gear next to the Paid in Full section on Jobs → Stages picks the recipients (devs edit; masters can view).',
+      'From the same gear, preview either email for any job or send yourself a test copy.',
+    ],
+  },
+  {
     version: 'v2.964',
     date: '2026-07-23',
     title: 'Dispatch Mode loses the redundant More tab',
