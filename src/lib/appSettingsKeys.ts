@@ -159,3 +159,11 @@ export const APP_SETTINGS_KEY_PAID_JOB_EMAIL_RECIPIENTS = 'paid_job_email_recipi
  * @see `src/lib/prospects/teamReviewDue.ts`
  */
 export const APP_SETTINGS_KEY_TEAM_REVIEW_CADENCE_DAYS = 'team_review_cadence_days_v1' as const
+
+/**
+ * `value_num`: $/hr used by Crew P&L to impute equivalent hours for flat-rate sub sheets
+ * (cost ÷ rate weighs a per-job sub like a clocked crew member; default 30 via
+ * DEFAULT_SUB_LABOR_EQUIVALENT_RATE). Dev writes (inline gear on the dev-only Crew P&L tab);
+ * all authenticated read. @see `src/lib/crewPnlSummary.ts`
+ */
+export const APP_SETTINGS_KEY_CREW_PNL_SUB_EQUIVALENT_RATE = 'crew_pnl_sub_equivalent_rate_v1' as const

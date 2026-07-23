@@ -36,6 +36,8 @@ export type CrewPnlTeamLaborInput = {
 }
 
 export type CrewPnlSubLaborInput = {
+  /** jobs_ledger id when the sheet's job_number matched a job (HCP or C#); null = unlinked. */
+  jobId: string | null
   id: string
   jobLabel: string
   jobDate: string | null
@@ -134,14 +136,22 @@ export function buildCrewPnlPersonResolver(people: CrewPnlRosterPerson[]): CrewP
   }
 }
 
+/** $/hr used to impute "equivalent hours" for flat-rate sub sheets (dev-tunable via app_settings). */
+export const DEFAULT_SUB_LABOR_EQUIVALENT_RATE = 30
+
 export function buildCrewPnlSummary(args: {
   jobs: CrewPnlJobInput[]
   teamLabor: CrewPnlTeamLaborInput[]
   subLabor: CrewPnlSubLaborInput[]
   people: CrewPnlRosterPerson[]
   range: CrewPnlRange
+  /** cost ÷ this rate = a flat-rate sub sheet's equivalent hours (default 30). */
+  subLaborEquivalentRate?: number
 }): CrewPnlSummary {
   const { jobs, teamLabor, subLabor, people, range } = args
+  const equivalentRate = args.subLaborEquivalentRate != null && args.subLaborEquivalentRate > 0
+    ? args.subLaborEquivalentRate
+    : DEFAULT_SUB_LABOR_EQUIVALENT_RATE
   const resolver = buildCrewPnlPersonResolver(people)
   const jobById = new Map(jobs.map((j) => [j.id, j]))
 
@@ -156,16 +166,35 @@ export function buildCrewPnlSummary(args: {
     return a
   }
 
-  // Crew labor + hours-weighted billing.
+  // Sub-sheet effective hours per linked job (v2.974): real sheet hours when
+  // present, else cost ÷ equivalentRate — the common unit that lets flat-rate
+  // subs share revenue with clocked crews on equal footing.
+  type SubEff = { input: CrewPnlSubLaborInput; effHours: number; imputed: boolean }
+  const subEffBySheet = new Map<string, SubEff>()
+  const subEffHoursByJob = new Map<string, number>()
+  for (const lj of subLabor) {
+    const realHours = lj.hours > 0 ? lj.hours : 0
+    const effHours = realHours > 0 ? realHours : lj.cost > 0 ? lj.cost / equivalentRate : 0
+    const imputed = realHours <= 0 && effHours > 0
+    subEffBySheet.set(lj.id, { input: lj, effHours, imputed })
+    if (lj.jobId && effHours > 0) {
+      subEffHoursByJob.set(lj.jobId, (subEffHoursByJob.get(lj.jobId) ?? 0) + effHours)
+    }
+  }
+
+  // Crew labor + hours-weighted billing (denominator now includes sub equivalent hours).
   const jobsWithCrewHours = new Set<string>()
+  const crewHoursByJob = new Map<string, number>()
   for (const row of teamLabor) {
     const job = jobById.get(row.jobId)
     const revenue = job?.revenue != null && Number(job.revenue) > 0 ? Number(job.revenue) : 0
-    const jobAllTimeHours = row.breakdown.reduce(
+    const jobAllTimeCrewHours = row.breakdown.reduce(
       (s, p) => s + p.byWorkDate.reduce((h, d) => h + d.hours, 0),
       0,
     )
-    if (jobAllTimeHours > 0) jobsWithCrewHours.add(row.jobId)
+    const jobAllTimeHours = jobAllTimeCrewHours + (subEffHoursByJob.get(row.jobId) ?? 0)
+    if (jobAllTimeCrewHours > 0) jobsWithCrewHours.add(row.jobId)
+    crewHoursByJob.set(row.jobId, jobAllTimeHours)
     for (const p of row.breakdown) {
       let inHours = 0
       let inCost = 0
@@ -196,7 +225,7 @@ export function buildCrewPnlSummary(args: {
   // Equal-split fallback billing for revenue jobs with no clocked crew hours.
   for (const job of jobs) {
     const revenue = job.revenue != null ? Number(job.revenue) : 0
-    if (revenue <= 0 || job.teamMembers.length === 0 || jobsWithCrewHours.has(job.id)) continue
+    if (revenue <= 0 || job.teamMembers.length === 0 || jobsWithCrewHours.has(job.id) || (subEffHoursByJob.get(job.id) ?? 0) > 0) continue
     if (!ymdInRange(job.fallbackDate, range)) continue
     const share = revenue / job.teamMembers.length
     for (const tm of job.teamMembers) {
@@ -216,25 +245,39 @@ export function buildCrewPnlSummary(args: {
     }
   }
 
-  // Sub-sheet labor: cost/hours split equally among the assigned names.
+  // Sub-sheet labor (v2.974): cost + EFFECTIVE hours split equally among the
+  // assigned names; sheets linked to a revenue job now receive their
+  // hours-weighted revenue share from the same denominator as clocked crew —
+  // a $3,000 flat sheet at the equivalent rate weighs like 100 clocked hours.
+  // Imputed hours/billing carry estimated=true (the ≈ affordance).
   for (const lj of subLabor) {
     if (lj.assignedNames.length === 0 || lj.cost <= 0) continue
     if (!ymdInRange(lj.jobDate, range)) continue
+    const eff = subEffBySheet.get(lj.id)
+    const effHours = eff?.effHours ?? 0
+    const imputed = eff?.imputed ?? false
+    const job = lj.jobId ? jobById.get(lj.jobId) : undefined
+    const revenue = job?.revenue != null && Number(job.revenue) > 0 ? Number(job.revenue) : 0
+    const jobDenominator = lj.jobId ? crewHoursByJob.get(lj.jobId) ?? subEffHoursByJob.get(lj.jobId) ?? 0 : 0
+    const sheetBilling = revenue > 0 && jobDenominator > 0 ? revenue * (effHours / jobDenominator) : 0
     const costShare = lj.cost / lj.assignedNames.length
-    const hoursShare = lj.hours / lj.assignedNames.length
+    const hoursShare = effHours / lj.assignedNames.length
+    const billingShare = sheetBilling / lj.assignedNames.length
     for (const name of lj.assignedNames) {
       const key = resolver.keyForName(name)
       const a = acc(key)
       a.laborCost += costShare
       a.hours += hoursShare
+      a.billing += billingShare
+      if (imputed && (hoursShare > 0 || billingShare > 0)) a.hasEstimated = true
       a.perJob.push({
         kind: 'sub',
-        jobId: null,
-        label: lj.jobLabel,
+        jobId: lj.jobId,
+        label: job?.jobLabel ?? lj.jobLabel,
         hours: hoursShare,
         laborCost: costShare,
-        billing: 0,
-        estimated: false,
+        billing: billingShare,
+        estimated: imputed,
       })
     }
   }
