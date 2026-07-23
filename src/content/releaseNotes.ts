@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.969',
+    date: '2026-07-23',
+    title: 'Paid emails show the exact payment',
+    kind: 'feature',
+    highlights: [
+      'Both paid-in-full emails now lead with the exact amount and time of the payment — and the amount is in the subject line.',
+      'Assistants and other summary recipients see the paid amount too; all other financials stay in the detailed version.',
+    ],
+  },
+  {
     version: 'v2.968',
     date: '2026-07-23',
     title: 'Paid notifications gear gets a label',

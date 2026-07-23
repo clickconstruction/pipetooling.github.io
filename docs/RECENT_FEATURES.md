@@ -7,8 +7,8 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-23 (v2.968)
-last_updated: 2026-07-23 (v2.968)
+last_updated: 2026-07-23 (v2.969)
+last_updated: 2026-07-23 (v2.969)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2046,6 +2046,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.969)
+
+### Paid emails: exact payment time + amount on BOTH variants (2026-07-23)
+Migration [`20260722262000_paid_email_last_payment.sql`](../supabase/migrations/20260722262000_paid_email_last_payment.sql) (CREATE OR REPLACE, same signature) adds `money.last_payment = { amount, at }` to `get_paid_job_email_payload` — the completing payment's exact amount and timestamp (`created_at` precision; `paid_on` fallback; always-one-row subselect so zero payments can't drop the payload). Renderer: a green **"Paid $12,400.00 — Wednesday, Jul 23, 2026 · 2:41 PM"** line under the header on **both the detailed and the sterilized email** (per the 2026-07-23 decision the paid amount is cleared for all recipients — every other dollar figure stays detailed-only), the same line in the plain-text fallback, and the amount appended to the subject. **Needs `supabase db push` + `supabase functions deploy paid-job-email` after merge.**
 
 ## Latest Updates (v2.968)
 
