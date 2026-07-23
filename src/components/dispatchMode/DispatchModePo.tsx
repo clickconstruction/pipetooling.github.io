@@ -419,7 +419,7 @@ export default function DispatchModePo() {
 
   return (
     <div style={{ padding: '0.75rem', display: 'flex', flexDirection: 'column' }}>
-      <h1 style={{ margin: 0, fontSize: '1.1rem', color: 'var(--text-strong)', textAlign: 'center' }}>PO</h1>
+      <h1 style={{ margin: 0, fontSize: '1.1rem', color: 'var(--text-strong)', textAlign: 'center' }}>PO Generator</h1>
       <p style={{ margin: '0.25rem 0 0', fontSize: '0.75rem', color: 'var(--text-faint)', textAlign: 'center' }}>
         Hold down a name to sort it into Other
       </p>
