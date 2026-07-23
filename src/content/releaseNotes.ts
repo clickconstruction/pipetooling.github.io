@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.953',
+    date: '2026-07-22',
+    title: 'One score per person',
+    kind: 'feature',
+    highlights: [
+      'Each Reflect card now shows a composite score: the three skew-corrected ratings blended together, with recent months counting more than old ones.',
+      'People with fewer than two reviewers show "insufficient data" instead of a misleading number.',
+      'The ratings chart gains a dashed composite trend line.',
+    ],
+  },
+  {
     version: 'v2.952',
     date: '2026-07-22',
     title: 'Team reviews correct for tough and easy graders',

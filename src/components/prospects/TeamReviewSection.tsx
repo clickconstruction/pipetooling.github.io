@@ -27,6 +27,14 @@ import {
   formatDeviations,
   reviewerBaselines,
 } from '../../lib/prospects/reviewerCalibration'
+import {
+  DEFAULT_COMPOSITE_WEIGHTS,
+  compositeScore,
+  monthlyCompositeSeries,
+  parseCompositeWeights,
+} from '../../lib/prospects/teamComposite'
+import type { CompositeWeights } from '../../lib/prospects/teamComposite'
+import { APP_SETTINGS_KEY_TEAM_REVIEW_COMPOSITE_WEIGHTS } from '../../lib/appSettingsKeys'
 
 type ReviewDraft = {
   rating_ability: number | null
@@ -79,6 +87,7 @@ export default function TeamReviewSection({ authUserId }: { authUserId: string }
   const [openCharts, setOpenCharts] = useState<Set<string>>(() => new Set())
   const [startedOnByUser, setStartedOnByUser] = useState<Map<string, string>>(() => new Map())
   const [tendenciesOpen, setTendenciesOpen] = useState(false)
+  const [weights, setWeights] = useState<CompositeWeights>(DEFAULT_COMPOSITE_WEIGHTS)
 
   const baselines = useMemo(() => reviewerBaselines(reviews), [reviews])
   const company = useMemo(() => companyDimensionMeans(reviews), [reviews])
@@ -95,6 +104,13 @@ export default function TeamReviewSection({ authUserId }: { authUserId: string }
     // Tenure is additive UI — a load error (e.g. migration not applied yet) just hides it.
     const tenureRows = (tenureRes.error ? [] : (tenureRes.data ?? [])) as TenureRow[]
     setStartedOnByUser(new Map(tenureRows.map((t) => [t.user_id, t.started_on])))
+    // Composite weights are additive too — missing/invalid setting falls back to equal thirds.
+    const { data: weightsRow } = await supabase
+      .from('app_settings')
+      .select('value_text')
+      .eq('key', APP_SETTINGS_KEY_TEAM_REVIEW_COMPOSITE_WEIGHTS)
+      .maybeSingle()
+    setWeights(parseCompositeWeights(weightsRow?.value_text) ?? DEFAULT_COMPOSITE_WEIGHTS)
     const firstError = usersRes.error ?? reviewsRes.error ?? jobsRes.error
     if (firstError) {
       setError(firstError.message)
@@ -417,9 +433,31 @@ export default function TeamReviewSection({ authUserId }: { authUserId: string }
                       </span>
                     )
                   })()}
+                  {(() => {
+                    const composite = compositeScore(reviews, u.id, baselines, company, weights, currentReviewMonth(APP_CALENDAR_TZ))
+                    if (composite.score == null) return null
+                    return composite.confident ? (
+                      <span
+                        style={{ fontSize: '0.8125rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: 'var(--text-strong)', border: '1px solid var(--border-strong)', borderRadius: 999, padding: '0 0.5rem' }}
+                        title={`Weighted composite: calibration-adjusted ratings, recency-decayed over ${composite.monthsCovered} month${composite.monthsCovered === 1 ? '' : 's'}, ${composite.reviewerCount} reviewers`}
+                      >
+                        {composite.score}
+                      </span>
+                    ) : (
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-faint)' }} title="Needs at least 2 reviewers before the composite is rankable">
+                        insufficient data ({composite.reviewerCount} reviewer{composite.reviewerCount === 1 ? '' : 's'})
+                      </span>
+                    )
+                  })()}
                   <span aria-hidden style={{ fontSize: '0.75rem', color: 'var(--text-faint)' }}>{chartOpen ? '▾' : '📈'}</span>
                 </button>
-                {chartOpen && <TeamMemberRatingChart reviews={reviews} subjectUserId={u.id} />}
+                {chartOpen && (
+                  <TeamMemberRatingChart
+                    reviews={reviews}
+                    subjectUserId={u.id}
+                    compositeSeries={monthlyCompositeSeries(reviews, u.id, baselines, company, weights)}
+                  />
+                )}
                 {latest.length > 0 && (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', marginTop: '0.45rem' }}>
                     {latest.map((r) => (

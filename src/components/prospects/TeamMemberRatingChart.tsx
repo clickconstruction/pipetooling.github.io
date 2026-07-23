@@ -3,6 +3,7 @@ import { CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, X
 import { RATING_DEFS } from './ratingDimensions'
 import { formatReviewMonthShort, monthlyRatingSeries } from '../../lib/prospects/teamMemberReviews'
 import type { TeamMemberReviewRow } from '../../lib/prospects/teamMemberReviews'
+import type { MonthlyComposite } from '../../lib/prospects/teamComposite'
 
 const LINE_COLORS: Record<string, string> = {
   rating_ability: '#3b82f6',
@@ -17,9 +18,12 @@ const LINE_COLORS: Record<string, string> = {
 export default function TeamMemberRatingChart({
   reviews,
   subjectUserId,
+  compositeSeries,
 }: {
   reviews: TeamMemberReviewRow[]
   subjectUserId: string
+  /** Optional calibration-adjusted weighted composite per month (v2.953) — rendered as a dashed line. */
+  compositeSeries?: MonthlyComposite[]
 }) {
   const series = useMemo(() => monthlyRatingSeries(reviews, subjectUserId), [reviews, subjectUserId])
 
@@ -27,11 +31,13 @@ export default function TeamMemberRatingChart({
     return <p style={{ margin: '0.5rem 0 0', fontSize: '0.8125rem', color: 'var(--text-faint)' }}>No reviews to chart yet.</p>
   }
 
+  const compositeByMonth = new Map((compositeSeries ?? []).map((p) => [p.month, p.composite]))
   const data = series.map((p) => ({
     label: formatReviewMonthShort(p.month),
     Ability: p.ability,
     Drive: p.drive,
     Integrity: p.integrity,
+    Composite: compositeByMonth.get(p.month) ?? null,
   }))
 
   return (
@@ -57,6 +63,9 @@ export default function TeamMemberRatingChart({
               connectNulls
             />
           ))}
+          {compositeByMonth.size > 0 && (
+            <Line type="monotone" dataKey="Composite" stroke="var(--text-strong)" strokeWidth={2} strokeDasharray="6 4" dot={{ r: 3 }} connectNulls />
+          )}
         </LineChart>
       </ResponsiveContainer>
     </div>
