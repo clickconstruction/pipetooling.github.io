@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.985',
+    date: '2026-07-23',
+    title: 'Bottom tab bar gets out of the way while typing',
+    kind: 'fix',
+    highlights: [
+      'The Dispatch/Job Mode bottom tabs (Dashboard, Schedule, Inbox, Customers) now slide out of view while the phone keyboard is open, instead of floating mid-screen or sitting on top of the keyboard.',
+      'The bar comes right back when the keyboard closes.',
+    ],
+  },
+  {
     version: 'v2.984',
     date: '2026-07-23',
     title: 'Jobs Stages tables readable on phones',
