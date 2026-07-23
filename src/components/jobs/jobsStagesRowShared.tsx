@@ -67,12 +67,11 @@ export type StagesRowRenderContext = {
 /** Stages table headers: one visual line per phrase when the table is narrow (no mid-phrase wrap). */
 const stagesThreeLineHeaderLineStyle: CSSProperties = { display: 'block', whiteSpace: 'nowrap' }
 
-export function renderStagesThreeLineHeader(line1: string, line2: string, line3: string) {
+export function renderStagesTwoLineHeader(line1: string, line2: string) {
   return (
     <>
       <span style={stagesThreeLineHeaderLineStyle}>{line1}</span>
       <span style={stagesThreeLineHeaderLineStyle}>{line2}</span>
-      <span style={stagesThreeLineHeaderLineStyle}>{line3}</span>
     </>
   )
 }
