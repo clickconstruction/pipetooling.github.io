@@ -5,7 +5,7 @@ roles: dev, master_technician, assistant, controller, superintendent
 keywords: dispatch mode, mobile, footer, tabs, schedule, inbox, customers, bell, note to dispatch
 order: 30
 ---
-Dispatch Mode is a phone-first shell for whoever's running the day — the office-side companion to Job Mode. Turn it on and a tab bar pins to the bottom of every screen: **Dashboard · Schedule · Inbox · Customers · More**.
+Dispatch Mode is a phone-first shell for whoever's running the day — the office-side companion to Job Mode. Turn it on and a tab bar pins to the bottom of every screen: **Dashboard · Schedule · Inbox · Customers** (plus **PO** if you turn it on).
 
 ## Turning Dispatch Mode on
 
@@ -21,7 +21,6 @@ It's per-person and per-device, so switching it on for yourself on your phone ch
 - **Inbox** — your Dashboard's **notification banners** (stale tally transactions, lost bids needing a reason, unallocated bank payments, and the rest) up top, then **My Inbox**, the **Dispatch inbox**, and the **Estimator inbox** stacked in one scroll, working exactly like their Dashboard versions. The tab's red badge counts open dispatch + estimator requests.
 - **Customers** — a searchable customer list; each row shows how many jobs that customer has had and when they were last worked (or "in Nd" when a visit is scheduled). Tapping a customer opens the **Customer Summary**: their details up top, then every interaction across all their jobs — notes, reports, schedule, clock sessions, and system events — with the same All / Notes / Reports / Status / Billing / Crew filter buttons as Job Detail, and each line tagged with its job number and address.
 - **PO** *(optional — assistants get it by default; anyone can flip it under the {{icon:gear}} gear menu → **PO tab** while Dispatch Mode is on)* — mint a material PO code in three taps: pick the job (today's schedule is offered first), who the material is for (that job's crew floats to the top), optionally a supply house (your last one is pre-picked) and a note, then **Generate PO**. The code shows huge — read it across the counter — with **Copy** and **Text to {{chip:gray|tech}}** buttons, and a **Recent POs** list below so you can re-read a code or check one was already made. Same numbering and ledger as Materials → PO Generator. Long lists stay tidy with an **Other** bucket: **hold** any person or supply house and **slide to confirm** — it tucks under the **Other (N)** entry at the end of that list, for the whole company. Tap **Other** to pick from the tucked-away options, or hold one and slide to bring it back. When you pick from Other, the row shows just that name with an orange ring — tap it again to see the full list. People working the picked job today always stay in the main list, and nothing is ever deleted — moving back is the undo.
-- **More** — drops you into the regular app (starting at the Dashboard). The tab bar stays put, so you can browse anywhere and hop back to a tab in one tap.
 
 ## Turning it off
 
