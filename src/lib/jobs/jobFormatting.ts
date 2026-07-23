@@ -86,6 +86,15 @@ export function formatCurrencyAbbrevTruncated(n: number): string {
   return `${sign}${numText}${unit}`
 }
 
+/**
+ * True when a job/display name is a raw UUID (optionally with a suffix like
+ * " - [HCP]") — import artifacts, not names a human should have to read.
+ * Report surfaces swap these for the job number (v2.975).
+ */
+export function looksLikeRawJobIdName(name: string | null | undefined): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/i.test((name ?? '').trim())
+}
+
 export function jobSummaryPartsCostIsZero(n: number): boolean {
   const x = Number(n)
   return Number.isFinite(x) && Math.abs(x) < 1e-6

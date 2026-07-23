@@ -1,4 +1,5 @@
 import { useEffect, useState, type CSSProperties, type FormEvent } from 'react'
+import { looksLikeRawJobIdName } from '../../lib/jobs/jobFormatting'
 import { Folder, Images, Pencil, PanelRightOpen } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
@@ -564,7 +565,7 @@ export default function JobsReportsTab({
                                   <div>
                                     <span style={{ fontWeight: 600 }}>{displayReportTemplateName(r.template_name, authRole)}</span>
                                     <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginLeft: '0.5rem' }}>
-                                      {new Date(r.created_at).toLocaleString()} · {r.job_display_name || 'Unknown job'}
+                                      {new Date(r.created_at).toLocaleString()} · {r.job_display_name && !looksLikeRawJobIdName(r.job_display_name) ? r.job_display_name : r.job_hcp_number ? `Job ${r.job_hcp_number}` : 'Unknown job'}
                                       {r.job_hcp_number ? ` (Job: ${r.job_hcp_number})` : ''}
                                     </span>
                                   </div>
@@ -620,7 +621,12 @@ export default function JobsReportsTab({
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                 {jobGroups.map(({ key, reps }) => {
                   const job = reps[0]!
-                  const displayName = job.job_display_name || 'Unknown job'
+                  const displayName =
+                    job.job_display_name && !looksLikeRawJobIdName(job.job_display_name)
+                      ? job.job_display_name
+                      : job.job_hcp_number
+                        ? `Job ${job.job_hcp_number}`
+                        : 'Unknown job'
                   const hcp = job.job_hcp_number ? ` (Job: ${job.job_hcp_number})` : ''
                   const isExpanded = reportsExpandedJobs.has(key)
                   return (
