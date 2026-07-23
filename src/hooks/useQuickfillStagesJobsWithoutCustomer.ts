@@ -3,6 +3,7 @@ import { useAuth } from './useAuth'
 import { useJobsListCache } from '../contexts/JobsListCacheContext'
 import {
   buildStagesJobsWithoutCustomerList,
+  buildStagesReadyToBillNoEmailList,
   buildStagesWorkingJobsWithoutPicturesList,
 } from '../lib/jobsStagesBoard'
 
@@ -11,6 +12,7 @@ const ROLES = new Set<string>(['dev', 'master_technician', 'assistant', 'control
 export function useQuickfillStagesJobsWithoutCustomer(): {
   jobsWithoutCustomer: ReturnType<typeof buildStagesJobsWithoutCustomerList>
   workingJobsWithoutPictures: ReturnType<typeof buildStagesWorkingJobsWithoutPicturesList>
+  readyToBillNoEmailJobs: ReturnType<typeof buildStagesReadyToBillNoEmailList>
   loading: boolean
   jobsListBusy: boolean
   fetchEnabled: boolean
@@ -35,12 +37,18 @@ export function useQuickfillStagesJobsWithoutCustomer(): {
     [fetchEnabled, jobs],
   )
 
+  const readyToBillNoEmailJobs = useMemo(
+    () => (fetchEnabled ? buildStagesReadyToBillNoEmailList(jobs, '', null) : []),
+    [fetchEnabled, jobs],
+  )
+
   const loading = fetchEnabled && jobsListLoading
   const jobsListBusy = jobsListLoading || jobsListRefreshing
 
   return {
     jobsWithoutCustomer,
     workingJobsWithoutPictures,
+    readyToBillNoEmailJobs,
     loading,
     jobsListBusy,
     fetchEnabled,

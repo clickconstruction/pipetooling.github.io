@@ -421,6 +421,16 @@ export function buildStagesJobsWithoutCustomerList(
   return stagesJobsWithoutCustomerFromFiltered(filtered)
 }
 
+/** Same list as Jobs → Stages → "No email" for Ready to Bill jobs with blank customer_email (jobs-cache variant, v2.972). */
+export function buildStagesReadyToBillNoEmailList(
+  jobs: JobWithDetails[],
+  stagesSearchQuery: string,
+  extraJobIds?: ReadonlySet<string> | null,
+): JobWithDetails[] {
+  const lists = buildJobsStagesBoardLists(jobs, stagesSearchQuery, extraJobIds)
+  return stagesReadyToBillJobsWithoutEmail(lists.readyToBillRows)
+}
+
 /** Same list as Jobs → Stages → "No customer pictures" for working jobs with empty `job_pictures_link`. */
 export function buildStagesWorkingJobsWithoutPicturesList(
   jobs: JobWithDetails[],
