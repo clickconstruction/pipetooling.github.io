@@ -96,6 +96,7 @@ import {
   MyTeamSectionSkeleton,
 } from '../components/dashboard/DashboardSkeletons'
 import { subcontractorLastActivityMobileLine } from '../lib/subcontractorLastActivityCompact'
+import { formatOpenAgeShort } from '../lib/formatOpenAgeShort'
 import {
   formatTimeSince,
   subcontractorAssignedJobStageDisplay,
@@ -1575,8 +1576,9 @@ export default function Dashboard() {
                     borderBottom: idx < filteredAssignedJobs.length - 1 ? '1px solid var(--border)' : 'none',
                   }}
                 >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>
-                    <div style={isMobile ? { flex: '0 0 50%', minWidth: 0 } : undefined}>
+                  {/* v2.997: same compact mobile treatment as Ready to Bill — info full-width, actions on a row below. */}
+                  <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', justifyContent: 'space-between', alignItems: isMobile ? 'stretch' : 'flex-start', gap: isMobile ? '0.5rem' : '1rem' }}>
+                    <div style={isMobile ? { width: '100%', minWidth: 0 } : undefined}>
                       <div
                         role="button"
                         tabIndex={0}
@@ -1628,7 +1630,7 @@ export default function Dashboard() {
                     </div>
                     <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
                       {(j.google_drive_link?.trim() || j.job_plans_link?.trim() || j.job_pictures_link?.trim()) && (
-                        <div style={JOB_ROW_LINK_ICON_COLUMN_STYLE}>
+                        <div style={{ ...JOB_ROW_LINK_ICON_COLUMN_STYLE, flexDirection: isMobile ? 'row' : 'column' }}>
                           {j.google_drive_link?.trim() && (
                             <a
                               href={j.google_drive_link.trim()}
@@ -1735,6 +1737,7 @@ export default function Dashboard() {
                       })()}
                       {canLeaveJobFieldReport(role) && (
                         <DashboardLeaveReportButton
+                          singleLine={isMobile}
                           showReminder={leaveReportReminderForJobRow(j)}
                           onClick={() =>
                             setLeaveReportJob({
@@ -1755,9 +1758,9 @@ export default function Dashboard() {
                           setReadyForBillingChecked2(false)
                         }}
                         disabled={jobStatusUpdatingId === j.id}
-                        style={sendToBillingButtonStyle(jobStatusUpdatingId === j.id)}
+                        style={{ ...sendToBillingButtonStyle(jobStatusUpdatingId === j.id), whiteSpace: 'nowrap' }}
                       >
-                        {jobStatusUpdatingId === j.id ? '…' : <>Send to<br />Billing</>}
+                        {jobStatusUpdatingId === j.id ? '…' : isMobile ? 'Send to Billing' : <>Send to<br />Billing</>}
                       </button>
                       ) : null}
                       {j.created_at && (!isMobile || !isSubcontractorLikeRole(role)) && (
@@ -1766,19 +1769,18 @@ export default function Dashboard() {
                         </span>
                       )}
                       {isSubcontractorLikeRole(role) && isMobile && (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', width: '100%', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', columnGap: '0.4rem', width: '100%', fontSize: '0.8125rem', color: 'var(--text-muted)', lineHeight: 1.3 }}>
                           {j.created_at && (
-                          <span>
-                            Open<br />
-                            {formatTimeSince(j.created_at)}
+                          <span title="Time since job created">
+                            Open {formatOpenAgeShort(j.created_at)}{' ·'}
                           </span>
                         )}
                           {(() => {
                             const m = subcontractorLastActivityMobileLine(j, { formatTitle: formatDatetime })
                             if (!m.clickable) {
                               return (
-                                <span title={m.title} aria-label={m.aria} style={{ lineHeight: 1.25 }}>
-                                  {m.text}
+                                <span title={m.title} aria-label={m.aria} style={{ lineHeight: 1.3 }}>
+                                  {m.textCompact}
                                 </span>
                               )
                             }
@@ -1788,7 +1790,7 @@ export default function Dashboard() {
                                 className="subcontractorLastActivityTypeBtn"
                                 title={m.title}
                                 aria-label={m.aria}
-                                style={{ lineHeight: 1.25 }}
+                                style={{ lineHeight: 1.3, textAlign: 'left' }}
                                 onClick={() =>
                                   setSubcontractorJobActivityModalJob({
                                     id: j.id,
@@ -1797,7 +1799,7 @@ export default function Dashboard() {
                                   })
                                 }
                               >
-                                {m.text}
+                                {m.textCompact}
                               </button>
                             )
                           })()}

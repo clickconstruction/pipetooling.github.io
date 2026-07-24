@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.997',
+    date: '2026-07-24',
+    title: 'Compact Assigned Jobs cards on your phone',
+    kind: 'fix',
+    highlights: [
+      'Assigned Jobs rows now use the same streamlined phone layout as Ready to Bill — job info full width, icons and the Leave Report + Send to Billing buttons together on one row, and a single "Open 1d · Schedule 22h ago" line.',
+    ],
+  },
+  {
     version: 'v2.996',
     date: '2026-07-24',
     title: 'Schedule rows line up their buttons',
