@@ -5,7 +5,7 @@ file: docs/PEOPLE_TABS_ARCHITECTURE.md
 type: Engineering / Refactor Map
 purpose: Inventory what every tab in src/pages/People.tsx touches (state, loaders, handlers, sub-components, supabase tables, cross-tab coupling) to prioritize decomposition of the ~21.4k-line God component.
 audience: Developers, AI Agents
-last_updated: 2026-07-17
+last_updated: 2026-07-24
 ---
 
 ## Overview
@@ -121,7 +121,7 @@ Tabs switch on a single `activeTab` state ([`People.tsx:282`](../src/pages/Peopl
 - **Owned state (~40):** `peopleHours`, clock-session queues (`pendingClockSessions`, approved/rejected, search), grid highlight/edit state, date range, various modals, and **shared-owner** state: `payConfig`/`payConfigDraft`/`payConfigSaving`, `teams`, `crewJobsByDatePerson`, `salaryTemplateByPersonName`. (All `costMatrix*` state removed in the 2026-07-15 retirement.)
 - **Cross-tab/shared (OWNS, others read):** `payConfig` (pay_stubs/overhead/review/employment read), `teams` (teams tab + the Hours Teams / Due-by-Team sections), `crewJobsByDatePerson` (overhead/pay_stubs read).
 - **Loaders:** `loadPeopleHours`, the clock-session loaders, `loadHoursReviewed`, `loadPayConfig`, `savePayConfig`, `saveHours` (line anchors dropped — search the symbols; the cost-matrix loaders are gone). **Realtime-subscribed** via `usePeopleHoursData`.
-- **Sub-components (extracted):** `PersonTimeDetailModal`, `ReviewHoursModal`, `TeamSummaryInline`, `PeoplePayConfigModal`, `SalariedWorkdaysBulkModal`, `PeopleHoursPendingCellPopover`, `PeopleHoursBulkApprovePendingModal`, `ClockSessionEditSplitModal`, `HoursUnassignedModal`, `PeopleHoursDayAuditModal`, `PeopleHoursGrid`. Inline: only the clock-strip wrapper. (`PeopleCostMatrix` + `PeopleHoursSharing` deleted in the 2026-07-15 retirement.)
+- **Sub-components (extracted):** `ReviewHoursModal`, `TeamSummaryInline`, `PeoplePayConfigModal`, `SalariedWorkdaysBulkModal`, `PeopleHoursPendingCellPopover`, `PeopleHoursBulkApprovePendingModal`, `ClockSessionEditSplitModal`, `HoursUnassignedModal`, `PeopleHoursDayAuditModal`, `PeopleHoursGrid`. Inline: only the clock-strip wrapper. (`PeopleCostMatrix` + `PeopleHoursSharing` deleted in the 2026-07-15 retirement; `PersonTimeDetailModal` deleted 2026-07-24 — its last importer had already gone, see v2.992.)
 - **Supabase:** `clock_sessions`, `people_hours`, `people_pay_config`, `hours_reviewed`, `hours_days_correct`, `people_hours_display_order`, `people_teams`/`_team_members`, `people_crew_*`, `salary_work_schedule_templates`. (The `people_cost_matrix_*` / share tables were dropped by migration `20260715090000`.)
 - **Coupling/risk:** **very high.** The central hub. Extract **last**, after the shared hooks exist.
 
@@ -199,7 +199,6 @@ Tabs switch on a single `activeTab` state ([`People.tsx:282`](../src/pages/Peopl
 | `selectedLicensePersonName` | 1006 | licenses |
 | `selectedContractsPersonName` | 1069 | contracts |
 | `payStubCalendarPerson` | 783 | pay_stubs |
-| `personTimeDetailModalPerson` | 634 | hours |
 | `selectedReviewPersonIndex` | 1411 | review |
 | `offsetToApply` | 976 | offsets |
 
@@ -292,4 +291,4 @@ Lowest-coupling, domain-isolated, permission-gated tabs first; the pay/hours hub
 11. ~~**`users`**~~ — **DONE** (two-stage). **Stage 1: tag subsystem** — `useUsersTabTags` hook + `PeopleUserTagsPanel` component (hook-first to avoid prop-drilling the per-row panel); `People.tsx` 7,712 → 7,132. **Stage 2: roster UI** — `PeopleUsersTab` (full roster render + `renderUsersTabRosterListItem` + roster search vars + tag-anchor builders) with shared consts/`buildUsersTabKindRoster` in `peopleUsersTabShared`; the person-edit form already lives in `usePeopleRoster`, the edit-note/invite-confirm modals stay in the parent. `People.tsx` 7,132 → 6,243.
 12. **`hours`** — **last.** The hub; extract once everything it feeds is on the shared hooks.
 
-> Already thin/extracted: `teams` (`PeopleTeamsTab`), `writeups` (`WriteupsContractsSubTab`), `feedback` (`TeamFeedbackDevSettingsBlock`), `activity` panel (`PeopleAppActivityPanel`). Many domain modals are already components (`PayStubLessModal`, `DraftPayrollModal`, `PersonOffsetFormModal`, `ContractBookModal`, `PersonTimeDetailModal`, `ReviewHoursModal`, `TeamSummaryInline`); the parent mostly orchestrates state around them.
+> Already thin/extracted: `teams` (`PeopleTeamsTab`), `writeups` (`WriteupsContractsSubTab`), `feedback` (`TeamFeedbackDevSettingsBlock`), `activity` panel (`PeopleAppActivityPanel`). Many domain modals are already components (`PayStubLessModal`, `DraftPayrollModal`, `PersonOffsetFormModal`, `ContractBookModal`, `ReviewHoursModal`, `TeamSummaryInline`); the parent mostly orchestrates state around them.

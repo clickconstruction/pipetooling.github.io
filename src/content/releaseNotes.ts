@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.993',
+    date: '2026-07-24',
+    title: 'Housekeeping: removed an unused screen',
+    kind: 'infra',
+    highlights: [
+      'A person time-detail popup that nothing in the app opened any more has been removed from the code. Nothing you use changes.',
+    ],
+  },
+  {
     version: 'v2.992',
     date: '2026-07-24',
     title: 'Every report modal closes without scrolling back up',

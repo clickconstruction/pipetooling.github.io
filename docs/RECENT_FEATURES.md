@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-24 (v2.992)
+last_updated: 2026-07-24 (v2.993)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.993)
+
+### Cleanup: delete the dead `PersonTimeDetailModal` (2026-07-24)
+Housekeeping fallout from the v2.992 modal audit ([#676](https://github.com/clickconstruction/pipetooling.github.io/pull/676)). `src/components/PersonTimeDetailModal.tsx` (475 lines — a per-person clock-session time breakdown for People → Hours) turned up in that sweep carrying the **same "close control inside a scrolling panel" defect** the audit was fixing: its panel was the `overflow: auto` scroller (`maxHeight: 85vh`) with the ✕ as an ordinary non-sticky first child, so on a phone the ✕ scrolled off the top. It was never fixed, because it is **dead** — zero importers (`grep -rn "PersonTimeDetailModal" src` matched only the file's own `export function` line; no dynamic `import()` and no string-keyed lazy load either), and the `personTimeDetailModalPerson` state that used to drive it is already gone from [`People.tsx`](../src/pages/People.tsx), retired somewhere in the Phase-3 hours/review extractions without the component being swept up with it. Deleting rather than fixing: the alternative was paying the sticky-header rework on a component nothing renders. No behavior change — nothing imported it, so nothing changes for any role. [`docs/PEOPLE_TABS_ARCHITECTURE.md`](PEOPLE_TABS_ARCHITECTURE.md) loses it from the `hours` sub-component inventory, the tab-local pointer table, and the "already extracted" note at the bottom of the decomposition plan. (v2.992's audit already noted this component as the one dead-code case it left for a follow-up — this is that follow-up.)
 
 ## Latest Updates (v2.992)
 
