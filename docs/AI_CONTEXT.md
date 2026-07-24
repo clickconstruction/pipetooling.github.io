@@ -126,7 +126,7 @@ pipetooling.github.io/
 
 ### Largest files (extraction candidates — see `PAGE_DECOMPOSITION_PLAYBOOK.md`)
 
-`src/pages/Jobs.tsx` (~10.5k lines), `src/pages/Dashboard.tsx` (~8.9k), `src/components/jobs/JobFormModal.tsx` (~7.1k), `src/pages/Materials.tsx` (~6.9k), `src/components/bids/BidsTakeoffTab.tsx` (~5.6k), `src/pages/Estimates.tsx` (~5.3k), `src/pages/Settings.tsx` (~5.1k), `src/components/people/PeopleReviewTab.tsx` (~5.0k), `src/pages/Workflow.tsx` (~4.8k). Bids.tsx (~3.8k) and People.tsx (~4.3k) are already decomposed — their architecture maps show the pattern.
+`src/pages/Jobs.tsx` (~10.5k lines), `src/pages/Dashboard.tsx` (~1.7k after the v2.1004 job-row-family extraction), `src/components/jobs/JobFormModal.tsx` (~7.1k), `src/pages/Materials.tsx` (~6.9k), `src/components/bids/BidsTakeoffTab.tsx` (~5.6k), `src/pages/Estimates.tsx` (~5.3k), `src/pages/Settings.tsx` (~5.1k), `src/components/people/PeopleReviewTab.tsx` (~5.0k), `src/pages/Workflow.tsx` (~4.8k). Bids.tsx (~3.8k) and People.tsx (~4.3k) are already decomposed — their architecture maps show the pattern.
 
 ### Core infrastructure files
 

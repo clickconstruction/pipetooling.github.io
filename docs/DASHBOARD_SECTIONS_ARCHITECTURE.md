@@ -355,3 +355,7 @@ Lowest-coupling, self-contained sections first; the billing engine and its depen
 14. **`clock-strip-cluster`** — `DashboardClockStripCluster` consuming `myTeam` via props (kills duplication #3). Can slot anywhere after 4; listed late because `myTeam` prop-threading is wide and the strip component itself is already extracted.
 
 > Already thin/extracted: Financials, My Team, My Time, Job Mode card, SectionDock, all banners, the inbox section components, `DashboardFieldCollectPaymentQueue`, `AssignedStageCard`, the skeletons, and the shared modal components (`JobReportsModal`, `AdditionalReportModal`, `CollectPaymentModal`, `BilledPaymentConfirmationModal`, `CreateTripChargeModal`, `DispatchDismissedItemsModal`, `SubcontractorJobActivityModal`, `ChecklistItemMuteModal`, `NewReportModal`, `ReportEditModal`, `TurnawayModal`, `DashboardContractSigningPromptModal`, `TeamFeedbackWizard`). The parent mostly orchestrates state around them.
+
+## v2.1004 job-row-family extraction
+
+Assigned Jobs → `DashboardAssignedJobsSection.tsx`; Superintendent Jobs → `DashboardSuperintendentJobsSection.tsx`; shared row styles/glyphs → `dashboardJobRowShared.tsx`. Verbatim lift, same-named props. Dashboard.tsx 2,142 → 1,673 lines.
