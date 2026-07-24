@@ -311,8 +311,27 @@ export default function AdditionalReportModal({
         zIndex: overlayZIndex,
       }}
     >
-      <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 400, maxWidth: 560, maxHeight: '90vh', overflow: 'auto' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
+      {/* width: min() not minWidth: 400 — a 400px floor overflowed narrow phones sideways. */}
+      <div style={{ background: 'var(--surface)', padding: '0 1.5rem 1.5rem', borderRadius: 8, width: 'min(560px, 100%)', maxWidth: 560, maxHeight: '90vh', overflow: 'auto', boxSizing: 'border-box' }}>
+        {/* Sticky header: this panel scrolls, and the × used to scroll away with
+            it — on a phone the form is long enough that closing meant scrolling
+            all the way back to the top. The panel deliberately has NO top
+            padding: it lives on this bar instead, so the bar pins flush to the
+            panel's top edge with no gap for content to show through above it.
+            Negative side margins let the opaque background span full width. */}
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'flex-start',
+          gap: '0.75rem',
+          position: 'sticky',
+          top: 0,
+          zIndex: 2,
+          background: 'var(--surface)',
+          borderBottom: '1px solid var(--border)',
+          margin: '0 -1.5rem 1rem',
+          padding: '1.5rem 1.5rem 0.75rem',
+        }}>
           <div>
             <h2 style={{ margin: 0, fontSize: '1.25rem' }}>Additional Report</h2>
             <p style={{ margin: '0.25rem 0 0', fontSize: '0.875rem', fontWeight: 500 }}>
@@ -322,7 +341,29 @@ export default function AdditionalReportModal({
               {jobAddress}
             </p>
           </div>
-          <button type="button" onClick={handleClose} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.25rem', color: 'var(--text-muted)' }} aria-label="Close">×</button>
+          {/* 44px min box: thumb-sized tap target, not a bare glyph. */}
+          <button
+            type="button"
+            onClick={handleClose}
+            style={{
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              fontSize: '1.5rem',
+              lineHeight: 1,
+              color: 'var(--text-muted)',
+              flexShrink: 0,
+              minWidth: 44,
+              minHeight: 44,
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              margin: '-0.5rem -0.5rem 0 0',
+            }}
+            aria-label="Close"
+          >
+            ×
+          </button>
         </div>
 
         <div

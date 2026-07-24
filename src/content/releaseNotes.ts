@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.990',
+    date: '2026-07-24',
+    title: 'Close the Additional Report without scrolling back up',
+    kind: 'fix',
+    highlights: [
+      'The Additional Report title bar and its ✕ now stay pinned at the top while you fill out the form on a phone — no more scrolling all the way back up just to close it.',
+      'The ✕ is also a bigger, easier tap target, and the report fits narrow phones properly.',
+    ],
+  },
+  {
     version: 'v2.989',
     date: '2026-07-23',
     title: 'C# jobs sort in order on Stages',
