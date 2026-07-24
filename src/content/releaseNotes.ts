@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.999',
+    date: '2026-07-24',
+    title: 'Assigned Jobs buttons reordered',
+    kind: 'fix',
+    highlights: [
+      'On Assigned Jobs, Send to Billing now comes first and Leave Report second — the same order as the Ready to Bill cards.',
+    ],
+  },
+  {
     version: 'v2.998',
     date: '2026-07-24',
     title: 'Stripe invoices show the service address',

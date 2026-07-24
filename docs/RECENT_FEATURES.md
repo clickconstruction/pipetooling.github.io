@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-24 (v2.998)
+last_updated: 2026-07-24 (v2.999)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.999)
+
+### Assigned Jobs: Send to Billing leads, Leave Report follows (2026-07-24)
+Button order flip on the Dashboard Assigned Jobs rows ([`Dashboard.tsx`](../src/pages/Dashboard.tsx)) — **Send to Billing** now renders before **Leave Report** (both viewports; helpers still see no Send to Billing). Matches the money-action-first order the Ready to Bill cards adopted in v2.994.
 
 ## Latest Updates (v2.998)
 
