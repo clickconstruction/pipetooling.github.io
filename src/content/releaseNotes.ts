@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1000',
+    date: '2026-07-24',
+    title: 'Build safety: update checks can no longer split',
+    kind: 'infra',
+    highlights: [
+      'The checks that guard pull requests and the checks that guard deploys are now verified to be identical, so a green PR can never again hide a failing deploy (the cause of the v2.986 outage).',
+    ],
+  },
+  {
     version: 'v2.999',
     date: '2026-07-24',
     title: 'Assigned Jobs buttons reordered',
