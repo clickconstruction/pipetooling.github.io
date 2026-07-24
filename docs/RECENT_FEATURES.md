@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-24 (v2.1007)
+last_updated: 2026-07-24 (v2.1008)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1008)
+
+### Person identity Phase B: people.id becomes the canonical pay key (2026-07-24)
+Executes the user-chosen fork from Phase A (create-people-rows): migration `20260722268000_person_identity_phase_b_backfill.sql` (1) inserts **linked people rows** for every pay-named user lacking one — `kind` mapped faithfully from `users.role` (the `people.kind` CHECK already admits internal roles: helpers→`helper`, subcontractor→`sub`, rest 1:1), `account_user_id` linked, owner = the single master; (2) new `resolve_pay_person_id(name)` — trimmed name → users → linked active person, else unique active people-name match, NULL when unknown/ambiguous; (3) **backfills `person_id` where NULL** on `people_hours`, `people_pay_config`, `people_crew_jobs`, `pay_stubs`, `people_team_members`; (4) BEFORE INSERT triggers auto-resolving `person_id` on all five. Names stay as denormalized display + read fallback, so an unresolved row degrades to today's behavior. Expected from Phase A measurement: ~24/27 names key instantly; the 3 frozen Feb–Mar orphans ("Tristen (Assistant)" → Combine-people candidate) stay name-only. Idempotent; no CREATE TABLE. Phases C–E (readers, writers, junction/remaining tables) follow per plan.
 
 ## Latest Updates (v2.1007)
 
