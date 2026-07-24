@@ -70,6 +70,7 @@ import {
   loadJobHazmatIncidents,
   type JobHazmatIncidentRow,
 } from '../../lib/hazmatIncidents'
+import { eligibleHazmatRollIns, hazmatRollInTotalDollars, type HazmatRollInLine } from '../../lib/hazmatRollIn'
 import { sendHazmatNoticeEmailToCustomer } from '../../lib/sendHazmatNoticeEmail'
 import {
   buildHazmatFeeNoticePdfBlob,
@@ -431,6 +432,9 @@ export default function SendRecordInvoiceModal({
   const [attachHazmatNotice, setAttachHazmatNotice] = useState(true)
   /** Stripe path: Stripe invoices can't carry attachments — companion email instead. */
   const [emailHazmatNoticeWithStripe, setEmailHazmatNoticeWithStripe] = useState(true)
+  /** v2.1002: unsent hazmat rider invoices on this job, offered for roll-in as labeled line items. */
+  const [hazmatRollInLines, setHazmatRollInLines] = useState<HazmatRollInLine[]>([])
+  const [includeHazmatRollIn, setIncludeHazmatRollIn] = useState(true)
   const [hazmatNoticeEmailStatus, setHazmatNoticeEmailStatus] = useState<'sent' | string | null>(null)
   const stripePreviewReqId = useRef(0)
   /** Keeps last known “had a preview” for stale-while-revalidate (timeout closure reads current value). */
@@ -660,6 +664,62 @@ export default function SendRecordInvoiceModal({
         }
       } catch {
         if (!cancelled) setHazmatIncidentForInvoice(null)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [open, kind, invoice?.id, job?.id])
+
+  // v2.1002 hazmat roll-in: when this job has OTHER unsent hazmat rider
+  // invoices, offer (default ON) folding them into this bill as their own
+  // labeled Stripe line items instead of separate rider invoices.
+  useEffect(() => {
+    setHazmatRollInLines([])
+    setIncludeHazmatRollIn(true)
+    if (!open || !job?.id) return
+    let cancelled = false
+    void (async () => {
+      try {
+        const rows = await loadJobHazmatIncidents(job.id)
+        if (cancelled || rows.length === 0) return
+        const billingId = kind === 'invoice' ? invoice?.id ?? '' : ''
+        const riderIds = [
+          ...new Set(rows.map((r) => r.invoice_id).filter((id): id is string => !!id && id !== billingId)),
+        ]
+        if (riderIds.length === 0) return
+        const { data: invRows } = await supabase
+          .from('jobs_ledger_invoices')
+          .select('id, amount, status, stripe_invoice_id, sent_to_customer_at, external_send_channel')
+          .in('id', riderIds)
+        if (cancelled) return
+        const lines = eligibleHazmatRollIns({
+          billingInvoiceId: billingId,
+          incidents: rows,
+          invoices: (invRows ?? []) as {
+            id: string
+            amount: number | null
+            status: string | null
+            stripe_invoice_id: string | null
+            sent_to_customer_at: string | null
+            external_send_channel: string | null
+          }[],
+        })
+        setHazmatRollInLines(lines)
+        // Same footer treatment as billing a rider directly: the public notice
+        // link rides in the footer (Stripe can't attach files).
+        for (const line of lines) {
+          const incident = rows.find((r) => r.id === line.incidentId)
+          if (!incident?.public_token) continue
+          const noticeLine = `Biohazard Remediation Fee Notice: ${hazmatNoticePublicUrl(incident.public_token)}`
+          setStripeInvoiceFooter((f) => {
+            if (f.includes('/hazmat-notice?token=')) return f
+            const next = f.trim().length > 0 ? `${f.trimEnd()}\n\n${noticeLine}` : noticeLine
+            return next.length <= STRIPE_INVOICE_FOOTER_MAX_CHARS ? next : f
+          })
+        }
+      } catch {
+        if (!cancelled) setHazmatRollInLines([])
       }
     })()
     return () => {
@@ -1105,17 +1165,24 @@ export default function SendRecordInvoiceModal({
 
       let body: CreateStripeInvoiceFnResponse | null
       const lineDescTrim = stripeLineDescription.trim()
+      // v2.1002: fold eligible unsent hazmat riders into this bill (never when
+      // billing a rider itself — that keeps the separate-notice flow).
+      const rollIns = includeHazmatRollIn && !hazmatIncidentForInvoice ? hazmatRollInLines : []
+      const totalAmountDollars = amt + hazmatRollInTotalDollars(rollIns)
       const { data: invokeData, error: fnErr } = await supabase.functions.invoke('create-stripe-invoice', {
         body: {
           jobs_ledger_invoice_id: invId,
           customer_id: job.customer_id,
-          amount_dollars: amt,
+          amount_dollars: totalAmountDollars,
           customer_email: (job.customer_email ?? '').trim(),
           customer_name: (job.customer_name ?? '').trim() || 'Customer',
           due_date: stripeDueDate.trim(),
           memo: stripeMemo.trim() || undefined,
           footer: stripeInvoiceFooter.trim() || undefined,
           ...(lineDescTrim ? { line_description: lineDescTrim } : {}),
+          ...(rollIns.length > 0
+            ? { extra_line_items: rollIns.map((l) => ({ amount_cents: l.amountCents, description: l.description })) }
+            : {}),
           ...stripeModeInvokeBody(stripeModeForBilling),
         },
         headers: { Authorization: `Bearer ${token}` },
@@ -1142,6 +1209,24 @@ export default function SendRecordInvoiceModal({
       if (!promote.ok) {
         setStripeError(promote.error)
         return
+      }
+
+      // Fold rolled-in riders: repoint each incident at the final invoice FIRST
+      // (a dangling incident -> deleted-invoice link is worse than a leftover
+      // draft row), then delete the rider so balance math counts the fee once.
+      for (const l of rollIns) {
+        try {
+          await withSupabaseRetry(
+            async () => supabase.from('job_hazmat_incidents').update({ invoice_id: invId }).eq('id', l.incidentId),
+            'repoint hazmat incident to final invoice',
+          )
+          await withSupabaseRetry(
+            async () => supabase.from('jobs_ledger_invoices').delete().eq('id', l.invoiceId),
+            'delete rolled-in hazmat rider invoice',
+          )
+        } catch (foldErr) {
+          console.error('hazmat roll-in fold failed (Stripe invoice created ok)', foldErr)
+        }
       }
 
       // Companion notice email (Stripe can't attach files). Failure never rolls back
@@ -2649,6 +2734,56 @@ export default function SendRecordInvoiceModal({
                       <strong>☣ Also email the Biohazard Remediation Fee Notice</strong> — Stripe invoices
                       can't carry attachments, so the notice PDF goes to the customer as its own email.
                       Re-send any time from Edit Job → Riders.
+                    </span>
+                  </label>
+                ) : null}
+                {!hazmatIncidentForInvoice && hazmatRollInLines.length > 0 ? (
+                  <label
+                    style={{
+                      display: 'flex',
+                      alignItems: 'flex-start',
+                      gap: '0.5rem',
+                      margin: '0.5rem 0 0',
+                      padding: '0.5rem 0.65rem',
+                      border: '1px solid var(--border)',
+                      borderRadius: 6,
+                      background: 'var(--bg-red-tint)',
+                      fontSize: '0.8125rem',
+                      color: 'var(--text-700)',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={includeHazmatRollIn}
+                      onChange={(e) => setIncludeHazmatRollIn(e.target.checked)}
+                      style={{ marginTop: 2 }}
+                    />
+                    <span>
+                      <strong>
+                        ☣ Include hazmat fee ($
+                        {hazmatRollInTotalDollars(hazmatRollInLines).toLocaleString('en-US', {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        })}
+                        ) as a line item
+                      </strong>{' '}
+                      — the unsent biohazard fee bill folds into this invoice as its own labeled line and the
+                      separate draft is removed. Uncheck to keep billing it separately.
+                      {Number.isFinite(Number(billAmountStr)) && Number(billAmountStr) > 0 ? (
+                        <>
+                          {' '}
+                          Invoice total becomes{' '}
+                          <strong>
+                            $
+                            {(Number(billAmountStr) + hazmatRollInTotalDollars(hazmatRollInLines)).toLocaleString(
+                              'en-US',
+                              { minimumFractionDigits: 2, maximumFractionDigits: 2 },
+                            )}
+                          </strong>
+                          .
+                        </>
+                      ) : null}
                     </span>
                   </label>
                 ) : null}

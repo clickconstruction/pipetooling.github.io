@@ -2016,6 +2016,8 @@ If **`stripe_invoice_id`** and **`hosted_invoice_url`** are already set, returns
 
 **Gateway JWT**: [`supabase/config.toml`](../supabase/config.toml) sets **`verify_jwt = false`**. Deploy with **`supabase functions deploy create-stripe-invoice --no-verify-jwt`** when the hosted gateway still enforces JWT.
 
+**extra_line_items** (v2.1002): optional `Array<{amount_cents, description}>` — validated (positive cents, description clamped 500); fixture lines allocate to `amount − extras` and each extra is appended as its own labeled invoice item (`source.kind: extra_line`). Used by the Bill Customer hazmat roll-in.
+
 **Service address** (v2.998): the invoice is created with a `custom_fields` entry `Service address` from `jobs_ledger.job_address` (trimmed, capped 140 chars; omitted when blank) — renders in the header of the hosted page and PDF. Not shown by `preview-stripe-invoice` (`createPreview` lacks `custom_fields`).
 
 ---

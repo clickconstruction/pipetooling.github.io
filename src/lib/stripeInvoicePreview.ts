@@ -2,6 +2,7 @@
 export type StripeInvoiceLineSource =
   | { kind: 'fixture'; jobs_ledger_fixture_id: string }
   | { kind: 'single_line' }
+  | { kind: 'extra_line' }
 
 export type StripeInvoicePreviewLine = {
   description: string
@@ -19,6 +20,9 @@ function parseStripeLineSource(raw: unknown): StripeInvoiceLineSource | undefine
   }
   if (s.kind === 'single_line') {
     return { kind: 'single_line' }
+  }
+  if (s.kind === 'extra_line') {
+    return { kind: 'extra_line' }
   }
   return undefined
 }
