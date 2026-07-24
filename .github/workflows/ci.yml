@@ -16,6 +16,9 @@ jobs:
       - name: Check migrations (unique versions + valid names)
         run: bash scripts/check-migrations.sh
 
+      - name: Workflow check parity (ci.yml == deploy.yml)
+        run: node scripts/check-workflow-parity.mjs
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
