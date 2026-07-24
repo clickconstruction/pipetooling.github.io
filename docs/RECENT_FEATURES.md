@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-24 (v2.991)
+last_updated: 2026-07-24 (v2.992)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,17 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.992)
+
+### The v2.990 sticky-× fix rolled out across the report/inspection modals — plus a background scroll lock (2026-07-24)
+Audit of every `position: 'fixed'` modal in `src/components/` for the two defects behind v2.990: (a) a close control living inside the panel that is itself the `overflow: auto` scroller, so it scrolls out of reach on a phone, and (b) a `minWidth` floor wider than a 375px screen. The v2.990 recipe is now a shared kernel, [`stickyModalHeaderStyle.ts`](../src/lib/stickyModalHeaderStyle.ts) — `stickyModalPanelStyle(maxWidth)` (panel keeps **no top padding**; `width: min(<max>px, 100%)` + border-box), `stickyModalHeaderStyle()` (sticky at `top: 0`, opaque `--surface`, bottom border, negative side margins), and `STICKY_MODAL_CLOSE_BUTTON_STYLE` (44×44) — so the "the panel's top inset must move onto the bar" rule can't drift; 10 unit tests pin it, and `AdditionalReportModal` was retrofitted onto the kernel so there's one source of truth.
+
+Defect (a) fixed in: [`NewReportModal`](../src/components/NewReportModal.tsx) (Dashboard's Job Report quick button — the highest-traffic field entry point), [`ReportViewModal`](../src/components/ReportViewModal.tsx) (opened from job threads, dispatch mode, bid field reports, Settings), [`ReportEditModal`](../src/components/ReportEditModal.tsx), [`AddInspectionModal`](../src/components/AddInspectionModal.tsx), [`CreateTripChargeModal`](../src/components/CreateTripChargeModal.tsx), and [`ReviewHoursModal`](../src/components/ReviewHoursModal.tsx) — the last one differed: its × was `position: absolute` against the panel, which scrolls, so the × moved *inside* the now-sticky week-nav bar (sticky is a positioned element, so it anchors there instead). Defect (b) also fixed on four panels that only had the width problem: `CrewJobsBlock`, `HoursUnassignedModal` (×2), `PeopleHoursDayAuditModal`, `SupplyHousesTab` — these size to content under `maxWidth: '90%'`, so a fixed `width` would stop them growing; they use `minWidth: phoneSafeMinWidth(400)` (`min(400px, 100%)`) plus border-box, since a content-box `minWidth: 400` floor was really 448px once padding was counted. `MyReportsModal` and `DashboardFinancialsSection`'s drilldown were checked and left alone (already a flex column with a `flexShrink: 0` header over a separate scrolling body). `PersonTimeDetailModal` has the defect but is dead code — no importers anywhere in `src/`.
+
+Second half, from field feedback on the same pass: opening a modal now **freezes the page behind it**. Dragging inside a modal used to scroll the list underneath on a phone, and closing then landed somewhere else entirely. The existing [`useBodyScrollLock`](../src/hooks/useBodyScrollLock.ts) hook (previously used only by Detail Job, and only on narrow viewports) now delegates to a new reference-counted kernel [`bodyScrollLock.ts`](../src/lib/bodyScrollLock.ts): the first lock saves and applies `position: fixed` + the pinned negative `top`, the **last** release restores — needed because these modals stack (Additional Report → Job Reports → Report View), and un-counted, the inner modal's close would thaw the page while the outer one was still open. It also pads out the scrollbar width the fixed body removes, so desktop no longer jumps sideways when a modal opens — which is why the lock can now run on every viewport instead of narrow-only. 7 unit tests cover the stacking, the double-release, and the padding compensation.
+
+Verified in the browser at 375×450: `gapAboveHeader` **0** on both New report and Report view with the panel scrolled to the bottom (Save/Cancel row reached, × still pinned), `document.scrollWidth` 375 (no sideways overflow, down from a 400px panel), close box 44×44, and the background frozen at `top: -300px` while open with `window.scrollY` restored to 300 on close.
 
 ## Latest Updates (v2.991)
 

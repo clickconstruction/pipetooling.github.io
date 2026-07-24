@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.992',
+    date: '2026-07-24',
+    title: 'Every report modal closes without scrolling back up',
+    kind: 'fix',
+    highlights: [
+      'New report, Report view, Edit report, Add inspection, Create trip charge and Review hours now keep their title bar and ✕ pinned at the top while you scroll — the same fix Additional Report got in v2.990.',
+      'The ✕ is a bigger tap target on all of them, and the panels no longer run off the side of a narrow phone.',
+      'The page behind an open modal is now frozen: dragging inside a modal no longer scrolls the list underneath, and closing puts you back exactly where you were.',
+    ],
+  },
+  {
     version: 'v2.991',
     date: '2026-07-24',
     title: 'Set who gets emailed when an estimate is accepted',

@@ -19,6 +19,8 @@ import { ReportTemplatePercentField } from './ReportTemplatePercentField'
 import { ReportTemplateSignatureField } from './ReportTemplateSignatureField'
 import { MarkJobReadyToBillPrompt } from './jobs/MarkJobReadyToBillPrompt'
 import JobReportsModal from './JobReportsModal'
+import { STICKY_MODAL_CLOSE_BUTTON_STYLE, stickyModalHeaderStyle, stickyModalPanelStyle } from '../lib/stickyModalHeaderStyle'
+import { useBodyScrollLock } from '../hooks/useBodyScrollLock'
 
 type ReportTemplate = Database['public']['Tables']['report_templates']['Row']
 type ReportTemplateField = Database['public']['Tables']['report_template_fields']['Row']
@@ -256,6 +258,10 @@ export default function AdditionalReportModal({
     handleClose()
   }
 
+  // Freeze the page behind the modal — dragging inside it used to scroll the
+  // list underneath on a phone, and closing then landed somewhere else.
+  useBodyScrollLock(open)
+
   if (!open) return null
 
   if (readyToBillJob) {
@@ -311,26 +317,17 @@ export default function AdditionalReportModal({
         zIndex: overlayZIndex,
       }}
     >
-      {/* width: min() not minWidth: 400 — a 400px floor overflowed narrow phones sideways. */}
-      <div style={{ background: 'var(--surface)', padding: '0 1.5rem 1.5rem', borderRadius: 8, width: 'min(560px, 100%)', maxWidth: 560, maxHeight: '90vh', overflow: 'auto', boxSizing: 'border-box' }}>
-        {/* Sticky header: this panel scrolls, and the × used to scroll away with
-            it — on a phone the form is long enough that closing meant scrolling
-            all the way back to the top. The panel deliberately has NO top
-            padding: it lives on this bar instead, so the bar pins flush to the
-            panel's top edge with no gap for content to show through above it.
-            Negative side margins let the opaque background span full width. */}
+      {/* Sticky-header pattern (originated here in v2.990, now shared across the
+          scrolling modals): the panel is the scroller and the × used to scroll
+          away with it. See stickyModalHeaderStyle.ts for why the panel carries
+          no top padding. */}
+      <div style={{ background: 'var(--surface)', borderRadius: 8, maxHeight: '90vh', overflow: 'auto', ...stickyModalPanelStyle(560) }}>
         <div style={{
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'flex-start',
           gap: '0.75rem',
-          position: 'sticky',
-          top: 0,
-          zIndex: 2,
-          background: 'var(--surface)',
-          borderBottom: '1px solid var(--border)',
-          margin: '0 -1.5rem 1rem',
-          padding: '1.5rem 1.5rem 0.75rem',
+          ...stickyModalHeaderStyle(),
         }}>
           <div>
             <h2 style={{ margin: 0, fontSize: '1.25rem' }}>Additional Report</h2>
@@ -341,25 +338,10 @@ export default function AdditionalReportModal({
               {jobAddress}
             </p>
           </div>
-          {/* 44px min box: thumb-sized tap target, not a bare glyph. */}
           <button
             type="button"
             onClick={handleClose}
-            style={{
-              background: 'none',
-              border: 'none',
-              cursor: 'pointer',
-              fontSize: '1.5rem',
-              lineHeight: 1,
-              color: 'var(--text-muted)',
-              flexShrink: 0,
-              minWidth: 44,
-              minHeight: 44,
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              margin: '-0.5rem -0.5rem 0 0',
-            }}
+            style={STICKY_MODAL_CLOSE_BUTTON_STYLE}
             aria-label="Close"
           >
             ×

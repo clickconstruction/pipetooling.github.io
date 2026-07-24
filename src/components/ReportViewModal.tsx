@@ -7,6 +7,8 @@ import {
   REPORT_FIELD_LABEL_LEGACY_WHO,
 } from '../lib/reportTemplateFieldDisplay'
 import { isReportSignatureImageDataUrl } from '../lib/reportSignatureField'
+import { STICKY_MODAL_CLOSE_BUTTON_STYLE, stickyModalHeaderStyle, stickyModalPanelStyle } from '../lib/stickyModalHeaderStyle'
+import { useBodyScrollLock } from '../hooks/useBodyScrollLock'
 
 export type ReportForView = {
   id: string
@@ -153,6 +155,10 @@ type Props = {
 }
 
 export default function ReportViewModal({ open, report, onClose, viewerRole }: Props) {
+  // Freeze the page behind the modal — dragging inside it used to scroll the
+  // list underneath on a phone, and closing then landed somewhere else.
+  useBodyScrollLock(open)
+
   if (!open) return null
 
   return (
@@ -168,20 +174,20 @@ export default function ReportViewModal({ open, report, onClose, viewerRole }: P
       }}
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
+      {/* This panel is the scroller — the title bar sticks so the × stays reachable
+          on a phone instead of scrolling away down a long report (v2.990 pattern). */}
       <div
         style={{
           background: 'var(--surface)',
-          padding: '1.5rem',
           borderRadius: 8,
-          minWidth: 360,
-          maxWidth: 560,
           maxHeight: '90vh',
           overflow: 'auto',
           boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -2px rgba(0,0,0,0.1)',
+          ...stickyModalPanelStyle(560),
         }}
         onClick={(e) => e.stopPropagation()}
       >
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.75rem', ...stickyModalHeaderStyle() }}>
           <div>
             <h2 style={{ margin: 0, fontSize: '1.25rem' }}>
               {displayReportTemplateName(report?.template_name ?? 'Report', viewerRole)}
@@ -193,7 +199,7 @@ export default function ReportViewModal({ open, report, onClose, viewerRole }: P
           <button
             type="button"
             onClick={onClose}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.5rem', color: 'var(--text-muted)', lineHeight: 1 }}
+            style={STICKY_MODAL_CLOSE_BUTTON_STYLE}
             aria-label="Close"
           >
             ×
