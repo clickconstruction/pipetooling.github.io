@@ -1,6 +1,7 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
+import CallCustomerModal from './CallCustomerModal'
 import { canLeaveJobFieldReport } from '../../lib/canLeaveJobFieldReport'
-import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
 import { scheduleFormatWeekdayLong, scheduleFormatWindow } from '../../lib/jobScheduleChicago'
 import { sortSubScheduleBlocksByStart, type SubScheduleDayPartition } from '../../lib/dashboardSubSchedule'
 import type { DashboardTeamAssignedJobRow } from '../../lib/dashboardTeamAssignedJobRow'
@@ -70,6 +71,8 @@ export function DashboardMyScheduleSection({
   setLeaveReportJob,
 }: DashboardMyScheduleSectionProps) {
   const jobDetailModal = useJobDetailModal()
+  /** Call-customer modal (mis-click guard + call notes) — see CallCustomerModal. */
+  const [callModal, setCallModal] = useState<{ phone: string; jobId: string; jobLabel: string } | null>(null)
 
   return (
     <div
@@ -253,7 +256,8 @@ export function DashboardMyScheduleSection({
                                       type="button"
                                       onClick={(e) => {
                                         e.stopPropagation()
-                                        openInExternalBrowser(`tel:${phone}`)
+                                        // Mis-click guard: open the Call modal (big tel target + call notes) instead of dialing immediately.
+                                        setCallModal({ phone, jobId: b.job_id, jobLabel: rowLabel })
                                       }}
                                       onKeyDown={(e) => {
                                         if (e.key === 'Enter' || e.key === ' ') {
@@ -276,8 +280,8 @@ export function DashboardMyScheduleSection({
                                       <svg
                                         xmlns="http://www.w3.org/2000/svg"
                                         viewBox="0 0 640 640"
-                                        width={16}
-                                        height={16}
+                                        width="2.5em"
+                                        height="2.5em"
                                         aria-hidden
                                         focusable={false}
                                         style={{ display: 'block' }}
@@ -356,6 +360,14 @@ export function DashboardMyScheduleSection({
           })}
         </>
       )}
+      {callModal ? (
+        <CallCustomerModal
+          phone={callModal.phone}
+          jobId={callModal.jobId}
+          jobLabel={callModal.jobLabel}
+          onClose={() => setCallModal(null)}
+        />
+      ) : null}
     </div>
   )
 }

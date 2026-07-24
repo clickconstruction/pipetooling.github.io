@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.995',
+    date: '2026-07-24',
+    title: 'Call the customer without mis-taps, and log the call',
+    kind: 'feature',
+    highlights: [
+      'The phone icon on Dashboard schedule rows is now the same size as the photo icon, and tapping it opens a window showing the number — so a stray tap no longer starts a call.',
+      'Tap the big number to dial, then jot notes about the call; Log call posts them to the job\'s activity thread everywhere in the app.',
+    ],
+  },
+  {
     version: 'v2.994',
     date: '2026-07-24',
     title: 'Compact Ready to Bill cards on your phone',

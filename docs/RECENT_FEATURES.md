@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-24 (v2.994)
+last_updated: 2026-07-24 (v2.995)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.995)
+
+### Dashboard: phone icon opens a Call modal with call notes into the job thread (2026-07-24)
+The My Schedule phone icon was a tiny 16px glyph next to a 2.5em pictures icon, and tapping it dialed instantly — easy to mis-tap. Now it matches the pictures icon size, and tapping opens the new [`CallCustomerModal`](../src/components/dashboard/CallCustomerModal.tsx): job label, the number as one big tel: button, and a "Notes about the call" box whose **Log call** saves a `jobs_ledger_thread_notes` row bodied `📞 Call <number>: <notes>` — so the call shows on every job activity thread across the app (Stages panel, activity modals, customer summary) with zero new render wiring. No migration/RPC: the baseline INSERT policy already admits team-member/scheduled subs & helpers. Verified live as a subcontractor at 375px.
 
 ## Latest Updates (v2.994)
 
