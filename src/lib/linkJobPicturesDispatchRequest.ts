@@ -42,7 +42,7 @@ export async function submitLinkJobPicturesDispatchRequestForJob(
       'check existing link_job_pictures dispatch request',
     )
     if (existing?.id) {
-      showToast('Already sent to Dispatch. They will add the folder soon.', 'info')
+      showToast('Note already sent to dispatch to add a photos link, if you need it sooner call dispatch!', 'info')
       return
     }
     const titlePrefix = hcp ? `HCP ${hcp} - ` : ''
@@ -75,7 +75,7 @@ export async function submitLinkJobPicturesDispatchRequestForJob(
       body: { dispatch_request_id: row.id },
     })
     notifyDispatchRequestsChanged()
-    showToast('Sent to Dispatch. They will add the customer pictures folder soon.', 'success')
+    showToast('Note sent to dispatch to add a photos link, if you need it sooner call dispatch!', 'success')
   } catch (e) {
     showToast(formatErrorMessage(e, 'Failed to send to Dispatch'), 'error')
   }
