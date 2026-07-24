@@ -1735,20 +1735,6 @@ export default function Dashboard() {
                           )
                         )
                       })()}
-                      {canLeaveJobFieldReport(role) && (
-                        <DashboardLeaveReportButton
-                          singleLine={isMobile}
-                          showReminder={leaveReportReminderForJobRow(j)}
-                          onClick={() =>
-                            setLeaveReportJob({
-                              id: j.id,
-                              hcpNumber: effectiveJobLedgerNumber(j.hcp_number, j.click_number) || '—',
-                              jobName: j.job_name ?? '—',
-                              jobAddress: j.job_address ?? '—',
-                            })
-                          }
-                        />
-                      )}
                       {role !== 'helpers' ? (
                       <button
                         type="button"
@@ -1763,6 +1749,20 @@ export default function Dashboard() {
                         {jobStatusUpdatingId === j.id ? '…' : isMobile ? 'Send to Billing' : <>Send to<br />Billing</>}
                       </button>
                       ) : null}
+                      {canLeaveJobFieldReport(role) && (
+                        <DashboardLeaveReportButton
+                          singleLine={isMobile}
+                          showReminder={leaveReportReminderForJobRow(j)}
+                          onClick={() =>
+                            setLeaveReportJob({
+                              id: j.id,
+                              hcpNumber: effectiveJobLedgerNumber(j.hcp_number, j.click_number) || '—',
+                              jobName: j.job_name ?? '—',
+                              jobAddress: j.job_address ?? '—',
+                            })
+                          }
+                        />
+                      )}
                       {j.created_at && (!isMobile || !isSubcontractorLikeRole(role)) && (
                         <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }} title="Time since job created">
                           <>Open<br />{formatTimeSince(j.created_at)}</>
