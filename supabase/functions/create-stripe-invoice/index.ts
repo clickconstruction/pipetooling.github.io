@@ -38,6 +38,13 @@ interface CreateStripeInvoiceBody {
   footer?: string
   /** Optional: overrides default line item description (max 500 chars). */
   line_description?: string
+  /**
+   * Optional distinct extra lines appended AFTER the fixture-allocated work
+   * lines (v2.1002 hazmat roll-in). Amounts in cents; their sum must be less
+   * than the invoice total — fixtures allocate to the remainder, so each extra
+   * renders as its own labeled row instead of being smeared across work lines.
+   */
+  extra_line_items?: Array<{ amount_cents: number; description: string }>
   /** Optional: `test` | `live`. Omit to use server default (legacy / non-UI callers). */
   stripe_mode?: StripeBillingMode
 }
@@ -300,6 +307,22 @@ serve(async (req) => {
       return jsonResponse({ error: 'Amount too small' }, 400)
     }
 
+    const extrasRaw = Array.isArray(body.extra_line_items) ? body.extra_line_items : []
+    const extraItems: { amount: number; description: string }[] = []
+    for (const ex of extrasRaw) {
+      const cents = typeof ex?.amount_cents === 'number' ? Math.round(ex.amount_cents) : NaN
+      const desc = typeof ex?.description === 'string' ? ex.description.trim().slice(0, 500) : ''
+      if (!Number.isFinite(cents) || cents < 1 || !desc) {
+        return jsonResponse({ error: 'Invalid extra_line_items entry (positive amount_cents + description required)' }, 400)
+      }
+      extraItems.push({ amount: cents, description: desc })
+    }
+    const extrasSumCents = extraItems.reduce((a, b) => a + b.amount, 0)
+    const fixtureTargetCents = amountCents - extrasSumCents
+    if (extraItems.length > 0 && fixtureTargetCents < 1) {
+      return jsonResponse({ error: 'extra_line_items must total less than the invoice amount' }, 400)
+    }
+
     const { data: fixturesRows, error: fixturesErr } = await admin
       .from('jobs_ledger_fixtures')
       .select('id, name, count, line_unit_price, line_description, sequence_order')
@@ -320,7 +343,7 @@ serve(async (req) => {
         line_description: string | null
         sequence_order: number
       }[],
-      targetAmountCents: amountCents,
+      targetAmountCents: fixtureTargetCents,
       lineDescriptionOverride: lineDescriptionRaw,
       customerName: customer_name.trim(),
       jobName: jobRow.job_name,
@@ -377,7 +400,12 @@ serve(async (req) => {
       throw e
     }
 
-    for (const lineItem of lineItemsBuilt.items) {
+    const allLineItems = [
+      ...lineItemsBuilt.items,
+      ...extraItems.map((ex) => ({ ...ex, source: { kind: 'extra_line' as const } })),
+    ]
+
+    for (const lineItem of allLineItems) {
       await stripe.invoiceItems.create({
         customer: stripeCustomerId!,
         invoice: invoice.id,
@@ -399,7 +427,7 @@ serve(async (req) => {
       ...invoice_previewRaw,
       lines: invoice_previewRaw.lines.map((li, i) => ({
         ...li,
-        source: lineItemsBuilt.items[i]?.source,
+        source: allLineItems[i]?.source,
       })),
     }
 

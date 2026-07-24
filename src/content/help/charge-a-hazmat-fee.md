@@ -38,3 +38,7 @@ When you bill the rider through **Bill Customer**, the notice travels with the b
 - The fee's memo ("Hazmat remediation fee — incident {date}") shows on the Stripe invoice line automatically.
 - The default amount lives in the org setting `hazmat_fee_default` (devs can change it).
 - If the wizard says the terms have no §11 clause, the fee has no contractual basis — fix the terms first.
+
+## Rolling the fee into the final bill
+
+If the biohazard fee bill has **not** been sent yet when you open {{button:primary|Bill Customer}} on the job's main invoice, you'll see a checked box: **Include hazmat fee as a line item**. Leave it checked and the fee becomes its own labeled line on that one invoice (the separate draft is removed automatically); the notice link still rides in the invoice footer. Uncheck it to keep billing the fee separately. Fees the customer already received are never merged.

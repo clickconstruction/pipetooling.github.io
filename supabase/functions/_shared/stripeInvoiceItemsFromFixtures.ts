@@ -16,6 +16,7 @@ export type JobFixtureForStripe = {
 export type StripeInvoiceLineSource =
   | { kind: 'fixture'; jobs_ledger_fixture_id: string }
   | { kind: 'single_line' }
+  | { kind: 'extra_line' }
 
 export type StripeInvoiceLineItem = {
   amount: number
