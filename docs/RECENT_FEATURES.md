@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-24 (v2.999)
+last_updated: 2026-07-24 (v2.1000)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1000)
+
+### CI: ci.yml and deploy.yml can no longer drift apart (2026-07-24)
+New [`scripts/check-workflow-parity.mjs`](../scripts/check-workflow-parity.mjs) (npm `check:workflow-parity`) asserts the `checks` jobs of `ci.yml` (PR gate) and `deploy.yml` (main-push gate) run an identical multiset of `run:` commands, and both workflows now run it — so a check added to one workflow fails CI until it's added to the other. This closes the failure class behind the v2.965–v2.985 outage, where `check:timezone` lived only in deploy.yml and every PR merged green while every deploy failed. Improvement plan item #2 (2026-07-24); negative-tested (a divergent step fails with the offending command named).
 
 ## Latest Updates (v2.999)
 
