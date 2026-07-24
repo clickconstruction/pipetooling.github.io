@@ -105,6 +105,12 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 #### July 22, 2026
 
+**`20260722268000_person_identity_phase_b_backfill.sql`** _(apply via `supabase db push` after the file is on `main`)_
+- **Purpose**: Person identity Phase B (v2.1008) — creates linked `people` rows for pay-named users (role-mapped kinds, `account_user_id` link, single-master owner), adds `resolve_pay_person_id(name)`, backfills `person_id` where NULL on the five carrier tables, and installs BEFORE INSERT auto-resolve triggers. Name columns remain display + fallback.
+- **Security**: resolver is STABLE non-definer; triggers write only NEW.person_id; INSERT into people runs as migration owner. No RLS/policy changes; no CREATE TABLE.
+- **Ordering**: either order safe — readers still name-join until Phase C; unresolved rows behave exactly as today. Idempotent (NOT EXISTS insert, NULL-only updates, CREATE OR REPLACE + DROP TRIGGER IF EXISTS).
+- **Category**: People / identity migration
+
 **`20260722266000_rtb_dashboard_pct_complete.sql`** _(apply via `supabase db push` after the file is on `main`)_
 - **Purpose**: Adds `pct_complete integer` to `list_ready_to_bill_assigned_jobs_for_dashboard` (v2.994) so the subcontractor Ready to Bill cards can show "% complete" under "Open <age>". Body otherwise identical to `20260722258000_click_number_dashboard_rpcs.sql`.
 - **Shape**: adding a column to `RETURNS TABLE` changes the function signature, so this is `DROP FUNCTION IF EXISTS` + `CREATE` (CREATE OR REPLACE can't change OUT columns) with the three `GRANT ALL` (anon/authenticated/service_role) re-applied. `SECURITY DEFINER`, `STABLE`, unchanged auth model (team-member self join on `auth.uid()`).

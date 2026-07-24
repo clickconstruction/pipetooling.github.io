@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1008',
+    date: '2026-07-24',
+    title: 'Payroll identity gets rename-proof',
+    kind: 'infra',
+    highlights: [
+      'Behind the scenes, hours, pay config, crew records, and pay stubs are now keyed to the person — not just their typed name — so renaming someone can no longer silently break their payroll history.',
+    ],
+  },
+  {
     version: 'v2.1007',
     date: '2026-07-24',
     title: 'Update reminders come back around',
