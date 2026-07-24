@@ -5,7 +5,7 @@ file: MIGRATIONS.md
 type: Reference/Changelog
 purpose: Complete database migration history organized by date and category
 audience: Developers, Database Administrators, AI Agents
-last_updated: 2026-07-23
+last_updated: 2026-07-24
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate to Advanced
 
@@ -104,6 +104,12 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 ### July 2026
 
 #### July 22, 2026
+
+**`20260722266000_rtb_dashboard_pct_complete.sql`** _(apply via `supabase db push` after the file is on `main`)_
+- **Purpose**: Adds `pct_complete integer` to `list_ready_to_bill_assigned_jobs_for_dashboard` (v2.994) so the subcontractor Ready to Bill cards can show "% complete" under "Open <age>". Body otherwise identical to `20260722258000_click_number_dashboard_rpcs.sql`.
+- **Shape**: adding a column to `RETURNS TABLE` changes the function signature, so this is `DROP FUNCTION IF EXISTS` + `CREATE` (CREATE OR REPLACE can't change OUT columns) with the three `GRANT ALL` (anon/authenticated/service_role) re-applied. `SECURITY DEFINER`, `STABLE`, unchanged auth model (team-member self join on `auth.uid()`).
+- **Ordering**: either order safe — display-only and additive; the client reads `pct_complete` by name and treats a missing value as "no percentage", so old clients ignore it and the new client just skips the line until this is pushed.
+- **Category**: Jobs / Dashboard / display-only
 
 **`20260722264000_new_jobs_start_working.sql`** _(apply via `supabase db push` after the file is on `main`)_
 - **Purpose**: New jobs start in **Working**, not Waiting (v2.988) — flips `jobs_ledger.status` DEFAULT `'waiting'` → `'working'`. Both creation paths omit `status` and inherit the default (New Job modal client insert in `JobFormModal.tsx`; `create_job_from_estimate`, both the 6-arg and 7-arg/`p_fixtures` overloads — verified against prod that neither sets `status`), so one default covers both. `split_job_ledger_fixtures_to_new_job` sets `status` explicitly (copies the source job's stage) and is deliberately unaffected.

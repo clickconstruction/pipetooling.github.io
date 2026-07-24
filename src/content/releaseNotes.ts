@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.994',
+    date: '2026-07-24',
+    title: 'Compact Ready to Bill cards on your phone',
+    kind: 'fix',
+    highlights: [
+      'For subcontractors and helpers, each Ready to Bill card is now much shorter and easier to scan on a phone — about four fit where two and a half did before.',
+      'The document icons moved up beside the job name, and Collect + Leave Report now sit together on one row.',
+      'Job age reads compactly as "Open 2m 3w", and the open time, % complete, and last activity share a single line.',
+    ],
+  },
+  {
     version: 'v2.993',
     date: '2026-07-24',
     title: 'Housekeeping: removed an unused screen',

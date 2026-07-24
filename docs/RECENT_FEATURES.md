@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-24 (v2.993)
+last_updated: 2026-07-24 (v2.994)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.994)
+
+### Subcontractor Ready to Bill cards: compact rebuild for phones (2026-07-24)
+The subcontractor/helper **Ready to Bill** cards on the Dashboard ([`DashboardTeamReadyToBillSection`](../src/components/dashboard/DashboardTeamReadyToBillSection.tsx)) were reworked to be full-width **and** compact on phones — the first "full-width" pass actually made them taller (everything stacked), so this iterated to the most compact layout across 320–1280px. Result (mobile): title row with the **doc-link icons moved top-right** (freeing the action row), address, then a **single muted meta line** `Open <age> · <n>% complete · <Source> <time>ago`, then **[Collect] [Leave Report]** on one row. Card height at 375px went ~225px → **~160px** (four cards now visible where ~2.5 were). Specific changes: mobile header stacks (`flexDirection: column`, info `width:100%`); doc icons extracted to a per-card `docLinksCluster` rendered top-right on mobile / in the action column on desktop; **Leave Report** single-line via a new `singleLine` prop on [`DashboardLeaveReportButton`](../src/components/dashboard/DashboardLeaveReportButton.tsx) (My Schedule keeps the two-line form); **Collect Payment → "Collect"** (user-chosen; `whiteSpace: nowrap`, mobile gap/padding tightened so both buttons fit one row down to 320px); button order flipped so **Collect leads**; the **Open / % / last-activity** lines merged into one wrapping meta line (last-activity stays clickable → job-activity modal), backed by a new prefix-free `textCompact` field on [`subcontractorLastActivityMobileLine`](../src/lib/subcontractorLastActivityCompact.ts) ("Field report 23h ago" vs the old "Last Activity 23h ago: Field report"; 1 new kernel test). The **Open age** now uses a compact two-unit form via new kernel [`formatOpenAgeShort`](../src/lib/formatOpenAgeShort.ts) (7 tests) — `Open 2m 3w`, `Open 3w 2d`, `Open 1y 2m` — which also kills the old "Open 0 months" (the 28–30-day gap in `formatTimeSince`'s single-unit buckets) → now `Open 4w`. Note `m` here means months (this line never shows minutes; the adjacent activity keeps `mo`, e.g. `4mo ago`). Desktop keeps the row layout but both action buttons are now single-line. The **% complete** value needs `pct_complete` from the RTB dashboard RPC: migration `20260722266000_rtb_dashboard_pct_complete.sql` (DROP + CREATE `list_ready_to_bill_assigned_jobs_for_dashboard`, adds `pct_complete integer`, re-GRANTs); `pct_complete?` is optional on `DashboardTeamAssignedJobRow` and the result flows through by name, so **the client is safe to ship before the migration** — the card just omits the % until `supabase db push` runs. Verified live on a subcontractor with 6 RTB jobs across 320/375/414/768/1280: buttons share one row (no overflow), meta on one line, desktop unchanged.
 
 ## Latest Updates (v2.993)
 

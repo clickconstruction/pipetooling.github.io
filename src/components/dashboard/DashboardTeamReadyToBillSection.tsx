@@ -8,6 +8,7 @@ import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
 import { formatDatetime } from '../../lib/dashboardProjectsCard'
 import { subcontractorLastActivityMobileLine } from '../../lib/subcontractorLastActivityCompact'
 import { formatTimeSince, subcontractorLastActivityBlock } from '../../lib/dashboardJobRowActivity'
+import { formatOpenAgeShort } from '../../lib/formatOpenAgeShort'
 import { stripeModeForBillingFromRole } from '../../lib/voidStripeInvoiceForRevert'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import {
@@ -92,38 +93,92 @@ export function DashboardTeamReadyToBillSection({
             <DashboardListRowSkeleton rows={2} />
           ) : (
             <div>
-              {assignedReadyToBillJobs.map((j) => (
+              {assignedReadyToBillJobs.map((j) => {
+                // Document links (Drive / Pictures / Plans). Extracted so the same
+                // cluster can sit top-right of the title on mobile (keeping the
+                // action row free for just Leave Report + Collect Payment) and in
+                // the action column on desktop.
+                const hasDocLinks = !!(
+                  j.google_drive_link?.trim() || j.job_plans_link?.trim() || j.job_pictures_link?.trim()
+                )
+                const docLinksCluster = hasDocLinks ? (
+                  <div style={{ display: 'flex', flexDirection: isMobile ? 'row' : 'column', alignItems: 'center', gap: '0.25rem', flexShrink: 0 }}>
+                    {j.google_drive_link?.trim() && (
+                      <a
+                        href={j.google_drive_link.trim()}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => { e.preventDefault(); openInExternalBrowser(j.google_drive_link!.trim()) }}
+                        title="Google Drive"
+                        style={{ display: 'inline-flex', alignItems: 'center', color: 'var(--text-muted)', padding: '0.35rem' }}
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="1.25em" height="1.25em" fill="currentColor" aria-hidden="true">
+                          <path d="M403 378.9L239.4 96L400.6 96L564.2 378.9L403 378.9zM265.5 402.5L184.9 544L495.4 544L576 402.5L265.5 402.5zM218.1 131.4L64 402.5L144.6 544L301 272.8L218.1 131.4z" />
+                        </svg>
+                      </a>
+                    )}
+                    {j.job_pictures_link?.trim() && (
+                      <span style={{ display: 'inline-flex', padding: '0.35rem' }}>
+                        <DashboardJobPicturesLinkRow layout="inline" jobPicturesLink={j.job_pictures_link} />
+                      </span>
+                    )}
+                    {j.job_plans_link?.trim() && (
+                      <a
+                        href={j.job_plans_link.trim()}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => { e.preventDefault(); openInExternalBrowser(j.job_plans_link!.trim()) }}
+                        title="Job Plans"
+                        style={{ display: 'inline-flex', alignItems: 'center', color: 'var(--text-muted)', padding: '0.35rem' }}
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="1.25em" height="1.25em" fill="currentColor" aria-hidden="true">
+                          <path d="M296.5 69.2C311.4 62.3 328.6 62.3 343.5 69.2L562.1 170.2C570.6 174.1 576 182.6 576 192C576 201.4 570.6 209.9 562.1 213.8L343.5 314.8C328.6 321.7 311.4 321.7 296.5 314.8L77.9 213.8C69.4 209.8 64 201.3 64 192C64 182.7 69.4 174.1 77.9 170.2L296.5 69.2zM112.1 282.4L276.4 358.3C304.1 371.1 336 371.1 363.7 358.3L528 282.4L562.1 298.2C570.6 302.1 576 310.6 576 320C576 329.4 570.6 337.9 562.1 341.8L343.5 442.8C328.6 449.7 311.4 449.7 296.5 442.8L77.9 341.8C69.4 337.8 64 329.3 64 320C64 310.7 69.4 302.1 77.9 298.2L112 282.4zM77.9 426.2L112 410.4L276.3 486.3C304 499.1 335.9 499.1 363.6 486.3L527.9 410.4L562 426.2C570.5 430.1 575.9 438.6 575.9 448C575.9 457.4 570.5 465.9 562 469.8L343.4 570.8C328.5 577.7 311.3 577.7 296.4 570.8L77.9 469.8C69.4 465.8 64 457.3 64 448C64 438.7 69.4 430.1 77.9 426.2z" />
+                        </svg>
+                      </a>
+                    )}
+                  </div>
+                ) : null
+                return (
                 <div
                   key={j.id}
                   style={{
                     border: '1px solid var(--border)',
                     borderRadius: 8,
-                    padding: '1rem',
-                    marginBottom: '0.75rem',
+                    padding: isMobile ? '0.6rem 0.7rem' : '1rem',
+                    marginBottom: '0.5rem',
                     background: 'var(--surface)',
                   }}
                 >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>
-                    <div style={isMobile ? { flex: '0 0 50%', minWidth: 0 } : undefined}>
-                      <div
-                        role="button"
-                        tabIndex={0}
-                        onClick={() => openJobDetailFromDashboardJobRow(j)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter' || e.key === ' ') {
-                            e.preventDefault()
-                            openJobDetailFromDashboardJobRow(j)
-                          }
-                        }}
-                        aria-label={`Job details: ${effectiveJobLedgerNumber(j.hcp_number, j.click_number) || '—'} · ${(j.job_name ?? '').trim() || '—'}`}
-                        style={{
-                          fontWeight: 600,
-                          cursor: 'pointer',
-                          color: 'var(--text-strong)',
-                          width: 'fit-content',
-                        }}
-                      >
-                        {effectiveJobLedgerNumber(j.hcp_number, j.click_number) || '—'} · {j.job_name || '—'}
+                  {/* On mobile the header stacks: the job info gets the full card
+                      width (not a 50% column), and the action buttons sit full-width
+                      below it — so Leave report + Collect Payment share a row instead
+                      of being crammed into the right half. */}
+                  <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', justifyContent: 'space-between', alignItems: isMobile ? 'stretch' : 'flex-start', gap: isMobile ? '0.5rem' : '1rem' }}>
+                    <div style={isMobile ? { width: '100%', minWidth: 0 } : undefined}>
+                      {/* Title row: on mobile the doc-link icons sit here (top-right),
+                          leaving the action row below for just the two buttons. */}
+                      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '0.5rem' }}>
+                        <div
+                          role="button"
+                          tabIndex={0}
+                          onClick={() => openJobDetailFromDashboardJobRow(j)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.preventDefault()
+                              openJobDetailFromDashboardJobRow(j)
+                            }
+                          }}
+                          aria-label={`Job details: ${effectiveJobLedgerNumber(j.hcp_number, j.click_number) || '—'} · ${(j.job_name ?? '').trim() || '—'}`}
+                          style={{
+                            fontWeight: 600,
+                            cursor: 'pointer',
+                            color: 'var(--text-strong)',
+                            minWidth: 0,
+                          }}
+                        >
+                          {effectiveJobLedgerNumber(j.hcp_number, j.click_number) || '—'} · {j.job_name || '—'}
+                        </div>
+                        {isMobile ? docLinksCluster : null}
                       </div>
                       <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginTop: 4 }}>
                         {j.job_address?.trim() ? (
@@ -132,50 +187,68 @@ export function DashboardTeamReadyToBillSection({
                           '—'
                         )}
                       </div>
-                      {isSubcontractorLikeRole(role) && narrowViewport660 && j.created_at && (
-                        <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginTop: 4 }} title="Time since job created">
-                          Open {formatTimeSince(j.created_at)}
-                        </div>
-                      )}
+                      {/* One muted meta line: Open · % · Last activity (the last part
+                          stays clickable → job-activity modal). narrowViewport660 also
+                          feeds the desktop last-activity block below, so they never
+                          both render. */}
+                      {isSubcontractorLikeRole(role) && narrowViewport660 && (() => {
+                        const staticText = [
+                          j.created_at ? `Open ${formatOpenAgeShort(j.created_at)}` : null,
+                          j.pct_complete != null ? `${j.pct_complete}% complete` : null,
+                        ]
+                          .filter(Boolean)
+                          .join(' · ')
+                        const m = subcontractorLastActivityMobileLine(j, { formatTitle: formatDatetime })
+                        const hasStatic = staticText.length > 0
+                        const hasActivity = !!m.textCompact
+                        if (!hasStatic && !hasActivity) return null
+                        return (
+                          <div
+                            style={{
+                              display: 'flex',
+                              flexWrap: 'wrap',
+                              alignItems: 'baseline',
+                              rowGap: 0,
+                              columnGap: '0.4rem',
+                              fontSize: '0.8125rem',
+                              color: 'var(--text-muted)',
+                              marginTop: 3,
+                              lineHeight: 1.3,
+                            }}
+                          >
+                            {hasStatic && (
+                              <span title="Time since job created · reported percent complete">{staticText}</span>
+                            )}
+                            {hasStatic && hasActivity && <span aria-hidden>·</span>}
+                            {hasActivity &&
+                              (m.clickable ? (
+                                <button
+                                  type="button"
+                                  className="subcontractorLastActivityTypeBtn"
+                                  title={m.title}
+                                  aria-label={m.aria}
+                                  style={{ lineHeight: 1.3, textAlign: 'left' }}
+                                  onClick={() =>
+                                    setSubcontractorJobActivityModalJob({
+                                      id: j.id,
+                                      hcpNumber: effectiveJobLedgerNumber(j.hcp_number, j.click_number) || '—',
+                                      jobName: j.job_name ?? '—',
+                                    })
+                                  }
+                                >
+                                  {m.textCompact}
+                                </button>
+                              ) : (
+                                <span title={m.title} aria-label={m.aria}>
+                                  {m.textCompact}
+                                </span>
+                              ))}
+                          </div>
+                        )
+                      })()}
                     </div>
-                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                      {(j.google_drive_link?.trim() || j.job_plans_link?.trim() || j.job_pictures_link?.trim()) && (
-                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
-                          {j.google_drive_link?.trim() && (
-                            <a
-                              href={j.google_drive_link.trim()}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              onClick={(e) => { e.preventDefault(); openInExternalBrowser(j.google_drive_link!.trim()) }}
-                              title="Google Drive"
-                              style={{ display: 'inline-flex', alignItems: 'center', color: 'var(--text-muted)', padding: '0.35rem' }}
-                            >
-                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="1.25em" height="1.25em" fill="currentColor" aria-hidden="true">
-                                <path d="M403 378.9L239.4 96L400.6 96L564.2 378.9L403 378.9zM265.5 402.5L184.9 544L495.4 544L576 402.5L265.5 402.5zM218.1 131.4L64 402.5L144.6 544L301 272.8L218.1 131.4z" />
-                              </svg>
-                            </a>
-                          )}
-                          {j.job_pictures_link?.trim() && (
-                            <span style={{ display: 'inline-flex', padding: '0.35rem' }}>
-                              <DashboardJobPicturesLinkRow layout="inline" jobPicturesLink={j.job_pictures_link} />
-                            </span>
-                          )}
-                          {j.job_plans_link?.trim() && (
-                            <a
-                              href={j.job_plans_link.trim()}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              onClick={(e) => { e.preventDefault(); openInExternalBrowser(j.job_plans_link!.trim()) }}
-                              title="Job Plans"
-                              style={{ display: 'inline-flex', alignItems: 'center', color: 'var(--text-muted)', padding: '0.35rem' }}
-                            >
-                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="1.25em" height="1.25em" fill="currentColor" aria-hidden="true">
-                                <path d="M296.5 69.2C311.4 62.3 328.6 62.3 343.5 69.2L562.1 170.2C570.6 174.1 576 182.6 576 192C576 201.4 570.6 209.9 562.1 213.8L343.5 314.8C328.6 321.7 311.4 321.7 296.5 314.8L77.9 213.8C69.4 209.8 64 201.3 64 192C64 182.7 69.4 174.1 77.9 170.2L296.5 69.2zM112.1 282.4L276.4 358.3C304.1 371.1 336 371.1 363.7 358.3L528 282.4L562.1 298.2C570.6 302.1 576 310.6 576 320C576 329.4 570.6 337.9 562.1 341.8L343.5 442.8C328.6 449.7 311.4 449.7 296.5 442.8L77.9 341.8C69.4 337.8 64 329.3 64 320C64 310.7 69.4 302.1 77.9 298.2L112 282.4zM77.9 426.2L112 410.4L276.3 486.3C304 499.1 335.9 499.1 363.6 486.3L527.9 410.4L562 426.2C570.5 430.1 575.9 438.6 575.9 448C575.9 457.4 570.5 465.9 562 469.8L343.4 570.8C328.5 577.7 311.3 577.7 296.4 570.8L77.9 469.8C69.4 465.8 64 457.3 64 448C64 438.7 69.4 430.1 77.9 426.2z" />
-                              </svg>
-                            </a>
-                          )}
-                        </div>
-                      )}
+                    <div style={{ display: 'flex', gap: isMobile ? '0.3rem' : '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                      {!isMobile ? docLinksCluster : null}
                       {(role === 'dev' || role === 'master_technician' || isAssistantLike(role) || role === 'primary') && (
                         <>
                           <button
@@ -196,7 +269,7 @@ export function DashboardTeamReadyToBillSection({
                           View<br />Reports
                         </button>
                       )}
-                      {isSubcontractorLikeRole(role) && !isMobile && (() => {
+                      {isSubcontractorLikeRole(role) && !narrowViewport660 && (() => {
                         const b = subcontractorLastActivityBlock(j)
                         return (
                           b.line3 != null ? (
@@ -249,22 +322,12 @@ export function DashboardTeamReadyToBillSection({
                           )
                         )
                       })()}
-                      {canLeaveJobFieldReport(role) && (
-                        <DashboardLeaveReportButton
-                          showReminder={leaveReportReminderForJobRow(j)}
-                          onClick={() =>
-                            setLeaveReportJob({
-                              id: j.id,
-                              hcpNumber: effectiveJobLedgerNumber(j.hcp_number, j.click_number) || '—',
-                              jobName: j.job_name ?? '—',
-                              jobAddress: j.job_address ?? '—',
-                            })
-                          }
-                        />
-                      )}
+                      {/* Collect Payment before Leave Report (v2.994): the money action
+                          leads on these subcontractor cards. */}
                       {isSubcontractorLikeRole(role) && (
                         <button
                           type="button"
+                          title="Collect payment"
                           onClick={() =>
                             setCollectPaymentJob({
                               id: j.id,
@@ -274,10 +337,11 @@ export function DashboardTeamReadyToBillSection({
                             })
                           }
                           style={{
-                            padding: '0.35rem 0.75rem',
+                            padding: isMobile ? '0.35rem 0.6rem' : '0.35rem 0.75rem',
                             fontSize: '0.875rem',
                             borderRadius: 4,
                             cursor: 'pointer',
+                            whiteSpace: 'nowrap',
                             ...((j.collect_payment_button_variant ?? 'default') === 'ready_terminal'
                               ? {
                                   background: '#15803d',
@@ -299,54 +363,30 @@ export function DashboardTeamReadyToBillSection({
                                   }),
                           }}
                         >
-                          {(j.collect_payment_button_variant ?? 'default') === 'pending_dispatch' ? (
-                            <>
-                              Collect<br />
-                              Payment (pending)
-                            </>
-                          ) : (
-                            <>
-                              Collect<br />Payment
-                            </>
-                          )}
+                          {(j.collect_payment_button_variant ?? 'default') === 'pending_dispatch'
+                            ? 'Collect (pending)'
+                            : 'Collect'}
                         </button>
+                      )}
+                      {canLeaveJobFieldReport(role) && (
+                        <DashboardLeaveReportButton
+                          singleLine
+                          buttonTitle="Leave a field report"
+                          showReminder={leaveReportReminderForJobRow(j)}
+                          onClick={() =>
+                            setLeaveReportJob({
+                              id: j.id,
+                              hcpNumber: effectiveJobLedgerNumber(j.hcp_number, j.click_number) || '—',
+                              jobName: j.job_name ?? '—',
+                              jobAddress: j.job_address ?? '—',
+                            })
+                          }
+                        />
                       )}
                       {j.created_at && (!isSubcontractorLikeRole(role) || !narrowViewport660) && (
                         <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }} title="Time since job created">
                           <>Open<br />{formatTimeSince(j.created_at)}</>
                         </span>
-                      )}
-                      {isSubcontractorLikeRole(role) && isMobile && (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', width: '100%', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-                          {(() => {
-                            const m = subcontractorLastActivityMobileLine(j, { formatTitle: formatDatetime })
-                            if (!m.clickable) {
-                              return (
-                                <span title={m.title} aria-label={m.aria} style={{ lineHeight: 1.25 }}>
-                                  {m.text}
-                                </span>
-                              )
-                            }
-                            return (
-                              <button
-                                type="button"
-                                className="subcontractorLastActivityTypeBtn"
-                                title={m.title}
-                                aria-label={m.aria}
-                                style={{ lineHeight: 1.25 }}
-                                onClick={() =>
-                                  setSubcontractorJobActivityModalJob({
-                                    id: j.id,
-                                    hcpNumber: effectiveJobLedgerNumber(j.hcp_number, j.click_number) || '—',
-                                    jobName: j.job_name ?? '—',
-                                  })
-                                }
-                              >
-                                {m.text}
-                              </button>
-                            )
-                          })()}
-                        </div>
                       )}
                     </div>
                   </div>
@@ -375,7 +415,8 @@ export function DashboardTeamReadyToBillSection({
                     </Link>
                   )}
                 </div>
-              ))}
+                )
+              })}
             </div>
           ))}
         </DashboardGroupCard>

@@ -28,6 +28,13 @@ export type DashboardTeamAssignedJobRow = {
   in_progress_step_id?: string | null
   collect_payment_button_variant?: string | null
   status?: string | null
+  /**
+   * jobs_ledger.pct_complete (0–100). Optional at runtime until the
+   * 20260722266000 migration is pushed — the older RTB dashboard RPC omits it,
+   * so the sub Ready to Bill card simply skips the "% complete" line. Only the
+   * ready-to-bill RPC returns it today.
+   */
+  pct_complete?: number | null
   /** v2.842: shown under the address on the Dashboard Assigned Jobs rows. */
   customer_name?: string | null
   /**

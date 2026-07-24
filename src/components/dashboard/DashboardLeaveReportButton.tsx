@@ -31,8 +31,10 @@ export function DashboardLeaveReportButton(props: {
   showReminder: boolean
   onClick: MouseEventHandler<HTMLButtonElement>
   buttonTitle?: string
+  /** Render "Leave Report" on one line (compact Ready to Bill cards); default keeps the stacked two-line form. */
+  singleLine?: boolean
 }) {
-  const { showReminder, onClick, buttonTitle } = props
+  const { showReminder, onClick, buttonTitle, singleLine = false } = props
   return (
     <span style={{ display: 'inline-flex', alignItems: 'center' }}>
       <span style={{ position: 'relative', display: 'inline-block' }}>
@@ -48,9 +50,10 @@ export function DashboardLeaveReportButton(props: {
             border: 'none',
             borderRadius: 4,
             cursor: 'pointer',
+            whiteSpace: 'nowrap',
           }}
         >
-          Leave<br />Report
+          {singleLine ? 'Leave Report' : <>Leave<br />Report</>}
         </button>
         {showReminder ? (
           <span
