@@ -227,7 +227,7 @@ serve(async (req) => {
 
     const { data: jobRow, error: jobErr } = await admin
       .from('jobs_ledger')
-      .select('id, master_user_id, hcp_number, job_name, customer_id')
+      .select('id, master_user_id, hcp_number, job_name, customer_id, job_address')
       .eq('id', invRow.job_id)
       .single()
 
@@ -340,6 +340,15 @@ serve(async (req) => {
         days_until_due: d,
         description: memo?.trim() || undefined,
         footer: footerTrimmedForStripe ?? undefined,
+        // v2.998: service address in the invoice header (hosted page + PDF).
+        // Read from jobs_ledger.job_address at creation time; Stripe caps
+        // custom_fields values at 140 chars. Omitted entirely when blank.
+        custom_fields: (() => {
+          const addr = typeof (jobRow as { job_address?: string | null }).job_address === 'string'
+            ? ((jobRow as { job_address?: string | null }).job_address ?? '').trim()
+            : ''
+          return addr ? [{ name: 'Service address', value: addr.slice(0, 140) }] : undefined
+        })(),
         number: stripeInvoiceNumber,
         metadata: {
           pipetooling_invoice_id: jobs_ledger_invoice_id,

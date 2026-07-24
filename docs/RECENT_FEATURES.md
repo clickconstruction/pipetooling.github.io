@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-24 (v2.997)
+last_updated: 2026-07-24 (v2.998)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.998)
+
+### Stripe invoices show the job's service address in the header (2026-07-24)
+[`create-stripe-invoice`](../supabase/functions/create-stripe-invoice/index.ts) now selects `jobs_ledger.job_address` and passes it as a Stripe **`custom_fields`** entry (`Service address`, value capped at Stripe's 140 chars), which renders in the invoice header block — near Invoice number / Date due — on both the hosted invoice page and the PDF. Read at invoice-creation time from the same field shown at the top of Edit Job; omitted entirely when the job has no address. Existing invoices are unchanged (Stripe invoices are immutable once created). The in-app preview (`preview-stripe-invoice`) uses `invoices.createPreview`, which doesn't support `custom_fields` (same as `number`/`footer` there), so the address appears on the real invoice only. **Deploy: `supabase functions deploy create-stripe-invoice`.**
 
 ## Latest Updates (v2.997)
 
