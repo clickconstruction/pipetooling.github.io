@@ -29,7 +29,7 @@ const PAGES: Array<{ path: string; marker: RegExp | string }> = [
   { path: '/estimates', marker: 'Estimates' },
   { path: '/quickfill', marker: /Quickfill/i },
   { path: '/people', marker: /People|Users/ },
-  { path: '/materials', marker: /Materials/ },
+  { path: '/materials', marker: /Price Book|Supply|Templates|Purchase/i },
   { path: '/settings', marker: /Settings/ },
 ]
 
@@ -90,6 +90,8 @@ test('Additional Report modal: ✕ stays reachable at max scroll (v2.990 pin)', 
     }
   })
   expect(result.ok, result.why).toBe(true)
-  // Close everything (read-only: no save).
-  await page.getByRole('button', { name: 'Close' }).first().click()
+  // Close everything (read-only: no save). Escape avoids the ambiguous
+  // two-dialogs-both-named-Close click that flaked the first CI run.
+  await page.keyboard.press('Escape')
+  await page.keyboard.press('Escape')
 })
