@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-24 (v2.996)
+last_updated: 2026-07-24 (v2.997)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.997)
+
+### Dashboard: Assigned Jobs gets the same compact mobile cards as Ready to Bill (2026-07-24)
+Applies the v2.994 compact treatment to the Assigned Jobs section in [`Dashboard.tsx`](../src/pages/Dashboard.tsx): on mobile the row header stacks (info full-width instead of a 50% column), the doc-link icon cluster turns horizontal, **Leave Report** and **Send to Billing** render single-line and share one row, and the sub meta collapses to one wrapping line — `Open <age> · <Source> <time> ago` — using `formatOpenAgeShort` + `textCompact` (activity part still clickable → activity modal). Desktop untouched (all changes `isMobile`-gated). Verified live as a subcontractor at 375px: 20 rows, buttons one row, no sideways overflow.
 
 ## Latest Updates (v2.996)
 
