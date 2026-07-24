@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-24 (v2.1000)
+last_updated: 2026-07-24 (v2.1003)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,24 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1003)
+
+### E2E: phone-viewport smoke spec pins the mobile-overflow bug class — and caught Materials (2026-07-24)
+Improvement-plan item #5. New [`e2e/viewport-smoke.spec.ts`](../e2e/viewport-smoke.spec.ts) in the Tier-1 Playwright suite (prod-targeting, post-deploy + nightly, non-gating per `E2E_SMOKE.md` rules): at 375×812 it asserts (1) **no document-level sideways overflow** on Dashboard, Jobs Stages, Estimates, Quickfill, People, Materials, Settings — the exact `scrollWidth > clientWidth` signature behind the v2.980 toolbar and v2.982 header bugs; (2) Stages board **tables scroll inside their own wrappers** (v2.984 contract); (3) the Additional Report modal's **sticky ✕ stays visible at max scroll** (v2.990 pin). **Its first CI run caught a real bug**: `/materials` panned sideways at 375px (1,135px layout). Root cause: `.pageWrap` is a flex item with `min-width: auto`, so the Materials tab strip's `width: max-content` floored the whole page at its intrinsic width. Fixed globally in [`index.css`](../src/index.css) (`.pageWrap` gains `width: 100%; min-width: 0; box-sizing: border-box`), plus the Parts Book table wrapper `overflow: hidden` → `overflowX: auto` in [`Materials.tsx`](../src/pages/Materials.tsx) (hidden also made the right columns unreachable on phones). A later CI run caught **`/quickfill`** the same way (662px layout — content-dependent, so earlier runs missed it): Quickfill's root wrapper isn't `.pageWrap`, so it got the same containment inline in [`Quickfill.tsx`](../src/pages/Quickfill.tsx). Local e2e runs need Node ≥ 20.6 (`PATH=/usr/local/opt/node@22/bin:$PATH npm run e2e`) and `E2E_TEST_EMAIL`/`E2E_TEST_PASSWORD` in `.env.local`.
+
+### Docs restore: the v2.1001 and v2.1002 changelog entries below were rebuilt (2026-07-24)
+Both PRs (#685, #686) shipped WITHOUT their `RECENT_FEATURES.md`/`releaseNotes.ts` entries: deploy-watcher scripts ran `git reset --hard` in the working tree between the docs being written and committed, silently discarding them — the releaseNotes drift test passed because both files agreed with each other. Entries reconstructed verbatim below. Process rule going forward: **never `git reset --hard` in the worktree while feature work is uncommitted** — deploy steps must verify `git status --short` is clean first.
+
+## Latest Updates (v2.1002)
+
+### Bill Customer: unsent hazmat fees roll into the final bill as line items (2026-07-24)
+Reported on job 857 (TJ Brace): a $500 unsent hazmat rider made the balance invoice $1,380 and the customer would have received two invoices. Now [`SendRecordInvoiceModal`](../src/components/jobs/SendRecordInvoiceModal.tsx) detects the job's OTHER unsent hazmat rider invoices (linked via `job_hazmat_incidents.invoice_id`; draft/RTB, no `stripe_invoice_id`, never sent) and shows a **checked-by-default** "Include hazmat fee ($X) as a line item" box with the resulting total ("Invoice total becomes $1,880.00"). Detection is the pure kernel [`hazmatRollIn.ts`](../src/lib/hazmatRollIn.ts) (`eligibleHazmatRollIns`, 5 tests: never a sent rider, never when billing the rider itself, multi-rider sum/dedupe). On submit the Stripe amount includes the fee and a new `extra_line_items` param on [`create-stripe-invoice`](../supabase/functions/create-stripe-invoice/index.ts) renders each fee as its **own labeled line** ("Biohazard remediation fee — incident MM/DD/YYYY") — fixtures allocate to `total − extras`, so the fee is never smeared across work lines (new `extra_line` line-source kind, server + client). After Stripe succeeds the rider folds: the incident is **repointed first** to the final invoice, then the rider row is deleted, so balance math counts the fee exactly once; the notice link still auto-joins the footer and the notice/PDF flow is untouched. Verified live on the real job 857. Help guide updated (`charge-a-hazmat-fee.md`). Function deployed 2026-07-24.
+
+## Latest Updates (v2.1001)
+
+### Stripe memo: service address on top + "Paper checks" wording (2026-07-24)
+Two memo changes for Stripe invoices. (1) [`create-stripe-invoice`](../supabase/functions/create-stripe-invoice/index.ts) now prepends `Service address: <jobs_ledger.job_address>` to the invoice `description` — the Stripe email summary card shows the memo but not v2.998's `custom_fields`, so the address needed to lead the memo too; office-typed memo text follows unchanged, blank address = no line. (2) The org memo presets (`app_settings.bill_customer_memo_presets_v1`, both Check and Wire) reworded in prod (data update, no migration): "Cheques can be sent to:" → "Paper checks can be sent to:" with a new trailing "(if you do this call 512 360-0599 first)"; `supabase/seed.sql` refreshed to match. Function deployed 2026-07-24 (verified live: deployed source contains the memo block).
 
 ## Latest Updates (v2.1000)
 

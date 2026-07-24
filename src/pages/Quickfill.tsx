@@ -1472,7 +1472,10 @@ function QuickfillPage() {
     .map(({ id, label }) => ({ id, label }))
 
   return (
-    <div style={{ padding: '1.5rem', paddingBottom: dockSections.length > 1 ? '4.5rem' : '1.5rem', maxWidth: 1200, margin: '0 auto' }}>
+    // width/minWidth (v2.1003): same containment as .pageWrap — without it, flex
+    // min-content flooring let wide section rows pan the whole page sideways on
+    // phones (caught by the viewport e2e spec).
+    <div style={{ padding: '1.5rem', paddingBottom: dockSections.length > 1 ? '4.5rem' : '1.5rem', maxWidth: 1200, margin: '0 auto', width: '100%', minWidth: 0, boxSizing: 'border-box' }}>
       {dockSections.length > 1 ? <SectionDock sections={dockSections} ariaLabel="Quickfill sections" /> : null}
       <h1 style={{ fontSize: '1.5rem', fontWeight: 600, marginBottom: '1.5rem', textAlign: 'center' }}>Quickfill</h1>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', justifyContent: 'center', marginBottom: '1.5rem' }}>
