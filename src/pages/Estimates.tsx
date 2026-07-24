@@ -33,6 +33,7 @@ import {
 import AutosizeTextarea from '../components/AutosizeTextarea'
 import EstimateAcceptBody from '../components/estimates/EstimateAcceptBody'
 import CustomerAcceptanceRecordModal from '../components/estimates/CustomerAcceptanceRecordModal'
+import EstimateAcceptedNotifySettingsModal from '../components/estimates/EstimateAcceptedNotifySettingsModal'
 import { EstimateAcceptTypedSignatureLine } from '../components/estimates/EstimateAcceptTypedSignatureLine'
 import EstimateCustomerThankYou from '../components/estimates/EstimateCustomerThankYou'
 import {
@@ -1564,6 +1565,8 @@ function EstimateList() {
   /** `load()` only filters by this URL param; matches Jobs `?customer=`. */
   const customerParamForEstimatesReload = searchParams.get('customer')
   const [listTab, setListTab] = useState<EstimateListTab>('followup')
+  /** ⚙ next to New estimate: org-wide "who gets emailed when an estimate is accepted". */
+  const [acceptNotifySettingsOpen, setAcceptNotifySettingsOpen] = useState(false)
   const [listSearch, setListSearch] = useState('')
   const [rows, setRows] = useState<EstimateListRow[]>([])
   const [loading, setLoading] = useState(true)
@@ -1697,10 +1700,40 @@ function EstimateList() {
       <style>{estimatesListPageCss}</style>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
         <h1 style={{ margin: 0 }}>Estimates</h1>
-        <button type="button" onClick={() => void createDraft()} disabled={creating} style={estPrimaryButton(creating)}>
-          {creating ? 'Creating…' : 'New estimate'}
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+          {role === 'dev' || role === 'master_technician' ? (
+            <button
+              type="button"
+              onClick={() => setAcceptNotifySettingsOpen(true)}
+              title="Who gets emailed when a customer accepts an estimate"
+              aria-label="Estimate accepted notification settings"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                height: 36,
+                padding: '0 0.75rem',
+                border: '1px solid var(--border-strong)',
+                borderRadius: 4,
+                background: 'var(--surface)',
+                cursor: 'pointer',
+                color: 'var(--text-700)',
+                fontSize: '0.8125rem',
+                fontWeight: 500,
+              }}
+            >
+              <span aria-hidden>⚙</span>
+              Accepted notifications
+            </button>
+          ) : null}
+          <button type="button" onClick={() => void createDraft()} disabled={creating} style={estPrimaryButton(creating)}>
+            {creating ? 'Creating…' : 'New estimate'}
+          </button>
+        </div>
       </div>
+      {acceptNotifySettingsOpen ? (
+        <EstimateAcceptedNotifySettingsModal onClose={() => setAcceptNotifySettingsOpen(false)} />
+      ) : null}
       <div
         role="tablist"
         aria-label="Estimates views"

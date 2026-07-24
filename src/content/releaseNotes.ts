@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.991',
+    date: '2026-07-24',
+    title: 'Set who gets emailed when an estimate is accepted',
+    kind: 'feature',
+    highlights: [
+      'A new ⚙ Accepted notifications button on Estimates lets you pick people who are emailed every time a customer accepts an estimate — including estimates already out with customers.',
+      'Individual estimates can still add extra people under "Email when customer accepts"; those are sent as well.',
+      'Anyone without an email address, or without access to the estimate\'s owner, is skipped automatically.',
+    ],
+  },
+  {
     version: 'v2.990',
     date: '2026-07-24',
     title: 'Close the Additional Report without scrolling back up',

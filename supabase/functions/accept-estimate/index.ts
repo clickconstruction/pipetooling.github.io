@@ -65,6 +65,33 @@ function escapeHtmlLite(s: string): string {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 }
 
+/**
+ * Org-wide "always notify" recipients for estimate acceptance. Same shape and
+ * dev-write RLS as the paid-job-email recipients setting; the client editor is
+ * `src/components/estimates/EstimateAcceptedNotifySettingsModal.tsx` and the
+ * parse/union kernel is `src/lib/estimateAcceptedNotify.ts` — keep in sync.
+ */
+const ESTIMATE_ACCEPTED_NOTIFY_SETTING_KEY = 'estimate_accepted_notify_recipients_v1'
+
+async function loadOrgWideAcceptNotifyIds(admin: ReturnType<typeof createClient>): Promise<string[]> {
+  const { data: setting, error } = await admin
+    .from('app_settings')
+    .select('value_text')
+    .eq('key', ESTIMATE_ACCEPTED_NOTIFY_SETTING_KEY)
+    .maybeSingle()
+  if (error) {
+    console.error('accept-estimate: load org-wide notify setting', error)
+    return []
+  }
+  try {
+    const parsed = JSON.parse(setting?.value_text ?? '[]')
+    if (!Array.isArray(parsed)) return []
+    return parsed.filter((x): x is string => typeof x === 'string' && x.trim().length > 0).map((x) => x.trim())
+  } catch {
+    return []
+  }
+}
+
 /** Best-effort staff emails; failures logged only (customer acceptance already persisted). */
 async function notifyStaffEstimateAccepted(params: {
   admin: ReturnType<typeof createClient>
@@ -74,8 +101,11 @@ async function notifyStaffEstimateAccepted(params: {
   title: string
   acceptorPrintedName: string
 }): Promise<void> {
-  const raw = params.candidateIds ?? []
-  const ids = [...new Set(raw.filter((x) => typeof x === 'string' && x.length > 0))]
+  // Union: this estimate's own picks first, then the org-wide always-notify
+  // list. The eligibility RPC below still filters whatever comes out.
+  const perEstimate = (params.candidateIds ?? []).filter((x) => typeof x === 'string' && x.trim().length > 0)
+  const orgWide = await loadOrgWideAcceptNotifyIds(params.admin)
+  const ids = [...new Set([...perEstimate, ...orgWide].map((x) => x.trim()))]
   if (ids.length === 0) return
 
   const resendApiKey = Deno.env.get('RESEND_API_KEY')

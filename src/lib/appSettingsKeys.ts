@@ -154,6 +154,16 @@ export const APP_SETTINGS_KEY_TEAM_REVIEW_COMPOSITE_WEIGHTS = 'team_review_compo
 export const APP_SETTINGS_KEY_PAID_JOB_EMAIL_RECIPIENTS = 'paid_job_email_recipients_v1' as const
 
 /**
+ * JSON array of `users.id` uuid strings in `value_text`: who is emailed on EVERY estimate
+ * acceptance ("always notify"), unioned with that estimate's own `accept_notify_user_ids`.
+ * Dev writes (⚙ on Estimates); all authenticated read. The `accept-estimate` edge function
+ * reads the same key and applies the same union server-side.
+ * @see `src/lib/estimateAcceptedNotify.ts`
+ */
+export const APP_SETTINGS_KEY_ESTIMATE_ACCEPTED_NOTIFY_RECIPIENTS =
+  'estimate_accepted_notify_recipients_v1' as const
+
+/**
  * `value_num`: days between team-member reviews before the Dashboard/Dispatch Inbox reminder fires
  * (default 50 via `parseTeamReviewCadenceDays`). Dev writes (Settings → Dashboard & alerts); all authenticated read.
  * @see `src/lib/prospects/teamReviewDue.ts`

@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-24 (v2.990)
+last_updated: 2026-07-24 (v2.991)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.991)
+
+### Estimates: org-wide "who gets emailed when an estimate is accepted" (2026-07-24)
+Estimates already emailed staff on acceptance, but only per estimate (`estimates.accept_notify_user_ids`, set in the estimate form's "Email when customer accepts" fieldset) — there was no way to say "these people always hear about acceptances", the way Jobs → Paid in Full's ⚙ works. New ⚙ **Accepted notifications** next to **New estimate** (dev + master open it; **dev-write only**, masters read-only — `app_settings` RLS) editing an org-wide always-notify list: [`EstimateAcceptedNotifySettingsModal`](../src/components/estimates/EstimateAcceptedNotifySettingsModal.tsx), deliberately shaped like [`PaidInFullEmailSettingsModal`](../src/components/jobs/PaidInFullEmailSettingsModal.tsx) so the two notification editors read the same. Storage is `app_settings` key `estimate_accepted_notify_recipients_v1` (JSON `users.id` array in `value_text`) — **no migration**, `app_settings` is an existing key/value table. Semantics chosen: **always notify** (not a per-estimate default), so it covers estimates already out with customers; the per-estimate picker still adds one-off extras on top. New kernel [`estimateAcceptedNotify.ts`](../src/lib/estimateAcceptedNotify.ts) (13 tests) holds parse/serialize plus `mergeEstimateAcceptNotifyRecipients` — per-estimate ids first, then org-wide, deduped (trimmed, so a padded duplicate isn't emailed twice), non-uuids dropped; a missing/malformed setting parses to `[]`, so behavior with the feature unused is identical to before. [`accept-estimate`](../supabase/functions/accept-estimate/index.ts) applies the same union server-side before the existing `estimate_accept_notify_filter_eligible_user_ids` gate, so archived / no-email / no-access users are still dropped and the org-wide list can't leak an estimate to someone who couldn't already see it. **Deploy note: `supabase functions deploy accept-estimate` is required** — until then the ⚙ saves fine but only per-estimate recipients are emailed. Help guide: `estimate-accepted-notifications.md`.
 
 ## Latest Updates (v2.990)
 
