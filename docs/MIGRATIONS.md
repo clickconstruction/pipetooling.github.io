@@ -105,6 +105,12 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 #### July 22, 2026
 
+**`20260722270000_person_identity_phase_b2.sql`** _(apply via `supabase db push` after the file is on `main`)_
+- **Purpose**: Person identity Phase B2 (v2.1009) — backfill + insert-triggers on the five remaining person_id carriers; new `people_labor_job_assignees` junction shadowing `people_labor_jobs.assigned_to_name` with sync trigger + backfill.
+- **Security**: new table with RLS (visibility via caller-context EXISTS on the parent labor job; office-role write gates); sync fn SECURITY DEFINER; ends with BOTH read-only blocks (CREATE TABLE rule).
+- **Ordering**: either order safe — nothing reads the junction until Phase C/D; unresolved names skip. Idempotent.
+- **Category**: People / identity migration
+
 **`20260722268000_person_identity_phase_b_backfill.sql`** _(apply via `supabase db push` after the file is on `main`)_
 - **Purpose**: Person identity Phase B (v2.1008) — creates linked `people` rows for pay-named users (role-mapped kinds, `account_user_id` link, single-master owner), adds `resolve_pay_person_id(name)`, backfills `person_id` where NULL on the five carrier tables, and installs BEFORE INSERT auto-resolve triggers. Name columns remain display + fallback.
 - **Security**: resolver is STABLE non-definer; triggers write only NEW.person_id; INSERT into people runs as migration owner. No RLS/policy changes; no CREATE TABLE.

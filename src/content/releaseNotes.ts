@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1009',
+    date: '2026-07-24',
+    title: 'Payroll identity: the rest of the tables',
+    kind: 'infra',
+    highlights: [
+      'Crew bids, pay stub days, offsets, and review records are now person-keyed like the rest of payroll, and sub-sheet assignees gained a proper link table — all behind the scenes, nothing you see changes.',
+    ],
+  },
+  {
     version: 'v2.1008',
     date: '2026-07-24',
     title: 'Payroll identity gets rename-proof',
