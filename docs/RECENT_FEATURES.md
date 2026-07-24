@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-24 (v2.1005)
+last_updated: 2026-07-24 (v2.1006)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1006)
+
+### Dashboard: the Call button (with call logging) on every job card (2026-07-24)
+Improvement-plan item #7 — and cheaper than planned: the phone lives on `jobs_ledger.customer_phone` (the same column My Schedule reads), so **no RPC migrations** — new hook [`useJobCustomerPhones`](../src/hooks/useJobCustomerPhones.ts) fetches phones for the visible job ids client-side (RLS already scopes reads). New shared [`JobRowCallButton`](../src/components/dashboard/dashboardJobRowShared.tsx) (2.5em glyph, photo-icon size) wired into all three sections — [`DashboardTeamReadyToBillSection`](../src/components/dashboard/DashboardTeamReadyToBillSection.tsx), [`DashboardAssignedJobsSection`](../src/components/dashboard/DashboardAssignedJobsSection.tsx), [`DashboardSuperintendentJobsSection`](../src/components/dashboard/DashboardSuperintendentJobsSection.tsx) — each opening the v2.995 [`CallCustomerModal`](../src/components/dashboard/CallCustomerModal.tsx) (mis-click guard: big tel: button + "Log call" notes that post to the job's activity thread everywhere). Renders only when the job has a phone. The v2.1004 extraction made this one wiring per section instead of three copies in a 2k-line page. Verified live as a subcontractor: 12 call buttons across RTB + Assigned cards, correct job label + number in the modal.
 
 ## Latest Updates (v2.1005)
 

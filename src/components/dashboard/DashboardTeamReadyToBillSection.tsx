@@ -1,6 +1,9 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import CollectPaymentModal from '../jobs/CollectPaymentModal'
+import CallCustomerModal from './CallCustomerModal'
+import { JobRowCallButton } from './dashboardJobRowShared'
+import { useJobCustomerPhones } from '../../hooks/useJobCustomerPhones'
 import { DashboardGroupCard } from './DashboardGroupCard'
 import { canLeaveJobFieldReport } from '../../lib/canLeaveJobFieldReport'
 import { isAssistantLike, isSubcontractorLikeRole } from '../../lib/subcontractorLikeRole'
@@ -74,6 +77,9 @@ export function DashboardTeamReadyToBillSection({
   setLeaveReportJob,
   setSubcontractorJobActivityModalJob,
 }: DashboardTeamReadyToBillSectionProps) {
+  // v2.1006: phone icon -> CallCustomerModal on rows with a customer phone.
+  const phones = useJobCustomerPhones(assignedReadyToBillJobs.map((j) => j.id))
+  const [callModal, setCallModal] = useState<{ phone: string; jobId: string; jobLabel: string } | null>(null)
   const [collectPaymentJob, setCollectPaymentJob] = useState<{
     id: string
     hcpNumber: string
@@ -178,6 +184,15 @@ export function DashboardTeamReadyToBillSection({
                         >
                           {effectiveJobLedgerNumber(j.hcp_number, j.click_number) || '—'} · {j.job_name || '—'}
                         </div>
+                        {phones.get(j.id) ? (
+                          <JobRowCallButton
+                            phone={phones.get(j.id)!}
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              setCallModal({ phone: phones.get(j.id)!, jobId: j.id, jobLabel: `${effectiveJobLedgerNumber(j.hcp_number, j.click_number) || '—'} · ${j.job_name || '—'}` })
+                            }}
+                          />
+                        ) : null}
                         {isMobile ? docLinksCluster : null}
                       </div>
                       <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginTop: 4 }}>
@@ -248,7 +263,16 @@ export function DashboardTeamReadyToBillSection({
                       })()}
                     </div>
                     <div style={{ display: 'flex', gap: isMobile ? '0.3rem' : '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                      {!isMobile ? docLinksCluster : null}
+                      {phones.get(j.id) ? (
+                        <JobRowCallButton
+                          phone={phones.get(j.id)!}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setCallModal({ phone: phones.get(j.id)!, jobId: j.id, jobLabel: `${effectiveJobLedgerNumber(j.hcp_number, j.click_number) || '—'} · ${j.job_name || '—'}` })
+                          }}
+                        />
+                      ) : null}
+                        {!isMobile ? docLinksCluster : null}
                       {(role === 'dev' || role === 'master_technician' || isAssistantLike(role) || role === 'primary') && (
                         <>
                           <button
@@ -421,6 +445,9 @@ export function DashboardTeamReadyToBillSection({
           ))}
         </DashboardGroupCard>
       )}
+      {callModal ? (
+        <CallCustomerModal phone={callModal.phone} jobId={callModal.jobId} jobLabel={callModal.jobLabel} onClose={() => setCallModal(null)} />
+      ) : null}
       {collectPaymentJob ? (
         <CollectPaymentModal
           open

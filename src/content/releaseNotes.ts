@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1006',
+    date: '2026-07-24',
+    title: 'Call the customer from any Dashboard job card',
+    kind: 'feature',
+    highlights: [
+      'The phone button now appears on Ready to Bill, Assigned Jobs, and Superintendent Jobs cards — not just My Schedule — whenever the job has a customer phone.',
+      'Same tap-safe flow everywhere: the number opens in a window first, and Log call posts your notes to the job\'s activity thread across the app.',
+    ],
+  },
+  {
     version: 'v2.1005',
     date: '2026-07-24',
     title: 'Billing popups fit phone screens',

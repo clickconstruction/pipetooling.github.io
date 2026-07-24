@@ -1,4 +1,8 @@
 import type { Dispatch, SetStateAction } from 'react'
+import { useState } from 'react'
+import CallCustomerModal from './CallCustomerModal'
+import { useJobCustomerPhones } from '../../hooks/useJobCustomerPhones'
+
 import { Link } from 'react-router-dom'
 import type { UserRole } from '../../hooks/useAuth'
 import type { DashboardTeamAssignedJobRow } from '../../lib/dashboardTeamAssignedJobRow'
@@ -21,6 +25,7 @@ import { DashboardLeaveReportButton } from './DashboardLeaveReportButton'
 import {
   DriveLinkGlyph,
   JOB_ROW_LINK_ICON_COLUMN_STYLE,
+  JobRowCallButton,
   JOB_ROW_LINK_ICON_STYLE,
   JOB_ROW_PICTURES_ICON_WRAP_STYLE,
   JobPlansGlyph,
@@ -72,7 +77,11 @@ export function DashboardAssignedJobsSection({
   jobStatusUpdatingId: string | null
   formatDatetime: (iso: string) => string
 }) {
+  // v2.1006: phone icon -> CallCustomerModal (mis-click guard + call notes) on every row with a customer phone.
+  const phones = useJobCustomerPhones(assignedJobs.map((j) => j.id))
+  const [callModal, setCallModal] = useState<{ phone: string; jobId: string; jobLabel: string } | null>(null)
   return (
+    <>
         <DashboardGroupCard
           id="dash-assigned-jobs"
           title={`Assigned Jobs (${assignedJobs.length})`}
@@ -165,6 +174,15 @@ export function DashboardAssignedJobsSection({
                       })()}
                     </div>
                     <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                      {phones.get(j.id) ? (
+                        <JobRowCallButton
+                          phone={phones.get(j.id)!}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setCallModal({ phone: phones.get(j.id)!, jobId: j.id, jobLabel: `${effectiveJobLedgerNumber(j.hcp_number, j.click_number) || '—'} · ${j.job_name || '—'}` })
+                          }}
+                        />
+                      ) : null}
                       {(j.google_drive_link?.trim() || j.job_plans_link?.trim() || j.job_pictures_link?.trim()) && (
                         <div style={{ ...JOB_ROW_LINK_ICON_COLUMN_STYLE, flexDirection: isMobile ? 'row' : 'column' }}>
                           {j.google_drive_link?.trim() && (
@@ -368,5 +386,9 @@ export function DashboardAssignedJobsSection({
             </div>
           )}
         </DashboardGroupCard>
+      {callModal ? (
+        <CallCustomerModal phone={callModal.phone} jobId={callModal.jobId} jobLabel={callModal.jobLabel} onClose={() => setCallModal(null)} />
+      ) : null}
+    </>
   )
 }
