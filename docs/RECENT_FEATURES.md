@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-24 (v2.1006)
+last_updated: 2026-07-24 (v2.1007)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2046,10 +2046,16 @@ when_to_read:
 155. [Customer and Project Management](#customer-and-project-management)
 ---
 
+## Latest Updates (v2.1007)
+
+### Update pill re-surfaces on navigation — no more week-old bundles (2026-07-24)
+Improvement-plan item #8. "Not now" on the new-version pill used to dismiss it until the NEXT deploy — one tap and a phone rode a stale bundle for days (the v2.986 outage tail: users were on v2.963 without knowing). Now [`UpdatePrompt`](../src/components/UpdatePrompt.tsx) records the dismissal and re-shows the pill on route navigation while an update is still waiting, throttled by new kernel [`updatePillResurface.ts`](../src/lib/updatePillResurface.ts) (4 tests) to at most once per 10 minutes — a between-tasks nudge, not a nag. Reload behavior unchanged. (Version note: v2.1006 is the parallel Dashboard call-button PR, delayed by a GitHub outage.)
+
 ## Latest Updates (v2.1006)
 
 ### Dashboard: the Call button (with call logging) on every job card (2026-07-24)
 Improvement-plan item #7 — and cheaper than planned: the phone lives on `jobs_ledger.customer_phone` (the same column My Schedule reads), so **no RPC migrations** — new hook [`useJobCustomerPhones`](../src/hooks/useJobCustomerPhones.ts) fetches phones for the visible job ids client-side (RLS already scopes reads). New shared [`JobRowCallButton`](../src/components/dashboard/dashboardJobRowShared.tsx) (2.5em glyph, photo-icon size) wired into all three sections — [`DashboardTeamReadyToBillSection`](../src/components/dashboard/DashboardTeamReadyToBillSection.tsx), [`DashboardAssignedJobsSection`](../src/components/dashboard/DashboardAssignedJobsSection.tsx), [`DashboardSuperintendentJobsSection`](../src/components/dashboard/DashboardSuperintendentJobsSection.tsx) — each opening the v2.995 [`CallCustomerModal`](../src/components/dashboard/CallCustomerModal.tsx) (mis-click guard: big tel: button + "Log call" notes that post to the job's activity thread everywhere). Renders only when the job has a phone. The v2.1004 extraction made this one wiring per section instead of three copies in a 2k-line page. Verified live as a subcontractor: 12 call buttons across RTB + Assigned cards, correct job label + number in the modal.
+
 
 ## Latest Updates (v2.1005)
 
