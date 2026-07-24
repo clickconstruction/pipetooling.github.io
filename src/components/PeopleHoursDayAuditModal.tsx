@@ -24,6 +24,7 @@ import { QuickfillScheduleUserRow } from './schedule/QuickfillScheduleUserRow'
 import { scheduleFormatWindow } from '../lib/jobScheduleChicago'
 import { formatScheduleDispatchHubJobTitle } from '../lib/scheduleDispatchHub'
 import { companyWeekStartSundayContaining, getDefaultWeekRange } from '../utils/dateUtils'
+import { phoneSafeMinWidth } from '../lib/stickyModalHeaderStyle'
 
 type CrewRow = MergedCrewMapRow
 
@@ -665,7 +666,7 @@ export function PeopleHoursDayAuditModal({
         />
       )}
       <div
-        style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 400, maxWidth: '90%', maxHeight: '90vh', overflow: 'auto' }}
+        style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: phoneSafeMinWidth(400), boxSizing: 'border-box', maxWidth: '90%', maxHeight: '90vh', overflow: 'auto' }}
         role="dialog"
         aria-labelledby="hours-day-audit-title"
       >

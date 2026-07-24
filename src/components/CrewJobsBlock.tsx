@@ -23,6 +23,7 @@ import { getBidServiceTypeTag } from '../utils/unifiedJobBidSearch'
 import { useLedgerPrefixMap } from '../contexts/LedgerDisplayPrefixContext'
 import { formatBidLedgerShortLine, formatJobLedgerShortLine } from '../lib/ledgerDisplayPrefixes'
 import { isAssistantLike } from '../lib/subcontractorLikeRole'
+import { phoneSafeMinWidth } from '../lib/stickyModalHeaderStyle'
 
 const NOTES_PREVIEW_MAX = 80
 
@@ -1036,7 +1037,7 @@ export function CrewJobsBlock({
             zIndex: 1001,
           }}
         >
-          <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 400, maxWidth: '90%' }}>
+          <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: phoneSafeMinWidth(400), boxSizing: 'border-box', maxWidth: '90%' }}>
             <h3 style={{ margin: '0 0 1rem 0', fontSize: '1.125rem' }}>Add job or bid for {crewJobSearchModal.personName}</h3>
             <input
               type="search"

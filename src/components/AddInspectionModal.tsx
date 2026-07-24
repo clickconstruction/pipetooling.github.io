@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { useToastContext } from '../contexts/ToastContext'
+import { STICKY_MODAL_CLOSE_BUTTON_STYLE, stickyModalHeaderStyle, stickyModalPanelStyle } from '../lib/stickyModalHeaderStyle'
+import { useBodyScrollLock } from '../hooks/useBodyScrollLock'
 
 type JobSearchResult = { id: string; source: 'job_ledger' | 'project'; display_name: string; hcp_number: string; address?: string }
 
@@ -145,6 +147,10 @@ export default function AddInspectionModal({ open, onClose, onSaved, authUserId 
     handleClose()
   }
 
+  // Freeze the page behind the modal — dragging inside it used to scroll the
+  // list underneath on a phone, and closing then landed somewhere else.
+  useBodyScrollLock(open)
+
   if (!open) return null
 
   const canSubmit = selectedJob && address.trim() && inspectionType && scheduledDate && authUserId
@@ -157,10 +163,12 @@ export default function AddInspectionModal({ open, onClose, onSaved, authUserId 
 
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 65 }}>
-      <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 400, maxWidth: 560, maxHeight: '90vh', overflow: 'auto' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+      {/* This panel is the scroller — the title bar sticks so the × stays reachable
+          on a phone instead of scrolling away once the form fills in (v2.990 pattern). */}
+      <div style={{ background: 'var(--surface)', borderRadius: 8, maxHeight: '90vh', overflow: 'auto', ...stickyModalPanelStyle(560) }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.75rem', ...stickyModalHeaderStyle() }}>
           <h2 style={{ margin: 0 }}>Add inspection</h2>
-          <button type="button" onClick={handleClose} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.25rem', color: 'var(--text-muted)' }} aria-label="Close">×</button>
+          <button type="button" onClick={handleClose} style={STICKY_MODAL_CLOSE_BUTTON_STYLE} aria-label="Close">×</button>
         </div>
 
         <form onSubmit={handleSubmit}>

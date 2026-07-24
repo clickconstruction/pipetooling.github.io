@@ -1,30 +1,18 @@
 import { useEffect } from 'react'
+import { acquireBodyScrollLock } from '../lib/bodyScrollLock'
 
-/** Locks document scroll (iOS-friendly fixed body + restore). No-op when `locked` is false. */
+/**
+ * Locks document scroll behind an open modal (iOS-friendly fixed body, scroll
+ * offset restored on close). No-op when `locked` is false.
+ *
+ * The lock is reference-counted in `bodyScrollLock.ts`, so stacked modals are
+ * safe: the page stays frozen until the last one closes.
+ */
 export function useBodyScrollLock(locked: boolean): void {
   useEffect(() => {
     if (!locked) return
-
-    const scrollY = window.scrollY
-    const prevOverflow = document.body.style.overflow
-    const prevPosition = document.body.style.position
-    const prevTop = document.body.style.top
-    const prevLeft = document.body.style.left
-    const prevRight = document.body.style.right
-
-    document.body.style.overflow = 'hidden'
-    document.body.style.position = 'fixed'
-    document.body.style.top = `-${scrollY}px`
-    document.body.style.left = '0'
-    document.body.style.right = '0'
-
-    return () => {
-      document.body.style.overflow = prevOverflow
-      document.body.style.position = prevPosition
-      document.body.style.top = prevTop
-      document.body.style.left = prevLeft
-      document.body.style.right = prevRight
-      window.scrollTo(0, scrollY)
-    }
+    // Width of the scrollbar the fixed body is about to remove — 0 on touch.
+    const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth
+    return acquireBodyScrollLock(document.body, window, scrollbarWidth)
   }, [locked])
 }

@@ -12,6 +12,8 @@ import {
 import { validateReportSignatureDataUrlForSubmit } from '../lib/reportSignatureField'
 import { ReportTemplatePercentField } from './ReportTemplatePercentField'
 import { ReportTemplateSignatureField } from './ReportTemplateSignatureField'
+import { STICKY_MODAL_CLOSE_BUTTON_STYLE, stickyModalHeaderStyle, stickyModalPanelStyle } from '../lib/stickyModalHeaderStyle'
+import { useBodyScrollLock } from '../hooks/useBodyScrollLock'
 
 type ReportTemplateField = Database['public']['Tables']['report_template_fields']['Row']
 
@@ -96,6 +98,10 @@ export default function ReportEditModal({ open, report, onClose, onSaved, viewer
     handleClose()
   }
 
+  // Freeze the page behind the modal — dragging inside it used to scroll the
+  // list underneath on a phone, and closing then landed somewhere else.
+  useBodyScrollLock(open)
+
   if (!open) return null
 
   return (
@@ -111,20 +117,20 @@ export default function ReportEditModal({ open, report, onClose, onSaved, viewer
       }}
       onClick={(e) => e.target === e.currentTarget && handleClose()}
     >
+      {/* This panel is the scroller — the title bar sticks so the × stays reachable
+          on a phone instead of scrolling away once the form fills in (v2.990 pattern). */}
       <div
         style={{
           background: 'var(--surface)',
-          padding: '1.5rem',
           borderRadius: 8,
-          minWidth: 400,
-          maxWidth: 560,
           maxHeight: '90vh',
           overflow: 'auto',
           boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -2px rgba(0,0,0,0.1)',
+          ...stickyModalPanelStyle(560),
         }}
         onClick={(e) => e.stopPropagation()}
       >
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.75rem', ...stickyModalHeaderStyle() }}>
           <div>
             <h2 style={{ margin: 0, fontSize: '1.25rem' }}>Edit report</h2>
             <p style={{ margin: '0.25rem 0 0', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
@@ -134,7 +140,7 @@ export default function ReportEditModal({ open, report, onClose, onSaved, viewer
           <button
             type="button"
             onClick={handleClose}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.5rem', color: 'var(--text-muted)', lineHeight: 1 }}
+            style={STICKY_MODAL_CLOSE_BUTTON_STYLE}
             aria-label="Close"
           >
             ×

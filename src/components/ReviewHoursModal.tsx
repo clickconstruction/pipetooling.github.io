@@ -5,6 +5,11 @@ import { withSupabaseRetry } from '../utils/errorHandling'
 import { AssignFocusModal } from './AssignFocusModal'
 import { useLedgerPrefixMap } from '../contexts/LedgerDisplayPrefixContext'
 import { formatBidLedgerSummaryLine, formatJobLedgerSummaryLine } from '../lib/ledgerDisplayPrefixes'
+import { STICKY_MODAL_CLOSE_BUTTON_STYLE, stickyModalHeaderStyle, stickyModalPanelStyle } from '../lib/stickyModalHeaderStyle'
+import { useBodyScrollLock } from '../hooks/useBodyScrollLock'
+
+/** This panel's padding is '1rem 1.25rem', not the 1.5rem default. */
+const REVIEW_HOURS_INSET = { x: '1.25rem', top: '1rem', bottom: '1rem' }
 
 function getDaysInRange(start: string, end: string): string[] {
   const days: string[] = []
@@ -93,6 +98,8 @@ export function ReviewHoursModal({
 }: Props) {
   const { user: authUser } = useAuth()
   const prefixMap = useLedgerPrefixMap()
+  // Mounted only while open — freeze the roster behind it.
+  useBodyScrollLock(true)
   const [personIndex, setPersonIndex] = useState(initialPersonIndex)
   const [startDate, setStartDate] = useState(initialStartDate)
   const [endDate, setEndDate] = useState(initialEndDate)
@@ -379,20 +386,23 @@ export function ReviewHoursModal({
       }}
       onClick={onClose}
     >
+      {/* This panel is the scroller — the week-nav bar sticks so the × stays
+          reachable down a long roster instead of scrolling away (v2.990 pattern). */}
       <div
         style={{
-          position: 'relative',
           background: 'var(--surface)',
           borderRadius: 8,
-          padding: '1rem 1.25rem',
           maxWidth: '90vw',
           maxHeight: '85vh',
           overflow: 'auto',
           boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
+          ...stickyModalPanelStyle(undefined, REVIEW_HOURS_INSET),
         }}
         onClick={(e) => e.stopPropagation()}
       >
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '0.5rem', alignItems: 'center' }}>
+        {/* The × below is absolute against THIS bar (sticky is a positioned
+            element); anchored to the panel it scrolled away with the content. */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', alignItems: 'center', ...stickyModalHeaderStyle(REVIEW_HOURS_INSET) }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
             <button
               type="button"
@@ -427,26 +437,21 @@ export function ReviewHoursModal({
             </button>
           </div>
           <span style={{ fontWeight: 600, fontSize: '1.125rem' }}>{personName}</span>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close"
+            style={{
+              ...STICKY_MODAL_CLOSE_BUTTON_STYLE,
+              position: 'absolute',
+              top: 0,
+              right: 0,
+              margin: 0,
+            }}
+          >
+            ×
+          </button>
         </div>
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label="Close"
-          style={{
-            position: 'absolute',
-            top: '0.5rem',
-            right: '0.5rem',
-            padding: 0,
-            border: 'none',
-            background: 'none',
-            cursor: 'pointer',
-            fontSize: '1.25rem',
-            lineHeight: 1,
-            color: 'var(--text-muted)',
-          }}
-        >
-          ×
-        </button>
 
         {loading ? (
           <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0 }}>Loading…</p>

@@ -11,6 +11,8 @@ import {
   tripChargeSettingsKey,
   type BillableTurnawayReason,
 } from '../lib/turnawayTripCharge'
+import { STICKY_MODAL_CLOSE_BUTTON_STYLE, stickyModalHeaderStyle, stickyModalPanelStyle } from '../lib/stickyModalHeaderStyle'
+import { useBodyScrollLock } from '../hooks/useBodyScrollLock'
 
 export type CreateTripChargeTarget = {
   requestId: string
@@ -36,6 +38,8 @@ type JobRow = {
 
 export default function CreateTripChargeModal({ target, onClose, onCreated }: Props) {
   const { showToast } = useToastContext()
+  // Mounted only while open — freeze the page behind it.
+  useBodyScrollLock(true)
   const [settingsRows, setSettingsRows] = useState<SettingsRow[]>([])
   const [job, setJob] = useState<JobRow | null>(null)
   const [loading, setLoading] = useState(true)
@@ -141,15 +145,17 @@ export default function CreateTripChargeModal({ target, onClose, onCreated }: Pr
         zIndex: 65,
       }}
     >
-      <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 320, maxWidth: 480, maxHeight: '90vh', overflow: 'auto' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
+      {/* This panel is the scroller — the title bar sticks so the × stays reachable
+          on a phone instead of scrolling away once the form fills in (v2.990 pattern). */}
+      <div style={{ background: 'var(--surface)', borderRadius: 8, maxHeight: '90vh', overflow: 'auto', ...stickyModalPanelStyle(480) }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.75rem', ...stickyModalHeaderStyle() }}>
           <div>
             <h2 style={{ margin: 0, fontSize: '1.25rem' }}>Create trip charge</h2>
             <p style={{ margin: '0.25rem 0 0', fontSize: '0.875rem', fontWeight: 500 }}>
               {loading ? 'Loading…' : jobLabel || 'Job'}
             </p>
           </div>
-          <button type="button" onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.25rem', color: 'var(--text-muted)' }} aria-label="Close">×</button>
+          <button type="button" onClick={onClose} style={STICKY_MODAL_CLOSE_BUTTON_STYLE} aria-label="Close">×</button>
         </div>
 
         {!loading && job && !job.customer_id && (
