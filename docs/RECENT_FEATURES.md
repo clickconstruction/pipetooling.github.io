@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-24 (v2.1010)
+last_updated: 2026-07-24 (v2.1011)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1011)
+
+### Person identity Phase C-2: paid-email wages join person-first (2026-07-24)
+Second reader flip (migration `20260722272000_paid_email_person_id_joins.sql`). Both labor sections of `get_paid_job_email_payload` joined `people_pay_config` on `lower(trim(person_name)) = lower(trim(users.name))` — a rename silently zeroed that person's wages in the paid-email financial review. Now each joins `users → people.account_user_id → people_pay_config.person_id`, keeping the exact old name-join as fallback for users without a linked person (post-Phase-B that's nobody current). Built by transforming the v2.969 definition verbatim (both sites asserted), so `money.last_payment` and everything else is preserved; CREATE OR REPLACE with unchanged signature/grants. **Deploy: `supabase db push` after merge.**
 
 ## Latest Updates (v2.1010)
 

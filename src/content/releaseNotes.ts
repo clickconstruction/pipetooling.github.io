@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1011',
+    date: '2026-07-24',
+    title: 'Paid-email wages survive renames',
+    kind: 'infra',
+    highlights: [
+      'The "Customer paid" email\'s labor figures now look wages up by person id instead of typed name, so renaming someone no longer zeroes their hours in the financial review.',
+    ],
+  },
+  {
     version: 'v2.1010',
     date: '2026-07-24',
     title: 'Crew P&L keys on the person, not the spelling',
