@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1005',
+    date: '2026-07-24',
+    title: 'Billing popups fit phone screens',
+    kind: 'fix',
+    highlights: [
+      'Bill Customer, payment confirmations, bill views, sub-labor forms, and the Stages dialogs no longer hang off the edge of a phone — every panel now fits the screen with desktop sizes unchanged.',
+    ],
+  },
+  {
     version: 'v2.1004',
     date: '2026-07-24',
     title: 'Housekeeping: Dashboard job lists reorganized internally',
