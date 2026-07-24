@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
+import { useLocation } from 'react-router-dom'
+import { shouldResurfaceUpdatePill } from '../lib/updatePillResurface'
 import { registerSW } from 'virtual:pwa-register'
 
 /** Long-lived tabs poll for a new deploy this often. */
@@ -16,6 +18,23 @@ export function UpdatePrompt() {
   const [needRefresh, setNeedRefresh] = useState(false)
   const [updating, setUpdating] = useState(false)
   const updateSWRef = useRef<((reloadPage?: boolean) => Promise<void>) | null>(null)
+  /** v2.1007: a dismissed pill re-surfaces on route navigation (throttled) while an update waits. */
+  const updateWaitingRef = useRef(false)
+  const dismissedAtRef = useRef<number | null>(null)
+  const { pathname } = useLocation()
+
+  useEffect(() => {
+    if (
+      shouldResurfaceUpdatePill({
+        updateWaiting: updateWaitingRef.current,
+        dismissedAtMs: dismissedAtRef.current,
+        nowMs: Date.now(),
+      })
+    ) {
+      dismissedAtRef.current = null
+      setNeedRefresh(true)
+    }
+  }, [pathname])
 
   useEffect(() => {
     let intervalId: ReturnType<typeof setInterval> | undefined
@@ -25,6 +44,7 @@ export function UpdatePrompt() {
     updateSWRef.current = registerSW({
       immediate: true,
       onNeedRefresh() {
+        updateWaitingRef.current = true
         setNeedRefresh(true)
       },
       onRegisteredSW(_swUrl, registration) {
@@ -115,7 +135,10 @@ export function UpdatePrompt() {
       </button>
       <button
         type="button"
-        onClick={() => setNeedRefresh(false)}
+        onClick={() => {
+          dismissedAtRef.current = Date.now()
+          setNeedRefresh(false)
+        }}
         aria-label="Dismiss update notice until the next deploy"
         style={{
           padding: '0.375rem 0.5rem',

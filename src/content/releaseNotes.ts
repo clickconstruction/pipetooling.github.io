@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1007',
+    date: '2026-07-24',
+    title: 'Update reminders come back around',
+    kind: 'fix',
+    highlights: [
+      'If you tap "Not now" on the new-version pill, it now gently reappears as you move between pages (at most every 10 minutes) until you reload — so phones stop riding week-old versions.',
+    ],
+  },
+  {
     version: 'v2.1006',
     date: '2026-07-24',
     title: 'Call the customer from any Dashboard job card',
