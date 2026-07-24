@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.994',
+    date: '2026-07-24',
+    title: 'Cleaner Ready to Bill cards on your phone',
+    kind: 'fix',
+    highlights: [
+      'For subcontractors and helpers, each Ready to Bill card now uses the full width of the screen, so the job info and buttons are no longer squeezed into a narrow column.',
+      'The card shows how far along the job is (% complete) right under how long it has been open.',
+      'The "Collect Payment" button now reads on a single line instead of stacking into two.',
+    ],
+  },
+  {
     version: 'v2.993',
     date: '2026-07-24',
     title: 'Housekeeping: removed an unused screen',

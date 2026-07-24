@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-24 (v2.993)
+last_updated: 2026-07-24 (v2.994)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.994)
+
+### Subcontractor Ready to Bill cards: full-width on mobile, % complete, one-line "Collect Payment" (2026-07-24)
+Three tweaks to the subcontractor/helper **Ready to Bill** cards on the Dashboard ([`DashboardTeamReadyToBillSection`](../src/components/dashboard/DashboardTeamReadyToBillSection.tsx)): (1) on mobile the card header stops splitting into a 50 % info column + cramped button column — it stacks (`flexDirection: column`, info `width: 100%`), so the job info spans the full card and Leave Report + Collect Payment share a full-width row below; (2) under **Open &lt;age&gt;** (shown for subs on narrow screens) a new **&lt;n&gt;% complete** line, gated on `pct_complete != null`; (3) the **Collect Payment** button is now one line ("Collect Payment", `whiteSpace: nowrap`) instead of the stacked "Collect / Payment" — on desktop too, where there's room. The % line needs `pct_complete` from the RTB dashboard RPC: migration `20260722266000_rtb_dashboard_pct_complete.sql` (DROP + CREATE `list_ready_to_bill_assigned_jobs_for_dashboard`, adds `pct_complete integer`, re-GRANTs). `pct_complete?` is now optional on `DashboardTeamAssignedJobRow`; the RPC result flows through by name (`as unknown as`), so no mapping change. **Deploy: client is safe either order** — the card just skips the % line until `supabase db push` applies the migration. Verified live on a subcontractor with 6 RTB jobs: full-width cards, single-line Collect Payment (1 client rect), no page overflow; desktop layout unchanged.
 
 ## Latest Updates (v2.993)
 

@@ -103,8 +103,12 @@ export function DashboardTeamReadyToBillSection({
                     background: 'var(--surface)',
                   }}
                 >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>
-                    <div style={isMobile ? { flex: '0 0 50%', minWidth: 0 } : undefined}>
+                  {/* On mobile the header stacks: the job info gets the full card
+                      width (not a 50% column), and the action buttons sit full-width
+                      below it — so Leave report + Collect Payment share a row instead
+                      of being crammed into the right half. */}
+                  <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', justifyContent: 'space-between', alignItems: isMobile ? 'stretch' : 'flex-start', gap: '1rem' }}>
+                    <div style={isMobile ? { width: '100%', minWidth: 0 } : undefined}>
                       <div
                         role="button"
                         tabIndex={0}
@@ -135,6 +139,11 @@ export function DashboardTeamReadyToBillSection({
                       {isSubcontractorLikeRole(role) && narrowViewport660 && j.created_at && (
                         <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginTop: 4 }} title="Time since job created">
                           Open {formatTimeSince(j.created_at)}
+                        </div>
+                      )}
+                      {isSubcontractorLikeRole(role) && narrowViewport660 && j.pct_complete != null && (
+                        <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginTop: 2 }} title="Reported percent complete">
+                          {j.pct_complete}% complete
                         </div>
                       )}
                     </div>
@@ -278,6 +287,7 @@ export function DashboardTeamReadyToBillSection({
                             fontSize: '0.875rem',
                             borderRadius: 4,
                             cursor: 'pointer',
+                            whiteSpace: 'nowrap',
                             ...((j.collect_payment_button_variant ?? 'default') === 'ready_terminal'
                               ? {
                                   background: '#15803d',
@@ -299,16 +309,9 @@ export function DashboardTeamReadyToBillSection({
                                   }),
                           }}
                         >
-                          {(j.collect_payment_button_variant ?? 'default') === 'pending_dispatch' ? (
-                            <>
-                              Collect<br />
-                              Payment (pending)
-                            </>
-                          ) : (
-                            <>
-                              Collect<br />Payment
-                            </>
-                          )}
+                          {(j.collect_payment_button_variant ?? 'default') === 'pending_dispatch'
+                            ? 'Collect Payment (pending)'
+                            : 'Collect Payment'}
                         </button>
                       )}
                       {j.created_at && (!isSubcontractorLikeRole(role) || !narrowViewport660) && (
