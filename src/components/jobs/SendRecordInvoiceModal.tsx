@@ -1430,7 +1430,7 @@ export default function SendRecordInvoiceModal({
           zIndex: overlayZIndex,
         }}
       >
-        <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 420, maxWidth: 520, maxHeight: '90vh', overflow: 'auto' }}>
+        <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, width: 'min(520px, calc(100vw - 2rem))', maxWidth: 520, maxHeight: '90vh', overflow: 'auto' }}>
           <h2 style={{ margin: '0 0 0.5rem', fontSize: '1.25rem' }}>Bill Customer</h2>
           <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
             {effectiveJobLedgerNumber(job.hcp_number, job.click_number) || '—'} · {job.job_name ?? '—'}
@@ -1535,7 +1535,7 @@ export default function SendRecordInvoiceModal({
           zIndex: overlayZIndex,
         }}
       >
-      <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 420, maxWidth: 520, maxHeight: '90vh', overflow: 'auto' }}>
+      <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, width: 'min(520px, calc(100vw - 2rem))', maxWidth: 520, maxHeight: '90vh', overflow: 'auto' }}>
         <div
           style={{
             display: 'flex',

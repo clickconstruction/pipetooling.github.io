@@ -260,7 +260,7 @@ export default function BilledPaymentConfirmationModal({
           background: 'var(--surface)',
           padding: '1.5rem',
           borderRadius: 8,
-          minWidth: 420,
+          width: 'min(520px, calc(100vw - 2rem))',
           maxWidth: 520,
           maxHeight: '90vh',
           overflow: 'auto',

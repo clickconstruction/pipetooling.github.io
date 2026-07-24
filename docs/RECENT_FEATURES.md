@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-24 (v2.1004)
+last_updated: 2026-07-24 (v2.1005)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1005)
+
+### Modal sweep, part 2: field-facing job/dashboard dialogs fit phones (2026-07-24)
+Improvement-plan item #6 (continues the v2.992 report-modal sweep). 15 modal panels across 7 field-facing files had `minWidth: 400–480` — permanently 25–105px wider than a 375px phone, so every one hung off-screen. Each now pins `width: min(<maxWidth>px, calc(100vw - 2rem))` (the `stickyModalHeaderStyle` lib's pattern), keeping desktop sizes intact: [`SendRecordInvoiceModal`](../src/components/jobs/SendRecordInvoiceModal.tsx) (Bill Customer ×2), [`BilledPaymentConfirmationModal`](../src/components/jobs/BilledPaymentConfirmationModal.tsx), [`BilledBillViewModal`](../src/components/jobs/BilledBillViewModal.tsx), [`SubLaborPaymentModals`](../src/components/jobs/SubLaborPaymentModals.tsx) (×3), [`DashboardBillingPipelineSection`](../src/components/dashboard/DashboardBillingPipelineSection.tsx) (×2), [`JobsSubLaborFormModal`](../src/components/jobs/JobsSubLaborFormModal.tsx), [`JobsStagesTab`](../src/components/jobs/JobsStagesTab.tsx) dialogs (×5). Verified live: Bill Customer at 375px is now a 343px panel fully on-screen (was 420 → 45px clipped). Remaining desktop/admin panels (Settings tabs, ActiveAccountsPanel, Writeups, People tabs, Bid Board health) deliberately deferred — office surfaces, larger screens.
 
 ## Latest Updates (v2.1004)
 
