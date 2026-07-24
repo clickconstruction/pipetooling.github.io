@@ -36,6 +36,7 @@ Identity in the pay/labor domain is keyed by **trimmed name text**: `people_hour
 ## Status log
 
 - 2026-07-23 — plan written; Combine people shipped (v2.982). Phases A–E not started.
+- 2026-07-24 — **Phase C-3 verified done-by-trigger** (zero unkeyed crew rows; set_person_id_on_insert fires under approve_clock_sessions). **Phase C-4 shipped** (v2.1012): teamLabor wage map person-first (`id:<uuid>` keys) across all three loaders; salary flags stay name-keyed until `list_people_pay_flags` flips (C-4b, with Phase D). Remaining: D writers, E enforce.
 - 2026-07-24 — **Phase C-2 shipped** (v2.1011, migration 20260722272000): paid-email wage joins person-first with name fallback. Next: C-3 approve_clock_sessions crew sync, C-4 hours/payroll views.
 - 2026-07-24 — **Phase C-1 shipped** (v2.1010): Crew P&L reads person_id-first (`keyForPerson`); name fallback intact. Next: C-2 `get_paid_job_email_payload`, C-3 `approve_clock_sessions` crew sync, C-4 hours/payroll views.
 - 2026-07-24 — **Phase B2 shipped** (v2.1009, migration 20260722270000): five remaining tables already had person_id (doc was stale) — backfilled + triggered; `people_labor_job_assignees` junction created, synced by trigger, backfilled. Next: Phase C readers.

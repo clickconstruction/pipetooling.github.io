@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1012',
+    date: '2026-07-24',
+    title: 'Labor costs survive renames too',
+    kind: 'infra',
+    highlights: [
+      'Crew P&L and Job Summary labor math now look up wages by person id first, so renaming someone no longer silently drops their labor cost to zero.',
+    ],
+  },
+  {
     version: 'v2.1011',
     date: '2026-07-24',
     title: 'Paid-email wages survive renames',

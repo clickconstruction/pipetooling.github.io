@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-24 (v2.1011)
+last_updated: 2026-07-24 (v2.1012)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1012)
+
+### Person identity Phase C-4: labor wage lookups go person-first (2026-07-24)
+Third reader flip, client-side. [`teamLabor.ts`](../src/utils/teamLabor.ts)'s `fetchLaborPayConfigMap` — the wage/salary map behind Crew P&L, Job Summary labor, and the one-job modal — joined `people_pay_config` to crew rows purely by `person_name`, so a renamed pay-config row silently zeroed wages. The wage query now selects `person_id` and the map carries `id:<uuid>` keys alongside names; all three lookup sites (`loadTeamLaborData`, the one-job loader, the bids loader — their crew selects now carry `person_id` too) prefer the id key and fall back to name. Salary flags stay name-keyed until the `list_people_pay_flags` RPC flips (queued as C-4b with D). Zero behavior change for matched names; renames stop zeroing wages.
 
 ## Latest Updates (v2.1011)
 
