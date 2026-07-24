@@ -31,6 +31,8 @@ export type CrewPnlTeamLaborInput = {
   jobId: string
   breakdown: Array<{
     personName: string
+    /** people.id from the source rows (Phase C-1); preferred over name matching when present. */
+    personId?: string | null
     byWorkDate: Array<{ workDate: string; hours: number; cost: number }>
   }>
 }
@@ -105,6 +107,8 @@ function normName(name: string | null | undefined): string {
 
 export type CrewPnlPersonResolver = {
   keyForName: (name: string | null | undefined) => string
+  /** Stored people.id wins outright (Phase C-1); falls back to name matching when absent. */
+  keyForPerson: (personId: string | null | undefined, fallbackName: string | null | undefined) => string
   keyForUser: (userId: string | null | undefined, fallbackName: string | null | undefined) => string
   displayName: (key: string) => string
   isUnmatched: (key: string) => boolean
@@ -114,10 +118,12 @@ export type CrewPnlPersonResolver = {
 export function buildCrewPnlPersonResolver(people: CrewPnlRosterPerson[]): CrewPnlPersonResolver {
   const byName = new Map<string, CrewPnlRosterPerson>()
   const byUserId = new Map<string, CrewPnlRosterPerson>()
+  const byId = new Map<string, CrewPnlRosterPerson>()
   for (const p of people) {
     const n = normName(p.name)
     if (n && !byName.has(n)) byName.set(n, p)
     if (p.accountUserId) byUserId.set(p.accountUserId, p)
+    byId.set(p.id, p)
   }
   const displayByKey = new Map<string, string>()
   function keyForName(name: string | null | undefined): string {
@@ -126,6 +132,14 @@ export function buildCrewPnlPersonResolver(people: CrewPnlRosterPerson[]): CrewP
     const p = byName.get(n)
     if (p) return rememberKey(`p:${p.id}`, (p.name ?? '').trim() || 'Unknown')
     return rememberKey(`n:${n}`, (name ?? '').trim())
+  }
+  function keyForPerson(personId: string | null | undefined, fallbackName: string | null | undefined): string {
+    if (personId) {
+      const p = byId.get(personId)
+      const display = (p?.name ?? fallbackName ?? '').trim() || 'Unknown'
+      return rememberKey(`p:${personId}`, display)
+    }
+    return keyForName(fallbackName)
   }
   function keyForUser(userId: string | null | undefined, fallbackName: string | null | undefined): string {
     if (userId) {
@@ -140,6 +154,7 @@ export function buildCrewPnlPersonResolver(people: CrewPnlRosterPerson[]): CrewP
   }
   return {
     keyForName,
+    keyForPerson,
     keyForUser,
     displayName: (key) => displayByKey.get(key) ?? key.replace(/^n:/, ''),
     isUnmatched: (key) => key.startsWith('n:'),
@@ -216,7 +231,7 @@ export function buildCrewPnlSummary(args: {
         inCost += d.cost
       }
       if (inHours === 0 && inCost === 0) continue
-      const key = resolver.keyForName(p.personName)
+      const key = resolver.keyForPerson(p.personId, p.personName)
       const billing = revenue > 0 && jobAllTimeHours > 0 ? revenue * (inHours / jobAllTimeHours) : 0
       const a = acc(key)
       a.hours += inHours
