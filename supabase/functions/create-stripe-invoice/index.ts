@@ -338,7 +338,16 @@ serve(async (req) => {
         customer: stripeCustomerId!,
         collection_method: 'send_invoice',
         days_until_due: d,
-        description: memo?.trim() || undefined,
+        // v2.1001: service address leads the memo (the Stripe email summary
+        // card shows the memo but not custom_fields, so the address must be
+        // here too). Office-typed memo text follows unchanged.
+        description: (() => {
+          const addr = typeof (jobRow as { job_address?: string | null }).job_address === 'string'
+            ? ((jobRow as { job_address?: string | null }).job_address ?? '').trim()
+            : ''
+          const parts = [addr ? `Service address: ${addr}` : '', memo?.trim() ?? ''].filter(Boolean)
+          return parts.length ? parts.join('\n\n') : undefined
+        })(),
         footer: footerTrimmedForStripe ?? undefined,
         // v2.998: service address in the invoice header (hosted page + PDF).
         // Read from jobs_ledger.job_address at creation time; Stripe caps
