@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.998',
+    date: '2026-07-24',
+    title: 'Stripe invoices show the service address',
+    kind: 'feature',
+    highlights: [
+      'New Stripe invoices now carry a "Service address" line in the header — taken from the job\'s address — on both the emailed invoice page and the PDF.',
+    ],
+  },
+  {
     version: 'v2.997',
     date: '2026-07-24',
     title: 'Compact Assigned Jobs cards on your phone',
