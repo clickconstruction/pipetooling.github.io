@@ -340,7 +340,11 @@ export function buildJobsStagesBoardLists(
   stagesSearchQuery: string,
   extraJobIds?: ReadonlySet<string> | null,
 ): JobsStagesBoardLists {
-  const filtered = filterJobsByStagesSearch(jobs, stagesSearchQuery, extraJobIds)
+  // Sort once here so every section below (and the row builders, which preserve
+  // input order) shows C# jobs interleaved with HCP jobs by displayed number.
+  const filtered = [...filterJobsByStagesSearch(jobs, stagesSearchQuery, extraJobIds)].sort(
+    sortStagesJobsByEffectiveNumberDesc,
+  )
   const status = (j: JobWithDetails) => (j.status ?? 'working') as string
   const waiting = filtered.filter((j) => status(j) === 'waiting')
   const working = filtered.filter((j) => status(j) === 'working')
@@ -384,6 +388,24 @@ export function buildJobsStagesBoardLists(
     billedActiveRows,
     collectionsRows,
   }
+}
+
+/**
+ * Stages board order: effective job number (HCP else Click) descending, then job
+ * name. The server query can only `.order('hcp_number')` — PostgREST cannot sort
+ * by an expression — so click-only jobs (empty `hcp_number`) all collapsed to the
+ * bottom of every section regardless of their C#. This comparator is the
+ * authoritative ordering; it interleaves C# jobs with HCP jobs by the number the
+ * board actually displays (204, C#203, 200, 100). Jobs with neither number sort
+ * last.
+ */
+export function sortStagesJobsByEffectiveNumberDesc(a: JobWithDetails, b: JobWithDetails): number {
+  const na = effectiveJobLedgerNumber(a.hcp_number, a.click_number)
+  const nb = effectiveJobLedgerNumber(b.hcp_number, b.click_number)
+  if (!na !== !nb) return na ? -1 : 1
+  const cmp = nb.localeCompare(na, undefined, { numeric: true })
+  if (cmp !== 0) return cmp
+  return (a.job_name ?? '').localeCompare(b.job_name ?? '', undefined, { sensitivity: 'base' })
 }
 
 /** HCP numeric then job name; shared by Stages list modals. */

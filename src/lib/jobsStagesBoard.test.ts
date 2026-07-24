@@ -13,6 +13,7 @@ import {
   jobInCollections,
   readyToBillRowsExposureTotal,
   stagesMergedBillingInvoiceId,
+  sortStagesJobsByEffectiveNumberDesc,
   type InvoiceWithJob,
 } from './jobsStagesBoard'
 import type { JobWithDetails } from '../types/jobWithDetails'
@@ -916,5 +917,51 @@ describe('capable-to-bill kernel (quirk #8 consolidation)', () => {
     const rows = buildCapableToBillBreakdownRows([a, b, c])
     expect(rows.map((r) => r.toBill)).toEqual([800, 300])
     expect(rows[0]!.job).toBe(b)
+  })
+})
+
+describe('sortStagesJobsByEffectiveNumberDesc (C# interleaves with HCP)', () => {
+  const numbered = (id: string, hcp: string | null, click: string | null, job_name = 'Job') =>
+    jobStub({ id, invoices: [], hcp_number: hcp, click_number: click, job_name } as Partial<JobWithDetails> &
+      Pick<JobWithDetails, 'id' | 'invoices'>)
+
+  const order = (list: JobWithDetails[]) =>
+    [...list].sort(sortStagesJobsByEffectiveNumberDesc).map((j) => j.id)
+
+  it('interleaves a click-only job by its C#, not at the bottom', () => {
+    // The reported bug: C#203 used to sink below HCP 100.
+    const list = [
+      numbered('hcp-100', '100', null),
+      numbered('click-203', null, '203'),
+      numbered('hcp-204', '204', null),
+      numbered('hcp-200', '200', null),
+    ]
+    expect(order(list)).toEqual(['hcp-204', 'click-203', 'hcp-200', 'hcp-100'])
+  })
+
+  it('sorts numerically, not lexically (1000 beats 204)', () => {
+    const list = [numbered('a', '204', null), numbered('b', '1000', null)]
+    expect(order(list)).toEqual(['b', 'a'])
+  })
+
+  it('HCP wins over click number on the same job', () => {
+    // hcp 100 + click 999 must sort as 100, below hcp 200.
+    const list = [numbered('both', '100', '999'), numbered('plain', '200', null)]
+    expect(order(list)).toEqual(['plain', 'both'])
+  })
+
+  it('treats blank/whitespace hcp as click-only', () => {
+    const list = [numbered('blank-hcp', '   ', '300'), numbered('hcp-250', '250', null)]
+    expect(order(list)).toEqual(['blank-hcp', 'hcp-250'])
+  })
+
+  it('puts jobs with no number at all last', () => {
+    const list = [numbered('none', null, null), numbered('click-5', null, '5')]
+    expect(order(list)).toEqual(['click-5', 'none'])
+  })
+
+  it('breaks ties on job name', () => {
+    const list = [numbered('z', '10', null, 'Zeta'), numbered('a', '10', null, 'Alpha')]
+    expect(order(list)).toEqual(['a', 'z'])
   })
 })

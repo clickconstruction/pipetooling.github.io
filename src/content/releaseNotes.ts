@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.989',
+    date: '2026-07-23',
+    title: 'C# jobs sort in order on Stages',
+    kind: 'fix',
+    highlights: [
+      'Jobs with a C# instead of an HCP number no longer pile up at the bottom of each Stages section — they now sit in numeric order alongside HCP jobs, the way the numbers read on screen.',
+    ],
+  },
+  {
     version: 'v2.988',
     date: '2026-07-23',
     title: 'New jobs start in Working',

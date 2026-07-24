@@ -39,6 +39,11 @@ function buildJobsListStagesQuery(customerFilter: string | null, statusScope: Jo
   let q = supabase
     .from('jobs_ledger')
     .select(buildJobsListStagesPrimarySelect())
+    // Rough server-side pre-sort only. PostgREST cannot order by an expression,
+    // so this can't consider `click_number` — click-only jobs land at the end
+    // here. `buildJobsStagesBoardLists` re-sorts by the effective job number
+    // (HCP else Click) via sortStagesJobsByEffectiveNumberDesc; that is the
+    // ordering the board actually shows.
     .order('hcp_number', { ascending: false })
   if (customerFilter) {
     q = q.eq('customer_id', customerFilter)

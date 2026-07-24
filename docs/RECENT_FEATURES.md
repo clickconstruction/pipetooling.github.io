@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-23 (v2.988)
+last_updated: 2026-07-23 (v2.989)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.989)
+
+### Jobs Stages: C# jobs sort in line with HCP jobs instead of sinking to the bottom (2026-07-23)
+Every Stages section listed click-only jobs (no HCP number) *after* every HCP job, however high their C# — a C#928 sat below an HCP 102. Cause: the list query in [`fetchJobsLedgerWithDetailsForStages`](../src/lib/fetchJobsLedgerWithDetailsForStages.ts) orders by `hcp_number` alone, and PostgREST can't `.order()` by an expression, so `COALESCE(hcp, click)` isn't expressible there — click-only rows have an empty `hcp_number` and collapse to the end. Fix: new kernel comparator `sortStagesJobsByEffectiveNumberDesc` in [`jobsStagesBoard.ts`](../src/lib/jobsStagesBoard.ts) (effective number = HCP else Click, **numeric** collation descending, job name as tiebreak, numberless jobs last), applied once to `filtered` inside `buildJobsStagesBoardLists` — every section and both row builders preserve input order, so one sort fixes Waiting/Working/Ready to Bill/Billed/Collections/Paid together. The server `.order()` stays as a rough pre-sort with a comment pointing at the authoritative client sort. 6 new unit tests cover the reported case (204, C#203, 200, 100), numeric-not-lexical ordering (1000 > 204), HCP winning over a job's own click number, whitespace-only HCP counting as click-only, and numberless-last. Verified live against prod data: the six click-only Waiting jobs (C# 922–928) now head the section in numeric order instead of trailing it.
 
 ## Latest Updates (v2.988)
 
