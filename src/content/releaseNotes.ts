@@ -11,6 +11,36 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1003',
+    date: '2026-07-24',
+    title: 'Build safety: phones get an automatic layout check',
+    kind: 'infra',
+    highlights: [
+      'A nightly automated check now loads the main pages at phone size and fails if anything pushes the page sideways or a popup\'s close button scrolls out of reach — the bug class we fixed by hand all week.',
+      'It caught one immediately: the Materials page no longer pans sideways on phones, and the Parts Book table now scrolls so every column is reachable.',
+    ],
+  },
+  {
+    version: 'v2.1002',
+    date: '2026-07-24',
+    title: 'Hazmat fees roll into the final bill',
+    kind: 'feature',
+    highlights: [
+      'When you Bill Customer and the job has an unsent biohazard fee, a pre-checked box folds it into that invoice as its own labeled line — one bill instead of two, with the notice link still included.',
+      'Uncheck the box to keep billing it separately; fees the customer already received are never merged.',
+    ],
+  },
+  {
+    version: 'v2.1001',
+    date: '2026-07-24',
+    title: 'Stripe memo leads with the service address',
+    kind: 'feature',
+    highlights: [
+      'New Stripe invoices start the memo with "Service address: …", so it shows right on the emailed invoice card.',
+      'The check-payment wording now reads "Paper checks can be sent to:" and asks customers to call first.',
+    ],
+  },
+  {
     version: 'v2.1000',
     date: '2026-07-24',
     title: 'Build safety: update checks can no longer split',

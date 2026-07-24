@@ -363,6 +363,13 @@ button:focus-visible {
   padding: var(--page-wrap-pad);
   /* .appMain already provides the small gap below the header. */
   padding-top: 0;
+  /* v2.1003: as a flex item in Layout's column, min-width:auto let any deep
+     max-content child (e.g. the Materials tab strip) floor the whole page at
+     its intrinsic width — the page then panned sideways on phones. Pin the
+     wrapper to its container so inner scroll regions actually engage. */
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
 }
 
 /* Prospects Convert tab: modern card layout */

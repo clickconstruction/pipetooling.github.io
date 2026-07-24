@@ -3187,7 +3187,9 @@ export default function Materials() {
             </button>
           </div>
 
-          <div style={{ border: '1px solid var(--border)', borderRadius: 4, overflow: 'hidden' }}>
+          {/* overflowX auto, not hidden (v2.1003): on phones the parts table is
+              wider than the screen — hidden made the right columns unreachable. */}
+          <div style={{ border: '1px solid var(--border)', borderRadius: 4, overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead style={{ background: 'var(--bg-subtle)' }}>
                 <tr>
