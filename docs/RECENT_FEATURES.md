@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-24 (v2.1009)
+last_updated: 2026-07-24 (v2.1010)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1010)
+
+### Person identity Phase C-1: Crew P&L trusts stored person ids (2026-07-24)
+First reader flip. [`loadTeamLaborData`](../src/utils/teamLabor.ts) now selects `people_crew_jobs.person_id` (~100% filled post-Phase-B) and threads it through `TeamLaborBreakdownEntry`; [`crewPnlSummary`](../src/lib/crewPnlSummary.ts) gains `keyForPerson(personId, fallbackName)` — the stored `people.id` wins outright (even when the display name has drifted or the person left the active roster), name matching remains the fallback for null ids. The crew loop at the old `keyForName` site now uses it. 3 new resolver tests (20 total): id beats mismatched name, off-roster id still keys with fallback display, null id degrades to name matching. Note the resolver was already person-first via roster name/account matching — Phase B's 22 linked people rows did most of the flip on their own; this closes the rename gap for rows whose stored id and display name disagree.
 
 ## Latest Updates (v2.1009)
 

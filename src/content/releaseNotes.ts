@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1010',
+    date: '2026-07-24',
+    title: 'Crew P&L keys on the person, not the spelling',
+    kind: 'infra',
+    highlights: [
+      'Crew P&L now identifies people by their stored id first, so a renamed crew member\'s history stays on one line instead of splitting by spelling.',
+    ],
+  },
+  {
     version: 'v2.1009',
     date: '2026-07-24',
     title: 'Payroll identity: the rest of the tables',

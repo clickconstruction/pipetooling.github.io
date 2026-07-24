@@ -5,6 +5,8 @@ export type CrewJobRow = { job_assignments: CrewJobAssignment[] }
 
 export type TeamLaborBreakdownEntry = {
   personName: string
+  /** people.id when the crew rows carried it (Phase B backfill/triggers); null for legacy unresolved names. */
+  personId?: string | null
   hours: number
   cost: number
   /** Allocated crew hours/cost per calendar work date (same math as totals). */
@@ -70,15 +72,22 @@ export async function loadTeamLaborData(
   twoYearsAgo.setFullYear(twoYearsAgo.getFullYear() - 2)
   const startDate = twoYearsAgo.toLocaleDateString('en-CA')
   const [crewRes, hoursRes, configMap] = await Promise.all([
-    supabase.from('people_crew_jobs').select('work_date, person_name, job_assignments'),
+    supabase.from('people_crew_jobs').select('work_date, person_name, person_id, job_assignments'),
     supabase.from('people_hours').select('person_name, work_date, hours').gte('work_date', startDate),
     fetchLaborPayConfigMap(supabase),
   ])
   const crewRows = (crewRes.data ?? []) as Array<{
     work_date: string
     person_name: string
+    person_id: string | null
     job_assignments: CrewJobAssignment[]
   }>
+  // v2.1010 (identity Phase C-1): first non-null person_id seen per name — crew
+  // rows are ~100% keyed post-Phase-B, so this resolves everyone with a row.
+  const personIdByName: Record<string, string> = {}
+  for (const r of crewRows) {
+    if (r.person_id && !personIdByName[r.person_name]) personIdByName[r.person_name] = r.person_id
+  }
   const hoursRows = (hoursRes.data ?? []) as Array<{ person_name: string; work_date: string; hours: number }>
   const hoursMap: Record<string, number> = {}
   for (const h of hoursRows) {
@@ -151,7 +160,7 @@ export async function loadTeamLaborData(
           hours: dateMap[wd]!.hours,
           cost: dateMap[wd]!.cost,
         }))
-      return { personName: p, hours, cost, byWorkDate }
+      return { personName: p, personId: personIdByName[p] ?? null, hours, cost, byWorkDate }
     })
     return {
       jobId,

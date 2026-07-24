@@ -56,6 +56,25 @@ describe('buildCrewPnlPersonResolver', () => {
     expect(r.displayName(k)).toBe('Stray Person')
     expect(r.isUnmatched(k)).toBe(true)
   })
+  it('keyForPerson: stored people.id wins outright, even over a mismatched display name (C-1)', () => {
+    const r = buildCrewPnlPersonResolver(people)
+    const k = r.keyForPerson('per-mike', 'Totally Renamed')
+    expect(k).toBe('p:per-mike')
+    expect(r.displayName(k)).toBe('Mike Z')
+    expect(r.isUnmatched(k)).toBe(false)
+  })
+  it('keyForPerson: id not on the roster still keys by id (archived person), display from fallback', () => {
+    const r = buildCrewPnlPersonResolver(people)
+    const k = r.keyForPerson('per-ghost', 'Old Timer')
+    expect(k).toBe('p:per-ghost')
+    expect(r.displayName(k)).toBe('Old Timer')
+    expect(r.isUnmatched(k)).toBe(false)
+  })
+  it('keyForPerson: null id falls back to name matching', () => {
+    const r = buildCrewPnlPersonResolver(people)
+    expect(r.keyForPerson(null, 'mike z')).toBe('p:per-mike')
+    expect(r.keyForPerson(undefined, 'Stray Person')).toBe('n:stray person')
+  })
 })
 
 describe('buildCrewPnlSummary', () => {
