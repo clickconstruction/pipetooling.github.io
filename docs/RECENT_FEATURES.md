@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-24 (v2.1003)
+last_updated: 2026-07-24 (v2.1004)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1004)
+
+### Dashboard: Assigned Jobs + Superintendent Jobs extracted into the job-row family (2026-07-24)
+Improvement-plan item #4. The two remaining inline job-row blocks in [`Dashboard.tsx`](../src/pages/Dashboard.tsx) are now components beside `DashboardTeamReadyToBillSection`: [`DashboardAssignedJobsSection`](../src/components/dashboard/DashboardAssignedJobsSection.tsx) (search, empty state, compact card rows, in-progress-stage link) and [`DashboardSuperintendentJobsSection`](../src/components/dashboard/DashboardSuperintendentJobsSection.tsx), with the shared row styles/glyphs (`DriveLinkGlyph`, `JobPlansGlyph`, `JOB_ROW_*`, `VIEW_REPORTS_BUTTON_STYLE`, `sendToBillingButtonStyle`) exported from new [`dashboardJobRowShared.tsx`](../src/components/dashboard/dashboardJobRowShared.tsx). Playbook verbatim-lift: every captured page value is a same-named prop; the lifted bodies typechecked against the props on the first pass (only import cleanup needed). Dashboard.tsx 2,142 → 1,673 lines (−506/+37). 5 new render smokes (`DashboardAssignedJobsSection.render.test.tsx`) pin the section title, both action buttons in v2.999 order, helpers-no-Send-to-Billing, the v2.997 compact meta line, the search-empty note, and superintendent gating (note: the group card is defaultCollapsed — tests seed `dash-assigned-jobs-collapsed=false`). Motivation: this week's compact-card work had to be hand-ported across three near-identical blocks; item #7 (customer phone + Call modal on these rows) now lands in one place. Verified live + protected by the v2.1003 viewport e2e (Dashboard is page #1 in its matrix). Also corrects the stale "~8.9k lines" Dashboard figure in `AI_CONTEXT.md`.
 
 ## Latest Updates (v2.1003)
 

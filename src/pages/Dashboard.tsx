@@ -11,9 +11,7 @@ import {
 import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useRealtimeChannel } from '../hooks/useRealtimeChannel'
-import { openInExternalBrowser } from '../lib/openInExternalBrowser'
 import { getCurrentUserName as getCurrentUserNameById } from '../lib/getCurrentUserName'
-import { canLeaveJobFieldReport } from '../lib/canLeaveJobFieldReport'
 import { useAuth } from '../hooks/useAuth'
 import { useDocumentVisibility } from '../hooks/useDocumentVisibility'
 import { isAssistantLike, isSubcontractorLikeRole } from '../lib/subcontractorLikeRole'
@@ -27,7 +25,6 @@ import {
   readClockStripScopeFromStorage,
   stripScopeEligible,
 } from '../lib/dashboardClockStripScopeStorage'
-import { DashboardGroupCard } from '../components/dashboard/DashboardGroupCard'
 import { billingJobMatchesSearch } from '../lib/jobs/billingTab'
 import { DashboardUpcomingInspectionsSection } from '../components/dashboard/DashboardUpcomingInspectionsSection'
 import { DashboardRecentReportsSection } from '../components/dashboard/DashboardRecentReportsSection'
@@ -58,7 +55,6 @@ import DashboardMyTeamPendingBanner from '../components/DashboardMyTeamPendingBa
 import DashboardFinancialsSection from '../components/DashboardFinancialsSection'
 import { DashboardPinnedQuickRow } from '../components/dashboard/DashboardPinnedQuickRow'
 import { filterPinnedByRole } from '../lib/dashboardPinnedRow'
-import { effectiveJobLedgerNumber } from '../lib/ledgerDisplayPrefixes'
 import { DashboardTeamActiveClockStrip } from '../components/DashboardTeamActiveClockStrip'
 import { useDashboardMyTeamSectionState } from '../hooks/useDashboardMyTeamSectionState'
 import { useApplyScheduleProportions } from '../hooks/useApplyScheduleProportions'
@@ -91,25 +87,15 @@ import { useDashboardBillingInvoices } from '../hooks/useDashboardBillingInvoice
 import { syncSalaryClockSessionsForUserDay } from '../lib/salaryScheduleSync'
 import { fetchSalariedUserIdSetFromUserIds } from '../lib/salaryPayConfigGate'
 import { recordNotComingInForUserAsStaff } from '../lib/notComingInTimeOff'
-import {
-  DashboardListRowSkeleton,
-  MyTeamSectionSkeleton,
-} from '../components/dashboard/DashboardSkeletons'
-import { subcontractorLastActivityMobileLine } from '../lib/subcontractorLastActivityCompact'
-import { formatOpenAgeShort } from '../lib/formatOpenAgeShort'
-import {
-  formatTimeSince,
-  subcontractorAssignedJobStageDisplay,
-  subcontractorLastActivityBlock,
-} from '../lib/dashboardJobRowActivity'
+import { MyTeamSectionSkeleton } from '../components/dashboard/DashboardSkeletons'
 import SubcontractorJobActivityModal from '../components/dashboard/SubcontractorJobActivityModal'
 import { useDashboardSubSchedule } from '../hooks/useDashboardSubSchedule'
 import { useDashboardAssignedJobs } from '../hooks/useDashboardAssignedJobs'
 import { DashboardMyScheduleSection } from '../components/dashboard/DashboardMyScheduleSection'
 import { DashboardTeamReadyToBillSection } from '../components/dashboard/DashboardTeamReadyToBillSection'
 import { DashboardBillingPipelineSection } from '../components/dashboard/DashboardBillingPipelineSection'
-import { DashboardJobPicturesLinkRow } from '../components/dashboard/DashboardJobPicturesLinkRow'
-import { DashboardLeaveReportButton } from '../components/dashboard/DashboardLeaveReportButton'
+import { DashboardAssignedJobsSection } from '../components/dashboard/DashboardAssignedJobsSection'
+import { DashboardSuperintendentJobsSection } from '../components/dashboard/DashboardSuperintendentJobsSection'
 
 const DashboardMyTeamSection = lazy(() => import('../components/DashboardMyTeamSection'))
 import type { Database } from '../types/database'
@@ -118,34 +104,6 @@ import type { ClockSessionRow, DashboardStripSession } from '../types/clockSessi
 const HOURS_DAY_CORRECT_BLOCK_TOAST =
   'This day is marked correct in People → Hours. Unmark it there to edit time from the Dashboard.'
 
-// Shared job-row button/link styles. These were copy-pasted inline across the
-// Assigned Jobs + Superintendent Jobs rows; hoisting them keeps the two blocks
-// visually in lockstep and shrinks the render body.
-const JOB_ROW_LINK_ICON_COLUMN_STYLE: CSSProperties = {
-  display: 'flex',
-  flexDirection: 'column',
-  alignItems: 'center',
-  gap: '0.25rem',
-}
-const JOB_ROW_LINK_ICON_STYLE: CSSProperties = {
-  display: 'inline-flex',
-  alignItems: 'center',
-  color: 'var(--text-muted)',
-  padding: '0.35rem',
-}
-const JOB_ROW_PICTURES_ICON_WRAP_STYLE: CSSProperties = {
-  display: 'inline-flex',
-  padding: '0.35rem',
-}
-const VIEW_REPORTS_BUTTON_STYLE: CSSProperties = {
-  padding: '0.35rem 0.75rem',
-  fontSize: '0.875rem',
-  background: 'none',
-  color: 'var(--text-link)',
-  border: '1px solid #2563eb',
-  borderRadius: 4,
-  cursor: 'pointer',
-}
 const DASHBOARD_MODAL_OVERLAY_STYLE: CSSProperties = {
   position: 'fixed',
   inset: 0,
@@ -155,28 +113,6 @@ const DASHBOARD_MODAL_OVERLAY_STYLE: CSSProperties = {
   justifyContent: 'center',
   zIndex: 60,
 }
-/** "Send to Billing" job-row button — dims + blocks the click while its status update is in flight. */
-const sendToBillingButtonStyle = (busy: boolean): CSSProperties => ({
-  padding: '0.35rem 0.75rem',
-  fontSize: '0.875rem',
-  background: 'var(--surface)',
-  color: 'var(--text-link)',
-  border: '1px solid #2563eb',
-  borderRadius: 4,
-  cursor: busy ? 'not-allowed' : 'pointer',
-  opacity: busy ? 0.6 : 1,
-})
-const DriveLinkGlyph = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="1.25em" height="1.25em" fill="currentColor" aria-hidden="true">
-    <path d="M403 378.9L239.4 96L400.6 96L564.2 378.9L403 378.9zM265.5 402.5L184.9 544L495.4 544L576 402.5L265.5 402.5zM218.1 131.4L64 402.5L144.6 544L301 272.8L218.1 131.4z" />
-  </svg>
-)
-const JobPlansGlyph = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="1.25em" height="1.25em" fill="currentColor" aria-hidden="true">
-    <path d="M296.5 69.2C311.4 62.3 328.6 62.3 343.5 69.2L562.1 170.2C570.6 174.1 576 182.6 576 192C576 201.4 570.6 209.9 562.1 213.8L343.5 314.8C328.6 321.7 311.4 321.7 296.5 314.8L77.9 213.8C69.4 209.8 64 201.3 64 192C64 182.7 69.4 174.1 77.9 170.2L296.5 69.2zM112.1 282.4L276.4 358.3C304.1 371.1 336 371.1 363.7 358.3L528 282.4L562.1 298.2C570.6 302.1 576 310.6 576 320C576 329.4 570.6 337.9 562.1 341.8L343.5 442.8C328.6 449.7 311.4 449.7 296.5 442.8L77.9 341.8C69.4 337.8 64 329.3 64 320C64 310.7 69.4 302.1 77.9 298.2L112 282.4zM77.9 426.2L112 410.4L276.3 486.3C304 499.1 335.9 499.1 363.6 486.3L527.9 410.4L562 426.2C570.5 430.1 575.9 438.6 575.9 448C575.9 457.4 570.5 465.9 562 469.8L343.4 570.8C328.5 577.7 311.3 577.7 296.4 570.8L77.9 469.8C69.4 465.8 64 457.3 64 448C64 438.7 69.4 430.1 77.9 426.2z" />
-  </svg>
-)
-
 export default function Dashboard() {
   const jobDetailModal = useJobDetailModal()
   const { user: authUser, role, estimatorProspectsAccess } = useAuth()
@@ -1537,301 +1473,25 @@ export default function Dashboard() {
 
 
       {(assignedJobsLoading || assignedJobs.length > 0) && (
-        <DashboardGroupCard
-          id="dash-assigned-jobs"
-          title={`Assigned Jobs (${assignedJobs.length})`}
-          collapseStorageKey="dash-assigned-jobs-collapsed"
-          defaultCollapsed
-        >
-          {assignedJobsLoading && assignedJobs.length === 0 ? (
-            <DashboardListRowSkeleton rows={2} />
-          ) : (
-            <div>
-              <input
-                type="search"
-                value={assignedJobsSearch}
-                onChange={(e) => setAssignedJobsSearch(e.target.value)}
-                placeholder="Search assigned jobs…"
-                aria-label="Search assigned jobs"
-                style={{
-                  width: '100%',
-                  boxSizing: 'border-box',
-                  padding: '0.5rem 0.75rem',
-                  border: '1px solid var(--border-strong)',
-                  borderRadius: 4,
-                  fontSize: '0.875rem',
-                  marginBottom: '0.25rem',
-                }}
-              />
-              {filteredAssignedJobs.length === 0 && assignedJobsSearch.trim() !== '' && (
-                <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: '0.75rem 0 0.25rem' }}>
-                  No assigned jobs match your search.
-                </p>
-              )}
-              {filteredAssignedJobs.map((j, idx) => (
-                <div
-                  key={j.id}
-                  style={{
-                    padding: '0.85rem 0',
-                    borderBottom: idx < filteredAssignedJobs.length - 1 ? '1px solid var(--border)' : 'none',
-                  }}
-                >
-                  {/* v2.997: same compact mobile treatment as Ready to Bill — info full-width, actions on a row below. */}
-                  <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', justifyContent: 'space-between', alignItems: isMobile ? 'stretch' : 'flex-start', gap: isMobile ? '0.5rem' : '1rem' }}>
-                    <div style={isMobile ? { width: '100%', minWidth: 0 } : undefined}>
-                      <div
-                        role="button"
-                        tabIndex={0}
-                        onClick={() => openJobDetailFromDashboardJobRow(j)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter' || e.key === ' ') {
-                            e.preventDefault()
-                            openJobDetailFromDashboardJobRow(j)
-                          }
-                        }}
-                        aria-label={`Job details: ${effectiveJobLedgerNumber(j.hcp_number, j.click_number) || '—'} · ${(j.job_name ?? '').trim() || '—'}`}
-                        style={{
-                          fontWeight: 600,
-                          cursor: 'pointer',
-                          color: 'var(--text-strong)',
-                          width: 'fit-content',
-                        }}
-                      >
-                        {effectiveJobLedgerNumber(j.hcp_number, j.click_number) || '—'} · {j.job_name || '—'}
-                      </div>
-                      <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginTop: 4 }}>
-                        {j.job_address?.trim() ? (
-                          <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(j.job_address.trim())}`} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--text-link)', textDecoration: 'none' }}>{j.job_address}</a>
-                        ) : (
-                          '—'
-                        )}
-                      </div>
-                      {(j.customer_name ?? '').trim() !== '' && (
-                        <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginTop: 4, display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={13} height={13} fill="currentColor" aria-hidden="true" style={{ flexShrink: 0 }}>
-                            <path d="M160 64C124.7 64 96 92.7 96 128L96 512C96 547.3 124.7 576 160 576L448 576C483.3 576 512 547.3 512 512L512 128C512 92.7 483.3 64 448 64L160 64zM272 352L336 352C380.2 352 416 387.8 416 432C416 440.8 408.8 448 400 448L208 448C199.2 448 192 440.8 192 432C192 387.8 227.8 352 272 352zM248 256C248 225.1 273.1 200 304 200C334.9 200 360 225.1 360 256C360 286.9 334.9 312 304 312C273.1 312 248 286.9 248 256zM576 144C576 135.2 568.8 128 560 128C551.2 128 544 135.2 544 144L544 208C544 216.8 551.2 224 560 224C568.8 224 576 216.8 576 208L576 144zM576 272C576 263.2 568.8 256 560 256C551.2 256 544 263.2 544 272L544 336C544 344.8 551.2 352 560 352C568.8 352 576 344.8 576 336L576 272zM560 384C551.2 384 544 391.2 544 400L544 464C544 472.8 551.2 480 560 480C568.8 480 576 472.8 576 464L576 400C576 391.2 568.8 384 560 384z" />
-                          </svg>
-                          <span>{(j.customer_name ?? '').trim()}</span>
-                        </div>
-                      )}
-                      {isSubcontractorLikeRole(role) && (() => {
-                        const d = subcontractorAssignedJobStageDisplay(j)
-                        if (!d) return null
-                        const { line, title } = d
-                        return (
-                          <div
-                            style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginTop: 4 }}
-                            title={title}
-                          >
-                            {line}
-                          </div>
-                        )
-                      })()}
-                    </div>
-                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                      {(j.google_drive_link?.trim() || j.job_plans_link?.trim() || j.job_pictures_link?.trim()) && (
-                        <div style={{ ...JOB_ROW_LINK_ICON_COLUMN_STYLE, flexDirection: isMobile ? 'row' : 'column' }}>
-                          {j.google_drive_link?.trim() && (
-                            <a
-                              href={j.google_drive_link.trim()}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              onClick={(e) => { e.preventDefault(); openInExternalBrowser(j.google_drive_link!.trim()) }}
-                              title="Google Drive"
-                              style={JOB_ROW_LINK_ICON_STYLE}
-                            >
-                              <DriveLinkGlyph />
-                            </a>
-                          )}
-                          {j.job_pictures_link?.trim() && (
-                            <span style={JOB_ROW_PICTURES_ICON_WRAP_STYLE}>
-                              <DashboardJobPicturesLinkRow layout="inline" jobPicturesLink={j.job_pictures_link} />
-                            </span>
-                          )}
-                          {j.job_plans_link?.trim() && (
-                            <a
-                              href={j.job_plans_link.trim()}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              onClick={(e) => { e.preventDefault(); openInExternalBrowser(j.job_plans_link!.trim()) }}
-                              title="Job Plans"
-                              style={JOB_ROW_LINK_ICON_STYLE}
-                            >
-                              <JobPlansGlyph />
-                            </a>
-                          )}
-                        </div>
-                      )}
-                      {(role === 'dev' || role === 'master_technician' || isAssistantLike(role) || role === 'primary') && (
-                        <>
-                          <button
-                            type="button"
-                            onClick={() => setViewReportsJob({ id: j.id, hcpNumber: effectiveJobLedgerNumber(j.hcp_number, j.click_number) || '—', jobName: j.job_name ?? '—', jobAddress: j.job_address ?? '—' })}
-                            style={VIEW_REPORTS_BUTTON_STYLE}
-                          >
-                            View<br />Reports
-                          </button>
-                        </>
-                      )}
-                      {role === 'superintendent' && (
-                        <button
-                          type="button"
-                          onClick={() => setViewReportsJob({ id: j.id, hcpNumber: effectiveJobLedgerNumber(j.hcp_number, j.click_number) || '—', jobName: j.job_name ?? '—', jobAddress: j.job_address ?? '—' })}
-                          style={VIEW_REPORTS_BUTTON_STYLE}
-                        >
-                          View<br />Reports
-                        </button>
-                      )}
-                      {isSubcontractorLikeRole(role) && !isMobile && (() => {
-                        const b = subcontractorLastActivityBlock(j)
-                        return (
-                          b.line3 != null ? (
-                            <button
-                              type="button"
-                              className="subcontractorLastActivityTypeBtn"
-                              style={{
-                              display: 'flex',
-                              flexDirection: 'column',
-                              alignItems: 'center',
-                              fontSize: '0.8125rem',
-                              color: 'var(--text-muted)',
-                              textAlign: 'center',
-                              maxWidth: 220,
-                              lineHeight: 1.25,
-                              gap: 2,
-                              }}
-                              title={b.title}
-                              onClick={() =>
-                                  setSubcontractorJobActivityModalJob({
-                                    id: j.id,
-                                    hcpNumber: effectiveJobLedgerNumber(j.hcp_number, j.click_number) || '—',
-                                    jobName: j.job_name ?? '—',
-                                  })
-                              }
-                              aria-label={`What last activity means and recent history for ${j.job_name ?? 'this job'}`}
-                            >
-                              <span>{b.line1}</span>
-                              <span>{b.line2}</span>
-                              <span>{b.line3}</span>
-                            </button>
-                          ) : (
-                            <div
-                              style={{
-                              display: 'flex',
-                              flexDirection: 'column',
-                              alignItems: 'center',
-                              fontSize: '0.8125rem',
-                              color: 'var(--text-muted)',
-                              textAlign: 'center',
-                              maxWidth: 220,
-                              lineHeight: 1.25,
-                              gap: 2,
-                              }}
-                              title={b.title}
-                            >
-                              <span>{b.line1}</span>
-                              <span>{b.line2}</span>
-                            </div>
-                          )
-                        )
-                      })()}
-                      {role !== 'helpers' ? (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setReadyForBillingJob({ id: j.id, hcpNumber: effectiveJobLedgerNumber(j.hcp_number, j.click_number) || '—', jobName: j.job_name ?? '—' })
-                          setReadyForBillingChecked1(false)
-                          setReadyForBillingChecked2(false)
-                        }}
-                        disabled={jobStatusUpdatingId === j.id}
-                        style={{ ...sendToBillingButtonStyle(jobStatusUpdatingId === j.id), whiteSpace: 'nowrap' }}
-                      >
-                        {jobStatusUpdatingId === j.id ? '…' : isMobile ? 'Send to Billing' : <>Send to<br />Billing</>}
-                      </button>
-                      ) : null}
-                      {canLeaveJobFieldReport(role) && (
-                        <DashboardLeaveReportButton
-                          singleLine={isMobile}
-                          showReminder={leaveReportReminderForJobRow(j)}
-                          onClick={() =>
-                            setLeaveReportJob({
-                              id: j.id,
-                              hcpNumber: effectiveJobLedgerNumber(j.hcp_number, j.click_number) || '—',
-                              jobName: j.job_name ?? '—',
-                              jobAddress: j.job_address ?? '—',
-                            })
-                          }
-                        />
-                      )}
-                      {j.created_at && (!isMobile || !isSubcontractorLikeRole(role)) && (
-                        <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }} title="Time since job created">
-                          <>Open<br />{formatTimeSince(j.created_at)}</>
-                        </span>
-                      )}
-                      {isSubcontractorLikeRole(role) && isMobile && (
-                        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', columnGap: '0.4rem', width: '100%', fontSize: '0.8125rem', color: 'var(--text-muted)', lineHeight: 1.3 }}>
-                          {j.created_at && (
-                          <span title="Time since job created">
-                            Open {formatOpenAgeShort(j.created_at)}{' ·'}
-                          </span>
-                        )}
-                          {(() => {
-                            const m = subcontractorLastActivityMobileLine(j, { formatTitle: formatDatetime })
-                            if (!m.clickable) {
-                              return (
-                                <span title={m.title} aria-label={m.aria} style={{ lineHeight: 1.3 }}>
-                                  {m.textCompact}
-                                </span>
-                              )
-                            }
-                            return (
-                              <button
-                                type="button"
-                                className="subcontractorLastActivityTypeBtn"
-                                title={m.title}
-                                aria-label={m.aria}
-                                style={{ lineHeight: 1.3, textAlign: 'left' }}
-                                onClick={() =>
-                                  setSubcontractorJobActivityModalJob({
-                                    id: j.id,
-                                    hcpNumber: effectiveJobLedgerNumber(j.hcp_number, j.click_number) || '—',
-                                    jobName: j.job_name ?? '—',
-                                  })
-                                }
-                              >
-                                {m.textCompact}
-                              </button>
-                            )
-                          })()}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                  {j.in_progress_stage_name && !isSubcontractorLikeRole(role) && (
-                    <Link
-                      to={j.project_id && j.in_progress_step_id
-                        ? `/workflows/${j.project_id}#step-${j.in_progress_step_id}`
-                        : '/workflows'}
-                      style={{
-                        display: 'block',
-                        marginTop: '0.75rem',
-                        padding: '0.4rem 0.75rem',
-                        background: 'var(--bg-violet-100)',
-                        color: 'var(--text-violet-700)',
-                        textDecoration: 'none',
-                        fontSize: '0.875rem',
-                        borderRadius: 6,
-                        textAlign: 'center',
-                      }}
-                    >
-                      In progress stage: {j.in_progress_stage_name}
-                    </Link>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-        </DashboardGroupCard>
+        <DashboardAssignedJobsSection
+          role={role}
+          isMobile={isMobile}
+          assignedJobs={assignedJobs}
+          assignedJobsLoading={assignedJobsLoading}
+          assignedJobsSearch={assignedJobsSearch}
+          setAssignedJobsSearch={setAssignedJobsSearch}
+          filteredAssignedJobs={filteredAssignedJobs}
+          openJobDetailFromDashboardJobRow={openJobDetailFromDashboardJobRow}
+          setViewReportsJob={setViewReportsJob}
+          setSubcontractorJobActivityModalJob={setSubcontractorJobActivityModalJob}
+          leaveReportReminderForJobRow={leaveReportReminderForJobRow}
+          setLeaveReportJob={setLeaveReportJob}
+          setReadyForBillingJob={setReadyForBillingJob}
+          setReadyForBillingChecked1={setReadyForBillingChecked1}
+          setReadyForBillingChecked2={setReadyForBillingChecked2}
+          jobStatusUpdatingId={jobStatusUpdatingId}
+          formatDatetime={formatDatetime}
+        />
       )}
 
       {(isAssistantLike(role) || role === 'dev' || role === 'master_technician') && (
@@ -1847,150 +1507,21 @@ export default function Dashboard() {
         inspectionsButtonVisible={dashboardButtonVisibility?.inspections !== false}
       />
 
-      {role === 'superintendent' && (superintendentJobsLoading || superintendentJobs.filter((j) => !assignedJobs.some((a) => a.id === j.id)).length > 0) && (
-        <div style={{ marginTop: '2rem' }}>
-          <button
-            type="button"
-            onClick={() => setSuperintendentJobsExpanded((prev) => !prev)}
-            aria-expanded={superintendentJobsExpanded}
-            style={{ margin: 0, padding: 0, border: 'none', background: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: superintendentJobsExpanded ? '0.75rem' : 0 }}
-          >
-            <span aria-hidden>{superintendentJobsExpanded ? '\u25BC' : '\u25B6'}</span>
-            <h2 style={{ fontSize: '1.125rem', margin: 0 }}>
-              Superintendent Jobs ({superintendentJobs.filter((j) => !assignedJobs.some((a) => a.id === j.id)).length})
-            </h2>
-          </button>
-          {superintendentJobsExpanded && (
-            superintendentJobsLoading && superintendentJobs.length === 0 ? (
-              <DashboardListRowSkeleton rows={2} />
-            ) : (
-              <div>
-                {superintendentJobs
-                  .filter((j) => !assignedJobs.some((a) => a.id === j.id))
-                  .map((j) => (
-                    <div
-                      key={j.id}
-                      style={{
-                        border: '1px solid var(--border)',
-                        borderRadius: 8,
-                        padding: '1rem',
-                        marginBottom: '0.75rem',
-                        background: 'var(--surface)',
-                      }}
-                    >
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>
-                        <div style={isMobile ? { flex: '0 0 50%', minWidth: 0 } : undefined}>
-                          <div
-                            role="button"
-                            tabIndex={0}
-                            onClick={() => openJobDetailFromDashboardJobRow(j)}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter' || e.key === ' ') {
-                                e.preventDefault()
-                                openJobDetailFromDashboardJobRow(j)
-                              }
-                            }}
-                            aria-label={`Job details: ${effectiveJobLedgerNumber(j.hcp_number, j.click_number) || '—'} · ${(j.job_name ?? '').trim() || '—'}`}
-                            style={{
-                              fontWeight: 600,
-                              cursor: 'pointer',
-                              color: 'var(--text-strong)',
-                              width: 'fit-content',
-                            }}
-                          >
-                            {effectiveJobLedgerNumber(j.hcp_number, j.click_number) || '—'} · {j.job_name || '—'}
-                          </div>
-                          <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginTop: 4 }}>
-                            {j.job_address?.trim() ? (
-                              <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(j.job_address.trim())}`} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--text-link)', textDecoration: 'none' }}>{j.job_address}</a>
-                            ) : (
-                              '—'
-                            )}
-                          </div>
-                        </div>
-                        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-start', flexWrap: 'wrap' }}>
-                          {(j.google_drive_link?.trim() || j.job_plans_link?.trim() || j.job_pictures_link?.trim()) && (
-                            <div style={JOB_ROW_LINK_ICON_COLUMN_STYLE}>
-                              {j.google_drive_link?.trim() && (
-                                <a href={j.google_drive_link.trim()} target="_blank" rel="noopener noreferrer" onClick={(e) => { e.preventDefault(); openInExternalBrowser(j.google_drive_link!.trim()) }} title="Google Drive" style={JOB_ROW_LINK_ICON_STYLE}>
-                                  <DriveLinkGlyph />
-                                </a>
-                              )}
-                              {j.job_pictures_link?.trim() && (
-                                <span style={JOB_ROW_PICTURES_ICON_WRAP_STYLE}>
-                                  <DashboardJobPicturesLinkRow layout="inline" jobPicturesLink={j.job_pictures_link} />
-                                </span>
-                              )}
-                              {j.job_plans_link?.trim() && (
-                                <a href={j.job_plans_link.trim()} target="_blank" rel="noopener noreferrer" onClick={(e) => { e.preventDefault(); openInExternalBrowser(j.job_plans_link!.trim()) }} title="Job Plans" style={JOB_ROW_LINK_ICON_STYLE}>
-                                  <JobPlansGlyph />
-                                </a>
-                              )}
-                            </div>
-                          )}
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', alignItems: 'flex-start' }}>
-                            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                              <button
-                                type="button"
-                                onClick={() => setViewReportsJob({ id: j.id, hcpNumber: effectiveJobLedgerNumber(j.hcp_number, j.click_number) || '—', jobName: j.job_name ?? '—', jobAddress: j.job_address ?? '—' })}
-                                style={VIEW_REPORTS_BUTTON_STYLE}
-                              >
-                                View<br />Reports
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setReadyForBillingJob({ id: j.id, hcpNumber: effectiveJobLedgerNumber(j.hcp_number, j.click_number) || '—', jobName: j.job_name ?? '—' })
-                                  setReadyForBillingChecked1(false)
-                                  setReadyForBillingChecked2(false)
-                                }}
-                                disabled={jobStatusUpdatingId === j.id}
-                                style={sendToBillingButtonStyle(jobStatusUpdatingId === j.id)}
-                              >
-                                {jobStatusUpdatingId === j.id ? '…' : <>Send to<br />Billing</>}
-                              </button>
-                            </div>
-                            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                              {j.created_at && (
-                                <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }} title="Time since job created">
-                                  <>Open<br />{formatTimeSince(j.created_at)}</>
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                      {j.in_progress_stage_name && (
-                        <Link
-                          to={j.project_id && j.in_progress_step_id
-                            ? `/workflows/${j.project_id}#step-${j.in_progress_step_id}`
-                            : '/workflows'}
-                          style={{
-                            display: 'block',
-                            marginTop: '1rem',
-                            marginLeft: '-1rem',
-                            marginRight: '-1rem',
-                            marginBottom: '-1rem',
-                            padding: '0.5rem 1rem',
-                            background: 'var(--bg-violet-100)',
-                            color: 'var(--text-violet-700)',
-                            textDecoration: 'none',
-                            fontSize: '0.875rem',
-                            borderBottomLeftRadius: 8,
-                            borderBottomRightRadius: 8,
-                            textAlign: 'center',
-                          }}
-                        >
-                          In progress stage: {j.in_progress_stage_name}
-                        </Link>
-                      )}
-                    </div>
-                  ))}
-              </div>
-            )
-          )}
-        </div>
-      )}
+      <DashboardSuperintendentJobsSection
+        role={role}
+        superintendentJobs={superintendentJobs}
+        superintendentJobsLoading={superintendentJobsLoading}
+        superintendentJobsExpanded={superintendentJobsExpanded}
+        setSuperintendentJobsExpanded={setSuperintendentJobsExpanded}
+        assignedJobs={assignedJobs}
+        openJobDetailFromDashboardJobRow={openJobDetailFromDashboardJobRow}
+        setViewReportsJob={setViewReportsJob}
+        isMobile={isMobile}
+        setReadyForBillingJob={setReadyForBillingJob}
+        setReadyForBillingChecked1={setReadyForBillingChecked1}
+        setReadyForBillingChecked2={setReadyForBillingChecked2}
+        jobStatusUpdatingId={jobStatusUpdatingId}
+      />
       {projectsCardVisible && (
         <DashboardProjectsCard
           assignedSteps={assignedSteps}

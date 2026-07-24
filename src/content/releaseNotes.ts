@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1004',
+    date: '2026-07-24',
+    title: 'Housekeeping: Dashboard job lists reorganized internally',
+    kind: 'infra',
+    highlights: [
+      'The Assigned Jobs and Superintendent Jobs sections were restructured under the hood so future improvements land on all Dashboard job cards at once. Nothing you see changes.',
+    ],
+  },
+  {
     version: 'v2.1003',
     date: '2026-07-24',
     title: 'Build safety: phones get an automatic layout check',
