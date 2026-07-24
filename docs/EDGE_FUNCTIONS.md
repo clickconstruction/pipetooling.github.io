@@ -5,7 +5,7 @@ file: EDGE_FUNCTIONS.md
 type: API Reference
 purpose: Complete API documentation for all 58 Supabase Edge Functions
 audience: Developers, DevOps, AI Agents
-last_updated: 2026-07-22
+last_updated: 2026-07-24
 estimated_read_time: 20-25 minutes
 difficulty: Intermediate
 
@@ -875,7 +875,7 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 
 **Behavior**: Idempotent if already `customer_accepted` (returns **`200`** + **`alreadyAccepted: true`**). Captures **`acceptor_ip`** from **`x-forwarded-for`** (first hop) and **`user-agent`** on the real **`sent` → `customer_accepted`** update.
 
-**Staff email** (after successful **`sent` → `customer_accepted`**): For each user id in **`estimates.accept_notify_user_ids`** (nullable before first save; empty array = explicitly no recipients), calls **`estimate_accept_notify_filter_eligible_user_ids`** then emails each resolved **`users.email`** via Resend (same From as customer estimate mail). Link uses **`ESTIMATE_PUBLIC_ORIGIN`** (or fallback **https://pipetooling.github.io**) to **`/estimates/{estimate_number}`**. Failures are **`console.error`** only; HTTP **`200`** is still returned if the DB update succeeded.
+**Staff email** (after successful **`sent` → `customer_accepted`**): recipients are the **union** of (a) **`estimates.accept_notify_user_ids`** — this estimate's own picks (nullable before first save; empty array = no per-estimate extras) — and (b) the org-wide **always-notify** list in **`app_settings`** key **`estimate_accepted_notify_recipients_v1`** (v2.991; JSON array of `users.id` in `value_text`, dev-write, edited via the ⚙ **Accepted notifications** on Estimates; a missing/malformed row parses to **`[]`**, so behavior matches pre-v2.991). The union is deduped, then calls **`estimate_accept_notify_filter_eligible_user_ids`** and emails each resolved **`users.email`** via Resend (same From as customer estimate mail). Link uses **`ESTIMATE_PUBLIC_ORIGIN`** (or fallback **https://pipetooling.github.io**) to **`/estimates/{estimate_number}`**. Failures are **`console.error`** only; HTTP **`200`** is still returned if the DB update succeeded.
 
 **Draft app default (not Edge)**: When the column is **`NULL`**, [`Estimates.tsx`](../src/pages/Estimates.tsx) pre-selects the signed-in user and every **`master_technician`** on estimate detail load (Supabase **`users`** query; dedupe; on failure, self only)—until staff save the draft, which persists the array. **`[]`** remains explicitly no recipients.
 
