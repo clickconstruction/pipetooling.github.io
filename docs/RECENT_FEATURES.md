@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-23 (v2.989)
+last_updated: 2026-07-24 (v2.990)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.990)
+
+### Additional Report: the × stays pinned — techs can close it without scrolling back up (2026-07-24)
+Field report (Malachi, on a phone): the Additional Report modal couldn't be closed without scrolling a long way back up. Cause: in [`AdditionalReportModal`](../src/components/AdditionalReportModal.tsx) the title bar holding the × was an ordinary first child of the panel, and the panel is the `overflow: auto` scroller (`maxHeight: 90vh`) — so on a phone, where the form is taller than the screen, the × scrolled off the top the moment you started filling anything in. Fix: the title bar is now `position: sticky; top: 0` with an opaque `--surface` background, a bottom border, and negative side margins so it spans the panel's full width. The panel's **top** padding moved onto the bar itself — sticking at `top: 0` inside a padded scroller otherwise leaves a 24px strip where content scrolls through *above* the pinned bar (caught in the browser mid-fix: `gapAboveHeader` 24 → **0**). Also: the × is now a 44×44 tap target instead of a bare glyph, and the panel's `minWidth: 400` (wider than a 375px phone) became `width: min(560px, 100%)` with `box-sizing: border-box`. Verified at 375×450 — scrolled the full 372px to the Save/Cancel row with the × still pinned and no bleed-through — and at 375×812, where Save still clears the Dispatch footer.
 
 ## Latest Updates (v2.989)
 
