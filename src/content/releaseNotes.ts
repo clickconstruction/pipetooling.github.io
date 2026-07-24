@@ -13,12 +13,12 @@ export const RELEASE_NOTES: ReleaseNote[] = [
   {
     version: 'v2.994',
     date: '2026-07-24',
-    title: 'Cleaner Ready to Bill cards on your phone',
+    title: 'Compact Ready to Bill cards on your phone',
     kind: 'fix',
     highlights: [
-      'For subcontractors and helpers, each Ready to Bill card now uses the full width of the screen, so the job info and buttons are no longer squeezed into a narrow column.',
-      'The card shows how far along the job is (% complete) right under how long it has been open.',
-      'The "Collect Payment" button now reads on a single line instead of stacking into two.',
+      'For subcontractors and helpers, each Ready to Bill card is now much shorter and easier to scan on a phone — about four fit where two and a half did before.',
+      'The document icons moved up beside the job name, and Collect + Leave Report now sit together on one row.',
+      'Job age reads compactly as "Open 2m 3w", and the open time, % complete, and last activity share a single line.',
     ],
   },
   {

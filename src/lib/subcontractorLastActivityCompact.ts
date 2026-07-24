@@ -118,6 +118,12 @@ export function subcontractorLastActivitySourceLine(
 export type SubcontractorLastActivityMobileLine = {
   /** Visible single-line label, e.g. `Last Activity 23h ago: Field report`. */
   text: string
+  /**
+   * Prefix-free, source-first variant for space-tight inline meta lines, e.g.
+   * `Field report 23h ago` (or just `23h ago` with no known source, `No activity
+   * yet` when there's none). Used on the compact Ready to Bill cards.
+   */
+  textCompact: string
   /** True when there's a known activity instant (so the line opens the explainer modal). */
   clickable: boolean
   /** `title` tooltip (long datetime when known; explainer phrase when no activity). */
@@ -149,6 +155,7 @@ export function subcontractorLastActivityMobileLine(
   if (!activity || Number.isNaN(new Date(activity).getTime())) {
     return {
       text: 'Last Activity: No activity yet',
+      textCompact: 'No activity yet',
       clickable: false,
       title: NO_ACTIVITY_TITLE,
       aria: 'Last activity: No activity yet',
@@ -159,9 +166,11 @@ export function subcontractorLastActivityMobileLine(
   const sourceLine = subcontractorLastActivitySourceLine(j)
   const formatter = opts?.formatTitle ?? ((iso) => iso)
   const text = sourceLine ? `Last Activity ${compact}: ${sourceLine}` : `Last Activity ${compact}`
+  const textCompact = sourceLine ? `${sourceLine} ${compact}` : compact
   const ariaTail = sourceLine ? `${longRel}, ${sourceLine}` : longRel
   return {
     text,
+    textCompact,
     clickable: true,
     title: `Latest activity: ${formatter(activity)}`,
     aria: `Last activity: ${ariaTail}`,

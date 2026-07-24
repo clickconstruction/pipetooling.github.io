@@ -171,9 +171,31 @@ describe('subcontractorLastActivityMobileLine', () => {
       { now: NOW, formatTitle: TITLE_STUB },
     )
     expect(result.text).toBe('Last Activity 23h ago: Field report')
+    expect(result.textCompact).toBe('Field report 23h ago')
     expect(result.clickable).toBe(true)
     expect(result.title).toBe(`Latest activity: FIXED(${ts})`)
     expect(result.aria).toBe('Last activity: 23 hours ago, Field report')
+  })
+
+  it('textCompact: source-first, no prefix; comma-joined sources; falls back to time / no-activity', () => {
+    const tie = isoHoursAgo(2)
+    expect(
+      subcontractorLastActivityMobileLine(
+        { last_job_activity_at: tie, last_thread_note_at: tie, last_report_at: tie },
+        { now: NOW, formatTitle: TITLE_STUB },
+      ).textCompact,
+    ).toBe('Thread note, Field report 2h ago')
+    // activity instant but no aligned source → just the time
+    expect(
+      subcontractorLastActivityMobileLine(
+        { last_job_activity_at: isoHoursAgo(5), last_report_at: isoHoursAgo(6) },
+        { now: NOW, formatTitle: TITLE_STUB },
+      ).textCompact,
+    ).toBe('5h ago')
+    // no activity → "No activity yet" (no "Last Activity" prefix)
+    expect(
+      subcontractorLastActivityMobileLine({ last_job_activity_at: null }, { now: NOW }).textCompact,
+    ).toBe('No activity yet')
   })
 
   it('just-now: "Last Activity just now: <source>" (no "ago")', () => {
