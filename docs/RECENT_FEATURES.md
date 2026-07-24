@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-24 (v2.995)
+last_updated: 2026-07-24 (v2.996)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.996)
+
+### My Schedule: phone icon aligned with photos + Leave Report; friendlier missing-photos toast (2026-07-24)
+Follow-up to v2.995: the phone button lived inside the title's text flow in [`DashboardMyScheduleSection`](../src/components/dashboard/DashboardMyScheduleSection.tsx), so it drifted vertically whenever the job name wrapped. It now sits first in the right-side action cluster (phone / pictures / Leave Report), always on one line regardless of title length. Also, the [`linkJobPicturesDispatchRequest`](../src/lib/linkJobPicturesDispatchRequest.ts) toasts now read "Note sent to dispatch to add a photos link, if you need it sooner call dispatch!" (and the already-sent variant matches) per requested wording. The clocked-in Dashboard button also renamed **Update Focus → "Update Focus this Shift"** ([`ClockInOutButton`](../src/components/ClockInOutButton.tsx); modal title unchanged).
 
 ## Latest Updates (v2.995)
 

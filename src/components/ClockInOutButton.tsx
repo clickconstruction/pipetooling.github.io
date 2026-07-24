@@ -1595,7 +1595,7 @@ export default function ClockInOutButton({
           cursor: (actionLoading || updateFocusLoading || clockOutSaving || clockOutTallyGateLoading) ? 'not-allowed' : 'pointer',
         }}
       >
-        Update Focus
+        Update Focus this Shift
       </button>
     </>
   ) : salaryUiActive ? (

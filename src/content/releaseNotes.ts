@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.996',
+    date: '2026-07-24',
+    title: 'Schedule rows line up their buttons',
+    kind: 'fix',
+    highlights: [
+      'On My Schedule the phone icon now always sits in line with the photos icon and Leave Report, even when the job name wraps.',
+      'Tapping a missing photos link now says: "Note sent to dispatch to add a photos link, if you need it sooner call dispatch!"',
+      'The clocked-in Dashboard button now reads "Update Focus this Shift".',
+    ],
+  },
+  {
     version: 'v2.995',
     date: '2026-07-24',
     title: 'Call the customer without mis-taps, and log the call',
