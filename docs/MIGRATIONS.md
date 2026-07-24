@@ -105,6 +105,12 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 #### July 22, 2026
 
+**`20260722272000_paid_email_person_id_joins.sql`** _(apply via `supabase db push` after the file is on `main`)_
+- **Purpose**: Person identity Phase C-2 (v2.1011) — `get_paid_job_email_payload` wage joins go person-first (`users → people.account_user_id → people_pay_config.person_id`), old name-join kept as fallback. Body transformed verbatim from 20260722262000.
+- **Security**: CREATE OR REPLACE, same signature — service_role-only grants unchanged.
+- **Ordering**: either order safe — fallback preserves current behavior for unlinked users. Idempotent.
+- **Category**: People / identity migration
+
 **`20260722270000_person_identity_phase_b2.sql`** _(apply via `supabase db push` after the file is on `main`)_
 - **Purpose**: Person identity Phase B2 (v2.1009) — backfill + insert-triggers on the five remaining person_id carriers; new `people_labor_job_assignees` junction shadowing `people_labor_jobs.assigned_to_name` with sync trigger + backfill.
 - **Security**: new table with RLS (visibility via caller-context EXISTS on the parent labor job; office-role write gates); sync fn SECURITY DEFINER; ends with BOTH read-only blocks (CREATE TABLE rule).
