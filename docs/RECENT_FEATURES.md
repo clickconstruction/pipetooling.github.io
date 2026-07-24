@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-24 (v2.1008)
+last_updated: 2026-07-24 (v2.1009)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1009)
+
+### Person identity Phase B2: remaining pay tables keyed + sub-sheet assignee junction (2026-07-24)
+Finishes Phase B's deferred scope (migration `20260722270000_person_identity_phase_b2.sql`). Discovery: the five "remaining" tables (`people_crew_bids`, `pay_stub_days`, `people_hours_display_order`, `person_offsets`, `hours_reviewed`) **already carried `person_id`** — the plan doc was stale — so they get the NULL-only backfill via `resolve_pay_person_id` plus the Phase B insert-trigger. New **`people_labor_job_assignees`** junction (labor_job_id, person_id; both CASCADE) shadows the delimited `people_labor_jobs.assigned_to_name` (`' | '` separated): RLS inherits the parent labor job's visibility via caller-context EXISTS with office-role write gates, an AFTER INSERT/UPDATE trigger rebuilds a job's junction rows whenever the text changes (SECURITY DEFINER; unresolvable segments simply skipped), and existing rows are backfilled. Ends with both read-only training-mode blocks per the CREATE TABLE rule. Names remain display + fallback throughout.
 
 ## Latest Updates (v2.1008)
 
