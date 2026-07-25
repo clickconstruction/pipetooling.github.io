@@ -2,7 +2,9 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import CallCustomerModal from './CallCustomerModal'
 import { useJobCustomerPhones } from '../../hooks/useJobCustomerPhones'
-import type { UserRole } from '../../hooks/useAuth'
+import { submitAddJobPhoneDispatchRequestForJob } from '../../lib/addJobPhoneDispatchRequest'
+import { useToastContext } from '../../contexts/ToastContext'
+import { useAuth, type UserRole } from '../../hooks/useAuth'
 import type { DashboardTeamAssignedJobRow } from '../../lib/dashboardTeamAssignedJobRow'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
@@ -13,6 +15,7 @@ import {
   DriveLinkGlyph,
   JOB_ROW_LINK_ICON_COLUMN_STYLE,
   JobRowCallButton,
+  JobRowMissingPhoneButton,
   JOB_ROW_LINK_ICON_STYLE,
   JOB_ROW_PICTURES_ICON_WRAP_STYLE,
   JobPlansGlyph,
@@ -55,7 +58,9 @@ export function DashboardSuperintendentJobsSection({
   jobStatusUpdatingId: string | null
 }) {
   // v2.1006: phone icon -> CallCustomerModal on rows with a customer phone.
-  const phones = useJobCustomerPhones(superintendentJobs.map((j) => j.id))
+  const { phones, loaded: phonesLoaded } = useJobCustomerPhones(superintendentJobs.map((j) => j.id))
+  const { user: authUser } = useAuth()
+  const { showToast } = useToastContext()
   const [callModal, setCallModal] = useState<{ phone: string; jobId: string; jobLabel: string } | null>(null)
   return (
     <>
@@ -127,6 +132,18 @@ export function DashboardSuperintendentJobsSection({
                               onClick={(e) => {
                                 e.stopPropagation()
                                 setCallModal({ phone: phones.get(j.id)!, jobId: j.id, jobLabel: `${effectiveJobLedgerNumber(j.hcp_number, j.click_number) || '—'} · ${j.job_name || '—'}` })
+                              }}
+                            />
+                          ) : phonesLoaded ? (
+                            <JobRowMissingPhoneButton
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                void submitAddJobPhoneDispatchRequestForJob(authUser?.id, showToast, {
+                                  jobId: j.id,
+                                  hcpNumber: effectiveJobLedgerNumber(j.hcp_number, j.click_number),
+                                  jobName: j.job_name,
+                                  jobAddress: j.job_address,
+                                })
                               }}
                             />
                           ) : null}
