@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-24 (v2.1014)
+last_updated: 2026-07-24 (v2.1015)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1015)
+
+### Fix: external-sub merge no longer trips people RLS when the account has no roster row (2026-07-24)
+Reported immediately after v2.1014 shipped ("Merge now" failed on the real Behar pair). Root cause: the create-roster-row-on-the-fly path inserted `people` with `master_user_id` = the external row's owner, but the only INSERT policy ("Users can insert own people") requires `master_user_id = auth.uid()` even for devs — so the dev clicking Merge now hit an RLS violation. Fix in [`useActiveAccountsManagement.ts`](../src/hooks/useActiveAccountsManagement.ts): when the survivor has **no roster person row**, the merge is now a pure **account link** — `people.account_user_id = survivor` on the external row itself (devs can UPDATE any people row, and it's the correct semantic anyway: the person's hours/pay/crew/sheet records already follow that row, so nothing needs to move and nothing is archived — same as the People → Users "Link account" flow). The combine path (survivor already has a roster row) is unchanged. Preview now states which of the two will happen; no INSERT remains in the flow. Client-only. Help guide wording updated.
 
 ## Latest Updates (v2.1014)
 
