@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1016',
+    date: '2026-07-24',
+    title: 'One archive dialog',
+    kind: 'feature',
+    highlights: [
+      'Archiving an account is now a single dialog — the separate "Archive User & Reassign Customers" button is gone.',
+      'If the account owns customers, the same confirmation asks whether to keep them on the archived account or reassign them to another master in one step.',
+      'The top Archive user button now picks the account from a dropdown instead of asking you to type their email.',
+    ],
+  },
+  {
     version: 'v2.1015',
     date: '2026-07-24',
     title: 'External subcontractor merge fix',

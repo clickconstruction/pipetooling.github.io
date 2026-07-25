@@ -1,6 +1,7 @@
 /** Active Accounts management panel: users table (copy cells, service-type pills,
- * role select, last login), invite / manual add / archive / archive+reassign /
- * set-password satellite modals, archived-users restore, and convert-master.
+ * role select, last login), invite / manual add / unified archive (with optional
+ * customer reassignment) / set-password satellite modals, archived-users restore,
+ * and convert-master.
  * State + handlers live in useActiveAccountsManagement; this renders in two
  * surfaces: inline card on Settings → People & accounts, and inside the
  * app-level Active Accounts modal (ActiveAccountsModalContext). */
@@ -11,6 +12,7 @@ import { ROLES } from '../../lib/userRoles'
 import { displayLabelForUserRole } from '../../lib/userRoleDisplay'
 import { isSubcontractorLikeRole } from '../../lib/subcontractorLikeRole'
 import { eligibleAbsorbCandidates, eligibleExternalAbsorbCandidates, EXTERNAL_MERGE_OPTION_PREFIX } from '../../lib/mergeUserAccounts'
+import { archiveChoiceBlocker, eligibleReassignTargets } from '../../lib/archiveUserDialog'
 import { buildServiceTypeTradePill } from '../../lib/serviceTypeTradePill'
 import { filterActiveAccountUsers } from '../../lib/activeAccountsSearch'
 import { useToastContext } from '../../contexts/ToastContext'
@@ -82,23 +84,13 @@ export default function ActiveAccountsPanel({ variant, onDataChanged, onOpenFind
     manualAddError,
     setManualAddError,
     manualAddSubmitting,
-    deleteOpen,
-    deleteEmail,
-    setDeleteEmail,
-    deleteName,
-    setDeleteName,
-    deleteError,
-    setDeleteError,
-    deleteSubmitting,
-    deleteReassignOpen,
-    deleteReassignUserId,
-    setDeleteReassignUserId,
-    deleteReassignNewMasterId,
-    setDeleteReassignNewMasterId,
-    deleteReassignSubmitting,
-    deleteReassignError,
-    setDeleteReassignError,
-    deleteReassignCustomerCount,
+    archiveConfirmOpen,
+    archiveConfirmPicker,
+    archiveReassignMode,
+    setArchiveReassignMode,
+    archiveReassignTargetId,
+    setArchiveReassignTargetId,
+    selectArchiveConfirmUser,
     archiveConfirmUser,
     archiveConfirmSubmitting,
     archiveConfirmError,
@@ -183,12 +175,6 @@ export default function ActiveAccountsPanel({ variant, onDataChanged, onOpenFind
     openManualAdd,
     closeManualAdd,
     handleManualAdd,
-    openArchive,
-    closeArchive,
-    handleArchive,
-    openArchiveReassign,
-    closeArchiveReassign,
-    handleArchiveReassign,
     handleRestore,
     closeSetPassword,
     handleSetPassword,
@@ -266,11 +252,8 @@ export default function ActiveAccountsPanel({ variant, onDataChanged, onOpenFind
             <button type="button" onClick={openManualAdd} className="activeAccountsCard__btnSecondary">
               Manually add user
             </button>
-            <button type="button" onClick={openArchive} className="activeAccountsCard__btnDanger">
+            <button type="button" onClick={() => openArchiveConfirm()} className="activeAccountsCard__btnDanger">
               Archive user
-            </button>
-            <button type="button" onClick={openArchiveReassign} className="activeAccountsCard__btnDanger">
-              Archive User & Reassign Customers
             </button>
             <button type="button" onClick={openMerge} className="activeAccountsCard__btnDanger">
               Merge users
@@ -1004,210 +987,117 @@ export default function ActiveAccountsPanel({ variant, onDataChanged, onOpenFind
         </div>
       )}
 
-      {deleteOpen && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
-          <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 320 }}>
-            <h2 style={{ marginTop: 0 }}>Archive user</h2>
-            <p style={{ color: 'var(--text-muted)', marginBottom: '1rem', fontSize: '0.875rem' }}>
-              Enter the user&apos;s email and/or name as shown in Active accounts. At least one field must match;
-              the server finds the user by email first, then by name.
-            </p>
-            <form onSubmit={handleArchive}>
-              <div style={{ marginBottom: '1rem' }}>
-                <label htmlFor="delete-email" style={{ display: 'block', marginBottom: 4 }}>Email</label>
-                <input
-                  id="delete-email"
-                  type="text"
-                  value={deleteEmail}
-                  onChange={(e) => { setDeleteEmail(e.target.value); setDeleteError(null) }}
-                  disabled={deleteSubmitting}
-                  style={{ width: '100%', padding: '0.5rem' }}
-                />
-              </div>
-              <div style={{ marginBottom: '1rem' }}>
-                <label htmlFor="delete-name" style={{ display: 'block', marginBottom: 4 }}>Name</label>
-                <input
-                  id="delete-name"
-                  type="text"
-                  value={deleteName}
-                  onChange={(e) => { setDeleteName(e.target.value); setDeleteError(null) }}
-                  disabled={deleteSubmitting}
-                  style={{ width: '100%', padding: '0.5rem' }}
-                />
-              </div>
-              {deleteError && <p style={{ color: 'var(--text-red-700)', marginBottom: '1rem' }}>{deleteError}</p>}
-              <div style={{ display: 'flex', gap: 8 }}>
-                <button type="submit" disabled={deleteSubmitting} style={{ color: 'var(--text-red-700)' }}>
-                  {deleteSubmitting ? 'Archiving…' : 'Archive user'}
-                </button>
-                <button type="button" onClick={closeArchive} disabled={deleteSubmitting}>Cancel</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {deleteReassignOpen && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
-          <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 400, maxWidth: 500 }}>
-            <h2 style={{ marginTop: 0 }}>Archive User & Reassign Customers</h2>
-            <p style={{ color: 'var(--text-muted)', marginBottom: '1rem', fontSize: '0.875rem' }}>
-              Select a user to archive and a master to inherit their customers. 
-              The user will be archived after all customers are reassigned.
-            </p>
-            <form onSubmit={handleArchiveReassign}>
-              <div style={{ marginBottom: '1rem' }}>
-                <label htmlFor="delete-reassign-user" style={{ display: 'block', marginBottom: 4 }}>
-                  User to archive *
-                </label>
-                <select
-                  id="delete-reassign-user"
-                  value={deleteReassignUserId}
-                  onChange={(e) => {
-                    setDeleteReassignUserId(e.target.value)
-                    setDeleteReassignError(null)
-                  }}
-                  required
-                  disabled={deleteReassignSubmitting}
-                  style={{ width: '100%', padding: '0.5rem' }}
-                >
-                  <option value="">Select user...</option>
-                  {users
-                    .filter(u => u.role === 'master_technician' || u.role === 'dev')
-                    .map(u => (
-                      <option key={u.id} value={u.id}>
-                        {u.name || u.email} ({u.email})
-                      </option>
-                    ))
-                  }
-                </select>
-              </div>
-              
-              {deleteReassignCustomerCount > 0 && (
-                <p style={{ 
-                  background: 'var(--bg-amber-100)', 
-                  border: '1px solid #f59e0b', 
-                  padding: '0.75rem', 
-                  borderRadius: 4, 
-                  marginBottom: '1rem',
-                  fontSize: '0.875rem'
-                }}>
-                  ⚠️ This user has <strong>{deleteReassignCustomerCount}</strong> customer{deleteReassignCustomerCount !== 1 ? 's' : ''} that will be reassigned.
-                </p>
-              )}
-              
-              {deleteReassignUserId && deleteReassignCustomerCount === 0 && (
-                <p style={{ 
-                  background: 'var(--bg-indigo-100)', 
-                  border: '1px solid #6366f1', 
-                  padding: '0.75rem', 
-                  borderRadius: 4, 
-                  marginBottom: '1rem',
-                  fontSize: '0.875rem'
-                }}>
-                  ℹ️ This user has no customers to reassign.
-                </p>
-              )}
-              
-              <div style={{ marginBottom: '1rem' }}>
-                <label htmlFor="delete-reassign-new-master" style={{ display: 'block', marginBottom: 4 }}>
-                  New master for customers *
-                </label>
-                <select
-                  id="delete-reassign-new-master"
-                  value={deleteReassignNewMasterId}
-                  onChange={(e) => {
-                    setDeleteReassignNewMasterId(e.target.value)
-                    setDeleteReassignError(null)
-                  }}
-                  required
-                  disabled={deleteReassignSubmitting || !deleteReassignUserId}
-                  style={{ width: '100%', padding: '0.5rem' }}
-                >
-                  <option value="">Select new master...</option>
-                  {users
-                    .filter(u => 
-                      (u.role === 'master_technician' || u.role === 'dev') &&
-                      u.id !== deleteReassignUserId
-                    )
-                    .map(u => (
-                      <option key={u.id} value={u.id}>
-                        {u.name || u.email} ({u.email})
-                      </option>
-                    ))
-                  }
-                </select>
-              </div>
-              
-              {deleteReassignError && (
-                <p style={{ color: 'var(--text-red-700)', marginBottom: '1rem', fontSize: '0.875rem' }}>
-                  {deleteReassignError}
-                </p>
-              )}
-              
-              <div style={{ display: 'flex', gap: 8 }}>
-                <button 
-                  type="submit" 
-                  disabled={deleteReassignSubmitting || !deleteReassignUserId || !deleteReassignNewMasterId} 
-                  style={{ 
-                    padding: '0.5rem 1rem',
-                    color: '#fff',
-                    background: deleteReassignSubmitting || !deleteReassignUserId || !deleteReassignNewMasterId ? '#9ca3af' : '#dc2626',
-                    border: 'none',
-                    borderRadius: 4,
-                    cursor: deleteReassignSubmitting || !deleteReassignUserId || !deleteReassignNewMasterId ? 'not-allowed' : 'pointer'
-                  }}
-                >
-                  {deleteReassignSubmitting ? 'Processing…' : 'Delete & Reassign'}
-                </button>
-                <button 
-                  type="button" 
-                  onClick={closeArchiveReassign} 
-                  disabled={deleteReassignSubmitting}
-                  style={{ padding: '0.5rem 1rem' }}
-                >
-                  Cancel
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {archiveConfirmUser && (
+      {archiveConfirmOpen && (() => {
+        const blocker = archiveChoiceBlocker({
+          userSelected: archiveConfirmUser != null,
+          customerCount: archiveConfirmCustomerCount,
+          mode: archiveReassignMode,
+          reassignTargetId: archiveReassignTargetId,
+        })
+        const willReassign =
+          archiveConfirmCustomerCount != null && archiveConfirmCustomerCount > 0 && archiveReassignMode === 'reassign'
+        return (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
           <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 360, maxWidth: 480 }}>
             <h2 style={{ marginTop: 0 }}>
-              Archive {archiveConfirmUser.name || archiveConfirmUser.email}?
+              {archiveConfirmUser
+                ? `Archive ${archiveConfirmUser.name || archiveConfirmUser.email}?`
+                : 'Archive user'}
             </h2>
-            <p style={{ color: 'var(--text-700)', fontSize: '0.875rem', marginBottom: '0.75rem' }}>
-              Are you sure? Archiving <strong>{archiveConfirmUser.email}</strong> means:
-            </p>
-            <ul style={{ margin: '0 0 1rem', paddingLeft: '1.2rem', fontSize: '0.875rem', color: 'var(--text-700)' }}>
-              <li>They can no longer sign in (their login is banned).</li>
-              <li>They disappear from active-account lists and assignment pickers.</li>
-              <li>
-                Nothing is deleted — their jobs, clock time, reports, and history stay attached to
-                the account.
-              </li>
-              <li>You can restore them anytime from the Archived users section.</li>
-            </ul>
-            {archiveConfirmCustomerCount != null && archiveConfirmCustomerCount > 0 && (
-              <p
-                style={{
-                  background: 'var(--bg-amber-100)',
-                  border: '1px solid #f59e0b',
-                  padding: '0.75rem',
-                  borderRadius: 4,
-                  marginBottom: '1rem',
-                  fontSize: '0.875rem',
-                }}
-              >
-                ⚠️ This user owns <strong>{archiveConfirmCustomerCount}</strong> customer
-                {archiveConfirmCustomerCount !== 1 ? 's' : ''}, which will stay assigned to the
-                archived account. Use <strong>Archive User &amp; Reassign Customers</strong> instead if
-                they should move to another master.
-              </p>
+            {archiveConfirmPicker && (
+              <div style={{ marginBottom: '1rem' }}>
+                <label htmlFor="archive-user-select" style={{ display: 'block', marginBottom: 4 }}>
+                  Account to archive *
+                </label>
+                <select
+                  id="archive-user-select"
+                  value={archiveConfirmUser?.id ?? ''}
+                  onChange={(e) => selectArchiveConfirmUser(e.target.value)}
+                  disabled={archiveConfirmSubmitting}
+                  style={{ width: '100%', padding: '0.5rem' }}
+                >
+                  <option value="">Select account…</option>
+                  {users.map((u) => (
+                    <option key={u.id} value={u.id}>
+                      {u.name || u.email} ({u.email})
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+            {archiveConfirmUser && (
+              <>
+                <p style={{ color: 'var(--text-700)', fontSize: '0.875rem', marginBottom: '0.75rem' }}>
+                  Are you sure? Archiving <strong>{archiveConfirmUser.email}</strong> means:
+                </p>
+                <ul style={{ margin: '0 0 1rem', paddingLeft: '1.2rem', fontSize: '0.875rem', color: 'var(--text-700)' }}>
+                  <li>They can no longer sign in (their login is banned).</li>
+                  <li>They disappear from active-account lists and assignment pickers.</li>
+                  <li>
+                    Nothing is deleted — their jobs, clock time, reports, and history stay attached to
+                    the account.
+                  </li>
+                  <li>You can restore them anytime from the Archived users section.</li>
+                </ul>
+                {archiveConfirmCustomerCount == null && (
+                  <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', marginBottom: '1rem' }}>Counting customers…</p>
+                )}
+                {archiveConfirmCustomerCount != null && archiveConfirmCustomerCount > 0 && (
+                  <div
+                    style={{
+                      background: 'var(--bg-amber-100)',
+                      border: '1px solid #f59e0b',
+                      padding: '0.75rem',
+                      borderRadius: 4,
+                      marginBottom: '1rem',
+                      fontSize: '0.875rem',
+                    }}
+                  >
+                    <p style={{ margin: '0 0 0.5rem' }}>
+                      ⚠️ This user owns <strong>{archiveConfirmCustomerCount}</strong> customer
+                      {archiveConfirmCustomerCount !== 1 ? 's' : ''}. What should happen to them?
+                    </p>
+                    <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.4rem', cursor: 'pointer', marginBottom: '0.35rem' }}>
+                      <input
+                        type="radio"
+                        name="archive-customers"
+                        checked={archiveReassignMode === 'keep'}
+                        onChange={() => setArchiveReassignMode('keep')}
+                        disabled={archiveConfirmSubmitting}
+                        style={{ marginTop: 2 }}
+                      />
+                      <span>Keep them assigned to the archived account</span>
+                    </label>
+                    <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.4rem', cursor: 'pointer' }}>
+                      <input
+                        type="radio"
+                        name="archive-customers"
+                        checked={archiveReassignMode === 'reassign'}
+                        onChange={() => setArchiveReassignMode('reassign')}
+                        disabled={archiveConfirmSubmitting}
+                        style={{ marginTop: 2 }}
+                      />
+                      <span>Reassign them to another master</span>
+                    </label>
+                    {archiveReassignMode === 'reassign' && (
+                      <select
+                        aria-label="New master for customers"
+                        value={archiveReassignTargetId}
+                        onChange={(e) => setArchiveReassignTargetId(e.target.value)}
+                        disabled={archiveConfirmSubmitting}
+                        style={{ width: '100%', padding: '0.5rem', marginTop: '0.5rem' }}
+                      >
+                        <option value="">Select new master…</option>
+                        {eligibleReassignTargets(users, archiveConfirmUser.id).map((u) => (
+                          <option key={u.id} value={u.id}>
+                            {u.name || u.email} ({u.email})
+                          </option>
+                        ))}
+                      </select>
+                    )}
+                  </div>
+                )}
+              </>
             )}
             {archiveConfirmError && (
               <p style={{ color: 'var(--text-red-700)', fontSize: '0.875rem' }}>{archiveConfirmError}</p>
@@ -1216,17 +1106,18 @@ export default function ActiveAccountsPanel({ variant, onDataChanged, onOpenFind
               <button
                 type="button"
                 onClick={() => void handleArchiveConfirm()}
-                disabled={archiveConfirmSubmitting}
+                disabled={archiveConfirmSubmitting || blocker != null}
+                title={blocker ?? undefined}
                 style={{
                   padding: '0.5rem 1rem',
-                  background: '#dc2626',
+                  background: archiveConfirmSubmitting || blocker != null ? '#fca5a5' : '#dc2626',
                   color: 'white',
                   border: 'none',
                   borderRadius: 4,
-                  cursor: 'pointer',
+                  cursor: archiveConfirmSubmitting || blocker != null ? 'not-allowed' : 'pointer',
                 }}
               >
-                {archiveConfirmSubmitting ? 'Archiving…' : 'Archive user'}
+                {archiveConfirmSubmitting ? 'Archiving…' : willReassign ? 'Reassign & archive' : 'Archive user'}
               </button>
               <button
                 type="button"
@@ -1239,7 +1130,8 @@ export default function ActiveAccountsPanel({ variant, onDataChanged, onOpenFind
             </div>
           </div>
         </div>
-      )}
+        )
+      })()}
 
       {mergeOpen && (() => {
         const allAccounts = [...users, ...archivedUsers]

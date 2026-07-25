@@ -7,12 +7,17 @@ order: 41
 ---
 Archiving is how you offboard someone's login. It never deletes anything — their jobs, clock time, reports, and history stay attached to the account — it just bans the sign-in and hides them from active lists and pickers.
 
-## Two ways to archive
+## How to archive
 
-Both live in the **Active Accounts** panel (Settings → People & accounts, or **Manage accounts** on People → Users). In the Manage accounts modal, use the search bar at the top to jump straight to the account — it matches name, email, or role and filters the archived list too:
+Everything happens in one dialog in the **Active Accounts** panel (Settings → People & accounts, or **Manage accounts** on People → Users). In the Manage accounts modal, use the search bar at the top to jump straight to the account — it matches name, email, or role and filters the archived list too. Two ways in, same dialog:
 
-1. **From a row** — click {{button:outline|Edit}} on the account, then the red {{button:red|Archive}} button at the end of the actions. A confirmation explains exactly what will happen before you commit. If the account owns customers, the confirmation warns you and points to option 2.
-2. **Archive User & Reassign Customers** — for masters who own customers: pick who inherits the customers, then the account is archived.
+1. **From the top** — click {{button:red|Archive user}} and pick the account from the dropdown.
+2. **From a row** — click {{button:outline|Edit}} on the account, then the red {{button:red|Archive}} button at the end of the actions; the dialog opens with that account already selected.
+
+The confirmation explains exactly what will happen before you commit. If the account owns customers, the same dialog asks what should happen to them:
+
+- **Keep them assigned to the archived account** (the default), or
+- **Reassign them to another master** — pick who inherits them, and the button becomes {{button:red|Reassign & archive}} so both happen in one step.
 
 :::example What archiving does
 Sign-in banned · hidden from active lists and assignment pickers · nothing deleted · restorable anytime
