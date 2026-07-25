@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1018',
+    date: '2026-07-24',
+    title: 'Shorter report type names',
+    kind: 'feature',
+    highlights: [
+      'The New report picker now says Status and Walk instead of Status Report and Walk Report — same wording as the Additional Report window.',
+    ],
+  },
+  {
     version: 'v2.1017',
     date: '2026-07-24',
     title: 'Job report form rebuilt for phones',

@@ -16,7 +16,7 @@ On a phone the report form opens **full screen** with {{button:blue|Save report}
 If your scheduled time on a job ended today and you haven't filed a report in the last 12 hours, the Dashboard nudges you: a yellow ⚠ badge appears over that job's {{button:blue|Leave Report}} button, and My Schedule shows the same note under **Today** — *"You haven't filed a report yet. File one."* Filing a report clears both.
 
 :::example Picking a report type
-Report type: &nbsp;{{button:outline-blue|Status Report}} &nbsp; {{button:outline|Walk Report}} &nbsp; {{button:outline|Materials Needed}}
+Report type: &nbsp;{{button:outline-blue|Status}} &nbsp; {{button:outline|Walk}} &nbsp; {{button:outline|Note}}
 
 How complete is the job? `100` %
 

@@ -4,7 +4,7 @@ import { useToastContext } from '../contexts/ToastContext'
 import { useAuth } from '../hooks/useAuth'
 import type { Database } from '../types/database'
 import type { UserRole } from '../hooks/useAuth'
-import { displayReportTemplateName, isJobCompleteTemplateName } from '../lib/reportTemplateDisplayName'
+import { additionalReportModalTemplateChipLabel, isJobCompleteTemplateName } from '../lib/reportTemplateDisplayName'
 import { isTurnawayTemplateName } from '../lib/turnaway'
 import { fieldValueForSubmit, normalizePercentFieldValueToString } from '../lib/reportTemplateFieldDisplay'
 import { reportSaysJobComplete } from '../lib/reportReadyToBillPrompt'
@@ -492,7 +492,8 @@ export default function NewReportModal({ open, onClose, onSaved, authUserId, use
                     fontWeight: selectedTemplateId === t.id ? 600 : 400,
                   }}
                 >
-                  {displayReportTemplateName(t.name, userRole)}
+                  {/* Short chip labels ("Status", "Walk") — same helper as Additional Report. */}
+                  {additionalReportModalTemplateChipLabel(t.name, userRole ?? null)}
                 </button>
               ))}
             </div>
