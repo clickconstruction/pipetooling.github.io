@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-25 (v2.1020)
+last_updated: 2026-07-25 (v2.1021)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1021)
+
+### Discard-report confirm is a real in-app dialog (2026-07-25)
+The v2.1017 discard guard used `window.confirm` — a bare browser popup. New generic [`ConfirmDialog`](../src/components/ConfirmDialog.tsx) (leaf-dialog layer z 1300, above the ResponsiveModalShell's 1100: `role="alertdialog"`, cancel button autofocused as the safe default, Escape + backdrop cancel, theme-aware) now renders "Discard this report? / Your entries will be lost." with **Keep writing** / red **Discard report**. Wiring in [`NewReportModal`](../src/components/NewReportModal.tsx): `guardedClose` opens the dialog instead of blocking on `confirm()`, and no-ops while it's up so the shell's own Escape handler can't re-trigger it. Verified live at 375×812: type → Escape opens the dialog with Keep writing focused; Keep writing returns to the form with entries intact; Escape reopens; Discard report closes both layers. Reusable for the coming sibling-modal close-guard sweep.
 
 ## Latest Updates (v2.1020)
 
