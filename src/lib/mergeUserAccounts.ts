@@ -46,3 +46,38 @@ export function eligibleAbsorbCandidates<T extends MergeCandidateAccount>(
   if (!survivor) return []
   return accounts.filter((a) => mergeIneligibilityReason(survivor, a) === null)
 }
+
+export type ExternalPersonCandidate = {
+  id: string
+  name: string
+  kind: string
+  account_user_id: string | null
+  archived_at?: string | null
+}
+
+/** Option-value prefix distinguishing external roster people from account ids in the
+ * "Merge this account away" select. */
+export const EXTERNAL_MERGE_OPTION_PREFIX = 'external-person:'
+
+/** Roles whose survivors may also absorb external roster people, mapped to the
+ * people.kind they match. Only subcontractors for now — extend deliberately. */
+const EXTERNAL_ABSORB_KIND_BY_ROLE: Record<string, string> = { subcontractor: 'sub' }
+
+/**
+ * External roster people (no login account) offered in the "Merge this account away"
+ * dropdown for the picked survivor. These route through the combine-people engine
+ * (roster identity fold), not the merge_user_accounts RPC:
+ * - survivor must be a live account whose role admits external absorbs (subcontractor → kind 'sub')
+ * - the person must be active and not linked to any account (linked rows already render
+ *   as their account, and account-vs-account is the RPC's job)
+ */
+export function eligibleExternalAbsorbCandidates<T extends ExternalPersonCandidate>(
+  survivor: MergeCandidateAccount | null,
+  people: T[],
+): T[] {
+  if (!survivor) return []
+  if (survivor.archived_at != null) return []
+  const kind = EXTERNAL_ABSORB_KIND_BY_ROLE[survivor.role ?? '']
+  if (!kind) return []
+  return people.filter((p) => p.kind === kind && p.archived_at == null && !p.account_user_id)
+}
