@@ -11,6 +11,7 @@ import {
   isJobCompleteTemplateName,
 } from '../lib/reportTemplateDisplayName'
 import { isTurnawayTemplateName } from '../lib/turnaway'
+import AutoGrowTextarea from './AutoGrowTextarea'
 import { fieldValueForSubmit } from '../lib/reportTemplateFieldDisplay'
 import { reportSaysJobComplete } from '../lib/reportReadyToBillPrompt'
 import { validateReportSignatureDataUrlForSubmit } from '../lib/reportSignatureField'
@@ -501,7 +502,7 @@ export default function AdditionalReportModal({
                 return (
                   <div key={f.id} style={{ marginBottom: '0.75rem' }}>
                     <label style={{ display: 'block', marginBottom: 4, fontWeight: 500 }}>{f.label}</label>
-                    <textarea
+                    <AutoGrowTextarea
                       value={fieldValues[f.label] ?? ''}
                       onChange={(e) => setFieldValues((prev) => ({ ...prev, [f.label]: e.target.value }))}
                       rows={3}

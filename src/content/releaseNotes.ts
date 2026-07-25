@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1020',
+    date: '2026-07-25',
+    title: 'Report fields grow as you type',
+    kind: 'feature',
+    highlights: [
+      'Text fields on New report and Additional Report now expand to fit what you write — no more reading a long update through a three-line window.',
+    ],
+  },
+  {
     version: 'v2.1019',
     date: '2026-07-25',
     title: 'Clearer job picker on New report',

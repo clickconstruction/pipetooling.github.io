@@ -13,6 +13,7 @@ import { ReportTemplatePercentField } from './ReportTemplatePercentField'
 import { ReportTemplateSignatureField } from './ReportTemplateSignatureField'
 import { MarkJobReadyToBillPrompt } from './jobs/MarkJobReadyToBillPrompt'
 import ResponsiveModalShell from './ResponsiveModalShell'
+import AutoGrowTextarea from './AutoGrowTextarea'
 import { hasUnsavedReportEntries } from '../lib/reportFormDirty'
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock'
 
@@ -551,7 +552,7 @@ export default function NewReportModal({ open, onClose, onSaved, authUserId, use
                 return (
                   <div key={f.id} style={{ marginBottom: '0.75rem' }}>
                     <label style={{ display: 'block', marginBottom: 4, fontWeight: 500 }}>{f.label}</label>
-                    <textarea
+                    <AutoGrowTextarea
                       value={fieldValues[f.label] ?? ''}
                       onChange={(e) => setFieldValues((prev) => ({ ...prev, [f.label]: e.target.value }))}
                       rows={3}
