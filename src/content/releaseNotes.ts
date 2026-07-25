@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1023',
+    date: '2026-07-25',
+    title: 'One Call button per job card',
+    kind: 'fix',
+    highlights: [
+      'Ready to Bill cards on the Dashboard showed two phone icons per job — now there is exactly one, next to Collect and Leave Report like the other sections.',
+    ],
+  },
+  {
     version: 'v2.1022',
     date: '2026-07-25',
     title: 'Review deletions goes straight to the deletions',

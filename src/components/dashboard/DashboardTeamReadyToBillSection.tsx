@@ -184,15 +184,9 @@ export function DashboardTeamReadyToBillSection({
                         >
                           {effectiveJobLedgerNumber(j.hcp_number, j.click_number) || '—'} · {j.job_name || '—'}
                         </div>
-                        {phones.get(j.id) ? (
-                          <JobRowCallButton
-                            phone={phones.get(j.id)!}
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              setCallModal({ phone: phones.get(j.id)!, jobId: j.id, jobLabel: `${effectiveJobLedgerNumber(j.hcp_number, j.click_number) || '—'} · ${j.job_name || '—'}` })
-                            }}
-                          />
-                        ) : null}
+                        {/* Call button lives in the actions cluster below (one per card,
+                            same placement as the Assigned/Superintendent sections) —
+                            v2.1006 accidentally rendered it here too. */}
                         {isMobile ? docLinksCluster : null}
                       </div>
                       <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginTop: 4 }}>

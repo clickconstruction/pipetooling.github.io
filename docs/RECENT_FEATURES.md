@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-25 (v2.1022)
+last_updated: 2026-07-25 (v2.1023)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1023)
+
+### Fix: double Call button on Ready to Bill cards (2026-07-25)
+Field screenshot: every phone-bearing card in the sub-facing Ready to Bill section showed **two** phone icons — one beside the job title, one in the Collect/Leave Report row. Root cause: v2.1006 added [`JobRowCallButton`](../src/components/dashboard/dashboardJobRowShared.tsx) to [`DashboardTeamReadyToBillSection`](../src/components/dashboard/DashboardTeamReadyToBillSection.tsx) on **both** sides of the `isMobile` doc-links split without the gate the doc-links cluster uses, so both instances rendered on every viewport (Assigned/Superintendent sections each got exactly one). The title-row instance is removed; the actions-cluster one survives — same placement as the sibling sections. Verified live as a subcontractor at 375×812: 9 phone-bearing RTB/Assigned cards, exactly one Call button each (jobs with no phone on file still render none).
 
 ## Latest Updates (v2.1022)
 
