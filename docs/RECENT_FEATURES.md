@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-24 (v2.1012)
+last_updated: 2026-07-24 (v2.1013)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2046,7 +2046,10 @@ when_to_read:
 155. [Customer and Project Management](#customer-and-project-management)
 ---
 
-## Latest Updates (v2.1012)
+## Latest Updates (v2.1013)
+
+### Active Accounts modal: search bar (2026-07-24)
+The People → Users **Manage accounts** modal now opens with a search bar pinned (sticky) above the account table — autofocused, matching name, email, DB role slug, or role display label ("helper" finds `helpers` rows either way) via new kernel [`activeAccountsSearch.ts`](../src/lib/activeAccountsSearch.ts) (`filterActiveAccountUsers`, 7 tests). The same query filters the Archived users section; filtered-empty states name the query ("No accounts match …"). Modal-only — the inline Settings → People & accounts card is unchanged, except the modal also drops the "Set user class…" description line to keep the search bar tight under the title (the card keeps it). Merge/convert pickers still see the full unfiltered lists. Help guide `archive-user-accounts.md` mentions the search bar. Verified live in the modal: name query, role query, no-match state, sticky-on-scroll.
 
 ### Person identity Phase C-4: labor wage lookups go person-first (2026-07-24)
 Third reader flip, client-side. [`teamLabor.ts`](../src/utils/teamLabor.ts)'s `fetchLaborPayConfigMap` — the wage/salary map behind Crew P&L, Job Summary labor, and the one-job modal — joined `people_pay_config` to crew rows purely by `person_name`, so a renamed pay-config row silently zeroed wages. The wage query now selects `person_id` and the map carries `id:<uuid>` keys alongside names; all three lookup sites (`loadTeamLaborData`, the one-job loader, the bids loader — their crew selects now carry `person_id` too) prefer the id key and fall back to name. Salary flags stay name-keyed until the `list_people_pay_flags` RPC flips (queued as C-4b with D). Zero behavior change for matched names; renames stop zeroing wages.
