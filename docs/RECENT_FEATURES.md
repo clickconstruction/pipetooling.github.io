@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-24 (v2.1018)
+last_updated: 2026-07-25 (v2.1019)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1019)
+
+### New report: one-card job picker — "Reporting on" replaces the pill/box/search stack (2026-07-25)
+The job section showed three artifacts of one decision (the "Same as last report" toggle pill, a "Selected:" box repeating the same job, and an always-visible search input), with a surprise: tapping the active pill *deselected* the job. Now the control has two mutually exclusive states in [`NewReportModal`](../src/components/NewReportModal.tsx): **selected** — a single card (✓ name · HCP/Bid number, address, a "Same as your last report" caption when auto-filled, and a Change button); **choosing** — just the autofocused search box with the existing suggestions dropdown, plus a "Suggested: ↩ <last job>" chip when the query is empty. Label "Job, project, or bid *" → **"Reporting on *"** (the old wording lives on in the search placeholder). Fixed in passing: the auto-select effect re-fired whenever the query returned to empty, so clearing a typed search snapped the selection back to the last job — a `suppressAutoSelectRef` (set on Change, cleared on modal reset) stops that; and the dropdown's dead selected-row highlight went away (rows only render while nothing is selected). ~90px shorter on phones — the whole Status form now fits 375×812 without scrolling. Verified live: open state, Change → focused search + chip, type-then-clear stays in search, chip re-selects with caption, dropdown pick shows card without caption. AdditionalReportModal is job-scoped (no picker) — unaffected. Help guide `reports.md` updated.
 
 ## Latest Updates (v2.1018)
 

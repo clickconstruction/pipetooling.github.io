@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1019',
+    date: '2026-07-25',
+    title: 'Clearer job picker on New report',
+    kind: 'feature',
+    highlights: [
+      'The job section is now one card: "Reporting on" shows the selected job with a Change button, instead of repeating the same job across a pill, a status box, and a search field.',
+      'Tap Change to search — your last-report job stays one tap away as a suggestion chip.',
+    ],
+  },
+  {
     version: 'v2.1018',
     date: '2026-07-24',
     title: 'Shorter report type names',
