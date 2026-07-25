@@ -9,7 +9,7 @@ Field reports are how what happened on site becomes something the office can act
 
 ## Filing a report (field side)
 
-Tap {{button:blue|Leave Report}} — on the Job Mode card, or during clock-out. Pick the job if it isn't pre-filled, choose a report type, fill in the fields, and submit. Your location is attached automatically.
+Tap {{button:blue|Leave Report}} — on the Job Mode card, or during clock-out. The **Reporting on** card pre-fills the job from your last report (it says so under the name) — tap {{button:outline|Change}} to search for a different job, project, or bid instead. Choose a report type, fill in the fields, and submit. Your location is attached automatically.
 
 On a phone the report form opens **full screen** with {{button:blue|Save report}} pinned at the bottom — no scrolling to find it. If you close the form with something typed, it asks before discarding your entries.
 

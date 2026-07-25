@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { useToastContext } from '../contexts/ToastContext'
 import { useAuth } from '../hooks/useAuth'
@@ -28,6 +28,10 @@ type JobSearchResult = {
   address?: string
 }
 
+function jobNumberLabel(j: Pick<JobSearchResult, 'source' | 'hcp_number'>): string {
+  return j.source === 'bid' ? `Bid #${j.hcp_number || '—'}` : `HCP ${j.hcp_number || '—'}`
+}
+
 type Props = {
   open: boolean
   onClose: () => void
@@ -54,6 +58,8 @@ export default function NewReportModal({ open, onClose, onSaved, authUserId, use
   const [searchMode, setSearchMode] = useState<'search' | 'last'>('search')
   const [copyJustClicked, setCopyJustClicked] = useState(false)
   const [readyToBillJob, setReadyToBillJob] = useState<{ id: string; hcpNumber: string; jobName: string } | null>(null)
+  /** Once the tech taps Change, emptying the search box must not re-auto-select the last job. */
+  const suppressAutoSelectRef = useRef(false)
 
   useEffect(() => {
     if (!open) return
@@ -126,7 +132,7 @@ export default function NewReportModal({ open, onClose, onSaved, authUserId, use
   }, [open, authUserId])
 
   useEffect(() => {
-    if (!open || !lastReportJob || initialJob || jobSearchText !== '') return
+    if (!open || !lastReportJob || initialJob || jobSearchText !== '' || suppressAutoSelectRef.current) return
     setSelectedJob(lastReportJob)
     setSearchMode('last')
   }, [open, lastReportJob, initialJob, jobSearchText])
@@ -160,6 +166,7 @@ export default function NewReportModal({ open, onClose, onSaved, authUserId, use
     setSearchResults([])
     setFieldValues({})
     setError(null)
+    suppressAutoSelectRef.current = false
   }
 
   function handleClose() {
@@ -389,53 +396,48 @@ export default function NewReportModal({ open, onClose, onSaved, authUserId, use
     <ResponsiveModalShell title="New report" onRequestClose={guardedClose} footer={footer}>
         <form id="new-report-form" onSubmit={handleSubmit}>
           <div style={{ marginBottom: '1rem' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem', flexWrap: 'wrap', gap: '0.5rem' }}>
-              <p style={{ margin: 0, fontWeight: 500 }}>Job, project, or bid *</p>
-              {lastReportJob && (
+            <p style={{ margin: '0 0 0.5rem', fontWeight: 500 }}>Reporting on *</p>
+            {selectedJob ? (
+              /* Selected state: one card, one Change affordance — the search UI only
+                 exists while choosing (the old pill/box/input stack read the same job
+                 twice and hid how to switch). */
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', border: '1px solid var(--border)', background: 'var(--bg-muted)', borderRadius: 6, padding: '0.6rem 0.75rem' }}>
+                <span aria-hidden="true" style={{ color: '#16a34a', fontSize: '1.125rem', lineHeight: 1, flexShrink: 0 }}>✓</span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontWeight: 500 }}>
+                    {selectedJob.display_name}
+                    <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}> · {jobNumberLabel(selectedJob)}</span>
+                  </div>
+                  {selectedJob.address && <div style={{ color: 'var(--text-600)', fontSize: '0.8125rem' }}>{selectedJob.address}</div>}
+                  {searchMode === 'last' && (
+                    <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>Same as your last report</div>
+                  )}
+                </div>
                 <button
                   type="button"
                   onClick={() => {
-                    if (searchMode === 'last') {
-                      setSelectedJob(null)
-                      setSearchMode('search')
-                    } else {
-                      setSearchMode('last')
-                      setSelectedJob(lastReportJob)
-                      setSearchResults([])
-                      setJobSearchText('')
-                    }
+                    suppressAutoSelectRef.current = true
+                    setSelectedJob(null)
+                    setSearchMode('search')
+                    setJobSearchText('')
+                    setSearchResults([])
                   }}
-                  style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', border: searchMode === 'last' ? '2px solid #3b82f6' : '1px solid var(--border-strong)', background: searchMode === 'last' ? 'var(--bg-blue-tint)' : 'var(--surface)', borderRadius: 4, cursor: 'pointer' }}
+                  style={{ flexShrink: 0, padding: '0.35rem 0.75rem', fontSize: '0.875rem', border: '1px solid var(--border-strong)', background: 'var(--surface)', borderRadius: 4, cursor: 'pointer' }}
                 >
-                  Same as last report:{' '}
-                  {lastReportJob.display_name}
-                  {lastReportJob.hcp_number
-                    ? lastReportJob.source === 'bid'
-                      ? ` (Bid #${lastReportJob.hcp_number})`
-                      : ` (HCP: ${lastReportJob.hcp_number})`
-                    : ''}
+                  Change
                 </button>
-              )}
-            </div>
-            {selectedJob && (
-              <div style={{ margin: 0, padding: '0.5rem', background: 'var(--bg-muted)', borderRadius: 4 }}>
-                <div>
-                  Selected: {selectedJob.display_name} (
-                  {selectedJob.source === 'bid'
-                    ? `Bid #${selectedJob.hcp_number || '—'}`
-                    : `HCP: ${selectedJob.hcp_number || '—'}`}
-                  )
-                </div>
-                {selectedJob.address && <div style={{ marginTop: '0.25rem', color: 'var(--text-600)', fontSize: '0.875rem' }}>{selectedJob.address}</div>}
               </div>
-            )}
+            ) : (
+              <>
             <input
               type="text"
               value={jobSearchText}
-              onChange={(e) => { setJobSearchText(e.target.value); setSearchMode('search'); setSelectedJob(null) }}
+              onChange={(e) => { setJobSearchText(e.target.value); setSearchMode('search') }}
               placeholder="Search job HCP, project, bid #, or address"
+              autoFocus
               style={{
                 width: '100%',
+                boxSizing: 'border-box',
                 padding: '0.5rem',
                 border: '1px solid var(--border-strong)',
                 // Attach the results panel below like a combobox when it is open.
@@ -456,7 +458,7 @@ export default function NewReportModal({ open, onClose, onSaved, authUserId, use
                     key={`${r.source}-${r.id}`}
                     type="button"
                     onClick={() => { setSelectedJob(r); setSearchResults([]) }}
-                    style={{ display: 'block', width: '100%', padding: '0.5rem 0.75rem', textAlign: 'left', border: 'none', background: selectedJob?.id === r.id && selectedJob?.source === r.source ? 'var(--bg-blue-tint)' : 'var(--surface)', cursor: 'pointer', borderBottom: '1px solid var(--border)' }}
+                    style={{ display: 'block', width: '100%', padding: '0.5rem 0.75rem', textAlign: 'left', border: 'none', background: 'var(--surface)', cursor: 'pointer', borderBottom: '1px solid var(--border)' }}
                   >
                     {r.source === 'bid' ? (
                       <span style={{ marginRight: 6, fontSize: '0.65rem', fontWeight: 700, color: '#7c3aed' }}>BID</span>
@@ -471,6 +473,25 @@ export default function NewReportModal({ open, onClose, onSaved, authUserId, use
                   </button>
                 ))}
               </div>
+            )}
+            {lastReportJob && jobSearchText.trim() === '' && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Suggested:</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedJob(lastReportJob)
+                    setSearchMode('last')
+                    setSearchResults([])
+                    setJobSearchText('')
+                  }}
+                  style={{ padding: '0.25rem 0.7rem', fontSize: '0.8125rem', border: '1px solid var(--border-strong)', background: 'var(--surface)', borderRadius: 999, cursor: 'pointer' }}
+                >
+                  ↩ {lastReportJob.display_name} · {jobNumberLabel(lastReportJob)}
+                </button>
+              </div>
+            )}
+              </>
             )}
           </div>
 
