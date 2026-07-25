@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1015',
+    date: '2026-07-24',
+    title: 'External subcontractor merge fix',
+    kind: 'fix',
+    highlights: [
+      'Merging an external subcontractor into an account that had no roster entry failed at the last step — it now links the person to the account directly and completes.',
+    ],
+  },
+  {
     version: 'v2.1014',
     date: '2026-07-24',
     title: 'Merge external subcontractors into accounts',

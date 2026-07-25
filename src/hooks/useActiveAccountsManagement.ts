@@ -897,6 +897,16 @@ export function useActiveAccountsManagement({ enabled, onDataChanged }: UseActiv
       const existing = existingRows?.[0] ?? null
 
       if (dryRun) {
+        if (!existing) {
+          // No roster row to fold into — the merge is a pure account link (see below).
+          setMergePreview({
+            moved: {},
+            warnings: [
+              `${survivorName} has no roster person row yet, so "${person.name}" will simply be linked to the account as its roster entry. Their hours, pay records, crew records, and sub sheets already follow this person — nothing needs to move, and nothing is archived.`,
+            ],
+          })
+          return
+        }
         const p = await previewCombinePeople(person.id, person.name)
         const moved: Record<string, number> = {}
         for (const line of p.lines) {
@@ -907,31 +917,28 @@ export function useActiveAccountsManagement({ enabled, onDataChanged }: UseActiv
         const warnings = [
           `"${person.name}" is an external roster person (no login) — their hours, pay records, crew records, and sub sheets fold onto ${survivorName}'s roster identity, then the external row is archived (never deleted). Login accounts are not touched.`,
         ]
-        if (!existing) {
-          warnings.push(`${survivorName} has no roster person row yet — one will be created and linked to their account.`)
-        }
         setMergePreview({ moved, warnings })
         return
       }
 
-      let target = existing
-      if (!target) {
-        const { data: created, error: eCreate } = await supabase
+      if (!existing) {
+        // Link, don't insert: RLS only lets you INSERT people rows you own, but devs can
+        // UPDATE any row — and linking is the correct semantic anyway (the external row
+        // becomes the account's roster entry; its records already follow it).
+        const { error: eLink } = await supabase
           .from('people')
-          .insert({
-            name: survivorName,
-            kind: person.kind,
-            master_user_id: person.master_user_id,
-            account_user_id: survivor.id,
-          })
-          .select('id, name, account_user_id')
-          .single()
-        if (eCreate) throw new Error(`create roster row for ${survivorName}: ${eCreate.message}`)
-        target = created
+          .update({ account_user_id: survivor.id })
+          .eq('id', person.id)
+        if (eLink) throw new Error(`link ${person.name} to ${survivorName}: ${eLink.message}`)
+        showToast(`Linked ${person.name} to ${survivorName}'s account as its roster entry.`, 'success')
+        setMergeOpen(false)
+        await reloadAfterMutation()
+        return
       }
+
       const result = await executeCombinePeople({
         source: { id: person.id, name: person.name, account_user_id: null },
-        target: { id: target.id, name: target.name, account_user_id: target.account_user_id },
+        target: { id: existing.id, name: existing.name, account_user_id: existing.account_user_id },
       })
       showToast(
         `Merged ${person.name} into ${survivorName}: ${result.renamedRows} rows renamed, ${result.repointedRows} repointed, ${result.sheetsRewritten} sheets updated. External row archived.`,
