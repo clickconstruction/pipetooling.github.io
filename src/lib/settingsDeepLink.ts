@@ -17,6 +17,7 @@
 export const SETTINGS_HASH_ANCHOR_TO_TAB: Readonly<Record<string, string>> = {
   'settings-time-off': 'settings-account',
   'settings-salary-workday': 'settings-account',
+  'settings-recently-deleted': 'settings-data',
 }
 
 export type SettingsDeepLink = {

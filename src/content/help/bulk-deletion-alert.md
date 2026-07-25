@@ -24,7 +24,7 @@ You get a notice when one person, within the time window, deletes either:
 
 ## Deal with it
 
-- **Review deletions** opens Settings → Data & migration → **Recently deleted**, where you can preview and restore any of it.
+- **Review deletions** opens Settings → Data & migration with **Recently deleted** already expanded and loaded, scrolled into view. While the alert is active, the section leads with an **Active bulk-deletion alert** box carrying the same Snooze/Dismiss buttons — review, restore if needed, and clear the notice without going back to the Dashboard.
 - **Snooze 24h** hides the notice for a day.
 - **Dismiss until count increases** hides it until a *new* burst happens — so it stays quiet, but speaks up again if it continues.
 

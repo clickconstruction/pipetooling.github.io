@@ -7,9 +7,23 @@
  *
  * Preview gates Restore, exactly like the merge-users dialog: you cannot commit a restore you have not
  * previewed, and the preview is a real (rolled-back) execution, so its counts are true. */
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { useLocation } from 'react-router-dom'
 import { useToastContext } from '../../contexts/ToastContext'
+import { useAuth } from '../../hooks/useAuth'
 import { useDeletedRecordsArchive } from '../../hooks/useDeletedRecordsArchive'
+import { useBulkDeleteAlerts } from '../../hooks/useBulkDeleteAlerts'
+import {
+  loadBulkDeleteAlertDismissState,
+  saveBulkDeleteAlertDismissState,
+  shouldShowBulkDeleteAlert,
+  type BulkDeleteAlertDismissState,
+} from '../../lib/bulkDeleteAlertDismiss'
+
+/** Deep-link anchor id (dashboard "Review deletions" → this section, opened). */
+export const RECENTLY_DELETED_ANCHOR_ID = 'settings-recently-deleted'
+
+const SNOOZE_MS = 24 * 60 * 60 * 1000
 
 function formatDeletedAt(iso: string): string {
   const d = new Date(iso)
@@ -19,11 +33,39 @@ function formatDeletedAt(iso: string): string {
 export default function DeletedRecordsSection() {
   const [open, setOpen] = useState(false)
   const { showToast } = useToastContext()
+  const { user } = useAuth()
+  const location = useLocation()
   const { bundles, loading, error, preview, busy, submitting, runPreview, runRestore } =
     useDeletedRecordsArchive({ enabled: open })
 
+  // Arriving via the dashboard banner's "Review deletions" anchor opens the
+  // section immediately (location.key so a repeat click re-opens it too).
+  useEffect(() => {
+    if (location.hash === `#${RECENTLY_DELETED_ANCHOR_ID}`) setOpen(true)
+  }, [location.hash, location.key])
+
+  // The active bulk-delete alert, surfaced here so the review loop closes in
+  // place: same RPC + per-device dismiss state as the dashboard banner.
+  const { alerts } = useBulkDeleteAlerts(open && !!user?.id)
+  const [dismissState, setDismissState] = useState<BulkDeleteAlertDismissState>({})
+  useEffect(() => {
+    if (!user?.id) {
+      setDismissState({})
+      return
+    }
+    setDismissState(loadBulkDeleteAlertDismissState(user.id))
+  }, [user?.id, open])
+  const persistDismiss = (next: BulkDeleteAlertDismissState) => {
+    if (!user?.id) return
+    saveBulkDeleteAlertDismissState(user.id, next)
+    setDismissState(next)
+  }
+  const alertCount = alerts.length
+  const worstAlert = alerts[0]
+  const showAlertBox = shouldShowBulkDeleteAlert(alertCount, dismissState)
+
   return (
-    <div style={{ marginBottom: '2rem', border: '1px solid var(--border)', borderRadius: 8 }}>
+    <div id={RECENTLY_DELETED_ANCHOR_ID} style={{ marginBottom: '2rem', border: '1px solid var(--border)', borderRadius: 8 }}>
       <button
         type="button"
         aria-expanded={open}
@@ -49,7 +91,50 @@ export default function DeletedRecordsSection() {
 
       {open && (
         <div style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid var(--border)' }}>
-          <p style={{ marginBottom: '1rem', marginTop: 0, color: 'var(--text-muted)', fontSize: '0.875rem' }}>
+          {showAlertBox && (
+            <div
+              style={{
+                margin: '1rem 0 0',
+                padding: '0.75rem 1rem',
+                border: '1px solid #fecaca',
+                borderRadius: 8,
+                background: 'var(--bg-orange-tint)',
+                fontSize: '0.875rem',
+              }}
+            >
+              <div style={{ fontWeight: 600, color: 'var(--text-orange-800)' }}>
+                Active bulk-deletion alert
+              </div>
+              <div style={{ color: 'var(--text-muted)', marginTop: 2 }}>
+                {worstAlert ? (
+                  <>
+                    <strong>{worstAlert.actor_name}</strong> deleted {worstAlert.bundles}{' '}
+                    {Number(worstAlert.bundles) === 1 ? 'thing' : 'things'} ({worstAlert.row_count} rows)
+                    around {new Date(worstAlert.window_start).toLocaleString()}.
+                  </>
+                ) : null}{' '}
+                {alertCount > 1 ? `${alertCount} bursts in total. ` : ''}
+                Done reviewing? Clear the dashboard notice here.
+              </div>
+              <div style={{ marginTop: '0.5rem', display: 'flex', flexWrap: 'wrap', gap: '0.75rem' }}>
+                <button
+                  type="button"
+                  onClick={() => persistDismiss({ ...dismissState, dismissedCount: alertCount })}
+                  style={{ padding: '0.35rem 0.75rem', fontSize: '0.8125rem', border: '1px solid var(--border-strong)', background: 'var(--surface)', borderRadius: 4, cursor: 'pointer' }}
+                >
+                  Dismiss until count increases
+                </button>
+                <button
+                  type="button"
+                  onClick={() => persistDismiss({ ...dismissState, snoozeUntil: Date.now() + SNOOZE_MS })}
+                  style={{ padding: '0.35rem 0.75rem', fontSize: '0.8125rem', border: '1px solid var(--border-strong)', background: 'var(--surface)', borderRadius: 4, cursor: 'pointer' }}
+                >
+                  Snooze 24h
+                </button>
+              </div>
+            </div>
+          )}
+          <p style={{ marginBottom: '1rem', marginTop: showAlertBox ? '1rem' : 0, color: 'var(--text-muted)', fontSize: '0.875rem' }}>
             Deleted jobs and bids are archived with everything that went with them (invoices, payments,
             materials, crew, reports&hellip;) and can be put back here. Always <strong>Preview</strong> first —
             it reports exactly what would come back, and flags anything that would block or be cleared.

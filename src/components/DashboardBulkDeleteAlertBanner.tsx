@@ -130,7 +130,7 @@ export default function DashboardBulkDeleteAlertBanner() {
           </div>
         </div>
         <Link
-          to="/settings?tab=settings-data"
+          to="/settings?tab=settings-data#settings-recently-deleted"
           style={{
             padding: '0.5rem 0.9rem',
             borderRadius: 6,
