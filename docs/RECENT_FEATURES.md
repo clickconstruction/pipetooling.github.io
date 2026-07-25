@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-24 (v2.1017)
+last_updated: 2026-07-24 (v2.1018)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1018)
+
+### New report: short report-type labels (2026-07-24)
+The New report picker chips now drop the redundant suffix — "Status Report" → **Status**, "Walk Report" → **Walk** — by reusing `additionalReportModalTemplateChipLabel` (the Additional Report modal has rendered chips this way since v2.936), so the two pickers finally read the same. Help-guide example updated.
 
 ## Latest Updates (v2.1017)
 
