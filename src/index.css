@@ -1909,3 +1909,69 @@ body.my-time-boundary-dragging {
   .dispatch-po-chip { transition: none; }
   .dispatch-po-chip:active { transform: none; }
 }
+
+/* ---- Responsive modal sheet (v2.1017) ----
+   Dialog on desktop, true full-screen sheet on phones. The PANEL is the
+   scroller (sticky header/footer pin against it). vh fallbacks first, dvh
+   overrides where supported — dvh tracks the software keyboard and the iOS
+   URL bar, so the pinned footer stays reachable while typing. */
+.respModalOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.respModalPanel {
+  background: var(--surface);
+  border-radius: 8px;
+  overflow: auto;
+  max-height: 90vh;
+  max-height: 90dvh;
+}
+.respModalFooter {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  padding-top: 0.75rem;
+  /* Clear the iPhone home indicator when the sheet is full-screen. */
+  padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
+}
+@media (max-width: 640px) {
+  .respModalOverlay {
+    align-items: stretch;
+    justify-content: stretch;
+  }
+  .respModalPanel {
+    width: 100vw;
+    height: 100vh;
+    height: 100dvh;
+    max-height: none;
+    border-radius: 0;
+  }
+  /* iOS zooms the page when a focused input's font is under 16px — keep
+     report form controls at 16px so focusing never zoom-jumps the sheet. */
+  .respModalPanel input[type='text'],
+  .respModalPanel input[type='search'],
+  .respModalPanel textarea,
+  .respModalPanel select {
+    font-size: 16px;
+  }
+}
+/* Thumb-sized slider knob for report percent fields on touch screens. */
+@media (pointer: coarse) {
+  .reportPercentSlider {
+    height: 44px;
+  }
+  .reportPercentSlider::-webkit-slider-thumb {
+    width: 28px;
+    height: 28px;
+  }
+  .reportPercentSlider::-moz-range-thumb {
+    width: 28px;
+    height: 28px;
+  }
+}

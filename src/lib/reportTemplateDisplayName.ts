@@ -28,6 +28,13 @@ export function additionalReportModalTemplateChipLabel(
   return stripped.length > 0 ? stripped : full
 }
 
+/** Retired from the New report / Additional Report pickers (v2.1017) — techs file
+ * completion via the Status report's 100% slider (which already offers Ready to
+ * bill). Existing Job Complete reports keep rendering everywhere. */
+export function isJobCompleteTemplateName(raw: string | null | undefined): boolean {
+  return (raw ?? '').trim() === 'Job Complete'
+}
+
 /** Status + Job Complete templates get a persistent blue chip style in Additional Report (see modal). */
 export function additionalReportModalBlueChipTemplate(name: string): boolean {
   const trimmed = name.trim()
