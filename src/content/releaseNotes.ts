@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1022',
+    date: '2026-07-25',
+    title: 'Review deletions goes straight to the deletions',
+    kind: 'fix',
+    highlights: [
+      'The bulk-deletion alert\'s Review deletions button now opens Settings with Recently deleted already expanded, loaded, and scrolled into view.',
+      'While the alert is active, that section shows it with the same Snooze / Dismiss buttons — so you can review and clear the notice in one place.',
+    ],
+  },
+  {
     version: 'v2.1021',
     date: '2026-07-25',
     title: 'Nicer discard-report prompt',

@@ -12,6 +12,10 @@ describe('resolveSettingsDeepLink', () => {
       tabId: 'settings-account',
       anchorId: 'settings-time-off',
     })
+    expect(resolveSettingsDeepLink('', '#settings-recently-deleted')).toEqual({
+      tabId: 'settings-data',
+      anchorId: 'settings-recently-deleted',
+    })
     expect(resolveSettingsDeepLink('', 'settings-salary-workday')).toEqual({
       tabId: 'settings-account',
       anchorId: 'settings-salary-workday',

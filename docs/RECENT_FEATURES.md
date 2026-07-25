@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-25 (v2.1021)
+last_updated: 2026-07-25 (v2.1022)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1022)
+
+### Bulk-deletion alert: Review deletions actually lands on the deletions (2026-07-25)
+Reported: clicking **Review deletions** on the dashboard's bulk-deletion banner dropped devs at the top of Settings → Data & migration — three *collapsed* accordions, with Recently deleted unopened and unloaded, and no way to clear the notice from there (Snooze/Dismiss lived only on the dashboard banner). Two fixes: **(1) the link is now a section deep-link** — new `settings-recently-deleted` anchor registered in [`settingsDeepLink.ts`](../src/lib/settingsDeepLink.ts) (tested), the banner targets `?tab=settings-data#settings-recently-deleted`, and [`DeletedRecordsSection`](../src/components/settings/DeletedRecordsSection.tsx) auto-expands (and therefore loads) when arrived at via the anchor (`location.key` in the deps so a repeat click re-opens it); Settings' existing anchor-poll scrolls it into view. **(2) the review loop closes in place**: while an alert is active, the section leads with an "Active bulk-deletion alert" box — same RPC + per-device dismiss state as the banner ([`useBulkDeleteAlerts`](../src/hooks/useBulkDeleteAlerts.ts) / [`bulkDeleteAlertDismiss.ts`](../src/lib/bulkDeleteAlertDismiss.ts)) — showing the worst burst summary with **Dismiss until count increases** / **Snooze 24h** buttons. Verified live as dev: banner click → section open with 50 bundles + alert box in view; Dismiss clears the box AND the dashboard banner. Dismissal remains per-device (a cross-device ack table is a possible follow-up). Help guide `bulk-deletion-alert.md` updated.
 
 ## Latest Updates (v2.1021)
 
