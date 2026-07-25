@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1024',
+    date: '2026-07-25',
+    title: 'Red phone asks Dispatch for a number',
+    kind: 'feature',
+    highlights: [
+      'Job cards with no customer phone now show a red phone — tap it and Dispatch gets a request to add the number, just like the red photos icon.',
+      'Tapping again won\'t double up: if the request is already in, you\'re told it\'s on its way.',
+    ],
+  },
+  {
     version: 'v2.1023',
     date: '2026-07-25',
     title: 'One Call button per job card',

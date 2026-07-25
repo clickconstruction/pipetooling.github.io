@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-25 (v2.1023)
+last_updated: 2026-07-25 (v2.1024)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1024)
+
+### Red phone on job cards: no number on file → one tap asks Dispatch (2026-07-25)
+Requested with the v2.1023 fix: jobs with no customer phone previously rendered nothing where the Call button goes. Now the three job-row sections (Ready to Bill / Assigned / Superintendent) show a **red phone** — same glyph, `--text-red-600` — that files a Dispatch request on tap, mirroring the red customer-photos affordance exactly: new [`addJobPhoneDispatchRequest.ts`](../src/lib/addJobPhoneDispatchRequest.ts) is a verbatim sibling of `linkJobPicturesDispatchRequest.ts` (pending_action `add_job_phone`, title "Add a customer phone number for HCP N - Name", dedupe on an open request per job with an "already sent" toast, best-effort `notify-dispatch-request` push, `notifyDispatchRequestsChanged`). New `JobRowMissingPhoneButton` in [`dashboardJobRowShared.tsx`](../src/components/dashboard/dashboardJobRowShared.tsx); [`useJobCustomerPhones`](../src/hooks/useJobCustomerPhones.ts) now returns `{ phones, loaded }` so the red state only renders after the fetch settles (no red flash while numbers load). Client-only; the Dispatch inbox shows these as ordinary open requests. Verified live as a subcontractor: 16 blue call buttons, exactly one red phone (846 · David and Diana Uhl — the only no-phone job), correct tooltip; the request itself was not filed (real dispatch push). New help guide `ask-dispatch-for-missing-job-info.md` documents both red icons (the photos one was never documented).
 
 ## Latest Updates (v2.1023)
 

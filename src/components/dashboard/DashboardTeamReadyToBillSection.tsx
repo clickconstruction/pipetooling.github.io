@@ -2,8 +2,10 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import CollectPaymentModal from '../jobs/CollectPaymentModal'
 import CallCustomerModal from './CallCustomerModal'
-import { JobRowCallButton } from './dashboardJobRowShared'
+import { JobRowCallButton, JobRowMissingPhoneButton } from './dashboardJobRowShared'
 import { useJobCustomerPhones } from '../../hooks/useJobCustomerPhones'
+import { submitAddJobPhoneDispatchRequestForJob } from '../../lib/addJobPhoneDispatchRequest'
+import { useToastContext } from '../../contexts/ToastContext'
 import { DashboardGroupCard } from './DashboardGroupCard'
 import { canLeaveJobFieldReport } from '../../lib/canLeaveJobFieldReport'
 import { isAssistantLike, isSubcontractorLikeRole } from '../../lib/subcontractorLikeRole'
@@ -18,7 +20,7 @@ import {
   isDashboardTeamReadyToBillRole,
   type DashboardTeamAssignedJobRow,
 } from '../../lib/dashboardTeamAssignedJobRow'
-import type { UserRole } from '../../hooks/useAuth'
+import { useAuth, type UserRole } from '../../hooks/useAuth'
 import { DashboardListRowSkeleton } from './DashboardSkeletons'
 import { DashboardJobPicturesLinkRow } from './DashboardJobPicturesLinkRow'
 import { DashboardLeaveReportButton } from './DashboardLeaveReportButton'
@@ -78,7 +80,10 @@ export function DashboardTeamReadyToBillSection({
   setSubcontractorJobActivityModalJob,
 }: DashboardTeamReadyToBillSectionProps) {
   // v2.1006: phone icon -> CallCustomerModal on rows with a customer phone.
-  const phones = useJobCustomerPhones(assignedReadyToBillJobs.map((j) => j.id))
+  // v2.1024: no phone on file -> red phone that asks Dispatch to add one.
+  const { phones, loaded: phonesLoaded } = useJobCustomerPhones(assignedReadyToBillJobs.map((j) => j.id))
+  const { user: authUser } = useAuth()
+  const { showToast } = useToastContext()
   const [callModal, setCallModal] = useState<{ phone: string; jobId: string; jobLabel: string } | null>(null)
   const [collectPaymentJob, setCollectPaymentJob] = useState<{
     id: string
@@ -263,6 +268,18 @@ export function DashboardTeamReadyToBillSection({
                           onClick={(e) => {
                             e.stopPropagation()
                             setCallModal({ phone: phones.get(j.id)!, jobId: j.id, jobLabel: `${effectiveJobLedgerNumber(j.hcp_number, j.click_number) || '—'} · ${j.job_name || '—'}` })
+                          }}
+                        />
+                      ) : phonesLoaded ? (
+                        <JobRowMissingPhoneButton
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            void submitAddJobPhoneDispatchRequestForJob(authUser?.id, showToast, {
+                              jobId: j.id,
+                              hcpNumber: effectiveJobLedgerNumber(j.hcp_number, j.click_number),
+                              jobName: j.job_name,
+                              jobAddress: j.job_address,
+                            })
                           }}
                         />
                       ) : null}

@@ -2,9 +2,11 @@ import type { Dispatch, SetStateAction } from 'react'
 import { useState } from 'react'
 import CallCustomerModal from './CallCustomerModal'
 import { useJobCustomerPhones } from '../../hooks/useJobCustomerPhones'
+import { submitAddJobPhoneDispatchRequestForJob } from '../../lib/addJobPhoneDispatchRequest'
+import { useToastContext } from '../../contexts/ToastContext'
 
 import { Link } from 'react-router-dom'
-import type { UserRole } from '../../hooks/useAuth'
+import { useAuth, type UserRole } from '../../hooks/useAuth'
 import type { DashboardTeamAssignedJobRow } from '../../lib/dashboardTeamAssignedJobRow'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import { isSubcontractorLikeRole } from '../../lib/subcontractorLikeRole'
@@ -26,6 +28,7 @@ import {
   DriveLinkGlyph,
   JOB_ROW_LINK_ICON_COLUMN_STYLE,
   JobRowCallButton,
+  JobRowMissingPhoneButton,
   JOB_ROW_LINK_ICON_STYLE,
   JOB_ROW_PICTURES_ICON_WRAP_STYLE,
   JobPlansGlyph,
@@ -78,7 +81,9 @@ export function DashboardAssignedJobsSection({
   formatDatetime: (iso: string) => string
 }) {
   // v2.1006: phone icon -> CallCustomerModal (mis-click guard + call notes) on every row with a customer phone.
-  const phones = useJobCustomerPhones(assignedJobs.map((j) => j.id))
+  const { phones, loaded: phonesLoaded } = useJobCustomerPhones(assignedJobs.map((j) => j.id))
+  const { user: authUser } = useAuth()
+  const { showToast } = useToastContext()
   const [callModal, setCallModal] = useState<{ phone: string; jobId: string; jobLabel: string } | null>(null)
   return (
     <>
@@ -180,6 +185,18 @@ export function DashboardAssignedJobsSection({
                           onClick={(e) => {
                             e.stopPropagation()
                             setCallModal({ phone: phones.get(j.id)!, jobId: j.id, jobLabel: `${effectiveJobLedgerNumber(j.hcp_number, j.click_number) || '—'} · ${j.job_name || '—'}` })
+                          }}
+                        />
+                      ) : phonesLoaded ? (
+                        <JobRowMissingPhoneButton
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            void submitAddJobPhoneDispatchRequestForJob(authUser?.id, showToast, {
+                              jobId: j.id,
+                              hcpNumber: effectiveJobLedgerNumber(j.hcp_number, j.click_number),
+                              jobName: j.job_name,
+                              jobAddress: j.job_address,
+                            })
                           }}
                         />
                       ) : null}
