@@ -14,6 +14,7 @@ import { ReportTemplateSignatureField } from './ReportTemplateSignatureField'
 import { MarkJobReadyToBillPrompt } from './jobs/MarkJobReadyToBillPrompt'
 import ResponsiveModalShell from './ResponsiveModalShell'
 import AutoGrowTextarea from './AutoGrowTextarea'
+import ConfirmDialog from './ConfirmDialog'
 import { hasUnsavedReportEntries } from '../lib/reportFormDirty'
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock'
 
@@ -59,6 +60,7 @@ export default function NewReportModal({ open, onClose, onSaved, authUserId, use
   const [searchMode, setSearchMode] = useState<'search' | 'last'>('search')
   const [copyJustClicked, setCopyJustClicked] = useState(false)
   const [readyToBillJob, setReadyToBillJob] = useState<{ id: string; hcpNumber: string; jobName: string } | null>(null)
+  const [discardConfirmOpen, setDiscardConfirmOpen] = useState(false)
   /** Once the tech taps Change, emptying the search box must not re-auto-select the last job. */
   const suppressAutoSelectRef = useRef(false)
 
@@ -167,6 +169,7 @@ export default function NewReportModal({ open, onClose, onSaved, authUserId, use
     setSearchResults([])
     setFieldValues({})
     setError(null)
+    setDiscardConfirmOpen(false)
     suppressAutoSelectRef.current = false
   }
 
@@ -176,10 +179,13 @@ export default function NewReportModal({ open, onClose, onSaved, authUserId, use
   }
 
   /** Every close path (×, Cancel, Escape, backdrop) — confirms first when the
-   * tech has typed anything, so an accidental tap can't lose a report. */
+   * tech has typed anything, so an accidental tap can't lose a report. The
+   * discardConfirmOpen guard also keeps the shell's Escape handler from
+   * re-opening the prompt while it is already up. */
   function guardedClose() {
-    if (saving) return
-    if (hasUnsavedReportEntries(fieldValues) && !window.confirm('Discard this report? Your entries will be lost.')) {
+    if (saving || discardConfirmOpen) return
+    if (hasUnsavedReportEntries(fieldValues)) {
+      setDiscardConfirmOpen(true)
       return
     }
     handleClose()
@@ -394,6 +400,7 @@ export default function NewReportModal({ open, onClose, onSaved, authUserId, use
   )
 
   return (
+    <>
     <ResponsiveModalShell title="New report" onRequestClose={guardedClose} footer={footer}>
         <form id="new-report-form" onSubmit={handleSubmit}>
           <div style={{ marginBottom: '1rem' }}>
@@ -567,5 +574,19 @@ export default function NewReportModal({ open, onClose, onSaved, authUserId, use
           {error && <p style={{ color: 'var(--text-red-700)', marginBottom: '1rem' }}>{error}</p>}
         </form>
     </ResponsiveModalShell>
+    {discardConfirmOpen && (
+      <ConfirmDialog
+        title="Discard this report?"
+        body="Your entries will be lost."
+        confirmLabel="Discard report"
+        cancelLabel="Keep writing"
+        onCancel={() => setDiscardConfirmOpen(false)}
+        onConfirm={() => {
+          setDiscardConfirmOpen(false)
+          handleClose()
+        }}
+      />
+    )}
+    </>
   )
 }

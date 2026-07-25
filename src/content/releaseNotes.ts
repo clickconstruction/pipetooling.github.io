@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1021',
+    date: '2026-07-25',
+    title: 'Nicer discard-report prompt',
+    kind: 'fix',
+    highlights: [
+      'Closing a half-written report now shows a proper in-app "Discard this report?" dialog with Keep writing / Discard report buttons, instead of the plain browser popup.',
+    ],
+  },
+  {
     version: 'v2.1020',
     date: '2026-07-25',
     title: 'Report fields grow as you type',
