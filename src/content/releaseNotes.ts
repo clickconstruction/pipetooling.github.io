@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1013',
+    date: '2026-07-24',
+    title: 'Search in Manage accounts',
+    kind: 'feature',
+    highlights: [
+      'The Manage accounts window (People → Users) now has a search bar at the top — type a name, email, or role to jump straight to the account, including archived ones.',
+    ],
+  },
+  {
     version: 'v2.1012',
     date: '2026-07-24',
     title: 'Labor costs survive renames too',

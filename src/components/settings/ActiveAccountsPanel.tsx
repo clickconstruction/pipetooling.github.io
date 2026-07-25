@@ -12,6 +12,7 @@ import { displayLabelForUserRole } from '../../lib/userRoleDisplay'
 import { isSubcontractorLikeRole } from '../../lib/subcontractorLikeRole'
 import { eligibleAbsorbCandidates } from '../../lib/mergeUserAccounts'
 import { buildServiceTypeTradePill } from '../../lib/serviceTypeTradePill'
+import { filterActiveAccountUsers } from '../../lib/activeAccountsSearch'
 import { useToastContext } from '../../contexts/ToastContext'
 import PasswordInput from '../PasswordInput'
 import { useActiveAccountsManagement } from '../../hooks/useActiveAccountsManagement'
@@ -193,6 +194,10 @@ export default function ActiveAccountsPanel({ variant, onDataChanged, onOpenFind
     handleConvertMaster,
   } = useActiveAccountsManagement({ enabled: true, onDataChanged })
 
+  const [searchQuery, setSearchQuery] = React.useState('')
+  const visibleUsers = filterActiveAccountUsers(users, searchQuery)
+  const visibleArchivedUsers = filterActiveAccountUsers(archivedUsers, searchQuery)
+
   async function copyToClipboard(text: string) {
     try {
       await navigator.clipboard.writeText(text)
@@ -217,9 +222,42 @@ export default function ActiveAccountsPanel({ variant, onDataChanged, onOpenFind
             )}
             {(variant === 'modal' || activeAccountsSectionOpen) && (
             <div className="activeAccountsCard__body" style={variant === 'modal' ? { borderTop: 'none' } : undefined}>
-          <p className="activeAccountsCard__desc">
-            Set user class for everyone who has signed up. Only owners can change these.
-          </p>
+          {variant === 'modal' && (
+            <div
+              style={{
+                position: 'sticky',
+                top: 0,
+                zIndex: 5,
+                background: 'var(--surface)',
+                padding: '0.75rem 0 0.5rem',
+                marginBottom: '0.5rem',
+              }}
+            >
+              <input
+                type="search"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search name, email, or role…"
+                aria-label="Search accounts"
+                autoFocus
+                style={{
+                  width: '100%',
+                  boxSizing: 'border-box',
+                  padding: '0.5rem 0.75rem',
+                  border: '1px solid var(--border)',
+                  borderRadius: 6,
+                  fontSize: '0.9375rem',
+                  background: 'var(--surface)',
+                  color: 'inherit',
+                }}
+              />
+            </div>
+          )}
+          {variant === 'card' && (
+            <p className="activeAccountsCard__desc">
+              Set user class for everyone who has signed up. Only owners can change these.
+            </p>
+          )}
           <div className="activeAccountsCard__actions">
             <button type="button" onClick={openInvite} className="activeAccountsCard__btnPrimary">
               Invite via email
@@ -249,7 +287,7 @@ export default function ActiveAccountsPanel({ variant, onDataChanged, onOpenFind
                 </tr>
               </thead>
               <tbody>
-                {users.map((u) => (
+                {visibleUsers.map((u) => (
                   <React.Fragment key={u.id}>
                   <tr style={{ borderBottom: '1px solid var(--border)' }}>
                     <td style={{ padding: '0.5rem 0.75rem' }}>
@@ -571,6 +609,9 @@ export default function ActiveAccountsPanel({ variant, onDataChanged, onOpenFind
             </p>
           )}
           {users.length === 0 && <p style={{ marginTop: '1rem' }}>No users yet.</p>}
+          {users.length > 0 && visibleUsers.length === 0 && (
+            <p style={{ marginTop: '1rem', color: 'var(--text-muted)' }}>No accounts match “{searchQuery.trim()}”.</p>
+          )}
 
           {/* Archived users */}
           <div style={{ marginTop: '2rem', border: '1px solid var(--border)', borderRadius: '0.5rem', maxWidth: 640 }}>
@@ -600,6 +641,8 @@ export default function ActiveAccountsPanel({ variant, onDataChanged, onOpenFind
                 {restoreError && <p style={{ color: 'var(--text-red-700)', marginBottom: '1rem' }}>{restoreError}</p>}
                 {archivedUsers.length === 0 ? (
                   <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>No archived users.</p>
+                ) : visibleArchivedUsers.length === 0 ? (
+                  <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>No archived users match “{searchQuery.trim()}”.</p>
                 ) : (
                   <div style={{ overflowX: 'auto' }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -613,7 +656,7 @@ export default function ActiveAccountsPanel({ variant, onDataChanged, onOpenFind
                         </tr>
                       </thead>
                       <tbody>
-                        {archivedUsers.map((u) => (
+                        {visibleArchivedUsers.map((u) => (
                           <tr key={u.id} style={{ borderBottom: '1px solid var(--border)' }}>
                             <td style={{ padding: '0.5rem 0.75rem' }}>{u.email}</td>
                             <td style={{ padding: '0.5rem 0.75rem' }}>{u.name}</td>

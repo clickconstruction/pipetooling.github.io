@@ -9,7 +9,7 @@ Archiving is how you offboard someone's login. It never deletes anything — the
 
 ## Two ways to archive
 
-Both live in the **Active Accounts** panel (Settings → People & accounts, or **Manage accounts** on People → Users):
+Both live in the **Active Accounts** panel (Settings → People & accounts, or **Manage accounts** on People → Users). In the Manage accounts modal, use the search bar at the top to jump straight to the account — it matches name, email, or role and filters the archived list too:
 
 1. **From a row** — click {{button:outline|Edit}} on the account, then the red {{button:red|Archive}} button at the end of the actions. A confirmation explains exactly what will happen before you commit. If the account owns customers, the confirmation warns you and points to option 2.
 2. **Archive User & Reassign Customers** — for masters who own customers: pick who inherits the customers, then the account is archived.
