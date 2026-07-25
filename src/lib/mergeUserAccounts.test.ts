@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   accountIsInUse,
   eligibleAbsorbCandidates,
+  eligibleExternalAbsorbCandidates,
   mergeIneligibilityReason,
 } from './mergeUserAccounts'
 
@@ -47,5 +48,30 @@ describe('eligibleAbsorbCandidates', () => {
     expect(eligibleAbsorbCandidates(liveUsed, all).map((a) => a.id)).toEqual(['b', 'c', 'd'])
     expect(eligibleAbsorbCandidates(archived, all).map((a) => a.id)).toEqual(['d'])
     expect(eligibleAbsorbCandidates(null, all)).toEqual([])
+  })
+})
+
+describe('eligibleExternalAbsorbCandidates', () => {
+  const extSub = { id: 'p1', name: 'Behar Kraja', kind: 'sub', account_user_id: null, archived_at: null }
+  const extSub2 = { id: 'p2', name: 'Rough In Crew', kind: 'sub', account_user_id: null, archived_at: null }
+  const archivedExtSub = { id: 'p3', name: 'Old Sub', kind: 'sub', account_user_id: null, archived_at: '2026-05-01T00:00:00Z' }
+  const linkedSub = { id: 'p4', name: 'Abraham', kind: 'sub', account_user_id: 'u9', archived_at: null }
+  const extHelper = { id: 'p5', name: 'Chelsea', kind: 'helper', account_user_id: null, archived_at: null }
+  const roster = [extSub, extSub2, archivedExtSub, linkedSub, extHelper]
+
+  it('offers active, unlinked kind-sub people for a live subcontractor survivor', () => {
+    expect(eligibleExternalAbsorbCandidates(liveUsed, roster).map((p) => p.id)).toEqual(['p1', 'p2'])
+  })
+  it('excludes archived people, account-linked people, and other kinds', () => {
+    const ids = eligibleExternalAbsorbCandidates(liveUsed, roster).map((p) => p.id)
+    expect(ids).not.toContain('p3')
+    expect(ids).not.toContain('p4')
+    expect(ids).not.toContain('p5')
+  })
+  it('offers nothing without a survivor, for an archived survivor, or for non-subcontractor roles', () => {
+    expect(eligibleExternalAbsorbCandidates(null, roster)).toEqual([])
+    expect(eligibleExternalAbsorbCandidates(archived, roster)).toEqual([])
+    expect(eligibleExternalAbsorbCandidates(estimatorArchived, roster)).toEqual([])
+    expect(eligibleExternalAbsorbCandidates({ id: 'z', role: 'helpers', archived_at: null, last_sign_in_at: null }, roster)).toEqual([])
   })
 })

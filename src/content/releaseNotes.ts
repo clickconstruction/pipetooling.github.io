@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1014',
+    date: '2026-07-24',
+    title: 'Merge external subcontractors into accounts',
+    kind: 'feature',
+    highlights: [
+      'In Merge users (Manage accounts), keeping a subcontractor account now also offers external subcontractors — roster entries with no login — in the merge-away list.',
+      'Merging one folds their hours, crew records, and sub sheets onto the kept account, creating its roster entry automatically if needed; the external row is archived, never deleted.',
+    ],
+  },
+  {
     version: 'v2.1013',
     date: '2026-07-24',
     title: 'Search in Manage accounts',

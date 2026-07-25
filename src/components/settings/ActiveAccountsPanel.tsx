@@ -10,7 +10,7 @@ import type { UserRow } from '../../types/settingsRows'
 import { ROLES } from '../../lib/userRoles'
 import { displayLabelForUserRole } from '../../lib/userRoleDisplay'
 import { isSubcontractorLikeRole } from '../../lib/subcontractorLikeRole'
-import { eligibleAbsorbCandidates } from '../../lib/mergeUserAccounts'
+import { eligibleAbsorbCandidates, eligibleExternalAbsorbCandidates, EXTERNAL_MERGE_OPTION_PREFIX } from '../../lib/mergeUserAccounts'
 import { buildServiceTypeTradePill } from '../../lib/serviceTypeTradePill'
 import { filterActiveAccountUsers } from '../../lib/activeAccountsSearch'
 import { useToastContext } from '../../contexts/ToastContext'
@@ -116,6 +116,7 @@ export default function ActiveAccountsPanel({ variant, onDataChanged, onOpenFind
     mergeSubmitting,
     mergePreview,
     setMergePreview,
+    externalSubPeople,
     openMerge,
     closeMerge,
     runMerge,
@@ -1244,6 +1245,7 @@ export default function ActiveAccountsPanel({ variant, onDataChanged, onOpenFind
         const allAccounts = [...users, ...archivedUsers]
         const survivor = allAccounts.find((u) => u.id === mergeSurvivorId) ?? null
         const absorbCandidates = eligibleAbsorbCandidates(survivor, allAccounts)
+        const externalCandidates = eligibleExternalAbsorbCandidates(survivor, externalSubPeople)
         const accountLabel = (u: UserRow) =>
           `${u.name || u.email} (${u.email})${u.archived_at ? ' — archived' : ''}`
         const movedEntries = mergePreview ? Object.entries(mergePreview.moved) : []
@@ -1255,7 +1257,10 @@ export default function ActiveAccountsPanel({ variant, onDataChanged, onOpenFind
                 Moves everything the merged-away account owns (clock time, reports, job and bid
                 assignments, notes, banking attributions…) onto the account you keep, then leaves
                 the merged-away account archived and banned. Both accounts must have the same
-                role, and the merged-away account must be archived or never signed into.
+                role, and the merged-away account must be archived or never signed into. When the
+                kept account is a subcontractor, external subcontractors (roster rows with no
+                login) can also be merged away — their hours, crew records, and sub sheets fold
+                onto the kept account&apos;s roster identity.
               </p>
               <div style={{ marginBottom: '1rem' }}>
                 <label htmlFor="merge-survivor" style={{ display: 'block', marginBottom: 4 }}>
@@ -1304,8 +1309,13 @@ export default function ActiveAccountsPanel({ variant, onDataChanged, onOpenFind
                       {accountLabel(u)}
                     </option>
                   ))}
+                  {externalCandidates.map((p) => (
+                    <option key={p.id} value={`${EXTERNAL_MERGE_OPTION_PREFIX}${p.id}`}>
+                      {p.name} — external subcontractor
+                    </option>
+                  ))}
                 </select>
-                {mergeSurvivorId && absorbCandidates.length === 0 && (
+                {mergeSurvivorId && absorbCandidates.length === 0 && externalCandidates.length === 0 && (
                   <p style={{ margin: '0.35rem 0 0', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
                     No eligible accounts: same role, and archived or never signed into.
                   </p>

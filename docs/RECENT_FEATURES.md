@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-24 (v2.1013)
+last_updated: 2026-07-24 (v2.1014)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1014)
+
+### Merge users: external subcontractors join the merge-away list (2026-07-24)
+Requested after the v2.1013 session surfaced the dead end live: an external sub ("Behar Kraja", 10 sub sheets) could not fold into its own subcontractor account — the account had no roster person row, so the Combine… picker showed "No matches", and the Merge users modal only ever listed login accounts. Now, when the picked survivor is a **live subcontractor account**, the "Merge this account away" dropdown also lists **external subcontractors** (active `people` rows, `kind='sub'`, no `account_user_id`), labeled "— external subcontractor". Selecting one routes through the **combine-people engine** ([`combinePeople.ts`](../src/lib/combinePeople.ts)), not the `merge_user_accounts` RPC: Preview maps `previewCombinePeople` counts into the existing preview box (plus warnings explaining the fold + whether a roster row will be created); Merge now finds the survivor's linked person row — **creating one on the fly when missing** (`kind` from the source, `master_user_id` from the external row's owner, `account_user_id` linked) — then `executeCombinePeople` rewrites name-keyed pay tables, repoints `person_id` rows, rewrites sub-sheet assigned lists, and archives the external row (never deletes). Kernel: `eligibleExternalAbsorbCandidates` + `EXTERNAL_MERGE_OPTION_PREFIX` in [`mergeUserAccounts.ts`](../src/lib/mergeUserAccounts.ts) (subcontractor→`sub` only, extend deliberately; 4 new tests, 11 total). Hook loads the external roster alongside users ([`useActiveAccountsManagement.ts`](../src/hooks/useActiveAccountsManagement.ts)). Client-only — no migration. Verified live: dropdown shows 5 archived sub accounts + 7 external subs; dry-run preview on the real Behar pair shows "sub sheets (assigned names): 10" + the create-roster-row warning (merge not executed). Help guide `merge-user-accounts.md` gains the external-sub section.
 
 ## Latest Updates (v2.1013)
 

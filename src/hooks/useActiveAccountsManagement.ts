@@ -12,7 +12,18 @@ import { useAuth, type UserRole } from './useAuth'
 import { useToastContext } from '../contexts/ToastContext'
 import type { ServiceType, UserRow } from '../types/settingsRows'
 import { cascadePersonNameInPayTables, getPersonNamesForUser } from '../lib/cascadePersonName'
+import { EXTERNAL_MERGE_OPTION_PREFIX } from '../lib/mergeUserAccounts'
+import { executeCombinePeople, previewCombinePeople } from '../lib/combinePeople'
 import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
+
+/** External roster person (no login) offered as a merge-away candidate for subcontractor survivors. */
+export type ExternalMergePerson = {
+  id: string
+  name: string
+  kind: string
+  master_user_id: string
+  account_user_id: string | null
+}
 
 export type UseActiveAccountsManagementOptions = {
   enabled: boolean
@@ -67,6 +78,7 @@ export function useActiveAccountsManagement({ enabled, onDataChanged }: UseActiv
     moved: Record<string, number>
     warnings: string[]
   } | null>(null)
+  const [externalSubPeople, setExternalSubPeople] = useState<ExternalMergePerson[]>([])
   const [restoreSubmitting, setRestoreSubmitting] = useState(false)
   const [restoreError, setRestoreError] = useState<string | null>(null)
   const [restoringUserId, setRestoringUserId] = useState<string | null>(null)
@@ -107,14 +119,27 @@ export function useActiveAccountsManagement({ enabled, onDataChanged }: UseActiv
     else setUsers((list as UserRow[]) ?? [])
   }
 
+  /** Active roster people with no login account, kind 'sub' — merge-away candidates for subcontractor survivors. */
+  async function loadExternalSubPeople() {
+    const { data, error: ePeople } = await supabase
+      .from('people')
+      .select('id, name, kind, master_user_id, account_user_id')
+      .eq('kind', 'sub')
+      .is('archived_at', null)
+      .is('account_user_id', null)
+      .order('name')
+    if (ePeople) setError(ePeople.message)
+    else setExternalSubPeople((data as ExternalMergePerson[]) ?? [])
+  }
+
   /** Refresh the panel's own data after a successful mutation, then let the host page refresh its lists. */
   async function reloadAfterMutation() {
-    await Promise.all([loadUsers(), loadArchivedUsers()])
+    await Promise.all([loadUsers(), loadArchivedUsers(), loadExternalSubPeople()])
     onDataChanged?.()
   }
 
   const loadAll = useCallback(async () => {
-    await Promise.all([loadUsers(), loadArchivedUsers(), loadServiceTypes()])
+    await Promise.all([loadUsers(), loadArchivedUsers(), loadServiceTypes(), loadExternalSubPeople()])
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authUser?.id])
 
@@ -847,9 +872,87 @@ export function useActiveAccountsManagement({ enabled, onDataChanged }: UseActiv
     setMergeOpen(false)
   }
 
+  /** Merge-away path for external roster people (no login): folds the person onto the
+   * survivor's roster identity via the combine-people engine. The survivor gets a linked
+   * people row created on the fly when it doesn't have one yet. */
+  async function runExternalMerge(dryRun: boolean, personId: string) {
+    const person = externalSubPeople.find((p) => p.id === personId)
+    const survivor = users.find((u) => u.id === mergeSurvivorId)
+    if (!person || !survivor) {
+      setMergeError('Selection is stale — close and reopen Merge users.')
+      return
+    }
+    const survivorName = (survivor.name || survivor.email).trim()
+    setMergeError(null)
+    setMergeSubmitting(true)
+    try {
+      const { data: existingRows, error: eExisting } = await supabase
+        .from('people')
+        .select('id, name, account_user_id')
+        .eq('account_user_id', survivor.id)
+        .is('archived_at', null)
+        .order('created_at', { ascending: true })
+        .limit(1)
+      if (eExisting) throw new Error(eExisting.message)
+      const existing = existingRows?.[0] ?? null
+
+      if (dryRun) {
+        const p = await previewCombinePeople(person.id, person.name)
+        const moved: Record<string, number> = {}
+        for (const line of p.lines) {
+          const n = Math.max(line.nameRows, line.idRows)
+          if (n > 0) moved[line.table] = n
+        }
+        if (p.laborSheets > 0) moved['sub sheets (assigned names)'] = p.laborSheets
+        const warnings = [
+          `"${person.name}" is an external roster person (no login) — their hours, pay records, crew records, and sub sheets fold onto ${survivorName}'s roster identity, then the external row is archived (never deleted). Login accounts are not touched.`,
+        ]
+        if (!existing) {
+          warnings.push(`${survivorName} has no roster person row yet — one will be created and linked to their account.`)
+        }
+        setMergePreview({ moved, warnings })
+        return
+      }
+
+      let target = existing
+      if (!target) {
+        const { data: created, error: eCreate } = await supabase
+          .from('people')
+          .insert({
+            name: survivorName,
+            kind: person.kind,
+            master_user_id: person.master_user_id,
+            account_user_id: survivor.id,
+          })
+          .select('id, name, account_user_id')
+          .single()
+        if (eCreate) throw new Error(`create roster row for ${survivorName}: ${eCreate.message}`)
+        target = created
+      }
+      const result = await executeCombinePeople({
+        source: { id: person.id, name: person.name, account_user_id: null },
+        target: { id: target.id, name: target.name, account_user_id: target.account_user_id },
+      })
+      showToast(
+        `Merged ${person.name} into ${survivorName}: ${result.renamedRows} rows renamed, ${result.repointedRows} repointed, ${result.sheetsRewritten} sheets updated. External row archived.`,
+        'success',
+      )
+      setMergeOpen(false)
+      await reloadAfterMutation()
+    } catch (e) {
+      setMergeError(formatErrorMessage(e, 'Merge failed'))
+    } finally {
+      setMergeSubmitting(false)
+    }
+  }
+
   async function runMerge(dryRun: boolean) {
     if (!mergeSurvivorId || !mergeAbsorbedId) {
       setMergeError('Pick both accounts.')
+      return
+    }
+    if (mergeAbsorbedId.startsWith(EXTERNAL_MERGE_OPTION_PREFIX)) {
+      await runExternalMerge(dryRun, mergeAbsorbedId.slice(EXTERNAL_MERGE_OPTION_PREFIX.length))
       return
     }
     setMergeError(null)
@@ -1071,6 +1174,7 @@ export function useActiveAccountsManagement({ enabled, onDataChanged }: UseActiv
     mergeSubmitting,
     mergePreview,
     setMergePreview,
+    externalSubPeople,
     openMerge,
     closeMerge,
     runMerge,

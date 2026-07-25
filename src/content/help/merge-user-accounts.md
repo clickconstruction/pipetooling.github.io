@@ -26,3 +26,7 @@ Open the **Active Accounts** panel (Settings → People & accounts, or the **Man
 :::example Good to know
 Merging cannot be undone. Pay history recorded under the old account's display name stays under that name — it belongs to the person's roster entry, which is not changed by an account merge.
 :::
+
+## Merging an external subcontractor into an account
+
+When the account you keep is a **Subcontractor**, the "merge away" list also offers **external subcontractors** — roster rows with no login (the External Subcontractors section on People → Users). Pick one and the flow changes slightly: instead of moving login-account data, their **hours, pay records, crew records, and sub sheets fold onto the kept account's roster identity**, and the external row is archived (never deleted). If the kept account doesn't have a roster entry yet, one is created and linked automatically — the preview tells you when that will happen.
