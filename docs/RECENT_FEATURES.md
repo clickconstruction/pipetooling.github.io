@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-24 (v2.1015)
+last_updated: 2026-07-24 (v2.1016)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1016)
+
+### Active Accounts: one unified Archive dialog (reassignment folded in) (2026-07-24)
+The top-row "Archive User & Reassign Customers" button is gone — reassignment now lives inside the single archive confirmation. Three overlapping paths collapse into one dialog with two entries: the top **Archive user** button (account dropdown replaces the old error-prone type-an-email form) and the row **Edit → Archive** (arrives pre-selected, no picker). When the account owns customers, the old warning-that-redirected-you becomes an inline decision: **keep** them on the archived account (default) or **reassign** to a master/dev picked right there — the action button turns into "Reassign & archive" and stays disabled (with a tooltip) until a target is picked; both run as one `archive-user` edge-fn call (it already accepted `reassign_customers_to` — client-only change, also killing the stale "Delete & Reassign" submit label). New kernel [`archiveUserDialog.ts`](../src/lib/archiveUserDialog.ts): `eligibleReassignTargets` (masters/devs, never the archivee), `archiveChoiceBlocker` (submit gating incl. count-still-loading), `archiveRequestBody` (reassign rides along only when chosen AND there are customers) — 8 tests. Hook sheds the whole `delete*`/`deleteReassign*` state cluster (~130 lines). Verified live as dev: top entry shows the picker (17 accounts), Malachi shows the 184-customer decision block with correct gating in all three states, Abraham's row entry skips picker and block. Help guide `archive-user-accounts.md` rewritten ("Two ways to archive" → one dialog, two entries).
 
 ## Latest Updates (v2.1015)
 

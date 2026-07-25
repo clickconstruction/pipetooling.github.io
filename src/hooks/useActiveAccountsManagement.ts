@@ -1,6 +1,7 @@
 /** Self-contained state + handlers for the Active Accounts management UI
- * (users table, invite / manual add / archive / archive+reassign / restore /
- * set-password / send-sign-in-email / convert-master). Lifted verbatim from
+ * (users table, invite / manual add / unified archive (optional customer
+ * reassignment) / restore / set-password / send-sign-in-email /
+ * convert-master). Lifted verbatim from
  * Settings.tsx so the same panel can render inline in Settings and inside the
  * app-level Active Accounts modal. `enabled` gates data loading (the modal only
  * loads while open); `onDataChanged` lets the host page refresh its own lists
@@ -13,6 +14,7 @@ import { useToastContext } from '../contexts/ToastContext'
 import type { ServiceType, UserRow } from '../types/settingsRows'
 import { cascadePersonNameInPayTables, getPersonNamesForUser } from '../lib/cascadePersonName'
 import { EXTERNAL_MERGE_OPTION_PREFIX } from '../lib/mergeUserAccounts'
+import { archiveChoiceBlocker, archiveRequestBody, type ArchiveReassignMode } from '../lib/archiveUserDialog'
 import { executeCombinePeople, previewCombinePeople } from '../lib/combinePeople'
 import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
 
@@ -54,17 +56,11 @@ export function useActiveAccountsManagement({ enabled, onDataChanged }: UseActiv
   const [manualAddServiceTypeIds, setManualAddServiceTypeIds] = useState<string[]>([])
   const [manualAddError, setManualAddError] = useState<string | null>(null)
   const [manualAddSubmitting, setManualAddSubmitting] = useState(false)
-  const [deleteOpen, setDeleteOpen] = useState(false)
-  const [deleteEmail, setDeleteEmail] = useState('')
-  const [deleteName, setDeleteName] = useState('')
-  const [deleteError, setDeleteError] = useState<string | null>(null)
-  const [deleteSubmitting, setDeleteSubmitting] = useState(false)
-  const [deleteReassignOpen, setDeleteReassignOpen] = useState(false)
-  const [deleteReassignUserId, setDeleteReassignUserId] = useState('')
-  const [deleteReassignNewMasterId, setDeleteReassignNewMasterId] = useState('')
-  const [deleteReassignSubmitting, setDeleteReassignSubmitting] = useState(false)
-  const [deleteReassignError, setDeleteReassignError] = useState<string | null>(null)
-  const [deleteReassignCustomerCount, setDeleteReassignCustomerCount] = useState<number>(0)
+  const [archiveConfirmOpen, setArchiveConfirmOpen] = useState(false)
+  /** True when the dialog was opened from the top button (shows the account picker). */
+  const [archiveConfirmPicker, setArchiveConfirmPicker] = useState(false)
+  const [archiveReassignMode, setArchiveReassignMode] = useState<ArchiveReassignMode>('keep')
+  const [archiveReassignTargetId, setArchiveReassignTargetId] = useState('')
   const [archiveConfirmUser, setArchiveConfirmUser] = useState<UserRow | null>(null)
   const [archiveConfirmSubmitting, setArchiveConfirmSubmitting] = useState(false)
   const [archiveConfirmError, setArchiveConfirmError] = useState<string | null>(null)
@@ -517,126 +513,6 @@ export function useActiveAccountsManagement({ enabled, onDataChanged }: UseActiv
     await reloadAfterMutation()
   }
 
-  function openArchive() {
-    setDeleteOpen(true)
-    setDeleteEmail('')
-    setDeleteName('')
-    setDeleteError(null)
-  }
-
-  function closeArchive() {
-    setDeleteOpen(false)
-  }
-
-  async function handleArchive(e: FormEvent) {
-    e.preventDefault()
-    setDeleteError(null)
-    if (!deleteEmail.trim() && !deleteName.trim()) {
-      setDeleteError('Enter an email or name.')
-      return
-    }
-    setDeleteSubmitting(true)
-    const { data, error: eFn } = await supabase.functions.invoke('archive-user', {
-      body: { email: deleteEmail.trim(), name: deleteName.trim() },
-    })
-    setDeleteSubmitting(false)
-    if (eFn) {
-      let msg = eFn.message
-      if (eFn instanceof FunctionsHttpError && eFn.context?.json) {
-        try {
-          const b = (await eFn.context.json()) as { error?: string } | null
-          if (b?.error) msg = b.error
-        } catch { /* ignore */ }
-      }
-      setDeleteError(msg)
-      return
-    }
-    const err = (data as { error?: string } | null)?.error
-    if (err) {
-      setDeleteError(err)
-      return
-    }
-    closeArchive()
-    await reloadAfterMutation()
-  }
-
-  function openArchiveReassign() {
-    setDeleteReassignOpen(true)
-    setDeleteReassignUserId('')
-    setDeleteReassignNewMasterId('')
-    setDeleteReassignCustomerCount(0)
-    setDeleteReassignError(null)
-  }
-
-  function closeArchiveReassign() {
-    setDeleteReassignOpen(false)
-  }
-
-  async function loadCustomerCount(userId: string) {
-    if (!userId) {
-      setDeleteReassignCustomerCount(0)
-      return
-    }
-    
-    const { count, error } = await supabase
-      .from('customers')
-      .select('id', { count: 'exact', head: true })
-      .eq('master_user_id', userId)
-    
-    if (!error && count !== null) {
-      setDeleteReassignCustomerCount(count)
-    }
-  }
-
-  async function handleArchiveReassign(e: FormEvent) {
-    e.preventDefault()
-    setDeleteReassignError(null)
-    
-    if (!deleteReassignUserId || !deleteReassignNewMasterId) {
-      setDeleteReassignError('Please select both users')
-      return
-    }
-    
-    if (deleteReassignUserId === deleteReassignNewMasterId) {
-      setDeleteReassignError('Cannot reassign to the same user')
-      return
-    }
-    
-    const userToArchive = users.find(u => u.id === deleteReassignUserId)
-    if (!userToArchive) {
-      setDeleteReassignError('User to archive not found')
-      return
-    }
-    
-    setDeleteReassignSubmitting(true)
-    
-    const { data, error: eFn } = await supabase.functions.invoke('archive-user', {
-      body: { 
-        email: userToArchive.email, 
-        name: userToArchive.name,
-        reassign_customers_to: deleteReassignNewMasterId 
-      },
-    })
-    
-    setDeleteReassignSubmitting(false)
-    
-    if (eFn) {
-      let msg = eFn.message
-      if (eFn instanceof FunctionsHttpError && eFn.context?.json) {
-        msg = (eFn.context.json as { error?: string }).error || msg
-      }
-      setDeleteReassignError(msg)
-      return
-    }
-    
-    if (data?.error) {
-      setDeleteReassignError(data.error)
-      return
-    }
-    
-    closeArchiveReassign()
-    await reloadAfterMutation()
-  }
 
   async function handleRestore(userId: string) {
     setRestoreError(null)
@@ -809,31 +685,60 @@ export function useActiveAccountsManagement({ enabled, onDataChanged }: UseActiv
   }
 
   // ---- Per-row Archive with confirm (Edit mode → Archive; same archive-user fn as the dialog)
-  function openArchiveConfirm(u: UserRow) {
+  /** Open the unified archive dialog. With a user → row entry (heading only);
+   * without → top-button entry (shows the account picker). */
+  function openArchiveConfirm(u?: UserRow | null) {
+    setArchiveConfirmOpen(true)
+    setArchiveConfirmPicker(!u)
+    setArchiveConfirmError(null)
+    setArchiveReassignMode('keep')
+    setArchiveReassignTargetId('')
+    setArchiveConfirmUser(u ?? null)
+    setArchiveConfirmCustomerCount(null)
+    if (u) void loadArchiveCustomerCount(u.id)
+  }
+
+  async function loadArchiveCustomerCount(userId: string) {
+    const { count } = await supabase
+      .from('customers')
+      .select('id', { count: 'exact', head: true })
+      .eq('master_user_id', userId)
+    setArchiveConfirmCustomerCount(count ?? 0)
+  }
+
+  /** Picker entry: choose (or change) which account the dialog is about. */
+  function selectArchiveConfirmUser(userId: string) {
+    const u = users.find((x) => x.id === userId) ?? null
     setArchiveConfirmUser(u)
     setArchiveConfirmError(null)
+    setArchiveReassignMode('keep')
+    setArchiveReassignTargetId('')
     setArchiveConfirmCustomerCount(null)
-    void (async () => {
-      const { count } = await supabase
-        .from('customers')
-        .select('id', { count: 'exact', head: true })
-        .eq('master_user_id', u.id)
-      setArchiveConfirmCustomerCount(count ?? 0)
-    })()
+    if (u) void loadArchiveCustomerCount(u.id)
   }
 
   function closeArchiveConfirm() {
+    setArchiveConfirmOpen(false)
     setArchiveConfirmUser(null)
   }
 
   async function handleArchiveConfirm() {
     const u = archiveConfirmUser
     if (!u) return
+    const blocker = archiveChoiceBlocker({
+      userSelected: true,
+      customerCount: archiveConfirmCustomerCount,
+      mode: archiveReassignMode,
+      reassignTargetId: archiveReassignTargetId,
+    })
+    if (blocker) {
+      setArchiveConfirmError(blocker)
+      return
+    }
     setArchiveConfirmError(null)
     setArchiveConfirmSubmitting(true)
-    const { data, error: eFn } = await supabase.functions.invoke('archive-user', {
-      body: { email: (u.email ?? '').trim(), name: (u.name ?? '').trim() },
-    })
+    const body = archiveRequestBody(u, archiveConfirmCustomerCount, archiveReassignMode, archiveReassignTargetId)
+    const { data, error: eFn } = await supabase.functions.invoke('archive-user', { body })
     setArchiveConfirmSubmitting(false)
     if (eFn) {
       let msg = eFn.message
@@ -853,8 +758,11 @@ export function useActiveAccountsManagement({ enabled, onDataChanged }: UseActiv
       setArchiveConfirmError(err)
       return
     }
-    showToast(`${u.name || u.email} archived.`, 'success')
-    setArchiveConfirmUser(null)
+    const reassignedNote = body.reassign_customers_to
+      ? ` ${archiveConfirmCustomerCount} customer${archiveConfirmCustomerCount === 1 ? '' : 's'} reassigned.`
+      : ''
+    showToast(`${u.name || u.email} archived.${reassignedNote}`, 'success')
+    closeArchiveConfirm()
     cancelEditUser()
     await reloadAfterMutation()
   }
@@ -1018,13 +926,6 @@ export function useActiveAccountsManagement({ enabled, onDataChanged }: UseActiv
     }
   }
 
-  useEffect(() => {
-    if (deleteReassignUserId) {
-      void loadCustomerCount(deleteReassignUserId)
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [deleteReassignUserId])
-
   return {
     /** Signed-in user's id — the panel hides the read-only toggle on your own row (the DB refuses it too). */
     currentUserId: authUser?.id ?? null,
@@ -1068,28 +969,6 @@ export function useActiveAccountsManagement({ enabled, onDataChanged }: UseActiv
     setManualAddError,
     manualAddSubmitting,
     setManualAddSubmitting,
-    deleteOpen,
-    setDeleteOpen,
-    deleteEmail,
-    setDeleteEmail,
-    deleteName,
-    setDeleteName,
-    deleteError,
-    setDeleteError,
-    deleteSubmitting,
-    setDeleteSubmitting,
-    deleteReassignOpen,
-    setDeleteReassignOpen,
-    deleteReassignUserId,
-    setDeleteReassignUserId,
-    deleteReassignNewMasterId,
-    setDeleteReassignNewMasterId,
-    deleteReassignSubmitting,
-    setDeleteReassignSubmitting,
-    deleteReassignError,
-    setDeleteReassignError,
-    deleteReassignCustomerCount,
-    setDeleteReassignCustomerCount,
     restoreSubmitting,
     setRestoreSubmitting,
     restoreError,
@@ -1161,13 +1040,17 @@ export function useActiveAccountsManagement({ enabled, onDataChanged }: UseActiv
     openManualAdd,
     closeManualAdd,
     handleManualAdd,
-    openArchive,
-    closeArchive,
-    handleArchive,
+    archiveConfirmOpen,
+    archiveConfirmPicker,
     archiveConfirmUser,
     archiveConfirmSubmitting,
     archiveConfirmError,
     archiveConfirmCustomerCount,
+    archiveReassignMode,
+    setArchiveReassignMode,
+    archiveReassignTargetId,
+    setArchiveReassignTargetId,
+    selectArchiveConfirmUser,
     openArchiveConfirm,
     closeArchiveConfirm,
     handleArchiveConfirm,
@@ -1185,10 +1068,6 @@ export function useActiveAccountsManagement({ enabled, onDataChanged }: UseActiv
     openMerge,
     closeMerge,
     runMerge,
-    openArchiveReassign,
-    closeArchiveReassign,
-    loadCustomerCount,
-    handleArchiveReassign,
     handleRestore,
     closeSetPassword,
     handleSetPassword,
