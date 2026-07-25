@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-25 (v2.1019)
+last_updated: 2026-07-25 (v2.1020)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1020)
+
+### Report text fields grow with what you write (2026-07-25)
+Field request: report entry fields should expand to the size of the text so what's written stays readable. New [`AutoGrowTextarea`](../src/components/AutoGrowTextarea.tsx) (height tracks `scrollHeight` on every value change; `rows` stays the empty/minimum height; inner scrollbar suppressed, page-level scrolling untouched) swapped in for the long-text template fields in both [`NewReportModal`](../src/components/NewReportModal.tsx) and [`AdditionalReportModal`](../src/components/AdditionalReportModal.tsx). Verified live at 375×812: 6-line entry grows 90 → 186px with every line visible, shrinks back to the 3-row minimum when shortened, pinned Save row unaffected.
 
 ## Latest Updates (v2.1019)
 
