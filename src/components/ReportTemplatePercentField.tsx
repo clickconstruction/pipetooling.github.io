@@ -59,6 +59,7 @@ export function ReportTemplatePercentField({ id, label, value, onChange }: Props
           value={n}
           onChange={(e) => onChange(clampPercentString(e.target.value))}
           aria-label={`${label}: ${n} percent complete`}
+          className="reportPercentSlider"
           style={{ width: '100%', minWidth: 0, display: 'block' }}
         />
       </div>

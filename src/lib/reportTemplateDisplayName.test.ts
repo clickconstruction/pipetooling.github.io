@@ -4,7 +4,18 @@ import {
   additionalReportModalTemplateChipLabel,
   displayReportTemplateName,
   findStatusReportTemplateId,
+  isJobCompleteTemplateName,
 } from './reportTemplateDisplayName'
+
+describe('isJobCompleteTemplateName', () => {
+  it('matches the retired Job Complete template, trimmed, and nothing else', () => {
+    expect(isJobCompleteTemplateName('Job Complete')).toBe(true)
+    expect(isJobCompleteTemplateName('  Job Complete  ')).toBe(true)
+    expect(isJobCompleteTemplateName('Status Report')).toBe(false)
+    expect(isJobCompleteTemplateName('')).toBe(false)
+    expect(isJobCompleteTemplateName(null)).toBe(false)
+  })
+})
 
 describe('displayReportTemplateName', () => {
   it('maps legacy superintendent template label to Status Report', () => {

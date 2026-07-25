@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-24 (v2.1016)
+last_updated: 2026-07-24 (v2.1017)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1017)
+
+### New report: full-screen sheet on phones, pinned Save, discard guard; Job Complete retired (2026-07-24)
+Field complaint: the report modal "doesn't work across viewports". Measured at 375×812: the 90vh centered panel left the app header and bottom tab bar visible around it, Save was the last row of 823px of scrolled content landing ~65px above live tab-bar buttons, `vh` heights ignored the software keyboard, and the pinned × was the only close path. New [`ResponsiveModalShell`](../src/components/ResponsiveModalShell.tsx) + `.respModal*` classes in [`index.css`](../src/index.css): **desktop keeps the 560px dialog; ≤640px becomes a true full-screen sheet** (100dvw × 100dvh, dvh so the pinned footer tracks the software keyboard and iOS URL bar; vh fallbacks first). Sticky **footer action bar** (Copy/Cancel/Save + the relocated "Required:" hint; `env(safe-area-inset-bottom)`; submits the form via `form=` attribute), sticky v2.990 title bar, Escape + backdrop close, role=dialog, and phone focus nudges fields to mid-screen. Overlay z 65 → **1100**: the app's fixed tab bar is z 1000, so the old modal always rendered UNDER it — the sheet now actually covers it. **Discard guard**: every close path (×, Cancel, Esc, backdrop) confirms "Discard this report?" once any field has content — kernel [`reportFormDirty.ts`](../src/lib/reportFormDirty.ts) (3 tests). Phone form ergonomics: 16px inputs inside the sheet (kills iOS focus-zoom), thumb-size percent-slider knob on coarse pointers (`.reportPercentSlider`). **Job Complete report type retired** (user request): filtered from both the New report and Additional Report pickers via `isJobCompleteTemplateName` ([`reportTemplateDisplayName.ts`](../src/lib/reportTemplateDisplayName.ts), tested) — the Ready-to-Bill prompt keys on the 100% field, not the template, and Status Report carries the same slider; existing Job Complete reports render unchanged. [`NewReportModal`](../src/components/NewReportModal.tsx) is the first shell adopter (sibling report modals queued as the follow-up sweep). Verified live at 375×812 (sheet covers tab bar, Save visible without scrolling, guard decline/accept/clean paths) and 1280×800 (dialog, backdrop close). Help guide `reports.md` updated.
 
 ## Latest Updates (v2.1016)
 

@@ -4,7 +4,7 @@ import { useToastContext } from '../contexts/ToastContext'
 import { useAuth } from '../hooks/useAuth'
 import type { Database } from '../types/database'
 import type { UserRole } from '../hooks/useAuth'
-import { displayReportTemplateName } from '../lib/reportTemplateDisplayName'
+import { displayReportTemplateName, isJobCompleteTemplateName } from '../lib/reportTemplateDisplayName'
 import { isTurnawayTemplateName } from '../lib/turnaway'
 import { fieldValueForSubmit, normalizePercentFieldValueToString } from '../lib/reportTemplateFieldDisplay'
 import { reportSaysJobComplete } from '../lib/reportReadyToBillPrompt'
@@ -12,7 +12,8 @@ import { REPORT_SIGNATURE_ON_FILE, validateReportSignatureDataUrlForSubmit } fro
 import { ReportTemplatePercentField } from './ReportTemplatePercentField'
 import { ReportTemplateSignatureField } from './ReportTemplateSignatureField'
 import { MarkJobReadyToBillPrompt } from './jobs/MarkJobReadyToBillPrompt'
-import { STICKY_MODAL_CLOSE_BUTTON_STYLE, stickyModalHeaderStyle, stickyModalPanelStyle } from '../lib/stickyModalHeaderStyle'
+import ResponsiveModalShell from './ResponsiveModalShell'
+import { hasUnsavedReportEntries } from '../lib/reportFormDirty'
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock'
 
 type ReportTemplate = Database['public']['Tables']['report_templates']['Row']
@@ -58,8 +59,11 @@ export default function NewReportModal({ open, onClose, onSaved, authUserId, use
     if (!open) return
     supabase.from('report_templates').select('*').order('sequence_order').then(({ data }) => {
       // Turnaway is filed only through the Job Mode TurnawayModal (which also
-      // creates the dispatch request), so keep it out of the generic picker.
-      const list = ((data as ReportTemplate[]) ?? []).filter((t) => !isTurnawayTemplateName(t.name))
+      // creates the dispatch request); Job Complete is retired (Status at 100%
+      // covers it). Keep both out of the generic picker.
+      const list = ((data as ReportTemplate[]) ?? []).filter(
+        (t) => !isTurnawayTemplateName(t.name) && !isJobCompleteTemplateName(t.name),
+      )
       setTemplates(list)
       if (list.length > 0) {
         if (initialTemplateName) {
@@ -161,6 +165,16 @@ export default function NewReportModal({ open, onClose, onSaved, authUserId, use
   function handleClose() {
     reset()
     onClose()
+  }
+
+  /** Every close path (×, Cancel, Escape, backdrop) — confirms first when the
+   * tech has typed anything, so an accidental tap can't lose a report. */
+  function guardedClose() {
+    if (saving) return
+    if (hasUnsavedReportEntries(fieldValues) && !window.confirm('Discard this report? Your entries will be lost.')) {
+      return
+    }
+    handleClose()
   }
 
   async function handleCopyToText() {
@@ -339,17 +353,41 @@ export default function NewReportModal({ open, onClose, onSaved, authUserId, use
   if (!selectedJob) missingFields.push('Job, project, or bid')
   if (!selectedTemplateId) missingFields.push('Report type')
 
-  return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 65 }}>
-      {/* This panel is the scroller — the title bar sticks so the × stays reachable
-          on a phone instead of scrolling away once the form fills in (v2.990 pattern). */}
-      <div style={{ background: 'var(--surface)', borderRadius: 8, maxHeight: '90vh', overflow: 'auto', ...stickyModalPanelStyle(560) }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.75rem', ...stickyModalHeaderStyle() }}>
-          <h2 style={{ margin: 0 }}>New report</h2>
-          <button type="button" onClick={handleClose} style={STICKY_MODAL_CLOSE_BUTTON_STYLE} aria-label="Close">×</button>
+  const footer = (
+    <>
+      {!canSubmit && !saving && missingFields.length > 0 && (
+        <p style={{ margin: '0 0 0.5rem', fontSize: '0.8rem', color: '#FF6600' }}>
+          Required: {missingFields.join(' · ')}
+        </p>
+      )}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+        <button
+          type="button"
+          onClick={handleCopyToText}
+          disabled={fields.length === 0 || !fields.some((f) => (fieldValues[f.label] ?? '').trim())}
+          style={{
+            padding: '0.5rem 1rem',
+            border: copyJustClicked ? '1px solid #22c55e' : '1px solid var(--border-strong)',
+            background: copyJustClicked ? 'var(--bg-green-100)' : 'var(--surface)',
+            borderRadius: 4,
+            cursor: 'pointer',
+            color: copyJustClicked ? '#16a34a' : undefined,
+            fontWeight: copyJustClicked ? 600 : undefined,
+          }}
+        >
+          {copyJustClicked ? 'Copied!' : 'Copy to Text'}
+        </button>
+        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+          <button type="button" onClick={guardedClose} style={{ padding: '0.5rem 1rem', border: '1px solid var(--border-strong)', background: 'var(--surface)', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
+          <button type="submit" form="new-report-form" disabled={!canSubmit || saving} title={!canSubmit ? `Required: ${missingFields.join(', ')}` : undefined} style={{ padding: '0.5rem 1rem', background: canSubmit && !saving ? '#2563eb' : '#9ca3af', color: 'white', border: 'none', borderRadius: 4, cursor: canSubmit && !saving ? 'pointer' : 'not-allowed' }}>{saving ? 'Saving…' : 'Save report'}</button>
         </div>
+      </div>
+    </>
+  )
 
-        <form onSubmit={handleSubmit}>
+  return (
+    <ResponsiveModalShell title="New report" onRequestClose={guardedClose} footer={footer}>
+        <form id="new-report-form" onSubmit={handleSubmit}>
           <div style={{ marginBottom: '1rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem', flexWrap: 'wrap', gap: '0.5rem' }}>
               <p style={{ margin: 0, fontWeight: 500 }}>Job, project, or bid *</p>
@@ -504,39 +542,7 @@ export default function NewReportModal({ open, onClose, onSaved, authUserId, use
           )}
 
           {error && <p style={{ color: 'var(--text-red-700)', marginBottom: '1rem' }}>{error}</p>}
-
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-            <button
-              type="button"
-              onClick={handleCopyToText}
-              disabled={fields.length === 0 || !fields.some((f) => (fieldValues[f.label] ?? '').trim())}
-              style={{
-                padding: '0.5rem 1rem',
-                border: copyJustClicked ? '1px solid #22c55e' : '1px solid var(--border-strong)',
-                background: copyJustClicked ? 'var(--bg-green-100)' : 'var(--surface)',
-                borderRadius: 4,
-                cursor: 'pointer',
-                color: copyJustClicked ? '#16a34a' : undefined,
-                fontWeight: copyJustClicked ? 600 : undefined,
-              }}
-            >
-              {copyJustClicked ? 'Copied!' : 'Copy to Text'}
-            </button>
-            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-              <button type="button" onClick={handleClose} style={{ padding: '0.5rem 1rem', border: '1px solid var(--border-strong)', background: 'var(--surface)', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
-              <button type="submit" disabled={!canSubmit || saving} title={!canSubmit ? `Required: ${missingFields.join(', ')}` : undefined} style={{ padding: '0.5rem 1rem', background: canSubmit && !saving ? '#2563eb' : '#9ca3af', color: 'white', border: 'none', borderRadius: 4, cursor: canSubmit && !saving ? 'pointer' : 'not-allowed' }}>{saving ? 'Saving…' : 'Save report'}</button>
-              {!canSubmit && !saving && missingFields.length > 0 && (
-                <span style={{ fontSize: '0.8rem', color: '#FF6600', marginLeft: '0.5rem', display: 'inline-block' }}>
-                <span style={{ display: 'block' }}>Required:</span>
-                {missingFields.map((f) => (
-                  <span key={f} style={{ display: 'block', marginLeft: '0.25em' }}>{f}</span>
-                ))}
-              </span>
-              )}
-            </div>
-          </div>
         </form>
-      </div>
-    </div>
+    </ResponsiveModalShell>
   )
 }

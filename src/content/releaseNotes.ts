@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1017',
+    date: '2026-07-24',
+    title: 'Job report form rebuilt for phones',
+    kind: 'feature',
+    highlights: [
+      'On a phone the New report form now opens full screen with Save pinned at the bottom — no more scrolling to find it or mis-tapping the tab bar.',
+      'The form stays usable while the keyboard is open, and closing with something typed asks before discarding your entries.',
+      'The Job Complete report type is retired — file a Status Report and set the slider to 100% to get the same Ready-to-Bill prompt.',
+    ],
+  },
+  {
     version: 'v2.1016',
     date: '2026-07-24',
     title: 'One archive dialog',
