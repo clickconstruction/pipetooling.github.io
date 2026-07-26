@@ -11,7 +11,7 @@ Field reports are how what happened on site becomes something the office can act
 
 Tap {{button:blue|Leave Report}} — on the Job Mode card, or during clock-out. The **Reporting on** card pre-fills the job from your last report (it says so under the name) — tap {{button:outline|Change}} to search for a different job, project, or bid instead. Choose a report type, fill in the fields, and submit. Your location is attached automatically.
 
-On a phone the report form opens **full screen** with {{button:blue|Save report}} pinned at the bottom — no scrolling to find it. If you close the form with something typed, it asks before discarding your entries.
+On a phone the report form opens **full screen** with {{button:blue|Save report}} pinned at the bottom — no scrolling to find it. If you close the form with something typed, it asks before discarding your entries. Switching report types keeps what you've typed — jump from Status to Note and back without losing anything; only the fields of the type you save are submitted.
 
 If your scheduled time on a job ended today and you haven't filed a report in the last 12 hours, the Dashboard nudges you: a yellow ⚠ badge appears over that job's {{button:blue|Leave Report}} button, and My Schedule shows the same note under **Today** — *"You haven't filed a report yet. File one."* Filing a report clears both.
 

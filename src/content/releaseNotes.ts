@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1025',
+    date: '2026-07-25',
+    title: 'Report types keep your text',
+    kind: 'fix',
+    highlights: [
+      'Switching between report types (Status, Walk, Note, EOD) no longer erases what you\'ve typed — each type keeps its entries until you save or close.',
+      'Saving still submits only the fields of the type you\'re on.',
+    ],
+  },
+  {
     version: 'v2.1024',
     date: '2026-07-25',
     title: 'Red phone asks Dispatch for a number',
