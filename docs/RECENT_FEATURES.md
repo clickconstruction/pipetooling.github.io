@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-25 (v2.1024)
+last_updated: 2026-07-25 (v2.1025)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1025)
+
+### Report forms: switching report types no longer wipes what you typed (2026-07-25)
+Field request: jumping between report types in the New report modal lost everything entered. Cause: the template-change effect ended with `setFieldValues({})` in both [`NewReportModal`](../src/components/NewReportModal.tsx) and [`AdditionalReportModal`](../src/components/AdditionalReportModal.tsx). The clear is removed — safe because field values key on field *label* and both submit (`fieldValueForSubmit` iterates only the current template's fields) and Copy to Text read only the active template, so retained values under other templates never leak into a save; a label shared across templates (e.g. the percent slider) deliberately carries over. `reset()` still clears everything when the modal closes, and the v2.1017 discard guard now naturally covers entries typed under any type. Verified live: type in Status → switch to Note (its field is empty) → type there → round-trip both ways with both texts intact → Escape still raises the discard dialog.
 
 ## Latest Updates (v2.1024)
 

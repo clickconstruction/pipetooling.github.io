@@ -144,7 +144,9 @@ export default function AdditionalReportModal({
       .then(({ data }) => {
         const fields = (data as ReportTemplateField[]) ?? []
         setTemplateFields((prev) => ({ ...prev, [selectedTemplateId]: fields }))
-        setFieldValues({})
+        // Deliberately NOT clearing fieldValues (v2.1025): values key on field
+        // label and submit/copy read only the current template's fields, so
+        // switching report types keeps everything typed. reset() still clears.
       })
   }, [selectedTemplateId])
 
