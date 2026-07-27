@@ -16,7 +16,7 @@ On **Jobs → Stages**, every job card has a red ☣ button (next to the AIA G70
 4. **Fee &amp; generate** — the amount defaults to the org setting (normally **$500**) and is editable per incident.
 
 :::example what generating does
-Generating adds a separate **ready-to-bill line** to the job — a rider invoice, billed independently of the main bill through the normal Bill Customer channels — and saves the incident record with all the evidence.
+Generating **adds the fee to the job's main bill** — a $1,380 billing line becomes $1,880 on the spot — and saves the incident record with all the evidence. When the bill goes out (Stripe or Physical Invoice), the fee appears as its **own labeled line item** ("Biohazard remediation fee — incident MM/DD/YYYY") so it never blends into the work lines. Only when the job has no open main bill (already billed, or nothing ready yet) does the fee fall back to a separate ready-to-bill rider line of its own.
 :::
 
 ## The printable notice
@@ -27,7 +27,7 @@ You can come back to the notice any time: open **Edit Job** and look for the **R
 
 ## Getting the notice to the customer
 
-When you bill the rider through **Bill Customer**, the notice travels with the bill:
+When you bill the job through **Bill Customer** (the main bill carrying the fee, or a standalone rider), the notice travels with the bill:
 
 - **Physical Invoice** tab — a pre-checked **☣ Attach the Biohazard Remediation Fee Notice** box sends the notice as a second PDF beside the invoice in the same email.
 - **Stripe** tab — Stripe invoices can't carry attachments, so two things happen instead: a pre-checked **☣ Also email the notice** box sends it to the customer as its own email right after the Stripe invoice is created, and the invoice **footer** automatically gains a link to a public copy of the notice (you'll see it in the Footer box before sending and can remove it).

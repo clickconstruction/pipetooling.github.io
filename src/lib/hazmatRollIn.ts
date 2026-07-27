@@ -91,3 +91,44 @@ export function eligibleHazmatRollIns(params: {
 export function hazmatRollInTotalDollars(lines: readonly HazmatRollInLine[]): number {
   return lines.reduce((a, l) => a + l.amountDollars, 0)
 }
+
+export type FoldedHazmatIncident = {
+  id: string
+  invoice_id: string | null
+  incident_at: string | null
+  fee_amount: number | string | null
+}
+
+/**
+ * Folded-fee lines (v2.1028): incidents whose fee was ADDED to the primary
+ * bill's amount at creation (`create_hazmat_fee_incident` mode
+ * `folded_into_primary`) link straight to that bill. When billing it, each
+ * linked fee splits out of the total as its own labeled line — amounts come
+ * from `job_hazmat_incidents.fee_amount` (the invoice amount is main + fees).
+ * Only primary bills qualify: a linked NON-primary invoice is a legacy rider
+ * whose entire amount IS the fee (the separate-notice flow handles those).
+ */
+export function foldedHazmatFeeLines(params: {
+  billingInvoice: { id: string; is_primary_rtb_bundle: boolean | null }
+  incidents: readonly FoldedHazmatIncident[]
+}): HazmatRollInLine[] {
+  const { billingInvoice, incidents } = params
+  if (billingInvoice.is_primary_rtb_bundle !== true) return []
+  const out: HazmatRollInLine[] = []
+  for (const inc of incidents) {
+    if ((inc.invoice_id ?? '').trim() !== billingInvoice.id) continue
+    const fee = Number(inc.fee_amount)
+    if (!Number.isFinite(fee) || fee <= 0) continue
+    const date = formatIncidentDate(inc.incident_at)
+    out.push({
+      incidentId: inc.id,
+      invoiceId: billingInvoice.id,
+      amountDollars: fee,
+      amountCents: Math.round(fee * 100),
+      description: date
+        ? `Biohazard remediation fee — incident ${date}`
+        : 'Biohazard remediation fee',
+    })
+  }
+  return out
+}

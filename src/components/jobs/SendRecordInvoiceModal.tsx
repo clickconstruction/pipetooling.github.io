@@ -70,7 +70,7 @@ import {
   loadJobHazmatIncidents,
   type JobHazmatIncidentRow,
 } from '../../lib/hazmatIncidents'
-import { eligibleHazmatRollIns, hazmatRollInTotalDollars, type HazmatRollInLine } from '../../lib/hazmatRollIn'
+import { eligibleHazmatRollIns, foldedHazmatFeeLines, hazmatRollInTotalDollars, type HazmatRollInLine } from '../../lib/hazmatRollIn'
 import { sendHazmatNoticeEmailToCustomer } from '../../lib/sendHazmatNoticeEmail'
 import {
   buildHazmatFeeNoticePdfBlob,
@@ -429,6 +429,10 @@ export default function SendRecordInvoiceModal({
   const [stripePreviewError, setStripePreviewError] = useState<string | null>(null)
   /** Set when the invoice being billed is a hazmat rider — offers attaching the notice. */
   const [hazmatIncidentForInvoice, setHazmatIncidentForInvoice] = useState<JobHazmatIncidentRow | null>(null)
+  // v2.1028 folded fees: incidents whose fee is ALREADY inside this primary
+  // bill's amount — split out as labeled line items at billing time.
+  const [foldedFeeLines, setFoldedFeeLines] = useState<HazmatRollInLine[]>([])
+  const [foldedFeeIncidents, setFoldedFeeIncidents] = useState<JobHazmatIncidentRow[]>([])
   const [attachHazmatNotice, setAttachHazmatNotice] = useState(true)
   /** Stripe path: Stripe invoices can't carry attachments — companion email instead. */
   const [emailHazmatNoticeWithStripe, setEmailHazmatNoticeWithStripe] = useState(true)
@@ -637,10 +641,16 @@ export default function SendRecordInvoiceModal({
     setStripeFixtureMultiLineAvailable(null)
   }, [open, job?.id, job?.customer_email, invoice?.id])
 
-  // Hazmat rider detection: when the invoice being billed has a persisted incident,
-  // the physical tab offers attaching the Biohazard Remediation Fee Notice.
+  // Hazmat detection for the invoice being billed. Two shapes (v2.1028):
+  // - PRIMARY bill with linked incidents → folded fees: the amounts are already
+  //   inside this bill; split each out as its own labeled line item at billing
+  //   time (Stripe extra_line_items / physical PDF fee rows) + notice flows.
+  // - NON-primary linked invoice → legacy rider: the whole invoice IS the fee;
+  //   keep the separate-notice flow unchanged.
   useEffect(() => {
     setHazmatIncidentForInvoice(null)
+    setFoldedFeeLines([])
+    setFoldedFeeIncidents([])
     setAttachHazmatNotice(true)
     setEmailHazmatNoticeWithStripe(true)
     setHazmatNoticeEmailStatus(null)
@@ -650,26 +660,43 @@ export default function SendRecordInvoiceModal({
       try {
         const rows = await loadJobHazmatIncidents(job.id)
         if (cancelled) return
-        const found = rows.find((r) => r.invoice_id === invoice.id) ?? null
-        setHazmatIncidentForInvoice(found)
-        // Stripe carries no attachments — put the public notice link in the footer
-        // (visible + editable in the Footer disclosure before sending).
-        if (found?.public_token) {
+        const linked = rows.filter((r) => r.invoice_id === invoice.id)
+        if (linked.length === 0) return
+        if (invoice.is_primary_rtb_bundle === true) {
+          setFoldedFeeIncidents(linked)
+          setFoldedFeeLines(
+            foldedHazmatFeeLines({
+              billingInvoice: { id: invoice.id, is_primary_rtb_bundle: true },
+              incidents: linked,
+            }),
+          )
+        } else {
+          setHazmatIncidentForInvoice(linked[0] ?? null)
+        }
+        // Stripe carries no attachments — put the public notice link(s) in the
+        // footer (visible + editable in the Footer disclosure before sending).
+        for (const found of linked) {
+          if (!found.public_token) continue
           const noticeLine = `Biohazard Remediation Fee Notice: ${hazmatNoticePublicUrl(found.public_token)}`
           setStripeInvoiceFooter((f) => {
-            if (f.includes('/hazmat-notice?token=')) return f
+            if (f.includes(hazmatNoticePublicUrl(found.public_token!))) return f
             const next = f.trim().length > 0 ? `${f.trimEnd()}\n\n${noticeLine}` : noticeLine
             return next.length <= STRIPE_INVOICE_FOOTER_MAX_CHARS ? next : f
           })
+          if (invoice.is_primary_rtb_bundle !== true) break
         }
       } catch {
-        if (!cancelled) setHazmatIncidentForInvoice(null)
+        if (!cancelled) {
+          setHazmatIncidentForInvoice(null)
+          setFoldedFeeLines([])
+          setFoldedFeeIncidents([])
+        }
       }
     })()
     return () => {
       cancelled = true
     }
-  }, [open, kind, invoice?.id, job?.id])
+  }, [open, kind, invoice?.id, invoice?.is_primary_rtb_bundle, job?.id])
 
   // v2.1002 hazmat roll-in: when this job has OTHER unsent hazmat rider
   // invoices, offer (default ON) folding them into this bill as their own
@@ -982,6 +1009,7 @@ export default function SendRecordInvoiceModal({
       footer: physicalInvoiceFooter,
       invoiceDateYmd: sentDate.trim(),
       dueDateYmd: stripeDueDate.trim(),
+      hazmatFeeLines: foldedFeeLines,
       detailFromJob: buildPhysicalInvoiceDetailFromJob(
         billCustomerJobDetails,
         kind === 'invoice' ? 'invoice' : 'job',
@@ -1010,20 +1038,27 @@ export default function SendRecordInvoiceModal({
         return
       }
 
-      // Hazmat rider: the notice travels as its own PDF beside the invoice.
+      // Hazmat notice travels as its own PDF beside the invoice — for a legacy
+      // rider incident, or for every fee folded into this bill (v2.1028).
       let extraAttachments: Array<{ filename: string; content_base64: string }> | undefined
-      if (hazmatIncidentForInvoice && attachHazmatNotice) {
+      const attachIncidents = hazmatIncidentForInvoice ? [hazmatIncidentForInvoice] : foldedFeeIncidents
+      if (attachIncidents.length > 0 && attachHazmatNotice) {
         const noticeJobInfo = hazmatNoticeJobInfoFromJob(job)
-        const noticeBlob = await buildHazmatFeeNoticePdfBlob(
-          noticeJobInfo,
-          hazmatIncidentRowToDraft(hazmatIncidentForInvoice),
-        )
-        const noticeBase64 = await physicalInvoicePdfToBase64(noticeBlob)
-        if (pdfBase64.length + noticeBase64.length > 8_500_000) {
-          setPhysicalError('Invoice + notice PDFs are too large to email together')
-          return
+        const list: Array<{ filename: string; content_base64: string }> = []
+        let totalLen = pdfBase64.length
+        for (const [i, incident] of attachIncidents.entries()) {
+          const noticeBlob = await buildHazmatFeeNoticePdfBlob(noticeJobInfo, hazmatIncidentRowToDraft(incident))
+          const noticeBase64 = await physicalInvoicePdfToBase64(noticeBlob)
+          totalLen += noticeBase64.length
+          if (totalLen > 8_500_000) {
+            setPhysicalError('Invoice + notice PDFs are too large to email together')
+            return
+          }
+          const baseName = hazmatNoticePdfFilename(noticeJobInfo)
+          const filename = i === 0 ? baseName : baseName.replace(/\.pdf$/i, `-${i + 1}.pdf`)
+          list.push({ filename, content_base64: noticeBase64 })
         }
-        extraAttachments = [{ filename: hazmatNoticePdfFilename(noticeJobInfo), content_base64: noticeBase64 }]
+        extraAttachments = list
       }
 
       const sentAt = sentDate.trim()
@@ -1168,6 +1203,9 @@ export default function SendRecordInvoiceModal({
       // v2.1002: fold eligible unsent hazmat riders into this bill (never when
       // billing a rider itself — that keeps the separate-notice flow).
       const rollIns = includeHazmatRollIn && !hazmatIncidentForInvoice ? hazmatRollInLines : []
+      // v2.1028 folded fees are ALREADY inside amt — they split out as labeled
+      // lines; legacy roll-ins add on top of amt.
+      const extraLines = [...foldedFeeLines, ...rollIns]
       const totalAmountDollars = amt + hazmatRollInTotalDollars(rollIns)
       const { data: invokeData, error: fnErr } = await supabase.functions.invoke('create-stripe-invoice', {
         body: {
@@ -1180,8 +1218,8 @@ export default function SendRecordInvoiceModal({
           memo: stripeMemo.trim() || undefined,
           footer: stripeInvoiceFooter.trim() || undefined,
           ...(lineDescTrim ? { line_description: lineDescTrim } : {}),
-          ...(rollIns.length > 0
-            ? { extra_line_items: rollIns.map((l) => ({ amount_cents: l.amountCents, description: l.description })) }
+          ...(extraLines.length > 0
+            ? { extra_line_items: extraLines.map((l) => ({ amount_cents: l.amountCents, description: l.description })) }
             : {}),
           ...stripeModeInvokeBody(stripeModeForBilling),
         },
@@ -1231,15 +1269,21 @@ export default function SendRecordInvoiceModal({
 
       // Companion notice email (Stripe can't attach files). Failure never rolls back
       // the created invoice — the Riders strip in Edit Job re-sends any time.
-      if (hazmatIncidentForInvoice && emailHazmatNoticeWithStripe && (job.customer_email ?? '').trim()) {
-        const noticeRes = await sendHazmatNoticeEmailToCustomer({
-          jobId: job.id,
-          incident: hazmatIncidentForInvoice,
-          jobInfo: hazmatNoticeJobInfoFromJob(job),
-          customerEmail: (job.customer_email ?? '').trim(),
-          invoiceReference: `Stripe invoice for job ${(job.hcp_number ?? '').trim() || (job.click_number ?? '').trim() || job.job_name}`,
-        })
-        setHazmatNoticeEmailStatus(noticeRes.ok ? 'sent' : noticeRes.error ?? 'Notice email failed')
+      // Covers the legacy rider incident AND v2.1028 fees folded into this bill.
+      const noticeIncidents = hazmatIncidentForInvoice ? [hazmatIncidentForInvoice] : foldedFeeIncidents
+      if (noticeIncidents.length > 0 && emailHazmatNoticeWithStripe && (job.customer_email ?? '').trim()) {
+        let noticeStatus: string = 'sent'
+        for (const incident of noticeIncidents) {
+          const noticeRes = await sendHazmatNoticeEmailToCustomer({
+            jobId: job.id,
+            incident,
+            jobInfo: hazmatNoticeJobInfoFromJob(job),
+            customerEmail: (job.customer_email ?? '').trim(),
+            invoiceReference: `Stripe invoice for job ${(job.hcp_number ?? '').trim() || (job.click_number ?? '').trim() || job.job_name}`,
+          })
+          if (!noticeRes.ok) noticeStatus = noticeRes.error ?? 'Notice email failed'
+        }
+        setHazmatNoticeEmailStatus(noticeStatus)
       }
 
       const fresh = await fetchJobWithDetailsById(job.id)
@@ -1291,6 +1335,7 @@ export default function SendRecordInvoiceModal({
         footer: physicalInvoiceFooter,
         invoiceDateYmd: sentDate.trim(),
         dueDateYmd: stripeDueDate.trim(),
+        hazmatFeeLines: foldedFeeLines,
         detailFromJob: buildPhysicalInvoiceDetailFromJob(
           billCustomerJobDetails,
           kind === 'invoice' ? 'invoice' : 'job',
@@ -1470,6 +1515,7 @@ export default function SendRecordInvoiceModal({
           footer: physicalInvoiceFooter,
           invoiceDateYmd: sentDate.trim(),
           dueDateYmd: stripeDueDate.trim(),
+          hazmatFeeLines: foldedFeeLines,
           detailFromJob: buildPhysicalInvoiceDetailFromJob(
             billCustomerJobDetails,
             kind === 'invoice' ? 'invoice' : 'job',
@@ -2186,7 +2232,7 @@ export default function SendRecordInvoiceModal({
                 {BILL_CUSTOMER_LEADING_LOWERCASE_HINT}
               </p>
             ) : null}
-            {hazmatIncidentForInvoice ? (
+            {hazmatIncidentForInvoice || foldedFeeIncidents.length > 0 ? (
               <label
                 style={{
                   display: 'flex',
@@ -2708,7 +2754,7 @@ export default function SendRecordInvoiceModal({
                     {BILL_CUSTOMER_LEADING_LOWERCASE_HINT}
                   </p>
                 ) : null}
-                {hazmatIncidentForInvoice ? (
+                {hazmatIncidentForInvoice || foldedFeeIncidents.length > 0 ? (
                   <label
                     style={{
                       display: 'flex',
@@ -2736,6 +2782,30 @@ export default function SendRecordInvoiceModal({
                       Re-send any time from Edit Job → Riders.
                     </span>
                   </label>
+                ) : null}
+                {foldedFeeLines.length > 0 ? (
+                  <p
+                    style={{
+                      margin: '0.5rem 0 0',
+                      padding: '0.5rem 0.65rem',
+                      border: '1px solid var(--border)',
+                      borderRadius: 6,
+                      background: 'var(--bg-red-tint)',
+                      fontSize: '0.8125rem',
+                      color: 'var(--text-700)',
+                    }}
+                  >
+                    <strong>
+                      ☣ This bill includes {foldedFeeLines.length === 1 ? 'a hazmat fee' : 'hazmat fees'} ($
+                      {hazmatRollInTotalDollars(foldedFeeLines).toLocaleString('en-US', {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      })}
+                      )
+                    </strong>{' '}
+                    — already part of the amount above; it will appear on the invoice as its own labeled line
+                    item, with the rest allocated to the work lines.
+                  </p>
                 ) : null}
                 {!hazmatIncidentForInvoice && hazmatRollInLines.length > 0 ? (
                   <label
