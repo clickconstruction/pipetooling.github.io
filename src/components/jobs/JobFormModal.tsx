@@ -16,6 +16,7 @@ import { supabase } from '../../lib/supabase'
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
 import { useAuth } from '../../hooks/useAuth'
 import { useJobHazmatIncidents } from '../../hooks/useJobHazmatIncidents'
+import { sumHazmatRiderFees } from '../../lib/hazmatIncidents'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useLedgerPrefixMap } from '../../contexts/LedgerDisplayPrefixContext'
 import { formatBidLedgerDocTitle, type LedgerPrefixMap } from '../../lib/ledgerDisplayPrefixes'
@@ -36,7 +37,7 @@ import { useBreakOffSlider } from './useBreakOffSlider'
 import { useJobCostSnapshot } from './useJobCostSnapshot'
 import { useJobMigrate } from './useJobMigrate'
 import { JobFormInvoiceList } from './JobFormInvoiceList'
-import { JobFormHazmatRidersStrip } from './JobFormHazmatRidersStrip'
+import { JobFormHazmatRiderRows } from './JobFormHazmatRidersStrip'
 import { JobFormPaymentsTable } from './JobFormPaymentsTable'
 import { JobFormPartsCostSection } from './JobFormPartsCostSection'
 import { JobFormLaborCostPanel } from './JobFormLaborCostPanel'
@@ -428,15 +429,20 @@ export default function JobFormModal({
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [stripeFixturePreviewRowId])
   const jobTotalBidDollars = useMemo(() => revenueDollarsFromFixtures(fixtures), [fixtures])
+  // v2.1029: rider (hazmat) fees count toward the Job Total — display, billing
+  // math, AND the revenue written on save (previously saving recomputed
+  // revenue from fixtures alone, silently wiping the fee's revenue bump).
+  const riderFeesDollars = useMemo(() => sumHazmatRiderFees(hazmatIncidents), [hazmatIncidents])
+  const jobTotalWithRidersDollars = jobTotalBidDollars + riderFeesDollars
   /** Live money-lifecycle figures for the billing header bar (fixtures total + this form's payments + the job's invoices). */
   const billingBar = useMemo(
     () =>
       buildEditJobBillingBar({
-        total: jobTotalBidDollars,
+        total: jobTotalWithRidersDollars,
         payments: payments.map((p) => ({ amount: Number(p.amount) || 0, invoice_id: p.invoice_id })),
         invoices: (editing?.invoices ?? []).map((i) => ({ status: i.status, amount: i.amount, id: i.id })),
       }),
-    [jobTotalBidDollars, payments, editing?.invoices],
+    [jobTotalWithRidersDollars, payments, editing?.invoices],
   )
   // ---- Billing money autosave (editing mode only) -------------------------
   // Persists the money slice — line items, payments, and the derived
@@ -470,6 +476,8 @@ export default function JobFormModal({
   autosaveFixturesRef.current = fixtures
   const autosavePaymentsRef = useRef(payments)
   autosavePaymentsRef.current = payments
+  const autosaveRiderFeesRef = useRef(riderFeesDollars)
+  autosaveRiderFeesRef.current = riderFeesDollars
   const autosaveSliceRef = useRef(billingMoneySliceJson)
   autosaveSliceRef.current = billingMoneySliceJson
   const autosaveJobIdRef = useRef<string | null>(null)
@@ -488,7 +496,7 @@ export default function JobFormModal({
     try {
       const fx = autosaveFixturesRef.current
       const pays = autosavePaymentsRef.current
-      const revNum = revenueDollarsFromFixtures(fx)
+      const revNum = revenueDollarsFromFixtures(fx) + autosaveRiderFeesRef.current
       const paymentsMadeNum = pays.reduce((s, p) => s + (Number(p.amount) || 0), 0)
       const { error: updErr } = await supabase
         .from('jobs_ledger')
@@ -603,7 +611,7 @@ export default function JobFormModal({
     setEditing((prev) => (prev ? { ...prev, pct_complete: pct } : prev))
   }
 
-  const breakOff = useBreakOffSlider({ jobTotalBidDollars, payments, editing })
+  const breakOff = useBreakOffSlider({ jobTotalBidDollars: jobTotalWithRidersDollars, payments, editing })
   // Only these three are read/written by the shell's money-path handlers
   // (createInvoice / moveWorkingJobToReadyToBillFromEdit); the rest of the hook
   // output is consumed by JobFormBreakOffSection via the `breakOff` prop.
@@ -1676,13 +1684,13 @@ export default function JobFormModal({
     if (!paymentRemoveConfirmRowId) return null
     const row = payments.find((r) => r.id === paymentRemoveConfirmRowId)
     if (!row) return null
-    const rev = jobTotalBidDollars
+    const rev = jobTotalWithRidersDollars
     const paidSum = payments.reduce((s, p) => s + (Number(p.amount) || 0), 0)
     const currentRem = Math.max(0, rev - paidSum)
     const rowAmt = Number(row.amount) || 0
     const newRem = Math.max(0, rev - (paidSum - rowAmt))
     return { rowAmt, jobTotal: rev, currentRem, newRem }
-  }, [paymentRemoveConfirmRowId, payments, jobTotalBidDollars])
+  }, [paymentRemoveConfirmRowId, payments, jobTotalWithRidersDollars])
 
   const paymentRemoveConfirmsPersistedRpc = useMemo(() => {
     if (!paymentRemoveConfirmRowId || !editing) return false
@@ -1698,7 +1706,7 @@ export default function JobFormModal({
 
   function getEditJobBillableRemaining(): number {
     const paidSum = payments.reduce((s, p) => s + (Number(p.amount) || 0), 0)
-    return unallocatedBillableDollars(jobTotalBidDollars, paidSum, editing?.invoices)
+    return unallocatedBillableDollars(jobTotalWithRidersDollars, paidSum, editing?.invoices)
   }
 
   async function moveWorkingJobToReadyToBillFromEdit() {
@@ -2219,7 +2227,7 @@ export default function JobFormModal({
       clearTimeout(autosaveTimerRef.current)
       autosaveTimerRef.current = null
     }
-    const revNum = jobTotalBidDollars
+    const revNum = jobTotalWithRidersDollars
     const paymentsMadeNum = payments.reduce((s, p) => s + (Number(p.amount) || 0), 0)
     const validPayments = payments.filter((p) => (Number(p.amount) || 0) > 0)
     const validMaterials = materials.filter((m) => (m.description ?? '').trim() !== '' || Number(m.amount) !== 0)
@@ -3666,6 +3674,8 @@ export default function JobFormModal({
           </div>
           <JobFormFixturesSection
             fixtures={fixtures}
+            riderRows={editing && hazmatIncidents.length > 0 ? <JobFormHazmatRiderRows job={editing} incidents={hazmatIncidents} /> : null}
+            riderFeesDollars={riderFeesDollars}
             fixtureScopeExpandedById={fixtureScopeExpandedById}
             setFixtureScopeExpandedById={setFixtureScopeExpandedById}
             fixturesSectionHighlight={fixturesSectionHighlight}
@@ -3693,7 +3703,6 @@ export default function JobFormModal({
                   moveWorkingJobToReadyToBillFromEdit={moveWorkingJobToReadyToBillFromEdit}
                 />
               ) : null}
-              <JobFormHazmatRidersStrip job={editing} incidents={hazmatIncidents} />
               <JobFormInvoiceList
                 editing={editing}
                 payments={payments}

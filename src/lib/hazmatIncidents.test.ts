@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { hazmatIncidentRowToDraft, hazmatNoticeJobInfoFromJob, type JobHazmatIncidentRow } from './hazmatIncidents'
+import { hazmatIncidentRowToDraft, hazmatNoticeJobInfoFromJob, sumHazmatRiderFees, type JobHazmatIncidentRow } from './hazmatIncidents'
 
 function baseRow(overrides: Partial<JobHazmatIncidentRow> = {}): JobHazmatIncidentRow {
   return {
@@ -84,5 +84,20 @@ describe('hazmatNoticeJobInfoFromJob', () => {
     expect(info.jobName).toBe('Job')
     expect(info.jobAddress).toBe('—')
     expect(info.customerName).toBe('—')
+  })
+})
+
+describe('sumHazmatRiderFees', () => {
+  it('sums positive fees and ignores junk', () => {
+    expect(sumHazmatRiderFees([])).toBe(0)
+    expect(
+      sumHazmatRiderFees([
+        { fee_amount: 500 },
+        { fee_amount: '250.50' as unknown as number },
+        { fee_amount: 0 },
+        { fee_amount: -10 },
+        { fee_amount: null as unknown as number },
+      ]),
+    ).toBe(750.5)
   })
 })

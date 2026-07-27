@@ -1,13 +1,15 @@
 // @vitest-environment jsdom
 /**
- * Render-smoke tests for the Edit Job "Riders" strip: one labeled line per
- * persisted hazmat incident with its fee, its rider invoice's status, and the
- * notice re-open/download actions; renders nothing when the job has none.
+ * Render-smoke tests for the ① Line Items rider rows (v2.1029 — formerly the
+ * "Riders" strip in the invoices area): a RIDERS group label plus one labeled
+ * table row per persisted hazmat incident with its fee, its linked invoice's
+ * status, and the notice re-open/download actions; renders nothing when the
+ * job has none. Rows are `<tr>`s, so tests mount them inside a table.
  */
 import { describe, expect, it } from 'vitest'
 import { screen } from '@testing-library/react'
 
-import { JobFormHazmatRidersStrip } from './JobFormHazmatRidersStrip'
+import { JobFormHazmatRiderRows } from './JobFormHazmatRidersStrip'
 import type { JobHazmatIncidentRow } from '../../lib/hazmatIncidents'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
@@ -48,11 +50,21 @@ function makeIncident(overrides: Partial<JobHazmatIncidentRow> = {}): JobHazmatI
   }
 }
 
-describe('JobFormHazmatRidersStrip', () => {
-  it('renders a labeled rider line with fee, invoice status, and notice actions', () => {
-    renderWithProviders(<JobFormHazmatRidersStrip job={makeJob()} incidents={[makeIncident()]} />)
+function renderRows(job: JobWithDetails, incidents: JobHazmatIncidentRow[]) {
+  return renderWithProviders(
+    <table>
+      <tbody>
+        <JobFormHazmatRiderRows job={job} incidents={incidents} />
+      </tbody>
+    </table>,
+  )
+}
 
-    expect(screen.getByText('Riders')).toBeTruthy()
+describe('JobFormHazmatRiderRows', () => {
+  it('renders the RIDERS group label and a rider row with fee, invoice status, and notice actions', () => {
+    renderRows(makeJob(), [makeIncident()])
+
+    expect(screen.getByText('RIDERS')).toBeTruthy()
     expect(screen.getByText(/Biohazard remediation fee — incident/)).toBeTruthy()
     expect(screen.getByText('$500.00')).toBeTruthy()
     expect(screen.getByText('Draft')).toBeTruthy()
@@ -60,15 +72,13 @@ describe('JobFormHazmatRidersStrip', () => {
     expect(screen.getByText('Download PDF')).toBeTruthy()
   })
 
-  it('shows "Invoice removed" when the rider invoice no longer exists', () => {
-    renderWithProviders(
-      <JobFormHazmatRidersStrip job={makeJob({ invoices: [] } as Partial<JobWithDetails>)} incidents={[makeIncident({ invoice_id: null })]} />,
-    )
+  it('shows "Invoice removed" when the linked invoice no longer exists', () => {
+    renderRows(makeJob({ invoices: [] } as Partial<JobWithDetails>), [makeIncident({ invoice_id: null })])
     expect(screen.getByText('Invoice removed')).toBeTruthy()
   })
 
   it('renders nothing when the job has no incidents', () => {
-    const { container } = renderWithProviders(<JobFormHazmatRidersStrip job={makeJob()} incidents={[]} />)
-    expect(container.innerHTML).toBe('')
+    const { container } = renderRows(makeJob(), [])
+    expect(container.querySelectorAll('tr').length).toBe(0)
   })
 })

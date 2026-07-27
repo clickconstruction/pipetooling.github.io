@@ -88,3 +88,15 @@ export async function loadJobHazmatIncidents(jobId: string): Promise<JobHazmatIn
   )
   return (data ?? []) as JobHazmatIncidentRow[]
 }
+
+/** Sum of all incidents' fees (v2.1029) — riders count toward the Job Total in
+ * Edit Job's ① Line Items and in the revenue written on save, so editing a job
+ * no longer wipes the fee's revenue bump. */
+export function sumHazmatRiderFees(
+  incidents: readonly Pick<JobHazmatIncidentRow, 'fee_amount'>[],
+): number {
+  return incidents.reduce((s, r) => {
+    const fee = Number(r.fee_amount)
+    return Number.isFinite(fee) && fee > 0 ? s + fee : s
+  }, 0)
+}
