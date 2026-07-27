@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-27 (v2.1029)
+last_updated: 2026-07-27 (v2.1030)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1030)
+
+### Rider row polish: ☣ inline with the title, sized to the text (2026-07-27)
+Immediate feedback on v2.1029: the ☣ could wrap onto its own line above the title. The icon now lives INSIDE the title span in [`JobFormHazmatRidersStrip.tsx`](../src/components/jobs/JobFormHazmatRidersStrip.tsx) so the pair can never separate, sized `1.15em` to match the text. Verified live on 857.
 
 ## Latest Updates (v2.1029)
 

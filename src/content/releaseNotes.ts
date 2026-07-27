@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1030',
+    date: '2026-07-27',
+    title: 'Rider row icon polish',
+    kind: 'fix',
+    highlights: [
+      'The ☣ on rider lines now sits on the same line as the fee title, sized to match the text.',
+    ],
+  },
+  {
     version: 'v2.1029',
     date: '2026-07-27',
     title: 'Riders join Line Items',
