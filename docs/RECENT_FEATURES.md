@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-25 (v2.1025)
+last_updated: 2026-07-27 (v2.1026)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1026)
+
+### No-signal errors read as "No connection", not "TypeError: Load failed" (2026-07-27)
+Field screenshot (Abraham, phone in SOS mode — no service): posting a job-thread note toasted `Failed to insert jobs_ledger_thread_note modal: TypeError: Load failed`. The failure was correct — the fetch never left the phone — but the message was developer-speak: Safari reports network failure as "Load failed", Chrome as "Failed to fetch", Firefox as "NetworkError…", supabase-js folds that into `error.message`, and `checkSupabaseError` prefixes the internal operation label. New kernel [`networkErrorMessage.ts`](../src/lib/networkErrorMessage.ts) (`isNetworkFetchErrorMessage` recognizing the per-engine signatures wrapped or bare + `OFFLINE_ERROR_MESSAGE`, 3 tests) wired into both toast chokepoints in [`errorHandling.ts`](../src/utils/errorHandling.ts) — `formatErrorMessage` and `formatPostgrestOrUnknownError` — so every error toast app-wide now says **"No connection — the app couldn't reach the server, so nothing was saved. Check your signal and try again."** Real server/RLS errors pass through untouched. The note draft was already restored on failure (nothing typed is lost). Verified live: fetch stubbed to reject with `TypeError('Load failed')` on the thread-note insert → friendly toast, draft intact. (Full-fetch stubbing also reloads the app — the auth refresh dies — which is why the verification scopes the stub to the one endpoint.)
 
 ## Latest Updates (v2.1025)
 

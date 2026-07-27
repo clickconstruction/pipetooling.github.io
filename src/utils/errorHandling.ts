@@ -1,9 +1,11 @@
 /**
  * Error Handling and Retry Utilities
- * 
+ *
  * Provides utilities for handling database operations with retries,
  * comprehensive error checking, and consistent error messages.
  */
+
+import { isNetworkFetchErrorMessage, OFFLINE_ERROR_MESSAGE } from '../lib/networkErrorMessage'
 
 export class DatabaseError extends Error {
   constructor(
@@ -224,18 +226,21 @@ export async function withSupabaseRetry<T>(
  * @returns User-friendly error message
  */
 export function formatErrorMessage(error: unknown, fallbackMessage = 'An unexpected error occurred'): string {
+  // A phone with no signal fails at the fetch layer — swap the per-engine
+  // TypeError text ("Load failed", "Failed to fetch", …) for plain language
+  // instead of showing techs the wrapped internals (v2.1026).
   if (error instanceof DatabaseError) {
-    return error.message
+    return isNetworkFetchErrorMessage(error.message) ? OFFLINE_ERROR_MESSAGE : error.message
   }
-  
+
   if (error instanceof Error) {
-    return error.message
+    return isNetworkFetchErrorMessage(error.message) ? OFFLINE_ERROR_MESSAGE : error.message
   }
-  
+
   if (typeof error === 'string') {
-    return error
+    return isNetworkFetchErrorMessage(error) ? OFFLINE_ERROR_MESSAGE : error
   }
-  
+
   return fallbackMessage
 }
 
@@ -257,6 +262,18 @@ function isPlainObject(v: unknown): v is Record<string, unknown> {
  * Includes `code`, `details`, and `hint` when present. Safe for multi-line display (`white-space: pre-wrap`).
  */
 export function formatPostgrestOrUnknownError(error: unknown, fallbackMessage: string): string {
+  // Same fetch-layer mapping as formatErrorMessage (v2.1026): no-signal
+  // failures read as "no connection", not engine internals.
+  const rawMessage =
+    error instanceof Error
+      ? error.message
+      : isPlainObject(error) && typeof error.message === 'string'
+        ? error.message
+        : typeof error === 'string'
+          ? error
+          : ''
+  if (isNetworkFetchErrorMessage(rawMessage)) return OFFLINE_ERROR_MESSAGE
+
   if (error instanceof DatabaseError) {
     const parts: string[] = [error.message]
     const code = error.code?.trim()
