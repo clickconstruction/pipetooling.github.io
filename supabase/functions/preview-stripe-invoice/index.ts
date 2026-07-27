@@ -142,7 +142,7 @@ serve(async (req) => {
 
     const { data: jobRow, error: jobErr } = await admin
       .from('jobs_ledger')
-      .select('id, master_user_id, hcp_number, job_name, customer_id')
+      .select('id, master_user_id, hcp_number, click_number, job_name, customer_id')
       .eq('id', invRow.job_id)
       .single()
 
@@ -172,7 +172,12 @@ serve(async (req) => {
       return jsonResponse({ error: 'Customer does not belong to this job master' }, 400)
     }
 
-    const pipetInvoiceNumber = buildPipetoolingStripeInvoiceNumber(jobRow.hcp_number, due_date.trim())
+    // Effective job number (v2.1027): HCP wins, else Click — keeps the preview
+    // in lockstep with create-stripe-invoice for click-only jobs.
+    const effectiveJobNumber =
+      ((jobRow.hcp_number ?? '').trim() || (jobRow.click_number ?? '').trim()) || null
+
+    const pipetInvoiceNumber = buildPipetoolingStripeInvoiceNumber(effectiveJobNumber, due_date.trim())
     if (!pipetInvoiceNumber.ok) {
       return jsonResponse({ error: pipetInvoiceNumber.error }, 400)
     }
@@ -207,7 +212,7 @@ serve(async (req) => {
       lineDescriptionOverride: lineDescriptionRaw,
       customerName: customer_name.trim(),
       jobName: jobRow.job_name,
-      hcpNumber: jobRow.hcp_number,
+      hcpNumber: effectiveJobNumber,
     })
     if (!lineItemsBuilt.ok) {
       return jsonResponse({ error: lineItemsBuilt.error }, 400)
