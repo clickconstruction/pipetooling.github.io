@@ -17,13 +17,17 @@ import { formatWorkDateYmdMonthDayShort } from '../../utils/dateUtils'
 import { sendHazmatNoticeEmailToCustomer } from '../../lib/sendHazmatNoticeEmail'
 
 /**
- * "Riders" strip in the Edit Job billing section: one line per hazmat incident
- * (the fee's line-item representation — the invoice row alone reads as an
- * anonymous draft). Re-opens the printable notice from the persisted incident
- * and downloads its PDF twin — the wizard used to be the only place the notice
- * existed, and only until it closed.
+ * Rider rows for the ① Line Items table (v2.1029 — previously a standalone
+ * "Riders" strip down in the ② Invoices area): one read-only, red-tinted table
+ * row per hazmat incident, in the fixtures table's column rhythm — description
+ * + status pill under "Line Item", the fee right-aligned under "Unit price" —
+ * so riders visibly add to the Job Total. Fees are evidence-backed and change
+ * only through the wizard, hence no edit affordances. The notice actions
+ * (open/download/email/copy) sit on a quiet second line in the description
+ * cell. Renders `<tr>`s — mount inside the fixtures `<tbody>` via
+ * JobFormFixturesSection's `riderRows` slot.
  */
-export function JobFormHazmatRidersStrip({
+export function JobFormHazmatRiderRows({
   job,
   incidents,
 }: {
@@ -103,12 +107,16 @@ export function JobFormHazmatRidersStrip({
   } as const
 
   return (
-    <div style={{ marginBottom: '1rem' }}>
-      <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-700)', marginBottom: '0.35rem' }}>
-        Riders
-      </div>
-      <div style={{ display: 'grid', gap: '0.35rem' }}>
-        {incidents.map((row) => {
+    <>
+      <tr>
+        <td
+          colSpan={3}
+          style={{ padding: '0.6rem 0.75rem 0.2rem', fontSize: '0.6875rem', fontWeight: 700, letterSpacing: '0.04em', color: 'var(--text-muted)' }}
+        >
+          RIDERS
+        </td>
+      </tr>
+      {incidents.map((row) => {
           const inv = row.invoice_id ? invoiceById.get(row.invoice_id) : undefined
           const invoiceState = inv
             ? inv.status === 'ready_to_bill'
@@ -121,25 +129,13 @@ export function JobFormHazmatRidersStrip({
             : 'Invoice removed'
           const incidentDay = formatWorkDateYmdMonthDayShort(String(row.incident_at).slice(0, 10))
           return (
-            <div
-              key={row.id}
-              style={{
-                display: 'flex',
-                flexWrap: 'wrap',
-                alignItems: 'center',
-                gap: '0.5rem',
-                padding: '0.4rem 0.6rem',
-                border: '1px solid var(--border)',
-                borderRadius: 6,
-                background: 'var(--bg-subtle)',
-                fontSize: '0.8125rem',
-              }}
-            >
+            <tr key={row.id} style={{ background: 'var(--bg-red-tint)' }}>
+              <td style={{ padding: '0.5rem 0.75rem', borderBottom: '1px solid var(--border)', fontSize: '0.8125rem' }}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.5rem' }}>
               <span aria-hidden style={{ color: 'var(--text-red-600)', fontWeight: 700 }}>☣</span>
               <span style={{ fontWeight: 600, color: 'var(--text-800)' }}>
                 Biohazard remediation fee — incident {incidentDay}
               </span>
-              <span style={{ color: 'var(--text-700)' }}>${formatCurrency(Number(row.fee_amount))}</span>
               <span
                 style={{
                   padding: '0.05rem 0.4rem',
@@ -152,7 +148,8 @@ export function JobFormHazmatRidersStrip({
               >
                 {invoiceState}
               </span>
-              <span style={{ flex: 1 }} />
+                </div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', marginTop: '0.35rem' }}>
               <button type="button" onClick={() => openNotice(row)} style={smallBtn} title="Open the printable Biohazard Remediation Fee Notice">
                 Open notice
               </button>
@@ -193,10 +190,26 @@ export function JobFormHazmatRidersStrip({
                   Copy link
                 </button>
               ) : null}
-            </div>
+                </div>
+              </td>
+              <td style={{ textAlign: 'center', borderBottom: '1px solid var(--border)', color: 'var(--text-faint)' }}>—</td>
+              <td
+                style={{
+                  padding: '0.5rem 0.375rem 0.5rem 0.625rem',
+                  textAlign: 'right',
+                  verticalAlign: 'top',
+                  borderBottom: '1px solid var(--border)',
+                  whiteSpace: 'nowrap',
+                  fontVariantNumeric: 'tabular-nums',
+                  fontSize: '0.875rem',
+                  color: 'var(--text-700)',
+                }}
+              >
+                ${formatCurrency(Number(row.fee_amount))}
+              </td>
+            </tr>
           )
         })}
-      </div>
-    </div>
+    </>
   )
 }

@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1029',
+    date: '2026-07-27',
+    title: 'Riders join Line Items',
+    kind: 'feature',
+    highlights: [
+      'On Edit Job, hazmat fees now appear as their own rows in ① Line Items — right under the work — instead of down in the invoices area.',
+      'The Job Total includes them with a breakdown: "$4,210.00 work + $500.00 riders".',
+      'Saving a job no longer silently drops rider fees out of the job\'s revenue.',
+    ],
+  },
+  {
     version: 'v2.1028',
     date: '2026-07-27',
     title: 'Hazmat fees join the main bill',

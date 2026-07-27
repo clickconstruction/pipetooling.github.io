@@ -5,7 +5,7 @@ file: docs/JOB_FORM_MODAL_ARCHITECTURE.md
 type: Engineering / Refactor Map
 purpose: Step-0 map for the JobFormModal.tsx decomposition (per PAGE_DECOMPOSITION_PLAYBOOK.md, adapted from tabs to form sections) — inventory what every section of the New/Edit Job modal touches (state, handlers, supabase tables/RPCs, sub-components, coupling) to drive the multi-PR extraction, with a deep-dive on the money-path save engine.
 audience: Developers, AI Agents
-last_updated: 2026-07-20
+last_updated: 2026-07-27
 ---
 
 ## Overview
@@ -44,7 +44,7 @@ Sections in JSX order inside the modal body; nested overlays and tail modals aft
 | 4 | People assignment | `contractorsSearch` "Add People..." input + chips (~3537–3666) | inline | 2 (`contractorsSearch`, `contractorsDropdownOpen`) + click-outside effect + ref | `teamMemberIds`, `users` | low | low | **Good first Stage-B** — `JobFormPeoplePicker` |
 | 5 | Customer block | `customerExpanded` collapsible, "Link to customer" search (~3667–3988) | inline | 3 (`customerSearch`, `customerDropdownOpen`, highlight timers) | `customerId/Name/Email/Phone`, `dateMet`, `googleDriveLink`, `jobPicturesLink`, `customers`, `customerExpanded`, highlight gates | **high** (immediate DB writes on link; prefill flows write these; save engine reads all) | med | `JobFormCustomerSection` after Stage A; create-customer modal moves with it |
 | 6 | Project \| Plans \| Bid links | `projectFilesPlansExpanded`, `job-form-project-files-plans-trigger` (~3989–4232) | inline | 1 (`projectFilesPlansExpanded`) + 8 scroll/focus refs + 3 scroll callbacks | `projectId`, `bidId`, `linkedBidSummary`, `jobPlansLink`, `projects`, `bids` | med (link modals in tail; project link implies customer; header "Link to:" duplicates) | med | `JobFormLinksSection`; link-choice modals stay shell-level (opened from header too) |
-| 7 | Specific Work fixtures grid | header "Specific Work or Materials (Fixtures / Tie-ins / Repair)" (~4234–4622) | inline | 2 (`fixtureScopeExpandedById`, `stripeFixturePreviewRowId` + Esc effect) | `fixtures`, `fixturesSectionHighlight` | med (fixtures → `jobTotalBidDollars` → everything billing) | med | `JobFormFixturesSection` + Stripe-preview dialog moves with it |
+| 7 | Specific Work fixtures grid | header "Specific Work or Materials (Fixtures / Tie-ins / Repair)" (~4234–4622) | inline | 2 (`fixtureScopeExpandedById`, `stripeFixturePreviewRowId` + Esc effect) | `fixtures`, `fixturesSectionHighlight` | med (fixtures → `jobTotalBidDollars` → everything billing) | med | `JobFormFixturesSection` + Stripe-preview dialog moves with it; v2.1029: `riderRows` slot renders `JobFormHazmatRiderRows` (hazmat fees as read-only rows) + `riderFeesDollars` joins the displayed Job Total |
 | 8 | Job Total / Remaining | labels `Job Total ($)` / `Remaining ($)` (~4623–4655) | inline | 0 | `jobTotalBidDollars`, `getEditJobBillableRemaining()` | high (pure display of billing kernels) | low | Rides with §9 (billing section) |
 | 9 | Break-off slider + RTB action | `edit-job-partial-invoice-amount`, `data-breakoff-slider-thumb` (~4656–5040) | inline | 3 (`newInvoiceAmount`, `newInvoiceAmountInputFocused`, `breakOffSliderDragCombinedPct`) + 4 slider refs, 9 memos, 7 callbacks | `payments` (paid sum), `editing.invoices`, `jobTotalBidDollars` | **high** — MONEY-PATH (invoice insert, `update_job_status`, Bill Customer opener) | high | Stage A kernels already module-scope → `lib/`; then `JobFormBreakOffSection` |
 | 10 | Ready to Bill list | h4 "Ready to Bill" (~5041–5126) | inline | 0 | `editing.invoices`, `billCustomer` context | high (opens Bill Customer with 3 refresh callbacks; navigates to Stages) | med | Rides with §9 or its own `JobFormReadyToBillList` |
@@ -119,7 +119,7 @@ Already-in-`lib/` kernels this file consumes (do not duplicate): `revenueDollars
 
 ### Preconditions
 
-`authUser?.id` present; `formServiceTypeId` non-empty (toast + bail). The Save button additionally gates on `jobFormCanSubmit` (Job Name + Job Address + Service type non-empty). Computed up front: `revNum = jobTotalBidDollars` (= `revenueDollarsFromFixtures(fixtures)`), `paymentsMadeNum` = sum of ALL payment rows, `validPayments` = rows with `amount > 0`, `validMaterials` = rows with description or non-zero amount.
+`authUser?.id` present; `formServiceTypeId` non-empty (toast + bail). The Save button additionally gates on `jobFormCanSubmit` (Job Name + Job Address + Service type non-empty). Computed up front: `revNum = jobTotalWithRidersDollars` (= `revenueDollarsFromFixtures(fixtures)` + `sumHazmatRiderFees(hazmatIncidents)` — v2.1029; previously fixtures-only, which silently wiped hazmat revenue bumps on save; the billing autosave mirrors this via `autosaveRiderFeesRef`), `paymentsMadeNum` = sum of ALL payment rows, `validPayments` = rows with `amount > 0`, `validMaterials` = rows with description or non-zero amount.
 
 ### Edit branch — full write sequence, in order
 

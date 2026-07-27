@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-27 (v2.1028)
+last_updated: 2026-07-27 (v2.1029)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1029)
+
+### Edit Job: riders live in ① Line Items and count in the Job Total (2026-07-27)
+Follow-up to v2.1028 by request: riders belonged up with the work, not down in ② Invoices. [`JobFormHazmatRidersStrip.tsx`](../src/components/jobs/JobFormHazmatRidersStrip.tsx)'s component is now **`JobFormHazmatRiderRows`** — read-only, red-tinted `<tr>`s in the fixtures table's own column rhythm (☣ description + status pill under "Line Item", fee right-aligned under "Unit price", the notice actions on a quiet second line; a small `RIDERS` group label leads) — mounted inside [`JobFormFixturesSection`](../src/components/jobs/JobFormFixturesSection.tsx)'s new `riderRows` slot; the old strip mount in the invoices area is gone (bills keep their ☣ Hazmat tag). The **Job Total footer becomes fee-inclusive with a breakdown** — "Job Total: $4,710.00 ($4,210.00 work + $500.00 riders)" — and the explainer gains "— plus riders (hazmat fees)" when riders exist. **The important part is the math**: new kernel `sumHazmatRiderFees` ([`hazmatIncidents.ts`](../src/lib/hazmatIncidents.ts), tested) feeds `jobTotalWithRidersDollars` in [`JobFormModal`](../src/components/jobs/JobFormModal.tsx), which now drives the billing bar, break-off slider, billable-remaining, payment-remove preview, AND the `revenue` written by **both the full save and the billing autosave** (via `autosaveRiderFeesRef`) — previously each save recomputed revenue from fixtures alone and **silently wiped the fee's revenue bump** (confirmed live: 857's stored revenue had already lost its $500 bump this way). Render smokes updated (rows mount in a table; RIDERS label pinned). Client-only. Verified live on 857: RIDERS row + $500.00 in ①, breakdown total, strip gone from ②.
 
 ## Latest Updates (v2.1028)
 

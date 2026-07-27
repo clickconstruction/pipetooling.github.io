@@ -23,7 +23,7 @@ Generating **adds the fee to the job's main bill** — a $1,380 billing line bec
 
 After generating, click {{button:primary|Open printable notice}} for a customer-facing packet: incident summary, photo references, technician statements, the terms clause, and the fee. Include it when you send the bill (attach to the physical-invoice email, or reference it on the Stripe invoice).
 
-You can come back to the notice any time: open **Edit Job** and look for the **Riders** list in the billing section — every hazmat incident shows there with {{button:outline|Open notice}}, {{button:outline|Download PDF}}, and {{button:outline|Email notice…}} buttons, and the rider's line in the Invoices table carries a ☣ **Hazmat** tag with its memo so it never reads as an anonymous draft.
+You can come back to the notice any time: open **Edit Job** — riders now sit in **① Line Items**, right under the fixture rows, where each hazmat incident shows as its own red-tinted line with the fee counted in the **Job Total** ("$4,210.00 work + $500.00 riders") plus {{button:outline|Open notice}}, {{button:outline|Download PDF}}, and {{button:outline|Email notice…}} buttons. A bill carrying the fee still shows a ☣ **Hazmat** tag in the Invoices table so it never reads as an anonymous draft.
 
 ## Getting the notice to the customer
 
@@ -31,7 +31,7 @@ When you bill the job through **Bill Customer** (the main bill carrying the fee,
 
 - **Physical Invoice** tab — a pre-checked **☣ Attach the Biohazard Remediation Fee Notice** box sends the notice as a second PDF beside the invoice in the same email.
 - **Stripe** tab — Stripe invoices can't carry attachments, so two things happen instead: a pre-checked **☣ Also email the notice** box sends it to the customer as its own email right after the Stripe invoice is created, and the invoice **footer** automatically gains a link to a public copy of the notice (you'll see it in the Footer box before sending and can remove it).
-- Missed it or need it again? **Edit Job → Riders** has {{button:outline|Email notice…}} to re-send it any time (it confirms the recipient first) and {{button:outline|Copy link}} for the same public notice link the Stripe footer carries.
+- Missed it or need it again? **Edit Job → ① Line Items → riders** has {{button:outline|Email notice…}} to re-send it any time (it confirms the recipient first) and {{button:outline|Copy link}} for the same public notice link the Stripe footer carries.
 
 ## Notes
 

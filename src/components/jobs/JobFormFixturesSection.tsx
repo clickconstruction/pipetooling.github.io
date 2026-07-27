@@ -1,4 +1,4 @@
-import { Fragment, type CSSProperties, type Dispatch, type MutableRefObject, type SetStateAction } from 'react'
+import { Fragment, type CSSProperties, type Dispatch, type MutableRefObject, type ReactNode, type SetStateAction } from 'react'
 import AutosizeTextarea from '../AutosizeTextarea'
 import { MoneyDecimalAmountInput } from '../MoneyDecimalAmountInput'
 import { formatCurrency } from '../../lib/jobs/jobFormMoney'
@@ -33,6 +33,10 @@ type JobFormFixturesSectionProps = {
   setStripeFixturePreviewRowId: (id: string | null) => void
   /** Live sum of the line items — shown as the running "Job Total" at the top right. */
   jobTotalDollars: number
+  /** Rider `<tr>`s (hazmat fees) rendered after the fixture rows (v2.1029). */
+  riderRows?: ReactNode
+  /** Sum of rider fees — folds into the displayed Job Total with a breakdown. */
+  riderFeesDollars?: number
 }
 
 /**
@@ -55,6 +59,8 @@ export function JobFormFixturesSection({
   removeFixtureRow,
   setStripeFixturePreviewRowId,
   jobTotalDollars,
+  riderRows,
+  riderFeesDollars = 0,
 }: JobFormFixturesSectionProps) {
   return (
           <div
@@ -73,7 +79,10 @@ export function JobFormFixturesSection({
           >
             <div style={{ fontWeight: 400, textDecoration: 'underline', fontSize: '0.9375rem', color: 'var(--text-700)', marginBottom: '0.15rem' }}>① Line Items</div>
             <div style={{ marginBottom: '0.75rem' }}>
-              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Fixtures / tie-ins / repair. The work we agree to do, each line adds to the <strong>Job Total</strong></span>
+              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                Fixtures / tie-ins / repair{riderFeesDollars > 0 ? ' — plus riders (hazmat fees)' : ''}. The work we
+                agree to do, each line adds to the <strong>Job Total</strong>
+              </span>
             </div>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem', tableLayout: 'fixed' }}>
               <colgroup>
@@ -447,15 +456,21 @@ export function JobFormFixturesSection({
                     </Fragment>
                   )
                 })}
+                {riderRows}
               </tbody>
             </table>
             <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
               <span
                 aria-live="polite"
-                title="Running total of the line items above."
+                title={riderFeesDollars > 0 ? 'Running total of the line items above, riders included.' : 'Running total of the line items above.'}
                 style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-700)', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}
               >
-                Job Total: ${formatCurrency(jobTotalDollars)}
+                Job Total: ${formatCurrency(jobTotalDollars + riderFeesDollars)}
+                {riderFeesDollars > 0 ? (
+                  <span style={{ fontWeight: 400, color: 'var(--text-muted)', fontSize: '0.75rem' }}>
+                    {' '}(${formatCurrency(jobTotalDollars)} work + ${formatCurrency(riderFeesDollars)} riders)
+                  </span>
+                ) : null}
               </span>
             </div>
           </div>
