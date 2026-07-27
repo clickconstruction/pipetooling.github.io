@@ -129,6 +129,9 @@ export function buildPhysicalInvoiceDocument(opts: {
   dueDateYmd: string
   /** When set (e.g. Bill Customer with fetched job), use detailed HCP-style layout after reconciliation. */
   detailFromJob?: PhysicalInvoiceDetailFromJob | null
+  /** Hazmat fees folded into this bill's amount (v2.1028): rendered as their own
+   * service rows; fixture rows allocate to `amountDollars − fees` (like Stripe). */
+  hazmatFeeLines?: readonly { description: string; amountDollars: number }[]
 }): PhysicalInvoiceDocument | null {
   const {
     job,
@@ -140,6 +143,7 @@ export function buildPhysicalInvoiceDocument(opts: {
     invoiceDateYmd,
     dueDateYmd,
     detailFromJob,
+    hazmatFeeLines,
   } = opts
   if (!Number.isFinite(amountDollars) || amountDollars <= 0) return null
   const customerName = (job.customer_name ?? '').trim() || 'Customer'
@@ -166,17 +170,28 @@ export function buildPhysicalInvoiceDocument(opts: {
   const invoiceNumberDisplay =
     detailFromJob?.invoiceSequenceOrder != null ? `#${detailFromJob.invoiceSequenceOrder}` : hcp ? `#${hcp}` : '—'
 
+  const feeLines = (hazmatFeeLines ?? []).filter(
+    (l) => Number.isFinite(l.amountDollars) && l.amountDollars > 0 && l.description.trim().length > 0,
+  )
+  const feeTotal = feeLines.reduce((a, l) => a + l.amountDollars, 0)
+
   if (detailFromJob) {
     layout = 'detailed'
+    // Fixture rows allocate to the amount MINUS folded hazmat fees, so a fee is
+    // never smeared across work lines (mirrors create-stripe-invoice's
+    // extra_line_items semantics); the fees then append as their own rows.
     const resolved = resolvePhysicalInvoiceLinePresentation(
-      amountDollars,
+      Math.max(amountDollars - feeTotal, 0.01),
       (physicalLineOnBillRaw ?? '').trim(),
       narrativeTrim,
       detailFromJob.fixtures,
       detailFromJob.materials,
     )
     breakdownMatches = resolved.breakdownMatches
-    serviceLines = resolved.serviceLines
+    serviceLines = [
+      ...resolved.serviceLines,
+      ...feeLines.map((l) => ({ description: l.description, qty: 1, unitPrice: l.amountDollars, amount: l.amountDollars })),
+    ]
     materialLines = resolved.materialLines
     const payRows = filterPaymentsForPhysicalInvoiceHistory(
       detailFromJob.payments,

@@ -97,7 +97,15 @@ export async function loadHazmatFeeDefault(): Promise<number> {
 export async function createHazmatFeeIncident(
   jobId: string,
   draft: HazmatIncidentDraft,
-): Promise<{ ok: boolean; error: string | null; invoiceId?: string; incidentId?: string }> {
+): Promise<{
+  ok: boolean
+  error: string | null
+  invoiceId?: string
+  incidentId?: string
+  /** v2.1028: 'folded_into_primary' (fee added to the open main bill) | 'rider'
+   * (separate line — no open main bill existed). Absent on the pre-fold RPC. */
+  mode?: 'folded_into_primary' | 'rider'
+}> {
   const { data, error: rpcErr } = await supabase.rpc('create_hazmat_fee_incident', {
     p_job_id: jobId,
     p_amount: draft.feeAmount,
@@ -117,8 +125,20 @@ export async function createHazmatFeeIncident(
     },
   })
   if (rpcErr) return { ok: false, error: rpcErr.message }
-  const result = (data ?? {}) as { ok?: boolean; error?: string; invoice_id?: string; incident_id?: string }
+  const result = (data ?? {}) as {
+    ok?: boolean
+    error?: string
+    invoice_id?: string
+    incident_id?: string
+    mode?: string
+  }
   if (result.error) return { ok: false, error: result.error }
   if (!result.ok) return { ok: false, error: 'Could not create the hazmat fee' }
-  return { ok: true, error: null, invoiceId: result.invoice_id, incidentId: result.incident_id }
+  return {
+    ok: true,
+    error: null,
+    invoiceId: result.invoice_id,
+    incidentId: result.incident_id,
+    mode: result.mode === 'folded_into_primary' || result.mode === 'rider' ? result.mode : undefined,
+  }
 }

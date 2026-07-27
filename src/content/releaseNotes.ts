@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1028',
+    date: '2026-07-27',
+    title: 'Hazmat fees join the main bill',
+    kind: 'feature',
+    highlights: [
+      'Adding a hazmat fee now increases the job\'s billing line directly — $1,380 + $500 fee reads $1,880 — instead of creating a separate rider bill that looked like a deduction.',
+      'When the bill goes out, the fee still shows as its own labeled line item, on Stripe and now on Physical Invoice too, with the notice traveling along.',
+      'If the job has no open main bill, the fee falls back to its own ready-to-bill line so it\'s never lost.',
+    ],
+  },
+  {
     version: 'v2.1027',
     date: '2026-07-27',
     title: 'Bill jobs that only have a Click number',

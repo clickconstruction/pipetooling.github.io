@@ -5,7 +5,7 @@ file: MIGRATIONS.md
 type: Reference/Changelog
 purpose: Complete database migration history organized by date and category
 audience: Developers, Database Administrators, AI Agents
-last_updated: 2026-07-24
+last_updated: 2026-07-27
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate to Advanced
 
@@ -102,6 +102,14 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 > **Reading older entries:** filenames beginning **`2027…`** are **typo-dated** (the real work happened March–June 2026). All of them predate the **2026-06-04 baseline squash** — the files now live in [`supabase/archive/migrations-pre-baseline/`](../supabase/archive/migrations-pre-baseline/) and their schema is part of [`20250101000000_baseline.sql`](../supabase/migrations/20250101000000_baseline.sql). Entries below keep the original filenames so they match the archive. The prod ledger was fully reconciled on **2026-07-04** (backup: `supabase_migrations._schema_migrations_backup_20260704`); since then, migrations apply **only** via `supabase db push` (see `CLAUDE.md`).
 
 ### July 2026
+
+#### July 27, 2026
+
+**`20260727225356_hazmat_fee_folds_into_primary.sql`** _(apply via `supabase db push` after the file is on `main`)_
+- **Purpose**: Hazmat fee folds into the open primary bill (v2.1028) — `create_hazmat_fee_incident` now ADDS the fee to the job's open never-sent primary bill (is_primary_rtb_bundle, draft/ready_to_bill, no Stripe id, never sent) and links the incident to it (return gains `mode: 'folded_into_primary'`); falls back to the legacy separate rider (`mode: 'rider'`) when no such bill exists. Revenue bump unchanged in both modes.
+- **Security**: CREATE OR REPLACE, same signature/gates (office roles with master access; SECURITY DEFINER).
+- **Ordering**: deploy client first, then push — old client + new RPC is fine (bigger primary amount, incident linked; billing still sends correct totals); new client + old RPC keeps rider behavior, which the client still fully supports.
+- **Category**: Jobs / billing
 
 #### July 22, 2026
 

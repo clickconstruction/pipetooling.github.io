@@ -128,7 +128,12 @@ export function HazmatFeeModal({
       return
     }
     setCreatedDraft(draft)
-    showToast(`Hazmat fee created — $${feeAmount.toFixed(2)} ready to bill.`, 'success')
+    showToast(
+      res.mode === 'folded_into_primary'
+        ? `Hazmat fee added to the job's bill — billing line increased by $${feeAmount.toFixed(2)}.`
+        : `Hazmat fee created — $${feeAmount.toFixed(2)} ready to bill.`,
+      'success',
+    )
     onCreated()
   }
 

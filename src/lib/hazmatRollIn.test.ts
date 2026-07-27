@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { eligibleHazmatRollIns, hazmatRollInTotalDollars, type HazmatRollInInvoice } from './hazmatRollIn'
+import { eligibleHazmatRollIns, foldedHazmatFeeLines, hazmatRollInTotalDollars, type HazmatRollInInvoice } from './hazmatRollIn'
 
 const inv = (over: Partial<HazmatRollInInvoice> & { id: string }): HazmatRollInInvoice => ({
   amount: 500,
@@ -90,5 +90,45 @@ describe('eligibleHazmatRollIns', () => {
     expect(lines.map((l) => l.invoiceId)).toEqual(['rider1', 'rider2'])
     expect(lines[1]!.amountCents).toBe(25050)
     expect(hazmatRollInTotalDollars(lines)).toBe(750.5)
+  })
+})
+
+describe('foldedHazmatFeeLines', () => {
+  const primary = { id: 'primary1', is_primary_rtb_bundle: true }
+
+  it('splits fees for incidents linked to the primary bill being billed', () => {
+    const lines = foldedHazmatFeeLines({
+      billingInvoice: primary,
+      incidents: [
+        { id: 'incA', invoice_id: 'primary1', incident_at: '2026-07-20T18:00:00Z', fee_amount: 500 },
+        { id: 'incB', invoice_id: 'primary1', incident_at: null, fee_amount: '250.50' },
+        { id: 'incOther', invoice_id: 'rider9', incident_at: '2026-07-21', fee_amount: 500 },
+        { id: 'incUnlinked', invoice_id: null, incident_at: '2026-07-21', fee_amount: 500 },
+      ],
+    })
+    expect(lines.map((l) => l.incidentId)).toEqual(['incA', 'incB'])
+    expect(lines[0]!.description).toBe('Biohazard remediation fee — incident 07/20/2026')
+    expect(lines[1]!.description).toBe('Biohazard remediation fee')
+    expect(lines[1]!.amountCents).toBe(25050)
+    expect(hazmatRollInTotalDollars(lines)).toBe(750.5)
+  })
+
+  it('never splits on a non-primary invoice (legacy rider: the whole amount IS the fee)', () => {
+    const incidents = [{ id: 'incA', invoice_id: 'rider1', incident_at: '2026-07-20', fee_amount: 500 }]
+    expect(foldedHazmatFeeLines({ billingInvoice: { id: 'rider1', is_primary_rtb_bundle: false }, incidents })).toEqual([])
+    expect(foldedHazmatFeeLines({ billingInvoice: { id: 'rider1', is_primary_rtb_bundle: null }, incidents })).toEqual([])
+  })
+
+  it('skips zero, negative, and unparseable fee amounts', () => {
+    const lines = foldedHazmatFeeLines({
+      billingInvoice: primary,
+      incidents: [
+        { id: 'a', invoice_id: 'primary1', incident_at: null, fee_amount: 0 },
+        { id: 'b', invoice_id: 'primary1', incident_at: null, fee_amount: -5 },
+        { id: 'c', invoice_id: 'primary1', incident_at: null, fee_amount: 'nope' },
+        { id: 'd', invoice_id: 'primary1', incident_at: null, fee_amount: null },
+      ],
+    })
+    expect(lines).toEqual([])
   })
 })

@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-27 (v2.1027)
+last_updated: 2026-07-27 (v2.1028)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1028)
+
+### Hazmat fee folds into the main bill — billing line $1,380 + $500 fee reads $1,880 (2026-07-27)
+User request after the rider-design review: a $500 rider next to a $1,380 billing line read as "$500 already handled". Now **migration [`20260727225356_hazmat_fee_folds_into_primary.sql`](../supabase/migrations/20260727225356_hazmat_fee_folds_into_primary.sql)** (`supabase db push` after merge) makes `create_hazmat_fee_incident` **add the fee to the job's open never-sent primary bill** and link the incident to it (return gains `mode: folded_into_primary`; the wizard toast says "billing line increased by $500"); the legacy separate-rider path remains only when no such bill exists (`mode: rider`) so a fee is never lost. Client (works with either RPC version): new kernel fn `foldedHazmatFeeLines` in [`hazmatRollIn.ts`](../src/lib/hazmatRollIn.ts) (incidents linked to the PRIMARY bill being billed split their `fee_amount` out as labeled lines; non-primary linked = legacy rider, untouched; +3 tests) — [`SendRecordInvoiceModal`](../src/components/jobs/SendRecordInvoiceModal.tsx) detection now branches on `invoice.is_primary_rtb_bundle`, **Stripe** sends folded fees as `extra_line_items` (amount unchanged — fees are already inside; fixtures allocate to total − fees server-side) with an info box ("already part of the amount above"), footer notice links + the also-email-notice checkbox now cover folded incidents (notice email loops per incident), and the roll-in fold/delete loop deliberately never touches folded lines. **Physical Invoice** finally carries the fee: [`buildPhysicalInvoiceDocument`](../src/lib/physicalInvoiceDocument.ts) gains `hazmatFeeLines` (fee rows appended to service lines; fixture rows allocate to amount − fees) and the attach-notice checkbox + attachment loop cover folded incidents (suffixing filenames when several). Legacy riders (857's existing $500) keep the v2.1002 roll-in flow byte-for-byte. Help guide `charge-a-hazmat-fee.md` rewritten for the fold. **Deploy order: client first, then `supabase db push`.**
 
 ## Latest Updates (v2.1027)
 
