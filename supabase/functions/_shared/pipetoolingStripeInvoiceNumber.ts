@@ -1,9 +1,13 @@
-/** PipeTooling Stripe invoice number: digits-only HCP + `-` + YYMMDD from due date + HHmm in APP_CALENDAR_TZ (America/Chicago). Example: `11-2605140020` (Stripe often shows `#` in emails). */
+/** PipeTooling Stripe invoice number: digits-only job number (HCP, else Click — the
+ * same effective-number rule the whole app displays) + `-` + YYMMDD from due date +
+ * HHmm in APP_CALENDAR_TZ (America/Chicago). Example: `11-2605140020` (Stripe often
+ * shows `#` in emails). HCP and Click numbers share one global sequence, so either
+ * source yields the same uniqueness. */
 
 import { APP_CALENDAR_TZ } from './appTimeZone.ts'
 
 export const PIPETOOLING_STRIPE_INVOICE_NUMBER_HCP_ERROR =
-  'Job must have an HCP number (digits) to create a Stripe invoice with this numbering scheme.'
+  'Job must have an HCP or Click number (digits) to create a Stripe invoice with this numbering scheme.'
 
 const YMD_RE = /^(\d{4})-(\d{2})-(\d{2})$/
 
@@ -37,7 +41,8 @@ export function formatChicagoHHmm(issuedAtMs: number): string {
 }
 
 /**
- * @param hcpRaw - `jobs_ledger.hcp_number`; non-digits stripped
+ * @param hcpRaw - The job's effective number — `jobs_ledger.hcp_number`, else
+ *   `jobs_ledger.click_number` (callers coalesce; v2.1027). Non-digits stripped.
  * @param dueDateYmd - Bill due date `YYYY-MM-DD` (trimmed by caller or here)
  * @param issuedAtMs - Instant for Chicago HHmm suffix; defaults to `Date.now()` when omitted
  */

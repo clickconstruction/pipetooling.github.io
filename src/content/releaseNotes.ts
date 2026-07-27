@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1027',
+    date: '2026-07-27',
+    title: 'Bill jobs that only have a Click number',
+    kind: 'fix',
+    highlights: [
+      'Creating a Stripe invoice no longer requires an HCP number — jobs with only a Click number (C#) bill normally, and the invoice number uses that number.',
+    ],
+  },
+  {
     version: 'v2.1026',
     date: '2026-07-27',
     title: 'Plain-language message when you have no signal',

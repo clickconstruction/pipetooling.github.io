@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-27 (v2.1026)
+last_updated: 2026-07-27 (v2.1027)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1027)
+
+### Fix: Stripe invoices accept Click-number-only jobs (2026-07-27)
+Reported by Taunya: Bill Customer refused with "Job must have an HCP number (digits) to create a Stripe invoice with this numbering scheme." Since the C# rollout HCP is optional (every job has a `click_number`; the app displays the effective number everywhere), but [`buildPipetoolingStripeInvoiceNumber`](../supabase/functions/_shared/pipetoolingStripeInvoiceNumber.ts) was still fed the raw `hcp_number` column — so **click-only jobs were unbillable via Stripe** (and `preview-stripe-invoice` failed identically). Fix: both [`create-stripe-invoice`](../supabase/functions/create-stripe-invoice/index.ts) and [`preview-stripe-invoice`](../supabase/functions/preview-stripe-invoice/index.ts) now select `click_number` and pass the **effective number** (trimmed HCP, else trimmed Click) to the invoice-number builder AND the fixture line-description builder, so the `Customer · Job · <number>` line text works for click-only jobs too. Numbering scheme unchanged (`<digits>-<YYMMDD><HHmm>`); HCP and Click share one global sequence so uniqueness is identical; HCP-bearing jobs are byte-for-byte unaffected. Error message now says "HCP or Click number" for the truly numberless edge case. **Deploy: `supabase functions deploy create-stripe-invoice` + `supabase functions deploy preview-stripe-invoice` after merge.** EDGE_FUNCTIONS.md numbering note updated.
 
 ## Latest Updates (v2.1026)
 
