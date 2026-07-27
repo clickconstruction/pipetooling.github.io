@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1026',
+    date: '2026-07-27',
+    title: 'Plain-language message when you have no signal',
+    kind: 'fix',
+    highlights: [
+      'If your phone has no service when you save something, the app now says "No connection — check your signal and try again" instead of a technical error like "TypeError: Load failed".',
+      'Whatever you typed stays in the box so you can retry when the signal comes back.',
+    ],
+  },
+  {
     version: 'v2.1025',
     date: '2026-07-25',
     title: 'Report types keep your text',
