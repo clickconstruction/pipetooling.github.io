@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-28 (v2.1034)
+last_updated: 2026-07-28 (v2.1035)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1035)
+
+### Correction: job-total fees split INSIDE the bill — the add-on checkbox double-counted (2026-07-28)
+Live evidence minutes after v2.1033: once the revenue resync landed, the auto-maintained primary bill re-priced itself to the job's full unallocated remainder (857's $1,880 → $2,380) — the `ensure_single_ready_to_bill_invoice_for_job` invariant means **the open primary always absorbs the fee via the remainder math**, so v2.1033's add-on checkbox produced a $2,880 double-count. [`SendRecordInvoiceModal`](../src/components/jobs/SendRecordInvoiceModal.tsx) reverts unlinked (job-total) fees to the v2.1031 inside-the-amount split — labeled line within the bill, "already part of the amount above" info box, repoint on success (Stripe + Physical) — and the add-on checkbox/total-growing/invoice-amount-update are removed. The v2.1034 preview plumbing stays and now proves itself: verified live on 857's $2,380 primary — Stripe preview shows the work lines allocated to $1,880 + a **"Biohazard remediation fee"** line with total $2,380 (no $2,880), and the Physical PDF preview reads Amount due $2,380 with the fee row. Client-only; no fn redeploys.
 
 ## Latest Updates (v2.1034)
 
