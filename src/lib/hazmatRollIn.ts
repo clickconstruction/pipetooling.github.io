@@ -97,6 +97,7 @@ export type FoldedHazmatIncident = {
   invoice_id: string | null
   incident_at: string | null
   fee_amount: number | string | null
+  voided_at?: string | null
 }
 
 /**
@@ -120,6 +121,7 @@ export function foldedHazmatFeeLines(params: {
   if (billingInvoice.is_primary_rtb_bundle !== true) return []
   const out: HazmatRollInLine[] = []
   for (const inc of incidents) {
+    if (inc.voided_at) continue
     const linkedId = (inc.invoice_id ?? '').trim()
     if (linkedId !== billingInvoice.id && linkedId !== '') continue
     const fee = Number(inc.fee_amount)

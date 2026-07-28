@@ -105,6 +105,12 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 #### July 28, 2026
 
+**`20260728025542_hazmat_fee_edit_void_delete.sql`** _(apply via `supabase db push` after the file is on `main`; deploy the client first — the RIDERS buttons call the new RPCs)_
+- **Purpose**: Edit/void/delete for hazmat fees (v2.1038). Adds `job_hazmat_incidents.edited_at` / `voided_at` / `voided_by`; attaches the standard `zzz_archive_on_delete` trigger (table postdated the v2.696 archive sweep); creates three RPCs: `update_hazmat_fee_incident(p_incident_id, p_patch jsonb)` (patches fee_amount/description/photo_links/testimonials/exposed_people/stage_label; an amount delta ripples to the linked open invoice — refusing sent/billed — and `jobs_ledger.revenue`), `void_hazmat_fee_incident` (office incl. assistants; subtracts fee from open bill + revenue, stamps void, unlinks), `delete_hazmat_fee_incident` (dev/master_technician/controller; unwinds money unless voided, logs, deletes — archive trigger snapshots). All three write `job_activity_events` (`hazmat_fee_edited`/`_voided`/`_deleted`).
+- **Security**: SECURITY DEFINER RPCs with explicit role gates; sent/billed bills refuse mutation server-side.
+- **Ordering**: client first (old clients simply lack the buttons; new client's buttons need the RPCs).
+- **Category**: Jobs / billing
+
 **`20260728004043_hazmat_revenue_resync.sql`** _(apply via `supabase db push` after the file is on `main`)_
 - **Purpose**: One-time revenue repair for hazmat-fee jobs (v2.1033) — pre-v2.1029 saves recomputed `jobs_ledger.revenue` from fixtures alone, wiping fee bumps; this sets `revenue = fixtures_sum + fee_sum` for jobs with `job_hazmat_incidents` (1 job in prod today), fixing the Stages "bid" / "Left on Job" under-count. Fixtures sum mirrors `revenueDollarsFromFixtures` (named rows; qty = count > 0 else 1). Idempotent.
 - **Security**: plain data UPDATE, no DDL.

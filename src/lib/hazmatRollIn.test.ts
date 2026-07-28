@@ -154,3 +154,16 @@ describe('hazmatFeeLinesWithinAmount', () => {
     expect(hazmatFeeLinesWithinAmount([line('a', 1)], 0)).toEqual([])
   })
 })
+
+describe('foldedHazmatFeeLines — voided', () => {
+  it('never splits a voided incident', () => {
+    const lines = foldedHazmatFeeLines({
+      billingInvoice: { id: 'primary1', is_primary_rtb_bundle: true },
+      incidents: [
+        { id: 'live', invoice_id: 'primary1', incident_at: null, fee_amount: 500 },
+        { id: 'dead', invoice_id: null, incident_at: null, fee_amount: 300, voided_at: '2026-07-28T00:00:00Z' },
+      ],
+    })
+    expect(lines.map((l) => l.incidentId)).toEqual(['live'])
+  })
+})

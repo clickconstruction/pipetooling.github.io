@@ -660,8 +660,10 @@ export default function SendRecordInvoiceModal({
     let cancelled = false
     void (async () => {
       try {
-        const rows = await loadJobHazmatIncidents(job.id)
+        const allRows = await loadJobHazmatIncidents(job.id)
         if (cancelled) return
+        // Voided fees (v2.1038) have no financial effect and send no notice.
+        const rows = allRows.filter((r) => !r.voided_at)
         const linked = rows.filter((r) => r.invoice_id === invoice.id)
         const anyUnlinked = rows.some((r) => !(r.invoice_id ?? '').trim())
         if (linked.length === 0 && !anyUnlinked) return

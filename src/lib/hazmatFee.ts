@@ -27,6 +27,10 @@ export type HazmatIncidentDraft = {
   testimonials: HazmatTestimonial[]
   tosClauseSnapshot: string
   feeAmount: number
+  /** Set when the record was edited after creation — the notice shows an edited-on stamp (v2.1038). */
+  editedAt?: string | null
+  /** Set when the fee was voided — the notice carries a VOIDED marker (v2.1038). */
+  voidedAt?: string | null
 }
 
 /** Must match `v_memo` in the `create_hazmat_fee_incident` migration. */

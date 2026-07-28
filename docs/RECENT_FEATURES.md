@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-28 (v2.1037)
+last_updated: 2026-07-28 (v2.1038)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2046,7 +2046,12 @@ when_to_read:
 155. [Customer and Project Management](#customer-and-project-management)
 ---
 
-## Latest Updates (v2.1037)
+## Latest Updates (v2.1038)
+
+### Edit Job RIDERS: edit, void, or delete a hazmat fee — with an audit trail (2026-07-28)
+Request: edit a Biohazard remediation fee from Edit Job's RIDERS rows (amount, description, photos, testimonials), with an audit trail, and role-split removal (devs/masters/controllers delete; assistants void). Migration [`20260728025542_hazmat_fee_edit_void_delete.sql`](../supabase/migrations/20260728025542_hazmat_fee_edit_void_delete.sql) adds `edited_at`/`voided_at`/`voided_by` columns, the `zzz_archive_on_delete` trigger (the table postdated the v2.696 sweep), and three RPCs: **`update_hazmat_fee_incident`** (jsonb patch; an amount change ripples the delta to the linked OPEN invoice and `jobs_ledger.revenue` atomically; refuses sent/billed bills and voided fees), **`void_hazmat_fee_incident`** (office incl. assistants: subtracts the fee from the open bill + revenue, keeps the record, stamps `voided_at`/`voided_by`), **`delete_hazmat_fee_incident`** (dev/master/controller only: unwinds the money unless already voided, then deletes — archive trigger snapshots it into Recently deleted). Every path writes a `job_activity_events` row (`hazmat_fee_edited` with old→new detail, `hazmat_fee_voided`, `hazmat_fee_deleted`). Client: [`hazmatFeeEdit.ts`](../src/lib/hazmatFeeEdit.ts) kernel (`hazmatFeeMutationBlocker` mirrors the server gate for disable-with-reason; `hazmatFeeRemovalCapability` maps roles → delete/void; 4 tests) + [`HazmatFeeEditDialog`](../src/components/jobs/HazmatFeeEditDialog.tsx) (leaf z 1300: amount, description, photo links, testimonial list). RIDERS rows ([`JobFormHazmatRidersStrip.tsx`](../src/components/jobs/JobFormHazmatRidersStrip.tsx)) gain **Edit… / Void… / Delete…** buttons (per-role, ConfirmDialog-confirmed, disabled with the blocker reason once the bill is sent), a gray struck-through **Voided** state, and refresh Edit Job via `useJobHazmatIncidents().refresh`. Voided fees drop out of the Job Total (`sumHazmatRiderFees`), billing fold-ins (`foldedHazmatFeeLines`), and Bill Customer detection; the printable notice + PDF show a "Record edited {date}" stamp and a red **VOIDED** banner.
+
+
 
 ### Bill Customer: "Preview the email…" shows the notice email the customer will get (2026-07-28)
 Request: a way to see the Biohazard Remediation Fee Notice companion email before it goes out. The subject/body builders are now exported from [`sendHazmatNoticeEmail.ts`](../src/lib/sendHazmatNoticeEmail.ts) (`hazmatNoticeEmailSubject` / `hazmatNoticeEmailText`) and shared with a new pure builder [`hazmatNoticeEmailPreview.ts`](../src/lib/hazmatNoticeEmailPreview.ts) (4 tests: exact sender text, sandboxed-iframe srcdoc escaping, per-incident numbering, HTML escaping) — so the preview can never drift from what actually sends. The ☣ box in [`SendRecordInvoiceModal`](../src/components/jobs/SendRecordInvoiceModal.tsx) gains a **"Preview the email…"** link that opens a window showing the envelope (To / Subject / 📎 attachment chip), the body text with the Stripe-invoice reference, and the attached notice inlined below an "ATTACHMENT PREVIEW" divider (customer-facing → pinned light). One email block per incident when several fees ride the bill. Verified live on 857: To brace.tj@…, Subject "…— Job 857", body + Stripe reference, notice iframe. Client-only.

@@ -35,7 +35,21 @@ export function buildHazmatFeeNoticePdfModel(
     { kind: 'meta', text: `Job ${job.jobNumber} — ${job.jobName}` },
     { kind: 'meta', text: job.jobAddress },
     { kind: 'meta', text: `Customer: ${job.customerName}` },
+  ]
+  const noticeDate = (iso: string) => {
+    const d = new Date(iso)
+    return Number.isNaN(d.getTime()) ? iso : d.toLocaleDateString('en-US', { timeZone: APP_CALENDAR_TZ })
+  }
+  if (draft.voidedAt) {
+    blocks.push({ kind: 'fee', text: `VOIDED ${noticeDate(draft.voidedAt)} — this fee was voided and is not owed.` })
+  }
+  blocks.push(
     { kind: 'fee', text: `Fee: ${fee}` },
+  )
+  if (draft.editedAt) {
+    blocks.push({ kind: 'meta', text: `Record edited ${noticeDate(draft.editedAt)}` })
+  }
+  blocks.push(
     { kind: 'heading', text: 'Incident' },
     {
       kind: 'meta',
@@ -43,7 +57,7 @@ export function buildHazmatFeeNoticePdfModel(
         `Date/time: ${formatHazmatIncidentDateTime(draft.incidentAt)}` +
         (draft.stageLabel ? ` · Stage: ${draft.stageLabel}` : ''),
     },
-  ]
+  )
   if (draft.exposedPeople.trim()) {
     blocks.push({ kind: 'meta', text: `Personnel exposed: ${draft.exposedPeople}` })
   }

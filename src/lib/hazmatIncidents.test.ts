@@ -101,3 +101,14 @@ describe('sumHazmatRiderFees', () => {
     ).toBe(750.5)
   })
 })
+
+describe('sumHazmatRiderFees — voided', () => {
+  it('excludes voided incidents from the total', () => {
+    expect(
+      sumHazmatRiderFees([
+        { fee_amount: 500 },
+        { fee_amount: 300, voided_at: '2026-07-28T00:00:00Z' },
+      ]),
+    ).toBe(500)
+  })
+})
