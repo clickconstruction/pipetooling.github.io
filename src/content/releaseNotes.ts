@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1054',
+    date: '2026-07-28',
+    title: 'Full-screen activity truly covers the screen',
+    kind: 'fix',
+    highlights: [
+      'On phones, the full-screen Job activity / notes view was rendering under the app\'s top bar and bottom tabs, with bits of the board showing through. It now covers everything edge to edge.',
+    ],
+  },
+  {
     version: 'v2.1053',
     date: '2026-07-28',
     title: 'Full-screen activity shows which job you\'re on',

@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-28 (v2.1053)
+last_updated: 2026-07-28 (v2.1054)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1054)
+
+### Jobs Stages: fullscreen activity overlay escapes the table's stacking context (2026-07-28)
+Mobile viewport check caught v2.1052's overlay rendering UNDER the app chrome (top `appNavChrome` z50, mobile bottom nav z1000) with sticky Job-column cells bleeding through: the panel lives inside `renderStagesExpandedRowPanel`'s `position: sticky` wrapper, which creates a stacking context, so no z-index on the overlay itself could beat the chrome. Fix in [`JobThreadNotesPanel`](../src/components/JobThreadNotesPanel.tsx): while fullscreen the panel `createPortal`s to `document.body` at z-index 1001 (above chrome, below ScheduleJobModal 1002 and toasts 9999+); [`ManageJobPeopleModal`](../src/components/jobs/ManageJobPeopleModal.tsx) bumped 70 → 1002 since the panel spawns it. The portal move recreates the list DOM, so the scroll-to-newest layout effect gains an `isFullscreen` dep. Verified in mobile/tablet/desktop viewports + dark theme + people-modal stacking. Client-only.
 
 ## Latest Updates (v2.1053)
 

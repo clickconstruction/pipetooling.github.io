@@ -30,7 +30,8 @@ const OVERLAY_STYLE: CSSProperties = {
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
-  zIndex: 70,
+  // Above the fullscreen Job activity / notes overlay (1001), which can open this modal.
+  zIndex: 1002,
   padding: '1rem',
 }
 
