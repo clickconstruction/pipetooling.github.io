@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1048',
+    date: '2026-07-28',
+    title: 'Cleaner report entries in the activity thread',
+    kind: 'fix',
+    highlights: [
+      'Report entries no longer show internal ID codes as field labels, and the redundant "View full report" button is gone now that the full text shows inline.',
+    ],
+  },
+  {
     version: 'v2.1047',
     date: '2026-07-28',
     title: 'Send back + Collections share a row',
