@@ -7,6 +7,7 @@ import { displayReportTemplateName } from '../lib/reportTemplateDisplayName'
 import { type ReportForView } from './ReportViewModal'
 import { allReportFieldLinesForThread } from '../lib/reportForViewFromJobLedgerRow'
 import type { JobThreadScheduleActivityItem } from '../lib/jobThreadScheduleActivity'
+import type { StagesUpcomingAppointment } from '../lib/stagesUpcomingSchedule'
 import type { JobThreadClockActivityItem } from '../lib/jobThreadClockActivity'
 import { eventRenderMeta, type JobThreadEventActivityItem } from '../lib/jobActivityEvent'
 import { ACTIVITY_FILTERS, filterActivity, type ActivityFilter } from '../lib/jobActivityFilter'
@@ -97,6 +98,8 @@ type JobThreadNotesPanelProps = {
   fullscreenControl?: { active: boolean; onToggle: () => void }
   /** Rendered at the very top ONLY while fullscreen is active (job number / service type / name / address on Stages). */
   fullscreenHeader?: ReactNode
+  /** Pinned "Next appointment" strip above the feed (Jobs Stages): the job's next upcoming schedule block. */
+  nextAppointment?: StagesUpcomingAppointment | null
 }
 
 const DEFAULT_ACTIVITY_LIST_MAX_HEIGHT = 'min(280px, 45vh)'
@@ -228,6 +231,7 @@ export function JobThreadNotesPanel({
   peopleAction,
   fullscreenControl,
   fullscreenHeader,
+  nextAppointment,
 }: JobThreadNotesPanelProps) {
   const [pctEditorOpen, setPctEditorOpen] = useState(false)
   const [pctDraft, setPctDraft] = useState(pctComplete ?? 0)
@@ -447,6 +451,34 @@ export function JobThreadNotesPanel({
             >
               {pctComplete}% complete
             </span>
+          ) : null}
+        </div>
+      ) : null}
+      {nextAppointment ? (
+        /* Pinned above the scrolling feed: "when are we there next?" is always
+           answered without hunting the SCHEDULE entry in the timeline. */
+        <div
+          style={{
+            borderLeft: '3px solid var(--border-green)',
+            padding: '0.25rem 0.5rem',
+            marginBottom: '0.5rem',
+            background: 'var(--bg-subtle)',
+            borderRadius: '0 4px 4px 0',
+            flexShrink: 0,
+          }}
+        >
+          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+            <span style={{ fontSize: '0.65rem', fontWeight: 700, textTransform: 'uppercase', color: '#15803d', marginRight: '0.35rem' }}>
+              Next
+            </span>
+            {scheduleFormatDateLongNoWeekday(nextAppointment.ymd)} ·{' '}
+            {scheduleFormatWindow(nextAppointment.timeStart, nextAppointment.timeEnd)} ·{' '}
+            {nextAppointment.assigneeNames.join(', ')}
+          </div>
+          {nextAppointment.note ? (
+            <div style={{ fontSize: '0.8125rem', color: 'var(--text-gray-800)', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+              {nextAppointment.note}
+            </div>
           ) : null}
         </div>
       ) : null}

@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-28 (v2.1060)
+last_updated: 2026-07-28 (v2.1061)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1061)
+
+### Jobs Stages: Activity header wrap fix + pinned "Next appointment" strip in the thread panel (2026-07-28)
+Density review ("Option C"): keep today's clamps, fix the mechanics. **(1)** In [`renderStagesLastActivityCell`](../src/components/jobs/jobsStagesRowShared.tsx) the "(ago)" phrase and the expand chevron/count now share a `white-space: nowrap` span — no more orphaned "▼ 2" line under the header on narrow rows (verified at 375px across all 65 visible headers). **(2)** [`JobThreadNotesPanel`](../src/components/JobThreadNotesPanel.tsx) gains optional `nextAppointment?: StagesUpcomingAppointment | null` — a green-left-bordered strip pinned between the filter row and the scrolling feed (inline AND fullscreen): NEXT tag + date · window · crew + full note. Passed at the three Stages panel call sites from `stagesUpcomingByJobId`; other panel surfaces (Workflow, Estimates, Detail modal, Quickfill) unaffected. Client-only.
 
 ## Latest Updates (v2.1060)
 

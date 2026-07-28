@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1061',
+    date: '2026-07-28',
+    title: 'Tidier Activity column + pinned Next in the thread',
+    kind: 'fix',
+    highlights: [
+      'On busy Stages rows, the expand arrow and note count no longer wrap onto their own lonely line — they stay glued to the time.',
+      'The Job activity / notes panel now pins the job\'s Next appointment (date, time, crew, note) above the feed, in both the inline and full-screen views.',
+    ],
+  },
+  {
     version: 'v2.1060',
     date: '2026-07-28',
     title: 'Stages shows each job\'s next appointment',
