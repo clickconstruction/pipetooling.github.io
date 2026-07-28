@@ -572,7 +572,7 @@ export default function JobsStagesUnifiedTable(props: JobsStagesUnifiedTableProp
                                     type="button"
                                     onClick={() => onJobMoveToCollections(j)}
                                     title="Flag this job as difficult to collect (moves to the Collections section; stays Billed)"
-                                    style={{ ...stagesSecondaryOutlineButtonBase, color: '#dc2626', border: '1px solid #dc2626', fontWeight: 600, cursor: 'pointer' }}
+                                    style={{ ...stagesSecondaryOutlineButtonBase, color: 'var(--text-red-600)', border: '1px solid #dc2626', fontWeight: 600, cursor: 'pointer' }}
                                   >
                                     Collections
                                   </button>
@@ -629,7 +629,7 @@ export default function JobsStagesUnifiedTable(props: JobsStagesUnifiedTableProp
                                     type="button"
                                     onClick={() => onJobMoveToCollections(j)}
                                     title="Flag this job as difficult to collect (moves to the Collections section; stays Billed)"
-                                    style={{ ...stagesSecondaryOutlineButtonBase, color: '#dc2626', border: '1px solid #dc2626', fontWeight: 600, cursor: 'pointer' }}
+                                    style={{ ...stagesSecondaryOutlineButtonBase, color: 'var(--text-red-600)', border: '1px solid #dc2626', fontWeight: 600, cursor: 'pointer' }}
                                   >
                                     Collections
                                   </button>
@@ -1140,7 +1140,7 @@ export default function JobsStagesUnifiedTable(props: JobsStagesUnifiedTableProp
                                 type="button"
                                 onClick={() => onJobMoveToCollections(job)}
                                 title="Flag this job as difficult to collect (moves all its billed lines to the Collections section; stays Billed)"
-                                style={{ ...stagesSecondaryOutlineButtonBase, color: '#dc2626', border: '1px solid #dc2626', fontWeight: 600, cursor: 'pointer' }}
+                                style={{ ...stagesSecondaryOutlineButtonBase, color: 'var(--text-red-600)', border: '1px solid #dc2626', fontWeight: 600, cursor: 'pointer' }}
                               >
                                 Collections
                               </button>
