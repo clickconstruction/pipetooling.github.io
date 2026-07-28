@@ -30,7 +30,7 @@ You can come back to the notice any time: open **Edit Job** — riders now sit i
 When you bill the job through **Bill Customer** (the main bill carrying the fee, or a standalone rider), the notice travels with the bill:
 
 - **Physical Invoice** tab — a pre-checked **☣ Attach the Biohazard Remediation Fee Notice** box sends the notice as a second PDF beside the invoice in the same email.
-- **Stripe** tab — Stripe invoices can't carry attachments, so two things happen instead: a pre-checked **☣ Also email the notice** box sends it to the customer as its own email right after the Stripe invoice is created, and the invoice **footer** automatically gains a link to a public copy of the notice (you'll see it in the Footer box before sending and can remove it).
+- **Stripe** tab — Stripe invoices can't carry attachments, so two things happen instead: a pre-checked **☣ Also email the notice** box sends it to the customer as its own email right after the Stripe invoice is created (click **Preview the email…** underneath to see exactly what they'll receive), and the invoice **footer** automatically gains a link to a public copy of the notice (you'll see it in the Footer box before sending and can remove it).
 - Missed it or need it again? **Edit Job → ① Line Items → riders** has {{button:outline|Email notice…}} to re-send it any time (it confirms the recipient first) and {{button:outline|Copy link}} for the same public notice link the Stripe footer carries.
 
 ## Notes
