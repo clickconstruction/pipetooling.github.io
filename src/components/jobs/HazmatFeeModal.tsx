@@ -131,7 +131,9 @@ export function HazmatFeeModal({
     showToast(
       res.mode === 'folded_into_primary'
         ? `Hazmat fee added to the job's bill — billing line increased by $${feeAmount.toFixed(2)}.`
-        : `Hazmat fee created — $${feeAmount.toFixed(2)} ready to bill.`,
+        : res.mode === 'job_total'
+          ? `Hazmat fee added to the job total — $${feeAmount.toFixed(2)} rides on the next bill.`
+          : `Hazmat fee created — $${feeAmount.toFixed(2)} ready to bill.`,
       'success',
     )
     onCreated()

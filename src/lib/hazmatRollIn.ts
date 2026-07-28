@@ -100,11 +100,15 @@ export type FoldedHazmatIncident = {
 }
 
 /**
- * Folded-fee lines (v2.1028): incidents whose fee was ADDED to the primary
- * bill's amount at creation (`create_hazmat_fee_incident` mode
- * `folded_into_primary`) link straight to that bill. When billing it, each
- * linked fee splits out of the total as its own labeled line — amounts come
- * from `job_hazmat_incidents.fee_amount` (the invoice amount is main + fees).
+ * Folded-fee lines (v2.1028, extended v2.1031): when billing a PRIMARY bill,
+ * two kinds of incidents split their `fee_amount` out of the total as labeled
+ * lines:
+ * - incidents LINKED to that bill (`create_hazmat_fee_incident` added the fee
+ *   to its amount at creation — mode `folded_into_primary`);
+ * - UNLINKED incidents (`invoice_id` null — mode `job_total`: no bill was open
+ *   at creation, so only the revenue bump landed and the fee rides in the
+ *   billable remainder that priced this bill). The caller repoints these to
+ *   the billed invoice after success so they never split twice.
  * Only primary bills qualify: a linked NON-primary invoice is a legacy rider
  * whose entire amount IS the fee (the separate-notice flow handles those).
  */
@@ -116,7 +120,8 @@ export function foldedHazmatFeeLines(params: {
   if (billingInvoice.is_primary_rtb_bundle !== true) return []
   const out: HazmatRollInLine[] = []
   for (const inc of incidents) {
-    if ((inc.invoice_id ?? '').trim() !== billingInvoice.id) continue
+    const linkedId = (inc.invoice_id ?? '').trim()
+    if (linkedId !== billingInvoice.id && linkedId !== '') continue
     const fee = Number(inc.fee_amount)
     if (!Number.isFinite(fee) || fee <= 0) continue
     const date = formatIncidentDate(inc.incident_at)
@@ -129,6 +134,27 @@ export function foldedHazmatFeeLines(params: {
         ? `Biohazard remediation fee — incident ${date}`
         : 'Biohazard remediation fee',
     })
+  }
+  return out
+}
+
+/**
+ * Guard for fee lines riding inside a bill's amount: keeps lines (in order)
+ * while their running total stays under `amountDollars`, so the work lines
+ * always retain at least a cent. A dropped line isn't lost — its fee is still
+ * in the job total and rides on a later bill.
+ */
+export function hazmatFeeLinesWithinAmount(
+  lines: readonly HazmatRollInLine[],
+  amountDollars: number,
+): HazmatRollInLine[] {
+  if (!Number.isFinite(amountDollars) || amountDollars <= 0) return []
+  const out: HazmatRollInLine[] = []
+  let sum = 0
+  for (const l of lines) {
+    if (sum + l.amountDollars >= amountDollars) continue
+    sum += l.amountDollars
+    out.push(l)
   }
   return out
 }

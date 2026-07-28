@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-27 (v2.1030)
+last_updated: 2026-07-27 (v2.1031)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1031)
+
+### Hazmat fees never mint an instant rider bill — they join the job total (2026-07-27)
+User direction after v2.1028: no rider invoices at creation, ever. **Migration [`20260727235515_hazmat_fee_job_total_fallback.sql`](../supabase/migrations/20260727235515_hazmat_fee_job_total_fallback.sql)** (`supabase db push` after merge): when no open never-sent primary bill exists, `create_hazmat_fee_incident` now creates **no invoice at all** — the revenue bump alone carries the fee (incident unlinked, `mode: 'job_total'`; fold-into-open-primary unchanged; wizard toast: "rides on the next bill"). Client: [`foldedHazmatFeeLines`](../src/lib/hazmatRollIn.ts) now also splits **unlinked** incidents when billing a primary bill (their fee arrived in the amount via the billable remainder), new guard `hazmatFeeLinesWithinAmount` keeps fee lines inside the bill amount (a dropped fee stays in the job total for a later bill; +4 kernel tests), and after a successful **Stripe or Physical** send the billed job-total incidents are **repointed** to that invoice so they never split twice. Edit Job rider rows show an amber **"In job total"** pill for unlinked fees ("Invoice removed" now means only a dangling link; render smokes updated). Deploy order: client first, then push. Help guide updated.
 
 ## Latest Updates (v2.1030)
 

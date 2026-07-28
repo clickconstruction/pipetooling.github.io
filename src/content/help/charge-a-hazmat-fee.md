@@ -16,7 +16,7 @@ On **Jobs → Stages**, every job card has a red ☣ button (next to the AIA G70
 4. **Fee &amp; generate** — the amount defaults to the org setting (normally **$500**) and is editable per incident.
 
 :::example what generating does
-Generating **adds the fee to the job's main bill** — a $1,380 billing line becomes $1,880 on the spot — and saves the incident record with all the evidence. When the bill goes out (Stripe or Physical Invoice), the fee appears as its **own labeled line item** ("Biohazard remediation fee — incident MM/DD/YYYY") so it never blends into the work lines. Only when the job has no open main bill (already billed, or nothing ready yet) does the fee fall back to a separate ready-to-bill rider line of its own.
+Generating **adds the fee to the job's main bill** — a $1,380 billing line becomes $1,880 on the spot — and saves the incident record with all the evidence. When the bill goes out (Stripe or Physical Invoice), the fee appears as its **own labeled line item** ("Biohazard remediation fee — incident MM/DD/YYYY") so it never blends into the work lines. If the job has no open main bill (already billed, or nothing ready yet), no separate bill is created — the fee simply joins the **Job Total** (the rider shows an **In job total** tag on Edit Job) and rides on the next bill you send, where it appears as its own labeled line.
 :::
 
 ## The printable notice

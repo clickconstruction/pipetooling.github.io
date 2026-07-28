@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1031',
+    date: '2026-07-27',
+    title: 'Hazmat fees: no more instant rider bills',
+    kind: 'feature',
+    highlights: [
+      'Adding a hazmat fee never creates a separate bill anymore — with no open main bill, the fee simply joins the job total and rides on the next bill you send.',
+      'When that bill goes out, the fee still appears as its own labeled line item and the incident attaches itself to that invoice.',
+      'On Edit Job, such fees show an "In job total" tag until they ship on a bill.',
+    ],
+  },
+  {
     version: 'v2.1030',
     date: '2026-07-27',
     title: 'Rider row icon polish',
