@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-28 (v2.1049)
+last_updated: 2026-07-28 (v2.1050)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1050)
+
+### pipetooling.com/fix — memorable alias for the cache-fix page (2026-07-28)
+Request: an easy-to-remember URL for the recovery page. [`public/fix/index.html`](../public/fix/index.html) is a static instant-redirect to `/fix-cache.html` (meta refresh + JS + manual link), and the service worker's navigation fallback ([`src/sw.ts`](../src/sw.ts)) now denylists `/fix` and `/fix-cache.html` so the SPA shell can never swallow the escape hatches — they always come from the network/precache even when the app is wedged. Note: devices running a pre-v2.1050 service worker won't resolve `/fix` until they update once; `/fix-cache.html` works everywhere today. Client-only.
 
 ## Latest Updates (v2.1049)
 

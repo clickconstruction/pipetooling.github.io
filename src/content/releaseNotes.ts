@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1050',
+    date: '2026-07-28',
+    title: 'pipetooling.com/fix',
+    kind: 'feature',
+    highlights: [
+      'Easy to remember: pipetooling.com/fix now opens the app-repair page (same as /fix-cache.html) — use it when the app is stuck on a blank or loading screen.',
+    ],
+  },
+  {
     version: 'v2.1049',
     date: '2026-07-28',
     title: 'Cleaner Stages toolbar',

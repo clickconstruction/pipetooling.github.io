@@ -15,7 +15,13 @@ cleanupOutdatedCaches()
 // as themselves and iOS reads their baked-in manifest at "Add to Home Screen" time.
 try {
   const navigationHandler = createHandlerBoundToURL('/index.html')
-  registerRoute(new NavigationRoute(navigationHandler, { denylist: [/^\/task-install\.html$/] }))
+  // /fix and /fix-cache.html are the escape hatches when the app itself is
+  // wedged — never let the SPA shell swallow them (v2.1050).
+  registerRoute(
+    new NavigationRoute(navigationHandler, {
+      denylist: [/^\/task-install\.html$/, /^\/fix(?:\/|$)/, /^\/fix-cache\.html$/],
+    }),
+  )
 } catch {
   // Precache may not include index yet during unusual warmups; 404.html fallback still applies
 }
