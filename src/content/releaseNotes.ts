@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1033',
+    date: '2026-07-28',
+    title: 'Rider fees show up in Stages totals and Bill Customer',
+    kind: 'fix',
+    highlights: [
+      'The Stages board\'s bid and Left on Job figures now include hazmat fees (existing jobs corrected).',
+      'Bill Customer offers a pre-checked "Add hazmat fee" box that grows the invoice total — on both Stripe and Physical — with the fee as its own labeled line.',
+      'Once the fee ships on a bill it attaches to that invoice, so it can never be added twice.',
+    ],
+  },
+  {
     version: 'v2.1032',
     date: '2026-07-27',
     title: 'Rider rows read better on desktop',

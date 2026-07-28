@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-27 (v2.1032)
+last_updated: 2026-07-28 (v2.1033)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1033)
+
+### Job-total hazmat fees ADD to the bill (checkbox) + Stages totals repaired (2026-07-28)
+Report: the Stages "Progress & payment" column still showed the fee-less totals ($4,210 bid / Left on Job $1,880 on 857) and Bill Customer didn't include the rider in the total. Two roots, two fixes. **(1) Data**: migration [`20260728004043_hazmat_revenue_resync.sql`](../supabase/migrations/20260728004043_hazmat_revenue_resync.sql) (`db push` after merge) repairs `jobs_ledger.revenue = fixtures + fees` for hazmat jobs — pre-v2.1029 saves had wiped the fee bump, and the Stages board reads stored revenue (857 → bid $4,710, Left on Job $2,380). **(2) Billing semantics**: v2.1031 wrongly treated unlinked (job-total) fees as *inside* the bill amount; they are NOT on any bill, so [`SendRecordInvoiceModal`](../src/components/jobs/SendRecordInvoiceModal.tsx) now handles them like roll-ins — an **add-on with a checkbox** (default ON, mounted on BOTH the Stripe and Physical tabs): "☣ Add hazmat fee ($500.00) as a line item — invoice total becomes $2,380.00. Uncheck if this bill's amount already covers it." Stripe: `amount_dollars = amt + jobTotal fees` (+ its own labeled `extra_line_items`; the edge fn already grows the invoice row's amount). Physical: PDF total + fee rows + `amount_dollars` grow the same way, and the client updates the invoice row's amount after send (the physical fn doesn't). Successful sends **repoint** the shipped incidents so they never add on twice; linked (folded) fees keep the inside-the-amount split. Hardening found live: not every opener's invoice payload carries `is_primary_rtb_bundle` — the detection now fetches the flag itself instead of silently degrading. Verified live on 857's $1,880 primary: checkbox + $2,380 total on both tabs. No RPC changes.
 
 ## Latest Updates (v2.1032)
 

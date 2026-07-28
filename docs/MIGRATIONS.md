@@ -5,7 +5,7 @@ file: MIGRATIONS.md
 type: Reference/Changelog
 purpose: Complete database migration history organized by date and category
 audience: Developers, Database Administrators, AI Agents
-last_updated: 2026-07-27
+last_updated: 2026-07-28
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate to Advanced
 
@@ -102,6 +102,14 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 > **Reading older entries:** filenames beginning **`2027…`** are **typo-dated** (the real work happened March–June 2026). All of them predate the **2026-06-04 baseline squash** — the files now live in [`supabase/archive/migrations-pre-baseline/`](../supabase/archive/migrations-pre-baseline/) and their schema is part of [`20250101000000_baseline.sql`](../supabase/migrations/20250101000000_baseline.sql). Entries below keep the original filenames so they match the archive. The prod ledger was fully reconciled on **2026-07-04** (backup: `supabase_migrations._schema_migrations_backup_20260704`); since then, migrations apply **only** via `supabase db push` (see `CLAUDE.md`).
 
 ### July 2026
+
+#### July 28, 2026
+
+**`20260728004043_hazmat_revenue_resync.sql`** _(apply via `supabase db push` after the file is on `main`)_
+- **Purpose**: One-time revenue repair for hazmat-fee jobs (v2.1033) — pre-v2.1029 saves recomputed `jobs_ledger.revenue` from fixtures alone, wiping fee bumps; this sets `revenue = fixtures_sum + fee_sum` for jobs with `job_hazmat_incidents` (1 job in prod today), fixing the Stages "bid" / "Left on Job" under-count. Fixtures sum mirrors `revenueDollarsFromFixtures` (named rows; qty = count > 0 else 1). Idempotent.
+- **Security**: plain data UPDATE, no DDL.
+- **Ordering**: either order safe.
+- **Category**: Jobs / billing data repair
 
 #### July 27, 2026
 
