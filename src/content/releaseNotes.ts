@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1035',
+    date: '2026-07-28',
+    title: 'Hazmat fee counted once, shown once',
+    kind: 'fix',
+    highlights: [
+      'The bill already includes the hazmat fee (the open bill tracks the job\'s full remainder), so the short-lived "Add hazmat fee" checkbox is gone — it would have charged the fee twice.',
+      'Previews and the sent invoice show the fee as its own labeled line inside the bill total, and the incident attaches to the invoice once it ships.',
+    ],
+  },
+  {
     version: 'v2.1034',
     date: '2026-07-28',
     title: 'Previews show the hazmat fee line',
