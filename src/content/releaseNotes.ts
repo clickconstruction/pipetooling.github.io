@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1055',
+    date: '2026-07-28',
+    title: 'Tighter job header on full-screen activity',
+    kind: 'fix',
+    highlights: [
+      'The full-screen Job activity / notes header is now two compact lines: "Job: 933 · PLUM · Burt Carter" on top, the address on one line below (still opens Google Maps).',
+    ],
+  },
+  {
     version: 'v2.1054',
     date: '2026-07-28',
     title: 'Full-screen activity truly covers the screen',

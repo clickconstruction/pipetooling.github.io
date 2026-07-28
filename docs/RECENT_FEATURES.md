@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-28 (v2.1054)
+last_updated: 2026-07-28 (v2.1055)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1055)
+
+### Jobs Stages: fullscreen activity header condensed to two lines (2026-07-28)
+Request: the four-line job header ("Job: 933 / Plumbing / Burt Carter / two-line address") becomes two lines — badge + service tag + name on one row, address on one line below. `renderStagesThreadFullscreenJobHeader` ([`jobsStagesRowShared`](../src/components/jobs/jobsStagesRowShared.tsx)) now puts the job name in the same wrap-row as the `Job: N` badge and swaps the full service-type name for the board's abbreviated uppercase tag (`getBidServiceTypeTag().tag`, e.g. PLUM); the address joins `formatAddressTwoLines`'s lines with a space (zip still dropped) into a single Google-Maps-linked line. Client-only.
 
 ## Latest Updates (v2.1054)
 
