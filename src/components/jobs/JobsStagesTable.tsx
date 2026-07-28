@@ -580,6 +580,7 @@ export default function JobsStagesTable(props: JobsStagesTableProps) {
                     <JobThreadNotesPanel
                       fullscreenControl={{ active: jobThreadFullscreen, onToggle: () => setJobThreadFullscreen(!jobThreadFullscreen) }}
                       fullscreenHeader={renderStagesThreadFullscreenJobHeader(j)}
+                      nextAppointment={stagesUpcomingByJobId[j.id] ?? null}
                       pctComplete={j.pct_complete ?? null}
                       canEditPct={canEditJobPctComplete}
                       pctSaving={pctCompleteSavingId === j.id}

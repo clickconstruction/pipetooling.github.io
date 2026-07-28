@@ -990,8 +990,12 @@ export function renderStagesLastActivityCell(
             {author ? <span>{author}</span> : null}
             {author ? <span style={{ margin: '0 0.35rem' }}>·</span> : null}
             <span>{formatDispatchNoteWeekdayShortTimeChicago(atIso)}</span>
-            <span style={{ marginLeft: '0.35rem' }}>({formatDispatchNoteDaysAgoShortPhrase(atIso)})</span>
-            {renderStagesThreadExpandButton(ctx, jobId)}
+            {/* nowrap glue: the "(ago)" phrase and the chevron/count wrap together —
+                never a lone "▼ 2" line under the header (Option C wrap fix). */}
+            <span style={{ marginLeft: '0.35rem', whiteSpace: 'nowrap' }}>
+              ({formatDispatchNoteDaysAgoShortPhrase(atIso)})
+              {renderStagesThreadExpandButton(ctx, jobId)}
+            </span>
           </div>
           <div
             style={{

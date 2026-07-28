@@ -911,6 +911,7 @@ export default function JobsStagesUnifiedTable(props: JobsStagesUnifiedTableProp
                         <JobThreadNotesPanel
                           fullscreenControl={{ active: jobThreadFullscreen, onToggle: () => setJobThreadFullscreen(!jobThreadFullscreen) }}
                           fullscreenHeader={renderStagesThreadFullscreenJobHeader(j)}
+                          nextAppointment={stagesUpcomingByJobId[j.id] ?? null}
                           pctComplete={j.pct_complete ?? null}
                           canEditPct={canEditJobPctComplete}
                           pctSaving={pctCompleteSavingId === j.id}
@@ -1312,6 +1313,7 @@ export default function JobsStagesUnifiedTable(props: JobsStagesUnifiedTableProp
                         <JobThreadNotesPanel
                           fullscreenControl={{ active: jobThreadFullscreen, onToggle: () => setJobThreadFullscreen(!jobThreadFullscreen) }}
                           fullscreenHeader={renderStagesThreadFullscreenJobHeader(job)}
+                          nextAppointment={stagesUpcomingByJobId[job.id] ?? null}
                           pctComplete={job.pct_complete ?? null}
                           canEditPct={canEditJobPctComplete}
                           pctSaving={pctCompleteSavingId === job.id}
