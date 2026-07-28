@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-28 (v2.1056)
+last_updated: 2026-07-28 (v2.1057)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1057)
+
+### Job Calendar: any-day selection drives Schedule… and week dispatch; quiet days grey (2026-07-28)
+Request: (1) days with no activity should render faint like spill days — [`JobCalendarModal`](../src/components/jobs/JobCalendarModal.tsx) day numbers now use `var(--text-strong)` only when the day has dots or a worked ✓, else `var(--text-faint)`; (2) every day is clickable (re-click deselects) with a `var(--bg-amber-100)` highlight and a "Selected: <date>" footer note — `onOpenSchedule`/`onOpenWeekDispatch` now receive the selected ymd. [`JobsStagesTab`](../src/components/jobs/JobsStagesTab.tsx) threads it: new `scheduleModalInitialDate` state feeds [`ScheduleJobModal`](../src/components/jobs/ScheduleJobModal.tsx)'s new optional `initialWorkDate` prop (both the state initializer AND the open-reset effect — line ~132 — else the effect stomps it back to today), cleared on close; week dispatch uses `companyWeekStartSundayContaining(selectedYmd)` for the `?week=` param. Schedule button relabels to "Schedule Tue, Jul 14…" while a day is held. Client-only.
 
 ## Latest Updates (v2.1056)
 

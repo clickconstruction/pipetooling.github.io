@@ -75,6 +75,8 @@ type Props = {
   teamMembers: ScheduleTeamMember[]
   /** Roster (e.g. Jobs page users); shown after job team in assignee picker. */
   assigneeCandidates?: ScheduleTeamMember[]
+  /** Day the modal opens on (Job Calendar day selection); defaults to today. */
+  initialWorkDate?: string | null
 }
 
 const EMPTY_TEAM_MEMBERS: ScheduleTeamMember[] = []
@@ -92,13 +94,14 @@ export function ScheduleJobModal({
   jobTitle,
   teamMembers,
   assigneeCandidates: assigneeCandidatesProp,
+  initialWorkDate,
 }: Props) {
   const assigneeCandidates = assigneeCandidatesProp ?? EMPTY_ASSIGNEE_CANDIDATES
   const draftsRef = useRef<Record<string, ScheduleFormDraft>>({})
   const [contextStack, setContextStack] = useState<ScheduleJobContext[]>(() => [
     { jobId, jobTitle, project_id: null, teamMembers },
   ])
-  const [workDate, setWorkDate] = useState(() => scheduleTodayDateKey())
+  const [workDate, setWorkDate] = useState(() => initialWorkDate ?? scheduleTodayDateKey())
   const [blocksThisJob, setBlocksThisJob] = useState<Awaited<ReturnType<typeof fetchJobScheduleBlocksForJobDay>>['data']>([])
   const [dayBlocksAll, setDayBlocksAll] = useState<Awaited<ReturnType<typeof fetchScheduleBlocksForAssigneesOnDay>>['data']>([])
   const [loading, setLoading] = useState(false)
@@ -126,7 +129,7 @@ export function ScheduleJobModal({
     }
     setContextStack([{ jobId, jobTitle, project_id: null, teamMembers }])
     draftsRef.current = {}
-    setWorkDate(scheduleTodayDateKey())
+    setWorkDate(initialWorkDate ?? scheduleTodayDateKey())
     setContextNavError(null)
     const teamFirst = teamMembers[0]?.user_id
     if (teamFirst) {

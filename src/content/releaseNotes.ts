@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1057',
+    date: '2026-07-28',
+    title: 'Job Calendar: pick a day, act on it',
+    kind: 'feature',
+    highlights: [
+      'On the Job Calendar, any day is now clickable — highlight one and Schedule… opens right on that date, while Open week dispatch jumps to that week.',
+      'Days with nothing scheduled or worked now show in grey, so the busy days stand out.',
+    ],
+  },
+  {
     version: 'v2.1056',
     date: '2026-07-28',
     title: 'Job Calendar: see whose calendars a job is on',

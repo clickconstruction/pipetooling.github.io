@@ -17,7 +17,7 @@ Every job on **Jobs → Stages** shows a **j:** date in the Team & Last-update c
 - The summary line tells you the shape of the schedule at a glance: *3 scheduled days · 2 people · Fri, Jul 31 – Tue, Aug 4*, plus the **next** upcoming appointment.
 - The month grid shows a **colored dot for each person** scheduled that day — the legend beside the month name maps colors to people. Use {{button:outline|‹}} {{button:outline|›}} to move between months.
 - Today has a blue outline. A small green **✓** under a day means someone actually worked it (an approved clock session).
-- Click any day with dots to jump to it in the appointment list.
+- **Click any day to highlight it** (click again to un-highlight). Days with appointments also jump the list below to themselves. Days with nothing scheduled or worked show in grey.
 
 ## The appointment list
 
@@ -31,5 +31,5 @@ clean out to the right of the front door next to the sidewalk
 
 ## Act on it
 
-- {{button:outline-blue|Open week dispatch}} jumps to the full dispatch grid focused on this job.
-- {{button:green|Schedule…}} (planner roles) opens the same scheduling window as the activity panel, right on top of the calendar — add a day, and the calendar reflects it when reopened.
+- {{button:outline-blue|Open week dispatch}} jumps to the full dispatch grid focused on this job — **on the week of the highlighted day**, if one is highlighted.
+- {{button:green|Schedule…}} (planner roles) opens the same scheduling window as the activity panel, right on top of the calendar — **pre-set to the highlighted day** (the button even says so, e.g. *Schedule Tue, Jul 14…*). Add the block, and the calendar reflects it when reopened.
