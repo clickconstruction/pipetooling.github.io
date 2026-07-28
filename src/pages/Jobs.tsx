@@ -350,6 +350,9 @@ export default function Jobs() {
   const {
     expandedJobThreadId,
     setExpandedJobThreadId,
+    jobThreadFullscreen,
+    setJobThreadFullscreen,
+    openJobThreadFullscreen,
     jobThreadActivityByJobId,
     jobThreadNotesLoadingId,
     jobThreadSubmittingId,
@@ -1686,6 +1689,9 @@ export default function Jobs() {
         commitStagesPctWithNote={commitStagesPctWithNote}
         expandedJobThreadId={expandedJobThreadId}
         setExpandedJobThreadId={setExpandedJobThreadId}
+        jobThreadFullscreen={jobThreadFullscreen}
+        setJobThreadFullscreen={setJobThreadFullscreen}
+        openJobThreadFullscreen={openJobThreadFullscreen}
         jobThreadActivityByJobId={jobThreadActivityByJobId}
         jobThreadNotesLoadingId={jobThreadNotesLoadingId}
         jobThreadSubmittingId={jobThreadSubmittingId}

@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-28 (v2.1051)
+last_updated: 2026-07-28 (v2.1052)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1052)
+
+### Jobs Stages: full-screen Job activity / notes + Reports button opens it (2026-07-28)
+Request: a button on the Stages **Job activity / notes** panel that makes it full screen (mobile), and the per-job "N Reports" button should open that full-screen breakdown. [`JobThreadNotesPanel`](../src/components/JobThreadNotesPanel.tsx) gains an optional `fullscreenControl` prop — a Maximize2/Minimize2 header toggle; while active the panel renders as a `position:fixed; inset:0; z-index:50` overlay (safe-area padded, body scroll locked, Esc exits) with the activity list flex-filling and the composer pinned at the bottom. Fullscreen state lives in [`useJobThreadNotes`](../src/hooks/useJobThreadNotes.ts) (`jobThreadFullscreen` + `openJobThreadFullscreen(jobId)`; collapsing the thread resets it), threaded Jobs → JobsStagesTab → both stages tables. The Stages "N Reports" footer button ([`jobsStagesRowShared`](../src/components/jobs/jobsStagesRowShared.tsx)) now calls `openJobThreadFullscreen(job.id)` instead of opening `JobReportsModal` (that modal + its `viewReportsJob` state removed from `JobsStagesTab`; reports remain inline in the thread feed). z-order: overlay (50) sits below the modals the panel can spawn — ReportView 60, ManageJobPeople 70, ScheduleJob 1002. New help guide [`open-job-activity-full-screen`](../src/content/help/open-job-activity-full-screen.md). Client-only.
 
 ## Latest Updates (v2.1051)
 
