@@ -1,5 +1,6 @@
 import { supabase } from './supabase'
 import { withSupabaseRetry } from '../utils/errorHandling'
+import { scheduleFormatTimeHm } from './jobScheduleChicago'
 
 /**
  * Next upcoming schedule appointment per job for the Stages Activity column
@@ -62,6 +63,25 @@ export function pickNextUpcomingAppointmentPerJob(
 }
 
 /** Avoid oversized uuid[] filters — same chunk size as the thread-stats fetch. */
+/** "Fri Jul 31" — the NEXT line's compact date. */
+export function formatStagesNextDateLabel(ymd: string): string {
+  const [y, m, d] = ymd.split('-').map(Number)
+  return new Date(y || 1970, (m || 1) - 1, d || 1)
+    .toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
+    .replace(',', '')
+}
+
+/** "8:00–9:30 AM" — window with the start meridiem dropped when both sides share it. */
+export function formatStagesCompactWindow(timeStart: string, timeEnd: string): string {
+  const a = scheduleFormatTimeHm(timeStart)
+  const b = scheduleFormatTimeHm(timeEnd)
+  const suffixA = a.slice(-3)
+  if ((suffixA === ' AM' || suffixA === ' PM') && b.endsWith(suffixA)) {
+    return `${a.slice(0, -3)}\u2013${b}`
+  }
+  return `${a}\u2013${b}`
+}
+
 export const UPCOMING_SCHEDULE_JOB_IDS_CHUNK = 200
 
 export async function fetchStagesUpcomingScheduleForJobs(

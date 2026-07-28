@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-28 (v2.1061)
+last_updated: 2026-07-28 (v2.1062)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1062)
+
+### Jobs Stages: NEXT line reordered — crew first, date/window below (2026-07-28)
+Request: "NEXT Fri, Jul 31 · 8:00 AM–9:30 AM · Abraham" becomes "NEXT · Abraham" over "Fri Jul 31 8:00–9:30 AM". New kernel formatters in [`stagesUpcomingSchedule.ts`](../src/lib/stagesUpcomingSchedule.ts) (+3 tests): `formatStagesNextDateLabel` ("Fri Jul 31", comma dropped) and `formatStagesCompactWindow` ("8:00–9:30 AM" — start meridiem dropped when both sides share it; "11:00 AM–12:30 PM" across noon). Applied to BOTH the row line ([`jobsStagesRowShared`](../src/components/jobs/jobsStagesRowShared.tsx) `renderStagesUpcomingScheduleLine` — tooltip keeps the one-line composite) and the pinned strip in [`JobThreadNotesPanel`](../src/components/JobThreadNotesPanel.tsx), so the two surfaces stay mirrored. Client-only.
 
 ## Latest Updates (v2.1061)
 

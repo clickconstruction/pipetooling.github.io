@@ -2,8 +2,11 @@ import { type CSSProperties, type KeyboardEvent, type ReactNode } from 'react'
 import { Link, type NavigateFunction } from 'react-router-dom'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import type { JobCalendarJobIdentity } from '../../lib/jobCalendarModal'
-import type { StagesUpcomingAppointment } from '../../lib/stagesUpcomingSchedule'
-import { scheduleFormatWindow } from '../../lib/jobScheduleChicago'
+import {
+  formatStagesCompactWindow,
+  formatStagesNextDateLabel,
+  type StagesUpcomingAppointment,
+} from '../../lib/stagesUpcomingSchedule'
 import { getBidServiceTypeTag } from '../../utils/unifiedJobBidSearch'
 import {
   deriveStagesBillingActivityDetail,
@@ -512,20 +515,15 @@ export function renderStagesLastActivityCell(
   const scheduleNoTeam = (job.team_members?.length ?? 0) === 0
   const cellReportCount = job.report_count ?? 0
 
-  // "Next: Fri Jul 31 · 11:00 AM–12:30 PM · Abraham — note" — the job's next
-  // upcoming schedule appointment; click opens the Job Calendar.
+  // "NEXT · Abraham" over "Fri Jul 31 8:00–9:30 AM" — the job's next upcoming
+  // schedule appointment (who first, when below); click opens the Job Calendar.
   function renderStagesUpcomingScheduleLine() {
     const up = stagesUpcomingByJobId[jobId]
     if (!up) return null
-    const [uy, um, ud] = up.ymd.split('-').map(Number)
-    const dateLabel = new Date(uy || 1970, (um || 1) - 1, ud || 1).toLocaleDateString('en-US', {
-      weekday: 'short',
-      month: 'short',
-      day: 'numeric',
-    })
-    const windowLabel = scheduleFormatWindow(up.timeStart, up.timeEnd)
+    const dateLabel = formatStagesNextDateLabel(up.ymd)
+    const windowLabel = formatStagesCompactWindow(up.timeStart, up.timeEnd)
     const who = up.assigneeNames.join(', ')
-    const headline = `${dateLabel} · ${windowLabel} · ${who}`
+    const headline = `${dateLabel} ${windowLabel} · ${who}`
     return (
       <button
         type="button"
@@ -549,10 +547,14 @@ export function renderStagesLastActivityCell(
         }}
       >
         <div style={{ fontSize: '0.6875rem', color: 'var(--text-muted)' }}>
-          <span style={{ fontSize: '0.65rem', fontWeight: 700, textTransform: 'uppercase', color: '#15803d', marginRight: '0.35rem' }}>
+          <span style={{ fontSize: '0.65rem', fontWeight: 700, textTransform: 'uppercase', color: '#15803d' }}>
             Next
           </span>
-          {headline}
+          <span style={{ margin: '0 0.35rem' }}>·</span>
+          {up.assigneeNames.join(', ')}
+        </div>
+        <div style={{ fontSize: '0.6875rem', color: 'var(--text-muted)' }}>
+          {dateLabel} {windowLabel}
         </div>
         {up.note ? (
           <div

@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
+  formatStagesCompactWindow,
+  formatStagesNextDateLabel,
   pickNextUpcomingAppointmentPerJob,
   type StagesUpcomingBlockRow,
 } from './stagesUpcomingSchedule'
@@ -73,5 +75,21 @@ describe('pickNextUpcomingAppointmentPerJob', () => {
       note: null,
     })
     expect(out.j1!.assigneeNames).toEqual(['Abraham'])
+  })
+})
+
+describe('formatStagesNextDateLabel', () => {
+  it('renders "Fri Jul 31" with no comma', () => {
+    expect(formatStagesNextDateLabel('2026-07-31')).toBe('Fri Jul 31')
+  })
+})
+
+describe('formatStagesCompactWindow', () => {
+  it('drops the start meridiem when both sides share it', () => {
+    expect(formatStagesCompactWindow('08:00:00', '09:30:00')).toBe('8:00\u20139:30 AM')
+    expect(formatStagesCompactWindow('13:00:00', '16:00:00')).toBe('1:00\u20134:00 PM')
+  })
+  it('keeps both meridiems across noon', () => {
+    expect(formatStagesCompactWindow('11:00:00', '12:30:00')).toBe('11:00 AM\u201312:30 PM')
   })
 })
