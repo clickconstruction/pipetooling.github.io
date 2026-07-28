@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-28 (v2.1041)
+last_updated: 2026-07-28 (v2.1042)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1042)
+
+### Jobs Stages: the emailed-customer hint no longer overflows narrow columns (2026-07-28)
+Follow-up to v2.1041: on small viewports the single nowrap chunk ("✉ Stripe emailed Mon 10:28 PM (1d)") ran past the Activity column into the next one. The ✉ is gone (user request) and the text is now two nowrap chunks — "Stripe emailed" + "Mon 10:28 PM (1d)" — so tight columns wrap cleanly between label, time, and the Resend chip instead of overflowing ([`jobsStagesRowShared.tsx`](../src/components/jobs/jobsStagesRowShared.tsx)). Verified contained at phone width. Client-only.
 
 ## Latest Updates (v2.1041)
 

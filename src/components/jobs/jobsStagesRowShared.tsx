@@ -745,9 +745,11 @@ export function renderStagesLastActivityCell(
     const sentMeta = getDispatchNoteDisplayMeta(String(sentRaw))
     const stripePaid =
       String(line.stripe_invoice_status ?? '').toLowerCase() === 'paid'
-    // One scan line (v2.1041): "✉ Stripe emailed Mon 10:28 PM (1d) · Resend".
+    // One scan line (v2.1041): "Stripe emailed Mon 10:28 PM (1d) Resend".
     // Full wording lives in the tooltip; the resend control keeps its own
-    // confirm/disable behavior.
+    // confirm/disable behavior. The text is two nowrap chunks (label, time)
+    // so narrow Activity columns wrap between them instead of overflowing
+    // into the next column (v2.1042).
     return (
       <div
         title={`Stripe emailed the customer ${sentMeta.weekdayTimeChicago} (${sentMeta.daysAgoLabel})`}
@@ -764,9 +766,9 @@ export function renderStagesLastActivityCell(
           textAlign: 'center',
         }}
       >
+        <span style={{ whiteSpace: 'nowrap' }}>Stripe emailed</span>
         <span style={{ whiteSpace: 'nowrap' }}>
-          <span aria-hidden>✉ </span>
-          Stripe emailed {formatDispatchNoteWeekdayShortTimeChicago(String(sentRaw))} (
+          {formatDispatchNoteWeekdayShortTimeChicago(String(sentRaw))} (
           {formatDispatchNoteDaysAgoShort(String(sentRaw))})
         </span>
         <span style={{ display: 'inline-flex', alignItems: 'center', whiteSpace: 'nowrap' }}>

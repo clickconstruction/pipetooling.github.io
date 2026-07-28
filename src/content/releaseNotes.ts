@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1042',
+    date: '2026-07-28',
+    title: 'Emailed-customer hint fits small screens',
+    kind: 'fix',
+    highlights: [
+      'The "Stripe emailed …" line on Jobs → Stages no longer spills into the next column on phones — it wraps cleanly, and the envelope icon is gone.',
+    ],
+  },
+  {
     version: 'v2.1041',
     date: '2026-07-28',
     title: 'Tighter "Stripe emailed customer" hint on Stages',
