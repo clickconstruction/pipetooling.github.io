@@ -44,6 +44,10 @@ When you bill the job through **Bill Customer** (the main bill carrying the fee,
 
 If the biohazard fee bill has **not** been sent yet when you open {{button:primary|Bill Customer}} on the job's main invoice, you'll see a checked box: **Include hazmat fee as a line item**. Leave it checked and the fee becomes its own labeled line on that one invoice (the separate draft is removed automatically); the notice link still rides in the invoice footer. Uncheck it to keep billing the fee separately. Fees the customer already received are never merged.
 
+## Spotting jobs that have a fee
+
+On **Jobs → Stages**, the ☣ button wears a **bright green box** on any job that already carries a live hazmat fee — hover it to confirm. Clicking still opens the wizard if the job needs another fee. Voided fees don't count.
+
 ## Sending the notice email after the fact
 
 Every fee's RIDERS row in ① Line Items carries a pill that tracks the notice email:

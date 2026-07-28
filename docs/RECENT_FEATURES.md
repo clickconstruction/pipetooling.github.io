@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-28 (v2.1039)
+last_updated: 2026-07-28 (v2.1040)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2046,7 +2046,12 @@ when_to_read:
 155. [Customer and Project Management](#customer-and-project-management)
 ---
 
-## Latest Updates (v2.1039)
+## Latest Updates (v2.1040)
+
+### Jobs Stages: the ☣ button wears a bright green box on jobs that have a hazmat fee (2026-07-28)
+Request: make the Stages biohazard button show at a glance which jobs already carry a fee. [`JobsStagesTab`](../src/components/jobs/JobsStagesTab.tsx) fetches every `job_hazmat_incidents.job_id` with `voided_at IS NULL` in one tiny query (fees are rare; skipped for non-office roles; a failure just leaves buttons plain) into a `hazmatFeeJobIds: ReadonlySet<string>` that refreshes when the wizard creates a fee. Both row renderers ([`JobsStagesTable`](../src/components/jobs/JobsStagesTable.tsx), [`JobsStagesUnifiedTable`](../src/components/jobs/JobsStagesUnifiedTable.tsx)) take the set as a prop: member rows get a **2px `#22c55e` border + faint green tint + rounded corners** around the orange ☣ icon and the tooltip flips to "This job has a hazmat fee — click to add another" (clicking still opens the create wizard — multiple incidents per job are supported). Voided-only jobs revert to the plain button. Render tests in both table test files (boxed exactly one of two rows, tooltip). Client-only.
+
+
 
 ### Hazmat notice email: opt-in at billing, send-any-time after, tracked everywhere (2026-07-28)
 Request: don't pre-select the notice-email box at billing, and make after-the-fact sending a real workflow. **(1)** The ☣ **Also email the notice** box in [`SendRecordInvoiceModal`](../src/components/jobs/SendRecordInvoiceModal.tsx) now defaults **unchecked**. **(2)** Every successful send is stamped — migration [`20260728050000`](../supabase/migrations/20260728050000_hazmat_notice_tracking_and_link.sql) adds `notice_emailed_at`/`notice_emailed_to`, and the [`send-hazmat-notice-email`](../supabase/functions/send-hazmat-notice-email/index.ts) edge fn (the single funnel both send paths use) writes them + a `hazmat_notice_emailed` job-activity row via service role after Resend accepts. **(3)** The RIDERS row pill shows **"Notice not emailed"** (amber) / **"Notice emailed {date}"** (green, hover for address); the button becomes **Re-email notice…** after the first send, and its browser confirm is now a proper ConfirmDialog. **(4)** The Stripe success screen offers **"Email the notice now"** when the box was left unchecked. Also fixes the **silent repoint no-op** found in the 2026-07-28 crash investigation: `job_hazmat_incidents` has no client write policies, so the billing modal's direct `invoice_id` UPDATE never persisted — new `link_hazmat_fee_incident_to_invoice` RPC (office-gated, cross-job/voided refusals, idempotent) replaces all three call sites, and the migration one-row-fixes job 857's incident onto its sent Stripe invoice (which also correctly locks its Edit/Void/Delete buttons).
