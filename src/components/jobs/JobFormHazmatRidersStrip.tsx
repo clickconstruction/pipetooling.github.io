@@ -96,7 +96,9 @@ export function JobFormHazmatRiderRows({
   }
 
   const smallBtn = {
-    padding: '0.15rem 0.45rem',
+    flex: '1 1 0',
+    textAlign: 'center',
+    padding: '0.3rem 0.45rem',
     fontSize: '0.75rem',
     border: '1px solid var(--border-strong)',
     borderRadius: 4,
@@ -134,7 +136,10 @@ export function JobFormHazmatRiderRows({
           const incidentDay = formatWorkDateYmdMonthDayShort(String(row.incident_at).slice(0, 10))
           return (
             <tr key={row.id} style={{ background: 'var(--bg-red-tint)' }}>
-              <td style={{ padding: '0.5rem 0.75rem', borderBottom: '1px solid var(--border)', fontSize: '0.8125rem' }}>
+              {/* One full-width cell (v2.1032): the title owns the whole line so it
+                  never wraps on desktop, the fee right-aligns beside it, and the
+                  notice actions stretch across the section below. */}
+              <td colSpan={3} style={{ padding: '0.5rem 0.75rem', borderBottom: '1px solid var(--border)', fontSize: '0.8125rem' }}>
                 <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.5rem' }}>
               {/* Icon lives INSIDE the title span so the pair never wraps apart. */}
               <span style={{ fontWeight: 600, color: 'var(--text-800)' }}>
@@ -153,8 +158,12 @@ export function JobFormHazmatRiderRows({
               >
                 {invoiceState}
               </span>
+              <span style={{ flex: 1 }} />
+              <span style={{ fontWeight: 600, fontSize: '0.875rem', color: 'var(--text-700)', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
+                ${formatCurrency(Number(row.fee_amount))}
+              </span>
                 </div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', marginTop: '0.35rem' }}>
+                <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.45rem' }}>
               <button type="button" onClick={() => openNotice(row)} style={smallBtn} title="Open the printable Biohazard Remediation Fee Notice">
                 Open notice
               </button>
@@ -196,21 +205,6 @@ export function JobFormHazmatRiderRows({
                 </button>
               ) : null}
                 </div>
-              </td>
-              <td style={{ textAlign: 'center', borderBottom: '1px solid var(--border)', color: 'var(--text-faint)' }}>—</td>
-              <td
-                style={{
-                  padding: '0.5rem 0.375rem 0.5rem 0.625rem',
-                  textAlign: 'right',
-                  verticalAlign: 'top',
-                  borderBottom: '1px solid var(--border)',
-                  whiteSpace: 'nowrap',
-                  fontVariantNumeric: 'tabular-nums',
-                  fontSize: '0.875rem',
-                  color: 'var(--text-700)',
-                }}
-              >
-                ${formatCurrency(Number(row.fee_amount))}
               </td>
             </tr>
           )

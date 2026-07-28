@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-27 (v2.1031)
+last_updated: 2026-07-27 (v2.1032)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1032)
+
+### Rider row: full-width layout — no title wrap, actions span the section (2026-07-27)
+Desktop feedback on v2.1029's table-column rider rows: the title wrapped ("…incident Jul\n21") because it shared column 1 with the pill, and the notice buttons huddled bottom-left. The row in [`JobFormHazmatRidersStrip.tsx`](../src/components/jobs/JobFormHazmatRidersStrip.tsx) is now ONE `colSpan={3}` cell: line 1 = ☣ title + status pill with the fee right-aligned on the same line (`flex: 1` spacer, tabular nums); line 2 = the four notice actions with `flex: 1 1 0` so they stretch evenly across the section. Verified live at 1280px: title one line, fee on the title line, buttons within 12px of the row's right edge.
 
 ## Latest Updates (v2.1031)
 
