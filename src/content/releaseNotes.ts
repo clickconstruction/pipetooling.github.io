@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1045',
+    date: '2026-07-28',
+    title: 'Stages previews skip "Leaving job" stamps',
+    kind: 'fix',
+    highlights: [
+      'The activity preview now shows the tech\'s latest real note instead of an "Arrived at job" / "Leaving job" stamp posted after it.',
+      'Stamps still count and still appear in the expanded Job activity / notes thread.',
+    ],
+  },
+  {
     version: 'v2.1044',
     date: '2026-07-28',
     title: 'Report previews read like notes on Stages',

@@ -387,10 +387,17 @@ export function useJobThreadNotes(
             ...EMPTY_JOB_THREAD_STATS,
             ...cur,
             note_count: (cur?.note_count ?? 0) + 1,
-            last_note_at: optimistic.created_at,
-            last_note_body: trimmed,
-            last_note_author_name:
-              optimistic.author?.name?.trim() ?? cur?.last_note_author_name ?? null,
+            // Stamps ("Arrived at job" / "Leaving job") never take over the row
+            // preview (v2.1045) — the stats RPC skips them, so an optimistic
+            // overwrite here would flash the stamp and snap back.
+            ...(source === 'stamp'
+              ? {}
+              : {
+                  last_note_at: optimistic.created_at,
+                  last_note_body: trimmed,
+                  last_note_author_name:
+                    optimistic.author?.name?.trim() ?? cur?.last_note_author_name ?? null,
+                }),
           },
         }
       })

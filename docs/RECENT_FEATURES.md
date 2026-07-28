@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-28 (v2.1044)
+last_updated: 2026-07-28 (v2.1045)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1045)
+
+### Jobs Stages: activity previews prefer real notes over clock stamps (2026-07-28)
+Request: a "Leaving job" stamp posted right after a substantive note buried it on the Stages board. Migration [`20260728070000`](../supabase/migrations/20260728070000_thread_stats_skip_stamps.sql) replaces `jobs_ledger_thread_note_stats`: the last-note pick ranks non-stamp notes first (stamps identified by their fixed `— Arrived at job` / `— Leaving job` body suffix from [`jobThreadNoteStampBody.ts`](../src/lib/jobThreadNoteStampBody.ts)) and only falls back to the newest stamp when the thread holds nothing else; note counts and the expanded thread are unchanged. Client ([`useJobThreadNotes.ts`](../src/hooks/useJobThreadNotes.ts)): posting a stamp no longer optimistically overwrites the row preview (it would flash and snap back). The row header follows the shown note's author/time. Verified against prod rows: the regex matches real stamp bodies and the new pick surfaces the preceding substantive note.
 
 ## Latest Updates (v2.1044)
 
