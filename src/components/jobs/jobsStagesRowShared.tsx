@@ -163,8 +163,12 @@ export function renderStagesThreadFullscreenJobHeader(job: JobWithDetails) {
         color: tagInfo ? '#fff' : 'var(--text-700)',
       }
     : null
+  // Abbreviated tag (PLUM), same as the board's Job-column pill — the full
+  // name is too wide for the one-line header.
+  const serviceLabel = stName ? (tagInfo?.tag ?? stName.slice(0, 4)).toUpperCase() : ''
   const addr = (job.job_address ?? '').trim()
   const addrLines = formatAddressTwoLines(addr)
+  const addrOneLine = addrLines ? [addrLines.line1, addrLines.line2].filter(Boolean).join(' ') : ''
   return (
     <div
       style={{
@@ -177,14 +181,14 @@ export function renderStagesThreadFullscreenJobHeader(job: JobWithDetails) {
         flexShrink: 0,
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'wrap' }}>
         <span style={stagesJobHcpBadgeStyle}>Job: {jobNumber || '—'}</span>
-        {servicePillStyle ? <span style={servicePillStyle}>{stName}</span> : null}
+        {servicePillStyle ? <span style={servicePillStyle}>{serviceLabel}</span> : null}
+        <span style={{ fontSize: '0.9375rem', fontWeight: 600, color: 'var(--text-strong)', lineHeight: 1.3 }}>
+          {(job.job_name ?? '').trim() || '—'}
+        </span>
       </div>
-      <span style={{ fontSize: '0.9375rem', fontWeight: 600, color: 'var(--text-strong)', lineHeight: 1.3 }}>
-        {(job.job_name ?? '').trim() || '—'}
-      </span>
-      {addrLines ? (
+      {addrOneLine ? (
         <a
           href={googleMapsSearchUrl(addr)}
           target="_blank"
@@ -192,7 +196,7 @@ export function renderStagesThreadFullscreenJobHeader(job: JobWithDetails) {
           title="Open in Google Maps"
           style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', textDecoration: 'none', alignSelf: 'flex-start' }}
         >
-          <JobAddressText line1={addrLines.line1} line2={addrLines.line2} />
+          {addrOneLine}
         </a>
       ) : null}
     </div>
