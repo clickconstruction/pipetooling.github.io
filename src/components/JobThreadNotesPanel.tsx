@@ -3,7 +3,7 @@ import { getDispatchNoteDisplayMeta, formatDispatchNoteTimeChicago } from '../ut
 import type { UserRole } from '../hooks/useAuth'
 import { displayReportTemplateName } from '../lib/reportTemplateDisplayName'
 import ReportViewModal, { type ReportForView } from './ReportViewModal'
-import { firstNonEmptyFieldValueSummary } from '../lib/reportForViewFromJobLedgerRow'
+import { allReportFieldLinesForThread } from '../lib/reportForViewFromJobLedgerRow'
 import type { JobThreadScheduleActivityItem } from '../lib/jobThreadScheduleActivity'
 import type { JobThreadClockActivityItem } from '../lib/jobThreadClockActivity'
 import { eventRenderMeta, type JobThreadEventActivityItem } from '../lib/jobActivityEvent'
@@ -567,7 +567,7 @@ export function JobThreadNotesPanel({
                 }
                 const r = item.report
                 const { weekdayTimeChicago, daysAgoLabel } = getDispatchNoteDisplayMeta(r.created_at)
-                const summary = firstNonEmptyFieldValueSummary(r)
+                const fieldLines = allReportFieldLinesForThread(r)
                 return (
                   <li
                     key={`r-${r.id}`}
@@ -600,8 +600,16 @@ export function JobThreadNotesPanel({
                     </div>
                     <div style={{ color: 'var(--text-gray-800)' }}>
                       <span style={{ fontWeight: 600 }}>{displayReportTemplateName(r.template_name, viewerRole)}</span>
-                      {summary ? (
-                        <div style={{ marginTop: 4, whiteSpace: 'pre-wrap' }}>{summary}</div>
+                      {fieldLines.length > 0 ? (
+                        <div style={{ marginTop: 4, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                          {fieldLines.map((l) => (
+                            <div key={l.label} style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                              <span style={{ color: 'var(--text-muted)', fontWeight: 500 }}>{l.label}</span>
+                              {' — '}
+                              <span>{l.value}</span>
+                            </div>
+                          ))}
+                        </div>
                       ) : null}
                       <div style={{ marginTop: 6 }}>
                         <button

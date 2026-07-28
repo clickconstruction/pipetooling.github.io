@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-28 (v2.1045)
+last_updated: 2026-07-28 (v2.1046)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1046)
+
+### Jobs Stages: the activity thread shows the whole report, not a 120-char teaser (2026-07-28)
+Request: report entries in the expanded Job activity / notes thread should show the full report. New pure helper `allReportFieldLinesForThread` in [`reportForViewFromJobLedgerRow.ts`](../src/lib/reportForViewFromJobLedgerRow.ts) (3 tests) returns EVERY non-empty field as a label/value pair — same filtering as ReportViewModal (legacy who-key hidden when the new completion key exists, percent formatting, signature images → "Signature on file"). [`JobThreadNotesPanel`](../src/components/JobThreadNotesPanel.tsx) renders those lines (muted label — value, pre-wrap) in place of the old `firstNonEmptyFieldValueSummary` one-liner; **View full report** stays for the modal (drawn signature, map). The one-line summary helper still powers the Stages row preview and dispatch CustomerSummaryModal unchanged. Client-only.
 
 ## Latest Updates (v2.1045)
 
