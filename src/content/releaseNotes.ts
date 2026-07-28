@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1058',
+    date: '2026-07-28',
+    title: 'Job Calendar from the Detail window and Job Mode',
+    kind: 'feature',
+    highlights: [
+      'The calendar icon at the top of a job\'s Detail window now opens the Job Calendar (month view + appointments). Week dispatch and Schedule… are inside it, one click away — Schedule… even opens on the day you highlighted.',
+      'Job Mode: a small "Job calendar" link under the job header shows techs the whole plan for the job they\'re on — read-only.',
+    ],
+  },
+  {
     version: 'v2.1057',
     date: '2026-07-28',
     title: 'Job Calendar: pick a day, act on it',

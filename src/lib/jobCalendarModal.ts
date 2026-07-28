@@ -6,6 +6,20 @@
  * (person-colored dots, worked-day checks) and an Upcoming / Past list.
  */
 
+/**
+ * Minimal job identity the calendar modal (and its header) needs — structurally
+ * satisfied by JobWithDetails, so Stages passes jobs straight through while
+ * Job Mode / other surfaces can assemble it from leaner rows.
+ */
+export type JobCalendarJobIdentity = {
+  id: string
+  hcp_number: string | null
+  click_number: string | null
+  job_name: string | null
+  job_address: string | null
+  serviceType?: { name: string | null } | null
+}
+
 export type JobCalendarBlockInput = {
   id: string
   assignee_user_id: string

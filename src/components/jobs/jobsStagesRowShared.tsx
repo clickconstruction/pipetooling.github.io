@@ -1,6 +1,7 @@
 import { type CSSProperties, type KeyboardEvent, type ReactNode } from 'react'
 import { Link, type NavigateFunction } from 'react-router-dom'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
+import type { JobCalendarJobIdentity } from '../../lib/jobCalendarModal'
 import { getBidServiceTypeTag } from '../../utils/unifiedJobBidSearch'
 import {
   deriveStagesBillingActivityDetail,
@@ -147,11 +148,12 @@ export function renderStagesJobHcpSubline(job: JobWithDetails, extraWrap?: CSSPr
 }
 
 /**
- * Job identity block atop the FULLSCREEN Job activity / notes panel: number
- * badge + full service-type pill, then job name, then a maps-linked address.
- * Passed as `fullscreenHeader`, so it renders only while fullscreen is active.
+ * Job identity block atop the FULLSCREEN Job activity / notes panel and the
+ * Job Calendar modal: number badge + service-tag pill + job name, then a
+ * maps-linked one-line address. Takes the narrow identity shape so leaner
+ * surfaces (Job Mode) can use it too; JobWithDetails satisfies it structurally.
  */
-export function renderStagesThreadFullscreenJobHeader(job: JobWithDetails) {
+export function renderStagesThreadFullscreenJobHeader(job: JobCalendarJobIdentity) {
   const jobNumber = effectiveJobLedgerNumber(job.hcp_number, job.click_number)
   const stName = job.serviceType?.name?.trim()
   const tagInfo = stName ? getBidServiceTypeTag(stName) : null

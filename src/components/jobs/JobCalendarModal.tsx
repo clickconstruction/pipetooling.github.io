@@ -6,6 +6,7 @@ import {
   jobCalendarMonthLabel,
   JOB_CALENDAR_PERSON_COLORS,
   type JobCalendarAppointment,
+  type JobCalendarJobIdentity,
   type JobCalendarModel,
 } from '../../lib/jobCalendarModal'
 import { fetchJobScheduleBlocksForJob } from '../../lib/jobScheduleBlocks'
@@ -15,7 +16,6 @@ import {
   scheduleTodayDateKey,
 } from '../../lib/jobScheduleChicago'
 import { renderStagesThreadFullscreenJobHeader } from './jobsStagesRowShared'
-import type { JobWithDetails } from '../../types/jobWithDetails'
 
 /**
  * Job Calendar (Jobs → Stages → click the "j:" Field / job-activity date):
@@ -100,12 +100,15 @@ export function JobCalendarModal({
   job,
   onClose,
   canOpenJobScheduleModal,
+  canOpenWeekDispatch = true,
   onOpenSchedule,
   onOpenWeekDispatch,
 }: {
-  job: JobWithDetails
+  job: JobCalendarJobIdentity
   onClose: () => void
   canOpenJobScheduleModal: boolean
+  /** Hide the week-dispatch button for viewers without dispatch access (Job Mode techs). */
+  canOpenWeekDispatch?: boolean
   /** Receives the highlighted day (null when none) so Schedule opens on it. */
   onOpenSchedule: (selectedYmd: string | null) => void
   /** Receives the highlighted day (null when none) so dispatch opens that week. */
@@ -389,6 +392,7 @@ export function JobCalendarModal({
                   Selected: {formatApptDate(selectedYmd)}
                 </span>
               ) : null}
+              {canOpenWeekDispatch ? (
               <button
                 type="button"
                 onClick={() => onOpenWeekDispatch(selectedYmd)}
@@ -397,6 +401,7 @@ export function JobCalendarModal({
               >
                 Open week dispatch
               </button>
+              ) : null}
               {canOpenJobScheduleModal ? (
                 <button
                   type="button"
