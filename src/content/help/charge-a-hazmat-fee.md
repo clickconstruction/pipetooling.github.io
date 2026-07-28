@@ -30,7 +30,7 @@ You can come back to the notice any time: open **Edit Job** — riders now sit i
 When you bill the job through **Bill Customer** (the main bill carrying the fee, or a standalone rider), the notice travels with the bill:
 
 - **Physical Invoice** tab — a pre-checked **☣ Attach the Biohazard Remediation Fee Notice** box sends the notice as a second PDF beside the invoice in the same email.
-- **Stripe** tab — Stripe invoices can't carry attachments, so two things happen instead: a pre-checked **☣ Also email the notice** box sends it to the customer as its own email right after the Stripe invoice is created (click **Preview the email…** underneath to see exactly what they'll receive), and the invoice **footer** automatically gains a link to a public copy of the notice (you'll see it in the Footer box before sending and can remove it).
+- **Stripe** tab — Stripe invoices can't carry attachments, so two things happen instead: a **☣ Also email the notice** box (unchecked by default) sends it to the customer as its own email right after the Stripe invoice is created (click **Preview the email…** underneath to see exactly what they'll receive), and the invoice **footer** automatically gains a link to a public copy of the notice (you'll see it in the Footer box before sending and can remove it). Left the box unchecked? The success screen offers **Email the notice now**, and you can always send later from Edit Job (below).
 - Missed it or need it again? **Edit Job → ① Line Items → riders** has {{button:outline|Email notice…}} to re-send it any time (it confirms the recipient first) and {{button:outline|Copy link}} for the same public notice link the Stripe footer carries.
 
 ## Notes
@@ -43,6 +43,15 @@ When you bill the job through **Bill Customer** (the main bill carrying the fee,
 ## Rolling the fee into the final bill
 
 If the biohazard fee bill has **not** been sent yet when you open {{button:primary|Bill Customer}} on the job's main invoice, you'll see a checked box: **Include hazmat fee as a line item**. Leave it checked and the fee becomes its own labeled line on that one invoice (the separate draft is removed automatically); the notice link still rides in the invoice footer. Uncheck it to keep billing the fee separately. Fees the customer already received are never merged.
+
+## Sending the notice email after the fact
+
+Every fee's RIDERS row in ① Line Items carries a pill that tracks the notice email:
+
+- {{chip:yellow|Notice not emailed}} — the customer has not received the notice email yet.
+- {{chip:green|Notice emailed Jul 28}} — sent, with the date (hover for the address).
+
+Click {{button:secondary|Email notice…}} on the row to send it any time — a confirmation shows the address first. After the first send the button reads **Re-email notice…**; re-sending is always safe. Every send is stamped on the fee and logged in the **Job activity** feed.
 
 ## Editing, voiding, or deleting a fee
 

@@ -79,6 +79,16 @@ export async function voidHazmatFeeIncident(incidentId: string) {
   return callHazmatRpc('void_hazmat_fee_incident', { p_incident_id: incidentId })
 }
 
+/** Point an incident at the invoice carrying its fee (v2.1039). The table has
+ * no client write policies, so the old direct UPDATE was a silent no-op —
+ * every repoint must go through this RPC. */
+export async function linkHazmatFeeIncidentToInvoice(incidentId: string, invoiceId: string) {
+  return callHazmatRpc('link_hazmat_fee_incident_to_invoice', {
+    p_incident_id: incidentId,
+    p_invoice_id: invoiceId,
+  })
+}
+
 export async function deleteHazmatFeeIncident(incidentId: string) {
   return callHazmatRpc('delete_hazmat_fee_incident', { p_incident_id: incidentId })
 }

@@ -105,6 +105,12 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 #### July 28, 2026
 
+**`20260728050000_hazmat_notice_tracking_and_link.sql`** _(apply via `supabase db push` after the file is on `main`; deploy the client first, then redeploy `send-hazmat-notice-email`)_
+- **Purpose**: Hazmat notice-email tracking + incident→invoice linking (v2.1039). Adds `job_hazmat_incidents.notice_emailed_at`/`notice_emailed_to` (stamped by the `send-hazmat-notice-email` edge fn via service role after each successful send). Adds `link_hazmat_fee_incident_to_invoice(p_incident_id, p_invoice_id)` RPC — the billing modal's post-send repoint was a direct client UPDATE that the table's no-client-writes RLS silently ignored (found in the 2026-07-28 crash investigation); office-gated, refuses cross-job links and voided incidents, idempotent. Ends with a one-row data fix linking job 857's incident to its sent Stripe invoice.
+- **Security**: SECURITY DEFINER RPC with the same office gate as the v2.1038 fns; columns are service-role-written only.
+- **Ordering**: client first (new repoint calls need the RPC; old clients' direct UPDATE stays a harmless no-op), edge fn last (stamping needs the columns).
+- **Category**: Jobs / billing
+
 **`20260728025542_hazmat_fee_edit_void_delete.sql`** _(apply via `supabase db push` after the file is on `main`; deploy the client first — the RIDERS buttons call the new RPCs)_
 - **Purpose**: Edit/void/delete for hazmat fees (v2.1038). Adds `job_hazmat_incidents.edited_at` / `voided_at` / `voided_by`; attaches the standard `zzz_archive_on_delete` trigger (table postdated the v2.696 archive sweep); creates three RPCs: `update_hazmat_fee_incident(p_incident_id, p_patch jsonb)` (patches fee_amount/description/photo_links/testimonials/exposed_people/stage_label; an amount delta ripples to the linked open invoice — refusing sent/billed — and `jobs_ledger.revenue`), `void_hazmat_fee_incident` (office incl. assistants; subtracts fee from open bill + revenue, stamps void, unlinks), `delete_hazmat_fee_incident` (dev/master_technician/controller; unwinds money unless voided, logs, deletes — archive trigger snapshots). All three write `job_activity_events` (`hazmat_fee_edited`/`_voided`/`_deleted`).
 - **Security**: SECURITY DEFINER RPCs with explicit role gates; sent/billed bills refuse mutation server-side.

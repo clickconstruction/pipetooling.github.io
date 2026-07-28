@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-28 (v2.1038)
+last_updated: 2026-07-28 (v2.1039)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2046,7 +2046,12 @@ when_to_read:
 155. [Customer and Project Management](#customer-and-project-management)
 ---
 
-## Latest Updates (v2.1038)
+## Latest Updates (v2.1039)
+
+### Hazmat notice email: opt-in at billing, send-any-time after, tracked everywhere (2026-07-28)
+Request: don't pre-select the notice-email box at billing, and make after-the-fact sending a real workflow. **(1)** The ☣ **Also email the notice** box in [`SendRecordInvoiceModal`](../src/components/jobs/SendRecordInvoiceModal.tsx) now defaults **unchecked**. **(2)** Every successful send is stamped — migration [`20260728050000`](../supabase/migrations/20260728050000_hazmat_notice_tracking_and_link.sql) adds `notice_emailed_at`/`notice_emailed_to`, and the [`send-hazmat-notice-email`](../supabase/functions/send-hazmat-notice-email/index.ts) edge fn (the single funnel both send paths use) writes them + a `hazmat_notice_emailed` job-activity row via service role after Resend accepts. **(3)** The RIDERS row pill shows **"Notice not emailed"** (amber) / **"Notice emailed {date}"** (green, hover for address); the button becomes **Re-email notice…** after the first send, and its browser confirm is now a proper ConfirmDialog. **(4)** The Stripe success screen offers **"Email the notice now"** when the box was left unchecked. Also fixes the **silent repoint no-op** found in the 2026-07-28 crash investigation: `job_hazmat_incidents` has no client write policies, so the billing modal's direct `invoice_id` UPDATE never persisted — new `link_hazmat_fee_incident_to_invoice` RPC (office-gated, cross-job/voided refusals, idempotent) replaces all three call sites, and the migration one-row-fixes job 857's incident onto its sent Stripe invoice (which also correctly locks its Edit/Void/Delete buttons).
+
+
 
 ### Edit Job RIDERS: edit, void, or delete a hazmat fee — with an audit trail (2026-07-28)
 Request: edit a Biohazard remediation fee from Edit Job's RIDERS rows (amount, description, photos, testimonials), with an audit trail, and role-split removal (devs/masters/controllers delete; assistants void). Migration [`20260728025542_hazmat_fee_edit_void_delete.sql`](../supabase/migrations/20260728025542_hazmat_fee_edit_void_delete.sql) adds `edited_at`/`voided_at`/`voided_by` columns, the `zzz_archive_on_delete` trigger (the table postdated the v2.696 sweep), and three RPCs: **`update_hazmat_fee_incident`** (jsonb patch; an amount change ripples the delta to the linked OPEN invoice and `jobs_ledger.revenue` atomically; refuses sent/billed bills and voided fees), **`void_hazmat_fee_incident`** (office incl. assistants: subtracts the fee from the open bill + revenue, keeps the record, stamps `voided_at`/`voided_by`), **`delete_hazmat_fee_incident`** (dev/master/controller only: unwinds the money unless already voided, then deletes — archive trigger snapshots it into Recently deleted). Every path writes a `job_activity_events` row (`hazmat_fee_edited` with old→new detail, `hazmat_fee_voided`, `hazmat_fee_deleted`). Client: [`hazmatFeeEdit.ts`](../src/lib/hazmatFeeEdit.ts) kernel (`hazmatFeeMutationBlocker` mirrors the server gate for disable-with-reason; `hazmatFeeRemovalCapability` maps roles → delete/void; 4 tests) + [`HazmatFeeEditDialog`](../src/components/jobs/HazmatFeeEditDialog.tsx) (leaf z 1300: amount, description, photo links, testimonial list). RIDERS rows ([`JobFormHazmatRidersStrip.tsx`](../src/components/jobs/JobFormHazmatRidersStrip.tsx)) gain **Edit… / Void… / Delete…** buttons (per-role, ConfirmDialog-confirmed, disabled with the blocker reason once the bill is sent), a gray struck-through **Voided** state, and refresh Edit Job via `useJobHazmatIncidents().refresh`. Voided fees drop out of the Job Total (`sumHazmatRiderFees`), billing fold-ins (`foldedHazmatFeeLines`), and Bill Customer detection; the printable notice + PDF show a "Record edited {date}" stamp and a red **VOIDED** banner.
