@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1056',
+    date: '2026-07-28',
+    title: 'Job Calendar: see whose calendars a job is on',
+    kind: 'feature',
+    highlights: [
+      'On Jobs → Stages, clicking a job\'s "j:" field-activity date now opens a Job Calendar — a month view with a colored dot for each person scheduled that day, a ✓ on days actually worked, and today outlined.',
+      'Below the calendar, every appointment is listed — upcoming first, past dimmed — with times, people, and notes. Click a day to jump to it.',
+      'Open week dispatch and Schedule… are right there, so you can act on what you see.',
+    ],
+  },
+  {
     version: 'v2.1055',
     date: '2026-07-28',
     title: 'Tighter job header on full-screen activity',

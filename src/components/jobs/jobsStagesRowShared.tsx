@@ -54,6 +54,7 @@ export type StagesRowRenderContext = {
   jobThreadStatsByJobId: ReturnType<typeof useJobThreadNotes>['jobThreadStatsByJobId']
   jobThreadActivityByJobId: ReturnType<typeof useJobThreadNotes>['jobThreadActivityByJobId']
   openJobThreadFullscreen: (jobId: string) => void
+  openJobCalendar: (job: JobWithDetails) => void
   applyStagesInvoiceFocus: (invoiceId: string) => boolean
   canOpenJobScheduleModal: boolean
   setScheduleModalJob: (j: JobWithDetails | null) => void
@@ -204,7 +205,7 @@ export function renderStagesThreadFullscreenJobHeader(job: JobWithDetails) {
 }
 
 export function renderStagesFieldAndBillingLines(ctx: StagesRowRenderContext, job: JobWithDetails) {
-  const { showToast, stagesManHoursByJobId, stagesManHoursLoading, stagesLaborBreakdownByJobId } = ctx
+  const { showToast, stagesManHoursByJobId, stagesManHoursLoading, stagesLaborBreakdownByJobId, openJobCalendar } = ctx
   const jYmd = deriveStagesFieldReferenceYmd({
     lastWorkDate: job.last_work_date,
     lastScheduleWorkDate: job.last_schedule_work_date ?? null,
@@ -239,10 +240,10 @@ export function renderStagesFieldAndBillingLines(ctx: StagesRowRenderContext, jo
         type="button"
         style={jbLineButtonStyle}
         title={jTitle ?? undefined}
-        aria-label="Field / job-activity date (click for explanation)"
+        aria-label="Field / job-activity date (click to open the job calendar)"
         onClick={(e) => {
           e.stopPropagation()
-          showToast('Field / job-activity date', 'info', 2000, { clientX: e.clientX, clientY: e.clientY })
+          openJobCalendar(job)
         }}
       >
         j: {jDisplay ?? '—'}

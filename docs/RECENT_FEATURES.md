@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-28 (v2.1055)
+last_updated: 2026-07-28 (v2.1056)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1056)
+
+### Jobs Stages: Job Calendar modal from the "j:" field-activity date (2026-07-28)
+Request: click the Field / job-activity date and see which days the job is on whose calendars — schedule up top, appointment list below. New pure kernel [`jobCalendarModal.ts`](../src/lib/jobCalendarModal.ts) (+12 tests): merges `job_schedule_blocks` (shared groups → one appointment, people combined), name-sorted person palette (8 saturated colors), per-day color indexes, worked-day set (approved+closed clock sessions), upcoming/past split, summary, Sunday-start month grid math. New [`JobCalendarModal`](../src/components/jobs/JobCalendarModal.tsx): reuses the two-line job header, summary + Next line, ‹ › month grid (person dots, green ✓ worked marks, today outlined, day click scrolls the list), Upcoming (bold) / Past (dimmed) appointment rows with people dots + notes, truncation notice past 100 blocks, footer Open week dispatch + role-gated Schedule… (opens `ScheduleJobModal` at z 1002 over the calendar's z 60). Wire-up: the "j:" line's toast onClick becomes `openJobCalendar(job)` via `StagesRowRenderContext`; `calendarJob` state + modal render live in `JobsStagesTab`. New help guide [`see-a-jobs-calendar`](../src/content/help/see-a-jobs-calendar.md). Client-only.
 
 ## Latest Updates (v2.1055)
 
