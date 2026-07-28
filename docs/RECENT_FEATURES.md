@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-28 (v2.1043)
+last_updated: 2026-07-28 (v2.1044)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1044)
+
+### Jobs Stages: report previews drop the "Report: <template>" prefix line (2026-07-28)
+Request: "Report: Status Report / I think the job is 57%" should read like note previews do — just "I think the job is 57%". The last-activity body in [`jobsStagesRowShared.tsx`](../src/components/jobs/jobsStagesRowShared.tsx) now shows the report's preview text alone; the "Report: <template>" label only fills in when the report has no preview text (so the cell is never blank). The "N Reports" footer chip still identifies report activity. Client-only.
 
 ## Latest Updates (v2.1043)
 
