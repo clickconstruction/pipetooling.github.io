@@ -442,6 +442,17 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
     [hubJobTitleById],
   )
 
+  const hubJobAddressById = useMemo(() => {
+    const m = new Map<string, string>()
+    for (const j of hubJobs) {
+      const a = (j.job_address ?? '').trim()
+      if (a) m.set(j.id, a)
+    }
+    return m
+  }, [hubJobs])
+
+  const getHubJobAddress = useCallback((id: string) => hubJobAddressById.get(id) ?? '', [hubJobAddressById])
+
   const hubMergedRows = useMemo(() => {
     const agg = aggregateWeekSummariesByJob(hubSummaryRows)
     const rows = hubJobs.map((j) => {
@@ -2138,6 +2149,7 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
             userIdsWithBlocksThisWeek={hubUserIdsWithBlocksThisWeek}
             salariedUserIds={hubSalariedUserIds}
             getJobDisplayTitle={getHubJobDisplayTitle}
+            getJobAddress={getHubJobAddress}
             groupMemberCountByGroupId={hubGroupMemberCountByGroupId}
             canEdit={canEdit}
             onWeekShift={shiftWeek}
