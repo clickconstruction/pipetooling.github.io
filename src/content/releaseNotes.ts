@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1047',
+    date: '2026-07-28',
+    title: 'Send back + Collections share a row',
+    kind: 'fix',
+    highlights: [
+      'On Billed Awaiting Payment rows, "Send back" and a red "Collections" button now sit side by side instead of stacked, saving a row of height.',
+    ],
+  },
+  {
     version: 'v2.1046',
     date: '2026-07-28',
     title: 'Full reports in the Stages activity thread',

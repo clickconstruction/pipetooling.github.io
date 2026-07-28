@@ -552,28 +552,32 @@ export default function JobsStagesUnifiedTable(props: JobsStagesUnifiedTableProp
                                 ) : null
                               })() : null}
                             />
-                            {sendBackBelowRemaining && onJobSendBack && (
-                              <button
-                                type="button"
-                                onClick={() => onJobSendBack(j)}
-                                disabled={stagesStatusUpdatingId === j.id}
-                                style={{
-                                  ...stagesSecondaryOutlineButtonBase,
-                                  cursor: stagesStatusUpdatingId === j.id ? 'not-allowed' : 'pointer',
-                                }}
-                              >
-                                {jobSendBackLabel}
-                              </button>
-                            )}
-                            {onJobMoveToCollections && (
-                              <button
-                                type="button"
-                                onClick={() => onJobMoveToCollections(j)}
-                                title="Flag this job as difficult to collect (moves to the Collections section; stays Billed)"
-                                style={{ ...stagesSecondaryOutlineButtonBase, cursor: 'pointer' }}
-                              >
-                                Move to Collections
-                              </button>
+                            {((sendBackBelowRemaining && onJobSendBack) || onJobMoveToCollections) && (
+                              <div style={{ display: 'flex', gap: '0.35rem', justifyContent: 'center', flexWrap: 'wrap' }}>
+                                {sendBackBelowRemaining && onJobSendBack && (
+                                  <button
+                                    type="button"
+                                    onClick={() => onJobSendBack(j)}
+                                    disabled={stagesStatusUpdatingId === j.id}
+                                    style={{
+                                      ...stagesSecondaryOutlineButtonBase,
+                                      cursor: stagesStatusUpdatingId === j.id ? 'not-allowed' : 'pointer',
+                                    }}
+                                  >
+                                    {jobSendBackLabel}
+                                  </button>
+                                )}
+                                {onJobMoveToCollections && (
+                                  <button
+                                    type="button"
+                                    onClick={() => onJobMoveToCollections(j)}
+                                    title="Flag this job as difficult to collect (moves to the Collections section; stays Billed)"
+                                    style={{ ...stagesSecondaryOutlineButtonBase, color: 'var(--text-red-600)', border: '1px solid #dc2626', fontWeight: 600, cursor: 'pointer' }}
+                                  >
+                                    Collections
+                                  </button>
+                                )}
+                              </div>
                             )}
                             {renderJobNoteLine(j)}
                           </>
@@ -604,29 +608,33 @@ export default function JobsStagesUnifiedTable(props: JobsStagesUnifiedTableProp
                                     )
                               }
                             />
-                            {sendBackBelowRemaining && onInvoiceSendBack && bundleInvWithJob != null && (
-                              <button
-                                type="button"
-                                onClick={() => onInvoiceSendBack(bundleInvWithJob)}
-                                disabled={stagesInvoiceUpdatingId === bundleInv.id}
-                                title="Remove this billing line (partial invoice row)"
-                                style={{
-                                  ...stagesSecondaryOutlineButtonBase,
-                                  cursor: stagesInvoiceUpdatingId === bundleInv.id ? 'not-allowed' : 'pointer',
-                                }}
-                              >
-                                {invoiceBundleActionLabel}
-                              </button>
-                            )}
-                            {onJobMoveToCollections && (
-                              <button
-                                type="button"
-                                onClick={() => onJobMoveToCollections(j)}
-                                title="Flag this job as difficult to collect (moves to the Collections section; stays Billed)"
-                                style={{ ...stagesSecondaryOutlineButtonBase, cursor: 'pointer' }}
-                              >
-                                Move to Collections
-                              </button>
+                            {((sendBackBelowRemaining && bundleInvWithJob != null) || onJobMoveToCollections) && (
+                              <div style={{ display: 'flex', gap: '0.35rem', justifyContent: 'center', flexWrap: 'wrap' }}>
+                                {sendBackBelowRemaining && onInvoiceSendBack && bundleInvWithJob != null && (
+                                  <button
+                                    type="button"
+                                    onClick={() => onInvoiceSendBack(bundleInvWithJob)}
+                                    disabled={stagesInvoiceUpdatingId === bundleInv.id}
+                                    title="Remove this billing line (partial invoice row)"
+                                    style={{
+                                      ...stagesSecondaryOutlineButtonBase,
+                                      cursor: stagesInvoiceUpdatingId === bundleInv.id ? 'not-allowed' : 'pointer',
+                                    }}
+                                  >
+                                    {invoiceBundleActionLabel}
+                                  </button>
+                                )}
+                                {onJobMoveToCollections && (
+                                  <button
+                                    type="button"
+                                    onClick={() => onJobMoveToCollections(j)}
+                                    title="Flag this job as difficult to collect (moves to the Collections section; stays Billed)"
+                                    style={{ ...stagesSecondaryOutlineButtonBase, color: 'var(--text-red-600)', border: '1px solid #dc2626', fontWeight: 600, cursor: 'pointer' }}
+                                  >
+                                    Collections
+                                  </button>
+                                )}
+                              </div>
                             )}
                             {renderJobNoteLine(j)}
                           </>
@@ -1112,28 +1120,32 @@ export default function JobsStagesUnifiedTable(props: JobsStagesUnifiedTableProp
                             )
                           })()}
                         />
-                        {sendBackBelowRemaining && (
-                          <button
-                            type="button"
-                            onClick={() => onInvoiceSendBack(invWithJob)}
-                            disabled={stagesInvoiceUpdatingId === inv.id}
-                            style={{
-                              ...stagesSecondaryOutlineButtonBase,
-                              cursor: stagesInvoiceUpdatingId === inv.id ? 'not-allowed' : 'pointer',
-                            }}
-                          >
-                            {invoiceStandaloneActionLabel}
-                          </button>
-                        )}
-                        {onJobMoveToCollections && (
-                          <button
-                            type="button"
-                            onClick={() => onJobMoveToCollections(job)}
-                            title="Flag this job as difficult to collect (moves all its billed lines to the Collections section; stays Billed)"
-                            style={{ ...stagesSecondaryOutlineButtonBase, cursor: 'pointer' }}
-                          >
-                            Move to Collections
-                          </button>
+                        {(sendBackBelowRemaining || onJobMoveToCollections) && (
+                          <div style={{ display: 'flex', gap: '0.35rem', justifyContent: 'center', flexWrap: 'wrap' }}>
+                            {sendBackBelowRemaining && (
+                              <button
+                                type="button"
+                                onClick={() => onInvoiceSendBack(invWithJob)}
+                                disabled={stagesInvoiceUpdatingId === inv.id}
+                                style={{
+                                  ...stagesSecondaryOutlineButtonBase,
+                                  cursor: stagesInvoiceUpdatingId === inv.id ? 'not-allowed' : 'pointer',
+                                }}
+                              >
+                                {invoiceStandaloneActionLabel}
+                              </button>
+                            )}
+                            {onJobMoveToCollections && (
+                              <button
+                                type="button"
+                                onClick={() => onJobMoveToCollections(job)}
+                                title="Flag this job as difficult to collect (moves all its billed lines to the Collections section; stays Billed)"
+                                style={{ ...stagesSecondaryOutlineButtonBase, color: 'var(--text-red-600)', border: '1px solid #dc2626', fontWeight: 600, cursor: 'pointer' }}
+                              >
+                                Collections
+                              </button>
+                            )}
+                          </div>
                         )}
                         {renderJobNoteLine(job)}
                       </div>
