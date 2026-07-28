@@ -934,7 +934,7 @@ export default function SendRecordInvoiceModal({
           // split inside the amount; roll-ins add on top — so the preview shows
           // the hazmat fee line the customer will actually see.
           const previewRollIns = includeHazmatRollIn && !hazmatIncidentForInvoice ? hazmatRollInLines : []
-          const previewFolded = hazmatFeeLinesWithinAmount(foldedFeeLines, amt)
+          const previewFolded = lineDescTrim.length > 0 ? [] : hazmatFeeLinesWithinAmount(foldedFeeLines, amt)
           const previewExtras = [...previewFolded, ...previewRollIns]
           const previewTotal = amt + hazmatRollInTotalDollars(previewRollIns)
           const { data: raw, error: fnErr } = await supabase.functions.invoke('preview-stripe-invoice', {
@@ -1036,6 +1036,8 @@ export default function SendRecordInvoiceModal({
     }
     const lineDesc = stripeLineDescription.trim()
     const physicalInvId = kind === 'invoice' ? invoice?.id ?? null : ensuredInvoice?.id ?? null
+    // A Line item override covers the whole amount, fee included (v2.1036).
+    const physFeeLines = lineDesc.length > 0 ? [] : foldedFeeLines
     const doc = buildPhysicalInvoiceDocument({
       job: jobContextForPhysicalDoc(job, billCustomerJobDetails),
       amountDollars: amt,
@@ -1045,7 +1047,7 @@ export default function SendRecordInvoiceModal({
       footer: physicalInvoiceFooter,
       invoiceDateYmd: sentDate.trim(),
       dueDateYmd: stripeDueDate.trim(),
-      hazmatFeeLines: foldedFeeLines,
+      hazmatFeeLines: physFeeLines,
       detailFromJob: buildPhysicalInvoiceDetailFromJob(
         billCustomerJobDetails,
         kind === 'invoice' ? 'invoice' : 'job',
@@ -1255,8 +1257,10 @@ export default function SendRecordInvoiceModal({
       // Folded + job-total fees are ALREADY inside amt (the auto-maintained
       // primary carries them via the remainder math) — they split out as
       // labeled lines, guarded within the amount so work lines keep at least
-      // a cent. Legacy roll-ins add on top of amt.
-      const feeLines = hazmatFeeLinesWithinAmount(foldedFeeLines, amt)
+      // a cent. A Line item override covers the WHOLE amount, fee included, so
+      // no separate fee line is sent (v2.1036). Legacy roll-ins add on top.
+      const lineOverrideActive = lineDescTrim.length > 0
+      const feeLines = lineOverrideActive ? [] : hazmatFeeLinesWithinAmount(foldedFeeLines, amt)
       const extraLines = [...feeLines, ...rollIns]
       const totalAmountDollars = amt + hazmatRollInTotalDollars(rollIns)
       const { data: invokeData, error: fnErr } = await supabase.functions.invoke('create-stripe-invoice', {
@@ -1320,10 +1324,11 @@ export default function SendRecordInvoiceModal({
       }
 
       // Job-total incidents whose fee just shipped on this invoice link to it
-      // now, so they never split twice.
+      // now, so they never split twice. Under a line override the fee ships
+      // inside the single line — still shipped, still repointed.
       for (const inc of foldedFeeIncidents) {
         if ((inc.invoice_id ?? '').trim()) continue
-        if (!feeLines.some((l) => l.incidentId === inc.id)) continue
+        if (!lineOverrideActive && !feeLines.some((l) => l.incidentId === inc.id)) continue
         try {
           await withSupabaseRetry(
             async () => supabase.from('job_hazmat_incidents').update({ invoice_id: invId }).eq('id', inc.id),
@@ -1402,7 +1407,7 @@ export default function SendRecordInvoiceModal({
         footer: physicalInvoiceFooter,
         invoiceDateYmd: sentDate.trim(),
         dueDateYmd: stripeDueDate.trim(),
-        hazmatFeeLines: foldedFeeLines,
+        hazmatFeeLines: trimmedOverride ? [] : foldedFeeLines,
         detailFromJob: buildPhysicalInvoiceDetailFromJob(
           billCustomerJobDetails,
           kind === 'invoice' ? 'invoice' : 'job',
@@ -1582,7 +1587,7 @@ export default function SendRecordInvoiceModal({
           footer: physicalInvoiceFooter,
           invoiceDateYmd: sentDate.trim(),
           dueDateYmd: stripeDueDate.trim(),
-          hazmatFeeLines: foldedFeeLines,
+          hazmatFeeLines: effectivePhysicalLineDesc ? [] : foldedFeeLines,
           detailFromJob: buildPhysicalInvoiceDetailFromJob(
             billCustomerJobDetails,
             kind === 'invoice' ? 'invoice' : 'job',
@@ -2822,36 +2827,7 @@ export default function SendRecordInvoiceModal({
                   </p>
                 ) : null}
                 {hazmatIncidentForInvoice || foldedFeeIncidents.length > 0 ? (
-                  <label
-                    style={{
-                      display: 'flex',
-                      alignItems: 'flex-start',
-                      gap: '0.5rem',
-                      margin: '0.5rem 0 0',
-                      padding: '0.5rem 0.65rem',
-                      border: '1px solid var(--border)',
-                      borderRadius: 6,
-                      background: 'var(--bg-red-tint)',
-                      fontSize: '0.8125rem',
-                      color: 'var(--text-700)',
-                      cursor: 'pointer',
-                    }}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={emailHazmatNoticeWithStripe}
-                      onChange={(e) => setEmailHazmatNoticeWithStripe(e.target.checked)}
-                      style={{ marginTop: 2 }}
-                    />
-                    <span>
-                      <strong>☣ Also email the Biohazard Remediation Fee Notice</strong> — Stripe invoices
-                      can't carry attachments, so the notice PDF goes to the customer as its own email.
-                      Re-send any time from Edit Job → Riders.
-                    </span>
-                  </label>
-                ) : null}
-                {foldedFeeLines.length > 0 ? (
-                  <p
+                  <div
                     style={{
                       margin: '0.5rem 0 0',
                       padding: '0.5rem 0.65rem',
@@ -2862,17 +2838,36 @@ export default function SendRecordInvoiceModal({
                       color: 'var(--text-700)',
                     }}
                   >
-                    <strong>
-                      ☣ This bill includes {foldedFeeLines.length === 1 ? 'a hazmat fee' : 'hazmat fees'} ($
-                      {hazmatRollInTotalDollars(foldedFeeLines).toLocaleString('en-US', {
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 2,
-                      })}
-                      )
-                    </strong>{' '}
-                    — already part of the amount above; it will appear on the invoice as its own labeled line
-                    item, with the rest allocated to the work lines.
-                  </p>
+                    {foldedFeeLines.length > 0 ? (
+                      <p style={{ margin: '0 0 0.5rem' }}>
+                        <strong>
+                          ☣ This bill includes {foldedFeeLines.length === 1 ? 'a hazmat fee' : 'hazmat fees'} ($
+                          {hazmatRollInTotalDollars(foldedFeeLines).toLocaleString('en-US', {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2,
+                          })}
+                          )
+                        </strong>{' '}
+                        — already part of the amount above.{' '}
+                        {stripeLineDescription.trim()
+                          ? 'Your Line item override covers it, so no separate fee line will appear.'
+                          : 'It will appear on the invoice as its own labeled line item, with the rest allocated to the work lines.'}
+                      </p>
+                    ) : null}
+                    <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', cursor: 'pointer' }}>
+                      <input
+                        type="checkbox"
+                        checked={emailHazmatNoticeWithStripe}
+                        onChange={(e) => setEmailHazmatNoticeWithStripe(e.target.checked)}
+                        style={{ marginTop: 2 }}
+                      />
+                      <span>
+                        <strong>Also email the Biohazard Remediation Fee Notice</strong> — Stripe invoices
+                        can't carry attachments, so the notice PDF goes to the customer as its own email.
+                        Re-send any time from Edit Job → Riders.
+                      </span>
+                    </label>
+                  </div>
                 ) : null}
                 {!hazmatIncidentForInvoice && hazmatRollInLines.length > 0 ? (
                   <label
