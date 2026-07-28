@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1037',
+    date: '2026-07-28',
+    title: 'Preview the hazmat notice email',
+    kind: 'feature',
+    highlights: [
+      'The hazmat box in Bill Customer now has "Preview the email…" — see exactly what the customer receives: recipient, subject, the message, and the attached notice.',
+    ],
+  },
+  {
     version: 'v2.1036',
     date: '2026-07-28',
     title: 'Cleaner hazmat box; override covers the fee',
