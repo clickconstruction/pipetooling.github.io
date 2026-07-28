@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 import { Maximize2, Minimize2 } from 'lucide-react'
 import { getDispatchNoteDisplayMeta, formatDispatchNoteTimeChicago } from '../utils/dispatchNoteDisplay'
 import type { UserRole } from '../hooks/useAuth'
@@ -86,8 +87,12 @@ type JobThreadNotesPanelProps = {
   peopleAction?: { onClick: () => void; disabled?: boolean }
   /**
    * Fullscreen toggle (Jobs Stages): shows an expand/compress button in the
-   * header; while active the panel renders as a fixed overlay covering the
-   * viewport (below the modals it can spawn — people 70, schedule 1002).
+   * header; while active the panel PORTALS to document.body as a fixed
+   * overlay at z 1001 — above the app chrome (top bar 50, mobile bottom nav
+   * 1000) and the table's sticky cells, below the modals it can spawn
+   * (people 1002, schedule 1002). The portal is required: inline, the
+   * table's position:sticky wrapper traps the overlay in a low stacking
+   * context and the chrome paints over it.
    */
   fullscreenControl?: { active: boolean; onToggle: () => void }
   /** Rendered at the very top ONLY while fullscreen is active (job number / service type / name / address on Stages). */
@@ -296,6 +301,9 @@ export function JobThreadNotesPanel({
     return `s:${last.schedule.dedupeKey}`
   }, [visibleActivity])
 
+  const isFullscreen = fullscreenControl?.active === true
+
+  // isFullscreen dep: the portal move recreates the list DOM (scrollTop resets) — re-pin to newest.
   useLayoutEffect(() => {
     if (loading) return
     const el = activityScrollRef.current
@@ -305,9 +313,7 @@ export function JobThreadNotesPanel({
       if (!box) return
       box.scrollTop = box.scrollHeight
     })
-  }, [loading, visibleActivity.length, activityTailKey])
-
-  const isFullscreen = fullscreenControl?.active === true
+  }, [loading, visibleActivity.length, activityTailKey, isFullscreen])
   const exitFullscreen = fullscreenControl?.onToggle
 
   useEffect(() => {
@@ -329,7 +335,7 @@ export function JobThreadNotesPanel({
     ? {
         position: 'fixed',
         inset: 0,
-        zIndex: 50,
+        zIndex: 1001,
         display: 'flex',
         flexDirection: 'column',
         padding:
@@ -346,7 +352,7 @@ export function JobThreadNotesPanel({
         borderRadius: 6,
       }
 
-  return (
+  const panelContent = (
     <div style={panelShellStyle}>
       {isFullscreen && fullscreenHeader ? fullscreenHeader : null}
       {peopleAction || (teamMembers && teamMembers.length > 0) || showSectionTitle || fullscreenControl ? (
@@ -890,4 +896,6 @@ export function JobThreadNotesPanel({
       )}
     </div>
   )
+  // Portal escapes the Stages table's sticky-cell stacking context (see fullscreenControl doc).
+  return isFullscreen ? createPortal(panelContent, document.body) : panelContent
 }
