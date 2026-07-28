@@ -90,4 +90,19 @@ describe('JobFormHazmatRiderRows', () => {
     const { container } = renderRows(makeJob(), [])
     expect(container.querySelectorAll('tr').length).toBe(0)
   })
+
+  it('shows the notice-email pill: amber until first send, green with date after (v2.1039)', () => {
+    renderRows(makeJob(), [
+      makeIncident({ id: 'inc-unsent' }),
+      makeIncident({
+        id: 'inc-sent',
+        notice_emailed_at: '2026-07-28T15:00:00.000Z',
+        notice_emailed_to: 'brace.tj@example.com',
+      } as Partial<JobHazmatIncidentRow>),
+    ])
+    expect(screen.getByText('Notice not emailed')).toBeTruthy()
+    expect(screen.getByText(/Notice emailed Jul 28/)).toBeTruthy()
+    expect(screen.getByText('Email notice…')).toBeTruthy()
+    expect(screen.getByText('Re-email notice…')).toBeTruthy()
+  })
 })

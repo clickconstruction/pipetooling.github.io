@@ -17,6 +17,8 @@ export type JobHazmatIncidentRow = Database['public']['Tables']['job_hazmat_inci
   edited_at?: string | null
   voided_at?: string | null
   voided_by?: string | null
+  notice_emailed_at?: string | null
+  notice_emailed_to?: string | null
 }
 
 /** Tolerant jsonb → string[] (photo links). Malformed entries are dropped, never thrown. */

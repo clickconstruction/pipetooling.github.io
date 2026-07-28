@@ -72,6 +72,7 @@ import {
 } from '../../lib/hazmatIncidents'
 import { eligibleHazmatRollIns, foldedHazmatFeeLines, hazmatFeeLinesWithinAmount, hazmatRollInTotalDollars, type HazmatRollInLine } from '../../lib/hazmatRollIn'
 import { sendHazmatNoticeEmailToCustomer } from '../../lib/sendHazmatNoticeEmail'
+import { linkHazmatFeeIncidentToInvoice } from '../../lib/hazmatFeeEdit'
 import { buildHazmatNoticeEmailPreviewHtml } from '../../lib/hazmatNoticeEmailPreview'
 import { buildHazmatFeeNoticeHtml } from '../../lib/jobsDocuments/hazmatFeeNotice'
 import {
@@ -437,11 +438,39 @@ export default function SendRecordInvoiceModal({
   const [foldedFeeIncidents, setFoldedFeeIncidents] = useState<JobHazmatIncidentRow[]>([])
   const [attachHazmatNotice, setAttachHazmatNotice] = useState(true)
   /** Stripe path: Stripe invoices can't carry attachments — companion email instead. */
-  const [emailHazmatNoticeWithStripe, setEmailHazmatNoticeWithStripe] = useState(true)
+  const [emailHazmatNoticeWithStripe, setEmailHazmatNoticeWithStripe] = useState(false)
   /** v2.1002: unsent hazmat rider invoices on this job, offered for roll-in as labeled line items. */
   const [hazmatRollInLines, setHazmatRollInLines] = useState<HazmatRollInLine[]>([])
   const [includeHazmatRollIn, setIncludeHazmatRollIn] = useState(true)
   const [hazmatNoticeEmailStatus, setHazmatNoticeEmailStatus] = useState<'sent' | string | null>(null)
+  const [noticeEmailBusy, setNoticeEmailBusy] = useState(false)
+
+  // "Email the notice now" on the success screen (v2.1039): the checkbox no
+  // longer defaults to on, so this is the one-click catch-up for the fee
+  // notices that rode this bill. Same sender the checkbox path uses.
+  const emailNoticeNow = async () => {
+    if (!job) return
+    const incidents = hazmatIncidentForInvoice ? [hazmatIncidentForInvoice] : foldedFeeIncidents
+    const email = (job.customer_email ?? '').trim()
+    if (incidents.length === 0 || !email) return
+    setNoticeEmailBusy(true)
+    try {
+      let status: string = 'sent'
+      for (const incident of incidents) {
+        const res = await sendHazmatNoticeEmailToCustomer({
+          jobId: job.id,
+          incident,
+          jobInfo: hazmatNoticeJobInfoFromJob(job),
+          customerEmail: email,
+          invoiceReference: `Stripe invoice for job ${(job.hcp_number ?? '').trim() || (job.click_number ?? '').trim() || job.job_name}`,
+        })
+        if (!res.ok) status = res.error ?? 'Notice email failed'
+      }
+      setHazmatNoticeEmailStatus(status)
+    } finally {
+      setNoticeEmailBusy(false)
+    }
+  }
   const stripePreviewReqId = useRef(0)
   /** Keeps last known “had a preview” for stale-while-revalidate (timeout closure reads current value). */
   const stripePreviewExistsRef = useRef(false)
@@ -654,7 +683,9 @@ export default function SendRecordInvoiceModal({
     setFoldedFeeLines([])
     setFoldedFeeIncidents([])
     setAttachHazmatNotice(true)
-    setEmailHazmatNoticeWithStripe(true)
+    // Deliberately unchecked (v2.1039): the office sends the notice email when
+    // they choose to — from here or after the fact from Edit Job's RIDERS row.
+    setEmailHazmatNoticeWithStripe(false)
     setHazmatNoticeEmailStatus(null)
     if (!open || kind !== 'invoice' || !invoice?.id || !job?.id) return
     let cancelled = false
@@ -1144,13 +1175,9 @@ export default function SendRecordInvoiceModal({
       // link to it now, so they never split twice on a later bill.
       for (const inc of foldedFeeIncidents) {
         if ((inc.invoice_id ?? '').trim()) continue
-        try {
-          await withSupabaseRetry(
-            async () => supabase.from('job_hazmat_incidents').update({ invoice_id: invId }).eq('id', inc.id),
-            'repoint job-total hazmat incident to physical invoice',
-          )
-        } catch (repointErr) {
-          console.error('hazmat job-total repoint failed (physical invoice sent ok)', repointErr)
+        const linked = await linkHazmatFeeIncidentToInvoice(inc.id, invId)
+        if (!linked.ok) {
+          console.error('hazmat job-total repoint failed (physical invoice sent ok)', linked.error)
         }
       }
       await onSuccess()
@@ -1314,10 +1341,8 @@ export default function SendRecordInvoiceModal({
       // draft row), then delete the rider so balance math counts the fee once.
       for (const l of rollIns) {
         try {
-          await withSupabaseRetry(
-            async () => supabase.from('job_hazmat_incidents').update({ invoice_id: invId }).eq('id', l.incidentId),
-            'repoint hazmat incident to final invoice',
-          )
+          const linked = await linkHazmatFeeIncidentToInvoice(l.incidentId, invId)
+          if (!linked.ok) throw new Error(linked.error ?? 'repoint failed')
           await withSupabaseRetry(
             async () => supabase.from('jobs_ledger_invoices').delete().eq('id', l.invoiceId),
             'delete rolled-in hazmat rider invoice',
@@ -1333,13 +1358,9 @@ export default function SendRecordInvoiceModal({
       for (const inc of foldedFeeIncidents) {
         if ((inc.invoice_id ?? '').trim()) continue
         if (!lineOverrideActive && !feeLines.some((l) => l.incidentId === inc.id)) continue
-        try {
-          await withSupabaseRetry(
-            async () => supabase.from('job_hazmat_incidents').update({ invoice_id: invId }).eq('id', inc.id),
-            'repoint job-total hazmat incident to billed invoice',
-          )
-        } catch (repointErr) {
-          console.error('hazmat job-total repoint failed (Stripe invoice created ok)', repointErr)
+        const linked = await linkHazmatFeeIncidentToInvoice(inc.id, invId)
+        if (!linked.ok) {
+          console.error('hazmat job-total repoint failed (Stripe invoice created ok)', linked.error)
         }
       }
 
@@ -2413,6 +2434,39 @@ export default function SendRecordInvoiceModal({
                       ? '☣ Biohazard notice emailed to the customer.'
                       : `☣ Notice email failed: ${hazmatNoticeEmailStatus} — re-send from Edit Job → Riders.`}
                   </p>
+                ) : null}
+                {!hazmatNoticeEmailStatus &&
+                (hazmatIncidentForInvoice || foldedFeeIncidents.length > 0) &&
+                (job.customer_email ?? '').trim() ? (
+                  <div
+                    style={{
+                      margin: '-0.35rem 0 0.75rem',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.6rem',
+                      flexWrap: 'wrap',
+                    }}
+                  >
+                    <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+                      ☣ The Biohazard Fee Notice email has not been sent for this bill.
+                    </span>
+                    <button
+                      type="button"
+                      disabled={noticeEmailBusy}
+                      onClick={() => void emailNoticeNow()}
+                      style={{
+                        padding: '0.3rem 0.7rem',
+                        fontSize: '0.8125rem',
+                        border: '1px solid var(--border-strong)',
+                        borderRadius: 4,
+                        background: 'var(--surface)',
+                        cursor: noticeEmailBusy ? 'wait' : 'pointer',
+                        fontWeight: 600,
+                      }}
+                    >
+                      {noticeEmailBusy ? 'Sending…' : 'Email the notice now'}
+                    </button>
+                  </div>
                 ) : null}
                 <HostedStripeBillPanel
                   invoice={stripeSuccessInvoice}

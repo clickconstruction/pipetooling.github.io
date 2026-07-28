@@ -2080,13 +2080,13 @@ interface SendPhysicalInvoiceEmailBody {
 
 ### send-hazmat-notice-email
 
-**Purpose** (v2.850): Email the customer the **Biohazard Remediation Fee Notice PDF** as its own message — the **Stripe companion channel** (Stripe invoices cannot carry attachments) and the **re-send** path from Edit Job's **Riders** strip. The PDF is built client-side ([`hazmatFeeNoticePdf.ts`](../src/lib/jobsDocuments/hazmatFeeNoticePdf.ts)) from the persisted `job_hazmat_incidents` row; the function validates and attaches it. **No DB writes** — safe to re-send any time.
+**Purpose** (v2.850; send-stamping v2.1039): Email the customer the **Biohazard Remediation Fee Notice PDF** as its own message — the **Stripe companion channel** (Stripe invoices cannot carry attachments) and the **re-send** path from Edit Job's **Riders** strip. The PDF is built client-side ([`hazmatFeeNoticePdf.ts`](../src/lib/jobsDocuments/hazmatFeeNoticePdf.ts)) from the persisted `job_hazmat_incidents` row; the function validates and attaches it. **After a successful Resend send** it stamps `job_hazmat_incidents.notice_emailed_at` / `notice_emailed_to` and inserts a `job_activity_events` row (`hazmat_notice_emailed`) via the **service-role** client — both tables have no client write policies, so this function is the single audited funnel. Stamp failures never fail the request (the email is already out). Safe to re-send any time (each send re-stamps and logs).
 
 **Endpoint**: `POST /functions/v1/send-hazmat-notice-email`
 
 **Authentication**: Bearer JWT; **`auth.getUser`** in the function; all reads via the **user-scoped** client (**RLS** applies — `job_hazmat_incidents` is readable by office/billing roles only). **`verify_jwt = false`** on the gateway (same pattern as **`send-physical-invoice-email`**).
 
-**Secrets**: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, **`RESEND_API_KEY`**.
+**Secrets**: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, **`RESEND_API_KEY`**, `SUPABASE_SERVICE_ROLE_KEY` (send-stamping, v2.1039).
 
 #### Request body
 

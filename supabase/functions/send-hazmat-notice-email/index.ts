@@ -149,6 +149,34 @@ serve(async (req) => {
       return jsonResponse({ error: errorData.message || `Resend ${resendResponse.status}` }, 502)
     }
 
+    // Stamp the send on the incident + audit trail (v2.1039). Service role:
+    // job_hazmat_incidents and job_activity_events have no client write
+    // policies by design — this function is the single funnel every notice
+    // email goes through, so the stamp can't be skipped or forged. A stamp
+    // failure never fails the request: the email is already out the door.
+    try {
+      const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
+      if (serviceKey) {
+        const admin = createClient(supabaseUrl, serviceKey)
+        const sentAt = new Date().toISOString()
+        await admin
+          .from('job_hazmat_incidents')
+          .update({ notice_emailed_at: sentAt, notice_emailed_to: customerEmailIn })
+          .eq('id', incidentId)
+        await admin.from('job_activity_events').insert({
+          job_id: jobId,
+          event_type: 'hazmat_notice_emailed',
+          occurred_at: sentAt,
+          actor_user_id: user.id,
+          summary: `Biohazard fee notice emailed to ${customerEmailIn}`,
+          detail: { source_id: `${incidentId}:${sentAt}`, incident_id: incidentId, to: customerEmailIn },
+          financial: false,
+        })
+      }
+    } catch (stampErr) {
+      console.error('notice email sent but stamping failed', stampErr)
+    }
+
     return jsonResponse({ success: true })
   } catch (e) {
     console.error(e)

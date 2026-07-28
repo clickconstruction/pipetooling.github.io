@@ -53,6 +53,7 @@ export function JobFormHazmatRiderRows({
   const [emailBusyId, setEmailBusyId] = useState<string | null>(null)
   const [editIncident, setEditIncident] = useState<JobHazmatIncidentRow | null>(null)
   const [confirmRemoval, setConfirmRemoval] = useState<{ kind: 'void' | 'delete'; row: JobHazmatIncidentRow } | null>(null)
+  const [confirmEmail, setConfirmEmail] = useState<JobHazmatIncidentRow | null>(null)
   const [removalBusy, setRemovalBusy] = useState(false)
   const removalCapability = hazmatFeeRemovalCapability(role)
 
@@ -110,11 +111,7 @@ export function JobFormHazmatRiderRows({
   const customerEmail = (job.customer_email ?? '').trim()
 
   const emailNotice = async (row: JobHazmatIncidentRow) => {
-    if (!customerEmail) {
-      showToast('Job has no customer email; add it on Edit Job first.', 'error')
-      return
-    }
-    if (!window.confirm(`Email the Biohazard Remediation Fee Notice to ${customerEmail}?`)) return
+    setConfirmEmail(null)
     setEmailBusyId(row.id)
     try {
       const res = await sendHazmatNoticeEmailToCustomer({
@@ -125,6 +122,7 @@ export function JobFormHazmatRiderRows({
       })
       if (res.ok) {
         showToast(`Notice emailed to ${customerEmail}.`, 'success')
+        onChanged?.()
       } else {
         showToast(res.error ?? 'Notice email failed', 'error')
       }
@@ -198,6 +196,27 @@ export function JobFormHazmatRiderRows({
               >
                 {invoiceState}
               </span>
+              {!row.voided_at ? (
+                <span
+                  style={{
+                    padding: '0.05rem 0.4rem',
+                    borderRadius: 999,
+                    fontSize: '0.6875rem',
+                    fontWeight: 700,
+                    background: row.notice_emailed_at ? 'var(--bg-green-tint)' : 'var(--bg-amber-tint)',
+                    color: row.notice_emailed_at ? 'var(--text-green-800)' : 'var(--text-amber-800)',
+                  }}
+                  title={
+                    row.notice_emailed_at
+                      ? `Notice emailed to ${row.notice_emailed_to ?? 'the customer'}`
+                      : 'The Biohazard Fee Notice email has not been sent for this fee yet'
+                  }
+                >
+                  {row.notice_emailed_at
+                    ? `Notice emailed ${formatWorkDateYmdMonthDayShort(String(row.notice_emailed_at).slice(0, 10))}`
+                    : 'Notice not emailed'}
+                </span>
+              ) : null}
               <span style={{ flex: 1 }} />
               <span style={{ fontWeight: 600, fontSize: '0.875rem', color: 'var(--text-700)', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
                 ${formatCurrency(Number(row.fee_amount))}
@@ -265,15 +284,23 @@ export function JobFormHazmatRiderRows({
               <button
                 type="button"
                 disabled={emailBusyId === row.id}
-                onClick={() => void emailNotice(row)}
+                onClick={() => {
+                  if (!customerEmail) {
+                    showToast('Job has no customer email; add it on Edit Job first.', 'error')
+                    return
+                  }
+                  setConfirmEmail(row)
+                }}
                 style={{ ...smallBtn, cursor: emailBusyId === row.id ? 'wait' : 'pointer' }}
                 title={
                   customerEmail
-                    ? `Email the notice PDF to ${customerEmail}`
+                    ? row.notice_emailed_at
+                      ? `Send the notice PDF to ${customerEmail} again`
+                      : `Email the notice PDF to ${customerEmail}`
                     : 'Job has no customer email'
                 }
               >
-                {emailBusyId === row.id ? 'Sending…' : 'Email notice…'}
+                {emailBusyId === row.id ? 'Sending…' : row.notice_emailed_at ? 'Re-email notice…' : 'Email notice…'}
               </button>
               {row.public_token ? (
                 <button
@@ -318,6 +345,19 @@ export function JobFormHazmatRiderRows({
               cancelLabel="Cancel"
               onCancel={() => (removalBusy ? null : setConfirmRemoval(null))}
               onConfirm={() => void runRemoval()}
+            />,
+            document.body,
+          )
+        : null}
+      {confirmEmail
+        ? createPortal(
+            <ConfirmDialog
+              title="Email the fee notice?"
+              body={`The Biohazard Remediation Fee Notice PDF goes to ${customerEmail}.${confirmEmail.notice_emailed_at ? ' It was already emailed once — this sends it again.' : ''}`}
+              confirmLabel="Send email"
+              cancelLabel="Cancel"
+              onCancel={() => setConfirmEmail(null)}
+              onConfirm={() => void emailNotice(confirmEmail)}
             />,
             document.body,
           )

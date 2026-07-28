@@ -11,6 +11,18 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1039',
+    date: '2026-07-28',
+    title: 'Hazmat notice email: send it when you choose',
+    kind: 'feature',
+    highlights: [
+      'The "Also email the notice" box in Bill Customer no longer starts checked — the notice email only goes out when you tick it.',
+      'Each fee row in Edit Job now shows whether the notice was emailed and when; "Email notice…" sends it any time, and re-sends are clearly labeled.',
+      'Just billed and skipped the box? The success screen offers "Email the notice now."',
+      'Every send lands in the Job activity feed, and fees now link correctly to the bill that carried them.',
+    ],
+  },
+  {
     version: 'v2.1038',
     date: '2026-07-28',
     title: 'Edit, void, or delete a hazmat fee',
