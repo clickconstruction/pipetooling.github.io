@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1043',
+    date: '2026-07-28',
+    title: 'Tidier activity header on Stages',
+    kind: 'fix',
+    highlights: [
+      'The notes chevron and count now sit at the end of the "Abraham · Wed 5:02 PM (6d ago)" line instead of stacked in front of it — same toggle, more room for the note preview.',
+    ],
+  },
+  {
     version: 'v2.1042',
     date: '2026-07-28',
     title: 'Emailed-customer hint fits small screens',
