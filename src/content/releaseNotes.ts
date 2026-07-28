@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1034',
+    date: '2026-07-28',
+    title: 'Previews show the hazmat fee line',
+    kind: 'fix',
+    highlights: [
+      'The Stripe and Physical invoice previews in Bill Customer now show the Biohazard remediation fee as its own line with the grown total — matching exactly what the customer will receive.',
+    ],
+  },
+  {
     version: 'v2.1033',
     date: '2026-07-28',
     title: 'Rider fees show up in Stages totals and Bill Customer',

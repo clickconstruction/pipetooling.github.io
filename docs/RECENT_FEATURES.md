@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-28 (v2.1033)
+last_updated: 2026-07-28 (v2.1034)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1034)
+
+### Bill Customer previews show the hazmat fee line (2026-07-28)
+Report: the Stripe bill / Physical invoice previews didn't show the Biohazard remediation fee as a line item (only the checkbox promised it). Two gaps: **(1)** [`preview-stripe-invoice`](../supabase/functions/preview-stripe-invoice/index.ts) never learned `extra_line_items` — v2.1002 taught only the create fn. It now mirrors create exactly (same validation, fixtures allocate to `amount − extras`, extras appended as their own preview lines) and the client's preview invocation sends the same amount + extras as the real submit (folded fees inside, job-total fees + roll-ins on top), refreshing when the checkboxes toggle. **Deploy: `supabase functions deploy preview-stripe-invoice` after merge.** **(2)** The Physical PDF preview (and the lowercase-hint heuristic) still built the doc without job-total fees — both now grow `amountDollars` and pass the fee rows, so the on-screen PDF reads "Biohazard remediation fee — …" with Amount due $2,380. Verified live on 857's $1,880 primary: fee row + $2,380 on the physical preview.
 
 ## Latest Updates (v2.1033)
 
