@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-28 (v2.1036)
+last_updated: 2026-07-28 (v2.1037)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1037)
+
+### Bill Customer: "Preview the email…" shows the notice email the customer will get (2026-07-28)
+Request: a way to see the Biohazard Remediation Fee Notice companion email before it goes out. The subject/body builders are now exported from [`sendHazmatNoticeEmail.ts`](../src/lib/sendHazmatNoticeEmail.ts) (`hazmatNoticeEmailSubject` / `hazmatNoticeEmailText`) and shared with a new pure builder [`hazmatNoticeEmailPreview.ts`](../src/lib/hazmatNoticeEmailPreview.ts) (4 tests: exact sender text, sandboxed-iframe srcdoc escaping, per-incident numbering, HTML escaping) — so the preview can never drift from what actually sends. The ☣ box in [`SendRecordInvoiceModal`](../src/components/jobs/SendRecordInvoiceModal.tsx) gains a **"Preview the email…"** link that opens a window showing the envelope (To / Subject / 📎 attachment chip), the body text with the Stripe-invoice reference, and the attached notice inlined below an "ATTACHMENT PREVIEW" divider (customer-facing → pinned light). One email block per incident when several fees ride the bill. Verified live on 857: To brace.tj@…, Subject "…— Job 857", body + Stripe reference, notice iframe. Client-only.
 
 ## Latest Updates (v2.1036)
 

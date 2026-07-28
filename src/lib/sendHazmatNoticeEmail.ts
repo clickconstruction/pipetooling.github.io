@@ -14,6 +14,21 @@ import { physicalInvoicePdfToBase64 } from './physicalInvoicePdf'
  * Server re-validates: incident visible under RLS, belongs to the job, and
  * the recipient matches the job's customer email.
  */
+/** Subject line the customer sees — shared with the Bill Customer preview (v2.1037). */
+export function hazmatNoticeEmailSubject(jobNumber: string): string {
+  return `Biohazard Remediation Fee Notice — Job ${jobNumber}`
+}
+
+/** Body text the customer sees — shared with the Bill Customer preview (v2.1037). */
+export function hazmatNoticeEmailText(jobNumber: string, invoiceReference?: string | null): string {
+  const ref = invoiceReference?.trim()
+  return (
+    `Please find the Biohazard Remediation Fee Notice for job ${jobNumber} attached as a PDF.` +
+    (ref ? ` It documents the biohazard remediation fee on the ${ref}.` : '') +
+    ' The notice includes the incident summary, photographic evidence, technician statements, and the contractual basis for the fee.'
+  )
+}
+
 export async function sendHazmatNoticeEmailToCustomer(args: {
   jobId: string
   incident: JobHazmatIncidentRow
@@ -33,18 +48,14 @@ export async function sendHazmatNoticeEmailToCustomer(args: {
       return { ok: false, error: 'Notice PDF is too large to email' }
     }
 
-    const ref = args.invoiceReference?.trim()
-    const text =
-      `Please find the Biohazard Remediation Fee Notice for job ${args.jobInfo.jobNumber} attached as a PDF.` +
-      (ref ? ` It documents the biohazard remediation fee on the ${ref}.` : '') +
-      ' The notice includes the incident summary, photographic evidence, technician statements, and the contractual basis for the fee.'
+    const text = hazmatNoticeEmailText(args.jobInfo.jobNumber, args.invoiceReference)
 
     const { data, error } = await supabase.functions.invoke('send-hazmat-notice-email', {
       body: {
         job_id: args.jobId,
         incident_id: args.incident.id,
         customer_email: args.customerEmail.trim(),
-        subject: `Biohazard Remediation Fee Notice — Job ${args.jobInfo.jobNumber}`,
+        subject: hazmatNoticeEmailSubject(args.jobInfo.jobNumber),
         pdf_base64: pdfBase64,
         pdf_filename: hazmatNoticePdfFilename(args.jobInfo),
         email_text: text,

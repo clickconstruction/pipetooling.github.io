@@ -72,6 +72,8 @@ import {
 } from '../../lib/hazmatIncidents'
 import { eligibleHazmatRollIns, foldedHazmatFeeLines, hazmatFeeLinesWithinAmount, hazmatRollInTotalDollars, type HazmatRollInLine } from '../../lib/hazmatRollIn'
 import { sendHazmatNoticeEmailToCustomer } from '../../lib/sendHazmatNoticeEmail'
+import { buildHazmatNoticeEmailPreviewHtml } from '../../lib/hazmatNoticeEmailPreview'
+import { buildHazmatFeeNoticeHtml } from '../../lib/jobsDocuments/hazmatFeeNotice'
 import {
   buildHazmatFeeNoticePdfBlob,
   hazmatNoticePdfFilename,
@@ -1640,6 +1642,29 @@ export default function SendRecordInvoiceModal({
 
   const physicalFooterActiveId = physicalInvoiceFooterActivePresetId(physicalInvoiceFooter)
 
+  /** "Preview the email…" (v2.1037): opens exactly what the customer receives —
+   * envelope + body from the sender's own helpers + the notice inlined. */
+  function openHazmatNoticeEmailPreview() {
+    if (!job) return
+    const incidents = hazmatIncidentForInvoice ? [hazmatIncidentForInvoice] : foldedFeeIncidents
+    if (incidents.length === 0) return
+    const jobInfo = hazmatNoticeJobInfoFromJob(job)
+    const invoiceReference = `Stripe invoice for job ${(job.hcp_number ?? '').trim() || (job.click_number ?? '').trim() || job.job_name}`
+    const html = buildHazmatNoticeEmailPreviewHtml(
+      incidents.map((incident) => ({
+        jobNumber: jobInfo.jobNumber,
+        customerEmail: (job.customer_email ?? '').trim() || '—',
+        attachmentFilename: hazmatNoticePdfFilename(jobInfo),
+        noticeHtml: buildHazmatFeeNoticeHtml(jobInfo, hazmatIncidentRowToDraft(incident)),
+        invoiceReference,
+      })),
+    )
+    const w = window.open('', '_blank')
+    if (!w) return
+    w.document.write(html)
+    w.document.close()
+  }
+
   return (
     <Fragment>
       <div
@@ -2867,6 +2892,13 @@ export default function SendRecordInvoiceModal({
                         Re-send any time from Edit Job → Riders.
                       </span>
                     </label>
+                    <button
+                      type="button"
+                      onClick={openHazmatNoticeEmailPreview}
+                      style={{ marginTop: '0.4rem', marginLeft: '1.6rem', padding: 0, border: 'none', background: 'none', color: 'var(--text-link)', fontSize: '0.8125rem', cursor: 'pointer', textDecoration: 'underline' }}
+                    >
+                      Preview the email…
+                    </button>
                   </div>
                 ) : null}
                 {!hazmatIncidentForInvoice && hazmatRollInLines.length > 0 ? (
