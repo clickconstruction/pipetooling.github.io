@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { Maximize2, Minimize2 } from 'lucide-react'
 import { getDispatchNoteDisplayMeta, formatDispatchNoteTimeChicago } from '../utils/dispatchNoteDisplay'
 import type { UserRole } from '../hooks/useAuth'
@@ -90,6 +90,8 @@ type JobThreadNotesPanelProps = {
    * viewport (below the modals it can spawn — people 70, schedule 1002).
    */
   fullscreenControl?: { active: boolean; onToggle: () => void }
+  /** Rendered at the very top ONLY while fullscreen is active (job number / service type / name / address on Stages). */
+  fullscreenHeader?: ReactNode
 }
 
 const DEFAULT_ACTIVITY_LIST_MAX_HEIGHT = 'min(280px, 45vh)'
@@ -220,6 +222,7 @@ export function JobThreadNotesPanel({
   teamMembers,
   peopleAction,
   fullscreenControl,
+  fullscreenHeader,
 }: JobThreadNotesPanelProps) {
   const [pctEditorOpen, setPctEditorOpen] = useState(false)
   const [pctDraft, setPctDraft] = useState(pctComplete ?? 0)
@@ -345,6 +348,7 @@ export function JobThreadNotesPanel({
 
   return (
     <div style={panelShellStyle}>
+      {isFullscreen && fullscreenHeader ? fullscreenHeader : null}
       {peopleAction || (teamMembers && teamMembers.length > 0) || showSectionTitle || fullscreenControl ? (
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.5rem', flexWrap: 'wrap' }}>
           {peopleAction ? (

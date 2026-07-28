@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-28 (v2.1052)
+last_updated: 2026-07-28 (v2.1053)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1053)
+
+### Jobs Stages: fullscreen activity panel shows the job identity header (2026-07-28)
+Request: when Job activity / notes is full screen, show the job number, service type, job name, and address at the top. [`JobThreadNotesPanel`](../src/components/JobThreadNotesPanel.tsx) gains an optional `fullscreenHeader: ReactNode` rendered above the header row ONLY while fullscreen is active; new `renderStagesThreadFullscreenJobHeader(job)` in [`jobsStagesRowShared`](../src/components/jobs/jobsStagesRowShared.tsx) builds it — the blue `Job: N` badge (effectiveJobLedgerNumber) + a full-name service-type pill (getBidServiceTypeTag color; unlike the row subline's abbreviated tag), the job name, and a Google-Maps-linked address (`JobAddressText` two-line split). All three Stages panel call sites pass it. Client-only.
 
 ## Latest Updates (v2.1052)
 

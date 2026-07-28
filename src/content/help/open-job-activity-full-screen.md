@@ -11,7 +11,7 @@ The **Job activity / notes** panel on **Jobs → Stages** can take over the whol
 
 1. On **Jobs → Stages**, click a job's notes icon to expand its **Job activity / notes** panel.
 2. Click the expand button (the small ⛶ outward-arrows icon) at the top right of the panel, next to the **Job activity / notes** heading.
-3. The panel fills the screen: the activity feed gets all the height, and the composer stays pinned at the bottom so you can keep posting notes, setting % complete, or opening {{button:green|Schedule}} — everything works the same as inline.
+3. The panel fills the screen: the job's identity sits at the top — the {{chip:blue|Job: 4821}} number badge, service type, job name, and address (tap the address to open Google Maps) — then the activity feed gets all the height, and the composer stays pinned at the bottom so you can keep posting notes, setting % complete, or opening {{button:green|Schedule}} — everything works the same as inline.
 4. To go back, click the button again (now a compress icon) or press **Esc**. Collapsing the job's thread also exits full screen.
 
 ## Jump straight there from the Reports button
