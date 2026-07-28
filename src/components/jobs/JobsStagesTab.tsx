@@ -36,7 +36,7 @@ import { openHtmlPrintWindow } from '../../lib/jobsDocuments/printWindow'
 import { buildBilledAwaitingPaymentReportHtml } from '../../lib/jobsDocuments/billedAwaitingPaymentReport'
 import { ManageJobPeopleModal } from './ManageJobPeopleModal'
 import { JobCalendarModal } from './JobCalendarModal'
-import { getDefaultWeekRange } from '../../utils/dateUtils'
+import { companyWeekStartSundayContaining, getDefaultWeekRange } from '../../utils/dateUtils'
 import JobsStagesTable from './JobsStagesTable'
 import JobsStagesUnifiedTable from './JobsStagesUnifiedTable'
 import { jobBillingContextFromJob } from '../../lib/jobBillingContext'
@@ -333,6 +333,8 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   const [createPartialInvoiceJob, setCreatePartialInvoiceJob] = useState<JobWithDetails | null>(null)
   const [scheduleModalJob, setScheduleModalJob] = useState<JobWithDetails | null>(null)
   const [calendarJob, setCalendarJob] = useState<JobWithDetails | null>(null)
+  /** Day highlighted in the Job Calendar when Schedule… was clicked — seeds ScheduleJobModal's date. */
+  const [scheduleModalInitialDate, setScheduleModalInitialDate] = useState<string | null>(null)
   const [createPartialInvoiceAmount, setCreatePartialInvoiceAmount] = useState('')
   const [creatingPartialInvoiceFromModal, setCreatingPartialInvoiceFromModal] = useState(false)
 
@@ -2664,11 +2666,15 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
           job={calendarJob}
           onClose={() => setCalendarJob(null)}
           canOpenJobScheduleModal={canOpenJobScheduleModal}
-          onOpenSchedule={() => setScheduleModalJob(calendarJob)}
-          onOpenWeekDispatch={() => {
+          onOpenSchedule={(selectedYmd) => {
+            setScheduleModalInitialDate(selectedYmd)
+            setScheduleModalJob(calendarJob)
+          }}
+          onOpenWeekDispatch={(selectedYmd) => {
+            const week = (selectedYmd ? companyWeekStartSundayContaining(selectedYmd) : null) ?? getDefaultWeekRange().start
             setCalendarJob(null)
             navigate(
-              `/schedule-dispatch?jobId=${encodeURIComponent(calendarJob.id)}&week=${encodeURIComponent(getDefaultWeekRange().start)}`,
+              `/schedule-dispatch?jobId=${encodeURIComponent(calendarJob.id)}&week=${encodeURIComponent(week)}`,
             )
           }}
         />
@@ -3170,7 +3176,10 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         <ScheduleJobModal
           key={scheduleModalJob.id}
           open
-          onClose={() => setScheduleModalJob(null)}
+          onClose={() => {
+            setScheduleModalJob(null)
+            setScheduleModalInitialDate(null)
+          }}
           jobId={scheduleModalJob.id}
           jobTitle={`${(scheduleModalJob.hcp_number ?? '').trim() || '—'} · ${(scheduleModalJob.job_name ?? '').trim() || 'Job'}`}
           teamMembers={(scheduleModalJob.team_members ?? []).map((tm) => ({
@@ -3178,6 +3187,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
             name: tm.users?.name ?? null,
           }))}
           assigneeCandidates={users.map((u) => ({ user_id: u.id, name: u.name }))}
+          initialWorkDate={scheduleModalInitialDate}
         />
       ) : null}
       <ManageJobPeopleModal

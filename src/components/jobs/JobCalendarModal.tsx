@@ -106,8 +106,10 @@ export function JobCalendarModal({
   job: JobWithDetails
   onClose: () => void
   canOpenJobScheduleModal: boolean
-  onOpenSchedule: () => void
-  onOpenWeekDispatch: () => void
+  /** Receives the highlighted day (null when none) so Schedule opens on it. */
+  onOpenSchedule: (selectedYmd: string | null) => void
+  /** Receives the highlighted day (null when none) so dispatch opens that week. */
+  onOpenWeekDispatch: (selectedYmd: string | null) => void
 }) {
   const todayYmd = scheduleTodayDateKey()
   const [model, setModel] = useState<JobCalendarModel | null>(null)
@@ -148,8 +150,10 @@ export function JobCalendarModal({
     return () => document.removeEventListener('keydown', onKeyDown)
   }, [onClose])
 
+  // Click selects/highlights any day (re-click deselects); days with
+  // appointments also scroll the list to themselves.
   const jumpToDay = useCallback((ymd: string) => {
-    setSelectedYmd(ymd)
+    setSelectedYmd((prev) => (prev === ymd ? null : ymd))
     rowRefsByYmd.current[ymd]?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
   }, [])
 
@@ -288,19 +292,25 @@ export function JobCalendarModal({
                 const worked = model.workedYmds.has(day.ymd)
                 const isToday = day.ymd === todayYmd
                 const hasContent = dots.length > 0 || worked
+                const isSelected = selectedYmd === day.ymd
                 return (
                   <button
                     key={day.ymd}
                     type="button"
-                    disabled={!hasContent}
                     onClick={() => jumpToDay(day.ymd)}
-                    title={hasContent ? 'Show this day in the list below' : undefined}
+                    title={
+                      hasContent
+                        ? 'Highlight this day (shows it in the list below)'
+                        : 'Highlight this day — Schedule… and week dispatch will open on it'
+                    }
                     style={{
                       ...dayCellButtonBase,
-                      color: day.inMonth ? 'var(--text-strong)' : 'var(--text-faint)',
+                      // Only days with activity read dark; quiet in-month days go faint like spill days.
+                      color: day.inMonth && hasContent ? 'var(--text-strong)' : 'var(--text-faint)',
+                      background: isSelected ? 'var(--bg-amber-100)' : 'transparent',
                       outline: isToday ? '2px solid #2563eb' : undefined,
                       outlineOffset: isToday ? -2 : undefined,
-                      cursor: hasContent ? 'pointer' : 'default',
+                      cursor: 'pointer',
                     }}
                   >
                     <span>{Number(day.ymd.slice(8))}</span>
@@ -373,10 +383,16 @@ export function JobCalendarModal({
               ) : null}
             </div>
 
-            <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', flexWrap: 'wrap', marginTop: '0.75rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', justifyContent: 'flex-end', flexWrap: 'wrap', marginTop: '0.75rem' }}>
+              {selectedYmd ? (
+                <span style={{ marginRight: 'auto', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                  Selected: {formatApptDate(selectedYmd)}
+                </span>
+              ) : null}
               <button
                 type="button"
-                onClick={onOpenWeekDispatch}
+                onClick={() => onOpenWeekDispatch(selectedYmd)}
+                title={selectedYmd ? `Open the dispatch week containing ${formatApptDate(selectedYmd)}` : undefined}
                 style={{ padding: '0.35rem 0.75rem', fontSize: '0.8125rem', fontWeight: 600, background: 'var(--surface)', color: 'var(--text-blue-700)', border: '1px solid #2563eb', borderRadius: 6, cursor: 'pointer' }}
               >
                 Open week dispatch
@@ -384,10 +400,11 @@ export function JobCalendarModal({
               {canOpenJobScheduleModal ? (
                 <button
                   type="button"
-                  onClick={onOpenSchedule}
+                  onClick={() => onOpenSchedule(selectedYmd)}
+                  title={selectedYmd ? `Schedule this job on ${formatApptDate(selectedYmd)}` : undefined}
                   style={{ padding: '0.35rem 0.75rem', fontSize: '0.8125rem', fontWeight: 600, background: '#15803d', color: '#ffffff', border: '1px solid #166534', borderRadius: 6, cursor: 'pointer' }}
                 >
-                  Schedule…
+                  {selectedYmd ? `Schedule ${formatApptDate(selectedYmd)}…` : 'Schedule…'}
                 </button>
               ) : null}
             </div>
