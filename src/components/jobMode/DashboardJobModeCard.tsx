@@ -10,7 +10,12 @@ import {
 } from '../../lib/ledgerDisplayPrefixes'
 import { getBidServiceTypeTag } from '../../utils/unifiedJobBidSearch'
 import { withSupabaseRetry, formatErrorMessage } from '../../utils/errorHandling'
-import { denverCalendarDayKey } from '../../utils/dateUtils'
+import { companyWeekStartSundayContaining, denverCalendarDayKey, getDefaultWeekRange } from '../../utils/dateUtils'
+import { useNavigate } from 'react-router-dom'
+import { useAuth } from '../../hooks/useAuth'
+import { isAssistantLike } from '../../lib/subcontractorLikeRole'
+import { JobCalendarModal } from '../jobs/JobCalendarModal'
+import type { JobCalendarJobIdentity } from '../../lib/jobCalendarModal'
 import {
   pickCurrentAndNextScheduleBlock,
   type JobModeScheduleBlock,
@@ -171,6 +176,12 @@ function safeTrim(s: string | null | undefined): string {
 
 export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway }: Props) {
   const { prefixMap } = useLedgerDisplayPrefixes()
+  const navigate = useNavigate()
+  const { role } = useAuth()
+  // Same planner pool as Stages' canOpenJobScheduleModal — gates the calendar's week-dispatch link.
+  const canOpenWeekDispatch =
+    role === 'dev' || role === 'master_technician' || isAssistantLike(role) || role === 'superintendent'
+  const [jobCalendarOpen, setJobCalendarOpen] = useState(false)
   // Service-type names by id, for the trade-tag job label ("PLUM 902") in the header.
   const [serviceTypeNames, setServiceTypeNames] = useState<Record<string, string>>({})
   useEffect(() => {
@@ -522,6 +533,39 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
     return null
   })()
 
+  // Job the "Job calendar" link opens: the header's job (current block →
+  // off-schedule clock job → next block), matching what the tech is looking at.
+  const jobCalendarTarget: JobCalendarJobIdentity | null = (() => {
+    const identity = (
+      id: string,
+      hcp: string | null,
+      click: string | null,
+      name: string | null,
+      addr: string | null,
+      stid: string | null,
+    ): JobCalendarJobIdentity => ({
+      id,
+      hcp_number: hcp,
+      click_number: click,
+      job_name: name,
+      job_address: addr,
+      serviceType: stid && serviceTypeNames[stid] ? { name: serviceTypeNames[stid]! } : null,
+    })
+    if (picked.currentBlock) {
+      const cb = picked.currentBlock
+      return identity(cb.job_id, cb.hcp_number, cb.click_number, cb.job_name, cb.job_address, cb.service_type_id)
+    }
+    if (picked.state === 'on-off-schedule-job' && currentJobInfo) {
+      const cj = currentJobInfo
+      return identity(cj.id, cj.hcp_number, cj.click_number, cj.job_name, cj.job_address, cj.service_type_id)
+    }
+    if (picked.state === 'not-clocked-in-with-schedule' && picked.nextBlock) {
+      const nb = picked.nextBlock
+      return identity(nb.job_id, nb.hcp_number, nb.click_number, nb.job_name, nb.job_address, nb.service_type_id)
+    }
+    return null
+  })()
+
   // Right button intent depends on state.
   type RightButton =
     | { kind: 'next'; intent: 'start-first' | 'next-job'; label: string }
@@ -609,6 +653,48 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
         <div style={{ ...headerStatusLine, textAlign: 'center' }}>Loading Job Mode…</div>
       ) : null}
       {!loading ? renderHeader() : null}
+      {!loading && jobCalendarTarget ? (
+        <button
+          type="button"
+          onClick={() => setJobCalendarOpen(true)}
+          aria-label="Open the job calendar"
+          title="See what days this job is on people's calendars"
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '0.3rem',
+            alignSelf: 'center',
+            margin: '-0.35rem 0 0',
+            padding: '0.15rem 0.5rem',
+            border: 'none',
+            background: 'none',
+            cursor: 'pointer',
+            color: 'var(--text-link)',
+            fontSize: '0.75rem',
+            fontWeight: 600,
+          }}
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={13} height={13} fill="currentColor" aria-hidden="true">
+            <path d="M224 64C206.3 64 192 78.3 192 96L192 128L160 128C124.7 128 96 156.7 96 192L96 240L544 240L544 192C544 156.7 515.3 128 480 128L448 128L448 96C448 78.3 433.7 64 416 64C398.3 64 384 78.3 384 96L384 128L256 128L256 96C256 78.3 241.7 64 224 64zM96 288L96 480C96 515.3 124.7 544 160 544L480 544C515.3 544 544 515.3 544 480L544 288L96 288z" />
+          </svg>
+          Job calendar
+        </button>
+      ) : null}
+      {jobCalendarOpen && jobCalendarTarget ? (
+        <JobCalendarModal
+          job={jobCalendarTarget}
+          onClose={() => setJobCalendarOpen(false)}
+          canOpenJobScheduleModal={false}
+          canOpenWeekDispatch={canOpenWeekDispatch}
+          onOpenSchedule={() => {}}
+          onOpenWeekDispatch={(selectedYmd) => {
+            const week = (selectedYmd ? companyWeekStartSundayContaining(selectedYmd) : null) ?? getDefaultWeekRange().start
+            setJobCalendarOpen(false)
+            navigate(`/schedule-dispatch?jobId=${encodeURIComponent(jobCalendarTarget.id)}&week=${encodeURIComponent(week)}`)
+          }}
+        />
+      ) : null}
       {error ? <div style={errorRow}>{error}</div> : null}
       <div style={buttonRow}>
         <button

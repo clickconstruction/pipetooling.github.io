@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-28 (v2.1057)
+last_updated: 2026-07-28 (v2.1058)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1058)
+
+### Job Calendar reachable from the Detail modal header and Job Mode (2026-07-28)
+Follow-up to v2.1056/57: the calendar mounts on two more surfaces. New narrow `JobCalendarJobIdentity` type in [`jobCalendarModal.ts`](../src/lib/jobCalendarModal.ts) (structurally satisfied by `JobWithDetails`) retypes `renderStagesThreadFullscreenJobHeader` + the modal's `job` prop so lean surfaces can feed it; new optional `canOpenWeekDispatch` prop hides the dispatch button for non-planner viewers. **(1) [`DetailJobModal`](../src/components/jobs/DetailJobModal.tsx)**: the header calendar icon (planner-gated, previously a direct week-dispatch deep-link) now opens `JobCalendarModal`; week dispatch stays one click away inside it (selected-day aware via `companyWeekStartSundayContaining`) and Schedule… opens a local `ScheduleJobModal` (team members from `fullJob`, `initialWorkDate` from the highlighted day). **(2) [`DashboardJobModeCard`](../src/components/jobMode/DashboardJobModeCard.tsx)**: a small "Job calendar" link under the header (current block → off-schedule clock job → next block) opens the calendar read-only — `canOpenJobScheduleModal={false}`, week dispatch only for the planner pool (`useAuth` role). Link hidden when the card has no target job (verified live: "No schedule for today" state shows no link). Client-only.
 
 ## Latest Updates (v2.1057)
 

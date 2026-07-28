@@ -32,7 +32,9 @@ import {
   scheduleFormatWindow,
 } from '../../lib/jobScheduleChicago'
 import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
-import { getDefaultWeekRange } from '../../utils/dateUtils'
+import { companyWeekStartSundayContaining, getDefaultWeekRange } from '../../utils/dateUtils'
+import { JobCalendarModal } from './JobCalendarModal'
+import { ScheduleJobModal } from './ScheduleJobModal'
 import { isSubcontractorLikeRole } from '../../lib/subcontractorLikeRole'
 import { useJobFormModal } from '../../contexts/JobFormModalContext'
 import { useToastContext } from '../../contexts/ToastContext'
@@ -931,17 +933,23 @@ export default function DetailJobModal({
   // Mirrors Jobs.tsx canOpenJobScheduleModal — the roles that can use the Dispatch job-week grid.
   const showWeekDispatchButton =
     Boolean(jobId) &&
+    Boolean(fullJob) &&
     (authRole === 'dev' ||
       authRole === 'master_technician' ||
       isAssistantLike(authRole) ||
       authRole === 'superintendent')
 
-  const handleOpenWeekDispatch = () => {
+  const handleOpenWeekDispatch = (selectedYmd?: string | null) => {
     if (!jobId) return
-    const week = getDefaultWeekRange().start
+    const week = (selectedYmd ? companyWeekStartSundayContaining(selectedYmd) : null) ?? getDefaultWeekRange().start
     onClose()
     navigate(`/schedule-dispatch?jobId=${encodeURIComponent(jobId)}&week=${encodeURIComponent(week)}`)
   }
+
+  // Header calendar icon → Job Calendar modal; its Schedule… opens ScheduleJobModal on the picked day.
+  const [jobCalendarOpen, setJobCalendarOpen] = useState(false)
+  const [detailScheduleModalOpen, setDetailScheduleModalOpen] = useState(false)
+  const [detailScheduleInitialDate, setDetailScheduleInitialDate] = useState<string | null>(null)
 
   const jobFormModal = useJobFormModal()
   const showEditJobButton =
@@ -1080,10 +1088,10 @@ export default function DetailJobModal({
                   type="button"
                   onClick={(e) => {
                     e.stopPropagation()
-                    handleOpenWeekDispatch()
+                    setJobCalendarOpen(true)
                   }}
-                  title="Open week dispatch to schedule this job"
-                  aria-label="Open week dispatch to schedule this job"
+                  title="Open the job calendar — days scheduled, who, and every appointment"
+                  aria-label="Open the job calendar"
                   style={{
                     display: 'inline-flex',
                     alignItems: 'center',
@@ -1968,6 +1976,38 @@ export default function DetailJobModal({
             </div>
           </div>
         </div>
+      ) : null}
+      {jobCalendarOpen && fullJob ? (
+        <JobCalendarModal
+          job={fullJob}
+          onClose={() => setJobCalendarOpen(false)}
+          canOpenJobScheduleModal={showWeekDispatchButton}
+          onOpenSchedule={(selectedYmd) => {
+            setDetailScheduleInitialDate(selectedYmd)
+            setDetailScheduleModalOpen(true)
+          }}
+          onOpenWeekDispatch={(selectedYmd) => {
+            setJobCalendarOpen(false)
+            handleOpenWeekDispatch(selectedYmd)
+          }}
+        />
+      ) : null}
+      {detailScheduleModalOpen && fullJob ? (
+        <ScheduleJobModal
+          key={fullJob.id}
+          open
+          onClose={() => {
+            setDetailScheduleModalOpen(false)
+            setDetailScheduleInitialDate(null)
+          }}
+          jobId={fullJob.id}
+          jobTitle={`${(fullJob.hcp_number ?? '').trim() || '—'} · ${(fullJob.job_name ?? '').trim() || 'Job'}`}
+          teamMembers={(fullJob.team_members ?? []).map((tm) => ({
+            user_id: tm.user_id,
+            name: tm.users?.name ?? null,
+          }))}
+          initialWorkDate={detailScheduleInitialDate}
+        />
       ) : null}
       {reportsModalOpen && fullJob ? (
         <JobReportsModal
