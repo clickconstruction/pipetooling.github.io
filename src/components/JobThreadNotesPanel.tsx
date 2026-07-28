@@ -7,7 +7,11 @@ import { displayReportTemplateName } from '../lib/reportTemplateDisplayName'
 import { type ReportForView } from './ReportViewModal'
 import { allReportFieldLinesForThread } from '../lib/reportForViewFromJobLedgerRow'
 import type { JobThreadScheduleActivityItem } from '../lib/jobThreadScheduleActivity'
-import type { StagesUpcomingAppointment } from '../lib/stagesUpcomingSchedule'
+import {
+  formatStagesCompactWindow,
+  formatStagesNextDateLabel,
+  type StagesUpcomingAppointment,
+} from '../lib/stagesUpcomingSchedule'
 import type { JobThreadClockActivityItem } from '../lib/jobThreadClockActivity'
 import { eventRenderMeta, type JobThreadEventActivityItem } from '../lib/jobActivityEvent'
 import { ACTIVITY_FILTERS, filterActivity, type ActivityFilter } from '../lib/jobActivityFilter'
@@ -468,12 +472,14 @@ export function JobThreadNotesPanel({
           }}
         >
           <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-            <span style={{ fontSize: '0.65rem', fontWeight: 700, textTransform: 'uppercase', color: '#15803d', marginRight: '0.35rem' }}>
+            <span style={{ fontSize: '0.65rem', fontWeight: 700, textTransform: 'uppercase', color: '#15803d' }}>
               Next
             </span>
-            {scheduleFormatDateLongNoWeekday(nextAppointment.ymd)} ·{' '}
-            {scheduleFormatWindow(nextAppointment.timeStart, nextAppointment.timeEnd)} ·{' '}
+            <span style={{ margin: '0 0.35rem' }}>·</span>
             {nextAppointment.assigneeNames.join(', ')}
+          </div>
+          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+            {formatStagesNextDateLabel(nextAppointment.ymd)} {formatStagesCompactWindow(nextAppointment.timeStart, nextAppointment.timeEnd)}
           </div>
           {nextAppointment.note ? (
             <div style={{ fontSize: '0.8125rem', color: 'var(--text-gray-800)', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>

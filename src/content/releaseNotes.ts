@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1062',
+    date: '2026-07-28',
+    title: 'NEXT line: who first, when below',
+    kind: 'fix',
+    highlights: [
+      'The green NEXT line on Stages rows and in the activity panel now reads "NEXT · Abraham" with "Fri Jul 31 8:00–9:30 AM" underneath — and the time drops the repeated AM/PM.',
+    ],
+  },
+  {
     version: 'v2.1061',
     date: '2026-07-28',
     title: 'Tidier Activity column + pinned Next in the thread',
