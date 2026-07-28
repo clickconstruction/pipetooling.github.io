@@ -138,4 +138,23 @@ describe('JobsStagesUnifiedTable render smoke', () => {
     const row = document.querySelector(`tr[data-stages-invoice-id="${billedInvoice.id}"]`) as HTMLElement
     expect(row.style.backgroundColor).toBe('')
   })
+
+  it('wraps the hazmat button in a green box only for jobs with a live fee (v2.1040)', () => {
+    const withFee = makeJob({ job_name: 'Fee Job', status: 'ready_to_bill' })
+    const without = makeJob({ job_name: 'Plain Job', status: 'ready_to_bill' })
+    const rows: StageRow[] = [
+      { kind: 'job', job: withFee },
+      { kind: 'job', job: without },
+    ]
+    renderWithProviders(
+      <JobsStagesUnifiedTable
+        {...makeProps({ rows, canCreateHazmatFee: true, hazmatFeeJobIds: new Set([withFee.id]) })}
+      />,
+    )
+    const buttons = screen.getAllByLabelText('Create a hazmat fee for this job')
+    expect(buttons).toHaveLength(2)
+    const boxed = buttons.filter((b) => (b as HTMLElement).style.border.includes('rgb(34, 197, 94)'))
+    expect(boxed).toHaveLength(1)
+    expect(boxed[0]?.title).toContain('has a hazmat fee')
+  })
 })

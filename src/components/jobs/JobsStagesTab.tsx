@@ -373,6 +373,22 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
       jobAddress: (j.job_address ?? '').trim() || '—',
       customerName: (j.customer_name ?? '').trim() || '—',
     })
+  // Jobs with a live (non-voided) hazmat fee — the ☣ button wears a bright
+  // green box on those rows (v2.1040). One tiny table-wide query (fees are
+  // rare); a fetch failure just leaves every button plain.
+  const [hazmatFeeJobIds, setHazmatFeeJobIds] = useState<ReadonlySet<string>>(() => new Set())
+  const loadHazmatFeeJobIds = useCallback(async () => {
+    if (!canCreateHazmatFee) return
+    try {
+      const { data } = await supabase.from('job_hazmat_incidents').select('job_id').is('voided_at', null)
+      setHazmatFeeJobIds(new Set(((data ?? []) as { job_id: string }[]).map((r) => r.job_id)))
+    } catch {
+      // glanceable extra — never block the tab
+    }
+  }, [canCreateHazmatFee])
+  useEffect(() => {
+    void loadHazmatFeeJobIds()
+  }, [loadHazmatFeeJobIds])
   const lienToolingSenderFallback = useMemo(() => {
     const job = lienToolingPrefillModal?.job
     const sessionName = authProfileName?.trim() ?? ''
@@ -1578,6 +1594,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     setAiaG702StagesJob={setAiaG702StagesJob}
                     canCreateHazmatFee={canCreateHazmatFee}
                     openHazmatFee={openHazmatFee}
+                    hazmatFeeJobIds={hazmatFeeJobIds}
                     canEditJobPctComplete={canEditJobPctComplete}
                     canManageJobPeople={canManageJobPeople}
                     setManageJobPeople={setManageJobPeople}
@@ -1660,6 +1677,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     setAiaG702StagesJob={setAiaG702StagesJob}
                     canCreateHazmatFee={canCreateHazmatFee}
                     openHazmatFee={openHazmatFee}
+                    hazmatFeeJobIds={hazmatFeeJobIds}
                     canEditJobPctComplete={canEditJobPctComplete}
                     canManageJobPeople={canManageJobPeople}
                     setManageJobPeople={setManageJobPeople}
@@ -1790,6 +1808,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     setAiaG702StagesJob={setAiaG702StagesJob}
                     canCreateHazmatFee={canCreateHazmatFee}
                     openHazmatFee={openHazmatFee}
+                    hazmatFeeJobIds={hazmatFeeJobIds}
                     canEditJobPctComplete={canEditJobPctComplete}
                     canManageJobPeople={canManageJobPeople}
                     setManageJobPeople={setManageJobPeople}
@@ -2008,6 +2027,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     setAiaG702StagesJob={setAiaG702StagesJob}
                     canCreateHazmatFee={canCreateHazmatFee}
                     openHazmatFee={openHazmatFee}
+                    hazmatFeeJobIds={hazmatFeeJobIds}
                     canEditJobPctComplete={canEditJobPctComplete}
                     canManageJobPeople={canManageJobPeople}
                     setManageJobPeople={setManageJobPeople}
@@ -2102,6 +2122,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     setAiaG702StagesJob={setAiaG702StagesJob}
                     canCreateHazmatFee={canCreateHazmatFee}
                     openHazmatFee={openHazmatFee}
+                    hazmatFeeJobIds={hazmatFeeJobIds}
                     canEditJobPctComplete={canEditJobPctComplete}
                     canManageJobPeople={canManageJobPeople}
                     setManageJobPeople={setManageJobPeople}
@@ -2738,6 +2759,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         onClose={() => setHazmatFeeJob(null)}
         onCreated={() => {
           loadJobs()
+          void loadHazmatFeeJobIds()
         }}
       />
       <BilledPaymentConfirmationModal

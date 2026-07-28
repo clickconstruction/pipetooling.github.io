@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1040',
+    date: '2026-07-28',
+    title: 'Stages shows which jobs have a hazmat fee',
+    kind: 'feature',
+    highlights: [
+      'On Jobs → Stages, the ☣ button now wears a bright green box on any job that already carries a hazmat fee — spot them at a glance.',
+      'Hover it to confirm; clicking still opens the wizard to add another fee. Voided fees don’t count.',
+    ],
+  },
+  {
     version: 'v2.1039',
     date: '2026-07-28',
     title: 'Hazmat notice email: send it when you choose',

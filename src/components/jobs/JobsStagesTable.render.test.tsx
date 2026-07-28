@@ -108,4 +108,23 @@ describe('JobsStagesTable render smoke', () => {
     expect(pctInputs[0]!.defaultValue).toBe('40')
     expect(document.querySelectorAll('tr[data-stages-job-id]')).toHaveLength(2)
   })
+
+  it('wraps the hazmat button in a green box only for jobs with a live fee (v2.1040)', () => {
+    const withFee = makeJob({ job_name: 'Fee Job' })
+    const without = makeJob({ job_name: 'Plain Job' })
+    renderWithProviders(
+      <JobsStagesTable
+        {...makeProps({
+          jobList: [withFee, without],
+          canCreateHazmatFee: true,
+          hazmatFeeJobIds: new Set([withFee.id]),
+        })}
+      />,
+    )
+    const buttons = screen.getAllByLabelText('Create a hazmat fee for this job')
+    expect(buttons).toHaveLength(2)
+    const boxed = buttons.filter((b) => (b as HTMLElement).style.border.includes('rgb(34, 197, 94)'))
+    expect(boxed).toHaveLength(1)
+    expect(boxed[0]?.title).toContain('has a hazmat fee')
+  })
 })
