@@ -26,6 +26,7 @@ import {
   renderStagesFieldAndBillingLines as renderStagesFieldAndBillingLinesWithCtx,
   renderStagesJobColumnEstimateFooter,
   renderStagesJobHcpSubline,
+  renderStagesThreadFullscreenJobHeader,
   renderStagesLastActivityCell as renderStagesLastActivityCellWithCtx,
   renderStagesProjectBannerRow,
   renderStagesTwoLineHeader,
@@ -572,6 +573,7 @@ export default function JobsStagesTable(props: JobsStagesTableProps) {
                     {renderStagesExpandedRowPanel(
                     <JobThreadNotesPanel
                       fullscreenControl={{ active: jobThreadFullscreen, onToggle: () => setJobThreadFullscreen(!jobThreadFullscreen) }}
+                      fullscreenHeader={renderStagesThreadFullscreenJobHeader(j)}
                       pctComplete={j.pct_complete ?? null}
                       canEditPct={canEditJobPctComplete}
                       pctSaving={pctCompleteSavingId === j.id}

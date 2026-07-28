@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1053',
+    date: '2026-07-28',
+    title: 'Full-screen activity shows which job you\'re on',
+    kind: 'feature',
+    highlights: [
+      'The full-screen Job activity / notes view now shows the job number, service type, job name, and address at the top — the address opens Google Maps.',
+    ],
+  },
+  {
     version: 'v2.1052',
     date: '2026-07-28',
     title: 'Full-screen job activity on Stages',

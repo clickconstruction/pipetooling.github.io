@@ -145,6 +145,60 @@ export function renderStagesJobHcpSubline(job: JobWithDetails, extraWrap?: CSSPr
   )
 }
 
+/**
+ * Job identity block atop the FULLSCREEN Job activity / notes panel: number
+ * badge + full service-type pill, then job name, then a maps-linked address.
+ * Passed as `fullscreenHeader`, so it renders only while fullscreen is active.
+ */
+export function renderStagesThreadFullscreenJobHeader(job: JobWithDetails) {
+  const jobNumber = effectiveJobLedgerNumber(job.hcp_number, job.click_number)
+  const stName = job.serviceType?.name?.trim()
+  const tagInfo = stName ? getBidServiceTypeTag(stName) : null
+  const servicePillStyle: CSSProperties | null = stName
+    ? {
+        ...stagesJobSublinePillBoxBase,
+        letterSpacing: '0.02em',
+        border: `1px solid ${tagInfo?.color ?? '#d1d5db'}`,
+        background: tagInfo ? tagInfo.color : 'var(--bg-muted)',
+        color: tagInfo ? '#fff' : 'var(--text-700)',
+      }
+    : null
+  const addr = (job.job_address ?? '').trim()
+  const addrLines = formatAddressTwoLines(addr)
+  return (
+    <div
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '0.25rem',
+        marginBottom: '0.5rem',
+        paddingBottom: '0.5rem',
+        borderBottom: '1px solid var(--border)',
+        flexShrink: 0,
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', flexWrap: 'wrap' }}>
+        <span style={stagesJobHcpBadgeStyle}>Job: {jobNumber || '—'}</span>
+        {servicePillStyle ? <span style={servicePillStyle}>{stName}</span> : null}
+      </div>
+      <span style={{ fontSize: '0.9375rem', fontWeight: 600, color: 'var(--text-strong)', lineHeight: 1.3 }}>
+        {(job.job_name ?? '').trim() || '—'}
+      </span>
+      {addrLines ? (
+        <a
+          href={googleMapsSearchUrl(addr)}
+          target="_blank"
+          rel="noopener noreferrer"
+          title="Open in Google Maps"
+          style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', textDecoration: 'none', alignSelf: 'flex-start' }}
+        >
+          <JobAddressText line1={addrLines.line1} line2={addrLines.line2} />
+        </a>
+      ) : null}
+    </div>
+  )
+}
+
 export function renderStagesFieldAndBillingLines(ctx: StagesRowRenderContext, job: JobWithDetails) {
   const { showToast, stagesManHoursByJobId, stagesManHoursLoading, stagesLaborBreakdownByJobId } = ctx
   const jYmd = deriveStagesFieldReferenceYmd({

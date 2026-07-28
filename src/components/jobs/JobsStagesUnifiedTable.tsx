@@ -38,6 +38,7 @@ import {
   renderStagesFieldAndBillingLines as renderStagesFieldAndBillingLinesWithCtx,
   renderStagesJobColumnEstimateFooter,
   renderStagesJobHcpSubline,
+  renderStagesThreadFullscreenJobHeader,
   renderStagesLastActivityCell as renderStagesLastActivityCellWithCtx,
   renderStagesProjectBannerRow,
   renderStagesTwoLineHeader,
@@ -903,6 +904,7 @@ export default function JobsStagesUnifiedTable(props: JobsStagesUnifiedTableProp
                         {renderStagesExpandedRowPanel(
                         <JobThreadNotesPanel
                           fullscreenControl={{ active: jobThreadFullscreen, onToggle: () => setJobThreadFullscreen(!jobThreadFullscreen) }}
+                          fullscreenHeader={renderStagesThreadFullscreenJobHeader(j)}
                           pctComplete={j.pct_complete ?? null}
                           canEditPct={canEditJobPctComplete}
                           pctSaving={pctCompleteSavingId === j.id}
@@ -1303,6 +1305,7 @@ export default function JobsStagesUnifiedTable(props: JobsStagesUnifiedTableProp
                         {renderStagesExpandedRowPanel(
                         <JobThreadNotesPanel
                           fullscreenControl={{ active: jobThreadFullscreen, onToggle: () => setJobThreadFullscreen(!jobThreadFullscreen) }}
+                          fullscreenHeader={renderStagesThreadFullscreenJobHeader(job)}
                           pctComplete={job.pct_complete ?? null}
                           canEditPct={canEditJobPctComplete}
                           pctSaving={pctCompleteSavingId === job.id}
