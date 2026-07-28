@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1065',
+    date: '2026-07-28',
+    title: 'Dispatch cards show the job address',
+    kind: 'feature',
+    highlights: [
+      'On Dispatch (People tab), every schedule card now shows the job\'s address under the job name — always one line, trimmed with … when it\'s long. Hover for the full address.',
+    ],
+  },
+  {
     version: 'v2.1064',
     date: '2026-07-28',
     title: 'More buttons can no longer hang on "Saving…"',

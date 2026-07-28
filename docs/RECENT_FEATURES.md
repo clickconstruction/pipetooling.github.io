@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-28 (v2.1064)
+last_updated: 2026-07-28 (v2.1065)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1065)
+
+### Dispatch People grid: one-line ellipsized job address on every block card (2026-07-28)
+Request: cards on /schedule-dispatch (People tab) show the job address on one line ending in "…" instead of wrapping. [`ScheduleDispatchHubPage`](../src/components/schedule/ScheduleDispatchHubPage.tsx) builds `hubJobAddressById` from the already-fetched `hubJobs` (the hub jobs query has carried `job_address` all along) and threads a new optional `getJobAddress?: (jobId) => string` down the existing `getJobDisplayTitle` chain in [`ScheduleDispatchHub`](../src/components/schedule/ScheduleDispatchHub.tsx) (hub component → HubPeoplePanel → HubPeopleDayCell → HubPeopleBlockCard). The card renders the address under the title as `white-space: nowrap; overflow: hidden; text-overflow: ellipsis` with the full address in `title` (hover). Prop is optional so other `getJobDisplayTitle` consumers (LinkedScheduleGroupModal, expected-manpower rows) are untouched. Client-only.
 
 ## Latest Updates (v2.1064)
 

@@ -381,6 +381,7 @@ function HubPeopleBlockCard({
   onPlusMenuBlockIdChange,
   onStartCardPlacement,
   getJobDisplayTitle,
+  getJobAddress,
   onOpenJob,
   onOpenHubJobDetail,
   onDeleteBlock,
@@ -403,6 +404,8 @@ function HubPeopleBlockCard({
   onPlusMenuBlockIdChange: (blockId: string | null) => void
   onStartCardPlacement: (b: JobScheduleBlockRow, variant: 'linked' | 'unlinked') => void
   getJobDisplayTitle: (jobId: string) => string
+  /** Job address for the card's one-line ellipsized subline; empty string when none. */
+  getJobAddress?: (jobId: string) => string
   onOpenJob: (jobId: string) => void
   onOpenHubJobDetail: (block: JobScheduleBlockRow, workDateYmd: string) => void
   onDeleteBlock: (id: string) => void
@@ -547,6 +550,25 @@ function HubPeopleBlockCard({
           <span style={{ fontWeight: 700, color: 'var(--text-blue-900)', wordBreak: 'break-word' }}>
             {getJobDisplayTitle(block.job_id)}
           </span>
+          {(() => {
+            const addr = getJobAddress?.(block.job_id) ?? ''
+            if (!addr) return null
+            return (
+              <span
+                title={addr}
+                style={{
+                  display: 'block',
+                  color: 'var(--text-600)',
+                  fontWeight: 400,
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                }}
+              >
+                {addr}
+              </span>
+            )
+          })()}
         </button>
         <button
           type="button"
@@ -803,6 +825,7 @@ function HubPeopleDayCell({
   onCardPlacementCellPick,
   groupMemberCountByGroupId,
   getJobDisplayTitle,
+  getJobAddress,
   onOpenJob,
   onOpenHubJobDetail,
   highlightLinkedGroups,
@@ -838,6 +861,8 @@ function HubPeopleDayCell({
   onCardPlacementCellPick: (assigneeUserId: string, workDate: string) => void
   groupMemberCountByGroupId: ReadonlyMap<string, number>
   getJobDisplayTitle: (jobId: string) => string
+  /** Job address for the card's one-line ellipsized subline; empty string when none. */
+  getJobAddress?: (jobId: string) => string
   onOpenJob: (jobId: string) => void
   onOpenHubJobDetail: (block: JobScheduleBlockRow, workDateYmd: string) => void
   highlightLinkedGroups: boolean
@@ -1086,6 +1111,7 @@ function HubPeopleDayCell({
               onPlusMenuBlockIdChange={onPlusMenuBlockIdChange}
               onStartCardPlacement={onStartCardPlacement}
               getJobDisplayTitle={getJobDisplayTitle}
+              getJobAddress={getJobAddress}
               onOpenJob={onOpenJob}
               onOpenHubJobDetail={onOpenHubJobDetail}
               onDeleteBlock={onDeleteBlock}
@@ -1157,6 +1183,8 @@ type HubPeoplePanelProps = {
   salariedUserIds: ReadonlySet<string>
   personDayBlocks: Map<string, JobScheduleBlockRow[]>
   getJobDisplayTitle: (jobId: string) => string
+  /** Job address for the card's one-line ellipsized subline; empty string when none. */
+  getJobAddress?: (jobId: string) => string
   groupMemberCountByGroupId: ReadonlyMap<string, number>
   scheduleTodayYmd: string
   canEdit: boolean
@@ -1232,6 +1260,7 @@ function HubPeoplePanel({
   salariedUserIds,
   personDayBlocks,
   getJobDisplayTitle,
+  getJobAddress,
   groupMemberCountByGroupId,
   scheduleTodayYmd,
   columnFocusDayYmd,
@@ -2036,6 +2065,7 @@ function HubPeoplePanel({
                         onCardPlacementCellPick={onCardPlacementCellPick}
                         groupMemberCountByGroupId={groupMemberCountByGroupId}
                         getJobDisplayTitle={getJobDisplayTitle}
+                        getJobAddress={getJobAddress}
                         onOpenJob={onOpenJob}
                         onOpenHubJobDetail={onOpenHubJobDetail}
                         highlightLinkedGroups={highlightLinkedGroups}
@@ -2563,6 +2593,8 @@ type Props = {
   userIdsWithBlocksThisWeek: ReadonlySet<string>
   salariedUserIds: ReadonlySet<string>
   getJobDisplayTitle: (jobId: string) => string
+  /** Job address for the card's one-line ellipsized subline; empty string when none. */
+  getJobAddress?: (jobId: string) => string
   groupMemberCountByGroupId: ReadonlyMap<string, number>
   scheduleTodayYmd: string
   canEdit: boolean
@@ -2678,6 +2710,7 @@ export function ScheduleDispatchHub({
   userIdsWithBlocksThisWeek,
   salariedUserIds,
   getJobDisplayTitle,
+  getJobAddress,
   groupMemberCountByGroupId,
   scheduleTodayYmd,
   canEdit,
@@ -2866,6 +2899,7 @@ export function ScheduleDispatchHub({
           salariedUserIds={salariedUserIds}
           personDayBlocks={personDayBlocks}
           getJobDisplayTitle={getJobDisplayTitle}
+          getJobAddress={getJobAddress}
           groupMemberCountByGroupId={groupMemberCountByGroupId}
           scheduleTodayYmd={scheduleTodayYmd}
           columnFocusDayYmd={columnFocusDayYmd}
@@ -2961,6 +2995,7 @@ export function ScheduleDispatchHub({
           salariedUserIds={salariedUserIds}
           personDayBlocks={personDayBlocks}
           getJobDisplayTitle={getJobDisplayTitle}
+          getJobAddress={getJobAddress}
           groupMemberCountByGroupId={groupMemberCountByGroupId}
           scheduleTodayYmd={scheduleTodayYmd}
           columnFocusDayYmd={columnFocusDayYmd}
