@@ -92,6 +92,15 @@ describe('allReportFieldLinesForThread (v2.1046 full inline report)', () => {
     ).toEqual([{ label: 'How complete is the job?', value: '22%' }])
   })
 
+  it('drops the label for UUID field keys — value renders alone (v2.1048)', () => {
+    expect(
+      allReportFieldLinesForThread({
+        ...base,
+        field_values: { 'e4e6647f-a430-42d7-ab51-a37229a015fd': '[HCP] camera for toilet issues' },
+      }),
+    ).toEqual([{ label: '', value: '[HCP] camera for toilet issues' }])
+  })
+
   it('replaces signature images with the on-file placeholder', () => {
     expect(
       allReportFieldLinesForThread({

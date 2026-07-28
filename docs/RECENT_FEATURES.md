@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-28 (v2.1047)
+last_updated: 2026-07-28 (v2.1048)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1048)
+
+### Job activity / notes: no raw UUID labels, no redundant "View full report" (2026-07-28)
+Follow-up to v2.1046's full inline reports: some (older) reports key `field_values` by `report_template_fields.id` instead of the label — the thread showed the raw UUID as a heading (e.g. the "Note" template's long_text field). `allReportFieldLinesForThread` ([`reportForViewFromJobLedgerRow.ts`](../src/lib/reportForViewFromJobLedgerRow.ts)) now blanks UUID labels so those lines render value-only under the template-name line (test added). And since reports are no longer condensed in the thread, the per-entry **View full report** button (and the panel's ReportViewModal) is gone — full report views remain via the "N Reports" button's viewer. Client-only.
 
 ## Latest Updates (v2.1047)
 

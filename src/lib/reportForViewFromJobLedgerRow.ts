@@ -68,6 +68,11 @@ export function firstNonEmptyFieldValueSummary(report: ReportForView, maxLen = 1
 
 export type ReportThreadFieldLine = { label: string; value: string }
 
+/** Some (older) reports keyed field_values by report_template_fields.id rather
+ * than the field label — a raw UUID is noise, and the template-name line above
+ * already says what the entry is, so those lines render value-only. */
+const UUID_FIELD_KEY_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
 /** Every non-empty field as a label/value pair — the Stages thread's full
  * inline report view (v2.1046). Mirrors ReportViewModal's filtering: the
  * legacy who-key hides when the new completion key exists; signature images
@@ -82,11 +87,12 @@ export function allReportFieldLinesForThread(report: ReportForView): ReportThrea
     if (label === REPORT_FIELD_LABEL_LEGACY_WHO && hasNewCompletionKey) continue
     const t = (v ?? '').trim()
     if (!t) continue
+    const displayLabel = UUID_FIELD_KEY_RE.test(label) ? '' : displayLabelForFieldKey(label)
     if (isReportSignatureImageDataUrl(t)) {
-      out.push({ label: displayLabelForFieldKey(label), value: REPORT_SIGNATURE_ON_FILE })
+      out.push({ label: displayLabel, value: REPORT_SIGNATURE_ON_FILE })
       continue
     }
-    out.push({ label: displayLabelForFieldKey(label), value: formatReportFieldValueForRead(label, t) })
+    out.push({ label: displayLabel, value: formatReportFieldValueForRead(label, t) })
   }
   return out
 }

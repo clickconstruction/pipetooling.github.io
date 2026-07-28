@@ -2,7 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import { getDispatchNoteDisplayMeta, formatDispatchNoteTimeChicago } from '../utils/dispatchNoteDisplay'
 import type { UserRole } from '../hooks/useAuth'
 import { displayReportTemplateName } from '../lib/reportTemplateDisplayName'
-import ReportViewModal, { type ReportForView } from './ReportViewModal'
+import { type ReportForView } from './ReportViewModal'
 import { allReportFieldLinesForThread } from '../lib/reportForViewFromJobLedgerRow'
 import type { JobThreadScheduleActivityItem } from '../lib/jobThreadScheduleActivity'
 import type { JobThreadClockActivityItem } from '../lib/jobThreadClockActivity'
@@ -213,7 +213,6 @@ export function JobThreadNotesPanel({
   teamMembers,
   peopleAction,
 }: JobThreadNotesPanelProps) {
-  const [viewingReport, setViewingReport] = useState<ReportForView | null>(null)
   const [pctEditorOpen, setPctEditorOpen] = useState(false)
   const [pctDraft, setPctDraft] = useState(pctComplete ?? 0)
   const [pctNoteError, setPctNoteError] = useState<string | null>(null)
@@ -602,33 +601,19 @@ export function JobThreadNotesPanel({
                       <span style={{ fontWeight: 600 }}>{displayReportTemplateName(r.template_name, viewerRole)}</span>
                       {fieldLines.length > 0 ? (
                         <div style={{ marginTop: 4, display: 'flex', flexDirection: 'column', gap: 4 }}>
-                          {fieldLines.map((l) => (
-                            <div key={l.label} style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-                              <span style={{ color: 'var(--text-muted)', fontWeight: 500 }}>{l.label}</span>
-                              {' — '}
+                          {fieldLines.map((l, i) => (
+                            <div key={`${l.label}-${i}`} style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                              {l.label ? (
+                                <>
+                                  <span style={{ color: 'var(--text-muted)', fontWeight: 500 }}>{l.label}</span>
+                                  {' — '}
+                                </>
+                              ) : null}
                               <span>{l.value}</span>
                             </div>
                           ))}
                         </div>
                       ) : null}
-                      <div style={{ marginTop: 6 }}>
-                        <button
-                          type="button"
-                          onClick={() => setViewingReport(r)}
-                          style={{
-                            padding: '0.2rem 0.5rem',
-                            fontSize: '0.75rem',
-                            fontWeight: 600,
-                            background: 'var(--bg-blue-tint)',
-                            color: 'var(--text-blue-700)',
-                            border: '1px solid #93c5fd',
-                            borderRadius: 4,
-                            cursor: 'pointer',
-                          }}
-                        >
-                          View full report
-                        </button>
-                      </div>
                     </div>
                   </li>
                 )
@@ -637,7 +622,6 @@ export function JobThreadNotesPanel({
           </ul>
         </div>
       )}
-      <ReportViewModal open={viewingReport != null} report={viewingReport} onClose={() => setViewingReport(null)} viewerRole={viewerRole} />
       {!canPost && (scheduleAction || scheduleDispatchAction) ? (
         <div
           style={{
