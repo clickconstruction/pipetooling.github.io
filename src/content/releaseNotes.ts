@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1032',
+    date: '2026-07-27',
+    title: 'Rider rows read better on desktop',
+    kind: 'fix',
+    highlights: [
+      'The rider line no longer wraps mid-title — the fee sits right-aligned on the same line, and the notice buttons stretch across the full row.',
+    ],
+  },
+  {
     version: 'v2.1031',
     date: '2026-07-27',
     title: 'Hazmat fees: no more instant rider bills',
