@@ -1,7 +1,13 @@
 import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import type { JobThreadActivityItem, JobThreadNoteRow } from '../components/JobThreadNotesPanel'
-import { appendToastRefreshHint, formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
+import {
+  OperationTimeoutError,
+  appendToastRefreshHint,
+  formatErrorMessage,
+  withOperationTimeout,
+  withSupabaseRetry,
+} from '../utils/errorHandling'
 import {
   reportForViewFromJobLedgerRow,
   type ReportForJobLedgerRow,
@@ -90,6 +96,14 @@ export function rpcRowJobIdFromThreadStatsRpc(r: unknown): string | null {
   const id = o.job_id ?? o.jobId
   return typeof id === 'string' && id.length > 0 ? id : null
 }
+
+/**
+ * Deadline for the note-post round-trip. Retries only fire on failures — a
+ * frozen DB never settles the fetch, so without this the composer sticks on
+ * its submitting state forever (v2.1063 schedule-save hang class). The
+ * request is NOT cancelled, so the timeout message says "may or may not".
+ */
+const THREAD_NOTE_SUBMIT_TIMEOUT_MS = 15000
 
 const OPTIMISTIC_JOB_THREAD_NOTE_PREFIX = '__optimistic__:'
 
@@ -419,18 +433,22 @@ export function useJobThreadNotes(
       }
       setJobThreadSubmittingId(jobId)
       try {
-        const inserted = await withSupabaseRetry(
-          async () =>
-            supabase
-              .from('jobs_ledger_thread_notes')
-              .insert({
-                job_id: jobId,
-                author_user_id: authUserId,
-                body: trimmed,
-              })
-              .select(THREAD_NOTE_SELECT)
-              .single(),
-          'insert jobs_ledger_thread_note',
+        const inserted = await withOperationTimeout(
+          withSupabaseRetry(
+            async () =>
+              supabase
+                .from('jobs_ledger_thread_notes')
+                .insert({
+                  job_id: jobId,
+                  author_user_id: authUserId,
+                  body: trimmed,
+                })
+                .select(THREAD_NOTE_SELECT)
+                .single(),
+            'insert jobs_ledger_thread_note',
+          ),
+          THREAD_NOTE_SUBMIT_TIMEOUT_MS,
+          'Post note',
         )
         if (inserted == null) throw new Error('No note row returned')
         const row = inserted as unknown as JobThreadNoteRow
@@ -443,16 +461,28 @@ export function useJobThreadNotes(
           return { ...prev, [jobId]: sortJobThreadActivity(next) }
         })
         inFlightThreadNoteRef.current = null
-        const stats = await withSupabaseRetry(
-          () => supabase.rpc('jobs_ledger_thread_note_stats', { p_job_ids: [jobId] }),
-          'jobs_ledger_thread_note_stats after insert',
-        )
-        const statRow = (stats as unknown[] | null)?.[0]
-        if (statRow) {
-          setJobThreadStatsByJobId((prev) => ({
-            ...prev,
-            [jobId]: statsFromRpcRow(statRow),
-          }))
+        // The note is posted; the stats refresh is best-effort with its own
+        // deadline so a frozen DB can't strand the submitting state, and its
+        // failure never mislabels the posted note as failed (realtime + the
+        // merge path catch stats up later).
+        try {
+          const stats = await withOperationTimeout(
+            withSupabaseRetry(
+              () => supabase.rpc('jobs_ledger_thread_note_stats', { p_job_ids: [jobId] }),
+              'jobs_ledger_thread_note_stats after insert',
+            ),
+            THREAD_NOTE_SUBMIT_TIMEOUT_MS,
+            'Refresh note stats',
+          )
+          const statRow = (stats as unknown[] | null)?.[0]
+          if (statRow) {
+            setJobThreadStatsByJobId((prev) => ({
+              ...prev,
+              [jobId]: statsFromRpcRow(statRow),
+            }))
+          }
+        } catch {
+          /* leave optimistic stats */
         }
       } catch (e: unknown) {
         inFlightThreadNoteRef.current = null
@@ -466,7 +496,12 @@ export function useJobThreadNotes(
         if (source === 'draft') {
           setJobThreadDraft(trimmed)
         }
-        showToast(formatErrorMessage(e, 'Failed to post note'), 'error')
+        showToast(
+          e instanceof OperationTimeoutError
+            ? 'The server is not responding. Your note may or may not have posted — check the thread before posting again.'
+            : formatErrorMessage(e, 'Failed to post note'),
+          'error',
+        )
       } finally {
         setJobThreadSubmittingId(null)
       }

@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1064',
+    date: '2026-07-28',
+    title: 'More buttons can no longer hang on "Saving…"',
+    kind: 'fix',
+    highlights: [
+      'The same stuck-spinner protection the Schedule window got in v2.1063 now covers posting a job note, Set % complete, moving a job between stages, all three Bill Customer submit paths, and clocking in or out.',
+      'If the server stops responding mid-save, the button gives up after its deadline (15 seconds for most saves; longer for Stripe and invoice emails), re-enables, and tells you the save may or may not have landed — check before retrying.',
+    ],
+  },
+  {
     version: 'v2.1063',
     date: '2026-07-28',
     title: 'Schedule save can no longer hang on "Saving…"',

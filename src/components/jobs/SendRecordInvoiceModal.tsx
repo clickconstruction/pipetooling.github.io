@@ -8,7 +8,12 @@ import {
   type BillingStripeModePref,
 } from '../../lib/billingStripeModePref'
 import { readEdgeFunctionErrorBody } from '../../lib/readEdgeFunctionErrorBody'
-import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
+import {
+  OperationTimeoutError,
+  formatErrorMessage,
+  withOperationTimeout,
+  withSupabaseRetry,
+} from '../../utils/errorHandling'
 import type {
   StripeInvoiceLinesSnapshot,
   StripeInvoiceLineSource,
@@ -105,6 +110,18 @@ export type { JobBillingContext }
 export type { SendRecordInvoicePayload }
 
 type BillCustomerMainTab = 'stripe' | 'housecallpro' | 'physical'
+
+/**
+ * Deadlines for the Bill Customer submit round-trips. Retries only fire on
+ * failures — a frozen server never settles the fetch, so without these the
+ * submit button sticks on its busy state forever (v2.1063 schedule-save hang
+ * class). Requests are NOT cancelled by the deadline, so timeout messages
+ * say "may or may not". Edge-function bills do real upstream work (Stripe /
+ * email with multi-MB PDF payloads) and get proportionally longer deadlines.
+ */
+const BILL_DB_WRITE_TIMEOUT_MS = 15000
+const BILL_STRIPE_INVOKE_TIMEOUT_MS = 30000
+const BILL_EMAIL_INVOKE_TIMEOUT_MS = 60000
 
 /** Shared copy shown above Create Stripe invoice / Send email when line wording hits the lowercase-leading check. */
 const BILL_CUSTOMER_LEADING_LOWERCASE_HINT =
@@ -1138,24 +1155,28 @@ export default function SendRecordInvoiceModal({
         ? new Date(sentDate.trim() + 'T12:00:00').toISOString()
         : new Date().toISOString()
       const { text, html } = buildPhysicalInvoiceEmailBodies(doc)
-      const { data: invokeData, error: fnErr } = await supabase.functions.invoke('send-physical-invoice-email', {
-        body: {
-          jobs_ledger_invoice_id: invId,
-          job_id: job.id,
-          amount_dollars: amt,
-          sent_to_customer_at: sentAt,
-          external_send_note: externalNote.trim() || null,
-          customer_email: (job.customer_email ?? '').trim(),
-          ...(physicalAdditionalEmails().length > 0 ? { additional_emails: physicalAdditionalEmails() } : {}),
-          subject: physicalInvoiceEmailSubject(doc),
-          pdf_base64: pdfBase64,
-          pdf_filename: physicalInvoicePdfFilename(job.hcp_number, sentDate.trim()),
-          email_text: text,
-          email_html: html,
-          ...(extraAttachments ? { extra_attachments: extraAttachments } : {}),
-        },
-        headers: { Authorization: `Bearer ${token}` },
-      })
+      const { data: invokeData, error: fnErr } = await withOperationTimeout(
+        supabase.functions.invoke('send-physical-invoice-email', {
+          body: {
+            jobs_ledger_invoice_id: invId,
+            job_id: job.id,
+            amount_dollars: amt,
+            sent_to_customer_at: sentAt,
+            external_send_note: externalNote.trim() || null,
+            customer_email: (job.customer_email ?? '').trim(),
+            ...(physicalAdditionalEmails().length > 0 ? { additional_emails: physicalAdditionalEmails() } : {}),
+            subject: physicalInvoiceEmailSubject(doc),
+            pdf_base64: pdfBase64,
+            pdf_filename: physicalInvoicePdfFilename(job.hcp_number, sentDate.trim()),
+            email_text: text,
+            email_html: html,
+            ...(extraAttachments ? { extra_attachments: extraAttachments } : {}),
+          },
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+        BILL_EMAIL_INVOKE_TIMEOUT_MS,
+        'Send invoice email',
+      )
       if (fnErr) {
         const detail = await readEdgeFunctionErrorBody(fnErr)
         setPhysicalError(detail ?? formatErrorMessage(fnErr, 'Send invoice email failed'))
@@ -1183,7 +1204,15 @@ export default function SendRecordInvoiceModal({
       await onSuccess()
       onClose()
     } catch (e) {
-      setPhysicalError(e instanceof Error ? e.message : 'Send invoice email failed')
+      // Timeout: the request wasn't cancelled — the email may still send when
+      // the server recovers, so say so instead of implying failure.
+      setPhysicalError(
+        e instanceof OperationTimeoutError
+          ? 'The server is not responding. The invoice email may or may not have been sent — check the invoice status before sending again.'
+          : e instanceof Error
+            ? e.message
+            : 'Send invoice email failed',
+      )
     } finally {
       setPhysicalSubmitting(false)
     }
@@ -1201,38 +1230,46 @@ export default function SendRecordInvoiceModal({
     const sentAt = sentDate.trim() ? new Date(sentDate + 'T12:00:00').toISOString() : new Date().toISOString()
     try {
       if (kind === 'invoice' && invoice) {
-        await withSupabaseRetry(
-          () =>
-            supabase
-              .from('jobs_ledger_invoices')
-              .update({
-                status: 'billed',
-                amount: amt,
-                external_send_channel: 'housecallpro',
-                external_send_note: externalNote.trim() || null,
-                sent_to_customer_at: sentAt,
-              })
-              .eq('id', invoice.id),
-          'record outside bill on invoice'
+        await withOperationTimeout(
+          withSupabaseRetry(
+            () =>
+              supabase
+                .from('jobs_ledger_invoices')
+                .update({
+                  status: 'billed',
+                  amount: amt,
+                  external_send_channel: 'housecallpro',
+                  external_send_note: externalNote.trim() || null,
+                  sent_to_customer_at: sentAt,
+                })
+                .eq('id', invoice.id),
+            'record outside bill on invoice'
+          ),
+          BILL_DB_WRITE_TIMEOUT_MS,
+          'Record outside bill',
         )
       } else {
         const invId = ensuredInvoice?.id
         if (!invId) {
           throw new Error(ensureError || 'Could not prepare invoice line for this job')
         }
-        await withSupabaseRetry(
-          () =>
-            supabase
-              .from('jobs_ledger_invoices')
-              .update({
-                status: 'billed',
-                amount: amt,
-                external_send_channel: 'housecallpro',
-                external_send_note: externalNote.trim() || null,
-                sent_to_customer_at: sentAt,
-              })
-              .eq('id', invId),
-          'record outside bill on ensured invoice'
+        await withOperationTimeout(
+          withSupabaseRetry(
+            () =>
+              supabase
+                .from('jobs_ledger_invoices')
+                .update({
+                  status: 'billed',
+                  amount: amt,
+                  external_send_channel: 'housecallpro',
+                  external_send_note: externalNote.trim() || null,
+                  sent_to_customer_at: sentAt,
+                })
+                .eq('id', invId),
+            'record outside bill on ensured invoice'
+          ),
+          BILL_DB_WRITE_TIMEOUT_MS,
+          'Record outside bill',
         )
       }
       const promote = await maybePromoteJobToBilledAfterCustomerInvoice(job.id)
@@ -1243,7 +1280,15 @@ export default function SendRecordInvoiceModal({
       await onSuccess()
       onClose()
     } catch (e) {
-      setOutsideError(e instanceof Error ? e.message : 'Failed to save')
+      // Timeout: the request wasn't cancelled — it may still land when the
+      // server recovers, so say so instead of implying failure.
+      setOutsideError(
+        e instanceof OperationTimeoutError
+          ? 'The server is not responding. The bill may or may not have been recorded — check the invoice status before retrying.'
+          : e instanceof Error
+            ? e.message
+            : 'Failed to save',
+      )
     } finally {
       setOutsideSubmitting(false)
     }
@@ -1294,24 +1339,28 @@ export default function SendRecordInvoiceModal({
       const feeLines = lineOverrideActive ? [] : hazmatFeeLinesWithinAmount(foldedFeeLines, amt)
       const extraLines = [...feeLines, ...rollIns]
       const totalAmountDollars = amt + hazmatRollInTotalDollars(rollIns)
-      const { data: invokeData, error: fnErr } = await supabase.functions.invoke('create-stripe-invoice', {
-        body: {
-          jobs_ledger_invoice_id: invId,
-          customer_id: job.customer_id,
-          amount_dollars: totalAmountDollars,
-          customer_email: (job.customer_email ?? '').trim(),
-          customer_name: (job.customer_name ?? '').trim() || 'Customer',
-          due_date: stripeDueDate.trim(),
-          memo: stripeMemo.trim() || undefined,
-          footer: stripeInvoiceFooter.trim() || undefined,
-          ...(lineDescTrim ? { line_description: lineDescTrim } : {}),
-          ...(extraLines.length > 0
-            ? { extra_line_items: extraLines.map((l) => ({ amount_cents: l.amountCents, description: l.description })) }
-            : {}),
-          ...stripeModeInvokeBody(stripeModeForBilling),
-        },
-        headers: { Authorization: `Bearer ${token}` },
-      })
+      const { data: invokeData, error: fnErr } = await withOperationTimeout(
+        supabase.functions.invoke('create-stripe-invoice', {
+          body: {
+            jobs_ledger_invoice_id: invId,
+            customer_id: job.customer_id,
+            amount_dollars: totalAmountDollars,
+            customer_email: (job.customer_email ?? '').trim(),
+            customer_name: (job.customer_name ?? '').trim() || 'Customer',
+            due_date: stripeDueDate.trim(),
+            memo: stripeMemo.trim() || undefined,
+            footer: stripeInvoiceFooter.trim() || undefined,
+            ...(lineDescTrim ? { line_description: lineDescTrim } : {}),
+            ...(extraLines.length > 0
+              ? { extra_line_items: extraLines.map((l) => ({ amount_cents: l.amountCents, description: l.description })) }
+              : {}),
+            ...stripeModeInvokeBody(stripeModeForBilling),
+          },
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+        BILL_STRIPE_INVOKE_TIMEOUT_MS,
+        'Create Stripe invoice',
+      )
       if (fnErr) {
         const detail = await readEdgeFunctionErrorBody(fnErr)
         setStripeError(detail ?? formatErrorMessage(fnErr, 'Stripe invoice failed'))
@@ -1400,7 +1449,15 @@ export default function SendRecordInvoiceModal({
       }
       await onSuccess()
     } catch (e) {
-      setStripeError(e instanceof Error ? e.message : 'Stripe invoice failed')
+      // Timeout: the request wasn't cancelled — the invoice may still be
+      // created when the server recovers, so say so instead of implying failure.
+      setStripeError(
+        e instanceof OperationTimeoutError
+          ? "The server is not responding. The invoice may or may not have been created — check the job's invoices (and Stripe) before submitting again."
+          : e instanceof Error
+            ? e.message
+            : 'Stripe invoice failed',
+      )
     } finally {
       setStripeSubmitting(false)
     }
