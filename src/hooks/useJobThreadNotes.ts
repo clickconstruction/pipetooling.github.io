@@ -150,6 +150,8 @@ export function useJobThreadNotes(
 ) {
   const realtimeChannelId = useId()
   const [expandedJobThreadId, setExpandedJobThreadId] = useState<string | null>(null)
+  /** Expanded thread panel takes over the whole viewport (mobile-friendly Stages view). */
+  const [jobThreadFullscreen, setJobThreadFullscreen] = useState(false)
   const [jobThreadActivityByJobId, setJobThreadActivityByJobId] = useState<Record<string, JobThreadActivityItem[]>>({})
   const [jobThreadNotesLoadingId, setJobThreadNotesLoadingId] = useState<string | null>(null)
   const [jobThreadSubmittingId, setJobThreadSubmittingId] = useState<string | null>(null)
@@ -291,6 +293,17 @@ export function useJobThreadNotes(
   useEffect(() => {
     expandedJobThreadIdRef.current = expandedJobThreadId
   }, [expandedJobThreadId])
+
+  // Collapsing the thread always leaves fullscreen too.
+  useEffect(() => {
+    if (expandedJobThreadId == null) setJobThreadFullscreen(false)
+  }, [expandedJobThreadId])
+
+  /** Expand a job's thread straight into the fullscreen view (Stages "N Reports" button). */
+  const openJobThreadFullscreen = useCallback((jobId: string) => {
+    setExpandedJobThreadId(jobId)
+    setJobThreadFullscreen(true)
+  }, [])
 
   useEffect(() => {
     if (!expandedJobThreadId) return
@@ -482,6 +495,9 @@ export function useJobThreadNotes(
   return {
     expandedJobThreadId,
     setExpandedJobThreadId,
+    jobThreadFullscreen,
+    setJobThreadFullscreen,
+    openJobThreadFullscreen,
     jobThreadActivityByJobId,
     jobThreadNotesLoadingId,
     jobThreadSubmittingId,

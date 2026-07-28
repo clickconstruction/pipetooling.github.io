@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
+import { Maximize2, Minimize2 } from 'lucide-react'
 import { getDispatchNoteDisplayMeta, formatDispatchNoteTimeChicago } from '../utils/dispatchNoteDisplay'
 import type { UserRole } from '../hooks/useAuth'
 import { displayReportTemplateName } from '../lib/reportTemplateDisplayName'
@@ -83,6 +84,12 @@ type JobThreadNotesPanelProps = {
   teamMembers?: Array<{ user_id: string; name: string | null }>
   /** Far-left "people" button — opens the add/remove-people modal. Editors only. */
   peopleAction?: { onClick: () => void; disabled?: boolean }
+  /**
+   * Fullscreen toggle (Jobs Stages): shows an expand/compress button in the
+   * header; while active the panel renders as a fixed overlay covering the
+   * viewport (below the modals it can spawn — people 70, schedule 1002).
+   */
+  fullscreenControl?: { active: boolean; onToggle: () => void }
 }
 
 const DEFAULT_ACTIVITY_LIST_MAX_HEIGHT = 'min(280px, 45vh)'
@@ -212,6 +219,7 @@ export function JobThreadNotesPanel({
   onCommitPct,
   teamMembers,
   peopleAction,
+  fullscreenControl,
 }: JobThreadNotesPanelProps) {
   const [pctEditorOpen, setPctEditorOpen] = useState(false)
   const [pctDraft, setPctDraft] = useState(pctComplete ?? 0)
@@ -296,16 +304,48 @@ export function JobThreadNotesPanel({
     })
   }, [loading, visibleActivity.length, activityTailKey])
 
-  return (
-    <div
-      style={{
+  const isFullscreen = fullscreenControl?.active === true
+  const exitFullscreen = fullscreenControl?.onToggle
+
+  useEffect(() => {
+    if (!isFullscreen || !exitFullscreen) return
+    const onKeyDown = (e: globalThis.KeyboardEvent) => {
+      if (e.key === 'Escape') exitFullscreen()
+    }
+    document.addEventListener('keydown', onKeyDown)
+    // Lock the page behind the overlay (matters on phones — the reason fullscreen exists).
+    const prevOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.removeEventListener('keydown', onKeyDown)
+      document.body.style.overflow = prevOverflow
+    }
+  }, [isFullscreen, exitFullscreen])
+
+  const panelShellStyle: CSSProperties = isFullscreen
+    ? {
+        position: 'fixed',
+        inset: 0,
+        zIndex: 50,
+        display: 'flex',
+        flexDirection: 'column',
+        padding:
+          'calc(0.75rem + env(safe-area-inset-top)) 0.75rem calc(0.75rem + env(safe-area-inset-bottom))',
+        background: 'var(--surface)',
+        border: 'none',
+        borderRadius: 0,
+        overflow: 'hidden',
+      }
+    : {
         padding: '0.75rem',
         background: 'var(--surface)',
         border: '1px solid var(--border)',
         borderRadius: 6,
-      }}
-    >
-      {peopleAction || (teamMembers && teamMembers.length > 0) || showSectionTitle ? (
+      }
+
+  return (
+    <div style={panelShellStyle}>
+      {peopleAction || (teamMembers && teamMembers.length > 0) || showSectionTitle || fullscreenControl ? (
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.5rem', flexWrap: 'wrap' }}>
           {peopleAction ? (
             <button
@@ -332,6 +372,31 @@ export function JobThreadNotesPanel({
             <span style={{ marginLeft: 'auto', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-700)' }}>
               {sectionTitle}
             </span>
+          ) : null}
+          {fullscreenControl ? (
+            <button
+              type="button"
+              onClick={fullscreenControl.onToggle}
+              title={isFullscreen ? 'Exit full screen' : 'Expand to full screen'}
+              aria-label={isFullscreen ? 'Exit full screen' : 'Expand activity to full screen'}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: 28,
+                height: 28,
+                flexShrink: 0,
+                marginLeft: showSectionTitle ? undefined : 'auto',
+                padding: 0,
+                border: '1px solid var(--border-strong)',
+                borderRadius: 6,
+                background: 'var(--surface)',
+                color: 'var(--text-link)',
+                cursor: 'pointer',
+              }}
+            >
+              {isFullscreen ? <Minimize2 size={15} aria-hidden /> : <Maximize2 size={15} aria-hidden />}
+            </button>
           ) : null}
         </div>
       ) : null}
@@ -376,12 +441,13 @@ export function JobThreadNotesPanel({
         </div>
       ) : null}
       {loading ? (
-        <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: '0 0 0.75rem 0' }}>Loading…</p>
+        <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: '0 0 0.75rem 0', ...(isFullscreen ? { flex: '1 1 auto' } : null) }}>Loading…</p>
       ) : (
         <div
           ref={activityScrollRef}
           style={{
-            maxHeight: activityListMaxHeight,
+            maxHeight: isFullscreen ? 'none' : activityListMaxHeight,
+            ...(isFullscreen ? { flex: '1 1 auto' } : null),
             overflowY: 'auto',
             marginBottom: '0.75rem',
             minHeight: 0,

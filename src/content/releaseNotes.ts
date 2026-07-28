@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1052',
+    date: '2026-07-28',
+    title: 'Full-screen job activity on Stages',
+    kind: 'feature',
+    highlights: [
+      'The Job activity / notes panel on Stages has a new expand button (top right) that takes it full screen — much easier to read and post notes on a phone. Press it again or hit Esc to go back.',
+      'Clicking a job\'s "N Reports" button now opens that full-screen activity view directly, with the reports right there in the feed.',
+    ],
+  },
+  {
     version: 'v2.1051',
     date: '2026-07-28',
     title: 'No more endless "Loading…" screens',

@@ -101,7 +101,9 @@ export type JobsStagesTableProps = {
   toggleStagesJobThreadExpanded: StagesRowRenderContext['toggleStagesJobThreadExpanded']
   jobThreadStatsByJobId: StagesRowRenderContext['jobThreadStatsByJobId']
   jobThreadActivityByJobId: StagesRowRenderContext['jobThreadActivityByJobId']
-  setViewReportsJob: StagesRowRenderContext['setViewReportsJob']
+  openJobThreadFullscreen: StagesRowRenderContext['openJobThreadFullscreen']
+  jobThreadFullscreen: boolean
+  setJobThreadFullscreen: (v: boolean) => void
   applyStagesInvoiceFocus: StagesRowRenderContext['applyStagesInvoiceFocus']
   canOpenJobScheduleModal: StagesRowRenderContext['canOpenJobScheduleModal']
   setScheduleModalJob: StagesRowRenderContext['setScheduleModalJob']
@@ -160,7 +162,9 @@ export default function JobsStagesTable(props: JobsStagesTableProps) {
     toggleStagesJobThreadExpanded,
     jobThreadStatsByJobId,
     jobThreadActivityByJobId,
-    setViewReportsJob,
+    openJobThreadFullscreen,
+    jobThreadFullscreen,
+    setJobThreadFullscreen,
     applyStagesInvoiceFocus,
     canOpenJobScheduleModal,
     setScheduleModalJob,
@@ -182,7 +186,7 @@ export default function JobsStagesTable(props: JobsStagesTableProps) {
     toggleStagesJobThreadExpanded,
     jobThreadStatsByJobId,
     jobThreadActivityByJobId,
-    setViewReportsJob,
+    openJobThreadFullscreen,
     applyStagesInvoiceFocus,
     canOpenJobScheduleModal,
     setScheduleModalJob,
@@ -567,6 +571,7 @@ export default function JobsStagesTable(props: JobsStagesTableProps) {
                   >
                     {renderStagesExpandedRowPanel(
                     <JobThreadNotesPanel
+                      fullscreenControl={{ active: jobThreadFullscreen, onToggle: () => setJobThreadFullscreen(!jobThreadFullscreen) }}
                       pctComplete={j.pct_complete ?? null}
                       canEditPct={canEditJobPctComplete}
                       pctSaving={pctCompleteSavingId === j.id}

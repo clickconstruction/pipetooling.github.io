@@ -35,7 +35,6 @@ import { withSupabaseRetry } from '../../utils/errorHandling'
 import { openHtmlPrintWindow } from '../../lib/jobsDocuments/printWindow'
 import { buildBilledAwaitingPaymentReportHtml } from '../../lib/jobsDocuments/billedAwaitingPaymentReport'
 import { ManageJobPeopleModal } from './ManageJobPeopleModal'
-import JobReportsModal from '../JobReportsModal'
 import JobsStagesTable from './JobsStagesTable'
 import JobsStagesUnifiedTable from './JobsStagesUnifiedTable'
 import { jobBillingContextFromJob } from '../../lib/jobBillingContext'
@@ -186,6 +185,9 @@ export type JobsStagesTabProps = {
   // --- useJobThreadNotes values (hook called in the page; shared with Job Summary) ---
   expandedJobThreadId: ReturnType<typeof useJobThreadNotes>['expandedJobThreadId']
   setExpandedJobThreadId: ReturnType<typeof useJobThreadNotes>['setExpandedJobThreadId']
+  jobThreadFullscreen: ReturnType<typeof useJobThreadNotes>['jobThreadFullscreen']
+  setJobThreadFullscreen: ReturnType<typeof useJobThreadNotes>['setJobThreadFullscreen']
+  openJobThreadFullscreen: ReturnType<typeof useJobThreadNotes>['openJobThreadFullscreen']
   jobThreadActivityByJobId: ReturnType<typeof useJobThreadNotes>['jobThreadActivityByJobId']
   jobThreadNotesLoadingId: ReturnType<typeof useJobThreadNotes>['jobThreadNotesLoadingId']
   jobThreadSubmittingId: ReturnType<typeof useJobThreadNotes>['jobThreadSubmittingId']
@@ -279,6 +281,9 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     commitStagesPctWithNote,
     expandedJobThreadId,
     setExpandedJobThreadId,
+    jobThreadFullscreen,
+    setJobThreadFullscreen,
+    openJobThreadFullscreen,
     jobThreadActivityByJobId,
     jobThreadNotesLoadingId,
     jobThreadSubmittingId,
@@ -373,7 +378,6 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   // invoiceEstimatedBillDateSavingId / pctCompleteSavingId busy flags live in
   // useJobsStagesMutations (v2.828) — they arrive here as props from the page.
   const stagesInvoiceSendBackConfirmLockRef = useRef(false)
-  const [viewReportsJob, setViewReportsJob] = useState<{ id: string; hcpNumber: string; jobName: string; jobAddress: string } | null>(null)
   const [readyForBillingJob, setReadyForBillingJob] = useState<{ id: string; hcpNumber: string; jobName: string } | null>(null)
   const [readyForBillingChecked1, setReadyForBillingChecked1] = useState(false)
   const [readyForBillingChecked2, setReadyForBillingChecked2] = useState(false)
@@ -1629,7 +1633,9 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     toggleStagesJobThreadExpanded={toggleStagesJobThreadExpanded}
                     jobThreadStatsByJobId={jobThreadStatsByJobId}
                     jobThreadActivityByJobId={jobThreadActivityByJobId}
-                    setViewReportsJob={setViewReportsJob}
+                    openJobThreadFullscreen={openJobThreadFullscreen}
+                    jobThreadFullscreen={jobThreadFullscreen}
+                    setJobThreadFullscreen={setJobThreadFullscreen}
                     applyStagesInvoiceFocus={applyStagesInvoiceFocus}
                     canOpenJobScheduleModal={canOpenJobScheduleModal}
                     setScheduleModalJob={setScheduleModalJob}
@@ -1712,7 +1718,9 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     toggleStagesJobThreadExpanded={toggleStagesJobThreadExpanded}
                     jobThreadStatsByJobId={jobThreadStatsByJobId}
                     jobThreadActivityByJobId={jobThreadActivityByJobId}
-                    setViewReportsJob={setViewReportsJob}
+                    openJobThreadFullscreen={openJobThreadFullscreen}
+                    jobThreadFullscreen={jobThreadFullscreen}
+                    setJobThreadFullscreen={setJobThreadFullscreen}
                     applyStagesInvoiceFocus={applyStagesInvoiceFocus}
                     canOpenJobScheduleModal={canOpenJobScheduleModal}
                     setScheduleModalJob={setScheduleModalJob}
@@ -1843,7 +1851,9 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     toggleStagesJobThreadExpanded={toggleStagesJobThreadExpanded}
                     jobThreadStatsByJobId={jobThreadStatsByJobId}
                     jobThreadActivityByJobId={jobThreadActivityByJobId}
-                    setViewReportsJob={setViewReportsJob}
+                    openJobThreadFullscreen={openJobThreadFullscreen}
+                    jobThreadFullscreen={jobThreadFullscreen}
+                    setJobThreadFullscreen={setJobThreadFullscreen}
                     applyStagesInvoiceFocus={applyStagesInvoiceFocus}
                     canOpenJobScheduleModal={canOpenJobScheduleModal}
                     setScheduleModalJob={setScheduleModalJob}
@@ -2062,7 +2072,9 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     toggleStagesJobThreadExpanded={toggleStagesJobThreadExpanded}
                     jobThreadStatsByJobId={jobThreadStatsByJobId}
                     jobThreadActivityByJobId={jobThreadActivityByJobId}
-                    setViewReportsJob={setViewReportsJob}
+                    openJobThreadFullscreen={openJobThreadFullscreen}
+                    jobThreadFullscreen={jobThreadFullscreen}
+                    setJobThreadFullscreen={setJobThreadFullscreen}
                     applyStagesInvoiceFocus={applyStagesInvoiceFocus}
                     canOpenJobScheduleModal={canOpenJobScheduleModal}
                     setScheduleModalJob={setScheduleModalJob}
@@ -2157,7 +2169,9 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     toggleStagesJobThreadExpanded={toggleStagesJobThreadExpanded}
                     jobThreadStatsByJobId={jobThreadStatsByJobId}
                     jobThreadActivityByJobId={jobThreadActivityByJobId}
-                    setViewReportsJob={setViewReportsJob}
+                    openJobThreadFullscreen={openJobThreadFullscreen}
+                    jobThreadFullscreen={jobThreadFullscreen}
+                    setJobThreadFullscreen={setJobThreadFullscreen}
                     applyStagesInvoiceFocus={applyStagesInvoiceFocus}
                     canOpenJobScheduleModal={canOpenJobScheduleModal}
                     setScheduleModalJob={setScheduleModalJob}
@@ -2292,7 +2306,9 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                       toggleStagesJobThreadExpanded={toggleStagesJobThreadExpanded}
                       jobThreadStatsByJobId={jobThreadStatsByJobId}
                       jobThreadActivityByJobId={jobThreadActivityByJobId}
-                      setViewReportsJob={setViewReportsJob}
+                      openJobThreadFullscreen={openJobThreadFullscreen}
+                    jobThreadFullscreen={jobThreadFullscreen}
+                    setJobThreadFullscreen={setJobThreadFullscreen}
                       applyStagesInvoiceFocus={applyStagesInvoiceFocus}
                       canOpenJobScheduleModal={canOpenJobScheduleModal}
                       setScheduleModalJob={setScheduleModalJob}
@@ -2632,18 +2648,6 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
             )
           })()}
         </div>
-      )}
-      {viewReportsJob && (
-        <JobReportsModal
-          open={!!viewReportsJob}
-          onClose={() => setViewReportsJob(null)}
-          jobId={viewReportsJob.id}
-          hcpNumber={viewReportsJob.hcpNumber}
-          jobName={viewReportsJob.jobName}
-          jobAddress={viewReportsJob.jobAddress}
-          authUserId={authUser?.id ?? null}
-          userRole={authRole}
-        />
       )}
       {readyForBillingJob && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60 }}>

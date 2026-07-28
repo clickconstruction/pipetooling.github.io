@@ -53,7 +53,7 @@ export type StagesRowRenderContext = {
   toggleStagesJobThreadExpanded: (id: string) => void
   jobThreadStatsByJobId: ReturnType<typeof useJobThreadNotes>['jobThreadStatsByJobId']
   jobThreadActivityByJobId: ReturnType<typeof useJobThreadNotes>['jobThreadActivityByJobId']
-  setViewReportsJob: (v: { id: string; hcpNumber: string; jobName: string; jobAddress: string } | null) => void
+  openJobThreadFullscreen: (jobId: string) => void
   applyStagesInvoiceFocus: (invoiceId: string) => boolean
   canOpenJobScheduleModal: boolean
   setScheduleModalJob: (j: JobWithDetails | null) => void
@@ -409,7 +409,7 @@ export function renderStagesLastActivityCell(
     jobThreadStatsByJobId,
     jobThreadActivityByJobId,
     toggleStagesJobThreadExpanded,
-    setViewReportsJob,
+    openJobThreadFullscreen,
     applyStagesInvoiceFocus,
     canOpenJobScheduleModal,
     setScheduleModalJob,
@@ -451,7 +451,8 @@ export function renderStagesLastActivityCell(
       <div style={{ display: 'flex', justifyContent: 'flex-start', flexShrink: 0 }}>
         <button
           type="button"
-          onClick={() => setViewReportsJob({ id: job.id, hcpNumber: effectiveJobLedgerNumber(job.hcp_number, job.click_number) || '—', jobName: job.job_name ?? '—', jobAddress: job.job_address ?? '—' })}
+          onClick={() => openJobThreadFullscreen(job.id)}
+          title="Open the full-screen job activity / notes view"
           style={{
             padding: '0.2rem 0.5rem',
             fontSize: '0.75rem',
