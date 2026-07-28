@@ -31,6 +31,9 @@ interface PreviewStripeInvoiceBody {
   line_description?: string
   /** Optional: `test` | `live`. Omit to use server default (legacy / non-UI callers). */
   stripe_mode?: StripeBillingMode
+  /** Optional labeled add-on lines (hazmat fees / roll-ins) — mirrors create-stripe-invoice (v2.1034):
+   * fixtures allocate to `amount_dollars − extras`, each extra renders as its own line. */
+  extra_line_items?: Array<{ amount_cents: number; description: string }>
 }
 
 function jsonResponse(body: Record<string, unknown>, status = 200) {
@@ -199,6 +202,22 @@ serve(async (req) => {
       return jsonResponse({ error: 'Could not load job line items for invoice' }, 500)
     }
 
+    const extrasRaw = Array.isArray(body.extra_line_items) ? body.extra_line_items : []
+    const extraItems: { amount: number; description: string }[] = []
+    for (const ex of extrasRaw) {
+      const cents = typeof ex?.amount_cents === 'number' ? Math.round(ex.amount_cents) : NaN
+      const desc = typeof ex?.description === 'string' ? ex.description.trim().slice(0, 500) : ''
+      if (!Number.isFinite(cents) || cents < 1 || !desc) {
+        return jsonResponse({ error: 'Invalid extra_line_items entry (positive amount_cents + description required)' }, 400)
+      }
+      extraItems.push({ amount: cents, description: desc })
+    }
+    const extrasSumCents = extraItems.reduce((a, b) => a + b.amount, 0)
+    const fixtureTargetCents = amountCents - extrasSumCents
+    if (extraItems.length > 0 && fixtureTargetCents < 1) {
+      return jsonResponse({ error: 'extra_line_items must total less than the invoice amount' }, 400)
+    }
+
     const lineItemsBuilt = buildStripeInvoiceItemsFromFixtures({
       fixtures: (fixturesRows ?? []) as {
         id: string
@@ -208,7 +227,7 @@ serve(async (req) => {
         line_description: string | null
         sequence_order: number
       }[],
-      targetAmountCents: amountCents,
+      targetAmountCents: extraItems.length > 0 ? fixtureTargetCents : amountCents,
       lineDescriptionOverride: lineDescriptionRaw,
       customerName: customer_name.trim(),
       jobName: jobRow.job_name,
@@ -224,13 +243,14 @@ serve(async (req) => {
     // rewriting the row when switching modes caused heavy churn and looked like the DB "crashing".
     // Use the stored cus_ only if it exists for *this* Stripe key; otherwise a throwaway customer, then delete it.
     const storedStripeCustomerId = custRow.stripe_customer_id?.trim() || null
-    const invoiceItems: Stripe.InvoiceCreatePreviewParams['invoice_items'] = lineItemsBuilt.items.map(
-      (it) => ({
+    const invoiceItems: Stripe.InvoiceCreatePreviewParams['invoice_items'] = [
+      ...lineItemsBuilt.items.map((it) => ({
         amount: it.amount,
         currency: 'usd',
         description: it.description,
-      }),
-    )
+      })),
+      ...extraItems.map((ex) => ({ amount: ex.amount, currency: 'usd', description: ex.description })),
+    ]
 
     let preview: Stripe.Response<Stripe.Invoice>
     let ephemeralCustomerId: string | null = null

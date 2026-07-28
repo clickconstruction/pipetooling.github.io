@@ -941,15 +941,26 @@ export default function SendRecordInvoiceModal({
           if (stripePreviewReqId.current !== req) return
 
           const lineDescTrim = stripeLineDescription.trim()
+          // Mirror the create call exactly (v2.1034): folded fees split inside
+          // the amount; job-total fees + roll-ins add on top — so the preview
+          // shows the hazmat fee line the customer will actually see.
+          const previewRollIns = includeHazmatRollIn && !hazmatIncidentForInvoice ? hazmatRollInLines : []
+          const previewJobTotal = includeJobTotalFees ? jobTotalFeeLines : []
+          const previewFolded = hazmatFeeLinesWithinAmount(foldedFeeLines, amt)
+          const previewExtras = [...previewFolded, ...previewJobTotal, ...previewRollIns]
+          const previewTotal = amt + hazmatRollInTotalDollars(previewJobTotal) + hazmatRollInTotalDollars(previewRollIns)
           const { data: raw, error: fnErr } = await supabase.functions.invoke('preview-stripe-invoice', {
             body: {
               jobs_ledger_invoice_id: invId,
               customer_id: job.customer_id!,
-              amount_dollars: amt,
+              amount_dollars: previewTotal,
               customer_email: (job.customer_email ?? '').trim(),
               customer_name: (job.customer_name ?? '').trim() || 'Customer',
               due_date: stripeDueDate.trim(),
               ...(lineDescTrim ? { line_description: lineDescTrim } : {}),
+              ...(previewExtras.length > 0
+                ? { extra_line_items: previewExtras.map((l) => ({ amount_cents: l.amountCents, description: l.description })) }
+                : {}),
               ...stripeModeInvokeBody(stripeModeForBilling),
             },
             headers: { Authorization: `Bearer ${token}` },
@@ -1008,6 +1019,12 @@ export default function SendRecordInvoiceModal({
     authRole,
     stripeModeForBilling,
     stripeLineDescription,
+    foldedFeeLines,
+    jobTotalFeeLines,
+    includeJobTotalFees,
+    hazmatRollInLines,
+    includeHazmatRollIn,
+    hazmatIncidentForInvoice,
     stripeFixtureMultiLineAvailable,
   ])
 
@@ -1405,16 +1422,17 @@ export default function SendRecordInvoiceModal({
     if (tab === 'physical' && jobLedgerHasCustomerForBilling(job.customer_id)) {
       const amt = Number(billAmountStr)
       const previewInvId = kind === 'invoice' ? invoice?.id ?? null : ensuredInvoice?.id ?? null
+      const hintJobTotalLines = includeJobTotalFees ? jobTotalFeeLines : []
       const physDoc = buildPhysicalInvoiceDocument({
         job: jobContextForPhysicalDoc(job, billCustomerJobDetails),
-        amountDollars: amt,
+        amountDollars: amt + hazmatRollInTotalDollars(hintJobTotalLines),
         lineDescription: trimmedOverride,
         physicalLineOnBillRaw: stripeLineDescription.trim(),
         memo: externalNote,
         footer: physicalInvoiceFooter,
         invoiceDateYmd: sentDate.trim(),
         dueDateYmd: stripeDueDate.trim(),
-        hazmatFeeLines: foldedFeeLines,
+        hazmatFeeLines: [...foldedFeeLines, ...hintJobTotalLines],
         detailFromJob: buildPhysicalInvoiceDetailFromJob(
           billCustomerJobDetails,
           kind === 'invoice' ? 'invoice' : 'job',
@@ -1587,14 +1605,15 @@ export default function SendRecordInvoiceModal({
     job && tab === 'physical'
       ? buildPhysicalInvoiceDocument({
           job: jobContextForPhysicalDoc(job, billCustomerJobDetails),
-          amountDollars: Number(billAmountStr),
+          amountDollars:
+            Number(billAmountStr) + hazmatRollInTotalDollars(includeJobTotalFees ? jobTotalFeeLines : []),
           lineDescription: effectivePhysicalLineDesc,
           physicalLineOnBillRaw: stripeLineDescription.trim(),
           memo: externalNote,
           footer: physicalInvoiceFooter,
           invoiceDateYmd: sentDate.trim(),
           dueDateYmd: stripeDueDate.trim(),
-          hazmatFeeLines: foldedFeeLines,
+          hazmatFeeLines: [...foldedFeeLines, ...(includeJobTotalFees ? jobTotalFeeLines : [])],
           detailFromJob: buildPhysicalInvoiceDetailFromJob(
             billCustomerJobDetails,
             kind === 'invoice' ? 'invoice' : 'job',
