@@ -433,6 +433,12 @@ export default function SendRecordInvoiceModal({
   // bill's amount — split out as labeled line items at billing time.
   const [foldedFeeLines, setFoldedFeeLines] = useState<HazmatRollInLine[]>([])
   const [foldedFeeIncidents, setFoldedFeeIncidents] = useState<JobHazmatIncidentRow[]>([])
+  // v2.1033 job-total fees: unlinked incidents (created with no open bill) —
+  // NOT inside this bill's amount, so they ADD ON TOP like a roll-in, with a
+  // checkbox in case the office priced this bill fee-inclusive by hand.
+  const [jobTotalFeeLines, setJobTotalFeeLines] = useState<HazmatRollInLine[]>([])
+  const [jobTotalFeeIncidents, setJobTotalFeeIncidents] = useState<JobHazmatIncidentRow[]>([])
+  const [includeJobTotalFees, setIncludeJobTotalFees] = useState(true)
   const [attachHazmatNotice, setAttachHazmatNotice] = useState(true)
   /** Stripe path: Stripe invoices can't carry attachments — companion email instead. */
   const [emailHazmatNoticeWithStripe, setEmailHazmatNoticeWithStripe] = useState(true)
@@ -651,6 +657,9 @@ export default function SendRecordInvoiceModal({
     setHazmatIncidentForInvoice(null)
     setFoldedFeeLines([])
     setFoldedFeeIncidents([])
+    setJobTotalFeeLines([])
+    setJobTotalFeeIncidents([])
+    setIncludeJobTotalFees(true)
     setAttachHazmatNotice(true)
     setEmailHazmatNoticeWithStripe(true)
     setHazmatNoticeEmailStatus(null)
@@ -661,17 +670,37 @@ export default function SendRecordInvoiceModal({
         const rows = await loadJobHazmatIncidents(job.id)
         if (cancelled) return
         const linked = rows.filter((r) => r.invoice_id === invoice.id)
-        // v2.1031 job-total incidents: no bill was open at creation — the fee
-        // rode the revenue bump into this bill's amount; label + repoint here.
-        const unlinked = invoice.is_primary_rtb_bundle === true ? rows.filter((r) => !(r.invoice_id ?? '').trim()) : []
+        const anyUnlinked = rows.some((r) => !(r.invoice_id ?? '').trim())
+        if (linked.length === 0 && !anyUnlinked) return
+        // Not every opener's invoice payload carries is_primary_rtb_bundle —
+        // fetch the flag so classification never silently degrades.
+        let isPrimary = invoice.is_primary_rtb_bundle === true
+        if (invoice.is_primary_rtb_bundle == null) {
+          const { data: invRow } = await supabase
+            .from('jobs_ledger_invoices')
+            .select('is_primary_rtb_bundle')
+            .eq('id', invoice.id)
+            .maybeSingle()
+          if (cancelled) return
+          isPrimary = (invRow as { is_primary_rtb_bundle?: boolean | null } | null)?.is_primary_rtb_bundle === true
+        }
+        // v2.1033 job-total incidents: no bill was open at creation, so this
+        // bill's amount does NOT carry their fee — they add on top (checkbox).
+        const unlinked = isPrimary ? rows.filter((r) => !(r.invoice_id ?? '').trim()) : []
         if (linked.length === 0 && unlinked.length === 0) return
-        if (invoice.is_primary_rtb_bundle === true) {
-          const folded = [...linked, ...unlinked]
-          setFoldedFeeIncidents(folded)
+        if (isPrimary) {
+          setFoldedFeeIncidents(linked)
           setFoldedFeeLines(
             foldedHazmatFeeLines({
               billingInvoice: { id: invoice.id, is_primary_rtb_bundle: true },
-              incidents: folded,
+              incidents: linked,
+            }),
+          )
+          setJobTotalFeeIncidents(unlinked)
+          setJobTotalFeeLines(
+            foldedHazmatFeeLines({
+              billingInvoice: { id: invoice.id, is_primary_rtb_bundle: true },
+              incidents: unlinked,
             }),
           )
         } else {
@@ -687,7 +716,7 @@ export default function SendRecordInvoiceModal({
             const next = f.trim().length > 0 ? `${f.trimEnd()}\n\n${noticeLine}` : noticeLine
             return next.length <= STRIPE_INVOICE_FOOTER_MAX_CHARS ? next : f
           })
-          if (invoice.is_primary_rtb_bundle !== true) break
+          if (!isPrimary) break
         }
       } catch {
         if (!cancelled) {
@@ -1004,16 +1033,19 @@ export default function SendRecordInvoiceModal({
     }
     const lineDesc = stripeLineDescription.trim()
     const physicalInvId = kind === 'invoice' ? invoice?.id ?? null : ensuredInvoice?.id ?? null
+    // v2.1033: job-total fees add on top of the bill amount (checkbox-gated).
+    const physJobTotalLines = includeJobTotalFees ? jobTotalFeeLines : []
+    const physTotalDollars = amt + hazmatRollInTotalDollars(physJobTotalLines)
     const doc = buildPhysicalInvoiceDocument({
       job: jobContextForPhysicalDoc(job, billCustomerJobDetails),
-      amountDollars: amt,
+      amountDollars: physTotalDollars,
       lineDescription: lineDesc,
       physicalLineOnBillRaw: stripeLineDescription.trim(),
       memo: externalNote,
       footer: physicalInvoiceFooter,
       invoiceDateYmd: sentDate.trim(),
       dueDateYmd: stripeDueDate.trim(),
-      hazmatFeeLines: foldedFeeLines,
+      hazmatFeeLines: [...foldedFeeLines, ...physJobTotalLines],
       detailFromJob: buildPhysicalInvoiceDetailFromJob(
         billCustomerJobDetails,
         kind === 'invoice' ? 'invoice' : 'job',
@@ -1045,7 +1077,9 @@ export default function SendRecordInvoiceModal({
       // Hazmat notice travels as its own PDF beside the invoice — for a legacy
       // rider incident, or for every fee folded into this bill (v2.1028).
       let extraAttachments: Array<{ filename: string; content_base64: string }> | undefined
-      const attachIncidents = hazmatIncidentForInvoice ? [hazmatIncidentForInvoice] : foldedFeeIncidents
+      const attachIncidents = hazmatIncidentForInvoice
+        ? [hazmatIncidentForInvoice]
+        : [...foldedFeeIncidents, ...(includeJobTotalFees ? jobTotalFeeIncidents : [])]
       if (attachIncidents.length > 0 && attachHazmatNotice) {
         const noticeJobInfo = hazmatNoticeJobInfoFromJob(job)
         const list: Array<{ filename: string; content_base64: string }> = []
@@ -1073,7 +1107,7 @@ export default function SendRecordInvoiceModal({
         body: {
           jobs_ledger_invoice_id: invId,
           job_id: job.id,
-          amount_dollars: amt,
+          amount_dollars: physTotalDollars,
           sent_to_customer_at: sentAt,
           external_send_note: externalNote.trim() || null,
           customer_email: (job.customer_email ?? '').trim(),
@@ -1102,13 +1136,23 @@ export default function SendRecordInvoiceModal({
         setPhysicalError(promote.error)
         return
       }
-      // v2.1031: job-total incidents whose fee shipped on this physical invoice
-      // link to it now, so they never split twice on a later bill.
-      for (const inc of foldedFeeIncidents) {
-        if ((inc.invoice_id ?? '').trim()) continue
+      // v2.1033: the add-on fee grew the billed total — keep the invoice row's
+      // amount in step (Stripe's edge fn does this server-side), then link the
+      // shipped job-total incidents so they never add on twice.
+      if (physJobTotalLines.length > 0) {
         try {
           await withSupabaseRetry(
-            async () => supabase.from('job_hazmat_incidents').update({ invoice_id: invId }).eq('id', inc.id),
+            async () => supabase.from('jobs_ledger_invoices').update({ amount: physTotalDollars }).eq('id', invId),
+            'grow physical invoice amount by job-total hazmat fees',
+          )
+        } catch (amountErr) {
+          console.error('physical invoice amount update failed (email sent ok)', amountErr)
+        }
+      }
+      for (const l of physJobTotalLines) {
+        try {
+          await withSupabaseRetry(
+            async () => supabase.from('job_hazmat_incidents').update({ invoice_id: invId }).eq('id', l.incidentId),
             'repoint job-total hazmat incident to physical invoice',
           )
         } catch (repointErr) {
@@ -1221,12 +1265,12 @@ export default function SendRecordInvoiceModal({
       // billing a rider itself — that keeps the separate-notice flow).
       const rollIns = includeHazmatRollIn && !hazmatIncidentForInvoice ? hazmatRollInLines : []
       // v2.1028 folded fees are ALREADY inside amt — they split out as labeled
-      // lines; legacy roll-ins add on top of amt. The guard keeps fee lines
-      // within the bill amount so work lines always retain at least a cent
-      // (a dropped fee stays in the job total and rides a later bill).
+      // lines (guarded within the amount so work lines keep at least a cent).
+      // v2.1033 job-total fees + legacy roll-ins ADD ON TOP of amt.
       const feeLines = hazmatFeeLinesWithinAmount(foldedFeeLines, amt)
-      const extraLines = [...feeLines, ...rollIns]
-      const totalAmountDollars = amt + hazmatRollInTotalDollars(rollIns)
+      const jobTotalLines = includeJobTotalFees ? jobTotalFeeLines : []
+      const extraLines = [...feeLines, ...jobTotalLines, ...rollIns]
+      const totalAmountDollars = amt + hazmatRollInTotalDollars(jobTotalLines) + hazmatRollInTotalDollars(rollIns)
       const { data: invokeData, error: fnErr } = await supabase.functions.invoke('create-stripe-invoice', {
         body: {
           jobs_ledger_invoice_id: invId,
@@ -1287,14 +1331,12 @@ export default function SendRecordInvoiceModal({
         }
       }
 
-      // v2.1031: job-total incidents (created with no open bill) whose fee just
-      // shipped on this invoice link to it now, so they never split twice.
-      for (const inc of foldedFeeIncidents) {
-        if ((inc.invoice_id ?? '').trim()) continue
-        if (!feeLines.some((l) => l.incidentId === inc.id)) continue
+      // v2.1033: job-total incidents whose fee just shipped on this invoice
+      // link to it now, so they never add on twice.
+      for (const l of jobTotalLines) {
         try {
           await withSupabaseRetry(
-            async () => supabase.from('job_hazmat_incidents').update({ invoice_id: invId }).eq('id', inc.id),
+            async () => supabase.from('job_hazmat_incidents').update({ invoice_id: invId }).eq('id', l.incidentId),
             'repoint job-total hazmat incident to billed invoice',
           )
         } catch (repointErr) {
@@ -1305,7 +1347,9 @@ export default function SendRecordInvoiceModal({
       // Companion notice email (Stripe can't attach files). Failure never rolls back
       // the created invoice — the Riders strip in Edit Job re-sends any time.
       // Covers the legacy rider incident AND v2.1028 fees folded into this bill.
-      const noticeIncidents = hazmatIncidentForInvoice ? [hazmatIncidentForInvoice] : foldedFeeIncidents
+      const noticeIncidents = hazmatIncidentForInvoice
+        ? [hazmatIncidentForInvoice]
+        : [...foldedFeeIncidents, ...(includeJobTotalFees ? jobTotalFeeIncidents : [])]
       if (noticeIncidents.length > 0 && emailHazmatNoticeWithStripe && (job.customer_email ?? '').trim()) {
         let noticeStatus: string = 'sent'
         for (const incident of noticeIncidents) {
@@ -1602,6 +1646,60 @@ export default function SendRecordInvoiceModal({
   }
 
   const physicalFooterActiveId = physicalInvoiceFooterActivePresetId(physicalInvoiceFooter)
+
+  // v2.1033: job-total fee add-on checkbox — mounted on both the Stripe and
+  // Physical tabs (one shared state; the fee rides on top of the bill amount).
+  const jobTotalFeeCheckbox =
+    !hazmatIncidentForInvoice && jobTotalFeeLines.length > 0 ? (
+      <label
+        style={{
+          display: 'flex',
+          alignItems: 'flex-start',
+          gap: '0.5rem',
+          margin: '0.5rem 0 0',
+          padding: '0.5rem 0.65rem',
+          border: '1px solid var(--border)',
+          borderRadius: 6,
+          background: 'var(--bg-red-tint)',
+          fontSize: '0.8125rem',
+          color: 'var(--text-700)',
+          cursor: 'pointer',
+        }}
+      >
+        <input
+          type="checkbox"
+          checked={includeJobTotalFees}
+          onChange={(e) => setIncludeJobTotalFees(e.target.checked)}
+          style={{ marginTop: 2 }}
+        />
+        <span>
+          <strong>
+            ☣ Add hazmat fee ($
+            {hazmatRollInTotalDollars(jobTotalFeeLines).toLocaleString('en-US', {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            })}
+            ) as a line item
+          </strong>{' '}
+          — this fee is in the job total but not yet on any bill.
+          {Number.isFinite(Number(billAmountStr)) && Number(billAmountStr) > 0 ? (
+            <>
+              {' '}
+              Invoice total becomes{' '}
+              <strong>
+                $
+                {(Number(billAmountStr) + hazmatRollInTotalDollars(jobTotalFeeLines)).toLocaleString('en-US', {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })}
+              </strong>
+              .
+            </>
+          ) : null}{' '}
+          Uncheck if this bill's amount already covers it.
+        </span>
+      </label>
+    ) : null
 
   return (
     <Fragment>
@@ -2267,7 +2365,8 @@ export default function SendRecordInvoiceModal({
                 {BILL_CUSTOMER_LEADING_LOWERCASE_HINT}
               </p>
             ) : null}
-            {hazmatIncidentForInvoice || foldedFeeIncidents.length > 0 ? (
+            {jobTotalFeeCheckbox}
+            {hazmatIncidentForInvoice || foldedFeeIncidents.length > 0 || jobTotalFeeIncidents.length > 0 ? (
               <label
                 style={{
                   display: 'flex',
@@ -2789,7 +2888,7 @@ export default function SendRecordInvoiceModal({
                     {BILL_CUSTOMER_LEADING_LOWERCASE_HINT}
                   </p>
                 ) : null}
-                {hazmatIncidentForInvoice || foldedFeeIncidents.length > 0 ? (
+                {hazmatIncidentForInvoice || foldedFeeIncidents.length > 0 || jobTotalFeeIncidents.length > 0 ? (
                   <label
                     style={{
                       display: 'flex',
@@ -2818,6 +2917,7 @@ export default function SendRecordInvoiceModal({
                     </span>
                   </label>
                 ) : null}
+                {jobTotalFeeCheckbox}
                 {foldedFeeLines.length > 0 ? (
                   <p
                     style={{
