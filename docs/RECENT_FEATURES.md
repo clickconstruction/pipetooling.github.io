@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-28 (v2.1059)
+last_updated: 2026-07-28 (v2.1060)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1060)
+
+### Jobs Stages: "Next" upcoming-appointment line in the Activity column (2026-07-28)
+Request: see the upcoming schedule note on the job row. New kernel [`stagesUpcomingSchedule.ts`](../src/lib/stagesUpcomingSchedule.ts) (+6 tests): one batched `job_schedule_blocks` query (`work_date >= today`, 200-id chunks, date+time ordered) → `pickNextUpcomingAppointmentPerJob` keeps each job's earliest block and merges assignees sharing that exact window (name-sorted; note filled from any shared leg). [`JobsStagesTab`](../src/components/jobs/JobsStagesTab.tsx) loads the map per jobs refresh; threaded through both tables into `StagesRowRenderContext.stagesUpcomingByJobId`. [`renderStagesLastActivityCell`](../src/components/jobs/jobsStagesRowShared.tsx) renders a green-left-bordered button in all three cell paths (matches the thread's Schedule entries): **NEXT** tag + "Fri, Jul 31 · 11:00 AM–12:30 PM · Abraham" + the note clamped to 2 lines (full text in the tooltip); clicking opens the Job Calendar (`openJobCalendar`). Rows with nothing upcoming render nothing. Client-only.
 
 ## Latest Updates (v2.1059)
 

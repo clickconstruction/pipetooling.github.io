@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1060',
+    date: '2026-07-28',
+    title: 'Stages shows each job\'s next appointment',
+    kind: 'feature',
+    highlights: [
+      'The Activity column now shows a green "Next" line on every job with an upcoming schedule: date, time window, who\'s going, and the dispatch note.',
+      'Click the line to open the Job Calendar for the whole plan.',
+    ],
+  },
+  {
     version: 'v2.1059',
     date: '2026-07-28',
     title: 'Takeoff part search no longer cut off',

@@ -12,6 +12,8 @@ Every job on **Jobs → Stages** shows a **j:** date in the Team & Last-update c
 1. On **Jobs → Stages**, find the job's **j:** line (for example `j: T-3 (fri)`).
 2. Click it. The Job Calendar opens with the job's number, service type, name, and address at the top.
 
+It also opens from the green **NEXT** line in the Activity column — every job with an upcoming appointment shows the date, time window, crew, and dispatch note right on the row; click it for the whole plan.
+
 It also opens from two other places:
 
 - **A job's Detail window** — the calendar icon at the top right of the header.

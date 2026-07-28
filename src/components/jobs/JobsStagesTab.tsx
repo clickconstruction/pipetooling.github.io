@@ -37,6 +37,8 @@ import { buildBilledAwaitingPaymentReportHtml } from '../../lib/jobsDocuments/bi
 import { ManageJobPeopleModal } from './ManageJobPeopleModal'
 import { JobCalendarModal } from './JobCalendarModal'
 import { companyWeekStartSundayContaining, getDefaultWeekRange } from '../../utils/dateUtils'
+import { fetchStagesUpcomingScheduleForJobs, type StagesUpcomingAppointment } from '../../lib/stagesUpcomingSchedule'
+import { scheduleTodayDateKey } from '../../lib/jobScheduleChicago'
 import JobsStagesTable from './JobsStagesTable'
 import JobsStagesUnifiedTable from './JobsStagesUnifiedTable'
 import { jobBillingContextFromJob } from '../../lib/jobBillingContext'
@@ -333,6 +335,22 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   const [createPartialInvoiceJob, setCreatePartialInvoiceJob] = useState<JobWithDetails | null>(null)
   const [scheduleModalJob, setScheduleModalJob] = useState<JobWithDetails | null>(null)
   const [calendarJob, setCalendarJob] = useState<JobWithDetails | null>(null)
+  // Next upcoming schedule appointment per job (the Activity column "Next:" line).
+  const [stagesUpcomingByJobId, setStagesUpcomingByJobId] = useState<Record<string, StagesUpcomingAppointment>>({})
+  useEffect(() => {
+    const ids = jobs.map((j) => j.id)
+    if (ids.length === 0) {
+      setStagesUpcomingByJobId({})
+      return
+    }
+    let cancelled = false
+    void fetchStagesUpcomingScheduleForJobs(ids, scheduleTodayDateKey()).then((m) => {
+      if (!cancelled) setStagesUpcomingByJobId(m)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [jobs])
   /** Day highlighted in the Job Calendar when Schedule… was clicked — seeds ScheduleJobModal's date. */
   const [scheduleModalInitialDate, setScheduleModalInitialDate] = useState<string | null>(null)
   const [createPartialInvoiceAmount, setCreatePartialInvoiceAmount] = useState('')
@@ -1645,6 +1663,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     applyStagesInvoiceFocus={applyStagesInvoiceFocus}
                     canOpenJobScheduleModal={canOpenJobScheduleModal}
                     openJobCalendar={setCalendarJob}
+                    stagesUpcomingByJobId={stagesUpcomingByJobId}
                     setScheduleModalJob={setScheduleModalJob}
                     authRole={authRole}
                     loadJobs={loadJobs}
@@ -1731,6 +1750,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     applyStagesInvoiceFocus={applyStagesInvoiceFocus}
                     canOpenJobScheduleModal={canOpenJobScheduleModal}
                     openJobCalendar={setCalendarJob}
+                    stagesUpcomingByJobId={stagesUpcomingByJobId}
                     setScheduleModalJob={setScheduleModalJob}
                     authRole={authRole}
                     loadJobs={loadJobs}
@@ -1865,6 +1885,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     applyStagesInvoiceFocus={applyStagesInvoiceFocus}
                     canOpenJobScheduleModal={canOpenJobScheduleModal}
                     openJobCalendar={setCalendarJob}
+                    stagesUpcomingByJobId={stagesUpcomingByJobId}
                     setScheduleModalJob={setScheduleModalJob}
                     authRole={authRole}
                     loadJobs={loadJobs}
@@ -2087,6 +2108,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     applyStagesInvoiceFocus={applyStagesInvoiceFocus}
                     canOpenJobScheduleModal={canOpenJobScheduleModal}
                     openJobCalendar={setCalendarJob}
+                    stagesUpcomingByJobId={stagesUpcomingByJobId}
                     setScheduleModalJob={setScheduleModalJob}
                     authRole={authRole}
                     loadJobs={loadJobs}
@@ -2185,6 +2207,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     applyStagesInvoiceFocus={applyStagesInvoiceFocus}
                     canOpenJobScheduleModal={canOpenJobScheduleModal}
                     openJobCalendar={setCalendarJob}
+                    stagesUpcomingByJobId={stagesUpcomingByJobId}
                     setScheduleModalJob={setScheduleModalJob}
                     authRole={authRole}
                     loadJobs={loadJobs}
@@ -2323,6 +2346,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                       applyStagesInvoiceFocus={applyStagesInvoiceFocus}
                       canOpenJobScheduleModal={canOpenJobScheduleModal}
                       openJobCalendar={setCalendarJob}
+                      stagesUpcomingByJobId={stagesUpcomingByJobId}
                       setScheduleModalJob={setScheduleModalJob}
                       authRole={authRole}
                       loadJobs={loadJobs}
