@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1046',
+    date: '2026-07-28',
+    title: 'Full reports in the Stages activity thread',
+    kind: 'feature',
+    highlights: [
+      'Expanding Job activity / notes now shows every report answer in full — question by question — instead of a one-line teaser.',
+      '"View full report" remains for signatures and the map view.',
+    ],
+  },
+  {
     version: 'v2.1045',
     date: '2026-07-28',
     title: 'Stages previews skip "Leaving job" stamps',
