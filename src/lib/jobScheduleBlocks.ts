@@ -381,6 +381,27 @@ export async function insertJobScheduleBlock(
   }
 }
 
+/**
+ * All assignees' blocks in ONE atomic insert (single PostgREST statement —
+ * all rows land or none). Replaces the per-assignee await loop in
+ * ScheduleJobModal, which could strand a partial schedule when the DB
+ * stalled mid-loop (2026-07-28 incident).
+ */
+export async function insertJobScheduleBlocks(
+  rows: Array<Database['public']['Tables']['job_schedule_blocks']['Insert']>,
+): Promise<{ error: string | null }> {
+  if (rows.length === 0) return { error: null }
+  try {
+    await withSupabaseRetry(
+      async () => await supabase.from('job_schedule_blocks').insert(rows).select('id'),
+      'insertJobScheduleBlocks',
+    )
+    return { error: null }
+  } catch (e) {
+    return { error: formatErrorMessage(e) }
+  }
+}
+
 export async function updateJobScheduleBlock(
   id: string,
   patch: Database['public']['Tables']['job_schedule_blocks']['Update'],

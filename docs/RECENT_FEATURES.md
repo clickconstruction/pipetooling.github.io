@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-28 (v2.1062)
+last_updated: 2026-07-28 (v2.1063)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1063)
+
+### Schedule save: 15s deadline + atomic multi-assignee insert (2026-07-28)
+Incident: during a prod DB freeze (third that day) a schedule save from the activity panel stuck on "Saving…" forever. Root causes: (1) `withSupabaseRetry` only helps when requests FAIL — a frozen DB never settles the fetch, so `setSaving(false)` never ran (same hang class as the v2.1051 auth-gate watchdog); (2) `saveBlock` inserted one row per assignee sequentially — multiplying the hang window and risking partial schedules. Fixes: new `withOperationTimeout` + `OperationTimeoutError` in [`errorHandling.ts`](../src/utils/errorHandling.ts) (+4 tests — Promise.race with cleared timer; note the underlying request is NOT cancelled); new `insertJobScheduleBlocks(rows)` in [`jobScheduleBlocks.ts`](../src/lib/jobScheduleBlocks.ts) — all assignees in ONE PostgREST statement (atomic); [`ScheduleJobModal.saveBlock`](../src/components/jobs/ScheduleJobModal.tsx) wraps the batch in a 15s deadline with try/finally `setSaving(false)`, and the timeout message says the save "may or may not have saved — check the day view before adding again" since the in-flight request can still land. Client-only.
 
 ## Latest Updates (v2.1062)
 

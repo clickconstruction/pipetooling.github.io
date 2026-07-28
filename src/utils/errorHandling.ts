@@ -244,6 +244,44 @@ export function formatErrorMessage(error: unknown, fallbackMessage = 'An unexpec
   return fallbackMessage
 }
 
+/**
+ * Thrown by {@link withOperationTimeout} when the wrapped promise doesn't
+ * settle in time. Distinct class so callers can message "the server isn't
+ * responding" differently from a real error response.
+ */
+export class OperationTimeoutError extends Error {
+  constructor(operationName: string, ms: number) {
+    super(`${operationName} did not respond within ${Math.round(ms / 1000)}s`)
+    this.name = 'OperationTimeoutError'
+  }
+}
+
+/**
+ * Deadline for an await that must never hang the UI. Retries (withRetry)
+ * only help when requests FAIL — when the DB freezes mid-request the fetch
+ * never settles and "Saving…" spinners hang forever (the 2026-07-28
+ * schedule-save incident; same class of hang as the v2.1051 auth-gate
+ * watchdog). NOTE: the underlying request is not cancelled — it may still
+ * land after the timeout, so callers should say "may or may not have saved".
+ */
+export async function withOperationTimeout<T>(
+  promise: Promise<T>,
+  ms: number,
+  operationName: string,
+): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<never>((_, reject) => {
+        timer = setTimeout(() => reject(new OperationTimeoutError(operationName, ms)), ms)
+      }),
+    ])
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
 /** Appended to error toasts when a full page refresh may recover (e.g. transient DB timeouts). */
 export const TOAST_TRY_REFRESH_APP_HINT = 'Try refreshing the app'
 

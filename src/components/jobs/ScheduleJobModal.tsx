@@ -7,11 +7,12 @@ import {
   fetchJobScheduleBlocksForJobDay,
   fetchScheduleBlocksForAssigneesOnDay,
   fetchScheduleJobContext,
-  insertJobScheduleBlock,
+  insertJobScheduleBlocks,
   newJobScheduleSharedBlockGroupId,
   type ScheduleJobContext,
   type ScheduleTeamMember,
 } from '../../lib/jobScheduleBlocks'
+import { OperationTimeoutError, formatErrorMessage, withOperationTimeout } from '../../utils/errorHandling'
 import {
   scheduleDateKeyAddDays,
   scheduleFormatWeekdayLong,
@@ -78,6 +79,9 @@ type Props = {
   /** Day the modal opens on (Job Calendar day selection); defaults to today. */
   initialWorkDate?: string | null
 }
+
+/** Deadline for the schedule save round-trip; past it the button recovers with a check-first message. */
+const SCHEDULE_SAVE_TIMEOUT_MS = 15000
 
 const EMPTY_TEAM_MEMBERS: ScheduleTeamMember[] = []
 const EMPTY_ASSIGNEE_CANDIDATES: ScheduleTeamMember[] = []
@@ -389,24 +393,43 @@ export function ScheduleJobModal({
     setSaving(true)
     setError(null)
     const groupId = newJobScheduleSharedBlockGroupId()
-    for (const uid of ids) {
-      const { error: insErr } = await insertJobScheduleBlock({
-        job_id: currentJobId,
-        assignee_user_id: uid,
-        work_date: workDate,
-        time_start: ts,
-        time_end: te,
-        note: note.trim() || null,
-        shared_block_group_id: groupId,
-      })
+    // One atomic insert for all assignees (no partial schedules), raced
+    // against a deadline so a frozen DB can't strand the button on "Saving…"
+    // forever (2026-07-28 incident — same hang class as the v2.1051 watchdog).
+    try {
+      const { error: insErr } = await withOperationTimeout(
+        insertJobScheduleBlocks(
+          ids.map((uid) => ({
+            job_id: currentJobId,
+            assignee_user_id: uid,
+            work_date: workDate,
+            time_start: ts,
+            time_end: te,
+            note: note.trim() || null,
+            shared_block_group_id: groupId,
+          })),
+        ),
+        SCHEDULE_SAVE_TIMEOUT_MS,
+        'Save schedule',
+      )
       if (insErr) {
-        setSaving(false)
         setError(insErr)
         await load()
         return
       }
+    } catch (e) {
+      // Timeout: the request wasn't cancelled — it may still land when the
+      // server recovers, so say so and let the day view be the truth.
+      setError(
+        e instanceof OperationTimeoutError
+          ? 'The server is not responding. The schedule may or may not have saved — check the day view below (it refreshes when the server recovers) before adding it again.'
+          : formatErrorMessage(e),
+      )
+      void load()
+      return
+    } finally {
+      setSaving(false)
     }
-    setSaving(false)
     setNote('')
     draftsRef.current[currentJobId] = {
       assigneeUserIds: ids,
