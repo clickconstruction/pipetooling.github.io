@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-28 (v2.1048)
+last_updated: 2026-07-28 (v2.1049)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1049)
+
+### Jobs Stages: toolbar collapses to New Job + search + a ⋯ tools menu (2026-07-28)
+Request: everything in the Stages toolbar that isn't New Job or search moves into a dropdown right of search. [`JobsStagesTab`](../src/components/jobs/JobsStagesTab.tsx) replaces the six inline controls (Job Book, schedule-and-time-in-search toggle, Ham mode, Follow cards I move, Total by Name, Combine / Separate) with a 36px **⋯** trigger opening a right-aligned menu: actions on top ("Job Book…", "Total by Name…", "Combine / Separate…" — click closes the menu), a divider, then the three toggles as `menuitemcheckbox` rows with On/Off pills (click flips in place, menu stays open for flipping several). Role gates unchanged per item; a fixed transparent overlay closes on outside click; the search input inherits all the freed width. The transient "Search includes schedule and session notes" busy hint stays inline. Client-only.
 
 ## Latest Updates (v2.1048)
 

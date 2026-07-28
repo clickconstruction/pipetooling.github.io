@@ -7,6 +7,7 @@ import {
   useMemo,
   useRef,
   useState,
+  type CSSProperties,
   type Dispatch,
   type ForwardedRef,
   type ReactNode,
@@ -44,7 +45,6 @@ import JobBookModal from './JobBookModal'
 import JobsCombineSeparateModal from './JobsCombineSeparateModal'
 import StagesNoCustomerJobsModal from './StagesNoCustomerJobsModal'
 import StagesAlertJobListModal from './StagesAlertJobListModal'
-import JobBookIcon from '../icons/JobBookIcon'
 import BilledPaymentConfirmationModal from './BilledPaymentConfirmationModal'
 import BilledBillViewModal from './BilledBillViewModal'
 import { findInvoiceWithJobFromJobs } from '../../lib/invoiceWithJobFromJobList'
@@ -196,6 +196,40 @@ export type JobsStagesTabProps = {
   refreshJobThreadStatsForJobIds: ReturnType<typeof useJobThreadNotes>['refreshJobThreadStatsForJobIds']
 }
 
+const stagesToolsMenuItemStyle: CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  gap: '0.75rem',
+  width: '100%',
+  padding: '0.5rem 0.75rem',
+  border: 'none',
+  background: 'none',
+  cursor: 'pointer',
+  fontSize: '0.875rem',
+  color: 'var(--text-gray-800)',
+  textAlign: 'left',
+  borderRadius: 4,
+  whiteSpace: 'nowrap',
+}
+
+function renderStagesToolsMenuToggleState(on: boolean) {
+  return (
+    <span
+      style={{
+        fontSize: '0.6875rem',
+        fontWeight: 700,
+        padding: '0.1rem 0.45rem',
+        borderRadius: 999,
+        background: on ? 'var(--bg-blue-tint)' : 'var(--bg-subtle)',
+        color: on ? 'var(--text-link)' : 'var(--text-faint)',
+      }}
+    >
+      {on ? 'On' : 'Off'}
+    </span>
+  )
+}
+
 const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   props: JobsStagesTabProps,
   ref: ForwardedRef<JobsStagesTabHandle>,
@@ -321,6 +355,9 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   const [stagesNoJobPicturesBtnHover, setStagesNoJobPicturesBtnHover] = useState(false)
   const [jobBookModalOpen, setJobBookModalOpen] = useState(false)
   const [combineSeparateModalOpen, setCombineSeparateModalOpen] = useState(false)
+  // "⋯" tools menu right of the Stages search (v2.1049) — home of every
+  // toolbar control that is not New Job or search.
+  const [stagesToolsMenuOpen, setStagesToolsMenuOpen] = useState(false)
   const [capableToBillModalOpen, setCapableToBillModalOpen] = useState(false)
   const [whenInvoiceBillModal, setWhenInvoiceBillModal] = useState<{
     invoiceId: string
@@ -1077,65 +1114,6 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
               }
               style={{ flex: '1 1 10rem', minWidth: 0, padding: '0.5rem 0.75rem', border: '1px solid var(--border-strong)', borderRadius: 4, boxSizing: 'border-box' }}
             />
-            {(['dev', 'master_technician', 'assistant', 'controller'] as const).some(
-              (r) => r === authRole || r === myRole,
-            ) ? (
-              <button
-                type="button"
-                onClick={() => setJobBookModalOpen(true)}
-                title="Job Book"
-                aria-label="Job Book"
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  width: 36,
-                  height: 36,
-                  flexShrink: 0,
-                  padding: 0,
-                  border: '1px solid var(--border-strong)',
-                  borderRadius: 4,
-                  background: 'var(--surface)',
-                  cursor: 'pointer',
-                  color: 'var(--text-muted)',
-                }}
-              >
-                <JobBookIcon size={20} />
-              </button>
-            ) : null}
-            <button
-              type="button"
-              onClick={toggleStagesIncludeScheduleTimeInSearch}
-              title={
-                stagesIncludeScheduleTimeInSearch
-                  ? 'Schedule and time in search on: also matches dispatch schedule and clock sessions (notes, assignee or puncher name, work date). Extra requests while you type. Click to search only HCP, name, and address.'
-                  : 'Schedule and time in search off: only HCP, name, and address. Click to include schedule blocks and clock sessions in search.'
-              }
-              aria-label={
-                stagesIncludeScheduleTimeInSearch
-                  ? 'Schedule and time in search on, press to turn off'
-                  : 'Schedule and time in search off, press to turn on'
-              }
-              aria-pressed={stagesIncludeScheduleTimeInSearch}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                width: 36,
-                height: 36,
-                flexShrink: 0,
-                padding: 0,
-                border: '1px solid var(--border-strong)',
-                borderRadius: 4,
-                background: stagesIncludeScheduleTimeInSearch ? 'var(--bg-blue-tint)' : 'var(--surface)',
-                cursor: 'pointer',
-                color: stagesIncludeScheduleTimeInSearch ? 'var(--text-link)' : 'var(--text-muted)',
-              }}
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={20} height={20} fill="currentColor" aria-hidden>
-                <path d="M480 272C480 317.9 465.1 360.3 440 394.7L566.6 521.4C579.1 533.9 579.1 554.2 566.6 566.7C554.1 579.2 533.8 579.2 521.3 566.7L394.7 440C360.3 465.1 317.9 480 272 480C157.1 480 64 386.9 64 272C64 157.1 157.1 64 272 64C386.9 64 480 157.1 480 272zM272 416C351.5 416 416 351.5 416 272C416 192.5 351.5 128 272 128C192.5 128 128 192.5 128 272C128 351.5 192.5 416 272 416z" />
-              </svg>
-            </button>
             {stagesIncludeScheduleTimeInSearch && stagesScheduleSessionSearchBusy ? (
               <span
                 style={{
@@ -1151,12 +1129,14 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                 <span>and session notes</span>
               </span>
             ) : null}
-            {(['dev', 'assistant', 'controller'] as const).includes((authRole || myRole) as 'dev' | 'assistant' | 'controller') && (
+            <div style={{ position: 'relative', flexShrink: 0 }}>
               <button
                 type="button"
-                onClick={toggleStagesHamMode}
-                title={stagesHamMode ? 'Ham mode on: faster shortcuts for some stage actions' : 'Ham mode off: all stage confirmations'}
-                aria-pressed={stagesHamMode}
+                onClick={() => setStagesToolsMenuOpen((o) => !o)}
+                title="Stages tools"
+                aria-label="Stages tools"
+                aria-haspopup="menu"
+                aria-expanded={stagesToolsMenuOpen}
                 style={{
                   display: 'flex',
                   alignItems: 'center',
@@ -1166,97 +1146,132 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                   padding: 0,
                   border: '1px solid var(--border-strong)',
                   borderRadius: 4,
-                  background: stagesHamMode ? 'var(--bg-blue-tint)' : 'var(--surface)',
+                  background: stagesToolsMenuOpen ? 'var(--bg-blue-tint)' : 'var(--surface)',
                   cursor: 'pointer',
-                  color: stagesHamMode ? 'var(--text-link)' : 'var(--text-muted)',
+                  color: stagesToolsMenuOpen ? 'var(--text-link)' : 'var(--text-muted)',
+                  fontSize: '1.2rem',
+                  fontWeight: 700,
+                  lineHeight: 1,
                 }}
               >
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={20} height={20} fill="currentColor" aria-hidden>
-                  <path d="M224 329.2C224 337.7 220.6 345.8 214.6 351.8L187.8 378.6C175.5 390.9 155.3 390 138.4 385.8C133.8 384.7 128.9 384 123.9 384C90.8 384 63.9 410.9 63.9 444C63.9 477.1 90.8 504 123.9 504C130.2 504 135.9 509.7 135.9 516C135.9 549.1 162.8 576 195.9 576C229 576 255.9 549.1 255.9 516C255.9 511 255.3 506.2 254.1 501.5C249.9 484.6 248.9 464.4 261.3 452.1L288.1 425.3C294.1 419.3 302.2 415.9 310.7 415.9L399.9 415.9C406.2 415.9 412.3 415.6 418.4 414.9C430.3 413.7 434.8 399.4 429.2 388.9C420.7 373.1 415.9 355.1 415.9 335.9C415.9 274 466 223.9 527.9 223.9C535.9 223.9 543.6 224.7 551.1 226.3C562.8 228.8 575.2 220.4 573.1 208.7C558.4 126.4 486.4 63.9 399.9 63.9C302.7 63.9 223.9 142.7 223.9 239.9L223.9 329.1z" />
-                </svg>
+                ⋯
               </button>
-            )}
-            <button
-              type="button"
-              onClick={() =>
-                setStagesFollowMoves((prev) => {
-                  const next = !prev
-                  try {
-                    localStorage.setItem('jobs-stages-follow-moves', String(next))
-                  } catch {
-                    // localStorage unavailable — session-only toggle
-                  }
-                  return next
-                })
-              }
-              title="After you move a card, scroll to it in its new section and highlight it"
-              aria-pressed={stagesFollowMoves}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.35rem',
-                height: 36,
-                padding: '0 0.7rem',
-                border: '1px solid var(--border-strong)',
-                borderRadius: 4,
-                background: stagesFollowMoves ? 'var(--bg-blue-tint)' : 'var(--surface)',
-                cursor: 'pointer',
-                color: stagesFollowMoves ? 'var(--text-link)' : 'var(--text-muted)',
-                fontSize: '0.8125rem',
-                whiteSpace: 'nowrap',
-              }}
-            >
-              Follow cards I move
-            </button>
-            <button
-              type="button"
-              onClick={() => setBilledTotalByNameModalOpen(true)}
-              title="Total by Name"
-              aria-label="Total by Name"
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                width: 36,
-                height: 36,
-                padding: 0,
-                border: '1px solid var(--border-strong)',
-                borderRadius: 4,
-                background: 'var(--surface)',
-                cursor: 'pointer',
-                color: 'var(--text-muted)',
-              }}
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={20} height={20} aria-hidden>
-                <path
-                  fill="currentColor"
-                  d="M128 128C128 92.7 156.7 64 192 64L341.5 64C358.5 64 374.8 70.7 386.8 82.7L493.3 189.3C505.3 201.3 512 217.6 512 234.6L512 512C512 547.3 483.3 576 448 576L192 576C156.7 576 128 547.3 128 512L128 128zM336 122.5L336 216C336 229.3 346.7 240 360 240L453.5 240L336 122.5zM192 152C192 165.3 202.7 176 216 176L264 176C277.3 176 288 165.3 288 152C288 138.7 277.3 128 264 128L216 128C202.7 128 192 138.7 192 152zM192 248C192 261.3 202.7 272 216 272L264 272C277.3 272 288 261.3 288 248C288 234.7 277.3 224 264 224L216 224C202.7 224 192 234.7 192 248zM304 324L304 328C275.2 328.3 252 351.7 252 380.5C252 406.2 270.5 428.1 295.9 432.3L337.6 439.3C343.6 440.3 348 445.5 348 451.6C348 458.5 342.4 464.1 335.5 464.1L280 464C269 464 260 473 260 484C260 495 269 504 280 504L304 504L304 508C304 519 313 528 324 528C335 528 344 519 344 508L344 503.3C369 499.2 388 477.6 388 451.5C388 425.8 369.5 403.9 344.1 399.7L302.4 392.7C296.4 391.7 292 386.5 292 380.4C292 373.5 297.6 367.9 304.5 367.9L352 367.9C363 367.9 372 358.9 372 347.9C372 336.9 363 327.9 352 327.9L344 327.9L344 323.9C344 312.9 335 303.9 324 303.9C313 303.9 304 312.9 304 323.9z"
-                />
-              </svg>
-            </button>
-            {(['dev', 'master_technician', 'assistant', 'controller'] as const).some(
-              (r) => r === authRole || r === myRole,
-            ) ? (
-              <button
-                type="button"
-                onClick={() => setCombineSeparateModalOpen(true)}
-                title="Combine two jobs or split Specific Work into a new job"
-                aria-label="Combine or separate jobs"
-                style={{
-                  padding: '0.5rem 1rem',
-                  background: 'var(--surface)',
-                  color: 'var(--text-gray-800)',
-                  border: '1px solid var(--border-strong)',
-                  borderRadius: 4,
-                  cursor: 'pointer',
-                  fontWeight: 500,
-                  whiteSpace: 'nowrap',
-                  fontSize: shortNewJobButtonLabel ? '0.8125rem' : undefined,
-                }}
-              >
-                {shortNewJobButtonLabel ? 'C / S' : 'Combine / Separate'}
-              </button>
-            ) : null}
+              {stagesToolsMenuOpen ? (
+                <>
+                  <div
+                    onClick={() => setStagesToolsMenuOpen(false)}
+                    style={{ position: 'fixed', inset: 0, zIndex: 120 }}
+                  />
+                  <div
+                    role="menu"
+                    style={{
+                      position: 'absolute',
+                      right: 0,
+                      top: 'calc(100% + 4px)',
+                      zIndex: 121,
+                      minWidth: 250,
+                      padding: '0.3rem',
+                      background: 'var(--surface)',
+                      border: '1px solid var(--border-strong)',
+                      borderRadius: 6,
+                      boxShadow: '0 10px 25px -5px rgba(0,0,0,0.25)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 2,
+                    }}
+                  >
+                    {(['dev', 'master_technician', 'assistant', 'controller'] as const).some(
+                      (r) => r === authRole || r === myRole,
+                    ) ? (
+                      <button
+                        type="button"
+                        role="menuitem"
+                        onClick={() => {
+                          setStagesToolsMenuOpen(false)
+                          setJobBookModalOpen(true)
+                        }}
+                        style={stagesToolsMenuItemStyle}
+                      >
+                        <span>Job Book…</span>
+                      </button>
+                    ) : null}
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={() => {
+                        setStagesToolsMenuOpen(false)
+                        setBilledTotalByNameModalOpen(true)
+                      }}
+                      style={stagesToolsMenuItemStyle}
+                    >
+                      <span>Total by Name…</span>
+                    </button>
+                    {(['dev', 'master_technician', 'assistant', 'controller'] as const).some(
+                      (r) => r === authRole || r === myRole,
+                    ) ? (
+                      <button
+                        type="button"
+                        role="menuitem"
+                        onClick={() => {
+                          setStagesToolsMenuOpen(false)
+                          setCombineSeparateModalOpen(true)
+                        }}
+                        title="Combine two jobs or split Specific Work into a new job"
+                        style={stagesToolsMenuItemStyle}
+                      >
+                        <span>Combine / Separate…</span>
+                      </button>
+                    ) : null}
+                    <div style={{ height: 1, background: 'var(--border)', margin: '0.2rem 0.3rem' }} />
+                    <button
+                      type="button"
+                      role="menuitemcheckbox"
+                      aria-checked={stagesIncludeScheduleTimeInSearch}
+                      onClick={toggleStagesIncludeScheduleTimeInSearch}
+                      title="Also match dispatch schedule and clock sessions (notes, names, dates) while searching"
+                      style={stagesToolsMenuItemStyle}
+                    >
+                      <span>Schedule &amp; time in search</span>
+                      {renderStagesToolsMenuToggleState(stagesIncludeScheduleTimeInSearch)}
+                    </button>
+                    <button
+                      type="button"
+                      role="menuitemcheckbox"
+                      aria-checked={stagesFollowMoves}
+                      onClick={() =>
+                        setStagesFollowMoves((prev) => {
+                          const next = !prev
+                          try {
+                            localStorage.setItem('jobs-stages-follow-moves', String(next))
+                          } catch {
+                            // localStorage unavailable — session-only toggle
+                          }
+                          return next
+                        })
+                      }
+                      title="After you move a card, scroll to it in its new section and highlight it"
+                      style={stagesToolsMenuItemStyle}
+                    >
+                      <span>Follow cards I move</span>
+                      {renderStagesToolsMenuToggleState(stagesFollowMoves)}
+                    </button>
+                    {(['dev', 'assistant', 'controller'] as const).includes((authRole || myRole) as 'dev' | 'assistant' | 'controller') ? (
+                      <button
+                        type="button"
+                        role="menuitemcheckbox"
+                        aria-checked={stagesHamMode}
+                        onClick={toggleStagesHamMode}
+                        title={stagesHamMode ? 'Ham mode on: faster shortcuts for some stage actions' : 'Ham mode off: all stage confirmations'}
+                        style={stagesToolsMenuItemStyle}
+                      >
+                        <span>Ham mode</span>
+                        {renderStagesToolsMenuToggleState(stagesHamMode)}
+                      </button>
+                    ) : null}
+                  </div>
+                </>
+              ) : null}
+            </div>
             </div>
           </div>
           <div
