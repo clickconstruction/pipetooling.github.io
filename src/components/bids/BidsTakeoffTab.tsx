@@ -3054,7 +3054,9 @@ export function BidsTakeoffTab({
                       void handleRoughPartLinesDragEnd(e)
                     }}
                   >
-                  <div style={{ border: '1px solid var(--border)', borderRadius: 4, overflow: 'hidden' }}>
+                  {/* overflow visible (not hidden): the part-search dropdown is position:absolute
+                      and was clipped at the container edge on the sheet's last rows. */}
+                  <div style={{ border: '1px solid var(--border)', borderRadius: 4 }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                       <thead style={{ background: 'var(--bg-subtle)' }}>
                         <tr>
