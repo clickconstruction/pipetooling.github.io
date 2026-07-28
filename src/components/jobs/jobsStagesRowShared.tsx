@@ -13,6 +13,7 @@ import { formatAddressTwoLines, googleMapsSearchUrl } from '../../lib/jobs/jobAd
 import { JobAddressText } from './JobAddressText'
 import { invoiceOpenRemainingOnJob, jobStagesInvoiceJumpChipTargets } from '../../lib/jobs/invoiceBilling'
 import {
+  formatDispatchNoteDaysAgoShort,
   formatDispatchNoteDaysAgoShortPhrase,
   formatDispatchNoteWeekdayShortTimeChicago,
   getDispatchNoteDisplayMeta,
@@ -744,13 +745,18 @@ export function renderStagesLastActivityCell(
     const sentMeta = getDispatchNoteDisplayMeta(String(sentRaw))
     const stripePaid =
       String(line.stripe_invoice_status ?? '').toLowerCase() === 'paid'
+    // One scan line (v2.1041): "✉ Stripe emailed Mon 10:28 PM (1d) · Resend".
+    // Full wording lives in the tooltip; the resend control keeps its own
+    // confirm/disable behavior.
     return (
       <div
+        title={`Stripe emailed the customer ${sentMeta.weekdayTimeChicago} (${sentMeta.daysAgoLabel})`}
         style={{
           display: 'flex',
-          flexDirection: 'column',
+          flexWrap: 'wrap',
           alignItems: 'center',
-          gap: '0.2rem',
+          justifyContent: 'center',
+          gap: '0.3rem',
           width: '100%',
           fontSize: '0.6875rem',
           color: 'var(--text-muted)',
@@ -758,25 +764,28 @@ export function renderStagesLastActivityCell(
           textAlign: 'center',
         }}
       >
-        <span>Stripe emailed customer</span>
-        <span>
-          {sentMeta.weekdayTimeChicago} ({sentMeta.daysAgoLabel})
+        <span style={{ whiteSpace: 'nowrap' }}>
+          <span aria-hidden>✉ </span>
+          Stripe emailed {formatDispatchNoteWeekdayShortTimeChicago(String(sentRaw))} (
+          {formatDispatchNoteDaysAgoShort(String(sentRaw))})
         </span>
-        <StripeInvoiceSendFromStripeButton
-          jobsLedgerInvoiceId={line.id}
-          stripeInvoiceId={String(line.stripe_invoice_id).trim()}
-          customerEmail={job.customer_email ?? null}
-          stripeModeForBilling={stripeModeForBillingFromRole(authRole)}
-          onSent={() => void loadJobs()}
-          compact
-          micro
-          unboxed
-          hideInlineSuccessLine
-          recordedLastSendAt={line.sent_to_customer_at}
-          buttonLabel="Resend invoice email"
-          sendDisabled={stripePaid}
-          sendDisabledTitle="This Stripe invoice is paid; Stripe will not send another email."
-        />
+        <span style={{ display: 'inline-flex', alignItems: 'center', whiteSpace: 'nowrap' }}>
+          <StripeInvoiceSendFromStripeButton
+            jobsLedgerInvoiceId={line.id}
+            stripeInvoiceId={String(line.stripe_invoice_id).trim()}
+            customerEmail={job.customer_email ?? null}
+            stripeModeForBilling={stripeModeForBillingFromRole(authRole)}
+            onSent={() => void loadJobs()}
+            compact
+            micro
+            unboxed
+            hideInlineSuccessLine
+            recordedLastSendAt={line.sent_to_customer_at}
+            buttonLabel="Resend"
+            sendDisabled={stripePaid}
+            sendDisabledTitle="This Stripe invoice is paid; Stripe will not send another email."
+          />
+        </span>
       </div>
     )
   }

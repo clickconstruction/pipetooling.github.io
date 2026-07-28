@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-28 (v2.1040)
+last_updated: 2026-07-28 (v2.1041)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2046,7 +2046,12 @@ when_to_read:
 155. [Customer and Project Management](#customer-and-project-management)
 ---
 
-## Latest Updates (v2.1040)
+## Latest Updates (v2.1041)
+
+### Jobs Stages: the "Stripe emailed customer" hint compacts to one scan line (2026-07-28)
+Request: shrink the three stacked lines (label / "Monday 10:28 PM (1 day ago)" / boxed "Resend invoice email" chip) under billed rows. [`jobsStagesRowShared.tsx`](../src/components/jobs/jobsStagesRowShared.tsx)'s `renderStagesStripeEmailedCustomerHint` now renders **"✉ Stripe emailed Mon 10:28 PM (1d)"** with a micro **Resend** control beside it — existing short formatters (`formatDispatchNoteWeekdayShortTimeChicago`, `formatDispatchNoteDaysAgoShort`), full wording in the tooltip, and the resend keeps its paid-invoice disable + confirm behavior. Two nowrap chunks wrap cleanly in the narrow Activity column (text line + Resend) instead of three centered rows. Client-only.
+
+
 
 ### Jobs Stages: the ☣ button wears a bright green box on jobs that have a hazmat fee (2026-07-28)
 Request: make the Stages biohazard button show at a glance which jobs already carry a fee. [`JobsStagesTab`](../src/components/jobs/JobsStagesTab.tsx) fetches every `job_hazmat_incidents.job_id` with `voided_at IS NULL` in one tiny query (fees are rare; skipped for non-office roles; a failure just leaves buttons plain) into a `hazmatFeeJobIds: ReadonlySet<string>` that refreshes when the wizard creates a fee. Both row renderers ([`JobsStagesTable`](../src/components/jobs/JobsStagesTable.tsx), [`JobsStagesUnifiedTable`](../src/components/jobs/JobsStagesUnifiedTable.tsx)) take the set as a prop: member rows get a **2px `#22c55e` border + faint green tint + rounded corners** around the orange ☣ icon and the tooltip flips to "This job has a hazmat fee — click to add another" (clicking still opens the create wizard — multiple incidents per job are supported). Voided-only jobs revert to the plain button. Render tests in both table test files (boxed exactly one of two rows, tooltip). Client-only.
