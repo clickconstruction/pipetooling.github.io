@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1049',
+    date: '2026-07-28',
+    title: 'Cleaner Stages toolbar',
+    kind: 'feature',
+    highlights: [
+      'The Stages bar is now just New Job, a full-width search, and a ⋯ menu holding everything else — Job Book, Total by Name, Combine / Separate, and the three toggles with On/Off states.',
+    ],
+  },
+  {
     version: 'v2.1048',
     date: '2026-07-28',
     title: 'Cleaner report entries in the activity thread',
