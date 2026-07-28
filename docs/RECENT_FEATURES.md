@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-28 (v2.1046)
+last_updated: 2026-07-28 (v2.1047)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1047)
+
+### Jobs Stages: [Send back] [Collections] side by side, Collections in red (2026-07-28)
+Request: the stacked "Send back" / boxed "Move to Collections" under Billed Awaiting Payment rows become one row — **[Send back] [Collections]** — with Collections red. All three Progress & payment button sites in [`JobsStagesUnifiedTable`](../src/components/jobs/JobsStagesUnifiedTable.tsx) (job row, merged-billed row, standalone invoice row) now wrap the pair in a centered flex row (wraps on narrow columns); the Collections button keeps the outline shape but in `#dc2626` red with the shortened label. Same confirm flow and tooltips. Client-only.
 
 ## Latest Updates (v2.1046)
 
