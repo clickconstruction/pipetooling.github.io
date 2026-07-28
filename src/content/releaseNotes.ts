@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1059',
+    date: '2026-07-28',
+    title: 'Takeoff part search no longer cut off',
+    kind: 'fix',
+    highlights: [
+      'On Bids → Takeoffs, the part-search suggestions on the last rows of the sheet were clipped at the table edge — you could only see the first result. The list now floats over whatever is below it.',
+    ],
+  },
+  {
     version: 'v2.1058',
     date: '2026-07-28',
     title: 'Job Calendar from the Detail window and Job Mode',

@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-28 (v2.1058)
+last_updated: 2026-07-28 (v2.1059)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1059)
+
+### Bids Takeoffs: part-search dropdown clipped at the bottom of the sheet (2026-07-28)
+The rough part-line picker's suggestion list (`position: absolute`, maxHeight 220) lives inside the takeoff table's wrapper div, which carried `overflow: hidden` for border-radius corner clipping — so on the sheet's last rows the list was amputated at the container edge (user screenshot: one visible result). Fix in [`BidsTakeoffTab`](../src/components/bids/BidsTakeoffTab.tsx): the rough-table wrapper (~line 3057) drops `overflow: hidden`; the 4px-radius corner clipping loss is imperceptible and the exact-materials wrapper (line ~2715, no absolute children) is untouched. Verified live on BP273 with an unsaved local part line: dropdown renders its full 220px/50 items extending 26px past the wrapper bottom (`extendsPastWrapper: true`, wrapper computed overflow `visible`). Client-only.
 
 ## Latest Updates (v2.1058)
 
