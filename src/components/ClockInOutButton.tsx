@@ -17,7 +17,12 @@ import {
 import { useLedgerDisplayPrefixes } from '../contexts/LedgerDisplayPrefixContext'
 import { effectiveJobLedgerNumber, formatBidLedgerNumberLabel, resolveBidLedgerPrefix } from '../lib/ledgerDisplayPrefixes'
 import { getTeamFeedbackEligibility } from '../lib/teamFeedback'
-import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
+import {
+  OperationTimeoutError,
+  formatErrorMessage,
+  withOperationTimeout,
+  withSupabaseRetry,
+} from '../utils/errorHandling'
 import { denverCalendarDayKey } from '../utils/dateUtils'
 import {
   fetchDispatchScheduledJobsForAssigneeDay,
@@ -87,6 +92,14 @@ function dispatchScheduledJobToUnified(d: DispatchScheduledJobForAssign): Extrac
 
 /** Matches Complete Clock In button and Clock In modal chrome. */
 const CLOCK_IN_ACCENT_ORANGE = '#ff6600'
+
+/**
+ * Deadline for the clock in/out round-trips. Retries only fire on failures —
+ * a frozen DB never settles the fetch, so without this the punch button
+ * sticks on its busy state forever (v2.1063 schedule-save hang class). The
+ * request is NOT cancelled, so timeout messages say "may or may not".
+ */
+const CLOCK_PUNCH_TIMEOUT_MS = 15000
 
 /** Above DetailJobModal backdrop (1004) when opened from Job Detail after Leaving stamp. */
 const UPDATE_FOCUS_OVERLAY_Z_INDEX = 1020
@@ -884,21 +897,25 @@ export default function ClockInOutButton({
     setClockInError(null)
     try {
       const now = new Date()
-      const inserted = await withSupabaseRetry(
-        async () =>
-          supabase
-            .from('clock_sessions')
-            .insert({
-              user_id: userId,
-              clocked_in_at: now.toISOString(),
-              work_date: denverCalendarDayKey(now.getTime()),
-              notes: clockInNotes.trim(),
-              job_ledger_id: selectedAssociation?.source === 'job' ? selectedAssociation?.id : null,
-              bid_id: selectedAssociation?.source === 'bid' ? selectedAssociation?.id : null,
-            })
-            .select('id')
-            .single(),
-        'clock in',
+      const inserted = await withOperationTimeout(
+        withSupabaseRetry(
+          async () =>
+            supabase
+              .from('clock_sessions')
+              .insert({
+                user_id: userId,
+                clocked_in_at: now.toISOString(),
+                work_date: denverCalendarDayKey(now.getTime()),
+                notes: clockInNotes.trim(),
+                job_ledger_id: selectedAssociation?.source === 'job' ? selectedAssociation?.id : null,
+                bid_id: selectedAssociation?.source === 'bid' ? selectedAssociation?.id : null,
+              })
+              .select('id')
+              .single(),
+          'clock in',
+        ),
+        CLOCK_PUNCH_TIMEOUT_MS,
+        'Clock in',
       )
       const clockInId = (inserted as { id: string } | null)?.id
       if (!clockInId) throw new Error('Clock in did not return a session id')
@@ -912,7 +929,15 @@ export default function ClockInOutButton({
       await Promise.all([fetchSessions(), notifyFirstClockInOfDay(workDate, userId)])
       onClockInSuccess?.()
     } catch (e) {
-      setClockInError(e instanceof Error ? e.message : 'Failed to clock in')
+      // Timeout: the request wasn't cancelled — the punch may still land when
+      // the server recovers, so say so instead of implying failure.
+      setClockInError(
+        e instanceof OperationTimeoutError
+          ? 'The server is not responding. Your clock-in may or may not have saved — close this and check the timer before trying again.'
+          : e instanceof Error
+            ? e.message
+            : 'Failed to clock in',
+      )
     } finally {
       setActionLoading(false)
     }
@@ -1016,18 +1041,22 @@ export default function ClockInOutButton({
       const notesTrim = clockOutReviewNotes.trim()
       const jobId = selectedAssociation?.source === 'job' ? selectedAssociation.id : null
       const bidId = selectedAssociation?.source === 'bid' ? selectedAssociation.id : null
-      await withSupabaseRetry(
-        async () =>
-          supabase
-            .from('clock_sessions')
-            .update({
-              notes: notesTrim,
-              job_ledger_id: jobId,
-              bid_id: bidId,
-              clocked_out_at: new Date().toISOString(),
-            })
-            .eq('id', openSession.id),
-        'clock out',
+      await withOperationTimeout(
+        withSupabaseRetry(
+          async () =>
+            supabase
+              .from('clock_sessions')
+              .update({
+                notes: notesTrim,
+                job_ledger_id: jobId,
+                bid_id: bidId,
+                clocked_out_at: new Date().toISOString(),
+              })
+              .eq('id', openSession.id),
+          'clock out',
+        ),
+        CLOCK_PUNCH_TIMEOUT_MS,
+        'Clock out',
       )
       scheduleClockOutLocationPatch(supabase, openSession.id)
       if (selectedAssociation && userId && typeof localStorage !== 'undefined') {
@@ -1039,7 +1068,14 @@ export default function ClockInOutButton({
       const [, elig] = await Promise.all([fetchSessions(), getTeamFeedbackEligibility(userId)])
       if (elig.eligible) setTeamFeedbackOpen(true)
     } catch (e) {
-      const msg = e instanceof Error ? e.message : 'Failed to clock out'
+      // Timeout: the request wasn't cancelled — the punch may still land when
+      // the server recovers, so say so instead of implying failure.
+      const msg =
+        e instanceof OperationTimeoutError
+          ? 'The server is not responding. Your clock-out may or may not have saved — check the timer before trying again.'
+          : e instanceof Error
+            ? e.message
+            : 'Failed to clock out'
       setClockOutReviewError(msg)
       setError(msg)
     } finally {

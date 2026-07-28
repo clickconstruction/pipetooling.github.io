@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-28 (v2.1063)
+last_updated: 2026-07-28 (v2.1064)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1064)
+
+### Stuck-spinner sweep: deadlines on high-traffic mutation buttons (2026-07-28)
+Follow-up to v2.1063: the same hang class (frozen DB → fetch never settles → retries never fire → busy flag stuck forever) swept across the app's other high-traffic mutation buttons. Each awaited round-trip is now wrapped in `withOperationTimeout` with the busy flag guaranteed reset in try/finally, and an `OperationTimeoutError` shows a "server not responding — may or may not have saved, check before retrying" message through that surface's existing error plumbing (the request is NOT cancelled by the deadline). Covered: thread-note posting in [`useJobThreadNotes`](../src/hooks/useJobThreadNotes.ts) `submitJobThreadNoteWithBody` (15s; the post-insert stats RPC also got a deadline and is now best-effort so its failure can't mislabel a posted note as failed); Stages status moves (`executeUpdateJobStatus` — timeout toast + board resync) and both Set % complete commit paths (`updateJobPctComplete`/`commitStagesPctWithNote`) in [`useJobsStagesMutations`](../src/hooks/useJobsStagesMutations.ts) (15s, `setError`); all three Bill Customer submit paths in [`SendRecordInvoiceModal`](../src/components/jobs/SendRecordInvoiceModal.tsx) — Stripe create (30s, edge fn does upstream Stripe work), outside-bill record (15s DB write), physical invoice email (60s, uploads multi-MB PDF payloads); clock in and clock out in [`ClockInOutButton`](../src/components/ClockInOutButton.tsx) (15s, modal error states). Client-only.
 
 ## Latest Updates (v2.1063)
 

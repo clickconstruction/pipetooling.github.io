@@ -1,6 +1,6 @@
 import { useRef, useState, type Dispatch, type SetStateAction } from 'react'
 import { supabase } from '../lib/supabase'
-import { withSupabaseRetry } from '../utils/errorHandling'
+import { OperationTimeoutError, withOperationTimeout, withSupabaseRetry } from '../utils/errorHandling'
 import { addDaysToDate } from '../lib/jobs/jobFormatting'
 import { composePctCompleteNoteBody } from '../lib/jobs/stagesPctNote'
 import {
@@ -22,6 +22,15 @@ import type { Database } from '../types/database'
 import type { JobWithDetails } from '../types/jobWithDetails'
 
 type JobsLedgerInvoice = Database['public']['Tables']['jobs_ledger_invoices']['Row']
+
+/**
+ * Deadline for Stages mutation round-trips (status moves, % complete).
+ * Retries only fire on failures — a frozen DB never settles the fetch, so
+ * without this the row sticks on its busy state forever (v2.1063
+ * schedule-save hang class). The request is NOT cancelled, so timeout
+ * messages say "may or may not have saved".
+ */
+const STAGES_MUTATION_TIMEOUT_MS = 15000
 
 /**
  * Stages job-mutation engine (Jobs.tsx decomposition seam, step 7 — see
@@ -92,7 +101,11 @@ export function useJobsStagesMutations({
     setStagesStatusUpdatingId(jobId)
     setError(null)
     try {
-      const { data, error: err } = await supabase.rpc('update_job_status', { p_job_id: jobId, p_to_status: toStatus })
+      const { data, error: err } = await withOperationTimeout(
+        Promise.resolve(supabase.rpc('update_job_status', { p_job_id: jobId, p_to_status: toStatus })),
+        STAGES_MUTATION_TIMEOUT_MS,
+        'Move job',
+      )
       if (err) {
         const { text, variant } = toastForUpdateJobStatusFailure(err.message)
         showToast(text, variant)
@@ -110,6 +123,16 @@ export function useJobsStagesMutations({
       followMovedJob(jobId, toStatus)
       scheduleLoadJobsAfterMutation()
       return true
+    } catch (e: unknown) {
+      // Timeout: the request wasn't cancelled — it may still land when the
+      // server recovers, so say so and let the board resync be the truth.
+      if (!(e instanceof OperationTimeoutError)) throw e
+      showToast(
+        'The server is not responding. The move may or may not have saved — check the board before moving the job again.',
+        'error',
+      )
+      void loadJobs()
+      return false
     } finally {
       setStagesStatusUpdatingId(null)
     }
@@ -249,11 +272,21 @@ export function useJobsStagesMutations({
     setPctCompleteSavingId(jobId)
     setError(null)
     try {
-      const { error: err } = await supabase.from('jobs_ledger').update({ pct_complete: value }).eq('id', jobId)
+      const { error: err } = await withOperationTimeout(
+        Promise.resolve(supabase.from('jobs_ledger').update({ pct_complete: value }).eq('id', jobId)),
+        STAGES_MUTATION_TIMEOUT_MS,
+        'Set % complete',
+      )
       if (err) throw err
       await loadJobs()
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to update % complete')
+      setError(
+        err instanceof OperationTimeoutError
+          ? 'The server is not responding. The % complete may or may not have saved — check the row before retrying.'
+          : err instanceof Error
+            ? err.message
+            : 'Failed to update % complete',
+      )
     } finally {
       setPctCompleteSavingId(null)
     }
@@ -269,11 +302,21 @@ export function useJobsStagesMutations({
     setError(null)
     try {
       await submitJobThreadNoteWithBody(jobId, composePctCompleteNoteBody(value, note), 'draft')
-      const { error: err } = await supabase.from('jobs_ledger').update({ pct_complete: value }).eq('id', jobId)
+      const { error: err } = await withOperationTimeout(
+        Promise.resolve(supabase.from('jobs_ledger').update({ pct_complete: value }).eq('id', jobId)),
+        STAGES_MUTATION_TIMEOUT_MS,
+        'Set % complete',
+      )
       if (err) throw err
       await loadJobs()
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to update % complete')
+      setError(
+        err instanceof OperationTimeoutError
+          ? 'The server is not responding. The % complete may or may not have saved — check the row before retrying.'
+          : err instanceof Error
+            ? err.message
+            : 'Failed to update % complete',
+      )
     } finally {
       setPctCompleteSavingId(null)
     }
