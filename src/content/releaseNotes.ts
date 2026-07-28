@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1063',
+    date: '2026-07-28',
+    title: 'Schedule save can no longer hang on "Saving…"',
+    kind: 'fix',
+    highlights: [
+      'If the server stops responding mid-save, the Schedule window now gives up after 15 seconds, re-enables the button, and tells you to check the day view before retrying — instead of spinning forever.',
+      'Scheduling several people is now one all-or-nothing save, so a server hiccup can never leave half the crew scheduled.',
+    ],
+  },
+  {
     version: 'v2.1062',
     date: '2026-07-28',
     title: 'NEXT line: who first, when below',
