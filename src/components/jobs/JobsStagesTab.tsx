@@ -13,7 +13,7 @@ import {
   type ReactNode,
   type SetStateAction,
 } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { formatCurrency, formatCurrencyAbbrevTruncated, formatCurrencyNoCents, formatJobNameTwoLines } from '../../lib/jobs/jobFormatting'
 import {
@@ -35,6 +35,8 @@ import { withSupabaseRetry } from '../../utils/errorHandling'
 import { openHtmlPrintWindow } from '../../lib/jobsDocuments/printWindow'
 import { buildBilledAwaitingPaymentReportHtml } from '../../lib/jobsDocuments/billedAwaitingPaymentReport'
 import { ManageJobPeopleModal } from './ManageJobPeopleModal'
+import { JobCalendarModal } from './JobCalendarModal'
+import { getDefaultWeekRange } from '../../utils/dateUtils'
 import JobsStagesTable from './JobsStagesTable'
 import JobsStagesUnifiedTable from './JobsStagesUnifiedTable'
 import { jobBillingContextFromJob } from '../../lib/jobBillingContext'
@@ -295,6 +297,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   } = props
   /** Read-only here (loading block + return-to-edit banner); the URL router that WRITES params stays in Jobs.tsx. */
   const [searchParams] = useSearchParams()
+  const navigate = useNavigate()
 
   const canOpenJobScheduleModal = useMemo(
     () =>
@@ -329,6 +332,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
 
   const [createPartialInvoiceJob, setCreatePartialInvoiceJob] = useState<JobWithDetails | null>(null)
   const [scheduleModalJob, setScheduleModalJob] = useState<JobWithDetails | null>(null)
+  const [calendarJob, setCalendarJob] = useState<JobWithDetails | null>(null)
   const [createPartialInvoiceAmount, setCreatePartialInvoiceAmount] = useState('')
   const [creatingPartialInvoiceFromModal, setCreatingPartialInvoiceFromModal] = useState(false)
 
@@ -1638,6 +1642,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     setJobThreadFullscreen={setJobThreadFullscreen}
                     applyStagesInvoiceFocus={applyStagesInvoiceFocus}
                     canOpenJobScheduleModal={canOpenJobScheduleModal}
+                    openJobCalendar={setCalendarJob}
                     setScheduleModalJob={setScheduleModalJob}
                     authRole={authRole}
                     loadJobs={loadJobs}
@@ -1723,6 +1728,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     setJobThreadFullscreen={setJobThreadFullscreen}
                     applyStagesInvoiceFocus={applyStagesInvoiceFocus}
                     canOpenJobScheduleModal={canOpenJobScheduleModal}
+                    openJobCalendar={setCalendarJob}
                     setScheduleModalJob={setScheduleModalJob}
                     authRole={authRole}
                     loadJobs={loadJobs}
@@ -1856,6 +1862,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     setJobThreadFullscreen={setJobThreadFullscreen}
                     applyStagesInvoiceFocus={applyStagesInvoiceFocus}
                     canOpenJobScheduleModal={canOpenJobScheduleModal}
+                    openJobCalendar={setCalendarJob}
                     setScheduleModalJob={setScheduleModalJob}
                     authRole={authRole}
                     loadJobs={loadJobs}
@@ -2077,6 +2084,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     setJobThreadFullscreen={setJobThreadFullscreen}
                     applyStagesInvoiceFocus={applyStagesInvoiceFocus}
                     canOpenJobScheduleModal={canOpenJobScheduleModal}
+                    openJobCalendar={setCalendarJob}
                     setScheduleModalJob={setScheduleModalJob}
                     authRole={authRole}
                     loadJobs={loadJobs}
@@ -2174,6 +2182,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     setJobThreadFullscreen={setJobThreadFullscreen}
                     applyStagesInvoiceFocus={applyStagesInvoiceFocus}
                     canOpenJobScheduleModal={canOpenJobScheduleModal}
+                    openJobCalendar={setCalendarJob}
                     setScheduleModalJob={setScheduleModalJob}
                     authRole={authRole}
                     loadJobs={loadJobs}
@@ -2311,6 +2320,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     setJobThreadFullscreen={setJobThreadFullscreen}
                       applyStagesInvoiceFocus={applyStagesInvoiceFocus}
                       canOpenJobScheduleModal={canOpenJobScheduleModal}
+                      openJobCalendar={setCalendarJob}
                       setScheduleModalJob={setScheduleModalJob}
                       authRole={authRole}
                       loadJobs={loadJobs}
@@ -2648,6 +2658,20 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
             )
           })()}
         </div>
+      )}
+      {calendarJob && (
+        <JobCalendarModal
+          job={calendarJob}
+          onClose={() => setCalendarJob(null)}
+          canOpenJobScheduleModal={canOpenJobScheduleModal}
+          onOpenSchedule={() => setScheduleModalJob(calendarJob)}
+          onOpenWeekDispatch={() => {
+            setCalendarJob(null)
+            navigate(
+              `/schedule-dispatch?jobId=${encodeURIComponent(calendarJob.id)}&week=${encodeURIComponent(getDefaultWeekRange().start)}`,
+            )
+          }}
+        />
       )}
       {readyForBillingJob && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60 }}>
