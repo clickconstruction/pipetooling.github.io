@@ -1,4 +1,4 @@
-import { useEffect, lazy } from 'react'
+import { useEffect, useState, lazy } from 'react'
 import { Routes, Route, Navigate, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from './hooks/useAuth'
 import { supabase } from './lib/supabase'
@@ -74,16 +74,39 @@ import { ActiveAccountsModalProvider } from './contexts/ActiveAccountsModalConte
 // Easter egg:
 // Jodi if you can see this the secret code is Swordfish
 
+/** Auth-gate loading screen (v2.1051): after 5s it offers the repair page so
+ * nobody stares at a bare "Loading…" during an outage or a wedged cache. The
+ * useAuth watchdog separately gives up at 8s and falls through to sign-in. */
+function AuthGateLoadingScreen() {
+  const [slow, setSlow] = useState(false)
+  useEffect(() => {
+    const t = setTimeout(() => setSlow(true), 5000)
+    return () => clearTimeout(t)
+  }, [])
+  return (
+    <div style={{ padding: '2rem', textAlign: 'center' }}>
+      Loading…
+      {slow ? (
+        <div style={{ marginTop: '1rem', fontSize: '0.875rem' }}>
+          <a href="/fix-cache.html" style={{ color: 'var(--text-link)' }}>
+            Taking too long? Fix the app
+          </a>
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth()
-  if (loading) return <div style={{ padding: '2rem', textAlign: 'center' }}>Loading…</div>
+  if (loading) return <AuthGateLoadingScreen />
   if (!user) return <Navigate to="/sign-in" replace />
   return <>{children}</>
 }
 
 function SignInRoute() {
   const { user, loading } = useAuth()
-  if (loading) return <div style={{ padding: '2rem', textAlign: 'center' }}>Loading…</div>
+  if (loading) return <AuthGateLoadingScreen />
   if (user) {
     // Honor a one-shot post-login redirect (e.g. the standalone /task launch returns there
     // after a sign-in instead of the dashboard). Only internal paths are allowed.

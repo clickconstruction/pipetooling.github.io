@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-28 (v2.1050)
+last_updated: 2026-07-28 (v2.1051)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1051)
+
+### Auth-gate watchdog: the app can no longer hang forever on "Loading…" (2026-07-28)
+Both 2026-07-28 DB freezes left phones on a black "Loading…" screen indefinitely — `supabase.auth.getSession()` hangs when the DB/auth is frozen (or when the auth client's lock is wedged after a mid-refresh kill on mobile) and [`useAuth`](../src/hooks/useAuth.ts)'s gate only cleared when it settled. Now: **(1)** an 8s watchdog renders signed-out (the sign-in screen) if the session check hangs — a late resolution still signs the user in via the existing `applySession`; timer cleared on settle/unmount. **(2)** The gate's loading screen (`AuthGateLoadingScreen` in [`App.tsx`](../src/App.tsx)) offers a **"Taking too long? Fix the app"** link to `/fix-cache.html` after 5s. New help guide [`fix-the-app-when-it-wont-load`](../src/content/help/fix-the-app-when-it-wont-load.md) (close+reopen → wait for the watchdog → pipetooling.com/fix). Client-only.
 
 ## Latest Updates (v2.1050)
 

@@ -151,14 +151,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   useEffect(() => {
-    // Initial session check
+    // Initial session check — with a watchdog (v2.1051). getSession() can hang
+    // forever when the DB/auth is frozen (both 2026-07-28 outages) or when the
+    // auth client's internal lock is wedged after a mid-refresh kill on mobile.
+    // Without the watchdog the whole app sits on the black "Loading…" screen.
+    // On timeout we render signed-out (the sign-in screen); if the check later
+    // resolves with a session, applySession below still signs the user in.
+    let gateSettled = false
+    const gateTimer = setTimeout(() => {
+      if (gateSettled) return
+      gateSettled = true
+      setUser(null)
+      setRole(null)
+      setProfileName(null)
+      setSessionExpiresAt(null)
+      setLoading(false)
+    }, 8000)
     supabase.auth.getSession().then(({ data: { session }, error }) => {
+      gateSettled = true
+      clearTimeout(gateTimer)
       if (error && error.message?.includes('Refresh Token')) {
         void supabase.auth.signOut()
       }
       applySession(session)
       setLoading(false)
     }).catch(() => {
+      gateSettled = true
+      clearTimeout(gateTimer)
       setUser(null)
       setRole(null)
       setProfileName(null)
@@ -220,6 +239,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }, 60 * 1000)
 
     return () => {
+      gateSettled = true
+      clearTimeout(gateTimer)
       subscription.unsubscribe()
       clearInterval(sessionCheckInterval)
       clearInterval(expiryCheckInterval)

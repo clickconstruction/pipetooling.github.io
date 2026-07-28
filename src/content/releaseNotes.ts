@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1051',
+    date: '2026-07-28',
+    title: 'No more endless "Loading…" screens',
+    kind: 'fix',
+    highlights: [
+      'If the app can\'t reach the server on startup, it now gives up after 8 seconds and shows the sign-in screen instead of hanging on "Loading…" forever.',
+      'The loading screen also offers a "Taking too long? Fix the app" link, and there\'s a new help guide: fix the app when it won\'t load.',
+    ],
+  },
+  {
     version: 'v2.1050',
     date: '2026-07-28',
     title: 'pipetooling.com/fix',
