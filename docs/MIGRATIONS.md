@@ -105,6 +105,12 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 #### July 28, 2026
 
+**`20260728070000_thread_stats_skip_stamps.sql`** _(apply via `supabase db push` after the file is on `main`; either order vs the client is safe)_
+- **Purpose**: Stages activity previews prefer real notes over clock stamps (v2.1045). `CREATE OR REPLACE public.jobs_ledger_thread_note_stats` — the last-note pick ranks non-stamp notes first (stamp = body matching `— (Arrived at job|Leaving job)$`) and falls back to the newest stamp only when the thread has nothing else; counts computed from all notes, so the "N" badge and expanded thread are unchanged.
+- **Security**: same STABLE SQL function, same grants; no DDL beyond the function replace.
+- **Ordering**: either order safe (old clients just render whatever the RPC returns).
+- **Category**: Jobs / activity feed
+
 **`20260728050000_hazmat_notice_tracking_and_link.sql`** _(apply via `supabase db push` after the file is on `main`; deploy the client first, then redeploy `send-hazmat-notice-email`)_
 - **Purpose**: Hazmat notice-email tracking + incident→invoice linking (v2.1039). Adds `job_hazmat_incidents.notice_emailed_at`/`notice_emailed_to` (stamped by the `send-hazmat-notice-email` edge fn via service role after each successful send). Adds `link_hazmat_fee_incident_to_invoice(p_incident_id, p_invoice_id)` RPC — the billing modal's post-send repoint was a direct client UPDATE that the table's no-client-writes RLS silently ignored (found in the 2026-07-28 crash investigation); office-gated, refuses cross-job links and voided incidents, idempotent. Ends with a one-row data fix linking job 857's incident to its sent Stripe invoice.
 - **Security**: SECURITY DEFINER RPC with the same office gate as the v2.1038 fns; columns are service-role-written only.
