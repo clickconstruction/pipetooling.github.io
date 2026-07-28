@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1041',
+    date: '2026-07-28',
+    title: 'Tighter "Stripe emailed customer" hint on Stages',
+    kind: 'fix',
+    highlights: [
+      'The three stacked lines under billed rows are now one compact line — "✉ Stripe emailed Mon 10:28 PM (1d)" with a small Resend beside it (hover for the full date).',
+    ],
+  },
+  {
     version: 'v2.1040',
     date: '2026-07-28',
     title: 'Stages shows which jobs have a hazmat fee',
