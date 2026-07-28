@@ -118,15 +118,19 @@ export function JobFormHazmatRiderRows({
       </tr>
       {incidents.map((row) => {
           const inv = row.invoice_id ? invoiceById.get(row.invoice_id) : undefined
-          const invoiceState = inv
-            ? inv.status === 'ready_to_bill'
-              ? 'Draft'
-              : inv.status === 'billed'
-                ? 'Billed'
-                : inv.status === 'paid'
-                  ? 'Paid'
-                  : inv.status
-            : 'Invoice removed'
+          // v2.1031: an unlinked incident is a job-total fee — it rides in the
+          // Job Total and links itself to the next bill that goes out.
+          const invoiceState = !row.invoice_id
+            ? 'In job total'
+            : inv
+              ? inv.status === 'ready_to_bill'
+                ? 'Draft'
+                : inv.status === 'billed'
+                  ? 'Billed'
+                  : inv.status === 'paid'
+                    ? 'Paid'
+                    : inv.status
+              : 'Invoice removed'
           const incidentDay = formatWorkDateYmdMonthDayShort(String(row.incident_at).slice(0, 10))
           return (
             <tr key={row.id} style={{ background: 'var(--bg-red-tint)' }}>
@@ -143,8 +147,8 @@ export function JobFormHazmatRiderRows({
                   borderRadius: 999,
                   fontSize: '0.6875rem',
                   fontWeight: 700,
-                  background: invoiceState === 'Draft' ? 'var(--bg-amber-tint)' : 'var(--bg-blue-tint)',
-                  color: invoiceState === 'Draft' ? 'var(--text-amber-800)' : 'var(--text-blue-800)',
+                  background: invoiceState === 'Draft' || invoiceState === 'In job total' ? 'var(--bg-amber-tint)' : 'var(--bg-blue-tint)',
+                  color: invoiceState === 'Draft' || invoiceState === 'In job total' ? 'var(--text-amber-800)' : 'var(--text-blue-800)',
                 }}
               >
                 {invoiceState}

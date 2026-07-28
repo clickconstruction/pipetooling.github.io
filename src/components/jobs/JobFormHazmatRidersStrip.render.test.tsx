@@ -72,8 +72,12 @@ describe('JobFormHazmatRiderRows', () => {
     expect(screen.getByText('Download PDF')).toBeTruthy()
   })
 
-  it('shows "Invoice removed" when the linked invoice no longer exists', () => {
-    renderRows(makeJob({ invoices: [] } as Partial<JobWithDetails>), [makeIncident({ invoice_id: null })])
+  it('shows "In job total" for an unlinked (job-total) fee and "Invoice removed" for a dangling link', () => {
+    renderRows(makeJob({ invoices: [] } as Partial<JobWithDetails>), [
+      makeIncident({ id: 'inc-unlinked', invoice_id: null }),
+      makeIncident({ id: 'inc-dangling', invoice_id: 'inv-gone' }),
+    ])
+    expect(screen.getByText('In job total')).toBeTruthy()
     expect(screen.getByText('Invoice removed')).toBeTruthy()
   })
 

@@ -102,9 +102,10 @@ export async function createHazmatFeeIncident(
   error: string | null
   invoiceId?: string
   incidentId?: string
-  /** v2.1028: 'folded_into_primary' (fee added to the open main bill) | 'rider'
-   * (separate line — no open main bill existed). Absent on the pre-fold RPC. */
-  mode?: 'folded_into_primary' | 'rider'
+  /** v2.1028/v2.1031: 'folded_into_primary' (fee added to the open main bill) |
+   * 'job_total' (no open bill — fee joined the job total only) | 'rider'
+   * (legacy separate line, pre-v2.1031 RPC). Absent on the pre-fold RPC. */
+  mode?: 'folded_into_primary' | 'job_total' | 'rider'
 }> {
   const { data, error: rpcErr } = await supabase.rpc('create_hazmat_fee_incident', {
     p_job_id: jobId,
@@ -139,6 +140,9 @@ export async function createHazmatFeeIncident(
     error: null,
     invoiceId: result.invoice_id,
     incidentId: result.incident_id,
-    mode: result.mode === 'folded_into_primary' || result.mode === 'rider' ? result.mode : undefined,
+    mode:
+      result.mode === 'folded_into_primary' || result.mode === 'job_total' || result.mode === 'rider'
+        ? result.mode
+        : undefined,
   }
 }

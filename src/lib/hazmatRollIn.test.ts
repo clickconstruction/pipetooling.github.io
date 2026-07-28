@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { eligibleHazmatRollIns, foldedHazmatFeeLines, hazmatRollInTotalDollars, type HazmatRollInInvoice } from './hazmatRollIn'
+import { eligibleHazmatRollIns, foldedHazmatFeeLines, hazmatFeeLinesWithinAmount, hazmatRollInTotalDollars, type HazmatRollInInvoice } from './hazmatRollIn'
 
 const inv = (over: Partial<HazmatRollInInvoice> & { id: string }): HazmatRollInInvoice => ({
   amount: 500,
@@ -96,21 +96,21 @@ describe('eligibleHazmatRollIns', () => {
 describe('foldedHazmatFeeLines', () => {
   const primary = { id: 'primary1', is_primary_rtb_bundle: true }
 
-  it('splits fees for incidents linked to the primary bill being billed', () => {
+  it('splits fees for incidents linked to the primary bill AND unlinked job-total incidents', () => {
     const lines = foldedHazmatFeeLines({
       billingInvoice: primary,
       incidents: [
         { id: 'incA', invoice_id: 'primary1', incident_at: '2026-07-20T18:00:00Z', fee_amount: 500 },
         { id: 'incB', invoice_id: 'primary1', incident_at: null, fee_amount: '250.50' },
         { id: 'incOther', invoice_id: 'rider9', incident_at: '2026-07-21', fee_amount: 500 },
-        { id: 'incUnlinked', invoice_id: null, incident_at: '2026-07-21', fee_amount: 500 },
+        { id: 'incUnlinked', invoice_id: null, incident_at: '2026-07-21', fee_amount: 75 },
       ],
     })
-    expect(lines.map((l) => l.incidentId)).toEqual(['incA', 'incB'])
+    expect(lines.map((l) => l.incidentId)).toEqual(['incA', 'incB', 'incUnlinked'])
     expect(lines[0]!.description).toBe('Biohazard remediation fee — incident 07/20/2026')
     expect(lines[1]!.description).toBe('Biohazard remediation fee')
     expect(lines[1]!.amountCents).toBe(25050)
-    expect(hazmatRollInTotalDollars(lines)).toBe(750.5)
+    expect(hazmatRollInTotalDollars(lines)).toBe(825.5)
   })
 
   it('never splits on a non-primary invoice (legacy rider: the whole amount IS the fee)', () => {
@@ -130,5 +130,27 @@ describe('foldedHazmatFeeLines', () => {
       ],
     })
     expect(lines).toEqual([])
+  })
+})
+
+
+describe('hazmatFeeLinesWithinAmount', () => {
+  const line = (id: string, amountDollars: number) => ({
+    incidentId: id,
+    invoiceId: 'primary1',
+    amountDollars,
+    amountCents: Math.round(amountDollars * 100),
+    description: 'Biohazard remediation fee',
+  })
+
+  it('keeps lines while the running total stays under the bill amount', () => {
+    expect(hazmatFeeLinesWithinAmount([line('a', 500), line('b', 250)], 1000).map((l) => l.incidentId)).toEqual(['a', 'b'])
+  })
+  it('drops lines that would consume the whole bill (work lines keep at least a cent)', () => {
+    expect(hazmatFeeLinesWithinAmount([line('a', 500)], 500)).toEqual([])
+    expect(hazmatFeeLinesWithinAmount([line('a', 400), line('b', 100)], 500).map((l) => l.incidentId)).toEqual(['a'])
+  })
+  it('returns nothing for a non-positive amount', () => {
+    expect(hazmatFeeLinesWithinAmount([line('a', 1)], 0)).toEqual([])
   })
 })

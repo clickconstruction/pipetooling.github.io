@@ -70,7 +70,7 @@ import {
   loadJobHazmatIncidents,
   type JobHazmatIncidentRow,
 } from '../../lib/hazmatIncidents'
-import { eligibleHazmatRollIns, foldedHazmatFeeLines, hazmatRollInTotalDollars, type HazmatRollInLine } from '../../lib/hazmatRollIn'
+import { eligibleHazmatRollIns, foldedHazmatFeeLines, hazmatFeeLinesWithinAmount, hazmatRollInTotalDollars, type HazmatRollInLine } from '../../lib/hazmatRollIn'
 import { sendHazmatNoticeEmailToCustomer } from '../../lib/sendHazmatNoticeEmail'
 import {
   buildHazmatFeeNoticePdfBlob,
@@ -661,13 +661,17 @@ export default function SendRecordInvoiceModal({
         const rows = await loadJobHazmatIncidents(job.id)
         if (cancelled) return
         const linked = rows.filter((r) => r.invoice_id === invoice.id)
-        if (linked.length === 0) return
+        // v2.1031 job-total incidents: no bill was open at creation — the fee
+        // rode the revenue bump into this bill's amount; label + repoint here.
+        const unlinked = invoice.is_primary_rtb_bundle === true ? rows.filter((r) => !(r.invoice_id ?? '').trim()) : []
+        if (linked.length === 0 && unlinked.length === 0) return
         if (invoice.is_primary_rtb_bundle === true) {
-          setFoldedFeeIncidents(linked)
+          const folded = [...linked, ...unlinked]
+          setFoldedFeeIncidents(folded)
           setFoldedFeeLines(
             foldedHazmatFeeLines({
               billingInvoice: { id: invoice.id, is_primary_rtb_bundle: true },
-              incidents: linked,
+              incidents: folded,
             }),
           )
         } else {
@@ -675,7 +679,7 @@ export default function SendRecordInvoiceModal({
         }
         // Stripe carries no attachments — put the public notice link(s) in the
         // footer (visible + editable in the Footer disclosure before sending).
-        for (const found of linked) {
+        for (const found of [...linked, ...unlinked]) {
           if (!found.public_token) continue
           const noticeLine = `Biohazard Remediation Fee Notice: ${hazmatNoticePublicUrl(found.public_token)}`
           setStripeInvoiceFooter((f) => {
@@ -1098,6 +1102,19 @@ export default function SendRecordInvoiceModal({
         setPhysicalError(promote.error)
         return
       }
+      // v2.1031: job-total incidents whose fee shipped on this physical invoice
+      // link to it now, so they never split twice on a later bill.
+      for (const inc of foldedFeeIncidents) {
+        if ((inc.invoice_id ?? '').trim()) continue
+        try {
+          await withSupabaseRetry(
+            async () => supabase.from('job_hazmat_incidents').update({ invoice_id: invId }).eq('id', inc.id),
+            'repoint job-total hazmat incident to physical invoice',
+          )
+        } catch (repointErr) {
+          console.error('hazmat job-total repoint failed (physical invoice sent ok)', repointErr)
+        }
+      }
       await onSuccess()
       onClose()
     } catch (e) {
@@ -1204,8 +1221,11 @@ export default function SendRecordInvoiceModal({
       // billing a rider itself — that keeps the separate-notice flow).
       const rollIns = includeHazmatRollIn && !hazmatIncidentForInvoice ? hazmatRollInLines : []
       // v2.1028 folded fees are ALREADY inside amt — they split out as labeled
-      // lines; legacy roll-ins add on top of amt.
-      const extraLines = [...foldedFeeLines, ...rollIns]
+      // lines; legacy roll-ins add on top of amt. The guard keeps fee lines
+      // within the bill amount so work lines always retain at least a cent
+      // (a dropped fee stays in the job total and rides a later bill).
+      const feeLines = hazmatFeeLinesWithinAmount(foldedFeeLines, amt)
+      const extraLines = [...feeLines, ...rollIns]
       const totalAmountDollars = amt + hazmatRollInTotalDollars(rollIns)
       const { data: invokeData, error: fnErr } = await supabase.functions.invoke('create-stripe-invoice', {
         body: {
@@ -1264,6 +1284,21 @@ export default function SendRecordInvoiceModal({
           )
         } catch (foldErr) {
           console.error('hazmat roll-in fold failed (Stripe invoice created ok)', foldErr)
+        }
+      }
+
+      // v2.1031: job-total incidents (created with no open bill) whose fee just
+      // shipped on this invoice link to it now, so they never split twice.
+      for (const inc of foldedFeeIncidents) {
+        if ((inc.invoice_id ?? '').trim()) continue
+        if (!feeLines.some((l) => l.incidentId === inc.id)) continue
+        try {
+          await withSupabaseRetry(
+            async () => supabase.from('job_hazmat_incidents').update({ invoice_id: invId }).eq('id', inc.id),
+            'repoint job-total hazmat incident to billed invoice',
+          )
+        } catch (repointErr) {
+          console.error('hazmat job-total repoint failed (Stripe invoice created ok)', repointErr)
         }
       }
 

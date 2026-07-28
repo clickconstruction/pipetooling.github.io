@@ -105,6 +105,12 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 #### July 27, 2026
 
+**`20260727235515_hazmat_fee_job_total_fallback.sql`** _(apply via `supabase db push` after the file is on `main`)_
+- **Purpose**: Hazmat fee never mints an instant rider invoice (v2.1031) — `create_hazmat_fee_incident`'s fallback (no open never-sent primary bill) now creates NO invoice: only the revenue bump lands and the incident stays unlinked (`mode: 'job_total'`); the client labels + links the fee when the next primary bill goes out. Fold-into-open-primary unchanged.
+- **Security**: CREATE OR REPLACE, same signature/gates.
+- **Ordering**: deploy client first, then push — old client + new RPC shows unlinked incidents as "Invoice removed" until the client update lands (cosmetic only; totals correct).
+- **Category**: Jobs / billing
+
 **`20260727225356_hazmat_fee_folds_into_primary.sql`** _(apply via `supabase db push` after the file is on `main`)_
 - **Purpose**: Hazmat fee folds into the open primary bill (v2.1028) — `create_hazmat_fee_incident` now ADDS the fee to the job's open never-sent primary bill (is_primary_rtb_bundle, draft/ready_to_bill, no Stripe id, never sent) and links the incident to it (return gains `mode: 'folded_into_primary'`); falls back to the legacy separate rider (`mode: 'rider'`) when no such bill exists. Revenue bump unchanged in both modes.
 - **Security**: CREATE OR REPLACE, same signature/gates (office roles with master access; SECURITY DEFINER).
