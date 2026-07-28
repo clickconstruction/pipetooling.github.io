@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-28 (v2.1035)
+last_updated: 2026-07-28 (v2.1036)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1036)
+
+### Bill Customer: one ☣ box, and Line item override swallows the fee line (2026-07-28)
+Feedback on the Stripe tab: the two red ☣ blocks (the "Also email the notice" checkbox and the "this bill includes a hazmat fee" info) read as duplicates, and the Line item override didn't cover the fee — the custom line shipped at `amount − fee` with the fee still split out. Now: **(1)** the two blocks merge into ONE box in [`SendRecordInvoiceModal`](../src/components/jobs/SendRecordInvoiceModal.tsx) — info sentence on top, email-notice checkbox beneath (the checkbox only governs the companion email sent after the invoice is created; the fee itself is never optional). **(2)** With a **Line item override**, the fee folds into the single custom line everywhere — Stripe submit + preview send no fee `extra_line_items` (the override line carries the full amount) and the Physical PDF/preview/hint drop the fee rows; the info copy switches to "Your Line item override covers it, so no separate fee line will appear," and job-total incidents still repoint on success (shipped inside the line). Verified live on 857: single combined box; typing an override → fee line vanishes from the Stripe preview, total stays $2,380, override text is the one line; clearing it brings the labeled fee line back. Help guide notes the override behavior.
 
 ## Latest Updates (v2.1035)
 

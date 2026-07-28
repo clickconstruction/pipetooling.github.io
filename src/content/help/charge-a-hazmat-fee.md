@@ -36,6 +36,7 @@ When you bill the job through **Bill Customer** (the main bill carrying the fee,
 ## Notes
 
 - The fee's memo ("Hazmat remediation fee — incident {date}") shows on the Stripe invoice line automatically.
+- Using **Line item override** in Bill Customer folds the fee into your single custom line — the full amount ships under your wording, with no separate fee line (the notice still travels).
 - The default amount lives in the org setting `hazmat_fee_default` (devs can change it).
 - If the wizard says the terms have no §11 clause, the fee has no contractual basis — fix the terms first.
 

@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1036',
+    date: '2026-07-28',
+    title: 'Cleaner hazmat box; override covers the fee',
+    kind: 'fix',
+    highlights: [
+      'The two red hazmat boxes in Bill Customer merged into one: the fee summary on top, the email-the-notice checkbox beneath.',
+      'A Line item override now covers the hazmat fee too — the whole amount ships under your custom wording with no separate fee line.',
+    ],
+  },
+  {
     version: 'v2.1035',
     date: '2026-07-28',
     title: 'Hazmat fee counted once, shown once',
