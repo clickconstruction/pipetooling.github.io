@@ -2,6 +2,8 @@ import { type CSSProperties, type KeyboardEvent, type ReactNode } from 'react'
 import { Link, type NavigateFunction } from 'react-router-dom'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import type { JobCalendarJobIdentity } from '../../lib/jobCalendarModal'
+import type { StagesUpcomingAppointment } from '../../lib/stagesUpcomingSchedule'
+import { scheduleFormatWindow } from '../../lib/jobScheduleChicago'
 import { getBidServiceTypeTag } from '../../utils/unifiedJobBidSearch'
 import {
   deriveStagesBillingActivityDetail,
@@ -56,6 +58,7 @@ export type StagesRowRenderContext = {
   jobThreadActivityByJobId: ReturnType<typeof useJobThreadNotes>['jobThreadActivityByJobId']
   openJobThreadFullscreen: (jobId: string) => void
   openJobCalendar: (job: JobWithDetails) => void
+  stagesUpcomingByJobId: Record<string, StagesUpcomingAppointment>
   applyStagesInvoiceFocus: (invoiceId: string) => boolean
   canOpenJobScheduleModal: boolean
   setScheduleModalJob: (j: JobWithDetails | null) => void
@@ -471,6 +474,8 @@ export function renderStagesLastActivityCell(
     jobThreadActivityByJobId,
     toggleStagesJobThreadExpanded,
     openJobThreadFullscreen,
+    openJobCalendar,
+    stagesUpcomingByJobId,
     applyStagesInvoiceFocus,
     canOpenJobScheduleModal,
     setScheduleModalJob,
@@ -506,6 +511,68 @@ export function renderStagesLastActivityCell(
   const expanded = expandedJobThreadId === jobId
   const scheduleNoTeam = (job.team_members?.length ?? 0) === 0
   const cellReportCount = job.report_count ?? 0
+
+  // "Next: Fri Jul 31 · 11:00 AM–12:30 PM · Abraham — note" — the job's next
+  // upcoming schedule appointment; click opens the Job Calendar.
+  function renderStagesUpcomingScheduleLine() {
+    const up = stagesUpcomingByJobId[jobId]
+    if (!up) return null
+    const [uy, um, ud] = up.ymd.split('-').map(Number)
+    const dateLabel = new Date(uy || 1970, (um || 1) - 1, ud || 1).toLocaleDateString('en-US', {
+      weekday: 'short',
+      month: 'short',
+      day: 'numeric',
+    })
+    const windowLabel = scheduleFormatWindow(up.timeStart, up.timeEnd)
+    const who = up.assigneeNames.join(', ')
+    const headline = `${dateLabel} · ${windowLabel} · ${who}`
+    return (
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation()
+          openJobCalendar(job)
+        }}
+        title={`Next scheduled: ${headline}${up.note ? ` — ${up.note}` : ''}. Click to open the job calendar.`}
+        aria-label={`Next scheduled appointment ${headline}. Open the job calendar.`}
+        style={{
+          display: 'block',
+          width: '100%',
+          padding: '0.15rem 0 0.15rem 0.5rem',
+          border: 'none',
+          borderLeft: '3px solid var(--border-green)',
+          background: 'transparent',
+          cursor: 'pointer',
+          textAlign: 'left',
+          font: 'inherit',
+          flexShrink: 0,
+        }}
+      >
+        <div style={{ fontSize: '0.6875rem', color: 'var(--text-muted)' }}>
+          <span style={{ fontSize: '0.65rem', fontWeight: 700, textTransform: 'uppercase', color: '#15803d', marginRight: '0.35rem' }}>
+            Next
+          </span>
+          {headline}
+        </div>
+        {up.note ? (
+          <div
+            style={{
+              fontSize: '0.75rem',
+              color: 'var(--text-700)',
+              lineHeight: 1.3,
+              wordBreak: 'break-word',
+              display: '-webkit-box',
+              WebkitLineClamp: 2,
+              WebkitBoxOrient: 'vertical',
+              overflow: 'hidden',
+            }}
+          >
+            {up.note}
+          </div>
+        ) : null}
+      </button>
+    )
+  }
 
   function renderStagesViewReportsFooterButton() {
     return (
@@ -873,6 +940,7 @@ export function renderStagesLastActivityCell(
             <span style={{ fontSize: '0.8125rem', color: 'var(--text-faint)' }}>—</span>
             {renderStagesThreadExpandButton(ctx, jobId)}
           </div>
+          {renderStagesUpcomingScheduleLine()}
           {renderStagesStripeEmailedCustomerHint()}
           {renderStagesInvoiceJumpChips(job)}
           {renderStagesViewReportsFooterButton()}
@@ -891,6 +959,7 @@ export function renderStagesLastActivityCell(
             <span style={{ fontSize: '0.8125rem', color: 'var(--text-faint)' }}>—</span>
             {renderStagesThreadExpandButton(ctx, jobId)}
           </div>
+          {renderStagesUpcomingScheduleLine()}
           {renderStagesStripeEmailedCustomerHint()}
           {renderStagesInvoiceJumpChips(job)}
           {renderStagesViewReportsFooterButton()}
@@ -938,6 +1007,7 @@ export function renderStagesLastActivityCell(
             {body || '—'}
           </div>
         </div>
+        {renderStagesUpcomingScheduleLine()}
         {renderStagesStripeEmailedCustomerHint()}
         {renderStagesInvoiceJumpChips(job)}
         {renderStagesViewReportsFooterButton()}
