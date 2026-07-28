@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-28 (v2.1042)
+last_updated: 2026-07-28 (v2.1043)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1043)
+
+### Jobs Stages: the thread chevron + note count moved inline after the activity header (2026-07-28)
+Request: "▼ / 3 / Abraham·Wed 5:02 PM(6d ago)" should read "Abraham·Wed 5:02 PM(6d ago) ▼ 3". `renderStagesThreadExpandButton` in [`jobsStagesRowShared.tsx`](../src/components/jobs/jobsStagesRowShared.tsx) is now an inline-flex chevron+count that trails the author/time line (and the "—" placeholder on rows with no activity) instead of rendering as a stacked column in front of the text — the Activity cell loses a whole leading column of width. It lives inside the already-clickable body, so its click stops propagation to avoid a double toggle; expand/collapse and aria-expanded behave as before. Client-only.
 
 ## Latest Updates (v2.1042)
 

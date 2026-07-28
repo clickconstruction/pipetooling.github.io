@@ -359,6 +359,9 @@ export function shouldSuppressStagesRowJobThreadToggle(target: EventTarget | nul
   return !!el.closest('button, a, input, textarea, select, label, [role="button"]')
 }
 
+/** Chevron + note count, inline at the END of the last-activity header line
+ * (v2.1043 — used to be a stacked column in front of it). Lives inside the
+ * clickable body, so the click stops propagation to avoid a double toggle. */
 function renderStagesThreadExpandButton(ctx: StagesRowRenderContext, jobId: string) {
   const { expandedJobThreadId, jobThreadStatsByJobId, toggleStagesJobThreadExpanded } = ctx
   const expanded = expandedJobThreadId === jobId
@@ -367,28 +370,30 @@ function renderStagesThreadExpandButton(ctx: StagesRowRenderContext, jobId: stri
   return (
     <button
       type="button"
-      onClick={() => toggleStagesJobThreadExpanded(jobId)}
+      onClick={(e) => {
+        e.stopPropagation()
+        toggleStagesJobThreadExpanded(jobId)
+      }}
       aria-expanded={expanded}
       title={count > 0 ? `${count} thread note(s)` : 'Job notes thread'}
       style={{
-        display: 'flex',
-        flexDirection: 'column',
+        display: 'inline-flex',
         alignItems: 'center',
-        gap: 2,
-        padding: '0.25rem',
+        gap: 3,
+        marginLeft: '0.45rem',
+        padding: '0 0.15rem',
         border: 'none',
         background: 'none',
         cursor: 'pointer',
         color: 'var(--text-700)',
-        fontSize: '0.75rem',
+        fontSize: '0.65rem',
         lineHeight: 1.1,
-        flexShrink: 0,
-        alignSelf: 'flex-start',
+        verticalAlign: 'middle',
       }}
     >
       <span aria-hidden>{expanded ? '\u25BC' : '\u25B6'}</span>
       {count > 0 ? (
-        <span style={{ fontSize: '0.65rem', color: 'var(--text-link)', fontWeight: 600 }}>{count}</span>
+        <span style={{ color: 'var(--text-link)', fontWeight: 600 }}>{count}</span>
       ) : null}
     </button>
   )
@@ -701,7 +706,6 @@ export function renderStagesLastActivityCell(
             </svg>
           </button>
         </div>
-        {renderStagesThreadExpandButton(ctx, jobId)}
       </div>
     )
   }
@@ -805,6 +809,7 @@ export function renderStagesLastActivityCell(
         <div style={lastActivityMainColumnStyle}>
           <div {...lastActivityBodyInteractiveProps(titleForEmpty)}>
             <span style={{ fontSize: '0.8125rem', color: 'var(--text-faint)' }}>—</span>
+            {renderStagesThreadExpandButton(ctx, jobId)}
           </div>
           {renderStagesStripeEmailedCustomerHint()}
           {renderStagesInvoiceJumpChips(job)}
@@ -822,6 +827,7 @@ export function renderStagesLastActivityCell(
         <div style={lastActivityMainColumnStyle}>
           <div {...lastActivityBodyInteractiveProps(titleForEmpty)}>
             <span style={{ fontSize: '0.8125rem', color: 'var(--text-faint)' }}>—</span>
+            {renderStagesThreadExpandButton(ctx, jobId)}
           </div>
           {renderStagesStripeEmailedCustomerHint()}
           {renderStagesInvoiceJumpChips(job)}
@@ -852,6 +858,7 @@ export function renderStagesLastActivityCell(
             {author ? <span style={{ margin: '0 0.35rem' }}>·</span> : null}
             <span>{formatDispatchNoteWeekdayShortTimeChicago(atIso)}</span>
             <span style={{ marginLeft: '0.35rem' }}>({formatDispatchNoteDaysAgoShortPhrase(atIso)})</span>
+            {renderStagesThreadExpandButton(ctx, jobId)}
           </div>
           <div
             style={{
