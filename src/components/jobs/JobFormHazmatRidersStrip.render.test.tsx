@@ -6,8 +6,13 @@
  * status, and the notice re-open/download actions; renders nothing when the
  * job has none. Rows are `<tr>`s, so tests mount them inside a table.
  */
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { screen } from '@testing-library/react'
+
+vi.mock('../../hooks/useAuth', async () => {
+  const { useAuthModuleMock } = await import('../../test/renderSmokeMocks')
+  return useAuthModuleMock()
+})
 
 import { JobFormHazmatRiderRows } from './JobFormHazmatRidersStrip'
 import type { JobHazmatIncidentRow } from '../../lib/hazmatIncidents'

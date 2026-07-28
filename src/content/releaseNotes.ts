@@ -11,6 +11,18 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1038',
+    date: '2026-07-28',
+    title: 'Edit, void, or delete a hazmat fee',
+    kind: 'feature',
+    highlights: [
+      'Edit Job → RIDERS rows now have Edit… to change a fee’s amount, description, photos, or testimonials — the Job Total and the open bill move with the amount.',
+      'Assistants can Void a fee (removes the charge, keeps the record); devs, masters, and controllers can also Delete it (restorable from Recently deleted).',
+      'Every edit, void, and delete lands in the Job activity feed, and the printable notice shows an edited-on date or a VOIDED banner.',
+      'Once the fee is on a sent bill, the buttons lock with an explanation.',
+    ],
+  },
+  {
     version: 'v2.1037',
     date: '2026-07-28',
     title: 'Preview the hazmat notice email',

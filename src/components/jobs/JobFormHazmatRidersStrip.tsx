@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useToastContext } from '../../contexts/ToastContext'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import {
@@ -15,6 +16,15 @@ import {
 import { formatCurrency } from '../../lib/jobs/jobFormMoney'
 import { formatWorkDateYmdMonthDayShort } from '../../utils/dateUtils'
 import { sendHazmatNoticeEmailToCustomer } from '../../lib/sendHazmatNoticeEmail'
+import { useAuth } from '../../hooks/useAuth'
+import {
+  deleteHazmatFeeIncident,
+  hazmatFeeMutationBlocker,
+  hazmatFeeRemovalCapability,
+  voidHazmatFeeIncident,
+} from '../../lib/hazmatFeeEdit'
+import { HazmatFeeEditDialog } from './HazmatFeeEditDialog'
+import ConfirmDialog from '../ConfirmDialog'
 
 /**
  * Rider rows for the ① Line Items table (v2.1029 — previously a standalone
@@ -30,13 +40,41 @@ import { sendHazmatNoticeEmailToCustomer } from '../../lib/sendHazmatNoticeEmail
 export function JobFormHazmatRiderRows({
   job,
   incidents,
+  onChanged,
 }: {
   job: JobWithDetails
   incidents: JobHazmatIncidentRow[]
+  /** Re-fetch incidents after an edit/void/delete (v2.1038). */
+  onChanged?: () => void
 }) {
   const { showToast } = useToastContext()
+  const { role } = useAuth()
   const [pdfBusyId, setPdfBusyId] = useState<string | null>(null)
   const [emailBusyId, setEmailBusyId] = useState<string | null>(null)
+  const [editIncident, setEditIncident] = useState<JobHazmatIncidentRow | null>(null)
+  const [confirmRemoval, setConfirmRemoval] = useState<{ kind: 'void' | 'delete'; row: JobHazmatIncidentRow } | null>(null)
+  const [removalBusy, setRemovalBusy] = useState(false)
+  const removalCapability = hazmatFeeRemovalCapability(role)
+
+  const runRemoval = async () => {
+    if (!confirmRemoval || removalBusy) return
+    setRemovalBusy(true)
+    try {
+      const res =
+        confirmRemoval.kind === 'delete'
+          ? await deleteHazmatFeeIncident(confirmRemoval.row.id)
+          : await voidHazmatFeeIncident(confirmRemoval.row.id)
+      if (!res.ok) {
+        showToast(res.error ?? 'Could not update the fee', 'error')
+        return
+      }
+      showToast(confirmRemoval.kind === 'delete' ? 'Hazmat fee deleted.' : 'Hazmat fee voided.', 'success')
+      setConfirmRemoval(null)
+      onChanged?.()
+    } finally {
+      setRemovalBusy(false)
+    }
+  }
 
   if (incidents.length === 0) return null
 
@@ -122,7 +160,9 @@ export function JobFormHazmatRiderRows({
           const inv = row.invoice_id ? invoiceById.get(row.invoice_id) : undefined
           // v2.1031: an unlinked incident is a job-total fee — it rides in the
           // Job Total and links itself to the next bill that goes out.
-          const invoiceState = !row.invoice_id
+          const invoiceState = row.voided_at
+            ? 'Voided'
+            : !row.invoice_id
             ? 'In job total'
             : inv
               ? inv.status === 'ready_to_bill'
@@ -135,7 +175,7 @@ export function JobFormHazmatRiderRows({
               : 'Invoice removed'
           const incidentDay = formatWorkDateYmdMonthDayShort(String(row.incident_at).slice(0, 10))
           return (
-            <tr key={row.id} style={{ background: 'var(--bg-red-tint)' }}>
+            <tr key={row.id} style={{ background: row.voided_at ? 'var(--bg-subtle)' : 'var(--bg-red-tint)', opacity: row.voided_at ? 0.75 : 1 }}>
               {/* One full-width cell (v2.1032): the title owns the whole line so it
                   never wraps on desktop, the fee right-aligns beside it, and the
                   notice actions stretch across the section below. */}
@@ -152,8 +192,8 @@ export function JobFormHazmatRiderRows({
                   borderRadius: 999,
                   fontSize: '0.6875rem',
                   fontWeight: 700,
-                  background: invoiceState === 'Draft' || invoiceState === 'In job total' ? 'var(--bg-amber-tint)' : 'var(--bg-blue-tint)',
-                  color: invoiceState === 'Draft' || invoiceState === 'In job total' ? 'var(--text-amber-800)' : 'var(--text-blue-800)',
+                  background: invoiceState === 'Voided' ? 'var(--bg-subtle)' : invoiceState === 'Draft' || invoiceState === 'In job total' ? 'var(--bg-amber-tint)' : 'var(--bg-blue-tint)',
+                  color: invoiceState === 'Voided' ? 'var(--text-muted)' : invoiceState === 'Draft' || invoiceState === 'In job total' ? 'var(--text-amber-800)' : 'var(--text-blue-800)',
                 }}
               >
                 {invoiceState}
@@ -163,7 +203,53 @@ export function JobFormHazmatRiderRows({
                 ${formatCurrency(Number(row.fee_amount))}
               </span>
                 </div>
-                <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.45rem' }}>
+                <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.45rem', flexWrap: 'wrap' }}>
+              {(() => {
+                const gateInvoice = inv
+                  ? {
+                      status: inv.status ?? null,
+                      stripe_invoice_id: (inv as { stripe_invoice_id?: string | null }).stripe_invoice_id ?? null,
+                      sent_to_customer_at: (inv as { sent_to_customer_at?: string | null }).sent_to_customer_at ?? null,
+                      external_send_channel: (inv as { external_send_channel?: string | null }).external_send_channel ?? null,
+                    }
+                  : null
+                const blocker = hazmatFeeMutationBlocker(row, gateInvoice)
+                return (
+                  <>
+                    <button
+                      type="button"
+                      disabled={!!blocker}
+                      onClick={() => setEditIncident(row)}
+                      style={{ ...smallBtn, cursor: blocker ? 'not-allowed' : 'pointer', opacity: blocker ? 0.55 : 1 }}
+                      title={blocker ?? 'Edit the fee amount, description, photos, or testimonials'}
+                    >
+                      Edit…
+                    </button>
+                    {!row.voided_at && removalCapability ? (
+                      <button
+                        type="button"
+                        disabled={!!blocker}
+                        onClick={() => setConfirmRemoval({ kind: 'void', row })}
+                        style={{ ...smallBtn, cursor: blocker ? 'not-allowed' : 'pointer', opacity: blocker ? 0.55 : 1 }}
+                        title={blocker ?? 'Void the fee: keep the record, remove the charge'}
+                      >
+                        Void…
+                      </button>
+                    ) : null}
+                    {removalCapability === 'delete' ? (
+                      <button
+                        type="button"
+                        disabled={!row.voided_at && !!blocker}
+                        onClick={() => setConfirmRemoval({ kind: 'delete', row })}
+                        style={{ ...smallBtn, color: 'var(--text-red-700)', cursor: !row.voided_at && blocker ? 'not-allowed' : 'pointer', opacity: !row.voided_at && blocker ? 0.55 : 1 }}
+                        title={(!row.voided_at && blocker) || 'Delete the incident entirely (restorable from Recently deleted)'}
+                      >
+                        Delete…
+                      </button>
+                    ) : null}
+                  </>
+                )
+              })()}
               <button type="button" onClick={() => openNotice(row)} style={smallBtn} title="Open the printable Biohazard Remediation Fee Notice">
                 Open notice
               </button>
@@ -209,6 +295,33 @@ export function JobFormHazmatRiderRows({
             </tr>
           )
         })}
+      {editIncident
+        ? createPortal(
+            <HazmatFeeEditDialog
+              incident={editIncident}
+              onClose={() => setEditIncident(null)}
+              onSaved={() => onChanged?.()}
+            />,
+            document.body,
+          )
+        : null}
+      {confirmRemoval
+        ? createPortal(
+            <ConfirmDialog
+              title={confirmRemoval.kind === 'delete' ? 'Delete this hazmat fee?' : 'Void this hazmat fee?'}
+              body={
+                confirmRemoval.kind === 'delete'
+                  ? `The incident and its $${formatCurrency(Number(confirmRemoval.row.fee_amount))} fee are removed from the job entirely (restorable by a dev from Recently deleted). The Job Total and any open bill shrink by the fee.`
+                  : `The $${formatCurrency(Number(confirmRemoval.row.fee_amount))} charge is removed from the Job Total and any open bill, but the incident record and notice stay for your files.`
+              }
+              confirmLabel={removalBusy ? 'Working…' : confirmRemoval.kind === 'delete' ? 'Delete fee' : 'Void fee'}
+              cancelLabel="Cancel"
+              onCancel={() => (removalBusy ? null : setConfirmRemoval(null))}
+              onConfirm={() => void runRemoval()}
+            />,
+            document.body,
+          )
+        : null}
     </>
   )
 }

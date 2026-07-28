@@ -10,9 +10,12 @@ import { loadJobHazmatIncidents, type JobHazmatIncidentRow } from '../lib/hazmat
 export function useJobHazmatIncidents(jobId: string | null | undefined): {
   incidents: JobHazmatIncidentRow[]
   hazmatInvoiceIds: Set<string>
+  /** Re-fetch after an edit/void/delete (v2.1038). */
+  refresh: () => void
 } {
   const [incidents, setIncidents] = useState<JobHazmatIncidentRow[]>([])
   const [hazmatInvoiceIds, setHazmatInvoiceIds] = useState<Set<string>>(() => new Set())
+  const [refreshKey, setRefreshKey] = useState(0)
 
   useEffect(() => {
     if (!jobId) {
@@ -37,7 +40,7 @@ export function useJobHazmatIncidents(jobId: string | null | undefined): {
     return () => {
       cancelled = true
     }
-  }, [jobId])
+  }, [jobId, refreshKey])
 
-  return { incidents, hazmatInvoiceIds }
+  return { incidents, hazmatInvoiceIds, refresh: () => setRefreshKey((k) => k + 1) }
 }

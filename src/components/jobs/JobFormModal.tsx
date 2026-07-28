@@ -223,7 +223,7 @@ export default function JobFormModal({
   const { showToast } = useToastContext()
   const navigate = useNavigate()
   const prefixMap = useLedgerPrefixMap()
-  const { incidents: hazmatIncidents, hazmatInvoiceIds } = useJobHazmatIncidents(editJobId)
+  const { incidents: hazmatIncidents, hazmatInvoiceIds, refresh: refreshHazmatIncidents } = useJobHazmatIncidents(editJobId)
   const billCustomer = useBillCustomerModal()
   const jobDetailOpenerBridge = useJobDetailOpenerBridge()
   const newProjectModal = useNewProjectModal()
@@ -3674,7 +3674,7 @@ export default function JobFormModal({
           </div>
           <JobFormFixturesSection
             fixtures={fixtures}
-            riderRows={editing && hazmatIncidents.length > 0 ? <JobFormHazmatRiderRows job={editing} incidents={hazmatIncidents} /> : null}
+            riderRows={editing && hazmatIncidents.length > 0 ? <JobFormHazmatRiderRows job={editing} incidents={hazmatIncidents} onChanged={refreshHazmatIncidents} /> : null}
             riderFeesDollars={riderFeesDollars}
             fixtureScopeExpandedById={fixtureScopeExpandedById}
             setFixtureScopeExpandedById={setFixtureScopeExpandedById}

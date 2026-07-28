@@ -29,6 +29,16 @@ export function buildHazmatFeeNoticeHtml(job: HazmatNoticeJobInfo, draft: Hazmat
     ? draft.incidentAt
     : incidentDate.toLocaleString('en-US', { timeZone: APP_CALENDAR_TZ })
   const fee = draft.feeAmount.toLocaleString('en-US', { style: 'currency', currency: 'USD' })
+  const noticeDate = (iso: string) => {
+    const d = new Date(iso)
+    return Number.isNaN(d.getTime()) ? iso : d.toLocaleDateString('en-US', { timeZone: APP_CALENDAR_TZ })
+  }
+  const voidedBanner = draft.voidedAt
+    ? `<p style="border: 2px solid #b91c1c; color: #b91c1c; font-weight: 700; padding: 0.5rem 0.75rem; border-radius: 6px; letter-spacing: 0.05em">VOIDED ${esc(noticeDate(draft.voidedAt))} — this fee was voided and is not owed.</p>`
+    : ''
+  const editedStamp = draft.editedAt
+    ? `<p class="meta">Record edited ${esc(noticeDate(draft.editedAt))}</p>`
+    : ''
   const photos = draft.photoLinks
     .map((p, i) => `<li><a href="${esc(p)}">Photo ${i + 1}: ${esc(p)}</a></li>`)
     .join('')
@@ -56,8 +66,8 @@ export function buildHazmatFeeNoticeHtml(job: HazmatNoticeJobInfo, draft: Hazmat
 </style></head><body>
 <h1>Biohazard Remediation Fee Notice</h1>
 <p class="meta">Job ${esc(job.jobNumber)} — ${esc(job.jobName)}<br>${esc(job.jobAddress)}<br>Customer: ${esc(job.customerName)}</p>
-<p class="fee">Fee: ${fee}</p>
-<h2>Incident</h2>
+${voidedBanner}<p class="fee">Fee: ${fee}</p>
+${editedStamp}<h2>Incident</h2>
 <p class="meta">Date/time: ${esc(dateStr)}${draft.stageLabel ? ` · Stage: ${esc(draft.stageLabel)}` : ''}${
     draft.exposedPeople.trim() ? `<br>Personnel exposed: ${esc(draft.exposedPeople)}` : ''
   }</p>

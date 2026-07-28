@@ -11,7 +11,13 @@ import type { HazmatNoticeJobInfo } from './jobsDocuments/hazmatFeeNotice'
  * be re-opened, downloaded, or attached any time after the wizard closes.
  */
 
-export type JobHazmatIncidentRow = Database['public']['Tables']['job_hazmat_incidents']['Row']
+// v2.1038 columns (edited_at / voided_at / voided_by) intersected manually until
+// the next `gen-types:linked` run after the migration is pushed.
+export type JobHazmatIncidentRow = Database['public']['Tables']['job_hazmat_incidents']['Row'] & {
+  edited_at?: string | null
+  voided_at?: string | null
+  voided_by?: string | null
+}
 
 /** Tolerant jsonb → string[] (photo links). Malformed entries are dropped, never thrown. */
 function parsePhotoLinks(value: unknown): string[] {
@@ -50,6 +56,8 @@ export function hazmatIncidentRowToDraft(row: JobHazmatIncidentRow): HazmatIncid
     testimonials: parseTestimonials(row.testimonials),
     tosClauseSnapshot: row.tos_clause_snapshot,
     feeAmount: Number(row.fee_amount),
+    editedAt: row.edited_at ?? null,
+    voidedAt: row.voided_at ?? null,
   }
 }
 
@@ -93,9 +101,10 @@ export async function loadJobHazmatIncidents(jobId: string): Promise<JobHazmatIn
  * Edit Job's ① Line Items and in the revenue written on save, so editing a job
  * no longer wipes the fee's revenue bump. */
 export function sumHazmatRiderFees(
-  incidents: readonly Pick<JobHazmatIncidentRow, 'fee_amount'>[],
+  incidents: readonly (Pick<JobHazmatIncidentRow, 'fee_amount'> & { voided_at?: string | null })[],
 ): number {
   return incidents.reduce((s, r) => {
+    if (r.voided_at) return s
     const fee = Number(r.fee_amount)
     return Number.isFinite(fee) && fee > 0 ? s + fee : s
   }, 0)

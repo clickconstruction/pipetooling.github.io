@@ -43,3 +43,17 @@ When you bill the job through **Bill Customer** (the main bill carrying the fee,
 ## Rolling the fee into the final bill
 
 If the biohazard fee bill has **not** been sent yet when you open {{button:primary|Bill Customer}} on the job's main invoice, you'll see a checked box: **Include hazmat fee as a line item**. Leave it checked and the fee becomes its own labeled line on that one invoice (the separate draft is removed automatically); the notice link still rides in the invoice footer. Uncheck it to keep billing the fee separately. Fees the customer already received are never merged.
+
+## Editing, voiding, or deleting a fee
+
+Open {{button:secondary|Edit Job}} and find the fee under **RIDERS** in ① Line Items:
+
+- {{button:secondary|Edit…}} changes the **amount, description, photo links, or testimonials**. Changing the amount also moves the Job Total and the open bill by the difference — the terms snapshot stays frozen.
+- {{button:secondary|Void…}} removes the charge but **keeps the record** (gray, struck-through, with a VOIDED banner on the notice). Assistants can void.
+- {{button:danger|Delete…}} removes the incident entirely — devs, masters, and controllers only. Deleted fees are restorable by a dev from **Recently deleted**.
+
+:::example Locked once billed
+After the fee is on a bill the customer received, all three buttons lock and show why. Send the bill back first if the fee truly must change.
+:::
+
+Every edit, void, and delete is logged in the **Job activity** feed, and an edited fee's notice carries a "Record edited" date.
