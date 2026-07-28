@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1044',
+    date: '2026-07-28',
+    title: 'Report previews read like notes on Stages',
+    kind: 'fix',
+    highlights: [
+      'The activity preview drops the "Report: Status Report" label line — you see the report text itself, same as notes. The Reports chip still marks report activity.',
+    ],
+  },
+  {
     version: 'v2.1043',
     date: '2026-07-28',
     title: 'Tidier activity header on Stages',

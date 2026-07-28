@@ -841,11 +841,13 @@ export function renderStagesLastActivityCell(
   const author = useReport
     ? stat.last_report_author_name?.trim() || ''
     : stat.last_note_author_name?.trim() || lastChronologicalNoteAuthor || ''
+  // Reports show just their preview text like notes do (v2.1044) — the
+  // "Report: <template>" label only fills in when there is no preview.
   const body = useReport
     ? (() => {
         const tmpl = (stat.last_report_template_name ?? '').trim() || 'Report'
         const prev = (stat.last_report_preview ?? '').trim()
-        return prev ? `Report: ${tmpl}\n${prev}` : `Report: ${tmpl}`
+        return prev || `Report: ${tmpl}`
       })()
     : (stat.last_note_body ?? '').trim() || fromThreadBody
   return (
