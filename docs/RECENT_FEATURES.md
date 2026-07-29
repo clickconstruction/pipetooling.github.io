@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-29 (v2.1068)
+last_updated: 2026-07-29 (v2.1069)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1069)
+
+### Job stages step 3: the save engine carries the fixture↔invoice link; linked rows lock (2026-07-29)
+Client half of the v2.1068 migration. `FixtureRow` gains `invoice_id` ([`jobFormTypes.ts`](../src/lib/jobs/jobFormTypes.ts)); the fixtures embed selects it ([`jobsLedgerEmbedSelects.ts`](../src/lib/jobsLedgerEmbedSelects.ts)); hydration maps it; BOTH fixture write paths (billing autosave + main save) carry it through the delete+reinsert so the link survives id churn; the autosave change-slice includes it. In ① Line Items, a linked row renders **locked**: name/count/price/scope disabled, remove hidden, and a lifecycle chip (Invoiced · Ready to Bill / Billed / Paid — new kernel [`jobFormFixtureLinks.ts`](../src/lib/jobs/jobFormFixtureLinks.ts), +4 tests) with a "send the invoice back to edit" tooltip; ▲▼ re-ordering stays allowed (order is presentation, not money). `invoiceStatusById` memo in [`JobFormModal`](../src/components/jobs/JobFormModal.tsx) feeds the chip from `editing.invoices`. **Ordering**: migration `20260729002615` must be applied before this deploys (the embed select 400s without the column). Types updated by hand to match; `gen-types:linked` verified post-push.
 
 ## Latest Updates (v2.1068)
 

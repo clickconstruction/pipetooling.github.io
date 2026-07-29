@@ -406,7 +406,7 @@ export default function JobFormModal({
   }, [agreedWriteDownInvoice, payments])
   const [materials, setMaterials] = useState<MaterialRow[]>([{ id: crypto.randomUUID(), description: '', amount: 0 }])
   const [fixtures, setFixtures] = useState<FixtureRow[]>([
-    { id: crypto.randomUUID(), name: '', count: 1, line_unit_price: null, line_description: '' },
+    { id: crypto.randomUUID(), name: '', count: 1, line_unit_price: null, line_description: '', invoice_id: null },
   ])
   /** User opened "Add scope or notes" for this fixture row id (persists while row exists). */
   const [fixtureScopeExpandedById, setFixtureScopeExpandedById] = useState<Record<string, boolean>>({})
@@ -452,10 +452,16 @@ export default function JobFormModal({
   // in the same commit that hydrates the form (hydrate sets editing + fixtures
   // + payments together), so autosave can never fire against pre-hydration
   // empty state and wipe rows. Job identity fields stay on explicit Save.
+  const fixtureInvoiceStatusById = useMemo(() => {
+    const map: Record<string, string> = {}
+    for (const inv of editing?.invoices ?? []) map[inv.id] = inv.status
+    return map
+  }, [editing?.invoices])
+
   const billingMoneySliceJson = useMemo(
     () =>
       JSON.stringify({
-        f: fixtures.map((f) => ({ n: f.name, c: f.count, p: f.line_unit_price, d: f.line_description })),
+        f: fixtures.map((f) => ({ n: f.name, c: f.count, p: f.line_unit_price, d: f.line_description, i: f.invoice_id })),
         p: payments.map((p) => ({
           a: p.amount,
           o: p.paid_on,
@@ -533,6 +539,7 @@ export default function JobFormModal({
           sequence_order: i,
           line_unit_price: unit != null && unit > 0 ? unit : null,
           line_description: (f.line_description ?? '').trim() ? (f.line_description ?? '').trim() : null,
+          invoice_id: f.invoice_id,
         })
         if (insFixErr) throw insFixErr
       }
@@ -966,8 +973,9 @@ export default function JobFormModal({
             count: Number(f.count) || 1,
             line_unit_price: f.line_unit_price != null && Number.isFinite(Number(f.line_unit_price)) ? Number(f.line_unit_price) : null,
             line_description: f.line_description ?? '',
+            invoice_id: f.invoice_id ?? null,
           }))
-        : [{ id: crypto.randomUUID(), name: '', count: 1, line_unit_price: null, line_description: '' }],
+        : [{ id: crypto.randomUUID(), name: '', count: 1, line_unit_price: null, line_description: '', invoice_id: null }],
     )
     setFixtureScopeExpandedById({})
     setTeamMemberIds(job.team_members.map((t) => t.user_id))
@@ -999,7 +1007,7 @@ export default function JobFormModal({
     setProjectFilesPlansExpanded(!!projectPrefill)
     setPayments([newEmptyPaymentRow()])
     setMaterials([{ id: crypto.randomUUID(), description: '', amount: 0 }])
-    setFixtures([{ id: crypto.randomUUID(), name: '', count: 1, line_unit_price: null, line_description: '' }])
+    setFixtures([{ id: crypto.randomUUID(), name: '', count: 1, line_unit_price: null, line_description: '', invoice_id: null }])
     setFixtureScopeExpandedById({})
     setTeamMemberIds([])
     setBillingCustomerHighlight(false)
@@ -1164,8 +1172,9 @@ export default function JobFormModal({
                 count: p.count,
                 line_unit_price: p.line_unit_price,
                 line_description: p.line_description ?? '',
+                invoice_id: null,
               }))
-            : [{ id: crypto.randomUUID(), name: '', count: 1, line_unit_price: null, line_description: '' }]
+            : [{ id: crypto.randomUUID(), name: '', count: 1, line_unit_price: null, line_description: '', invoice_id: null }]
         setFixtures(nextFixtures)
         setFixtureScopeExpandedById({})
         const estimateCustomerId = e.customer_id
@@ -2074,7 +2083,7 @@ export default function JobFormModal({
   function addFixtureRow() {
     setFixtures((prev) => [
       ...prev,
-      { id: crypto.randomUUID(), name: '', count: 1, line_unit_price: null, line_description: '' },
+      { id: crypto.randomUUID(), name: '', count: 1, line_unit_price: null, line_description: '', invoice_id: null },
     ])
   }
 
@@ -2337,6 +2346,7 @@ export default function JobFormModal({
             sequence_order: i,
             line_unit_price: unit != null && unit > 0 ? unit : null,
             line_description: (f.line_description ?? '').trim() ? (f.line_description ?? '').trim() : null,
+            invoice_id: f.invoice_id,
           })
         }
         const { data: existingTeam } = await supabase.from('jobs_ledger_team_members').select('user_id').eq('job_id', editing.id)
@@ -3689,6 +3699,7 @@ export default function JobFormModal({
             addFixtureRow={addFixtureRow}
             removeFixtureRow={removeFixtureRow}
             moveFixtureRow={moveFixtureRowInList}
+            invoiceStatusById={fixtureInvoiceStatusById}
             setStripeFixturePreviewRowId={setStripeFixturePreviewRowId}
             jobTotalDollars={jobTotalBidDollars}
           />

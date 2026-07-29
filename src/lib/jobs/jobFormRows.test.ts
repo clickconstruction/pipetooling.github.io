@@ -11,7 +11,7 @@ import {
 import type { FixtureRow, MaterialRow, PaymentRow } from './jobFormTypes'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 
-const fixture = (o: Partial<FixtureRow> = {}): FixtureRow => ({ id: 'f', name: '', count: 1, line_unit_price: null, line_description: '', ...o })
+const fixture = (o: Partial<FixtureRow> = {}): FixtureRow => ({ id: 'f', name: '', count: 1, line_unit_price: null, line_description: '', invoice_id: null, ...o })
 const material = (o: Partial<MaterialRow> = {}): MaterialRow => ({ id: 'm', description: '', amount: 0, ...o })
 const payment = (o: Partial<PaymentRow> = {}): PaymentRow => ({ id: 'p', amount: 0, paid_on: null, note: null, payment_type: null, reference_number: null, invoice_id: null, mercury_transaction_id: null, ...o })
 

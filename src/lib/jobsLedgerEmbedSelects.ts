@@ -52,6 +52,7 @@ export const JOBS_LEDGER_FIXTURES_EMBED = [
   'count',
   'created_at',
   'id',
+  'invoice_id',
   'job_id',
   'line_description',
   'line_unit_price',
