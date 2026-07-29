@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-29 (v2.1073)
+last_updated: 2026-07-29 (v2.1074)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1074)
+
+### ② Invoices: collapsible "How invoices and jobs move" explainer (2026-07-29)
+Option B from the flow-education mockups: an ⓘ link-styled toggle sits left of the segment strip's status legend ([`JobFormSegmentsBar`](../src/components/jobs/JobFormSegmentsBar.tsx), local `explainerOpen`, `aria-expanded`). Expanded, a left-bordered panel tells the Stages story in the board's exact colors: (1) an invoice breaks off as its own **green card** (#16a34a chip — sample shows the job's real first-segment dollars) and moves Ready to Bill → Billed → Paid by itself; (2) the job stays a **blue card** (#2563eb chip — labeled with the real `Job <hcp_number>` via the new `jobLabel` prop) and floats through to Paid when its last payment lands. Zero space when collapsed. New render test [`JobFormSegmentsBar.render.test.tsx`](../src/components/jobs/JobFormSegmentsBar.render.test.tsx) (+2). Client-only.
 
 ## Latest Updates (v2.1073)
 

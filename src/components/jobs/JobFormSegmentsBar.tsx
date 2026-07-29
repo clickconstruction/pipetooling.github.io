@@ -16,7 +16,21 @@ type JobFormSegmentsBarProps = {
   onToggleSegment: (fixtureRowId: string) => void
   onCreateInvoiceFromSelection: () => void
   creatingFromSelection: boolean
+  /** Label for the blue sample chip in the how-it-moves explainer, e.g. "Job 742" (v2.1074). */
+  jobLabel?: string | null
 }
+
+/** Sample chips in the explainer wear the exact Stages colors users will see there. */
+const EXPLAINER_CHIP_BASE = {
+  display: 'inline-block',
+  padding: '0.1rem 0.45rem',
+  borderRadius: 4,
+  fontSize: '0.6875rem',
+  fontWeight: 600,
+  color: '#ffffff',
+  lineHeight: 1.4,
+  whiteSpace: 'nowrap',
+} as const
 
 function segmentFill(seg: JobBarSegment): string {
   if (seg.kind === 'riders') return 'var(--border-strong)'
@@ -50,8 +64,10 @@ export function JobFormSegmentsBar({
   onToggleSegment,
   onCreateInvoiceFromSelection,
   creatingFromSelection,
+  jobLabel,
 }: JobFormSegmentsBarProps) {
   const [focusedKey, setFocusedKey] = useState<string | null>(null)
+  const [explainerOpen, setExplainerOpen] = useState(false)
   const segments = useMemo(
     () => buildJobSegmentsBar({ fixtures, riderFeesDollars, invoiceStatusById }),
     [fixtures, riderFeesDollars, invoiceStatusById],
@@ -81,18 +97,71 @@ export function JobFormSegmentsBar({
           display: 'flex',
           flexWrap: 'wrap',
           alignItems: 'baseline',
-          justifyContent: 'flex-end',
+          justifyContent: 'space-between',
           gap: '0.6rem',
           marginBottom: '0.35rem',
         }}
       >
-        {LEGEND.map((l) => (
-          <span key={l.label} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: '0.6875rem', color: 'var(--text-muted)' }}>
-            <span style={{ width: 8, height: 8, borderRadius: 2, background: l.color, display: 'inline-block' }} />
-            {l.label}
-          </span>
-        ))}
+        <button
+          type="button"
+          onClick={() => setExplainerOpen((v) => !v)}
+          aria-expanded={explainerOpen}
+          style={{
+            padding: 0,
+            background: 'transparent',
+            border: 'none',
+            color: 'var(--text-link)',
+            textDecoration: 'underline',
+            fontSize: '0.6875rem',
+            cursor: 'pointer',
+            fontFamily: 'inherit',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          ⓘ How invoices and jobs move
+        </button>
+        <span style={{ display: 'inline-flex', gap: '0.6rem', flexWrap: 'wrap' }}>
+          {LEGEND.map((l) => (
+            <span key={l.label} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: '0.6875rem', color: 'var(--text-muted)' }}>
+              <span style={{ width: 8, height: 8, borderRadius: 2, background: l.color, display: 'inline-block' }} />
+              {l.label}
+            </span>
+          ))}
+        </span>
       </div>
+      {explainerOpen && (
+        <div
+          style={{
+            borderLeft: '2px solid var(--border-strong)',
+            padding: '0.35rem 0 0.35rem 0.75rem',
+            marginBottom: '0.5rem',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '0.45rem',
+            fontSize: '0.75rem',
+            color: 'var(--text-muted)',
+          }}
+        >
+          <div>
+            1. Create an invoice here — it breaks off as its own <strong style={{ color: 'var(--text-700)' }}>green card</strong> on the
+            Stages board and moves by itself:
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
+            <span style={{ ...EXPLAINER_CHIP_BASE, background: '#16a34a', border: '1px solid rgba(255,255,255,0.5)' }}>
+              ${formatCurrency(segments[0]?.dollars ?? 1450)}
+            </span>
+            <span style={{ whiteSpace: 'nowrap' }}>→ Ready to Bill → Billed → Paid</span>
+          </div>
+          <div>
+            2. The job itself stays a <strong style={{ color: 'var(--text-700)' }}>blue card</strong> in Working. When its last payment
+            lands, it floats through on its own:
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
+            <span style={{ ...EXPLAINER_CHIP_BASE, background: '#2563eb', border: 'none' }}>{jobLabel || 'This job'}</span>
+            <span style={{ whiteSpace: 'nowrap' }}>→ Paid</span>
+          </div>
+        </div>
+      )}
       <div
         style={{
           display: 'flex',
