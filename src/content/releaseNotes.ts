@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1091',
+    date: '2026-07-29',
+    title: 'Under the hood: Edit Job window cleanup continues',
+    kind: 'infra',
+    highlights: [
+      'No visible changes — the job identity fields (HCP, C#, service type, name, address, bill date) moved into their own component as part of the ongoing Edit Job internals cleanup.',
+    ],
+  },
+  {
     version: 'v2.1090',
     date: '2026-07-29',
     title: 'Edit Job: "View contract & acceptance" now opens properly',

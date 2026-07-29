@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-29 (v2.1090)
+last_updated: 2026-07-29 (v2.1091)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1091)
+
+### JobFormModal decomposition: identity fields extracted (2026-07-29)
+Step 9 of the [`JOB_FORM_MODAL_ARCHITECTURE.md`](./JOB_FORM_MODAL_ARCHITECTURE.md) extraction order. New fully-controlled [`JobFormIdentityFields`](../src/components/jobs/JobFormIdentityFields.tsx) renders the HCP / C# / Service type (+ edit-mode trade pill), Job Name, and Last manual bill date / Job Address rows; the six fields arrive as props+setters (shell state — save engine and identity autosave slice unchanged). The clipboard-paste affordances (`ClipboardPasteGlyph`, `pasteTextToField`, both input refs, the two `JOB_FIELD_*` style consts) moved with it — no other consumers. The `jobFormServiceTypeSelectOptions` and `headerTradePill` memos stay shell-side (they need the role-filter + serviceTypes caches) and are passed as values; the pill click is an `onTradePillClick` shell callback (close-flush → navigate to Stages). `JobFormModal.tsx` 4,901 → 4,743 lines. Behavior-preserving; map dossier flipped to extracted. Client-only.
 
 ## Latest Updates (v2.1090)
 
