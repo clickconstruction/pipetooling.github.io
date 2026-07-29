@@ -5,7 +5,7 @@ file: ACCESS_CONTROL.md
 type: Reference Matrix
 purpose: Complete role-based permissions matrix and access control patterns
 audience: Developers, Security Auditors, AI Agents
-last_updated: 2026-07-17
+last_updated: 2026-07-28
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate
 
@@ -106,6 +106,7 @@ Pipetooling implements comprehensive role-based access control (RBAC) using nine
 - **Who**: a **dev** flags any user via Active Accounts → **Read-only**. Available for **every role** as of v2.704 (previously assistant/controller only; the `users.read_only` column was always role-agnostic). **Nobody can flag their own account** — a read-only user cannot clear the flag and only devs can change it, so self-flagging was an unrecoverable lockout.
 - **What it blocks**: everything. Enforcement is two-layered — the RESTRICTIVE RLS policies from v2.693 (`read_only_users_cannot_insert/update/delete` on 228 tables) **plus** a statement-level `read_only_block_stmt` trigger (`block_if_read_only()`) on every RLS-enabled public table. The trigger is what closes the `SECURITY DEFINER` gap: a table's owner bypasses RLS, so ~79 mutating definer RPCs (e.g. `mark_invoice_paid`, `delete_ready_to_bill_invoice`, `migrate_job_ledger_costs_and_delete`) previously ran **unblocked** for a flagged user. Triggers fire inside definer functions, so they no longer do.
 - **What it does not block** (by design): writes with no JWT — cron, service-role and edge functions (`is_read_only()` is false when `auth.uid()` is NULL) — and the passive-browsing telemetry tables `user_app_activity_daily`, `user_app_activity_page_daily`, `estimate_customer_events`.
+- **Clock in/out carve-out** (v2.1066, `20260728235607_read_only_allow_own_clock_punch.sql`): a read-only user can still punch their **own** `clock_sessions` rows — trainees work real hours and payroll needs them. The restrictive INSERT/UPDATE policies on that one table allow own-row `user_punch` writes, and the blanket statement trigger is replaced there by row-level `block_if_read_only_clock_row()`: own rows only, approval columns (`approved/rejected/revoked _at/_by`) frozen so a read-only user with pay access cannot self-approve, DELETE only for the salary-sync's own unapproved `salary_schedule` rows. Everything else — other people's sessions, `people_hours`, approvals, all other tables — stays blocked.
 
 ### Privileged `users` columns are DB-guarded (v2.695, `20260716090000_guard_users_privileged_columns.sql`)
 - **What**: A `BEFORE UPDATE OF role, read_only, archived_at` trigger (`users_guard_privileged_columns()`) on **`public.users`** blocks self-privilege-escalation. Only a **`dev`** may change **`role`** or **`read_only`**; **`archived_at`** is changeable only by the archive/restore edge flow.

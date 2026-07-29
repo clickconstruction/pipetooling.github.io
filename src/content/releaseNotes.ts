@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1066',
+    date: '2026-07-28',
+    title: 'Training mode: clock in/out now works',
+    kind: 'feature',
+    highlights: [
+      'People in read-only training mode can now clock in and clock out — their real hours keep flowing to payroll while they train.',
+      'Everything else stays blocked: they can only punch their own time, and cannot edit others\' sessions, delete sessions, or approve hours.',
+    ],
+  },
+  {
     version: 'v2.1065',
     date: '2026-07-28',
     title: 'Dispatch cards show the job address',

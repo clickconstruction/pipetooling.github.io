@@ -5,7 +5,7 @@ roles: dev
 keywords: read only, training, trainee, learning, explore, new hire, active accounts, restrict, freeze, any role
 order: 42
 ---
-Training mode lets someone explore the whole app without being able to change anything. They see everything their role normally sees — jobs, materials, customers, reports — but every save is blocked until you switch the mode off.
+Training mode lets someone explore the whole app without being able to change anything. They see everything their role normally sees — jobs, materials, customers, reports — but every save is blocked until you switch the mode off. The one exception: they can still **clock in and clock out**, so their real hours keep flowing to payroll while they train.
 
 It works for **any role**, not just assistants: use it for a new hire finding their feet, or to temporarily freeze an account you have questions about.
 
@@ -15,7 +15,7 @@ It works for **any role**, not just assistants: use it for a new hire finding th
 2. Find the person's row. In the **Last login** column, tick the {{chip:yellow|Read-only}} checkbox under their last-login time.
 
 :::example What they experience
-They sign in normally and see an amber **Training mode — read-only** banner at the top of every page. Browsing, searching, and opening records all work; anything that would save a change is rejected with an error instead of saving.
+They sign in normally and see an amber **Training mode — read-only** banner at the top of every page. Browsing, searching, and opening records all work; anything that would save a change is rejected with an error instead of saving. Clocking in and out is the exception — punches save normally and go through the usual hours approval.
 :::
 
 ## Turn it off
@@ -28,6 +28,7 @@ Untick the same checkbox. Their normal write access returns the next time the ap
 - Nothing about the account changes except the flag — no role change, no data touched.
 - The block is enforced by the database, not just hidden buttons, so there is no way around it from the app.
 - Save buttons still appear while training; pressing one shows an error rather than saving. That's expected.
+- Clock in/out works only on the person's **own** time — they cannot touch anyone else's sessions, delete a session, or approve hours (not even their own).
 
 ## Related
 

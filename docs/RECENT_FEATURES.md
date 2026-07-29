@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-28 (v2.1065)
+last_updated: 2026-07-28 (v2.1066)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1066)
+
+### Read-only (training) mode: clock in/out now works (2026-07-28)
+Request: a read-only user must still be able to clock in and clock out — trainees work real hours and payroll needs the punches. The whole clock flow ([`ClockInOutButton`](../src/components/ClockInOutButton.tsx)) writes only `clock_sessions` own rows, so migration [`20260728235607_read_only_allow_own_clock_punch.sql`](../supabase/migrations/20260728235607_read_only_allow_own_clock_punch.sql) carves out exactly that: (1) the restrictive `read_only_users_cannot_insert/update` policies on `clock_sessions` gain an own-row escape hatch (INSERT own `user_punch` row, UPDATE own rows; names preserved so the `apply_read_only_write_blocks()` sweep won't clobber them; DELETE stays blocked); (2) the blanket `read_only_block_stmt` statement trigger is replaced on this one table by row-level `block_if_read_only_clock_row()` — own rows only (both sides of an UPDATE), approval columns (`approved/rejected/revoked _at/_by`) untouchable so a read-only user with pay access cannot self-approve, DELETE allowed only for the salary-sync case (own unapproved `origin='salary_schedule'` rows), still fires inside SECURITY DEFINER RPCs; (3) `apply_read_only_stmt_blocks()` excludes `clock_sessions` so future CREATE TABLE sweeps don't re-attach the blanket trigger. Side effect: a read-only salaried user's client-invoked `sync_salary_clock_sessions_for_user_day` no longer throws. Client: amber training banner in [`Layout`](../src/components/Layout.tsx) now says clock in/out still works; help guide [`read-only-training-mode`](../src/content/help/read-only-training-mode.md) updated. `people_hours`, approvals, and every other table remain fully blocked.
 
 ## Latest Updates (v2.1065)
 
