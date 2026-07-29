@@ -27,6 +27,14 @@ Click {{button:gray|Close}}, click outside the modal, or jump to another view â€
 
 If the server doesn't respond, the modal stays open and asks what to do: **Retry and close**, **Keep editing**, or **Close without saving**. Your edits are never dropped silently.
 
+## Made a mess? Undo
+
+The {{button:gray|Undo changes}} button (bottom-left, next to Close) reverts **everything** back to how the job looked when you opened the modal. It asks before reverting, and the revert then auto-saves like any other edit.
+
+:::example Where the restore point sits
+Undo goes back to when you opened Edit Job â€” or, if you've created or deleted an invoice since, to just after that. Invoice work is never unwound by Undo.
+:::
+
 ## New jobs still use a button
 
 Creating a job is different: fill in the New Job form and click {{button:blue|Create Job}}. Auto-save starts once the job exists and you're editing it.

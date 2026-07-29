@@ -42,6 +42,13 @@ import {
   shouldDemotePaidJobToBilled,
   type JobIdentityFormFields,
 } from '../../lib/jobs/jobFormAutosaveSlices'
+import {
+  buildJobFormUndoSnapshot,
+  invoiceSetKey,
+  jobFormUndoAvailable,
+  sanitizeRestoredFixtureLinks,
+  type JobFormUndoSnapshot,
+} from '../../lib/jobs/jobFormUndo'
 import { useJobFormAutosaveSlice } from './useJobFormAutosaveSlice'
 import { notifyDispatchRequestsChanged } from '../../lib/dispatchRequestHelpers'
 import CustomerAcceptanceRecordModal from '../estimates/CustomerAcceptanceRecordModal'
@@ -762,6 +769,74 @@ export default function JobFormModal({
   const flushAllAutosaveSlicesRef = useRef(flushAllAutosaveSlices)
   flushAllAutosaveSlicesRef.current = flushAllAutosaveSlices
 
+  // ---- Undo-to-opened (v2.1081) --------------------------------------------
+  // Snapshot every slice's form state on hydrate, re-based whenever the job's
+  // invoice SET changes (created/deleted) so Undo never crosses an
+  // invoice-lifecycle event. Restoring just sets React state — the autosave
+  // engine persists the revert like any other edit.
+  const undoSnapshotRef = useRef<{ jobId: string; invoicesKey: string; snap: JobFormUndoSnapshot } | null>(null)
+  const editingInvoicesKey = invoiceSetKey((editing?.invoices ?? []).map((i) => i.id))
+  useEffect(() => {
+    const jobId = editing?.id ?? null
+    if (!jobId) {
+      undoSnapshotRef.current = null
+      return
+    }
+    const cur = undoSnapshotRef.current
+    if (!cur || cur.jobId !== jobId || cur.invoicesKey !== editingInvoicesKey) {
+      undoSnapshotRef.current = {
+        jobId,
+        invoicesKey: editingInvoicesKey,
+        snap: buildJobFormUndoSnapshot({
+          identity: identityFieldsRef.current,
+          fixtures: autosaveFixturesRef.current,
+          payments: autosavePaymentsRef.current,
+          materials: autosaveMaterialsRef.current,
+          teamMemberIds: autosaveTeamIdsRef.current,
+        }),
+      }
+    }
+  }, [editing?.id, editingInvoicesKey])
+
+  const [undoConfirmOpen, setUndoConfirmOpen] = useState(false)
+  const undoAvailable =
+    !!editing &&
+    jobFormUndoAvailable(
+      undoSnapshotRef.current && undoSnapshotRef.current.jobId === (editing?.id ?? null)
+        ? undoSnapshotRef.current.snap
+        : null,
+      { billing: billingMoneySliceJson, identity: identitySliceJson, materials: materialsSliceJson, team: teamSliceJson },
+    )
+
+  function performUndo() {
+    const snapRec = undoSnapshotRef.current
+    if (!snapRec || snapRec.jobId !== (editing?.id ?? null)) return
+    const s = snapRec.snap
+    const validInvoiceIds = new Set((editing?.invoices ?? []).map((i) => i.id))
+    setFixtures(sanitizeRestoredFixtureLinks(s.fixtures, validInvoiceIds))
+    setPayments(s.payments.map((r) => ({ ...r })))
+    setMaterials(s.materials.map((r) => ({ ...r })))
+    setTeamMemberIds([...s.teamMemberIds])
+    setHcpNumber(s.identity.hcpNumber)
+    setClickNumber(s.identity.clickNumber)
+    setJobName(s.identity.jobName)
+    setJobAddress(s.identity.jobAddress)
+    setCustomerId(s.identity.customerId)
+    setCustomerName(s.identity.customerName)
+    setCustomerEmail(s.identity.customerEmail)
+    setCustomerPhone(s.identity.customerPhone)
+    setLastBillDate(s.identity.lastBillDate)
+    setGoogleDriveLink(s.identity.googleDriveLink)
+    setJobPicturesLink(s.identity.jobPicturesLink)
+    setJobPlansLink(s.identity.jobPlansLink)
+    setProjectId(s.identity.projectId || null)
+    setBidId(s.identity.bidId || null)
+    setFormServiceTypeId(s.identity.serviceTypeId)
+    setSelectedSegmentIds(new Set())
+    setUndoConfirmOpen(false)
+    showToast('Reverted to how the job looked when you opened it — the revert auto-saves.', 'success')
+  }
+
   /** Footer chip state, worst-first across the four slices (v2.1080). */
   const identityBlocked = identityAutosave.isDirty() && !identitySliceReadyToSave(identityFields)
   const editAutosaveAggregate: 'saving' | 'error' | 'blocked' | 'pending' | 'saved' =
@@ -1094,6 +1169,7 @@ export default function JobFormModal({
     setPaymentRemoveRpcBusy(false)
     setUnlinkMercuryConfirmRowId(null)
     setDeleteJobConfirmOpen(false)
+    setUndoConfirmOpen(false)
     resetMigrate()
     onClose()
   }
@@ -4103,6 +4179,63 @@ export default function JobFormModal({
             )}
           </div>
           <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+            {editing &&
+              (undoConfirmOpen ? (
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8rem' }}>
+                  <span style={{ color: 'var(--text-muted)' }}>Revert everything since opening?</span>
+                  <button
+                    type="button"
+                    onClick={performUndo}
+                    style={{
+                      padding: '0.3rem 0.7rem',
+                      background: 'var(--bg-red-100)',
+                      color: 'var(--text-red-700)',
+                      border: '1px solid var(--border-red)',
+                      borderRadius: 4,
+                      cursor: 'pointer',
+                      fontSize: '0.8rem',
+                    }}
+                  >
+                    Revert
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setUndoConfirmOpen(false)}
+                    style={{
+                      padding: '0.3rem 0.7rem',
+                      background: 'var(--bg-200)',
+                      color: 'var(--text-700)',
+                      border: 'none',
+                      borderRadius: 4,
+                      cursor: 'pointer',
+                      fontSize: '0.8rem',
+                    }}
+                  >
+                    Keep
+                  </button>
+                </span>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setUndoConfirmOpen(true)}
+                  disabled={!undoAvailable}
+                  title={
+                    undoAvailable
+                      ? 'Revert every change made since this modal was opened (or since the last invoice was created/deleted)'
+                      : 'Nothing to undo'
+                  }
+                  style={{
+                    padding: '0.5rem 1rem',
+                    background: 'transparent',
+                    color: undoAvailable ? 'var(--text-700)' : 'var(--text-faint)',
+                    border: '1px solid var(--border)',
+                    borderRadius: 4,
+                    cursor: undoAvailable ? 'pointer' : 'not-allowed',
+                  }}
+                >
+                  Undo changes
+                </button>
+              ))}
             <button
               type="button"
               onClick={() => void closeForm()}
