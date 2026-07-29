@@ -486,6 +486,13 @@ export default function JobFormModal({
     setSegmentGeneratorOpen(false)
   }
 
+  // A deleted invoice releases its DB fixture rows via ON DELETE SET NULL;
+  // mirror that into local state so a later save can't reinsert the stale
+  // invoice_id (FK violation) and the segment bar unbills immediately.
+  function clearFixtureLinksForDeletedInvoice(invoiceId: string) {
+    setFixtures((prev) => prev.map((r) => (r.invoice_id === invoiceId ? { ...r, invoice_id: null } : r)))
+  }
+
   function toggleSegmentSelected(fixtureRowId: string) {
     setSelectedSegmentIds((prev) => {
       const next = new Set(prev)
@@ -3856,6 +3863,8 @@ export default function JobFormModal({
                 setBillViewInvoice={setBillViewInvoice}
                 setAgreedWriteDownInvoice={setAgreedWriteDownInvoice}
                 refreshEditingJobAndHydratePayments={refreshEditingJobAndHydratePayments}
+                onInvoiceDeleted={clearFixtureLinksForDeletedInvoice}
+                nestedOverlayZIndex={JOB_FORM_NESTED_OVERLAY_Z_INDEX}
               />
             </>
           )}

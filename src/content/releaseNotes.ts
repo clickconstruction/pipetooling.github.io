@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1072',
+    date: '2026-07-29',
+    title: 'Segment strip polish + delete draft invoices',
+    kind: 'feature',
+    highlights: [
+      'The job-segments strip now shows each segment\'s name right in its colored block (trimmed with … when narrow), and the list below shows one segment per line.',
+      'Click a block in the strip — it and its line below highlight together; ticking a checkbox lights up its block the same way.',
+      'The Invoices table gets a red ✕ on draft invoices: press it, confirm, and the draft is deleted — any segments on it go back to unbilled instantly.',
+    ],
+  },
+  {
     version: 'v2.1071',
     date: '2026-07-29',
     title: 'Multiple Segment Generator',
