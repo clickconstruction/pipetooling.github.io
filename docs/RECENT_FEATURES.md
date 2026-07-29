@@ -2046,6 +2046,11 @@ when_to_read:
 155. [Customer and Project Management](#customer-and-project-management)
 ---
 
+## Latest Updates (v2.1086)
+
+### Bill an invoice to someone else — the "Bill to" editor + Bill Customer overlay (2026-07-29)
+Client slice of the bill-to train (needs v2.1084 pushed + v2.1085 deployed first). New tested kernel [`invoiceBillTo.ts`](../src/lib/jobs/invoiceBillTo.ts) (`invoiceBillToFromRow` — active only when the email is set, `billToDisplayLabel`, `applyBillToToJobBillingContext`, `validateBillToDraft`, `billToUpdatePayload` — clearing also nulls the per-invoice Stripe customer; 10 tests). **Edit Job → Invoices**: draft rows gain **Bill to…** opening the shell-owned [`JobFormBillToEditor`](../src/components/jobs/JobFormBillToEditor.tsx) (name/email/phone; "Bill the job customer" clears), and any overridden invoice wears an amber "→ name" chip. **Bill Customer** ([`SendRecordInvoiceModal`](../src/components/jobs/SendRecordInvoiceModal.tsx)): a loader fetches the billing target's bill_to row (openers don't carry it) and overlays the recipient onto the job context — the same mechanic as the v2.936 email-fix overlay — so the banner ("Billing to Jane Tenant…"), Stripe preview/create payloads, physical email prefill + PDF, share panels, and the notice email all follow; the customer's contact persons are withheld from an overridden invoice's recipients. **Roll-in guard**: [`eligibleHazmatRollIns`](../src/lib/hazmatRollIn.ts) now skips invoices with a bill-to override (+2 tests) — a tenant's fee invoice can never fold back into the customer's bill (the default-ON checkbox would have done exactly that). Embeds + the drift-tested dashboard select carry the four new columns; `database.ts` updated for v2.1084. Deploy order: after the migration + function deploys.
+
 ## Latest Updates (v2.1085)
 
 ### Invoice "Bill to" override — edge functions honor the alternate recipient (2026-07-29)

@@ -11,6 +11,18 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1086',
+    date: '2026-07-29',
+    title: 'Bill an invoice to someone other than the customer',
+    kind: 'feature',
+    highlights: [
+      'On Edit Job → Invoices, every draft invoice gets a "Bill to…" button — enter a different payer (a tenant, a property manager) and that one invoice bills them instead of the job customer.',
+      'Overridden invoices wear an amber "→ name" chip, and Bill Customer shows a banner naming the alternate recipient before you send.',
+      'Stripe, physical-invoice email, and the hazmat notice all go to the person you chose; the rest of the job still bills the customer.',
+      'A fee billed to someone else never rolls back into the customer\'s bill.',
+    ],
+  },
+  {
     version: 'v2.1085',
     date: '2026-07-29',
     title: 'Groundwork: invoices can reach an alternate payer',

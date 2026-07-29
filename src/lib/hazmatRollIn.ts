@@ -12,6 +12,9 @@
  * - it has never reached the customer: no stripe_invoice_id, never sent
  *   (`sent_to_customer_at` null, no external send channel)
  * - amount > 0
+ * - it has NO bill-to override (v2.1086): a rider billed to someone else —
+ *   e.g. the tenant pays the hazmat fee — must never fold back into the job
+ *   customer's bill
  *
  * After the Stripe invoice succeeds the caller repoints the incident to the
  * final invoice and deletes the rider row, so job balance math counts the fee
@@ -26,6 +29,8 @@ export type HazmatRollInInvoice = {
   stripe_invoice_id: string | null
   sent_to_customer_at: string | null
   external_send_channel: string | null
+  /** v2.1086: set when this invoice bills an alternate recipient (never rolls in). */
+  bill_to_email?: string | null
 }
 
 export type HazmatRollInIncident = {
@@ -70,6 +75,7 @@ export function eligibleHazmatRollIns(params: {
     if (inv.stripe_invoice_id?.trim()) continue
     if (inv.sent_to_customer_at?.trim()) continue
     if (inv.external_send_channel?.trim()) continue
+    if (inv.bill_to_email?.trim()) continue
     const amount = Number(inv.amount)
     if (!Number.isFinite(amount) || amount <= 0) continue
     seenInvoiceIds.add(invId)

@@ -4454,6 +4454,10 @@ export type Database = {
           agreed_write_down_previous_amount: number | null
           agreed_write_down_stripe_credit_note_id: string | null
           amount: number
+          bill_to_email: string | null
+          bill_to_name: string | null
+          bill_to_phone: string | null
+          bill_to_stripe_customer_id: string | null
           billed_at: string | null
           created_at: string | null
           estimated_bill_date: string | null
@@ -4478,6 +4482,10 @@ export type Database = {
           agreed_write_down_previous_amount?: number | null
           agreed_write_down_stripe_credit_note_id?: string | null
           amount: number
+          bill_to_email?: string | null
+          bill_to_name?: string | null
+          bill_to_phone?: string | null
+          bill_to_stripe_customer_id?: string | null
           billed_at?: string | null
           created_at?: string | null
           estimated_bill_date?: string | null
@@ -4502,6 +4510,10 @@ export type Database = {
           agreed_write_down_previous_amount?: number | null
           agreed_write_down_stripe_credit_note_id?: string | null
           amount?: number
+          bill_to_email?: string | null
+          bill_to_name?: string | null
+          bill_to_phone?: string | null
+          bill_to_stripe_customer_id?: string | null
           billed_at?: string | null
           created_at?: string | null
           estimated_bill_date?: string | null
