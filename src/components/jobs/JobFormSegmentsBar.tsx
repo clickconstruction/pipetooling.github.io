@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { BILLED_COLOR, DRAFT_COLOR, PAID_COLOR, UNBILLED_COLOR } from './MoneyLifecycleBar'
 import { formatCurrency } from '../../lib/jobs/jobFormMoney'
 import type { FixtureRow } from '../../lib/jobs/jobFormTypes'
@@ -34,12 +34,13 @@ const LEGEND: Array<{ label: string; color: string }> = [
 ]
 
 /**
- * The ② Invoices "100% of the job" strip (v2.1070): line items as ordered
- * segments sized by dollar share, colored by the lifecycle stage of the
- * invoice billing each one. Unbilled segments carry a checkbox; the action
- * button turns the selection into a Ready-to-Bill break-off invoice linked to
- * exactly those segments. Pure render — all math in jobSegmentsCoverage.ts,
- * all writes stay in the shell.
+ * The ② Invoices "100% of the job" strip (v2.1070, reworked v2.1072): line
+ * items as ordered segments sized by dollar share, each block carrying its
+ * ellipsized name and colored by the billing lifecycle of its invoice. The
+ * detail list renders one segment per row. Clicking a block (or its row /
+ * checkbox) highlights both in sync — for unbilled segments that IS the
+ * invoice selection; billed/rider blocks get a passive focus highlight.
+ * Pure render — math in jobSegmentsCoverage.ts, writes stay in the shell.
  */
 export function JobFormSegmentsBar({
   fixtures,
@@ -50,6 +51,7 @@ export function JobFormSegmentsBar({
   onCreateInvoiceFromSelection,
   creatingFromSelection,
 }: JobFormSegmentsBarProps) {
+  const [focusedKey, setFocusedKey] = useState<string | null>(null)
   const segments = useMemo(
     () => buildJobSegmentsBar({ fixtures, riderFeesDollars, invoiceStatusById }),
     [fixtures, riderFeesDollars, invoiceStatusById],
@@ -60,6 +62,18 @@ export function JobFormSegmentsBar({
   )
   if (segments.length === 0) return null
   const anySelectable = segments.some((s) => s.selectable)
+
+  const isHighlighted = (seg: JobBarSegment) =>
+    (seg.selectable && selectedIds.has(seg.key)) || focusedKey === seg.key
+
+  function handleSegmentClick(seg: JobBarSegment) {
+    if (seg.selectable) {
+      onToggleSegment(seg.key)
+      return
+    }
+    setFocusedKey((cur) => (cur === seg.key ? null : seg.key))
+  }
+
   return (
     <div style={{ marginBottom: '1rem' }}>
       <div
@@ -85,61 +99,123 @@ export function JobFormSegmentsBar({
         </span>
       </div>
       <div
-        role="img"
-        aria-label="Job segments by billing status"
         style={{
           display: 'flex',
           width: '100%',
-          height: 26,
+          height: 28,
           borderRadius: 6,
-          overflow: 'hidden',
           border: '1px solid var(--border)',
         }}
       >
-        {segments.map((seg) => (
-          <div
-            key={seg.key}
-            title={`${seg.label} — $${formatCurrency(seg.dollars)} (${seg.pctOfTotal.toFixed(1)}%)${seg.status === 'unbilled' ? '' : ` · ${seg.status.replace(/_/g, ' ')}`}`}
-            style={{
-              width: `${seg.pctOfTotal}%`,
-              minWidth: 3,
-              background: segmentFill(seg),
-              borderRight: '1px solid var(--surface)',
-              boxSizing: 'border-box',
-            }}
-          />
-        ))}
+        {segments.map((seg, idx) => {
+          const highlighted = isHighlighted(seg)
+          return (
+            <button
+              key={seg.key}
+              type="button"
+              onClick={() => handleSegmentClick(seg)}
+              title={`${seg.label} — $${formatCurrency(seg.dollars)} (${seg.pctOfTotal.toFixed(1)}%)${seg.status === 'unbilled' ? '' : ` · ${seg.status.replace(/_/g, ' ')}`}`}
+              aria-label={`Segment ${seg.label}: $${formatCurrency(seg.dollars)}, ${seg.pctOfTotal.toFixed(1)} percent${seg.selectable ? (selectedIds.has(seg.key) ? ', selected for invoicing' : ', click to select for invoicing') : ''}`}
+              aria-pressed={highlighted}
+              style={{
+                width: `${seg.pctOfTotal}%`,
+                minWidth: 6,
+                padding: '0 4px',
+                background: segmentFill(seg),
+                border: 'none',
+                borderRight: idx < segments.length - 1 ? '1px solid var(--surface)' : 'none',
+                borderRadius: idx === 0 ? '5px 0 0 5px' : idx === segments.length - 1 ? '0 5px 5px 0' : 0,
+                boxSizing: 'border-box',
+                cursor: 'pointer',
+                overflow: 'hidden',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                // Highlight: inset ring so widths never shift.
+                boxShadow: highlighted ? 'inset 0 0 0 2px var(--text-strong)' : 'none',
+                opacity: highlighted ? 1 : 0.92,
+              }}
+            >
+              <span
+                style={{
+                  fontSize: '0.6875rem',
+                  fontWeight: 600,
+                  color: seg.kind === 'riders' ? 'var(--text-700)' : '#ffffff',
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  maxWidth: '100%',
+                }}
+              >
+                {seg.label}
+              </span>
+            </button>
+          )
+        })}
       </div>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem 1rem', marginTop: '0.4rem' }}>
-        {segments.map((seg) => (
-          <label
-            key={seg.key}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 5,
-              fontSize: '0.75rem',
-              color: 'var(--text-700)',
-              cursor: seg.selectable ? 'pointer' : 'default',
-            }}
-          >
-            {seg.selectable ? (
-              <input
-                type="checkbox"
-                checked={selectedIds.has(seg.key)}
-                onChange={() => onToggleSegment(seg.key)}
-                aria-label={`Select segment ${seg.label} for invoicing`}
-                style={{ margin: 0 }}
-              />
-            ) : (
-              <span style={{ width: 8, height: 8, borderRadius: 2, background: segmentFill(seg), display: 'inline-block' }} />
-            )}
-            <span style={{ whiteSpace: 'nowrap', maxWidth: '14rem', overflow: 'hidden', textOverflow: 'ellipsis' }}>{seg.label}</span>
-            <span style={{ color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
-              ${formatCurrency(seg.dollars)} · {seg.pctOfTotal.toFixed(1)}%
-            </span>
-          </label>
-        ))}
+      <div style={{ display: 'flex', flexDirection: 'column', marginTop: '0.4rem' }}>
+        {segments.map((seg) => {
+          const highlighted = isHighlighted(seg)
+          const rowInner = (
+            <>
+              {seg.selectable ? (
+                <input
+                  type="checkbox"
+                  checked={selectedIds.has(seg.key)}
+                  onChange={() => onToggleSegment(seg.key)}
+                  aria-label={`Select segment ${seg.label} for invoicing`}
+                  style={{ margin: 0, flexShrink: 0 }}
+                />
+              ) : (
+                <span style={{ width: 8, height: 8, borderRadius: 2, background: segmentFill(seg), display: 'inline-block', flexShrink: 0 }} />
+              )}
+              <span
+                style={{
+                  flex: 1,
+                  minWidth: 0,
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                }}
+              >
+                {seg.label}
+              </span>
+              <span style={{ color: 'var(--text-muted)', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                ${formatCurrency(seg.dollars)} · {seg.pctOfTotal.toFixed(1)}%
+              </span>
+            </>
+          )
+          const rowStyle = {
+            display: 'flex',
+            alignItems: 'center',
+            gap: 7,
+            width: '100%',
+            fontSize: '0.75rem',
+            color: 'var(--text-700)',
+            padding: '0.2rem 0.3rem',
+            borderRadius: 4,
+            background: highlighted ? 'var(--bg-blue-tint)' : 'transparent',
+            cursor: 'pointer',
+            textAlign: 'left' as const,
+          }
+          // Selectable rows are labels so any click toggles the checkbox;
+          // the rest are buttons toggling the passive focus highlight.
+          return seg.selectable ? (
+            <label key={seg.key} style={rowStyle}>
+              {rowInner}
+            </label>
+          ) : (
+            <button
+              key={seg.key}
+              type="button"
+              onClick={() => handleSegmentClick(seg)}
+              aria-pressed={highlighted}
+              style={{ ...rowStyle, border: 'none', fontFamily: 'inherit' }}
+            >
+              {rowInner}
+            </button>
+          )
+        })}
       </div>
       {anySelectable && (
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginTop: '0.5rem', flexWrap: 'wrap' }}>

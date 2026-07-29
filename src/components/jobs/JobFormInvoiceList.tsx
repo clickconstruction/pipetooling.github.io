@@ -1,5 +1,7 @@
-import { Fragment, type CSSProperties, type RefObject } from 'react'
+import { Fragment, useState, type CSSProperties, type RefObject } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { supabase } from '../../lib/supabase'
+import { withSupabaseRetry } from '../../utils/errorHandling'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useBillCustomerModal } from '../../contexts/BillCustomerModalContext'
 import type { JobWithDetails } from '../../types/jobWithDetails'
@@ -26,6 +28,14 @@ type JobFormInvoiceListProps = {
   setBillViewInvoice: (inv: InvoiceWithJobForBillView) => void
   setAgreedWriteDownInvoice: (inv: JobsLedgerInvoiceRow) => void
   refreshEditingJobAndHydratePayments: (jobId: string) => void
+  /**
+   * After a draft is deleted, the shell clears any local fixture rows still
+   * pointing at it (DB rows are released by ON DELETE SET NULL, but a later
+   * save would otherwise reinsert the stale invoice_id → FK error). v2.1072.
+   */
+  onInvoiceDeleted: (invoiceId: string) => void
+  /** z-index for the delete-draft confirm overlay (above the Edit Job modal). */
+  nestedOverlayZIndex: number
 }
 
 /**
@@ -46,12 +56,41 @@ export function JobFormInvoiceList({
   setBillViewInvoice,
   setAgreedWriteDownInvoice,
   refreshEditingJobAndHydratePayments,
+  onInvoiceDeleted,
+  nestedOverlayZIndex,
 }: JobFormInvoiceListProps) {
   const navigate = useNavigate()
   const { showToast } = useToastContext()
   const billCustomer = useBillCustomerModal()
+  const [confirmDeleteInvoice, setConfirmDeleteInvoice] = useState<JobsLedgerInvoiceRow | null>(null)
+  const [deletingDraft, setDeletingDraft] = useState(false)
   const invoices = editing.invoices ?? []
   if (!invoices.some((i) => i.status === 'ready_to_bill' || i.status === 'billed')) return null
+
+  async function deleteDraftInvoice(inv: JobsLedgerInvoiceRow) {
+    setDeletingDraft(true)
+    try {
+      const data = await withSupabaseRetry(
+        async () => await supabase.rpc('delete_ready_to_bill_invoice', { p_invoice_id: inv.id }),
+        'delete_ready_to_bill_invoice',
+      )
+      const result = data as { ok?: boolean; deleted?: boolean; error?: string } | null
+      if (!result?.ok) {
+        showToast(result?.error ?? 'Failed to delete draft invoice', 'error')
+        return
+      }
+      onInvoiceDeleted(inv.id)
+      const found = await fetchJobWithDetailsById(editing.id)
+      if (found) setEditing(found)
+      onSavedRef.current?.()
+      showToast('Draft invoice deleted', 'success')
+      setConfirmDeleteInvoice(null)
+    } catch (e: unknown) {
+      showToast(e instanceof Error ? e.message : 'Failed to delete draft invoice', 'error')
+    } finally {
+      setDeletingDraft(false)
+    }
+  }
 
   return (
     <div style={{ marginBottom: '1rem' }}>
@@ -247,6 +286,27 @@ export function JobFormInvoiceList({
                           >
                             See in Stages
                           </button>
+                          {isDraft && !inv.is_primary_rtb_bundle ? (
+                            <button
+                              type="button"
+                              onClick={() => setConfirmDeleteInvoice(inv)}
+                              title="Delete this draft invoice"
+                              aria-label={`Delete draft invoice for $${formatCurrency(Number(inv.amount ?? 0))}`}
+                              style={{
+                                padding: '0.15rem 0.4rem',
+                                fontSize: '0.8125rem',
+                                fontWeight: 700,
+                                lineHeight: 1,
+                                background: 'transparent',
+                                border: 'none',
+                                borderRadius: 4,
+                                cursor: 'pointer',
+                                color: 'var(--text-red-600)',
+                              }}
+                            >
+                              ✕
+                            </button>
+                          ) : null}
                         </div>
                       </td>
                     </tr>
@@ -265,6 +325,64 @@ export function JobFormInvoiceList({
           </tbody>
         </table>
       </div>
+      {confirmDeleteInvoice ? (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.45)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: nestedOverlayZIndex,
+            padding: '1rem',
+          }}
+          onClick={(e) => {
+            if (e.target === e.currentTarget && !deletingDraft) setConfirmDeleteInvoice(null)
+          }}
+          role="presentation"
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Delete draft invoice"
+            style={{
+              background: 'var(--surface)',
+              borderRadius: 8,
+              padding: '1.25rem',
+              maxWidth: 400,
+              width: '100%',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '0.75rem',
+            }}
+          >
+            <div style={{ fontWeight: 600, fontSize: '1rem', color: 'var(--text-strong)' }}>Delete draft invoice?</div>
+            <div style={{ fontSize: '0.875rem', color: 'var(--text-700)' }}>
+              This deletes the <strong>${formatCurrency(Number(confirmDeleteInvoice.amount ?? 0))}</strong> draft. Nothing has
+              been sent to the customer. Any line-item segments on this draft go back to unbilled.
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
+              <button
+                type="button"
+                onClick={() => setConfirmDeleteInvoice(null)}
+                disabled={deletingDraft}
+                style={{ padding: '0.45rem 0.9rem', fontSize: '0.8125rem', background: 'var(--bg-subtle)', color: 'var(--text-700)', border: '1px solid var(--border)', borderRadius: 6, cursor: 'pointer' }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => void deleteDraftInvoice(confirmDeleteInvoice)}
+                disabled={deletingDraft}
+                style={{ padding: '0.45rem 0.9rem', fontSize: '0.8125rem', fontWeight: 600, background: '#dc2626', color: '#ffffff', border: 'none', borderRadius: 6, cursor: deletingDraft ? 'default' : 'pointer', opacity: deletingDraft ? 0.7 : 1 }}
+              >
+                {deletingDraft ? 'Deleting…' : 'Delete draft'}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   )
 }

@@ -28,7 +28,7 @@ Rough In $3,000 → Top Out $3,000 → Trim Set $3,000 → Final $1,000 — Job 
 
 ## Watch the job fill in — the segment strip in ② Invoices
 
-The colored strip at the top of **② Invoices** shows the whole job as blocks, one per line item, in your ① order, each sized by its share of the Job Total. The colors follow the same lifecycle as everywhere else: {{chip:yellow|Unbilled}}, light-blue {{chip:blue|Ready to Bill}}, {{chip:blue|Billed}}, {{chip:green|Paid}}. Hazmat riders show as a gray block at the end.
+The colored strip at the top of **② Invoices** shows the whole job as blocks, one per line item, in your ① order, each sized by its share of the Job Total — with the segment's name right in the block (trimmed with … when narrow). The colors follow the same lifecycle as everywhere else: {{chip:yellow|Unbilled}}, light-blue {{chip:blue|Ready to Bill}}, {{chip:blue|Billed}}, {{chip:green|Paid}}. Hazmat riders show as a gray block at the end. Below the strip, every segment is listed one per line; clicking a block highlights it and its line together (for unbilled segments, that's the same as ticking its checkbox).
 
 ## Bill a stage
 
@@ -41,6 +41,7 @@ From there it's the normal billing flow — see *bill a customer and get paid*.
 ## Good to know
 
 - A billed stage line can't be edited or removed while its invoice exists. Send the invoice back (or delete the draft) and the line unlocks automatically.
+- Change your mind on a draft? Press the red **✕** on its row in the Invoices table and confirm — the draft is deleted and its segments go back to unbilled.
 - Re-ordering is always allowed, billed or not — order is just presentation.
 - The regular break-off amount box still works for billing an arbitrary dollar amount; stages and dollar break-offs can mix on the same job.
 - Nothing changes for jobs that don't use stages.

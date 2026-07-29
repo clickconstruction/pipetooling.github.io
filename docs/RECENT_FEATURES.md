@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-29 (v2.1071)
+last_updated: 2026-07-29 (v2.1072)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1072)
+
+### Job stages polish: named bar blocks, synced highlights, one-per-row list, draft-delete ✕ (2026-07-29)
+Feedback pass on the v2.1070 segment strip ([`JobFormSegmentsBar`](../src/components/jobs/JobFormSegmentsBar.tsx)): each bar block now carries its **segment name inside the block** (white on status colors, ellipsized — never wraps); the detail list renders **one segment per row** (checkbox/dot · ellipsized name · right-aligned $ · %) instead of wrapping chips; **clicking a bar block and its row highlight in sync** — for unbilled segments the click IS the invoice selection (checkbox ⇄ bar inset-ring + row tint), billed/rider blocks get a passive focus highlight (local `focusedKey`). Highlights use an inset ring so block widths never shift. **Invoices table** ([`JobFormInvoiceList`](../src/components/jobs/JobFormInvoiceList.tsx)): draft (`ready_to_bill`, non-primary-bundle) rows gain a red **✕** in Actions → confirm dialog ("Delete draft invoice?") → `delete_ready_to_bill_invoice` RPC → refetch. New required prop `onInvoiceDeleted` lets the shell clear local `FixtureRow.invoice_id` for the deleted invoice ([`clearFixtureLinksForDeletedInvoice`](../src/components/jobs/JobFormModal.tsx)) — the DB releases rows via ON DELETE SET NULL, but without the local mirror a later save would reinsert the stale FK and fail; the bar unbills instantly. Client-only.
 
 ## Latest Updates (v2.1071)
 
