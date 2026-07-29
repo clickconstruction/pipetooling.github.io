@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-29 (v2.1076)
+last_updated: 2026-07-29 (v2.1077)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1077)
+
+### Edit Job close guard: dirty billing autosave flushes before the modal closes (2026-07-29)
+Bugfix for a silent-loss window in the v2.1070-era billing autosave: the ~1.2s debounce timer is cancelled by the unmount cleanup, so "edit a line item → click away" dropped the pending change. `closeForm` in [`JobFormModal`](../src/components/jobs/JobFormModal.tsx) is now a guarded async close: cancel the debounce → if the money slice is dirty (or a write is in flight), run the new kernel [`jobFormCloseFlush.ts`](../src/lib/jobs/jobFormCloseFlush.ts) (`flushDirtySliceForClose`, +6 tests: wait-out-in-flight, save-and-recheck, failure short-circuit) wrapped in `withOperationTimeout` (15s, v2.1063 pattern) → close only on success. On failure/timeout the modal stays open with a red banner: **Retry and close / Keep editing / Close without saving** (`closeFlushState`). `runBillingAutosave` now reports success as `Promise<boolean>`. All close paths funnel through the guard — backdrop click, footer Cancel (shows "Saving…" while flushing), the header trade-pill → Stages jump and the Job Detail bridge (both now await the flush and skip navigation if it fails). Delete and migrate+delete close via new `closeFormWithoutSaving()` — flushing there would reinsert child rows for a dead job. A `visibilitychange → hidden` listener also flushes the pending debounce, covering tab switches and phone backgrounding. Client-only.
 
 ## Latest Updates (v2.1076)
 
