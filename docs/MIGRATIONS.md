@@ -105,6 +105,12 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 #### July 28, 2026
 
+**`20260728235607_read_only_allow_own_clock_punch.sql`** _(apply via `supabase db push` after the file is on `main`; either order vs the client is safe)_
+- **Purpose**: Read-only (training) mode users can clock in/out (v2.1066). The clock flow writes only own `clock_sessions` rows, so the carve-out is scoped to that table: restrictive `read_only_users_cannot_insert/update` policies gain an own-row escape hatch (INSERT own `user_punch` rows, UPDATE own rows; policy names preserved so `apply_read_only_write_blocks()` won't clobber); the blanket `read_only_block_stmt` statement trigger is replaced on this table by row-level `block_if_read_only_clock_row()` (own rows only, approval columns `approved/rejected/revoked _at/_by` frozen — no self-approval; DELETE only for own unapproved `salary_schedule` rows so a read-only salaried user's client-invoked sync no longer throws); `apply_read_only_stmt_blocks()` excludes `clock_sessions` so future CREATE TABLE sweeps don't re-attach the blanket trigger.
+- **Security**: narrows read-only enforcement on ONE table to own-row punches; still fires inside SECURITY DEFINER RPCs; `read_only_users_cannot_delete` and all other tables (incl. `people_hours`) unchanged; no-op when `auth.uid()` is NULL.
+- **Ordering**: either order safe (old clients simply keep showing the DB error until the migration lands; new banner copy is cosmetic).
+- **Category**: Access control / RLS
+
 **`20260728070000_thread_stats_skip_stamps.sql`** _(apply via `supabase db push` after the file is on `main`; either order vs the client is safe)_
 - **Purpose**: Stages activity previews prefer real notes over clock stamps (v2.1045). `CREATE OR REPLACE public.jobs_ledger_thread_note_stats` — the last-note pick ranks non-stamp notes first (stamp = body matching `— (Arrived at job|Leaving job)$`) and falls back to the newest stamp only when the thread has nothing else; counts computed from all notes, so the "N" badge and expanded thread are unchanged.
 - **Security**: same STABLE SQL function, same grants; no DDL beyond the function replace.

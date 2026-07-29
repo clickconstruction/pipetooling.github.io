@@ -643,7 +643,7 @@ export default function Layout() {
             textAlign: 'center',
           }}
         >
-          <strong>Training mode — read-only.</strong> Explore anything; no change will save until a dev turns this off.
+          <strong>Training mode — read-only.</strong> Explore anything; clock in/out still works, but no other change will save until a dev turns this off.
         </div>
       )}
       <div className="appNavChrome">
