@@ -52,7 +52,7 @@ import {
 } from '../../lib/jobs/jobFormUndo'
 import { useJobFormAutosaveSlice } from './useJobFormAutosaveSlice'
 import { notifyDispatchRequestsChanged } from '../../lib/dispatchRequestHelpers'
-import CustomerAcceptanceRecordModal from '../estimates/CustomerAcceptanceRecordModal'
+import { JobFormSourceEstimateBanner } from './JobFormSourceEstimateBanner'
 import type { Database } from '../../types/database'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import { resolveCustomerIdForJobPayload } from '../../lib/jobLedgerCustomer'
@@ -350,9 +350,6 @@ export default function JobFormModal({
       cancelled = true
     }
   }, [stripeMemoBackfillKey])
-  const [sourceEstimateForJob, setSourceEstimateForJob] = useState<EstimatesRow | null>(null)
-  const [sourceEstimateLoading, setSourceEstimateLoading] = useState(false)
-  const [contractModalEstimateId, setContractModalEstimateId] = useState<string | null>(null)
   const [hcpNumber, setHcpNumber] = useState('')
   const [clickNumber, setClickNumber] = useState('')
   const [hcpHelpOpen, setHcpHelpOpen] = useState(false)
@@ -1164,7 +1161,6 @@ export default function JobFormModal({
   function finishClose() {
     setJobProjectLinkChoiceOpen(false)
     setJobBidLinkChoiceOpen(false)
-    setContractModalEstimateId(null)
     setCreateCustomerFromJobModalOpen(false)
     setBillViewInvoice(null)
     setBillingCustomerHighlight(false)
@@ -1399,8 +1395,6 @@ export default function JobFormModal({
     setBillingCustomerHighlight(false)
     setFixturesSectionHighlight(false)
     setJobPicturesLinkHighlight(false)
-    setSourceEstimateForJob(null)
-    setContractModalEstimateId(null)
     setNewInvoiceAmount('')
     setNewInvoiceAmountInputFocused(false)
     setPaymentRemoveConfirmRowId(null)
@@ -1770,36 +1764,6 @@ export default function JobFormModal({
       }
     })
   }, [bids, bidId, prefixMap])
-
-  useEffect(() => {
-    const jobId = editing?.id ?? null
-    if (!jobId) {
-      setSourceEstimateForJob(null)
-      setSourceEstimateLoading(false)
-      return
-    }
-    let cancelled = false
-    setSourceEstimateLoading(true)
-    void (async () => {
-      try {
-        const est = await withSupabaseRetry(
-          async () =>
-            await supabase.from('estimates').select('*').eq('job_ledger_id', jobId).maybeSingle(),
-          'load source estimate for job',
-        )
-        if (cancelled) return
-        setSourceEstimateForJob((est ?? null) as EstimatesRow | null)
-      } catch {
-        if (!cancelled) setSourceEstimateForJob(null)
-      } finally {
-        if (!cancelled) setSourceEstimateLoading(false)
-      }
-    })()
-    return () => {
-      cancelled = true
-    }
-  }, [editing?.id])
-
 
   useEffect(() => {
     const jobId = editing?.id ?? null
@@ -3228,50 +3192,7 @@ export default function JobFormModal({
             )}
           </div>
         </div>
-        {editing && sourceEstimateLoading ? (
-          <p style={{ margin: '0 0 0.75rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>Checking for linked estimate…</p>
-        ) : null}
-        {editing && !sourceEstimateLoading && sourceEstimateForJob ? (
-          <div
-            style={{
-              marginBottom: '0.75rem',
-              padding: '0.6rem 0.75rem',
-              background: 'var(--bg-green-tint)',
-              border: '1px solid var(--border-green)',
-              borderRadius: 6,
-              fontSize: '0.875rem',
-              display: 'flex',
-              flexWrap: 'wrap',
-              gap: '0.5rem',
-              alignItems: 'center',
-            }}
-          >
-            <span>
-              <strong>Source estimate:</strong>{' '}
-              <Link
-                to={`/estimates/${sourceEstimateForJob.estimate_number}`}
-                style={{ color: '#15803d', fontWeight: 600 }}
-              >
-                #{sourceEstimateForJob.estimate_number}
-              </Link>
-              {sourceEstimateForJob.title?.trim() ? ` · ${sourceEstimateForJob.title.trim()}` : null}
-            </span>
-            <button
-              type="button"
-              onClick={() => setContractModalEstimateId(sourceEstimateForJob.id)}
-              style={{
-                padding: '0.35rem 0.65rem',
-                fontSize: '0.8rem',
-                background: 'var(--surface)',
-                border: '1px solid var(--border-green)',
-                borderRadius: 4,
-                cursor: 'pointer',
-              }}
-            >
-              View contract &amp; acceptance
-            </button>
-          </div>
-        ) : null}
+        <JobFormSourceEstimateBanner jobId={editing?.id ?? null} />
         {error && (
           <p
             style={{
@@ -4956,11 +4877,6 @@ export default function JobFormModal({
           })()
         }}
         overlayZIndex={JOB_FORM_BILL_VIEW_OVERLAY_Z_INDEX}
-      />
-      <CustomerAcceptanceRecordModal
-        open={contractModalEstimateId != null}
-        estimateId={contractModalEstimateId}
-        onClose={() => setContractModalEstimateId(null)}
       />
       {billToEditorInvoice ? (
         <JobFormBillToEditor

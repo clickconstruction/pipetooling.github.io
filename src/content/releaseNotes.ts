@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1090',
+    date: '2026-07-29',
+    title: 'Edit Job: "View contract & acceptance" now opens properly',
+    kind: 'fix',
+    highlights: [
+      'On Edit Job, the source-estimate banner\'s "View contract & acceptance" button used to open the acceptance record hidden behind the form — it now appears on top, as intended.',
+      'Internal cleanup of the Edit Job window continues behind the scenes.',
+    ],
+  },
+  {
     version: 'v2.1089',
     date: '2026-07-29',
     title: 'Under the hood: architecture maps for every large code surface',
