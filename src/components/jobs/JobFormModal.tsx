@@ -68,6 +68,7 @@ import {
   normalizeFixtureDisplayName,
   paymentRowsFromJob,
 } from '../../lib/jobs/jobFormRows'
+import { moveRowById } from '../../lib/jobs/jobFormReorder'
 import {
   canRemovePaymentRowFromForm,
   canUnlinkMercuryPayment,
@@ -2081,6 +2082,10 @@ export default function JobFormModal({
     setFixtures((prev) => prev.map((r) => (r.id === id ? { ...r, ...updates } : r)))
   }
 
+  function moveFixtureRowInList(id: string, direction: 'up' | 'down') {
+    setFixtures((prev) => moveRowById(prev, id, direction))
+  }
+
   function removeFixtureRow(id: string) {
     setFixtureScopeExpandedById((prev) => {
       const next = { ...prev }
@@ -3683,6 +3688,7 @@ export default function JobFormModal({
             updateFixtureRow={updateFixtureRow}
             addFixtureRow={addFixtureRow}
             removeFixtureRow={removeFixtureRow}
+            moveFixtureRow={moveFixtureRowInList}
             setStripeFixturePreviewRowId={setStripeFixturePreviewRowId}
             jobTotalDollars={jobTotalBidDollars}
           />

@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1067',
+    date: '2026-07-28',
+    title: 'Edit Job: re-order line items',
+    kind: 'feature',
+    highlights: [
+      'Line items in Edit Job now have small up/down arrows so you can arrange them in the order the work happens — first step toward setting up line items as job stages.',
+      'The order saves with the job and comes back the same way next time.',
+    ],
+  },
+  {
     version: 'v2.1066',
     date: '2026-07-28',
     title: 'Training mode: clock in/out now works',
