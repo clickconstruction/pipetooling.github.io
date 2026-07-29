@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1074',
+    date: '2026-07-29',
+    title: 'Learn how invoices and jobs move through Stages',
+    kind: 'feature',
+    highlights: [
+      'A small "How invoices and jobs move" link above the segment strip expands a quick guide: invoices break off as green cards that travel Ready to Bill → Billed → Paid on their own, and the blue job card floats through when its last payment lands.',
+      'The examples use your actual job number and segment amounts, in the same green and blue you\'ll see on the Stages board.',
+    ],
+  },
+  {
     version: 'v2.1073',
     date: '2026-07-29',
     title: 'Tidier Invoices section',

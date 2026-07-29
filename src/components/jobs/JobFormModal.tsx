@@ -3841,6 +3841,7 @@ export default function JobFormModal({
                 onToggleSegment={toggleSegmentSelected}
                 onCreateInvoiceFromSelection={createInvoiceFromSelectedSegments}
                 creatingFromSelection={creatingSegmentInvoice}
+                jobLabel={editing.hcp_number?.trim() ? `Job ${editing.hcp_number.trim()}` : null}
               />
               {editing ? (
                 <JobFormBreakOffSection
