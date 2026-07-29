@@ -40,7 +40,7 @@ Sections in JSX order inside the modal body; nested overlays and tail modals aft
 | 0 | Shell + lifecycle | `initDone` gate, overlay div (`JOB_FORM_OVERLAY_Z_INDEX`), `closeForm` (~3067–3113) | shell | `initDone`, `editing`, `error`, `saving` | all | — | — | **Stays** — this is the parent |
 | 1 | Header row | `hcpHelpOpen` popover, Import / "Job Detail" button, "Link to: Bid \| Project" (~3113–3356) | inline | 1 (`hcpHelpOpen` + ref/effect) | `bidId`, `projectId`, `newJobImportBlockedByContent`, `jobImportSourceOpen`, modal openers | med (reads dirty gate; opens 3 link modals; `jobDetailOpenerBridge`) | low | Extract `JobFormHeaderRow` late; openers stay in shell |
 | 2 | Source-estimate banner | `JobFormSourceEstimateBanner` | **extracted** (v2.1090) | 3 states + loader + acceptance modal, all inside the component | `editing?.id` (sole prop) | low | low | Done — [`JobFormSourceEstimateBanner.tsx`](../src/components/jobs/JobFormSourceEstimateBanner.tsx) |
-| 3 | Identity fields | labels `HCP`/`C#`/`Job Name`/`Service type`/`Last manual bill date`/`Job Address` (~3415–3536) | inline | 0 | `hcpNumber`, `clickNumber`, `jobName`, `jobAddress`, `formServiceTypeId`, `lastBillDate` | med (all fields save-engine inputs; hcp drives Sub Labor; serviceType role-filtered) | low | Controlled `JobFormIdentityFields` (props+setters) |
+| 3 | Identity fields | `JobFormIdentityFields` | **extracted** (v2.1091) | 2 paste refs only | `hcpNumber`, `clickNumber`, `jobName`, `jobAddress`, `formServiceTypeId`, `lastBillDate` (controlled props+setters); `jobFormServiceTypeSelectOptions` + `headerTradePill` memos stay shell-side, passed as values | med | low | Done — [`JobFormIdentityFields.tsx`](../src/components/jobs/JobFormIdentityFields.tsx) |
 | 4 | People assignment | `contractorsSearch` "Add People..." input + chips (~3537–3666) | inline | 2 (`contractorsSearch`, `contractorsDropdownOpen`) + click-outside effect + ref | `teamMemberIds`, `users` | low | low | **Good first Stage-B** — `JobFormPeoplePicker` |
 | 5 | Customer block | `customerExpanded` collapsible, "Link to customer" search (~3667–3988) | inline | 3 (`customerSearch`, `customerDropdownOpen`, highlight timers) | `customerId/Name/Email/Phone`, `dateMet`, `googleDriveLink`, `jobPicturesLink`, `customers`, `customerExpanded`, highlight gates | **high** (immediate DB writes on link; prefill flows write these; save engine reads all) | med | `JobFormCustomerSection` after Stage A; create-customer modal moves with it |
 | 6 | Project \| Plans \| Bid links | `projectFilesPlansExpanded`, `job-form-project-files-plans-trigger` (~3989–4232) | inline | 1 (`projectFilesPlansExpanded`) + 8 scroll/focus refs + 3 scroll callbacks | `projectId`, `bidId`, `linkedBidSummary`, `jobPlansLink`, `projects`, `bids` | med (link modals in tail; project link implies customer; header "Link to:" duplicates) | med | `JobFormLinksSection`; link-choice modals stay shell-level (opened from header too) |
@@ -184,11 +184,8 @@ If `customerId && dateMet` and the cached customer row lacks `date_met`: `UPDATE
 
 ### 3. Identity fields
 
-- **Render location:** HCP / C# / Job Name (clipboard-paste affordance) row; Service type (`SearchableSelect`, options from `jobFormServiceTypeSelectOptions`); Last manual bill date + Job Address (paste affordance) row (~3415–3536).
-- **Owned state:** none (paste helpers use `jobNameInputRef`/`jobAddressInputRef`).
-- **Shared (all save-engine inputs):** `hcpNumber` (also drives §13 Sub Labor via `editJobEffectiveHcp`), `clickNumber` (async RPC suggestion on new), `jobName`, `jobAddress`, `formServiceTypeId` (required; role-filtered options; edit mode injects the job's current type into the list when the role filter would hide it — `jobFormServiceTypeSelectOptions` memo), `lastBillDate`.
-- **Stage A:** `visibleServiceTypesForJobForm` + `pickDefaultServiceTypeId` → `lib` (see inventory).
-- **Extraction:** controlled `JobFormIdentityFields` with props+setters. Simple but wide props surface.
+- **Status: extracted (v2.1091)** → [`JobFormIdentityFields.tsx`](../src/components/jobs/JobFormIdentityFields.tsx). Fully controlled: the six identity fields arrive as props+setters (all save-engine / identity-autosave-slice inputs — `hcpNumber` also drives §13 Sub Labor via `editJobEffectiveHcp`; `clickNumber` still gets the async RPC suggestion in the shell). The paste affordances (`ClipboardPasteGlyph`, `pasteTextToField`, the two `JOB_FIELD_*` style consts, both input refs) moved into the component — they had no other consumers.
+- **Stays shell-side:** the `jobFormServiceTypeSelectOptions` memo (role filtering + edit-mode current-type injection needs the `serviceTypes`/role caches) and the `headerTradePill` memo, both passed down as computed values; the pill's click action is an `onTradePillClick` shell callback (`closeForm()` flush → navigate to Jobs → Stages). The pill renders on `tradePill` alone — the memo is already null when not editing, so the old `headerTradePill && editing` gate is preserved by construction.
 
 ### 4. People assignment
 
@@ -373,7 +370,7 @@ Per playbook: Stage A before Stage B per unit; lowest coupling first; money-path
 6. `JobFormDeleteMigrateModals` (§19+§20) — self-contained, clear inputs.
 7. `JobFormPeoplePicker` (§4) — smallest shared surface.
 8. ~~`JobFormSourceEstimateBanner` (§2)~~ — **done** (v2.1090).
-9. `JobFormIdentityFields` (§3) — controlled, wide-but-shallow props.
+9. ~~`JobFormIdentityFields` (§3)~~ — **done** (v2.1091).
 10. `JobFormLinksSection` (§6) — refs move with it; link modals stay shell.
 11. `JobFormFixturesSection` (§7+§17).
 12. `JobFormPartsCostSection` (§14) + `useJobFormMaterialsSnapshot` (hook stays in shell).
