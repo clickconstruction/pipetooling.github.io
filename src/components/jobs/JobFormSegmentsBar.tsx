@@ -81,22 +81,17 @@ export function JobFormSegmentsBar({
           display: 'flex',
           flexWrap: 'wrap',
           alignItems: 'baseline',
-          justifyContent: 'space-between',
-          gap: '0.5rem',
+          justifyContent: 'flex-end',
+          gap: '0.6rem',
           marginBottom: '0.35rem',
         }}
       >
-        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-          The whole job, in line-item order — each block is a segment&apos;s share of the Job Total
-        </span>
-        <span style={{ display: 'inline-flex', gap: '0.6rem', flexWrap: 'wrap' }}>
-          {LEGEND.map((l) => (
-            <span key={l.label} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: '0.6875rem', color: 'var(--text-muted)' }}>
-              <span style={{ width: 8, height: 8, borderRadius: 2, background: l.color, display: 'inline-block' }} />
-              {l.label}
-            </span>
-          ))}
-        </span>
+        {LEGEND.map((l) => (
+          <span key={l.label} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: '0.6875rem', color: 'var(--text-muted)' }}>
+            <span style={{ width: 8, height: 8, borderRadius: 2, background: l.color, display: 'inline-block' }} />
+            {l.label}
+          </span>
+        ))}
       </div>
       <div
         style={{

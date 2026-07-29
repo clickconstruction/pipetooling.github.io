@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1073',
+    date: '2026-07-29',
+    title: 'Tidier Invoices section',
+    kind: 'fix',
+    highlights: [
+      'The explainer sentence above the job-segments strip is gone — the named blocks speak for themselves. The color legend stays.',
+      'The Quick set percentage buttons now tuck behind a small "Quick set" toggle next to "% of job total" — click it to reveal 20/40/60/80/Max.',
+    ],
+  },
+  {
     version: 'v2.1072',
     date: '2026-07-29',
     title: 'Segment strip polish + delete draft invoices',
