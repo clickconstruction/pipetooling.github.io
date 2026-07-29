@@ -97,6 +97,9 @@ export function JobFormBreakOffSection({
                       rowGap: '0.35rem',
                     }}
                   >
+                    {/* Two nowrap clusters — the action and its context — so a narrow
+                        modal wraps into two tidy lines instead of four fragments (v2.1076). */}
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>
                     <label
                       htmlFor="edit-job-partial-invoice-amount"
                       style={{
@@ -203,6 +206,8 @@ export function JobFormBreakOffSection({
                     >
                       {movingJobToReadyToBill ? '…' : creatingInvoice ? '…' : isSendFullUnallocatedToReadyToBill ? 'Ready to Bill' : '+'}
                     </button>
+                    </span>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', justifyContent: 'center' }}>
                     {breakOffDraftCoveragePctDisplay != null && breakOffDraftCoveragePctDisplay < 100 ? (
                       <span
                         title="Payments plus this draft amount as a share of Job Total."
@@ -276,6 +281,7 @@ export function JobFormBreakOffSection({
                           : null}
                       </span>
                     ) : null}
+                    </span>
                   </div>
                   {breakOffBillingTrackPercents.hasTotal ? (
                     <div style={{ width: '100%', minWidth: 0 }}>

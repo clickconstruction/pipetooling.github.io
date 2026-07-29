@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1076',
+    date: '2026-07-29',
+    title: 'Cleaner Make Invoice row',
+    kind: 'fix',
+    highlights: [
+      'On narrow screens the Make Invoice controls now wrap as two clean lines — the amount and its + button stay together, and "% of job total · Quick set" stays together — instead of scattering.',
+      'The "How invoices and jobs move" link drops its underline.',
+    ],
+  },
+  {
     version: 'v2.1075',
     date: '2026-07-29',
     title: 'Make Invoice, in green',

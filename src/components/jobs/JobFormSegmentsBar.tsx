@@ -111,7 +111,6 @@ export function JobFormSegmentsBar({
             background: 'transparent',
             border: 'none',
             color: 'var(--text-link)',
-            textDecoration: 'underline',
             fontSize: '0.6875rem',
             cursor: 'pointer',
             fontFamily: 'inherit',
