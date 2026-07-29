@@ -70,6 +70,12 @@ import {
 } from '../../lib/jobs/jobFormRows'
 import { moveRowById } from '../../lib/jobs/jobFormReorder'
 import {
+  linkableSelectedIds,
+  segmentSelectionSummary,
+  selectedSegmentSequencePositions,
+} from '../../lib/jobs/jobSegmentsCoverage'
+import { JobFormSegmentsBar } from './JobFormSegmentsBar'
+import {
   canRemovePaymentRowFromForm,
   canUnlinkMercuryPayment,
   mercuryLinkedPaymentRow,
@@ -457,6 +463,20 @@ export default function JobFormModal({
     for (const inv of editing?.invoices ?? []) map[inv.id] = inv.status
     return map
   }, [editing?.invoices])
+
+  // ② Invoices segment bar (v2.1070): which unbilled line items are picked
+  // for the next "create invoice from selected segments" action.
+  const [selectedSegmentIds, setSelectedSegmentIds] = useState<Set<string>>(new Set())
+  const [creatingSegmentInvoice, setCreatingSegmentInvoice] = useState(false)
+
+  function toggleSegmentSelected(fixtureRowId: string) {
+    setSelectedSegmentIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(fixtureRowId)) next.delete(fixtureRowId)
+      else next.add(fixtureRowId)
+      return next
+    })
+  }
 
   const billingMoneySliceJson = useMemo(
     () =>
@@ -978,6 +998,7 @@ export default function JobFormModal({
         : [{ id: crypto.randomUUID(), name: '', count: 1, line_unit_price: null, line_description: '', invoice_id: null }],
     )
     setFixtureScopeExpandedById({})
+    setSelectedSegmentIds(new Set())
     setTeamMemberIds(job.team_members.map((t) => t.user_id))
     setNewInvoiceAmountInputFocused(false)
     setNewInvoiceAmount(breakOffPrefillAmountStringFromJob(job))
@@ -1009,6 +1030,7 @@ export default function JobFormModal({
     setMaterials([{ id: crypto.randomUUID(), description: '', amount: 0 }])
     setFixtures([{ id: crypto.randomUUID(), name: '', count: 1, line_unit_price: null, line_description: '', invoice_id: null }])
     setFixtureScopeExpandedById({})
+    setSelectedSegmentIds(new Set())
     setTeamMemberIds([])
     setBillingCustomerHighlight(false)
     setFixturesSectionHighlight(false)
@@ -1177,6 +1199,7 @@ export default function JobFormModal({
             : [{ id: crypto.randomUUID(), name: '', count: 1, line_unit_price: null, line_description: '', invoice_id: null }]
         setFixtures(nextFixtures)
         setFixtureScopeExpandedById({})
+        setSelectedSegmentIds(new Set())
         const estimateCustomerId = e.customer_id
         if (estimateCustomerId) {
           setCustomerId(estimateCustomerId)
@@ -1768,6 +1791,81 @@ export default function JobFormModal({
       setError(errObj?.message ?? 'Failed to update job status')
     } finally {
       setMovingJobToReadyToBill(false)
+    }
+  }
+
+  async function createInvoiceFromSelectedSegments() {
+    if (!editing) return
+    const fixturesNow = autosaveFixturesRef.current
+    const { totalDollars, count } = segmentSelectionSummary(fixturesNow, selectedSegmentIds)
+    if (count === 0 || !(totalDollars > 0)) {
+      setError('Select at least one unbilled segment first')
+      return
+    }
+    setCreatingSegmentInvoice(true)
+    setError(null)
+    try {
+      // Flush so the DB rows match this exact fixtures array — the link
+      // UPDATE below keys on the sequence_order positions the flush wrote.
+      await flushBillingAutosave()
+      const positions = selectedSegmentSequencePositions(fixturesNow, selectedSegmentIds)
+      const linkedRowIds = new Set(linkableSelectedIds(fixturesNow, selectedSegmentIds))
+      const nextOrder = (editing.invoices ?? []).length
+      const estBill = editing.last_bill_date?.trim().slice(0, 10) ?? null
+      const { data: created, error: insErr } = await supabase
+        .from('jobs_ledger_invoices')
+        .insert({
+          job_id: editing.id,
+          amount: totalDollars,
+          status: 'ready_to_bill',
+          sequence_order: nextOrder,
+          estimated_bill_date: estBill,
+          is_primary_rtb_bundle: false,
+        })
+        .select('id')
+        .single()
+      if (insErr) throw insErr
+      const newInvoiceId = (created as { id: string }).id
+      if (positions.length > 0) {
+        const { error: linkErr } = await supabase
+          .from('jobs_ledger_fixtures')
+          .update({ invoice_id: newInvoiceId })
+          .eq('job_id', editing.id)
+          .in('sequence_order', positions)
+        if (linkErr) throw linkErr
+      }
+      // Mirror the links into local state so the next delete+reinsert keeps
+      // them (the refetch below re-hydrates editing, not the fixtures state).
+      setFixtures((prev) => prev.map((r) => (linkedRowIds.has(r.id) ? { ...r, invoice_id: newInvoiceId } : r)))
+      if (editing.status === 'ready_to_bill') {
+        const raw = await withSupabaseRetry(
+          () =>
+            supabase.rpc('ensure_single_ready_to_bill_invoice_for_job', {
+              p_job_id: editing.id,
+            }),
+          'ensure RTB remainder after segment invoice'
+        )
+        const obj = raw as Record<string, unknown> | null
+        if (obj && typeof obj.error === 'string' && obj.error.length > 0) {
+          throw new Error(obj.error)
+        }
+      }
+      const found = await fetchJobWithDetailsById(editing.id)
+      if (found) {
+        setEditing(found)
+        setNewInvoiceAmount(breakOffPrefillAmountStringFromJob(found))
+        setNewInvoiceAmountInputFocused(false)
+      }
+      setSelectedSegmentIds(new Set())
+      onSavedRef.current?.()
+      showToast(`Invoice created for ${count} segment${count === 1 ? '' : 's'} ($${formatCurrency(totalDollars)})`, 'success')
+    } catch (e: unknown) {
+      const err = e as { message?: string; details?: string; hint?: string }
+      const msg = err?.message || 'Failed to create invoice from segments'
+      const extra = [err?.details, err?.hint].filter(Boolean).join(' ')
+      setError(extra ? `${msg}. ${extra}` : msg)
+    } finally {
+      setCreatingSegmentInvoice(false)
     }
   }
 
@@ -3710,6 +3808,15 @@ export default function JobFormModal({
               <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.75rem' }}>
                 Creating an invoice breaks off the invoice as a card that starts in <strong>Stage: Ready to Bill</strong> right away separate from this form.
               </div>
+              <JobFormSegmentsBar
+                fixtures={fixtures}
+                riderFeesDollars={riderFeesDollars}
+                invoiceStatusById={fixtureInvoiceStatusById}
+                selectedIds={selectedSegmentIds}
+                onToggleSegment={toggleSegmentSelected}
+                onCreateInvoiceFromSelection={createInvoiceFromSelectedSegments}
+                creatingFromSelection={creatingSegmentInvoice}
+              />
               {editing ? (
                 <JobFormBreakOffSection
                   breakOff={breakOff}

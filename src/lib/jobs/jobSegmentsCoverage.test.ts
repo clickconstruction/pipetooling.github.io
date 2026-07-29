@@ -1,0 +1,120 @@
+import { describe, expect, it } from 'vitest'
+import {
+  buildJobSegmentsBar,
+  linkableSelectedIds,
+  segmentSelectionSummary,
+  selectedSegmentSequencePositions,
+  type SegmentFixtureLine,
+} from './jobSegmentsCoverage'
+
+const line = (o: Partial<SegmentFixtureLine> & { id: string }): SegmentFixtureLine => ({
+  name: 'Rough In',
+  count: 1,
+  line_unit_price: 100,
+  invoice_id: null,
+  ...o,
+})
+
+const statuses = { rtb: 'ready_to_bill', b: 'billed', p: 'paid' }
+
+describe('buildJobSegmentsBar', () => {
+  it('sizes segments by dollar share in display order', () => {
+    const segs = buildJobSegmentsBar({
+      fixtures: [
+        line({ id: 'a', name: 'Rough In', line_unit_price: 300 }),
+        line({ id: 'b', name: 'Top Out', line_unit_price: 300 }),
+        line({ id: 'c', name: 'Trim Set', line_unit_price: 400 }),
+      ],
+      riderFeesDollars: 0,
+      invoiceStatusById: {},
+    })
+    expect(segs.map((s) => s.key)).toEqual(['a', 'b', 'c'])
+    expect(segs.map((s) => Math.round(s.pctOfTotal))).toEqual([30, 30, 40])
+    expect(segs.every((s) => s.status === 'unbilled' && s.selectable)).toBe(true)
+  })
+
+  it('multiplies count and skips unnamed/zero rows', () => {
+    const segs = buildJobSegmentsBar({
+      fixtures: [
+        line({ id: 'a', count: 2, line_unit_price: 50 }),
+        line({ id: 'unnamed', name: '  ', line_unit_price: 500 }),
+        line({ id: 'free', line_unit_price: null }),
+      ],
+      riderFeesDollars: 0,
+      invoiceStatusById: {},
+    })
+    expect(segs.map((s) => s.key)).toEqual(['a'])
+    expect(segs[0]?.dollars).toBe(100)
+    expect(segs[0]?.pctOfTotal).toBe(100)
+  })
+
+  it('colors linked segments by invoice status; missing invoice falls back to unbilled', () => {
+    const segs = buildJobSegmentsBar({
+      fixtures: [
+        line({ id: 'a', invoice_id: 'rtb' }),
+        line({ id: 'b', invoice_id: 'b' }),
+        line({ id: 'c', invoice_id: 'p' }),
+        line({ id: 'd', invoice_id: 'deleted' }),
+      ],
+      riderFeesDollars: 0,
+      invoiceStatusById: statuses,
+    })
+    expect(segs.map((s) => s.status)).toEqual(['ready_to_bill', 'billed', 'paid', 'unbilled'])
+    expect(segs.map((s) => s.selectable)).toEqual([false, false, false, true])
+    expect(segs[3]?.invoiceId).toBeNull()
+  })
+
+  it('appends a non-selectable riders segment and returns [] for a zero-dollar job', () => {
+    const withRiders = buildJobSegmentsBar({
+      fixtures: [line({ id: 'a', line_unit_price: 900 })],
+      riderFeesDollars: 100,
+      invoiceStatusById: {},
+    })
+    expect(withRiders.map((s) => s.key)).toEqual(['a', 'riders'])
+    expect(Math.round(withRiders[1]?.pctOfTotal ?? 0)).toBe(10)
+    expect(withRiders[1]?.selectable).toBe(false)
+    expect(buildJobSegmentsBar({ fixtures: [], riderFeesDollars: 0, invoiceStatusById: {} })).toEqual([])
+  })
+})
+
+describe('segmentSelectionSummary', () => {
+  it('totals only valid, unlinked, selected rows (cents-exact)', () => {
+    const fixtures = [
+      line({ id: 'a', line_unit_price: 0.1, count: 3 }),
+      line({ id: 'linked', invoice_id: 'rtb' }),
+      line({ id: 'unnamed', name: '' }),
+      line({ id: 'unselected' }),
+    ]
+    const sum = segmentSelectionSummary(fixtures, new Set(['a', 'linked', 'unnamed']))
+    expect(sum).toEqual({ totalDollars: 0.3, count: 1 })
+  })
+})
+
+describe('linkableSelectedIds', () => {
+  it('returns exactly the rows the invoice will link', () => {
+    const fixtures = [
+      line({ id: 'a' }),
+      line({ id: 'linked', invoice_id: 'rtb' }),
+      line({ id: 'zero', line_unit_price: null }),
+      line({ id: 'b' }),
+    ]
+    expect(linkableSelectedIds(fixtures, new Set(['a', 'linked', 'zero']))).toEqual(['a'])
+    expect(linkableSelectedIds(fixtures, new Set(['a', 'b']))).toEqual(['a', 'b'])
+  })
+})
+
+describe('selectedSegmentSequencePositions', () => {
+  it('mirrors the save filter: named rows take positions in array order', () => {
+    const fixtures = [
+      line({ id: 'a' }),
+      line({ id: 'unnamed', name: ' ' }),
+      line({ id: 'b' }),
+      line({ id: 'c', invoice_id: 'rtb' }),
+      line({ id: 'd' }),
+    ]
+    // positions: a=0, b=1, c=2, d=3 (unnamed row is not written by the save engine)
+    expect(selectedSegmentSequencePositions(fixtures, new Set(['b', 'd']))).toEqual([1, 3])
+    // linked + invalid selections are ignored but still consume their position
+    expect(selectedSegmentSequencePositions(fixtures, new Set(['c', 'unnamed']))).toEqual([])
+  })
+})

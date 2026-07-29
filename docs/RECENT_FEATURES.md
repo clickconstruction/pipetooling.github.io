@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-29 (v2.1069)
+last_updated: 2026-07-29 (v2.1070)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1070)
+
+### Job stages step 4: ② Invoices segment strip + "create invoice from selected segments" (2026-07-29)
+The centerpiece: ② Invoices opens with a 100%-of-the-job strip — one block per line item, in ① order, sized by dollar share, colored by the billing lifecycle of the invoice linked to it (reuses the MoneyLifecycleBar palette: unbilled amber, RTB light-blue, billed blue, paid green; hazmat riders as a trailing neutral block). Unbilled blocks carry checkboxes; the action button breaks off a **Ready to Bill** invoice for exactly the selected segments' cents-exact sum and links them (`invoice_id`). Flow in [`JobFormModal.createInvoiceFromSelectedSegments`](../src/components/jobs/JobFormModal.tsx): flush billing autosave → insert invoice → link by `sequence_order` positions (safe right after a flush — mirrors the save filter exactly) → mirror links into local fixtures state (so the next delete+reinsert keeps them) → `ensure_single_ready_to_bill_invoice_for_job` when the job is RTB → refetch + rehydrate. New kernel [`jobSegmentsCoverage.ts`](../src/lib/jobs/jobSegmentsCoverage.ts) (+7 tests) does all bar/selection math; render-only [`JobFormSegmentsBar`](../src/components/jobs/JobFormSegmentsBar.tsx). Selection clears on job hydrate/reset/import. New help guide [`split-a-job-into-stages`](../src/content/help/split-a-job-into-stages.md). Client-only (needs v2.1068/69 shipped first).
 
 ## Latest Updates (v2.1069)
 
