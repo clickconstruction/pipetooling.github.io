@@ -4,6 +4,11 @@
 #   1. Every migration filename is <14-digit-timestamp>_snake_case.sql
 #   2. No two migrations share the same version (timestamp) prefix — a duplicate
 #      version makes `supabase db push` silently skip one file.
+#   3. Migrations versioned after 2026-07-29 must SET lock_timeout — there is no
+#      staging, so DDL runs against prod while the app is in use. Without a lock
+#      timeout, an ALTER TABLE that can't get its lock QUEUES, and every query
+#      behind it queues too: the whole app freezes until the lock frees. With
+#      it, the push fails fast and harmlessly; just retry in a quieter moment.
 #
 # It does NOT check remote drift (that needs the linked access token). For that,
 # run `supabase migration list` locally; see AGENTS.md "Migration history drift".
@@ -28,6 +33,23 @@ if [ -n "${dups//[$'\n']/}" ]; then
   echo "::error::Two or more migrations share a version prefix (one would be silently skipped by 'supabase db push'):"
   printf '%s\n' "$dups" | sed 's/^/  /'
   echo "  Fix: give each migration a unique timestamp — create new ones with 'supabase migration new ...'."
+  fail=1
+fi
+
+# 3. lock_timeout preamble (migrations after the 2026-07-29 convention cutoff)
+LOCK_TIMEOUT_CUTOFF="20260729120000"
+missing_lock=""
+for f in $names; do
+  ver="${f%%_*}"
+  if [ "$ver" \> "$LOCK_TIMEOUT_CUTOFF" ] && ! grep -qiE 'set +(local +)?lock_timeout' "$MIG_DIR/$f"; then
+    missing_lock="$missing_lock$f"$'\n'
+  fi
+done
+if [ -n "${missing_lock//[$'\n']/}" ]; then
+  echo "::error::Migrations must start with a lock_timeout so DDL fails fast instead of freezing prod for everyone behind a queued lock. Add as the first line:"
+  echo "  SET lock_timeout = '3s';"
+  echo "Offenders:"
+  printf '%s' "$missing_lock" | sed 's/^/  /'
   fail=1
 fi
 

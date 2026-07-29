@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-29 (v2.1082)
+last_updated: 2026-07-29 (v2.1083)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1083)
+
+### Migration convention: mandatory `SET lock_timeout = '3s'` preamble (2026-07-29)
+Response to repeated "DB crashed during `db push`" freezes: with no staging, DDL runs against prod mid-workday, and an `ALTER TABLE` waiting on its ACCESS EXCLUSIVE lock makes every query behind it queue — an app-wide freeze that lasts as long as the blocking query. Every migration versioned after 2026-07-29 must now begin with `SET lock_timeout = '3s';` so the push **fails fast instead of blocking the world** (retry in a quieter moment). Enforced in [`scripts/check-migrations.sh`](../scripts/check-migrations.sh) (new check 3, cutoff `20260729120000` — all 124 existing files grandfathered; matcher accepts `SET [LOCAL] lock_timeout`, case-insensitive); convention documented in `CLAUDE.md`, `AGENTS.md`, and `docs/MIGRATIONS.md` Key Principles. Note: freezes NOT correlated with a `db push` are the separate infra-level class (2026-07-28 incident) — see `docs/runbooks/SUPABASE_INCIDENT_RUNBOOK.md`. Tooling/docs-only.
 
 ## Latest Updates (v2.1082)
 

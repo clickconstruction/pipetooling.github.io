@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1083',
+    date: '2026-07-29',
+    title: 'Smoother database updates during the workday',
+    kind: 'fix',
+    highlights: [
+      'Behind the scenes: database schema updates now give up quickly if the database is busy instead of freezing the app for everyone until they get their turn.',
+    ],
+  },
+  {
     version: 'v2.1082',
     date: '2026-07-29',
     title: 'Missing bid values stand out on Stages',

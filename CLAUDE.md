@@ -16,6 +16,7 @@ All three happened; reconciling them took a full ledger rewrite (2026-07-04, bac
 If an emergency ever forces MCP `apply_migration`: immediately rename the new ledger row's `version`/`name` to match the repo filename in the same session.
 
 Also:
+- **Every new migration starts with `SET lock_timeout = '3s';`** (CI-enforced for versions after 2026-07-29). There is no staging — DDL runs against prod while crews use the app. Without it, an `ALTER TABLE` waiting on a lock makes every query behind it queue too (the "DB crashed" freezes during `db push`); with it, the push fails fast and you just retry in a quieter moment.
 - **Number new migrations from `origin/main`'s latest file** (`git ls-tree origin/main supabase/migrations/ | tail`), not from your branch — two parallel branches once minted the same version.
 - Check alignment any time with `npm run check:migration-drift` (CI runs it on main pushes touching migrations + a strict daily cron: `.github/workflows/migration-drift.yml`).
 
