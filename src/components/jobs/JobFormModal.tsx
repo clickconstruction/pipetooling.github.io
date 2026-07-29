@@ -30,10 +30,16 @@ import {
 } from '../../utils/errorHandling'
 import {
   buildBillingSliceJson,
+  buildEditJobIdentityUpdatePayload,
+  buildIdentitySliceJson,
+  buildMaterialsSliceJson,
+  buildTeamSliceJson,
   diffTeamMemberIds,
   fixtureInsertRows,
+  identitySliceReadyToSave,
   materialInsertRows,
   paymentInsertRows,
+  type JobIdentityFormFields,
 } from '../../lib/jobs/jobFormAutosaveSlices'
 import { useJobFormAutosaveSlice } from './useJobFormAutosaveSlice'
 import { notifyDispatchRequestsChanged } from '../../lib/dispatchRequestHelpers'
@@ -572,8 +578,188 @@ export default function JobFormModal({
   })
   const billingAutosaveStatus = billingAutosave.status
   const flushBillingAutosave = billingAutosave.flush
-  const flushBillingAutosaveRef = useRef(flushBillingAutosave)
-  flushBillingAutosaveRef.current = flushBillingAutosave
+
+  // ---- Identity / materials / team autosave slices (v2.1079) ---------------
+
+  // Identity: ONE scalar jobs_ledger UPDATE (no delete+reinsert). Gated on the
+  // same required fields as the Save button so a half-cleared field mid-retype
+  // never persists as blank; while invalid the slice stays dirty and unsaved.
+  const identityFields: JobIdentityFormFields = {
+    hcpNumber,
+    clickNumber,
+    jobName,
+    jobAddress,
+    customerId,
+    customerName,
+    customerEmail,
+    customerPhone,
+    lastBillDate,
+    googleDriveLink,
+    jobPicturesLink,
+    jobPlansLink,
+    projectId: projectId ?? '',
+    bidId: bidId ?? '',
+    serviceTypeId: formServiceTypeId,
+  }
+  const identityFieldsRef = useRef(identityFields)
+  identityFieldsRef.current = identityFields
+  const identitySliceJson = buildIdentitySliceJson(identityFields)
+  const projectsRef = useRef(projects)
+  projectsRef.current = projects
+  const customersRef = useRef(customers)
+  customersRef.current = customers
+  const editingMasterUserIdRef = useRef<string | null>(null)
+  editingMasterUserIdRef.current = editing?.master_user_id ?? null
+  /** Last PERSISTED pictures link — drives the blank→set dispatch auto-close. */
+  const persistedPicturesLinkRef = useRef('')
+
+  /** Same auto-close saveJob performs when the pictures link goes blank→set. */
+  async function autoClosePicturesDispatchRequests(jobId: string): Promise<void> {
+    if (!authUser?.id) return
+    try {
+      await withSupabaseRetry(
+        async () =>
+          supabase
+            .from('dispatch_requests')
+            .update({
+              status: 'closed',
+              closed_at: new Date().toISOString(),
+              closed_by_user_id: authUser.id,
+              closed_note: 'Customer Pictures URL added',
+            })
+            .eq('job_ledger_id', jobId)
+            .eq('pending_action', 'link_job_pictures')
+            .eq('status', 'open'),
+        'auto-close link_job_pictures dispatch requests',
+      )
+      notifyDispatchRequestsChanged()
+    } catch (closeErr) {
+      console.warn('auto-close dispatch_requests failed', closeErr)
+    }
+  }
+
+  async function persistIdentitySlice(): Promise<boolean> {
+    const jobId = autosaveJobIdRef.current
+    const existingMaster = editingMasterUserIdRef.current
+    if (!jobId || !existingMaster) return true
+    const fields = identityFieldsRef.current
+    try {
+      const proj = fields.projectId ? projectsRef.current.find((p) => p.id === fields.projectId) : null
+      const payload = buildEditJobIdentityUpdatePayload({
+        fields,
+        existingJobMasterUserId: existingMaster,
+        projectMasterUserId: proj?.master_user_id ?? null,
+        customers: customersRef.current,
+      })
+      const { error: updErr } = await supabase.from('jobs_ledger').update(payload).eq('id', jobId)
+      if (updErr) throw updErr
+      const newPicturesLink = fields.jobPicturesLink.trim()
+      if (newPicturesLink && !persistedPicturesLinkRef.current) {
+        await autoClosePicturesDispatchRequests(jobId)
+      }
+      persistedPicturesLinkRef.current = newPicturesLink
+      return true
+    } catch (identityErr) {
+      showToast(
+        `Autosave failed: ${identityErr instanceof Error ? identityErr.message : String(identityErr)}`,
+        'error',
+      )
+      return false
+    }
+  }
+
+  const identityAutosave = useJobFormAutosaveSlice({
+    jobId: editing?.id ?? null,
+    sliceJson: identitySliceJson,
+    save: persistIdentitySlice,
+    enabled: identitySliceReadyToSave(identityFields),
+    onSaved: () => onSavedRef.current?.(),
+  })
+
+  // Materials: same delete+reinsert shape as the billing slice.
+  const materialsSliceJson = buildMaterialsSliceJson(materials)
+  const autosaveMaterialsRef = useRef(materials)
+  autosaveMaterialsRef.current = materials
+
+  async function persistMaterialsSlice(): Promise<boolean> {
+    const jobId = autosaveJobIdRef.current
+    if (!jobId) return true
+    try {
+      const { error: delMatErr } = await supabase.from('jobs_ledger_materials').delete().eq('job_id', jobId)
+      if (delMatErr) throw delMatErr
+      for (const row of materialInsertRows(jobId, autosaveMaterialsRef.current)) {
+        const { error: insMatErr } = await supabase.from('jobs_ledger_materials').insert(row)
+        if (insMatErr) throw insMatErr
+      }
+      return true
+    } catch (matErr) {
+      showToast(`Autosave failed: ${matErr instanceof Error ? matErr.message : String(matErr)}`, 'error')
+      return false
+    }
+  }
+
+  const materialsAutosave = useJobFormAutosaveSlice({
+    jobId: editing?.id ?? null,
+    sliceJson: materialsSliceJson,
+    save: persistMaterialsSlice,
+    onSaved: () => onSavedRef.current?.(),
+  })
+
+  // Team: already-incremental diff writes; short debounce batches rapid toggles.
+  const [teamMemberIds, setTeamMemberIds] = useState<string[]>([])
+  const teamSliceJson = buildTeamSliceJson(teamMemberIds)
+  const autosaveTeamIdsRef = useRef(teamMemberIds)
+  autosaveTeamIdsRef.current = teamMemberIds
+
+  async function persistTeamSlice(): Promise<boolean> {
+    const jobId = autosaveJobIdRef.current
+    if (!jobId) return true
+    try {
+      const { data: existingTeam, error: teamReadErr } = await supabase
+        .from('jobs_ledger_team_members')
+        .select('user_id')
+        .eq('job_id', jobId)
+      if (teamReadErr) throw teamReadErr
+      const { toAdd, toRemove } = diffTeamMemberIds(
+        autosaveTeamIdsRef.current,
+        (existingTeam ?? []).map((t: { user_id: string }) => t.user_id),
+      )
+      for (const uid of toAdd) {
+        const { error: insErr } = await supabase.from('jobs_ledger_team_members').insert({ job_id: jobId, user_id: uid })
+        if (insErr) throw insErr
+      }
+      for (const uid of toRemove) {
+        const { error: delErr } = await supabase
+          .from('jobs_ledger_team_members')
+          .delete()
+          .eq('job_id', jobId)
+          .eq('user_id', uid)
+        if (delErr) throw delErr
+      }
+      return true
+    } catch (teamErr) {
+      showToast(`Autosave failed: ${teamErr instanceof Error ? teamErr.message : String(teamErr)}`, 'error')
+      return false
+    }
+  }
+
+  const teamAutosave = useJobFormAutosaveSlice({
+    jobId: editing?.id ?? null,
+    sliceJson: teamSliceJson,
+    save: persistTeamSlice,
+    debounceMs: 400,
+    onSaved: () => onSavedRef.current?.(),
+  })
+
+  /** Every edit-mode autosave slice, in close-flush order. */
+  const editAutosaveSlices = [billingAutosave, identityAutosave, materialsAutosave, teamAutosave]
+
+  /** Flush every dirty enabled slice (visibility handler, best-effort). */
+  async function flushAllAutosaveSlices(): Promise<void> {
+    for (const slice of editAutosaveSlices) await slice.flush()
+  }
+  const flushAllAutosaveSlicesRef = useRef(flushAllAutosaveSlices)
+  flushAllAutosaveSlicesRef.current = flushAllAutosaveSlices
 
   // Closing the modal must not drop a pending autosave: cancel the debounce,
   // wait out any in-flight write, and save whatever is still dirty before
@@ -603,7 +789,6 @@ export default function JobFormModal({
   // (createInvoice / moveWorkingJobToReadyToBillFromEdit); the rest of the hook
   // output is consumed by JobFormBreakOffSection via the `breakOff` prop.
   const { newInvoiceAmount, setNewInvoiceAmount, setNewInvoiceAmountInputFocused } = breakOff
-  const [teamMemberIds, setTeamMemberIds] = useState<string[]>([])
   // Team chips can reference users outside the picker's role-filtered list (e.g. a
   // dev on the crew, invisible to non-dev viewers) — fetch those by id so a chip
   // never renders a raw uuid.
@@ -906,7 +1091,7 @@ export default function JobFormModal({
    * close-flush.
    */
   function closeFormWithoutSaving() {
-    billingAutosave.clearBaseline()
+    for (const slice of editAutosaveSlices) slice.clearBaseline()
     setCloseFlushState('idle')
     finishClose()
   }
@@ -919,15 +1104,21 @@ export default function JobFormModal({
    */
   async function closeForm(): Promise<boolean> {
     if (closeFlushStateRef.current === 'saving') return false
-    billingAutosave.cancelPending()
-    if (!billingAutosave.isDirty() && !billingAutosave.isRunning()) {
+    for (const slice of editAutosaveSlices) slice.cancelPending()
+    if (!editAutosaveSlices.some((s) => s.needsFlush() || s.isRunning())) {
       finishClose()
       return true
     }
     setCloseFlushState('saving')
     try {
       const outcome = await withOperationTimeout(
-        billingAutosave.flushForClose(),
+        (async () => {
+          for (const slice of editAutosaveSlices) {
+            const sliceOutcome = await slice.flushForClose()
+            if (sliceOutcome === 'failed') return 'failed' as const
+          }
+          return 'saved' as const
+        })(),
         15000,
         'Saving your latest changes',
       )
@@ -953,7 +1144,7 @@ export default function JobFormModal({
   // losing edits on a hard tab close shrinks to near-zero.
   useEffect(() => {
     const onVisibilityChange = () => {
-      if (document.visibilityState === 'hidden') void flushBillingAutosaveRef.current()
+      if (document.visibilityState === 'hidden') void flushAllAutosaveSlicesRef.current()
     }
     document.addEventListener('visibilitychange', onVisibilityChange)
     return () => document.removeEventListener('visibilitychange', onVisibilityChange)
@@ -997,6 +1188,7 @@ export default function JobFormModal({
     setLastBillDate(job.last_bill_date ? job.last_bill_date.slice(0, 10) : '')
     setGoogleDriveLink(job.google_drive_link ?? '')
     setJobPicturesLink(job.job_pictures_link ?? '')
+    persistedPicturesLinkRef.current = (job.job_pictures_link ?? '').trim()
     setJobPlansLink(job.job_plans_link ?? '')
     setProjectFilesPlansExpanded(false)
     setPayments(paymentRowsFromJob(job))
@@ -2353,9 +2545,9 @@ export default function JobFormModal({
     }
     setSaving(true)
     setError(null)
-    // Full save supersedes any pending billing autosave — cancel the debounce
-    // so the two never race; the baseline is refreshed after a successful save.
-    billingAutosave.cancelPending()
+    // Full save supersedes any pending autosave — cancel the debounces so the
+    // two never race; the baselines are refreshed after a successful save.
+    for (const slice of editAutosaveSlices) slice.cancelPending()
     const revNum = jobTotalWithRidersDollars
     const paymentsMadeNum = payments.reduce((s, p) => s + (Number(p.amount) || 0), 0)
     try {
@@ -2404,27 +2596,9 @@ export default function JobFormModal({
         const trimmedJobPicturesLink = jobPicturesLink.trim()
         const previousJobPicturesLink = (editing.job_pictures_link ?? '').trim()
         if (trimmedJobPicturesLink && !previousJobPicturesLink) {
-          try {
-            await withSupabaseRetry(
-              async () =>
-                supabase
-                  .from('dispatch_requests')
-                  .update({
-                    status: 'closed',
-                    closed_at: new Date().toISOString(),
-                    closed_by_user_id: authUser.id,
-                    closed_note: 'Customer Pictures URL added',
-                  })
-                  .eq('job_ledger_id', editing.id)
-                  .eq('pending_action', 'link_job_pictures')
-                  .eq('status', 'open'),
-              'auto-close link_job_pictures dispatch requests',
-            )
-            notifyDispatchRequestsChanged()
-          } catch (closeErr) {
-            console.warn('auto-close dispatch_requests failed', closeErr)
-          }
+          await autoClosePicturesDispatchRequests(editing.id)
         }
+        persistedPicturesLinkRef.current = trimmedJobPicturesLink
         await supabase.from('jobs_ledger_payments').delete().eq('job_id', editing.id)
         for (const row of paymentInsertRows(editing.id, payments)) {
           await supabase.from('jobs_ledger_payments').insert(row)
@@ -2449,9 +2623,9 @@ export default function JobFormModal({
           await supabase.from('jobs_ledger_team_members').delete().eq('job_id', editing.id).eq('user_id', uid)
         }
 
-        // The full save just persisted the money slice too — refresh the
-        // autosave baseline so it doesn't re-write the same data afterwards.
-        billingAutosave.markSavedNow()
+        // The full save just persisted every slice — refresh the autosave
+        // baselines so they don't re-write the same data afterwards.
+        for (const slice of editAutosaveSlices) slice.markSavedNow()
 
         const statusBeforeSave = normalizeJobsLedgerStatus(editing.status)
         if (statusBeforeSave === 'paid' && revNum > paymentsMadeNum + 0.01) {

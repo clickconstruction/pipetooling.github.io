@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-29 (v2.1078)
+last_updated: 2026-07-29 (v2.1079)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1079)
+
+### Edit Job autosave step 2: identity, Other-job-charges, and Team now auto-save (2026-07-29)
+Three more [`useJobFormAutosaveSlice`](../src/components/jobs/useJobFormAutosaveSlice.ts) instances in [`JobFormModal`](../src/components/jobs/JobFormModal.tsx) (edit mode only; New Job still requires Create): **identity** — one scalar `jobs_ledger` UPDATE via `buildEditJobIdentityUpdatePayload` (owner/customer re-resolution mirrors `saveJob`), gated by `identitySliceReadyToSave` (Job Name + Address + Service type non-empty) so a half-cleared required field never persists as blank — the hook's new `needsFlush()`/enabled-gate also makes the close guard skip an invalid identity slice (those edits drop on close, exactly as before); the saveJob pictures-link blank→set dispatch auto-close moved into shared `autoClosePicturesDispatchRequests` and now also fires from identity autosave (`persistedPicturesLinkRef` tracks the persisted value, seeded in `applyEditJob`). **materials** — delete+reinsert via `materialInsertRows`. **team** — read-diff-write via `diffTeamMemberIds`, 400ms debounce. The close guard, visibility flush, `closeFormWithoutSaving`, and `saveJob`'s cancel/markSaved bookkeeping now iterate all four slices (`editAutosaveSlices`). Save button unchanged (removed next step). Client-only.
 
 ## Latest Updates (v2.1078)
 

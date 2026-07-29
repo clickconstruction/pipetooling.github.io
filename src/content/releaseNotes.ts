@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1079',
+    date: '2026-07-29',
+    title: 'Edit Job now auto-saves everything',
+    kind: 'feature',
+    highlights: [
+      'Job details (numbers, name, address, customer info, links), Other job charges, and Team changes now save automatically about a second after you stop typing — same as line items and payments already did.',
+      'Required fields (Job Name, Job Address, Service type) never save while blank — finish typing and the save catches up.',
+      'The Save button still works as always; New Job still uses Create.',
+    ],
+  },
+  {
     version: 'v2.1078',
     date: '2026-07-29',
     title: 'Groundwork for full Edit Job auto-save',

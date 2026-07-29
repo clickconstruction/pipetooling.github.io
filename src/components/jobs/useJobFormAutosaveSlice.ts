@@ -9,7 +9,14 @@ export interface JobFormAutosaveSlice {
   isDirty: () => boolean
   /** True while a save is in flight. */
   isRunning: () => boolean
-  /** Cancel any pending debounce and, if dirty, save NOW. */
+  /**
+   * Dirty AND currently allowed to save. A dirty-but-disabled slice (e.g.
+   * identity with a required field blank) is deliberately NOT flushed — an
+   * invalid state must never persist; those edits drop on close, exactly as
+   * every pre-autosave close discarded them.
+   */
+  needsFlush: () => boolean
+  /** Cancel any pending debounce and, if dirty and enabled, save NOW. */
   flush: () => Promise<void>
   /**
    * Close-guard flush: wait out any in-flight run, then save-and-recheck
@@ -108,13 +115,18 @@ export function useJobFormAutosaveSlice(params: {
     }
   }
 
+  function needsFlush(): boolean {
+    return enabledRef.current && isDirty()
+  }
+
   async function flush(): Promise<void> {
     cancelTimer()
-    if (isDirty()) await runSaveRef.current()
+    if (needsFlush()) await runSaveRef.current()
   }
 
   async function flushForClose(): Promise<CloseFlushOutcome> {
     cancelTimer()
+    if (!enabledRef.current) return 'clean'
     return flushDirtySliceForClose({
       isRunning: () => runningRef.current,
       isDirty,
@@ -164,6 +176,7 @@ export function useJobFormAutosaveSlice(params: {
     status,
     isDirty,
     isRunning: () => runningRef.current,
+    needsFlush,
     flush,
     flushForClose,
     markSavedNow,
