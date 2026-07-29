@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1071',
+    date: '2026-07-29',
+    title: 'Multiple Segment Generator',
+    kind: 'feature',
+    highlights: [
+      'New in Edit Job\'s Line Items: a Multiple Segment Generator link opens a modal where you set a total, name the segments of work, and give each a percentage — the dollar split calculates live and always adds back to your total.',
+      'Two one-tap presets: Commercial 30/30/30/10 (Rough In / Top Out / Trim Set / Final) and Residential 40/40/20 (Rough In / Top Out / Trim Set).',
+      '"Add to Job" appends the segments to your existing line items, ready to re-order and bill stage by stage.',
+    ],
+  },
+  {
     version: 'v2.1070',
     date: '2026-07-29',
     title: 'See the whole job as segments — and bill them',

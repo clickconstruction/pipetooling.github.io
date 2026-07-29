@@ -5,7 +5,7 @@ file: docs/JOB_FORM_MODAL_ARCHITECTURE.md
 type: Engineering / Refactor Map
 purpose: Step-0 map for the JobFormModal.tsx decomposition (per PAGE_DECOMPOSITION_PLAYBOOK.md, adapted from tabs to form sections) — inventory what every section of the New/Edit Job modal touches (state, handlers, supabase tables/RPCs, sub-components, coupling) to drive the multi-PR extraction, with a deep-dive on the money-path save engine.
 audience: Developers, AI Agents
-last_updated: 2026-07-27
+last_updated: 2026-07-29
 ---
 
 ## Overview
@@ -110,6 +110,16 @@ All of these are already **module-scope pure functions** in `JobFormModal.tsx` �
 | stays put | `formatJobFormBidLinkTitle` (needs `LedgerPrefixMap` — thin, could join `lib/ledgerDisplayPrefixes`), `ClipboardPasteGlyph` + `pasteTextToField` + `ReadOnlyPaymentRefCopy` (tiny components), style constants, z-index ladder | Move with their consuming sections in Stage B. |
 
 Already-in-`lib/` kernels this file consumes (do not duplicate): `revenueDollarsFromFixtures`, `resolveCustomerIdForJobPayload` (tested), `resolveEditJobMasterUserId` (tested), `resolveEffectiveJobMasterUserId`, `filterActiveCustomersForPicker` (tested, v2.736), `jobLedgerHasCustomerForBilling`, `stripeInvoiceLineDescription` helpers (tested), `fetchJobMaterialsCostSnapshot`, `fetchJobWithDetailsById`, `prepareBilledInvoicesBeforeJobRevertToReadyToBill`, `normalizeJobsLedgerStatus`, `createJobFromEstimateSubmit` / `estimateLineItemNormalize`.
+
+### Job-stages billing additions (v2.1067–v2.1071)
+
+The ①/② billing area gained the job-stages family; all money math is in tested `src/lib/jobs/` kernels, the components are render-only:
+
+- **`jobFormReorder.ts`** `moveRowById` — ▲▼ re-order in ① (v2.1067) and in the generator modal; `sequence_order` persistence already existed.
+- **`jobs_ledger_fixtures.invoice_id`** (migration `20260729002615`, v2.1068) — fixture-side FK to the billing invoice, ON DELETE SET NULL. `FixtureRow.invoice_id` rides BOTH fixture write paths (billing autosave + `saveJob`) through the delete+reinsert, and the autosave change-slice includes it (v2.1069). **Any future save-engine refactor must preserve this carry-through.**
+- **`jobFormFixtureLinks.ts`** — linked-row lock predicate + lifecycle chip; linked rows disable name/count/price/scope and hide remove in `JobFormFixturesSection`.
+- **`jobSegmentsCoverage.ts`** + **`JobFormSegmentsBar`** (v2.1070) — the ② Invoices 100%-strip and the create-invoice-from-selected-segments flow (`createInvoiceFromSelectedSegments` in the shell: flush autosave → insert invoice → link by `sequence_order` positions → mirror links into local fixtures state → RTB remainder resync → refetch). Selection state (`selectedSegmentIds`) clears on hydrate/reset/import.
+- **`segmentGenerator.ts`** + **`MultipleSegmentGeneratorModal`** (v2.1071) — %-split generator with Commercial 30/30/30/10 and Residential 40/40/20 presets; "Add to Job" appends `FixtureRow`s via `addGeneratedSegmentsToJob`.
 
 ---
 
