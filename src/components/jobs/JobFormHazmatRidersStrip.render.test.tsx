@@ -51,6 +51,11 @@ function makeIncident(overrides: Partial<JobHazmatIncidentRow> = {}): JobHazmatI
     invoice_id: 'inv-rider',
     public_token: '11111111-1111-4111-8111-111111111111',
     created_at: '2026-07-20T16:05:00.000Z',
+    edited_at: null,
+    notice_emailed_at: null,
+    notice_emailed_to: null,
+    voided_at: null,
+    voided_by: null,
     ...overrides,
   }
 }
