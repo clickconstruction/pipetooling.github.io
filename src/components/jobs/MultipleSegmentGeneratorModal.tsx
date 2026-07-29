@@ -227,7 +227,7 @@ export function MultipleSegmentGeneratorModal({
           >
             + Add segment
           </button>
-          <span style={{ fontSize: '0.75rem', color: allocationOff ? '#b45309' : 'var(--text-muted)', fontWeight: allocationOff ? 600 : 400 }}>
+          <span style={{ fontSize: '0.75rem', color: allocationOff ? 'var(--text-amber-700)' : 'var(--text-muted)', fontWeight: allocationOff ? 600 : 400 }}>
             {allocatedPct}% allocated{allocationOff ? ' — segments usually total 100%' : ''}
           </span>
         </div>

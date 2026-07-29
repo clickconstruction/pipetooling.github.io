@@ -103,7 +103,7 @@ export function JobFormFixturesSection({
                     padding: 0,
                     background: 'transparent',
                     border: 'none',
-                    color: '#2563eb',
+                    color: 'var(--text-link)',
                     textDecoration: 'underline',
                     fontSize: '0.75rem',
                     cursor: 'pointer',
