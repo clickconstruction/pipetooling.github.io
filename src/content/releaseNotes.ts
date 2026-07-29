@@ -11,6 +11,18 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1080',
+    date: '2026-07-29',
+    title: 'Edit Job: the Save button is gone',
+    kind: 'feature',
+    highlights: [
+      'Everything in Edit Job now saves automatically, so the Save button is retired. A status chip in the corner tells you where things stand — "All changes saved", "Saving…", or "Waiting on required fields".',
+      'Closing always finishes any pending save first; if the server is slow you choose Retry, Keep editing, or Close without saving.',
+      'A Paid job that ends up owing money again still moves back to Billed — that check now runs when you close the modal.',
+      'New Job keeps its button, now labeled "Create Job".',
+    ],
+  },
+  {
     version: 'v2.1079',
     date: '2026-07-29',
     title: 'Edit Job now auto-saves everything',
