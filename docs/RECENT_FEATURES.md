@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-29 (v2.1077)
+last_updated: 2026-07-29 (v2.1078)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1078)
+
+### Edit Job autosave: slice kernel + generalized engine (billing-only, behavior-identical) (2026-07-29)
+Stage A for the full-form autosave train. New kernel [`jobFormAutosaveSlices.ts`](../src/lib/jobs/jobFormAutosaveSlices.ts) (+15 tests): slice JSON builders (billing / identity / materials / team — dirty = JSON ≠ baseline; billing JSON ignores row ids so delete+reinsert churn is never dirt), shared insert-payload builders (`paymentInsertRows`/`fixtureInsertRows`/`materialInsertRows` — previously duplicated between `runBillingAutosave` and `saveJob`), `buildEditJobIdentityUpdatePayload` (composes `resolveEditJobMasterUserId` + `resolveCustomerIdForJobPayload`; no money columns), `identitySliceReadyToSave`, `diffTeamMemberIds`, `shouldDemotePaidJobToBilled`. New colocated hook [`useJobFormAutosaveSlice`](../src/components/jobs/useJobFormAutosaveSlice.ts) owns the per-slice bookkeeping (hydrate-commit baseline, 1.2s debounce, in-flight/queued serialization, status, `flush`/`flushForClose`/`markSavedNow`/`clearBaseline`/`cancelPending`) with the writes staying component-side. [`JobFormModal`](../src/components/jobs/JobFormModal.tsx) rewires the billing slice onto the hook (~100 lines of inline engine removed) and `saveJob`'s three insert loops + team diff now use the kernel builders. Behavior-identical; identity/materials/team slices arrive next. Client-only.
 
 ## Latest Updates (v2.1077)
 

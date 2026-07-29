@@ -28,7 +28,14 @@ import {
   withOperationTimeout,
   withSupabaseRetry,
 } from '../../utils/errorHandling'
-import { flushDirtySliceForClose } from '../../lib/jobs/jobFormCloseFlush'
+import {
+  buildBillingSliceJson,
+  diffTeamMemberIds,
+  fixtureInsertRows,
+  materialInsertRows,
+  paymentInsertRows,
+} from '../../lib/jobs/jobFormAutosaveSlices'
+import { useJobFormAutosaveSlice } from './useJobFormAutosaveSlice'
 import { notifyDispatchRequestsChanged } from '../../lib/dispatchRequestHelpers'
 import CustomerAcceptanceRecordModal from '../estimates/CustomerAcceptanceRecordModal'
 import type { Database } from '../../types/database'
@@ -72,7 +79,6 @@ import {
   materialRowHasUserContent,
   newEmptyPaymentRow,
   newJobFormHasBlockingContent,
-  normalizeFixtureDisplayName,
   paymentRowsFromJob,
 } from '../../lib/jobs/jobFormRows'
 import { moveRowById } from '../../lib/jobs/jobFormReorder'
@@ -508,48 +514,24 @@ export default function JobFormModal({
     })
   }
 
-  const billingMoneySliceJson = useMemo(
-    () =>
-      JSON.stringify({
-        f: fixtures.map((f) => ({ n: f.name, c: f.count, p: f.line_unit_price, d: f.line_description, i: f.invoice_id })),
-        p: payments.map((p) => ({
-          a: p.amount,
-          o: p.paid_on,
-          n: p.note,
-          t: p.payment_type,
-          r: p.reference_number,
-          i: p.invoice_id,
-          m: p.mercury_transaction_id,
-        })),
-      }),
-    [fixtures, payments],
-  )
-  const [billingAutosaveStatus, setBillingAutosaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
-  const autosaveBaselineRef = useRef<{ jobId: string; json: string } | null>(null)
-  const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const autosaveRunningRef = useRef(false)
-  const autosaveQueuedRef = useRef(false)
+  const billingMoneySliceJson = useMemo(() => buildBillingSliceJson(fixtures, payments), [fixtures, payments])
   const autosaveFixturesRef = useRef(fixtures)
   autosaveFixturesRef.current = fixtures
   const autosavePaymentsRef = useRef(payments)
   autosavePaymentsRef.current = payments
   const autosaveRiderFeesRef = useRef(riderFeesDollars)
   autosaveRiderFeesRef.current = riderFeesDollars
-  const autosaveSliceRef = useRef(billingMoneySliceJson)
-  autosaveSliceRef.current = billingMoneySliceJson
   const autosaveJobIdRef = useRef<string | null>(null)
   autosaveJobIdRef.current = editing?.id ?? null
 
-  async function runBillingAutosave(): Promise<boolean> {
+  /**
+   * The billing-slice WRITES — the same delete+reinsert sequence as always
+   * (payloads now built by the jobFormAutosaveSlices kernel). Baseline,
+   * debounce, and in-flight bookkeeping live in useJobFormAutosaveSlice.
+   */
+  async function persistBillingSlice(): Promise<boolean> {
     const jobId = autosaveJobIdRef.current
     if (!jobId) return true
-    if (autosaveRunningRef.current) {
-      autosaveQueuedRef.current = true
-      return true
-    }
-    autosaveRunningRef.current = true
-    setBillingAutosaveStatus('saving')
-    const sliceWritten = autosaveSliceRef.current
     try {
       const fx = autosaveFixturesRef.current
       const pays = autosavePaymentsRef.current
@@ -562,76 +544,34 @@ export default function JobFormModal({
       if (updErr) throw updErr
       const { error: delPayErr } = await supabase.from('jobs_ledger_payments').delete().eq('job_id', jobId)
       if (delPayErr) throw delPayErr
-      const validPayments = pays.filter((p) => (Number(p.amount) || 0) > 0)
-      for (const [i, p] of validPayments.entries()) {
-        const { error: insPayErr } = await supabase.from('jobs_ledger_payments').insert({
-          job_id: jobId,
-          amount: Number(p.amount) || 0,
-          sequence_order: i,
-          paid_on: p.paid_on?.trim() ? p.paid_on.trim() : null,
-          note: p.note?.trim() ? p.note.trim() : null,
-          payment_type: p.payment_type?.trim() ? p.payment_type.trim() : null,
-          reference_number: p.reference_number?.trim() ? p.reference_number.trim() : null,
-          invoice_id: p.invoice_id,
-          mercury_transaction_id: p.mercury_transaction_id,
-        })
+      for (const row of paymentInsertRows(jobId, pays)) {
+        const { error: insPayErr } = await supabase.from('jobs_ledger_payments').insert(row)
         if (insPayErr) throw insPayErr
       }
       const { error: delFixErr } = await supabase.from('jobs_ledger_fixtures').delete().eq('job_id', jobId)
       if (delFixErr) throw delFixErr
-      const validFixtures = fx.filter((f) => normalizeFixtureDisplayName(f.name ?? '').length > 0)
-      for (const [i, f] of validFixtures.entries()) {
-        const unit = f.line_unit_price
-        const { error: insFixErr } = await supabase.from('jobs_ledger_fixtures').insert({
-          job_id: jobId,
-          name: normalizeFixtureDisplayName(f.name ?? ''),
-          count: f.count,
-          sequence_order: i,
-          line_unit_price: unit != null && unit > 0 ? unit : null,
-          line_description: (f.line_description ?? '').trim() ? (f.line_description ?? '').trim() : null,
-          invoice_id: f.invoice_id,
-        })
+      for (const row of fixtureInsertRows(jobId, fx)) {
+        const { error: insFixErr } = await supabase.from('jobs_ledger_fixtures').insert(row)
         if (insFixErr) throw insFixErr
       }
-      autosaveBaselineRef.current = { jobId, json: sliceWritten }
-      setBillingAutosaveStatus('saved')
-      onSavedRef.current?.()
       return true
     } catch (autosaveErr) {
-      setBillingAutosaveStatus('error')
       showToast(
         `Autosave failed: ${autosaveErr instanceof Error ? autosaveErr.message : String(autosaveErr)}`,
         'error',
       )
       return false
-    } finally {
-      autosaveRunningRef.current = false
-      if (autosaveQueuedRef.current) {
-        autosaveQueuedRef.current = false
-        void runBillingAutosave()
-      }
     }
-  }
-  const runBillingAutosaveRef = useRef(runBillingAutosave)
-  runBillingAutosaveRef.current = runBillingAutosave
-
-  /** True when the money slice differs from the last persisted baseline. */
-  function isBillingSliceDirty(): boolean {
-    const jobId = autosaveJobIdRef.current
-    const base = autosaveBaselineRef.current
-    return !!(jobId && base && base.jobId === jobId && base.json !== autosaveSliceRef.current)
   }
 
-  /** Cancel any pending debounce and, if the money slice is dirty, save it NOW. */
-  async function flushBillingAutosave(): Promise<void> {
-    if (autosaveTimerRef.current) {
-      clearTimeout(autosaveTimerRef.current)
-      autosaveTimerRef.current = null
-    }
-    if (isBillingSliceDirty()) {
-      await runBillingAutosave()
-    }
-  }
+  const billingAutosave = useJobFormAutosaveSlice({
+    jobId: editing?.id ?? null,
+    sliceJson: billingMoneySliceJson,
+    save: persistBillingSlice,
+    onSaved: () => onSavedRef.current?.(),
+  })
+  const billingAutosaveStatus = billingAutosave.status
+  const flushBillingAutosave = billingAutosave.flush
   const flushBillingAutosaveRef = useRef(flushBillingAutosave)
   flushBillingAutosaveRef.current = flushBillingAutosave
 
@@ -642,34 +582,6 @@ export default function JobFormModal({
   const [closeFlushState, setCloseFlushState] = useState<'idle' | 'saving' | 'error'>('idle')
   const closeFlushStateRef = useRef(closeFlushState)
   closeFlushStateRef.current = closeFlushState
-
-  useEffect(() => {
-    const jobId = editing?.id ?? null
-    if (!jobId) {
-      autosaveBaselineRef.current = null
-      return
-    }
-    const base = autosaveBaselineRef.current
-    if (!base || base.jobId !== jobId) {
-      // First sight of this job: the hydrate committed editing + fixtures +
-      // payments together, so this snapshot is the persisted state.
-      autosaveBaselineRef.current = { jobId, json: billingMoneySliceJson }
-      setBillingAutosaveStatus('idle')
-      return
-    }
-    if (base.json === billingMoneySliceJson) return
-    if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current)
-    autosaveTimerRef.current = setTimeout(() => {
-      autosaveTimerRef.current = null
-      void runBillingAutosaveRef.current()
-    }, 1200)
-    return () => {
-      if (autosaveTimerRef.current) {
-        clearTimeout(autosaveTimerRef.current)
-        autosaveTimerRef.current = null
-      }
-    }
-  }, [billingMoneySliceJson, editing?.id])
 
   // Same immediate-save contract as the Stages Progress & payment cell: writes
   // jobs_ledger.pct_complete on blur/Enter, outside the form's Save flow (the
@@ -994,11 +906,7 @@ export default function JobFormModal({
    * close-flush.
    */
   function closeFormWithoutSaving() {
-    if (autosaveTimerRef.current) {
-      clearTimeout(autosaveTimerRef.current)
-      autosaveTimerRef.current = null
-    }
-    autosaveBaselineRef.current = null
+    billingAutosave.clearBaseline()
     setCloseFlushState('idle')
     finishClose()
   }
@@ -1011,22 +919,15 @@ export default function JobFormModal({
    */
   async function closeForm(): Promise<boolean> {
     if (closeFlushStateRef.current === 'saving') return false
-    if (autosaveTimerRef.current) {
-      clearTimeout(autosaveTimerRef.current)
-      autosaveTimerRef.current = null
-    }
-    if (!isBillingSliceDirty() && !autosaveRunningRef.current) {
+    billingAutosave.cancelPending()
+    if (!billingAutosave.isDirty() && !billingAutosave.isRunning()) {
       finishClose()
       return true
     }
     setCloseFlushState('saving')
     try {
       const outcome = await withOperationTimeout(
-        flushDirtySliceForClose({
-          isRunning: () => autosaveRunningRef.current,
-          isDirty: isBillingSliceDirty,
-          runSave: () => runBillingAutosaveRef.current(),
-        }),
+        billingAutosave.flushForClose(),
         15000,
         'Saving your latest changes',
       )
@@ -2454,14 +2355,9 @@ export default function JobFormModal({
     setError(null)
     // Full save supersedes any pending billing autosave — cancel the debounce
     // so the two never race; the baseline is refreshed after a successful save.
-    if (autosaveTimerRef.current) {
-      clearTimeout(autosaveTimerRef.current)
-      autosaveTimerRef.current = null
-    }
+    billingAutosave.cancelPending()
     const revNum = jobTotalWithRidersDollars
     const paymentsMadeNum = payments.reduce((s, p) => s + (Number(p.amount) || 0), 0)
-    const validPayments = payments.filter((p) => (Number(p.amount) || 0) > 0)
-    const validMaterials = materials.filter((m) => (m.description ?? '').trim() !== '' || Number(m.amount) !== 0)
     try {
       if (editing) {
         const proj = projectId ? projects.find((p) => p.id === projectId) : null
@@ -2530,46 +2426,22 @@ export default function JobFormModal({
           }
         }
         await supabase.from('jobs_ledger_payments').delete().eq('job_id', editing.id)
-        for (const [i, p] of validPayments.entries()) {
-          await supabase.from('jobs_ledger_payments').insert({
-            job_id: editing.id,
-            amount: Number(p.amount) || 0,
-            sequence_order: i,
-            paid_on: p.paid_on?.trim() ? p.paid_on.trim() : null,
-            note: p.note?.trim() ? p.note.trim() : null,
-            payment_type: p.payment_type?.trim() ? p.payment_type.trim() : null,
-            reference_number: p.reference_number?.trim() ? p.reference_number.trim() : null,
-            invoice_id: p.invoice_id,
-            mercury_transaction_id: p.mercury_transaction_id,
-          })
+        for (const row of paymentInsertRows(editing.id, payments)) {
+          await supabase.from('jobs_ledger_payments').insert(row)
         }
         await supabase.from('jobs_ledger_materials').delete().eq('job_id', editing.id)
-        for (const [i, m] of validMaterials.entries()) {
-          await supabase.from('jobs_ledger_materials').insert({
-            job_id: editing.id,
-            description: m.description.trim(),
-            amount: m.amount,
-            sequence_order: i,
-          })
+        for (const row of materialInsertRows(editing.id, materials)) {
+          await supabase.from('jobs_ledger_materials').insert(row)
         }
         await supabase.from('jobs_ledger_fixtures').delete().eq('job_id', editing.id)
-        const validFixtures = fixtures.filter((f) => normalizeFixtureDisplayName(f.name ?? '').length > 0)
-        for (const [i, f] of validFixtures.entries()) {
-          const unit = f.line_unit_price
-          await supabase.from('jobs_ledger_fixtures').insert({
-            job_id: editing.id,
-            name: normalizeFixtureDisplayName(f.name ?? ''),
-            count: f.count,
-            sequence_order: i,
-            line_unit_price: unit != null && unit > 0 ? unit : null,
-            line_description: (f.line_description ?? '').trim() ? (f.line_description ?? '').trim() : null,
-            invoice_id: f.invoice_id,
-          })
+        for (const row of fixtureInsertRows(editing.id, fixtures)) {
+          await supabase.from('jobs_ledger_fixtures').insert(row)
         }
         const { data: existingTeam } = await supabase.from('jobs_ledger_team_members').select('user_id').eq('job_id', editing.id)
-        const existingTeamIds = new Set((existingTeam ?? []).map((t: { user_id: string }) => t.user_id))
-        const toAdd = teamMemberIds.filter((id) => !existingTeamIds.has(id))
-        const toRemove = [...existingTeamIds].filter((id) => !teamMemberIds.includes(id))
+        const { toAdd, toRemove } = diffTeamMemberIds(
+          teamMemberIds,
+          (existingTeam ?? []).map((t: { user_id: string }) => t.user_id),
+        )
         for (const uid of toAdd) {
           await supabase.from('jobs_ledger_team_members').insert({ job_id: editing.id, user_id: uid })
         }
@@ -2579,8 +2451,7 @@ export default function JobFormModal({
 
         // The full save just persisted the money slice too — refresh the
         // autosave baseline so it doesn't re-write the same data afterwards.
-        autosaveBaselineRef.current = { jobId: editing.id, json: autosaveSliceRef.current }
-        setBillingAutosaveStatus('idle')
+        billingAutosave.markSavedNow()
 
         const statusBeforeSave = normalizeJobsLedgerStatus(editing.status)
         if (statusBeforeSave === 'paid' && revNum > paymentsMadeNum + 0.01) {
@@ -2642,38 +2513,14 @@ export default function JobFormModal({
         if (insertErr) throw insertErr
         const jobId = inserted?.id
         if (jobId) {
-          for (const [i, p] of validPayments.entries()) {
-            await supabase.from('jobs_ledger_payments').insert({
-              job_id: jobId,
-              amount: Number(p.amount) || 0,
-              sequence_order: i,
-              paid_on: p.paid_on?.trim() ? p.paid_on.trim() : null,
-              note: p.note?.trim() ? p.note.trim() : null,
-              payment_type: p.payment_type?.trim() ? p.payment_type.trim() : null,
-              reference_number: p.reference_number?.trim() ? p.reference_number.trim() : null,
-              invoice_id: p.invoice_id,
-              mercury_transaction_id: p.mercury_transaction_id,
-            })
+          for (const row of paymentInsertRows(jobId, payments)) {
+            await supabase.from('jobs_ledger_payments').insert(row)
           }
-          for (const [i, m] of validMaterials.entries()) {
-            await supabase.from('jobs_ledger_materials').insert({
-              job_id: jobId,
-              description: m.description.trim(),
-              amount: m.amount,
-              sequence_order: i,
-            })
+          for (const row of materialInsertRows(jobId, materials)) {
+            await supabase.from('jobs_ledger_materials').insert(row)
           }
-          const validFixturesIns = fixtures.filter((f) => normalizeFixtureDisplayName(f.name ?? '').length > 0)
-          for (const [i, f] of validFixturesIns.entries()) {
-            const unit = f.line_unit_price
-            await supabase.from('jobs_ledger_fixtures').insert({
-              job_id: jobId,
-              name: normalizeFixtureDisplayName(f.name ?? ''),
-              count: f.count,
-              sequence_order: i,
-              line_unit_price: unit != null && unit > 0 ? unit : null,
-              line_description: (f.line_description ?? '').trim() ? (f.line_description ?? '').trim() : null,
-            })
+          for (const row of fixtureInsertRows(jobId, fixtures)) {
+            await supabase.from('jobs_ledger_fixtures').insert(row)
           }
           for (const uid of teamMemberIds) {
             await supabase.from('jobs_ledger_team_members').insert({ job_id: jobId, user_id: uid })

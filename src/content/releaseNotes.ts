@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1078',
+    date: '2026-07-29',
+    title: 'Groundwork for full Edit Job auto-save',
+    kind: 'fix',
+    highlights: [
+      'Internal restructuring of how Edit Job saves line items and payments, preparing for the whole form to auto-save. No visible change yet.',
+    ],
+  },
+  {
     version: 'v2.1077',
     date: '2026-07-29',
     title: 'Edit Job never loses a just-typed money edit on close',
