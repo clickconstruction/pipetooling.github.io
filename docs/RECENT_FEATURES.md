@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-29 (v2.1075)
+last_updated: 2026-07-29 (v2.1076)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1076)
+
+### Make Invoice row grouping + ⓘ underline removed (2026-07-29)
+The Make Invoice row previously wrapped into four ragged centered fragments on narrow modals (label / input+button / pct / Quick set). It now groups into two nowrap clusters ([`JobFormBreakOffSection`](../src/components/jobs/JobFormBreakOffSection.tsx)): the action ("Make Invoice: [amount] [+]") and the context ("N% of job total · Quick set ▸", which still wraps internally when the quick-set buttons expand) — one tidy line when wide, two when narrow. The segment strip's ⓘ "How invoices and jobs move" toggle loses its underline (link color alone carries the affordance). Client-only.
 
 ## Latest Updates (v2.1075)
 
