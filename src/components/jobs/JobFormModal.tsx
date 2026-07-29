@@ -16,7 +16,8 @@ import { supabase } from '../../lib/supabase'
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
 import { useAuth } from '../../hooks/useAuth'
 import { useJobHazmatIncidents } from '../../hooks/useJobHazmatIncidents'
-import { sumHazmatRiderFees } from '../../lib/hazmatIncidents'
+import { sumHazmatRiderFees, type JobHazmatIncidentRow } from '../../lib/hazmatIncidents'
+import { linkHazmatFeeIncidentToInvoice } from '../../lib/hazmatFeeEdit'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useLedgerPrefixMap } from '../../contexts/LedgerDisplayPrefixContext'
 import { formatBidLedgerDocTitle, type LedgerPrefixMap } from '../../lib/ledgerDisplayPrefixes'
@@ -501,6 +502,7 @@ export default function JobFormModal({
   // for the next "create invoice from selected segments" action.
   const [selectedSegmentIds, setSelectedSegmentIds] = useState<Set<string>>(new Set())
   const [creatingSegmentInvoice, setCreatingSegmentInvoice] = useState(false)
+  const [billingFeeSeparatelyId, setBillingFeeSeparatelyId] = useState<string | null>(null)
 
   const [segmentGeneratorOpen, setSegmentGeneratorOpen] = useState(false)
 
@@ -2338,6 +2340,104 @@ export default function JobFormModal({
     }
   }
 
+  /**
+   * "Bill separately…" on a RIDERS row (v2.1087): split the hazmat fee onto
+   * its own non-primary invoice, repoint the incident to it (RPC — the table
+   * has no client write policies), re-sync the primary remainder, then open
+   * the Bill-to editor so the office picks who pays it (e.g. the tenant).
+   * A fee already sitting on its own unsent non-primary draft skips straight
+   * to the editor.
+   */
+  async function billHazmatFeeSeparately(row: JobHazmatIncidentRow) {
+    if (!editing) return
+    const fee = Number(row.fee_amount)
+    if (!(fee > 0)) {
+      setError('This fee has no amount to bill')
+      return
+    }
+    const invoices = editing.invoices ?? []
+    const linked = row.invoice_id ? invoices.find((i) => i.id === row.invoice_id) : undefined
+    if (
+      linked &&
+      linked.status === 'ready_to_bill' &&
+      !linked.is_primary_rtb_bundle &&
+      !(linked.stripe_invoice_id ?? '').trim() &&
+      !(linked.sent_to_customer_at ?? '').trim() &&
+      !(linked.external_send_channel ?? '').trim()
+    ) {
+      setBillToEditorInvoice(linked)
+      return
+    }
+    setBillingFeeSeparatelyId(row.id)
+    setError(null)
+    try {
+      // Same discipline as createInvoiceFromSelectedSegments: flush first so
+      // the DB totals match the screen before the invoice math runs.
+      await flushBillingAutosave()
+      const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(row.incident_at ?? ''))
+      const memo = m
+        ? `Biohazard remediation fee — incident ${m[2]}/${m[3]}/${m[1]}`
+        : 'Biohazard remediation fee'
+      const nextOrder = invoices.length
+      const estBill = editing.last_bill_date?.trim().slice(0, 10) ?? null
+      const { data: created, error: insErr } = await supabase
+        .from('jobs_ledger_invoices')
+        .insert({
+          job_id: editing.id,
+          amount: fee,
+          status: 'ready_to_bill',
+          sequence_order: nextOrder,
+          estimated_bill_date: estBill,
+          is_primary_rtb_bundle: false,
+          stripe_invoice_memo: memo,
+        })
+        .select('id')
+        .single()
+      if (insErr) throw insErr
+      const newInvoiceId = (created as { id: string }).id
+      const linkRes = await linkHazmatFeeIncidentToInvoice(row.id, newInvoiceId)
+      if (!linkRes.ok) {
+        throw new Error(linkRes.error ?? 'Fee invoice created, but linking the incident to it failed')
+      }
+      if (editing.status === 'ready_to_bill') {
+        const raw = await withSupabaseRetry(
+          () =>
+            supabase.rpc('ensure_single_ready_to_bill_invoice_for_job', {
+              p_job_id: editing.id,
+            }),
+          'ensure RTB remainder after fee split'
+        )
+        const obj = raw as Record<string, unknown> | null
+        if (obj && typeof obj.error === 'string' && obj.error.length > 0) {
+          throw new Error(obj.error)
+        }
+      }
+      const found = await fetchJobWithDetailsById(editing.id)
+      if (found) {
+        setEditing(found)
+        setNewInvoiceAmount(breakOffPrefillAmountStringFromJob(found))
+        setNewInvoiceAmountInputFocused(false)
+      }
+      refreshHazmatIncidents()
+      onSavedRef.current?.()
+      showToast(`Fee split to its own invoice ($${formatCurrency(fee)}). Now choose who pays it.`, 'success')
+      setBillToEditorInvoice({
+        id: newInvoiceId,
+        amount: fee,
+        bill_to_name: null,
+        bill_to_email: null,
+        bill_to_phone: null,
+      })
+    } catch (e: unknown) {
+      const err = e as { message?: string; details?: string; hint?: string }
+      const msg = err?.message || 'Failed to split the fee to its own invoice'
+      const extra = [err?.details, err?.hint].filter(Boolean).join(' ')
+      setError(extra ? `${msg}. ${extra}` : msg)
+    } finally {
+      setBillingFeeSeparatelyId(null)
+    }
+  }
+
   function addMaterialRow() {
     setMaterials((prev) => [...prev, { id: crypto.randomUUID(), description: '', amount: 0 }])
   }
@@ -3980,7 +4080,7 @@ export default function JobFormModal({
           </div>
           <JobFormFixturesSection
             fixtures={fixtures}
-            riderRows={editing && hazmatIncidents.length > 0 ? <JobFormHazmatRiderRows job={editing} incidents={hazmatIncidents} onChanged={refreshHazmatIncidents} /> : null}
+            riderRows={editing && hazmatIncidents.length > 0 ? <JobFormHazmatRiderRows job={editing} incidents={hazmatIncidents} onChanged={refreshHazmatIncidents} onBillSeparately={(row) => void billHazmatFeeSeparately(row)} billSeparatelyBusyId={billingFeeSeparatelyId} /> : null}
             riderFeesDollars={riderFeesDollars}
             fixtureScopeExpandedById={fixtureScopeExpandedById}
             setFixtureScopeExpandedById={setFixtureScopeExpandedById}

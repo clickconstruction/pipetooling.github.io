@@ -2046,6 +2046,11 @@ when_to_read:
 155. [Customer and Project Management](#customer-and-project-management)
 ---
 
+## Latest Updates (v2.1087)
+
+### Hazmat RIDERS: "Bill separately…" — one click to make the tenant pay the fee (2026-07-29)
+The Taunya flow, end to end: a hazmat fee the customer's tenant pays while the customer pays the rest. The fee's RIDERS row in [`JobFormHazmatRiderRows`](../src/components/jobs/JobFormHazmatRidersStrip.tsx) gains **Bill separately…** (hidden for voided fees and fees already on a sent bill). The shell handler `billHazmatFeeSeparately` in [`JobFormModal`](../src/components/jobs/JobFormModal.tsx) composes existing mechanics verbatim: flush billing autosave → INSERT a non-primary RTB invoice for exactly the fee (memo pre-set to "Biohazard remediation fee — incident MM/DD/YYYY") → repoint the incident via the `link_hazmat_fee_incident_to_invoice` RPC (works for folded, job-total, AND dangling-link fees) → `ensure_single_ready_to_bill_invoice_for_job` re-sync so the customer's primary bill shrinks by the fee → refetch + open the v2.1086 Bill-to editor on the new invoice ("Now choose who pays it"). A fee already sitting on its own unsent non-primary draft skips straight to the editor. With the v2.1086 roll-in guard, the tenant's invoice never folds back into the customer's bill. New help guide [`bill-part-of-a-job-to-someone-else`](../src/content/help/bill-part-of-a-job-to-someone-else.md); `charge-a-hazmat-fee` gains a "When someone else pays the fee" section. Client-only.
+
 ## Latest Updates (v2.1086)
 
 ### Bill an invoice to someone else — the "Bill to" editor + Bill Customer overlay (2026-07-29)

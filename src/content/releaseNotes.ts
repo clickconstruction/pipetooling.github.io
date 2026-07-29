@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1087',
+    date: '2026-07-29',
+    title: 'One click: bill the hazmat fee to the tenant',
+    kind: 'feature',
+    highlights: [
+      'On Edit Job, every hazmat fee\'s RIDERS row gains "Bill separately…" — the fee moves onto its own invoice (the customer\'s bill shrinks by the same amount) and you\'re asked who pays it.',
+      'Enter the tenant\'s name and email, then send both bills as usual: the customer\'s invoice goes to the customer, the fee invoice goes to the tenant.',
+      'New help guide: "bill part of a job to someone else".',
+    ],
+  },
+  {
     version: 'v2.1086',
     date: '2026-07-29',
     title: 'Bill an invoice to someone other than the customer',
