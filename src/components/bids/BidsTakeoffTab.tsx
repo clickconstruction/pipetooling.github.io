@@ -32,6 +32,7 @@ import {
   type TakeoffStage,
 } from '../../lib/bids/bidTakeoffHelpers'
 import { loadBundleBreakdown, loadBundlePartLines, type BundleBreakdown, type BundlePartLine } from '../../lib/bids/assemblyBundleBreakdown'
+import { buildPartAssemblyIndex, type PartAssemblyEntry, type PartAssemblyIndexItem } from '../../lib/bids/partAssemblyIndex'
 import { BidWorkflowTabTitleWithPreview } from './BidWorkflowTabTitleWithPreview'
 import { ModalShell } from './ModalShell'
 import { BidProjectCell } from './BidProjectCell'
@@ -212,6 +213,10 @@ export function BidsTakeoffTab({
   const [roughAddAssemblyModalCountRowId, setRoughAddAssemblyModalCountRowId] = useState<string | null>(null)
   const [roughAddAssemblySearchQuery, setRoughAddAssemblySearchQuery] = useState('')
   const [roughAddAssemblyExpanding, setRoughAddAssemblyExpanding] = useState(false)
+  // "In N assemblies" on a selected part line: partId → assemblies containing it,
+  // and the active part filter of the Add assembly modal (null = unfiltered).
+  const [partAssemblyIndex, setPartAssemblyIndex] = useState<Map<string, PartAssemblyEntry[]> | null>(null)
+  const [roughAddAssemblyPartFilter, setRoughAddAssemblyPartFilter] = useState<{ partId: string; partName: string } | null>(null)
   const [roughQtyNumpadLineId, setRoughQtyNumpadLineId] = useState<string | null>(null)
   const [roughQtyNumpadPos, setRoughQtyNumpadPos] = useState<{ top: number; left: number } | null>(null)
   const [roughQtyNumpadDraft, setRoughQtyNumpadDraft] = useState('')
@@ -495,6 +500,23 @@ export function BidsTakeoffTab({
   function closeRoughAddAssemblyModal() {
     setRoughAddAssemblyModalCountRowId(null)
     setRoughAddAssemblySearchQuery('')
+    setRoughAddAssemblyPartFilter(null)
+  }
+
+  /** Assemblies containing a part, restricted to the templates visible on this takeoff. */
+  function partAssemblyEntriesFor(partId: string | null | undefined): PartAssemblyEntry[] {
+    if (!partId || !partAssemblyIndex) return []
+    const entries = partAssemblyIndex.get(partId)
+    if (!entries || entries.length === 0) return []
+    return entries.filter((e) => materialTemplates.some((t) => t.id === e.templateId))
+  }
+
+  /** Open the Add assembly modal pre-filtered to assemblies that contain this part. */
+  function openAssembliesForPart(countRowId: string, partId: string) {
+    const partName = takeoffAddTemplateParts.find((p) => p.id === partId)?.name ?? 'this part'
+    setRoughAddAssemblyPartFilter({ partId, partName })
+    setRoughAddAssemblySearchQuery('')
+    setRoughAddAssemblyModalCountRowId(countRowId)
   }
 
   async function saveTakeoffNewTemplate(e: React.FormEvent) {
@@ -2205,6 +2227,20 @@ export function BidsTakeoffTab({
   }, [activeTab, selectedBidForTakeoff?.id, selectedBidForTakeoff?.materials_model, selectedServiceTypeId, supabase])
 
   useEffect(() => {
+    if (activeTab !== 'takeoffs' || !selectedBidForTakeoff?.id) return
+    if (normalizeMaterialsModel(selectedBidForTakeoff.materials_model) !== 'rough') return
+    let cancelled = false
+    void (async () => {
+      const { data, error } = await supabase
+        .from('material_template_items')
+        .select('template_id, item_type, part_id, nested_template_id, quantity')
+      if (cancelled || error || !data) return
+      setPartAssemblyIndex(buildPartAssemblyIndex(data as PartAssemblyIndexItem[]))
+    })()
+    return () => { cancelled = true }
+  }, [activeTab, selectedBidForTakeoff?.id, selectedBidForTakeoff?.materials_model, supabase, materialTemplates])
+
+  useEffect(() => {
     const idsToLoad = Array.from(
       new Set(takeoffMappings.map((m) => m.templateId).filter(Boolean))
     ).filter((id) => takeoffTemplatePreviewCache[id] === undefined)
@@ -2457,6 +2493,14 @@ export function BidsTakeoffTab({
       .filter((p) => [p.name, p.manufacturer, p.part_types?.name, p.notes].some((f) => (f || '').toLowerCase().includes(q)))
       .slice(0, limit)
   }
+
+  // Add assembly modal, filtered to assemblies containing one part ("In N assemblies" link).
+  const roughAddAssemblyFilterEntries = roughAddAssemblyPartFilter
+    ? partAssemblyEntriesFor(roughAddAssemblyPartFilter.partId)
+    : null
+  const roughAddAssemblyTemplates = roughAddAssemblyFilterEntries
+    ? materialTemplates.filter((t) => roughAddAssemblyFilterEntries.some((e) => e.templateId === t.id))
+    : materialTemplates
 
   return (
     <>
@@ -3189,6 +3233,8 @@ export function BidsTakeoffTab({
                                       }}
                                       materialTemplates={materialTemplates}
                                       filterPartsByQuery={filterPartsByQuery}
+                                      partAssemblyCount={partAssemblyEntriesFor(line.partId).length}
+                                      onShowAssembliesForPart={(partId) => openAssembliesForPart(row.id, partId)}
                                       roughQtyNumpadLineId={roughQtyNumpadLineId}
                                       roughQtyNumpadDraft={roughQtyNumpadDraft}
                                       onRoughQtyFocus={onRoughQtyFocus}
@@ -3517,6 +3563,46 @@ export function BidsTakeoffTab({
                   disabled={roughAddAssemblyExpanding}
                   style={{ width: '100%', boxSizing: 'border-box', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, marginBottom: '0.5rem' }}
                 />
+                {roughAddAssemblyPartFilter ? (
+                  <div style={{ marginBottom: '0.5rem' }}>
+                    <span
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '0.35rem',
+                        fontSize: '0.8125rem',
+                        color: 'var(--text-blue-700)',
+                        background: 'var(--bg-blue-tint)',
+                        border: '1px solid var(--border-blue)',
+                        borderRadius: 999,
+                        padding: '0.15rem 0.6rem',
+                        maxWidth: '100%',
+                      }}
+                    >
+                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        Containing: {roughAddAssemblyPartFilter.partName}
+                      </span>
+                      <button
+                        type="button"
+                        aria-label="Clear part filter"
+                        title="Show all assemblies"
+                        disabled={roughAddAssemblyExpanding}
+                        onClick={() => setRoughAddAssemblyPartFilter(null)}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          padding: 0,
+                          cursor: roughAddAssemblyExpanding ? 'not-allowed' : 'pointer',
+                          color: 'var(--text-blue-700)',
+                          fontSize: '0.9rem',
+                          lineHeight: 1,
+                        }}
+                      >
+                        ×
+                      </button>
+                    </span>
+                  </div>
+                ) : null}
                 <ul
                   style={{
                     margin: 0,
@@ -3528,10 +3614,12 @@ export function BidsTakeoffTab({
                     borderRadius: 4,
                   }}
                 >
-                  {filterTemplatesByQuery(materialTemplates, roughAddAssemblySearchQuery, 50).length === 0 ? (
-                    <li style={{ padding: '0.75rem', color: 'var(--text-muted)' }}>No assemblies match.</li>
+                  {filterTemplatesByQuery(roughAddAssemblyTemplates, roughAddAssemblySearchQuery, 50).length === 0 ? (
+                    <li style={{ padding: '0.75rem', color: 'var(--text-muted)' }}>
+                      {roughAddAssemblyPartFilter ? 'No assemblies include this part.' : 'No assemblies match.'}
+                    </li>
                   ) : (
-                    filterTemplatesByQuery(materialTemplates, roughAddAssemblySearchQuery, 50).map((t) => (
+                    filterTemplatesByQuery(roughAddAssemblyTemplates, roughAddAssemblySearchQuery, 50).map((t) => (
                       <li key={t.id} style={{ display: 'flex', alignItems: 'stretch', borderBottom: '1px solid var(--border)' }}>
                         <button
                           type="button"
@@ -3553,6 +3641,12 @@ export function BidsTakeoffTab({
                           <div style={{ fontWeight: 500 }}>{t.name}</div>
                           {t.description ? (
                             <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>{t.description}</div>
+                          ) : null}
+                          {roughAddAssemblyFilterEntries && roughAddAssemblyPartFilter ? (
+                            <div style={{ fontSize: '0.75rem', color: 'var(--text-blue-700)' }}>
+                              includes {roughAddAssemblyPartFilter.partName} ×
+                              {roughAddAssemblyFilterEntries.find((e) => e.templateId === t.id)?.quantity ?? 0}
+                            </div>
                           ) : null}
                         </button>
                         <button
@@ -5045,6 +5139,8 @@ function SortableRoughPartLineRow({
   onOpenEditTakeoffPart,
   materialTemplates,
   filterPartsByQuery,
+  partAssemblyCount,
+  onShowAssembliesForPart,
   roughQtyNumpadLineId,
   roughQtyNumpadDraft,
   onRoughQtyFocus,
@@ -5084,6 +5180,8 @@ function SortableRoughPartLineRow({
   onOpenEditTakeoffPart: (partId: string) => void
   materialTemplates: MaterialTemplateWithAssemblyType[]
   filterPartsByQuery: (parts: RoughTakeoffMaterialPart[], query: string, limit?: number) => RoughTakeoffMaterialPart[]
+  partAssemblyCount: number
+  onShowAssembliesForPart: (partId: string) => void
   roughQtyNumpadLineId: string | null
   roughQtyNumpadDraft: string
   onRoughQtyFocus: (lineId: string, input: HTMLInputElement) => void
@@ -5353,6 +5451,30 @@ function SortableRoughPartLineRow({
                   return s
                 })()}
               </span>
+              {partAssemblyCount > 0 ? (
+                <button
+                  type="button"
+                  title="Show assemblies that include this part"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    if (line.partId) onShowAssembliesForPart(line.partId)
+                  }}
+                  style={{
+                    flexShrink: 0,
+                    padding: 0,
+                    background: 'none',
+                    border: 'none',
+                    fontSize: '0.7rem',
+                    color: 'var(--text-blue-700)',
+                    textDecoration: 'underline',
+                    textUnderlineOffset: '2px',
+                    cursor: 'pointer',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  In {partAssemblyCount} {partAssemblyCount === 1 ? 'assembly' : 'assemblies'}
+                </button>
+              ) : null}
               <button
                 type="button"
                 aria-label="Edit part"
