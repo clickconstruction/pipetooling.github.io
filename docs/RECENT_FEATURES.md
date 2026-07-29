@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-29 (v2.1089)
+last_updated: 2026-07-29 (v2.1090)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1090)
+
+### JobFormModal decomposition: source-estimate banner extracted (+ acceptance-record stacking fix) (2026-07-29)
+Step 8 of the [`JOB_FORM_MODAL_ARCHITECTURE.md`](./JOB_FORM_MODAL_ARCHITECTURE.md) extraction order. New [`JobFormSourceEstimateBanner`](../src/components/jobs/JobFormSourceEstimateBanner.tsx) owns the §2 vertical slice — `sourceEstimateForJob`/`sourceEstimateLoading`/`contractModalEstimateId`, the `estimates.job_ledger_id` loader effect, the green banner JSX, and the `CustomerAcceptanceRecordModal` render — behind a single `jobId` prop; `JobFormModal.tsx` 4,985 → 4,901 lines. `finishClose`/`resetNewForm` no longer reset the moved state (dies with the component per the remount-by-key contract; self-clears when `jobId` is null). **One deliberate behavior fix rode along:** the acceptance modal previously rendered as a root-level sibling of the Edit-Job overlay with `zIndex: 80` vs the form's 1010, so "View contract & acceptance" opened it invisibly *behind* the form; rendered inside the overlay's stacking context its z-index resolves locally and the record now appears above the form (unchanged when opened from Estimates). Map dossier flipped to extracted.
 
 ## Latest Updates (v2.1089)
 

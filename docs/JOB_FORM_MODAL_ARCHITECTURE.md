@@ -39,7 +39,7 @@ Sections in JSX order inside the modal body; nested overlays and tail modals aft
 |---|---|---|---|---|---|---|---|---|
 | 0 | Shell + lifecycle | `initDone` gate, overlay div (`JOB_FORM_OVERLAY_Z_INDEX`), `closeForm` (~3067–3113) | shell | `initDone`, `editing`, `error`, `saving` | all | — | — | **Stays** — this is the parent |
 | 1 | Header row | `hcpHelpOpen` popover, Import / "Job Detail" button, "Link to: Bid \| Project" (~3113–3356) | inline | 1 (`hcpHelpOpen` + ref/effect) | `bidId`, `projectId`, `newJobImportBlockedByContent`, `jobImportSourceOpen`, modal openers | med (reads dirty gate; opens 3 link modals; `jobDetailOpenerBridge`) | low | Extract `JobFormHeaderRow` late; openers stay in shell |
-| 2 | Source-estimate banner | `sourceEstimateForJob` (~3357–3400) | inline | 3 (`sourceEstimateForJob`, `sourceEstimateLoading`, `contractModalEstimateId`) + loader effect | `editing?.id` | low (tail `CustomerAcceptanceRecordModal`) | low | Extract `JobFormSourceEstimateBanner` with its loader + modal |
+| 2 | Source-estimate banner | `JobFormSourceEstimateBanner` | **extracted** (v2.1090) | 3 states + loader + acceptance modal, all inside the component | `editing?.id` (sole prop) | low | low | Done — [`JobFormSourceEstimateBanner.tsx`](../src/components/jobs/JobFormSourceEstimateBanner.tsx) |
 | 3 | Identity fields | labels `HCP`/`C#`/`Job Name`/`Service type`/`Last manual bill date`/`Job Address` (~3415–3536) | inline | 0 | `hcpNumber`, `clickNumber`, `jobName`, `jobAddress`, `formServiceTypeId`, `lastBillDate` | med (all fields save-engine inputs; hcp drives Sub Labor; serviceType role-filtered) | low | Controlled `JobFormIdentityFields` (props+setters) |
 | 4 | People assignment | `contractorsSearch` "Add People..." input + chips (~3537–3666) | inline | 2 (`contractorsSearch`, `contractorsDropdownOpen`) + click-outside effect + ref | `teamMemberIds`, `users` | low | low | **Good first Stage-B** — `JobFormPeoplePicker` |
 | 5 | Customer block | `customerExpanded` collapsible, "Link to customer" search (~3667–3988) | inline | 3 (`customerSearch`, `customerDropdownOpen`, highlight timers) | `customerId/Name/Email/Phone`, `dateMet`, `googleDriveLink`, `jobPicturesLink`, `customers`, `customerExpanded`, highlight gates | **high** (immediate DB writes on link; prefill flows write these; save engine reads all) | med | `JobFormCustomerSection` after Stage A; create-customer modal moves with it |
@@ -179,10 +179,8 @@ If `customerId && dateMet` and the cached customer row lacks `date_met`: `UPDATE
 
 ### 2. Source-estimate banner
 
-- **Render location:** `editing && sourceEstimateForJob` green banner with `#estimate_number` link + "View contract & acceptance" (~3357–3400); the `error` paragraph sits just below (~3401, shell-owned).
-- **Owned state:** `sourceEstimateForJob`, `sourceEstimateLoading`, `contractModalEstimateId`; loader effect (~1580) queries `estimates` by `job_ledger_id = editing.id`.
-- **Sub-components:** `CustomerAcceptanceRecordModal` (tail, extracted) — its only opener.
-- **Extraction:** clean vertical slice — banner + loader + modal into `JobFormSourceEstimateBanner`. **Low risk, good early win.**
+- **Status: extracted (v2.1090)** → [`JobFormSourceEstimateBanner.tsx`](../src/components/jobs/JobFormSourceEstimateBanner.tsx). Sole prop `jobId` (= `editing?.id ?? null`); the component owns `sourceEstimateForJob`/`sourceEstimateLoading`/`contractModalEstimateId`, the `estimates.job_ledger_id` loader, and the `CustomerAcceptanceRecordModal` render. The shell's `error` paragraph below the banner stays shell-owned. `finishClose`/`resetNewForm` no longer reset this state — it dies with the component (remount-by-key) and self-clears when `jobId` is null.
+- **Stacking fix shipped with the move:** as a shell-tail sibling of the overlay, the acceptance modal's hardcoded `zIndex: 80` lost to the form's 1010 root-level backdrop, so "View contract &amp; acceptance" opened it invisibly BEHIND the form. It now renders inside the overlay's stacking context, where 80 resolves locally and the record stacks above the form.
 
 ### 3. Identity fields
 
@@ -310,8 +308,8 @@ Documented with their owning sections (§12, §7, §12). All render at `JOB_FORM
 
 - `AgreedWriteDownModal` (opened from §11): props include `paidOnInvoice` (memo `agreedWriteDownInvoicePaidSum`) and `isStripeHosted`; success → `refreshEditingJobAndHydratePayments` + `onSaved`. (Reads the raw Stripe mode pref without the dev gate — BILLING_FLOWS candidate #19.)
 - `BilledBillViewModal` (opened from §11 **and** §12): `onAfterStripeDetailsLoaded` → `refetchEditingFromBillView` (merges the refreshed invoice back into `billViewInvoice`); `onAfterOobUnwindSuccess` → rehydrate payments; `onClose` runs a **3-attempt / 280ms retry refetch loop** waiting for memo/footer backfill to land (quirk #10).
-- `CustomerAcceptanceRecordModal` (opened from §2).
-- All three **stay in the shell** (playbook rule: modal opened from 2+ sections).
+- ~~`CustomerAcceptanceRecordModal` (opened from §2)~~ — moved into `JobFormSourceEstimateBanner` with §2 (v2.1090; single opener).
+- The remaining two **stay in the shell** (playbook rule: modal opened from 2+ sections).
 
 ---
 
@@ -374,7 +372,7 @@ Per playbook: Stage A before Stage B per unit; lowest coupling first; money-path
 
 6. `JobFormDeleteMigrateModals` (§19+§20) — self-contained, clear inputs.
 7. `JobFormPeoplePicker` (§4) — smallest shared surface.
-8. `JobFormSourceEstimateBanner` (§2) — vertical slice with its loader + modal.
+8. ~~`JobFormSourceEstimateBanner` (§2)~~ — **done** (v2.1090).
 9. `JobFormIdentityFields` (§3) — controlled, wide-but-shallow props.
 10. `JobFormLinksSection` (§6) — refs move with it; link modals stay shell.
 11. `JobFormFixturesSection` (§7+§17).
