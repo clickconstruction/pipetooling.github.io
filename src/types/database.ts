@@ -3983,49 +3983,64 @@ export type Database = {
           created_at: string
           created_by: string | null
           description: string
+          edited_at: string | null
           exposed_people: string
           fee_amount: number
           id: string
           incident_at: string
           invoice_id: string | null
           job_id: string
+          notice_emailed_at: string | null
+          notice_emailed_to: string | null
           photo_links: Json
           public_token: string
           stage_label: string | null
           testimonials: Json
           tos_clause_snapshot: string
+          voided_at: string | null
+          voided_by: string | null
         }
         Insert: {
           created_at?: string
           created_by?: string | null
           description: string
+          edited_at?: string | null
           exposed_people?: string
           fee_amount: number
           id?: string
           incident_at?: string
           invoice_id?: string | null
           job_id: string
+          notice_emailed_at?: string | null
+          notice_emailed_to?: string | null
           photo_links?: Json
           public_token?: string
           stage_label?: string | null
           testimonials?: Json
           tos_clause_snapshot: string
+          voided_at?: string | null
+          voided_by?: string | null
         }
         Update: {
           created_at?: string
           created_by?: string | null
           description?: string
+          edited_at?: string | null
           exposed_people?: string
           fee_amount?: number
           id?: string
           incident_at?: string
           invoice_id?: string | null
           job_id?: string
+          notice_emailed_at?: string | null
+          notice_emailed_to?: string | null
           photo_links?: Json
           public_token?: string
           stage_label?: string | null
           testimonials?: Json
           tos_clause_snapshot?: string
+          voided_at?: string | null
+          voided_by?: string | null
         }
         Relationships: [
           {
@@ -4047,6 +4062,13 @@ export type Database = {
             columns: ["job_id"]
             isOneToOne: false
             referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_hazmat_incidents_voided_by_fkey"
+            columns: ["voided_by"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
@@ -6828,6 +6850,36 @@ export type Database = {
           },
           {
             foreignKeyName: "people_labels_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      people_labor_job_assignees: {
+        Row: {
+          labor_job_id: string
+          person_id: string
+        }
+        Insert: {
+          labor_job_id: string
+          person_id: string
+        }
+        Update: {
+          labor_job_id?: string
+          person_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "people_labor_job_assignees_labor_job_id_fkey"
+            columns: ["labor_job_id"]
+            isOneToOne: false
+            referencedRelation: "people_labor_jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "people_labor_job_assignees_person_id_fkey"
             columns: ["person_id"]
             isOneToOne: false
             referencedRelation: "people"
@@ -11516,6 +11568,10 @@ export type Database = {
         Args: { p_invoice_id: string }
         Returns: Json
       }
+      delete_hazmat_fee_incident: {
+        Args: { p_incident_id: string }
+        Returns: Json
+      }
       delete_ready_to_bill_invoice: {
         Args: { p_invoice_id: string }
         Returns: Json
@@ -11778,10 +11834,7 @@ export type Database = {
           person_name: string
         }[]
       }
-      get_paid_job_email_payload: {
-        Args: { p_job_id: string }
-        Returns: Json
-      }
+      get_paid_job_email_payload: { Args: { p_job_id: string }; Returns: Json }
       get_parts_ordered_by_price_count:
         | {
             Args: { ascending_order?: boolean }
@@ -11926,6 +11979,10 @@ export type Database = {
           error_message: string
           inserted_ids: string[]
         }[]
+      }
+      link_hazmat_fee_incident_to_invoice: {
+        Args: { p_incident_id: string; p_invoice_id: string }
+        Returns: Json
       }
       list_ar_allocations_for_mercury_transaction: {
         Args: { p_mercury_transaction_id: string }
@@ -12297,6 +12354,7 @@ export type Database = {
           last_thread_note_at: string
           master_user_id: string
           my_last_report_at: string
+          pct_complete: number
           revenue: number
           status: string
         }[]
@@ -12803,6 +12861,7 @@ export type Database = {
           window_start_utc: string
         }[]
       }
+      resolve_pay_person_id: { Args: { p_name: string }; Returns: string }
       resolve_pay_person_id_from_clock_user: {
         Args: { p_display_name: string; p_user_id: string }
         Returns: string
@@ -13053,6 +13112,10 @@ export type Database = {
         }
         Returns: undefined
       }
+      update_hazmat_fee_incident: {
+        Args: { p_incident_id: string; p_patch: Json }
+        Returns: Json
+      }
       update_job_status: {
         Args: { p_job_id: string; p_to_status: string }
         Returns: Json
@@ -13145,6 +13208,10 @@ export type Database = {
       validate_pay_stub_payments_vs_net: {
         Args: { p_stub: string }
         Returns: undefined
+      }
+      void_hazmat_fee_incident: {
+        Args: { p_incident_id: string }
+        Returns: Json
       }
     }
     Enums: {
