@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-28 (v2.1067)
+last_updated: 2026-07-29 (v2.1068)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1068)
+
+### Job stages step 2: `jobs_ledger_fixtures.invoice_id` migration (2026-07-29)
+DB-only slice of the job-stages feature: migration [`20260729002615_fixture_invoice_link.sql`](../supabase/migrations/20260729002615_fixture_invoice_link.sql) adds `jobs_ledger_fixtures.invoice_id uuid REFERENCES jobs_ledger_invoices(id) ON DELETE SET NULL` + a partial index. The link lives on the **fixture** side because the save engine deletes+reinserts fixture rows on every save — the client will carry `invoice_id` in its in-memory rows and re-write the link with each reinsert (v2.1069), so it survives the id churn that would orphan a link table. `ON DELETE SET NULL` means delete-RTB-draft, send-back, and void flows release their segments automatically with zero RPC changes. One invoice per fixture, whole. No client behavior change yet.
 
 ## Latest Updates (v2.1067)
 
