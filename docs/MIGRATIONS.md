@@ -106,6 +106,12 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 #### July 29, 2026
 
+**`20260729183737_jobs_ledger_invoices_bill_to.sql`** _(apply via `supabase db push` after the file is on `main`; migration first, then the edge-function redeploys (v2.1085) and the client (v2.1086+) — old clients/functions simply never read the columns)_
+- **Purpose**: Per-invoice "Bill to" override (v2.1084) — bill part of a job to someone other than the job's customer (e.g. the customer's tenant pays the hazmat fee). Adds four nullable columns to `jobs_ledger_invoices`: `bill_to_name`, `bill_to_email` (the override is active only when this is set), `bill_to_phone`, and `bill_to_stripe_customer_id` (the SEPARATE Stripe customer created for this invoice's recipient — never mirrored into `customers.stripe_customer_id`, same shared-by-test-and-live convention).
+- **Security**: additive nullable columns; existing RLS + read-only guards on the table cover them; no CREATE TABLE so no sweep calls needed.
+- **Ordering**: migration first; v2.1085 redeploys the four send/create functions that read the columns, v2.1086+ ships the UI that writes them.
+- **Category**: Jobs / billing
+
 **`20260729002615_fixture_invoice_link.sql`** _(apply via `supabase db push` after the file is on `main`; migration first, then the client that writes it — old clients simply never set the column)_
 - **Purpose**: Job-stages billing step 2 (v2.1068) — `jobs_ledger_fixtures.invoice_id uuid REFERENCES jobs_ledger_invoices(id) ON DELETE SET NULL` + partial index. The link lives on the fixture side because the Edit-Job save engine deletes+reinserts fixture rows (a link table keyed on fixture ids would orphan every save); `ON DELETE SET NULL` makes every invoice-teardown flow (delete RTB draft, send-back, void) release its segments with zero RPC changes. One invoice per fixture, whole — no partial-segment billing (client-enforced).
 - **Security**: additive nullable column; existing RLS + read-only guards on the table cover it; no CREATE TABLE so no sweep calls needed.

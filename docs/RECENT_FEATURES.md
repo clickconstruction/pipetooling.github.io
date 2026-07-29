@@ -2046,6 +2046,11 @@ when_to_read:
 155. [Customer and Project Management](#customer-and-project-management)
 ---
 
+## Latest Updates (v2.1084)
+
+### Invoice "Bill to" override — DB slice (2026-07-29)
+Request (Taunya): send part of an invoice to a different payer than the job's customer — a hazmat fee the customer's TENANT pays while the customer pays everything else. This is the DB slice of the train: migration [`20260729183737_jobs_ledger_invoices_bill_to.sql`](../supabase/migrations/20260729183737_jobs_ledger_invoices_bill_to.sql) (**`supabase db push` after merge**) adds four nullable columns to `jobs_ledger_invoices` — `bill_to_name` / `bill_to_email` / `bill_to_phone` (the alternate recipient; active only when the email is set) and `bill_to_stripe_customer_id` (a SEPARATE Stripe customer minted per overridden invoice so billing a tenant never rewrites the job customer's saved `customers.stripe_customer_id`). NULL everywhere = today's behavior, byte-for-byte. Follow-ups: v2.1085 makes the Stripe create/preview + physical-invoice + hazmat-notice edge functions honor the override; v2.1086 ships the Edit Job "Bill to" editor + Bill Customer banner; v2.1087 the one-click "Bill separately…" on hazmat RIDERS rows. Deploy order: this migration first, everything else after.
+
 ## Latest Updates (v2.1083)
 
 ### Migration convention: mandatory `SET lock_timeout = '3s'` preamble (2026-07-29)
