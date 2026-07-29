@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1070',
+    date: '2026-07-29',
+    title: 'See the whole job as segments — and bill them',
+    kind: 'feature',
+    highlights: [
+      'Edit Job\'s Invoices section now opens with a colored strip showing every line item as a block — in your order, sized by its share of the job, colored by whether it\'s unbilled, ready to bill, billed, or paid.',
+      'Tick the finished segments and press one button to break off a Ready-to-Bill invoice for exactly those stages.',
+      'New help guide: "split a job into stages and bill stage by stage".',
+    ],
+  },
+  {
     version: 'v2.1069',
     date: '2026-07-29',
     title: 'Line items remember which invoice bills them',
