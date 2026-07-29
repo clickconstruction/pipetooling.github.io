@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1089',
+    date: '2026-07-29',
+    title: 'Under the hood: architecture maps for every large code surface',
+    kind: 'infra',
+    highlights: [
+      'No visible changes — 20 new developer documents map the internals of every large screen and window in the app.',
+      'These maps make future maintenance and cleanup work faster and safer.',
+    ],
+  },
+  {
     version: 'v2.1088',
     date: '2026-07-29',
     title: 'Takeoffs: jump from a part to the assemblies that include it',

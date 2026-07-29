@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-29 (v2.1088)
+last_updated: 2026-07-29 (v2.1089)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1089)
+
+### Step-0 architecture maps for every unmapped large surface (2026-07-29)
+Docs-only. A 20-agent mapping sweep wrote a [`PAGE_DECOMPOSITION_PLAYBOOK.md`](./PAGE_DECOMPOSITION_PLAYBOOK.md) Step-0 architecture map for **every surface ≥2,000 lines that lacked one** — per-region dossiers (owned vs shared state, memos, handlers, supabase tables/RPCs, coupling), the shared substrate (selection pointer / data engine or explicit "none"), Stage-A pure-logic candidates, a master summary table, and a recommended extraction order, using real identifiers so extraction can start without re-reading the file. New maps (in `docs/`): [`BIDS_TAKEOFF_TAB`](./BIDS_TAKEOFF_TAB_ARCHITECTURE.md), [`BIDS_PRICING_LABOR_TABS`](./BIDS_PRICING_LABOR_TABS_ARCHITECTURE.md), [`BID_SUBMISSION_FOLLOWUP_TAB`](./BID_SUBMISSION_FOLLOWUP_TAB_ARCHITECTURE.md), [`ESTIMATES_TABS`](./ESTIMATES_TABS_ARCHITECTURE.md), [`WORKFLOW_PAGE`](./WORKFLOW_PAGE_ARCHITECTURE.md), [`PEOPLE_REVIEW_TAB`](./PEOPLE_REVIEW_TAB_ARCHITECTURE.md), [`PEOPLE_CONTRACTS_OVERHEAD_TABS`](./PEOPLE_CONTRACTS_OVERHEAD_TABS_ARCHITECTURE.md), [`MY_TIME_DAY_EDITOR_MODAL`](./MY_TIME_DAY_EDITOR_MODAL_ARCHITECTURE.md), [`CLOCK_SURFACES`](./CLOCK_SURFACES_ARCHITECTURE.md), [`JOBS_STAGES_TAB`](./JOBS_STAGES_TAB_ARCHITECTURE.md), [`JOBS_JOB_SUMMARY_TAB`](./JOBS_JOB_SUMMARY_TAB_ARCHITECTURE.md), [`SEND_RECORD_INVOICE_MODAL`](./SEND_RECORD_INVOICE_MODAL_ARCHITECTURE.md), [`JOBS_MODALS`](./JOBS_MODALS_ARCHITECTURE.md), [`BANKING_TABS`](./BANKING_TABS_ARCHITECTURE.md), [`SCHEDULE_DISPATCH`](./SCHEDULE_DISPATCH_ARCHITECTURE.md), [`PROSPECTS_TABS`](./PROSPECTS_TABS_ARCHITECTURE.md), [`CHECKLIST_TABS`](./CHECKLIST_TABS_ARCHITECTURE.md), [`QUICKFILL`](./QUICKFILL_ARCHITECTURE.md), [`JOB_TALLY`](./JOB_TALLY_ARCHITECTURE.md), [`PROJECTS_FORECAST_TABS`](./PROJECTS_FORECAST_TABS_ARCHITECTURE.md) (each `*_ARCHITECTURE.md`). The playbook's large-file inventory is refreshed with 2026-07-29 line counts and now links every map; `docs/README.md` indexes them. Every surface ≥2k lines now has a Step-0 map — extractions can begin from the maps directly. Excluded as already mapped: Materials, Jobs, People, Bids, Settings, Dashboard, JobFormModal; `SettingsDashboardTab` (1,985) stays tracked in [`SETTINGS_TABS_ARCHITECTURE.md`](./SETTINGS_TABS_ARCHITECTURE.md).
 
 ## Latest Updates (v2.1088)
 
