@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-29 (v2.1070)
+last_updated: 2026-07-29 (v2.1071)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1071)
+
+### Job stages step 5: caption + Multiple Segment Generator (2026-07-29)
+Final slice. The ① Line Items caption becomes "Specific segments of work add to the Job Total." followed by a blue link-styled **Multiple Segment Generator** button ([`JobFormFixturesSection`](../src/components/jobs/JobFormFixturesSection.tsx)). It opens [`MultipleSegmentGeneratorModal`](../src/components/jobs/MultipleSegmentGeneratorModal.tsx): total prefilled from the current Job Total (editable), rows of segment name + % with live cents-exact dollar values, ▲▼ re-arrange (reuses `moveRowById`), add/remove rows, a "% allocated" indicator that warns off-100, and two one-click presets — **Commercial 30/30/30/10** (Rough In / Top Out / Trim Set / Final) and **Residential 40/40/20** (Rough In / Top Out / Trim Set). Cancel / **Add to Job** appends the generated lines (count 1, unit price = share) to the existing line items; a lone untouched placeholder row is replaced. Math kernel [`segmentGenerator.ts`](../src/lib/jobs/segmentGenerator.ts) (+7 tests): each row rounds to cents independently, and at exactly 100% the last dollar-bearing row absorbs the rounding remainder so segments always sum to the total. Help guide `split-a-job-into-stages` gains a generator section. Client-only.
 
 ## Latest Updates (v2.1070)
 

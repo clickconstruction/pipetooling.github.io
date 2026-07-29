@@ -39,6 +39,8 @@ type JobFormFixturesSectionProps = {
    * allowed — order is presentation, not money.
    */
   invoiceStatusById?: Record<string, string>
+  /** Opens the Multiple Segment Generator modal (v2.1071). */
+  onOpenSegmentGenerator: () => void
   setStripeFixturePreviewRowId: (id: string | null) => void
   /** Live sum of the line items — shown as the running "Job Total" at the top right. */
   jobTotalDollars: number
@@ -68,6 +70,7 @@ export function JobFormFixturesSection({
   removeFixtureRow,
   moveFixtureRow,
   invoiceStatusById = {},
+  onOpenSegmentGenerator,
   setStripeFixturePreviewRowId,
   jobTotalDollars,
   riderRows,
@@ -91,8 +94,24 @@ export function JobFormFixturesSection({
             <div style={{ fontWeight: 400, textDecoration: 'underline', fontSize: '0.9375rem', color: 'var(--text-700)', marginBottom: '0.15rem' }}>① Line Items</div>
             <div style={{ marginBottom: '0.75rem' }}>
               <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                Fixtures / tie-ins / repair{riderFeesDollars > 0 ? ' — plus riders (hazmat fees)' : ''}. The work we
-                agree to do, each line adds to the <strong>Job Total</strong>
+                Specific segments of work{riderFeesDollars > 0 ? ' — plus riders (hazmat fees)' : ''} add to the{' '}
+                <strong>Job Total</strong>.{' '}
+                <button
+                  type="button"
+                  onClick={onOpenSegmentGenerator}
+                  style={{
+                    padding: 0,
+                    background: 'transparent',
+                    border: 'none',
+                    color: 'var(--text-link)',
+                    textDecoration: 'underline',
+                    fontSize: '0.75rem',
+                    cursor: 'pointer',
+                    fontFamily: 'inherit',
+                  }}
+                >
+                  Multiple Segment Generator
+                </button>
               </span>
             </div>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem', tableLayout: 'fixed' }}>

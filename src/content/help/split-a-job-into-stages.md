@@ -13,6 +13,15 @@ A job's line items can double as its **stages**: put them in the order the work 
 2. Enter one line per stage of work with its price — for a plumbing job that's usually *Rough In*, *Top Out*, *Trim Set*, and maybe a *Final* line.
 3. Use the small **▲▼ arrows** on the left of each line to put them in work order. The order sticks with the job.
 
+## Or generate the stages in one go
+
+Click the blue **Multiple Segment Generator** link in the ① Line Items caption:
+
+1. Set the **total amount** at the top (it prefills with the current Job Total).
+2. Name each segment and give it a **%** — the dollar value of each segment calculates as you type and always adds back to your total.
+3. Or press a preset: **Commercial 30/30/30/10** (Rough In / Top Out / Trim Set / Final) or **Residential 40/40/20** (Rough In / Top Out / Trim Set).
+4. Re-arrange with **▲▼**, then press {{button:primary|Add to Job}} — the segments append to your existing line items.
+
 :::example A staged plumbing job
 Rough In $3,000 → Top Out $3,000 → Trim Set $3,000 → Final $1,000 — Job Total $10,000
 :::

@@ -62,6 +62,7 @@ import type {
 } from '../../lib/jobs/jobFormTypes'
 import { pickDefaultServiceTypeId, visibleServiceTypesForJobForm } from '../../lib/jobs/jobFormServiceTypes'
 import {
+  fixtureRowHasUserContent,
   materialRowHasUserContent,
   newEmptyPaymentRow,
   newJobFormHasBlockingContent,
@@ -75,6 +76,8 @@ import {
   selectedSegmentSequencePositions,
 } from '../../lib/jobs/jobSegmentsCoverage'
 import { JobFormSegmentsBar } from './JobFormSegmentsBar'
+import { MultipleSegmentGeneratorModal } from './MultipleSegmentGeneratorModal'
+import type { SegmentGeneratorPayloadLine } from '../../lib/jobs/segmentGenerator'
 import {
   canRemovePaymentRowFromForm,
   canUnlinkMercuryPayment,
@@ -468,6 +471,20 @@ export default function JobFormModal({
   // for the next "create invoice from selected segments" action.
   const [selectedSegmentIds, setSelectedSegmentIds] = useState<Set<string>>(new Set())
   const [creatingSegmentInvoice, setCreatingSegmentInvoice] = useState(false)
+
+  const [segmentGeneratorOpen, setSegmentGeneratorOpen] = useState(false)
+
+  function addGeneratedSegmentsToJob(lines: SegmentGeneratorPayloadLine[]) {
+    if (lines.length > 0) {
+      setFixtures((prev) => {
+        const rows = lines.map((l) => ({ id: crypto.randomUUID(), ...l, line_description: '' }))
+        // A lone untouched placeholder row is replaced instead of kept above the result.
+        const base = prev.length === 1 && prev[0] && !fixtureRowHasUserContent(prev[0]) ? [] : prev
+        return [...base, ...rows]
+      })
+    }
+    setSegmentGeneratorOpen(false)
+  }
 
   function toggleSegmentSelected(fixtureRowId: string) {
     setSelectedSegmentIds((prev) => {
@@ -3798,6 +3815,7 @@ export default function JobFormModal({
             removeFixtureRow={removeFixtureRow}
             moveFixtureRow={moveFixtureRowInList}
             invoiceStatusById={fixtureInvoiceStatusById}
+            onOpenSegmentGenerator={() => setSegmentGeneratorOpen(true)}
             setStripeFixturePreviewRowId={setStripeFixturePreviewRowId}
             jobTotalDollars={jobTotalBidDollars}
           />
@@ -4307,6 +4325,15 @@ export default function JobFormModal({
           zIndex={JOB_FORM_IMPORT_SOURCE_OVERLAY_Z_INDEX}
           onSelectBid={applyPrefillFromBid}
           onSelectEstimate={applyPrefillFromEstimate}
+        />
+      )}
+      {segmentGeneratorOpen && (
+        <MultipleSegmentGeneratorModal
+          open={segmentGeneratorOpen}
+          initialTotalDollars={jobTotalBidDollars}
+          zIndex={JOB_FORM_NESTED_OVERLAY_Z_INDEX}
+          onCancel={() => setSegmentGeneratorOpen(false)}
+          onAddToJob={addGeneratedSegmentsToJob}
         />
       )}
       {jobProjectLinkChoiceOpen && (
