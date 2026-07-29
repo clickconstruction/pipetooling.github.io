@@ -28,9 +28,9 @@ export function fixtureInvoiceLinkChip(
   if (!invoiceId) return null
   const status = invoiceStatusById[invoiceId]
   if (!status) return null
-  if (status === 'paid') return { label: 'Invoiced · Paid', color: '#166534', background: '#dcfce7' }
-  if (status === 'billed') return { label: 'Invoiced · Billed', color: '#1e40af', background: '#dbeafe' }
-  return { label: 'Invoiced · Ready to Bill', color: '#92400e', background: '#fef3c7' }
+  if (status === 'paid') return { label: 'Invoiced · Paid', color: 'var(--text-green-800)', background: 'var(--bg-green-100)' }
+  if (status === 'billed') return { label: 'Invoiced · Billed', color: 'var(--text-blue-800)', background: 'var(--bg-blue-200)' }
+  return { label: 'Invoiced · Ready to Bill', color: 'var(--text-amber-800)', background: 'var(--bg-amber-100)' }
 }
 
 /** A linked row's identity/money fields are read-only in ① Line Items. */
