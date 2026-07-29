@@ -3829,10 +3829,7 @@ export default function JobFormModal({
           <div style={{ marginBottom: '1rem' }}>
           {editing && (
             <>
-              <div style={{ fontWeight: 400, textDecoration: 'underline', fontSize: '0.9375rem', color: 'var(--text-700)', marginBottom: '0.15rem' }}>② Invoices</div>
-              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.75rem' }}>
-                Creating an invoice breaks off the invoice as a card that starts in <strong>Stage: Ready to Bill</strong> right away separate from this form.
-              </div>
+              <div style={{ fontWeight: 400, textDecoration: 'underline', fontSize: '0.9375rem', color: 'var(--text-700)', marginBottom: '0.75rem' }}>② Invoices</div>
               <JobFormSegmentsBar
                 fixtures={fixtures}
                 riderFeesDollars={riderFeesDollars}
