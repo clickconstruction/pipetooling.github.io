@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-29 (v2.1080)
+last_updated: 2026-07-29 (v2.1081)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1081)
+
+### Edit Job autosave step 4: Undo changes — revert to how the job looked when opened (2026-07-29)
+The autosave train's counterweight: with no Save button, mistakes need an exit. New kernel [`jobFormUndo.ts`](../src/lib/jobs/jobFormUndo.ts) (+7 tests): `buildJobFormUndoSnapshot` deep-copies all four slices' form state + their slice JSONs, `jobFormUndoAvailable` (any current slice JSON ≠ snapshot), `sanitizeRestoredFixtureLinks` (clears `invoice_id`s pointing at invoices deleted since capture — reinserting the stale FK would 409), `invoiceSetKey`. [`JobFormModal`](../src/components/jobs/JobFormModal.tsx): a snapshot effect captures on hydrate and **re-bases whenever the job's invoice SET changes** (created/deleted) — so Undo never crosses an invoice-lifecycle event; the strip's segment↔invoice links can't be silently severed by a revert. Footer gains **Undo changes** (left of Close, disabled + "Nothing to undo" when clean) with an inline Revert/Keep confirm; `performUndo` restores every slice's state (segment selection cleared) and the autosave engine persists the revert like any other edit. Help guide `edit-job-autosave` gains an Undo section. Client-only.
 
 ## Latest Updates (v2.1080)
 

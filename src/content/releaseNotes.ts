@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1081',
+    date: '2026-07-29',
+    title: 'Undo in Edit Job',
+    kind: 'feature',
+    highlights: [
+      'New "Undo changes" button in Edit Job reverts everything back to how the job looked when you opened the modal — the revert then auto-saves like any other edit.',
+      'Creating or deleting an invoice sets a new restore point, so Undo never unwinds invoice work.',
+      'Disabled (greyed out) until you actually change something.',
+    ],
+  },
+  {
     version: 'v2.1080',
     date: '2026-07-29',
     title: 'Edit Job: the Save button is gone',
