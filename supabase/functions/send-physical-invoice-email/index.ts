@@ -174,7 +174,7 @@ serve(async (req) => {
 
     const { data: inv, error: invErr } = await userClient
       .from('jobs_ledger_invoices')
-      .select('id, job_id, status, amount')
+      .select('id, job_id, status, amount, bill_to_email')
       .eq('id', invoiceId)
       .single()
 
@@ -197,12 +197,24 @@ serve(async (req) => {
     if (jlErr || !jl?.customer_id) {
       return jsonResponse({ error: 'Job not found or not linked to a customer' }, 403)
     }
+    // Bill-to override (v2.1085): an invoice with bill_to_email set bills an
+    // alternate recipient — that address is a valid target alongside the job
+    // customer email. Without the override, behavior is unchanged.
+    const billToEmail =
+      typeof (inv as { bill_to_email?: string | null }).bill_to_email === 'string'
+        ? ((inv as { bill_to_email?: string | null }).bill_to_email ?? '').trim()
+        : ''
     const jobEmail = typeof jl.customer_email === 'string' ? jl.customer_email.trim() : ''
-    if (!jobEmail) {
+    if (!jobEmail && !billToEmail) {
       return jsonResponse({ error: 'Job has no customer email; add it on Edit Job' }, 400)
     }
-    if (normalizeEmail(customerEmailIn) !== normalizeEmail(jobEmail)) {
-      return jsonResponse({ error: 'customer_email must match the job customer email' }, 400)
+    const targetsBillTo = billToEmail && normalizeEmail(customerEmailIn) === normalizeEmail(billToEmail)
+    const targetsJobCustomer = jobEmail && normalizeEmail(customerEmailIn) === normalizeEmail(jobEmail)
+    if (!targetsBillTo && !targetsJobCustomer) {
+      return jsonResponse(
+        { error: billToEmail ? 'customer_email must match the invoice bill-to email or the job customer email' : 'customer_email must match the job customer email' },
+        400,
+      )
     }
 
     const subject =

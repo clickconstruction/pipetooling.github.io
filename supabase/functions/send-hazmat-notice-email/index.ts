@@ -90,7 +90,7 @@ serve(async (req) => {
     // RLS-gated read: only office/billing roles can see incidents at all.
     const { data: incident, error: incErr } = await userClient
       .from('job_hazmat_incidents')
-      .select('id, job_id')
+      .select('id, job_id, invoice_id')
       .eq('id', incidentId)
       .single()
     if (incErr || !incident) {
@@ -108,12 +108,36 @@ serve(async (req) => {
     if (jlErr || !jl?.customer_id) {
       return jsonResponse({ error: 'Job not found or not linked to a customer' }, 403)
     }
+    // Bill-to override (v2.1085): when the incident's fee invoice bills an
+    // alternate recipient (bill_to_email), the notice may go to that address
+    // too — the payer of the fee should receive the notice.
+    let billToEmail = ''
+    const linkedInvoiceId =
+      typeof (incident as { invoice_id?: string | null }).invoice_id === 'string'
+        ? ((incident as { invoice_id?: string | null }).invoice_id ?? '').trim()
+        : ''
+    if (linkedInvoiceId) {
+      const { data: linkedInv } = await userClient
+        .from('jobs_ledger_invoices')
+        .select('bill_to_email')
+        .eq('id', linkedInvoiceId)
+        .maybeSingle()
+      billToEmail =
+        typeof (linkedInv as { bill_to_email?: string | null } | null)?.bill_to_email === 'string'
+          ? ((linkedInv as { bill_to_email?: string | null }).bill_to_email ?? '').trim()
+          : ''
+    }
     const jobEmail = typeof jl.customer_email === 'string' ? jl.customer_email.trim() : ''
-    if (!jobEmail) {
+    if (!jobEmail && !billToEmail) {
       return jsonResponse({ error: 'Job has no customer email; add it on Edit Job' }, 400)
     }
-    if (normalizeEmail(customerEmailIn) !== normalizeEmail(jobEmail)) {
-      return jsonResponse({ error: 'customer_email must match the job customer email' }, 400)
+    const matchesJobEmail = jobEmail && normalizeEmail(customerEmailIn) === normalizeEmail(jobEmail)
+    const matchesBillTo = billToEmail && normalizeEmail(customerEmailIn) === normalizeEmail(billToEmail)
+    if (!matchesJobEmail && !matchesBillTo) {
+      return jsonResponse(
+        { error: billToEmail ? 'customer_email must match the fee invoice bill-to email or the job customer email' : 'customer_email must match the job customer email' },
+        400,
+      )
     }
 
     const subject =

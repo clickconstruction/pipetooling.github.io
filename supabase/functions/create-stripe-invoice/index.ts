@@ -180,7 +180,7 @@ serve(async (req) => {
     const { data: invRow, error: invErr } = await userClient
       .from('jobs_ledger_invoices')
       .select(
-        'id, job_id, amount, status, stripe_invoice_id, hosted_invoice_url, stripe_invoice_status, stripe_invoice_memo, stripe_invoice_footer',
+        'id, job_id, amount, status, stripe_invoice_id, hosted_invoice_url, stripe_invoice_status, stripe_invoice_memo, stripe_invoice_footer, bill_to_name, bill_to_email, bill_to_stripe_customer_id',
       )
       .eq('id', jobs_ledger_invoice_id)
       .maybeSingle()
@@ -275,36 +275,87 @@ serve(async (req) => {
     }
     const stripeInvoiceNumber = pipetInvoiceNumber.number
 
-    let stripeCustomerId = custRow.stripe_customer_id?.trim() || null
-    if (stripeCustomerId) {
-      try {
-        await stripe.customers.update(stripeCustomerId, {
+    // Bill-to override (v2.1085): the invoice row is authoritative for the
+    // recipient. When bill_to_email is set, this invoice bills an ALTERNATE
+    // payer (e.g. the customer's tenant) — use/create the invoice's OWN Stripe
+    // customer (persisted per-invoice for idempotency) and never touch the job
+    // customer's saved customers.stripe_customer_id.
+    const billToEmail = ((invRow as { bill_to_email?: string | null }).bill_to_email ?? '').trim()
+    const billToName = ((invRow as { bill_to_name?: string | null }).bill_to_name ?? '').trim()
+    const recipientEmail = billToEmail || customer_email.trim()
+    const recipientName = billToEmail ? billToName || billToEmail : customer_name.trim()
+
+    let stripeCustomerId: string | null
+    if (billToEmail) {
+      stripeCustomerId =
+        ((invRow as { bill_to_stripe_customer_id?: string | null }).bill_to_stripe_customer_id ?? '').trim() || null
+      if (stripeCustomerId) {
+        try {
+          await stripe.customers.update(stripeCustomerId, {
+            email: recipientEmail,
+            name: recipientName,
+          })
+        } catch (e) {
+          if (!isMissingStripeCustomerError(e)) {
+            throw e
+          }
+          console.warn(
+            'create-stripe-invoice: stale bill_to_stripe_customer_id, creating a new Stripe customer',
+            stripeCustomerId,
+          )
+          stripeCustomerId = null
+        }
+      }
+      if (!stripeCustomerId) {
+        const created = await stripe.customers.create({
+          email: recipientEmail,
+          name: recipientName,
+          metadata: {
+            pipetooling_customer_id: customer_id,
+            pipetooling_bill_to_invoice_id: jobs_ledger_invoice_id,
+          },
+        })
+        stripeCustomerId = created.id
+        const { error: btErr } = await admin
+          .from('jobs_ledger_invoices')
+          .update({ bill_to_stripe_customer_id: stripeCustomerId })
+          .eq('id', jobs_ledger_invoice_id)
+        if (btErr) {
+          console.warn('create-stripe-invoice: bill_to_stripe_customer_id persist failed', btErr)
+        }
+      }
+    } else {
+      stripeCustomerId = custRow.stripe_customer_id?.trim() || null
+      if (stripeCustomerId) {
+        try {
+          await stripe.customers.update(stripeCustomerId, {
+            email: customer_email.trim(),
+            name: customer_name.trim(),
+          })
+        } catch (e) {
+          if (!isMissingStripeCustomerError(e)) {
+            throw e
+          }
+          console.warn(
+            'create-stripe-invoice: stale stripe_customer_id, clearing and creating new Stripe customer',
+            stripeCustomerId,
+          )
+          await clearCustomerStripeCustomerId(admin, customer_id)
+          stripeCustomerId = null
+        }
+      }
+      if (!stripeCustomerId) {
+        const created = await stripe.customers.create({
           email: customer_email.trim(),
           name: customer_name.trim(),
+          metadata: { pipetooling_customer_id: customer_id },
         })
-      } catch (e) {
-        if (!isMissingStripeCustomerError(e)) {
-          throw e
-        }
-        console.warn(
-          'create-stripe-invoice: stale stripe_customer_id, clearing and creating new Stripe customer',
-          stripeCustomerId,
-        )
-        await clearCustomerStripeCustomerId(admin, customer_id)
-        stripeCustomerId = null
+        stripeCustomerId = created.id
+        await admin
+          .from('customers')
+          .update({ stripe_customer_id: stripeCustomerId })
+          .eq('id', customer_id)
       }
-    }
-    if (!stripeCustomerId) {
-      const created = await stripe.customers.create({
-        email: customer_email.trim(),
-        name: customer_name.trim(),
-        metadata: { pipetooling_customer_id: customer_id },
-      })
-      stripeCustomerId = created.id
-      await admin
-        .from('customers')
-        .update({ stripe_customer_id: stripeCustomerId })
-        .eq('id', customer_id)
     }
 
     const amountCents = Math.round(amount_dollars * 100)
@@ -350,7 +401,7 @@ serve(async (req) => {
       }[],
       targetAmountCents: fixtureTargetCents,
       lineDescriptionOverride: lineDescriptionRaw,
-      customerName: customer_name.trim(),
+      customerName: recipientName,
       jobName: jobRow.job_name,
       hcpNumber: effectiveJobNumber,
     })

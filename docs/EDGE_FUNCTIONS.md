@@ -1924,6 +1924,8 @@ const { data, error } = await supabase.functions.invoke('test-email', {
 
 ### create-stripe-invoice
 
+> **v2.1085 — Bill-to override**: the invoice row is authoritative for the recipient. When `jobs_ledger_invoices.bill_to_email` is set, the Stripe invoice bills that alternate payer (name from `bill_to_name`, falling back to the email): the function uses/creates the invoice's **own** Stripe customer, persisted in `bill_to_stripe_customer_id` for idempotency, and **never touches** the job customer's `customers.stripe_customer_id`. The body's `customer_email`/`customer_name` are ignored for recipient purposes in that branch. NULL `bill_to_email` = unchanged behavior.
+
 **Purpose**: Create and finalize a Stripe invoice for a **`jobs_ledger_invoices`** row in **Ready to Bill**, then persist **`hosted_invoice_url`**, **`stripe_invoice_id`**, and set status **billed**.
 
 **Endpoint**: `POST /functions/v1/create-stripe-invoice`
@@ -2024,6 +2026,8 @@ If **`stripe_invoice_id`** and **`hosted_invoice_url`** are already set, returns
 
 ### send-physical-invoice-email
 
+> **v2.1085 — Bill-to override**: when the invoice row has `bill_to_email`, the target `customer_email` may match **either** that address or `jobs_ledger.customer_email` (a blank job customer email is fine in that case). Without the override, the job-customer-email match requirement is unchanged.
+
 > **v2.940**: accepts optional `additional_emails: string[]` (≤10, validated, deduped against `customer_email`) — extra recipients ride on the same Resend send (`to` array), so one email and one recorded send event regardless of recipient count.
 
 **Purpose**: Email the customer a **PDF invoice** (generated in the app to match the on-screen preview) via **Resend**, then persist the **`jobs_ledger_invoices`** billing fields as a **Physical** send (**`status: billed`**, **`external_send_channel: physical`**, **`sent_to_customer_at`**, **`external_send_note`**, **`amount`**). It does **not** call **`update_job_status`** on **`jobs_ledger`**. After a **200** response, **[`SendRecordInvoiceModal`](../src/components/jobs/SendRecordInvoiceModal.tsx)** runs **`maybePromoteJobToBilledAfterCustomerInvoice`** ([`promoteJobToBilledIfFullyInvoiced.ts`](../src/lib/promoteJobToBilledIfFullyInvoiced.ts)) — the same helper used after **Stripe** **`create-stripe-invoice`** and **HouseCall Pro** manual bill — so when the job is **fully invoiced out** (no **`ready_to_bill`** rows; **`jobBillingUnallocatedDollars`** ~ 0), the **job** moves to **billed** together with the invoice line regardless of billing channel. The client may send a **detailed** multi-section PDF (Specific Work + materials + payment history) built from the job ledger; the Edge function only validates and attaches **`pdf_base64`**.
@@ -2079,6 +2083,8 @@ interface SendPhysicalInvoiceEmailBody {
 ---
 
 ### send-hazmat-notice-email
+
+> **v2.1085 — Bill-to override**: when the incident's linked fee invoice (`job_hazmat_incidents.invoice_id` → `jobs_ledger_invoices.bill_to_email`) bills an alternate recipient, the notice `customer_email` may match **either** that address or the job customer email — the payer of the fee should receive the notice.
 
 **Purpose** (v2.850; send-stamping v2.1039): Email the customer the **Biohazard Remediation Fee Notice PDF** as its own message — the **Stripe companion channel** (Stripe invoices cannot carry attachments) and the **re-send** path from Edit Job's **Riders** strip. The PDF is built client-side ([`hazmatFeeNoticePdf.ts`](../src/lib/jobsDocuments/hazmatFeeNoticePdf.ts)) from the persisted `job_hazmat_incidents` row; the function validates and attaches it. **After a successful Resend send** it stamps `job_hazmat_incidents.notice_emailed_at` / `notice_emailed_to` and inserts a `job_activity_events` row (`hazmat_notice_emailed`) via the **service-role** client — both tables have no client write policies, so this function is the single audited funnel. Stamp failures never fail the request (the email is already out). Safe to re-send any time (each send re-stamps and logs).
 
@@ -2329,6 +2335,8 @@ interface Body {
 ---
 
 ### preview-stripe-invoice
+
+> **v2.1085 — Bill-to override**: mirrors `create-stripe-invoice` — when the invoice row has `bill_to_email`, the preview renders against that recipient (using `bill_to_stripe_customer_id` when it exists for the active Stripe key, else an ephemeral customer with the bill-to identity) and returns the bill-to name/email in the response. No DB writes either way.
 
 **Purpose**: Return a **Stripe-accurate** invoice preview for a **`jobs_ledger_invoices`** row in **Ready to Bill** using **`invoices.createPreview`** (no Stripe customer creation, no DB writes).
 

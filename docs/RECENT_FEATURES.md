@@ -2046,6 +2046,11 @@ when_to_read:
 155. [Customer and Project Management](#customer-and-project-management)
 ---
 
+## Latest Updates (v2.1085)
+
+### Invoice "Bill to" override — edge functions honor the alternate recipient (2026-07-29)
+Server slice of the bill-to train (after the v2.1084 columns). The invoice ROW is now authoritative for the recipient in four functions (**redeploy all four after `db push`**: `create-stripe-invoice`, `preview-stripe-invoice`, `send-physical-invoice-email`, `send-hazmat-notice-email`). [`create-stripe-invoice`](../supabase/functions/create-stripe-invoice/index.ts): when `bill_to_email` is set it bills the alternate payer via the invoice's OWN Stripe customer — reused from `bill_to_stripe_customer_id` (stale ids recreated), else created and persisted (service role; metadata carries the invoice id) — and the job customer's `customers.stripe_customer_id` is **never** written in that branch; line-item context uses the bill-to name. [`preview-stripe-invoice`](../supabase/functions/preview-stripe-invoice/index.ts) mirrors it (stored bill-to customer when retrievable, else an ephemeral customer with the bill-to identity; response returns the bill-to name/email). [`send-physical-invoice-email`](../supabase/functions/send-physical-invoice-email/index.ts) and [`send-hazmat-notice-email`](../supabase/functions/send-hazmat-notice-email/index.ts) accept the bill-to email as a valid recipient beside the job customer email (notice: resolved via the incident's linked fee invoice; a blank job email is OK when the bill-to matches). NULL `bill_to_email` = every function byte-identical to before. `EDGE_FUNCTIONS.md` updated. Deploy order: migration (v2.1084) → these functions → the UI (v2.1086).
+
 ## Latest Updates (v2.1084)
 
 ### Invoice "Bill to" override — DB slice (2026-07-29)
