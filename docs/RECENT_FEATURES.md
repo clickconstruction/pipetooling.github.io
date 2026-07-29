@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-29 (v2.1074)
+last_updated: 2026-07-29 (v2.1075)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1075)
+
+### ② Invoices: "Make Invoice", green + button, section caption removed (2026-07-29)
+Three requests in [`JobFormBreakOffSection`](../src/components/jobs/JobFormBreakOffSection.tsx) / [`JobFormModal`](../src/components/jobs/JobFormModal.tsx): the input label "Open Invoice:" becomes **"Make Invoice:"** (the full-send "Send to Ready to Bill:" branch is unchanged) and the slider legend's green marker follows ("Open Invoice" → "Make Invoice"; help guide `ready-to-bill-pipeline` updated — the Stages row "Open Invoice(s):" list label is a different concept and stays). The **+** button turns **green** (#16a34a) for invoice creation, keeping **blue** for the full-send job move — the same green-invoice/blue-job color language the v2.1074 explainer teaches. The "Creating an invoice breaks off the invoice as a card…" caption under the ② Invoices header is removed. Client-only.
 
 ## Latest Updates (v2.1074)
 

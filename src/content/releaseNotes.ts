@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1075',
+    date: '2026-07-29',
+    title: 'Make Invoice, in green',
+    kind: 'fix',
+    highlights: [
+      '"Open Invoice" is now "Make Invoice", and its + button is green — matching the green invoice cards on Stages. Sending the whole job to Ready to Bill stays blue, like the job card it moves.',
+      'The explainer sentence under the ② Invoices heading is gone.',
+    ],
+  },
+  {
     version: 'v2.1074',
     date: '2026-07-29',
     title: 'Learn how invoices and jobs move through Stages',

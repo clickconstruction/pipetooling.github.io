@@ -107,7 +107,7 @@ export function JobFormBreakOffSection({
                         whiteSpace: 'nowrap',
                       }}
                     >
-                      {isSendFullUnallocatedToReadyToBill ? 'Send to Ready to Bill:' : 'Open Invoice:'}
+                      {isSendFullUnallocatedToReadyToBill ? 'Send to Ready to Bill:' : 'Make Invoice:'}
                     </label>
                     <input
                       id="edit-job-partial-invoice-amount"
@@ -176,12 +176,16 @@ export function JobFormBreakOffSection({
                         lineHeight: 1,
                         flexShrink: 0,
                         whiteSpace: 'nowrap',
+                        // Green = invoice action, blue = job move — the same color
+                        // language as the Stages board cards.
                         background:
                           movingJobToReadyToBill ||
                           creatingInvoice ||
                           !(parseMoneyInputToNumber(newInvoiceAmount) > 0)
                             ? '#9ca3af'
-                            : '#3b82f6',
+                            : isSendFullUnallocatedToReadyToBill
+                              ? '#3b82f6'
+                              : '#16a34a',
                         color: 'white',
                         border: 'none',
                         borderRadius: 6,
@@ -508,7 +512,7 @@ export function JobFormBreakOffSection({
                           { color: DRAFT_COLOR, label: 'New Invoice', sub: '', circle: false },
                           {
                             color: '#22c55e',
-                            label: 'Open Invoice',
+                            label: 'Make Invoice',
                             sub: '',
                             circle: false,
                             info: true,
