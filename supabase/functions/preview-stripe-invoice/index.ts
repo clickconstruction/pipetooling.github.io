@@ -129,7 +129,7 @@ serve(async (req) => {
 
     const { data: invRow, error: invErr } = await userClient
       .from('jobs_ledger_invoices')
-      .select('id, job_id, amount, status')
+      .select('id, job_id, amount, status, bill_to_name, bill_to_email, bill_to_stripe_customer_id')
       .eq('id', jobs_ledger_invoice_id)
       .maybeSingle()
 
@@ -218,6 +218,16 @@ serve(async (req) => {
       return jsonResponse({ error: 'extra_line_items must total less than the invoice amount' }, 400)
     }
 
+    // Bill-to override (v2.1085): the invoice row is authoritative for the
+    // recipient — mirrors create-stripe-invoice so the preview shows exactly
+    // who the finalized invoice will bill.
+    const billToEmail = ((invRow as { bill_to_email?: string | null }).bill_to_email ?? '').trim()
+    const billToName = ((invRow as { bill_to_name?: string | null }).bill_to_name ?? '').trim()
+    const billToStripeCustomerId =
+      ((invRow as { bill_to_stripe_customer_id?: string | null }).bill_to_stripe_customer_id ?? '').trim() || null
+    const recipientEmail = billToEmail || customer_email.trim()
+    const recipientName = billToEmail ? billToName || billToEmail : customer_name.trim()
+
     const lineItemsBuilt = buildStripeInvoiceItemsFromFixtures({
       fixtures: (fixturesRows ?? []) as {
         id: string
@@ -229,7 +239,7 @@ serve(async (req) => {
       }[],
       targetAmountCents: extraItems.length > 0 ? fixtureTargetCents : amountCents,
       lineDescriptionOverride: lineDescriptionRaw,
-      customerName: customer_name.trim(),
+      customerName: recipientName,
       jobName: jobRow.job_name,
       hcpNumber: effectiveJobNumber,
     })
@@ -242,7 +252,10 @@ serve(async (req) => {
     // Preview must not UPDATE customers.stripe_customer_id. Auto (live) vs Test use different Stripe accounts;
     // rewriting the row when switching modes caused heavy churn and looked like the DB "crashing".
     // Use the stored cus_ only if it exists for *this* Stripe key; otherwise a throwaway customer, then delete it.
-    const storedStripeCustomerId = custRow.stripe_customer_id?.trim() || null
+    // Bill-to override: the stored cus_ is the INVOICE's own recipient customer, never the job customer's.
+    const storedStripeCustomerId = billToEmail
+      ? billToStripeCustomerId
+      : custRow.stripe_customer_id?.trim() || null
     const invoiceItems: Stripe.InvoiceCreatePreviewParams['invoice_items'] = [
       ...lineItemsBuilt.items.map((it) => ({
         amount: it.amount,
@@ -265,8 +278,8 @@ serve(async (req) => {
         } catch (e) {
           if (!isMissingStripeCustomerError(e)) throw e
           const ep = await stripe.customers.create({
-            email: customer_email.trim(),
-            name: customer_name.trim(),
+            email: recipientEmail,
+            name: recipientName,
             metadata: {
               pipetooling_invoice_preview_ephemeral: '1',
               pipetooling_customer_id: customer_id,
@@ -277,8 +290,8 @@ serve(async (req) => {
         }
       } else {
         const ep = await stripe.customers.create({
-          email: customer_email.trim(),
-          name: customer_name.trim(),
+          email: recipientEmail,
+          name: recipientName,
           metadata: {
             pipetooling_invoice_preview_ephemeral: '1',
             pipetooling_customer_id: customer_id,
@@ -349,8 +362,8 @@ serve(async (req) => {
       due_date: due_date_unix,
       seller_name,
       lines,
-      customer_name: customer_name.trim(),
-      customer_email: customer_email.trim(),
+      customer_name: recipientName,
+      customer_email: recipientEmail,
       invoice_number: computedInvoiceNumber,
     })
   } catch (e) {

@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1085',
+    date: '2026-07-29',
+    title: 'Groundwork: invoices can reach an alternate payer',
+    kind: 'feature',
+    highlights: [
+      'Behind the scenes: Stripe billing, the physical-invoice email, and the hazmat notice email now know how to send to an invoice’s alternate recipient when one is set.',
+      'Billing a different payer never touches the customer’s saved Stripe record.',
+      'The editing screens arrive in the next update.',
+    ],
+  },
+  {
     version: 'v2.1084',
     date: '2026-07-29',
     title: 'Groundwork: bill an invoice to someone else',
