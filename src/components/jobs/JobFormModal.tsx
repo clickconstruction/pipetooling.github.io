@@ -39,6 +39,7 @@ import {
   identitySliceReadyToSave,
   materialInsertRows,
   paymentInsertRows,
+  shouldDemotePaidJobToBilled,
   type JobIdentityFormFields,
 } from '../../lib/jobs/jobFormAutosaveSlices'
 import { useJobFormAutosaveSlice } from './useJobFormAutosaveSlice'
@@ -761,6 +762,19 @@ export default function JobFormModal({
   const flushAllAutosaveSlicesRef = useRef(flushAllAutosaveSlices)
   flushAllAutosaveSlicesRef.current = flushAllAutosaveSlices
 
+  /** Footer chip state, worst-first across the four slices (v2.1080). */
+  const identityBlocked = identityAutosave.isDirty() && !identitySliceReadyToSave(identityFields)
+  const editAutosaveAggregate: 'saving' | 'error' | 'blocked' | 'pending' | 'saved' =
+    editAutosaveSlices.some((s) => s.status === 'saving')
+      ? 'saving'
+      : editAutosaveSlices.some((s) => s.status === 'error')
+        ? 'error'
+        : identityBlocked
+          ? 'blocked'
+          : editAutosaveSlices.some((s) => s.isDirty())
+            ? 'pending'
+            : 'saved'
+
   // Closing the modal must not drop a pending autosave: cancel the debounce,
   // wait out any in-flight write, and save whatever is still dirty before
   // onClose unmounts everything. 'error' keeps the modal open with an explicit
@@ -1102,10 +1116,65 @@ export default function JobFormModal({
    * Resolves true when the modal actually closed (callers that navigate
    * afterwards must check).
    */
+  /**
+   * True when closing must do work beyond the slice flushes: the paid→billed
+   * demote (a balance reappeared on a Paid job) or the customers.date_met
+   * backfill. These rode the edit-mode Save button until v2.1080; they must
+   * run on EVERY edit-mode close — autosave may have persisted the balance
+   * change long before the user closes, so dirtiness alone can't gate them.
+   */
+  function editCloseSideEffectsNeeded(): boolean {
+    if (!editing?.id) return false
+    const dateMetNeeded = !!(
+      customerId &&
+      dateMet.trim() &&
+      customers.some((x) => x.id === customerId && !x.date_met)
+    )
+    if (dateMetNeeded) return true
+    const revNum = revenueDollarsFromFixtures(autosaveFixturesRef.current) + autosaveRiderFeesRef.current
+    const paymentsMadeNum = autosavePaymentsRef.current.reduce((s, p) => s + (Number(p.amount) || 0), 0)
+    return shouldDemotePaidJobToBilled(normalizeJobsLedgerStatus(editing.status) ?? '', revNum, paymentsMadeNum)
+  }
+
+  /** The Save-button side effects, now run at close time (best-effort: they toast on failure but never block the close). */
+  async function runEditCloseSideEffects(): Promise<void> {
+    const jobId = editing?.id
+    if (!jobId) return
+    try {
+      if (customerId && dateMet.trim()) {
+        const c = customers.find((x) => x.id === customerId)
+        if (c && !c.date_met) {
+          await supabase.from('customers').update({ date_met: dateMet.trim() }).eq('id', customerId)
+        }
+      }
+    } catch (dateMetErr) {
+      console.warn('customers.date_met backfill failed', dateMetErr)
+    }
+    const revNum = revenueDollarsFromFixtures(autosaveFixturesRef.current) + autosaveRiderFeesRef.current
+    const paymentsMadeNum = autosavePaymentsRef.current.reduce((s, p) => s + (Number(p.amount) || 0), 0)
+    if (shouldDemotePaidJobToBilled(normalizeJobsLedgerStatus(editing?.status) ?? '', revNum, paymentsMadeNum)) {
+      try {
+        const data = await withSupabaseRetry(
+          async () => supabase.rpc('update_job_status', { p_job_id: jobId, p_to_status: 'billed' }),
+          'update_job_status_close_paid_to_billed',
+        )
+        const result = data as { error?: string } | null
+        if (result?.error) {
+          showToast(`The job could not be moved back to Billed: ${result.error}`, 'error')
+        } else {
+          showToast('Job moved back to Billed (balance still due).', 'success')
+          onSavedRef.current?.()
+        }
+      } catch (demoteErr: unknown) {
+        showToast(formatPostgrestOrUnknownError(demoteErr, 'Failed to move job back to Billed'), 'error')
+      }
+    }
+  }
+
   async function closeForm(): Promise<boolean> {
     if (closeFlushStateRef.current === 'saving') return false
     for (const slice of editAutosaveSlices) slice.cancelPending()
-    if (!editAutosaveSlices.some((s) => s.needsFlush() || s.isRunning())) {
+    if (!editAutosaveSlices.some((s) => s.needsFlush() || s.isRunning()) && !editCloseSideEffectsNeeded()) {
       finishClose()
       return true
     }
@@ -1117,6 +1186,7 @@ export default function JobFormModal({
             const sliceOutcome = await slice.flushForClose()
             if (sliceOutcome === 'failed') return 'failed' as const
           }
+          await runEditCloseSideEffects()
           return 'saved' as const
         })(),
         15000,
@@ -2537,7 +2607,13 @@ export default function JobFormModal({
     }
   }
 
-  async function saveJob() {
+  /**
+   * CREATE a job — New Job mode only. v2.1080 removed the edit-mode Save
+   * button: every edit-mode write flows through the autosave slices, and the
+   * paid→billed demote + customers.date_met backfill ride the close guard
+   * (`runEditCloseSideEffects`).
+   */
+  async function createJob() {
     if (!authUser?.id) return
     if (!formServiceTypeId.trim()) {
       showToast('Service type is required', 'error')
@@ -2545,35 +2621,26 @@ export default function JobFormModal({
     }
     setSaving(true)
     setError(null)
-    // Full save supersedes any pending autosave — cancel the debounces so the
-    // two never race; the baselines are refreshed after a successful save.
-    for (const slice of editAutosaveSlices) slice.cancelPending()
     const revNum = jobTotalWithRidersDollars
     const paymentsMadeNum = payments.reduce((s, p) => s + (Number(p.amount) || 0), 0)
     try {
-      if (editing) {
-        const proj = projectId ? projects.find((p) => p.id === projectId) : null
-        // Editing preserves the job's owner (or follows the linked project's owner). Never
-        // re-derive from job_owner_override here — that steers NEW jobs only; on edit it would
-        // silently re-own the job and break the customer↔master invariant. Deriving the written
-        // master and the customer-validation master from one value keeps them from diverging.
-        const masterUserIdForUpdate = resolveEditJobMasterUserId({
-          projectId,
-          projectMasterUserId: proj?.master_user_id ?? null,
-          existingJobMasterUserId: editing.master_user_id,
-        })
-        const resolvedCustomerId = resolveCustomerIdForJobPayload(
-          customerId,
-          masterUserIdForUpdate,
-          customerName.trim(),
-          customers,
-        )
-        const updatePayload = {
+      const effectiveMasterId = await resolveEffectiveJobMasterUserId(supabase, authUser.id, projectId || null)
+
+      const resolvedCustomerIdNew = resolveCustomerIdForJobPayload(
+        customerId,
+        effectiveMasterId,
+        customerName.trim(),
+        customers,
+      )
+      const { data: inserted, error: insertErr } = await supabase
+        .from('jobs_ledger')
+        .insert({
+          master_user_id: effectiveMasterId,
           hcp_number: hcpNumber.trim(),
           click_number: clickNumber.trim(),
           job_name: jobName.trim(),
           job_address: jobAddress.trim(),
-          customer_id: resolvedCustomerId,
+          customer_id: resolvedCustomerIdNew,
           customer_name: customerName.trim() || null,
           customer_email: customerEmail.trim() || null,
           customer_phone: customerPhone.trim() || null,
@@ -2586,121 +2653,25 @@ export default function JobFormModal({
           project_id: projectId || null,
           bid_id: bidId || null,
           service_type_id: formServiceTypeId.trim(),
-          master_user_id: masterUserIdForUpdate,
-        }
-        const { error: updateErr } = await supabase
-          .from('jobs_ledger')
-          .update(updatePayload)
-          .eq('id', editing.id)
-        if (updateErr) throw updateErr
-        const trimmedJobPicturesLink = jobPicturesLink.trim()
-        const previousJobPicturesLink = (editing.job_pictures_link ?? '').trim()
-        if (trimmedJobPicturesLink && !previousJobPicturesLink) {
-          await autoClosePicturesDispatchRequests(editing.id)
-        }
-        persistedPicturesLinkRef.current = trimmedJobPicturesLink
-        await supabase.from('jobs_ledger_payments').delete().eq('job_id', editing.id)
-        for (const row of paymentInsertRows(editing.id, payments)) {
+        })
+        .select('id')
+        .single()
+      if (insertErr) throw insertErr
+      const jobId = inserted?.id
+      if (jobId) {
+        for (const row of paymentInsertRows(jobId, payments)) {
           await supabase.from('jobs_ledger_payments').insert(row)
         }
-        await supabase.from('jobs_ledger_materials').delete().eq('job_id', editing.id)
-        for (const row of materialInsertRows(editing.id, materials)) {
+        for (const row of materialInsertRows(jobId, materials)) {
           await supabase.from('jobs_ledger_materials').insert(row)
         }
-        await supabase.from('jobs_ledger_fixtures').delete().eq('job_id', editing.id)
-        for (const row of fixtureInsertRows(editing.id, fixtures)) {
+        for (const row of fixtureInsertRows(jobId, fixtures)) {
           await supabase.from('jobs_ledger_fixtures').insert(row)
         }
-        const { data: existingTeam } = await supabase.from('jobs_ledger_team_members').select('user_id').eq('job_id', editing.id)
-        const { toAdd, toRemove } = diffTeamMemberIds(
-          teamMemberIds,
-          (existingTeam ?? []).map((t: { user_id: string }) => t.user_id),
-        )
-        for (const uid of toAdd) {
-          await supabase.from('jobs_ledger_team_members').insert({ job_id: editing.id, user_id: uid })
+        for (const uid of teamMemberIds) {
+          await supabase.from('jobs_ledger_team_members').insert({ job_id: jobId, user_id: uid })
         }
-        for (const uid of toRemove) {
-          await supabase.from('jobs_ledger_team_members').delete().eq('job_id', editing.id).eq('user_id', uid)
-        }
-
-        // The full save just persisted every slice — refresh the autosave
-        // baselines so they don't re-write the same data afterwards.
-        for (const slice of editAutosaveSlices) slice.markSavedNow()
-
-        const statusBeforeSave = normalizeJobsLedgerStatus(editing.status)
-        if (statusBeforeSave === 'paid' && revNum > paymentsMadeNum + 0.01) {
-          try {
-            const data = await withSupabaseRetry(
-              async () =>
-                supabase.rpc('update_job_status', { p_job_id: editing.id, p_to_status: 'billed' }),
-              'update_job_status_save_job_paid_to_billed',
-            )
-            const result = data as { error?: string } | null
-            if (result?.error) {
-              showToast(
-                `Job saved, but the job could not be moved back to Billed: ${result.error}`,
-                'error',
-              )
-            } else {
-              showToast('Job saved. Job moved back to Billed (balance still due).', 'success')
-            }
-          } catch (e: unknown) {
-            showToast(
-              formatPostgrestOrUnknownError(e, 'Job saved but failed to move job to Billed'),
-              'error',
-            )
-          }
-        }
-      } else {
-        const effectiveMasterId = await resolveEffectiveJobMasterUserId(supabase, authUser.id, projectId || null)
-
-        const resolvedCustomerIdNew = resolveCustomerIdForJobPayload(
-          customerId,
-          effectiveMasterId,
-          customerName.trim(),
-          customers,
-        )
-        const { data: inserted, error: insertErr } = await supabase
-          .from('jobs_ledger')
-          .insert({
-            master_user_id: effectiveMasterId,
-            hcp_number: hcpNumber.trim(),
-            click_number: clickNumber.trim(),
-            job_name: jobName.trim(),
-            job_address: jobAddress.trim(),
-            customer_id: resolvedCustomerIdNew,
-            customer_name: customerName.trim() || null,
-            customer_email: customerEmail.trim() || null,
-            customer_phone: customerPhone.trim() || null,
-            last_bill_date: lastBillDate.trim() || null,
-            google_drive_link: googleDriveLink.trim() || null,
-            job_pictures_link: jobPicturesLink.trim() || null,
-            job_plans_link: jobPlansLink.trim() || null,
-            revenue: revNum,
-            payments_made: paymentsMadeNum,
-            project_id: projectId || null,
-            bid_id: bidId || null,
-            service_type_id: formServiceTypeId.trim(),
-          })
-          .select('id')
-          .single()
-        if (insertErr) throw insertErr
-        const jobId = inserted?.id
-        if (jobId) {
-          for (const row of paymentInsertRows(jobId, payments)) {
-            await supabase.from('jobs_ledger_payments').insert(row)
-          }
-          for (const row of materialInsertRows(jobId, materials)) {
-            await supabase.from('jobs_ledger_materials').insert(row)
-          }
-          for (const row of fixtureInsertRows(jobId, fixtures)) {
-            await supabase.from('jobs_ledger_fixtures').insert(row)
-          }
-          for (const uid of teamMemberIds) {
-            await supabase.from('jobs_ledger_team_members').insert({ job_id: jobId, user_id: uid })
-          }
-          onCreatedJobIdRef.current?.(jobId)
-        }
+        onCreatedJobIdRef.current?.(jobId)
       }
       if (customerId && dateMet.trim()) {
         const c = customers.find((x) => x.id === customerId)
@@ -2711,7 +2682,7 @@ export default function JobFormModal({
       await closeForm()
       onSavedRef.current?.()
     } catch (err: unknown) {
-      console.error('JobFormModal saveJob failed', err)
+      console.error('JobFormModal createJob failed', err)
       setError(formatPostgrestOrUnknownError(err, 'Failed to save job'))
     } finally {
       setSaving(false)
@@ -3185,8 +3156,8 @@ export default function JobFormModal({
                       const closed = await closeForm()
                       if (closed) navigate(`/jobs?tab=stages&stagesJob=${encodeURIComponent(jobId)}`)
                     }}
-                    title="Open this job in Jobs → Stages (closes Edit Job; money edits are saved, other fields need Save)"
-                    aria-label="Open this job in Jobs → Stages. Closes Edit Job; money edits are saved, other fields need Save."
+                    title="Open this job in Jobs → Stages (closes Edit Job — your changes save automatically)"
+                    aria-label="Open this job in Jobs → Stages. Closes Edit Job; your changes save automatically."
                     style={{ ...headerTradePill.style, marginTop: 0, cursor: 'pointer', flexShrink: 0 }}
                   >
                     {headerTradePill.label}
@@ -3869,7 +3840,7 @@ export default function JobFormModal({
                     ? 'Saving…'
                     : billingAutosaveStatus === 'saved'
                       ? 'Saved'
-                      : 'Autosave failed — use Save'}
+                      : 'Autosave failed — edit again to retry'}
                 </span>
               )}
             </div>
@@ -4145,7 +4116,7 @@ export default function JobFormModal({
                 cursor: closeFlushState === 'saving' ? 'wait' : 'pointer',
               }}
             >
-              {closeFlushState === 'saving' ? 'Saving…' : 'Cancel'}
+              {closeFlushState === 'saving' ? 'Saving…' : editing ? 'Close' : 'Cancel'}
             </button>
             {!jobFormCanSubmit && !saving && jobFormMissingFields.length > 0 && (
               <span style={{ fontSize: '0.8rem', color: '#FF6600', display: 'inline-block' }}>
@@ -4157,23 +4128,49 @@ export default function JobFormModal({
                 ))}
               </span>
             )}
-            <button
-              type="button"
-              onClick={saveJob}
-              disabled={!jobFormCanSubmit || saving}
-              title={!jobFormCanSubmit ? `Required: ${jobFormMissingFields.join(', ')}` : undefined}
-              style={{
-                padding: '0.5rem 1rem',
-                background: '#3b82f6',
-                color: 'white',
-                border: 'none',
-                borderRadius: 4,
-                cursor: jobFormCanSubmit && !saving ? 'pointer' : 'not-allowed',
-                fontWeight: 500,
-              }}
-            >
-              {saving ? 'Saving…' : 'Save'}
-            </button>
+            {editing ? (
+              <span
+                aria-live="polite"
+                style={{
+                  fontSize: '0.8rem',
+                  fontWeight: 500,
+                  color:
+                    editAutosaveAggregate === 'error'
+                      ? 'var(--text-red-600)'
+                      : editAutosaveAggregate === 'saved'
+                        ? 'var(--text-green-600)'
+                        : 'var(--text-muted)',
+                }}
+              >
+                {editAutosaveAggregate === 'saving'
+                  ? 'Saving…'
+                  : editAutosaveAggregate === 'error'
+                    ? 'Autosave failed — edit the field again to retry'
+                    : editAutosaveAggregate === 'blocked'
+                      ? 'Waiting on required fields'
+                      : editAutosaveAggregate === 'pending'
+                        ? 'Unsaved changes…'
+                        : 'All changes saved'}
+              </span>
+            ) : (
+              <button
+                type="button"
+                onClick={createJob}
+                disabled={!jobFormCanSubmit || saving}
+                title={!jobFormCanSubmit ? `Required: ${jobFormMissingFields.join(', ')}` : undefined}
+                style={{
+                  padding: '0.5rem 1rem',
+                  background: '#3b82f6',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: 4,
+                  cursor: jobFormCanSubmit && !saving ? 'pointer' : 'not-allowed',
+                  fontWeight: 500,
+                }}
+              >
+                {saving ? 'Creating…' : 'Create Job'}
+              </button>
+            )}
           </div>
         </div>
       </div>

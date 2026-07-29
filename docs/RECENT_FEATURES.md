@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-29 (v2.1079)
+last_updated: 2026-07-29 (v2.1080)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1080)
+
+### Edit Job autosave step 3: Save button removed — status chip + close-time side effects (2026-07-29)
+Edit mode is now autosave-only ([`JobFormModal`](../src/components/jobs/JobFormModal.tsx)). The footer Save button is replaced by an `aria-live` status chip aggregating the four slices worst-first (`editAutosaveAggregate`): Saving… / Autosave failed / **Waiting on required fields** (identity dirty but `identitySliceReadyToSave` false) / Unsaved changes… / All changes saved; Cancel relabels to **Close** in edit mode. `saveJob` shrinks to create-only **`createJob`** (New Job button now reads "Create Job"); the dead edit branch is deleted. Its two side effects move to the close guard as `runEditCloseSideEffects` — the `customers.date_met` backfill and the paid→billed demote (`shouldDemotePaidJobToBilled`) — and run on EVERY edit-mode close via `editCloseSideEffectsNeeded()`, not just dirty ones, since autosave may have persisted the balance change long before the close; both are best-effort (toast, never block the close) inside the same 15s guarded window. Copy updates: billing chip error drops "use Save", trade-pill tooltip now says changes save automatically. New help guide [`edit-job-autosave`](../src/content/help/edit-job-autosave.md); `how-the-app-works` updated. Client-only.
 
 ## Latest Updates (v2.1079)
 
