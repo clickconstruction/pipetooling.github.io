@@ -4346,6 +4346,7 @@ export type Database = {
           count: number
           created_at: string | null
           id: string
+          invoice_id: string | null
           job_id: string
           line_description: string | null
           line_unit_price: number | null
@@ -4356,6 +4357,7 @@ export type Database = {
           count?: number
           created_at?: string | null
           id?: string
+          invoice_id?: string | null
           job_id: string
           line_description?: string | null
           line_unit_price?: number | null
@@ -4366,6 +4368,7 @@ export type Database = {
           count?: number
           created_at?: string | null
           id?: string
+          invoice_id?: string | null
           job_id?: string
           line_description?: string | null
           line_unit_price?: number | null
@@ -4373,6 +4376,13 @@ export type Database = {
           sequence_order?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "jobs_ledger_fixtures_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger_invoices"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "jobs_ledger_fixtures_job_id_fkey"
             columns: ["job_id"]

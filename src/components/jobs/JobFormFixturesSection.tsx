@@ -4,6 +4,7 @@ import { MoneyDecimalAmountInput } from '../MoneyDecimalAmountInput'
 import { formatCurrency } from '../../lib/jobs/jobFormMoney'
 import type { FixtureRow } from '../../lib/jobs/jobFormTypes'
 import { normalizeFixtureDisplayName } from '../../lib/jobs/jobFormRows'
+import { fixtureInvoiceLinkChip, fixtureRowIsLocked } from '../../lib/jobs/jobFormFixtureLinks'
 import {
   STRIPE_INVOICE_LINE_DESCRIPTION_MAX,
   stripeInvoiceFixtureLineLength,
@@ -32,6 +33,12 @@ type JobFormFixturesSectionProps = {
   removeFixtureRow: (id: string) => void
   /** Swap a row with its neighbor; order persists via sequence_order on save (v2.1067). */
   moveFixtureRow: (id: string, direction: 'up' | 'down') => void
+  /**
+   * jobs_ledger_invoices.id → status for this job; rows whose invoice_id is
+   * set render locked with a lifecycle chip (v2.1069). Re-ordering stays
+   * allowed — order is presentation, not money.
+   */
+  invoiceStatusById?: Record<string, string>
   setStripeFixturePreviewRowId: (id: string | null) => void
   /** Live sum of the line items — shown as the running "Job Total" at the top right. */
   jobTotalDollars: number
@@ -60,6 +67,7 @@ export function JobFormFixturesSection({
   addFixtureRow,
   removeFixtureRow,
   moveFixtureRow,
+  invoiceStatusById = {},
   setStripeFixturePreviewRowId,
   jobTotalDollars,
   riderRows,
@@ -127,6 +135,8 @@ export function JobFormFixturesSection({
                     row.line_description,
                   )
                   const stripeLineOverLimit = stripeFixtureLineLen > STRIPE_INVOICE_LINE_DESCRIPTION_MAX
+                  const locked = fixtureRowIsLocked(row)
+                  const linkChip = fixtureInvoiceLinkChip(row.invoice_id, invoiceStatusById)
                   return (
                     <Fragment key={row.id}>
                       <tr style={{ borderBottom: 'none' }}>
@@ -197,6 +207,7 @@ export function JobFormFixturesSection({
                                 extraLines={0}
                                 id={nameFieldId}
                                 value={row.name}
+                                disabled={locked}
                                 onChange={(e) => updateFixtureRow(row.id, { name: e.target.value })}
                                 onBlur={() => {
                                   const next = normalizeFixtureDisplayName(row.name ?? '')
@@ -213,8 +224,27 @@ export function JobFormFixturesSection({
                                   fontSize: '0.875rem',
                                   lineHeight: 1.4,
                                   fontFamily: 'inherit',
+                                  ...(locked ? { opacity: 0.75 } : {}),
                                 }}
                               />
+                              {linkChip && (
+                                <span
+                                  title="This line item is billed by an invoice in ② Invoices. Send the invoice back or delete it to edit the line."
+                                  style={{
+                                    display: 'inline-block',
+                                    marginTop: 3,
+                                    padding: '0.05rem 0.4rem',
+                                    borderRadius: 999,
+                                    fontSize: '0.6875rem',
+                                    fontWeight: 600,
+                                    whiteSpace: 'nowrap',
+                                    color: linkChip.color,
+                                    background: linkChip.background,
+                                  }}
+                                >
+                                  {linkChip.label}
+                                </span>
+                              )}
                             </div>
                           </div>
                         </td>
@@ -233,6 +263,7 @@ export function JobFormFixturesSection({
                             type="number"
                             min={1}
                             value={row.count}
+                            disabled={locked}
                             onChange={(e) => updateFixtureRow(row.id, { count: Math.max(1, Number(e.target.value) || 1) })}
                             style={{
                               width: '4rem',
@@ -268,6 +299,7 @@ export function JobFormFixturesSection({
                             <MoneyDecimalAmountInput
                               value={row.line_unit_price ?? 0}
                               onChange={(n) => updateFixtureRow(row.id, { line_unit_price: n === 0 ? null : n })}
+                              readOnly={locked}
                               commitOnType
                               placeholder="—"
                               aria-label="Unit price"
@@ -335,7 +367,7 @@ export function JobFormFixturesSection({
                               >
                                 +
                               </button>
-                            ) : (
+                            ) : locked ? null : (
                               <button
                                 type="button"
                                 onClick={() => removeFixtureRow(row.id)}
@@ -424,6 +456,7 @@ export function JobFormFixturesSection({
                                 id={descFieldId}
                                 aria-describedby={stripeLenDescId}
                                 value={row.line_description}
+                                disabled={locked}
                                 onChange={(e) =>
                                   updateFixtureRow(row.id, { line_description: e.target.value })
                                 }

@@ -38,6 +38,12 @@ export type FixtureRow = {
   /** Unit price in dollars; null when unset. */
   line_unit_price: number | null
   line_description: string
+  /**
+   * jobs_ledger_invoices.id billing this line item (job-stages billing,
+   * v2.1069). Carried through the save engine's delete+reinsert so the link
+   * survives id churn; null = unbilled segment. Linked rows lock in ①.
+   */
+  invoice_id: string | null
 }
 
 export type JobsLedgerInvoiceRow = Database['public']['Tables']['jobs_ledger_invoices']['Row']

@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1069',
+    date: '2026-07-29',
+    title: 'Line items remember which invoice bills them',
+    kind: 'feature',
+    highlights: [
+      'When a line item has been billed by an invoice, Edit Job now shows it with an "Invoiced" tag and protects it from edits — send the invoice back or delete it to unlock the line.',
+      'Re-ordering stays available on every line, billed or not.',
+    ],
+  },
+  {
     version: 'v2.1068',
     date: '2026-07-29',
     title: 'Groundwork for billing jobs by stage',
