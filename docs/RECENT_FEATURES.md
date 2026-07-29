@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-29 (v2.1091)
+last_updated: 2026-07-29 (v2.1092)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1092)
+
+### JobFormModal decomposition: Project | Plans | Bid links section extracted (2026-07-29)
+Step 10 of the [`JOB_FORM_MODAL_ARCHITECTURE.md`](./JOB_FORM_MODAL_ARCHITECTURE.md) extraction order. New [`JobFormLinksSection`](../src/components/jobs/JobFormLinksSection.tsx) owns the §6 collapsible: jump-link row, Project select-or-disconnect (select still implies the project's customer when none linked), Job Plans URL, Bid link-or-disconnect + "Open cover letter" — with its 7 scroll/focus refs, the three scroll callbacks, and the `projectFilesPlans*` style consts. Stays shell-side: `projectFilesPlansExpanded` (reset + link-modal callbacks write it), `jobFormProjectDisconnectRef` (the project-link modal's `onLinked` focuses it), and both link-choice modals (opened from the header row too). Stage A rode along: `formatJobFormBidLinkTitle` + `JobFormLinkedBidSummary` → tested [`lib/jobs/jobFormBidLinkTitle.ts`](../src/lib/jobs/jobFormBidLinkTitle.ts) (4 tests) — it has a second consumer (the shell's bid-summary backfill effect). `JobFormModal.tsx` 4,743 → 4,433 lines. Behavior-preserving; map dossier flipped. Client-only.
 
 ## Latest Updates (v2.1091)
 

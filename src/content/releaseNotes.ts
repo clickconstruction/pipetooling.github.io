@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1092',
+    date: '2026-07-29',
+    title: 'Under the hood: Edit Job links section cleanup',
+    kind: 'infra',
+    highlights: [
+      'No visible changes — the Project | Plans | Bid links section of the Edit Job window moved into its own component, with its bid-label logic now under unit tests.',
+    ],
+  },
+  {
     version: 'v2.1091',
     date: '2026-07-29',
     title: 'Under the hood: Edit Job window cleanup continues',
