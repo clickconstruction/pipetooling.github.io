@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1082',
+    date: '2026-07-29',
+    title: 'Missing bid values stand out on Stages',
+    kind: 'feature',
+    highlights: [
+      'On Jobs → Stages, a job with no bid value now shows a red "no bid value" chip instead of grey text.',
+      'Click the chip to open that job with the line-items section highlighted — add a line item to set the value.',
+    ],
+  },
+  {
     version: 'v2.1081',
     date: '2026-07-29',
     title: 'Undo in Edit Job',

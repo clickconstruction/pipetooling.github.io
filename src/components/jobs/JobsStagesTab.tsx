@@ -167,7 +167,7 @@ export type JobsStagesTabProps = {
   shortNewJobButtonLabel: boolean
   // --- page callbacks over the app modal contexts ---
   openNew: () => void
-  openEdit: (job: JobWithDetails, opts?: { billingCustomerHighlight?: boolean }) => void
+  openEdit: (job: JobWithDetails, opts?: { billingCustomerHighlight?: boolean; fixturesSectionHighlight?: boolean }) => void
   openEditJobAndCreateCustomerFlow: (job: JobWithDetails) => void
   tryOpenEditJob: (jobId: string, options?: OpenEditJobOptions) => void
   openStagesDetailJobModal: (j: JobWithDetails) => void
