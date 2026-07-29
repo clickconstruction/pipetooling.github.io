@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-29 (v2.1072)
+last_updated: 2026-07-29 (v2.1073)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1073)
+
+### ② Invoices declutter: strip caption removed + Quick set folds behind a toggle (2026-07-29)
+Two requests. (1) The "The whole job, in line-item order…" caption above the segment strip is gone — the named blocks explain themselves; only the right-aligned status legend remains ([`JobFormSegmentsBar`](../src/components/jobs/JobFormSegmentsBar.tsx)). (2) The standalone "Quick set: 20/40/60/80/Max" row under the Open Invoice input is now a compact **Quick set ▸** toggle sitting right of "N% of job total" in the same row ([`JobFormBreakOffSection`](../src/components/jobs/JobFormBreakOffSection.tsx), local `quickSetOpen` state); clicking expands the same buttons inline (same slider-bounds filtering and `applyBreakOffCombinedPct` targets, `aria-expanded` on the toggle). Client-only.
 
 ## Latest Updates (v2.1072)
 

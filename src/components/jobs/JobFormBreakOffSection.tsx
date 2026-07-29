@@ -63,6 +63,8 @@ export function JobFormBreakOffSection({
   } = breakOff
 
   const [infoOpen, setInfoOpen] = useState(false)
+  // Quick-set % buttons live behind a toggle to the right of "% of job total" (v2.1073).
+  const [quickSetOpen, setQuickSetOpen] = useState(false)
   useEffect(() => {
     if (!infoOpen) return
     const onKey = (e: KeyboardEvent) => {
@@ -210,47 +212,67 @@ export function JobFormBreakOffSection({
                         {breakOffDraftCoveragePctDisplay}% of job total
                       </span>
                     ) : null}
-                  </div>
-                  {breakOffBillingTrackPercents.hasTotal && breakOffRemaining > 0 ? (
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', alignItems: 'center', justifyContent: 'center' }}>
-                      <span style={{ fontSize: '0.6875rem', color: 'var(--text-muted)' }}>Quick set:</span>
-                      {[
-                        { pct: 20, label: '20%' },
-                        { pct: 40, label: '40%' },
-                        { pct: 60, label: '60%' },
-                        { pct: 80, label: '80%' },
-                        { pct: 100, label: 'Max' },
-                      ]
-                        // Numeric targets only when they land strictly inside the slider's
-                        // travel (below/at min = $0 invoice; at/above max = same as Max).
-                        .filter((q) =>
-                          q.pct === 100
-                            ? true
-                            : q.pct > breakOffCombinedSliderBounds.min &&
-                              q.pct < breakOffCombinedSliderBounds.max,
-                        )
-                        .map((q) => (
+                    {breakOffBillingTrackPercents.hasTotal && breakOffRemaining > 0 ? (
+                      <span style={{ display: 'inline-flex', flexWrap: 'wrap', gap: '0.35rem', alignItems: 'center' }}>
                         <button
-                          key={q.label}
                           type="button"
-                          onClick={() => applyBreakOffCombinedPct(q.pct)}
-                          title={q.label === 'Max' ? 'Break off everything left to bill' : `Paid + this bill = ${q.label} of Job Total`}
+                          onClick={() => setQuickSetOpen((v) => !v)}
+                          aria-expanded={quickSetOpen}
+                          title="Set the invoice amount from a percentage of the Job Total"
                           style={{
                             fontSize: '0.6875rem',
                             padding: '0.1rem 0.45rem',
                             borderRadius: 4,
                             border: '1px solid var(--border-strong)',
-                            background: 'var(--surface)',
+                            background: quickSetOpen ? 'var(--bg-subtle)' : 'var(--surface)',
                             color: 'var(--text-700)',
                             cursor: 'pointer',
                             lineHeight: 1.4,
+                            whiteSpace: 'nowrap',
                           }}
                         >
-                          {q.label}
+                          Quick set {quickSetOpen ? '▾' : '▸'}
                         </button>
-                      ))}
-                    </div>
-                  ) : null}
+                        {quickSetOpen
+                          ? [
+                              { pct: 20, label: '20%' },
+                              { pct: 40, label: '40%' },
+                              { pct: 60, label: '60%' },
+                              { pct: 80, label: '80%' },
+                              { pct: 100, label: 'Max' },
+                            ]
+                              // Numeric targets only when they land strictly inside the slider's
+                              // travel (below/at min = $0 invoice; at/above max = same as Max).
+                              .filter((q) =>
+                                q.pct === 100
+                                  ? true
+                                  : q.pct > breakOffCombinedSliderBounds.min &&
+                                    q.pct < breakOffCombinedSliderBounds.max,
+                              )
+                              .map((q) => (
+                                <button
+                                  key={q.label}
+                                  type="button"
+                                  onClick={() => applyBreakOffCombinedPct(q.pct)}
+                                  title={q.label === 'Max' ? 'Break off everything left to bill' : `Paid + this bill = ${q.label} of Job Total`}
+                                  style={{
+                                    fontSize: '0.6875rem',
+                                    padding: '0.1rem 0.45rem',
+                                    borderRadius: 4,
+                                    border: '1px solid var(--border-strong)',
+                                    background: 'var(--surface)',
+                                    color: 'var(--text-700)',
+                                    cursor: 'pointer',
+                                    lineHeight: 1.4,
+                                  }}
+                                >
+                                  {q.label}
+                                </button>
+                              ))
+                          : null}
+                      </span>
+                    ) : null}
+                  </div>
                   {breakOffBillingTrackPercents.hasTotal ? (
                     <div style={{ width: '100%', minWidth: 0 }}>
                       <div
