@@ -1389,10 +1389,11 @@ export default function Jobs() {
     })
   }
 
-  function openEdit(job: JobWithDetails, opts?: { billingCustomerHighlight?: boolean }) {
+  function openEdit(job: JobWithDetails, opts?: { billingCustomerHighlight?: boolean; fixturesSectionHighlight?: boolean }) {
     tryOpenEditJob(job.id, {
       initialJob: job,
       billingCustomerHighlight: opts?.billingCustomerHighlight,
+      fixturesSectionHighlight: opts?.fixturesSectionHighlight,
       onSaved: () => {
         void loadJobs()
         refreshCustomersAfterJobFormSave()

@@ -75,7 +75,7 @@ export type JobsStagesTableProps = {
   commitStagesPctWithNote: ReturnType<typeof useJobsStagesMutations>['commitStagesPctWithNote']
   setCreatePartialInvoiceAmount: (v: string) => void
   setCreatePartialInvoiceJob: (j: JobWithDetails | null) => void
-  openEdit: (job: JobWithDetails, opts?: { billingCustomerHighlight?: boolean }) => void
+  openEdit: (job: JobWithDetails, opts?: { billingCustomerHighlight?: boolean; fixturesSectionHighlight?: boolean }) => void
   openStagesDetailJobModal: (j: JobWithDetails) => void
   setAiaG702StagesJob: (j: JobWithDetails | null) => void
   canCreateHazmatFee: boolean
@@ -411,6 +411,7 @@ export default function JobsStagesTable(props: JobsStagesTableProps) {
                     pctComplete={j.pct_complete ?? null}
                     pctSaving={showPctComplete ? pctCompleteSavingId === j.id : undefined}
                     onPctCommit={showPctComplete ? (n) => updateJobPctComplete(j.id, n) : undefined}
+                    onNoBidValueClick={() => openEdit(j, { fixturesSectionHighlight: true })}
                   />
                 </td>
                 <td style={{ padding: '0.75rem', verticalAlign: 'top' }}>

@@ -17,6 +17,12 @@ type StagesProgressPaymentCellProps = {
   onPctCommit?: (pct: number | null) => void
   /** Optional row-specific detail line (e.g. this row's invoice amount), rendered under the legend. */
   footnote?: React.ReactNode
+  /**
+   * When the job has no bid value, render "no bid value" as a red clickable
+   * box instead of muted text (v2.1082) — clicking should open Edit Job at
+   * ① Line Items so the user can add the value. Omit for plain text.
+   */
+  onNoBidValueClick?: () => void
 }
 
 function swatch(color?: string) {
@@ -42,7 +48,7 @@ function swatch(color?: string) {
  * total on top, a paid/unbilled bar of the total bill, and a labeled legend.
  * Pure presentation — all math comes in via the model (see stagesMoneyBar.ts).
  */
-export default function StagesProgressPaymentCell({ model, pctComplete, pctSaving, onPctCommit, footnote }: StagesProgressPaymentCellProps) {
+export default function StagesProgressPaymentCell({ model, pctComplete, pctSaving, onPctCommit, footnote, onNoBidValueClick }: StagesProgressPaymentCellProps) {
   const rowStyle: React.CSSProperties = { display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '0.5rem' }
   const labelStyle: React.CSSProperties = { fontSize: '0.75rem', color: 'var(--text-muted)' }
   const amountStyle: React.CSSProperties = { fontSize: '0.75rem', fontVariantNumeric: 'tabular-nums' }
@@ -99,9 +105,32 @@ export default function StagesProgressPaymentCell({ model, pctComplete, pctSavin
             <span style={labelStyle}>&nbsp;</span>
           )}
         </span>
-        <span style={{ ...labelStyle, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
-          {model.hasBar ? `${formatUsdNoCents(model.total)} bid` : 'no bid value'}
-        </span>
+        {model.hasBar ? (
+          <span style={{ ...labelStyle, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
+            {`${formatUsdNoCents(model.total)} bid`}
+          </span>
+        ) : onNoBidValueClick ? (
+          <button
+            type="button"
+            onClick={onNoBidValueClick}
+            title="No bid value on this job — click to open it and add line items"
+            style={{
+              padding: '0.15rem 0.5rem',
+              fontSize: '0.75rem',
+              fontWeight: 600,
+              color: 'white',
+              background: '#dc2626',
+              border: 'none',
+              borderRadius: 4,
+              cursor: 'pointer',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            no bid value
+          </button>
+        ) : (
+          <span style={{ ...labelStyle, whiteSpace: 'nowrap' }}>no bid value</span>
+        )}
       </div>
 
       <div

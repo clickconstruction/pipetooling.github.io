@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-29 (v2.1081)
+last_updated: 2026-07-29 (v2.1082)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1082)
+
+### Jobs Stages: "no bid value" is now a red chip that opens the job (2026-07-29)
+Request: a job with no bid value should show it loudly and be clickable. In [`StagesProgressPaymentCell`](../src/components/jobs/StagesProgressPaymentCell.tsx) the muted "no bid value" text becomes a red (#dc2626) white-text button when the new optional `onNoBidValueClick` prop is supplied (plain text otherwise — other consumers unaffected). All four Stages call sites ([`JobsStagesUnifiedTable`](../src/components/jobs/JobsStagesUnifiedTable.tsx) ×3, [`JobsStagesTable`](../src/components/jobs/JobsStagesTable.tsx)) pass `() => openEdit(job, { fixturesSectionHighlight: true })` — clicking opens Edit Job scrolled+flashed to ① Line Items, where line items set the Job Total. `openEdit`'s opts gain `fixturesSectionHighlight` through the chain ([`Jobs.tsx`](../src/pages/Jobs.tsx) → `tryOpenEditJob` → the existing `JobFormModalContext` option). Client-only.
 
 ## Latest Updates (v2.1081)
 
