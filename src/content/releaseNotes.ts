@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1068',
+    date: '2026-07-29',
+    title: 'Groundwork for billing jobs by stage',
+    kind: 'infra',
+    highlights: [
+      'Behind-the-scenes database change that lets a job\'s line items link to the invoice that bills them. Nothing visible changes yet — the stage-billing tools land in the next updates.',
+    ],
+  },
+  {
     version: 'v2.1067',
     date: '2026-07-28',
     title: 'Edit Job: re-order line items',

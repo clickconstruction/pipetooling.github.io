@@ -103,6 +103,14 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 ### July 2026
 
+#### July 29, 2026
+
+**`20260729002615_fixture_invoice_link.sql`** _(apply via `supabase db push` after the file is on `main`; migration first, then the client that writes it — old clients simply never set the column)_
+- **Purpose**: Job-stages billing step 2 (v2.1068) — `jobs_ledger_fixtures.invoice_id uuid REFERENCES jobs_ledger_invoices(id) ON DELETE SET NULL` + partial index. The link lives on the fixture side because the Edit-Job save engine deletes+reinserts fixture rows (a link table keyed on fixture ids would orphan every save); `ON DELETE SET NULL` makes every invoice-teardown flow (delete RTB draft, send-back, void) release its segments with zero RPC changes. One invoice per fixture, whole — no partial-segment billing (client-enforced).
+- **Security**: additive nullable column; existing RLS + read-only guards on the table cover it; no CREATE TABLE so no sweep calls needed.
+- **Ordering**: migration first; the client feature PRs (v2.1069+) require the column and the regenerated types.
+- **Category**: Jobs / billing
+
 #### July 28, 2026
 
 **`20260728235607_read_only_allow_own_clock_punch.sql`** _(apply via `supabase db push` after the file is on `main`; either order vs the client is safe)_
