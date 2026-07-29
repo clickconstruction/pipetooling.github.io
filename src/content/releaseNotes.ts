@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1077',
+    date: '2026-07-29',
+    title: 'Edit Job never loses a just-typed money edit on close',
+    kind: 'fix',
+    highlights: [
+      'Closing Edit Job (Cancel, clicking outside, or jumping to Stages / Job Detail) now saves any line-item or payment edit that was still waiting to auto-save, instead of silently dropping it.',
+      'If the server does not respond, the modal stays open and asks: Retry and close, Keep editing, or Close without saving.',
+      'Switching tabs or backgrounding the app mid-edit also triggers the auto-save right away.',
+    ],
+  },
+  {
     version: 'v2.1076',
     date: '2026-07-29',
     title: 'Cleaner Make Invoice row',

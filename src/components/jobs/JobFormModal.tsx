@@ -22,7 +22,13 @@ import { useLedgerPrefixMap } from '../../contexts/LedgerDisplayPrefixContext'
 import { formatBidLedgerDocTitle, type LedgerPrefixMap } from '../../lib/ledgerDisplayPrefixes'
 import { parseCustomerImport } from '../../utils/parseCustomerImport'
 import { nameSimilarity } from '../../utils/nameSimilarity'
-import { formatPostgrestOrUnknownError, withSupabaseRetry } from '../../utils/errorHandling'
+import {
+  OperationTimeoutError,
+  formatPostgrestOrUnknownError,
+  withOperationTimeout,
+  withSupabaseRetry,
+} from '../../utils/errorHandling'
+import { flushDirtySliceForClose } from '../../lib/jobs/jobFormCloseFlush'
 import { notifyDispatchRequestsChanged } from '../../lib/dispatchRequestHelpers'
 import CustomerAcceptanceRecordModal from '../estimates/CustomerAcceptanceRecordModal'
 import type { Database } from '../../types/database'
@@ -534,12 +540,12 @@ export default function JobFormModal({
   const autosaveJobIdRef = useRef<string | null>(null)
   autosaveJobIdRef.current = editing?.id ?? null
 
-  async function runBillingAutosave(): Promise<void> {
+  async function runBillingAutosave(): Promise<boolean> {
     const jobId = autosaveJobIdRef.current
-    if (!jobId) return
+    if (!jobId) return true
     if (autosaveRunningRef.current) {
       autosaveQueuedRef.current = true
-      return
+      return true
     }
     autosaveRunningRef.current = true
     setBillingAutosaveStatus('saving')
@@ -590,12 +596,14 @@ export default function JobFormModal({
       autosaveBaselineRef.current = { jobId, json: sliceWritten }
       setBillingAutosaveStatus('saved')
       onSavedRef.current?.()
+      return true
     } catch (autosaveErr) {
       setBillingAutosaveStatus('error')
       showToast(
         `Autosave failed: ${autosaveErr instanceof Error ? autosaveErr.message : String(autosaveErr)}`,
         'error',
       )
+      return false
     } finally {
       autosaveRunningRef.current = false
       if (autosaveQueuedRef.current) {
@@ -607,18 +615,33 @@ export default function JobFormModal({
   const runBillingAutosaveRef = useRef(runBillingAutosave)
   runBillingAutosaveRef.current = runBillingAutosave
 
+  /** True when the money slice differs from the last persisted baseline. */
+  function isBillingSliceDirty(): boolean {
+    const jobId = autosaveJobIdRef.current
+    const base = autosaveBaselineRef.current
+    return !!(jobId && base && base.jobId === jobId && base.json !== autosaveSliceRef.current)
+  }
+
   /** Cancel any pending debounce and, if the money slice is dirty, save it NOW. */
   async function flushBillingAutosave(): Promise<void> {
     if (autosaveTimerRef.current) {
       clearTimeout(autosaveTimerRef.current)
       autosaveTimerRef.current = null
     }
-    const jobId = autosaveJobIdRef.current
-    const base = autosaveBaselineRef.current
-    if (jobId && base && base.jobId === jobId && base.json !== autosaveSliceRef.current) {
+    if (isBillingSliceDirty()) {
       await runBillingAutosave()
     }
   }
+  const flushBillingAutosaveRef = useRef(flushBillingAutosave)
+  flushBillingAutosaveRef.current = flushBillingAutosave
+
+  // Closing the modal must not drop a pending autosave: cancel the debounce,
+  // wait out any in-flight write, and save whatever is still dirty before
+  // onClose unmounts everything. 'error' keeps the modal open with an explicit
+  // Retry / Close-without-saving choice — silent loss is never the default.
+  const [closeFlushState, setCloseFlushState] = useState<'idle' | 'saving' | 'error'>('idle')
+  const closeFlushStateRef = useRef(closeFlushState)
+  closeFlushStateRef.current = closeFlushState
 
   useEffect(() => {
     const jobId = editing?.id ?? null
@@ -945,7 +968,8 @@ export default function JobFormModal({
     return t
   }
 
-  function closeForm() {
+  /** The original unconditional close: reset transient UI state and unmount. */
+  function finishClose() {
     setJobProjectLinkChoiceOpen(false)
     setJobBidLinkChoiceOpen(false)
     setContractModalEstimateId(null)
@@ -962,6 +986,77 @@ export default function JobFormModal({
     resetMigrate()
     onClose()
   }
+
+  /**
+   * Close WITHOUT flushing. For paths where the job row no longer exists
+   * (delete, migrate+delete) — flushing there would reinsert child rows for a
+   * dead job — and for the explicit "Close without saving" choice on a failed
+   * close-flush.
+   */
+  function closeFormWithoutSaving() {
+    if (autosaveTimerRef.current) {
+      clearTimeout(autosaveTimerRef.current)
+      autosaveTimerRef.current = null
+    }
+    autosaveBaselineRef.current = null
+    setCloseFlushState('idle')
+    finishClose()
+  }
+
+  /**
+   * Guarded close: flush a dirty billing autosave before unmounting so a
+   * click-away inside the ~1.2s debounce window can't silently drop edits.
+   * Resolves true when the modal actually closed (callers that navigate
+   * afterwards must check).
+   */
+  async function closeForm(): Promise<boolean> {
+    if (closeFlushStateRef.current === 'saving') return false
+    if (autosaveTimerRef.current) {
+      clearTimeout(autosaveTimerRef.current)
+      autosaveTimerRef.current = null
+    }
+    if (!isBillingSliceDirty() && !autosaveRunningRef.current) {
+      finishClose()
+      return true
+    }
+    setCloseFlushState('saving')
+    try {
+      const outcome = await withOperationTimeout(
+        flushDirtySliceForClose({
+          isRunning: () => autosaveRunningRef.current,
+          isDirty: isBillingSliceDirty,
+          runSave: () => runBillingAutosaveRef.current(),
+        }),
+        15000,
+        'Saving your latest changes',
+      )
+      if (outcome === 'failed') {
+        setCloseFlushState('error')
+        return false
+      }
+      setCloseFlushState('idle')
+      finishClose()
+      return true
+    } catch (flushErr) {
+      // Timeout: the request is NOT cancelled — it may still land.
+      setCloseFlushState('error')
+      if (!(flushErr instanceof OperationTimeoutError)) {
+        console.error('JobFormModal close-flush failed', flushErr)
+      }
+      return false
+    }
+  }
+
+  // Tab switch / phone backgrounding mid-edit never hits the close handler —
+  // flush the pending debounce when the page goes hidden so the window for
+  // losing edits on a hard tab close shrinks to near-zero.
+  useEffect(() => {
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') void flushBillingAutosaveRef.current()
+    }
+    document.addEventListener('visibilitychange', onVisibilityChange)
+    return () => document.removeEventListener('visibilitychange', onVisibilityChange)
+  }, [])
 
   function applyEditJob(job: JobWithDetails, billingGate: boolean, fixturesGate: boolean, picturesGate: boolean) {
     setPaymentRemoveConfirmRowId(null)
@@ -2592,7 +2687,7 @@ export default function JobFormModal({
           await supabase.from('customers').update({ date_met: dateMet.trim() }).eq('id', customerId)
         }
       }
-      closeForm()
+      await closeForm()
       onSavedRef.current?.()
     } catch (err: unknown) {
       console.error('JobFormModal saveJob failed', err)
@@ -2612,7 +2707,7 @@ export default function JobFormModal({
       return false
     }
     onSavedRef.current?.()
-    closeForm()
+    closeFormWithoutSaving()
     setDeletingId(null)
     return true
   }
@@ -2647,7 +2742,7 @@ export default function JobFormModal({
         return false
       }
       onSavedRef.current?.()
-      closeForm()
+      closeFormWithoutSaving()
       showToast(
         'Costs and job total moved to the target job; this job was removed. Open the target job to verify Specific Work and Job Total.',
         'success',
@@ -2701,7 +2796,9 @@ export default function JobFormModal({
         zIndex: JOB_FORM_OVERLAY_Z_INDEX,
         padding: '1rem',
       }}
-      onClick={(e) => e.target === e.currentTarget && closeForm()}
+      onClick={(e) => {
+        if (e.target === e.currentTarget) void closeForm()
+      }}
     >
       <div
         style={{
@@ -2845,11 +2942,11 @@ export default function JobFormModal({
             >
               <button
                 type="button"
-                onClick={() => {
+                onClick={async () => {
                   const id = editing?.id
                   if (!id) return
-                  closeForm()
-                  jobDetailOpenerBridge?.requestOpenJobDetail(id)
+                  const closed = await closeForm()
+                  if (closed) jobDetailOpenerBridge?.requestOpenJobDetail(id)
                 }}
                 aria-label="Close Edit Job and open Job Detail"
                 title="Close Edit Job and open Job Detail"
@@ -3062,13 +3159,13 @@ export default function JobFormModal({
                 {headerTradePill && editing ? (
                   <button
                     type="button"
-                    onClick={() => {
+                    onClick={async () => {
                       const jobId = editing.id
-                      onClose()
-                      navigate(`/jobs?tab=stages&stagesJob=${encodeURIComponent(jobId)}`)
+                      const closed = await closeForm()
+                      if (closed) navigate(`/jobs?tab=stages&stagesJob=${encodeURIComponent(jobId)}`)
                     }}
-                    title="Open this job in Jobs → Stages (closes Edit Job without saving)"
-                    aria-label="Open this job in Jobs → Stages. Closes Edit Job without saving."
+                    title="Open this job in Jobs → Stages (closes Edit Job; money edits are saved, other fields need Save)"
+                    aria-label="Open this job in Jobs → Stages. Closes Edit Job; money edits are saved, other fields need Save."
                     style={{ ...headerTradePill.style, marginTop: 0, cursor: 'pointer', flexShrink: 0 }}
                   >
                     {headerTradePill.label}
@@ -3913,6 +4010,74 @@ export default function JobFormModal({
             removeMaterialRow={removeMaterialRow}
           />
         </div>
+        {closeFlushState === 'error' && (
+          <div
+            role="alert"
+            style={{
+              marginTop: '1.25rem',
+              padding: '0.6rem 0.75rem',
+              background: 'var(--bg-red-100)',
+              border: '1px solid var(--border-red)',
+              borderRadius: 6,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.6rem',
+              flexWrap: 'wrap',
+            }}
+          >
+            <span style={{ color: 'var(--text-red-700)', fontSize: '0.875rem', fontWeight: 500 }}>
+              Your latest changes could not be saved — the server may not have responded. They may or may not have
+              saved.
+            </span>
+            <span style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                onClick={() => void closeForm()}
+                style={{
+                  padding: '0.3rem 0.7rem',
+                  background: '#3b82f6',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: 4,
+                  cursor: 'pointer',
+                  fontSize: '0.8rem',
+                }}
+              >
+                Retry and close
+              </button>
+              <button
+                type="button"
+                onClick={() => setCloseFlushState('idle')}
+                style={{
+                  padding: '0.3rem 0.7rem',
+                  background: 'var(--bg-200)',
+                  color: 'var(--text-700)',
+                  border: 'none',
+                  borderRadius: 4,
+                  cursor: 'pointer',
+                  fontSize: '0.8rem',
+                }}
+              >
+                Keep editing
+              </button>
+              <button
+                type="button"
+                onClick={closeFormWithoutSaving}
+                style={{
+                  padding: '0.3rem 0.7rem',
+                  background: 'transparent',
+                  color: 'var(--text-red-700)',
+                  border: '1px solid var(--border-red)',
+                  borderRadius: 4,
+                  cursor: 'pointer',
+                  fontSize: '0.8rem',
+                }}
+              >
+                Close without saving
+              </button>
+            </span>
+          </div>
+        )}
         <div
           style={{
             display: 'flex',
@@ -3946,8 +4111,20 @@ export default function JobFormModal({
             )}
           </div>
           <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
-            <button type="button" onClick={closeForm} style={{ padding: '0.5rem 1rem', background: 'var(--bg-200)', color: 'var(--text-700)', border: 'none', borderRadius: 4, cursor: 'pointer' }}>
-              Cancel
+            <button
+              type="button"
+              onClick={() => void closeForm()}
+              disabled={closeFlushState === 'saving'}
+              style={{
+                padding: '0.5rem 1rem',
+                background: 'var(--bg-200)',
+                color: closeFlushState === 'saving' ? 'var(--text-faint)' : 'var(--text-700)',
+                border: 'none',
+                borderRadius: 4,
+                cursor: closeFlushState === 'saving' ? 'wait' : 'pointer',
+              }}
+            >
+              {closeFlushState === 'saving' ? 'Saving…' : 'Cancel'}
             </button>
             {!jobFormCanSubmit && !saving && jobFormMissingFields.length > 0 && (
               <span style={{ fontSize: '0.8rem', color: '#FF6600', display: 'inline-block' }}>
