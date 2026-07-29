@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-29 (v2.1083)
+last_updated: 2026-07-29 (v2.1088)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1088)
+
+### Takeoffs: "In N assemblies" — jump from a part to the assemblies containing it (2026-07-29)
+Request (Wendi): while building a takeoff, see which assemblies include a chosen part and add one from right there. New tested kernel [`partAssemblyIndex.ts`](../src/lib/bids/partAssemblyIndex.ts) (`buildPartAssemblyIndex`: material_template_items → partId → assemblies with total quantity; follows nested templates multiplying quantities, cycle-safe; 8 tests). [`BidsTakeoffTab`](../src/components/bids/BidsTakeoffTab.tsx) loads the items once per rough takeoff (refreshed when templates change) and shows a blue **In N assemblies** link on each selected part line's meta row (counts restricted to the takeoff's visible templates). Clicking opens the existing Add assembly modal with a new part-filter chip ("Containing: <part> ×") — the list narrows to assemblies containing the part, each row adds "includes <part> ×N", and both actions (expand to part lines / **Add as bundle**) work unchanged; clearing the chip restores the full list. New help guide [`find-assemblies-that-include-a-part`](../src/content/help/find-assemblies-that-include-a-part.md). Client-only.
 
 ## Latest Updates (v2.1087)
 

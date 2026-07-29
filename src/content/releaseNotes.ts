@@ -11,6 +11,18 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1088',
+    date: '2026-07-29',
+    title: 'Takeoffs: jump from a part to the assemblies that include it',
+    kind: 'feature',
+    highlights: [
+      'On Bids → Takeoffs, a selected part line now shows a blue "In N assemblies" link when saved assemblies include that part.',
+      'Clicking it opens the Add assembly picker filtered to just those assemblies, each showing how many of the part it uses — expand into part lines or add as a bundle, same as always.',
+      'Clear the filter chip to browse all assemblies.',
+      'New help guide: "find the assemblies that include a part".',
+    ],
+  },
+  {
     version: 'v2.1087',
     date: '2026-07-29',
     title: 'One click: bill the hazmat fee to the tenant',
