@@ -32,6 +32,10 @@ function makeInvoice(overrides: Partial<Inv> & Pick<Inv, 'id' | 'job_id'>): Inv 
     agreed_write_down_note: overrides.agreed_write_down_note ?? null,
     agreed_write_down_previous_amount: overrides.agreed_write_down_previous_amount ?? null,
     agreed_write_down_stripe_credit_note_id: overrides.agreed_write_down_stripe_credit_note_id ?? null,
+    bill_to_name: overrides.bill_to_name ?? null,
+    bill_to_email: overrides.bill_to_email ?? null,
+    bill_to_phone: overrides.bill_to_phone ?? null,
+    bill_to_stripe_customer_id: overrides.bill_to_stripe_customer_id ?? null,
     is_primary_rtb_bundle: overrides.is_primary_rtb_bundle ?? false,
   }
 }

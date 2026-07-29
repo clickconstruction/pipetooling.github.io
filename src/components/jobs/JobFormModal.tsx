@@ -134,6 +134,7 @@ import { useJobDetailOpenerBridge } from '../../contexts/JobDetailOpenerBridgeCo
 import { useNewProjectModal } from '../../contexts/NewProjectModalContext'
 import BilledBillViewModal, { type InvoiceWithJobForBillView } from './BilledBillViewModal'
 import AgreedWriteDownModal from './AgreedWriteDownModal'
+import { JobFormBillToEditor, type BillToEditorInvoice } from './JobFormBillToEditor'
 import { loadTeamLaborData, type TeamLaborRow } from '../../utils/teamLabor'
 import { laborItemsSubtotal } from '../../lib/peopleLaborJobItemLineCost'
 import {
@@ -275,6 +276,9 @@ export default function JobFormModal({
   const [agreedWriteDownInvoice, setAgreedWriteDownInvoice] = useState<
     Database['public']['Tables']['jobs_ledger_invoices']['Row'] | null
   >(null)
+  // Per-invoice "Bill to" editor (v2.1086) — shell-owned so the invoice list
+  // AND the RIDERS "Bill separately…" flow can both open it.
+  const [billToEditorInvoice, setBillToEditorInvoice] = useState<BillToEditorInvoice | null>(null)
   const editingIdRef = useRef<string | null>(null)
   editingIdRef.current = editing?.id ?? null
 
@@ -4027,6 +4031,7 @@ export default function JobFormModal({
                 setAgreedWriteDownInvoice={setAgreedWriteDownInvoice}
                 refreshEditingJobAndHydratePayments={refreshEditingJobAndHydratePayments}
                 onInvoiceDeleted={clearFixtureLinksForDeletedInvoice}
+                onEditBillTo={setBillToEditorInvoice}
                 nestedOverlayZIndex={JOB_FORM_NESTED_OVERLAY_Z_INDEX}
               />
             </>
@@ -4857,6 +4862,24 @@ export default function JobFormModal({
         estimateId={contractModalEstimateId}
         onClose={() => setContractModalEstimateId(null)}
       />
+      {billToEditorInvoice ? (
+        <JobFormBillToEditor
+          invoice={billToEditorInvoice}
+          jobCustomerName={editing?.customer_name ?? null}
+          onClose={() => setBillToEditorInvoice(null)}
+          onSaved={() => {
+            const jobId = editing?.id ?? editingIdRef.current
+            if (jobId) {
+              void (async () => {
+                const found = await fetchJobWithDetailsById(jobId)
+                if (found) setEditing(found)
+              })()
+            }
+            onSavedRef.current?.()
+          }}
+          zIndex={JOB_FORM_NESTED_OVERLAY_Z_INDEX}
+        />
+      ) : null}
     </>
   )
 }

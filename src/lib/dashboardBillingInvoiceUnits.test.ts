@@ -48,6 +48,10 @@ const BASE_INVOICE_FIELDS = {
   agreed_write_down_note: null,
   agreed_write_down_previous_amount: null,
   agreed_write_down_stripe_credit_note_id: null,
+  bill_to_email: null,
+  bill_to_name: null,
+  bill_to_phone: null,
+  bill_to_stripe_customer_id: null,
   is_primary_rtb_bundle: null,
 }
 

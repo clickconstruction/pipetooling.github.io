@@ -50,6 +50,10 @@ function rtbInvoiceStub(overrides: Partial<Record<string, unknown>> & { id: stri
     agreed_write_down_note: null,
     agreed_write_down_previous_amount: null,
     agreed_write_down_stripe_credit_note_id: null,
+    bill_to_email: null,
+    bill_to_name: null,
+    bill_to_phone: null,
+    bill_to_stripe_customer_id: null,
     status: 'ready_to_bill' as const,
     is_primary_rtb_bundle: false,
     ...overrides,
@@ -179,6 +183,10 @@ describe('buildReadyToBillStageRows', () => {
       agreed_write_down_note: null,
       agreed_write_down_previous_amount: null,
       agreed_write_down_stripe_credit_note_id: null,
+      bill_to_email: null,
+      bill_to_name: null,
+      bill_to_phone: null,
+      bill_to_stripe_customer_id: null,
     }
     const invB = { ...invA, id: 'inv-b', amount: 3000, sequence_order: 1 }
     const job = jobStub({
@@ -277,6 +285,10 @@ describe('buildReadyToBillStageRows', () => {
       agreed_write_down_note: null,
       agreed_write_down_previous_amount: null,
       agreed_write_down_stripe_credit_note_id: null,
+      bill_to_email: null,
+      bill_to_name: null,
+      bill_to_phone: null,
+      bill_to_stripe_customer_id: null,
     }
     const invB = { ...invA, id: 'inv-b', amount: 3000, sequence_order: 1 }
     const job = jobStub({
@@ -519,6 +531,10 @@ describe('readyToBillRowsExposureTotal', () => {
       agreed_write_down_note: null,
       agreed_write_down_previous_amount: null,
       agreed_write_down_stripe_credit_note_id: null,
+      bill_to_email: null,
+      bill_to_name: null,
+      bill_to_phone: null,
+      bill_to_stripe_customer_id: null,
     }
     const invB = { ...invA, id: 'inv-b', amount: 3000, sequence_order: 1 }
     const job = jobStub({
@@ -617,6 +633,10 @@ describe('stagesMergedBillingInvoiceId', () => {
       agreed_write_down_note: null,
       agreed_write_down_previous_amount: null,
       agreed_write_down_stripe_credit_note_id: null,
+      bill_to_email: null,
+      bill_to_name: null,
+      bill_to_phone: null,
+      bill_to_stripe_customer_id: null,
     }
     const job = jobStub({ id: 'job-1', status: 'billed', invoices: [inv] })
     expect(stagesMergedBillingInvoiceId(job)).toBe('inv-1')
@@ -646,6 +666,10 @@ describe('stagesMergedBillingInvoiceId', () => {
       agreed_write_down_note: null,
       agreed_write_down_previous_amount: null,
       agreed_write_down_stripe_credit_note_id: null,
+      bill_to_email: null,
+      bill_to_name: null,
+      bill_to_phone: null,
+      bill_to_stripe_customer_id: null,
     }
     const invB = { ...invA, id: 'inv-b', amount: 3000, sequence_order: 1 }
     const job = jobStub({ id: 'job-1', status: 'billed', invoices: [invA, invB] })
@@ -684,6 +708,10 @@ describe('buildBilledStageRows', () => {
       agreed_write_down_note: null,
       agreed_write_down_previous_amount: null,
       agreed_write_down_stripe_credit_note_id: null,
+      bill_to_email: null,
+      bill_to_name: null,
+      bill_to_phone: null,
+      bill_to_stripe_customer_id: null,
     }
     const job = jobStub({
       id: 'job-1',
@@ -723,6 +751,10 @@ describe('buildBilledStageRows', () => {
       agreed_write_down_note: null,
       agreed_write_down_previous_amount: null,
       agreed_write_down_stripe_credit_note_id: null,
+      bill_to_email: null,
+      bill_to_name: null,
+      bill_to_phone: null,
+      bill_to_stripe_customer_id: null,
     }
     const invB = { ...invA, id: 'inv-b', amount: 3000, sequence_order: 1 }
     const job = jobStub({

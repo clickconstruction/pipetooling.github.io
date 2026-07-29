@@ -41,6 +41,24 @@ describe('eligibleHazmatRollIns', () => {
     ).toEqual([])
   })
 
+  it('never rolls in a rider billed to someone else (bill-to override, v2.1086)', () => {
+    expect(
+      eligibleHazmatRollIns({
+        billingInvoiceId: 'primary1',
+        incidents: [incident],
+        invoices: [inv({ id: 'rider1', bill_to_email: 'tenant@example.com' })],
+      }),
+    ).toEqual([])
+    // Blank/whitespace bill_to_email is NOT an override — still rolls in.
+    expect(
+      eligibleHazmatRollIns({
+        billingInvoiceId: 'primary1',
+        incidents: [incident],
+        invoices: [inv({ id: 'rider1', bill_to_email: '  ' })],
+      }),
+    ).toHaveLength(1)
+  })
+
   it('never rolls in a rider the customer already saw', () => {
     for (const sent of [
       { stripe_invoice_id: 'in_123' },

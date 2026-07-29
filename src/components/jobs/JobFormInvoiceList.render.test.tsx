@@ -31,6 +31,7 @@ function renderList(invoices: ReturnType<typeof makeInvoice>[]) {
       setAgreedWriteDownInvoice={() => {}}
       refreshEditingJobAndHydratePayments={() => {}}
       onInvoiceDeleted={() => {}}
+      onEditBillTo={() => {}}
       nestedOverlayZIndex={1000}
     />,
   )

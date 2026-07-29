@@ -10,6 +10,7 @@ import { formatCurrency } from '../../lib/jobs/jobFormMoney'
 import { formatWorkDateYmdMonthDayShort } from '../../utils/dateUtils'
 import { invoiceCreatedCalendarDayOffset } from '../../lib/invoiceCreatedRelative'
 import { jobLedgerHasCustomerForBilling } from '../../lib/jobLedgerCustomerForBilling'
+import { billToDisplayLabel, invoiceBillToFromRow } from '../../lib/jobs/invoiceBillTo'
 import { fetchJobWithDetailsById } from '../../lib/fetchJobWithDetailsById'
 import { setReturnEditJobFromStages } from '../../lib/returnEditJobFromStages'
 import type { JobBillingContext } from '../../lib/jobBillingContext'
@@ -34,6 +35,8 @@ type JobFormInvoiceListProps = {
    * save would otherwise reinsert the stale invoice_id → FK error). v2.1072.
    */
   onInvoiceDeleted: (invoiceId: string) => void
+  /** Open the shell-owned Bill-to editor for a draft invoice (v2.1086). */
+  onEditBillTo: (inv: JobsLedgerInvoiceRow) => void
   /** z-index for the delete-draft confirm overlay (above the Edit Job modal). */
   nestedOverlayZIndex: number
 }
@@ -57,6 +60,7 @@ export function JobFormInvoiceList({
   setAgreedWriteDownInvoice,
   refreshEditingJobAndHydratePayments,
   onInvoiceDeleted,
+  onEditBillTo,
   nestedOverlayZIndex,
 }: JobFormInvoiceListProps) {
   const navigate = useNavigate()
@@ -130,6 +134,7 @@ export function JobFormInvoiceList({
                 // and it is the only thing distinguishing them from an ordinary draft.
                 const hasDetailLine = isDraft ? Boolean(memoLine) : Boolean(noteLine || memoLine || footerLine)
                 const isHazmatRider = hazmatInvoiceIds?.has(inv.id) ?? false
+                const billTo = invoiceBillToFromRow(inv)
                 const rowSep = idx < arr.length - 1 ? '1px solid var(--border)' : 'none'
                 const parentCellPad = hasDetailLine ? '0.5rem 0.75rem 0.1rem' : '0.5rem 0.75rem'
                 const paidOnInv = payments.filter((p) => p.invoice_id === inv.id).reduce((s, p) => s + (Number(p.amount) || 0), 0)
@@ -175,6 +180,29 @@ export function JobFormInvoiceList({
                             }}
                           >
                             ☣ Hazmat
+                          </span>
+                        ) : null}
+                        {billTo ? (
+                          <span
+                            title={`This invoice bills ${billToDisplayLabel(billTo)} — not the job customer${editing.customer_name ? ` (${editing.customer_name})` : ''}.`}
+                            style={{
+                              display: 'inline-block',
+                              marginTop: '0.2rem',
+                              padding: '0.05rem 0.4rem',
+                              borderRadius: 999,
+                              fontSize: '0.6875rem',
+                              fontWeight: 700,
+                              background: 'var(--bg-amber-tint)',
+                              color: 'var(--text-amber-800)',
+                              border: '1px solid var(--border-strong)',
+                              maxWidth: '100%',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap',
+                              verticalAlign: 'bottom',
+                            }}
+                          >
+                            → {billTo.name ?? billTo.email}
                           </span>
                         ) : null}
                       </td>
@@ -235,6 +263,20 @@ export function JobFormInvoiceList({
                               style={{ padding: '0.15rem 0.55rem', fontSize: '0.75rem', background: '#2563eb', border: 'none', borderRadius: 4, cursor: 'pointer', color: '#ffffff', fontWeight: 600 }}
                             >
                               Send bill…
+                            </button>
+                          ) : null}
+                          {isDraft ? (
+                            <button
+                              type="button"
+                              onClick={() => onEditBillTo(inv)}
+                              title={
+                                billTo
+                                  ? `Billed to ${billToDisplayLabel(billTo)} — change or remove`
+                                  : 'Bill this invoice to someone other than the job customer (e.g. a tenant)'
+                              }
+                              style={btnGray}
+                            >
+                              Bill to…
                             </button>
                           ) : null}
                           {!isDraft && hasStripeShare ? (

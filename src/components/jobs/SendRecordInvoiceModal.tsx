@@ -76,6 +76,12 @@ import {
   type JobHazmatIncidentRow,
 } from '../../lib/hazmatIncidents'
 import { eligibleHazmatRollIns, foldedHazmatFeeLines, hazmatFeeLinesWithinAmount, hazmatRollInTotalDollars, type HazmatRollInLine } from '../../lib/hazmatRollIn'
+import {
+  applyBillToToJobBillingContext,
+  billToDisplayLabel,
+  invoiceBillToFromRow,
+  type InvoiceBillTo,
+} from '../../lib/jobs/invoiceBillTo'
 import { sendHazmatNoticeEmailToCustomer } from '../../lib/sendHazmatNoticeEmail'
 import { linkHazmatFeeIncidentToInvoice } from '../../lib/hazmatFeeEdit'
 import { buildHazmatNoticeEmailPreviewHtml } from '../../lib/hazmatNoticeEmailPreview'
@@ -504,7 +510,15 @@ export default function SendRecordInvoiceModal({
   const [emailFixAlsoCustomer, setEmailFixAlsoCustomer] = useState(true)
   const [emailFixSaving, setEmailFixSaving] = useState(false)
   const [emailFixError, setEmailFixError] = useState<string | null>(null)
-  const job = jobRaw && emailOverride ? { ...jobRaw, customer_email: emailOverride } : jobRaw
+  /** Per-invoice Bill-to override (v2.1086): when the billing target invoice
+      has bill_to_email, overlay the alternate recipient onto the job context —
+      every gate, preview payload, physical prefill, and notice send downstream
+      sees the tenant instead of the job customer. Server-side the edge
+      functions read the invoice row themselves (v2.1085); this overlay keeps
+      the UI honest about who gets billed. */
+  const [billToOverride, setBillToOverride] = useState<InvoiceBillTo | null>(null)
+  const jobWithBillTo = jobRaw ? applyBillToToJobBillingContext(jobRaw, billToOverride) : jobRaw
+  const job = jobWithBillTo && emailOverride ? { ...jobWithBillTo, customer_email: emailOverride } : jobWithBillTo
   useEffect(() => {
     setEmailOverride(null)
     setEmailFixDraft('')
@@ -544,9 +558,14 @@ export default function SendRecordInvoiceModal({
   }, [open, jobRaw?.customer_id])
 
   function physicalAdditionalEmails(): string[] {
+    // Bill-to override: the customer's contact persons must not ride on an
+    // invoice that bills someone else (e.g. a tenant). One-off extras still
+    // allowed — the office typed those deliberately.
     const out: string[] = []
-    for (const c of customerContacts) {
-      if (extraRecipientIds.has(c.id) && !out.includes(c.email.toLowerCase())) out.push(c.email.toLowerCase())
+    if (!billToOverride) {
+      for (const c of customerContacts) {
+        if (extraRecipientIds.has(c.id) && !out.includes(c.email.toLowerCase())) out.push(c.email.toLowerCase())
+      }
     }
     const oneOff = oneOffEmail.trim().toLowerCase()
     if (oneOff && oneOff.includes('@') && !out.includes(oneOff)) out.push(oneOff)
@@ -597,6 +616,32 @@ export default function SendRecordInvoiceModal({
   const invoice = payload?.kind === 'invoice' ? payload.invoice : null
   // A stored memo (e.g. Turnaway trip charges) beats the preset default on open.
   const storedInvoiceMemo = (invoice?.stripe_invoice_memo ?? '').trim()
+
+  // Bill-to override loader (v2.1086): the invoice ROW is authoritative for
+  // the recipient — openers' payloads don't carry it. Refetches whenever the
+  // billing target changes (incl. the ensured primary for kind:'job').
+  const billToTargetInvoiceId = kind === 'invoice' ? invoice?.id ?? null : ensuredInvoice?.id ?? null
+  useEffect(() => {
+    setBillToOverride(null)
+    if (!open || !billToTargetInvoiceId) return
+    let cancelled = false
+    void (async () => {
+      try {
+        const { data } = await supabase
+          .from('jobs_ledger_invoices')
+          .select('bill_to_name, bill_to_email, bill_to_phone')
+          .eq('id', billToTargetInvoiceId)
+          .maybeSingle()
+        if (cancelled) return
+        setBillToOverride(invoiceBillToFromRow(data))
+      } catch {
+        if (!cancelled) setBillToOverride(null)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [open, billToTargetInvoiceId])
 
   const handleHostedStripeOobUnwindSuccess = useCallback(async () => {
     const invSnap = stripeSuccessInvoiceRef.current
@@ -791,7 +836,7 @@ export default function SendRecordInvoiceModal({
         if (riderIds.length === 0) return
         const { data: invRows } = await supabase
           .from('jobs_ledger_invoices')
-          .select('id, amount, status, stripe_invoice_id, sent_to_customer_at, external_send_channel')
+          .select('id, amount, status, stripe_invoice_id, sent_to_customer_at, external_send_channel, bill_to_email')
           .in('id', riderIds)
         if (cancelled) return
         const lines = eligibleHazmatRollIns({
@@ -804,6 +849,7 @@ export default function SendRecordInvoiceModal({
             stripe_invoice_id: string | null
             sent_to_customer_at: string | null
             external_send_channel: string | null
+            bill_to_email: string | null
           }[],
         })
         setHazmatRollInLines(lines)
@@ -1861,6 +1907,25 @@ export default function SendRecordInvoiceModal({
           </div>
         ) : null}
 
+        {billToOverride ? (
+          <div
+            style={{
+              marginBottom: '0.75rem',
+              padding: '0.5rem 0.75rem',
+              borderRadius: 6,
+              background: 'var(--bg-amber-tint)',
+              border: '1px solid var(--border-strong)',
+              fontSize: '0.8125rem',
+              color: 'var(--text-amber-800)',
+              lineHeight: 1.4,
+            }}
+          >
+            <strong>Billing to {billToDisplayLabel(billToOverride)}</strong> — not the job customer
+            {(jobRaw?.customer_name ?? '').trim() ? ` (${(jobRaw?.customer_name ?? '').trim()})` : ''}. Change or
+            remove this on Edit Job → Invoices → Bill to…
+          </div>
+        ) : null}
+
         <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem', borderBottom: '1px solid var(--border)', flexWrap: 'wrap' }}>
           <button type="button" onClick={() => setTab('stripe')} style={billCustomerTopTabButtonStyle(tab === 'stripe')}>
             Stripe bill
@@ -1991,9 +2056,12 @@ export default function SendRecordInvoiceModal({
               <div style={{ marginBottom: '0.75rem' }}>
                 <div style={{ fontSize: '0.875rem', fontWeight: 500, marginBottom: '0.25rem' }}>Send to</div>
                 <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginBottom: customerContacts.length > 0 ? '0.25rem' : 0 }}>
-                  {(job.customer_email ?? '').trim() || '—'} <span style={{ color: 'var(--text-faint)' }}>(primary)</span>
+                  {(job.customer_email ?? '').trim() || '—'}{' '}
+                  <span style={{ color: 'var(--text-faint)' }}>{billToOverride ? '(bill-to recipient)' : '(primary)'}</span>
                 </div>
-                {customerContacts.map((c) => (
+                {/* Bill-to override: the customer's contact persons never ride on an
+                    invoice that bills someone else. */}
+                {(billToOverride ? [] : customerContacts).map((c) => (
                   <label key={c.id} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8125rem', cursor: 'pointer', padding: '0.1rem 0' }}>
                     <input
                       type="checkbox"
