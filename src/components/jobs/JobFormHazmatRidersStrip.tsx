@@ -41,11 +41,20 @@ export function JobFormHazmatRiderRows({
   job,
   incidents,
   onChanged,
+  onBillSeparately,
+  billSeparatelyBusyId,
 }: {
   job: JobWithDetails
   incidents: JobHazmatIncidentRow[]
   /** Re-fetch incidents after an edit/void/delete (v2.1038). */
   onChanged?: () => void
+  /**
+   * Split this fee onto its own invoice and pick who pays it (v2.1087) — e.g.
+   * the customer's tenant. Shell-owned: creates/links the fee invoice, then
+   * opens the Bill-to editor. Hidden for fees already on a sent bill.
+   */
+  onBillSeparately?: (row: JobHazmatIncidentRow) => void
+  billSeparatelyBusyId?: string | null
 }) {
   const { showToast } = useToastContext()
   const { role } = useAuth()
@@ -267,6 +276,32 @@ export function JobFormHazmatRiderRows({
                       </button>
                     ) : null}
                   </>
+                )
+              })()}
+              {(() => {
+                if (!onBillSeparately || row.voided_at) return null
+                // Hidden once the fee's invoice has reached (or is reaching) the
+                // customer — same "sent" signals the mutation blocker uses.
+                const linkedSent = inv
+                  ? Boolean(
+                      (inv.stripe_invoice_id ?? '').trim() ||
+                        ((inv as { sent_to_customer_at?: string | null }).sent_to_customer_at ?? '').trim() ||
+                        ((inv as { external_send_channel?: string | null }).external_send_channel ?? '').trim() ||
+                        (inv.status !== 'ready_to_bill' && inv.status != null),
+                    )
+                  : false
+                if (linkedSent) return null
+                const busy = billSeparatelyBusyId === row.id
+                return (
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => onBillSeparately(row)}
+                    style={{ ...smallBtn, cursor: busy ? 'wait' : 'pointer' }}
+                    title="Split this fee to its own invoice and bill it to someone else — e.g. the customer's tenant"
+                  >
+                    {busy ? 'Splitting…' : 'Bill separately…'}
+                  </button>
                 )
               })()}
               <button type="button" onClick={() => openNotice(row)} style={smallBtn} title="Open the printable Biohazard Remediation Fee Notice">
