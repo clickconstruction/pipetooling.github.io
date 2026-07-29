@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1084',
+    date: '2026-07-29',
+    title: 'Groundwork: bill an invoice to someone else',
+    kind: 'feature',
+    highlights: [
+      'Behind the scenes: invoices can now remember an alternate recipient (name, email, phone) — the first step toward billing part of a job to a different payer, like a tenant covering a hazmat fee.',
+      'Nothing changes in the app yet; the editing screens arrive in the next updates.',
+    ],
+  },
+  {
     version: 'v2.1083',
     date: '2026-07-29',
     title: 'Smoother database updates during the workday',
