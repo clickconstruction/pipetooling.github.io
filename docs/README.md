@@ -32,6 +32,26 @@
 | [`MATERIALS_TABS_ARCHITECTURE.md`](./MATERIALS_TABS_ARCHITECTURE.md) | Same map for `src/pages/Materials.tsx` (written proactively — low-churn, no extraction scheduled). |
 | [`SETTINGS_TABS_ARCHITECTURE.md`](./SETTINGS_TABS_ARCHITECTURE.md) | Same map for `src/pages/Settings.tsx` (documents what's already extracted + what remains). |
 | [`PAGE_DECOMPOSITION_PLAYBOOK.md`](./PAGE_DECOMPOSITION_PLAYBOOK.md) | The method for breaking down god components + current large-file inventory. Start here for extraction work. |
+| [`ESTIMATES_TABS_ARCHITECTURE.md`](./ESTIMATES_TABS_ARCHITECTURE.md) | Step-0 map for `src/pages/Estimates.tsx` (EstimateList + EstimateDetail behind a URL router). |
+| [`WORKFLOW_PAGE_ARCHITECTURE.md`](./WORKFLOW_PAGE_ARCHITECTURE.md) | Step-0 map for `src/pages/Workflow.tsx` (per-project stage pipeline; region-based, not tabbed). |
+| [`BANKING_TABS_ARCHITECTURE.md`](./BANKING_TABS_ARCHITECTURE.md) | Step-0 map for `src/pages/Banking.tsx` + the two oversized extracted Mercury tabs. |
+| [`PROSPECTS_TABS_ARCHITECTURE.md`](./PROSPECTS_TABS_ARCHITECTURE.md) | Step-0 map for `src/pages/Prospects.tsx` + `TeamProspectsTab` (hiring board). |
+| [`CHECKLIST_TABS_ARCHITECTURE.md`](./CHECKLIST_TABS_ARCHITECTURE.md) | Step-0 map for `src/pages/Checklist.tsx` + `ChecklistTechTreeTab`. |
+| [`QUICKFILL_ARCHITECTURE.md`](./QUICKFILL_ARCHITECTURE.md) | Step-0 map for `src/pages/Quickfill.tsx` (section framework) + `QuickfillScheduleSection`. |
+| [`JOB_TALLY_ARCHITECTURE.md`](./JOB_TALLY_ARCHITECTURE.md) | Step-0 map for `src/pages/JobTally.tsx` (Transactions + Materials Estimate tabs). |
+| [`SCHEDULE_DISPATCH_ARCHITECTURE.md`](./SCHEDULE_DISPATCH_ARCHITECTURE.md) | Step-0 map for `ScheduleDispatchHub` + `ScheduleDispatchHubPage` (container/presentational pair). |
+| [`BIDS_TAKEOFF_TAB_ARCHITECTURE.md`](./BIDS_TAKEOFF_TAB_ARCHITECTURE.md) | Sub-decomposition map for `BidsTakeoffTab` (regrown extracted tab). |
+| [`BIDS_PRICING_LABOR_TABS_ARCHITECTURE.md`](./BIDS_PRICING_LABOR_TABS_ARCHITECTURE.md) | Sub-decomposition map for `BidsPricingTab` + `BidsLaborTab` (useBidPricingEngine consumers). |
+| [`BID_SUBMISSION_FOLLOWUP_TAB_ARCHITECTURE.md`](./BID_SUBMISSION_FOLLOWUP_TAB_ARCHITECTURE.md) | Sub-decomposition map for `BidSubmissionFollowupTab`. |
+| [`JOBS_STAGES_TAB_ARCHITECTURE.md`](./JOBS_STAGES_TAB_ARCHITECTURE.md) | Sub-decomposition map for `JobsStagesTab` + its table/row sub-files (Stages board). |
+| [`JOBS_JOB_SUMMARY_TAB_ARCHITECTURE.md`](./JOBS_JOB_SUMMARY_TAB_ARCHITECTURE.md) | Sub-decomposition map for `JobsJobSummaryTab` (fully presentational cost-rollup ledger). |
+| [`SEND_RECORD_INVOICE_MODAL_ARCHITECTURE.md`](./SEND_RECORD_INVOICE_MODAL_ARCHITECTURE.md) | Step-0 map for `SendRecordInvoiceModal` ("Bill Customer", three billing channels). |
+| [`JOBS_MODALS_ARCHITECTURE.md`](./JOBS_MODALS_ARCHITECTURE.md) | Step-0 map for `JobsSubLaborFormModal` + `DetailJobModal`. |
+| [`PEOPLE_REVIEW_TAB_ARCHITECTURE.md`](./PEOPLE_REVIEW_TAB_ARCHITECTURE.md) | Sub-decomposition map for `PeopleReviewTab` (dev-only Review analytics). |
+| [`PEOPLE_CONTRACTS_OVERHEAD_TABS_ARCHITECTURE.md`](./PEOPLE_CONTRACTS_OVERHEAD_TABS_ARCHITECTURE.md) | Sub-decomposition map for `PeopleContractsTab` + `PeopleOverheadTab`. |
+| [`MY_TIME_DAY_EDITOR_MODAL_ARCHITECTURE.md`](./MY_TIME_DAY_EDITOR_MODAL_ARCHITECTURE.md) | Step-0 map for `DashboardMyTimeDayEditorModal` (shared clock-day editor, 13 call sites). |
+| [`CLOCK_SURFACES_ARCHITECTURE.md`](./CLOCK_SURFACES_ARCHITECTURE.md) | Step-0 map for `DashboardTeamActiveClockStrip` + `ClockInOutButton`. |
+| [`PROJECTS_FORECAST_TABS_ARCHITECTURE.md`](./PROJECTS_FORECAST_TABS_ARCHITECTURE.md) | Step-0 map for `ProjectsForecastSpecificTab` + its stage modal. |
 | [`PERSON_IDENTITY_PLAN.md`](./PERSON_IDENTITY_PLAN.md) | Staged migration off name-text identity onto people.id keys; Combine-people context. |
 | [`CREW_PNL_DATA_FLOW.md`](./CREW_PNL_DATA_FLOW.md) | Crew P&L inputs/transforms/outputs + incident log (partial-data failures). |
 | [`SALARY_CLOCK_SESSIONS.md`](./SALARY_CLOCK_SESSIONS.md) | Salaried auto-session sync behavior runbook. |
@@ -51,4 +71,4 @@
 - Docs ship with features: `RECENT_FEATURES.md` entry per PR, `MIGRATIONS.md` entry per migration, `EDGE_FUNCTIONS.md` section per function, help guide per user-facing flow (all enforced by convention in `../CLAUDE.md`).
 - Migration files cited in docs may live in `supabase/archive/migrations-pre-baseline/` — history was squash-baselined at `20250101000000_baseline.sql` (2026-06-04); "2027"-dated filenames in the archive are typos from spring 2026.
 
-last_updated: 2026-07-18
+last_updated: 2026-07-29

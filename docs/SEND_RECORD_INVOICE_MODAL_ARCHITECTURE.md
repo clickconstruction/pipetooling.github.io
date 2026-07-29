@@ -1,0 +1,204 @@
+# SendRecordInvoiceModal (Bill Customer) Architecture Map
+
+---
+file: docs/SEND_RECORD_INVOICE_MODAL_ARCHITECTURE.md
+type: Architecture Map / Decomposition
+purpose: Step-0 map for the SendRecordInvoiceModal.tsx decomposition (per PAGE_DECOMPOSITION_PLAYBOOK.md) — inventory what every tab/region of the ~3,286-line Bill Customer modal touches (state, effects, handlers, supabase tables/RPCs/edge functions, cross-tab coupling), identify the shared substrate, and set the extraction order. The modal is the center of the ACTIVE billing work (v2.1084–1087 bill-to train; churn 22) — treat every dossier as "verify against HEAD before cutting".
+audience: Developers, AI Agents
+last_updated: 2026-07-29
+---
+
+## What this surface is
+
+[`src/components/jobs/SendRecordInvoiceModal.tsx`](../src/components/jobs/SendRecordInvoiceModal.tsx) (~3,286 lines) is the **Bill Customer** modal — the single surface where a ready-to-bill invoice becomes a customer-facing bill through one of three channels: **Stripe bill** (hosted Stripe invoice via edge functions), **HouseCall Pro** (record-only client UPDATE — no external side effects), or **Physical invoice** (client-built jsPDF emailed via Resend). It is a modal, not a page — same method as [`JOB_FORM_MODAL_ARCHITECTURE.md`](./JOB_FORM_MODAL_ARCHITECTURE.md). Counts at v2.1087: ~56 `useState`, 12 `useEffect`, 14 `useMemo`/`useCallback`, 3 async submit paths, 1 module-level sub-component (`BillCustomerMemoPresetRow`), plus 9 already-extracted sub-components it composes.
+
+The modal is unusually **lib-heavy already**: most calculation/formatting/document building lives in tested `src/lib/*` kernels (`physicalInvoiceDocument`, `physicalInvoicePdf`, `hazmatRollIn`, `invoiceBillTo`, `stripeInvoicePreview`, `billCustomerPreviewLineRefs`, `stripeInvoiceFooter`, `physicalInvoiceFooter`, `billCustomerMemoPresets`, `billingStripeModePref`, `promoteJobToBilledIfFullyInvoiced`, …). What remains inline is orchestration: the billing-target engine (ensure/bill-to/hazmat detection), the three submit paths, and ~1,400 lines of tab JSX.
+
+It is switched on a single local `tab` state (`const [tab, setTab] = useState<BillCustomerMainTab>('stripe')`):
+
+```
+'stripe' | 'housecallpro' | 'physical'
+```
+
+Default tab on open is `stripe` when `job.customer_email` is set, else `housecallpro` (the open-reset effect). Domain behavior reference: [`BILLING_FLOWS.md`](./BILLING_FLOWS.md) §"The three billing channels (Bill Customer)".
+
+### Key structural facts (vs the Bids/Materials reference maps)
+
+1. **Selection lives OUTSIDE the modal.** There is no in-file `setSharedBid` equivalent and no URL routing. The "selected record" is the `payload: SendRecordInvoicePayload | null` prop (`kind:'job' | 'invoice'`, [`SendRecordInvoiceModal.types.ts`](../src/components/jobs/SendRecordInvoiceModal.types.ts)), owned by [`BillCustomerModalContext`](../src/contexts/BillCustomerModalContext.tsx) — the only render site (lazy-loaded, overlay z-index 1020). Openers call `openBillCustomer({payload, onSuccess, onAfterEnsureSuccess, onAfterOobUnwindSuccess})` from `Jobs.tsx`, `Dashboard.tsx`, `JobFormModal.tsx`, `JobFormInvoiceList.tsx`, `JobsStagesTab.tsx`.
+2. **The shared substrate is the billing-target engine, not a UI pointer** — see [Shared substrate](#shared-substrate-the-billing-target-engine). Which invoice row gets billed (`invoice` from the payload, or the RPC-`ensure`d primary), what amount, who actually receives it (`billToOverride` + `emailOverride` overlays composed into `job`), and which hazmat fees ride along (`foldedFeeLines` / `hazmatRollInLines`) are all resolved by parent-level effects that EVERY tab reads.
+3. **Several "stripe"-named states are cross-channel.** `stripeLineDescription` is also the Physical "line on bill" (`physicalLineOnBillRaw`); `stripeDueDate` is also the Physical due date; `sentDate` is the HCP date AND the Physical service date; `externalNote` is the HCP memo AND the Physical memo (and `applyMemoPresetToBoth` writes it together with `stripeMemo`). Renaming during extraction is a redesign — don't.
+4. **No amount input exists.** `billAmountStr` is set programmatically only — from `invoice.amount` (kind:'invoice') or the ensure-RPC result (kind:'job'). Preserve this.
+5. **The three submit paths are the money-risk core.** All finish with `maybePromoteJobToBilledAfterCustomerInvoice`; the Stripe path's fee math (folded fees inside the amount vs roll-ins on top vs line-override folding everything) has a documented double-count regression history (v2.1033 → v2.1035). The preview payload deliberately mirrors the create payload — that mirroring is currently maintained by hand in two places.
+
+### How to read a dossier
+
+Each section lists: render location (state gate + line range **as of v2.1087 — line numbers rot; search the symbol**), **owned local state** (moves with the region), **cross-tab/shared state** (stays in the parent), **derived values**, **handlers/effects**, **supabase tables / RPCs / edge functions**, **sub-components** (extracted vs inline), **external coupling**, and **extraction status + risk + approach**.
+
+### How to maintain this doc
+
+- Flip a region's Status and point at the new file whenever it is extracted; note what stayed in the parent and why.
+- Prefer symbol names over line numbers; treat every line number as approximate.
+
+---
+
+## Master summary table
+
+| Region | Gate / anchor | Lines est. | Status | Owned state (approx) | Cross-tab coupling | Risk | Recommended action |
+|---|---|---|---|---|---|---|---|
+| Module helpers + style constants | top of file, before component | ~380 (1–378) | inline | — | shared by all tabs | low | Stage A: move the 4 pure fns to lib; styles → a `billCustomerStyles.ts` module or stay |
+| `BillCustomerMemoPresetRow` | module-level component (~line 301) | ~68 | inline (self-contained) | props only | rendered by all 3 tabs | low | **File-move verbatim** any time |
+| Billing-target engine (ensure + bill-to + email-fix + job details + hazmat detection) | effects between component start and `submitPhysicalInvoiceEmail` | ~600 (401–1113, minus preview) | inline | ~25 states | read by ALL tabs + both submit paths | **high** | Extract as `useBillCustomerBillingTarget` hook seam FIRST, parent destructures |
+| Stripe preview engine | debounced effect `stripePreviewReqId` | ~135 (981–1113) | inline | 4 (`stripePreview*`, refs) | Stripe tab only, but reads the whole engine | med | Move with the Stripe tab (or into the hook) AFTER the payload kernel exists |
+| `housecallpro` tab | `tab === 'housecallpro'` (~1949–2040) | ~92 + `confirmOutsideBill` (~75) | inline | 1 (`outsideSubmitting`, `outsideError`) | shares `sentDate`, `externalNote`, `memoSectionOpen`, `busy`, ensure state | **low** | **Extract first** → `BillCustomerHousecallProTab` |
+| `physical` tab | `tab === 'physical'` (~2042–2530) | ~490 + submit/preview handlers (~200) | inline | ~10 | shares line/memo/footer/date state, hazmat folded fees, `busy` | med | Extract after the engine seam → `BillCustomerPhysicalTab` |
+| `stripe` tab (3 substates: form / success / fallback) | `tab === 'stripe'` (~2532–3177) | ~645 + `submitStripeInvoice` (~170) + preview | inline | ~14 | heaviest engine consumer; header mode toggle; success panel callbacks | **high — extract last** | `BillCustomerStripeTab` after the payload kernel + engine seam |
+| Edit-dates dialog | `editDueDateOpen` (~3180–3269) | ~90 | inline | 3 (`editDueDateOpen`, `draftDueYmd`, `draftServiceYmd`) | opened from Stripe AND Physical; writes shared `sentDate`/`stripeDueDate` | low | **Stays in parent** (playbook: modal opened from 2+ tabs) |
+| Line-edit modal wiring | `BillCustomerPreviewLineEditModal` (~3270–3283) | ~14 + `lineEditSession` + 3 openers | **extracted** (component) | 1 (`lineEditSession`) | opened from Stripe preview AND Physical preview | — | Wiring **stays in parent** |
+| Missing-email fix banner + bill-to banner | pre-tab JSX (~1855–1927) | ~75 + `saveMissingCustomerEmail` (~40) | inline | 5 (`emailFix*`) + `emailOverride` | overlays feed `job` for every tab | med | Stays in parent (part of the engine) |
+
+---
+
+## Per-region dossiers
+
+### Module-level helpers and constants (lines ~1–378)
+
+Before the component: timeout constants `BILL_DB_WRITE_TIMEOUT_MS` (15000) / `BILL_STRIPE_INVOKE_TIMEOUT_MS` (30000) / `BILL_EMAIL_INVOKE_TIMEOUT_MS` (60000) with the v2.1063 hang-class comment (**preserve values and comment**); `BILL_CUSTOMER_LEADING_LOWERCASE_HINT` copy + el id; ~10 shared `CSSProperties` constants (`BILL_CUSTOMER_FIELD_LABEL_STYLE`, `BILL_CUSTOMER_CONTROL_STYLE`, `BILL_CUSTOMER_TEXTAREA_STYLE`, `BILL_CUSTOMER_DISCLOSURE_TOGGLE_STYLE`, `BILL_CUSTOMER_MODIFICATIONS_STACK_STYLE`, `BILL_CUSTOMER_INVOICE_MODIFICATIONS_SHELL_STYLE`, `BILL_CUSTOMER_PHYSICAL_DATE_LINK_BUTTON_STYLE`, …) + `billCustomerTopTabButtonStyle(active)`.
+
+Pure functions (Stage-A candidates, named individually below): `billCustomerLineOnBillSummaryLine`, `todayIsoDate`, `defaultStripeLineDescriptionFromJob`, `jobHasBillableStripeSpecificWorkFixtures`, `stripeInvoiceFooterSummaryLine`. Also the module component **`BillCustomerMemoPresetRow`** (~68 lines, props-only: `presets`, `valueForHighlight`, `onApplyBoth`; uses `billCustomerMemoActivePresetId` from lib) — rendered by all three tabs' Memo disclosures; **file-move verbatim** candidate. Type `CreateStripeInvoiceFnResponse` stays with the Stripe submit.
+
+### Shared substrate: the billing-target engine
+
+The modal's equivalent of Bids' `useBidPricingEngine` — there is **no shared selection pointer inside the file** (selection is the `payload` prop, owned by `BillCustomerModalContext`); the substrate is **data**: "which invoice row, what amount, who receives it, which fees ride along". Every tab and all three submit paths consume it. This is the seam to build before any tab moves (proposed hook: `useBillCustomerBillingTarget`).
+
+- **Composition chain (the core invariant):** `jobRaw = payload?.job` → `jobWithBillTo = applyBillToToJobBillingContext(jobRaw, billToOverride)` → `job = emailOverride ? { ...jobWithBillTo, customer_email: emailOverride } : jobWithBillTo`. Everything downstream (gates, preview payloads, physical prefill, notice sends, share panels) reads `job`, never `jobRaw` — except the email-fix banner and contact-persons loader, which deliberately read `jobRaw` (`jobRaw?.customer_id`, `jobRaw?.customer_name`). Order matters: email override wins over bill-to email.
+- **State:** `ensuredInvoice` (`{jobId, id, amount}`), `ensureError`, `ensureLoading`; `billToOverride: InvoiceBillTo | null`; `emailOverride`, `emailFixDraft`, `emailFixAlsoCustomer`, `emailFixSaving`, `emailFixError`; `billAmountStr`; `billCustomerJobDetails: JobWithDetails | null`; `stripeFixtureMultiLineAvailable: boolean | null`; hazmat cluster: `hazmatIncidentForInvoice: JobHazmatIncidentRow | null` (legacy rider), `foldedFeeLines: HazmatRollInLine[]` + `foldedFeeIncidents` (v2.1028 fees already inside a primary's amount), `hazmatRollInLines` + `includeHazmatRollIn` (v2.1002 unsent riders folded on top), `attachHazmatNotice`, `emailHazmatNoticeWithStripe`, `hazmatNoticeEmailStatus`, `noticeEmailBusy`; `customerContacts`, `extraRecipientIds: Set<string>`, `oneOffEmail`; presets `physicalFooterPresetsGeneration`, `billCustomerMemoPresetsGeneration`; `stripeModePref` (+ derived `stripeModeForBilling = authRole === 'dev' ? stripeModePref : 'live'`).
+- **Derived:** `open = payload !== null`, `kind = payload?.kind ?? 'job'`, `invoice` (kind:'invoice' only), `storedInvoiceMemo`, `billToTargetInvoiceId = kind === 'invoice' ? invoice?.id : ensuredInvoice?.id`, `outsideReady` (render-scope; per-kind readiness), `busy = jobUpdating || invoiceUpdating || outsideSubmitting || stripeSubmitting || physicalSubmitting` (**one flag disables all three tabs' submits — preserve**), `physicalFooterPresets` / `memoPresets` memos, `applyMemoPresetToBoth` (writes `externalNote` AND `stripeMemo` together).
+- **Effects (all keyed on `open` + reset-on-close):**
+  1. **Master open-reset** (dep `[open, job?.id, job?.customer_email, invoice?.id]`) — resets ~25 states, picks default tab by email presence, seeds `sentDate`/`stripeDueDate` = today, memo default `storedInvoiceMemo || getBillCustomerMemoDefaultOnOpen()`, seeds `stripeLineDescription` from the stored memo **only when `invoice.is_primary_rtb_bundle === false`** (standalone charges → one clean Stripe line), seeds `billAmountStr` from `invoice.amount`.
+  2. **Ensure-RTB** (kind:'job' only): RPC `ensure_single_ready_to_bill_invoice_for_job(p_job_id)` via `withSupabaseRetry` → `ensuredInvoice` + `billAmountStr`, then `onAfterEnsureSuccessRef.current?.()` (opener refreshes its row). Guarded by `ensuredInvoice?.jobId === job.id`.
+  3. **Bill-to loader** (v2.1086): re-fetches `jobs_ledger_invoices` → `bill_to_name, bill_to_email, bill_to_phone` for `billToTargetInvoiceId` → `invoiceBillToFromRow` → `billToOverride`. Openers' payloads don't carry it; the invoice ROW is authoritative (server-side the v2.1085 edge fns re-read it themselves — this overlay only keeps the UI honest).
+  4. **Hazmat detection** (kind:'invoice'): `loadJobHazmatIncidents(job.id)`, filters `voided_at`, fetches `is_primary_rtb_bundle` itself when the payload lacks it (never silently degrade), branches: primary → `foldedFeeIncidents`/`foldedFeeLines` via `foldedHazmatFeeLines`; non-primary → `hazmatIncidentForInvoice = linked[0]`. Appends `Biohazard Remediation Fee Notice: <hazmatNoticePublicUrl>` lines into `stripeInvoiceFooter` (capped at `STRIPE_INVOICE_FOOTER_MAX_CHARS`, dedup by URL). Resets `attachHazmatNotice = true`, `emailHazmatNoticeWithStripe = false` (v2.1039 deliberate).
+  5. **Hazmat roll-in** (any kind): other unsent rider invoices via `eligibleHazmatRollIns` (SELECT `jobs_ledger_invoices` in riderIds incl. `bill_to_email` — the v2.1086 guard skips overridden invoices) → `hazmatRollInLines`, default `includeHazmatRollIn = true`, same footer-link append (dedup by `'/hazmat-notice?token='`).
+  6. **Presets fetch**: `Promise.all` of `fetchPhysicalInvoiceFooterPresetsFromAppSettings`, `fetchStripeInvoiceFooterPresetsFromAppSettings`, `fetchBillCustomerMemoPresetsFromAppSettings`, `fetchPhysicalInvoiceIssuerFromAppSettings` (all `{authRole}`) → bumps both `*Generation` counters and re-seeds footers + memos.
+  7. **Job details**: `fetchJobWithDetailsById(job.id)` → `billCustomerJobDetails` + `stripeFixtureMultiLineAvailable = jobHasBillableStripeSpecificWorkFixtures(fresh?.fixtures)`; refresh callback `refreshBillCustomerJobDetails` (also called by the line-edit modal's save callbacks).
+  8. **Contact persons**: `customer_contact_persons` SELECT by `jobRaw.customer_id` (ordered `created_at`) → `customerContacts` (email-bearing only).
+- **Handlers:** `saveMissingCustomerEmail` (UPDATE `jobs_ledger.customer_email`; best-effort `customers.contact_info` email fill when blank; sets `emailOverride`), `physicalAdditionalEmails()` (contact-person extras suppressed under `billToOverride`; one-off allowed; max 10), `applyMemoPresetToBoth`.
+- **Supabase:** RPC `ensure_single_ready_to_bill_invoice_for_job`; tables `jobs_ledger_invoices` (SELECT bill-to cols; SELECT roll-in candidates), `jobs_ledger` (UPDATE email), `customers` (SELECT/UPDATE `contact_info`), `customer_contact_persons` (SELECT), `job_hazmat_incidents` (SELECT via `loadJobHazmatIncidents`); `app_settings` via the four preset/issuer fetchers.
+- **Extraction status + risk + approach:** Inline. **High risk, highest value.** This is the Step-2 seam: extract state + effects 1–8 + `saveMissingCustomerEmail`/`physicalAdditionalEmails` into `src/hooks/useBillCustomerBillingTarget.ts` (inputs: `payload`, `authRole`, `onAfterEnsureSuccess` ref; returns one destructured object) so existing references don't change. The composition chain (`jobRaw` → `job`) and the render-scope guards (`if (!open || !job) return null`, the no-customer shell gated on `jobLedgerHasCustomerForBilling(job.customer_id)`) stay in the parent. Do this AFTER the bill-to train (v2.1084–1087) settles — effects 3–5 are the exact code that work keeps touching.
+
+### `stripe` — Stripe bill tab
+
+- **Render location:** `{tab === 'stripe' && (...)}` (~2532–3177). Three substates: (a) **success** `stripeSuccessInvoice` → hazmat notice status/`emailNoticeNow` row + `HostedStripeBillPanel`; (b) **fallback success** `stripeResult` (job refetch failed) → `StripeInvoiceSharePanel` + `StripeInvoiceSendFromStripeButton` + `StripeInvoicePreviewMeta`/`StripeInvoiceLinesSummary`; (c) **pre-submit form** — Invoice Modifications card (Line item override / Memo / Footer disclosures with Plumbing/Electrical preset buttons), `StripeBillPreSubmitPreview`, lowercase hint, hazmat boxes (folded-fee info + notice-email checkbox + `openHazmatNoticeEmailPreview`; roll-in checkbox with computed total), Cancel / **Create Stripe invoice**. The dev-only `StripeBillingModeToggle` renders in the modal **header** (`tab === 'stripe' && !stripeResult && !stripeSuccessInvoice && authRole === 'dev'`), not inside the tab block.
+- **Owned local state:** `stripeMemo`, `stripeInvoiceFooter`, `stripeFooterSectionOpen`, `stripeSubmitting`, `stripeError`, `stripeResult`, `stripeSuccessInvoice` (+ `stripeSuccessInvoiceRef`), `stripePreview`, `stripePreviewLoading`, `stripePreviewError`, `stripePreviewReqId` ref, `stripePreviewExistsRef` (stale-while-revalidate flag maintained by a `useLayoutEffect`), `emailHazmatNoticeWithStripe`, `hazmatNoticeEmailStatus`, `noticeEmailBusy`, `stripeModePref`. Caveat: `stripeInvoiceFooter` is written by the parent-level hazmat effects (notice links) and the presets effect — it must be exposed by the seam even though only this tab renders it.
+- **Cross-tab/shared state:** the whole billing-target engine; `billAmountStr`, `stripeDueDate`, `stripeLineDescription`, `lineOnBillSectionOpen`, `memoSectionOpen` (all shared with Physical), `externalNote` (via `applyMemoPresetToBoth`), `foldedFeeLines`/`foldedFeeIncidents`/`hazmatIncidentForInvoice`, `hazmatRollInLines`/`includeHazmatRollIn`, `busy`, `lineEditSession` (via `handleStripePreviewLineClick`), edit-dates dialog (`onEditDueDate` sets `draftDueYmd` + `editDueDateOpen`).
+- **Derived:** `stripeModeForBilling`, `activeStripeFooterPreset`, `stripeFallbackLedgerInvoiceId`, `lineLeadingLowercaseHint` (shared memo — also covers Physical), `outsideReady` (gates the submit button — same flag as HCP).
+- **Handlers/effects:**
+  - **Debounced preview effect** (450 ms, request-id guarded): gates on `canPreview` (customer linked + email + finite amount > 0 + invId + due date + `outsideReadyForPreview`), composes `previewRollIns` (`includeHazmatRollIn && !hazmatIncidentForInvoice`), `previewFolded` (`hazmatFeeLinesWithinAmount(foldedFeeLines, amt)` — dropped entirely under a line override), `previewTotal = amt + hazmatRollInTotalDollars(previewRollIns)`, invokes edge **`preview-stripe-invoice`** with Bearer token + `stripeModeInvokeBody(stripeModeForBilling)`, parses via `parseStripeInvoicePreviewResponse`. **The comment "Mirror the create call exactly" is the contract** — this composition is hand-duplicated in `submitStripeInvoice`.
+  - **`submitStripeInvoice`**: validation → edge **`create-stripe-invoice`** (`withOperationTimeout` 30 s; body: `jobs_ledger_invoice_id`, `customer_id`, `amount_dollars = amt + rollIn total`, email/name, `due_date`, `memo`, `footer`, optional `line_description`, optional `extra_line_items` = folded-within-amount + roll-ins, stripe mode) → `maybePromoteJobToBilledAfterCustomerInvoice` → roll-in fold loop (**repoint incident via `linkHazmatFeeIncidentToInvoice` FIRST, then DELETE the rider `jobs_ledger_invoices` row** — order is deliberate) → folded-fee repoint loop (also under a line override — fee shipped inside the line) → optional companion notice emails (`sendHazmatNoticeEmailToCustomer` per incident; failure never rolls back) → `fetchJobWithDetailsById` → `stripeSuccessInvoice` (or `stripeResult` fallback with `parseStripeInvoiceLinesSnapshot`) → `await onSuccess()` (modal stays open on the success screen). Timeout message: "may or may not have been created".
+  - `emailNoticeNow` (success-screen catch-up send), `openHazmatNoticeEmailPreview` (window.open + `buildHazmatNoticeEmailPreviewHtml`), `handleStripePreviewLineClick` (fixture line → `lineEditSession` mode 'fixture'; single_line + active override → mode 'stripe_override'), `handleHostedStripeOobUnwindSuccess` (refetch job, patch `stripeSuccessInvoice`, then `onAfterOobUnwindSuccessRef`), `handleAfterVoidStripeInvoiceSuccess` (`onSuccess` + `onClose`).
+- **Supabase / edge:** edge `preview-stripe-invoice`, `create-stripe-invoice`, `send-hazmat-notice-email` (via lib); RPC `link_hazmat_fee_incident_to_invoice` (via `linkHazmatFeeIncidentToInvoice` — v2.1039: direct UPDATE never persisted, RLS); `jobs_ledger_invoices` DELETE (rider fold); `update_job_status` via promote lib. Via `HostedStripeBillPanel` (not mapped here): `get-stripe-invoice-details`, `send-stripe-invoice`, `void-stripe-invoice-for-revert`, OOB record/reverse.
+- **Sub-components:** **extracted** — `StripeBillPreSubmitPreview`, `HostedStripeBillPanel` (905 lines), `StripeInvoiceSharePanel`, `StripeInvoiceSendFromStripeButton`, `StripeInvoicePreviewMeta`, `StripeInvoiceLinesSummary`, `StripeBillingModeToggle`. Inline: the disclosure JSX ×3, hazmat boxes, success-screen notice row.
+- **External coupling:** `stripeModePref` persists via `setBillingStripeModePref` (localStorage, read by other billing surfaces); success-panel callbacks thread to the opener (`onAfterOobUnwindSuccess`); `HostedStripeBillPanel`'s `InvoiceWithJobForBillView` type is imported here.
+- **Extraction status + risk + approach:** Inline. **High risk — extract last.** Money path with preview/create mirroring, three substates, and the header-rendered mode toggle (the extracted tab needs either a header slot or the toggle stays in the parent header — prefer the latter, it's parent chrome). Prereqs: the Stage-A **`buildStripeBillLinePlan` kernel** (below) so preview and create compose from ONE tested function, and the engine seam. `stripeSuccessInvoice`/`stripeResult` can move with the tab (only this tab reads them), but the header toggle's `!stripeResult && !stripeSuccessInvoice` gate then needs those exposed — simplest: keep both in the parent, passed down.
+
+### `housecallpro` — HouseCall Pro tab (record-only)
+
+- **Render location:** `{tab === 'housecallpro' && (...)}` (~1949–2040): ensure status lines, Date input (`sentDate`), Memo disclosure (`externalNote` + `BillCustomerMemoPresetRow`), error, Cancel / **Save**.
+- **Owned local state:** `outsideSubmitting`, `outsideError`. That's all.
+- **Cross-tab/shared state:** `sentDate` (also Physical service date), `externalNote` + `memoSectionOpen` (also Physical memo; preset row writes `stripeMemo` too via `applyMemoPresetToBoth`), `billAmountStr`, ensure cluster, `outsideReady`, `busy`, `memoPresets`.
+- **Handlers:** `confirmOutsideBill()` — client UPDATE `jobs_ledger_invoices` → `{status:'billed', amount, external_send_channel:'housecallpro', external_send_note, sent_to_customer_at}` (two near-identical branches for kind:'invoice' vs ensured; `withSupabaseRetry` + `withOperationTimeout` 15 s) → `maybePromoteJobToBilledAfterCustomerInvoice` → `onSuccess()` + `onClose()`. **No external side effects — there is no HouseCall Pro API** (see BILLING_FLOWS.md). `sentAt` quirk: `new Date(sentDate + 'T12:00:00').toISOString()` (noon local — preserve).
+- **Supabase:** `jobs_ledger_invoices` UPDATE; `update_job_status` via promote lib.
+- **Sub-components:** `BillCustomerMemoPresetRow` (module-level).
+- **Extraction status + risk + approach:** Inline. **Low risk — extract first** (the momentum-builder, like `po-generator` for Materials). Props needed: `job`, `kind`, `invoice`, `ensuredInvoice`/`ensureLoading`/`ensureError`, `sentDate`+setter, `externalNote`+setter, `memoSectionOpen`+setter, `memoPresets`, `applyMemoPresetToBoth`, `billAmountStr`, `busy`, `onSuccess`, `onClose`. `confirmOutsideBill` moves with it. Stage A: fold the two duplicate UPDATE branches into one call site during the move only if the diff stays a pure move — otherwise leave.
+
+### `physical` — Physical invoice tab
+
+- **Render location:** `{tab === 'physical' && (...)}` (~2042–2530): ensure status, email-required warning, **Send to** block (primary email + contact-person checkboxes + one-off input), Invoice Modifications card (Line item override / Memo / Footer disclosures — footer uses `physicalFooterPresets` buttons), Service date / Due date link-buttons (open the shared edit-dates dialog) + **Preview** (PDF blob in new tab), `PhysicalInvoicePreview`, error + lowercase hint, ☣ attach-notice checkbox, Cancel / **Send email**.
+- **Owned local state:** `physicalSubmitting`, `physicalError`, `physicalPdfPreviewLoading`, `physicalInvoiceFooter`, `physicalFooterSectionOpen`, `attachHazmatNotice` (Physical-only consumer, though reset by the parent hazmat effect), `extraRecipientIds`, `oneOffEmail` (+ `customerContacts` from the engine).
+- **Cross-tab/shared state:** `stripeLineDescription` (as `physicalLineOnBillRaw` — same field as Stripe, Stripe-override parity per v2.874), `externalNote` (memo), `sentDate` (service date), `stripeDueDate` (due date), `lineOnBillSectionOpen`/`memoSectionOpen`, `billAmountStr`, `billCustomerJobDetails`, `foldedFeeLines`/`foldedFeeIncidents`/`hazmatIncidentForInvoice`, `billToOverride` (suppresses contact persons + labels the primary recipient), `busy`, `lineEditSession`.
+- **Derived:** `physicalDocPreview` — **rebuilt every render** (render-scope `buildPhysicalInvoiceDocument({...})` call when `tab === 'physical'`, NOT a memo — preserve or memoize only as a separate later pass); `physicalServiceDateLinkLabel` / `physicalDueDateLinkLabel`; `physicalSendReady`; memos `physicalFixtureEditRefs` (`billableFixtureRefsInOrder`), `physicalMaterialEditRefs` (`billableMaterialRefsInOrder`), `physicalPreviewDbBacked` (`physicalPreviewRowsAreDbBacked`); `physicalFooterActiveId`.
+- **Handlers:** `submitPhysicalInvoiceEmail()` — validate → `buildPhysicalInvoiceDocument` (fee rows dropped under a line override, v2.1036) → `buildPhysicalInvoicePdfBlob` → base64 (**5.5 MB cap; invoice+notices combined 8.5 MB cap**) → per-incident notice PDFs via `buildHazmatFeeNoticePdfBlob` when `attachHazmatNotice` (filenames suffixed `-2.pdf`… via `hazmatNoticePdfFilename`) → edge **`send-physical-invoice-email`** (`withOperationTimeout` 60 s; body incl. `additional_emails` from `physicalAdditionalEmails()`, `subject` = `physicalInvoiceEmailSubject(doc)`, `email_text`/`email_html` from `buildPhysicalInvoiceEmailBodies`, `pdf_filename` = `physicalInvoicePdfFilename(job.hcp_number, sentDate)`) → promote → folded-fee repoint loop → `onSuccess()` + `onClose()`. `openPhysicalInvoicePdfInNewTab()` — window.open first (popup-blocker), blob URL, 60 s revoke. `openPhysicalServiceLineEdit` / `openPhysicalMaterialLineEdit` — row index → ref → `lineEditSession` ('fixture' / 'material'); material edit gated `authRole !== 'superintendent'`.
+- **Supabase / edge:** edge `send-physical-invoice-email`; RPC `link_hazmat_fee_incident_to_invoice` (via lib); `update_job_status` via promote lib. (The edge fn itself validates the recipient against `jobs_ledger.customer_email` / `bill_to_email` — v2.1085.)
+- **Sub-components:** **extracted** — `PhysicalInvoicePreview` (497 lines), `BillCustomerMemoPresetRow`. Inline: Send-to block, disclosures, footer preset buttons.
+- **External coupling:** jsPDF via `physicalInvoicePdf` (the reason the whole modal is lazy-loaded — keep the code-split boundary in mind if the tab is further split); issuer identity from `app_settings` (prefetched by the engine).
+- **Extraction status + risk + approach:** Inline. **Medium risk.** Self-contained submit path but heavy shared-field consumption and the shared edit-dates dialog. Extract after the engine seam as `BillCustomerPhysicalTab`; `physicalDocPreview` construction moves with it (inputs all arrive as props). The edit-dates dialog and `lineEditSession` wiring stay in the parent. Stage A: extract `physicalAdditionalEmails` as a pure function with tests (billTo suppression + dedupe + cap-10 logic).
+
+### Cross-tab chrome (stays in parent permanently)
+
+- **Guard renders:** `if (!open || !job) return null`; the no-customer shell (own early-return JSX, ~1665–1698) when `!jobLedgerHasCustomerForBilling(job.customer_id)`.
+- **Header:** title, `effectiveJobLedgerNumber` line with RTB amount, dev Stripe mode toggle (Stripe tab pre-submit only).
+- **Missing-email fix banner** (v2.936): `emailFix*` state + `saveMissingCustomerEmail` — part of the engine seam.
+- **Bill-to banner** (v2.1086): renders `billToDisplayLabel(billToOverride)` when set.
+- **Tab bar:** three buttons writing `setTab`.
+- **Edit-dates dialog** (`editDueDateOpen`, `draftDueYmd`, `draftServiceYmd`, ~3180–3269): opened from Stripe (`onEditDueDate`) AND Physical (both date link-buttons); Physical variant also edits service date; Save writes `sentDate` (physical only) + `stripeDueDate`. Playbook rule: opened from 2+ tabs → stays.
+- **`BillCustomerPreviewLineEditModal` wiring** (`lineEditSession`, reset-on-close effect, `onFixtureSaved`/`onMaterialSaved`/`onStripeOverrideSaved` → `refreshBillCustomerJobDetails`): opened from Stripe preview lines AND Physical preview rows → stays.
+- **`lineLeadingLowercaseHint` memo:** computes over Stripe preview lines AND a throwaway physical doc build — reads both tabs' state → stays (or moves into the engine hook).
+
+---
+
+## Sibling payment modals (noted, not mapped)
+
+**No client-state coupling exists** — neither [`CollectPaymentModal.tsx`](../src/components/jobs/CollectPaymentModal.tsx) (~1,653 lines, field certify flow) nor [`BankPaymentsModal.tsx`](../src/components/jobs/BankPaymentsModal.tsx) (~1,482 lines, Mercury reconcile) imports or is imported by SendRecordInvoiceModal. Coupling is domain-level and must be respected during extraction:
+
+- Both operate on the same `jobs_ledger_invoices` rows this modal creates/updates; the Collect Payment office step ("Prepare Bill" in `DashboardFieldCollectPaymentQueue`) **opens Bill Customer via the context** and expects a billed invoice with `stripe_invoice_id` afterward.
+- Shared libs, not shared state: `billingStripeModePref` (localStorage pref + `stripeModeInvokeBody`), `voidStripeInvoiceForRevert` gates, the promote/status kernels. Changing those libs' contracts breaks all three modals at once.
+- `HostedStripeBillPanel` (already extracted) is the true shared UI between billing and payment surfaces (also rendered by billed-bill views and queues) — treat it as frozen API during this decomposition.
+
+---
+
+## Stage-A pure-logic inventory (extract to `lib/*` + tests before any component moves)
+
+Most calc is already in lib; the remaining inline candidates, named:
+
+| Candidate | Currently | Target |
+|---|---|---|
+| **Stripe bill line plan** — the fee/roll-in/total composition duplicated between the preview effect (`previewRollIns`/`previewFolded`/`previewExtras`/`previewTotal`) and `submitStripeInvoice` (`rollIns`/`feeLines`/`extraLines`/`totalAmountDollars`) | hand-mirrored in 2 places (comment: "Mirror the create call exactly") | `lib/jobs/stripeBillLinePlan.ts` — `buildStripeBillLinePlan({amountDollars, lineDescription, foldedFeeLines, hazmatRollInLines, includeHazmatRollIn, hazmatIncidentForInvoice})` → `{extraLineItems, totalAmountDollars, lineOverrideActive, feeLines}` + tests (override drops folded fees; rider blocks roll-ins; cents mapping). **Highest-leverage item — it is the double-count regression surface (v2.1033).** |
+| `jobHasBillableStripeSpecificWorkFixtures(fixtures)` | module-level in the modal; mirrors Edge `buildStripeInvoiceItemsFromFixtures` billable rows | `lib/` next to `stripeInvoicePreview` or `jobBillingContext`, + tests (qty fallback 1, non-finite unit → 0, name-blank skip) — documents the client/edge drift contract |
+| Footer notice-link appender (the `setStripeInvoiceFooter((f) => …)` updater duplicated in the hazmat-detection and roll-in effects, with different dedup keys: full URL vs `'/hazmat-notice?token='`) | inline ×2 | `lib/hazmatIncidents` or `stripeInvoiceFooter`: `appendHazmatNoticeLineToFooter(footer, publicToken)` + tests (dedupe, max-chars refusal). **Preserve the differing dedup keys or unify only with a documented behavior note** |
+| `physicalAdditionalEmails()` | closure over `customerContacts`/`extraRecipientIds`/`oneOffEmail`/`billToOverride` | pure `physicalAdditionalEmails({contacts, selectedIds, oneOff, billToActive})` + tests (billTo suppression, lowercase dedupe, cap 10, `@` guard) |
+| `stripeInvoiceFooterSummaryLine(footer, activePreset)` | module-level here | `lib/stripeInvoiceFooter.ts` (its physical twin `physicalInvoiceFooterSummaryLine` already lives in lib) |
+| `billCustomerLineOnBillSummaryLine(line)` | module-level here | `lib/billCustomerMemoPresets.ts` or a small `billCustomerSummaries.ts` + test (whitespace collapse, 48-char ellipsis) |
+| `todayIsoDate()` / `defaultStripeLineDescriptionFromJob(j)` | module-level here | check for existing equivalents (`dateUtils`, `stripeInvoiceLineDescription`) first; move or delete-in-favor-of |
+| `sentAt` noon-local ISO conversion (`new Date(ymd + 'T12:00:00').toISOString()`) | inline ×2 (HCP + Physical submits) | tiny lib fn + test, or leave (2 lines) — note it as a quirk either way |
+
+Already-extracted (verify tests exist, don't re-extract): `hazmatRollIn.ts` (`eligibleHazmatRollIns`, `foldedHazmatFeeLines`, `hazmatFeeLinesWithinAmount`, `hazmatRollInTotalDollars`), `invoiceBillTo.ts`, `physicalInvoiceDocument.ts`, `physicalInvoicePdf.ts`, `billCustomerPreviewLineRefs.ts`, `hazmatNoticeEmailPreview.ts`, `promoteJobToBilledIfFullyInvoiced.ts`, `stripeInvoicePreview.ts`.
+
+---
+
+## Preserve-quirks list (odd but load-bearing — do not "fix" during the move)
+
+1. **Timeout semantics (v2.1063 class):** all three submits wrap in `withOperationTimeout` (15 s DB / 30 s Stripe / 60 s email); requests are NOT cancelled — every timeout message says "may or may not". Busy flags reset in `finally`.
+2. **`billAmountStr` has no input** — programmatic only (ensure RPC or `invoice.amount`). BILLING_FLOWS documents this as intentional.
+3. **Overlay order:** `emailOverride` is applied AFTER `applyBillToToJobBillingContext` — a just-typed email fix wins over a bill-to email for the session.
+4. **`emailHazmatNoticeWithStripe` defaults unchecked** (v2.1039) and `attachHazmatNotice` defaults checked; the success screen's "Email the notice now" is the catch-up path.
+5. **Roll-in fold order:** repoint incident → THEN delete the rider row ("a dangling incident → deleted-invoice link is worse than a leftover draft row"). Fold failures only `console.error` — the Stripe invoice is already created.
+6. **Line override folds everything** (v2.1036): non-empty `stripeLineDescription` → no fee `extra_line_items` on Stripe AND no fee rows on the physical PDF; folded incidents still repoint on success.
+7. **Folded fees are inside the amount; roll-ins add on top** (v2.1035 vs v2.1033) — the `hazmatFeeLinesWithinAmount` guard keeps work lines ≥ 1 cent.
+8. **`is_primary_rtb_bundle` self-fetch:** the hazmat detection re-reads the flag when the opener's payload omits it — never classify from a missing field.
+9. **Stale-while-revalidate preview:** `stripePreviewExistsRef` (maintained by a `useLayoutEffect`) keeps the old preview rendered during refetch; request-id (`stripePreviewReqId`) discards out-of-order responses; 450 ms debounce.
+10. **Disclosure state carries across tabs:** `lineOnBillSectionOpen`/`memoSectionOpen` are single instances rendered by multiple tabs (legal because one tab renders at a time — same pattern as Materials' filter dropdown). Splitting tabs must keep the carry-over.
+11. **Contact persons are withheld under a bill-to override** (v2.1086) — only the one-off email rides; and `eligibleHazmatRollIns` skips overridden invoices so a tenant's fee never folds into the customer's bill.
+12. **`stripeLineDescription` seeds from the stored memo only for `is_primary_rtb_bundle === false`** rows (standalone charges → one clean line); otherwise it starts empty so billable Specific Work produces multi-line Stripe items.
+13. **Mode gate:** `stripeModeForBilling = authRole === 'dev' ? stripeModePref : 'live'` — every non-dev is hard-pinned live; the toggle renders only in the header, dev, Stripe tab, pre-submit.
+14. **PDF size caps:** 5,500,000 base64 chars for the invoice alone; 8,500,000 combined with notice attachments. `openPhysicalInvoicePdfInNewTab` opens the window BEFORE building (popup blocker) and revokes the blob URL after 60 s.
+15. **`busy` is global across tabs** — a submit on any tab disables all three submit buttons, plus the opener-supplied `jobUpdating`/`invoiceUpdating` (the context passes `false`/`false`; older direct call sites passed real flags).
+16. **Stripe success keeps the modal open** (`onSuccess` without `onClose`; the success screen owns Done/View-bill); HCP and Physical close on success.
+17. **`physicalDocPreview` is rebuilt every render** while on the physical tab (render-scope call, not memoized) — memoizing is an optimization pass, not part of the move.
+18. **Promote failure surfaces on the succeeding tab** — the bill IS recorded, but the tab shows `promote.error` and does not close (HCP/Physical) — preserve the asymmetry.
+
+---
+
+## Recommended extraction order (value ÷ risk)
+
+> **Timing caveat:** this file is the center of the active bill-to train (v2.1084–1087, 22 commits recently). Do NOT start Stage B while that work is in flight; Stage-A kernel extractions are safe to interleave (they shrink the collision surface).
+
+1. **Stage A sweep** — the [inventory](#stage-a-pure-logic-inventory-extract-to-lib--tests-before-any-component-moves) above. Highest leverage: `buildStripeBillLinePlan` (kills the hand-mirrored preview/create composition — the money-bug surface), then `jobHasBillableStripeSpecificWorkFixtures`, the footer appender, `physicalAdditionalEmails`.
+2. **`BillCustomerMemoPresetRow` → its own file** — verbatim move, zero risk.
+3. **`housecallpro` tab → `BillCustomerHousecallProTab`** — 2 owned states + `confirmOutsideBill`; smallest prop surface; validates the seam.
+4. **Engine seam: `useBillCustomerBillingTarget`** — ensure + bill-to + email overlays + job details + hazmat detection + presets + contacts, returned as one destructured object. The `jobRaw → job` composition and guard renders stay in the parent.
+5. **`physical` tab → `BillCustomerPhysicalTab`** — submit + PDF preview + Send-to move; edit-dates dialog and line-edit modal wiring stay parent-owned.
+6. **`stripe` tab → `BillCustomerStripeTab`** — last; after the line-plan kernel and the seam. Preview engine moves with it (or into the seam); `stripeResult`/`stripeSuccessInvoice` stay parent-owned so the header mode-toggle gate keeps working; `HostedStripeBillPanel` callbacks keep threading through the parent to the opener.
+
+**What must stay in the parent (permanently):** the `payload` contract + `open`/`kind`/`invoice` derivation, the `jobRaw → jobWithBillTo → job` composition chain, `tab` + tab bar, the guard renders, the header (incl. the dev mode toggle), the missing-email banner + bill-to banner, shared field state (`billAmountStr`, `sentDate`, `stripeDueDate`, `stripeLineDescription`, `externalNote`/`stripeMemo` + `applyMemoPresetToBoth`, `lineOnBillSectionOpen`/`memoSectionOpen`), `busy`, the edit-dates dialog, the `BillCustomerPreviewLineEditModal` wiring + `lineEditSession`, and the opener callback refs (`onSuccess`, `onAfterEnsureSuccessRef`, `onAfterOobUnwindSuccessRef`).
+
+Definition of done per region, verification gates (`npm run typecheck && npm run lint && npm test` after every step), and anti-patterns: see [`PAGE_DECOMPOSITION_PLAYBOOK.md`](./PAGE_DECOMPOSITION_PLAYBOOK.md). Behavior-preserving only — the quirks list above is the diff-review checklist.
