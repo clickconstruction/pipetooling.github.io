@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-28 (v2.1066)
+last_updated: 2026-07-28 (v2.1067)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1067)
+
+### Edit Job ① Line Items: re-order rows with ▲▼ (2026-07-28)
+First slice of the job-stages feature: line items can be re-ordered so they represent stages in sequence. A compact ▲▼ stack renders left of the name field on every row (only when the job has 2+ line items; boundary buttons disable) in [`JobFormFixturesSection`](../src/components/jobs/JobFormFixturesSection.tsx), arranged inside the existing name cell so the table geometry, rider `<tr>`s, and the colSpan-3 scope sub-row are untouched. New generic kernel [`jobFormReorder.ts`](../src/lib/jobs/jobFormReorder.ts) `moveRowById(rows, id, direction)` (+7 tests; returns the same reference on no-ops so React skips the re-render). No persistence changes needed: the save engine has always written `jobs_ledger_fixtures.sequence_order` from array position and the load path orders by it — the column simply never had a UI. Client-only.
 
 ## Latest Updates (v2.1066)
 

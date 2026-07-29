@@ -30,6 +30,8 @@ type JobFormFixturesSectionProps = {
   updateFixtureRow: (id: string, updates: Partial<FixtureRow>) => void
   addFixtureRow: () => void
   removeFixtureRow: (id: string) => void
+  /** Swap a row with its neighbor; order persists via sequence_order on save (v2.1067). */
+  moveFixtureRow: (id: string, direction: 'up' | 'down') => void
   setStripeFixturePreviewRowId: (id: string | null) => void
   /** Live sum of the line items — shown as the running "Job Total" at the top right. */
   jobTotalDollars: number
@@ -57,6 +59,7 @@ export function JobFormFixturesSection({
   updateFixtureRow,
   addFixtureRow,
   removeFixtureRow,
+  moveFixtureRow,
   setStripeFixturePreviewRowId,
   jobTotalDollars,
   riderRows,
@@ -138,29 +141,82 @@ export function JobFormFixturesSection({
                           <label htmlFor={nameFieldId} style={FIXTURE_SCOPE_FIELD_LABEL_VISUALLY_HIDDEN}>
                             Specific work or materials
                           </label>
-                          <AutosizeTextarea
-                            minRows={1}
-                            extraLines={0}
-                            id={nameFieldId}
-                            value={row.name}
-                            onChange={(e) => updateFixtureRow(row.id, { name: e.target.value })}
-                            onBlur={() => {
-                              const next = normalizeFixtureDisplayName(row.name ?? '')
-                              if (next !== row.name) updateFixtureRow(row.id, { name: next })
-                            }}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter') e.preventDefault()
-                            }}
-                            placeholder="Specific work or materials"
-                            style={{
-                              padding: '0.375rem 0.625rem',
-                              border: '1px solid var(--border-strong)',
-                              borderRadius: 6,
-                              fontSize: '0.875rem',
-                              lineHeight: 1.4,
-                              fontFamily: 'inherit',
-                            }}
-                          />
+                          <div style={{ display: 'flex', alignItems: 'stretch', gap: 4 }}>
+                            {fixtures.length > 1 && (
+                              <div
+                                style={{
+                                  display: 'flex',
+                                  flexDirection: 'column',
+                                  justifyContent: 'center',
+                                  flexShrink: 0,
+                                }}
+                              >
+                                <button
+                                  type="button"
+                                  onClick={() => moveFixtureRow(row.id, 'up')}
+                                  disabled={idx === 0}
+                                  title="Move up"
+                                  aria-label="Move line item up"
+                                  style={{
+                                    padding: '0 0.15rem',
+                                    fontSize: '0.625rem',
+                                    lineHeight: 1.2,
+                                    background: 'transparent',
+                                    color: 'var(--text-muted)',
+                                    border: 'none',
+                                    cursor: idx === 0 ? 'default' : 'pointer',
+                                    opacity: idx === 0 ? 0.3 : 1,
+                                  }}
+                                >
+                                  ▲
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => moveFixtureRow(row.id, 'down')}
+                                  disabled={idx === fixtures.length - 1}
+                                  title="Move down"
+                                  aria-label="Move line item down"
+                                  style={{
+                                    padding: '0 0.15rem',
+                                    fontSize: '0.625rem',
+                                    lineHeight: 1.2,
+                                    background: 'transparent',
+                                    color: 'var(--text-muted)',
+                                    border: 'none',
+                                    cursor: idx === fixtures.length - 1 ? 'default' : 'pointer',
+                                    opacity: idx === fixtures.length - 1 ? 0.3 : 1,
+                                  }}
+                                >
+                                  ▼
+                                </button>
+                              </div>
+                            )}
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <AutosizeTextarea
+                                minRows={1}
+                                extraLines={0}
+                                id={nameFieldId}
+                                value={row.name}
+                                onChange={(e) => updateFixtureRow(row.id, { name: e.target.value })}
+                                onBlur={() => {
+                                  const next = normalizeFixtureDisplayName(row.name ?? '')
+                                  if (next !== row.name) updateFixtureRow(row.id, { name: next })
+                                }}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') e.preventDefault()
+                                }}
+                                placeholder="Specific work or materials"
+                                style={{
+                                  padding: '0.375rem 0.625rem',
+                                  border: '1px solid var(--border-strong)',
+                                  borderRadius: 6,
+                                  fontSize: '0.875rem',
+                                  lineHeight: 1.4,
+                                  fontFamily: 'inherit',
+                                }}
+                              />
+                            </div>
+                          </div>
                         </td>
                         <td
                           style={{
