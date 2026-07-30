@@ -9,7 +9,7 @@ last_updated: 2026-07-30
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate to Advanced
 
-total_migrations: "131 live in supabase/migrations/ (baseline + post-baseline) + 847 archived pre-baseline files (squashed into the 2026-06-04 baseline)"
+total_migrations: "132 live in supabase/migrations/ (baseline + post-baseline) + 847 archived pre-baseline files (squashed into the 2026-06-04 baseline)"
 date_range: "Through July 30, 2026 — the latest real migration. Archive filenames dated 2027 are typos; that work happened March–June 2026 (see the note atop Recent Migrations)."
 categories: "Bids, Materials, Workflow, RLS, Database Improvements"
 
@@ -111,6 +111,12 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 - **Security**: additive nullable columns; existing RLS covers them; no CREATE TABLE so no sweep calls needed.
 - **Ordering**: migration first, then `supabase functions deploy create-stripe-invoice` (v2.1114); A2/A3 redeploys follow.
 - **Category**: Jobs / billing / security
+
+**`20260730174929_payments_made_trigger_invariant.sql`** _(apply via `supabase db push` after the file is on `main`; no client or edge change — either order is safe)_
+- **Purpose**: payments_made invariant (v2.1119; [`FRAGILITY_REMEDIATION_PLAN.md`](./FRAGILITY_REMEDIATION_PLAN.md) step B3) — AFTER I/U/D trigger on `jobs_ledger_payments` recomputes `jobs_ledger.payments_made` from SUM(rows); the five incrementing RPCs re-created without their manual writes (**atomic with the trigger** — separately they'd double-count). Status-promotion CASEs read the trigger-maintained value (provably equivalent). B1 audit was clean (771/771) so no data migration; B2 skipped.
+- **Security**: bodies otherwise byte-identical to baseline; auth checks unchanged; CREATE OR REPLACE preserves ACLs incl. the A0 revokes; trigger fn SECURITY DEFINER (clients lacking direct jobs_ledger UPDATE rights still converge the cache).
+- **Ordering**: independent; client B4 (stop writing payments_made) follows separately.
+- **Category**: Jobs / billing / data integrity
 
 **`20260730173258_customers_stripe_customer_id_test.sql`** _(apply via `supabase db push` after the file is on `main`; migration first, then redeploy `create-stripe-invoice` + `preview-stripe-invoice` — the old functions simply never read the column)_
 - **Purpose**: Stripe mode integrity (v2.1117; [`FRAGILITY_REMEDIATION_PLAN.md`](./FRAGILITY_REMEDIATION_PLAN.md) step A4) — `customers.stripe_customer_id_test` so test-mode billing has its own Stripe customer link; pre-A4 the single shared column was cleared+replaced on a cross-mode miss (test create wiped the live link). Existing values stay live; column comments updated on both.
