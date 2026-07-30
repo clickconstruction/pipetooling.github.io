@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-30 (v2.1128)
+last_updated: 2026-07-30 (v2.1129)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1129)
+
+### Recently deleted: contents view, smarter labels, filters (2026-07-30)
+[`DeletedRecordsSection.tsx`](../src/components/settings/DeletedRecordsSection.tsx) + new kernel [`deletedRecordContents.ts`](../src/lib/deletedRecordContents.ts) (unit-tested) + [`deletedRecordsArchive.ts`](../src/lib/deletedRecordsArchive.ts) + migration `20260730190000_deleted_records_list_labels.sql`. Settings → Data & migration → Recently deleted (dev) now answers "what exactly was deleted": (1) per-bundle **What's inside?** expands a lazily-fetched, cached list of the archived rows grouped by table — each summarized by its natural fields via `summarizeDeletedRow` (title · date · $amount heuristics), raw `row_data` JSON in a `<details>` one click deeper (direct table SELECT under the existing dev-only RLS — no new RPC); (2) `list_deleted_records()` labels partial bundles by resolving the still-live parent ("Under job 878 · Take 5- Seguin"; jobs_ledger/bids/customers/projects/estimates) and names clock-session owners (+work date +job number) — same return shape, deploy order safe; (3) search + type + deleted-by filters (`filterDeletedBundles`, showing "N of M"); (4) table names humanized via `humanizeArchiveTable` (raw list kept in the tooltip). Dev-only surface.
 
 ## Latest Updates (v2.1128)
 
