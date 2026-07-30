@@ -18,6 +18,7 @@ If an emergency ever forces MCP `apply_migration`: immediately rename the new le
 Also:
 - **Every new migration starts with `SET lock_timeout = '3s';`** (CI-enforced for versions after 2026-07-29). There is no staging — DDL runs against prod while crews use the app. Without it, an `ALTER TABLE` waiting on a lock makes every query behind it queue too (the "DB crashed" freezes during `db push`); with it, the push fails fast and you just retry in a quieter moment.
 - **Number new migrations from `origin/main`'s latest file** (`git ls-tree origin/main supabase/migrations/ | tail`), not from your branch — two parallel branches once minted the same version.
+- App looks “database down”? Run `/db-freeze` (see `docs/DB_FREEZE_RUNBOOK.md`) BEFORE restarting the instance — the freezes are lock pileups and a restart destroys the evidence.
 - Check alignment any time with `npm run check:migration-drift` (CI runs it on main pushes touching migrations + a strict daily cron: `.github/workflows/migration-drift.yml`).
 
 ## Deploy model (three separate tracks)
