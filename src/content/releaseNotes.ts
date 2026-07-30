@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1114',
+    date: '2026-07-30',
+    title: 'Billing safety: invoices now remember their Stripe mode',
+    kind: 'infra',
+    highlights: [
+      'Each Stripe invoice now records whether it was created in live or test mode, groundwork that will prevent test actions from ever touching live invoices (and vice versa).',
+      'No visible change to billing today.',
+    ],
+  },
+  {
     version: 'v2.1113',
     date: '2026-07-30',
     title: 'Fix: changing the person on a pay record relinks it correctly',

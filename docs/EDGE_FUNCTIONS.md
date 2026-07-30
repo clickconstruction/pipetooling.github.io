@@ -1928,6 +1928,8 @@ const { data, error } = await supabase.functions.invoke('test-email', {
 
 ### create-stripe-invoice
 
+> **v2.1114 — mode stamping (A1)**: the post-finalize DB patch now also writes **`jobs_ledger_invoices.stripe_mode`** (`'live' | 'test'`, the mode the request resolved to; migration `20260730165312`). Later plan steps make the row authoritative for row-bound operations (void/send/details/OOB/write-down) so a caller's `stripe_mode` can never act cross-mode. Redeploy required.
+
 > **v2.1085 — Bill-to override**: the invoice row is authoritative for the recipient. When `jobs_ledger_invoices.bill_to_email` is set, the Stripe invoice bills that alternate payer (name from `bill_to_name`, falling back to the email): the function uses/creates the invoice's **own** Stripe customer, persisted in `bill_to_stripe_customer_id` for idempotency, and **never touches** the job customer's `customers.stripe_customer_id`. The body's `customer_email`/`customer_name` are ignored for recipient purposes in that branch. NULL `bill_to_email` = unchanged behavior.
 
 **Purpose**: Create and finalize a Stripe invoice for a **`jobs_ledger_invoices`** row in **Ready to Bill**, then persist **`hosted_invoice_url`**, **`stripe_invoice_id`**, and set status **billed**.
