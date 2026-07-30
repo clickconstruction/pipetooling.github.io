@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-29 (v2.1094)
+last_updated: 2026-07-29 (v2.1095)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1095)
+
+### Fix: Adjust times on a draft People-Hours session no longer errors (2026-07-29)
+Adjust times in the My Time day editor failed with `invalid input syntax for type uuid: "draft:people-hours:…"` when the target was a manual-entry draft (People → Hours typed value, or the editor's "+" disjoint block) — the modal ran a `clock_sessions` UPDATE against the synthetic draft id, which isn't in the DB until Save INSERTs it. [`AdjustClockSessionTimesModal`](../src/components/AdjustClockSessionTimesModal.tsx) gains an `onSaveLocal` prop (skips the UPDATE + `recompute_people_hours_after_session_edit` resync); [`DashboardMyTimeDayEditorModal`](../src/components/DashboardMyTimeDayEditorModal.tsx) passes it for draft ids only, patching `fetchedSessions` when it owns the sessions or calling the new `onPatchSeededSessionsTimes` prop when they're parent-seeded — [`People.tsx`](../src/pages/People.tsx) wires that to `hoursManualDraftEditor.draftSessions`, mirroring the existing `onPatchSeededSessionsJobBid` contract (the same draft-aware pattern Assign-job and Reject already had). The patched times then persist through the existing draft INSERT branch in `persistDirtyChangesAsync`; a toast notes the block saves with the editor. Non-draft Adjust times saves are unchanged. Client-only.
 
 ## Latest Updates (v2.1094)
 
