@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   buildJobSegmentsBar,
+  dollarCoverageForSegments,
   linkableSelectedIds,
   segmentBoundaryMarks,
   segmentSelectionSummary,
@@ -160,5 +161,98 @@ describe('segmentBoundaryMarks', () => {
         buildJobSegmentsBar({ fixtures: [line({ id: 'only' })], riderFeesDollars: 0, invoiceStatusById: {} }),
       ),
     ).toEqual([])
+  })
+})
+
+describe('dollarCoverageForSegments', () => {
+  const threeSegments = () =>
+    buildJobSegmentsBar({
+      fixtures: [
+        line({ id: 'a', name: 'Rough In', line_unit_price: 400 }),
+        line({ id: 'b', name: 'Top Out', line_unit_price: 350 }),
+        line({ id: 'c', name: 'Trim', line_unit_price: 250 }),
+      ],
+      riderFeesDollars: 0,
+      invoiceStatusById: {},
+    })
+
+  it('a dollar invoice waterfalls over unbilled segments in order; partial rows stay unlocked', () => {
+    const coverage = dollarCoverageForSegments({
+      segments: threeSegments(),
+      grossDollars: 1000,
+      paidDollars: 0,
+      invoices: [{ status: 'billed', amount: 500 }],
+    })
+    expect(coverage.unattributedDollars).toBe(500)
+    expect(coverage.remainingDollars).toBe(500)
+    expect(coverage.bySegmentKey).toEqual({
+      a: { coveredDollars: 400, fullyCovered: true },
+      b: { coveredDollars: 100, fullyCovered: false },
+    })
+  })
+
+  it('segment-linked invoices are attributed, not double-counted; paid/void invoices follow the slider basis', () => {
+    const segments = buildJobSegmentsBar({
+      fixtures: [
+        line({ id: 'a', name: 'Rough In', line_unit_price: 400, invoice_id: 'rtb' }),
+        line({ id: 'b', name: 'Top Out', line_unit_price: 600 }),
+      ],
+      riderFeesDollars: 0,
+      invoiceStatusById: { rtb: 'ready_to_bill' },
+    })
+    // The rtb invoice's $400 is fully accounted for by its linked segment: nothing waterfalls.
+    const linkedOnly = dollarCoverageForSegments({
+      segments,
+      grossDollars: 1000,
+      paidDollars: 0,
+      invoices: [{ status: 'ready_to_bill', amount: 400 }],
+    })
+    expect(linkedOnly.unattributedDollars).toBe(0)
+    expect(linkedOnly.bySegmentKey).toEqual({})
+    expect(linkedOnly.remainingDollars).toBe(600)
+    // Paid invoices don't count (their money arrives as payments); void/unknown statuses ignored.
+    const withPayment = dollarCoverageForSegments({
+      segments,
+      grossDollars: 1000,
+      paidDollars: 250,
+      invoices: [
+        { status: 'ready_to_bill', amount: 400 },
+        { status: 'paid', amount: 999 },
+        { status: 'void', amount: 999 },
+      ],
+    })
+    expect(withPayment.unattributedDollars).toBe(250)
+    expect(withPayment.bySegmentKey).toEqual({ b: { coveredDollars: 250, fullyCovered: false } })
+    expect(withPayment.remainingDollars).toBe(350)
+  })
+
+  it('covers riders in the waterfall and clamps remaining at zero when over-invoiced', () => {
+    const segments = buildJobSegmentsBar({
+      fixtures: [line({ id: 'a', name: 'Work', line_unit_price: 900 })],
+      riderFeesDollars: 100,
+      invoiceStatusById: {},
+    })
+    const coverage = dollarCoverageForSegments({
+      segments,
+      grossDollars: 1000,
+      paidDollars: 200,
+      invoices: [{ status: 'billed', amount: 950 }],
+    })
+    expect(coverage.unattributedDollars).toBe(1150)
+    expect(coverage.remainingDollars).toBe(0)
+    expect(coverage.bySegmentKey).toEqual({
+      a: { coveredDollars: 900, fullyCovered: true },
+      riders: { coveredDollars: 100, fullyCovered: true },
+    })
+  })
+
+  it('is inert with no invoices or payments', () => {
+    const coverage = dollarCoverageForSegments({
+      segments: threeSegments(),
+      grossDollars: 1000,
+      paidDollars: 0,
+      invoices: [],
+    })
+    expect(coverage).toEqual({ unattributedDollars: 0, remainingDollars: 1000, bySegmentKey: {} })
   })
 })

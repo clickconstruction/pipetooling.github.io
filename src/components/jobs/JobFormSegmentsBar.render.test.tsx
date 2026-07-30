@@ -51,3 +51,59 @@ describe('JobFormSegmentsBar flow explainer', () => {
     expect(screen.queryByText(/green card/)).toBeNull()
   })
 })
+
+describe('JobFormSegmentsBar dollar-invoice coverage (v2.1132)', () => {
+  // $500 invoiced by dollar amount on a $1,000 job: Rough In ($400) fully
+  // covered, Top Out ($600) covered $100, $500 left to bill.
+  const coverage = {
+    unattributedDollars: 500,
+    remainingDollars: 500,
+    bySegmentKey: {
+      a: { coveredDollars: 400, fullyCovered: true },
+      b: { coveredDollars: 100, fullyCovered: false },
+    },
+  }
+
+  function renderWithCoverage(selectedIds = new Set<string>()) {
+    return renderWithProviders(
+      <JobFormSegmentsBar
+        fixtures={fixtures}
+        riderFeesDollars={0}
+        invoiceStatusById={{}}
+        selectedIds={selectedIds}
+        onToggleSegment={() => {}}
+        onCreateInvoiceFromSelection={() => {}}
+        creatingFromSelection={false}
+        jobLabel="Job 742"
+        coverage={coverage}
+      />,
+    )
+  }
+
+  it('shows the banner, the legend entry, and per-row coverage chips', () => {
+    renderWithCoverage()
+    expect(screen.getByText(/\$500\.00 of this job is already paid or on bills/)).toBeTruthy()
+    expect(screen.getByText('Covered by other bills')).toBeTruthy()
+    expect(screen.getByText('covered')).toBeTruthy()
+    expect(screen.getByText('$100.00 covered')).toBeTruthy()
+  })
+
+  it('locks the fully covered row (no checkbox) but keeps the partial row selectable', () => {
+    renderWithCoverage()
+    expect(screen.queryByLabelText('Select segment Rough In for invoicing')).toBeNull()
+    expect(screen.getByLabelText('Select segment Top Out for invoicing')).toBeTruthy()
+  })
+
+  it('disables Create invoice when the selection exceeds the remaining, with the red note', () => {
+    renderWithCoverage(new Set(['b']))
+    const button = screen.getByText(/Create invoice from 1 segment \(\$600\.00\)/) as HTMLButtonElement
+    expect(button.disabled).toBe(true)
+    expect(screen.getByText(/Exceeds the \$500\.00 left to bill/)).toBeTruthy()
+  })
+
+  it('renders no coverage chrome without the prop', () => {
+    renderBar()
+    expect(screen.queryByText('Covered by other bills')).toBeNull()
+    expect(screen.queryByText(/left to bill/)).toBeNull()
+  })
+})

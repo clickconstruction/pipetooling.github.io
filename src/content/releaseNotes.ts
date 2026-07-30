@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1132',
+    date: '2026-07-30',
+    title: 'Invoices strip: billed money now shows — and can’t be billed twice',
+    kind: 'feature',
+    highlights: [
+      'Bills made by dollar amount (the Make Invoice slider) used to leave the ② Invoices strip looking unbilled. Their money now hatches the strip — first line items first — with a banner totting up what’s already out and what’s left to bill.',
+      'A line item fully covered by that money shows a "covered" chip and loses its checkbox until the bill is voided or deleted; partially covered items show how much is spoken for but stay billable.',
+      'Creating an invoice from selected segments is now capped at what’s actually left to bill — same math as the Make Invoice slider — so a job can’t be over-billed by combining the two paths.',
+    ],
+  },
+  {
     version: 'v2.1131',
     date: '2026-07-30',
     title: 'Edit job: clearer "Add line item" button',

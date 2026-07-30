@@ -94,6 +94,7 @@ import {
 import { moveRowById } from '../../lib/jobs/jobFormReorder'
 import {
   buildJobSegmentsBar,
+  dollarCoverageForSegments,
   linkableSelectedIds,
   segmentBoundaryMarks,
   segmentSelectionSummary,
@@ -429,15 +430,25 @@ export default function JobFormModal({
     return map
   }, [editing?.invoices])
 
-  // Line-item boundary ticks on the Billing % done bar (v2.1130): same segment
-  // math as the ② Invoices strip, reduced to where each item's share ends.
-  const billingBarMarks = useMemo(
-    () =>
-      segmentBoundaryMarks(
-        buildJobSegmentsBar({ fixtures, riderFeesDollars, invoiceStatusById: fixtureInvoiceStatusById }),
-      ),
+  // One segments build feeds the % done bar's boundary ticks (v2.1130) and the
+  // ② Invoices dollar-coverage model (v2.1132).
+  const billingSegments = useMemo(
+    () => buildJobSegmentsBar({ fixtures, riderFeesDollars, invoiceStatusById: fixtureInvoiceStatusById }),
     [fixtures, riderFeesDollars, fixtureInvoiceStatusById],
   )
+  const billingBarMarks = useMemo(() => segmentBoundaryMarks(billingSegments), [billingSegments])
+  // Money paid or invoiced by dollar amount (no line-item links): hatches the
+  // ② strip, locks fully covered rows, and caps segment invoicing at the
+  // slider's Remaining. Same payments+invoices basis as useBreakOffSlider.
+  const segmentCoverage = useMemo(() => {
+    const paidSum = payments.reduce((s, p) => s + (Number(p.amount) || 0), 0)
+    return dollarCoverageForSegments({
+      segments: billingSegments,
+      grossDollars: jobTotalWithRidersDollars,
+      paidDollars: paidSum,
+      invoices: editing?.invoices,
+    })
+  }, [billingSegments, jobTotalWithRidersDollars, payments, editing?.invoices])
 
   // ② Invoices segment bar (v2.1070): which unbilled line items are picked
   // for the next "create invoice from selected segments" action.
@@ -1994,6 +2005,14 @@ export default function JobFormModal({
       setError('Select at least one unbilled segment first')
       return
     }
+    // Cents-exact backstop for the UI clamp (v2.1132): never invoice past the
+    // slider's Remaining — dollar invoices already cover that money.
+    if (Math.round(totalDollars * 100) > Math.round(segmentCoverage.remainingDollars * 100)) {
+      setError(
+        `This selection would bill more than the $${formatCurrency(segmentCoverage.remainingDollars)} left on the job — void or delete an existing bill first.`,
+      )
+      return
+    }
     setCreatingSegmentInvoice(true)
     setError(null)
     try {
@@ -3044,6 +3063,7 @@ export default function JobFormModal({
                 onCreateInvoiceFromSelection={createInvoiceFromSelectedSegments}
                 creatingFromSelection={creatingSegmentInvoice}
                 jobLabel={editing.hcp_number?.trim() ? `Job ${editing.hcp_number.trim()}` : null}
+                coverage={segmentCoverage}
               />
               {editing ? (
                 <JobFormBreakOffSection

@@ -6,6 +6,7 @@ import {
   buildJobSegmentsBar,
   segmentSelectionSummary,
   type JobBarSegment,
+  type JobDollarCoverage,
 } from '../../lib/jobs/jobSegmentsCoverage'
 
 type JobFormSegmentsBarProps = {
@@ -18,6 +19,13 @@ type JobFormSegmentsBarProps = {
   creatingFromSelection: boolean
   /** Label for the blue sample chip in the how-it-moves explainer, e.g. "Job 742" (v2.1074). */
   jobLabel?: string | null
+  /**
+   * Dollar-invoice coverage (v2.1132): money paid or invoiced by amount (no
+   * line-item links) hatches the strip via a first-items-first waterfall,
+   * locks fully covered rows, and caps "create invoice from selection" at the
+   * slider's Remaining. Omit (new job) to disable all three.
+   */
+  coverage?: JobDollarCoverage
 }
 
 /** Sample chips in the explainer wear the exact Stages colors users will see there. */
@@ -65,6 +73,7 @@ export function JobFormSegmentsBar({
   onCreateInvoiceFromSelection,
   creatingFromSelection,
   jobLabel,
+  coverage,
 }: JobFormSegmentsBarProps) {
   const [focusedKey, setFocusedKey] = useState<string | null>(null)
   const [explainerOpen, setExplainerOpen] = useState(false)
@@ -77,17 +86,51 @@ export function JobFormSegmentsBar({
     [fixtures, selectedIds],
   )
   if (segments.length === 0) return null
-  const anySelectable = segments.some((s) => s.selectable)
+
+  const segCoverage = (key: string) => coverage?.bySegmentKey[key]
+  /** Selectable for invoicing: unbilled AND not fully covered by dollar invoices/payments. */
+  const isSelectable = (seg: JobBarSegment) => seg.selectable && !(segCoverage(seg.key)?.fullyCovered ?? false)
+  const anySelectable = segments.some(isSelectable)
+  const showCoverage = coverage != null && coverage.unattributedDollars > 0
+  /** Cents-exact: the selection would push total invoicing past the slider's Remaining. */
+  const selectionExceedsRemaining =
+    coverage != null && Math.round(selection.totalDollars * 100) > Math.round(coverage.remainingDollars * 100)
 
   const isHighlighted = (seg: JobBarSegment) =>
-    (seg.selectable && selectedIds.has(seg.key)) || focusedKey === seg.key
+    (isSelectable(seg) && selectedIds.has(seg.key)) || focusedKey === seg.key
 
   function handleSegmentClick(seg: JobBarSegment) {
-    if (seg.selectable) {
+    if (isSelectable(seg)) {
       onToggleSegment(seg.key)
       return
     }
     setFocusedKey((cur) => (cur === seg.key ? null : seg.key))
+  }
+
+  const coverageChip = (seg: JobBarSegment) => {
+    const c = segCoverage(seg.key)
+    if (!c || !(c.coveredDollars > 0) || seg.status !== 'unbilled') return null
+    return (
+      <span
+        title={
+          c.fullyCovered
+            ? 'Fully covered by money already paid or invoiced by dollar amount (first line items first). Void or delete that bill to invoice this line again.'
+            : 'Partially covered by money already paid or invoiced by dollar amount (first line items first) — the rest is still billable.'
+        }
+        style={{
+          fontSize: '0.6875rem',
+          fontWeight: 600,
+          background: 'var(--bg-blue-tint)',
+          color: 'var(--text-blue-700)',
+          borderRadius: 999,
+          padding: '0 0.5rem',
+          whiteSpace: 'nowrap',
+          flexShrink: 0,
+        }}
+      >
+        {c.fullyCovered ? 'covered' : `$${formatCurrency(c.coveredDollars)} covered`}
+      </span>
+    )
   }
 
   return (
@@ -126,6 +169,22 @@ export function JobFormSegmentsBar({
               {l.label}
             </span>
           ))}
+          {showCoverage && (
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: '0.6875rem', color: 'var(--text-muted)' }}>
+              <span
+                aria-hidden
+                style={{
+                  width: 8,
+                  height: 8,
+                  borderRadius: 2,
+                  display: 'inline-block',
+                  border: '1px solid var(--border-strong)',
+                  background: 'repeating-linear-gradient(-45deg, rgba(29,95,165,0.5) 0 2px, transparent 2px 4px)',
+                }}
+              />
+              Covered by other bills
+            </span>
+          )}
         </span>
       </div>
       {explainerOpen && (
@@ -161,6 +220,23 @@ export function JobFormSegmentsBar({
           </div>
         </div>
       )}
+      {showCoverage && coverage && (
+        <div
+          style={{
+            marginBottom: '0.5rem',
+            padding: '0.5rem 0.75rem',
+            border: '1px solid #f59e0b',
+            background: 'var(--bg-amber-tint)',
+            borderRadius: 6,
+            fontSize: '0.75rem',
+            color: 'var(--text-amber-800)',
+          }}
+        >
+          ⚠ ${formatCurrency(coverage.unattributedDollars)} of this job is already paid or on bills made by dollar
+          amount, not tied to line items — shown hatched below, first items first.{' '}
+          <strong>${formatCurrency(coverage.remainingDollars)}</strong> is left to bill.
+        </div>
+      )}
       <div
         style={{
           display: 'flex',
@@ -177,10 +253,14 @@ export function JobFormSegmentsBar({
               key={seg.key}
               type="button"
               onClick={() => handleSegmentClick(seg)}
-              title={`${seg.label} — $${formatCurrency(seg.dollars)} (${seg.pctOfTotal.toFixed(1)}%)${seg.status === 'unbilled' ? '' : ` · ${seg.status.replace(/_/g, ' ')}`}`}
-              aria-label={`Segment ${seg.label}: $${formatCurrency(seg.dollars)}, ${seg.pctOfTotal.toFixed(1)} percent${seg.selectable ? (selectedIds.has(seg.key) ? ', selected for invoicing' : ', click to select for invoicing') : ''}`}
+              title={`${seg.label} — $${formatCurrency(seg.dollars)} (${seg.pctOfTotal.toFixed(1)}%)${seg.status === 'unbilled' ? '' : ` · ${seg.status.replace(/_/g, ' ')}`}${(() => {
+                const c = segCoverage(seg.key)
+                return c && c.coveredDollars > 0 ? ` · $${formatCurrency(c.coveredDollars)} covered by other bills` : ''
+              })()}`}
+              aria-label={`Segment ${seg.label}: $${formatCurrency(seg.dollars)}, ${seg.pctOfTotal.toFixed(1)} percent${isSelectable(seg) ? (selectedIds.has(seg.key) ? ', selected for invoicing' : ', click to select for invoicing') : segCoverage(seg.key)?.fullyCovered ? ', covered by an existing bill' : ''}`}
               aria-pressed={highlighted}
               style={{
+                position: 'relative',
                 width: `${seg.pctOfTotal}%`,
                 minWidth: 6,
                 padding: '0 4px',
@@ -199,6 +279,28 @@ export function JobFormSegmentsBar({
                 opacity: highlighted ? 1 : 0.92,
               }}
             >
+              {(() => {
+                // Hatch = the waterfall's coverage of THIS block, so the strip,
+                // the row chips, and the locks always tell the same story.
+                const c = segCoverage(seg.key)
+                if (!c || !(c.coveredDollars > 0) || !(seg.dollars > 0)) return null
+                const pct = Math.min(100, (c.coveredDollars / seg.dollars) * 100)
+                return (
+                  <span
+                    aria-hidden
+                    style={{
+                      position: 'absolute',
+                      left: 0,
+                      top: 0,
+                      bottom: 0,
+                      width: `${pct}%`,
+                      background: 'repeating-linear-gradient(-45deg, rgba(29,95,165,0.45) 0 5px, transparent 5px 10px)',
+                      borderRight: c.fullyCovered ? 'none' : '2px solid #185FA5',
+                      pointerEvents: 'none',
+                    }}
+                  />
+                )
+              })()}
               <span
                 style={{
                   fontSize: '0.6875rem',
@@ -221,7 +323,7 @@ export function JobFormSegmentsBar({
           const highlighted = isHighlighted(seg)
           const rowInner = (
             <>
-              {seg.selectable ? (
+              {isSelectable(seg) ? (
                 <input
                   type="checkbox"
                   checked={selectedIds.has(seg.key)}
@@ -243,6 +345,7 @@ export function JobFormSegmentsBar({
               >
                 {seg.label}
               </span>
+              {coverageChip(seg)}
               <span style={{ color: 'var(--text-muted)', whiteSpace: 'nowrap', flexShrink: 0 }}>
                 ${formatCurrency(seg.dollars)} · {seg.pctOfTotal.toFixed(1)}%
               </span>
@@ -263,7 +366,7 @@ export function JobFormSegmentsBar({
           }
           // Selectable rows are labels so any click toggles the checkbox;
           // the rest are buttons toggling the passive focus highlight.
-          return seg.selectable ? (
+          return isSelectable(seg) ? (
             <label key={seg.key} style={rowStyle}>
               {rowInner}
             </label>
@@ -285,16 +388,17 @@ export function JobFormSegmentsBar({
           <button
             type="button"
             onClick={onCreateInvoiceFromSelection}
-            disabled={creatingFromSelection || selection.count === 0}
+            disabled={creatingFromSelection || selection.count === 0 || selectionExceedsRemaining}
+            title={selectionExceedsRemaining && coverage ? `The selection would bill more than the $${formatCurrency(coverage.remainingDollars)} left on the job` : undefined}
             style={{
               padding: '0.4rem 0.75rem',
               fontSize: '0.8125rem',
               fontWeight: 600,
-              background: selection.count === 0 ? 'var(--border-strong)' : '#3b82f6',
+              background: selection.count === 0 || selectionExceedsRemaining ? 'var(--border-strong)' : '#3b82f6',
               color: 'white',
               border: 'none',
               borderRadius: 6,
-              cursor: creatingFromSelection || selection.count === 0 ? 'default' : 'pointer',
+              cursor: creatingFromSelection || selection.count === 0 || selectionExceedsRemaining ? 'default' : 'pointer',
             }}
           >
             {creatingFromSelection
@@ -303,11 +407,16 @@ export function JobFormSegmentsBar({
                 ? 'Create invoice from selected segments'
                 : `Create invoice from ${selection.count} segment${selection.count === 1 ? '' : 's'} ($${formatCurrency(selection.totalDollars)})`}
           </button>
-          {selection.count > 0 && (
+          {selectionExceedsRemaining && coverage ? (
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-red-600)', fontWeight: 600 }}>
+              Exceeds the ${formatCurrency(coverage.remainingDollars)} left to bill — money already paid or invoiced
+              covers the rest.
+            </span>
+          ) : selection.count > 0 ? (
             <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
               Breaks off a Ready-to-Bill invoice for exactly these segments and locks them in ① Line Items.
             </span>
-          )}
+          ) : null}
         </div>
       )}
     </div>
