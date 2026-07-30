@@ -38,7 +38,7 @@ Sections in JSX order inside the modal body; nested overlays and tail modals aft
 | # | Section | Anchor symbol / text | Status | Owned state | Shared form state | Coupling | Risk | Recommended action |
 |---|---|---|---|---|---|---|---|---|
 | 0 | Shell + lifecycle | `initDone` gate, overlay div (`JOB_FORM_OVERLAY_Z_INDEX`), `closeForm` (~3067–3113) | shell | `initDone`, `editing`, `error`, `saving` | all | — | — | **Stays** — this is the parent |
-| 1 | Header row | `hcpHelpOpen` popover, Import / "Job Detail" button, "Link to: Bid \| Project" (~3113–3356) | inline | 1 (`hcpHelpOpen` + ref/effect) | `bidId`, `projectId`, `newJobImportBlockedByContent`, `jobImportSourceOpen`, modal openers | med (reads dirty gate; opens 3 link modals; `jobDetailOpenerBridge`) | low | Extract `JobFormHeaderRow` late; openers stay in shell |
+| 1 | Header row | `JobFormHeaderRow` | **extracted** (v2.1094) | 1 (`hcpHelpOpen` + ref/effect, moved in) | `bidId`, `projectId`, `newJobImportBlockedByContent` as props; import/link-choice modal openers + the Job Detail close-then-bridge action stay shell callbacks | med | low | Done — [`JobFormHeaderRow.tsx`](../src/components/jobs/JobFormHeaderRow.tsx) |
 | 2 | Source-estimate banner | `JobFormSourceEstimateBanner` | **extracted** (v2.1090) | 3 states + loader + acceptance modal, all inside the component | `editing?.id` (sole prop) | low | low | Done — [`JobFormSourceEstimateBanner.tsx`](../src/components/jobs/JobFormSourceEstimateBanner.tsx) |
 | 3 | Identity fields | `JobFormIdentityFields` | **extracted** (v2.1091) | 2 paste refs only | `hcpNumber`, `clickNumber`, `jobName`, `jobAddress`, `formServiceTypeId`, `lastBillDate` (controlled props+setters); `jobFormServiceTypeSelectOptions` + `headerTradePill` memos stay shell-side, passed as values | med | low | Done — [`JobFormIdentityFields.tsx`](../src/components/jobs/JobFormIdentityFields.tsx) |
 | 4 | People assignment | `contractorsSearch` "Add People..." input + chips (~3537–3666) | inline | 2 (`contractorsSearch`, `contractorsDropdownOpen`) + click-outside effect + ref | `teamMemberIds`, `users` | low | low | **Good first Stage-B** — `JobFormPeoplePicker` |
@@ -171,11 +171,9 @@ If `customerId && dateMet` and the cached customer row lacks `date_met`: `UPDATE
 
 ### 1. Header row
 
-- **Render location:** title "Edit Job"/"New Job" + HCP/C# "i" help popover (`hcpHelpOpen`, outside-click/Esc effect ~701) + center button (**Import** in new mode when `!newJobImportBlockedByContent`, else **Job Detail** in edit mode → `closeForm()` then `jobDetailOpenerBridge.requestOpenJobDetail(id)`) + right-aligned "Link to: **Bid** | **Project**" quick links (~3113–3356). Linked → `<Link>` navigations; unlinked → open `JobBidLinkChoiceModal`/`JobProjectLinkChoiceModal`.
-- **Owned state:** `hcpHelpOpen` + `hcpHelpRef`.
-- **Shared:** `bidId`, `projectId`, `newJobImportBlockedByContent`, `jobImportSourceOpen` setter, both link-choice modal setters, `editing`.
-- **Coupling:** duplicates §6's link/unlink affordances; the Import gate is the dirty-tracking consumer.
-- **Extraction:** `JobFormHeaderRow` taking flags + opener callbacks. Low value until the sections around it are out; do late.
+- **Status: extracted (v2.1094)** → [`JobFormHeaderRow.tsx`](../src/components/jobs/JobFormHeaderRow.tsx). Title, the HCP/C# "i" help popover (`hcpHelpOpen` + ref + outside-click/Esc effect moved in), the center **Import** (new mode, until the dirty gate blocks it) / **Job Detail** (edit) button, and the "Link to: **Bid** | **Project**" quick links.
+- **Stays shell-side:** the import + link-choice modals and their open flags (row receives `onOpenImport`/`onOpenBidLinkChoice`/`onOpenProjectLinkChoice` callbacks); the Job Detail action (`closeForm()` flush → `jobDetailOpenerBridge.requestOpenJobDetail`) as `onJobDetailClick`; `newJobImportBlockedByContent` (the dirty gate) passed as `importBlocked`.
+- **Coupling (unchanged):** duplicates §6's link/unlink affordances; the Import gate is the dirty-tracking consumer.
 
 ### 2. Source-estimate banner
 

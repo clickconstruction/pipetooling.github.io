@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-29 (v2.1093)
+last_updated: 2026-07-29 (v2.1094)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1094)
+
+### JobFormModal decomposition: header row extracted — all sections now out (2026-07-29)
+The last section of the [`JOB_FORM_MODAL_ARCHITECTURE.md`](./JOB_FORM_MODAL_ARCHITECTURE.md) extraction order (§1, deliberately saved for last). New [`JobFormHeaderRow`](../src/components/jobs/JobFormHeaderRow.tsx): title, the HCP#/C# "i" help popover (state + outside-click/Esc effect moved in), the center Import (new mode, dirty-gated) / Job Detail (edit mode) button, and the "Link to: Bid | Project" quick links. The import/link-choice modals, their open flags, and the Job Detail close-then-bridge action stay shell-side as callbacks. `JobFormModal.tsx` 4,007 → 3,767 lines — **every form section is now an extracted component** (v2.1090–v2.1094 this session: banner, identity, links, customer+create-modal, header; 4,985 → 3,767 total). The shell is now lifecycle + shared form state + autosave/save machinery + shared modals, per the map's end-state; the only remaining queue item is the save-engine seam (step 18). Behavior-preserving. Client-only.
 
 ## Latest Updates (v2.1093)
 

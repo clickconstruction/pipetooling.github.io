@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1094',
+    date: '2026-07-29',
+    title: 'Under the hood: Edit Job window cleanup — all sections done',
+    kind: 'infra',
+    highlights: [
+      'No visible changes — the Edit Job window’s header row moved into its own component, completing the section-by-section internal cleanup of this window.',
+    ],
+  },
+  {
     version: 'v2.1093',
     date: '2026-07-29',
     title: 'Under the hood: Edit Job customer block cleanup',
