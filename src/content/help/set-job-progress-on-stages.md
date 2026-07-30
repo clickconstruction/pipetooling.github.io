@@ -16,7 +16,7 @@ On the **Jobs → Stages** board, each job has a progress percent (the "% done" 
 5. Setting it saves the percent **and** posts the note to the activity feed as "**N% complete — your note**", so the change shows up in the job's history.
 
 :::example What it affects
-The percent feeds the Progress & payment bar — "value created" = the job's amount × percent done, minus what's already been paid. Setting it higher moves more of the job into the unbilled total. The percent also shows as a **yellow dot on the bar itself** (at 0% the dot sits at the far left, at 100% the far right), so field progress reads off the same track as Paid / Billed / Unbilled. The same percent can also be captured on a field report and in the job's detail window.
+The percent feeds the Progress & payment bar — "value created" = the job's amount × percent done, minus what's already been paid. Setting it higher moves more of the job into the unbilled total. The percent also shows as a **yellow dot on the bar itself** (at 0% the dot sits at the far left, at 100% the far right), so field progress reads off the same track as Paid / Billed / Unbilled. The same percent can also be captured on a field report and in the job's detail window. In the Edit job window's Billing bar, jobs with more than one line item also get small **notches where each line item's share ends** — hover a notch to see which item ends there, so the dot reads against the job's actual scope ("past rough-in, into trim").
 :::
 
 ## Who can change it

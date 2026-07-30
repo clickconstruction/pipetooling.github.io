@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   buildJobSegmentsBar,
   linkableSelectedIds,
+  segmentBoundaryMarks,
   segmentSelectionSummary,
   selectedSegmentSequencePositions,
   type SegmentFixtureLine,
@@ -116,5 +117,48 @@ describe('selectedSegmentSequencePositions', () => {
     expect(selectedSegmentSequencePositions(fixtures, new Set(['b', 'd']))).toEqual([1, 3])
     // linked + invalid selections are ignored but still consume their position
     expect(selectedSegmentSequencePositions(fixtures, new Set(['c', 'unnamed']))).toEqual([])
+  })
+})
+
+describe('segmentBoundaryMarks', () => {
+  it('marks where each segment ends, skipping the final right-edge boundary', () => {
+    const segments = buildJobSegmentsBar({
+      fixtures: [
+        line({ id: 'a', name: 'Rough In', line_unit_price: 400 }),
+        line({ id: 'b', name: 'Top Out', line_unit_price: 350 }),
+        line({ id: 'c', name: 'Trim', line_unit_price: 250 }),
+      ],
+      riderFeesDollars: 0,
+      invoiceStatusById: {},
+    })
+    expect(segmentBoundaryMarks(segments)).toEqual([
+      { frac: 0.4, label: 'Rough In ends at 40%' },
+      { frac: 0.75, label: 'Top Out ends at 75%' },
+    ])
+  })
+
+  it('includes the riders boundary and drops marks hugging either edge', () => {
+    const segments = buildJobSegmentsBar({
+      fixtures: [
+        line({ id: 'tiny', name: 'Permit', line_unit_price: 0.5 }),
+        line({ id: 'big', name: 'Everything', line_unit_price: 899 }),
+      ],
+      riderFeesDollars: 100.5,
+      invoiceStatusById: {},
+    })
+    // Permit ends at 0.05% (dropped); Everything ends at 89.95% (kept, before riders).
+    const marks = segmentBoundaryMarks(segments)
+    expect(marks).toHaveLength(1)
+    expect(marks[0]?.label).toBe('Everything ends at 90%')
+    expect(marks[0]?.frac).toBeCloseTo(0.8995, 4)
+  })
+
+  it('returns no marks for a single segment or empty bar', () => {
+    expect(segmentBoundaryMarks([])).toEqual([])
+    expect(
+      segmentBoundaryMarks(
+        buildJobSegmentsBar({ fixtures: [line({ id: 'only' })], riderFeesDollars: 0, invoiceStatusById: {} }),
+      ),
+    ).toEqual([])
   })
 })

@@ -1,4 +1,5 @@
 import { formatUsdNoCents } from '../../lib/jobs/jobFormatting'
+import type { SegmentBoundaryMark } from '../../lib/jobs/jobSegmentsCoverage'
 
 const PAID_COLOR = '#16a34a'
 const BILLED_COLOR = '#2563eb'
@@ -54,9 +55,16 @@ export function MoneyLifecycleBar({
   bottomRow,
   height = 10,
   barTitle,
+  marks,
 }: {
   hasBar: boolean
   segments: BarSegment[]
+  /**
+   * Line-item boundary ticks (v2.1130): notches where each line item's dollar
+   * share ends, so the field-progress dot reads against the job's actual
+   * scope ("past Rough-in, into Trim"). Hover a tick for its label.
+   */
+  marks?: SegmentBoundaryMark[]
   /** Field % done for the top-left readout + the yellow dot; hidden when null. */
   pctComplete?: number | null
   pctSaving?: boolean
@@ -174,6 +182,29 @@ export function MoneyLifecycleBar({
         ) : (
           <div style={{ height, borderRadius: 4, background: 'var(--bg-subtle)', border: '1px dashed var(--border-strong)' }} />
         )}
+        {hasBar &&
+          (marks ?? []).map((m) => (
+            // Line-item boundary tick — extends 3px past the bar so it reads as a
+            // notch, not a segment divider. Wider transparent hit area carries the
+            // tooltip; the visible 1px line is centered inside it. Rendered before
+            // the % done dot so the dot stays on top.
+            <div
+              key={`${m.frac}`}
+              title={m.label}
+              style={{
+                position: 'absolute',
+                left: `${m.frac * 100}%`,
+                top: -3,
+                bottom: -3,
+                width: 7,
+                transform: 'translateX(-50%)',
+                display: 'flex',
+                justifyContent: 'center',
+              }}
+            >
+              <div aria-hidden style={{ width: 1, background: 'var(--border-strong)' }} />
+            </div>
+          ))}
         {pctComplete != null ? (
           // Field-progress marker — same yellow dot as the Stages Progress & payment
           // bar; sits at pct% across the bar (0% = left edge, 100% = right edge).

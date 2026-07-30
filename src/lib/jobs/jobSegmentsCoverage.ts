@@ -97,6 +97,28 @@ export function buildJobSegmentsBar(args: {
   return segments
 }
 
+export type SegmentBoundaryMark = { frac: number; label: string }
+
+/**
+ * Line-item boundary ticks for the Billing % done bar (v2.1130): the
+ * cumulative share (0–1) where each segment ENDS, labeled for the tooltip
+ * ("Rough-in ends at 42%"). The last segment's edge is the bar's right end,
+ * so it's skipped, as is anything within half a percent of either edge —
+ * a tick under the bar's border reads as a rendering glitch.
+ */
+export function segmentBoundaryMarks(segments: JobBarSegment[]): SegmentBoundaryMark[] {
+  const marks: SegmentBoundaryMark[] = []
+  let cumPct = 0
+  for (let i = 0; i < segments.length - 1; i++) {
+    const seg = segments[i]
+    if (!seg) continue
+    cumPct += seg.pctOfTotal
+    if (cumPct <= 0.5 || cumPct >= 99.5) continue
+    marks.push({ frac: cumPct / 100, label: `${seg.label} ends at ${Math.round(cumPct)}%` })
+  }
+  return marks
+}
+
 /**
  * Cents-exact total of the selected, still-billable rows. Rows that are
  * unnamed, zero-dollar, or already linked are ignored even if selected —

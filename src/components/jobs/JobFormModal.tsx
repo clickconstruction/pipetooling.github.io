@@ -93,7 +93,9 @@ import {
 } from '../../lib/jobs/jobFormRows'
 import { moveRowById } from '../../lib/jobs/jobFormReorder'
 import {
+  buildJobSegmentsBar,
   linkableSelectedIds,
+  segmentBoundaryMarks,
   segmentSelectionSummary,
   selectedSegmentSequencePositions,
 } from '../../lib/jobs/jobSegmentsCoverage'
@@ -426,6 +428,16 @@ export default function JobFormModal({
     for (const inv of editing?.invoices ?? []) map[inv.id] = inv.status
     return map
   }, [editing?.invoices])
+
+  // Line-item boundary ticks on the Billing % done bar (v2.1130): same segment
+  // math as the ② Invoices strip, reduced to where each item's share ends.
+  const billingBarMarks = useMemo(
+    () =>
+      segmentBoundaryMarks(
+        buildJobSegmentsBar({ fixtures, riderFeesDollars, invoiceStatusById: fixtureInvoiceStatusById }),
+      ),
+    [fixtures, riderFeesDollars, fixtureInvoiceStatusById],
+  )
 
   // ② Invoices segment bar (v2.1070): which unbilled line items are picked
   // for the next "create invoice from selected segments" action.
@@ -2958,6 +2970,7 @@ export default function JobFormModal({
               pctComplete={editing?.pct_complete ?? null}
               pctSaving={pctSaving}
               onPctCommit={editing?.id ? commitPctComplete : undefined}
+              marks={billingBarMarks}
               total={billingBar.total}
               segments={[
                 { key: 'paid', frac: billingBar.paidFrac, color: PAID_COLOR },
