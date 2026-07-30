@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-30 (v2.1111)
+last_updated: 2026-07-30 (v2.1112)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1112)
+
+### Fix: renames cascade person_name to all ten pay tables (2026-07-30)
+[`cascadePersonName.ts`](../src/lib/cascadePersonName.ts) — step **C0.2** of [`FRAGILITY_REMEDIATION_PLAN.md`](./FRAGILITY_REMEDIATION_PLAN.md). `cascadePersonNameInPayTables` kept its own eight-table copy of the pay-table inventory, missing `person_offsets` and `hours_reviewed` — a plain rename (Settings → user name, People roster edit; call sites in `useSettingsPeopleDirectory`, `useActiveAccountsManagement`, `useSettingsAccount`, `usePeopleRoster`, `mergePersonUserDuplicates`) left those rows keyed under the old name (Combine-people covered them; renames didn't). Fix: the cascade now loops over the shared `NAME_KEYED_TABLES` inventory from [`combinePeople.ts`](../src/lib/combinePeople.ts) (pinned by its tests against the Phase B/B2 migrations), so there is no second list to drift. New [`cascadePersonName.test.ts`](../src/lib/cascadePersonName.test.ts) pins the no-op guards. Client-only.
 
 ## Latest Updates (v2.1111)
 

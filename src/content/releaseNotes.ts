@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1112',
+    date: '2026-07-30',
+    title: 'Fix: renaming a person updates offsets and reviewed-hours too',
+    kind: 'fix',
+    highlights: [
+      'Renaming someone (in Settings or the People roster) now also updates their offsets (backcharges, damages, credits) and reviewed-hours records — previously those stayed under the old name.',
+    ],
+  },
+  {
     version: 'v2.1111',
     date: '2026-07-30',
     title: 'Fix: Combine people now carries every pay record type',

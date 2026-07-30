@@ -1,4 +1,5 @@
 import { supabase } from './supabase'
+import { NAME_KEYED_TABLES } from './combinePeople'
 
 /**
  * Get all person_name values that belong to this user (by email).
@@ -27,19 +28,19 @@ export async function getPersonNamesForUser(
 /**
  * Cascade a person name change to all Pay-related tables so People → Hours (pay config / matrix) shows updated names.
  * Call this when updating users.name or people.name in Settings or People.
+ *
+ * Loops over the shared NAME_KEYED_TABLES inventory (combinePeople.ts, pinned
+ * by its tests against the Phase B/B2 migrations) — until v2.1112 this file
+ * kept its own eight-table copy, so plain renames orphaned `person_offsets`
+ * and `hours_reviewed` rows under the old name.
  */
 export async function cascadePersonNameInPayTables(oldName: string, newName: string): Promise<void> {
   const trimmedOld = oldName?.trim()
   const trimmedNew = newName?.trim()
   if (!trimmedOld || !trimmedNew || trimmedOld === trimmedNew) return
-  await Promise.all([
-    supabase.from('people_pay_config').update({ person_name: trimmedNew }).eq('person_name', trimmedOld),
-    supabase.from('people_hours').update({ person_name: trimmedNew }).eq('person_name', trimmedOld),
-    supabase.from('people_team_members').update({ person_name: trimmedNew }).eq('person_name', trimmedOld),
-    supabase.from('people_hours_display_order').update({ person_name: trimmedNew }).eq('person_name', trimmedOld),
-    supabase.from('people_crew_jobs').update({ person_name: trimmedNew }).eq('person_name', trimmedOld),
-    supabase.from('people_crew_bids').update({ person_name: trimmedNew }).eq('person_name', trimmedOld),
-    supabase.from('pay_stubs').update({ person_name: trimmedNew }).eq('person_name', trimmedOld),
-    supabase.from('pay_stub_days').update({ person_name: trimmedNew }).eq('person_name', trimmedOld),
-  ])
+  await Promise.all(
+    NAME_KEYED_TABLES.map((table) =>
+      supabase.from(table).update({ person_name: trimmedNew }).eq('person_name', trimmedOld),
+    ),
+  )
 }
