@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1131',
+    date: '2026-07-30',
+    title: 'Edit job: clearer "Add line item" button',
+    kind: 'feature',
+    highlights: [
+      'The blue (+) that sat on the last line item — making freshly added rows look unconfirmed — is now a dashed "+ Add line item" button in the footer, next to the Job Total.',
+      'Every line item now has the same trash icon, including the last one, so any row can be removed directly (the grid always keeps at least one row).',
+      'Scope notes and Stripe preview stay exactly where they were, attached to each line.',
+    ],
+  },
+  {
     version: 'v2.1130',
     date: '2026-07-30',
     title: 'Edit job: line-item marks on the % done bar',

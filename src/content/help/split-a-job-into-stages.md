@@ -20,7 +20,7 @@ Click the blue **Multiple Segment Generator** link in the ① Line Items caption
 1. Set the **total amount** at the top (it prefills with the current Job Total).
 2. Name each segment and give it a **%** — the dollar value of each segment calculates as you type and always adds back to your total.
 3. Or press a preset: **Commercial 30/30/30/10** (Rough In / Top Out / Trim Set / Final) or **Residential 40/40/20** (Rough In / Top Out / Trim Set).
-4. Re-arrange with **▲▼**, then press {{button:primary|Add to Job}} — the segments append to your existing line items.
+4. Re-arrange with **▲▼**, then press {{button:primary|Add to Job}} — the segments append to your existing line items. Every appended row is fully added the moment it lands (nothing more to confirm); the dashed {{button:outline-blue|+ Add line item}} button below the list is only for adding another row by hand.
 
 :::example A staged plumbing job
 Rough In $3,000 → Top Out $3,000 → Trim Set $3,000 → Final $1,000 — Job Total $10,000

@@ -334,59 +334,12 @@ export function JobFormFixturesSection({
                                 textAlign: 'right',
                               }}
                             />
-                            {fixtures.length === 1 ? (
-                              <button
-                                type="button"
-                                onClick={addFixtureRow}
-                                title="Add line item"
-                                aria-label="Add line item"
-                                style={{
-                                  padding: '0.35rem 0.5rem',
-                                  fontSize: '1rem',
-                                  fontWeight: 600,
-                                  lineHeight: 1,
-                                  background: '#3b82f6',
-                                  color: 'white',
-                                  border: 'none',
-                                  borderRadius: 6,
-                                  cursor: 'pointer',
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
-                                  minWidth: '1.75rem',
-                                  flexShrink: 0,
-                                  marginLeft: 'auto',
-                                }}
-                              >
-                                +
-                              </button>
-                            ) : idx === fixtures.length - 1 ? (
-                              <button
-                                type="button"
-                                onClick={addFixtureRow}
-                                title="Add line item"
-                                aria-label="Add line item"
-                                style={{
-                                  padding: '0.35rem 0.5rem',
-                                  fontSize: '1rem',
-                                  fontWeight: 600,
-                                  lineHeight: 1,
-                                  background: '#3b82f6',
-                                  color: 'white',
-                                  border: 'none',
-                                  borderRadius: 6,
-                                  cursor: 'pointer',
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
-                                  minWidth: '1.75rem',
-                                  flexShrink: 0,
-                                  marginLeft: 'auto',
-                                }}
-                              >
-                                +
-                              </button>
-                            ) : locked ? null : (
+                            {/* The add-line-item action lives in the footer next to Job Total
+                                (v2.1131) — a (+) pinned to the last row made freshly generated
+                                rows read as "not added yet". Every removable row now carries
+                                the same trash icon; the sole remaining row keeps none (the
+                                grid always holds at least one row). */}
+                            {fixtures.length === 1 || locked ? null : (
                               <button
                                 type="button"
                                 onClick={() => removeFixtureRow(row.id)}
@@ -567,7 +520,27 @@ export function JobFormFixturesSection({
                 {riderRows}
               </tbody>
             </table>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap', marginTop: '0.5rem' }}>
+              <button
+                type="button"
+                onClick={addFixtureRow}
+                title="Add a new line item row"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.35rem',
+                  padding: '0.4rem 0.9rem',
+                  background: 'transparent',
+                  border: '1px dashed var(--border-strong)',
+                  borderRadius: 6,
+                  color: 'var(--text-link)',
+                  fontSize: '0.8125rem',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                }}
+              >
+                + Add line item
+              </button>
               <span
                 aria-live="polite"
                 title={riderFeesDollars > 0 ? 'Running total of the line items above, riders included.' : 'Running total of the line items above.'}
