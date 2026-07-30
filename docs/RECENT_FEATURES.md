@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-30 (v2.1113)
+last_updated: 2026-07-30 (v2.1114)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1114)
+
+### Stripe invoices record their test/live mode (2026-07-30)
+Migration [`20260730165312_stripe_mode_on_invoices.sql`](../supabase/migrations/20260730165312_stripe_mode_on_invoices.sql) + [`create-stripe-invoice`](../supabase/functions/create-stripe-invoice/index.ts) (**redeploy required**) — step **A1** of [`FRAGILITY_REMEDIATION_PLAN.md`](./FRAGILITY_REMEDIATION_PLAN.md). Stripe mode has been per-request and unrecorded — the root of the cross-mode bug class (a test-mode void of a live invoice reads "No such invoice" and deletes the ledger row, orphaning the live Stripe invoice; BILLING_FLOWS.md §test/live). New `jobs_ledger_invoices.stripe_mode` (`'live'|'test'` CHECK, NULL = pre-A1 legacy treated as live) is stamped by `create-stripe-invoice`'s post-finalize patch; existing Stripe-linked rows backfilled `'live'` (plan decision 1 — only devs can select test and the pref defaults live; a mislabeled row fails safe under the coming A2/A3 guards). `stripe_webhook_events.livemode` added for webhook observability (stamped from A2 on). **Deploy-order note**: the migration was applied ahead of this merge (a `db push` for v2.1113 swept the then-unmerged file — see the workflow caution added to the plan doc); the column is additive so nothing misread it. Upcoming: A2 webhook mode-match + self-heal, A3 row-authoritative mode on the seven row-bound functions. DB + edge (`supabase functions deploy create-stripe-invoice`).
 
 ## Latest Updates (v2.1113)
 

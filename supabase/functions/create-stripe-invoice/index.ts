@@ -496,6 +496,10 @@ serve(async (req) => {
       external_send_channel: 'stripe',
       stripe_invoice_memo: memoTrimmed,
       stripe_invoice_footer: footerTrimmedForStripe,
+      // A1 (FRAGILITY_REMEDIATION_PLAN.md): record which Stripe mode this
+      // invoice's objects live in; A3 makes the row authoritative for later
+      // row-bound operations (void/send/details/OOB/write-down).
+      stripe_mode: stripeMode,
     }
     if (Number(invRow.amount) !== amount_dollars) {
       patch.amount = amount_dollars

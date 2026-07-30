@@ -9,7 +9,7 @@ last_updated: 2026-07-30
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate to Advanced
 
-total_migrations: "129 live in supabase/migrations/ (baseline + post-baseline) + 847 archived pre-baseline files (squashed into the 2026-06-04 baseline)"
+total_migrations: "130 live in supabase/migrations/ (baseline + post-baseline) + 847 archived pre-baseline files (squashed into the 2026-06-04 baseline)"
 date_range: "Through July 30, 2026 — the latest real migration. Archive filenames dated 2027 are typos; that work happened March–June 2026 (see the note atop Recent Migrations)."
 categories: "Bids, Materials, Workflow, RLS, Database Improvements"
 
@@ -105,6 +105,12 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 ### July 2026
 
 #### July 30, 2026
+
+**`20260730165312_stripe_mode_on_invoices.sql`** _(⚠ applied 2026-07-30 by the v2.1113 `db push` while still unmerged — the push swept every pending local file, including this then-drafted one; additive-only so nothing misread it, and the file merged to `main` the same hour to realign the ledger. Workflow caution: never leave draft migrations in `supabase/migrations/` while a push for an earlier file is pending — draft outside the tree and move in on the branch)_
+- **Purpose**: Stripe mode integrity (v2.1114; [`FRAGILITY_REMEDIATION_PLAN.md`](./FRAGILITY_REMEDIATION_PLAN.md) step A1) — `jobs_ledger_invoices.stripe_mode` (`'live'|'test'` CHECK, NULL = pre-A1 legacy) stamped by `create-stripe-invoice`; backfill `'live'` for existing Stripe-linked rows (plan decision 1); `stripe_webhook_events.livemode` for A2 observability.
+- **Security**: additive nullable columns; existing RLS covers them; no CREATE TABLE so no sweep calls needed.
+- **Ordering**: migration first, then `supabase functions deploy create-stripe-invoice` (v2.1114); A2/A3 redeploys follow.
+- **Category**: Jobs / billing / security
 
 **`20260730164728_widen_pay_person_id_triggers.sql`** _(apply via `supabase db push` after the file is on `main`; no client change — either order is safe)_
 - **Purpose**: Person-identity trigger widening (v2.1113; [`FRAGILITY_REMEDIATION_PLAN.md`](./FRAGILITY_REMEDIATION_PLAN.md) steps C0.3+C0.4) — `pay_tables_set_person_id()` now fires `BEFORE INSERT OR UPDATE OF person_name` on all ten pay tables (Phase B five + B2 five), re-resolving `person_id` on a name change the writer didn't pair with an explicit id: `COALESCE(resolve_pay_person_id(new_name), old id)`. Fixes the Edit-offset person-swap desync and makes renames/combines self-heal at the DB. Trigger renamed `set_person_id_on_insert` → `set_person_id_on_write` (old name dropped on all tables).
