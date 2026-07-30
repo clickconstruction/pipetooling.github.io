@@ -97,6 +97,84 @@ export function buildJobSegmentsBar(args: {
   return segments
 }
 
+export type SegmentDollarCoverage = {
+  /** Unattributed spoken-for dollars applied to this segment by the waterfall. */
+  coveredDollars: number
+  /** Covered to the last cent — the row locks until an invoice is voided/deleted. */
+  fullyCovered: boolean
+}
+
+export type JobDollarCoverage = {
+  /**
+   * Dollars already paid or on active invoices that are NOT accounted for by
+   * invoice-linked line items — the slider/manual-invoice money the segment
+   * strip would otherwise not show at all.
+   */
+  unattributedDollars: number
+  /** What's still billable — identical to the Make Invoice slider's Remaining. */
+  remainingDollars: number
+  /** Waterfall attribution over unbilled segments in display order, by segment key. */
+  bySegmentKey: Record<string, SegmentDollarCoverage>
+}
+
+/**
+ * ② Invoices dollar-coverage model (v2.1132). Invoices created from segment
+ * selection link their line items, so those blocks already read billed/paid.
+ * Invoices carved by dollar amount (Make Invoice slider, partial-invoice
+ * modal) link nothing — the strip stayed all-amber while real money was
+ * already out. This computes:
+ *
+ *  - unattributedDollars: (payments + draft/billed invoice amounts) minus the
+ *    dollars of already-linked segments — money spoken for that no block shows.
+ *    The payments+invoices basis is unallocatedBillableDollars' exactly, so
+ *    this and remainingDollars can never disagree with the slider.
+ *  - a WATERFALL of that amount over unbilled segments in display order
+ *    (riders included — their dollars are billable too): first items covered
+ *    first. This is an interpretation — dollar invoices don't say which items
+ *    they bought — so partially covered rows stay selectable; only rows
+ *    covered to the last cent lock.
+ */
+export function dollarCoverageForSegments(args: {
+  segments: JobBarSegment[]
+  /** Job total including riders — same gross the break-off slider uses. */
+  grossDollars: number
+  paidDollars: number
+  invoices: Array<{ status: string; amount: unknown }> | null | undefined
+}): JobDollarCoverage {
+  const { segments, grossDollars, paidDollars, invoices } = args
+  const allocated = (invoices ?? []).reduce(
+    (sum, inv) => (inv.status === 'ready_to_bill' || inv.status === 'billed' ? sum + (Number(inv.amount) || 0) : sum),
+    0,
+  )
+  const attributedCents = segments.reduce(
+    (sum, s) => (s.status !== 'unbilled' ? sum + Math.round(s.dollars * 100) : sum),
+    0,
+  )
+  const spokenForCents = Math.round((paidDollars + allocated) * 100)
+  const unattributedCents = Math.max(0, spokenForCents - attributedCents)
+  const remainingCents = Math.max(0, Math.round(grossDollars * 100) - spokenForCents)
+
+  const bySegmentKey: Record<string, SegmentDollarCoverage> = {}
+  let pool = unattributedCents
+  for (const seg of segments) {
+    if (seg.status !== 'unbilled') continue
+    if (pool <= 0) break
+    const segCents = Math.round(seg.dollars * 100)
+    const coveredCents = Math.min(segCents, pool)
+    pool -= coveredCents
+    bySegmentKey[seg.key] = {
+      coveredDollars: coveredCents / 100,
+      fullyCovered: coveredCents >= segCents,
+    }
+  }
+
+  return {
+    unattributedDollars: unattributedCents / 100,
+    remainingDollars: remainingCents / 100,
+    bySegmentKey,
+  }
+}
+
 export type SegmentBoundaryMark = { frac: number; label: string }
 
 /**

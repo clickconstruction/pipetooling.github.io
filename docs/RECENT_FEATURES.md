@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-30 (v2.1131)
+last_updated: 2026-07-30 (v2.1132)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1132)
+
+### ② Invoices: dollar-invoice coverage — hatch, waterfall chips, remainder clamp (2026-07-30)
+[`jobSegmentsCoverage.ts`](../src/lib/jobs/jobSegmentsCoverage.ts) + [`JobFormSegmentsBar.tsx`](../src/components/jobs/JobFormSegmentsBar.tsx) + [`JobFormModal.tsx`](../src/components/jobs/JobFormModal.tsx). Segment-created invoices link their line items (blocks turn RTB/billed/paid and lock — unchanged), but slider/partial-modal invoices link nothing: the strip stayed all-amber with live checkboxes while real money was out, and `createInvoiceFromSelectedSegments` had no cap — over-billing was possible. New pure kernel `dollarCoverageForSegments`: unattributed spoken-for dollars = (payments + rtb/billed invoice amounts) − linked-segment dollars — the exact `unallocatedBillableDollars` basis, so it can never disagree with the Make Invoice slider — waterfalled over unbilled segments in display order (riders included; cents-exact). UI (all driven by one `coverage` prop; absent on New Job): (1) amber banner totting up unattributed money + remaining; (2) per-block hatch overlay sized to that block's covered share, with a boundary line when partial + "Covered by other bills" legend entry; (3) fully covered rows lose their checkbox and get a `covered` chip (tooltip: void/delete the bill to free it) — partial rows keep the checkbox with a "$X covered" chip; (4) Create-from-segments disables past the remainder with a red note, plus a cents-exact backstop inside `createInvoiceFromSelectedSegments`. 4 kernel tests + 4 render tests. Client-only.
 
 ## Latest Updates (v2.1131)
 
