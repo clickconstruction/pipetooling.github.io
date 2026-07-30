@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-29 (v2.1095)
+last_updated: 2026-07-29 (v2.1097)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1097)
+
+### Align Hours groundwork: queue kernel + batched schedule quick-picks (2026-07-29)
+Stage A for the upcoming People → Hours "Align hours" modal (one pass to link the week's unmarked clock sessions to jobs/bids). New tested kernel [`lib/people/alignHoursQueue.ts`](../src/lib/people/alignHoursQueue.ts): `isAlignHoursCandidate` (closed + no job/bid + not rejected/revoked; approved and `salary_schedule` rows stay in; local People-Hours drafts excluded), `buildAlignHoursQueue` (dedupe → group by `work_date` ascending, rows by person name then clock-in), `alignQueueUserIdsByDay` (batched fetch plan), `formatAlignDurationHours` (13 tests). In [`lib/jobScheduleBlocks.ts`](../src/lib/jobScheduleBlocks.ts), the assign quick-pick grouping inside `fetchDispatchScheduledJobsForAssigneeDay` is extracted to pure `buildDispatchScheduledJobsForAssign` (behavior-preserving; 4 tests in [`jobScheduleBlocksAssignPicks.test.ts`](../src/lib/jobScheduleBlocksAssignPicks.test.ts)) and reused by new `fetchDispatchScheduledJobsForAssigneesOnDay` — quick-picks for many assignees on one day in a single `.in()` query, keyed by assignee. No UI yet. Client-only.
 
 ## Latest Updates (v2.1095)
 

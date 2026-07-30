@@ -3,7 +3,8 @@ import type { Database } from '../types/database'
 import { scheduleFormatTimeHm, pgTimeToMinutes } from './jobScheduleChicago'
 import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
 
-export type JobScheduleBlockRow = Database['public']['Tables']['job_schedule_blocks']['Row']
+export type JobScheduleBlockRow =
+  Database['public']['Tables']['job_schedule_blocks']['Row']
 
 /** Team row + joined user name (matches Jobs loadJobs embed). */
 type JobsLedgerTeamMemberEmbed = Pick<
@@ -25,7 +26,10 @@ export type ScheduleJobContext = {
   teamMembers: ScheduleTeamMember[]
 }
 
-function mapJobTitle(hcp: string | null | undefined, jobName: string | null | undefined): string {
+function mapJobTitle(
+  hcp: string | null | undefined,
+  jobName: string | null | undefined,
+): string {
   return `${(hcp ?? '').trim() || '—'} · ${(jobName ?? '').trim() || 'Job'}`
 }
 
@@ -38,7 +42,9 @@ export async function fetchScheduleJobContext(
       async () =>
         await supabase
           .from('jobs_ledger')
-          .select('id, hcp_number, job_name, project_id, jobs_ledger_team_members(user_id, users(name))')
+          .select(
+            'id, hcp_number, job_name, project_id, jobs_ledger_team_members(user_id, users(name))',
+          )
           .eq('id', jobId)
           .maybeSingle(),
       'fetchScheduleJobContext',
@@ -55,7 +61,10 @@ export async function fetchScheduleJobContext(
       user_id: tm.user_id,
       name: tm.users?.name ?? null,
     }))
-    const pid = r.project_id != null && String(r.project_id).trim() !== '' ? String(r.project_id).trim() : null
+    const pid =
+      r.project_id != null && String(r.project_id).trim() !== ''
+        ? String(r.project_id).trim()
+        : null
     return {
       data: {
         jobId: r.id,
@@ -95,7 +104,10 @@ export async function fetchJobScheduleBlocksForJob(
           .limit(101),
       'fetchJobScheduleBlocksForJob',
     )
-    return { data: (data ?? []) as JobScheduleBlockWithAssigneeName[], error: null }
+    return {
+      data: (data ?? []) as JobScheduleBlockWithAssigneeName[],
+      error: null,
+    }
   } catch (e) {
     return { data: [], error: formatErrorMessage(e) }
   }
@@ -176,7 +188,7 @@ export type DispatchScheduledJobForAssign = {
 
 const DISPATCH_ASSIGN_SELECT = `${SELECT_FIELDS}, jobs_ledger(hcp_number, job_name, job_address, service_type_id, click_number)`
 
-type JobScheduleBlockWithJobEmbed = JobScheduleBlockRow & {
+export type JobScheduleBlockWithJobEmbed = JobScheduleBlockRow & {
   jobs_ledger: {
     hcp_number: string | null
     job_name: string | null
@@ -184,6 +196,82 @@ type JobScheduleBlockWithJobEmbed = JobScheduleBlockRow & {
     service_type_id: string | null
     click_number: string | null
   } | null
+}
+
+/**
+ * Group schedule-block rows (already in `time_start` order) into one assign quick-pick per job.
+ * Pure — shared by the per-assignee and batched fetches below.
+ */
+export function buildDispatchScheduledJobsForAssign(
+  rows: JobScheduleBlockWithJobEmbed[],
+): DispatchScheduledJobForAssign[] {
+  const byJob = new Map<
+    string,
+    {
+      jl: NonNullable<JobScheduleBlockWithJobEmbed['jobs_ledger']>
+      windowSpans: DispatchScheduledWindowSpan[]
+      scheduledMinutes: number
+      earliestStartMinutes: number
+    }
+  >()
+  const enDash = '\u2013'
+  for (const r of rows) {
+    const jl = r.jobs_ledger
+    if (!jl) continue
+    const span: DispatchScheduledWindowSpan = {
+      startLabel: scheduleFormatTimeHm(r.time_start),
+      endLabel: scheduleFormatTimeHm(r.time_end),
+    }
+    const startMin = pgTimeToMinutes(r.time_start)
+    const endMin = pgTimeToMinutes(r.time_end)
+    const durMin = Math.max(0, endMin - startMin)
+    const existing = byJob.get(r.job_id)
+    if (existing) {
+      existing.windowSpans.push(span)
+      existing.scheduledMinutes += durMin
+      existing.earliestStartMinutes = Math.min(
+        existing.earliestStartMinutes,
+        startMin,
+      )
+    } else {
+      byJob.set(r.job_id, {
+        jl,
+        windowSpans: [span],
+        scheduledMinutes: durMin,
+        earliestStartMinutes: startMin,
+      })
+    }
+  }
+  const data: DispatchScheduledJobForAssign[] = []
+  for (const [
+    jobId,
+    { jl, windowSpans, scheduledMinutes, earliestStartMinutes },
+  ] of byJob) {
+    data.push({
+      jobId,
+      hcp_number: (jl.hcp_number ?? '').trim(),
+      job_name: (jl.job_name ?? '').trim() || '—',
+      job_address: (jl.job_address ?? '').trim(),
+      service_type_id: jl.service_type_id ?? null,
+      click_number: jl.click_number ?? null,
+      windowSpans,
+      windowsLabel: windowSpans
+        .map((s) => `${s.startLabel}${enDash}${s.endLabel}`)
+        .join('; '),
+      scheduledMinutes,
+      earliestStartMinutes,
+    })
+  }
+  data.sort((a, b) => {
+    const ha = a.hcp_number || ''
+    const hb = b.hcp_number || ''
+    const c = hb.localeCompare(ha, undefined, { numeric: true })
+    if (c !== 0) return c
+    return a.job_name.localeCompare(b.job_name, undefined, {
+      sensitivity: 'base',
+    })
+  })
+  return data
 }
 
 /**
@@ -209,65 +297,52 @@ export async function fetchDispatchScheduledJobsForAssigneeDay(
       'fetchDispatchScheduledJobsForAssigneeDay',
     )
     const rows = (raw ?? []) as JobScheduleBlockWithJobEmbed[]
-    const byJob = new Map<
-      string,
-      {
-        jl: NonNullable<JobScheduleBlockWithJobEmbed['jobs_ledger']>
-        windowSpans: DispatchScheduledWindowSpan[]
-        scheduledMinutes: number
-        earliestStartMinutes: number
-      }
-    >()
-    const enDash = '\u2013'
-    for (const r of rows) {
-      const jl = r.jobs_ledger
-      if (!jl) continue
-      const span: DispatchScheduledWindowSpan = {
-        startLabel: scheduleFormatTimeHm(r.time_start),
-        endLabel: scheduleFormatTimeHm(r.time_end),
-      }
-      const startMin = pgTimeToMinutes(r.time_start)
-      const endMin = pgTimeToMinutes(r.time_end)
-      const durMin = Math.max(0, endMin - startMin)
-      const existing = byJob.get(r.job_id)
-      if (existing) {
-        existing.windowSpans.push(span)
-        existing.scheduledMinutes += durMin
-        existing.earliestStartMinutes = Math.min(existing.earliestStartMinutes, startMin)
-      } else {
-        byJob.set(r.job_id, {
-          jl,
-          windowSpans: [span],
-          scheduledMinutes: durMin,
-          earliestStartMinutes: startMin,
-        })
-      }
-    }
-    const data: DispatchScheduledJobForAssign[] = []
-    for (const [jobId, { jl, windowSpans, scheduledMinutes, earliestStartMinutes }] of byJob) {
-      data.push({
-        jobId,
-        hcp_number: (jl.hcp_number ?? '').trim(),
-        job_name: (jl.job_name ?? '').trim() || '—',
-        job_address: (jl.job_address ?? '').trim(),
-        service_type_id: jl.service_type_id ?? null,
-        click_number: jl.click_number ?? null,
-        windowSpans,
-        windowsLabel: windowSpans.map((s) => `${s.startLabel}${enDash}${s.endLabel}`).join('; '),
-        scheduledMinutes,
-        earliestStartMinutes,
-      })
-    }
-    data.sort((a, b) => {
-      const ha = a.hcp_number || ''
-      const hb = b.hcp_number || ''
-      const c = hb.localeCompare(ha, undefined, { numeric: true })
-      if (c !== 0) return c
-      return a.job_name.localeCompare(b.job_name, undefined, { sensitivity: 'base' })
-    })
-    return { data, error: null }
+    return { data: buildDispatchScheduledJobsForAssign(rows), error: null }
   } catch (e) {
     return { data: [], error: formatErrorMessage(e) }
+  }
+}
+
+/**
+ * Batched variant for the People → Hours Align modal: assign quick-picks for many assignees on one
+ * `work_date` in a single query, keyed by assignee user id (assignees with no blocks are absent).
+ */
+export async function fetchDispatchScheduledJobsForAssigneesOnDay(
+  assigneeUserIds: string[],
+  workDateYmd: string,
+): Promise<{
+  data: Map<string, DispatchScheduledJobForAssign[]>
+  error: string | null
+}> {
+  const uids = Array.from(
+    new Set(assigneeUserIds.map((u) => u.trim()).filter((u) => u.length > 0)),
+  )
+  const wd = workDateYmd.trim()
+  if (uids.length === 0 || !wd) return { data: new Map(), error: null }
+  try {
+    const raw = await withSupabaseRetry(
+      async () =>
+        await supabase
+          .from('job_schedule_blocks')
+          .select(DISPATCH_ASSIGN_SELECT)
+          .in('assignee_user_id', uids)
+          .eq('work_date', wd)
+          .order('time_start', { ascending: true }),
+      'fetchDispatchScheduledJobsForAssigneesOnDay',
+    )
+    const rows = (raw ?? []) as JobScheduleBlockWithJobEmbed[]
+    const byUser = new Map<string, JobScheduleBlockWithJobEmbed[]>()
+    for (const r of rows) {
+      const list = byUser.get(r.assignee_user_id)
+      if (list) list.push(r)
+      else byUser.set(r.assignee_user_id, [r])
+    }
+    const data = new Map<string, DispatchScheduledJobForAssign[]>()
+    for (const [uid, userRows] of byUser)
+      data.set(uid, buildDispatchScheduledJobsForAssign(userRows))
+    return { data, error: null }
+  } catch (e) {
+    return { data: new Map(), error: formatErrorMessage(e) }
   }
 }
 
@@ -372,7 +447,11 @@ export async function insertJobScheduleBlock(
   try {
     const data = await withSupabaseRetry(
       async () =>
-        await supabase.from('job_schedule_blocks').insert(row).select(SELECT_FIELDS).single(),
+        await supabase
+          .from('job_schedule_blocks')
+          .insert(row)
+          .select(SELECT_FIELDS)
+          .single(),
       'insertJobScheduleBlock',
     )
     return { data: data as JobScheduleBlockRow | null, error: null }
@@ -393,7 +472,8 @@ export async function insertJobScheduleBlocks(
   if (rows.length === 0) return { error: null }
   try {
     await withSupabaseRetry(
-      async () => await supabase.from('job_schedule_blocks').insert(rows).select('id'),
+      async () =>
+        await supabase.from('job_schedule_blocks').insert(rows).select('id'),
       'insertJobScheduleBlocks',
     )
     return { error: null }
@@ -408,7 +488,8 @@ export async function updateJobScheduleBlock(
 ): Promise<{ error: string | null }> {
   try {
     await withSupabaseRetry(
-      async () => await supabase.from('job_schedule_blocks').update(patch).eq('id', id),
+      async () =>
+        await supabase.from('job_schedule_blocks').update(patch).eq('id', id),
       'updateJobScheduleBlock',
     )
     return { error: null }
@@ -468,20 +549,30 @@ export async function updateJobScheduleBlockGroup(
  * Ensure a row has a non-null `shared_block_group_id` (legacy solo rows).
  * Returns existing or newly assigned UUID.
  */
-export async function ensureSharedBlockGroupForRow(id: string): Promise<{ data: string | null; error: string | null }> {
+export async function ensureSharedBlockGroupForRow(
+  id: string,
+): Promise<{ data: string | null; error: string | null }> {
   try {
     const row = await withSupabaseRetry(
       async () =>
-        await supabase.from('job_schedule_blocks').select('shared_block_group_id').eq('id', id).maybeSingle(),
+        await supabase
+          .from('job_schedule_blocks')
+          .select('shared_block_group_id')
+          .eq('id', id)
+          .maybeSingle(),
       'ensureSharedBlockGroupForRow',
     )
     const cur = row as { shared_block_group_id: string | null } | null
     if (!cur) return { data: null, error: 'Block not found.' }
-    if (cur.shared_block_group_id) return { data: cur.shared_block_group_id, error: null }
+    if (cur.shared_block_group_id)
+      return { data: cur.shared_block_group_id, error: null }
     const gid = newJobScheduleSharedBlockGroupId()
     await withSupabaseRetry(
       async () =>
-        await supabase.from('job_schedule_blocks').update({ shared_block_group_id: gid }).eq('id', id),
+        await supabase
+          .from('job_schedule_blocks')
+          .update({ shared_block_group_id: gid })
+          .eq('id', id),
       'ensureSharedBlockGroupForRow patch',
     )
     return { data: gid, error: null }
@@ -490,10 +581,13 @@ export async function ensureSharedBlockGroupForRow(id: string): Promise<{ data: 
   }
 }
 
-export async function deleteJobScheduleBlock(id: string): Promise<{ error: string | null }> {
+export async function deleteJobScheduleBlock(
+  id: string,
+): Promise<{ error: string | null }> {
   try {
     await withSupabaseRetry(
-      async () => await supabase.from('job_schedule_blocks').delete().eq('id', id),
+      async () =>
+        await supabase.from('job_schedule_blocks').delete().eq('id', id),
       'deleteJobScheduleBlock',
     )
     return { error: null }
