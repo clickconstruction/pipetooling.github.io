@@ -1,4 +1,4 @@
-import { type Dispatch, type RefObject, type SetStateAction, useState } from 'react'
+import { type Dispatch, type RefObject, type SetStateAction, useRef, useState } from 'react'
 import type { UserRow } from '../../hooks/usePeopleRoster'
 import { HOURS_GRID_FIRST_COL_LABEL } from '../../constants/hoursGridFirstCol'
 import { decimalToHms, hmsToDecimal } from '../../lib/people/hoursGridTime'
@@ -75,6 +75,9 @@ export function PeopleHoursGrid({
 }: PeopleHoursGridProps) {
   const [editingHoursCell, setEditingHoursCell] = useState<{ personName: string; workDate: string } | null>(null)
   const [editingHoursValue, setEditingHoursValue] = useState('')
+  // Escape routes through blur (the single commit path) but must not commit; a ref, not
+  // state, because blur fires synchronously after the keydown that sets it.
+  const cancelNextCommitRef = useRef(false)
 
   return (
     <div ref={hoursTableScrollRef} style={{ overflowX: 'auto', border: '1px solid var(--border)', borderRadius: 4 }}>
@@ -316,7 +319,24 @@ export function PeopleHoursGrid({
                           e.target.select()
                         }}
                         onChange={(e) => setEditingHoursValue(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            // Commit via blur so Enter and click-away share one commit path
+                            // (session-offer check → My Time modal, or plain save).
+                            e.preventDefault()
+                            e.currentTarget.blur()
+                          } else if (e.key === 'Escape') {
+                            e.preventDefault()
+                            cancelNextCommitRef.current = true
+                            e.currentTarget.blur()
+                          }
+                        }}
                         onBlur={(e) => {
+                          if (cancelNextCommitRef.current) {
+                            cancelNextCommitRef.current = false
+                            setEditingHoursCell(null)
+                            return
+                          }
                           // v2.839: commit what is visibly in the box, not the
                           // editingHoursValue state — any staleness there made
                           // the first entry silently save the wrong value.
