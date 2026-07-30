@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1097',
+    date: '2026-07-29',
+    title: 'Under the hood: groundwork for Align hours',
+    kind: 'infra',
+    highlights: [
+      'No visible changes — internal plumbing for an upcoming People → Hours tool that links unmarked clock sessions to jobs in one pass.',
+    ],
+  },
+  {
     version: 'v2.1095',
     date: '2026-07-29',
     title: 'Fix: adjusting times on an unsaved hours block',
