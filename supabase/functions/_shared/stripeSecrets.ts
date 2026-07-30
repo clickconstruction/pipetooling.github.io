@@ -33,20 +33,20 @@ export function hasStripeLiveConfigured(): boolean {
   return stripeApiKeyForMode('live') != null
 }
 
-/** When the client omits `stripe_mode` (legacy callers). If both *_TEST and *_LIVE secrets exist, default test; else pick the only configured mode; else infer legacy key prefix. */
+/**
+ * When the caller omits `stripe_mode` (legacy / non-UI callers). A5
+ * (FRAGILITY_REMEDIATION_PLAN.md): when BOTH keys are configured the default
+ * is **live** — pre-A5 it was test, which meant any script/curl caller that
+ * forgot the param silently operated in test mode against prod data. Every
+ * app call site passes an explicit mode (dev-gated pref, others pinned live),
+ * and row-bound functions resolve from the invoice row (A3), so this default
+ * only reaches `create`/`preview` from non-app callers — fail safe to live.
+ */
 export function defaultStripeBillingMode(): StripeBillingMode {
-  const testEnv = Boolean(Deno.env.get('STRIPE_SECRET_KEY_TEST')?.trim())
-  const liveEnv = Boolean(Deno.env.get('STRIPE_SECRET_KEY_LIVE')?.trim())
-  if (testEnv && liveEnv) return 'test'
-
   const hasTest = hasStripeTestConfigured()
   const hasLive = hasStripeLiveConfigured()
-  if (hasLive && !hasTest) return 'live'
-  if (hasTest && !hasLive) return 'test'
-
-  const g = legacyStripeSecret()
-  if (g.startsWith('sk_test_')) return 'test'
-  if (g.startsWith('sk_live_')) return 'live'
+  if (hasLive) return 'live'
+  if (hasTest) return 'test'
   return 'live'
 }
 

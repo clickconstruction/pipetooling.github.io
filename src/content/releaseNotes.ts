@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1118',
+    date: '2026-07-30',
+    title: 'Billing safety: test/live switch fully locked to devs',
+    kind: 'infra',
+    highlights: [
+      'The last two places that could read the test/live billing switch without checking who you are now respect the developer-only gate.',
+      'Server-side, an unspecified billing mode now defaults to live instead of test — completing today’s test/live separation work.',
+    ],
+  },
+  {
     version: 'v2.1117',
     date: '2026-07-30',
     title: 'Billing safety: test billing keeps its own customer records',
