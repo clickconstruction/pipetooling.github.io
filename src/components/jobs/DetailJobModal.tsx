@@ -1139,11 +1139,12 @@ export default function DetailJobModal({
                     borderRadius: 4,
                   }}
                 >
+                  {/* 18px, not 20: the filled envelope is optically denser than the outline neighbors. */}
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
                     viewBox="0 0 512 512"
-                    width={20}
-                    height={20}
+                    width={18}
+                    height={18}
                     fill="currentColor"
                     aria-hidden="true"
                   >
