@@ -330,6 +330,8 @@ export default function JobFormModal({
   const [creatingCustomerFromJob, setCreatingCustomerFromJob] = useState(false)
   const [createCustomerFromJobModalOpen, setCreateCustomerFromJobModalOpen] = useState(false)
   const [jobProjectLinkChoiceOpen, setJobProjectLinkChoiceOpen] = useState(false)
+  /** True while the source-estimate banner's acceptance-record modal is open (pauses Escape-to-close). */
+  const [bannerOverlayOpen, setBannerOverlayOpen] = useState(false)
   const [customerExpanded, setCustomerExpanded] = useState(false)
   const [projectFilesPlansExpanded, setProjectFilesPlansExpanded] = useState(false)
   const [billingCustomerHighlight, setBillingCustomerHighlight] = useState(false)
@@ -428,6 +430,34 @@ export default function JobFormModal({
   const [billingFeeSeparatelyId, setBillingFeeSeparatelyId] = useState<string | null>(null)
 
   const [segmentGeneratorOpen, setSegmentGeneratorOpen] = useState(false)
+
+  // v2.1100: Escape closes the modal through the same guarded closeForm() as a
+  // backdrop click — but not while a nested overlay is open (each is gated by
+  // its shell flag below; the banner's acceptance-record modal reports through
+  // bannerOverlayOpen and owns its own Escape). closeForm is hoisted; the ref
+  // keeps the listener on the current render's closure.
+  const escCloseBlocked =
+    jobBidLinkChoiceOpen ||
+    jobImportSourceOpen ||
+    jobProjectLinkChoiceOpen ||
+    createCustomerFromJobModalOpen ||
+    segmentGeneratorOpen ||
+    bannerOverlayOpen ||
+    stripeFixturePreviewRowId != null ||
+    billViewInvoice != null ||
+    agreedWriteDownInvoice != null ||
+    billToEditorInvoice != null
+  const closeFormRef = useRef<() => Promise<boolean>>()
+  closeFormRef.current = closeForm
+  useEffect(() => {
+    if (escCloseBlocked) return
+    const onKeyDown = (ev: WindowEventMap['keydown']) => {
+      if (ev.key !== 'Escape' || ev.defaultPrevented) return
+      void closeFormRef.current?.()
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [escCloseBlocked])
 
   function addGeneratedSegmentsToJob(lines: SegmentGeneratorPayloadLine[]) {
     if (lines.length > 0) {
@@ -2762,7 +2792,7 @@ export default function JobFormModal({
           onOpenProjectLinkChoice={() => setJobProjectLinkChoiceOpen(true)}
           nestedOverlayZIndex={JOB_FORM_NESTED_OVERLAY_Z_INDEX}
         />
-        <JobFormSourceEstimateBanner jobId={editing?.id ?? null} />
+        <JobFormSourceEstimateBanner jobId={editing?.id ?? null} onOverlayOpenChange={setBannerOverlayOpen} />
         {error && (
           <p
             style={{

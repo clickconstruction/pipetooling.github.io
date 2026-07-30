@@ -14,10 +14,23 @@ type EstimatesRow = Database['public']['Tables']['estimates']['Row']
  * acceptance-record modal. Owns its own loader keyed on jobId; renders nothing
  * in new mode (jobId null) or when no estimate is linked.
  */
-export function JobFormSourceEstimateBanner({ jobId }: { jobId: string | null }) {
+export function JobFormSourceEstimateBanner({
+  jobId,
+  onOverlayOpenChange,
+}: {
+  jobId: string | null
+  /** Fires when the acceptance-record modal opens/closes, so the host (Edit Job) can pause its own Escape-to-close. */
+  onOverlayOpenChange?: (open: boolean) => void
+}) {
   const [sourceEstimateForJob, setSourceEstimateForJob] = useState<EstimatesRow | null>(null)
   const [sourceEstimateLoading, setSourceEstimateLoading] = useState(false)
   const [contractModalEstimateId, setContractModalEstimateId] = useState<string | null>(null)
+  const contractModalOpen = contractModalEstimateId != null
+  useEffect(() => {
+    onOverlayOpenChange?.(contractModalOpen)
+    // The host must not stay blocked if this banner unmounts with the modal open.
+    return () => onOverlayOpenChange?.(false)
+  }, [contractModalOpen, onOverlayOpenChange])
 
   useEffect(() => {
     if (!jobId) {
