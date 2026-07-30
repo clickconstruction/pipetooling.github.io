@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1106',
+    date: '2026-07-30',
+    title: 'Under the hood: groundwork for the email cost timeline',
+    kind: 'infra',
+    highlights: [
+      'No visible changes — database plumbing so the paid-in-full email can show a month-by-month cost and payment timeline like the one in Edit Job.',
+    ],
+  },
+  {
     version: 'v2.1105',
     date: '2026-07-29',
     title: 'Fix: paid-in-full email window sits still while you scroll',
