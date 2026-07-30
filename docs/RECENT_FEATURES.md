@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-30 (v2.1116)
+last_updated: 2026-07-30 (v2.1117)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1117)
+
+### Per-mode Stripe customer IDs — test creates can't wipe live links (2026-07-30)
+Migration [`20260730173258_customers_stripe_customer_id_test.sql`](../supabase/migrations/20260730173258_customers_stripe_customer_id_test.sql) + [`create-stripe-invoice`](../supabase/functions/create-stripe-invoice/index.ts) + [`preview-stripe-invoice`](../supabase/functions/preview-stripe-invoice/index.ts) (**redeploy both**) — step **A4** of [`FRAGILITY_REMEDIATION_PLAN.md`](./FRAGILITY_REMEDIATION_PLAN.md). `customers.stripe_customer_id` was one column shared across Stripe modes, and create's stale-customer recovery **cleared and replaced it** on a cross-mode miss — a dev test-mode invoice destroyed the customer's live Stripe link (audit finding, `create-stripe-invoice:336–357` pre-A4). New `customers.stripe_customer_id_test`; shared helper `stripeCustomerIdColumnForMode(mode)` in [`_shared/stripeStaleCustomer.ts`](../supabase/functions/_shared/stripeStaleCustomer.ts); `clearCustomerStripeCustomerId` now takes the mode and clears ONLY that mode's column. `create-stripe-invoice`'s non-bill-to path reads/clears/persists the mode column; `preview-stripe-invoice` reads it (a test preview no longer burns an ephemeral customer when a test id exists). Existing values stay in `stripe_customer_id` as live (plan decision 1) — no backfill. Bill-to per-invoice customers unchanged. Out of scope: `update-collect-payment-stripe-customer-email` still reads the live column — subs are effectively live-pinned; a dev test-mode collect flow would get the existing friendly missing-customer error. Deploy: `supabase db push`, then `supabase functions deploy create-stripe-invoice preview-stripe-invoice`.
 
 ## Latest Updates (v2.1116)
 

@@ -163,7 +163,7 @@ serve(async (req) => {
 
     const { data: custRow, error: custErr } = await admin
       .from('customers')
-      .select('id, master_user_id, name, stripe_customer_id')
+      .select('id, master_user_id, name, stripe_customer_id, stripe_customer_id_test')
       .eq('id', customer_id)
       .single()
 
@@ -253,9 +253,15 @@ serve(async (req) => {
     // rewriting the row when switching modes caused heavy churn and looked like the DB "crashing".
     // Use the stored cus_ only if it exists for *this* Stripe key; otherwise a throwaway customer, then delete it.
     // Bill-to override: the stored cus_ is the INVOICE's own recipient customer, never the job customer's.
+    // A4: non-bill-to reads the MODE-appropriate customer column (test ids live
+    // in stripe_customer_id_test) — a cross-mode preview no longer trips the
+    // ephemeral-customer path for a perfectly valid other-mode id.
     const storedStripeCustomerId = billToEmail
       ? billToStripeCustomerId
-      : custRow.stripe_customer_id?.trim() || null
+      : (stripeMode === 'test'
+          ? (custRow as { stripe_customer_id_test?: string | null }).stripe_customer_id_test
+          : custRow.stripe_customer_id
+        )?.trim() || null
     const invoiceItems: Stripe.InvoiceCreatePreviewParams['invoice_items'] = [
       ...lineItemsBuilt.items.map((it) => ({
         amount: it.amount,
