@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1107',
+    date: '2026-07-30',
+    title: 'Paid-in-full email: cost & payment timeline',
+    kind: 'feature',
+    highlights: [
+      'The detailed email now ends with a month-by-month timeline like the Cost Timeline in Edit Job: each month shows a bar for the running total (payments in minus costs out) with the charges and payments that moved it listed underneath.',
+      'Team labor is grouped by week, busy months fold their smallest charges into one line, and charges without a date get their own group — the bars stay exact either way.',
+      'The email’s cost totals and profit now count all six cost streams (supply-house invoices, tally parts, and other job charges included), matching Edit Job.',
+    ],
+  },
+  {
     version: 'v2.1106',
     date: '2026-07-30',
     title: 'Under the hood: groundwork for the email cost timeline',

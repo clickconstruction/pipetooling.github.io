@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-30 (v2.1106)
+last_updated: 2026-07-30 (v2.1107)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2046,6 +2046,10 @@ when_to_read:
 155. [Customer and Project Management](#customer-and-project-management)
 ---
 
+## Latest Updates (v2.1107)
+
+### Paid-in-full email: Cost & payment timeline (2026-07-30)
+[`paid-job-email/render.ts`](../supabase/functions/paid-job-email/render.ts) (**redeploy required**, after the v2.1106 `db push`): the detailed variant's "Month by month" table becomes a **Cost & payment timeline** — the Edit Job Cost Timeline retold email-safe (table-cell bars; no SVG, which Gmail/Outlook strip). Month header rows carry a center-$0 running-net bar (payments − costs, dated events only, widths scaled to max |running net|); beneath each month its events with source icons, payments green-tinted. Team labor folds to one row per person per week (`weekStartKey`); each month keeps its ~6 largest rows and folds the rest into a reconciling "…and N smaller charges" line — **capping trims rows, never bars**. Undated events go to a barless "No date" group; "Job end" = payments − all costs (ties to the scoreboard). Scoreboard gains the three v4 cost rows (supply house / tally / other, rendered only when present) and its Costs total spans all six streams. Falls back to the old monthly table on a pre-v4 payload. Verified via a bundled-renderer smoke test (10 structural assertions) + sample HTML review. Help guide + EDGE_FUNCTIONS.md updated. Deploy: `supabase functions deploy paid-job-email` after the v2.1106 push.
 ## Latest Updates (v2.1106)
 
 ### Paid-email payload v4: charge events for the email cost timeline (migration only) (2026-07-30)
