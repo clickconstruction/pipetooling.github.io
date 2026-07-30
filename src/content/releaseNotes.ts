@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1135',
+    date: '2026-07-30',
+    title: 'Stages: jump to a job by number',
+    kind: 'feature',
+    highlights: [
+      'A small # chip now sits left of the Stages search bar. Click it, type a C# or HCP number, press Enter \u2014 the board opens the right section and scrolls to the job with a highlight flash.',
+      'Partial numbers work too (Enter goes to the first match, with a note when several match). Esc or clicking away closes it. The main search bar is unchanged.',
+    ],
+  },
+  {
     version: 'v2.1134',
     date: '2026-07-30',
     title: 'Fix: the auto remainder bill resizes correctly',

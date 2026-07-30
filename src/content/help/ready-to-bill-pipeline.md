@@ -35,6 +35,8 @@ Under the break-off control, **all of the job's bills sit in one Invoices list**
 
 A big amber slice is the signal to bill: work is finished but the money hasn't been asked for. A blue bar means the bill is already out — you're waiting on the customer, not on the office.
 
+Know the job's number? The small **#** chip left of the Stages search bar is the fast lane: click it, type a C# or HCP number, press Enter — the board opens the right section and scrolls to the job with a highlight flash. Partial numbers land on the first match. The big search bar stays what it was: the broad filter for names, addresses, and notes.
+
 Next to each job's **Last activity**, a small stack of shortcuts covers the common jump-offs: the green calendar opens the job's **schedule**, the blue grid opens its **week dispatch**, the red pin opens the address in **Google Maps**, the phone icon **calls the customer** (it only appears when the job has a phone number on file), and the purple send arrow **sends the job to someone as a task** — it opens the New task form with the job attached as a link, you add your note and pick who it's for, and when they open the task, clicking the job's name takes them straight to its **Job Detail**.
 
 ## Getting to Ready to bill
