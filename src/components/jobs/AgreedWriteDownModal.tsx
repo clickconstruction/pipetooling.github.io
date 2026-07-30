@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { FunctionsHttpError } from '@supabase/functions-js'
 import type { Database } from '../../types/database'
-import { getBillingStripeModePref, stripeModeInvokeBody } from '../../lib/billingStripeModePref'
+import { stripeModeInvokeBody } from '../../lib/billingStripeModePref'
+import { stripeModeForBillingFromRole } from '../../lib/voidStripeInvoiceForRevert'
+import { useAuth } from '../../hooks/useAuth'
 import {
   agreedWriteDownNewTotalBounds,
   agreedWriteDownDiscountBounds,
@@ -58,6 +60,7 @@ export default function AgreedWriteDownModal({
   onSuccess,
   overlayZIndex = 80,
 }: AgreedWriteDownModalProps) {
+  const { role: authRole } = useAuth()
   const [discountInput, setDiscountInput] = useState('')
   const [newTotalInput, setNewTotalInput] = useState('')
   const [note, setNote] = useState('')
@@ -129,7 +132,9 @@ export default function AgreedWriteDownModal({
               jobs_ledger_invoice_id: invoice.id,
               new_total_dollars: newTotal,
               note: noteTrim,
-              ...stripeModeInvokeBody(getBillingStripeModePref()),
+              // A5 (FRAGILITY_REMEDIATION_PLAN.md): dev-gated — every other
+              // role is pinned to live mode, same as the rest of billing.
+              ...stripeModeInvokeBody(stripeModeForBillingFromRole(authRole)),
             },
             headers: { Authorization: `Bearer ${token}` },
           },

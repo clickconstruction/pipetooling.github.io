@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-30 (v2.1117)
+last_updated: 2026-07-30 (v2.1118)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1118)
+
+### Stripe mode hygiene: last ungated pref reads closed + omitted-mode default flips to live (2026-07-30)
+Step **A5** of [`FRAGILITY_REMEDIATION_PLAN.md`](./FRAGILITY_REMEDIATION_PLAN.md) — Workstream A complete. Client: the last two call sites reading the localStorage test/live pref WITHOUT the dev gate now route through `stripeModeForBillingFromRole` — [`AgreedWriteDownModal.tsx`](../src/components/jobs/AgreedWriteDownModal.tsx) (gains `useAuth`) and [`JobFormModal.tsx`](../src/components/jobs/JobFormModal.tsx)'s memo/footer backfill loop; a non-dev whose browser somehow held `test` can no longer send test-mode requests (harmless against stamped rows since A3, but the gate is now airtight client-side too). Server: [`_shared/stripeSecrets.ts`](../supabase/functions/_shared/stripeSecrets.ts) `defaultStripeBillingMode()` — when BOTH keys are configured, an omitted `stripe_mode` now defaults to **live** (was test: any script/curl caller that forgot the param silently operated in test mode). Only `create-stripe-invoice`/`preview-stripe-invoice` still consult the default (A3 made row-bound functions row-authoritative), and every app call site passes an explicit mode — **redeploy both**. New [`billingStripeModePref.test.ts`](../src/lib/billingStripeModePref.test.ts) (6 tests: default/round-trip/legacy-migration/invoke-body/dashboard-URL + the dev gate pinning all nine roles). Deploy: `supabase functions deploy create-stripe-invoice preview-stripe-invoice`.
 
 ## Latest Updates (v2.1117)
 

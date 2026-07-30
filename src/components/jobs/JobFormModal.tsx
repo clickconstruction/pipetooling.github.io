@@ -109,9 +109,9 @@ import {
 } from '../../lib/jobs/jobFormPaymentPredicates'
 import { resolveEffectiveJobMasterUserId } from '../../lib/resolveEffectiveJobMasterUserId'
 import { resolveEditJobMasterUserId } from '../../lib/resolveEditJobMasterUserId'
-import { getBillingStripeModePref, stripeModeInvokeBody } from '../../lib/billingStripeModePref'
+import { stripeModeInvokeBody } from '../../lib/billingStripeModePref'
 import { getAccessTokenForEdgeFunctions } from '../../lib/supabaseAccessTokenForEdge'
-import { prepareBilledInvoicesBeforeJobRevertToReadyToBill } from '../../lib/voidStripeInvoiceForRevert'
+import { prepareBilledInvoicesBeforeJobRevertToReadyToBill, stripeModeForBillingFromRole } from '../../lib/voidStripeInvoiceForRevert'
 import { fetchJobWithDetailsById } from '../../lib/fetchJobWithDetailsById'
 import { findInvoiceWithJobFromJobs } from '../../lib/invoiceWithJobFromJobList'
 import { normalizeJobsLedgerStatus } from '../../lib/jobsLedgerStatusPipeline'
@@ -283,7 +283,9 @@ export default function JobFormModal({
         await supabase.functions.invoke('get-stripe-invoice-details', {
           body: {
             jobs_ledger_invoice_id: inv.id,
-            ...stripeModeInvokeBody(getBillingStripeModePref()),
+            // A5: dev-gated pref — non-devs pinned live (the invoice row's own
+            // mode wins server-side since A3 regardless).
+            ...stripeModeInvokeBody(stripeModeForBillingFromRole(authRole)),
           },
           headers: { Authorization: `Bearer ${token}` },
         })
