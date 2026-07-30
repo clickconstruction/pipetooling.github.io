@@ -10,6 +10,7 @@ import {
 import {
   clearCustomerStripeCustomerId,
   isMissingStripeCustomerError,
+  stripeCustomerIdColumnForMode,
 } from '../_shared/stripeStaleCustomer.ts'
 import { stripeInvoiceSnapshotForResponse } from '../_shared/stripeInvoiceSnapshot.ts'
 import { STRIPE_INVOICE_FOOTER_MAX_CHARS } from '../_shared/stripeInvoiceFooter.ts'
@@ -252,7 +253,7 @@ serve(async (req) => {
 
     const { data: custRow, error: custErr } = await admin
       .from('customers')
-      .select('id, master_user_id, name, stripe_customer_id, contact_info')
+      .select('id, master_user_id, name, stripe_customer_id, stripe_customer_id_test, contact_info')
       .eq('id', customer_id)
       .single()
 
@@ -325,7 +326,14 @@ serve(async (req) => {
         }
       }
     } else {
-      stripeCustomerId = custRow.stripe_customer_id?.trim() || null
+      // A4: per-mode customer id column — a test-mode create must never read,
+      // clear, or overwrite the customer's LIVE Stripe link (and vice versa).
+      const custIdColumn = stripeCustomerIdColumnForMode(stripeMode)
+      const storedForMode =
+        custIdColumn === 'stripe_customer_id_test'
+          ? (custRow as { stripe_customer_id_test?: string | null }).stripe_customer_id_test
+          : custRow.stripe_customer_id
+      stripeCustomerId = storedForMode?.trim() || null
       if (stripeCustomerId) {
         try {
           await stripe.customers.update(stripeCustomerId, {
@@ -337,10 +345,10 @@ serve(async (req) => {
             throw e
           }
           console.warn(
-            'create-stripe-invoice: stale stripe_customer_id, clearing and creating new Stripe customer',
+            `create-stripe-invoice: stale ${custIdColumn}, clearing and creating new Stripe customer`,
             stripeCustomerId,
           )
-          await clearCustomerStripeCustomerId(admin, customer_id)
+          await clearCustomerStripeCustomerId(admin, customer_id, stripeMode)
           stripeCustomerId = null
         }
       }
@@ -353,7 +361,7 @@ serve(async (req) => {
         stripeCustomerId = created.id
         await admin
           .from('customers')
-          .update({ stripe_customer_id: stripeCustomerId })
+          .update({ [custIdColumn]: stripeCustomerId })
           .eq('id', customer_id)
       }
     }

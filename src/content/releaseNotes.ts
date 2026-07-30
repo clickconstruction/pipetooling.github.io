@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1117',
+    date: '2026-07-30',
+    title: 'Billing safety: test billing keeps its own customer records',
+    kind: 'infra',
+    highlights: [
+      'Test-mode billing now uses its own separate Stripe customer records — running a billing test can no longer disturb a customer’s real Stripe link.',
+    ],
+  },
+  {
     version: 'v2.1116',
     date: '2026-07-30',
     title: 'Billing safety: invoice actions always use the right Stripe mode',
