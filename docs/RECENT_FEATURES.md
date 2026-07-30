@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-30 (v2.1134)
+last_updated: 2026-07-30 (v2.1135)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1135)
+
+### Stages: "#" micro-search jumps to a job by number (2026-07-30)
+New [`StagesJobNumberJumpChip.tsx`](../src/components/jobs/StagesJobNumberJumpChip.tsx) + kernel [`stagesJobNumberJump.ts`](../src/lib/jobs/stagesJobNumberJump.ts) + wiring in [`JobsStagesTab.tsx`](../src/components/jobs/JobsStagesTab.tsx). A round `#` chip between New Job and the main search expands into a digits-only field (placeholder `C# / HCP`); Enter jumps: `findJobsByNumber` matches BOTH numbers with exact hits before prefix hits (input-order stable), the shell opens the row's section via new `stagesSectionKeyForJobRow` (covers all six sections — billed splits into Collections by `collections_at`, unlike the four-section stage-move mapper) and reuses the follow-cards focus/flash machinery (`setPendingStagesJobFocusId` / `setStagesJobFlashId`). Multi-match shows an info toast ("N jobs start with #… — showing the first"); no match red-flashes the field; Esc or empty-blur collapses. Semantics split: chip = "go to a job I know", main search = broad filter (unchanged). Kernel + render tests. Client-only.
 
 ## Latest Updates (v2.1134)
 

@@ -89,6 +89,8 @@ import {
   buildCapableToBillBreakdownRows,
   capableToBillTotalFromWorking,
 } from '../../lib/jobsStagesBoard'
+import { StagesJobNumberJumpChip } from './StagesJobNumberJumpChip'
+import { findJobsByNumber, stagesSectionKeyForJobRow } from '../../lib/jobs/stagesJobNumberJump'
 import { jobLedgerHasCustomerForBilling } from '../../lib/jobLedgerCustomerForBilling'
 import { setJobCollectionsFlag } from '../../lib/setJobCollectionsFlag'
 import {
@@ -1127,6 +1129,21 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
             >
               {shortNewJobButtonLabel ? 'New' : 'New Job'}
             </button>
+            <StagesJobNumberJumpChip
+              onJump={(digits) => {
+                const matches = findJobsByNumber(jobs, digits)
+                const hit = matches[0]
+                if (!hit) return false
+                const section = stagesSectionKeyForJobRow(hit)
+                if (section) setStagesSectionOpen((prev) => ({ ...prev, [section]: true }))
+                setPendingStagesJobFocusId(hit.id)
+                setStagesJobFlashId(hit.id)
+                if (matches.length > 1) {
+                  showToast(`${matches.length} jobs start with #${digits} — showing the first`, 'info', 4000)
+                }
+                return true
+              }}
+            />
             <input
               type="text"
               placeholder={
