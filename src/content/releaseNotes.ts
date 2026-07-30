@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1096',
+    date: '2026-07-29',
+    title: 'Under the hood: developer docs correction',
+    kind: 'infra',
+    highlights: [
+      'No visible changes — internal developer documentation about database migrations and type generation was brought up to date with the current workflow.',
+    ],
+  },
+  {
     version: 'v2.1095',
     date: '2026-07-29',
     title: 'Fix: adjusting times on an unsaved hours block',

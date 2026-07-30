@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-29 (v2.1095)
+last_updated: 2026-07-29 (v2.1096)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1096)
+
+### Docs: PROJECT_DOCUMENTATION.md Development Workflow corrected (2026-07-29)
+The "Database Migrations" and "Type Generation" subsections of [`PROJECT_DOCUMENTATION.md`](./PROJECT_DOCUMENTATION.md) still described the pre-2026-07-04 workflow: they told readers to apply migrations via MCP `apply_migration` (the exact practice that forced the ledger rewrite — forbidden by [`AGENTS.md`](../AGENTS.md) constraint #1), omitted the mandatory `SET lock_timeout = '3s';` preamble (v2.1083) and the CREATE TABLE read-only-block trailers, and called `src/types/database.ts` manually maintained. Both subsections now defer to the authoritative sources — migrations link to `AGENTS.md` / [`MIGRATIONS.md`](./MIGRATIONS.md) with only the two most-misread rules summarized; type generation points at `npm run gen-types:local` / `gen-types:linked` — and the Technical Debt list no longer flags type generation as unresolved. Docs-only, no code changes.
 
 ## Latest Updates (v2.1095)
 
