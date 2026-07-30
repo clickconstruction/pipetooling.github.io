@@ -18,8 +18,20 @@ export type PaidJobEmailPayload = {
     job_name: string | null
     job_address: string | null
     customer_name: string | null
+    /** jobs_ledger.status (payload v3, v2.1102). Absent on the pre-v3 payload — treated as paid. */
+    status?: string | null
     service_type_name: string | null
   }
+  /** Fixture rows + linked-invoice status (payload v3, v2.1102). Absent on the pre-v3 payload. */
+  line_items?: Array<{
+    name: string
+    count: number
+    unit_price: number
+    amount: number
+    description: string | null
+    /** 'paid' | 'billed' | 'ready_to_bill' | null (null = not on any invoice). */
+    invoice_status: string | null
+  }>
   money: {
     revenue: number
     payments: Array<{ amount: number; payment_date: string | null; method: string | null }>
@@ -104,8 +116,41 @@ function shortMonth(ym: string): string {
 const WRAP_STYLE =
   'margin:0 auto;max-width:640px;background:#ffffff;border:1px solid #e7e5e4;border-radius:8px;padding:24px;font-family:Arial,Helvetica,sans-serif;color:#1c1917;'
 
-const BADGE =
-  '<span style="display:inline-block;background:#dcfce7;color:#166534;border:1px solid #86efac;border-radius:9999px;padding:4px 14px;font-size:13px;font-weight:bold;letter-spacing:0.04em;">PAID IN FULL</span>'
+/**
+ * Payment state (v2.1103): the email now tells the truth for jobs that are not
+ * Paid in Full, so the office can send progress emails at their leisure.
+ * A payload without `job.status` (pre-v3 RPC) renders as paid — the exact old
+ * behavior — so deploy order vs the migration can't produce a wrong banner.
+ */
+type PaidJobPaymentState =
+  | { kind: 'paid' }
+  | { kind: 'partial'; paid: number; revenue: number; pct: number }
+  | { kind: 'unpaid' }
+
+function paymentState(p: PaidJobEmailPayload): PaidJobPaymentState {
+  if (p.job.status === undefined) return { kind: 'paid' }
+  const revenue = Number.isFinite(p.money.revenue) ? p.money.revenue : 0
+  const paid = Number.isFinite(p.money.payments_total) ? p.money.payments_total : 0
+  if (String(p.job.status) === 'paid' || (revenue > 0 && paid >= revenue - 0.005)) return { kind: 'paid' }
+  if (paid > 0.005) {
+    return { kind: 'partial', paid, revenue, pct: revenue > 0 ? Math.round((paid / revenue) * 100) : 0 }
+  }
+  return { kind: 'unpaid' }
+}
+
+const PILL_BASE =
+  'display:inline-block;border-radius:9999px;padding:4px 14px;font-size:13px;font-weight:bold;letter-spacing:0.04em;'
+
+const BADGE = `<span style="${PILL_BASE}background:#dcfce7;color:#166534;border:1px solid #86efac;">PAID IN FULL</span>`
+
+/** State-aware header pill: green PAID IN FULL / amber progress / gray NOT PAID. */
+function renderStateBadge(state: PaidJobPaymentState): string {
+  if (state.kind === 'paid') return BADGE
+  if (state.kind === 'partial') {
+    return `<span style="${PILL_BASE}background:#fef3c7;color:#92400e;border:1px solid #fcd34d;">${money(state.paid)} (${state.pct}%) OF ${money(state.revenue)} PAID</span>`
+  }
+  return `<span style="${PILL_BASE}background:#f5f5f4;color:#57534e;border:1px solid #d6d3d1;">NOT PAID</span>`
+}
 
 /**
  * The completing payment's exact amount + timestamp (v2.969) — shown on BOTH
@@ -113,30 +158,81 @@ const BADGE =
  * figure stays detailed-only. Falls back to payments_total + queue paid_at.
  */
 function renderPaidLine(p: PaidJobEmailPayload): string {
+  const state = paymentState(p)
+  if (state.kind === 'unpaid') return ''
   const lp = p.money.last_payment
   const amount = lp?.amount ?? p.money.payments_total
-  const at = weekdayDateTime(lp?.at ?? p.dates.paid_at)
   if (!Number.isFinite(amount) || amount <= 0) return ''
+  if (state.kind === 'partial') {
+    // Progress framing (amber): the last payment received, not a "Paid" claim.
+    const at = weekdayDateTime(lp?.at ?? null)
+    return `
+    <p style="margin:0 0 16px;text-align:center;font-size:15px;color:#92400e;background:#fffbeb;border:1px solid #fde68a;border-radius:6px;padding:10px 12px;">
+      Last payment <strong>${money(amount)}</strong>${at ? ` &mdash; ${at}` : ''}
+    </p>`
+  }
+  const at = weekdayDateTime(lp?.at ?? p.dates.paid_at)
   return `
     <p style="margin:0 0 16px;text-align:center;font-size:15px;color:#166534;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:6px;padding:10px 12px;">
       Paid <strong>${money(amount)}</strong>${at ? ` &mdash; ${at}` : ''}
     </p>`
 }
 
-/** Job identity header + PAID IN FULL badge + paid date (both variants). */
+/** Job identity header + state badge + paid date (paid jobs only; both variants). */
 function renderHeader(p: PaidJobEmailPayload): string {
   const j = p.job
+  const state = paymentState(p)
   const idLine = [j.display_number, j.job_name].filter(Boolean).map(esc).join(' &middot; ')
   const subLine = [j.customer_name, j.job_address].filter(Boolean).map(esc).join(' &middot; ')
-  const paidDate = weekdayDate(p.dates.paid_at)
+  // paid_at is now()-stamped by the RPC, so it is only a real paid date on paid jobs.
+  const paidDate = state.kind === 'paid' ? weekdayDate(p.dates.paid_at) : ''
   return `
     <div style="text-align:center;padding-bottom:16px;border-bottom:2px solid #e7e5e4;margin-bottom:16px;">
-      ${BADGE}
+      ${renderStateBadge(state)}
       <h1 style="margin:12px 0 4px;font-size:20px;color:#1c1917;">${idLine || 'Job'}</h1>
       ${subLine ? `<p style="margin:0 0 4px;font-size:13px;color:#57534e;">${subLine}</p>` : ''}
       ${j.service_type_name ? `<p style="margin:0 0 4px;font-size:12px;color:#78716c;">${esc(j.service_type_name)}</p>` : ''}
       ${paidDate ? `<p style="margin:8px 0 0;font-size:13px;color:#166534;font-weight:bold;">Paid ${esc(paidDate)}</p>` : ''}
     </div>`
+}
+
+/** Small status chip for one line item's linked-invoice state. */
+function lineItemChip(invoiceStatus: string | null): string {
+  const chip = (bg: string, fg: string, border: string, label: string) =>
+    `<span style="display:inline-block;background:${bg};color:${fg};border:1px solid ${border};border-radius:9999px;padding:1px 8px;font-size:11px;font-weight:bold;">${label}</span>`
+  if (invoiceStatus === 'paid') return chip('#dcfce7', '#166534', '#86efac', 'PAID')
+  if (invoiceStatus === 'billed') return chip('#dbeafe', '#1e40af', '#93c5fd', 'BILLED')
+  if (invoiceStatus === 'ready_to_bill') return chip('#fef3c7', '#92400e', '#fcd34d', 'DRAFT')
+  return chip('#f5f5f4', '#57534e', '#d6d3d1', 'UNBILLED')
+}
+
+/**
+ * Line items with per-item invoice status (payload v3). Detailed shows amounts;
+ * summary shows names + status only (redaction decision, v2.1103). Renders
+ * nothing on a pre-v3 payload or a job with no line items.
+ */
+function renderLineItems(p: PaidJobEmailPayload, withAmounts: boolean): string {
+  const items = p.line_items ?? []
+  if (items.length === 0) return ''
+  const rows = items
+    .map((it) => {
+      const qty = Number.isFinite(it.count) && it.count > 1 ? ` &times;${it.count}` : ''
+      const desc = it.description
+        ? `<div style="font-size:11px;color:#78716c;">${esc(it.description)}</div>`
+        : ''
+      return `
+    <tr>
+      <td style="${CHILD_TD}padding-left:10px;">${esc(it.name)}${qty}${desc}</td>
+      ${withAmounts ? `<td style="${NUM_TD}">${money(it.amount)}</td>` : ''}
+      <td style="padding:5px 10px;text-align:right;white-space:nowrap;">${lineItemChip(it.invoice_status)}</td>
+    </tr>`
+    })
+    .join('')
+  return `
+    <p style="margin:0 0 6px;font-size:13px;font-weight:bold;color:#1c1917;">Line items</p>
+    <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;border:1px solid #e7e5e4;margin-bottom:16px;">
+      ${rows}
+    </table>`
 }
 
 /** "Job Start / Last Work" two-column block with weekday dates and "(N days ago)" (both variants). */
@@ -261,11 +357,12 @@ export function renderPaidJobEmailDetailed(p: PaidJobEmailPayload, manualNote?: 
     <div style="${WRAP_STYLE}">
       ${renderHeader(p)}
       ${renderPaidLine(p)}
+      ${renderLineItems(p, true)}
       ${renderDatesBlock(p)}
       ${renderScoreboard(p)}
       ${renderTimeline(p)}
       ${manualNote ? `<p style="margin:16px 0 0;font-size:11px;color:#a8a29e;text-align:center;">${esc(manualNote)}</p>` : ''}
-      <p style="margin:16px 0 0;font-size:11px;color:#a8a29e;text-align:center;">PipeTooling &mdash; sent when a job reaches Paid in Full.</p>
+      <p style="margin:16px 0 0;font-size:11px;color:#a8a29e;text-align:center;">${footerLine(p)}</p>
     </div>
   </div>`
 }
@@ -277,12 +374,31 @@ export function renderPaidJobEmailSummary(p: PaidJobEmailPayload, manualNote?: s
     <div style="${WRAP_STYLE}">
       ${renderHeader(p)}
       ${renderPaidLine(p)}
+      ${renderLineItems(p, false)}
       ${renderDatesBlock(p)}
-      <p style="margin:0;font-size:13px;color:#44403c;text-align:center;">This job has been paid in full. Nice work.</p>
+      ${
+        paymentState(p).kind === 'paid'
+          ? '<p style="margin:0;font-size:13px;color:#44403c;text-align:center;">This job has been paid in full. Nice work.</p>'
+          : ''
+      }
       ${manualNote ? `<p style="margin:16px 0 0;font-size:11px;color:#a8a29e;text-align:center;">${esc(manualNote)}</p>` : ''}
-      <p style="margin:16px 0 0;font-size:11px;color:#a8a29e;text-align:center;">PipeTooling &mdash; sent when a job reaches Paid in Full.</p>
+      <p style="margin:16px 0 0;font-size:11px;color:#a8a29e;text-align:center;">${footerLine(p)}</p>
     </div>
   </div>`
+}
+
+function footerLine(p: PaidJobEmailPayload): string {
+  return paymentState(p).kind === 'paid'
+    ? 'PipeTooling &mdash; sent when a job reaches Paid in Full.'
+    : 'PipeTooling &mdash; payment progress for this job.'
+}
+
+/** One-line status for subject/plain-text: "PAID IN FULL" / "$X (Y%) of $Z paid" / "NOT PAID". */
+function statusLine(p: PaidJobEmailPayload): string {
+  const state = paymentState(p)
+  if (state.kind === 'paid') return 'PAID IN FULL'
+  if (state.kind === 'partial') return `${money(state.paid)} (${state.pct}%) of ${money(state.revenue)} paid`
+  return 'NOT PAID'
 }
 
 /** Plain-text fallback (both variants keep this money-free; detailed context lives in the HTML). */
@@ -290,11 +406,17 @@ export function paidJobEmailText(p: PaidJobEmailPayload): string {
   const j = p.job
   const parts = [
     `${j.display_number ?? ''} ${j.job_name ?? ''}`.trim(),
-    'PAID IN FULL',
+    statusLine(p),
     (() => {
+      const state = paymentState(p)
+      if (state.kind === 'unpaid') return ''
       const lp = p.money.last_payment
       const amount = lp?.amount ?? p.money.payments_total
       if (!Number.isFinite(amount) || amount <= 0) return ''
+      if (state.kind === 'partial') {
+        const at = weekdayDateTime(lp?.at ?? null).replace('&middot;', '\u00b7')
+        return `Last payment ${money(amount)}${at ? ` — ${at}` : ''}`
+      }
       const at = weekdayDateTime(lp?.at ?? p.dates.paid_at).replace('&middot;', '\u00b7')
       return `Paid ${money(amount)}${at ? ` — ${at}` : ''}`
     })(),
@@ -307,6 +429,13 @@ export function paidJobEmailText(p: PaidJobEmailPayload): string {
 export function paidJobEmailSubject(p: PaidJobEmailPayload): string {
   const j = p.job
   const id = [j.display_number, j.job_name].filter(Boolean).join(' · ')
+  const state = paymentState(p)
+  if (state.kind === 'partial') {
+    return `Payment progress — ${id || 'job'} — ${money(state.paid)} of ${money(state.revenue)} paid`
+  }
+  if (state.kind === 'unpaid') {
+    return `Not paid — ${id || 'job'}`
+  }
   const amount = p.money.last_payment?.amount ?? p.money.payments_total
   const amountPart = Number.isFinite(amount) && amount > 0 ? ` — ${money(amount)}` : ''
   return `Paid in full — ${id || 'job'}${amountPart}`

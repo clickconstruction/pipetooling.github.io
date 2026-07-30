@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-29 (v2.1102)
+last_updated: 2026-07-29 (v2.1103)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2046,6 +2046,10 @@ when_to_read:
 155. [Customer and Project Management](#customer-and-project-management)
 ---
 
+## Latest Updates (v2.1103)
+
+### Paid-in-full email is status-aware + shows line items (2026-07-29)
+[`paid-job-email/render.ts`](../supabase/functions/paid-job-email/render.ts) (**redeploy required**) now derives a payment state from payload v3 (`job.status` + `money.payments_total` vs `revenue`; migration `20260730031702`, v2.1102): green **PAID IN FULL** only when actually paid; amber **"$X (Y%) OF $Z PAID"** when partial (subject → `Payment progress — …`, paid line → "Last payment …"); gray **NOT PAID** at zero — so ad-hoc sends/previews on unpaid jobs are progress emails, not false claims (per policy, the full progress line incl. job total shows in BOTH variants). New **Line items** section under the banner in both variants (fixtures + per-item invoice-status chip PAID/BILLED/DRAFT/UNBILLED via `jobs_ledger_fixtures.invoice_id`): detailed with amounts, summary names+status only. "Paid <date>" header line and footer text are paid-only now (`paid_at` is `now()`-stamped). Every new key is guarded, so the renderer works against a pre-v3 payload in either deploy order; a payload without `job.status` renders exactly as before. Client: the Bill-modal's not-paid warning becomes an informative note ("shows its payment progress"). `EDGE_FUNCTIONS.md` + help guide updated. Deploy: `supabase db push` (v2.1102) then `supabase functions deploy paid-job-email`.
 ## Latest Updates (v2.1102)
 
 ### Paid-email payload v3: job status + line items (migration only) (2026-07-29)

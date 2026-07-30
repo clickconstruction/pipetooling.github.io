@@ -126,6 +126,14 @@ There's also a per-job version: on **Job Detail**, the envelope icon in the head
 
 **Send to me** emails you the `[TEST]` copy; **Send to someone…** opens the people list with the same Detailed or Summary badge per person — picking someone flips the preview so you see exactly what they'll receive before you send it.
 
+The email tells the truth about where the money stands, so you can send it for **any** job, not just finished ones:
+
+- Fully paid → the green {{chip:green|PAID IN FULL}} banner, as always.
+- Partially paid → an amber banner like **$4,812.50 (26%) of $18,450.00 paid**, and the subject reads "Payment progress" instead of "Paid in full".
+- Nothing paid yet → a gray **NOT PAID** banner.
+
+Just under the banner, both versions list the job's **line items** with a chip per item — {{chip:green|Paid}}, {{chip:blue|Billed}}, {{chip:yellow|Draft}}, or {{chip:gray|Unbilled}} — so the reader sees exactly which parts of the job the money covers. The detailed version shows each item's amount; the summary shows names and status only.
+
 ## Where to watch it all
 
 - **Dashboard** — Ready to Bill and Billed Waiting for Payment queues, plus the Financials cards (Accounts Receivable / Accounts Payable / Not Billed Out).
