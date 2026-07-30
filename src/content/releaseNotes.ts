@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1101',
+    date: '2026-07-29',
+    title: 'Paid-in-full email window polish',
+    kind: 'fix',
+    highlights: [
+      'The paid-in-full email window is now much taller — the email preview fills the window instead of a short strip.',
+      'The envelope button on Job Detail is slightly smaller so it sits evenly with the calendar and edit buttons.',
+    ],
+  },
+  {
     version: 'v2.1100',
     date: '2026-07-29',
     title: 'Edit Job: press Escape to close',

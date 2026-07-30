@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-29 (v2.1100)
+last_updated: 2026-07-29 (v2.1101)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1101)
+
+### Paid-in-full email modal: full-height preview + envelope icon sizing (2026-07-29)
+Two follow-ups to v2.1099 from live use: the modal panel now has a real `height: 90vh` (was `maxHeight` only, so the flex-1 preview frame collapsed to its 16rem minimum and the email showed through a letterbox — it now fills the modal), and the Job Detail header ✉ SVG drops 20px → 18px (the filled envelope is optically denser than the outline calendar/pencil neighbors, so equal box size read ~10% large). Client-only.
 
 ## Latest Updates (v2.1100)
 
