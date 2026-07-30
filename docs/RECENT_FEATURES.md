@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-30 (v2.1132)
+last_updated: 2026-07-30 (v2.1133)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1133)
+
+### Segment invoices bill only their own line items (2026-07-30)
+[`create-stripe-invoice`](../supabase/functions/create-stripe-invoice/index.ts) + [`preview-stripe-invoice`](../supabase/functions/preview-stripe-invoice/index.ts) + shared [`stripeInvoiceItemsFromFixtures.ts`](../supabase/functions/_shared/stripeInvoiceItemsFromFixtures.ts) + client [`invoiceScopedFixtures.ts`](../src/lib/invoiceScopedFixtures.ts) / [`physicalInvoiceJobContext.ts`](../src/lib/physicalInvoiceJobContext.ts) / [`SendRecordInvoiceModal.tsx`](../src/components/jobs/SendRecordInvoiceModal.tsx). Both Stripe functions loaded ALL of the job's fixtures and prorated the invoice amount across them, so an invoice created from selected segments (job 813: a $454.38 change-order pair) rendered with every stage on the bill, each carrying a fabricated sliver ($285 change order shown as $8.78). New `scopeFixturesToInvoice` (edge) / `fixturesForInvoiceBill` (client mirror): rows linked via `jobs_ledger_fixtures.invoice_id` when any exist, else all rows — dollar break-off invoices keep the whole-job proration by design. Client scoping flows through `buildPhysicalInvoiceDetailFromJob` (physical PDFs incl. the billed-invoice Bill view) and the send modal's edit refs / multi-line gate. **Redeploy `create-stripe-invoice` + `preview-stripe-invoice`.** Unit tests both sides.
 
 ## Latest Updates (v2.1132)
 

@@ -8,7 +8,7 @@ import {
   type StripeBillingMode,
 } from '../_shared/stripeSecrets.ts'
 import { isMissingStripeCustomerError } from '../_shared/stripeStaleCustomer.ts'
-import { buildStripeInvoiceItemsFromFixtures } from '../_shared/stripeInvoiceItemsFromFixtures.ts'
+import { buildStripeInvoiceItemsFromFixtures, scopeFixturesToInvoice } from '../_shared/stripeInvoiceItemsFromFixtures.ts'
 import { stripeSellerDisplayName } from '../_shared/stripeSellerDisplayName.ts'
 import { buildPipetoolingStripeInvoiceNumber } from '../_shared/pipetoolingStripeInvoiceNumber.ts'
 import { stripeInvoiceLinesDataForFixtureOrderDisplay } from '../_shared/stripeInvoiceLinesForFixtureOrderDisplay.ts'
@@ -193,7 +193,7 @@ serve(async (req) => {
 
     const { data: fixturesRows, error: fixturesErr } = await admin
       .from('jobs_ledger_fixtures')
-      .select('id, name, count, line_unit_price, line_description, sequence_order')
+      .select('id, name, count, line_unit_price, line_description, sequence_order, invoice_id')
       .eq('job_id', invRow.job_id)
       .order('sequence_order', { ascending: true })
 
@@ -201,6 +201,21 @@ serve(async (req) => {
       console.warn('preview-stripe-invoice: fixtures load failed', fixturesErr)
       return jsonResponse({ error: 'Could not load job line items for invoice' }, 500)
     }
+
+    // v2.1133: mirror create-stripe-invoice — a segment invoice previews
+    // exactly its linked line items, never the whole job prorated.
+    const scopedFixtures = scopeFixturesToInvoice(
+      (fixturesRows ?? []) as {
+        id: string
+        name: string
+        count: number
+        line_unit_price: number | null
+        line_description: string | null
+        sequence_order: number
+        invoice_id: string | null
+      }[],
+      jobs_ledger_invoice_id,
+    )
 
     const extrasRaw = Array.isArray(body.extra_line_items) ? body.extra_line_items : []
     const extraItems: { amount: number; description: string }[] = []
@@ -229,14 +244,7 @@ serve(async (req) => {
     const recipientName = billToEmail ? billToName || billToEmail : customer_name.trim()
 
     const lineItemsBuilt = buildStripeInvoiceItemsFromFixtures({
-      fixtures: (fixturesRows ?? []) as {
-        id: string
-        name: string
-        count: number
-        line_unit_price: number | null
-        line_description: string | null
-        sequence_order: number
-      }[],
+      fixtures: scopedFixtures,
       targetAmountCents: extraItems.length > 0 ? fixtureTargetCents : amountCents,
       lineDescriptionOverride: lineDescriptionRaw,
       customerName: recipientName,

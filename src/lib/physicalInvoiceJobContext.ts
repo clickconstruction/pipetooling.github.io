@@ -1,6 +1,7 @@
 import type { JobWithDetails } from '../types/jobWithDetails'
 import type { JobBillingContext } from './jobBillingContext'
 import type { PhysicalInvoiceDetailFromJob, PhysicalInvoiceJobContext } from './physicalInvoiceDocument'
+import { fixturesForInvoiceBill } from './invoiceScopedFixtures'
 
 export function buildPhysicalInvoiceDetailFromJob(
   details: JobWithDetails | null,
@@ -10,7 +11,9 @@ export function buildPhysicalInvoiceDetailFromJob(
   if (!details) return null
   const inv = invoiceId ? details.invoices.find((i) => i.id === invoiceId) : undefined
   return {
-    fixtures: details.fixtures,
+    // v2.1133: a segment invoice's document lists exactly its linked line
+    // items; unlinked (dollar) invoices keep the whole-job list.
+    fixtures: fixturesForInvoiceBill(details.fixtures, invoiceId),
     materials: details.materials,
     payments: details.payments,
     billingKind,

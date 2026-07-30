@@ -62,6 +62,7 @@ import {
   physicalInvoiceEmailSubject,
 } from '../../lib/physicalInvoiceDocument'
 import { type JobBillingContext } from '../../lib/jobBillingContext'
+import { fixturesForInvoiceBill } from '../../lib/invoiceScopedFixtures'
 import { buildPhysicalInvoiceDetailFromJob, jobContextForPhysicalDoc } from '../../lib/physicalInvoiceJobContext'
 import {
   buildPhysicalInvoicePdfBlob,
@@ -909,13 +910,18 @@ export default function SendRecordInvoiceModal({
       const fresh = await fetchJobWithDetailsById(job.id)
       if (cancelled) return
       setBillCustomerJobDetails(fresh)
-      const billable = jobHasBillableStripeSpecificWorkFixtures(fresh?.fixtures)
+      // v2.1133: a segment invoice's multi-line availability considers only its
+      // OWN linked line items (kind 'job' bills the unlinked remainder — the
+      // scoping helper falls back to the full list there).
+      const billable = jobHasBillableStripeSpecificWorkFixtures(
+        fixturesForInvoiceBill(fresh?.fixtures, kind === 'invoice' ? invoice?.id ?? null : null),
+      )
       setStripeFixtureMultiLineAvailable(billable)
     })()
     return () => {
       cancelled = true
     }
-  }, [open, job?.id])
+  }, [open, job?.id, kind, invoice?.id])
 
   // Ensure primary RTB line when opening for a job row (shared for Outside submit).
   useEffect(() => {
@@ -1567,9 +1573,20 @@ export default function SendRecordInvoiceModal({
     ensuredInvoice?.id,
   ])
 
+  // v2.1133: everything the bill renders or edits is scoped to the invoice's
+  // linked line items (segment invoices); dollar invoices fall back to all.
+  const billScopedFixtures = useMemo(
+    () =>
+      fixturesForInvoiceBill(
+        billCustomerJobDetails?.fixtures,
+        kind === 'invoice' ? invoice?.id ?? null : ensuredInvoice?.id ?? null,
+      ),
+    [billCustomerJobDetails?.fixtures, kind, invoice?.id, ensuredInvoice?.id],
+  )
+
   const physicalFixtureEditRefs = useMemo(
-    () => billableFixtureRefsInOrder(billCustomerJobDetails?.fixtures),
-    [billCustomerJobDetails?.fixtures],
+    () => billableFixtureRefsInOrder(billScopedFixtures),
+    [billScopedFixtures],
   )
 
   const physicalMaterialEditRefs = useMemo(
@@ -1580,11 +1597,11 @@ export default function SendRecordInvoiceModal({
   const physicalPreviewDbBacked = useMemo(() => {
     const amt = Number(billAmountStr)
     return physicalPreviewRowsAreDbBacked(
-      billCustomerJobDetails?.fixtures,
+      billScopedFixtures,
       billCustomerJobDetails?.materials,
       amt,
     )
-  }, [billCustomerJobDetails?.fixtures, billCustomerJobDetails?.materials, billAmountStr])
+  }, [billScopedFixtures, billCustomerJobDetails?.materials, billAmountStr])
 
   const [lineEditSession, setLineEditSession] = useState<BillCustomerLineEditSession | null>(null)
 
@@ -1596,8 +1613,12 @@ export default function SendRecordInvoiceModal({
     if (!job?.id) return
     const fresh = await fetchJobWithDetailsById(job.id)
     setBillCustomerJobDetails(fresh)
-    setStripeFixtureMultiLineAvailable(jobHasBillableStripeSpecificWorkFixtures(fresh?.fixtures))
-  }, [job?.id])
+    setStripeFixtureMultiLineAvailable(
+      jobHasBillableStripeSpecificWorkFixtures(
+        fixturesForInvoiceBill(fresh?.fixtures, kind === 'invoice' ? invoice?.id ?? null : null),
+      ),
+    )
+  }, [job?.id, kind, invoice?.id])
 
   const handleStripePreviewLineClick = useCallback(
     ({ source }: { lineIndex: number; source: StripeInvoiceLineSource | undefined }) => {

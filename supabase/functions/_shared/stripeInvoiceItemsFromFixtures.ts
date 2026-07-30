@@ -12,6 +12,21 @@ export type JobFixtureForStripe = {
   sequence_order: number
 }
 
+/**
+ * Which fixtures belong on THIS invoice's bill (v2.1133): rows linked via
+ * jobs_ledger_fixtures.invoice_id when any exist (segment invoices bill
+ * exactly their items), else all rows (dollar break-off invoices keep the
+ * historical whole-job proration). Mirrored client-side in
+ * src/lib/invoiceScopedFixtures.ts.
+ */
+export function scopeFixturesToInvoice<T extends { invoice_id?: string | null }>(
+  rows: T[],
+  invoiceId: string,
+): T[] {
+  const linked = rows.filter((r) => (r.invoice_id ?? null) === invoiceId)
+  return linked.length > 0 ? linked : rows
+}
+
 /** Client/Edge JSON: maps preview line to DB row or single-line modes (override / fallback). */
 export type StripeInvoiceLineSource =
   | { kind: 'fixture'; jobs_ledger_fixture_id: string }
