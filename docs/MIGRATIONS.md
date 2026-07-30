@@ -106,6 +106,12 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 #### July 30, 2026
 
+**`20260730050329_paid_email_charge_events.sql`** _(apply via `supabase db push` after the file is on `main`; either order vs the `paid-job-email` redeploy is safe — additive JSON keys the old renderer ignores and the new renderer guards)_
+- **Purpose**: Paid-email payload v4 (v2.1106) — `CREATE OR REPLACE public.get_paid_job_email_payload` adding the email cost timeline's data: `charge_events` (the Edit Job Cost Timeline's six streams flattened to `{source, date_key, amount, label}` — team labor per person per work_date, sub-labor books, Mercury card allocations, supply-house invoice allocations, tally parts, other job charges — Chicago date keys, NULL when undated) plus `costs.supply_house_total` / `costs.tally_total` / `costs.other_total`; **`profit` now spans all six streams** (was labor + sub + Mercury only), matching Edit Job / Job Summary. `costs.parts_total` keeps its Mercury-only meaning. Builds on `20260730031702` (payload v3 keys preserved).
+- **Security**: same signature, SECURITY DEFINER, grants unchanged (service_role-only); no table DDL, no sweep calls needed.
+- **Ordering**: independent of the function redeploy (v2.1107) — the new renderer falls back to the monthly table when `charge_events` is absent.
+- **Category**: Jobs / notifications
+
 **`20260730031702_paid_email_line_items_and_status.sql`** _(apply via `supabase db push` after the file is on `main`; either order vs the `paid-job-email` redeploy is safe — additive JSON keys the old renderer ignores and the new renderer guards)_
 - **Purpose**: Paid-email payload v3 (v2.1102) — `CREATE OR REPLACE public.get_paid_job_email_payload` adding two keys for the status-aware paid-in-full email: `job.status` (so the renderer shows the green PAID IN FULL badge only for actually-paid jobs, and "$X (Y%) of $Z paid" / gray NOT PAID otherwise) and `line_items` (fixture rows with `amount = max(count,1) × line_unit_price` mirroring `lib/revenueFromJobFixtures.ts`, plus the linked invoice's status via the v2.1096 `jobs_ledger_fixtures.invoice_id` FK — `paid`/`billed`/`ready_to_bill`/NULL). Body otherwise identical to `20260722272000` (person-first wage joins preserved).
 - **Security**: same signature, SECURITY DEFINER, grants unchanged (service_role-only); no table DDL, no sweep calls needed.

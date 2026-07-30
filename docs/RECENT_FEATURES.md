@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-29 (v2.1105)
+last_updated: 2026-07-30 (v2.1106)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1106)
+
+### Paid-email payload v4: charge events for the email cost timeline (migration only) (2026-07-30)
+`CREATE OR REPLACE public.get_paid_job_email_payload` ([`20260730050329_paid_email_charge_events.sql`](../supabase/migrations/20260730050329_paid_email_charge_events.sql)) — Stage A for the email cost timeline (v2.1107): adds `charge_events` — the Edit Job Cost Timeline's six streams ([`lib/jobChargesTimeline.ts`](../src/lib/jobChargesTimeline.ts) semantics ported to SQL: team labor per person per `work_date`, sub-labor books incl. drive cost, Mercury allocations by `posted_at`, supply-house invoice allocations at `amount × pct/100`, tally parts via `price_at_time`/`fixture_cost` parity, `jobs_ledger_materials`) flattened to `{source, date_key (Chicago), amount, label}` — plus `costs.supply_house_total`/`tally_total`/`other_total`, and **`profit` now spans all six streams** (was labor + sub + Mercury; matches Edit Job / Job Summary — the profit figure in these emails becomes more complete). `parts_total` keeps its Mercury-only meaning. Additive keys; deploy order vs the function redeploy safe both ways. DB-only (`supabase db push` after merge).
 
 ## Latest Updates (v2.1105)
 
