@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1109',
+    date: '2026-07-30',
+    title: 'People Hours grid: press Enter to save a cell',
+    kind: 'feature',
+    highlights: [
+      'After typing hours in a grid cell, press Enter to save — the Edit time window opens with your new hours right away, no need to click elsewhere first.',
+      'Press Escape to back out of a cell edit without saving anything.',
+    ],
+  },
+  {
     version: 'v2.1108',
     date: '2026-07-30',
     title: 'Fix: dark mode readability on the People Hours grid',

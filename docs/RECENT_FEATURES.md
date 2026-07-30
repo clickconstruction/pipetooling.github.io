@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-30 (v2.1108)
+last_updated: 2026-07-30 (v2.1109)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1109)
+
+### People → Hours: Enter commits a grid cell edit, Escape cancels (2026-07-30)
+[`PeopleHoursGrid.tsx`](../src/components/people/PeopleHoursGrid.tsx): the cell editor committed only on `onBlur` — Enter did nothing (no key handler, no wrapping form), so after typing new hours the user had to click away before the My Time modal appeared (the `shouldOfferManualHoursSession` → `openManualHoursDraftFromBlur` proportional-scale path). **Enter** now `preventDefault()`s and calls `blur()` on the input, so keyboard and click-away share the one commit path unchanged; **Tab** keeps its native focus-move (its blur already committed — behavior unchanged). New: **Escape** cancels the edit without committing, via one-shot `cancelNextCommitRef` (a ref, not state, because blur fires synchronously after the keydown that sets it) checked at the top of `onBlur`. Pinned by new render-smoke tests [`PeopleHoursGrid.render.test.tsx`](../src/components/people/PeopleHoursGrid.render.test.tsx) (Enter commit reaches the manual-session offer with the parsed hours; plain blur unchanged; Escape suppresses exactly one commit). Client-only.
 
 ## Latest Updates (v2.1108)
 
