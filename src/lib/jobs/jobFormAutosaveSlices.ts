@@ -91,7 +91,13 @@ export function buildTeamSliceJson(teamMemberIds: string[]): string {
 // Payload builders (shared by autosave and the explicit save path)
 // ---------------------------------------------------------------------------
 
-/** Payment rows worth persisting, with their insert payloads, in form order. */
+/**
+ * Payment rows worth persisting, with their insert payloads, in form order.
+ * Since B3/B4 (FRAGILITY_REMEDIATION_PLAN.md) the rows ARE the truth —
+ * jobs_ledger.payments_made is trigger-derived from them, so this filter
+ * (dropping empty/zero rows) defines the total; there is no separate client
+ * sum to disagree with anymore.
+ */
 export function paymentInsertRows(jobId: string, payments: PaymentRow[]) {
   return payments
     .filter((p) => (Number(p.amount) || 0) > 0)

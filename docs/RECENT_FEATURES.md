@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-30 (v2.1119)
+last_updated: 2026-07-30 (v2.1120)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1120)
+
+### Client stops writing payments_made (2026-07-30)
+[`JobFormModal.tsx`](../src/components/jobs/JobFormModal.tsx) + [`jobFormAutosaveSlices.ts`](../src/lib/jobs/jobFormAutosaveSlices.ts) — step **B4** of [`FRAGILITY_REMEDIATION_PLAN.md`](./FRAGILITY_REMEDIATION_PLAN.md). With `payments_made` trigger-maintained since B3 (v2.1119), the Edit-Job billing slice's `jobs_ledger` UPDATE drops the column (writes `revenue` only — the payment-row rewrite converges the total via the trigger) and `createJob` no longer sends it on INSERT (DB default 0, then trigger). This also retires the documented sum-vs-filter asymmetry: `paymentInsertRows`' `amount > 0` filter now *defines* the total (rows are the truth) instead of potentially disagreeing with a separately-computed client sum. The close-time `shouldDemotePaidJobToBilled` check still computes its comparison from form refs (unchanged — it feeds the `update_job_status` RPC, not the column). Safe either deploy order vs B3 (documented in the plan): an old client's stale write is converged by the trigger after its row rewrite. Client-only. Next: B5 (diff-based payment persistence — the webhook-mid-edit race fix), B6 (DB guard rejecting direct writes).
 
 ## Latest Updates (v2.1119)
 

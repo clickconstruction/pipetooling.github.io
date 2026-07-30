@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1120',
+    date: '2026-07-30',
+    title: 'Billing accuracy: Edit Job defers paid totals to the database',
+    kind: 'infra',
+    highlights: [
+      'Edit Job now lets the database compute the paid-to-date total from the payment rows instead of writing its own copy — one less way for totals to disagree.',
+      'No visible change to editing or saving jobs.',
+    ],
+  },
+  {
     version: 'v2.1119',
     date: '2026-07-30',
     title: 'Billing accuracy: paid-to-date totals now self-maintain',
