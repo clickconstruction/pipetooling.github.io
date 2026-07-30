@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { PayConfigRow as PayConfigRowFull } from '../types/peoplePayConfig'
 import { effectiveHoursForCost } from '../lib/salariedEffectiveHours'
 import { supabase } from '../lib/supabase'
@@ -106,6 +106,10 @@ export function CrewJobsBlock({
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [payConfig, setPayConfig] = useState<Record<string, PayConfigRow>>({})
+  /** C1-3a (identity): id-keyed flags (separate from the name map — see loadPayConfig). */
+  const [payConfigById, setPayConfigById] = useState<Record<string, PayConfigRow>>({})
+  /** C1-3a (identity): person_id per crew-row name for id-first flag lookups. */
+  const [crewPersonIdByName, setCrewPersonIdByName] = useState<Record<string, string>>({})
   const [hoursDisplayOrder, setHoursDisplayOrder] = useState<Record<string, number>>({})
   const [crewJobsDate, setCrewJobsDate] = useState(() => {
     const d = new Date()
@@ -170,12 +174,21 @@ export function CrewJobsBlock({
     return crewDateHours
   }, [crewHoursByPersonProp, crewDateHours])
 
+  /** C1-3a: id-first flag lookup (crew-row person_id), trimmed-name fallback. */
+  const cfgForPerson = useCallback(
+    (personName: string): PayConfigRow | undefined => {
+      const id = crewPersonIdByName[personName]
+      return (id ? payConfigById[id] : undefined) ?? payConfig[personName]
+    },
+    [crewPersonIdByName, payConfigById, payConfig],
+  )
+
   const visiblePeopleForCrew = useMemo(() => {
     // Cost semantics on purpose: salaried people count as 8/0 here even with record_hours_but_salary.
     return showPeopleForMatrix.filter(
-      (p) => !hideZeroHours || effectiveHoursForCost(payConfig[p], crewJobsDate, effectiveCrewHours[p] ?? 0) > 0,
+      (p) => !hideZeroHours || effectiveHoursForCost(cfgForPerson(p), crewJobsDate, effectiveCrewHours[p] ?? 0) > 0,
     )
-  }, [showPeopleForMatrix, hideZeroHours, crewJobsDate, effectiveCrewHours, payConfig])
+  }, [showPeopleForMatrix, hideZeroHours, crewJobsDate, effectiveCrewHours, cfgForPerson])
 
   const filteredTeamLaborData = useMemo(() => {
     if (!jobIdsFilter || jobIdsFilter.length === 0) return teamLaborData
@@ -278,9 +291,18 @@ export function CrewJobsBlock({
       setError(err.message)
       return
     }
+    // C1-3a (identity): the RPC returns person_id — keep a SEPARATE id-keyed
+    // map for id-first lookups. It must not share the name map:
+    // showPeopleForMatrix derives the people list from Object.keys(payConfig),
+    // so id entries there would render as bogus rows.
     const map: Record<string, PayConfigRow> = {}
-    for (const r of (data ?? []) as PayConfigRow[]) map[r.person_name] = r
+    const byId: Record<string, PayConfigRow> = {}
+    for (const r of (data ?? []) as Array<PayConfigRow & { person_id?: string | null }>) {
+      map[r.person_name] = r
+      if (r.person_id) byId[r.person_id] = r
+    }
     setPayConfig(map)
+    setPayConfigById(byId)
   }
 
   async function loadHoursDisplayOrder() {
@@ -295,8 +317,8 @@ export function CrewJobsBlock({
   async function loadCrewJobs(date: string) {
     setCrewJobsLoading(true)
     const [jobsRes, bidsRes, hoursRes] = await Promise.all([
-      supabase.from('people_crew_jobs').select('person_name, job_assignments').eq('work_date', date),
-      supabase.from('people_crew_bids').select('person_name, bid_assignments').eq('work_date', date),
+      supabase.from('people_crew_jobs').select('person_name, person_id, job_assignments').eq('work_date', date),
+      supabase.from('people_crew_bids').select('person_name, person_id, bid_assignments').eq('work_date', date),
       supabase.from('people_hours').select('person_name, hours').eq('work_date', date),
     ])
     setCrewJobsLoading(false)
@@ -308,20 +330,26 @@ export function CrewJobsBlock({
     }
     const jobsRows = (jobsData ?? []) as Array<{
       person_name: string
+      person_id: string | null
       job_assignments: Array<{ job_id: string; pct: number }>
     }>
     const bidsRows = (bidsData ?? []) as Array<{
       person_name: string
+      person_id: string | null
       bid_assignments: Array<{ bid_id: string; pct: number }>
     }>
+    const idByName: Record<string, string> = {}
     const jobsByPerson: Record<string, Array<{ job_id: string; pct: number }>> = {}
     for (const r of jobsRows) {
       jobsByPerson[r.person_name] = Array.isArray(r.job_assignments) ? r.job_assignments : []
+      if (r.person_id && !idByName[r.person_name]) idByName[r.person_name] = r.person_id
     }
     const bidsByPerson: Record<string, Array<{ bid_id: string; pct: number }>> = {}
     for (const r of bidsRows) {
       bidsByPerson[r.person_name] = Array.isArray(r.bid_assignments) ? r.bid_assignments : []
+      if (r.person_id && !idByName[r.person_name]) idByName[r.person_name] = r.person_id
     }
+    setCrewPersonIdByName(idByName)
     const allPersonNames = new Set([...Object.keys(jobsByPerson), ...Object.keys(bidsByPerson)])
     const map: Record<string, CrewRow> = {}
     for (const personName of allPersonNames) {
@@ -691,7 +719,7 @@ export function CrewJobsBlock({
             <tbody>
               {visiblePeopleForCrew.map((personName) => {
                 const row = crewJobsData[personName] ?? { unifiedAssignments: [] }
-                const effectiveHours = effectiveHoursForCost(payConfig[personName], crewJobsDate, effectiveCrewHours[personName] ?? 0)
+                const effectiveHours = effectiveHoursForCost(cfgForPerson(personName), crewJobsDate, effectiveCrewHours[personName] ?? 0)
                 return (
                   <tr key={personName} style={{ borderBottom: '1px solid var(--border)' }}>
                     <td style={{ padding: '0.75rem' }}>{personName}</td>
