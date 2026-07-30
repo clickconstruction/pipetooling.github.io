@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-30 (v2.1118)
+last_updated: 2026-07-30 (v2.1119)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1119)
+
+### payments_made becomes a DB-enforced derived value (2026-07-30)
+Migration [`20260730174929_payments_made_trigger_invariant.sql`](../supabase/migrations/20260730174929_payments_made_trigger_invariant.sql) — step **B3** of [`FRAGILITY_REMEDIATION_PLAN.md`](./FRAGILITY_REMEDIATION_PLAN.md). `jobs_ledger.payments_made` had ~9 writers in three styles (increment RPCs / recompute RPCs / client overwrite) and no enforcement; the B1 audit found prod fully consistent (771/771 jobs to the cent), so **no data migration** (B2 skipped) — this makes rows the source of truth going forward. One migration, atomically: (1) row-level AFTER I/U/D trigger `jobs_ledger_payments_recompute_pm` (`recompute_jobs_ledger_payments_made_tr()`, SECURITY DEFINER) sets `payments_made = SUM(rows)` — skips no-op writes to keep the hot row quiet, doesn't bump `updated_at`, and recomputes both jobs when a row moves; (2) all five incrementing RPCs (`apply_mercury_bank_payment_allocations`, `mark_invoice_paid`, `mark_invoice_paid_from_stripe`, both `mark_job_paid` overloads) re-created WITHOUT their manual `payments_made` writes — **must ship together** (trigger + increment would double-count). Provably behavior-preserving: each old `SET payments_made = old + v_apply, status = CASE WHEN revenue <= old + v_apply…` becomes `SET status = CASE WHEN revenue <= payments_made…`, because post-INSERT the trigger has made `payments_made` exactly `old + v_apply`. Remaining-balance checks (which read pm BEFORE inserting) are untouched, as are all auth/validation paths and the A0 grants. JobFormModal's overwrite is now converged by the trigger regardless of ordering (B4 removes it; B6 adds the hard guard). Verified post-push by re-running [`scripts/audit-payments-made-drift.sql`](../scripts/audit-payments-made-drift.sql). DB-only (`supabase db push` after merge).
 
 ## Latest Updates (v2.1118)
 

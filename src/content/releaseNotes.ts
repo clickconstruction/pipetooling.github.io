@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1119',
+    date: '2026-07-30',
+    title: 'Billing accuracy: paid-to-date totals now self-maintain',
+    kind: 'infra',
+    highlights: [
+      'A job’s paid-to-date total is now automatically kept in sync with its individual payment records by the database itself — the two can no longer drift apart.',
+      'No visible change; every payment path (Mark Paid, bank deposits, Stripe) works exactly as before.',
+    ],
+  },
+  {
     version: 'v2.1118',
     date: '2026-07-30',
     title: 'Billing safety: test/live switch fully locked to devs',
