@@ -511,10 +511,12 @@ export default function JobFormModal({
       const fx = autosaveFixturesRef.current
       const pays = autosavePaymentsRef.current
       const revNum = revenueDollarsFromFixtures(fx) + autosaveRiderFeesRef.current
-      const paymentsMadeNum = pays.reduce((s, p) => s + (Number(p.amount) || 0), 0)
+      // B4 (FRAGILITY_REMEDIATION_PLAN.md): payments_made is a DB-trigger-
+      // maintained cache of SUM(jobs_ledger_payments.amount) since B3 — the
+      // row rewrite below keeps it in sync; the client no longer writes it.
       const { error: updErr } = await supabase
         .from('jobs_ledger')
-        .update({ revenue: revNum, payments_made: paymentsMadeNum })
+        .update({ revenue: revNum })
         .eq('id', jobId)
       if (updErr) throw updErr
       const { error: delPayErr } = await supabase.from('jobs_ledger_payments').delete().eq('job_id', jobId)
@@ -2592,7 +2594,8 @@ export default function JobFormModal({
     setSaving(true)
     setError(null)
     const revNum = jobTotalWithRidersDollars
-    const paymentsMadeNum = payments.reduce((s, p) => s + (Number(p.amount) || 0), 0)
+    // B4: payments_made is trigger-maintained from the payment rows inserted
+    // below (B3); the insert leaves it at its DB default.
     try {
       const effectiveMasterId = await resolveEffectiveJobMasterUserId(supabase, authUser.id, projectId || null)
 
@@ -2619,7 +2622,6 @@ export default function JobFormModal({
           job_pictures_link: jobPicturesLink.trim() || null,
           job_plans_link: jobPlansLink.trim() || null,
           revenue: revNum,
-          payments_made: paymentsMadeNum,
           project_id: projectId || null,
           bid_id: bidId || null,
           service_type_id: formServiceTypeId.trim(),
