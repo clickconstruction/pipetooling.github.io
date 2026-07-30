@@ -118,6 +118,14 @@ Selected: **J512** · Smith House Repipe
 
 The previews open the exact email in a new tab; **Email me a test** sends the detailed version to your own address with a `[TEST]` subject, so you can check it in a real inbox before anyone else ever sees one.
 
+There's also a per-job version: on **Job Detail**, the envelope icon in the header (devs and masters only) opens the same email with the preview showing right in the window — a **Detailed | Summary** toggle to flip between the two versions, and the send actions at the top:
+
+:::example Paid-in-full email window
+{{button:primary|Send to me}} &nbsp; {{button:outline|Send to someone…}}
+:::
+
+**Send to me** emails you the `[TEST]` copy; **Send to someone…** opens the people list with the same Detailed or Summary badge per person — picking someone flips the preview so you see exactly what they'll receive before you send it.
+
 ## Where to watch it all
 
 - **Dashboard** — Ready to Bill and Billed Waiting for Payment queues, plus the Financials cards (Accounts Receivable / Accounts Payable / Not Billed Out).

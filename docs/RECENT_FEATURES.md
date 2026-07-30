@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-29 (v2.1098)
+last_updated: 2026-07-29 (v2.1099)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1099)
+
+### Job Detail: paid-in-full email is now preview-first (2026-07-29)
+[`PaidJobEmailSendModal`](../src/components/jobs/PaidJobEmailSendModal.tsx) redesigned: instead of send-then-hope, it opens straight into the rendered **detailed** email inline (sandboxed `iframe srcDoc` — the email keeps its own light styling), with a **Detailed | Summary** toggle (per-variant HTML cached; `fetchPaidJobEmailPreview` unchanged), an open-in-new-tab affordance, and the send actions in the header: **Send to me** (the existing `[TEST]` self-send) and **Send to someone…** (the existing role-aware picker, now collapsible; selecting a person flips the preview to the variant their role receives — `paidEmailVariantForRole`). The not-paid amber warning stays. The Job Detail header ✉ trigger is now a 20px `currentColor` SVG envelope matching the neighboring calendar/edit icons (was an 18px text glyph). The Stages gear modal (`PaidInFullEmailSettingsModal`) and the `paid-job-email` edge function are untouched. Help guide `ready-to-bill-pipeline.md` + JOBS_MODALS_ARCHITECTURE D9 updated. Client-only.
 
 ## Latest Updates (v2.1098)
 
