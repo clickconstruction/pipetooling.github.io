@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1103',
+    date: '2026-07-29',
+    title: 'Paid-in-full email: honest banners and line items',
+    kind: 'feature',
+    highlights: [
+      'The email now tells the truth about payment: green "Paid in full" only when the job is fully paid, an amber "$X (Y%) of $Z paid" banner when partially paid, and gray "Not paid" otherwise — so you can send it for any job, at your leisure.',
+      'Both versions now list the job’s line items with a chip showing whether each is Paid, Billed, Draft, or Unbilled (amounts in the detailed version only).',
+      'Subjects adapt too: "Payment progress — …" for partial jobs instead of claiming paid in full.',
+    ],
+  },
+  {
     version: 'v2.1102',
     date: '2026-07-29',
     title: 'Under the hood: groundwork for smarter paid-in-full emails',

@@ -26,8 +26,10 @@ type EmailVariant = 'detailed' | 'summary'
  * "Send to me" ([TEST]-prefixed, same as the old "Email me a test") and
  * "Send to someone…" (the role-aware picker; the recipient's role picks the
  * variant server-side, and selecting someone flips the preview to their variant).
- * Dev + master_technician only (enforced server-side too). Warns — without
- * blocking — when the job isn't actually paid yet.
+ * Dev + master_technician only (enforced server-side too). Notes — without
+ * blocking — when the job isn't actually paid yet; since v2.1103 the email
+ * itself is status-aware (progress banner + line items), so partial sends are
+ * a feature, not a mistake.
  */
 export default function PaidJobEmailSendModal({
   jobId,
@@ -261,7 +263,8 @@ export default function PaidJobEmailSendModal({
               padding: '0.5rem 0.7rem',
             }}
           >
-            This job isn&rsquo;t Paid in Full — the email will still say it is.
+            This job isn&rsquo;t Paid in Full — the email shows its payment progress instead of the
+            green paid banner.
           </p>
         )}
 
