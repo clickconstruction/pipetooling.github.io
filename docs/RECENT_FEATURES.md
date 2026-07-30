@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-30 (v2.1130)
+last_updated: 2026-07-30 (v2.1131)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1131)
+
+### Edit job: Add-line-item moves to the footer; every row removable (2026-07-30)
+[`JobFormFixturesSection.tsx`](../src/components/jobs/JobFormFixturesSection.tsx). The blue (+) pinned inside the LAST line-item row made freshly generated rows (e.g. from the Multiple Segment Generator) read as "not added yet", and stole the slot where the trash icon lives — so the last row could never be removed directly. Now: a dashed **+ Add line item** ghost button sits in the existing footer band, left of **Job Total** (zero added height; options 1+3 of the placement mockups); every unlocked row carries the same trash icon, including the last (the sole remaining row shows none — the grid always keeps one row). Per-row scope/notes sub-rows and Stripe preview untouched. Client-only.
 
 ## Latest Updates (v2.1130)
 
