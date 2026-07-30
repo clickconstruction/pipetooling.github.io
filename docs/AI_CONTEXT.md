@@ -126,7 +126,7 @@ pipetooling.github.io/
 
 ### Largest files (extraction candidates — see `PAGE_DECOMPOSITION_PLAYBOOK.md`)
 
-`src/pages/Jobs.tsx` (~10.5k lines), `src/pages/Dashboard.tsx` (~1.7k after the v2.1004 job-row-family extraction), `src/components/jobs/JobFormModal.tsx` (~7.1k), `src/pages/Materials.tsx` (~6.9k), `src/components/bids/BidsTakeoffTab.tsx` (~5.6k), `src/pages/Estimates.tsx` (~5.3k), `src/pages/Settings.tsx` (~5.1k), `src/components/people/PeopleReviewTab.tsx` (~5.0k), `src/pages/Workflow.tsx` (~4.8k). Bids.tsx (~3.8k) and People.tsx (~4.3k) are already decomposed — their architecture maps show the pattern.
+The kept-current inventory (with per-surface architecture maps) lives in `PAGE_DECOMPOSITION_PLAYBOOK.md`. Headlines as of 2026-07-30: `src/pages/Materials.tsx` (~6.9k lines, low-churn, no extraction scheduled), `src/components/bids/BidsTakeoffTab.tsx` (~5.8k), `src/pages/Estimates.tsx` (~5.4k), `src/components/people/PeopleReviewTab.tsx` (~5.0k), `src/pages/Workflow.tsx` (~4.8k), `src/components/jobs/JobFormModal.tsx` (~3.8k, extraction underway). Already decomposed — their maps show the pattern: Jobs.tsx (~2.0k, was ~10.6k), Bids.tsx (~3.8k), People.tsx (~4.4k), Settings.tsx (~1.7k), Dashboard.tsx (~1.7k).
 
 ### Core infrastructure files
 
@@ -309,4 +309,4 @@ See `../AGENTS.md` → Critical Constraints (authoritative list): append-only mi
 
 **For new developers**: `../README.md` for setup → this file → `PROJECT_DOCUMENTATION.md` for depth → run the app (`npm install && npm run dev`).
 
-last_updated: 2026-07-17
+last_updated: 2026-07-30
