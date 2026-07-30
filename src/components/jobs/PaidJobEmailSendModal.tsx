@@ -57,6 +57,19 @@ export default function PaidJobEmailSendModal({
 
   const html = htmlByVariant[variant]
 
+  // v2.1104: Esc closes this modal (preventDefault so a parent Esc listener —
+  // Job Detail's — never also fires on the same press).
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !busy) {
+        e.preventDefault()
+        onClose()
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [busy, onClose])
+
   useEffect(() => {
     if (htmlByVariant[variant]) return
     let cancelled = false

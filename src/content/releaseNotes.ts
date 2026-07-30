@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1104',
+    date: '2026-07-29',
+    title: 'Job Detail: press Escape to close',
+    kind: 'feature',
+    highlights: [
+      'The Job Detail window now closes when you press the Escape key.',
+      'When a smaller window is open on top (calendar, schedule, reports, the paid-in-full email), Escape closes that one first — one layer at a time.',
+    ],
+  },
+  {
     version: 'v2.1103',
     date: '2026-07-29',
     title: 'Paid-in-full email: honest banners and line items',

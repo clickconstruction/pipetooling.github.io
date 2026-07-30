@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-29 (v2.1103)
+last_updated: 2026-07-29 (v2.1104)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1104)
+
+### Job Detail: Escape key closes the modal (2026-07-29)
+Companion to v2.1100 (Edit Job): [`DetailJobModal`](../src/components/jobs/DetailJobModal.tsx) closes on **Escape** via a window listener gated by `detailEscBlocked` — the OR of its stacked-overlay flags (`paidEmailModalOpen`, `reportsModalOpen`, `jobCalendarOpen`, `detailScheduleModalOpen`, `stackedAddFilesOpen`) — so Esc never closes Job Detail underneath a satellite modal. `JobCalendarModal` already closed itself on Esc; [`PaidJobEmailSendModal`](../src/components/jobs/PaidJobEmailSendModal.tsx) now does too (with `preventDefault`, and only when not mid-send), so Esc peels one layer at a time. Plain `onClose()` — Job Detail is read-mostly, no flush needed. `JOBS_MODALS_ARCHITECTURE.md` D3 note updated. Client-only.
 
 ## Latest Updates (v2.1103)
 
