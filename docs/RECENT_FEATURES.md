@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-30 (v2.1123)
+last_updated: 2026-07-30 (v2.1124)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1124)
+
+### CrewJobsBlock salary flags resolve person-id-first (2026-07-30)
+[`CrewJobsBlock.tsx`](../src/components/CrewJobsBlock.tsx) — step **C1-3a** of [`FRAGILITY_REMEDIATION_PLAN.md`](./FRAGILITY_REMEDIATION_PLAN.md) (first of the four crew-flag consumers mapped in the C1 checkpoint). The component's `people_crew_jobs`/`_bids` day selects now include `person_id`; a `crewPersonIdByName` map (first non-null id per name) plus new `cfgForPerson()` helper resolve the pay-flags map id-first (`id:<uuid>` keys seeded from the RPC's `person_id`) with the trimmed-name lookup as fallback, at both call sites (`visiblePeopleForCrew` hide-zero-hours filter + the per-person effective-hours row). Same pattern as teamLabor (v2.1123); answer-preserving per the C1-1 prod precheck. Remaining crew-flag consumers: Quickfill `HoursSection`, `HoursUnassignedModal`, `QuickfillUnassignedFieldTimeSection` (one PR each). Client-only.
 
 ## Latest Updates (v2.1123)
 

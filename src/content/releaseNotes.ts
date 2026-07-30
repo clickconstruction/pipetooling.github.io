@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1124',
+    date: '2026-07-30',
+    title: 'Reliability: Crew Jobs matches salaried people by identity',
+    kind: 'infra',
+    highlights: [
+      'The Crew Jobs day view now recognizes salaried people by identity rather than spelled name when computing effective hours.',
+    ],
+  },
+  {
     version: 'v2.1123',
     date: '2026-07-30',
     title: 'Reliability: labor costing matches salaried people by identity',
