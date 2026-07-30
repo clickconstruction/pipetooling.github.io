@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-30 (v2.1114)
+last_updated: 2026-07-30 (v2.1115)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1115)
+
+### Stripe webhook enforces test/live mode separation (2026-07-30)
+[`stripe-webhook/index.ts`](../supabase/functions/stripe-webhook/index.ts) + [`_shared/stripeSecrets.ts`](../supabase/functions/_shared/stripeSecrets.ts) (**redeploy required**) — step **A2** of [`FRAGILITY_REMEDIATION_PLAN.md`](./FRAGILITY_REMEDIATION_PLAN.md). The webhook never read `event.livemode`, so a test-mode event could mutate a live invoice row (and vice versa) — rows matched by `stripe_invoice_id` alone. Now: (1) new `stripeWebhookSecretsWithModes()` pairs each signing secret with the mode its env var claims; the secret that verifies the signature is cryptographic evidence of the endpoint's mode, cross-checked against `event.livemode` (disagreement = the live/test endpoints share a secret; warn-logged); (2) every event's `livemode` is recorded into `stripe_webhook_events`; (3) both row-touching paths (`handleStripeInvoicePaidEvent`, `syncJobsLedgerStripeInvoiceStatus`) gate on `jobs_ledger_invoices.stripe_mode` via shared `gateRowModeForEvent` — mismatch → `200 {applied:false, reason:'mode_mismatch'}` (no retry storm) with the row untouched; NULL-mode legacy rows self-heal from the verified event mode; (4) the `credit_note.created` branch retrieves with the **event-mode** API key — the old test-first `stripeInitKey` silently failed every live credit-note retrieval whenever both keys were configured (BILLING_FLOWS gotcha 20, now fixed). Dev test-mode E2E keeps working: test events match test-stamped rows (v2.1114). BILLING_FLOWS.md webhook section + gotchas 5/20 updated. Deploy: `supabase functions deploy stripe-webhook`.
 
 ## Latest Updates (v2.1114)
 

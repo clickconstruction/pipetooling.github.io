@@ -78,14 +78,30 @@ function normalizeWebhookSecret(raw: string | undefined): string {
  * fails first, then test matches.)
  */
 export function stripeWebhookSecretsOrdered(): string[] {
-  const out: string[] = []
-  const push = (s: string | undefined) => {
+  return stripeWebhookSecretsWithModes().map((s) => s.secret)
+}
+
+export type StripeWebhookSecretWithMode = {
+  secret: string
+  /** Mode the env var claims (LIVE/TEST vars); null for the legacy mode-less STRIPE_WEBHOOK_SECRET. */
+  mode: StripeBillingMode | null
+}
+
+/**
+ * Same ordering as stripeWebhookSecretsOrdered, but each secret carries the
+ * mode its env var claims — the secret that verifies a signature is
+ * cryptographic evidence of the sending endpoint's mode (A2: cross-checked
+ * against `event.livemode`; disagreement = endpoint misconfiguration).
+ */
+export function stripeWebhookSecretsWithModes(): StripeWebhookSecretWithMode[] {
+  const out: StripeWebhookSecretWithMode[] = []
+  const push = (s: string | undefined, mode: StripeBillingMode | null) => {
     const t = normalizeWebhookSecret(s)
-    if (t && !out.includes(t)) out.push(t)
+    if (t && !out.some((x) => x.secret === t)) out.push({ secret: t, mode })
   }
-  push(Deno.env.get('STRIPE_WEBHOOK_SECRET_LIVE'))
-  push(Deno.env.get('STRIPE_WEBHOOK_SECRET_TEST'))
-  push(Deno.env.get('STRIPE_WEBHOOK_SECRET'))
+  push(Deno.env.get('STRIPE_WEBHOOK_SECRET_LIVE'), 'live')
+  push(Deno.env.get('STRIPE_WEBHOOK_SECRET_TEST'), 'test')
+  push(Deno.env.get('STRIPE_WEBHOOK_SECRET'), null)
   return out
 }
 

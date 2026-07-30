@@ -207,7 +207,7 @@ flowchart LR
 
 ### `stripe-webhook`
 
-`supabase/functions/stripe-webhook/index.ts`: signature-verified (live→test→legacy secrets), deduped via `stripe_webhook_events` insert. `invoice.paid`/`invoice.payment_succeeded` → `mark_invoice_paid_from_stripe` (+ OOB metadata pass-through) + `complete_job_collect_payment_flow_for_invoice`. `invoice.updated/voided/payment_failed` → sync `stripe_invoice_status` only (never downgrades paid). **`event.livemode` is never checked — test-mode events mutate the prod DB by design** (this is how dev test mode works end-to-end; rows match by `stripe_invoice_id`). `credit_note.created` re-reads the invoice with a test-first key when both keys are configured, so live credit-note syncs can fail quietly (warn only).
+`supabase/functions/stripe-webhook/index.ts`: signature-verified (live→test→legacy secrets), deduped via `stripe_webhook_events` insert (which records `livemode` since v2.1115). `invoice.paid`/`invoice.payment_succeeded` → `mark_invoice_paid_from_stripe` (+ OOB metadata pass-through) + `complete_job_collect_payment_flow_for_invoice`. `invoice.updated/voided/payment_failed` → sync `stripe_invoice_status` only (never downgrades paid). **Mode-matched since v2.1115 (A2)**: the event's mode (`event.livemode`, cross-checked against which signing secret verified) must match `jobs_ledger_invoices.stripe_mode` — mismatch → `200 {applied:false, reason:'mode_mismatch'}` and the row is untouched; NULL-mode legacy rows self-heal from the verified event mode. Dev test flows still work end-to-end because test events match test-mode rows. `credit_note.created` re-reads the invoice with the **event-mode** key (pre-v2.1115 it used a test-first key, so live credit-note syncs failed quietly when both keys were configured).
 
 ### Which actions hit LIVE Stripe
 
@@ -356,7 +356,7 @@ Checklist for a live end-to-end billing test on prod (there is no staging; every
 2. Two customer-visible sends exist: `send-stripe-invoice` (Stripe emails) and Physical "Send email" (Resend from `team@noreply.pipetooling.com`). Creating a Stripe invoice does **not** email. HCP records only. Draft/SMS/copy buttons never send.
 3. Keep one mode for the whole test. Cross-mode void silently deletes the ledger row and orphans the Stripe invoice; other cross-mode ops fail loudly.
 4. Payments block send-backs; unlink via Edit Job (or the OOB unwind for Stripe) before cleanup.
-5. The webhook writes prod regardless of livemode — a test-mode payment really flips your prod job to paid (that's the designed test path).
+5. The webhook mode-matches since v2.1115: a test-mode payment flips a job to paid only when the invoice row itself is `stripe_mode='test'` (that's the designed test path); test events can no longer touch live rows.
 6. Cleanup: delete the job then the customer; everything lands in the dev-restorable 90-day archive. Stay under 5 bundles/hour to avoid alerting other devs. Stripe-side objects are never cleaned by the app.
 
 ## Optimization candidates
@@ -382,6 +382,6 @@ Findings only (no fixes) — seeds for a later pass.
 17. `'billed'` in the `JobsTab` union renders no tab (vestigial; the query param redirects to `stages`).
 18. Role-gate predicates duplicated across three files (`canRoleApplyBankPayments` / `canUnlinkMercuryPayment` / `canRoleUseArBankCount`); the SQL job-access EXISTS block is copy-pasted in ~10 payment RPCs.
 19. `AgreedWriteDownModal` and `JobFormModal`'s details-backfill read the Stripe mode pref without the dev-role gate (a stale test pref on a shared browser routes a non-dev write-down to test mode).
-20. `stripe-webhook` `credit_note.created` re-reads the invoice with a test-first key when both keys exist — live credit-note syncs fail quietly; the webhook also never records `event.livemode`, so Banking's Stripe panels can't distinguish test rows from live.
+20. ~~Fixed in v2.1115 (A2)~~: `credit_note.created` now retrieves with the event-mode key, and `stripe_webhook_events.livemode` + `jobs_ledger_invoices.stripe_mode` (v2.1114) record modes — Banking's Stripe panels can distinguish test rows once they read the column.
 21. `delete_ready_to_bill_invoice` on a trip-charge row does not unwind the `create_turnaway_trip_charge` revenue bump (documented caveat in `supabase/migrations/20260709130000_turnaway_trip_charge.sql`).
 22. UX friction: partial billing has two divergent entry points (Edit Job slider vs Stages plain-dollar modal), and billing a partial then the remainder requires hopping between the row card and Bill Customer per invoice.

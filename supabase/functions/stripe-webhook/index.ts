@@ -6,7 +6,8 @@ import {
   stripeApiKeyForMode,
   stripeWebhookDebugFingerprintsEnabled,
   stripeWebhookEnvFingerprints,
-  stripeWebhookSecretsOrdered,
+  stripeWebhookSecretsWithModes,
+  type StripeBillingMode,
 } from '../_shared/stripeSecrets.ts'
 import { parseOobPaymentMetadataFromStripe } from '../_shared/pipetoolingStripeOobPaymentMetadata.ts'
 
@@ -46,16 +47,50 @@ function webhookLog(
   }
 }
 
+/**
+ * A2 (FRAGILITY_REMEDIATION_PLAN.md) mode gate: an event may only touch a row
+ * living in the same Stripe mode. NULL-mode legacy rows self-heal from the
+ * verified event mode (the signing secret + event.livemode are authoritative).
+ * Returns the reason string on mismatch (caller reports applied:false), null
+ * to proceed.
+ */
+async function gateRowModeForEvent(
+  admin: SupabaseClient,
+  row: { id: string; stripe_mode: string | null },
+  eventMode: StripeBillingMode,
+  event: Pick<Stripe.Event, 'id' | 'type'>,
+): Promise<string | null> {
+  if (row.stripe_mode == null) {
+    const { error } = await admin
+      .from('jobs_ledger_invoices')
+      .update({ stripe_mode: eventMode })
+      .eq('id', row.id)
+      .is('stripe_mode', null)
+    if (error) webhookLog('warn', event, 'stripe_mode self-heal failed (continuing)', error)
+    return null
+  }
+  if (row.stripe_mode !== eventMode) {
+    webhookLog('warn', event, 'mode mismatch: event vs invoice row', {
+      event_mode: eventMode,
+      invoice_mode: row.stripe_mode,
+      invoice_row_id: row.id,
+    })
+    return 'mode_mismatch'
+  }
+  return null
+}
+
 /** Sync Stripe invoice.status into jobs_ledger_invoices.stripe_invoice_status only (no payment RPC). */
 async function syncJobsLedgerStripeInvoiceStatus(
   admin: SupabaseClient,
   stripeInvId: string,
   stripeStatus: string,
   event: Pick<Stripe.Event, 'id' | 'type'>,
+  eventMode: StripeBillingMode,
 ): Promise<void> {
   const { data: rows, error: qErr } = await admin
     .from('jobs_ledger_invoices')
-    .select('id, status')
+    .select('id, status, stripe_mode')
     .eq('stripe_invoice_id', stripeInvId)
     .limit(1)
 
@@ -67,6 +102,10 @@ async function syncJobsLedgerStripeInvoiceStatus(
   const row = rows?.[0]
   if (!row) {
     webhookLog('warn', event, 'No jobs_ledger_invoices for stripe invoice', stripeInvId)
+    return
+  }
+
+  if ((await gateRowModeForEvent(admin, row, eventMode, event)) != null) {
     return
   }
 
@@ -94,6 +133,7 @@ async function handleStripeInvoicePaidEvent(
   admin: SupabaseClient,
   inv: Stripe.Invoice,
   eventForLog: Pick<Stripe.Event, 'id' | 'type'>,
+  eventMode: StripeBillingMode,
 ): Promise<Response> {
   const stripeInvId = inv.id
   if (!stripeInvId) {
@@ -102,7 +142,7 @@ async function handleStripeInvoicePaidEvent(
 
   const { data: rows, error: qErr } = await admin
     .from('jobs_ledger_invoices')
-    .select('id, status')
+    .select('id, status, stripe_mode')
     .eq('stripe_invoice_id', stripeInvId)
     .limit(1)
 
@@ -115,6 +155,17 @@ async function handleStripeInvoicePaidEvent(
   if (!row) {
     webhookLog('warn', eventForLog, 'No jobs_ledger_invoices for stripe invoice', stripeInvId)
     return jsonOk({ received: true, skipped: 'unknown invoice' })
+  }
+
+  const modeGate = await gateRowModeForEvent(admin, row, eventMode, eventForLog)
+  if (modeGate != null) {
+    return jsonOk({
+      received: true,
+      applied: false,
+      reason: modeGate,
+      event_mode: eventMode,
+      invoice_mode: row.stripe_mode,
+    })
   }
 
   if (row.status === 'paid') {
@@ -174,12 +225,14 @@ serve(async (req) => {
   let eventForLog: Pick<Stripe.Event, 'id' | 'type'> | null = null
 
   try {
-    const webhookSecrets = stripeWebhookSecretsOrdered()
+    const webhookSecrets = stripeWebhookSecretsWithModes()
     const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')?.trim() ?? ''
     const supabaseUrl = Deno.env.get('SUPABASE_URL')?.trim() ?? ''
 
+    // Only used to construct the verification client; signature checking needs
+    // the whsec, not a real API key. API calls use the event-mode key below.
     const stripeInitKey =
-      stripeApiKeyForMode('test') ?? stripeApiKeyForMode('live') ?? ''
+      stripeApiKeyForMode('live') ?? stripeApiKeyForMode('test') ?? ''
 
     if (!anyStripeApiKeyConfigured() || webhookSecrets.length === 0 || !serviceKey || !stripeInitKey) {
       console.error(
@@ -207,10 +260,12 @@ serve(async (req) => {
     /** Deno / Supabase Edge has no Node `crypto`; sync `constructEvent` often fails verification. Use Web Crypto. */
     const cryptoProvider = Stripe.createSubtleCryptoProvider()
     let event: Stripe.Event | null = null
+    let verifiedSecretMode: StripeBillingMode | null = null
     let lastVerifyErr: string | null = null
-    for (const whsec of webhookSecrets) {
+    for (const { secret: whsec, mode } of webhookSecrets) {
       try {
         event = await stripe.webhooks.constructEventAsync(body, signature, whsec, undefined, cryptoProvider)
+        verifiedSecretMode = mode
         break
       } catch (e) {
         lastVerifyErr = e instanceof Error ? e.message : String(e)
@@ -234,9 +289,21 @@ serve(async (req) => {
     eventForLog = { id: event.id, type: event.type }
     const admin = createClient(supabaseUrl, serviceKey)
 
+    // A2: the event's mode. event.livemode describes the object; the verifying
+    // secret's env var claims a mode too — disagreement means the live/test
+    // webhook endpoints share a secret (misconfiguration worth surfacing).
+    const eventMode: StripeBillingMode = event.livemode ? 'live' : 'test'
+    if (verifiedSecretMode != null && verifiedSecretMode !== eventMode) {
+      webhookLog('warn', eventForLog, 'signing-secret mode disagrees with event.livemode', {
+        secret_env_mode: verifiedSecretMode,
+        event_livemode: event.livemode,
+      })
+    }
+
     const { error: dedupeErr } = await admin.from('stripe_webhook_events').insert({
       stripe_event_id: event.id,
       event_type: event.type,
+      livemode: event.livemode,
     })
 
     if (dedupeErr && isUniqueViolation(dedupeErr)) {
@@ -248,7 +315,7 @@ serve(async (req) => {
 
     if (event.type === 'invoice.paid' || event.type === 'invoice.payment_succeeded') {
       const inv = event.data.object as Stripe.Invoice
-      return await handleStripeInvoicePaidEvent(admin, inv, eventForLog)
+      return await handleStripeInvoicePaidEvent(admin, inv, eventForLog, eventMode)
     } else if (
       event.type === 'invoice.updated' ||
       event.type === 'invoice.voided' ||
@@ -258,20 +325,29 @@ serve(async (req) => {
       const stripeInvId = inv.id
       const st = inv.status
       if (stripeInvId && st) {
-        await syncJobsLedgerStripeInvoiceStatus(admin, stripeInvId, st, eventForLog)
+        await syncJobsLedgerStripeInvoiceStatus(admin, stripeInvId, st, eventForLog, eventMode)
       }
     } else if (event.type === 'credit_note.created') {
       const cn = event.data.object as Stripe.CreditNote
       const invRef = cn.invoice
       const stripeInvId = typeof invRef === 'string' ? invRef : invRef?.id
       if (stripeInvId) {
-        try {
-          const inv = await stripe.invoices.retrieve(stripeInvId)
-          if (inv.status) {
-            await syncJobsLedgerStripeInvoiceStatus(admin, stripeInvId, inv.status, eventForLog)
+        // A2 fix: retrieve with the EVENT's mode key. The old test-first
+        // stripeInitKey made every live credit-note retrieval fail silently
+        // whenever both keys were configured.
+        const eventModeKey = stripeApiKeyForMode(eventMode)
+        if (!eventModeKey) {
+          webhookLog('warn', eventForLog, `credit_note.created: no API key configured for ${eventMode} mode`)
+        } else {
+          try {
+            const stripeForEvent = new Stripe(eventModeKey, { apiVersion: '2024-06-20' })
+            const inv = await stripeForEvent.invoices.retrieve(stripeInvId)
+            if (inv.status) {
+              await syncJobsLedgerStripeInvoiceStatus(admin, stripeInvId, inv.status, eventForLog, eventMode)
+            }
+          } catch (e) {
+            webhookLog('warn', eventForLog, 'credit_note.created: retrieve invoice failed', e)
           }
-        } catch (e) {
-          webhookLog('warn', eventForLog, 'credit_note.created: retrieve invoice failed', e)
         }
       }
     }

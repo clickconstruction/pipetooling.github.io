@@ -2434,6 +2434,8 @@ interface Body {
 
 ### stripe-webhook
 
+> **v2.1115 — livemode enforcement (A2)**: every event's mode (`event.livemode`, cross-checked against which signing secret verified — `stripeWebhookSecretsWithModes()`) is recorded into `stripe_webhook_events.livemode` and **must match `jobs_ledger_invoices.stripe_mode`** before any row is touched: mismatch → `200 {applied:false, reason:'mode_mismatch'}` with a warn log; NULL-mode legacy rows **self-heal** their `stripe_mode` from the verified event mode. `credit_note.created` now retrieves with the **event-mode** API key (previously test-first, silently failing live credit-note syncs when both keys were configured). Redeploy required.
+
 **Purpose**: Handle Stripe invoice lifecycle events: **`invoice.paid`** / **`invoice.payment_succeeded`** marks the matching **`jobs_ledger_invoices`** row paid via **`mark_invoice_paid_from_stripe`**, then **`complete_job_collect_payment_flow_for_invoice`** when a **`job_collect_payment_flows`** row is **`approved_for_terminal`** for that Stripe invoice (field collect payment hosted page). **`invoice.updated`**, **`invoice.voided`**, and **`invoice.payment_failed`** sync **`stripe_invoice_status`** only (does not downgrade app **`status`** when the row is already **`paid`**). **`credit_note.created`** **`invoices.retrieve`** + **`syncJobsLedgerStripeInvoiceStatus`** after **reverse-stripe-invoice-out-of-band-payment** credit notes.
 
 **Endpoint**: `POST /functions/v1/stripe-webhook`

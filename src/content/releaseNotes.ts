@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1115',
+    date: '2026-07-30',
+    title: 'Billing safety: test payments can no longer touch live invoices',
+    kind: 'infra',
+    highlights: [
+      'Stripe payment notifications are now checked against the invoice they belong to — a test-mode event can only update a test invoice, and a live event only a live one.',
+      'Credit-note updates from Stripe now sync reliably for live invoices.',
+    ],
+  },
+  {
     version: 'v2.1114',
     date: '2026-07-30',
     title: 'Billing safety: invoices now remember their Stripe mode',
