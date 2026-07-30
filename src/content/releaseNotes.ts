@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1130',
+    date: '2026-07-30',
+    title: 'Edit job: line-item marks on the % done bar',
+    kind: 'feature',
+    highlights: [
+      'The Billing bar in the Edit job window now shows a small notch where each line item’s share of the job ends — the same boundaries as the Invoices strip — so the yellow field-progress dot reads against the job’s actual scope.',
+      'Hover a notch to see which line item ends there and at what percent.',
+    ],
+  },
+  {
     version: 'v2.1129',
     date: '2026-07-30',
     title: 'Recently deleted: see exactly what was deleted',

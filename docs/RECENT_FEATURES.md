@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-30 (v2.1129)
+last_updated: 2026-07-30 (v2.1130)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1130)
+
+### Edit job: line-item boundary ticks on the Billing % done bar (2026-07-30)
+[`MoneyLifecycleBar.tsx`](../src/components/jobs/MoneyLifecycleBar.tsx) + [`jobSegmentsCoverage.ts`](../src/lib/jobs/jobSegmentsCoverage.ts) + [`JobFormModal.tsx`](../src/components/jobs/JobFormModal.tsx). The Billing bar gains notches where each line item's dollar share ends, so the yellow field-progress dot reads against actual scope. New pure kernel `segmentBoundaryMarks(segments)` reduces the same `buildJobSegmentsBar` math the ② Invoices strip uses to cumulative end-fractions (skips the right edge and anything within 0.5% of either edge; unit-tested). `MoneyLifecycleBar` takes an optional `marks` prop — each tick is a 7px-wide hover target with a centered 1px `var(--border-strong)` line extending 3px past the bar, `title` = "Rough In ends at 40%", rendered under the % done dot and only when `hasBar`. Render-smoke test (`MoneyLifecycleBar.render.test.tsx`) pins positions/titles and the no-marks cases. Client-only.
 
 ## Latest Updates (v2.1129)
 
