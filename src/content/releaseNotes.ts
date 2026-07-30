@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1136',
+    date: '2026-07-30',
+    title: 'Reliability: freeze protection for the database',
+    kind: 'infra',
+    highlights: [
+      'The office-wide \u201cdatabase down\u201d freezes were traced to sessions holding locks while sitting idle in an open transaction \u2014 not crashes, not capacity. The database now kills such sessions after 60 seconds, releasing everything queued behind them.',
+      'A freeze runbook now ships in the repo, and Claude Code gains a /db-freeze command that runs live lock forensics before anyone reaches for the restart button.',
+    ],
+  },
+  {
     version: 'v2.1135',
     date: '2026-07-30',
     title: 'Stages: jump to a job by number',

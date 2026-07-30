@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-30 (v2.1135)
+last_updated: 2026-07-30 (v2.1136)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1136)
+
+### DB freeze protection: idle-in-transaction timeout + runbook + /db-freeze skill (2026-07-30)
+Migration `20260730231000_idle_in_transaction_timeout.sql` + new [`DB_FREEZE_RUNBOOK.md`](./DB_FREEZE_RUNBOOK.md) + `.claude/skills/db-freeze/SKILL.md`. Investigation of the day's three office-wide freezes established: NOT crashes (zero kill/OOM log entries; every "shutting down" was our own restart), NOT capacity (CPU peaked 12% all day, DB ~245 MB, 99% cache hit, 54/120 conns, Medium tier idle) — ordinary queries queued behind a lock holder until `canceling statement due to statement timeout` cascaded; restarts "fixed" it only by killing the holder. Protections: (1) `idle_in_transaction_session_timeout = 60s` database-wide — the classic silent blocker is a session idling inside an open transaction; PostgREST/edge functions never do this legitimately (rollback: `RESET`); (2) the runbook captures the signature, the 60-second CLI forensics (`supabase inspect db blocking/long-running-queries/locks`), the surgical `pg_terminate_backend` remedy, retroactive log searches (`still waiting`), and known non-issues so they aren't re-litigated; (3) the `/db-freeze` skill runs the playbook on demand. Note: two Supabase platform incidents (Edge deploys, Management API) were live that day and muddied diagnosis; the Database component was unaffected.
 
 ## Latest Updates (v2.1135)
 

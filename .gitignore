@@ -33,13 +33,15 @@ vite.config.ts.timestamp-*.mjs
 # Local Supabase inspect snapshots (see docs/runbooks/SUPABASE_INCIDENT_RUNBOOK.md)
 docs/runbooks/supabase-inspect-snapshot/
 
-# Claude Code local config (machine-specific; .mcp.json is shared and tracked)
+# Claude Code local config (machine-specific; .mcp.json is shared and tracked).
+# .claude/ itself is NOT blanket-ignored: .claude/skills/ is versioned (project
+# skills like /db-freeze must reach every session) — list local-only entries.
 .claude/settings.local.json
 .claude/launch.json
 .claude/scheduled_tasks.lock
-
-# Claude Code local session data (worktrees, local settings)
-.claude/
+.claude/worktrees/
+.claude/sessions/
+.claude/settings.json
 
 # Playwright E2E artifacts
 e2e/.auth/

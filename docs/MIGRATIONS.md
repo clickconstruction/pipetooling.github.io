@@ -106,6 +106,13 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 #### July 30, 2026
 
+**`20260730231000_idle_in_transaction_timeout.sql`** _(apply via `supabase db push` after the file is on `main`; no client change — either order is safe)_
+- **Purpose**: freeze protection (v2.1136; [`DB_FREEZE_RUNBOOK.md`](./DB_FREEZE_RUNBOOK.md)) — `ALTER DATABASE postgres SET idle_in_transaction_session_timeout = '60s'`. The 2026-07-30 freezes were lock pileups behind idle-in-transaction sessions, not crashes/capacity; this kills such holders after 60s. New sessions only; rollback via `RESET`.
+- **Security**: session GUC only; no schema, RLS, or grant changes.
+- **Ordering**: independent.
+- **Category**: Infrastructure / reliability
+
+
 **`20260730221500_ensure_rtb_primary_resync_math.sql`** _(apply via `supabase db push` after the file is on `main`; client v2.1134 tolerates old-RPC behavior so either order is safe)_
 - **Purpose**: primary RTB remainder resync math (v2.1134) — `ensure_single_ready_to_bill_invoice_for_job` re-created with the never-sent primary bundle EXCLUDED from `v_allocated`. The old body counted the primary against its own remainder, so the resync branch oscillated on stale primaries (job 813: $2,859.20 ↔ $11,891.18) and computed 0 from a correct one. Now idempotent: primary = `revenue − payments − other rtb/billed rows`. Primary-absent branches byte-identical.
 - **Security**: CREATE OR REPLACE, same invoker-rights header, same manual auth checks; ACLs preserved.
