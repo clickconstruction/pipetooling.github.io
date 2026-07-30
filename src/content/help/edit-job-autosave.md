@@ -23,7 +23,7 @@ Job numbers, name, address, customer info, links, line items, payments, Other jo
 
 ## Closing the modal
 
-Click {{button:gray|Close}}, click outside the modal, or jump to another view — if anything is still waiting to save, the close **finishes the save first** (the button briefly shows "Saving…").
+Click {{button:gray|Close}}, press the **Escape** key, click outside the modal, or jump to another view — if anything is still waiting to save, the close **finishes the save first** (the button briefly shows "Saving…"). Escape never closes the job window while a smaller window sits on top of it (like a preview or the create-customer window), so you won't lose your place by accident.
 
 If the server doesn't respond, the modal stays open and asks what to do: **Retry and close**, **Keep editing**, or **Close without saving**. Your edits are never dropped silently.
 

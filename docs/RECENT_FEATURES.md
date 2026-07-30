@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-29 (v2.1099)
+last_updated: 2026-07-29 (v2.1100)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2046,6 +2046,10 @@ when_to_read:
 155. [Customer and Project Management](#customer-and-project-management)
 ---
 
+## Latest Updates (v2.1100)
+
+### Edit Job: Escape key closes the modal (2026-07-29)
+[`JobFormModal`](../src/components/jobs/JobFormModal.tsx) closes on **Escape** through the same guarded `closeForm()` as a backdrop click (autosave flush + close-time side effects, 15s timeout, Retry/Keep-editing/Close-without-saving on failure). A window keydown listener is gated by `escCloseBlocked` — the OR of every nested-overlay shell flag (bid/import/project link choices, create-customer, segment generator, Stripe fixture preview, bill view, agreed write-down, bill-to editor) **plus** new `bannerOverlayOpen`, reported by [`JobFormSourceEstimateBanner`](../src/components/jobs/JobFormSourceEstimateBanner.tsx)'s new `onOverlayOpenChange` prop (its acceptance-record modal is child-owned and already closes itself on Esc) — so Esc never closes the form underneath a stacked modal. The listener also skips `defaultPrevented` events and calls through a `closeFormRef` to stay on the current render's closure. Help guide `edit-job-autosave.md` + JOB_FORM_MODAL_ARCHITECTURE close-path note updated. Client-only.
 ## Latest Updates (v2.1099)
 
 ### Job Detail: paid-in-full email is now preview-first (2026-07-29)

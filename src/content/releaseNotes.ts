@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1100',
+    date: '2026-07-29',
+    title: 'Edit Job: press Escape to close',
+    kind: 'feature',
+    highlights: [
+      'The Edit Job window now closes when you press the Escape key — with the same safety as clicking outside it: anything still saving finishes first.',
+      'Escape won’t close the job window while a smaller window is open on top of it, so you can’t lose your place by accident.',
+    ],
+  },
+  {
     version: 'v2.1099',
     date: '2026-07-29',
     title: 'Paid-in-full email: see it before you send it',
@@ -126,8 +136,8 @@ export const RELEASE_NOTES: ReleaseNote[] = [
     title: 'One click: bill the hazmat fee to the tenant',
     kind: 'feature',
     highlights: [
-      'On Edit Job, every hazmat fee\'s RIDERS row gains "Bill separately…" — the fee moves onto its own invoice (the customer\'s bill shrinks by the same amount) and you\'re asked who pays it.',
-      'Enter the tenant\'s name and email, then send both bills as usual: the customer\'s invoice goes to the customer, the fee invoice goes to the tenant.',
+      "On Edit Job, every hazmat fee's RIDERS row gains \"Bill separately…\" — the fee moves onto its own invoice (the customer's bill shrinks by the same amount) and you're asked who pays it.",
+      "Enter the tenant's name and email, then send both bills as usual: the customer's invoice goes to the customer, the fee invoice goes to the tenant.",
       'New help guide: "bill part of a job to someone else".',
     ],
   },
@@ -140,7 +150,7 @@ export const RELEASE_NOTES: ReleaseNote[] = [
       'On Edit Job → Invoices, every draft invoice gets a "Bill to…" button — enter a different payer (a tenant, a property manager) and that one invoice bills them instead of the job customer.',
       'Overridden invoices wear an amber "→ name" chip, and Bill Customer shows a banner naming the alternate recipient before you send.',
       'Stripe, physical-invoice email, and the hazmat notice all go to the person you chose; the rest of the job still bills the customer.',
-      'A fee billed to someone else never rolls back into the customer\'s bill.',
+      "A fee billed to someone else never rolls back into the customer's bill.",
     ],
   },
   {
@@ -264,7 +274,7 @@ export const RELEASE_NOTES: ReleaseNote[] = [
     kind: 'feature',
     highlights: [
       'A small "How invoices and jobs move" link above the segment strip expands a quick guide: invoices break off as green cards that travel Ready to Bill → Billed → Paid on their own, and the blue job card floats through when its last payment lands.',
-      'The examples use your actual job number and segment amounts, in the same green and blue you\'ll see on the Stages board.',
+      "The examples use your actual job number and segment amounts, in the same green and blue you'll see on the Stages board.",
     ],
   },
   {
@@ -283,7 +293,7 @@ export const RELEASE_NOTES: ReleaseNote[] = [
     title: 'Segment strip polish + delete draft invoices',
     kind: 'feature',
     highlights: [
-      'The job-segments strip now shows each segment\'s name right in its colored block (trimmed with … when narrow), and the list below shows one segment per line.',
+      "The job-segments strip now shows each segment's name right in its colored block (trimmed with … when narrow), and the list below shows one segment per line.",
       'Click a block in the strip — it and its line below highlight together; ticking a checkbox lights up its block the same way.',
       'The Invoices table gets a red ✕ on draft invoices: press it, confirm, and the draft is deleted — any segments on it go back to unbilled instantly.',
     ],
@@ -294,7 +304,7 @@ export const RELEASE_NOTES: ReleaseNote[] = [
     title: 'Multiple Segment Generator',
     kind: 'feature',
     highlights: [
-      'New in Edit Job\'s Line Items: a Multiple Segment Generator link opens a modal where you set a total, name the segments of work, and give each a percentage — the dollar split calculates live and always adds back to your total.',
+      "New in Edit Job's Line Items: a Multiple Segment Generator link opens a modal where you set a total, name the segments of work, and give each a percentage — the dollar split calculates live and always adds back to your total.",
       'Two one-tap presets: Commercial 30/30/30/10 (Rough In / Top Out / Trim Set / Final) and Residential 40/40/20 (Rough In / Top Out / Trim Set).',
       '"Add to Job" appends the segments to your existing line items, ready to re-order and bill stage by stage.',
     ],
@@ -305,7 +315,7 @@ export const RELEASE_NOTES: ReleaseNote[] = [
     title: 'See the whole job as segments — and bill them',
     kind: 'feature',
     highlights: [
-      'Edit Job\'s Invoices section now opens with a colored strip showing every line item as a block — in your order, sized by its share of the job, colored by whether it\'s unbilled, ready to bill, billed, or paid.',
+      "Edit Job's Invoices section now opens with a colored strip showing every line item as a block — in your order, sized by its share of the job, colored by whether it's unbilled, ready to bill, billed, or paid.",
       'Tick the finished segments and press one button to break off a Ready-to-Bill invoice for exactly those stages.',
       'New help guide: "split a job into stages and bill stage by stage".',
     ],
@@ -326,7 +336,7 @@ export const RELEASE_NOTES: ReleaseNote[] = [
     title: 'Groundwork for billing jobs by stage',
     kind: 'infra',
     highlights: [
-      'Behind-the-scenes database change that lets a job\'s line items link to the invoice that bills them. Nothing visible changes yet — the stage-billing tools land in the next updates.',
+      "Behind-the-scenes database change that lets a job's line items link to the invoice that bills them. Nothing visible changes yet — the stage-billing tools land in the next updates.",
     ],
   },
   {
@@ -346,7 +356,7 @@ export const RELEASE_NOTES: ReleaseNote[] = [
     kind: 'feature',
     highlights: [
       'People in read-only training mode can now clock in and clock out — their real hours keep flowing to payroll while they train.',
-      'Everything else stays blocked: they can only punch their own time, and cannot edit others\' sessions, delete sessions, or approve hours.',
+      "Everything else stays blocked: they can only punch their own time, and cannot edit others' sessions, delete sessions, or approve hours.",
     ],
   },
   {
@@ -355,7 +365,7 @@ export const RELEASE_NOTES: ReleaseNote[] = [
     title: 'Dispatch cards show the job address',
     kind: 'feature',
     highlights: [
-      'On Dispatch (People tab), every schedule card now shows the job\'s address under the job name — always one line, trimmed with … when it\'s long. Hover for the full address.',
+      "On Dispatch (People tab), every schedule card now shows the job's address under the job name — always one line, trimmed with … when it's long. Hover for the full address.",
     ],
   },
   {
@@ -394,13 +404,13 @@ export const RELEASE_NOTES: ReleaseNote[] = [
     kind: 'fix',
     highlights: [
       'On busy Stages rows, the expand arrow and note count no longer wrap onto their own lonely line — they stay glued to the time.',
-      'The Job activity / notes panel now pins the job\'s Next appointment (date, time, crew, note) above the feed, in both the inline and full-screen views.',
+      "The Job activity / notes panel now pins the job's Next appointment (date, time, crew, note) above the feed, in both the inline and full-screen views.",
     ],
   },
   {
     version: 'v2.1060',
     date: '2026-07-28',
-    title: 'Stages shows each job\'s next appointment',
+    title: "Stages shows each job's next appointment",
     kind: 'feature',
     highlights: [
       'The Activity column now shows a green "Next" line on every job with an upcoming schedule: date, time window, who\'s going, and the dispatch note.',
@@ -422,7 +432,7 @@ export const RELEASE_NOTES: ReleaseNote[] = [
     title: 'Job Calendar from the Detail window and Job Mode',
     kind: 'feature',
     highlights: [
-      'The calendar icon at the top of a job\'s Detail window now opens the Job Calendar (month view + appointments). Week dispatch and Schedule… are inside it, one click away — Schedule… even opens on the day you highlighted.',
+      "The calendar icon at the top of a job's Detail window now opens the Job Calendar (month view + appointments). Week dispatch and Schedule… are inside it, one click away — Schedule… even opens on the day you highlighted.",
       'Job Mode: a small "Job calendar" link under the job header shows techs the whole plan for the job they\'re on — read-only.',
     ],
   },
@@ -462,13 +472,13 @@ export const RELEASE_NOTES: ReleaseNote[] = [
     title: 'Full-screen activity truly covers the screen',
     kind: 'fix',
     highlights: [
-      'On phones, the full-screen Job activity / notes view was rendering under the app\'s top bar and bottom tabs, with bits of the board showing through. It now covers everything edge to edge.',
+      "On phones, the full-screen Job activity / notes view was rendering under the app's top bar and bottom tabs, with bits of the board showing through. It now covers everything edge to edge.",
     ],
   },
   {
     version: 'v2.1053',
     date: '2026-07-28',
-    title: 'Full-screen activity shows which job you\'re on',
+    title: "Full-screen activity shows which job you're on",
     kind: 'feature',
     highlights: [
       'The full-screen Job activity / notes view now shows the job number, service type, job name, and address at the top — the address opens Google Maps.',
@@ -664,7 +674,7 @@ export const RELEASE_NOTES: ReleaseNote[] = [
     title: 'Rider fees show up in Stages totals and Bill Customer',
     kind: 'fix',
     highlights: [
-      'The Stages board\'s bid and Left on Job figures now include hazmat fees (existing jobs corrected).',
+      "The Stages board's bid and Left on Job figures now include hazmat fees (existing jobs corrected).",
       'Bill Customer offers a pre-checked "Add hazmat fee" box that grows the invoice total — on both Stripe and Physical — with the fee as its own labeled line.',
       'Once the fee ships on a bill it attaches to that invoice, so it can never be added twice.',
     ],
@@ -706,7 +716,7 @@ export const RELEASE_NOTES: ReleaseNote[] = [
     highlights: [
       'On Edit Job, hazmat fees now appear as their own rows in ① Line Items — right under the work — instead of down in the invoices area.',
       'The Job Total includes them with a breakdown: "$4,210.00 work + $500.00 riders".',
-      'Saving a job no longer silently drops rider fees out of the job\'s revenue.',
+      "Saving a job no longer silently drops rider fees out of the job's revenue.",
     ],
   },
   {
@@ -715,9 +725,9 @@ export const RELEASE_NOTES: ReleaseNote[] = [
     title: 'Hazmat fees join the main bill',
     kind: 'feature',
     highlights: [
-      'Adding a hazmat fee now increases the job\'s billing line directly — $1,380 + $500 fee reads $1,880 — instead of creating a separate rider bill that looked like a deduction.',
+      "Adding a hazmat fee now increases the job's billing line directly — $1,380 + $500 fee reads $1,880 — instead of creating a separate rider bill that looked like a deduction.",
       'When the bill goes out, the fee still shows as its own labeled line item, on Stripe and now on Physical Invoice too, with the notice traveling along.',
-      'If the job has no open main bill, the fee falls back to its own ready-to-bill line so it\'s never lost.',
+      "If the job has no open main bill, the fee falls back to its own ready-to-bill line so it's never lost.",
     ],
   },
   {
@@ -745,8 +755,8 @@ export const RELEASE_NOTES: ReleaseNote[] = [
     title: 'Report types keep your text',
     kind: 'fix',
     highlights: [
-      'Switching between report types (Status, Walk, Note, EOD) no longer erases what you\'ve typed — each type keeps its entries until you save or close.',
-      'Saving still submits only the fields of the type you\'re on.',
+      "Switching between report types (Status, Walk, Note, EOD) no longer erases what you've typed — each type keeps its entries until you save or close.",
+      "Saving still submits only the fields of the type you're on.",
     ],
   },
   {
@@ -756,7 +766,7 @@ export const RELEASE_NOTES: ReleaseNote[] = [
     kind: 'feature',
     highlights: [
       'Job cards with no customer phone now show a red phone — tap it and Dispatch gets a request to add the number, just like the red photos icon.',
-      'Tapping again won\'t double up: if the request is already in, you\'re told it\'s on its way.',
+      "Tapping again won't double up: if the request is already in, you're told it's on its way.",
     ],
   },
   {
@@ -774,7 +784,7 @@ export const RELEASE_NOTES: ReleaseNote[] = [
     title: 'Review deletions goes straight to the deletions',
     kind: 'fix',
     highlights: [
-      'The bulk-deletion alert\'s Review deletions button now opens Settings with Recently deleted already expanded, loaded, and scrolled into view.',
+      "The bulk-deletion alert's Review deletions button now opens Settings with Recently deleted already expanded, loaded, and scrolled into view.",
       'While the alert is active, that section shows it with the same Snooze / Dismiss buttons — so you can review and clear the notice in one place.',
     ],
   },
@@ -889,7 +899,7 @@ export const RELEASE_NOTES: ReleaseNote[] = [
     title: 'Crew P&L keys on the person, not the spelling',
     kind: 'infra',
     highlights: [
-      'Crew P&L now identifies people by their stored id first, so a renamed crew member\'s history stays on one line instead of splitting by spelling.',
+      "Crew P&L now identifies people by their stored id first, so a renamed crew member's history stays on one line instead of splitting by spelling.",
     ],
   },
   {
@@ -926,7 +936,7 @@ export const RELEASE_NOTES: ReleaseNote[] = [
     kind: 'feature',
     highlights: [
       'The phone button now appears on Ready to Bill, Assigned Jobs, and Superintendent Jobs cards — not just My Schedule — whenever the job has a customer phone.',
-      'Same tap-safe flow everywhere: the number opens in a window first, and Log call posts your notes to the job\'s activity thread across the app.',
+      "Same tap-safe flow everywhere: the number opens in a window first, and Log call posts your notes to the job's activity thread across the app.",
     ],
   },
   {
@@ -953,7 +963,7 @@ export const RELEASE_NOTES: ReleaseNote[] = [
     title: 'Build safety: phones get an automatic layout check',
     kind: 'infra',
     highlights: [
-      'A nightly automated check now loads the main pages at phone size and fails if anything pushes the page sideways or a popup\'s close button scrolls out of reach — the bug class we fixed by hand all week.',
+      "A nightly automated check now loads the main pages at phone size and fails if anything pushes the page sideways or a popup's close button scrolls out of reach — the bug class we fixed by hand all week.",
       'It caught one immediately: the Materials page no longer pans sideways on phones, and the Parts Book table now scrolls so every column is reachable.',
     ],
   },
@@ -1031,7 +1041,7 @@ export const RELEASE_NOTES: ReleaseNote[] = [
     kind: 'feature',
     highlights: [
       'The phone icon on Dashboard schedule rows is now the same size as the photo icon, and tapping it opens a window showing the number — so a stray tap no longer starts a call.',
-      'Tap the big number to dial, then jot notes about the call; Log call posts them to the job\'s activity thread everywhere in the app.',
+      "Tap the big number to dial, then jot notes about the call; Log call posts them to the job's activity thread everywhere in the app.",
     ],
   },
   {
@@ -1073,7 +1083,7 @@ export const RELEASE_NOTES: ReleaseNote[] = [
     highlights: [
       'A new ⚙ Accepted notifications button on Estimates lets you pick people who are emailed every time a customer accepts an estimate — including estimates already out with customers.',
       'Individual estimates can still add extra people under "Email when customer accepts"; those are sent as well.',
-      'Anyone without an email address, or without access to the estimate\'s owner, is skipped automatically.',
+      "Anyone without an email address, or without access to the estimate's owner, is skipped automatically.",
     ],
   },
   {
@@ -1120,7 +1130,7 @@ export const RELEASE_NOTES: ReleaseNote[] = [
     title: 'App updates flowing again',
     kind: 'fix',
     highlights: [
-      'A build check had been silently blocking every site update since v2.965 — today\'s phone fixes (Stages tables, header, bottom tab bar) actually reach your device with this release.',
+      "A build check had been silently blocking every site update since v2.965 — today's phone fixes (Stages tables, header, bottom tab bar) actually reach your device with this release.",
     ],
   },
   {
@@ -1159,7 +1169,7 @@ export const RELEASE_NOTES: ReleaseNote[] = [
     title: 'Header menu collapses whenever it runs out of room',
     kind: 'fix',
     highlights: [
-      'On mid-size screens (small tablets, split-screen, narrow windows) the top navigation no longer spills off the right edge — it now switches to the compact menu the moment it doesn\'t fit, and switches back when there\'s room.',
+      "On mid-size screens (small tablets, split-screen, narrow windows) the top navigation no longer spills off the right edge — it now switches to the compact menu the moment it doesn't fit, and switches back when there's room.",
     ],
   },
   {
@@ -1168,7 +1178,7 @@ export const RELEASE_NOTES: ReleaseNote[] = [
     title: 'Sub equivalent rate defaults to $50',
     kind: 'fix',
     highlights: [
-      'Crew P&L\'s Sub $/hr equivalent rate now defaults to $50 when not set.',
+      "Crew P&L's Sub $/hr equivalent rate now defaults to $50 when not set.",
     ],
   },
   {
@@ -1204,7 +1214,7 @@ export const RELEASE_NOTES: ReleaseNote[] = [
     title: 'Crew P&L weighs subs by dollars and audits sheet links',
     kind: 'feature',
     highlights: [
-      'Sub revenue shares now always come from what they were paid — sheet unit-hours can no longer shrink a sub\'s credit.',
+      "Sub revenue shares now always come from what they were paid — sheet unit-hours can no longer shrink a sub's credit.",
       'A new audit line shows how much sub money is linked to jobs, lists sheets whose job # matched nothing, and flags affected people with a red "unlinked" badge.',
     ],
   },
@@ -1271,7 +1281,7 @@ export const RELEASE_NOTES: ReleaseNote[] = [
     title: 'Send the paid email from Job Detail',
     kind: 'feature',
     highlights: [
-      'A ✉ next to Edit job lets devs and masters send the paid-in-full email for that job to anyone — the recipient\'s role decides whether they get the detailed or summary version.',
+      "A ✉ next to Edit job lets devs and masters send the paid-in-full email for that job to anyone — the recipient's role decides whether they get the detailed or summary version.",
       'Preview either version in a new tab or email yourself a test first; manual sends are footnoted "Sent manually by …".',
     ],
   },
@@ -1375,7 +1385,9 @@ export const RELEASE_NOTES: ReleaseNote[] = [
     date: '2026-07-22',
     title: 'PO screen titled "PO Generator"',
     kind: 'fix',
-    highlights: ['The phone PO screen\'s title now matches the desktop PO Generator it shares numbering with.'],
+    highlights: [
+      "The phone PO screen's title now matches the desktop PO Generator it shares numbering with.",
+    ],
   },
   {
     version: 'v2.958',
@@ -1573,7 +1585,9 @@ export const RELEASE_NOTES: ReleaseNote[] = [
     date: '2026-07-22',
     title: 'Supply house Add-Invoice job picker fixed',
     kind: 'fix',
-    highlights: ['The job picker no longer opens hidden behind the Add Invoice modal.'],
+    highlights: [
+      'The job picker no longer opens hidden behind the Add Invoice modal.',
+    ],
   },
   {
     version: 'v2.938',
@@ -1608,7 +1622,9 @@ export const RELEASE_NOTES: ReleaseNote[] = [
     date: '2026-07-22',
     title: 'Prospects stage tabs centered',
     kind: 'fix',
-    highlights: ['The Screen → Interview → Hire tabs are centered on the Team Prospects board.'],
+    highlights: [
+      'The Screen → Interview → Hire tabs are centered on the Team Prospects board.',
+    ],
   },
   {
     version: 'v2.934',
@@ -1651,6 +1667,8 @@ export const RELEASE_NOTES: ReleaseNote[] = [
     date: '2026-07-22',
     title: 'Hiring pipeline stages become sub-tabs',
     kind: 'feature',
-    highlights: ['Team Prospects is organized into Screen → Interview → Hire sub-tabs.'],
+    highlights: [
+      'Team Prospects is organized into Screen → Interview → Hire sub-tabs.',
+    ],
   },
 ]
