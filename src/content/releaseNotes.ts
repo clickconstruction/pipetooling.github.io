@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1126',
+    date: '2026-07-30',
+    title: 'Reliability: the Unassigned Hours view matches salaried people by identity',
+    kind: 'infra',
+    highlights: [
+      'The per-person Unassigned Hours window now recognizes salaried people by identity rather than spelled name when computing effective hours.',
+    ],
+  },
+  {
     version: 'v2.1125',
     date: '2026-07-30',
     title: 'Reliability: Quickfill Hours matches salaried people by identity',

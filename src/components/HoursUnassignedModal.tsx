@@ -175,6 +175,9 @@ export function HoursUnassignedModal({
   const [hoursDaysCorrect, setHoursDaysCorrect] = useState<Set<string>>(new Set())
   const [peopleHours, setPeopleHours] = useState<HoursRow[]>([])
   const [payConfig, setPayConfig] = useState<Record<string, PayConfigRow>>({})
+  /** C1-3c (identity): id-keyed flags + this person's crew-row person_id for id-first lookups. */
+  const [payConfigById, setPayConfigById] = useState<Record<string, PayConfigRow>>({})
+  const [crewPersonIdByName, setCrewPersonIdByName] = useState<Record<string, string>>({})
   const [daySessions, setDaySessions] = useState<ClockSessionRow[]>([])
   const [sessionsLoading, setSessionsLoading] = useState(false)
   const [sessionsFetchError, setSessionsFetchError] = useState<string | null>(null)
@@ -194,7 +197,10 @@ export function HoursUnassignedModal({
 
   function getEffectiveHours(pName: string, workDate: string): number {
     const recorded = peopleHours.find((h) => h.person_name === pName && h.work_date === workDate)?.hours ?? 0
-    return effectiveHoursForDisplay(payConfig[pName], workDate, recorded)
+    // C1-3c: id-first (crew-row person_id), trimmed-name fallback.
+    const id = crewPersonIdByName[pName]
+    const cfg = (id ? payConfigById[id] : undefined) ?? payConfig[pName]
+    return effectiveHoursForDisplay(cfg, workDate, recorded)
   }
 
   function hasAssignmentsForDate(pName: string, workDate: string): boolean {
@@ -227,26 +233,37 @@ export function HoursUnassignedModal({
         supabase.from('hours_days_correct').select('work_date').gte('work_date', hoursDateStart).lte('work_date', hoursDateEnd),
         supabase.from('people_hours').select('person_name, work_date, hours').eq('person_name', personName).gte('work_date', hoursDateStart).lte('work_date', hoursDateEnd),
         supabase.rpc('list_people_pay_flags'),
-        supabase.from('people_crew_jobs').select('work_date, person_name, job_assignments').gte('work_date', hoursDateStart).lte('work_date', hoursDateEnd),
-        supabase.from('people_crew_bids').select('work_date, person_name, bid_assignments').gte('work_date', hoursDateStart).lte('work_date', hoursDateEnd),
+        supabase.from('people_crew_jobs').select('work_date, person_name, person_id, job_assignments').gte('work_date', hoursDateStart).lte('work_date', hoursDateEnd),
+        supabase.from('people_crew_bids').select('work_date, person_name, person_id, bid_assignments').gte('work_date', hoursDateStart).lte('work_date', hoursDateEnd),
       ])
       const correctDays = new Set((correctRes.data ?? []).map((r: { work_date: string }) => r.work_date))
       setHoursDaysCorrect(correctDays)
       setPeopleHours((hoursRes.data ?? []) as HoursRow[])
-      const configRows = (configRes.data ?? []) as PayConfigRow[]
+      // C1-3c (identity): SEPARATE id-keyed map (name map stays names-only).
+      const configRows = (configRes.data ?? []) as Array<PayConfigRow & { person_id?: string | null }>
       const configMap: Record<string, PayConfigRow> = {}
+      const configById: Record<string, PayConfigRow> = {}
       for (const c of configRows) {
         configMap[c.person_name] = c
+        if (c.person_id) configById[c.person_id] = c
       }
       setPayConfig(configMap)
+      setPayConfigById(configById)
+      const crewIdByName: Record<string, string> = {}
+      for (const r of [...((jobsRes.data ?? []) as Array<{ person_name: string; person_id: string | null }>), ...((bidsRes.data ?? []) as Array<{ person_name: string; person_id: string | null }>)]) {
+        if (r.person_id && !crewIdByName[r.person_name]) crewIdByName[r.person_name] = r.person_id
+      }
+      setCrewPersonIdByName(crewIdByName)
       const jobsRows = (jobsRes.data ?? []) as Array<{
         work_date: string
         person_name: string
+        person_id: string | null
         job_assignments: Array<{ job_id: string; pct: number }>
       }>
       const bidsRows = (bidsRes.data ?? []) as Array<{
         work_date: string
         person_name: string
+        person_id: string | null
         bid_assignments: Array<{ bid_id: string; pct: number }>
       }>
       const jobsByKey: Record<string, Array<{ job_id: string; pct: number }>> = {}

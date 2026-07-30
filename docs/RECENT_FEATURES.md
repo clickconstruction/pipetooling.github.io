@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-30 (v2.1125)
+last_updated: 2026-07-30 (v2.1126)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1126)
+
+### Hours Unassigned modal salary flags resolve person-id-first (2026-07-30)
+[`HoursUnassignedModal.tsx`](../src/components/HoursUnassignedModal.tsx) — step **C1-3c** of [`FRAGILITY_REMEDIATION_PLAN.md`](./FRAGILITY_REMEDIATION_PLAN.md), third crew-flag consumer. Same pattern as v2.1124/v2.1125: the range's `people_crew_jobs`/`_bids` selects add `person_id`; flags land in a separate `payConfigById` map (name map stays names-only); the single lookup site (`getEffectiveHours` → `effectiveHoursForDisplay`) resolves id-first with trimmed-name fallback. Answer-preserving per the C1-1 prod precheck. Remaining: `QuickfillUnassignedFieldTimeSection` (C1-3d). Client-only.
 
 ## Latest Updates (v2.1125)
 
