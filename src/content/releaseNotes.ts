@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1110',
+    date: '2026-07-30',
+    title: 'Security hardening: internal payment functions locked down',
+    kind: 'infra',
+    highlights: [
+      'Two internal database functions used by Stripe payment processing are now callable only by the payment system itself, not by signed-in users.',
+      'No visible change — recording payments, marking invoices paid, and the field collect-payment flow all work exactly as before.',
+    ],
+  },
+  {
     version: 'v2.1109',
     date: '2026-07-30',
     title: 'People Hours grid: press Enter to save a cell',

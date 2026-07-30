@@ -9,8 +9,8 @@ last_updated: 2026-07-30
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate to Advanced
 
-total_migrations: "112 live in supabase/migrations/ (baseline + post-baseline) + 847 archived pre-baseline files (squashed into the 2026-06-04 baseline)"
-date_range: "Through July 22, 2026 — the latest real migration. Archive filenames dated 2027 are typos; that work happened March–June 2026 (see the note atop Recent Migrations)."
+total_migrations: "128 live in supabase/migrations/ (baseline + post-baseline) + 847 archived pre-baseline files (squashed into the 2026-06-04 baseline)"
+date_range: "Through July 30, 2026 — the latest real migration. Archive filenames dated 2027 are typos; that work happened March–June 2026 (see the note atop Recent Migrations)."
 categories: "Bids, Materials, Workflow, RLS, Database Improvements"
 
 key_sections:
@@ -105,6 +105,12 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 ### July 2026
 
 #### July 30, 2026
+
+**`20260730160048_revoke_stripe_webhook_rpc_public_grants.sql`** _(apply via `supabase db push` after the file is on `main`; no client or edge-function change — either order is safe)_
+- **Purpose**: Security hardening (v2.1110; [`FRAGILITY_REMEDIATION_PLAN.md`](./FRAGILITY_REMEDIATION_PLAN.md) step A0) — `REVOKE EXECUTE ... FROM PUBLIC, anon, authenticated` on `mark_invoice_paid_from_stripe(uuid, text, text, date, text)` and `complete_job_collect_payment_flow_for_invoice(text)`. Both are SECURITY DEFINER helpers meant to be called only by the `stripe-webhook` edge function via its service-role client; the baseline's grants let any logged-in user mark an arbitrary invoice paid or complete a collect-payment flow by id. Caller audit (2026-07-30) confirms the webhook is the sole caller.
+- **Security**: pure privilege narrowing; `service_role` retains EXECUTE; REVOKE is idempotent; no table DDL, no sweep calls needed.
+- **Ordering**: independent — nothing client-side or edge-side calls these RPCs.
+- **Category**: Security / Jobs billing
 
 **`20260730050329_paid_email_charge_events.sql`** _(apply via `supabase db push` after the file is on `main`; either order vs the `paid-job-email` redeploy is safe — additive JSON keys the old renderer ignores and the new renderer guards)_
 - **Purpose**: Paid-email payload v4 (v2.1106) — `CREATE OR REPLACE public.get_paid_job_email_payload` adding the email cost timeline's data: `charge_events` (the Edit Job Cost Timeline's six streams flattened to `{source, date_key, amount, label}` — team labor per person per work_date, sub-labor books, Mercury card allocations, supply-house invoice allocations, tally parts, other job charges — Chicago date keys, NULL when undated) plus `costs.supply_house_total` / `costs.tally_total` / `costs.other_total`; **`profit` now spans all six streams** (was labor + sub + Mercury only), matching Edit Job / Job Summary. `costs.parts_total` keeps its Mercury-only meaning. Builds on `20260730031702` (payload v3 keys preserved).
