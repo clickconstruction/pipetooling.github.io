@@ -120,7 +120,7 @@ export function PeopleHoursGrid({
                   textAlign: 'right',
                   borderBottom: '1px solid var(--border)',
                   ...(hoursFlashWorkDate === d
-                    ? { backgroundColor: 'rgba(254, 243, 199, 0.9)', boxShadow: 'inset 0 0 0 2px rgba(245, 158, 11, 0.65)' }
+                    ? { backgroundColor: 'var(--bg-amber-100)', boxShadow: 'inset 0 0 0 2px rgba(245, 158, 11, 0.65)' }
                     : {}),
                 }}
               >
@@ -167,11 +167,11 @@ export function PeopleHoursGrid({
                 borderBottom: '1px solid var(--border)',
                 ...(isClickable && { cursor: 'pointer' }),
                 ...(jobHighlightPeople.has(personName)
-                  ? { backgroundColor: 'rgba(219, 234, 254, 0.45)' }
+                  ? { backgroundColor: 'var(--bg-blue-tint)' }
                   : {}),
                 ...(hoursFlashPersonName === personName
                   ? {
-                      backgroundColor: 'rgba(254, 243, 199, 0.25)',
+                      backgroundColor: 'var(--bg-amber-tint)',
                       boxShadow: 'inset 0 0 0 1px rgba(245, 158, 11, 0.45)',
                     }
                   : {}),
@@ -250,25 +250,25 @@ export function PeopleHoursGrid({
                       textAlign: canEdit ? 'right' : 'center',
                       ...(showMyTimeCorner || showPendingBadge ? { position: 'relative' } : {}),
                       ...(missingJob && {
-                        background: 'rgba(254, 242, 242, 0.9)',
+                        background: 'var(--bg-red-tint)',
                         boxShadow: 'inset 0 0 0 1px rgba(252, 165, 165, 0.45)',
                         borderRadius: 8,
                       }),
                       ...(jobHighlightCells.has(`${personName}:${d}`) && !missingJob
                         ? {
-                            backgroundColor: 'rgba(219, 234, 254, 0.35)',
+                            backgroundColor: 'var(--bg-blue-tint)',
                             boxShadow: 'inset 0 0 0 2px rgba(59, 130, 246, 0.25)',
                           }
                         : {}),
                       ...(showPendingBadge && !missingJob
                         ? {
-                            backgroundColor: 'rgba(254, 243, 199, 0.55)',
+                            backgroundColor: 'var(--bg-amber-tint)',
                             boxShadow: 'inset 0 0 0 1px rgba(245, 158, 11, 0.55)',
                             borderRadius: 8,
                           }
                         : {}),
                       ...(hoursFlashWorkDate === d
-                        ? { backgroundColor: 'rgba(254, 243, 199, 0.9)', boxShadow: 'inset 0 0 0 2px rgba(245, 158, 11, 0.65)' }
+                        ? { backgroundColor: 'var(--bg-amber-100)', boxShadow: 'inset 0 0 0 2px rgba(245, 158, 11, 0.65)' }
                         : {}),
                     }}
                   >
@@ -284,7 +284,9 @@ export function PeopleHoursGrid({
                           }}
                           title="Day marked Correct — click to view clock sessions and job assignments"
                           style={{
-                            color: 'var(--text-muted)',
+                            // --text-600, not --text-muted: locked values must stay readable in
+                            // dark mode while still reading as grayed-out next to editable cells.
+                            color: 'var(--text-600)',
                             cursor: 'pointer',
                             width: '100%',
                             textAlign: 'right',
@@ -297,7 +299,7 @@ export function PeopleHoursGrid({
                           {decimalToHms(gridDisplayHrs) || '-'}
                         </button>
                       ) : (
-                        <span style={{ color: 'var(--text-muted)' }} title="Day marked Correct — locked">
+                        <span style={{ color: 'var(--text-600)' }} title="Day marked Correct — locked">
                           {decimalToHms(gridDisplayHrs) || '-'}
                         </span>
                       )
@@ -493,7 +495,7 @@ export function PeopleHoursGrid({
                         textAlign: 'center',
                         borderTop: '1px solid var(--border)',
                         ...(hoursFlashWorkDate === d
-                          ? { backgroundColor: 'rgba(254, 243, 199, 0.9)', boxShadow: 'inset 0 0 0 2px rgba(245, 158, 11, 0.65)' }
+                          ? { backgroundColor: 'var(--bg-amber-100)', boxShadow: 'inset 0 0 0 2px rgba(245, 158, 11, 0.65)' }
                           : {}),
                       }}
                     >
@@ -530,7 +532,7 @@ export function PeopleHoursGrid({
                         textAlign: 'center',
                         borderTop: '1px solid var(--border)',
                         ...(hoursFlashWorkDate === d
-                          ? { backgroundColor: 'rgba(254, 243, 199, 0.9)', boxShadow: 'inset 0 0 0 2px rgba(245, 158, 11, 0.65)' }
+                          ? { backgroundColor: 'var(--bg-amber-100)', boxShadow: 'inset 0 0 0 2px rgba(245, 158, 11, 0.65)' }
                           : {}),
                       }}
                     >
@@ -570,7 +572,7 @@ export function PeopleHoursGrid({
                         textAlign: 'center',
                         borderTop: '1px solid var(--border)',
                         ...(hoursFlashWorkDate === d
-                          ? { backgroundColor: 'rgba(254, 243, 199, 0.9)', boxShadow: 'inset 0 0 0 2px rgba(245, 158, 11, 0.65)' }
+                          ? { backgroundColor: 'var(--bg-amber-100)', boxShadow: 'inset 0 0 0 2px rgba(245, 158, 11, 0.65)' }
                           : {}),
                       }}
                     >
