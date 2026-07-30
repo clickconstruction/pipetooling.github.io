@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1121',
+    date: '2026-07-30',
+    title: 'Fix: payments recorded while Edit Job is open can no longer be lost',
+    kind: 'fix',
+    highlights: [
+      'If a payment arrives (for example a customer pays a Stripe invoice) while someone has the job open in Edit Job, saving no longer wipes that payment — the form now only touches the rows it created or loaded.',
+      'Job activity no longer shows repeated "payment added" entries every time a job with payments is edited.',
+    ],
+  },
+  {
     version: 'v2.1120',
     date: '2026-07-30',
     title: 'Billing accuracy: Edit Job defers paid totals to the database',
