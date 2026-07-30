@@ -32,6 +32,14 @@ export type PaidJobEmailPayload = {
     /** 'paid' | 'billed' | 'ready_to_bill' | null (null = not on any invoice). */
     invoice_status: string | null
   }>
+  /** The Edit Job Cost Timeline's six streams, dated (payload v4, v2.1106). Absent pre-v4. */
+  charge_events?: Array<{
+    source: string
+    /** Chicago YYYY-MM-DD, or null when the source row has no date. */
+    date_key: string | null
+    amount: number
+    label: string
+  }>
   money: {
     revenue: number
     payments: Array<{ amount: number; payment_date: string | null; method: string | null }>
@@ -45,6 +53,10 @@ export type PaidJobEmailPayload = {
     }
     sub_labor_total: number
     parts_total: number
+    /** Payload v4 (v2.1106): the three streams the scoreboard previously omitted. */
+    supply_house_total?: number
+    tally_total?: number
+    other_total?: number
   }
   profit: number
   timeline: Array<{ month: string; labor_cost: number; parts_cost: number; payments: number }>
@@ -261,8 +273,25 @@ const NUM_TD = 'padding:5px 10px;font-size:13px;color:#44403c;text-align:right;w
 
 /** The scoreboard: Revenue / Payments received / Costs / Profit with per-section totals. */
 function renderScoreboard(p: PaidJobEmailPayload): string {
-  const costsTotal = p.costs.team_labor.total + p.costs.sub_labor_total + p.costs.parts_total
+  const costsTotal =
+    p.costs.team_labor.total +
+    p.costs.sub_labor_total +
+    p.costs.parts_total +
+    (p.costs.supply_house_total ?? 0) +
+    (p.costs.tally_total ?? 0) +
+    (p.costs.other_total ?? 0)
   const profitColor = p.profit >= 0 ? '#166534' : '#b91c1c'
+
+  // Payload v4 streams — rendered only when present (pre-v4 payloads keep the old 3-row costs).
+  const extraCostRow = (label: string, total: number | undefined) =>
+    total !== undefined
+      ? `
+    <tr>
+      <td style="${CHILD_TD}">${label}</td>
+      <td style="${NUM_TD}"></td>
+      <td style="${NUM_TD}">${money(total)}</td>
+    </tr>`
+      : ''
 
   const sectionRow = (label: string, total: string, color = '#1c1917') => `
     <tr>
@@ -319,11 +348,195 @@ function renderScoreboard(p: PaidJobEmailPayload): string {
         <td style="${NUM_TD}"></td>
         <td style="${NUM_TD}">${money(p.costs.parts_total)}</td>
       </tr>
+      ${extraCostRow('Supply house invoices', p.costs.supply_house_total)}
+      ${extraCostRow('Tally parts', p.costs.tally_total)}
+      ${extraCostRow('Other job charges', p.costs.other_total)}
       ${sectionRow('Profit', money(p.profit), profitColor)}
     </table>`
 }
 
-/** Monthly timeline table (month, labor, parts, payments). */
+const CHARGE_SOURCE_ICON: Record<string, string> = {
+  team_labor: '👷',
+  sub_labor: '🔧',
+  mercury_card: '💳',
+  supply_house: '🧾',
+  tally_part: '📦',
+  billed_material: '🧱',
+}
+
+type TimelineRowEvent = {
+  dateKey: string | null
+  /** Charges negative, payments positive. */
+  delta: number
+  icon: string
+  label: string
+}
+
+/** "Jul 6" from YYYY-MM-DD (UTC-noon anchored — date keys are already Chicago days). */
+function shortDayLabel(dateKey: string): string {
+  const d = new Date(`${dateKey}T12:00:00Z`)
+  if (Number.isNaN(d.getTime())) return dateKey
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })
+}
+
+/** Monday of the date's week (UTC math on Chicago date keys). */
+function weekStartKey(dateKey: string): string {
+  const d = new Date(`${dateKey}T12:00:00Z`)
+  if (Number.isNaN(d.getTime())) return dateKey
+  const dow = (d.getUTCDay() + 6) % 7
+  d.setUTCDate(d.getUTCDate() - dow)
+  return d.toISOString().slice(0, 10)
+}
+
+/**
+ * The email Cost Timeline (v2.1107): the Edit Job step chart retold email-safe.
+ * Month header rows carry a center-$0 running-net bar (payments in − costs out,
+ * dated events only); the rows beneath are that month's events. Team labor is
+ * folded to one row per person per week; each month keeps its largest rows and
+ * folds the rest into one reconciling line, so the bars stay exact under any
+ * capping. Undated events land in a barless "No date" group so the ending net
+ * still ties to the scoreboard (payments − costs). Falls back to the old
+ * monthly table when the payload predates v4.
+ */
+function renderChargeTimeline(p: PaidJobEmailPayload): string {
+  const raw = p.charge_events
+  if (!raw || raw.length === 0) return renderTimeline(p)
+
+  // Fold team labor per person per week; other charges stay itemized.
+  const laborByPersonWeek = new Map<string, TimelineRowEvent>()
+  const events: TimelineRowEvent[] = []
+  for (const e of raw) {
+    const amount = Number(e.amount)
+    if (!Number.isFinite(amount) || amount === 0) continue
+    const icon = CHARGE_SOURCE_ICON[e.source] ?? '💲'
+    if (e.source === 'team_labor' && e.date_key) {
+      const person = String(e.label).split(' — ')[0] ?? 'Team labor'
+      const wk = weekStartKey(e.date_key)
+      const key = `${person}|${wk}`
+      const existing = laborByPersonWeek.get(key)
+      if (existing) {
+        existing.delta -= amount
+        // Keep the earliest day of the week the person worked as the row date.
+        if (e.date_key < (existing.dateKey ?? '')) existing.dateKey = e.date_key
+      } else {
+        laborByPersonWeek.set(key, {
+          dateKey: e.date_key,
+          delta: -amount,
+          icon,
+          label: `${person} — team labor (week of ${shortDayLabel(wk)})`,
+        })
+      }
+    } else {
+      events.push({ dateKey: e.date_key, delta: -amount, icon, label: String(e.label) })
+    }
+  }
+  events.push(...laborByPersonWeek.values())
+  for (const pay of p.money.payments) {
+    const amount = Number(pay.amount)
+    if (!Number.isFinite(amount) || amount <= 0) continue
+    events.push({
+      dateKey: pay.payment_date ? String(pay.payment_date).slice(0, 10) : null,
+      delta: amount,
+      icon: '💵',
+      label: pay.method ? `Payment — ${pay.method}` : 'Payment',
+    })
+  }
+
+  const monthKeys = Array.from(
+    new Set(events.filter((e) => e.dateKey).map((e) => e.dateKey!.slice(0, 7))),
+  ).sort()
+  const undated = events.filter((e) => !e.dateKey)
+  if (monthKeys.length === 0) return renderTimeline(p)
+
+  // Running net per month (dated events only), then the bar scale.
+  let running = 0
+  const monthNets: Array<{ month: string; net: number; running: number }> = []
+  for (const m of monthKeys) {
+    const net = events
+      .filter((e) => e.dateKey?.slice(0, 7) === m)
+      .reduce((s, e) => s + e.delta, 0)
+    running += net
+    monthNets.push({ month: m, net, running })
+  }
+  const maxAbs = Math.max(1, ...monthNets.map((x) => Math.abs(x.running)))
+  const undatedNet = undated.reduce((s, e) => s + e.delta, 0)
+  const endNet = running + undatedNet
+
+  const MAX_ROWS_PER_MONTH = 6
+  const bar = (net: number) => {
+    const pct = Math.max(2, Math.round((Math.abs(net) / maxAbs) * 100))
+    return net >= 0
+      ? `<td style="width:24%;padding:0;"></td><td style="width:24%;padding:0;"><div style="background:#bbf7d0;border-left:2px solid #166534;width:${pct}%;height:13px;font-size:0;">&nbsp;</div></td>`
+      : `<td style="width:24%;padding:0;"><table role="presentation" cellpadding="0" cellspacing="0" width="100%"><tr><td>&nbsp;</td><td style="width:${pct}%;padding:0;"><div style="background:#fecaca;border-right:2px solid #b91c1c;height:13px;font-size:0;">&nbsp;</div></td></tr></table></td><td style="width:24%;padding:0;"></td>`
+  }
+  const netColor = (n: number) => (n >= 0 ? '#166534' : '#b91c1c')
+  const signedMoney = (n: number) => `${n >= 0 ? '+' : '−'}${money(Math.abs(n)).replace('-', '')}`
+
+  const eventRow = (e: TimelineRowEvent) => `
+    <tr${e.delta > 0 ? ' style="background:#f0fdf4;"' : ''}>
+      <td style="${CHILD_TD}padding-left:18px;white-space:nowrap;">${e.dateKey ? shortDayLabel(e.dateKey) : '—'} &middot; ${e.icon} ${esc(e.label)}</td>
+      <td colspan="2" style="padding:0;"></td>
+      <td style="${NUM_TD}color:${netColor(e.delta)};">${signedMoney(e.delta)}</td>
+    </tr>`
+
+  const monthGroup = (m: { month: string; net: number; running: number }) => {
+    const inMonth = events
+      .filter((e) => e.dateKey?.slice(0, 7) === m.month)
+      .sort((a, b) => (a.dateKey! < b.dateKey! ? -1 : a.dateKey! > b.dateKey! ? 1 : 0))
+    const paymentsInMonth = inMonth.filter((e) => e.delta > 0)
+    const charges = inMonth
+      .filter((e) => e.delta <= 0)
+      .sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta))
+    const chargeBudget = Math.max(1, MAX_ROWS_PER_MONTH - paymentsInMonth.length)
+    const kept = new Set(charges.slice(0, chargeBudget))
+    const folded = charges.filter((c) => !kept.has(c))
+    const foldedSum = folded.reduce((s, e) => s + e.delta, 0)
+    const shownRows = inMonth.filter((e) => e.delta > 0 || kept.has(e)).map(eventRow).join('')
+    const foldRow =
+      folded.length > 0
+        ? `
+    <tr>
+      <td style="${CHILD_TD}padding-left:18px;color:#a8a29e;">&hellip;and ${folded.length} smaller charge${folded.length === 1 ? '' : 's'}</td>
+      <td colspan="2" style="padding:0;"></td>
+      <td style="${NUM_TD}color:#b91c1c;">${signedMoney(foldedSum)}</td>
+    </tr>`
+        : ''
+    return `
+    <tr style="background:#fafaf9;border-top:1px solid #e7e5e4;">
+      <td style="padding:5px 6px;font-size:12px;font-weight:bold;white-space:nowrap;">${esc(shortMonth(m.month))}</td>
+      ${bar(m.running)}
+      <td style="${NUM_TD}font-weight:bold;color:${netColor(m.running)};">${signedMoney(m.running)}</td>
+    </tr>
+    ${shownRows}
+    ${foldRow}`
+  }
+
+  const undatedGroup =
+    undated.length > 0
+      ? `
+    <tr style="background:#fafaf9;border-top:1px solid #e7e5e4;">
+      <td style="padding:5px 6px;font-size:12px;font-weight:bold;">No date</td>
+      <td colspan="2" style="padding:2px 6px;font-size:11px;color:#a8a29e;">not on the bars</td>
+      <td style="${NUM_TD}font-weight:bold;color:${netColor(undatedNet)};">${signedMoney(undatedNet)}</td>
+    </tr>
+    ${undated.map(eventRow).join('')}`
+      : ''
+
+  return `
+    <p style="margin:0 0 2px;font-size:13px;font-weight:bold;color:#1c1917;">Cost &amp; payment timeline</p>
+    <p style="margin:0 0 6px;font-size:11px;color:#78716c;">Each month&rsquo;s bar is the running total &mdash; payments in minus costs out, $0 down the middle. Green right of the line = collected more than it cost so far.</p>
+    <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;border:1px solid #e7e5e4;font-size:12px;">
+      ${monthNets.map(monthGroup).join('')}
+      ${undatedGroup}
+      <tr style="border-top:2px solid #e7e5e4;">
+        <td style="padding:6px;font-size:12px;font-weight:bold;">Job end</td>
+        <td colspan="2" style="padding:0;"></td>
+        <td style="${NUM_TD}font-weight:bold;color:${netColor(endNet)};">${signedMoney(endNet)}</td>
+      </tr>
+    </table>`
+}
+
+/** Monthly timeline table (month, labor, parts, payments) — pre-v4 payload fallback. */
 function renderTimeline(p: PaidJobEmailPayload): string {
   if (p.timeline.length === 0) return ''
   const rows = p.timeline
@@ -360,7 +573,7 @@ export function renderPaidJobEmailDetailed(p: PaidJobEmailPayload, manualNote?: 
       ${renderLineItems(p, true)}
       ${renderDatesBlock(p)}
       ${renderScoreboard(p)}
-      ${renderTimeline(p)}
+      ${renderChargeTimeline(p)}
       ${manualNote ? `<p style="margin:16px 0 0;font-size:11px;color:#a8a29e;text-align:center;">${esc(manualNote)}</p>` : ''}
       <p style="margin:16px 0 0;font-size:11px;color:#a8a29e;text-align:center;">${footerLine(p)}</p>
     </div>

@@ -134,6 +134,8 @@ The email tells the truth about where the money stands, so you can send it for *
 
 Just under the banner, both versions list the job's **line items** with a chip per item — {{chip:green|Paid}}, {{chip:blue|Billed}}, {{chip:yellow|Draft}}, or {{chip:gray|Unbilled}} — so the reader sees exactly which parts of the job the money covers. The detailed version shows each item's amount; the summary shows names and status only.
 
+The detailed version ends with a **Cost & payment timeline** — the same story as the Cost Timeline in Edit Job, told month by month. Each month's shaded row has a bar showing the running total (payments in minus costs out; a bar to the right of the center line means the job had collected more than it cost by then), and beneath it the charges and payments that moved the money that month: team labor by the week, card charges, sub labor, supply-house invoices, tally parts. Busy months keep their biggest lines and fold the rest into one "…and N smaller charges" row — the bars stay exact either way. Charges without a date sit in a "No date" group at the bottom, and the **Job end** line is the job's final in-minus-out. The cost totals above it now count all six streams (supply-house invoices, tally parts, and other job charges included), matching Edit Job's numbers.
+
 ## Where to watch it all
 
 - **Dashboard** — Ready to Bill and Billed Waiting for Payment queues, plus the Financials cards (Accounts Receivable / Accounts Payable / Not Billed Out).
