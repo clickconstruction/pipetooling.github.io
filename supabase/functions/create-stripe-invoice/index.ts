@@ -19,7 +19,7 @@ import {
   stripeInvoiceFooterFromStripe,
 } from '../_shared/stripeInvoiceMemoFromStripe.ts'
 import { buildPipetoolingStripeInvoiceNumber } from '../_shared/pipetoolingStripeInvoiceNumber.ts'
-import { buildStripeInvoiceItemsFromFixtures } from '../_shared/stripeInvoiceItemsFromFixtures.ts'
+import { buildStripeInvoiceItemsFromFixtures, scopeFixturesToInvoice } from '../_shared/stripeInvoiceItemsFromFixtures.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -389,7 +389,7 @@ serve(async (req) => {
 
     const { data: fixturesRows, error: fixturesErr } = await admin
       .from('jobs_ledger_fixtures')
-      .select('id, name, count, line_unit_price, line_description, sequence_order')
+      .select('id, name, count, line_unit_price, line_description, sequence_order, invoice_id')
       .eq('job_id', invRow.job_id)
       .order('sequence_order', { ascending: true })
 
@@ -398,15 +398,24 @@ serve(async (req) => {
       return jsonResponse({ error: 'Could not load job line items for invoice' }, 500)
     }
 
-    const lineItemsBuilt = buildStripeInvoiceItemsFromFixtures({
-      fixtures: (fixturesRows ?? []) as {
+    // v2.1133: a segment invoice bills exactly its linked line items — never
+    // prorate the whole job's list across it. Unlinked (dollar) invoices keep
+    // the whole-job proration.
+    const scopedFixtures = scopeFixturesToInvoice(
+      (fixturesRows ?? []) as {
         id: string
         name: string
         count: number
         line_unit_price: number | null
         line_description: string | null
         sequence_order: number
+        invoice_id: string | null
       }[],
+      jobs_ledger_invoice_id,
+    )
+
+    const lineItemsBuilt = buildStripeInvoiceItemsFromFixtures({
+      fixtures: scopedFixtures,
       targetAmountCents: fixtureTargetCents,
       lineDescriptionOverride: lineDescriptionRaw,
       customerName: recipientName,

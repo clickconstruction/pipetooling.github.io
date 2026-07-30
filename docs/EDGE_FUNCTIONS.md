@@ -1928,6 +1928,8 @@ const { data, error } = await supabase.functions.invoke('test-email', {
 
 ### create-stripe-invoice
 
+> **v2.1133 — segment invoices bill only their own line items**: the fixtures query now selects `invoice_id` and both this function and `preview-stripe-invoice` pass the rows through `scopeFixturesToInvoice` ([`stripeInvoiceItemsFromFixtures.ts`](../supabase/functions/_shared/stripeInvoiceItemsFromFixtures.ts)): rows linked to the invoice when any exist (an invoice created from selected segments lists exactly those lines at their real amounts), else all rows (dollar break-off invoices keep the historical whole-job proration). Before this, a $454 change-order invoice rendered with every job stage on it, each carrying a prorated sliver. Client mirror: `src/lib/invoiceScopedFixtures.ts` (physical PDFs + previews + line-edit refs). Redeploy both functions.
+
 > **v2.1117 — per-mode customer ids (A4)**: the non-bill-to path reads/clears/persists the **mode-appropriate** `customers` column (`stripe_customer_id` for live, `stripe_customer_id_test` for test; helper `stripeCustomerIdColumnForMode`) — a cross-mode stale id no longer wipes the other mode's link. `preview-stripe-invoice` reads the same per-mode column. Redeploy both.
 
 > **v2.1114 — mode stamping (A1)**: the post-finalize DB patch now also writes **`jobs_ledger_invoices.stripe_mode`** (`'live' | 'test'`, the mode the request resolved to; migration `20260730165312`). Later plan steps make the row authoritative for row-bound operations (void/send/details/OOB/write-down) so a caller's `stripe_mode` can never act cross-mode. Redeploy required.
@@ -2355,6 +2357,8 @@ interface Body {
 ---
 
 ### preview-stripe-invoice
+
+> **v2.1133 — segment invoices preview only their own line items**: mirrors `create-stripe-invoice` — the fixtures query selects `invoice_id` and passes rows through `scopeFixturesToInvoice`, so a segment invoice previews exactly its linked lines at their real amounts (dollar invoices keep the whole-job proration). Redeploy with `create-stripe-invoice`.
 
 > **v2.1085 — Bill-to override**: mirrors `create-stripe-invoice` — when the invoice row has `bill_to_email`, the preview renders against that recipient (using `bill_to_stripe_customer_id` when it exists for the active Stripe key, else an ephemeral customer with the bill-to identity) and returns the bill-to name/email in the response. No DB writes either way.
 

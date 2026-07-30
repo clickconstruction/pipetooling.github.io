@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1133',
+    date: '2026-07-30',
+    title: 'Fix: a segment invoice bills only its own line items',
+    kind: 'fix',
+    highlights: [
+      'An invoice created from selected segments (like a change order) used to render with every line item on the job, each carrying a prorated sliver of the amount. It now lists exactly the lines it was created for, at their real amounts.',
+      'Applies to the Stripe bill, its preview, and the physical/PDF invoice alike. Bills made by dollar amount are unchanged.',
+    ],
+  },
+  {
     version: 'v2.1132',
     date: '2026-07-30',
     title: 'Invoices strip: billed money now shows — and can’t be billed twice',
