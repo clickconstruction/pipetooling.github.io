@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1108',
+    date: '2026-07-30',
+    title: 'Fix: dark mode readability on the People Hours grid',
+    kind: 'fix',
+    highlights: [
+      'Days marked Correct now show their hours in a brighter gray in dark mode — still visibly locked, no longer hard to read.',
+      'The highlight washes on the grid (missing-job red, pending amber, focus flash, job highlight) now follow the theme instead of staying light-mode colors, so highlighted cells stay readable in dark mode.',
+    ],
+  },
+  {
     version: 'v2.1107',
     date: '2026-07-30',
     title: 'Paid-in-full email: cost & payment timeline',

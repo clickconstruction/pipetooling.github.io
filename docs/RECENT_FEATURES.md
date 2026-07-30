@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-30 (v2.1107)
+last_updated: 2026-07-30 (v2.1108)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1108)
+
+### Fix: People → Hours grid readability in dark mode (2026-07-30)
+[`PeopleHoursGrid.tsx`](../src/components/people/PeopleHoursGrid.tsx): the grid's highlight washes were hardcoded light-mode rgba tints — near-opaque cream (`rgba(254,243,199,.9)`, focus flash on cells/header/footer), light pink (`rgba(254,242,242,.9)`, Correct-day-missing-job), pale blue (job highlight), and pale amber (pending badge) — which in dark mode put light theme text on a light background, making a column's contents illegible once marked Correct (and during focus flashes). All washes now use the matching theme tokens (`--bg-amber-100`/`--bg-amber-tint`/`--bg-red-tint`/`--bg-blue-tint`); the saturated inset rings stay literal per convention. Locked ("Correct") cell values also step up from `--text-muted` to `--text-600` — in dark mode that's `#9ca3af` → `#d1d5db`, still reading as grayed-out next to editable cells; light mode is visually unchanged (tokens match the old rendered colors). Verified in the browser in both themes. Client-only.
 
 ## Latest Updates (v2.1107)
 
