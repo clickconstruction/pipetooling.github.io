@@ -3,7 +3,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import Stripe from 'https://esm.sh/stripe@16.12.0?target=deno'
 import {
   anyStripeApiKeyConfigured,
-  resolveStripeBillingMode,
+  effectiveRowStripeMode,
   stripeApiKeyForMode,
   type StripeBillingMode,
 } from '../_shared/stripeSecrets.ts'
@@ -28,6 +28,7 @@ type InvoiceRow = {
   external_send_channel: string | null
   hosted_invoice_url: string | null
   job_id: string
+  stripe_mode: string | null
 }
 
 function jsonResponse(body: Record<string, unknown>, status = 200) {
@@ -100,20 +101,6 @@ serve(async (req) => {
 
     const collectBackJobId = body.collect_payment_send_back_job_id?.trim() || null
 
-    const stripeMode = resolveStripeBillingMode(body.stripe_mode)
-    const stripeSecret = stripeApiKeyForMode(stripeMode)
-    if (!stripeSecret) {
-      return jsonResponse(
-        {
-          error:
-            stripeMode === 'test'
-              ? 'Stripe test mode not configured (STRIPE_SECRET_KEY_TEST or sk_test legacy key).'
-              : 'Stripe live mode not configured (STRIPE_SECRET_KEY_LIVE or sk_live legacy key).',
-        },
-        400,
-      )
-    }
-
     const admin = createClient(supabaseUrl, serviceKey)
 
     let row: InvoiceRow | null = null
@@ -157,7 +144,7 @@ serve(async (req) => {
 
       const { data: invRow, error: invErr } = await admin
         .from('jobs_ledger_invoices')
-        .select('id, status, stripe_invoice_id, external_send_channel, hosted_invoice_url, job_id')
+        .select('id, status, stripe_invoice_id, external_send_channel, hosted_invoice_url, job_id, stripe_mode')
         .eq('id', invoiceId)
         .maybeSingle()
       if (invErr || !invRow) {
@@ -171,7 +158,7 @@ serve(async (req) => {
     } else {
       const { data: userRow, error: rowErr } = await userClient
         .from('jobs_ledger_invoices')
-        .select('id, status, stripe_invoice_id, external_send_channel, hosted_invoice_url, job_id')
+        .select('id, status, stripe_invoice_id, external_send_channel, hosted_invoice_url, job_id, stripe_mode')
         .eq('id', invoiceId)
         .maybeSingle()
 
@@ -183,6 +170,35 @@ serve(async (req) => {
 
     if (row.status !== 'billed') {
       return jsonResponse({ error: 'Invoice must be Billed Awaiting Payment' }, 400)
+    }
+
+    // A3 (FRAGILITY_REMEDIATION_PLAN.md): the row's recorded stripe_mode is
+    // authoritative — this is what makes the "No such invoice" → delete-row
+    // fallthrough below safe (pre-A3, a test-mode request against a live
+    // invoice read as missing and orphaned the live Stripe invoice).
+    const modeRes = effectiveRowStripeMode(row.stripe_mode, body.stripe_mode)
+    if (modeRes.conflict) {
+      return jsonResponse(
+        {
+          error: `Invoice lives in Stripe ${modeRes.conflict.row_mode} mode; the request asked for ${modeRes.conflict.requested_mode}. No changes made.`,
+          code: 'stripe_mode_mismatch',
+          ...modeRes.conflict,
+        },
+        409,
+      )
+    }
+    const stripeMode = modeRes.mode
+    const stripeSecret = stripeApiKeyForMode(stripeMode)
+    if (!stripeSecret) {
+      return jsonResponse(
+        {
+          error:
+            stripeMode === 'test'
+              ? 'Stripe test mode not configured (STRIPE_SECRET_KEY_TEST or sk_test legacy key).'
+              : 'Stripe live mode not configured (STRIPE_SECRET_KEY_LIVE or sk_live legacy key).',
+        },
+        400,
+      )
     }
 
     const stripeInvId = (row.stripe_invoice_id ?? '').trim()

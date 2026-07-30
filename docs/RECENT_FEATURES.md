@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-30 (v2.1115)
+last_updated: 2026-07-30 (v2.1116)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1116)
+
+### Stripe row-bound operations use the invoice's own mode (2026-07-30)
+Seven edge functions + [`_shared/stripeSecrets.ts`](../supabase/functions/_shared/stripeSecrets.ts) (**redeploy all seven required**) — step **A3** of [`FRAGILITY_REMEDIATION_PLAN.md`](./FRAGILITY_REMEDIATION_PLAN.md), the step that formally defuses the cross-mode void trap. New shared helper `effectiveRowStripeMode(rowMode, requested)`: for operations bound to an existing `jobs_ledger_invoices` row, the row's recorded `stripe_mode` (v2.1114) is **authoritative** — an explicitly requested mode that disagrees returns **409 `stripe_mode_mismatch`** (`{error, code, row_mode, requested_mode}`) with zero side effects; an omitted/matching request uses the row's mode; NULL-mode legacy rows fall back to requested/default. Applied to [`void-stripe-invoice-for-revert`](../supabase/functions/void-stripe-invoice-for-revert/index.ts) (its "No such invoice" → delete-DB-row fallthrough is now safe — the query is guaranteed to run in the row's own mode, so "missing" genuinely means deleted upstream), [`send-stripe-invoice`](../supabase/functions/send-stripe-invoice/index.ts), [`get-stripe-invoice-details`](../supabase/functions/get-stripe-invoice-details/index.ts), [`record-`](../supabase/functions/record-stripe-invoice-out-of-band-payment/index.ts)/[`reverse-stripe-invoice-out-of-band-payment`](../supabase/functions/reverse-stripe-invoice-out-of-band-payment/index.ts), [`stripe-invoice-agreed-write-down`](../supabase/functions/stripe-invoice-agreed-write-down/index.ts), and [`update-collect-payment-stripe-customer-email`](../supabase/functions/update-collect-payment-stripe-customer-email/index.ts). In each, mode/key/client resolution moved **after** the invoice-row fetch; each added `stripe_mode` to its row select. Client note: the JobFormModal memo/footer backfill's ungated pref read (A5's target) is now harmless against stamped rows — the row mode wins server-side. `create-stripe-invoice`/`preview-stripe-invoice` (no pre-existing Stripe object) keep taking the param. EDGE_FUNCTIONS.md notes added to all seven sections. Deploy: `supabase functions deploy <each of the seven>`.
 
 ## Latest Updates (v2.1115)
 

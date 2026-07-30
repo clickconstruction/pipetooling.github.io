@@ -4,7 +4,7 @@ import Stripe from 'https://esm.sh/stripe@16.12.0?target=deno'
 import { isMissingStripeCustomerError } from '../_shared/stripeStaleCustomer.ts'
 import {
   anyStripeApiKeyConfigured,
-  resolveStripeBillingMode,
+  effectiveRowStripeMode,
   stripeApiKeyForMode,
   type StripeBillingMode,
 } from '../_shared/stripeSecrets.ts'
@@ -114,20 +114,6 @@ serve(async (req) => {
     }
     const emailNorm = emailNormResult.email
 
-    const stripeMode = resolveStripeBillingMode(body.stripe_mode)
-    const stripeSecret = stripeApiKeyForMode(stripeMode)
-    if (!stripeSecret) {
-      return jsonResponse(
-        {
-          error:
-            stripeMode === 'test'
-              ? 'Stripe test mode not configured (STRIPE_SECRET_KEY_TEST or sk_test legacy key).'
-              : 'Stripe live mode not configured (STRIPE_SECRET_KEY_LIVE or sk_live legacy key).',
-        },
-        400,
-      )
-    }
-
     const { data: roleRow, error: roleErr } = await userClient
       .from('users')
       .select('role')
@@ -150,12 +136,38 @@ serve(async (req) => {
 
     const { data: inv, error: invErr } = await admin
       .from('jobs_ledger_invoices')
-      .select('id, job_id, status, stripe_invoice_id')
+      .select('id, job_id, status, stripe_invoice_id, stripe_mode')
       .eq('id', jobsLedgerInvoiceId)
       .maybeSingle()
 
     if (invErr || !inv) {
       return jsonResponse({ error: 'Invoice not found or access denied' }, 403)
+    }
+
+    // A3: the row's recorded stripe_mode is authoritative for this update.
+    const modeRes = effectiveRowStripeMode(inv.stripe_mode, body.stripe_mode)
+    if (modeRes.conflict) {
+      return jsonResponse(
+        {
+          error: `Invoice lives in Stripe ${modeRes.conflict.row_mode} mode; the request asked for ${modeRes.conflict.requested_mode}. No changes made.`,
+          code: 'stripe_mode_mismatch',
+          ...modeRes.conflict,
+        },
+        409,
+      )
+    }
+    const stripeMode = modeRes.mode
+    const stripeSecret = stripeApiKeyForMode(stripeMode)
+    if (!stripeSecret) {
+      return jsonResponse(
+        {
+          error:
+            stripeMode === 'test'
+              ? 'Stripe test mode not configured (STRIPE_SECRET_KEY_TEST or sk_test legacy key).'
+              : 'Stripe live mode not configured (STRIPE_SECRET_KEY_LIVE or sk_live legacy key).',
+        },
+        400,
+      )
     }
 
     const { data: tm } = await admin

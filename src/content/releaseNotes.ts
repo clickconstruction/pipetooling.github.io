@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1116',
+    date: '2026-07-30',
+    title: 'Billing safety: invoice actions always use the right Stripe mode',
+    kind: 'infra',
+    highlights: [
+      'Voiding, sending, viewing, or adjusting an invoice now always talks to Stripe in the mode the invoice was created in — a mixed-up test/live setting can no longer void or orphan the wrong invoice.',
+      'If a request explicitly asks for the wrong mode it is refused with a clear error and nothing changes.',
+    ],
+  },
+  {
     version: 'v2.1115',
     date: '2026-07-30',
     title: 'Billing safety: test payments can no longer touch live invoices',
