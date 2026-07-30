@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-29 (v2.1097)
+last_updated: 2026-07-29 (v2.1098)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1098)
+
+### People → Hours: "Align hours" — link the week's unmarked sessions in one pass (2026-07-29)
+New button in the Hours-grid section header (gated `canEditCrewJobs`): **Align hours (N)** opens [`PeopleHoursAlignModal`](../src/components/people/PeopleHoursAlignModal.tsx), a day-grouped queue of the week's closed clock sessions with no job/bid (built by the v2.1097 kernel from the already-loaded pending+approved lists, snapshotted on mount so aligned rows stay visible with Undo). Per row: the person's Dispatch scheduled-job **chips** (batched `fetchDispatchScheduledJobsForAssigneesOnDay`, one click = direct `clock_sessions` assign), **Split by schedule %** when ≥2 scheduled jobs (reuses `useApplyScheduleProportions` + the approved-session re-approval confirm), **recent** job/bid chips from the same week when nothing was scheduled (`recentAssignedPicksForUser`), the existing `AssignSessionJobPopover` search, and a **Day editor** escape hatch via `openHoursMyTimeFromSession` (day editor stacks above at z1200 vs the modal's z1000). Single assigns are undoable in place; splits are not (day editor instead). Parent refetches sessions+hours via the load refs on close. Help guide [`align-unmarked-hours.md`](../src/content/help/align-unmarked-hours.md); `PEOPLE_TABS_ARCHITECTURE.md` hours dossier updated. Client-only.
 
 ## Latest Updates (v2.1097)
 

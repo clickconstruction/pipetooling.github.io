@@ -4,6 +4,7 @@ import {
   buildAlignHoursQueue,
   formatAlignDurationHours,
   isAlignHoursCandidate,
+  recentAssignedPicksForUser,
   type AlignHoursSession,
 } from './alignHoursQueue'
 
@@ -24,6 +25,8 @@ function session(
     rejected_at: null,
     revoked_at: null,
     users: { name: 'Marcus T' },
+    jobs_ledger: null,
+    bids: null,
     ...overrides,
   }
 }
@@ -146,6 +149,61 @@ describe('alignQueueUserIdsByDay', () => {
     expect(alignQueueUserIdsByDay(q)).toEqual([
       { workDate: '2026-07-28', userIds: ['u-1', 'u-2'] },
     ])
+  })
+})
+
+describe('recentAssignedPicksForUser', () => {
+  const jobEmbed = {
+    hcp_number: '1842',
+    job_name: 'Riverside Dr',
+    job_address: '',
+    service_type_id: null,
+    click_number: null,
+  }
+
+  it('returns distinct recent jobs/bids for the user, newest first, capped', () => {
+    const picks = recentAssignedPicksForUser(
+      [
+        session({
+          id: '1',
+          job_ledger_id: 'j-1',
+          jobs_ledger: jobEmbed,
+          clocked_in_at: '2026-07-27T12:00:00.000Z',
+        }),
+        session({
+          id: '2',
+          job_ledger_id: 'j-1',
+          jobs_ledger: jobEmbed,
+          clocked_in_at: '2026-07-28T12:00:00.000Z',
+        }),
+        session({
+          id: '3',
+          bid_id: 'b-1',
+          clocked_in_at: '2026-07-29T12:00:00.000Z',
+        }),
+        session({ id: 'other-user', user_id: 'u-2', job_ledger_id: 'j-9' }),
+        session({ id: 'unassigned' }),
+      ],
+      'u-1',
+    )
+    expect(picks.map((p) => `${p.source}:${p.id}`)).toEqual([
+      'bid:b-1',
+      'job:j-1',
+    ])
+    expect(picks[1]?.embeds.jobs_ledger?.hcp_number).toBe('1842')
+  })
+
+  it('caps at max', () => {
+    const picks = recentAssignedPicksForUser(
+      [
+        session({ id: '1', job_ledger_id: 'j-1' }),
+        session({ id: '2', job_ledger_id: 'j-2' }),
+        session({ id: '3', job_ledger_id: 'j-3' }),
+      ],
+      'u-1',
+      2,
+    )
+    expect(picks).toHaveLength(2)
   })
 })
 

@@ -11,6 +11,18 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1098',
+    date: '2026-07-29',
+    title: 'Align hours: link unmarked clock sessions in one pass',
+    kind: 'feature',
+    highlights: [
+      'People → Hours has a new "Align hours" button above the Hours grid — it lists every closed session this week that has no job or bid, in one scrollable pass.',
+      'Each row shows what the person was scheduled on that day: one click links the session, or split it across multiple scheduled jobs by schedule %.',
+      'When nothing was scheduled, their recent jobs and bids appear as quick picks, with search and the day editor a click away.',
+      'Aligned rows turn green with an Undo, and the grid refreshes when you close the window.',
+    ],
+  },
+  {
     version: 'v2.1097',
     date: '2026-07-29',
     title: 'Under the hood: groundwork for Align hours',

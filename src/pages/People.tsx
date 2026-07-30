@@ -26,6 +26,8 @@ import { PeopleHoursSessions } from '../components/people/PeopleHoursSessions'
 import { PeopleHoursWeekRange } from '../components/people/PeopleHoursWeekRange'
 import { PeopleHoursGrid } from '../components/people/PeopleHoursGrid'
 import { PeopleHoursGridJobHighlight, type HoursGridJobHighlightPick } from '../components/people/PeopleHoursGridJobHighlight'
+import { PeopleHoursAlignModal } from '../components/people/PeopleHoursAlignModal'
+import { buildAlignHoursQueue } from '../lib/people/alignHoursQueue'
 import { PeopleHoursPendingBanner } from '../components/people/PeopleHoursPendingBanner'
 import {
   getDaysInRange,
@@ -528,6 +530,16 @@ export default function People() {
     entry: PeopleHoursPendingCellEntry
   } | null>(null)
   const [bulkApprovePendingOpen, setBulkApprovePendingOpen] = useState(false)
+  /** People → Hours "Align hours" modal: week sessions with no job/bid, one pass to link them. */
+  const [alignHoursOpen, setAlignHoursOpen] = useState(false)
+  const alignHoursSessions = useMemo(
+    () => [...pendingApprovalClockSessions, ...approvedClockSessions],
+    [pendingApprovalClockSessions, approvedClockSessions],
+  )
+  const alignHoursQueueCount = useMemo(
+    () => buildAlignHoursQueue(alignHoursSessions).totalSessions,
+    [alignHoursSessions],
+  )
   const [editingUserNote, setEditingUserNote] = useState<{ id: string; name: string; notes: string; phone: string } | null>(null)
   const [userNoteSaving, setUserNoteSaving] = useState(false)
   const [authUserRole, setAuthUserRole] = useState<string | null>(null)
@@ -3644,7 +3656,7 @@ export default function People() {
           {canAccessHours && (
           <>
           <section id="people-hours-grid" style={HOURS_TAB_SECTION_SHELL}>
-            <div style={hoursTabSectionHeaderGap(hoursTabSectionsOpen.grid)}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', ...hoursTabSectionHeaderGap(hoursTabSectionsOpen.grid) }}>
               <button
                 type="button"
                 aria-expanded={hoursTabSectionsOpen.grid}
@@ -3654,6 +3666,25 @@ export default function People() {
                 <span aria-hidden style={HOURS_TAB_SECTION_CHEVRON}>{hoursTabSectionsOpen.grid ? '▼' : '▶'}</span>
                 Hours grid
               </button>
+              {canEditCrewJobs ? (
+                <button
+                  type="button"
+                  onClick={() => setAlignHoursOpen(true)}
+                  disabled={alignHoursQueueCount === 0}
+                  title="Link this week's clock sessions that have no job or bid"
+                  style={{
+                    padding: '0.25rem 0.55rem',
+                    border: '1px solid var(--border-strong)',
+                    borderRadius: 4,
+                    background: 'var(--bg-muted)',
+                    cursor: alignHoursQueueCount === 0 ? 'not-allowed' : 'pointer',
+                    fontSize: '0.8125rem',
+                    color: alignHoursQueueCount === 0 ? 'var(--text-muted)' : undefined,
+                  }}
+                >
+                  Align hours{alignHoursQueueCount > 0 ? ` (${alignHoursQueueCount})` : ''}
+                </button>
+              ) : null}
             </div>
             {hoursTabSectionsOpen.grid ? (
             <>
@@ -4237,6 +4268,19 @@ export default function People() {
           html={payStubViewModal.html}
           zIndex={Z_PEOPLE_PAY_MODAL}
           onClose={() => setPayStubViewModal(null)}
+        />
+      )}
+
+      {alignHoursOpen && (
+        <PeopleHoursAlignModal
+          sessions={alignHoursSessions}
+          authUserId={authUser?.id}
+          onOpenDayEditor={openHoursMyTimeFromSession}
+          onClose={() => {
+            setAlignHoursOpen(false)
+            loadAllClockSessionsRef.current?.()
+            loadPeopleHoursRef.current?.()
+          }}
         />
       )}
 
