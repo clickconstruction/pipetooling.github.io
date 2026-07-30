@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1102',
+    date: '2026-07-29',
+    title: 'Under the hood: groundwork for smarter paid-in-full emails',
+    kind: 'infra',
+    highlights: [
+      'No visible changes — database plumbing so the paid-in-full email can soon show real payment progress and the job’s line items.',
+    ],
+  },
+  {
     version: 'v2.1101',
     date: '2026-07-29',
     title: 'Paid-in-full email window polish',

@@ -5,7 +5,7 @@ file: MIGRATIONS.md
 type: Reference/Changelog
 purpose: Complete database migration history organized by date and category
 audience: Developers, Database Administrators, AI Agents
-last_updated: 2026-07-28
+last_updated: 2026-07-30
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate to Advanced
 
@@ -103,6 +103,14 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 > **Reading older entries:** filenames beginning **`2027…`** are **typo-dated** (the real work happened March–June 2026). All of them predate the **2026-06-04 baseline squash** — the files now live in [`supabase/archive/migrations-pre-baseline/`](../supabase/archive/migrations-pre-baseline/) and their schema is part of [`20250101000000_baseline.sql`](../supabase/migrations/20250101000000_baseline.sql). Entries below keep the original filenames so they match the archive. The prod ledger was fully reconciled on **2026-07-04** (backup: `supabase_migrations._schema_migrations_backup_20260704`); since then, migrations apply **only** via `supabase db push` (see `CLAUDE.md`).
 
 ### July 2026
+
+#### July 30, 2026
+
+**`20260730031702_paid_email_line_items_and_status.sql`** _(apply via `supabase db push` after the file is on `main`; either order vs the `paid-job-email` redeploy is safe — additive JSON keys the old renderer ignores and the new renderer guards)_
+- **Purpose**: Paid-email payload v3 (v2.1102) — `CREATE OR REPLACE public.get_paid_job_email_payload` adding two keys for the status-aware paid-in-full email: `job.status` (so the renderer shows the green PAID IN FULL badge only for actually-paid jobs, and "$X (Y%) of $Z paid" / gray NOT PAID otherwise) and `line_items` (fixture rows with `amount = max(count,1) × line_unit_price` mirroring `lib/revenueFromJobFixtures.ts`, plus the linked invoice's status via the v2.1096 `jobs_ledger_fixtures.invoice_id` FK — `paid`/`billed`/`ready_to_bill`/NULL). Body otherwise identical to `20260722272000` (person-first wage joins preserved).
+- **Security**: same signature, SECURITY DEFINER, grants unchanged (service_role-only); no table DDL, no sweep calls needed.
+- **Ordering**: independent of the function redeploy (v2.1103) — keys are additive and the new renderer falls back when they're absent.
+- **Category**: Jobs / notifications
 
 #### July 29, 2026
 

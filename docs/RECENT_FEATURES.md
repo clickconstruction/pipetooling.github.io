@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-29 (v2.1101)
+last_updated: 2026-07-29 (v2.1102)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1102)
+
+### Paid-email payload v3: job status + line items (migration only) (2026-07-29)
+`CREATE OR REPLACE public.get_paid_job_email_payload` ([`20260730031702_paid_email_line_items_and_status.sql`](../supabase/migrations/20260730031702_paid_email_line_items_and_status.sql)) — Stage A for the status-aware paid-in-full email (v2.1103): adds `job.status` (renderer will gate the PAID IN FULL badge / "Paid <date>" line on actually-paid) and `line_items` (fixture rows, blank names skipped, `amount = max(count,1) × line_unit_price` mirroring `lib/revenueFromJobFixtures.ts`, plus the linked invoice's status via the v2.1096 `jobs_ledger_fixtures.invoice_id` FK). Person-first wage joins from `20260722272000` preserved verbatim. Additive JSON keys — the deployed renderer ignores them, so push order vs the function redeploy is safe. No behavior change until v2.1103 deploys. DB-only (`supabase db push` after merge).
 
 ## Latest Updates (v2.1101)
 
