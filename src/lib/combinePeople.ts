@@ -12,8 +12,8 @@ import { supabase } from './supabase'
 /** Sub-sheet assigned_to_name separator (shared source of truth — components import from here). */
 export const LABOR_ASSIGNED_DELIMITER = ' | '
 
-/** Name-keyed pay/labor tables (person_name column). */
-const NAME_KEYED_TABLES = [
+/** Name-keyed pay/labor tables (person_name column). Exported for test pinning. */
+export const NAME_KEYED_TABLES = [
   'people_pay_config',
   'people_hours',
   'people_team_members',
@@ -26,8 +26,14 @@ const NAME_KEYED_TABLES = [
   'hours_reviewed',
 ] as const
 
-/** Tables that already carry person_id (repointed as well — belt and braces). */
-const PERSON_ID_TABLES = ['people_pay_config', 'people_hours', 'people_crew_jobs', 'pay_stubs', 'people_team_members'] as const
+/**
+ * Tables whose person_id rows are repointed as well (belt and braces).
+ * Since Phase B2 (migration 20260722270000) every name-keyed table above
+ * carries person_id — the two lists are identical. This was the original
+ * Phase-B five only until v2.1111, which left combines pointing the five B2
+ * tables' person_id at the archived duplicate (masked by name fallback).
+ */
+export const PERSON_ID_TABLES = NAME_KEYED_TABLES
 
 /**
  * Replace one exact name segment in a " | "-delimited assigned list
