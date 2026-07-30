@@ -71,6 +71,10 @@ export function HoursSection() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [payConfig, setPayConfig] = useState<Record<string, PayConfigRow>>({})
+  /** C1-3b (identity): id-keyed flags (separate from the name map — see loadPayConfig). */
+  const [payConfigById, setPayConfigById] = useState<Record<string, PayConfigRow>>({})
+  /** C1-3b (identity): person_id per crew-row name for id-first flag lookups. */
+  const [crewPersonIdByName, setCrewPersonIdByName] = useState<Record<string, string>>({})
   const [peopleHours, setPeopleHours] = useState<HoursRow[]>([])
   const [hoursDisplayOrder, setHoursDisplayOrder] = useState<Record<string, number>>({})
   const [hoursDateStart, setHoursDateStart] = useState(() => {
@@ -176,11 +180,17 @@ export function HoursSection() {
       setError(err.message)
       return
     }
+    // C1-3b (identity): SEPARATE id-keyed map for id-first lookups — the name
+    // map's keys drive the people lists (Object.keys(payConfig)) and must stay
+    // names-only.
     const map: Record<string, PayConfigRow> = {}
-    for (const r of (data ?? []) as PayConfigRow[]) {
+    const byId: Record<string, PayConfigRow> = {}
+    for (const r of (data ?? []) as Array<PayConfigRow & { person_id?: string | null }>) {
       map[r.person_name] = r
+      if (r.person_id) byId[r.person_id] = r
     }
     setPayConfig(map)
+    setPayConfigById(byId)
   }
 
   async function loadPeopleHours(start: string, end: string) {
@@ -226,29 +236,35 @@ export function HoursSection() {
     const days = getDaysInRange(start, end)
     if (days.length === 0) return
     const [jobsRes, bidsRes] = await Promise.all([
-      supabase.from('people_crew_jobs').select('work_date, person_name, job_assignments').in('work_date', days),
-      supabase.from('people_crew_bids').select('work_date, person_name, bid_assignments').in('work_date', days),
+      supabase.from('people_crew_jobs').select('work_date, person_name, person_id, job_assignments').in('work_date', days),
+      supabase.from('people_crew_bids').select('work_date, person_name, person_id, bid_assignments').in('work_date', days),
     ])
     const jobsRows = (jobsRes.data ?? []) as Array<{
       work_date: string
       person_name: string
+      person_id: string | null
       job_assignments: Array<{ job_id: string; pct: number }>
     }>
     const bidsRows = (bidsRes.data ?? []) as Array<{
       work_date: string
       person_name: string
+      person_id: string | null
       bid_assignments: Array<{ bid_id: string; pct: number }>
     }>
+    const idByName: Record<string, string> = {}
     const jobsByKey: Record<string, Array<{ job_id: string; pct: number }>> = {}
     for (const r of jobsRows) {
       const k = `${r.work_date}:${r.person_name}`
       jobsByKey[k] = Array.isArray(r.job_assignments) ? r.job_assignments : []
+      if (r.person_id && !idByName[r.person_name]) idByName[r.person_name] = r.person_id
     }
     const bidsByKey: Record<string, Array<{ bid_id: string; pct: number }>> = {}
     for (const r of bidsRows) {
       const k = `${r.work_date}:${r.person_name}`
       bidsByKey[k] = Array.isArray(r.bid_assignments) ? r.bid_assignments : []
+      if (r.person_id && !idByName[r.person_name]) idByName[r.person_name] = r.person_id
     }
+    setCrewPersonIdByName(idByName)
     const allKeys = new Set([...Object.keys(jobsByKey), ...Object.keys(bidsByKey)])
     const map: Record<string, CrewRow> = {}
     for (const k of allKeys) {
@@ -256,6 +272,12 @@ export function HoursSection() {
       map[k] = { unifiedAssignments: unified }
     }
     setCrewJobsByDatePerson(map)
+  }
+
+  /** C1-3b: id-first flag lookup (crew-row person_id), trimmed-name fallback. */
+  function cfgForPerson(personName: string): PayConfigRow | undefined {
+    const id = crewPersonIdByName[personName]
+    return (id ? payConfigById[id] : undefined) ?? payConfig[personName]
   }
 
   async function toggleHoursDayCorrect(workDate: string) {
@@ -317,12 +339,12 @@ export function HoursSection() {
   }
 
   function canEditHours(personName: string): boolean {
-    return canEditRecordedHours(payConfig[personName])
+    return canEditRecordedHours(cfgForPerson(personName))
   }
 
   /** Hours-surface display (record_hours_but_salary people show their logged hours). */
   function getDisplayHours(personName: string, workDate: string): number {
-    return effectiveHoursForDisplay(payConfig[personName], workDate, getHoursForPersonDate(personName, workDate))
+    return effectiveHoursForDisplay(cfgForPerson(personName), workDate, getHoursForPersonDate(personName, workDate))
   }
 
   function shiftHoursWeek(delta: number) {

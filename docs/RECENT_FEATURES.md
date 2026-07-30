@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-30 (v2.1124)
+last_updated: 2026-07-30 (v2.1125)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1125)
+
+### Quickfill Hours salary flags resolve person-id-first (2026-07-30)
+[`quickfill/HoursSection.tsx`](../src/components/quickfill/HoursSection.tsx) — step **C1-3b** of [`FRAGILITY_REMEDIATION_PLAN.md`](./FRAGILITY_REMEDIATION_PLAN.md), second crew-flag consumer. Same pattern as CrewJobsBlock (v2.1124) with the same separate-map discipline: this component also derives its people lists from `Object.keys(payConfig)` (lines ~276/~392), so the id-keyed flags live in a separate `payConfigById` map; crew day selects add `person_id`; `crewPersonIdByName` + `cfgForPerson()` flip both lookup sites (`canEditHours` → `canEditRecordedHours`, `getDisplayHours` → `effectiveHoursForDisplay`). Answer-preserving per the C1-1 prod precheck. Remaining: `HoursUnassignedModal` (C1-3c), `QuickfillUnassignedFieldTimeSection` (C1-3d). Client-only.
 
 ## Latest Updates (v2.1124)
 

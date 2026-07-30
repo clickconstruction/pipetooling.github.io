@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1125',
+    date: '2026-07-30',
+    title: 'Reliability: Quickfill Hours matches salaried people by identity',
+    kind: 'infra',
+    highlights: [
+      'The Quickfill Hours grid now recognizes salaried people by identity rather than spelled name for display hours and edit permissions.',
+    ],
+  },
+  {
     version: 'v2.1124',
     date: '2026-07-30',
     title: 'Reliability: Crew Jobs matches salaried people by identity',
