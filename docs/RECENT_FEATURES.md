@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-30 (v2.1112)
+last_updated: 2026-07-30 (v2.1113)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1113)
+
+### Person-id triggers fire on name updates too (+ audit extensions) (2026-07-30)
+Migration [`20260730164728_widen_pay_person_id_triggers.sql`](../supabase/migrations/20260730164728_widen_pay_person_id_triggers.sql) — steps **C0.3 + C0.4** of [`FRAGILITY_REMEDIATION_PLAN.md`](./FRAGILITY_REMEDIATION_PLAN.md). The Phase B/B2 `set_person_id_on_insert` triggers fired on INSERT only, so a later `person_name` UPDATE never re-resolved `person_id`: the Edit-offset modal ([`PersonOffsetFormModal.tsx`](../src/components/pay/PersonOffsetFormModal.tsx)) could swap the person and leave `person_id` pointing at the previous person (cross-person attribution once readers go id-first), and bulk name rewrites left insert-time NULLs NULL forever. `pay_tables_set_person_id()` now also handles UPDATE-of-name: when the writer didn't explicitly choose a new `person_id`, it re-resolves via `COALESCE(resolve_pay_person_id(new_name), old id)` — COALESCE because a same-person rename can transiently miss the resolver (the users/people row may rename after the cascade in the same client sequence) and keeping the id is then correct, while person-swap pickers only offer existing roster people so the resolver hits. Explicit `person_id` writes are never overwritten. Trigger recreated on **all ten** pay tables (B five + B2 five) under the accurate name `set_person_id_on_write` (old name dropped). Also extends [`scripts/audit-pay-person-id-phase0.sql`](../scripts/audit-pay-person-id-phase0.sql) with the C0.5 gates: per-table `person_id` fill rates, Phase-D unique-key preflight (duplicate `person_id` keys), `people_labor_job_assignees` junction coverage vs the delimited sheet names, and an unresolved-segment listing. DB migration (`supabase db push` after merge) + script; no client change.
 
 ## Latest Updates (v2.1112)
 

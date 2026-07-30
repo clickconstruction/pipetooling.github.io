@@ -35,6 +35,7 @@ Identity in the pay/labor domain is keyed by **trimmed name text**: `people_hour
 
 ## Status log
 
+- 2026-07-30 — **Tooling-gap sweep** (FRAGILITY_REMEDIATION_PLAN.md C0): Combine-people id-repoint list extended to all ten tables (v2.1111 — was the Phase-B five, leaving B2 tables pointing at archived duplicates); rename cascade now loops the shared `NAME_KEYED_TABLES` inventory incl. `person_offsets`/`hours_reviewed` (v2.1112); triggers widened to `BEFORE INSERT OR UPDATE OF person_name` as `set_person_id_on_write` with COALESCE re-resolve (v2.1113, migration `20260730164728` — fixes the Edit-offset person-swap desync; note the trigger rename when grepping). Phase-0 audit script extended with fill rates, Phase-D unique-key preflight, and junction coverage; rerun pending (needs Supabase MCP or an operator with SQL access).
 - 2026-07-23 — plan written; Combine people shipped (v2.982). Phases A–E not started.
 - 2026-07-24 — **Phase C-3 verified done-by-trigger** (zero unkeyed crew rows; set_person_id_on_insert fires under approve_clock_sessions). **Phase C-4 shipped** (v2.1012): teamLabor wage map person-first (`id:<uuid>` keys) across all three loaders; salary flags stay name-keyed until `list_people_pay_flags` flips (C-4b, with Phase D). Remaining: D writers, E enforce.
 - 2026-07-24 — **Phase C-2 shipped** (v2.1011, migration 20260722272000): paid-email wage joins person-first with name fallback. Next: C-3 approve_clock_sessions crew sync, C-4 hours/payroll views.

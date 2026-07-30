@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1113',
+    date: '2026-07-30',
+    title: 'Fix: changing the person on a pay record relinks it correctly',
+    kind: 'fix',
+    highlights: [
+      'Editing an offset (or any pay record) to a different person now relinks the record to that person behind the scenes — previously the old link could stick around invisibly.',
+      'Renames and combines now self-heal these links at the database level, whichever screen they come from.',
+    ],
+  },
+  {
     version: 'v2.1112',
     date: '2026-07-30',
     title: 'Fix: renaming a person updates offsets and reviewed-hours too',
