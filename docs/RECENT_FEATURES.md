@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-30 (v2.1109)
+last_updated: 2026-07-30 (v2.1110)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1110)
+
+### Security: Stripe-webhook RPCs no longer callable by app users (2026-07-30)
+Migration [`20260730160048_revoke_stripe_webhook_rpc_public_grants.sql`](../supabase/migrations/20260730160048_revoke_stripe_webhook_rpc_public_grants.sql) — step **A0** of [`FRAGILITY_REMEDIATION_PLAN.md`](./FRAGILITY_REMEDIATION_PLAN.md). `mark_invoice_paid_from_stripe` and `complete_job_collect_payment_flow_for_invoice` are SECURITY DEFINER helpers called only by the `stripe-webhook` edge function through its service-role client, but the baseline granted them EXECUTE to `anon` and `authenticated` — any logged-in user (or the anon key) could mark an arbitrary invoice paid (inserting a remainder `jobs_ledger_payments` row and flipping the job to `paid`) or complete a collect-payment flow, by guessing/observing a UUID or Stripe invoice id. Repo-wide caller audit confirmed the webhook is the sole caller (the only other repo mentions are a doc comment in [`_shared/pipetoolingStripeOobPaymentMetadata.ts`](../supabase/functions/_shared/pipetoolingStripeOobPaymentMetadata.ts) and the generated types). Fix: `REVOKE EXECUTE ... FROM PUBLIC, anon, authenticated` on both; `service_role` keeps its grant so the webhook path is unchanged. No client change, no edge redeploy. DB-only (`supabase db push` after merge). Verified post-push with `has_function_privilege()` for the `authenticated` role = false on both functions.
 
 ## Latest Updates (v2.1109)
 
