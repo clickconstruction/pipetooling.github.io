@@ -54,12 +54,20 @@ async function fetchLaborPayConfigMap(
     personNames ? wageQuery.in('person_name', personNames) : wageQuery,
   ])
   const map: Record<string, { hourly_wage: number; is_salary: boolean }> = {}
-  for (const f of (flagsRes.data ?? []) as Array<{ person_name: string; is_salary: boolean | null }>) {
+  // v2.1123 (identity C1-2): the flags RPC returns person_id — seed the
+  // 'id:<uuid>' entries directly so salary flags resolve id-first too (a
+  // roster-vs-pay-config name disagreement can no longer drop the 8/0 rule).
+  for (const f of (flagsRes.data ?? []) as Array<{ person_name: string; person_id: string | null; is_salary: boolean | null }>) {
     map[f.person_name] = { hourly_wage: 0, is_salary: f.is_salary ?? false }
+    if (f.person_id) {
+      map[`id:${f.person_id}`] = { hourly_wage: 0, is_salary: f.is_salary ?? false }
+    }
   }
   // v2.1012 (identity Phase C-4): wages also indexed by person_id under 'id:<uuid>'
   // keys — crew rows carry person_id post-Phase-B, so a renamed pay-config row
-  // still matches. Name keys remain for flags + fallback.
+  // still matches. Name keys remain for flags + fallback. The merge preserves
+  // an id-seeded is_salary from the flags loop (C1-2); the name-row flag is
+  // only the default for wage rows whose person_id the RPC did not return.
   for (const w of (wageRes.data ?? []) as Array<{ person_name: string; person_id: string | null; hourly_wage: number | null }>) {
     const cur = map[w.person_name] ?? { hourly_wage: 0, is_salary: false }
     cur.hourly_wage = w.hourly_wage ?? 0
@@ -67,7 +75,6 @@ async function fetchLaborPayConfigMap(
     if (w.person_id) {
       const viaId = map[`id:${w.person_id}`] ?? { hourly_wage: 0, is_salary: cur.is_salary }
       viaId.hourly_wage = w.hourly_wage ?? 0
-      viaId.is_salary = cur.is_salary
       map[`id:${w.person_id}`] = viaId
     }
   }

@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1123',
+    date: '2026-07-30',
+    title: 'Reliability: labor costing matches salaried people by identity',
+    kind: 'infra',
+    highlights: [
+      'Job Summary, Crew P&L, and Team Labor now recognize salaried people by identity rather than spelled name, so renames can no longer skew labor cost math.',
+    ],
+  },
+  {
     version: 'v2.1122',
     date: '2026-07-30',
     title: 'Reliability: salaried status survives renames (first of a series)',

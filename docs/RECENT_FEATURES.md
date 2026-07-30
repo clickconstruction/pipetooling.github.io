@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-30 (v2.1122)
+last_updated: 2026-07-30 (v2.1123)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1123)
+
+### teamLabor salary flags resolve person-id-first (2026-07-30)
+[`utils/teamLabor.ts`](../src/utils/teamLabor.ts) `fetchLaborPayConfigMap` — step **C1-2** of [`FRAGILITY_REMEDIATION_PLAN.md`](./FRAGILITY_REMEDIATION_PLAN.md) (PERSON_IDENTITY_PLAN C-4b continues). Since v2.1012 the wage map's `id:<uuid>` entries were person-first, but their `is_salary` still came from the NAME-keyed flags row — the last name dependency in the costing loaders. The flags RPC returns `person_id`, so the flags loop now seeds the `id:` entries directly, and the wage-merge preserves an id-seeded flag instead of overwriting it from the name row (the name-row flag remains the default only for wage rows whose `person_id` the RPC did not return). Covers all three loaders (`loadTeamLaborData`, bids, one-job) — Job Summary, Crew P&L, and Team Labor costing now apply the salaried 8/0 rule id-first with name fallback. Answer-preserving today per the C1-1 prod precheck (zero id-vs-name disagreements). Client-only.
 
 ## Latest Updates (v2.1122)
 
