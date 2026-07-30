@@ -256,3 +256,37 @@ describe('dollarCoverageForSegments', () => {
     expect(coverage).toEqual({ unattributedDollars: 0, remainingDollars: 1000, bySegmentKey: {} })
   })
 })
+
+describe('dollarCoverageForSegments — elastic primary bundle (v2.1134)', () => {
+  it('ignores the never-sent primary remainder but counts real drafts and billed rows', () => {
+    const segments = buildJobSegmentsBar({
+      fixtures: [
+        line({ id: 'a', name: 'Rough In', line_unit_price: 600 }),
+        line({ id: 'b', name: 'Top Out', line_unit_price: 400 }),
+      ],
+      riderFeesDollars: 0,
+      invoiceStatusById: {},
+    })
+    // A full-job primary alone: nothing hatches, everything stays billable.
+    const primaryOnly = dollarCoverageForSegments({
+      segments,
+      grossDollars: 1000,
+      paidDollars: 0,
+      invoices: [{ status: 'ready_to_bill', amount: 1000, is_primary_rtb_bundle: true }],
+    })
+    expect(primaryOnly).toEqual({ unattributedDollars: 0, remainingDollars: 1000, bySegmentKey: {} })
+    // A real (non-primary) draft still covers; the primary next to it does not.
+    const mixed = dollarCoverageForSegments({
+      segments,
+      grossDollars: 1000,
+      paidDollars: 0,
+      invoices: [
+        { status: 'ready_to_bill', amount: 250, is_primary_rtb_bundle: false },
+        { status: 'ready_to_bill', amount: 750, is_primary_rtb_bundle: true },
+      ],
+    })
+    expect(mixed.unattributedDollars).toBe(250)
+    expect(mixed.remainingDollars).toBe(750)
+    expect(mixed.bySegmentKey).toEqual({ a: { coveredDollars: 250, fullyCovered: false } })
+  })
+})

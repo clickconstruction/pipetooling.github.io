@@ -109,7 +109,7 @@ Multiple invoices per job are first-class ("Partial invoices per job" per the ta
 
 ### The ensure RPC (keystone)
 
-`ensure_single_ready_to_bill_invoice_for_job(p_job_id)` (baseline): unallocated = `GREATEST(0, revenue − payments_made − Σ RTB+billed invoice amounts)`. Requires job status `ready_to_bill`, roles dev/master_technician/assistant/primary + job access. Creates or re-syncs the single `is_primary_rtb_bundle` row to the unallocated remainder (skipping amount rewrites on Stripe-finalized rows); partial rows are never touched. Errors on multiple primaries / nothing left to bill. **Opening Bill Customer for a job runs this RPC — merely opening the modal can INSERT an invoice row.** Client mirror: `src/lib/wouldEnsureNothingLeftToBillForJob.ts`.
+`ensure_single_ready_to_bill_invoice_for_job(p_job_id)` (baseline): unallocated = `GREATEST(0, revenue − payments_made − Σ RTB+billed invoice amounts excluding the never-sent primary bundle itself)` (v2.1134 — the old sum included the primary, which broke the resync branch). Requires job status `ready_to_bill`, roles dev/master_technician/assistant/primary + job access. Creates or re-syncs the single `is_primary_rtb_bundle` row to the unallocated remainder (skipping amount rewrites on Stripe-finalized rows); partial rows are never touched. Errors on multiple primaries / nothing left to bill. **Opening Bill Customer for a job runs this RPC — merely opening the modal can INSERT an invoice row.** Client mirror: `src/lib/wouldEnsureNothingLeftToBillForJob.ts`.
 
 ### Bill composition from Specific Work fixtures
 
