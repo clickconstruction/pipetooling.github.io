@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1129',
+    date: '2026-07-30',
+    title: 'Recently deleted: see exactly what was deleted',
+    kind: 'feature',
+    highlights: [
+      'Every deletion now has a "What’s inside?" view listing each archived row in plain words — fixture names, payment amounts, dates — with the full raw record one click deeper.',
+      'Deletions that removed part of a job or bid now name it ("Under job 878 · Take 5- Seguin") instead of showing a code, and deleted clock sessions say whose session it was.',
+      'Filter the list by type, by who deleted, or by searching the labels; technical table names are now in plain English.',
+    ],
+  },
+  {
     version: 'v2.1128',
     date: '2026-07-30',
     title: 'Team Reflect: group feedback by dimension',

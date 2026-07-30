@@ -12,6 +12,16 @@ import { useLocation } from 'react-router-dom'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useAuth } from '../../hooks/useAuth'
 import { useDeletedRecordsArchive } from '../../hooks/useDeletedRecordsArchive'
+import { listDeletedRecordRows, type DeletedRecordRow } from '../../lib/deletedRecordsArchive'
+import {
+  EMPTY_BUNDLE_FILTERS,
+  distinctValues,
+  filterDeletedBundles,
+  humanizeArchiveTable,
+  summarizeDeletedRow,
+  type DeletedBundleFilters,
+} from '../../lib/deletedRecordContents'
+import { formatErrorMessage } from '../../utils/errorHandling'
 import { useBulkDeleteAlerts } from '../../hooks/useBulkDeleteAlerts'
 import {
   loadBulkDeleteAlertDismissState,
@@ -37,6 +47,33 @@ export default function DeletedRecordsSection() {
   const location = useLocation()
   const { bundles, loading, error, preview, busy, submitting, runPreview, runRestore } =
     useDeletedRecordsArchive({ enabled: open })
+
+  // "What's inside" contents per bundle: lazily fetched on first open, cached for the session.
+  const [filters, setFilters] = useState<DeletedBundleFilters>(EMPTY_BUNDLE_FILTERS)
+  const [openContents, setOpenContents] = useState<Set<string>>(() => new Set())
+  const [contentsByGroup, setContentsByGroup] = useState<Map<string, DeletedRecordRow[]>>(() => new Map())
+  const [contentsLoading, setContentsLoading] = useState<string | null>(null)
+  const [contentsError, setContentsError] = useState<string | null>(null)
+
+  async function toggleContents(groupKey: string) {
+    setOpenContents((prev) => {
+      const next = new Set(prev)
+      if (next.has(groupKey)) next.delete(groupKey)
+      else next.add(groupKey)
+      return next
+    })
+    if (contentsByGroup.has(groupKey) || contentsLoading === groupKey) return
+    setContentsLoading(groupKey)
+    setContentsError(null)
+    try {
+      const rows = await listDeletedRecordRows(groupKey)
+      setContentsByGroup((prev) => new Map(prev).set(groupKey, rows))
+    } catch (e) {
+      setContentsError(formatErrorMessage(e))
+    } finally {
+      setContentsLoading(null)
+    }
+  }
 
   // Arriving via the dashboard banner's "Review deletions" anchor opens the
   // section immediately (location.key so a repeat click re-opens it too).
@@ -149,9 +186,62 @@ export default function DeletedRecordsSection() {
             <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0 }}>Loading&hellip;</p>
           ) : bundles.length === 0 ? (
             <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0 }}>Nothing deleted in the last 90 days.</p>
-          ) : (
+          ) : (() => {
+            const visible = filterDeletedBundles(bundles, filters)
+            const kinds = distinctValues(bundles, (b) => b.kind)
+            const deleters = distinctValues(bundles, (b) => b.deleted_by_name)
+            const selectStyle = {
+              padding: '0.35rem 0.5rem',
+              fontSize: '0.8125rem',
+              border: '1px solid var(--border)',
+              borderRadius: 6,
+              background: 'var(--surface)',
+              color: 'var(--text-base)',
+            } as const
+            return (
+              <>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center', marginBottom: '0.75rem' }}>
+                  <input
+                    type="search"
+                    value={filters.search}
+                    onChange={(e) => setFilters({ ...filters, search: e.target.value })}
+                    placeholder="Search deletions…"
+                    aria-label="Search deletions by label"
+                    style={{ ...selectStyle, flex: '1 1 10rem', minWidth: '8rem' }}
+                  />
+                  <select
+                    value={filters.kind}
+                    onChange={(e) => setFilters({ ...filters, kind: e.target.value })}
+                    aria-label="Filter by type"
+                    style={selectStyle}
+                  >
+                    <option value="">All types</option>
+                    {kinds.map((k) => (
+                      <option key={k} value={k}>{k}</option>
+                    ))}
+                  </select>
+                  <select
+                    value={filters.deletedBy}
+                    onChange={(e) => setFilters({ ...filters, deletedBy: e.target.value })}
+                    aria-label="Filter by who deleted"
+                    style={selectStyle}
+                  >
+                    <option value="">Deleted by anyone</option>
+                    {deleters.map((n) => (
+                      <option key={n} value={n}>{n}</option>
+                    ))}
+                  </select>
+                  {(filters.kind !== '' || filters.deletedBy !== '' || filters.search !== '') && (
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                      {visible.length} of {bundles.length}
+                    </span>
+                  )}
+                </div>
+                {visible.length === 0 ? (
+                  <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0 }}>No deletions match these filters.</p>
+                ) : (
             <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-              {bundles.map((b) => {
+              {visible.map((b) => {
                 const isPreviewed = preview?.groupKey === b.group_key
                 const result = isPreviewed ? preview.result : null
                 const blockers = result?.blockers ?? []
@@ -182,9 +272,20 @@ export default function DeletedRecordsSection() {
                           {b.tables.length === 1 ? '' : 's'} · deleted by {b.deleted_by_name || 'unknown'} ·{' '}
                           {formatDeletedAt(b.deleted_at)}
                         </div>
-                        <div style={{ fontSize: '0.75rem', color: 'var(--text-faint)', marginTop: '0.15rem', wordBreak: 'break-word' }}>
-                          {b.tables.join(', ')}
+                        <div
+                          title={b.tables.join(', ')}
+                          style={{ fontSize: '0.75rem', color: 'var(--text-faint)', marginTop: '0.15rem', wordBreak: 'break-word' }}
+                        >
+                          {b.tables.map(humanizeArchiveTable).join(', ')}
                         </div>
+                        <button
+                          type="button"
+                          onClick={() => void toggleContents(b.group_key)}
+                          aria-expanded={openContents.has(b.group_key)}
+                          style={{ marginTop: '0.25rem', padding: 0, background: 'none', border: 'none', color: 'var(--text-blue-500)', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 600 }}
+                        >
+                          {openContents.has(b.group_key) ? 'Hide contents' : "What's inside?"}
+                        </button>
                       </div>
                       <div style={{ display: 'flex', gap: '0.5rem', flexShrink: 0 }}>
                         <button
@@ -228,6 +329,58 @@ export default function DeletedRecordsSection() {
                         </button>
                       </div>
                     </div>
+
+                    {openContents.has(b.group_key) && (
+                      <div style={{ marginTop: '0.6rem', paddingLeft: '0.5rem', borderLeft: '2px solid var(--border)', fontSize: '0.8125rem' }}>
+                        {contentsLoading === b.group_key ? (
+                          <span style={{ color: 'var(--text-muted)' }}>Loading contents&hellip;</span>
+                        ) : !contentsByGroup.has(b.group_key) ? (
+                          <span style={{ color: 'var(--text-red-700)' }}>{contentsError || 'Could not load contents.'}</span>
+                        ) : (
+                          (() => {
+                            const rows = contentsByGroup.get(b.group_key) ?? []
+                            const byTable = new Map<string, DeletedRecordRow[]>()
+                            for (const row of rows) {
+                              const list = byTable.get(row.table_name)
+                              if (list) list.push(row)
+                              else byTable.set(row.table_name, [row])
+                            }
+                            return [...byTable.entries()].map(([table, tableRows]) => (
+                              <div key={table} style={{ marginBottom: '0.4rem' }}>
+                                <div style={{ fontWeight: 600, color: 'var(--text-strong)' }}>
+                                  {humanizeArchiveTable(table)}{' '}
+                                  <span style={{ fontWeight: 400, color: 'var(--text-faint)' }}>
+                                    ({tableRows.length})
+                                  </span>
+                                </div>
+                                {tableRows.map((row) => (
+                                  <details key={row.id} style={{ marginLeft: '0.75rem' }}>
+                                    <summary style={{ cursor: 'pointer', color: 'var(--text-muted)' }}>
+                                      {summarizeDeletedRow(row.row_data)}
+                                    </summary>
+                                    <pre
+                                      style={{
+                                        margin: '0.25rem 0 0.4rem',
+                                        padding: '0.5rem',
+                                        fontSize: '0.6875rem',
+                                        background: 'var(--surface)',
+                                        border: '1px solid var(--border)',
+                                        borderRadius: 4,
+                                        overflowX: 'auto',
+                                        maxHeight: '16rem',
+                                        overflowY: 'auto',
+                                      }}
+                                    >
+                                      {JSON.stringify(row.row_data, null, 2)}
+                                    </pre>
+                                  </details>
+                                ))}
+                              </div>
+                            ))
+                          })()
+                        )}
+                      </div>
+                    )}
 
                     {isPreviewed && (
                       <div
@@ -282,7 +435,10 @@ export default function DeletedRecordsSection() {
                 )
               })}
             </ul>
-          )}
+                )}
+              </>
+            )
+          })()}
         </div>
       )}
     </div>

@@ -106,6 +106,12 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 #### July 30, 2026
 
+**`20260730190000_deleted_records_list_labels.sql`** _(apply via `supabase db push` after the file is on `main`; return shape unchanged so client/migration order is safe either way)_
+- **Purpose**: Recently deleted label quality (v2.1129) — `list_deleted_records()` re-created with smarter labels: partial bundles resolve the still-alive parent by `group_key` ("Under job 878 · Take 5- Seguin" across jobs_ledger/bids/customers/projects/estimates, fallback to the old hex text); `clock_sessions` bundles gain the deleter-independent owner name + work date + job number.
+- **Security**: CREATE OR REPLACE of the existing SECURITY DEFINER SQL function; still gated on `public.is_dev()`; grants unchanged.
+- **Ordering**: independent of the v2.1129 client (filters + "What's inside" read the archive table directly under its existing dev-only RLS).
+- **Category**: Settings / data safety
+
 **`20260730165312_stripe_mode_on_invoices.sql`** _(⚠ applied 2026-07-30 by the v2.1113 `db push` while still unmerged — the push swept every pending local file, including this then-drafted one; additive-only so nothing misread it, and the file merged to `main` the same hour to realign the ledger. Workflow caution: never leave draft migrations in `supabase/migrations/` while a push for an earlier file is pending — draft outside the tree and move in on the branch)_
 - **Purpose**: Stripe mode integrity (v2.1114; [`FRAGILITY_REMEDIATION_PLAN.md`](./FRAGILITY_REMEDIATION_PLAN.md) step A1) — `jobs_ledger_invoices.stripe_mode` (`'live'|'test'` CHECK, NULL = pre-A1 legacy) stamped by `create-stripe-invoice`; backfill `'live'` for existing Stripe-linked rows (plan decision 1); `stripe_webhook_events.livemode` for A2 observability.
 - **Security**: additive nullable columns; existing RLS covers them; no CREATE TABLE so no sweep calls needed.

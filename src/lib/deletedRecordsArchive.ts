@@ -31,6 +31,35 @@ export type RestoreDeletedRecordsResult = {
   blockers?: string[]
 }
 
+/** One archived row inside a bundle — row_data is to_jsonb(OLD), the complete deleted row. */
+export type DeletedRecordRow = {
+  id: string
+  table_name: string
+  record_id: string | null
+  row_data: Record<string, unknown>
+  deleted_at: string
+}
+
+/**
+ * Dev-only: the still-restorable rows of one bundle, for the "What's inside"
+ * view. Reads the archive table directly — its RLS policy is dev-only SELECT,
+ * so non-devs get an empty list, same as the bundle RPC.
+ */
+export async function listDeletedRecordRows(groupKey: string): Promise<DeletedRecordRow[]> {
+  const data = await withSupabaseRetry(
+    async () =>
+      supabase
+        .from('deleted_records_archive')
+        .select('id, table_name, record_id, row_data, deleted_at')
+        .eq('group_key', groupKey)
+        .is('restored_at', null)
+        .order('table_name')
+        .order('deleted_at'),
+    'list deleted record rows',
+  )
+  return (data ?? []) as DeletedRecordRow[]
+}
+
 /** Dev-only: restorable bundles, newest first. Non-devs get an empty list (enforced in the RPC). */
 export async function listDeletedRecords(limit = 50): Promise<DeletedRecordBundle[]> {
   const data = await withSupabaseRetry(
