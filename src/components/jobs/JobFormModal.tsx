@@ -8,11 +8,9 @@ import {
   useState,
 } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { NO_CUSTOMER_TYPE_LABEL } from '../../constants/customerTypeLabels'
 import { buildServiceTypeTradePill } from '../../lib/serviceTypeTradePill'
 import { JOB_FORM_SECTION_HEADER_STYLE } from '../../lib/jobFormSectionHeaderStyle'
 import { supabase } from '../../lib/supabase'
-import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
 import { useAuth } from '../../hooks/useAuth'
 import { useJobHazmatIncidents } from '../../hooks/useJobHazmatIncidents'
 import { sumHazmatRiderFees, type JobHazmatIncidentRow } from '../../lib/hazmatIncidents'
@@ -20,7 +18,6 @@ import { linkHazmatFeeIncidentToInvoice } from '../../lib/hazmatFeeEdit'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useLedgerPrefixMap } from '../../contexts/LedgerDisplayPrefixContext'
 import { parseCustomerImport } from '../../utils/parseCustomerImport'
-import { nameSimilarity } from '../../utils/nameSimilarity'
 import {
   OperationTimeoutError,
   formatPostgrestOrUnknownError,
@@ -54,7 +51,6 @@ import { JobFormSourceEstimateBanner } from './JobFormSourceEstimateBanner'
 import type { Database } from '../../types/database'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import { resolveCustomerIdForJobPayload } from '../../lib/jobLedgerCustomer'
-import { filterActiveCustomersForPicker } from '../../lib/customerArchive'
 import { jobLedgerHasCustomerForBilling } from '../../lib/jobLedgerCustomerForBilling'
 import { revenueDollarsFromFixtures } from '../../lib/revenueFromJobFixtures'
 import { buildEditJobBillingBar } from '../../lib/jobs/editJobBillingBar'
@@ -141,6 +137,9 @@ import {
 } from '../../lib/stripeInvoiceLineDescription'
 import { JobFormIdentityFields } from './JobFormIdentityFields'
 import { JobFormLinksSection } from './JobFormLinksSection'
+import { JobFormCustomerSection } from './JobFormCustomerSection'
+import { JobFormCreateCustomerModal } from './JobFormCreateCustomerModal'
+import { extractContactFromCustomer, getCustomerDisplay } from '../../lib/jobs/jobFormCustomerDisplay'
 import { formatJobFormBidLinkTitle } from '../../lib/jobs/jobFormBidLinkTitle'
 import { isAssistantLike } from '../../lib/subcontractorLikeRole'
 
@@ -343,14 +342,10 @@ export default function JobFormModal({
   const [customers, setCustomers] = useState<CustomerRow[]>([])
   const [users, setUsers] = useState<UserRow[]>([])
   const [customerSearch, setCustomerSearch] = useState('')
-  const [customerDropdownOpen, setCustomerDropdownOpen] = useState(false)
   const [customersLoading, setCustomersLoading] = useState(false)
   const [creatingCustomerFromJob, setCreatingCustomerFromJob] = useState(false)
   const [createCustomerFromJobModalOpen, setCreateCustomerFromJobModalOpen] = useState(false)
   const [jobProjectLinkChoiceOpen, setJobProjectLinkChoiceOpen] = useState(false)
-  const [createCustomerFromJobType, setCreateCustomerFromJobType] = useState<'residential' | 'commercial'>('residential')
-  const [similarCustomersForCreate, setSimilarCustomersForCreate] = useState<CustomerRow[]>([])
-  const [createCustomerFromJobModalLoading, setCreateCustomerFromJobModalLoading] = useState(false)
   const [customerExpanded, setCustomerExpanded] = useState(false)
   const [projectFilesPlansExpanded, setProjectFilesPlansExpanded] = useState(false)
   const [billingCustomerHighlight, setBillingCustomerHighlight] = useState(false)
@@ -1064,38 +1059,6 @@ export default function JobFormModal({
   const jobFormProjectDisconnectRef = useRef<HTMLButtonElement | null>(null)
   const jobFormGoogleDriveInputRef = useRef<HTMLInputElement | null>(null)
 
-  function getCustomerDisplay(c: CustomerRow): string {
-    if (c.address) return `${c.name} - ${c.address}`
-    return c.name
-  }
-
-  function extractContactFromCustomer(c: CustomerRow): { phone: string; email: string } {
-    const ci = c.contact_info
-    if (ci == null || typeof ci !== 'object') return { phone: '', email: '' }
-    const obj = ci as Record<string, unknown>
-    return {
-      phone: typeof obj.phone === 'string' ? obj.phone : '',
-      email: typeof obj.email === 'string' ? obj.email : '',
-    }
-  }
-
-  function customerListImpliesLinkedRow(customersList: CustomerRow[], jobMasterUserId: string, customerNameTrimmed: string): boolean {
-    const nameKey = customerNameTrimmed.trim().toLowerCase()
-    if (!nameKey) return false
-    const byName = customersList.filter((c) => (c.name ?? '').trim().toLowerCase() === nameKey)
-    const byMaster = byName.filter((c) => c.master_user_id === jobMasterUserId)
-    if (byMaster.length === 1) return true
-    if (byMaster.length === 0 && byName.length === 1) return true
-    return false
-  }
-
-  function customerTypeShortLabel(c: CustomerRow): string | null {
-    const t = c.customer_type
-    if (t === 'residential' || t === 'commercial') return t.charAt(0).toUpperCase() + t.slice(1)
-    if (t == null || t === '') return NO_CUSTOMER_TYPE_LABEL
-    return t
-  }
-
   /** The original unconditional close: reset transient UI state and unmount. */
   function finishClose() {
     setJobProjectLinkChoiceOpen(false)
@@ -1665,7 +1628,6 @@ export default function JobFormModal({
           }
           applyEditJob(job, billingCustomerHighlightInitial, fixturesSectionHighlightInitial, jobPicturesLinkHighlightInitial)
           if (alsoOpenCreateCustomerModal && (job.customer_name ?? '').trim()) {
-            setCreateCustomerFromJobType('residential')
             setCreateCustomerFromJobModalOpen(true)
           }
         }
@@ -1882,33 +1844,6 @@ export default function JobFormModal({
       }
     }
   }, [customerId, customers])
-
-  useEffect(() => {
-    if (!createCustomerFromJobModalOpen || !authUser?.id) return
-    setCreateCustomerFromJobModalLoading(true)
-    ;(async () => {
-      const { data } = await supabase
-        .from('customers')
-        .select('id, name, address, contact_info, date_met, master_user_id, customer_type, archived_at')
-        .order('name')
-      const all = (data as CustomerRow[]) ?? []
-      const name = customerName.trim()
-      if (!name) {
-        setSimilarCustomersForCreate([])
-        setCreateCustomerFromJobModalLoading(false)
-        return
-      }
-      const nameLower = name.toLowerCase()
-      const withSimilarity = all
-        .map((c) => ({ c, sim: nameSimilarity(name, c.name ?? '') }))
-        .filter(({ c, sim }) => sim >= 0.7 || (c.name ?? '').toLowerCase().includes(nameLower) || nameLower.includes((c.name ?? '').toLowerCase()))
-        .sort((a, b) => b.sim - a.sim)
-        .slice(0, 10)
-        .map(({ c }) => c)
-      setSimilarCustomersForCreate(withSimilarity)
-      setCreateCustomerFromJobModalLoading(false)
-    })()
-  }, [createCustomerFromJobModalOpen, authUser?.id, customerName])
 
   const billedMaterialsTotalDisplay = useMemo(() => {
     const sum = materials.reduce((s, m) => s + (Number(m.amount) || 0), 0)
@@ -3108,327 +3043,44 @@ export default function JobFormModal({
           />
           <JobFormPeoplePicker users={users} teamMemberIds={teamMemberIds} setTeamMemberIds={setTeamMemberIds} />
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', marginBottom: '1rem' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', marginBottom: customerExpanded ? '0.5rem' : 0 }}>
-              <button
-                type="button"
-                aria-expanded={customerExpanded}
-                onClick={() => setCustomerExpanded((p) => !p)}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.25rem',
-                  padding: 0,
-                  border: 'none',
-                  background: 'none',
-                  cursor: 'pointer',
-                  fontWeight: 500,
-                  fontSize: 'inherit',
-                  color: 'inherit',
-                  flex: 1,
-                  textAlign: 'left',
-                  minWidth: 0,
-                }}
-              >
-                {/* Match Project | Plans | Bid row: fixed chevron slot + same gap as job-form-project-files-plans-trigger */}
-                <span
-                  aria-hidden
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    minWidth: '1.25rem',
-                    flexShrink: 0,
-                  }}
-                >
-                  {customerExpanded ? '\u25BC' : '\u25B6'}
-                </span>
-                <span style={{ display: 'inline-flex', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem', minWidth: 0 }}>
-                  Customer: {customerName.trim() || customerEmail.trim() || customerPhone.trim() ? (customerName.trim() || '—') : '—'}
-                  {(() => {
-                    const projRow = projectId ? projects.find((p) => p.id === projectId) : undefined
-                    const masterForFormCustomer =
-                      projRow?.master_user_id ?? editing?.master_user_id ?? authUser?.id ?? ''
-                    const showFormNotInCustomers =
-                      !!(customerName.trim() || customerEmail.trim() || customerPhone.trim()) &&
-                      !customerId &&
-                      !customerListImpliesLinkedRow(customers, masterForFormCustomer, customerName)
-                    return showFormNotInCustomers ? (
-                      <span
-                        style={{
-                          padding: '0.15rem 0.4rem',
-                          fontSize: '0.75rem',
-                          fontWeight: 500,
-                          background: 'var(--bg-amber-100)',
-                          color: 'var(--text-amber-800)',
-                          borderRadius: 4,
-                        }}
-                      >
-                        Not in Customers
-                      </span>
-                    ) : null
-                  })()}
-                </span>
-              </button>
-              {customerExpanded && (
-                <button
-                  type="button"
-                  onClick={handleCustomerImport}
-                  style={{
-                    padding: '0.35rem 0.75rem',
-                    fontSize: '0.875rem',
-                    border: '1px solid var(--border-strong)',
-                    background: 'var(--bg-subtle)',
-                    borderRadius: 4,
-                    cursor: 'pointer',
-                  }}
-                >
-                  Import
-                </button>
-              )}
-            </div>
-            {customerExpanded && (
-              <div style={{ paddingLeft: '1.25rem', borderLeft: '2px solid var(--border)' }}>
-                <div
-                  ref={billingCustomerHighlightRef}
-                  style={{
-                    marginBottom: '0.75rem',
-                    position: 'relative',
-                    ...(billingCustomerHighlight
-                      ? {
-                          padding: '0.75rem',
-                          borderRadius: 8,
-                          background: 'var(--bg-red-tint)',
-                          border: '2px solid #fecaca',
-                        }
-                      : {}),
-                  }}
-                >
-                  {billingCustomerHighlight ? (
-                    <p
-                      role="status"
-                      aria-live="polite"
-                      style={{ margin: '0 0 0.5rem', fontSize: '0.8125rem', fontWeight: 600, color: '#991b1c' }}
-                    >
-                      Link a customer before sending this invoice.
-                    </p>
-                  ) : null}
-                  <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Link to customer</label>
-                  <input
-                    type="text"
-                    value={customerSearch}
-                    onChange={(e) => {
-                      const value = e.target.value
-                      setCustomerSearch(value)
-                      setCustomerDropdownOpen(true)
-                      if (customerId) {
-                        const selected = customers.find((c) => c.id === customerId)
-                        if (!selected || !value || getCustomerDisplay(selected).toLowerCase() !== value.toLowerCase()) {
-                          setCustomerId(null)
-                        }
-                      }
-                    }}
-                    onFocus={() => setCustomerDropdownOpen(true)}
-                    onBlur={() => setTimeout(() => setCustomerDropdownOpen(false), 200)}
-                    placeholder="Search customers (residential & commercial)…"
-                    aria-label="Search customers to link, residential and commercial"
-                    style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
-                  />
-                  {customerDropdownOpen && (
-                    <div
-                      style={{
-                        position: 'absolute',
-                        top: '100%',
-                        left: 0,
-                        right: 0,
-                        background: 'var(--surface)',
-                        border: '1px solid var(--border)',
-                        borderRadius: 4,
-                        maxHeight: 180,
-                        overflowY: 'auto',
-                        zIndex: 100,
-                        marginTop: 2,
-                        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
-                      }}
-                    >
-                      {customersLoading ? (
-                        <div style={{ padding: '0.5rem', color: 'var(--text-muted)' }}>Loading…</div>
-                      ) : (
-                        (() => {
-                          const q = customerSearch.toLowerCase()
-                          // Archived customers can't be linked to new/edited jobs; the
-                          // currently-linked one stays selectable (keepId) so editing an
-                          // existing link keeps working.
-                          const filtered = filterActiveCustomersForPicker(customers, customerId).filter((c) =>
-                            (c.name || '').toLowerCase().includes(q) || (c.address || '').toLowerCase().includes(q)
-                          )
-                          return (
-                            <>
-                              {filtered.map((c) => (
-                            <div
-                              key={c.id}
-                              onClick={() => {
-                                setCustomerId(c.id)
-                                setCustomerSearch(getCustomerDisplay(c))
-                                setCustomerName(c.name)
-                                setCustomerEmail(extractContactFromCustomer(c).email)
-                                setCustomerPhone(extractContactFromCustomer(c).phone)
-                                setDateMet(c.date_met ? (c.date_met.split('T')[0] ?? '') : '')
-                                if (!jobAddress.trim()) setJobAddress(c.address ?? '')
-                                setCustomerDropdownOpen(false)
-                              }}
-                              style={{ padding: '0.5rem', cursor: 'pointer', borderBottom: '1px solid var(--border)' }}
-                              onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--bg-muted)' }}
-                              onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--surface)' }}
-                            >
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'wrap' }}>
-                                <span style={{ fontWeight: 500 }}>{c.name}</span>
-                                <span style={{ fontSize: '0.6875rem', color: 'var(--text-muted)', fontWeight: 500 }}>
-                                  {customerTypeShortLabel(c)}
-                                </span>
-                              </div>
-                              {c.address && <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginTop: 2 }}>{c.address}</div>}
-                            </div>
-                              ))}
-                              {filtered.length === 0 && (
-                                <div style={{ padding: '0.5rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>No customers found</div>
-                              )}
-                            </>
-                          )
-                        })()
-                      )}
-                    </div>
-                  )}
-                  <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem', flexWrap: 'wrap' }}>
-                    {!customerId && (
-                      <button
-                        type="button"
-                        disabled={!customerName.trim()}
-                        onClick={() => setCreateCustomerFromJobModalOpen(true)}
-                        style={{
-                          padding: '0.35rem 0.75rem',
-                          fontSize: '0.875rem',
-                          border: '1px solid var(--border-strong)',
-                          background: !customerName.trim() ? 'var(--bg-muted)' : 'var(--bg-subtle)',
-                          borderRadius: 4,
-                          cursor: !customerName.trim() ? 'not-allowed' : 'pointer',
-                        }}
-                      >
-                        Create customer from job
-                      </button>
-                    )}
-                    {customerId && (
-                      <button
-                        type="button"
-                        onClick={() => { setCustomerId(null); setCustomerSearch(''); setDateMet('') }}
-                        style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', border: '1px solid var(--border-strong)', background: 'var(--surface)', borderRadius: 4, cursor: 'pointer', color: 'var(--text-muted)' }}
-                      >
-                        Clear link
-                      </button>
-                    )}
-                  </div>
-                </div>
-                <div style={{ marginBottom: '0.75rem' }}>
-                  <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Customer Name</label>
-                  <input type="text" value={customerName} onChange={(e) => setCustomerName(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }} />
-                </div>
-                <div style={{ marginBottom: '0.75rem' }}>
-                  <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Customer Phone</label>
-                  <input type="tel" value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }} />
-                </div>
-                <div style={{ marginBottom: '0.75rem' }}>
-                  <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Customer Email</label>
-                  <input type="email" value={customerEmail} onChange={(e) => setCustomerEmail(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }} />
-                </div>
-                <div style={{ marginBottom: '0.75rem' }}>
-                  <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>
-                    Date Met
-                    {customerId && customers.find((c) => c.id === customerId)?.date_met && (
-                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 400, marginLeft: 4 }}>(edit in Customers)</span>
-                    )}
-                  </label>
-                  <input
-                    type="date"
-                    value={dateMet}
-                    onChange={(e) => setDateMet(e.target.value)}
-                    disabled={!!(customerId && customers.find((c) => c.id === customerId)?.date_met)}
-                    style={{
-                      width: '100%',
-                      padding: '0.5rem',
-                      border: '1px solid var(--border-strong)',
-                      borderRadius: 4,
-                      background: customerId && customers.find((c) => c.id === customerId)?.date_met ? 'var(--bg-subtle)' : 'var(--surface)',
-                      color: customerId && customers.find((c) => c.id === customerId)?.date_met ? 'var(--text-muted)' : 'inherit',
-                      cursor: customerId && customers.find((c) => c.id === customerId)?.date_met ? 'not-allowed' : 'text',
-                    }}
-                  />
-                </div>
-                <div style={{ marginBottom: 0 }}>
-                  <label htmlFor="job-form-customer-job-files" style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>
-                    Customer Files
-                  </label>
-                  <input
-                    id="job-form-customer-job-files"
-                    ref={jobFormGoogleDriveInputRef}
-                    type="url"
-                    value={googleDriveLink}
-                    onChange={(e) => setGoogleDriveLink(e.target.value)}
-                    placeholder="https://drive.google.com/..."
-                    style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
-                  />
-                  <a
-                    href="https://drive.google.com/drive/folders/1cOTvZrJFTUlxTiUMoESdMtTRvQgxft60?usp=drive_link"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    onClick={(e) => {
-                      e.preventDefault()
-                      openInExternalBrowser('https://drive.google.com/drive/folders/1cOTvZrJFTUlxTiUMoESdMtTRvQgxft60?usp=drive_link')
-                    }}
-                    style={{ fontSize: '0.8125rem', color: 'var(--text-link)', marginTop: 4, display: 'inline-block' }}
-                  >
-                    customer and job folders
-                  </a>
-                </div>
-                <div
-                  ref={jobPicturesLinkHighlightRef}
-                  style={{
-                    marginBottom: 0,
-                    borderRadius: 8,
-                    ...(jobPicturesLinkHighlight
-                      ? {
-                          padding: '0.75rem',
-                          background: 'var(--bg-blue-tint)',
-                          border: '2px solid #93c5fd',
-                        }
-                      : {}),
-                  }}
-                >
-                  <label htmlFor="job-form-customer-job-pictures" style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>
-                    Customer Pictures
-                  </label>
-                  <input
-                    id="job-form-customer-job-pictures"
-                    ref={jobPicturesLinkInputRef}
-                    type="url"
-                    value={jobPicturesLink}
-                    onChange={(e) => setJobPicturesLink(e.target.value)}
-                    placeholder="https://drive.google.com/..."
-                    style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
-                  />
-                  <a
-                    href="https://drive.google.com/drive/folders/1cOTvZrJFTUlxTiUMoESdMtTRvQgxft60?usp=drive_link"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    onClick={(e) => {
-                      e.preventDefault()
-                      openInExternalBrowser('https://drive.google.com/drive/folders/1cOTvZrJFTUlxTiUMoESdMtTRvQgxft60?usp=drive_link')
-                    }}
-                    style={{ fontSize: '0.8125rem', color: 'var(--text-link)', marginTop: 4, display: 'inline-block' }}
-                  >
-                    customer and job folders
-                  </a>
-                </div>
-              </div>
-            )}
+            <JobFormCustomerSection
+              expanded={customerExpanded}
+              setExpanded={setCustomerExpanded}
+              customerId={customerId}
+              setCustomerId={setCustomerId}
+              customerSearch={customerSearch}
+              setCustomerSearch={setCustomerSearch}
+              customerName={customerName}
+              setCustomerName={setCustomerName}
+              customerEmail={customerEmail}
+              setCustomerEmail={setCustomerEmail}
+              customerPhone={customerPhone}
+              setCustomerPhone={setCustomerPhone}
+              dateMet={dateMet}
+              setDateMet={setDateMet}
+              googleDriveLink={googleDriveLink}
+              setGoogleDriveLink={setGoogleDriveLink}
+              jobPicturesLink={jobPicturesLink}
+              setJobPicturesLink={setJobPicturesLink}
+              jobAddress={jobAddress}
+              setJobAddress={setJobAddress}
+              customers={customers}
+              customersLoading={customersLoading}
+              masterForFormCustomer={
+                (projectId ? projects.find((p) => p.id === projectId) : undefined)?.master_user_id ??
+                editing?.master_user_id ??
+                authUser?.id ??
+                ''
+              }
+              billingCustomerHighlight={billingCustomerHighlight}
+              jobPicturesLinkHighlight={jobPicturesLinkHighlight}
+              billingCustomerHighlightRef={billingCustomerHighlightRef}
+              jobPicturesLinkHighlightRef={jobPicturesLinkHighlightRef}
+              jobPicturesLinkInputRef={jobPicturesLinkInputRef}
+              googleDriveInputRef={jobFormGoogleDriveInputRef}
+              onImport={handleCustomerImport}
+              onOpenCreateCustomerModal={() => setCreateCustomerFromJobModalOpen(true)}
+            />
             <JobFormLinksSection
               expanded={projectFilesPlansExpanded}
               setExpanded={setProjectFilesPlansExpanded}
@@ -4267,96 +3919,18 @@ export default function JobFormModal({
           }}
         />
       )}
-      {createCustomerFromJobModalOpen && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: JOB_FORM_NESTED_OVERLAY_Z_INDEX }} onClick={() => setCreateCustomerFromJobModalOpen(false)}>
-          <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 360, maxWidth: 480, maxHeight: '90vh', overflow: 'auto' }} onClick={(e) => e.stopPropagation()}>
-            <h2 style={{ margin: '0 0 0.5rem', fontSize: '1.25rem' }}>Create customer from job</h2>
-            <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-              {customerName.trim() || '—'} · {jobAddress.trim() || '—'}
-              {(customerEmail.trim() || customerPhone.trim()) && (
-                <span> · {customerEmail.trim() || customerPhone.trim()}</span>
-              )}
-            </p>
-            <label style={{ display: 'block', marginBottom: '1rem' }}>
-              <span style={{ display: 'block', marginBottom: 4, fontSize: '0.875rem', fontWeight: 500 }}>Customer type</span>
-              <div style={{ display: 'flex', gap: 0 }}>
-                <button
-                  type="button"
-                  onClick={() => setCreateCustomerFromJobType('residential')}
-                  style={{
-                    flex: 1,
-                    padding: '0.5rem 0.75rem',
-                    fontSize: '0.875rem',
-                    border: '1px solid var(--border-strong)',
-                    borderRadius: '4px 0 0 4px',
-                    background: createCustomerFromJobType === 'residential' ? '#3b82f6' : 'var(--surface)',
-                    color: createCustomerFromJobType === 'residential' ? 'white' : 'var(--text-700)',
-                    cursor: 'pointer',
-                  }}
-                >
-                  Residential
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setCreateCustomerFromJobType('commercial')}
-                  style={{
-                    flex: 1,
-                    padding: '0.5rem 0.75rem',
-                    fontSize: '0.875rem',
-                    border: '1px solid var(--border-strong)',
-                    borderRadius: '0 4px 4px 0',
-                    background: createCustomerFromJobType === 'commercial' ? '#3b82f6' : 'var(--surface)',
-                    color: createCustomerFromJobType === 'commercial' ? 'white' : 'var(--text-700)',
-                    cursor: 'pointer',
-                  }}
-                >
-                  Commercial
-                </button>
-              </div>
-            </label>
-            <div style={{ marginBottom: '1rem' }}>
-              <span style={{ display: 'block', marginBottom: 4, fontSize: '0.875rem', fontWeight: 500 }}>Possible matches – link instead?</span>
-              {createCustomerFromJobModalLoading ? (
-                <div style={{ padding: '0.5rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>Loading…</div>
-              ) : similarCustomersForCreate.length > 0 ? (
-                <div style={{ border: '1px solid var(--border)', borderRadius: 4, maxHeight: 160, overflowY: 'auto' }}>
-                  {similarCustomersForCreate.map((c) => (
-                    <div
-                      key={c.id}
-                      onClick={() => handleLinkToSimilarCustomer(c)}
-                      style={{ padding: '0.5rem 0.75rem', cursor: 'pointer', borderBottom: '1px solid var(--border)' }}
-                      onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--bg-subtle)' }}
-                      onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--surface)' }}
-                    >
-                      <div style={{ fontWeight: 500 }}>{c.name}</div>
-                      {c.address && <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: 2 }}>{c.address}</div>}
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div style={{ padding: '0.5rem', color: 'var(--text-muted)', fontSize: '0.875rem', fontStyle: 'italic' }}>No similar customers found</div>
-              )}
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
-              <button
-                type="button"
-                onClick={() => setCreateCustomerFromJobModalOpen(false)}
-                style={{ padding: '0.5rem 1rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                disabled={!customerName.trim() || creatingCustomerFromJob}
-                onClick={() => handleCreateCustomerFromJob(createCustomerFromJobType)}
-                style={{ padding: '0.5rem 1rem', background: !customerName.trim() || creatingCustomerFromJob ? '#9ca3af' : '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: !customerName.trim() || creatingCustomerFromJob ? 'not-allowed' : 'pointer' }}
-              >
-                {creatingCustomerFromJob ? 'Creating…' : 'Create new customer'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <JobFormCreateCustomerModal
+        open={createCustomerFromJobModalOpen}
+        onClose={() => setCreateCustomerFromJobModalOpen(false)}
+        customerName={customerName}
+        jobAddress={jobAddress}
+        customerEmail={customerEmail}
+        customerPhone={customerPhone}
+        creatingCustomerFromJob={creatingCustomerFromJob}
+        onCreate={(t) => void handleCreateCustomerFromJob(t)}
+        onLinkSimilar={(c) => void handleLinkToSimilarCustomer(c)}
+        overlayZIndex={JOB_FORM_NESTED_OVERLAY_Z_INDEX}
+      />
     </div>
 
       <AgreedWriteDownModal
