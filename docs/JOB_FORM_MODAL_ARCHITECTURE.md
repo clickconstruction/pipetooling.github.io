@@ -321,7 +321,7 @@ Documented with their owning sections (§12, §7, §12). All render at `JOB_FORM
 
 ## Quirks (preserve, don't fix)
 
-1. **Save delete+reinsert id churn** — payments/materials/fixtures are wholesale deleted and re-inserted with new client UUIDs on every Edit save; locked Stripe/Mercury payment rows ride along. (BILLING_FLOWS #9 / insert-path E.)
+1. **Save delete+reinsert id churn** — materials/fixtures are wholesale deleted and re-inserted with new client UUIDs on every Edit save. **Payments are DIFFED since v2.1121 (B5)**: `diffPaymentRows` (`lib/jobs/paymentRowsDiff.ts`, tested) upserts persist-worthy rows under stable ids and deletes only ids the form owns (`hydratedPaymentIdsRef`, captured at both hydration sites, updated after each slice persist, deliberately NOT reset by Undo) — rows born mid-edit (Stripe webhook payments) survive autosaves, and stable ids end the `payment_added` activity churn. `payments_made` is trigger-maintained since B3 (v2.1119); the client stopped writing it in B4 (v2.1120). (BILLING_FLOWS #9 / insert-path E, updated.)
 2. **Child-row write errors unchecked in `saveJob`** — only the `jobs_ledger` update/insert results are checked; every child delete/insert result is dropped, so a mid-loop failure silently loses rows while `payments_made` already reflects the full form sum.
 3. **`payments_made` overwrite** — save sets it to the form-row sum; it has three writers repo-wide and no DB invariant (BILLING_FLOWS #10).
 4. **Fixture rows with only scope notes are dropped on save** (name empty ⇒ filtered out) even though `fixtureRowHasUserContent` counts them as blocking content for the Import gate.

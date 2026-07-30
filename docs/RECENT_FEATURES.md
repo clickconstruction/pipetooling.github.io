@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-30 (v2.1120)
+last_updated: 2026-07-30 (v2.1121)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1121)
+
+### Edit Job payments persist by diff — mid-edit payments survive (2026-07-30)
+New tested kernel [`paymentRowsDiff.ts`](../src/lib/jobs/paymentRowsDiff.ts) + [`JobFormModal.tsx`](../src/components/jobs/JobFormModal.tsx) — step **B5** of [`FRAGILITY_REMEDIATION_PLAN.md`](./FRAGILITY_REMEDIATION_PLAN.md), closing Workstream B's behavior changes. The billing slice's payments write was delete-ALL-by-job + reinsert with fresh UUIDs — so a payment row born after form hydration (the Stripe webhook recording a payment mid-edit) was destroyed by the next autosave, and the new ids made every autosave emit fresh `payment_added` activity events (`job_activity_events` `source_id` dedupe never matched). Now: `diffPaymentRows(jobId, persistedIds, current)` returns `{deleteIds, upserts}` — persist-worthy rows (same `amount > 0` filter) upsert under their own ids (`onConflict: 'id'`; hydrated rows keep DB ids, new rows already mint real `crypto.randomUUID()` ids in `newEmptyPaymentRow`), and deletes are scoped to ids the form owns via new `hydratedPaymentIdsRef` (captured at both hydration sites — `refreshEditingJobAndHydratePayments` + job load — updated to the upsert set after each successful persist, deliberately NOT reset by Undo since it tracks DB reality). Foreign rows are invisible to the diff → the webhook-mid-edit race is closed and zeroing a hydrated row still deletes it. `createJob` keeps plain inserts (fresh job). RLS verified: full CRUD policies exist on `jobs_ledger_payments` for the office roles (upsert-update path confirmed against prod). 6 kernel tests. `JOB_FORM_MODAL_ARCHITECTURE.md` gotcha 1 + `BILLING_FLOWS.md` path E updated. Client-only.
 
 ## Latest Updates (v2.1120)
 

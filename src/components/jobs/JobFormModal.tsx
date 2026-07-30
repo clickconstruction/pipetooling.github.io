@@ -38,6 +38,7 @@ import {
   shouldDemotePaidJobToBilled,
   type JobIdentityFormFields,
 } from '../../lib/jobs/jobFormAutosaveSlices'
+import { diffPaymentRows } from '../../lib/jobs/paymentRowsDiff'
 import {
   buildJobFormUndoSnapshot,
   invoiceSetKey,
@@ -350,6 +351,7 @@ export default function JobFormModal({
       if (!found) return
       setEditing(found)
       setPayments(paymentRowsFromJob(found))
+      hydratedPaymentIdsRef.current = (found.payments ?? []).map((p) => p.id)
       setBillViewInvoice((prev) => {
         if (!prev) return prev
         const row = found.invoices?.find((i) => i.id === prev.id)
@@ -494,6 +496,15 @@ export default function JobFormModal({
   autosaveFixturesRef.current = fixtures
   const autosavePaymentsRef = useRef(payments)
   autosavePaymentsRef.current = payments
+  /**
+   * B5: ids of the payment rows this form last knew to be persisted —
+   * hydration ids on load/refresh, then each successful billing-slice
+   * persist's upsert ids. Drives diffPaymentRows so the slice deletes only
+   * rows the form owns; rows born mid-edit (e.g. a Stripe webhook payment)
+   * are invisible to the diff and survive autosaves. Deliberately NOT reset
+   * by Undo — it tracks DB reality, not form state.
+   */
+  const hydratedPaymentIdsRef = useRef<string[]>([])
   const autosaveRiderFeesRef = useRef(riderFeesDollars)
   autosaveRiderFeesRef.current = riderFeesDollars
   const autosaveJobIdRef = useRef<string | null>(null)
@@ -519,12 +530,24 @@ export default function JobFormModal({
         .update({ revenue: revNum })
         .eq('id', jobId)
       if (updErr) throw updErr
-      const { error: delPayErr } = await supabase.from('jobs_ledger_payments').delete().eq('job_id', jobId)
-      if (delPayErr) throw delPayErr
-      for (const row of paymentInsertRows(jobId, pays)) {
-        const { error: insPayErr } = await supabase.from('jobs_ledger_payments').insert(row)
-        if (insPayErr) throw insPayErr
+      // B5: diff instead of delete-all+reinsert — stable row ids (no
+      // activity-event churn) and rows born mid-edit survive.
+      const { deleteIds, upserts } = diffPaymentRows(jobId, hydratedPaymentIdsRef.current, pays)
+      if (deleteIds.length > 0) {
+        const { error: delPayErr } = await supabase
+          .from('jobs_ledger_payments')
+          .delete()
+          .in('id', deleteIds)
+          .eq('job_id', jobId)
+        if (delPayErr) throw delPayErr
       }
+      if (upserts.length > 0) {
+        const { error: upsertPayErr } = await supabase
+          .from('jobs_ledger_payments')
+          .upsert(upserts, { onConflict: 'id' })
+        if (upsertPayErr) throw upsertPayErr
+      }
+      hydratedPaymentIdsRef.current = upserts.map((u) => u.id)
       const { error: delFixErr } = await supabase.from('jobs_ledger_fixtures').delete().eq('job_id', jobId)
       if (delFixErr) throw delFixErr
       for (const row of fixtureInsertRows(jobId, fx)) {
@@ -1260,6 +1283,7 @@ export default function JobFormModal({
     setJobPlansLink(job.job_plans_link ?? '')
     setProjectFilesPlansExpanded(false)
     setPayments(paymentRowsFromJob(job))
+    hydratedPaymentIdsRef.current = (job.payments ?? []).map((p) => p.id)
     setMaterials(
       job.materials.length > 0
         ? job.materials.map((m) => ({ id: m.id, description: m.description, amount: Number(m.amount) }))

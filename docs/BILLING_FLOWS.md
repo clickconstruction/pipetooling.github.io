@@ -241,7 +241,7 @@ Baseline: `job_id` FK CASCADE, `amount`, `sequence_order`, `paid_on` (user-enter
 | B | RPC `mark_job_paid` (6-arg; 3-arg legacy appears unused) | same modal, mode `job` | job-level row, `invoice_id` NULL |
 | C | RPC `mark_invoice_paid_from_stripe` (service-role, no auth) | `stripe-webhook` only | full remaining; note defaults `'Stripe'`; also how OOB records land (via `record-stripe-invoice-out-of-band-payment` → Stripe → webhook) |
 | D | RPC `apply_mercury_bank_payment_allocations` | `src/components/jobs/BankPaymentsModal.tsx` ("Accounts Receivable"; Jobs Stages + `/accounts-receivable`) | allocations `{invoice_id|job_id, amount}` against a Mercury deposit; caps at deposit remainder; non-Stripe billed targets only; `paid_on` forced to the deposit's posted Chicago day; `reference_number` = `mercury_id` |
-| E | Direct client writes | `src/components/jobs/JobFormModal.tsx` `saveJob` | Edit Job Save **deletes all payment rows for the job and re-inserts the form rows** (locked Stripe/Mercury rows ride along with new ids), then sets `payments_made` = form sum; may demote paid→billed |
+| E | Direct client writes | `src/components/jobs/JobFormModal.tsx` `persistBillingSlice` (edit autosave; `createJob` for new jobs) | Since v2.1121 (B5): **diff-based** — `diffPaymentRows` upserts persist-worthy form rows under stable ids and deletes only ids the form owns; rows born mid-edit (webhook payments) survive. The client no longer writes `payments_made` (B4) — the B3 trigger derives it from rows. Close-time demote paid→billed unchanged. (Pre-v2.1121: delete-all + reinsert with new ids + form-sum overwrite.) |
 
 ### Unlink / reconcile
 
