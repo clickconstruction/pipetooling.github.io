@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1111',
+    date: '2026-07-30',
+    title: 'Fix: Combine people now carries every pay record type',
+    kind: 'fix',
+    highlights: [
+      'Combining a duplicate person into their real entry now also re-links crew bid assignments, pay stub days, hours display order, offsets, and reviewed-hours records to the kept person.',
+      'Previously those five record types stayed attached to the archived duplicate behind the scenes; names were already corrected, so nothing visible changes today — this future-proofs the records.',
+    ],
+  },
+  {
     version: 'v2.1110',
     date: '2026-07-30',
     title: 'Security hardening: internal payment functions locked down',

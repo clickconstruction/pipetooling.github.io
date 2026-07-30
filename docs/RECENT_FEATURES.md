@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-30 (v2.1110)
+last_updated: 2026-07-30 (v2.1111)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1111)
+
+### Fix: Combine people repoints person_id on all ten pay tables (2026-07-30)
+[`combinePeople.ts`](../src/lib/combinePeople.ts) — step **C0.1** of [`FRAGILITY_REMEDIATION_PLAN.md`](./FRAGILITY_REMEDIATION_PLAN.md). `PERSON_ID_TABLES` was still the original Phase-B five (`people_pay_config`, `people_hours`, `people_crew_jobs`, `pay_stubs`, `people_team_members`), so a Combine repointed those tables' `person_id` to the keeper but left the five Phase-B2 tables (`people_crew_bids`, `pay_stub_days`, `people_hours_display_order`, `person_offsets`, `hours_reviewed` — migration `20260722270000` gave them backfill + triggers) pointing at the **archived duplicate**. Today the name rewrite (step 1 of the combine) masks it — readers fall back to `person_name` — but Phase E removes that fallback, at which point every past combine would silently orphan those rows. Fix: `PERSON_ID_TABLES = NAME_KEYED_TABLES` (identical since B2); both lists exported and pinned by new tests in [`combinePeople.test.ts`](../src/lib/combinePeople.test.ts) against the migration inventory. No behavior change for names; combines now also repoint ids on the B2 five. Client-only.
 
 ## Latest Updates (v2.1110)
 
