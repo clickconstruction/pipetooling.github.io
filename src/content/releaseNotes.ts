@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1128',
+    date: '2026-07-30',
+    title: 'Team Reflect: group feedback by dimension',
+    kind: 'feature',
+    highlights: [
+      'Prospects → Team → Review → Reflect has a new "Group by" toggle: keep the current per-reviewer view, or flip to Dimension to read everyone’s Ability, Drive, and Integrity scores and comments side by side.',
+      'Dimension view sorts each list highest score first and shows the team average next to each dimension name.',
+    ],
+  },
+  {
     version: 'v2.1127',
     date: '2026-07-30',
     title: 'Reliability: Unassigned Field Time matches salaried people by identity',

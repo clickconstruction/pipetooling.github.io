@@ -189,6 +189,33 @@ export function formatReviewMonthShort(reviewMonth: string): string {
   return name && y ? `${name} '${y.slice(2)}` : reviewMonth
 }
 
+export type ReviewDimension = 'ability' | 'drive' | 'integrity'
+
+export type DimensionEntry = {
+  reviewer_user_id: string
+  review_month: string
+  rating: number | null
+  comment: string | null
+}
+
+/**
+ * Reflect "by dimension" view (v2.1128): each reviewer's latest rating and
+ * comment for ONE dimension, highest rating first (unrated-but-commented
+ * last), ties broken by reviewer id. Reviewers with neither a rating nor a
+ * comment for the dimension are omitted.
+ */
+export function latestEntriesForDimension(latest: TeamMemberReviewRow[], dimension: ReviewDimension): DimensionEntry[] {
+  return latest
+    .map((r) => ({
+      reviewer_user_id: r.reviewer_user_id,
+      review_month: r.review_month,
+      rating: r[`rating_${dimension}`],
+      comment: (r[`comment_${dimension}`] ?? '').trim() || null,
+    }))
+    .filter((e) => e.rating != null || e.comment != null)
+    .sort((a, b) => (b.rating ?? -1) - (a.rating ?? -1) || a.reviewer_user_id.localeCompare(b.reviewer_user_id))
+}
+
 /** All of a subject's reviews, newest month first then reviewer id — the Reflect history list. */
 export function subjectReviewHistory(reviews: TeamMemberReviewRow[], subjectUserId: string): TeamMemberReviewRow[] {
   return reviews
