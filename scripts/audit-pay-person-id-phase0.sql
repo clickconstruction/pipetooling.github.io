@@ -60,3 +60,68 @@ FROM public.people
 WHERE archived_at IS NULL
 GROUP BY btrim(name)
 HAVING COUNT(*) > 1;
+
+-- ---------------------------------------------------------------------------
+-- Post-Phase-B additions (C0.5, 2026-07-30): fill rates + junction coverage.
+-- Gates Phase D (unique indexes / onConflict flips) and Phase E (NOT NULL+FK).
+-- ---------------------------------------------------------------------------
+
+-- Fill rate per pay table: person_id set vs total (expect ~100% post-backfill;
+-- rerun before Phase D and record in docs/PERSON_IDENTITY_PLAN.md).
+SELECT 'people_pay_config' AS tbl, COUNT(*) AS rows, COUNT(person_id) AS with_id FROM public.people_pay_config
+UNION ALL SELECT 'people_hours', COUNT(*), COUNT(person_id) FROM public.people_hours
+UNION ALL SELECT 'people_crew_jobs', COUNT(*), COUNT(person_id) FROM public.people_crew_jobs
+UNION ALL SELECT 'pay_stubs', COUNT(*), COUNT(person_id) FROM public.pay_stubs
+UNION ALL SELECT 'people_team_members', COUNT(*), COUNT(person_id) FROM public.people_team_members
+UNION ALL SELECT 'people_crew_bids', COUNT(*), COUNT(person_id) FROM public.people_crew_bids
+UNION ALL SELECT 'pay_stub_days', COUNT(*), COUNT(person_id) FROM public.pay_stub_days
+UNION ALL SELECT 'people_hours_display_order', COUNT(*), COUNT(person_id) FROM public.people_hours_display_order
+UNION ALL SELECT 'person_offsets', COUNT(*), COUNT(person_id) FROM public.person_offsets
+UNION ALL SELECT 'hours_reviewed', COUNT(*), COUNT(person_id) FROM public.hours_reviewed
+ORDER BY 1;
+
+-- Duplicate-key preflight for Phase D unique indexes: same person_id appearing
+-- more than once where the D0 indexes will require uniqueness.
+SELECT 'people_pay_config(person_id)' AS key, person_id::text, COUNT(*)
+FROM public.people_pay_config WHERE person_id IS NOT NULL
+GROUP BY person_id HAVING COUNT(*) > 1
+UNION ALL
+SELECT 'people_hours(person_id,work_date)', person_id::text || '@' || work_date::text, COUNT(*)
+FROM public.people_hours WHERE person_id IS NOT NULL
+GROUP BY person_id, work_date HAVING COUNT(*) > 1
+UNION ALL
+SELECT 'people_crew_jobs(work_date,person_id)', person_id::text || '@' || work_date::text, COUNT(*)
+FROM public.people_crew_jobs WHERE person_id IS NOT NULL
+GROUP BY person_id, work_date HAVING COUNT(*) > 1
+UNION ALL
+SELECT 'people_hours_display_order(person_id)', person_id::text, COUNT(*)
+FROM public.people_hours_display_order WHERE person_id IS NOT NULL
+GROUP BY person_id HAVING COUNT(*) > 1;
+
+-- Junction coverage: people_labor_job_assignees vs the delimited name strings.
+-- For each sheet, segments in assigned_to_name vs junction rows; mismatches
+-- mean unresolvable names (silently dropped by the sync trigger).
+WITH sheets AS (
+  SELECT id,
+         (SELECT COUNT(*) FROM regexp_split_to_table(COALESCE(assigned_to_name, ''), ' \| ') s
+           WHERE btrim(s) <> '') AS name_segments
+  FROM public.people_labor_jobs
+),
+junction AS (
+  SELECT labor_job_id, COUNT(*) AS junction_rows
+  FROM public.people_labor_job_assignees
+  GROUP BY labor_job_id
+)
+SELECT COUNT(*) FILTER (WHERE s.name_segments = COALESCE(j.junction_rows, 0)) AS sheets_fully_covered,
+       COUNT(*) FILTER (WHERE s.name_segments > COALESCE(j.junction_rows, 0)) AS sheets_with_unresolved_names,
+       COUNT(*) FILTER (WHERE s.name_segments < COALESCE(j.junction_rows, 0)) AS sheets_overcovered_anomaly
+FROM sheets s
+LEFT JOIN junction j ON j.labor_job_id = s.id;
+
+-- Unresolved sheet segments in detail (which names fail to resolve).
+SELECT DISTINCT btrim(seg) AS unresolved_name
+FROM public.people_labor_jobs plj,
+     LATERAL regexp_split_to_table(COALESCE(plj.assigned_to_name, ''), ' \| ') seg
+WHERE btrim(seg) <> ''
+  AND public.resolve_pay_person_id(btrim(seg)) IS NULL
+ORDER BY 1;

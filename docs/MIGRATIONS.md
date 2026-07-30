@@ -9,7 +9,7 @@ last_updated: 2026-07-30
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate to Advanced
 
-total_migrations: "128 live in supabase/migrations/ (baseline + post-baseline) + 847 archived pre-baseline files (squashed into the 2026-06-04 baseline)"
+total_migrations: "129 live in supabase/migrations/ (baseline + post-baseline) + 847 archived pre-baseline files (squashed into the 2026-06-04 baseline)"
 date_range: "Through July 30, 2026 — the latest real migration. Archive filenames dated 2027 are typos; that work happened March–June 2026 (see the note atop Recent Migrations)."
 categories: "Bids, Materials, Workflow, RLS, Database Improvements"
 
@@ -105,6 +105,12 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 ### July 2026
 
 #### July 30, 2026
+
+**`20260730164728_widen_pay_person_id_triggers.sql`** _(apply via `supabase db push` after the file is on `main`; no client change — either order is safe)_
+- **Purpose**: Person-identity trigger widening (v2.1113; [`FRAGILITY_REMEDIATION_PLAN.md`](./FRAGILITY_REMEDIATION_PLAN.md) steps C0.3+C0.4) — `pay_tables_set_person_id()` now fires `BEFORE INSERT OR UPDATE OF person_name` on all ten pay tables (Phase B five + B2 five), re-resolving `person_id` on a name change the writer didn't pair with an explicit id: `COALESCE(resolve_pay_person_id(new_name), old id)`. Fixes the Edit-offset person-swap desync and makes renames/combines self-heal at the DB. Trigger renamed `set_person_id_on_insert` → `set_person_id_on_write` (old name dropped on all tables).
+- **Security**: no grants/RLS changes; trigger function unchanged in privilege (invoker); no CREATE TABLE so no sweep calls needed.
+- **Ordering**: independent of any client deploy.
+- **Category**: People / person identity
 
 **`20260730160048_revoke_stripe_webhook_rpc_public_grants.sql`** _(apply via `supabase db push` after the file is on `main`; no client or edge-function change — either order is safe)_
 - **Purpose**: Security hardening (v2.1110; [`FRAGILITY_REMEDIATION_PLAN.md`](./FRAGILITY_REMEDIATION_PLAN.md) step A0) — `REVOKE EXECUTE ... FROM PUBLIC, anon, authenticated` on `mark_invoice_paid_from_stripe(uuid, text, text, date, text)` and `complete_job_collect_payment_flow_for_invoice(text)`. Both are SECURITY DEFINER helpers meant to be called only by the `stripe-webhook` edge function via its service-role client; the baseline's grants let any logged-in user mark an arbitrary invoice paid or complete a collect-payment flow by id. Caller audit (2026-07-30) confirms the webhook is the sole caller.
