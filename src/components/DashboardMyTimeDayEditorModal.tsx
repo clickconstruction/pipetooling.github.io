@@ -305,6 +305,17 @@ type Props = {
     bid_id: string | null
   }) => void
   /**
+   * Same seeded-draft contract as `onPatchSeededSessionsJobBid`, for Adjust times: draft rows
+   * are not in `clock_sessions` yet, so the adjust modal patches the parent's seed instead of
+   * running a DB UPDATE (which fails on the non-uuid `draft:people-hours:` id).
+   */
+  onPatchSeededSessionsTimes?: (args: {
+    sessionId: string
+    clocked_in_at: string
+    clocked_out_at: string | null
+    work_date: string
+  }) => void
+  /**
    * Pay-access origin (Draft Payroll Hours breakdown): replaces the default this+last-week
    * (America/Chicago) save fence with this inclusive YMD range. Caller must gate on pay access;
    * the leader split/replace RPCs enforce the same bypass server-side
@@ -333,6 +344,7 @@ export function DashboardMyTimeDayEditorModal({
   prefetchSalarySessionsWhenEmpty = false,
   peopleHoursGridProportionalSeed = false,
   onPatchSeededSessionsJobBid,
+  onPatchSeededSessionsTimes,
   saveableRangeOverride = null,
 }: Props) {
   const { showToast } = useToastContext()
@@ -456,6 +468,26 @@ export function DashboardMyTimeDayEditorModal({
   const openAdjustTimes = useCallback((s: DayEditorSession) => {
     setAdjustTimesSession(s)
   }, [])
+
+  /**
+   * Adjust-times save for draft sessions (`draft:people-hours:` ids): the row isn't in the DB yet,
+   * so patch it in memory — the parent's seed when sessions are seeded, `fetchedSessions` when the
+   * modal owns them. The existing draft INSERT in `persistDirtyChangesAsync` persists the new times.
+   */
+  const draftLocalAdjustTimes = useCallback(
+    (update: { clocked_in_at: string; clocked_out_at: string | null; work_date: string }) => {
+      const target = adjustTimesSession
+      if (!target) return
+      if (sessionsProp.length > 0) {
+        onPatchSeededSessionsTimes?.({ sessionId: target.id, ...update })
+      } else {
+        setFetchedSessions((prev) =>
+          prev ? prev.map((s) => (s.id === target.id ? { ...s, ...update } : s)) : prev,
+        )
+      }
+    },
+    [adjustTimesSession, sessionsProp.length, onPatchSeededSessionsTimes],
+  )
 
   /**
    * Per-segment reject updates one `clock_sessions` row (same target as adjust times / assign).
@@ -3235,6 +3267,8 @@ export function DashboardMyTimeDayEditorModal({
         zIndex={1300}
         onClose={() => setAdjustTimesSession(null)}
         onSaved={onAdjustTimesSaved}
+        onSaveLocal={isDraftPeopleHoursSessionId(adjustTimesSession.id) ? draftLocalAdjustTimes : undefined}
+        showToast={isDraftPeopleHoursSessionId(adjustTimesSession.id) ? showToast : undefined}
       />
     ) : null}
     {addDisjointOpen ? (

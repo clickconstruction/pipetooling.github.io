@@ -20,6 +20,12 @@ export type AdjustClockSessionTimesModalProps = {
   session: AdjustClockSessionTimesSession
   onClose: () => void
   onSaved?: () => void
+  /**
+   * Draft sessions (e.g. People → Hours manual entry, id `draft:people-hours:…`) don't exist in
+   * clock_sessions yet — a DB UPDATE would fail on the non-uuid id. When provided, Save applies
+   * the new times to the in-memory draft instead; the day editor's draft INSERT persists them.
+   */
+  onSaveLocal?: (update: { clocked_in_at: string; clocked_out_at: string | null; work_date: string }) => void
   showToast?: (message: string, variant?: 'success' | 'error' | 'warning' | 'info') => void
   zIndex?: number
 }
@@ -28,6 +34,7 @@ export function AdjustClockSessionTimesModal({
   session,
   onClose,
   onSaved,
+  onSaveLocal,
   showToast,
   zIndex = 1110,
 }: AdjustClockSessionTimesModalProps) {
@@ -65,6 +72,16 @@ export function AdjustClockSessionTimesModal({
   }
 
   async function saveTimes(update: { clocked_in_at: string; clocked_out_at?: string; work_date: string }) {
+    if (onSaveLocal) {
+      onSaveLocal({
+        clocked_in_at: update.clocked_in_at,
+        clocked_out_at: update.clocked_out_at ?? null,
+        work_date: update.work_date,
+      })
+      showToast?.('Times updated — the block saves when you save the editor.', 'success')
+      onClose()
+      return
+    }
     setSaving(true)
     try {
       await withSupabaseRetry(

@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1095',
+    date: '2026-07-29',
+    title: 'Fix: adjusting times on an unsaved hours block',
+    kind: 'fix',
+    highlights: [
+      'Adjust times no longer shows an error when the block came from a typed People → Hours value (or a "+"-added block) that hasn’t been saved yet — the new times now apply to the draft and save when you save the editor.',
+    ],
+  },
+  {
     version: 'v2.1094',
     date: '2026-07-29',
     title: 'Under the hood: Edit Job window cleanup — all sections done',

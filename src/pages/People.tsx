@@ -4217,6 +4217,17 @@ export default function People() {
               }
             })
           }}
+          onPatchSeededSessionsTimes={({ sessionId, clocked_in_at, clocked_out_at, work_date }) => {
+            setHoursManualDraftEditor((prev) => {
+              if (!prev) return prev
+              return {
+                ...prev,
+                draftSessions: prev.draftSessions.map((s) =>
+                  s.id === sessionId ? { ...s, clocked_in_at, clocked_out_at, work_date } : s,
+                ),
+              }
+            })
+          }}
         />
       )}
 
