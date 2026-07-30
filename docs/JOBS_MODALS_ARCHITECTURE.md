@@ -211,7 +211,7 @@ Component: default-export function `DetailJobModal`. ~25 `useState`, 10 `useEffe
 
 ### D9 — Satellite modal mounts (~1980–2032)
 
-- `JobCalendarModal` (extracted, 421 lines; `onOpenSchedule` → seeds `detailScheduleInitialDate` + opens `ScheduleJobModal`; `onOpenWeekDispatch` → `handleOpenWeekDispatch`), `ScheduleJobModal` (extracted, 808 lines; keyed by `fullJob.id`), `JobReportsModal` (extracted, zIndex 1100), `PaidJobEmailSendModal` (extracted).
+- `JobCalendarModal` (extracted, 421 lines; `onOpenSchedule` → seeds `detailScheduleInitialDate` + opens `ScheduleJobModal`; `onOpenWeekDispatch` → `handleOpenWeekDispatch`), `ScheduleJobModal` (extracted, 808 lines; keyed by `fullJob.id`), `JobReportsModal` (extracted, zIndex 1100), `PaidJobEmailSendModal` (extracted; preview-first since v2.1099 — renders the email inline in a sandboxed iframe with a Detailed|Summary toggle, "Send to me" ([TEST]) + "Send to someone…" picker in the header; the header ✉ trigger is now a 20px SVG matching the calendar/edit icons).
 - **Status:** all four are already components; their mount conditions + the tiny open states (`jobCalendarOpen`, `detailScheduleModalOpen`, `detailScheduleInitialDate`, `reportsModalOpen`, `paidEmailModalOpen`) stay in the shell (opened from both header and body).
 
 ---

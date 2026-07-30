@@ -11,6 +11,18 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1099',
+    date: '2026-07-29',
+    title: 'Paid-in-full email: see it before you send it',
+    kind: 'feature',
+    highlights: [
+      'The envelope button on Job Detail now opens the actual email, shown right in the window, instead of sending immediately.',
+      'Flip between the Detailed and Summary versions, then "Send to me" or "Send to someone…" from the top of the window.',
+      'Picking a recipient switches the preview to the version their role receives, so there are no surprises.',
+      'The envelope button also matches the size of the calendar and edit buttons next to it.',
+    ],
+  },
+  {
     version: 'v2.1098',
     date: '2026-07-29',
     title: 'Align hours: link unmarked clock sessions in one pass',
