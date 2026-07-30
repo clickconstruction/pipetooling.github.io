@@ -17,6 +17,8 @@ export type AlignHoursSession = Pick<
   | 'rejected_at'
   | 'revoked_at'
   | 'users'
+  | 'jobs_ledger'
+  | 'bids'
 >
 
 /**
@@ -34,22 +36,26 @@ export function isAlignHoursCandidate(s: AlignHoursSession): boolean {
   return true
 }
 
-export type AlignHoursQueueRow = {
-  session: AlignHoursSession
+export type AlignHoursQueueRow<
+  S extends AlignHoursSession = AlignHoursSession,
+> = {
+  session: S
   /** Trimmed display name from the users embed; '—' when missing. */
   personName: string
   durationHours: number
 }
 
-export type AlignHoursQueueDay = {
+export type AlignHoursQueueDay<
+  S extends AlignHoursSession = AlignHoursSession,
+> = {
   /** en-CA date string (matches `clock_sessions.work_date`). */
   workDate: string
-  rows: AlignHoursQueueRow[]
+  rows: AlignHoursQueueRow<S>[]
 }
 
-export type AlignHoursQueue = {
+export type AlignHoursQueue<S extends AlignHoursSession = AlignHoursSession> = {
   /** Days ascending; rows within a day by person name, then clock-in time. */
-  days: AlignHoursQueueDay[]
+  days: AlignHoursQueueDay<S>[]
   totalSessions: number
 }
 
@@ -68,16 +74,16 @@ function durationHoursOf(s: AlignHoursSession): number {
  * Build the Align Hours queue from already-loaded week sessions (pending + approved lists may
  * overlap after a mid-modal refresh, so rows are deduped by id first).
  */
-export function buildAlignHoursQueue(
-  sessions: AlignHoursSession[],
-): AlignHoursQueue {
+export function buildAlignHoursQueue<S extends AlignHoursSession>(
+  sessions: S[],
+): AlignHoursQueue<S> {
   const seen = new Set<string>()
-  const byDay = new Map<string, AlignHoursQueueRow[]>()
+  const byDay = new Map<string, AlignHoursQueueRow<S>[]>()
   for (const s of sessions) {
     if (seen.has(s.id)) continue
     seen.add(s.id)
     if (!isAlignHoursCandidate(s)) continue
-    const row: AlignHoursQueueRow = {
+    const row: AlignHoursQueueRow<S> = {
       session: s,
       personName: alignPersonName(s),
       durationHours: durationHoursOf(s),
@@ -86,7 +92,7 @@ export function buildAlignHoursQueue(
     if (rows) rows.push(row)
     else byDay.set(s.work_date, [row])
   }
-  const days: AlignHoursQueueDay[] = Array.from(byDay.entries())
+  const days: AlignHoursQueueDay<S>[] = Array.from(byDay.entries())
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([workDate, rows]) => ({
       workDate,
@@ -103,7 +109,7 @@ export function buildAlignHoursQueue(
 
 /** Distinct assignee user ids per day — the batched `job_schedule_blocks` fetch plan. */
 export function alignQueueUserIdsByDay(
-  queue: AlignHoursQueue,
+  queue: AlignHoursQueue<AlignHoursSession>,
 ): Array<{ workDate: string; userIds: string[] }> {
   return queue.days.map((d) => ({
     workDate: d.workDate,
@@ -114,4 +120,43 @@ export function alignQueueUserIdsByDay(
 /** One-decimal hours label for queue rows, e.g. "8.6 h". */
 export function formatAlignDurationHours(durationHours: number): string {
   return `${(Math.round(durationHours * 10) / 10).toFixed(1)} h`
+}
+
+export type AlignRecentPick = {
+  source: 'job' | 'bid'
+  /** `jobs_ledger.id` or `bids.id`. */
+  id: string
+  /** Embeds from the most recent session linked to this job/bid (for labeling). */
+  embeds: Pick<ClockSessionRow, 'jobs_ledger' | 'bids'>
+}
+
+/**
+ * Fallback quick-picks for a queue row with nothing scheduled: the person's most recently
+ * worked jobs/bids from the same loaded week (distinct, most recent clock-in first).
+ */
+export function recentAssignedPicksForUser(
+  sessions: AlignHoursSession[],
+  userId: string,
+  max = 3,
+): AlignRecentPick[] {
+  const assigned = sessions
+    .filter((s) => s.user_id === userId && (s.job_ledger_id || s.bid_id))
+    .sort((a, b) => b.clocked_in_at.localeCompare(a.clocked_in_at))
+  const picks: AlignRecentPick[] = []
+  const seen = new Set<string>()
+  for (const s of assigned) {
+    const source: AlignRecentPick['source'] = s.job_ledger_id ? 'job' : 'bid'
+    const id = s.job_ledger_id ?? s.bid_id
+    if (!id) continue
+    const key = `${source}:${id}`
+    if (seen.has(key)) continue
+    seen.add(key)
+    picks.push({
+      source,
+      id,
+      embeds: { jobs_ledger: s.jobs_ledger, bids: s.bids },
+    })
+    if (picks.length >= max) break
+  }
+  return picks
 }
