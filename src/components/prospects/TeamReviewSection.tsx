@@ -11,6 +11,7 @@ import {
   formatReviewMonthLabel,
   formatTenure,
   hasMonthReview,
+  latestEntriesForDimension,
   latestReviewsByReviewer,
   myLatestReview,
   nextUnratedIndex,
@@ -95,6 +96,7 @@ export default function TeamReviewSection({
   const [busy, setBusy] = useState(false)
   const [savedFor, setSavedFor] = useState<string | null>(null)
   const [openHistories, setOpenHistories] = useState<Set<string>>(() => new Set())
+  const [reflectView, setReflectView] = useState<'reviewer' | 'dimension'>('reviewer')
   const [openCharts, setOpenCharts] = useState<Set<string>>(() => new Set())
   const [startedOnByUser, setStartedOnByUser] = useState<Map<string, string>>(() => new Map())
   const [tendenciesOpen, setTendenciesOpen] = useState(false)
@@ -396,6 +398,33 @@ export default function TeamReviewSection({
 
       {subTab === 'reflect' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', maxWidth: 720, margin: '0 auto' }}>
+          {/* Group latest feedback by who said it, or by dimension (all Ability notes together, etc.). */}
+          <div role="group" aria-label="Group feedback by" style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '0.35rem' }}>
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Group by</span>
+            {(['reviewer', 'dimension'] as const).map((key) => {
+              const active = reflectView === key
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  aria-pressed={active}
+                  onClick={() => setReflectView(key)}
+                  style={{
+                    padding: '0.2rem 0.7rem',
+                    border: active ? '2px solid #2563eb' : '1px solid var(--border-strong)',
+                    borderRadius: 999,
+                    background: active ? 'var(--bg-blue-tint)' : 'var(--bg-subtle)',
+                    color: active ? 'var(--text-blue-700)' : 'var(--text-muted)',
+                    fontWeight: 600,
+                    fontSize: '0.75rem',
+                    cursor: 'pointer',
+                  }}
+                >
+                  {key === 'reviewer' ? 'Reviewer' : 'Dimension'}
+                </button>
+              )
+            })}
+          </div>
           {baselines.size > 0 && (
             <div style={cardStyle}>
               <button
@@ -504,7 +533,36 @@ export default function TeamReviewSection({
                     compositeSeries={monthlyCompositeSeries(reviews, u.id, baselines, company, weights)}
                   />
                 )}
-                {latest.length > 0 && (
+                {latest.length > 0 && reflectView === 'dimension' && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem', marginTop: '0.45rem' }}>
+                    {RATING_DEFS.map((def) => {
+                      const dimension = def.key.replace('rating_', '') as 'ability' | 'drive' | 'integrity'
+                      const entries = latestEntriesForDimension(latest, dimension)
+                      if (entries.length === 0) return null
+                      const dimensionAverage = averages[dimension]
+                      return (
+                        <div key={def.key}>
+                          <div style={{ fontSize: '0.8125rem', fontWeight: 700, color: def.color }}>
+                            {def.short}
+                            {dimensionAverage != null && (
+                              <span style={{ fontWeight: 600, color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}> · avg {dimensionAverage}</span>
+                            )}
+                          </div>
+                          {entries.map((e) => (
+                            <div key={e.reviewer_user_id} style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginLeft: '1rem' }}>
+                              <span style={{ fontWeight: 600, color: 'var(--text-strong)' }}>{reviewerName(e.reviewer_user_id)}</span>
+                              <span style={{ color: 'var(--text-faint)' }}> ({formatReviewMonthLabel(e.review_month)})</span>
+                              {': '}
+                              <span style={{ fontVariantNumeric: 'tabular-nums' }}>{e.rating == null ? '—' : e.rating}</span>
+                              {e.comment != null && <> — {e.comment}</>}
+                            </div>
+                          ))}
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+                {latest.length > 0 && reflectView === 'reviewer' && (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', marginTop: '0.45rem' }}>
                     {latest.map((r) => (
                       <div key={r.id} style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>

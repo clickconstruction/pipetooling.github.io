@@ -7,6 +7,7 @@ import {
   formatReviewMonthShort,
   formatTenure,
   hasMonthReview,
+  latestEntriesForDimension,
   latestReviewsByReviewer,
   monthlyRatingSeries,
   myLatestReview,
@@ -176,6 +177,33 @@ describe('formatReviewMonthShort', () => {
   it('renders compact month labels', () => {
     expect(formatReviewMonthShort('2026-07-01')).toBe("Jul '26")
     expect(formatReviewMonthShort('2025-12-01')).toBe("Dec '25")
+  })
+})
+
+describe('latestEntriesForDimension', () => {
+  it('extracts one dimension per reviewer, highest rating first, ties by reviewer id', () => {
+    const latest = [
+      review({ id: 'a', reviewer_user_id: 'amy', rating_drive: 60, comment_drive: ' pushes hard ' }),
+      review({ id: 'b', reviewer_user_id: 'bob', rating_drive: 90, comment_drive: null }),
+      review({ id: 'c', reviewer_user_id: 'cal', rating_drive: 60, comment_drive: '' }),
+    ]
+    expect(latestEntriesForDimension(latest, 'drive')).toEqual([
+      { reviewer_user_id: 'bob', review_month: '2026-07-01', rating: 90, comment: null },
+      { reviewer_user_id: 'amy', review_month: '2026-07-01', rating: 60, comment: 'pushes hard' },
+      { reviewer_user_id: 'cal', review_month: '2026-07-01', rating: 60, comment: null },
+    ])
+  })
+
+  it('keeps unrated-but-commented entries last and omits reviewers with neither', () => {
+    const latest = [
+      review({ id: 'a', reviewer_user_id: 'amy', rating_ability: null, comment_ability: 'sharp diagnostician' }),
+      review({ id: 'b', reviewer_user_id: 'bob', rating_ability: 40 }),
+      review({ id: 'c', reviewer_user_id: 'cal', rating_ability: null, comment_ability: '   ' }),
+    ]
+    expect(latestEntriesForDimension(latest, 'ability')).toEqual([
+      { reviewer_user_id: 'bob', review_month: '2026-07-01', rating: 40, comment: null },
+      { reviewer_user_id: 'amy', review_month: '2026-07-01', rating: null, comment: 'sharp diagnostician' },
+    ])
   })
 })
 

@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-30 (v2.1127)
+last_updated: 2026-07-30 (v2.1128)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1128)
+
+### Team Reflect: group latest feedback by dimension (2026-07-30)
+[`TeamReviewSection.tsx`](../src/components/prospects/TeamReviewSection.tsx) + [`teamMemberReviews.ts`](../src/lib/prospects/teamMemberReviews.ts) — Prospects → Team → Review → Reflect gains a right-aligned **Group by: Reviewer | Dimension** pill toggle above the cards. Reviewer view is the existing per-reviewer rows (scores + deviation anchors + per-dimension comments). Dimension view renders three blocks per subject card (Ability / Drive / Integrity, header in the dimension's color with the cross-reviewer `avg`), each listing every reviewer's rating + comment for that one dimension via the new pure kernel `latestEntriesForDimension` (highest rating first, unrated-but-commented last, reviewers with neither omitted; unit-tested). History list unchanged. Client-only.
 
 ## Latest Updates (v2.1127)
 
