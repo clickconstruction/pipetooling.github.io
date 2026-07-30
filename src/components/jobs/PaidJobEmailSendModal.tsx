@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useBodyScrollLock } from '../../hooks/useBodyScrollLock'
 import { supabase } from '../../lib/supabase'
 import { useToastContext } from '../../contexts/ToastContext'
 import { formatErrorMessage } from '../../utils/errorHandling'
@@ -56,6 +57,11 @@ export default function PaidJobEmailSendModal({
   const [busy, setBusy] = useState<string | null>(null)
 
   const html = htmlByVariant[variant]
+
+  // v2.1105: freeze the page behind the modal — without this, wheel scroll
+  // over the modal chrome scrolled the Jobs page underneath, so the backdrop
+  // drifted and closing landed the user somewhere else.
+  useBodyScrollLock(true)
 
   // v2.1104: Esc closes this modal (preventDefault so a parent Esc listener —
   // Job Detail's — never also fires on the same press).
@@ -491,6 +497,8 @@ export default function PaidJobEmailSendModal({
             border: '1px solid var(--border)',
             borderRadius: 8,
             overflow: 'hidden',
+            // Wheel at the email's end must not chain to whatever is behind.
+            overscrollBehavior: 'contain',
             background: 'var(--surface)',
           }}
         >
