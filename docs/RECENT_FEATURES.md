@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-29 (v2.1092)
+last_updated: 2026-07-29 (v2.1093)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1093)
+
+### JobFormModal decomposition: Customer block + create-customer modal extracted (2026-07-29)
+Step 14 (the last big JSX slice) of the [`JOB_FORM_MODAL_ARCHITECTURE.md`](./JOB_FORM_MODAL_ARCHITECTURE.md) extraction order. New [`JobFormCustomerSection`](../src/components/jobs/JobFormCustomerSection.tsx) (collapsible header + "Not in Customers" chip, link-to-customer search with archived-row filtering, name/phone/email/date-met fields, Customer Files/Pictures with highlight wrappers — owns only `customerDropdownOpen`) and [`JobFormCreateCustomerModal`](../src/components/jobs/JobFormCreateCustomerModal.tsx) (type toggle + similar-customers "link instead" list with its search effect; always-mounted so state survives close/reopen as before). Display helpers → tested [`lib/jobs/jobFormCustomerDisplay.ts`](../src/lib/jobs/jobFormCustomerDisplay.ts) (8 tests) — the shell's handlers and customerId sync effect share them. **Unchanged and shell-side:** all customer form fields (prefill appliers/project-implies-customer/autosave read-write them), `customerExpanded` + highlight gates/effects, and the immediate-DB-write handlers (`handleCreateCustomerFromJob`, `handleLinkToSimilarCustomer`, quirk #18) invoked via callbacks. `JobFormModal.tsx` 4,433 → 4,007 lines. Behavior-preserving. Client-only.
 
 ## Latest Updates (v2.1092)
 
