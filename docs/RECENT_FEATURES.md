@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-29 (v2.1104)
+last_updated: 2026-07-29 (v2.1105)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1105)
+
+### Fix: page no longer scrolls behind the paid-in-full email modal (2026-07-29)
+Wheel scroll over [`PaidJobEmailSendModal`](../src/components/jobs/PaidJobEmailSendModal.tsx)'s chrome scrolled the Jobs page underneath (verified: `document.scrollingElement.scrollTop` moved with the modal open), so the backdrop drifted and closing landed the user somewhere else — it read as "the modal doesn't sit at the top". Fix: `useBodyScrollLock(true)` while mounted (the shared reference-counted lock the report/inspection modals already use) plus `overscrollBehavior: 'contain'` on the preview frame so a wheel at the email's end can't chain to the page. Related observation, deliberately NOT changed here: `DetailJobModal` locks only on narrow viewports (`useBodyScrollLock(open && narrowViewport)`, no comment explaining the gate) — desktop background scroll behind Job Detail remains possible; widening that is a product call. Client-only.
 
 ## Latest Updates (v2.1104)
 

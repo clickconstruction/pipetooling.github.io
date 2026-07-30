@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1105',
+    date: '2026-07-29',
+    title: 'Fix: paid-in-full email window sits still while you scroll',
+    kind: 'fix',
+    highlights: [
+      'Scrolling over the paid-in-full email window no longer moves the Jobs page behind it — the page stays put until you close the window.',
+      'Scrolling to the end of the email no longer spills over into the page underneath.',
+    ],
+  },
+  {
     version: 'v2.1104',
     date: '2026-07-29',
     title: 'Job Detail: press Escape to close',
