@@ -60,6 +60,30 @@ export function resolveStripeBillingMode(requested: unknown): StripeBillingMode 
   return defaultStripeBillingMode()
 }
 
+export type EffectiveRowStripeMode =
+  | { mode: StripeBillingMode; conflict?: undefined }
+  | { mode?: undefined; conflict: { row_mode: StripeBillingMode; requested_mode: StripeBillingMode } }
+
+/**
+ * A3 (FRAGILITY_REMEDIATION_PLAN.md): for operations bound to an existing
+ * jobs_ledger_invoices row, the row's recorded stripe_mode (v2.1114) is
+ * authoritative. An explicitly requested mode that disagrees is a conflict —
+ * the caller must not act cross-mode (the pre-A3 failure: a test-mode void of
+ * a live invoice read "No such invoice" and deleted the ledger row). A NULL
+ * row mode (pre-A1 legacy) falls back to the requested/default mode.
+ */
+export function effectiveRowStripeMode(rowMode: unknown, requestedRaw: unknown): EffectiveRowStripeMode {
+  const row = parseStripeBillingMode(rowMode)
+  const requested = parseStripeBillingMode(requestedRaw)
+  if (row) {
+    if (requested && requested !== row) {
+      return { conflict: { row_mode: row, requested_mode: requested } }
+    }
+    return { mode: row }
+  }
+  return { mode: requested ?? defaultStripeBillingMode() }
+}
+
 function normalizeWebhookSecret(raw: string | undefined): string {
   let t = raw?.trim() ?? ''
   if (t.startsWith('\uFEFF')) t = t.slice(1).trim()

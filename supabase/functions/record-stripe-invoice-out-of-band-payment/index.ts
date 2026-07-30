@@ -3,7 +3,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import Stripe from 'https://esm.sh/stripe@16.12.0?target=deno'
 import {
   anyStripeApiKeyConfigured,
-  resolveStripeBillingMode,
+  effectiveRowStripeMode,
   stripeApiKeyForMode,
   type StripeBillingMode,
 } from '../_shared/stripeSecrets.ts'
@@ -105,7 +105,33 @@ serve(async (req) => {
       return jsonResponse({ error: 'amount_dollars must be a positive number' }, 400)
     }
 
-    const stripeMode = resolveStripeBillingMode(stripeModeRaw)
+    const { data: invRow, error: invErr } = await userClient
+      .from('jobs_ledger_invoices')
+      .select('id, job_id, amount, status, stripe_invoice_id, stripe_mode')
+      .eq('id', jobs_ledger_invoice_id.trim())
+      .maybeSingle()
+
+    if (invErr || !invRow) {
+      return jsonResponse({ error: 'Invoice not found or access denied' }, 403)
+    }
+
+    if (invRow.status !== 'billed') {
+      return jsonResponse({ error: 'Invoice must be in Billed status' }, 400)
+    }
+
+    // A3: the row's recorded stripe_mode is authoritative for this operation.
+    const modeRes = effectiveRowStripeMode(invRow.stripe_mode, stripeModeRaw)
+    if (modeRes.conflict) {
+      return jsonResponse(
+        {
+          error: `Invoice lives in Stripe ${modeRes.conflict.row_mode} mode; the request asked for ${modeRes.conflict.requested_mode}. No changes made.`,
+          code: 'stripe_mode_mismatch',
+          ...modeRes.conflict,
+        },
+        409,
+      )
+    }
+    const stripeMode = modeRes.mode
     const stripeSecret = stripeApiKeyForMode(stripeMode)
     if (!stripeSecret) {
       return jsonResponse(
@@ -120,20 +146,6 @@ serve(async (req) => {
     }
 
     const stripe = new Stripe(stripeSecret, { apiVersion: '2024-06-20' })
-
-    const { data: invRow, error: invErr } = await userClient
-      .from('jobs_ledger_invoices')
-      .select('id, job_id, amount, status, stripe_invoice_id')
-      .eq('id', jobs_ledger_invoice_id.trim())
-      .maybeSingle()
-
-    if (invErr || !invRow) {
-      return jsonResponse({ error: 'Invoice not found or access denied' }, 403)
-    }
-
-    if (invRow.status !== 'billed') {
-      return jsonResponse({ error: 'Invoice must be in Billed status' }, 400)
-    }
 
     const stripeInvId = (invRow.stripe_invoice_id ?? '').trim()
     if (!stripeInvId) {

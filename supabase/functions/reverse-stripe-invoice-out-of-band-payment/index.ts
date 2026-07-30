@@ -3,7 +3,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import Stripe from 'https://esm.sh/stripe@16.12.0?target=deno'
 import {
   anyStripeApiKeyConfigured,
-  resolveStripeBillingMode,
+  effectiveRowStripeMode,
   stripeApiKeyForMode,
   type StripeBillingMode,
 } from '../_shared/stripeSecrets.ts'
@@ -79,23 +79,9 @@ serve(async (req) => {
       return jsonResponse({ error: 'Reason is required (at least 3 characters)' }, 400)
     }
 
-    const stripeMode = resolveStripeBillingMode(body.stripe_mode)
-    const stripeSecret = stripeApiKeyForMode(stripeMode)
-    if (!stripeSecret) {
-      return jsonResponse(
-        {
-          error:
-            stripeMode === 'test'
-              ? 'Stripe test mode not configured (STRIPE_SECRET_KEY_TEST or sk_test legacy key).'
-              : 'Stripe live mode not configured (STRIPE_SECRET_KEY_LIVE or sk_live legacy key).',
-        },
-        400,
-      )
-    }
-
     const { data: invRow, error: invErr } = await userClient
       .from('jobs_ledger_invoices')
-      .select('id, job_id, amount, status, stripe_invoice_id')
+      .select('id, job_id, amount, status, stripe_invoice_id, stripe_mode')
       .eq('id', jobs_ledger_invoice_id)
       .maybeSingle()
 
@@ -110,6 +96,32 @@ serve(async (req) => {
     const stripeInvId = (invRow.stripe_invoice_id ?? '').trim()
     if (!stripeInvId) {
       return jsonResponse({ error: 'Invoice has no Stripe invoice' }, 400)
+    }
+
+    // A3: the row's recorded stripe_mode is authoritative for this unwind.
+    const modeRes = effectiveRowStripeMode(invRow.stripe_mode, body.stripe_mode)
+    if (modeRes.conflict) {
+      return jsonResponse(
+        {
+          error: `Invoice lives in Stripe ${modeRes.conflict.row_mode} mode; the request asked for ${modeRes.conflict.requested_mode}. No changes made.`,
+          code: 'stripe_mode_mismatch',
+          ...modeRes.conflict,
+        },
+        409,
+      )
+    }
+    const stripeMode = modeRes.mode
+    const stripeSecret = stripeApiKeyForMode(stripeMode)
+    if (!stripeSecret) {
+      return jsonResponse(
+        {
+          error:
+            stripeMode === 'test'
+              ? 'Stripe test mode not configured (STRIPE_SECRET_KEY_TEST or sk_test legacy key).'
+              : 'Stripe live mode not configured (STRIPE_SECRET_KEY_LIVE or sk_live legacy key).',
+        },
+        400,
+      )
     }
 
     const stripe = new Stripe(stripeSecret, { apiVersion: '2024-06-20' })

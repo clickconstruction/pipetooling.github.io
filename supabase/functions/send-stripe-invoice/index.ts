@@ -4,7 +4,7 @@ import Stripe from 'https://esm.sh/stripe@16.12.0?target=deno'
 import { customerEmailFromStripeInvoice } from '../_shared/stripeInvoiceCustomerEmail.ts'
 import {
   anyStripeApiKeyConfigured,
-  resolveStripeBillingMode,
+  effectiveRowStripeMode,
   stripeApiKeyForMode,
   type StripeBillingMode,
 } from '../_shared/stripeSecrets.ts'
@@ -100,20 +100,6 @@ serve(async (req) => {
       return jsonResponse({ error: 'Missing jobs_ledger_invoice_id' }, 400)
     }
 
-    const stripeMode = resolveStripeBillingMode(body.stripe_mode)
-    const stripeSecret = stripeApiKeyForMode(stripeMode)
-    if (!stripeSecret) {
-      return jsonResponse(
-        {
-          error:
-            stripeMode === 'test'
-              ? 'Stripe test mode not configured (STRIPE_SECRET_KEY_TEST or sk_test legacy key).'
-              : 'Stripe live mode not configured (STRIPE_SECRET_KEY_LIVE or sk_live legacy key).',
-        },
-        400,
-      )
-    }
-
     const { data: roleRow, error: roleErr } = await userClient
       .from('users')
       .select('role')
@@ -133,12 +119,12 @@ serve(async (req) => {
     }
     const admin = createClient(supabaseUrl, serviceKey)
 
-    let invRow: { id: string; status: string; stripe_invoice_id: string | null }
+    let invRow: { id: string; status: string; stripe_invoice_id: string | null; stripe_mode: string | null }
 
     if (isSubcontractor) {
       const { data: inv, error: invErr } = await admin
         .from('jobs_ledger_invoices')
-        .select('id, job_id, status, stripe_invoice_id')
+        .select('id, job_id, status, stripe_invoice_id, stripe_mode')
         .eq('id', jobsLedgerInvoiceId)
         .maybeSingle()
 
@@ -178,11 +164,11 @@ serve(async (req) => {
         )
       }
 
-      invRow = { id: inv.id, status: inv.status, stripe_invoice_id: inv.stripe_invoice_id }
+      invRow = { id: inv.id, status: inv.status, stripe_invoice_id: inv.stripe_invoice_id, stripe_mode: inv.stripe_mode }
     } else {
       const { data: inv, error: invErr } = await userClient
         .from('jobs_ledger_invoices')
-        .select('id, status, stripe_invoice_id')
+        .select('id, status, stripe_invoice_id, stripe_mode')
         .eq('id', jobsLedgerInvoiceId)
         .maybeSingle()
 
@@ -199,6 +185,32 @@ serve(async (req) => {
 
     if (invRow.status !== 'billed') {
       return jsonResponse({ error: 'Invoice must be Billed Awaiting Payment to send from Stripe' }, 400)
+    }
+
+    // A3: the row's recorded stripe_mode is authoritative for this send.
+    const modeRes = effectiveRowStripeMode(invRow.stripe_mode, body.stripe_mode)
+    if (modeRes.conflict) {
+      return jsonResponse(
+        {
+          error: `Invoice lives in Stripe ${modeRes.conflict.row_mode} mode; the request asked for ${modeRes.conflict.requested_mode}. No changes made.`,
+          code: 'stripe_mode_mismatch',
+          ...modeRes.conflict,
+        },
+        409,
+      )
+    }
+    const stripeMode = modeRes.mode
+    const stripeSecret = stripeApiKeyForMode(stripeMode)
+    if (!stripeSecret) {
+      return jsonResponse(
+        {
+          error:
+            stripeMode === 'test'
+              ? 'Stripe test mode not configured (STRIPE_SECRET_KEY_TEST or sk_test legacy key).'
+              : 'Stripe live mode not configured (STRIPE_SECRET_KEY_LIVE or sk_live legacy key).',
+        },
+        400,
+      )
     }
 
     const stripe = new Stripe(stripeSecret, { apiVersion: '2024-06-20' })
