@@ -106,6 +106,8 @@ export function CrewJobsBlock({
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [payConfig, setPayConfig] = useState<Record<string, PayConfigRow>>({})
+  /** C1-3a (identity): id-keyed flags (separate from the name map — see loadPayConfig). */
+  const [payConfigById, setPayConfigById] = useState<Record<string, PayConfigRow>>({})
   /** C1-3a (identity): person_id per crew-row name for id-first flag lookups. */
   const [crewPersonIdByName, setCrewPersonIdByName] = useState<Record<string, string>>({})
   const [hoursDisplayOrder, setHoursDisplayOrder] = useState<Record<string, number>>({})
@@ -176,9 +178,9 @@ export function CrewJobsBlock({
   const cfgForPerson = useCallback(
     (personName: string): PayConfigRow | undefined => {
       const id = crewPersonIdByName[personName]
-      return (id ? payConfig[`id:${id}`] : undefined) ?? payConfig[personName]
+      return (id ? payConfigById[id] : undefined) ?? payConfig[personName]
     },
-    [crewPersonIdByName, payConfig],
+    [crewPersonIdByName, payConfigById, payConfig],
   )
 
   const visiblePeopleForCrew = useMemo(() => {
@@ -289,14 +291,18 @@ export function CrewJobsBlock({
       setError(err.message)
       return
     }
-    // C1-3a (identity): the RPC returns person_id — also key the map by
-    // 'id:<uuid>' so flags resolve id-first (name stays as fallback).
+    // C1-3a (identity): the RPC returns person_id — keep a SEPARATE id-keyed
+    // map for id-first lookups. It must not share the name map:
+    // showPeopleForMatrix derives the people list from Object.keys(payConfig),
+    // so id entries there would render as bogus rows.
     const map: Record<string, PayConfigRow> = {}
+    const byId: Record<string, PayConfigRow> = {}
     for (const r of (data ?? []) as Array<PayConfigRow & { person_id?: string | null }>) {
       map[r.person_name] = r
-      if (r.person_id) map[`id:${r.person_id}`] = r
+      if (r.person_id) byId[r.person_id] = r
     }
     setPayConfig(map)
+    setPayConfigById(byId)
   }
 
   async function loadHoursDisplayOrder() {
