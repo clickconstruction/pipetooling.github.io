@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1134',
+    date: '2026-07-30',
+    title: 'Fix: the auto remainder bill resizes correctly',
+    kind: 'fix',
+    highlights: [
+      'Deleting a draft invoice now re-syncs the job\u2019s auto-maintained remainder bill immediately \u2014 it used to go stale, leaving the numbers looking wrong until someone reopened Bill Customer.',
+      'Fixed the resync math itself: it counted the remainder bill against its own total, so a stale remainder could bounce between two wrong amounts instead of correcting. It now always lands on job total minus payments minus the other bills.',
+      'The remainder row in the Invoices list now wears a small \u201cauto\u201d tag explaining why it has no delete \u2715, and the Invoices strip no longer counts the elastic remainder as money already billed \u2014 so segment invoicing stays available on Ready to Bill jobs.',
+    ],
+  },
+  {
     version: 'v2.1133',
     date: '2026-07-30',
     title: 'Fix: a segment invoice bills only its own line items',

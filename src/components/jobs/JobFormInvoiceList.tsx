@@ -84,6 +84,25 @@ export function JobFormInvoiceList({
         return
       }
       onInvoiceDeleted(inv.id)
+      // v2.1134: every other invoice mutation re-syncs the primary remainder
+      // bundle — deletes must too, or the auto remainder goes stale (job 813:
+      // deleting two drafts left it at $2,859.20 with $11,891.18 unallocated).
+      // "Nothing left to bill" is benign here (job fully billed by the rest).
+      if (editing.status === 'ready_to_bill') {
+        try {
+          const ensureRaw = await withSupabaseRetry(
+            async () => await supabase.rpc('ensure_single_ready_to_bill_invoice_for_job', { p_job_id: editing.id }),
+            'ensure RTB remainder after draft delete',
+          )
+          const ensureObj = ensureRaw as Record<string, unknown> | null
+          const ensureErr = ensureObj && typeof ensureObj.error === 'string' ? ensureObj.error : ''
+          if (ensureErr && !/nothing left to bill/i.test(ensureErr)) {
+            showToast(`Draft deleted, but the remainder bill did not re-sync: ${ensureErr}`, 'error')
+          }
+        } catch {
+          showToast('Draft deleted, but the remainder bill did not re-sync — reopen Bill Customer to fix it.', 'error')
+        }
+      }
       const found = await fetchJobWithDetailsById(editing.id)
       if (found) setEditing(found)
       onSavedRef.current?.()
@@ -328,6 +347,26 @@ export function JobFormInvoiceList({
                           >
                             See in Stages
                           </button>
+                          {isDraft && inv.is_primary_rtb_bundle ? (
+                            // The auto-maintained remainder bundle has no delete ✕ on
+                            // purpose — say so instead of leaving a silent gap (v2.1134).
+                            <span
+                              title="Auto-maintained remainder — the part of the job not on any other bill. It resizes as other bills change and can't be deleted while the job is Ready to Bill; send it, or bill the rest another way and it shrinks on its own."
+                              style={{
+                                fontSize: '0.6875rem',
+                                fontWeight: 600,
+                                color: 'var(--text-muted)',
+                                background: 'var(--bg-subtle)',
+                                border: '1px solid var(--border)',
+                                borderRadius: 999,
+                                padding: '0.05rem 0.5rem',
+                                whiteSpace: 'nowrap',
+                                cursor: 'help',
+                              }}
+                            >
+                              auto
+                            </span>
+                          ) : null}
                           {isDraft && !inv.is_primary_rtb_bundle ? (
                             <button
                               type="button"

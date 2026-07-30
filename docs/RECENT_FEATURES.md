@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-30 (v2.1133)
+last_updated: 2026-07-30 (v2.1134)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1134)
+
+### Primary RTB remainder: resync math fixed, delete re-syncs, "auto" tag, coverage exclusion (2026-07-30)
+Migration `20260730221500_ensure_rtb_primary_resync_math.sql` + [`JobFormInvoiceList.tsx`](../src/components/jobs/JobFormInvoiceList.tsx) + [`jobSegmentsCoverage.ts`](../src/lib/jobs/jobSegmentsCoverage.ts). Found via job 813: deleting two drafts left the auto remainder at $2,859.20 with $11,891.18 unallocated. Two real bugs: (1) `delete_ready_to_bill_invoice` flows never called `ensure_single_ready_to_bill_invoice_for_job` (every other invoice mutation does) — the delete handler now re-syncs (benign "Nothing left to bill" tolerated); (2) the ensure RPC's primary-RESYNC branch summed `rtb+billed` INCLUDING the primary row itself, making `UPDATE primary SET amount = v_unalloc` a broken iteration — from a correct primary it computes 0, from a stale one it oscillates ($2,859.20 ↔ $11,891.18, observed live). The migration excludes the never-sent primary from `v_allocated`, making resync idempotent at `revenue − payments − other bills`; primary-absent branches byte-identical. Plus: the primary row in the Edit-Job Invoices list wears a muted `auto` tag (tooltip explains no-delete + elasticity), and `dollarCoverageForSegments` (v2.1132) excludes the elastic primary from spoken-for dollars — a full-job primary no longer hatches the whole ② strip and clamps segment invoicing to $0 on every RTB job. Apply via `supabase db push` after merge; client/migration order safe (client tolerates old-RPC errors).
 
 ## Latest Updates (v2.1133)
 
