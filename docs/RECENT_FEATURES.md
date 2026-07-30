@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-30 (v2.1126)
+last_updated: 2026-07-30 (v2.1127)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1127)
+
+### Unassigned field time resolves pay flags person-id-first (2026-07-30)
+[`peopleHoursUnallocatedRows.ts`](../src/lib/peopleHoursUnallocatedRows.ts) + [`QuickfillUnassignedFieldTimeSection.tsx`](../src/components/quickfill/QuickfillUnassignedFieldTimeSection.tsx) — step **C1-3d** of [`FRAGILITY_REMEDIATION_PLAN.md`](./FRAGILITY_REMEDIATION_PLAN.md), the last crew-flag consumer. The tested kernel's input types gain optional `person_id` (`PeopleHoursUnallocatedPayConfigInput`, `PeopleHoursUnallocatedCrewInput`); `computeUnallocatedFieldRows` builds a `cfgById` map + crew-row `personIdByName` and resolves pay flags id-first with the trimmed-name match as fallback (new test pins the post-rename case: a renamed salaried person keeps the 8/0 rule instead of silently reading as hourly). The section threads `person_id` from its crew selects and the flags RPC into the kernel. **All four crew-flag consumers are now id-first** (v2.1124–v2.1127). Client-only.
 
 ## Latest Updates (v2.1126)
 

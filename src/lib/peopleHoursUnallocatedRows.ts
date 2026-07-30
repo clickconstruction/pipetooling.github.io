@@ -84,6 +84,8 @@ export type PeopleHoursUnallocatedSummary = {
 
 export type PeopleHoursUnallocatedPayConfigInput = {
   person_name: string
+  /** people.id when known (C1-3d) — enables id-first flag resolution. */
+  person_id?: string | null
   is_salary: boolean
   /** Salary people who still record hours (still salary for "8h on weekday" rule). */
   record_hours_but_salary?: boolean
@@ -92,6 +94,8 @@ export type PeopleHoursUnallocatedPayConfigInput = {
 export type PeopleHoursUnallocatedCrewInput = {
   work_date: string
   person_name: string
+  /** people.id when the crew row carried it (C1-3d) — id-first flag resolution. */
+  person_id?: string | null
   /** Job assignments on this person's crew row (already merged from people_crew_jobs). */
   job_assignments: Array<{ job_id: string; pct: number }>
   /** Bid assignments on this person's crew row (already merged from people_crew_bids). */
@@ -229,10 +233,23 @@ export function computeUnallocatedFieldRows(
 ): PeopleHoursUnallocatedRow[] {
   const workDateSet = new Set(args.workDates)
   const cfgByName = new Map<string, PeopleHoursUnallocatedPayConfigInput>()
+  const cfgById = new Map<string, PeopleHoursUnallocatedPayConfigInput>()
   for (const cfg of args.payConfig) {
     const name = (cfg.person_name ?? '').trim()
-    if (!name) continue
-    cfgByName.set(name, cfg)
+    if (name) cfgByName.set(name, cfg)
+    if (cfg.person_id) cfgById.set(cfg.person_id, cfg)
+  }
+  // C1-3d (identity): map each crew-row name to its person_id so flag lookups
+  // resolve id-first (crew rows are the id source; sessions/sub-labor names
+  // fall back to the trimmed-name match as before).
+  const personIdByName = new Map<string, string>()
+  for (const r of args.crewRows) {
+    const name = (r.person_name ?? '').trim()
+    if (name && r.person_id && !personIdByName.has(name)) personIdByName.set(name, r.person_id)
+  }
+  const cfgForName = (name: string): PeopleHoursUnallocatedPayConfigInput | undefined => {
+    const id = personIdByName.get(name)
+    return (id ? cfgById.get(id) : undefined) ?? cfgByName.get(name)
   }
 
   const approvedHoursByKey = buildApprovedClosedHoursByPersonByDate({
@@ -304,7 +321,7 @@ export function computeUnallocatedFieldRows(
     if (hrs <= 0) continue
     const sep = key.indexOf('|')
     const name = key.slice(0, sep)
-    const cfg = cfgByName.get(name)
+    const cfg = cfgForName(name)
     if (shouldSkipPersonForUnallocated(cfg)) continue
     candidateKeys.add(key)
   }
@@ -314,7 +331,7 @@ export function computeUnallocatedFieldRows(
     const sep = key.indexOf('|')
     const personName = key.slice(0, sep)
     const workDate = key.slice(sep + 1)
-    const cfg = cfgByName.get(personName)
+    const cfg = cfgForName(personName)
     const dayHoursRaw = effectiveDayHoursRaw({
       personName,
       workDate,

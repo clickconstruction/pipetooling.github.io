@@ -243,6 +243,39 @@ describe('buildApprovedClosedHoursByPersonByDate', () => {
 })
 
 describe('computeUnallocatedFieldRows', () => {
+  it('resolves pay flags id-first via the crew-row person_id (C1-3d — post-rename salary stays salaried)', () => {
+    // Pay config still says "Old Name" but carries the person_id; the crew row
+    // and sessions use the renamed "New Name". Pre-C1-3d the name mismatch
+    // dropped the salary flag (treated hourly, 6h); id-first resolution keeps
+    // the salaried 8h rule.
+    const renamedCfg: PeopleHoursUnallocatedPayConfigInput[] = [
+      { person_name: 'Old Name', person_id: 'p-renamed', is_salary: true },
+    ]
+    const sessions: OverheadClockSessionRow[] = [
+      fieldSession({ id: 'renamed-field', userId: 'u-renamed', userName: 'New Name', workDate: '2026-05-12', hours: 6 }),
+    ]
+    const rows = computeUnallocatedFieldRows({
+      payConfig: renamedCfg,
+      crewRows: [
+        {
+          work_date: '2026-05-12',
+          person_name: 'New Name',
+          person_id: 'p-renamed',
+          job_assignments: [],
+          bid_assignments: [],
+        },
+      ],
+      overheadSessions: sessions,
+      officeJobLedgerId: OFFICE_JOB_ID,
+      workDates: WORK_DATES,
+      thresholdHours: 0.5,
+    })
+    const row = rows.find((r) => r.personName === 'New Name' && r.workDate === '2026-05-12')
+    expect(row).toBeDefined()
+    expect(row?.isSalary).toBe(true)
+    expect(row?.dayHoursRaw).toBe(8)
+  })
+
   it('emits a salary-day row when there IS approved clock activity but no crew sync (8h unallocated)', () => {
     // Alex (salary) shows up on Tue, clocks 6h to a non-overhead job that
     // somehow didn't create a crew row. dayHoursRaw stays at 8 (salary
