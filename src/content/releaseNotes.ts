@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1127',
+    date: '2026-07-30',
+    title: 'Reliability: Unassigned Field Time matches salaried people by identity',
+    kind: 'infra',
+    highlights: [
+      'The Unassigned Field Time queue now recognizes salaried people by identity rather than spelled name — completing today’s series: all hour-and-salary surfaces now match people this way.',
+    ],
+  },
+  {
     version: 'v2.1126',
     date: '2026-07-30',
     title: 'Reliability: the Unassigned Hours view matches salaried people by identity',

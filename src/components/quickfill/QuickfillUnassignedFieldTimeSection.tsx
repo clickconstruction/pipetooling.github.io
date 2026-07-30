@@ -26,17 +26,19 @@ import { useToastContext } from '../../contexts/ToastContext'
 import { isAssistantLike } from '../../lib/subcontractorLikeRole'
 
 /** Narrow view of the canonical pay-config row (single source of truth for field types). */
-type PayConfigRow = Pick<PayConfigRowFull, 'person_name' | 'is_salary' | 'record_hours_but_salary'>
+type PayConfigRow = Pick<PayConfigRowFull, 'person_name' | 'person_id' | 'is_salary' | 'record_hours_but_salary'>
 
 type CrewJobsRow = {
   work_date: string
   person_name: string
+  person_id: string | null
   job_assignments: Array<{ job_id: string; pct: number }>
 }
 
 type CrewBidsRow = {
   work_date: string
   person_name: string
+  person_id: string | null
   bid_assignments: Array<{ bid_id: string; pct: number }>
 }
 
@@ -294,12 +296,12 @@ export function QuickfillUnassignedFieldTimeSection() {
         supabase.rpc('list_people_pay_flags'),
         supabase
           .from('people_crew_jobs')
-          .select('work_date, person_name, job_assignments')
+          .select('work_date, person_name, person_id, job_assignments')
           .gte('work_date', windowStartYmd)
           .lte('work_date', windowEndYmd),
         supabase
           .from('people_crew_bids')
-          .select('work_date, person_name, bid_assignments')
+          .select('work_date, person_name, person_id, bid_assignments')
           .gte('work_date', windowStartYmd)
           .lte('work_date', windowEndYmd),
         supabase
@@ -346,6 +348,8 @@ export function QuickfillUnassignedFieldTimeSection() {
         merged.push({
           work_date: workDate,
           person_name: personName,
+          // C1-3d (identity): crew-row person_id for id-first flag resolution.
+          person_id: j?.person_id ?? b?.person_id ?? null,
           job_assignments: jobAssignments,
           bid_assignments: bidAssignments,
         })
@@ -425,6 +429,9 @@ export function QuickfillUnassignedFieldTimeSection() {
     () =>
       payConfig.map((c) => ({
         person_name: c.person_name,
+        // C1-3d (identity): the flags RPC returns person_id — pass it through
+        // so the kernel resolves flags id-first with name fallback.
+        person_id: c.person_id ?? null,
         is_salary: !!c.is_salary,
         record_hours_but_salary: !!c.record_hours_but_salary,
       })),
