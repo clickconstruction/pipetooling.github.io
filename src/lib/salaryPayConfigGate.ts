@@ -1,9 +1,15 @@
 import { supabase } from './supabase'
 import { withSupabaseRetry } from '../utils/errorHandling'
+import { buildPayFlagsIndex, type PayFlagRpcRow } from './people/payFlagsIndex'
 
 /**
- * `user_id`s whose `users.name` (trim) matches `people_pay_config.person_name` (trim) with
- * `is_salary` true.
+ * `user_id`s that are salaried per `list_people_pay_flags`.
+ *
+ * C1 (PERSON_IDENTITY_PLAN.md): resolution is person_id-FIRST — each user id
+ * maps to its roster person via `people.account_user_id`, then flags resolve
+ * through the shared id-first/name-fallback index — with the historical
+ * trimmed-`users.name` match kept as the fallback, so a rename between pay
+ * config and the users row no longer silently drops the salary flag.
  *
  * When `opts.nameByUserId` is provided, the helper skips the `users` lookup and reuses the
  * caller's already-fetched id-to-name map. Callers like Schedule Dispatch Hub fetch this map
@@ -35,25 +41,28 @@ export async function fetchSalariedUserIdSetFromUserIds(
     }
   }
 
-  const names = [...new Set(idToPayName.values())]
-  if (names.length === 0) return new Set()
+  const [personRows, payRows] = await Promise.all([
+    withSupabaseRetry(
+      async () =>
+        supabase.from('people').select('id, account_user_id').in('account_user_id', unique).is('archived_at', null),
+      'people for salary pay gate',
+    ),
+    withSupabaseRetry(async () => supabase.rpc('list_people_pay_flags'), 'people_pay_config is_salary for salary gate row'),
+  ])
 
-  const payRows = await withSupabaseRetry(
-    async () =>
-      supabase.rpc('list_people_pay_flags'),
-    'people_pay_config is_salary for salary gate row',
-  )
-
-  const salariedNames = new Set<string>()
-  for (const pr of payRows ?? []) {
-    const row = pr as { person_name: string | null; is_salary: boolean | null }
-    const pn = row.person_name?.trim()
-    if (pn && row.is_salary === true) salariedNames.add(pn)
+  const personIdByUserId = new Map<string, string>()
+  for (const r of personRows ?? []) {
+    const row = r as { id: string; account_user_id: string | null }
+    if (row.account_user_id) personIdByUserId.set(row.account_user_id, row.id)
   }
 
+  const flags = buildPayFlagsIndex((payRows ?? []) as PayFlagRpcRow[])
+
   const out = new Set<string>()
-  for (const [uid, name] of idToPayName) {
-    if (salariedNames.has(name)) out.add(uid)
+  for (const uid of unique) {
+    if (flags.isSalaried({ personId: personIdByUserId.get(uid), name: idToPayName.get(uid) })) {
+      out.add(uid)
+    }
   }
   return out
 }

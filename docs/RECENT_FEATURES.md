@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-30 (v2.1121)
+last_updated: 2026-07-30 (v2.1122)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1122)
+
+### Pay flags resolve person-id-first: shared index + salary gate flip (2026-07-30)
+New tested kernel [`payFlagsIndex.ts`](../src/lib/people/payFlagsIndex.ts) + [`salaryPayConfigGate.ts`](../src/lib/salaryPayConfigGate.ts) — step **C1-1** of [`FRAGILITY_REMEDIATION_PLAN.md`](./FRAGILITY_REMEDIATION_PLAN.md) (PERSON_IDENTITY_PLAN C-4b begins). `list_people_pay_flags` has returned `person_id` since Phase B, but every consumer indexed flags by trimmed name only — the app-wide rename fragility. `buildPayFlagsIndex(rows)` gives id-FIRST lookup with trimmed-name fallback (`get`/`isSalaried`/`byId`/`byName`; 5 tests incl. the post-rename case). First consumer flipped: `fetchSalariedUserIdSetFromUserIds` now maps user ids to roster persons via `people.account_user_id` (archived excluded) and resolves through the index; the historical trimmed-`users.name` match remains the fallback, and a caller who cannot read `people` degrades to exactly the old name path. **Answer-preserving today, verified against prod**: zero `people_pay_config` rows where the id-first answer differs from the name answer (read-only psql check, recorded in PERSON_IDENTITY_PLAN.md). Remaining C1 flips (one PR each): `usePayConfig`, `teamLabor` `is_salary`, `CrewJobsBlock`, `HoursSection`, `HoursUnassignedModal`, `QuickfillUnassignedFieldTimeSection`, then the salary probes + hours joins + PeopleReviewTab junction read. Client-only.
 
 ## Latest Updates (v2.1121)
 

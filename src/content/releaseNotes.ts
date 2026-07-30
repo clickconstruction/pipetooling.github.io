@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1122',
+    date: '2026-07-30',
+    title: 'Reliability: salaried status survives renames (first of a series)',
+    kind: 'infra',
+    highlights: [
+      'Salaried-person detection now matches people by their identity, not just their spelled name, so renaming someone can no longer silently drop their salaried status on scheduling surfaces.',
+      'No visible change today; this is the first of several screens being moved to identity-based matching.',
+    ],
+  },
+  {
     version: 'v2.1121',
     date: '2026-07-30',
     title: 'Fix: payments recorded while Edit Job is open can no longer be lost',
