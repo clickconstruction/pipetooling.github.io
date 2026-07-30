@@ -951,6 +951,21 @@ export default function DetailJobModal({
   const [detailScheduleModalOpen, setDetailScheduleModalOpen] = useState(false)
   const [detailScheduleInitialDate, setDetailScheduleInitialDate] = useState<string | null>(null)
 
+  // v2.1104: Escape closes Job Detail — but never underneath a stacked overlay
+  // (each satellite is gated by its open flag below; JobCalendarModal and the
+  // paid-email modal close themselves on Esc, the rest keep their ✕).
+  const detailEscBlocked =
+    paidEmailModalOpen || reportsModalOpen || jobCalendarOpen || detailScheduleModalOpen || stackedAddFilesOpen
+  useEffect(() => {
+    if (!open || detailEscBlocked) return
+    const onKeyDown = (ev: KeyboardEvent) => {
+      if (ev.key !== 'Escape' || ev.defaultPrevented) return
+      onClose()
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [open, detailEscBlocked, onClose])
+
   const jobFormModal = useJobFormModal()
   const showEditJobButton =
     Boolean(jobFormModal) &&

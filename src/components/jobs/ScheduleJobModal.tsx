@@ -123,6 +123,20 @@ export function ScheduleJobModal({
     [contextStack],
   )
 
+  // v2.1104: Esc closes this modal (preventDefault so the Job Detail Esc
+  // listener never also fires on the same press); ignored mid-save.
+  useEffect(() => {
+    if (!open) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !saving) {
+        e.preventDefault()
+        onClose()
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [open, saving, onClose])
+
   useEffect(() => {
     if (!open) {
       draftsRef.current = {}
