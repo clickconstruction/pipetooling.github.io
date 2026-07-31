@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1147',
+    date: '2026-07-30',
+    title: 'Invoices legend is centered',
+    kind: 'fix',
+    highlights: [
+      'The Unbilled / Ready to Bill / Billed / Paid legend now sits centered above the segment strip.',
+    ],
+  },
+  {
     version: 'v2.1146',
     date: '2026-07-30',
     title: 'Invoices section: three tidy-ups',

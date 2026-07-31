@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-30 (v2.1146)
+last_updated: 2026-07-30 (v2.1147)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1147)
+
+### ② Invoices legend centered (2026-07-30)
+[`JobFormSegmentsBar.tsx`](../src/components/jobs/JobFormSegmentsBar.tsx). The billing-lifecycle legend row (Unbilled / Ready to Bill / Billed / Paid, plus "Covered by other bills" when shown) centers above the segment strip instead of right-aligning — one-word change (`justifyContent: 'flex-end'` → `'center'`) on the row that has been legend-only since v2.1146 moved the explainer to the heading. Client-only.
 
 ## Latest Updates (v2.1146)
 
