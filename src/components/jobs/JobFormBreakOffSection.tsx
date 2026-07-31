@@ -482,8 +482,12 @@ export function JobFormBreakOffSection({
                   zIndex: 5,
                   lineHeight: 0,
                   cursor: breakOffSliderDragCombinedPct != null ? 'grabbing' : 'grab',
+                  // Symmetric padding enlarges the grab target; no negative margin —
+                  // on an absolutely-positioned box it shifted the whole thumb left
+                  // of translateX(-50%), parking the apex ~10px off the boundary
+                  // (the triangle's RIGHT edge read as the pointer). v2.1141: the
+                  // apex now sits exactly on the edge it controls.
                   padding: '6px 10px',
-                  margin: '-6px -10px',
                   outline: 'none',
                 }}
               >

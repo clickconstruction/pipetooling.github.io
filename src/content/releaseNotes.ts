@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1141',
+    date: '2026-07-30',
+    title: 'Make Invoice: the slider triangle points where it acts',
+    kind: 'fix',
+    highlights: [
+      'The green triangle\u2019s point now sits exactly on the edge of the invoice bar it controls \u2014 it used to ride about ten pixels left, so its right side looked like the pointer.',
+    ],
+  },
+  {
     version: 'v2.1140',
     date: '2026-07-30',
     title: 'Make Invoice: the pill lines up with its neighbors',
