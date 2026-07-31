@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import type { Database } from '../../types/database'
 import type { BidWithBuilder } from '../../types/bidWithBuilder'
@@ -7,6 +8,8 @@ import { ModalShell } from './ModalShell'
 import { formatBidNameWithValue, formatDateYYMMDD, formatTimeSinceLastContact } from '../../lib/bids/bidFormatting'
 import { extractContactInfo } from '../../lib/bids/bidContactInfo'
 import { getBidStatusLabel } from '../../lib/bids/bidStatusLabel'
+import { getSubmissionSectionKey } from '../../lib/bids/submissionSections'
+import { builderBidOutcomeCounts, type BuilderBidOutcomeCounts } from '../../lib/map/builderBidMapFocus'
 import type { useNewCustomerModal } from '../../contexts/NewCustomerModalContext'
 import type { useEditCustomerModal } from '../../contexts/EditCustomerModalContext'
 
@@ -59,6 +62,25 @@ export function BidsBuilderReviewTab({
   newCustomerModal,
   editCustomerModal,
 }: BidsBuilderReviewTabProps) {
+  const navigate = useNavigate()
+  // Builder bid map (v2.1162): per-customer won/lost/pending tallies for the
+  // header chips, and whether any bid has an address (gates the map button).
+  const builderBidMapStats = useMemo(() => {
+    const byCustomer = new Map<string, { counts: BuilderBidOutcomeCounts; hasAddress: boolean }>()
+    const sectionsByCustomer = new Map<string, Array<ReturnType<typeof getSubmissionSectionKey>>>()
+    const addressByCustomer = new Map<string, boolean>()
+    for (const b of bids) {
+      if (!b.customer_id) continue
+      const list = sectionsByCustomer.get(b.customer_id) ?? []
+      list.push(getSubmissionSectionKey(b))
+      sectionsByCustomer.set(b.customer_id, list)
+      if (b.address?.trim()) addressByCustomer.set(b.customer_id, true)
+    }
+    for (const [cid, sections] of sectionsByCustomer) {
+      byCustomer.set(cid, { counts: builderBidOutcomeCounts(sections), hasAddress: addressByCustomer.get(cid) === true })
+    }
+    return byCustomer
+  }, [bids])
   const [addContactPersonModalCustomer, setAddContactPersonModalCustomer] = useState<Customer | null>(null)
   const [editingContactPerson, setEditingContactPerson] = useState<CustomerContactPerson | null>(null)
   const [contactPersonName, setContactPersonName] = useState('')
@@ -419,6 +441,52 @@ export function BidsBuilderReviewTab({
                           </svg>
                         </a>
                       )}
+                      {(() => {
+                        const stats = builderBidMapStats.get(customer.id)
+                        if (!stats) return null
+                        const chip = (label: string, bg: string, color: string) => (
+                          <span style={{ background: bg, color, borderRadius: 999, padding: '0.1rem 0.5rem', fontSize: '0.6875rem', fontWeight: 600, whiteSpace: 'nowrap' }}>
+                            {label}
+                          </span>
+                        )
+                        return (
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'wrap' }}>
+                            {stats.hasAddress && (
+                              <button
+                                type="button"
+                                data-builder-map-customer-id={customer.id}
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  navigate(`/map?builder=${encodeURIComponent(customer.id)}`)
+                                }}
+                                title="See this builder's bids on the map, colored by won / lost / pending"
+                                style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '0.3rem',
+                                  padding: '0.15rem 0.5rem',
+                                  background: 'var(--bg-blue-tint)',
+                                  border: '1px solid #3b82f6',
+                                  borderRadius: 6,
+                                  color: 'var(--text-blue-700)',
+                                  fontSize: '0.75rem',
+                                  cursor: 'pointer',
+                                  whiteSpace: 'nowrap',
+                                }}
+                              >
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                                  <path d="M12 21s-7-5.1-7-11a7 7 0 0 1 14 0c0 5.9-7 11-7 11z" />
+                                  <circle cx="12" cy="10" r="2.5" />
+                                </svg>
+                                Bid map
+                              </button>
+                            )}
+                            {stats.counts.won > 0 && chip(`${stats.counts.won} won`, 'var(--bg-green-100)', 'var(--text-green-700)')}
+                            {stats.counts.lost > 0 && chip(`${stats.counts.lost} lost`, 'var(--bg-red-100)', 'var(--text-red-700)')}
+                            {stats.counts.pending > 0 && chip(`${stats.counts.pending} pending`, 'var(--bg-amber-tint)', 'var(--text-amber-800)')}
+                          </span>
+                        )
+                      })()}
                       {(() => {
                         const contactInfo = extractContactInfo(customer.contact_info ?? null)
                         const phone = contactInfo.phone?.trim()

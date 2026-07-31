@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-31 (v2.1162)
+last_updated: 2026-07-31 (v2.1163)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1163)
+
+### Builder bid map: /map?builder= focus with outcome-colored pins (2026-07-31)
+Per approved mockups. New pure kernel [`builderBidMapFocus.ts`](../src/lib/map/builderBidMapFocus.ts) (`BID_STAGE_MARKER_COLOR`, `BUILDER_FOCUS_BID_STAGES`, `builderBidOutcomeCounts` — startedOrComplete counts as won; hit rate = won/(won+lost); 4 tests). [`useMapPageData.ts`](../src/hooks/useMapPageData.ts): bids select + entity gain `customer_id`/`bidCustomerId`. [`MapPageView.tsx`](../src/components/map/MapPageView.tsx): `?builder=<customerId>` enters focus mode — only that customer's bids (jobs/estimates pills hidden), markers colored by Bid Board section instead of kind, scoreboard banner (name via a light customers select, won/lost/pending + hit rate, × clears the param), stage chips remain active with focus defaults (unsent off). [`BidsBuilderReviewTab.tsx`](../src/components/bids/BidsBuilderReviewTab.tsx): per-customer tallies memo; card headers gain won/lost/pending chips and a "Bid map" button (`data-builder-map-customer-id` test hook; shown only when a bid has an address) navigating to the focused map. Verified live: 54 buttons on Builder Review; click-through landed on /map?builder= with banner "Bids for Cheyenne Cook · 0 won · 1 lost · 0 pending · 0% hit rate" and a #dc2626 lost pin. Guide `see-where-you-win-and-lose-with-a-builder`. Client-only.
 
 ## Latest Updates (v2.1162)
 

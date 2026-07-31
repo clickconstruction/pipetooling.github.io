@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1163',
+    date: '2026-07-31',
+    title: 'Builder bid map: see where you win and lose',
+    kind: 'feature',
+    highlights: [
+      'Builder Review cards show won / lost / pending chips and a Bid map button.',
+      'The map focuses on that builder \u2014 pins colored green (won), red (lost), yellow (pending) \u2014 with a hit-rate scoreboard banner.',
+      'Stage chips still filter in focus mode; \u00d7 returns to the normal map.',
+    ],
+  },
+  {
     version: 'v2.1162',
     date: '2026-07-31',
     title: 'More dark-mode readability fixes',
