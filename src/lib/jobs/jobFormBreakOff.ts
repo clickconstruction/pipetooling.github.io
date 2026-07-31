@@ -27,14 +27,19 @@ export function unallocatedBillableDollars(
   return Math.max(0, gross - paidSum - allocatedInvoiceDollars(invoices))
 }
 
-/** Break-off dollars for target combined % ((paid + break) / gross) * 100, clamped to remaining unallocated. */
+/**
+ * Break-off dollars for a target combined % ((base + break) / gross) * 100,
+ * clamped to remaining unallocated. `baseDollars` is whatever sits left of the
+ * new invoice on the track — paid only historically; paid + billed since the
+ * v2.1137 reorder (allocated money coalesces on the left).
+ */
 export function breakDollarsFromCombinedPct(
   combinedPct: number,
   gross: number,
-  paidSum: number,
+  baseDollars: number,
   remainingUnallocated: number,
 ): number {
-  const rawBreak = (combinedPct / 100) * gross - paidSum
+  const rawBreak = (combinedPct / 100) * gross - baseDollars
   const cents = Math.min(
     Math.round(remainingUnallocated * 100),
     Math.max(0, Math.round(rawBreak * 100)),

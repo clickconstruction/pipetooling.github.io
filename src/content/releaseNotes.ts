@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1137',
+    date: '2026-07-30',
+    title: 'Edit job: the Make Invoice control reads like the math it does',
+    kind: 'feature',
+    highlights: [
+      'The control is now an equation you can touch: Paid + Billed + New invoice \u2192 Left to bill, with the amount box and the create button living right inside the New invoice chip. The chips double as the color legend, so the old legend row is gone.',
+      'Billed money moved next to Paid on the left of the bar \u2014 matching every other money bar in the app \u2014 and the drag handle now carries a live \u201c$ \u00b7 %\u201d badge. The yellow field-progress marker stays, now with its own \u201cJob N% done\u201d label.',
+      'Percent shortcuts (20\u201380 / Max) are always visible \u2014 no more Quick set menu \u2014 and a quiet note appears when a bill would run well ahead of field progress (fine for deposits and draws; it never blocks).',
+    ],
+  },
+  {
     version: 'v2.1136',
     date: '2026-07-30',
     title: 'Reliability: freeze protection for the database',
