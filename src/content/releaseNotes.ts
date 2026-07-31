@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1159',
+    date: '2026-07-30',
+    title: 'Bid one project to multiple GCs',
+    kind: 'feature',
+    highlights: [
+      'A bid Version can now point at its own GC/Builder \u2014 pick it from the version\u2019s \u270e menu; chips show where each version points.',
+      'The Cover Letter page groups included versions by GC and generates one document per GC, each with only their own pricing.',
+      'Single-GC bids are untouched \u2014 leave versions on \u201cUse bid default\u201d and everything works exactly as before.',
+    ],
+  },
+  {
     version: 'v2.1158',
     date: '2026-07-30',
     title: 'Crew & Dates header on one line',

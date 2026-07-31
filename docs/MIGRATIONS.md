@@ -104,6 +104,14 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 ### July 2026
 
+#### July 31, 2026
+
+**`20260731003000_bid_versions_customer_override.sql`** _(apply via `supabase db push` immediately after the PR merges; the v2.1159 client's version query reads the column — old clients select `*` and ignore it)_
+- **Purpose**: multi-GC bids v1 (v2.1159) — nullable `bid_versions.customer_id uuid REFERENCES customers(id) ON DELETE SET NULL`, a per-Version GC/Builder override. Null = use the bid-level GC, so every existing bid is untouched; the cover letter groups included versions by effective GC and generates one document per GC.
+- **Security**: additive column only; no RLS or grant changes (bid_versions policies unchanged).
+- **Ordering**: push right after merge (before/while the Pages deploy runs) so the new client never sees a missing column.
+- **Category**: Feature schema
+
 #### July 30, 2026
 
 **`20260730231000_idle_in_transaction_timeout.sql`** _(apply via `supabase db push` after the file is on `main`; no client change — either order is safe)_
