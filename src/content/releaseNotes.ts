@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1150',
+    date: '2026-07-30',
+    title: 'Line Items fit better on phones',
+    kind: 'fix',
+    highlights: [
+      'The \u00d7 count and $ price columns squeeze tighter to the right, giving the line-item name more room on narrow screens.',
+    ],
+  },
+  {
     version: 'v2.1149',
     date: '2026-07-30',
     title: 'Line Items slims down',
