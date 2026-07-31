@@ -13,7 +13,7 @@ type JobRow = Pick<
 >
 type BidRow = Pick<
   Database['public']['Tables']['bids']['Row'],
-  'id' | 'bid_number' | 'project_name' | 'address' | 'outcome' | 'bid_date_sent'
+  'id' | 'bid_number' | 'project_name' | 'address' | 'outcome' | 'bid_date_sent' | 'customer_id'
 >
 
 type EstimateRow = Pick<
@@ -37,6 +37,8 @@ export type MapPageEntity = {
   meta: string
   /** Bid Board section this bid falls in (bids only); same kernel as the board's buckets. */
   bidSection?: SubmissionSectionKey
+  /** The bid's GC/Builder customer id (bids only) — drives /map?builder= focus (v2.1162). */
+  bidCustomerId?: string
 }
 
 /** Matches [`geocode-address-batch`](supabase/functions/geocode-address-batch/index.ts) `MAX_ADDRESSES`. */
@@ -85,7 +87,7 @@ export function useMapPageData(enabled: boolean) {
           'map jobs_ledger'
         ),
         withSupabaseRetry<BidRow[]>(
-          async () => supabase.from('bids').select('id, bid_number, project_name, address, outcome, bid_date_sent').order('project_name'),
+          async () => supabase.from('bids').select('id, bid_number, project_name, address, outcome, bid_date_sent, customer_id').order('project_name'),
           'map bids'
         ),
         withSupabaseRetry<EstimateRow[]>(
@@ -139,6 +141,7 @@ export function useMapPageData(enabled: boolean) {
           linkTo: `/bids?bidId=${encodeURIComponent(b.id)}`,
           meta: b.outcome ?? '',
           bidSection: getSubmissionSectionKey(b) ?? undefined,
+          bidCustomerId: b.customer_id ?? undefined,
         })
       }
       for (const e of estRows) {

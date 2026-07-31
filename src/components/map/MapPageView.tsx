@@ -7,7 +7,7 @@ import {
   type CSSProperties,
   type ReactNode,
 } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 // Leaflet / react-leaflet / Geoman: import only from this file so they stay in the lazy Map route chunk.
 import {
   CircleMarker,
@@ -33,6 +33,12 @@ import {
 } from '../../lib/mapDefaultViewSettings'
 import { mapEntityMatchesSearch } from '../../lib/map/mapEntitySearch'
 import { DEFAULT_MAP_BID_STAGES, mapEntityPassesLayerFilter } from '../../lib/map/mapLayerFilter'
+import {
+  BID_STAGE_MARKER_COLOR,
+  BUILDER_FOCUS_BID_STAGES,
+  builderBidOutcomeCounts,
+} from '../../lib/map/builderBidMapFocus'
+import { supabase } from '../../lib/supabase'
 import type { SubmissionSectionKey } from '../../lib/bids/submissionSections'
 
 const openLinkLikeStyle: CSSProperties = {
@@ -558,6 +564,40 @@ export function MapPageView() {
   const [showBids, setShowBids] = useState(true)
   const [showEst, setShowEst] = useState(true)
   const [bidStages, setBidStages] = useState<Record<SubmissionSectionKey, boolean>>(DEFAULT_MAP_BID_STAGES)
+  // Builder-focus mode (v2.1162): /map?builder=<customerId> shows ONLY that
+  // GC's bids, markers colored by outcome, with a scoreboard banner.
+  const [searchParams, setSearchParams] = useSearchParams()
+  const builderFocusId = searchParams.get('builder')
+  const [builderFocusName, setBuilderFocusName] = useState<string | null>(null)
+  useEffect(() => {
+    if (!builderFocusId) {
+      setBuilderFocusName(null)
+      return
+    }
+    setBidStages(BUILDER_FOCUS_BID_STAGES)
+    let cancelled = false
+    void (async () => {
+      const { data } = await supabase.from('customers').select('name').eq('id', builderFocusId).maybeSingle()
+      if (!cancelled) setBuilderFocusName(data?.name ?? null)
+    })()
+    return () => { cancelled = true }
+  }, [builderFocusId])
+  const clearBuilderFocus = useCallback(() => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev)
+      next.delete('builder')
+      return next
+    })
+    setBidStages(DEFAULT_MAP_BID_STAGES)
+  }, [setSearchParams])
+  const builderFocusEntities = useMemo(
+    () => (builderFocusId ? entities.filter((e) => e.kind === 'bid' && e.bidCustomerId === builderFocusId) : []),
+    [entities, builderFocusId],
+  )
+  const builderFocusCounts = useMemo(
+    () => builderBidOutcomeCounts(builderFocusEntities.map((e) => e.bidSection)),
+    [builderFocusEntities],
+  )
   const [mapSearchQuery, setMapSearchQuery] = useState('')
   const [filterPoly, setFilterPoly] = useState<Feature<Polygon> | null>(null)
   const [clearDraw, setClearDraw] = useState(0)
@@ -599,9 +639,13 @@ export function MapPageView() {
   }, [])
 
   const visible = useMemo(() => {
+    if (builderFocusId) {
+      const f = { showJobs: false, showBids: true, showEst: false, bidStages }
+      return builderFocusEntities.filter((e) => mapEntityPassesLayerFilter(e, f))
+    }
     const f = { showJobs, showBids, showEst, bidStages }
     return entities.filter((e) => mapEntityPassesLayerFilter(e, f))
-  }, [entities, showJobs, showBids, showEst, bidStages])
+  }, [entities, showJobs, showBids, showEst, bidStages, builderFocusId, builderFocusEntities])
 
   const mapSearchTrim = useMemo(() => mapSearchQuery.trim(), [mapSearchQuery])
 
@@ -642,9 +686,53 @@ export function MapPageView() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', padding: '1rem' }}>
       <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.5rem', rowGap: '0.6rem' }}>
         <h1 style={{ margin: 0, marginRight: '0.25rem', fontSize: '1.25rem' }}>Map</h1>
-        <LayerPill kind="job" label="Jobs" active={showJobs} onToggle={() => setShowJobs((s) => !s)} />
-        <LayerPill kind="bid" label="Bids" active={showBids} onToggle={() => setShowBids((s) => !s)} />
-        {showBids ? (
+        {builderFocusId ? (
+          <span
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.6rem',
+              flexWrap: 'wrap',
+              border: '1px solid var(--border-strong)',
+              borderRadius: 8,
+              padding: '0.3rem 0.6rem',
+              background: 'var(--bg-subtle)',
+              fontSize: '0.8125rem',
+            }}
+          >
+            <span style={{ fontWeight: 600 }}>Bids for {builderFocusName ?? '…'}</span>
+            <span style={{ color: '#16a34a', whiteSpace: 'nowrap' }}>● {builderFocusCounts.won} won</span>
+            <span style={{ color: 'var(--text-red-600)', whiteSpace: 'nowrap' }}>● {builderFocusCounts.lost} lost</span>
+            <span style={{ color: '#ca8a04', whiteSpace: 'nowrap' }}>● {builderFocusCounts.pending} pending</span>
+            {builderFocusCounts.hitRatePct != null && (
+              <span style={{ color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>· {builderFocusCounts.hitRatePct}% hit rate</span>
+            )}
+            <button
+              type="button"
+              onClick={clearBuilderFocus}
+              title="Show the full map again"
+              aria-label="Exit builder focus"
+              style={{
+                border: '1px solid var(--border-strong)',
+                borderRadius: 6,
+                background: 'transparent',
+                color: 'var(--text-muted)',
+                cursor: 'pointer',
+                padding: '0 0.4rem',
+                fontSize: '0.875rem',
+                lineHeight: 1.4,
+              }}
+            >
+              ×
+            </button>
+          </span>
+        ) : (
+          <>
+            <LayerPill kind="job" label="Jobs" active={showJobs} onToggle={() => setShowJobs((s) => !s)} />
+            <LayerPill kind="bid" label="Bids" active={showBids} onToggle={() => setShowBids((s) => !s)} />
+          </>
+        )}
+        {builderFocusId || showBids ? (
           <div role="group" aria-label="Bid stages" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
             {BID_STAGE_META.map((m) => (
               <BidStageChip
@@ -657,7 +745,9 @@ export function MapPageView() {
             ))}
           </div>
         ) : null}
-        <LayerPill kind="estimate" label="Estimates" active={showEst} onToggle={() => setShowEst((s) => !s)} />
+        {!builderFocusId && (
+          <LayerPill kind="estimate" label="Estimates" active={showEst} onToggle={() => setShowEst((s) => !s)} />
+        )}
         <GeocodeProgressList rows={geocodeAddressRows} entities={entities} onAddressOpen={onGeocodeAddressOpen} />
         <div style={{ display: 'inline-flex', gap: '0.5rem', marginLeft: 'auto' }}>
           <button
@@ -812,7 +902,12 @@ export function MapPageView() {
                 key={`${e.kind}-${e.id}`}
                 center={[e.lat!, e.lng!]}
                 radius={7}
-                pathOptions={{ color: KIND_COLOR[e.kind], fillColor: KIND_COLOR[e.kind], fillOpacity: 0.7, weight: 1 }}
+                pathOptions={(() => {
+                  const c = builderFocusId && e.kind === 'bid' && e.bidSection
+                    ? BID_STAGE_MARKER_COLOR[e.bidSection]
+                    : KIND_COLOR[e.kind]
+                  return { color: c, fillColor: c, fillOpacity: 0.8, weight: 1 }
+                })()}
               >
                 <Popup>
                   <div style={{ fontSize: '0.8rem' }}>
