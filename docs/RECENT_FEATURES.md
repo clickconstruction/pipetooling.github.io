@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-30 (v2.1159)
+last_updated: 2026-07-30 (v2.1160)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1160)
+
+### Stages "Job" header returns to left alignment (2026-07-30)
+[`JobsStagesUnifiedTable.tsx`](../src/components/jobs/JobsStagesUnifiedTable.tsx) + [`JobsStagesTable.tsx`](../src/components/jobs/JobsStagesTable.tsx): partial revert of v2.1156 — the "Job" `<th>` goes back to `textAlign: left` (it floated over left-aligned names); "Activity" stays centered. Client-only.
 
 ## Latest Updates (v2.1159)
 
