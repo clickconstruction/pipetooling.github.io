@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1149',
+    date: '2026-07-30',
+    title: 'Line Items slims down',
+    kind: 'feature',
+    highlights: [
+      'The column-header band is gone \u2014 count wears a \u00d7 and unit price a $, so rows label themselves.',
+      'The helper sentence now lives behind \u201c\u24d8 What are line items?\u201d beside the heading, with the Multiple Segment Generator link right there too.',
+    ],
+  },
+  {
     version: 'v2.1148',
     date: '2026-07-30',
     title: 'Segment labels get a crisp outline',
