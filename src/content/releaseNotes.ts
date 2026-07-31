@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1157',
+    date: '2026-07-30',
+    title: 'Stages column renamed to Crew & Dates',
+    kind: 'fix',
+    highlights: [
+      'The \u201cTeam & Last-update\u201d column header on Stages is now \u201cCrew & Dates\u201d.',
+    ],
+  },
+  {
     version: 'v2.1156',
     date: '2026-07-30',
     title: 'Stages jump button, centered headers, tidier chart tooltip',
