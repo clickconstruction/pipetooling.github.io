@@ -146,8 +146,8 @@ export function BidLienReleaseTab({ bids, selectedBid, onSelectBid, onClose, onE
           })
         }
         const datePart = new Date().toISOString().slice(2, 10).replace(/-/g, '')
-        const sanitizedProjectName = (projectNameVal ?? '').replace(/[^a-zA-Z0-9]+/g, '_').replace(/^_|_$/g, '') || 'Project'
-        const templateCopyTarget = `ClickLienRelease_${datePart}_${sanitizedProjectName}`
+        const sanitizedProjectName = (projectNameVal ?? '').replace(/[^a-zA-Z0-9]+/g, ' ').trim() || 'Project'
+        const templateCopyTarget = `ClickLienRelease ${datePart} ${sanitizedProjectName}`
         const serviceTypeName = bid.service_type?.name ?? 'Plumbing'
         let googleDocsTemplateId = '1Xs76a1fAZfj4GGyIQ-wH_x98rtjnfoB7RVt7cMBmPP8'
         if (serviceTypeName === 'Electrical') googleDocsTemplateId = '1WO7egdTaavsl3YABBc7cR9va-IwmF9PTdIubxDw7ips'
