@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1173',
+    date: '2026-07-31',
+    title: 'Moving a job’s costs onto a bid works now',
+    kind: 'fix',
+    highlights: [
+      'The Edit Job delete flow’s "move costs to a bid" option failed with a database error the moment you picked a target bid.',
+      'The preview and the move itself both work now.',
+    ],
+  },
+  {
     version: 'v2.1172',
     date: '2026-07-31',
     title: 'Cover letter follows the Version you have selected',

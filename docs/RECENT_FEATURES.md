@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-31 (v2.1172)
+last_updated: 2026-07-31 (v2.1173)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1173)
+
+### Migrate-to-bid RPC: pg_safeupdate rejected the temp-table clear (2026-07-31)
+Field report: the "Migrate costs and delete this job" modal's **A bid** path showed **"DELETE requires a WHERE clause"** where the What-moves preview belongs — the dry-run RPC call failed and the modal printed the raw error. `pg_safeupdate` is loaded on the PostgREST path and rejected `DELETE FROM _migrated_sessions;` (the temp-table clear) inside `migrate_job_ledger_costs_to_bid_and_delete`, so **every** call failed — the v2.1165–v2.1166 feature never worked in prod. Same trap as the April 2026 `dev_reset_estimates` fix; validation missed it because safeupdate is not loaded on direct DB connections. Migration `20260731192514_fix_migrate_to_bid_safeupdate_delete.sql` re-creates the function byte-identical except `DELETE FROM _migrated_sessions WHERE true;`. No client change. DB-only (`supabase db push` after merge — the feature stays broken until pushed).
 
 ## Latest Updates (v2.1172)
 
