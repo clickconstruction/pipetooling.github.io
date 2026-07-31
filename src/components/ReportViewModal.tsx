@@ -152,9 +152,11 @@ type Props = {
   onClose: () => void
   /** Passed to {@link displayReportTemplateName} for the modal title (legacy `Superintendent Report` → Status Report). */
   viewerRole?: UserRole | null
+  /** Raise when the opener's own overlay sits above the default (e.g. JobReportsModal at 1100). */
+  zIndex?: number
 }
 
-export default function ReportViewModal({ open, report, onClose, viewerRole }: Props) {
+export default function ReportViewModal({ open, report, onClose, viewerRole, zIndex = 60 }: Props) {
   // Freeze the page behind the modal — dragging inside it used to scroll the
   // list underneath on a phone, and closing then landed somewhere else.
   useBodyScrollLock(open)
@@ -170,7 +172,7 @@ export default function ReportViewModal({ open, report, onClose, viewerRole }: P
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        zIndex: 60,
+        zIndex,
       }}
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >

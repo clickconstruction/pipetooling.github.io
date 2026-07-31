@@ -1016,6 +1016,12 @@ export default function DetailJobModal({
 
   if (!open) return null
 
+  // Backdrop-close fires only for a click on the backdrop itself (`target ===
+  // currentTarget`). The satellite modals further down (Reports, Job Calendar,
+  // Schedule, paid-email) render their own fixed overlays as siblings of the
+  // panel *inside* this div, so a plain `onClick={onClose}` closed Job Detail —
+  // and every stacked modal with it — on any click inside them. That is what
+  // made Reports → "Add additional report" look like a dead button (v2.1166).
   return (
     <div
       style={{
@@ -1029,7 +1035,7 @@ export default function DetailJobModal({
         padding: '1rem',
         ...(narrowViewport ? { overscrollBehavior: 'contain' as const } : {}),
       }}
-      onClick={onClose}
+      onClick={(e) => e.target === e.currentTarget && onClose()}
       role="presentation"
     >
       <div
