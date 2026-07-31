@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1170',
+    date: '2026-07-31',
+    title: 'Proposal Google Docs are named without underscores',
+    kind: 'feature',
+    highlights: [
+      'Making a proposal copy from Bids → Cover Letter now titles the Google Doc "ClickProposal 260731 Project Name" instead of "ClickProposal_260731_Project_Name".',
+    ],
+  },
+  {
     version: 'v2.1169',
     date: '2026-07-31',
     title: 'Bid pricing no longer vanishes when you switch versions',

@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-31 (v2.1169)
+last_updated: 2026-07-31 (v2.1170)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1170)
+
+### Cover Letter: proposal Google Doc titles use spaces instead of underscores (2026-07-31)
+The "Make a copy" Google Doc created from the Cover Letter tab was titled `ClickProposal_YYMMDD_Project_Name` — the project-name sanitizer in [`BidsCoverLetterTab.tsx`](../src/components/bids/BidsCoverLetterTab.tsx) collapsed every non-alphanumeric run to `_`, so multi-word project names showed up in Drive full of underscores. The title is now fully space-separated: `ClickProposal YYMMDD Project Name` (sanitizer collapses non-alphanumeric runs to a single space and trims; empty still falls back to `Project`). Nothing parses the title downstream — it only feeds `encodeURIComponent` on the `/copy?title=` URL. The RFI, Change Order, and Lien Release tabs keep their own identical underscore pattern untouched (`ClickRFI_…`, `ClickChangeOrder_…`, `ClickLienRelease_…`) — flip them the same way if the office wants matching names. Client-only.
 
 ## Latest Updates (v2.1169)
 
