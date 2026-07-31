@@ -13148,6 +13148,10 @@ export type Database = {
           source: string
         }[]
       }
+      search_job_ids_matching_schedule_or_clock: {
+        Args: { p_job_ids: string[]; p_query: string }
+        Returns: string[]
+      }
       search_jobs_for_tally_mercury_assign: {
         Args: { search_text?: string }
         Returns: {

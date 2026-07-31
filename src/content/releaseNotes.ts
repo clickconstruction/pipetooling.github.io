@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1185',
+    date: '2026-07-31',
+    title: 'Schedule & time in search got much lighter',
+    kind: 'feature',
+    highlights: [
+      'When “Schedule & time in search” is on, the matching now happens on the server — the same results, a fraction of the data transfer.',
+    ],
+  },
+  {
     version: 'v2.1184',
     date: '2026-07-31',
     title: 'Faster Stages search',

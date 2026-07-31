@@ -106,6 +106,12 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 #### July 31, 2026
 
+**`20260731235401_stages_schedule_clock_search_rpc.sql`** _(apply via `supabase db push` after the PR merges; the new client tries the RPC and falls back to the legacy chunked client-side path until it lands, and the old client never calls it — either order is safe)_
+- **Purpose**: `search_job_ids_matching_schedule_or_clock(p_job_ids uuid[], p_query text)` (v2.1185) — server-side matcher for the Stages "Schedule & time in search" supplement. Returns the job ids among `p_job_ids` with a schedule block or non-revoked, job-linked clock session whose note/notes, assignee/puncher name, or `work_date::text` contains the query (case-insensitive **substring** via `strpos`, so user-typed `%`/`_` stay literal — mirrors the client matcher it replaces); <2-char queries match nothing. Replaces per-search chunked `.in()` fetches of the whole note corpus (up to 8,000 rows per 150-id chunk against BOTH tables) with one round trip.
+- **Security**: read-only `STABLE` SQL function, **`SECURITY INVOKER`** — runs under the caller's RLS exactly like the client queries it replaces; the `users` LEFT JOINs behave like the old embedded `users(name)` selects (unreadable rows → NULL name, no match). `SET search_path = public`; `GRANT EXECUTE TO authenticated`.
+- **Ordering**: independent of the client deploy (RPC-first with client-side fallback on both sides).
+- **Category**: Performance RPC
+
 **`20260731213000_location_enabled_user_ids_rpc.sql`** _(apply via `supabase db push` after the PR merges; the new client fails soft — the dev-only location indicator stays empty — until it lands, and the old client keeps using its table select, so either order is safe)_
 - **Purpose**: `get_location_enabled_user_ids()` (v2.1176) — `SELECT DISTINCT user_id` over GPS-bearing `clock_sessions`, replacing the People page's unbounded client-side fetch of every location-bearing session row ever recorded.
 - **Security**: read-only `STABLE` SQL function, `SECURITY DEFINER`, `SET search_path = public`, same grant set as `get_archived_user_names`; exposes only user ids the dev UI already renders.

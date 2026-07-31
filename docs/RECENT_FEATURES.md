@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-31 (v2.1184)
+last_updated: 2026-07-31 (v2.1185)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1185)
+
+### Stages schedule/clock search matches server-side (2026-07-31)
+The opted-in "Schedule &amp; time in search" path (see v2.1184) no longer ships the note corpus to the browser. New SQL function `search_job_ids_matching_schedule_or_clock(p_job_ids uuid[], p_query text)` (migration [`20260731235401_stages_schedule_clock_search_rpc.sql`](../supabase/migrations/20260731235401_stages_schedule_clock_search_rpc.sql)) does the same matching in one round trip — case-insensitive **substring** via `strpos` (not ILIKE, so user-typed `%`/`_` stay literal) on block note / session notes, assignee/puncher name, and `work_date::text`; clock sessions job-linked and non-revoked; &lt;2 chars matches nothing. **SECURITY INVOKER** — runs under the caller's RLS exactly like the client queries it replaces (users LEFT JOINs behave like the old embedded `users(name)` selects: unreadable rows contribute a NULL name). [`jobsStagesScheduleSessionSearch.ts`](../src/lib/jobsStagesScheduleSessionSearch.ts) tries the RPC first and falls back to the legacy chunked client-side path on any error, so client and migration deploy in either order; new `scheduleClockSearchRpcJobIdSet` payload guard (+3 tests). RPC hand-added to [`database.ts`](../src/types/database.ts) (wholesale regen pulls unrelated drift). Client + migration (`supabase db push` after merge).
 
 ## Latest Updates (v2.1184)
 
