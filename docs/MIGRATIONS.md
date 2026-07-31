@@ -112,6 +112,12 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 - **Ordering**: independent — dormant until the migrate RPC and UI land.
 - **Category**: Feature schema
 
+**`20260731180000_migrate_job_costs_to_bid.sql`** _(apply via `supabase db push` after the file is on `main`, in the same push as `20260731170000` — it depends on those tables; nothing calls it yet, so either order relative to the client is safe)_
+- **Purpose**: `migrate_job_ledger_costs_to_bid_and_delete(p_from, p_to_bid, p_allow_billed, p_dry_run)` (v2.1165) — reassign a job's costs/labor/reports to a **bid**, then delete the job. Sibling of `migrate_job_ledger_costs_and_delete`, which is unchanged. Moves everything with a bid anchor (`clock_sessions`, `reports`, `dispatch_requests`, `estimator_requests`, salary schedule tables, `people_crew_jobs`→`people_crew_bids`, the four cost mirrors); job-only records and the job's revenue are destroyed and **reported**. Calls `recompute_people_hours_after_session_edit` per moved session — it takes a session id, not a job id.
+- **Security**: `SECURITY DEFINER` with `SET search_path = public`; same source-job authority check as the job→job sibling (dev/master/assistant + master-assistant visibility), plus the target bid must exist. Same `p_allow_billed` opt-in for the billing guard.
+- **Ordering**: after `20260731170000` in the same push.
+- **Category**: Feature RPC
+
 **`20260731003000_bid_versions_customer_override.sql`** _(apply via `supabase db push` immediately after the PR merges; the v2.1159 client's version query reads the column — old clients select `*` and ignore it)_
 - **Purpose**: multi-GC bids v1 (v2.1159) — nullable `bid_versions.customer_id uuid REFERENCES customers(id) ON DELETE SET NULL`, a per-Version GC/Builder override. Null = use the bid-level GC, so every existing bid is untouched; the cover letter groups included versions by effective GC and generates one document per GC.
 - **Security**: additive column only; no RLS or grant changes (bid_versions policies unchanged).

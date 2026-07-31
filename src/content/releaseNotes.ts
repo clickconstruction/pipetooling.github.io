@@ -17,6 +17,7 @@ export const RELEASE_NOTES: ReleaseNote[] = [
     kind: 'feature',
     highlights: [
       'Behind the scenes, bids can now hold parts, materials and supply-house costs the same way jobs do.',
+      'Time already clocked to a job can be re-pointed at a bid, along with its field reports.',
       'Nothing changes on screen yet — the button to move a job’s costs onto a bid comes next.',
     ],
   },
