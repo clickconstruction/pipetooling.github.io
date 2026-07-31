@@ -2781,6 +2781,60 @@ export default function JobFormModal({
     }
   }
 
+  /**
+   * Same shape as {@link migrateJobLedgerCostsAndDelete}, but the target is a
+   * BID. Costs, labor, reports and dispatch/estimator requests move; job-only
+   * records and the job's revenue are destroyed (a bid has no revenue column),
+   * which is why the modal shows the RPC's own dry-run counts first.
+   */
+  async function migrateJobLedgerCostsToBidAndDelete(
+    fromId: string,
+    toBidId: string,
+    allowBilled = true,
+  ): Promise<boolean> {
+    setMigratingJob(true)
+    try {
+      const { data, error: rpcErr } = await supabase.rpc('migrate_job_ledger_costs_to_bid_and_delete', {
+        p_from: fromId,
+        p_to_bid: toBidId,
+        p_allow_billed: allowBilled,
+        p_dry_run: false,
+      })
+      if (rpcErr) {
+        console.error('migrate_job_ledger_costs_to_bid_and_delete', rpcErr)
+        const msg = formatPostgrestOrUnknownError(rpcErr, rpcErr.message || 'Failed to migrate job to bid')
+        setError(msg)
+        showToast(msg, 'error')
+        return false
+      }
+      const payload = data as { ok?: boolean; error?: string; code?: string } | null
+      if (!payload?.ok) {
+        const msg =
+          typeof payload?.error === 'string' && payload.error.trim()
+            ? payload.error
+            : 'Could not migrate this job to the bid.'
+        setError(msg)
+        showToast(msg, 'error')
+        return false
+      }
+      onSavedRef.current?.()
+      closeFormWithoutSaving()
+      showToast(
+        'Costs, labor and reports moved to the bid; this job was removed. Open Bids → Bid Costs to verify.',
+        'success',
+      )
+      return true
+    } catch (err: unknown) {
+      console.error('migrateJobLedgerCostsToBidAndDelete', err)
+      const msg = formatPostgrestOrUnknownError(err, 'Failed to migrate job to bid')
+      setError(msg)
+      showToast(msg, 'error')
+      return false
+    } finally {
+      setMigratingJob(false)
+    }
+  }
+
   async function confirmDeleteJob() {
     if (!editing) return
     await deleteJob(editing.id)
@@ -3684,6 +3738,7 @@ export default function JobFormModal({
         editJobSubLaborData={editJobSubLaborData}
         confirmDeleteJob={confirmDeleteJob}
         migrateJobLedgerCostsAndDelete={migrateJobLedgerCostsAndDelete}
+        migrateJobLedgerCostsToBidAndDelete={migrateJobLedgerCostsToBidAndDelete}
         nestedOverlayZIndex={JOB_FORM_NESTED_OVERLAY_Z_INDEX}
         migrateOverlayZIndex={JOB_FORM_MIGRATE_OVERLAY_Z_INDEX}
       />

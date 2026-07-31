@@ -11,7 +11,7 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
-    version: 'v2.1166',
+    version: 'v2.1167',
     date: '2026-07-31',
     title: 'Job Detail no longer closes when you use its pop-up windows',
     kind: 'fix',
@@ -19,6 +19,18 @@ export const RELEASE_NOTES: ReleaseNote[] = [
       'In Job Detail, clicking anything inside Reports, the job calendar, Schedule, or the paid-job email window closed the whole Job Detail stack instead of doing what you clicked.',
       'Reports → "Add additional report" now opens the Additional Report form. It had looked like a dead button.',
       '"Open in popup" on a report opened from Job Detail now shows the report instead of nothing.',
+    ],
+  },
+  {
+    version: 'v2.1166',
+    date: '2026-07-31',
+    title: 'Put a job’s costs on the bid they belonged to',
+    kind: 'feature',
+    highlights: [
+      'When time and spending land on a job but the work was really bid work, Edit Job → Delete → Reassign now offers "A bid" as the target.',
+      'Parts, materials, supply-house splits, card charges, team labor and field reports all move to the bid.',
+      'Before you confirm, it shows exactly what moves and what gets deleted with the job — including the job total, which a bid cannot hold.',
+      'The bid’s real cost goes up, so next time you price similar work you are comparing against an honest number.',
     ],
   },
   {

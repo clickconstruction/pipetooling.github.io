@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 /**
- * Regression test for v2.1166: Job Detail's backdrop used to close on ANY click
+ * Regression test for v2.1167: Job Detail's backdrop used to close on ANY click
  * inside it.
  *
  * The `role="dialog"` panel stops propagation, so normal Job Detail clicks were
@@ -81,7 +81,7 @@ describe('DetailJobModal backdrop vs. its stacked satellite modals', () => {
   })
 
   it('stacks the Additional Report form above the Reports modal that opened it', async () => {
-    // Job Detail opens Reports at 1100; before v2.1166 AdditionalReportModal
+    // Job Detail opens Reports at 1100; before v2.1167 AdditionalReportModal
     // stayed on its hardcoded default of 65 and mounted *under* the Reports
     // modal's opaque backdrop — present in the DOM, invisible to the user.
     const addReport = await renderOpenReports(vi.fn())

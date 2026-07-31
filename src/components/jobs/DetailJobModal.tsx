@@ -1021,7 +1021,7 @@ export default function DetailJobModal({
   // Schedule, paid-email) render their own fixed overlays as siblings of the
   // panel *inside* this div, so a plain `onClick={onClose}` closed Job Detail —
   // and every stacked modal with it — on any click inside them. That is what
-  // made Reports → "Add additional report" look like a dead button (v2.1166).
+  // made Reports → "Add additional report" look like a dead button (v2.1167).
   return (
     <div
       style={{

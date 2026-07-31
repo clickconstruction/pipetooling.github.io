@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-31 (v2.1166)
+last_updated: 2026-07-31 (v2.1167)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2046,7 +2046,7 @@ when_to_read:
 155. [Customer and Project Management](#customer-and-project-management)
 ---
 
-## Latest Updates (v2.1166)
+## Latest Updates (v2.1167)
 
 ### Job Detail's backdrop was swallowing every click in its stacked modals (2026-07-31)
 Reported as "Reports → **Add additional report** does nothing" — the button looked dead, and the whole Job Detail stack vanished instead. Two independent defects, both in [`DetailJobModal.tsx`](../src/components/jobs/DetailJobModal.tsx)'s satellite-modal region.
@@ -2054,6 +2054,11 @@ Reported as "Reports → **Add additional report** does nothing" — the button 
 **(1) Backdrop close-on-any-click.** The root overlay carried a bare `onClick={onClose}`. The `role="dialog"` panel stops propagation, so ordinary Job Detail clicks were safe — but the satellite modals (**JobReportsModal**, **JobCalendarModal**, **ScheduleJobModal**, **PaidJobEmailSendModal**) render their own `position: fixed` overlays as *siblings* of that panel, still inside the backdrop div, and none of them portal out. Every click inside any of them bubbled to the backdrop and called `onClose()`, unmounting Job Detail and every modal stacked on it. The two inline stacked dialogs in the same file (Add link, Add Customer Files link) already defended with `e.stopPropagation()` on their own backdrops, which is why this never surfaced there. Fixed at the source with the standard idiom — `onClick={(e) => e.target === e.currentTarget && onClose()}` — the same guard [`ReportViewModal.tsx`](../src/components/ReportViewModal.tsx) already used; backdrop-click-to-close still works, and all four satellites are fixed in one place.
 
 **(2) Nested report modals rendered underneath.** [`JobReportsModal`](../src/components/JobReportsModal.tsx) takes a `zIndex` prop (Job Detail opens it at **1100**) but passed nothing down to its two children, which sat at their hardcoded defaults — `AdditionalReportModal` at 65, `ReportViewModal` at 60. Opened from Job Detail they mounted *below* the Reports modal's opaque `var(--surface)` backdrop: invisible and unclickable. So even with (1) fixed, the button would still have looked dead. Both are now raised off the parent's own `zIndex` (`+10` and `+5`), mirroring how `AdditionalReportModal` already raises the reports list it opens; `ReportViewModal` gained an optional `zIndex` prop defaulting to 60, so every existing caller — Dashboard opens `JobReportsModal` at the default 55 — keeps its current stacking exactly. Client-only; no migration.
+
+## Latest Updates (v2.1166)
+
+### Edit Job → migrate costs: a Bid can now be the target (2026-07-31)
+The client half of v2.1165. [`JobFormDeleteMigrateModals.tsx`](../src/components/jobs/JobFormDeleteMigrateModals.tsx) gains an **Another job / A bid** toggle above the target search; picking Bid swaps the picker to `search_bids_for_clock` (the same RPC Clock-in uses — no new search built) and replaces the Source/Target summary table with the RPC's own **dry-run** report. [`useJobMigrate.ts`](../src/components/jobs/useJobMigrate.ts) adds the bid-target state, a debounced bid search, and a dry-run effect that calls `migrate_job_ledger_costs_to_bid_and_delete(..., p_dry_run => true)` whenever a bid is selected — the preview is the real migration rolled back, so the counts shown are exactly what Confirm does, with no second estimate to drift. [`JobFormModal.tsx`](../src/components/jobs/JobFormModal.tsx) adds the `migrateJobLedgerCostsToBidAndDelete` handler alongside the untouched job→job one. The dry-run panel lists **what moves** (non-zero rows only) and, in an amber box, **what is permanently deleted with the job** — the job total (revenue) first, since a bid has no revenue column to receive it, then schedule blocks / inspections / fixtures / thread notes / status events / team members. Zero-count rows are filtered out so the ones that matter are not buried. Modal copy is now target-aware, and the delete-confirm gate mentions reassigning to a bid. `migrate_job_ledger_costs_to_bid_and_delete` hand-added to [`database.ts`](../src/types/database.ts) (prod doesn't have the RPC until `db push`, so `gen-types:linked` can't see it yet). Guide `move-a-jobs-costs-onto-a-bid`. Client-only — **requires the v2.1165 migrations to be pushed first**.
 
 ## Latest Updates (v2.1165)
 
