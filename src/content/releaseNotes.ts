@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1145',
+    date: '2026-07-30',
+    title: 'Make Invoice: the slider badge leads with its percent',
+    kind: 'fix',
+    highlights: [
+      'The badge under the slider handle now reads \u201c25% \u00b7 $30,900\u201d \u2014 percent first, matching the chips above it.',
+    ],
+  },
+  {
     version: 'v2.1144',
     date: '2026-07-30',
     title: 'Edit job: three small billing polish fixes',
