@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1179',
+    date: '2026-07-31',
+    title: 'Cleaner appointment times on the Stages board',
+    kind: 'feature',
+    highlights: [
+      'Whole-hour times drop the \u201c:00\u201d \u2014 \u201cWed Aug 5 10 AM\u201312 PM\u201d instead of \u201c10:00 AM\u201312:00 PM\u201d.',
+    ],
+  },
+  {
     version: 'v2.1178',
     date: '2026-07-31',
     title: 'See and search jobs by their GC on the Stages board',
