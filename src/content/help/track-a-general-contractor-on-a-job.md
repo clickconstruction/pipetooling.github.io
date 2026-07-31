@@ -14,8 +14,8 @@ A job's **customer** is who you bill. But on commercial work there's often a sec
 3. Under **GC/Builder (customer)**, search and pick the GC. A GC is just a customer row — the same list Bids uses for GC/Builder.
 4. It saves automatically. Use {{button:outline|Clear GC}} to remove it.
 
-:::example Linked to a bid? One click.
-If the job is linked to a bid, a {{chip:blue|Use bid's GC}} button appears with the bid's GC/Builder name — one click copies it onto the job.
+:::example Linked to a bid? Mostly automatic.
+Jobs **created from a bid** inherit the bid's GC/Builder automatically, and linking a bid to an existing job fills the GC if it's empty. For anything else, the {{chip:blue|Use bid's GC}} button copies it over in one click.
 :::
 
 ## Where the GC shows up

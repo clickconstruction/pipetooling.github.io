@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-31 (v2.1181)
+last_updated: 2026-07-31 (v2.1182)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1182)
+
+### Jobs created from a bid inherit the bid's GC (2026-07-31)
+Two one-liners in [`JobFormModal.tsx`](../src/components/jobs/JobFormModal.tsx): **creating** a job from a bid (`applyPrefillFromBid`, the New Job → Import-from-bid flow) sets `gcCustomerId` to the bid's GC/Builder unconditionally — the bid's GC IS the job's GC; **linking** a bid to an existing job (`JobBidLinkChoiceModal` onLinked) fills the GC only when empty, never overwriting one someone set deliberately. Populates the GC data that the v2.1178 Stages line/search and v2.1181 GC Review run on. Guide `track-a-general-contractor-on-a-job` notes the inherit behavior. Client-only.
 
 ## Latest Updates (v2.1181)
 
