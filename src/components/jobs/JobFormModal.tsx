@@ -1463,6 +1463,8 @@ export default function JobFormModal({
               }
             : null,
         )
+        // Creating a job FROM a bid: the bid's GC/Builder IS the job's GC (v2.1182).
+        setGcCustomerId(b.customer_id ?? null)
         if (b.customer_id) {
           setCustomerId(b.customer_id)
           const cList = customers.find((c) => c.id === b.customer_id)
@@ -3800,6 +3802,11 @@ export default function JobFormModal({
                   }
                 : null,
             )
+            // Linking a bid to an EXISTING job: fill the GC only when empty —
+            // never overwrite a GC someone set deliberately (v2.1182).
+            if (opt?.customer_id) {
+              setGcCustomerId((prev) => prev ?? opt.customer_id)
+            }
             setJobBidLinkChoiceOpen(false)
             setProjectFilesPlansExpanded(true)
             showToast('Bid linked. Save the job to keep changes.', 'info')

@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1182',
+    date: '2026-07-31',
+    title: 'New jobs made from a bid inherit the bid\u2019s GC',
+    kind: 'feature',
+    highlights: [
+      'Creating a job from a bid copies the bid\u2019s GC/Builder onto the job automatically.',
+      'Linking a bid to an existing job fills the GC only if the job doesn\u2019t have one yet.',
+    ],
+  },
+  {
     version: 'v2.1181',
     date: '2026-07-31',
     title: 'GC Review: see who owes what, by General Contractor',
