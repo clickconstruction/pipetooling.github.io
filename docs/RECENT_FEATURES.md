@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-30 (v2.1155)
+last_updated: 2026-07-30 (v2.1156)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1156)
+
+### Stages ⏎ jump button + centered headers + Cost Timeline tooltip stacking (2026-07-30)
+(1) [`StagesJobNumberJumpChip.tsx`](../src/components/jobs/StagesJobNumberJumpChip.tsx): the expanded # chip shows a 24px blue ⏎ button (mockup option A) whenever the field has digits — click and Enter share one `attemptJump()`; the no-match shake behaves as before. (2) [`JobsStagesUnifiedTable.tsx`](../src/components/jobs/JobsStagesUnifiedTable.tsx) + [`JobsStagesTable.tsx`](../src/components/jobs/JobsStagesTable.tsx): the Job and Activity `<th>`s get `textAlign: center` (outer columns stay left-aligned). (3) [`JobSummaryChargesTimelineChart.tsx`](../src/components/jobs/JobSummaryChargesTimelineChart.tsx): v2.1155's legend stacking reverted to the flat one-line legend — the user meant the hover tooltip, whose Cost / Paid / Profit / Value created summary now renders one per line. Verified via the Playwright harness (both jump paths collapse the chip on match; tooltip hover — note the chart surface is ~4300px wide inside its scroll container, so hovers must land in the viewport-visible slice). Client-only.
 
 ## Latest Updates (v2.1155)
 

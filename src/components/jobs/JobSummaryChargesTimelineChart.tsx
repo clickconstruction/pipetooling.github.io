@@ -234,25 +234,24 @@ function JobChargesTimelineTooltip({ active, payload }: TimelineTooltipProps) {
         </div>
       ))}
       <div style={{ marginTop: '0.25rem', borderTop: '1px solid var(--border)', paddingTop: '0.25rem' }}>
-        <span style={{ color: 'var(--text-red-600)' }}>Cost: ${formatCurrency(row.expense)}</span>
+        <div style={{ color: 'var(--text-red-600)' }}>Cost: ${formatCurrency(row.expense)}</div>
         {row.paymentsToDate > 0 && (
-          <span style={{ color: '#15803d', marginLeft: '0.6rem' }}>
+          <div style={{ color: '#15803d' }}>
             Paid: ${formatCurrency(row.paymentsToDate)}
-          </span>
+          </div>
         )}
-        <span
+        <div
           style={{
             fontWeight: 600,
             color: row.profit >= 0 ? '#15803d' : 'var(--text-red-700)',
-            marginLeft: '0.6rem',
           }}
         >
           Profit: {signedCurrency(row.profit)}
-        </span>
+        </div>
         {row.value != null && (
-          <span style={{ color: 'var(--text-link)', marginLeft: '0.6rem' }}>
+          <div style={{ color: 'var(--text-link)' }}>
             Value created: ${formatCurrency(row.value)}
-          </span>
+          </div>
         )}
       </div>
     </div>
@@ -484,17 +483,18 @@ export function JobChargesTimelineChartView({
         </ResponsiveContainer>
         </div>
       </div>
-      <div style={{ color: 'var(--text-700)', fontSize: '0.75rem', margin: '0.25rem 0 0', display: 'flex', flexDirection: 'column', gap: 2 }}>
-        <div><span style={{ color: 'var(--text-red-600)', fontWeight: 600 }}>Red</span> = cost to date</div>
-        <div><span style={{ color: '#16a34a', fontWeight: 600 }}>Green</span> = profit</div>
-        <div>💵 = payment received</div>
-        <div>🚩 = field report</div>
+      <p style={{ color: 'var(--text-700)', fontSize: '0.75rem', margin: '0.25rem 0 0' }}>
+        <span style={{ color: 'var(--text-red-600)', fontWeight: 600 }}>Red</span> = cost to date ·{' '}
+        <span style={{ color: '#16a34a', fontWeight: 600 }}>Green</span> = profit · 💵 = payment received · 🚩 = field
+        report
         {valueShown && (
-          <div>
-            <span style={{ color: 'var(--text-link)', fontWeight: 600 }}>Blue</span> = value created (report % × job total, right axis)
-          </div>
+          <>
+            {' · '}
+            <span style={{ color: 'var(--text-link)', fontWeight: 600 }}>Blue</span> = value created
+            (report % × job total, right axis)
+          </>
         )}
-      </div>
+      </p>
       <p style={{ color: 'var(--text-faint)', fontSize: '0.6875rem', margin: '0.15rem 0 0' }}>
         Cost sources:{' '}
         {Object.values(JOB_CHARGE_SOURCE_META)
