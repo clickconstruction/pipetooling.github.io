@@ -65,8 +65,8 @@ function EquationChip({
             verticalAlign: 'baseline',
           }}
         />
+        {pct != null ? <span style={{ fontWeight: 400 }}>{pct}% </span> : null}
         {label}
-        {pct != null ? <span style={{ fontWeight: 400 }}> {pct}%</span> : null}
       </span>
       <span style={{ fontSize: '0.8125rem', fontWeight: 600, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
         {children}
@@ -191,12 +191,17 @@ export function JobFormBreakOffSection({
               aria-hidden
               style={{ display: 'inline-block', width: 7, height: 7, borderRadius: 2, background: DRAFT_COLOR, flexShrink: 0 }}
             />
+            {breakOffInvoiceSharePct != null ? (
+              <span style={{ fontSize: '0.6875rem', fontWeight: 400, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+                {breakOffInvoiceSharePct}%
+              </span>
+            ) : null}
             <button
               type="button"
               onClick={isSendFullUnallocatedToReadyToBill ? moveWorkingJobToReadyToBillFromEdit : createInvoice}
               disabled={actionDisabled}
               title={isSendFullUnallocatedToReadyToBill ? 'Move job to Ready to Bill' : 'Create invoice'}
-              aria-label={isSendFullUnallocatedToReadyToBill ? 'Ready to Bill' : 'Make new invoice'}
+              aria-label={isSendFullUnallocatedToReadyToBill ? 'Ready to Bill' : 'New invoice'}
               style={{
                 padding: '0.25rem 0.6rem',
                 fontSize: '0.75rem',
@@ -212,13 +217,9 @@ export function JobFormBreakOffSection({
                 cursor: actionDisabled ? 'not-allowed' : 'pointer',
               }}
             >
-              {movingJobToReadyToBill || creatingInvoice ? '…' : isSendFullUnallocatedToReadyToBill ? 'Ready to Bill' : 'Make new Invoice'}
+              {movingJobToReadyToBill || creatingInvoice ? '…' : isSendFullUnallocatedToReadyToBill ? 'Ready to Bill' : 'New Invoice'}
             </button>
-            {breakOffInvoiceSharePct != null ? (
-              <span style={{ fontSize: '0.6875rem', fontWeight: 400, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
-                {breakOffInvoiceSharePct}%
-              </span>
-            ) : null}
+
           </span>
             <input
               id="edit-job-partial-invoice-amount"
@@ -576,7 +577,9 @@ export function JobFormBreakOffSection({
                 border: '1px solid #f59e0b',
                 borderRadius: 6,
                 padding: '0.3rem 0.6rem',
-                display: 'inline-block',
+                display: 'table',
+                marginLeft: 'auto',
+                marginRight: 'auto',
               }}
             >
               ⚠ Would bill through {Math.round(breakOffCombinedHandlePct)}% of a job that&rsquo;s{' '}

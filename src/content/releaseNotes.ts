@@ -35,6 +35,8 @@ export const RELEASE_NOTES: ReleaseNote[] = [
     kind: 'fix',
     highlights: [
       'The green triangle\u2019s point now sits exactly on the edge of the invoice bar it controls \u2014 it used to ride about ten pixels left, so its right side looked like the pointer.',
+      'Chip labels now lead with their percent (65% Paid, 0% Billed, 15% Left to bill), and the action button is simply \u201cNew Invoice\u201d.',
+      'The ahead-of-field note is centered under the bar, and the long coverage banner above the segment strip is gone \u2014 the hatching, its legend entry, and the chips below already tell that story.',
     ],
   },
   {

@@ -220,23 +220,6 @@ export function JobFormSegmentsBar({
           </div>
         </div>
       )}
-      {showCoverage && coverage && (
-        <div
-          style={{
-            marginBottom: '0.5rem',
-            padding: '0.5rem 0.75rem',
-            border: '1px solid #f59e0b',
-            background: 'var(--bg-amber-tint)',
-            borderRadius: 6,
-            fontSize: '0.75rem',
-            color: 'var(--text-amber-800)',
-          }}
-        >
-          ⚠ ${formatCurrency(coverage.unattributedDollars)} of this job is already paid or on bills made by dollar
-          amount, not tied to line items — shown hatched below, first items first.{' '}
-          <strong>${formatCurrency(coverage.remainingDollars)}</strong> is left to bill.
-        </div>
-      )}
       <div
         style={{
           display: 'flex',
