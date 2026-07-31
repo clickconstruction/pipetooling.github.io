@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-30 (v2.1160)
+last_updated: 2026-07-31 (v2.1161)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1161)
+
+### Bids Pricing: overridden Sale Price chips readable in dark mode (2026-07-31)
+[`BidsPricingTab.tsx`](../src/components/bids/BidsPricingTab.tsx): the custom-price highlight swapped its hardcoded `#fef9c3` cream background (which left near-white text on a cream chip in dark mode) for the theme pair `var(--bg-amber-tint)` + `color: var(--text-amber-800)` + weight 600 — readable in both themes. Verified live on BP266's pricing in dark mode. Other `#fef9c3` literals (CrewJobsBlock, TransactionContextModal, quickfill banner, health sliders) flagged for a follow-up sweep. Client-only.
 
 ## Latest Updates (v2.1160)
 

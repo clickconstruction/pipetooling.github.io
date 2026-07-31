@@ -1565,10 +1565,18 @@ export function BidsPricingTab({
                                           border: '1px solid var(--border-strong)',
                                           borderRadius: 4,
                                           textAlign: 'right',
+                                          // Theme tokens (v2.1161): the old literal #fef9c3 left
+                                          // light text on a cream chip in dark mode — unreadable.
                                           background:
                                             row.assignment?.unit_price_override != null || row.customPrice != null ?
-                                              '#fef9c3'
+                                              'var(--bg-amber-tint)'
                                             : 'var(--surface)',
+                                          color:
+                                            row.assignment?.unit_price_override != null || row.customPrice != null ?
+                                              'var(--text-amber-800)'
+                                            : undefined,
+                                          fontWeight:
+                                            row.assignment?.unit_price_override != null || row.customPrice != null ? 600 : undefined,
                                           fontSize: '0.875rem',
                                         }}
                                       />
