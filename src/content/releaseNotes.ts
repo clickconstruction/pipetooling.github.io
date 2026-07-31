@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1139',
+    date: '2026-07-30',
+    title: 'Make Invoice: the button says what it does',
+    kind: 'fix',
+    highlights: [
+      'The New invoice pill slims down again: just the amount, its percent, and one clearly-worded button \u2014 green \u201cMake new Invoice\u201d, flipping to blue \u201cReady to Bill\u201d when the amount equals everything left. The label text is gone; the button carries the words.',
+    ],
+  },
+  {
     version: 'v2.1138',
     date: '2026-07-30',
     title: 'Make Invoice: a slimmer New invoice pill',

@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-30 (v2.1138)
+last_updated: 2026-07-30 (v2.1139)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1139)
+
+### Make Invoice: worded action button replaces the pill label (2026-07-30)
+[`JobFormBreakOffSection.tsx`](../src/components/jobs/JobFormBreakOffSection.tsx) — final compaction pass on the v2.1137/38 pill, per user direction: the "New invoice" label text is removed entirely (the legend dot alone ties the pill to the light-blue segment) and the action button gains words in BOTH modes — green **Make new Invoice** (was a bare `+`), flipping to blue **Ready to Bill** at full remainder. Pill = dot + amount input + share % + button. Tooltips unchanged. Client-only.
 
 ## Latest Updates (v2.1138)
 
