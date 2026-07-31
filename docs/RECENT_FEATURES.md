@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-31 (v2.1167)
+last_updated: 2026-07-31 (v2.1168)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1168)
+
+### Bid Costs tab: Labor / Parts / Materials / Total real cost (2026-07-31)
+Completes v2.1165–v2.1166 — the costs you can now move onto a bid actually show up there. New pure kernel [`bidAssignedCosts.ts`](../src/lib/bids/bidAssignedCosts.ts) folds the four bid mirrors into per-bid totals (`bidAssignedCostsByBidId`, `bidRealCostTotal`, 14 tests): tally parts are quantity × fixture cost, supply-house allocations are `pct/100 × invoice amount` (same math as the job side in `fetchJobMaterialsCostSnapshot`), and card charges + supply splits + parts are grouped into one **parts-style** figure to match the vocabulary the Edit Job migrate modal already uses. Every numeric is coerced because PostgREST serialises `numeric` columns as strings — a null `fixture_cost` must read as 0, not NaN. [`loadBidAssignedCosts.ts`](../src/lib/bids/loadBidAssignedCosts.ts) reads the four tables concurrently, each failure degrading to an empty list so one missing table cannot blank the whole column, and normalises PostgREST's embedded to-one (object *or* 1-element array) on the supply invoice join. [`useBidPricingEngine.ts`](../src/hooks/useBidPricingEngine.ts) loads it only on the Bid Costs tab. [`BidsBidCostsTab.tsx`](../src/components/bids/BidsBidCostsTab.tsx) splits the old single "Total cost" column into **Labor / Parts / Materials / Total real cost** (total bolded), and the tab blurb now says what it actually shows. The four mirror tables were hand-added to [`database.ts`](../src/types/database.ts) alongside the RPC, since prod had neither until the v2.1165 `db push`. Client-only.
 
 ## Latest Updates (v2.1167)
 

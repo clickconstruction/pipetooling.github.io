@@ -556,6 +556,7 @@ export default function Bids() {
     costEstimateOtherRows, setCostEstimateOtherRows,
     pricingOtherRows,
     teamLaborDataForBids,
+    bidAssignedCosts,
     priceBookVersions,
     templatePriceBookVersions, templatesMode, setTemplatesMode,
     defaultPriceBookTemplateId, rememberLastPriceBookTemplate,
@@ -2990,6 +2991,7 @@ export default function Bids() {
         <BidsBidCostsTab
           bids={bids}
           teamLaborData={teamLaborDataForBids}
+          bidAssignedCosts={bidAssignedCosts}
           onSelectBid={setSharedBid}
         />
       )}

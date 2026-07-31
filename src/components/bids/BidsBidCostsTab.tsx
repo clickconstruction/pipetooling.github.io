@@ -3,16 +3,19 @@ import type { BidWithBuilder, EstimatorUser } from '../../types/bidWithBuilder'
 import type { TeamLaborBidRow } from '../../utils/teamLabor'
 import { formatBidNameWithValue } from '../../lib/bids/bidFormatting'
 import { formatCurrency, decimalHoursToHhMm } from '../../lib/format'
+import { bidRealCostTotal, type BidAssignedCosts } from '../../lib/bids/bidAssignedCosts'
 
 const BID_COSTS_UNSENT_LABEL = 'Unsent / Working Bids'
 
 type BidsBidCostsTabProps = {
   bids: BidWithBuilder[]
   teamLaborData: TeamLaborBidRow[]
+  /** Costs migrated onto bids (v2.1165 mirrors), keyed by bid id. */
+  bidAssignedCosts: Map<string, BidAssignedCosts>
   onSelectBid: (bid: BidWithBuilder) => void
 }
 
-export function BidsBidCostsTab({ bids, teamLaborData, onSelectBid }: BidsBidCostsTabProps) {
+export function BidsBidCostsTab({ bids, teamLaborData, bidAssignedCosts, onSelectBid }: BidsBidCostsTabProps) {
   const [bidCostsSectionOpen, setBidCostsSectionOpen] = useState({ unsent: true, pending: true, won: true, startedOrComplete: true, lost: false })
 
   function toggleBidCostsSection(key: 'unsent' | 'pending' | 'won' | 'startedOrComplete' | 'lost') {
@@ -55,7 +58,7 @@ export function BidsBidCostsTab({ bids, teamLaborData, onSelectBid }: BidsBidCos
   return (
     <div>
       <h2 style={{ margin: '0 0 1rem', fontSize: '1.25rem' }}>Bid Costs</h2>
-      <p style={{ margin: '0 0 1rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>Team labor (clocked) by bid outcome. People and hours from approved clock sessions with a bid selected.</p>
+      <p style={{ margin: '0 0 1rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>Real cost by bid outcome: team labor from approved clock sessions with a bid selected, plus any parts and materials moved onto the bid from a job (Edit Job \u2192 Delete \u2192 Reassign).</p>
 
       {[
         { key: 'unsent' as const, label: BID_COSTS_UNSENT_LABEL, bids: bidCostsUnsent },
@@ -84,15 +87,20 @@ export function BidsBidCostsTab({ bids, teamLaborData, onSelectBid }: BidsBidCos
                     <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Account Man</th>
                     <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Estimator</th>
                     <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>People (clocked)</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid var(--border)' }}>Total cost</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid var(--border)' }}>Labor</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid var(--border)' }}>Parts</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid var(--border)' }}>Materials</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid var(--border)' }}>Total real cost</th>
                   </tr>
                 </thead>
                 <tbody>
                   {sectionBids.length === 0 ? (
-                    <tr><td colSpan={6} style={{ padding: '0.75rem', color: 'var(--text-muted)' }}>No bids in this group</td></tr>
+                    <tr><td colSpan={9} style={{ padding: '0.75rem', color: 'var(--text-muted)' }}>No bids in this group</td></tr>
                   ) : (
                     sectionBids.map((bid) => {
                       const laborRow = teamLaborByBidId.get(bid.id)
+                      const assigned = bidAssignedCosts.get(bid.id)
+                      const realCost = bidRealCostTotal(assigned, laborRow?.bidCost)
                       return (
                         <tr
                           key={bid.id}
@@ -116,6 +124,9 @@ export function BidsBidCostsTab({ bids, teamLaborData, onSelectBid }: BidsBidCos
                           </td>
                           <td style={{ padding: '0.75rem' }}>{formatBidCostsPeople(laborRow?.breakdown ?? [])}</td>
                           <td style={{ padding: '0.75rem', textAlign: 'right' }}>{laborRow ? `$${formatCurrency(laborRow.bidCost)}` : '—'}</td>
+                          <td style={{ padding: '0.75rem', textAlign: 'right' }}>{assigned?.partsStyle ? `$${formatCurrency(assigned.partsStyle)}` : '—'}</td>
+                          <td style={{ padding: '0.75rem', textAlign: 'right' }}>{assigned?.materials ? `$${formatCurrency(assigned.materials)}` : '—'}</td>
+                          <td style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 600 }}>{realCost ? `$${formatCurrency(realCost)}` : '—'}</td>
                         </tr>
                       )
                     })
