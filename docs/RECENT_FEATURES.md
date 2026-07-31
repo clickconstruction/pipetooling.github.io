@@ -2049,7 +2049,7 @@ when_to_read:
 ## Latest Updates (v2.1140)
 
 ### Make Invoice: two-level pill matches its sibling chips (2026-07-30)
-[`JobFormBreakOffSection.tsx`](../src/components/jobs/JobFormBreakOffSection.tsx) — per user direction, the pill takes the siblings' label-over-value shape: top line = legend dot + the worded action button (green **Make new Invoice** / blue **Ready to Bill**) + share %; bottom line = the amount input (widened to 7.5rem). Equal chip heights let the whole equation (Paid + Billed + pill → Left to bill) sit on one row even in the narrow modal. Client-only.
+[`JobFormBreakOffSection.tsx`](../src/components/jobs/JobFormBreakOffSection.tsx) — per user direction, the pill takes the siblings' label-over-value shape: top line = legend dot + the worded action button (green **Make new Invoice** / blue **Ready to Bill**) + share %; bottom line = the amount input (widened to 7.5rem). Equal chip heights let the whole equation (Paid + Billed + pill → Left to bill) sit on one row even in the narrow modal. Second pass, same PR: every chip label carries its rounded share of the job (Paid 65% · Billed 0% · Left to bill 10% — mirroring the pill's %), the duplicated amount inside the bar's preview segment is removed (the under-track badge keeps $ · %), and the ahead-of-field note drops the "fine for deposits and draws" tail. Client-only.
 
 ## Latest Updates (v2.1139)
 
