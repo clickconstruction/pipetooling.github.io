@@ -519,7 +519,10 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         onClick={() => openStagesDetailJobModal(j)}
         aria-label={`Open job detail for ${n}`}
         style={{
-          display: 'block',
+          // Click target hugs the words (v2.1155) — a full-width block made
+          // dead space right of the name read as clickable.
+          display: 'inline-block',
+          maxWidth: '100%',
           margin: 0,
           padding: 0,
           border: 'none',
@@ -530,7 +533,6 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
           color: 'var(--text-blue-700)',
           textDecoration: 'underline',
           textUnderlineOffset: '2px',
-          width: '100%',
         }}
       >
         <span style={{ color: 'inherit', textDecoration: 'inherit' }}>{fmt.line1}</span>

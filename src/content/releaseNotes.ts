@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1155',
+    date: '2026-07-30',
+    title: 'Stages and Cost Timeline polish, five ways',
+    kind: 'fix',
+    highlights: [
+      'Cost Timeline legend items each get their own line.',
+      'The Next-appointment date/time line never wraps, and job-name click areas hug the words.',
+      'Billed rows drop the redundant \u201cBilled line: $X open\u201d text \u2014 the Reports pill moves there from Activity.',
+    ],
+  },
+  {
     version: 'v2.1154',
     date: '2026-07-30',
     title: 'Last manual bill date retired',

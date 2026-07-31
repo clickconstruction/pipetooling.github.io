@@ -40,6 +40,7 @@ import {
   renderStagesJobHcpSubline,
   renderStagesThreadFullscreenJobHeader,
   renderStagesLastActivityCell as renderStagesLastActivityCellWithCtx,
+  renderStagesViewReportsButton,
   renderStagesProjectBannerRow,
   renderStagesTwoLineHeader,
   shouldSuppressStagesRowJobThreadToggle,
@@ -259,8 +260,11 @@ export default function JobsStagesUnifiedTable(props: JobsStagesUnifiedTableProp
   const renderStagesFieldAndBillingLines = (job: JobWithDetails) =>
     renderStagesFieldAndBillingLinesWithCtx(stagesRowSharedCtx, job)
   const renderJobCustomerLine = (job: JobWithDetails) => renderJobCustomerLineWithCtx(stagesRowSharedCtx, job)
-  const renderStagesLastActivityCell = (job: JobWithDetails, billingLineForStripeHint?: JobsLedgerInvoice | null) =>
-    renderStagesLastActivityCellWithCtx(stagesRowSharedCtx, job, billingLineForStripeHint)
+  const renderStagesLastActivityCell = (
+    job: JobWithDetails,
+    billingLineForStripeHint?: JobsLedgerInvoice | null,
+    opts?: { hideReportsButton?: boolean },
+  ) => renderStagesLastActivityCellWithCtx(stagesRowSharedCtx, job, billingLineForStripeHint, opts)
 
   const renderJobNoteLine = (j: JobWithDetails) => {
     const note = jobNoteLine?.(j)
@@ -525,23 +529,24 @@ export default function JobsStagesUnifiedTable(props: JobsStagesUnifiedTableProp
                       {renderStagesOpenDetailJobName(j)}
                       {renderJobAddressWithMap(j.job_address)}
                       {renderJobCustomerLine(j)}
-                      {bundleInv != null ? (
+                      {bundleInv != null && row.kind === 'job_with_merged_billed' ? (
+                        // The "Billed line: $X open" text was redundant with the
+                        // Progress column (v2.1155) — the Reports pill moved here
+                        // from the Activity cell instead.
+                        <div style={{ marginTop: '0.25rem' }}>
+                          {renderStagesViewReportsButton(stagesRowSharedCtx, j)}
+                        </div>
+                      ) : bundleInv != null ? (
                         <div
                           style={{ fontSize: '0.75rem', color: 'var(--text-blue-800)', marginTop: '0.25rem' }}
                           title="Single billing line for this job (Stripe or external send)"
                         >
-                          {row.kind === 'job_with_merged_billed' ? (
-                            <>
-                              Billed line: {formatCurrency(invoiceOpenRemainingOnJob(bundleInv, j))} open
-                            </>
-                          ) : (
-                            <>Billing line: {formatCurrency(Number(bundleInv.amount))}</>
-                          )}
+                          Billing line: {formatCurrency(Number(bundleInv.amount))}
                         </div>
                       ) : null}
                       {renderStagesJobColumnEstimateFooter(j.linkedEstimateForStages)}
                     </td>
-                    {renderStagesLastActivityCell(j, bundleInv ?? undefined)}
+                    {renderStagesLastActivityCell(j, bundleInv ?? undefined, row.kind === 'job_with_merged_billed' ? { hideReportsButton: true } : undefined)}
                     <td style={{ padding: '0.75rem', textAlign: 'center', verticalAlign: 'middle' }}>
                       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
                         {!bundleInv ? (

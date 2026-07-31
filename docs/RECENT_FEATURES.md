@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-30 (v2.1154)
+last_updated: 2026-07-30 (v2.1155)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1155)
+
+### Stages + Cost Timeline: five small polish items (2026-07-30)
+Per user direction. (1) [`JobSummaryChargesTimelineChart.tsx`](../src/components/jobs/JobSummaryChargesTimelineChart.tsx): the legend renders one item per line (Red/Green/💵/🚩, Blue when Value created is on) instead of one dot-separated sentence. (2) [`jobsStagesRowShared.tsx`](../src/components/jobs/jobsStagesRowShared.tsx): the NEXT-appointment "{date} {window}" line gets `whiteSpace: nowrap` (that line only). (3+5) [`JobsStagesUnifiedTable.tsx`](../src/components/jobs/JobsStagesUnifiedTable.tsx): billed merged rows drop the "Billed line: $X open" text (redundant with the Progress column) and render the "N Report(s)" pill there instead — extracted as exported `renderStagesViewReportsButton`; the Activity cell hides its copy on those rows via a new `opts.hideReportsButton` on `renderStagesLastActivityCell`. Ready-to-Bill "Billing line: $X" text unchanged. (4) [`JobsStagesTab.tsx`](../src/components/jobs/JobsStagesTab.tsx): the job-name open-detail button becomes `inline-block` (was block + `width: 100%`), so the click target hugs the words. Client-only.
 
 ## Latest Updates (v2.1154)
 
