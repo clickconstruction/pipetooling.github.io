@@ -486,15 +486,15 @@ export function JobChargesTimelineChartView({
       </div>
       <p style={{ color: 'var(--text-700)', fontSize: '0.75rem', margin: '0.25rem 0 0' }}>
         <span style={{ color: 'var(--text-red-600)', fontWeight: 600 }}>Red</span> = cost to date ·{' '}
-        <span style={{ color: '#16a34a', fontWeight: 600 }}>Green</span> = profit
+        <span style={{ color: '#16a34a', fontWeight: 600 }}>Green</span> = profit · 💵 = payment received · 🚩 = field
+        report
         {valueShown && (
           <>
             {' · '}
             <span style={{ color: 'var(--text-link)', fontWeight: 600 }}>Blue</span> = value created
             (report % × job total, right axis)
           </>
-        )}{' '}
-        · 💵 = payment received · 🚩 = field report
+        )}
       </p>
       <p style={{ color: 'var(--text-faint)', fontSize: '0.6875rem', margin: '0.15rem 0 0' }}>
         Cost sources:{' '}

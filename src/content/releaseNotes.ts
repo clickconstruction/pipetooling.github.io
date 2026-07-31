@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1153',
+    date: '2026-07-30',
+    title: 'Other-charge button and Cost Timeline legend tidy-ups',
+    kind: 'fix',
+    highlights: [
+      '\u201c+ Add other charge\u201d is now a small link-sized button tucked right under the Other job charges header.',
+      'With \u201cValue created\u201d on, the blue legend entry now reads at the end of the line instead of the middle.',
+    ],
+  },
+  {
     version: 'v2.1152',
     date: '2026-07-30',
     title: 'Selecting segments moves the Make Invoice slider',

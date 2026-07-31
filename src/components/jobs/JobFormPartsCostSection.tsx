@@ -311,7 +311,9 @@ export function JobFormPartsCostSection({
                     )
                     })
                   })()}
-                  <div style={{ padding: '0.45rem 0.75rem 0.55rem' }}>
+                  {/* Rarely used — compact link-sized ghost tucked right under the
+                      accordion header (v2.1153). */}
+                  <div style={{ padding: '0.1rem 0.75rem 0.3rem' }}>
                     <button
                       type="button"
                       onClick={() => {
@@ -322,14 +324,14 @@ export function JobFormPartsCostSection({
                       style={{
                         display: 'inline-flex',
                         alignItems: 'center',
-                        gap: '0.35rem',
-                        padding: '0.3rem 0.8rem',
+                        gap: '0.25rem',
+                        padding: '0.1rem 0.45rem',
                         background: 'transparent',
-                        border: '1px dashed var(--border-strong)',
-                        borderRadius: 6,
+                        border: '1px dashed var(--border)',
+                        borderRadius: 5,
                         color: 'var(--text-link)',
-                        fontSize: '0.8125rem',
-                        fontWeight: 600,
+                        fontSize: '0.75rem',
+                        fontWeight: 500,
                         cursor: 'pointer',
                       }}
                     >

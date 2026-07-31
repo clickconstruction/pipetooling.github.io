@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-30 (v2.1152)
+last_updated: 2026-07-30 (v2.1153)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1153)
+
+### Compact "+ Add other charge" + Cost Timeline legend order (2026-07-30)
+[`JobFormPartsCostSection.tsx`](../src/components/jobs/JobFormPartsCostSection.tsx): the rarely-used ghost add button shrinks to link size (0.75rem/500, hairline dashed border, 0.1rem paddings) and tucks directly under the "Other job charges" accordion header. [`JobSummaryChargesTimelineChart.tsx`](../src/components/jobs/JobSummaryChargesTimelineChart.tsx): the conditional "Blue = value created (report % × job total, right axis)" legend fragment moves after "🚩 = field report" so toggling Value created appends to the legend instead of splitting it mid-sentence. Verified via the Playwright harness on job 523. Client-only.
 
 ## Latest Updates (v2.1152)
 
