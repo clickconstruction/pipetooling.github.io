@@ -524,8 +524,8 @@ export function JobFormBreakOffSection({
                     ...(breakOffCombinedThumbLeftPct > 92 ? { left: 'auto', right: 0, transform: 'none' } : {}),
                   }}
                 >
+                  {breakOffInvoiceSharePct != null ? `${breakOffInvoiceSharePct}% · ` : ''}
                   {formatUsdNoCents(invoiceDollars)}
-                  {breakOffInvoiceSharePct != null ? ` · ${breakOffInvoiceSharePct}%` : ''}
                 </span>
               ) : null}
               {jobCompleteTrackPct != null ? (

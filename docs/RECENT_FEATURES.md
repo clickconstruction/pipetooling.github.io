@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-30 (v2.1144)
+last_updated: 2026-07-30 (v2.1145)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1145)
+
+### Make Invoice: slider badge leads with its percent (2026-07-30)
+[`JobFormBreakOffSection.tsx`](../src/components/jobs/JobFormBreakOffSection.tsx) — the under-handle badge flips from `$30,900 · 25%` to `25% · $30,900`, matching the percent-first chip labels (v2.1141). Client-only.
 
 ## Latest Updates (v2.1144)
 
