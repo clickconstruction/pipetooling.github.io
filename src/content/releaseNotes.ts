@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1174',
+    date: '2026-07-31',
+    title: 'Create the target bid right from the move-costs window',
+    kind: 'feature',
+    highlights: [
+      'When moving a deleted job’s costs to a bid, the bid search now offers "+ Create new bid" if nothing matches what you typed.',
+      'The new bid starts with the job’s customer, address and service type, and is selected as the target immediately.',
+    ],
+  },
+  {
     version: 'v2.1173',
     date: '2026-07-31',
     title: 'Moving a job’s costs onto a bid works now',
