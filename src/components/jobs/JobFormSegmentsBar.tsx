@@ -210,7 +210,7 @@ export function JobFormSegmentsBar({
           display: 'flex',
           flexWrap: 'wrap',
           alignItems: 'baseline',
-          justifyContent: 'flex-end',
+          justifyContent: 'center',
           gap: '0.6rem',
           marginBottom: '0.35rem',
         }}
