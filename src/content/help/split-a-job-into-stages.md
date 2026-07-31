@@ -38,6 +38,8 @@ Not sure how the pieces travel? Click **ⓘ How invoices and jobs move** above t
 2. Press {{button:primary|Create invoice from N segments ($X)}}.
 3. A **Ready to Bill** invoice is broken off for exactly those stages' total, and the stage lines lock in ① Line Items with an *Invoiced* tag.
 
+As you tick stages, the **Make Invoice** slider below moves to the selection's total so you can see the bill take shape on the paid/billed track — but it never locks. You can still drag the slider or retype the amount and press {{button:primary|New Invoice}} instead if a plain dollar amount fits better; untick everything and the slider returns to its usual suggestion.
+
 From there it's the normal billing flow — see *bill a customer and get paid*.
 
 ## Good to know

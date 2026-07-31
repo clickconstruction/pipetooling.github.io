@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-30 (v2.1151)
+last_updated: 2026-07-30 (v2.1152)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1152)
+
+### Segment selection previews on the Make Invoice slider (2026-07-30)
+[`JobFormModal.tsx`](../src/components/jobs/JobFormModal.tsx) `toggleSegmentSelected`. Ticking/unticking segments in the ② Invoices strip now syncs `newInvoiceAmount` to the selection's total (clamped to `breakOff.breakOffRemaining` — a partially covered segment's raw total can exceed what's billable), so the break-off slider moves to show the would-be bill on the paid/billed axis. Deliberately **never locks**: the input and slider stay editable (normal 5%-snap semantics), so the user can adjust and use New Invoice instead of the segment-linked create. Deselecting everything restores `breakOffPrefillAmountStringFromJob`. Side effects moved out of the setState updater (purity). Guide updated (`split-a-job-into-stages`). Verified via the Playwright harness: select → 43,260.00 (clamped), thumb live, typing accepted, deselect → prefill. Client-only.
 
 ## Latest Updates (v2.1151)
 

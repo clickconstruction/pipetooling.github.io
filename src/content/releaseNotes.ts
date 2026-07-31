@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1152',
+    date: '2026-07-30',
+    title: 'Selecting segments moves the Make Invoice slider',
+    kind: 'feature',
+    highlights: [
+      'Tick stages in \u2461 Invoices and the slider below jumps to the selection\u2019s total \u2014 without locking.',
+      'You can still drag, retype, or press New Invoice after; deselecting everything restores the usual suggestion.',
+    ],
+  },
+  {
     version: 'v2.1151',
     date: '2026-07-30',
     title: 'Invoices strip and Cost Timeline polish',

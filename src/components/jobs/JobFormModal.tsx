@@ -506,12 +506,26 @@ export default function JobFormModal({
   }
 
   function toggleSegmentSelected(fixtureRowId: string) {
-    setSelectedSegmentIds((prev) => {
-      const next = new Set(prev)
-      if (next.has(fixtureRowId)) next.delete(fixtureRowId)
-      else next.add(fixtureRowId)
-      return next
-    })
+    const next = new Set(selectedSegmentIds)
+    if (next.has(fixtureRowId)) next.delete(fixtureRowId)
+    else next.add(fixtureRowId)
+    setSelectedSegmentIds(next)
+    // Selecting segments MOVES the Make Invoice bar to the selection total
+    // but never locks it (v2.1152) — the user can still drag the slider or
+    // edit the amount afterward and use New Invoice instead of the
+    // segment-linked create. Deselecting everything restores the prefill.
+    const { totalDollars, count } = segmentSelectionSummary(fixtures, next)
+    // Clamp to the unallocated remainder — a partially covered segment's raw
+    // total can exceed what's actually billable, and the bar clamps anyway.
+    const syncDollars = Math.min(totalDollars, breakOff.breakOffRemaining)
+    setNewInvoiceAmount(
+      count > 0 && syncDollars > 0
+        ? syncDollars.toFixed(2)
+        : editing
+          ? breakOffPrefillAmountStringFromJob(editing)
+          : '',
+    )
+    setNewInvoiceAmountInputFocused(false)
   }
 
   const billingMoneySliceJson = useMemo(() => buildBillingSliceJson(fixtures, payments), [fixtures, payments])
