@@ -1,8 +1,25 @@
 import { describe, expect, it } from 'vitest'
 import {
+  parseStagesIncludeScheduleTimePref,
   shouldFetchStagesScheduleSessionSearch,
   STAGES_SCHEDULE_SESSION_SEARCH_MIN_CHARS,
 } from './jobsStagesScheduleSessionSearch'
+
+describe('parseStagesIncludeScheduleTimePref', () => {
+  it('defaults OFF when no stored value (v2.1184 — schedule/clock search is opt-in)', () => {
+    expect(parseStagesIncludeScheduleTimePref(null)).toBe(false)
+  })
+
+  it('honors an explicit opt-in', () => {
+    expect(parseStagesIncludeScheduleTimePref('true')).toBe(true)
+  })
+
+  it('treats anything else as off', () => {
+    expect(parseStagesIncludeScheduleTimePref('false')).toBe(false)
+    expect(parseStagesIncludeScheduleTimePref('')).toBe(false)
+    expect(parseStagesIncludeScheduleTimePref('TRUE')).toBe(false)
+  })
+})
 
 describe('shouldFetchStagesScheduleSessionSearch', () => {
   it('returns false when preference is off', () => {

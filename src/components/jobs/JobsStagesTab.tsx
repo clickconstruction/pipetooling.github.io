@@ -101,7 +101,9 @@ import { jobLedgerHasCustomerForBilling } from '../../lib/jobLedgerCustomerForBi
 import { setJobCollectionsFlag } from '../../lib/setJobCollectionsFlag'
 import {
   fetchJobIdsMatchingScheduleOrClockSessions,
+  parseStagesIncludeScheduleTimePref,
   shouldFetchStagesScheduleSessionSearch,
+  STAGES_INCLUDE_SCHEDULE_TIME_STORAGE_KEY,
   STAGES_SCHEDULE_SESSION_SEARCH_MIN_CHARS,
 } from '../../lib/jobsStagesScheduleSessionSearch'
 import type { StagesRowRenderContext } from './jobsStagesRowShared'
@@ -504,11 +506,11 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   })
   const [stagesIncludeScheduleTimeInSearch, setStagesIncludeScheduleTimeInSearch] = useState(() => {
     try {
-      const raw = localStorage.getItem('jobs-stages-search-include-schedule-time')
-      if (raw === null) return true
-      return raw === 'true'
+      return parseStagesIncludeScheduleTimePref(
+        localStorage.getItem(STAGES_INCLUDE_SCHEDULE_TIME_STORAGE_KEY),
+      )
     } catch {
-      return true
+      return false
     }
   })
   const [assignedEditJobId, setAssignedEditJobId] = useState<string | null>(null)
@@ -753,7 +755,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     setStagesIncludeScheduleTimeInSearch((prev) => {
       const next = !prev
       try {
-        localStorage.setItem('jobs-stages-search-include-schedule-time', String(next))
+        localStorage.setItem(STAGES_INCLUDE_SCHEDULE_TIME_STORAGE_KEY, String(next))
       } catch {
         /* ignore */
       }

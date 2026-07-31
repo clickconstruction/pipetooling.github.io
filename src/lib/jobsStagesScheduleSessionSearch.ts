@@ -7,6 +7,17 @@ const MAX_ROWS_PER_CHUNK = 8000
 /** Minimum Stages search length before querying schedule blocks and clock sessions. */
 export const STAGES_SCHEDULE_SESSION_SEARCH_MIN_CHARS = 2
 
+/** localStorage key for the Stages tools-menu "Schedule & time in search" toggle. */
+export const STAGES_INCLUDE_SCHEDULE_TIME_STORAGE_KEY = 'jobs-stages-search-include-schedule-time'
+
+/**
+ * Off unless the user explicitly opted in (v2.1184) — the schedule/clock lookup is the expensive
+ * part of Stages search, so a missing/unreadable stored value means plain job-field search only.
+ */
+export function parseStagesIncludeScheduleTimePref(raw: string | null): boolean {
+  return raw === 'true'
+}
+
 /**
  * Whether supplementary schedule/clock search should run (caller ensures Stages tab). Trims `query` for length checks.
  */

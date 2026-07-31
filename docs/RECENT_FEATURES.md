@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-31 (v2.1183)
+last_updated: 2026-07-31 (v2.1184)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1184)
+
+### Stages search: schedule/clock note matching becomes opt-in (2026-07-31)
+The Stages tools-menu toggle **Schedule &amp; time in search** now defaults **OFF** — plain searches match only job fields (HCP/Click number, name, address, GC). With the toggle on, every 2+-char search (350 ms debounce) chunks ALL loaded job ids into `.in()` queries against BOTH `job_schedule_blocks` and `clock_sessions` (up to 8,000 rows each per 150-id chunk) and substring-matches client-side — the whole note corpus shipped to the browser per keystroke settle, for a supplement most searches never use. New pure kernel fns in [`jobsStagesScheduleSessionSearch.ts`](../src/lib/jobsStagesScheduleSessionSearch.ts): `parseStagesIncludeScheduleTimePref` (missing/unreadable stored value → false; only literal `'true'` opts in) + exported `STAGES_INCLUDE_SCHEDULE_TIME_STORAGE_KEY`; [`JobsStagesTab.tsx`](../src/components/jobs/JobsStagesTab.tsx)'s initializer and toggle writer use them (same localStorage key, so prior explicit choices survive; the effect already clears `stagesSearchExtraJobIds` when off). Placeholder/busy-hint behavior unchanged — they already track the toggle. +4 kernel tests. New guide `search-the-stages-board`. Server-side matching for the opted-in path lands next (v2.1185). Client-only.
 
 ## Latest Updates (v2.1183)
 

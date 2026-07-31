@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1184',
+    date: '2026-07-31',
+    title: 'Faster Stages search',
+    kind: 'feature',
+    highlights: [
+      'Stages search now matches job number, name, address, and GC only — making it much lighter and faster.',
+      'Searching schedule notes and clock notes is still available: turn on “Schedule & time in search” in the ⋯ menu next to the search box.',
+    ],
+  },
+  {
     version: 'v2.1183',
     date: '2026-07-31',
     title: 'Filter the Stages board by GC',
