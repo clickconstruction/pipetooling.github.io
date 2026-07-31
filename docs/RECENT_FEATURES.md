@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-30 (v2.1148)
+last_updated: 2026-07-30 (v2.1149)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1149)
+
+### ① Line Items: headerless rows, self-labeling inputs (2026-07-30)
+[`JobFormFixturesSection.tsx`](../src/components/jobs/JobFormFixturesSection.tsx). Option A of the declutter mockups: the `<thead>` band (Line Item / Count / Unit price) is removed — the count input gains a muted `×` prefix and an `aria-label="Count"` (it had relied on the header for its accessible name), the unit-price input a muted `$` prefix, and the columns widen slightly to fit. The always-visible helper sentence collapses behind a new "ⓘ What are line items?" toggle on the heading row (local `helperOpen` state, same pattern as the ② explainer), with the Multiple Segment Generator link moving up beside it. Verified via the Playwright harness (Browser pane was wedged); the removed-header assertion runs in that script. Client-only.
 
 ## Latest Updates (v2.1148)
 

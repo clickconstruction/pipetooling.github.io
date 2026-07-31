@@ -1,4 +1,4 @@
-import { Fragment, type CSSProperties, type Dispatch, type MutableRefObject, type ReactNode, type SetStateAction } from 'react'
+import { Fragment, useState, type CSSProperties, type Dispatch, type MutableRefObject, type ReactNode, type SetStateAction } from 'react'
 import AutosizeTextarea from '../AutosizeTextarea'
 import { MoneyDecimalAmountInput } from '../MoneyDecimalAmountInput'
 import { formatCurrency } from '../../lib/jobs/jobFormMoney'
@@ -76,6 +76,7 @@ export function JobFormFixturesSection({
   riderRows,
   riderFeesDollars = 0,
 }: JobFormFixturesSectionProps) {
+  const [helperOpen, setHelperOpen] = useState(false)
   return (
           <div
             ref={fixturesSectionHighlightRef}
@@ -91,56 +92,60 @@ export function JobFormFixturesSection({
                 : {}),
             }}
           >
-            <div style={{ fontWeight: 400, textDecoration: 'underline', fontSize: '0.9375rem', color: 'var(--text-700)', marginBottom: '0.15rem' }}>① Line Items</div>
-            <div style={{ marginBottom: '0.75rem' }}>
-              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                Specific segments of work{riderFeesDollars > 0 ? ' — plus riders (hazmat fees)' : ''} add to the{' '}
-                <strong>Job Total</strong>.{' '}
-                <button
-                  type="button"
-                  onClick={onOpenSegmentGenerator}
-                  style={{
-                    padding: 0,
-                    background: 'transparent',
-                    border: 'none',
-                    color: 'var(--text-link)',
-                    textDecoration: 'underline',
-                    fontSize: '0.75rem',
-                    cursor: 'pointer',
-                    fontFamily: 'inherit',
-                  }}
-                >
-                  Multiple Segment Generator
-                </button>
-              </span>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.75rem', flexWrap: 'wrap', marginBottom: '0.15rem' }}>
+              <span style={{ fontWeight: 400, textDecoration: 'underline', fontSize: '0.9375rem', color: 'var(--text-700)' }}>① Line Items</span>
+              <button
+                type="button"
+                onClick={() => setHelperOpen((v) => !v)}
+                aria-expanded={helperOpen}
+                style={{
+                  padding: 0,
+                  background: 'transparent',
+                  border: 'none',
+                  color: 'var(--text-link)',
+                  fontSize: '0.6875rem',
+                  cursor: 'pointer',
+                  fontFamily: 'inherit',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                ⓘ What are line items?
+              </button>
+              <button
+                type="button"
+                onClick={onOpenSegmentGenerator}
+                style={{
+                  padding: 0,
+                  background: 'transparent',
+                  border: 'none',
+                  color: 'var(--text-link)',
+                  textDecoration: 'underline',
+                  fontSize: '0.75rem',
+                  cursor: 'pointer',
+                  fontFamily: 'inherit',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                Multiple Segment Generator
+              </button>
             </div>
+            {helperOpen && (
+              <div style={{ marginBottom: '0.5rem' }}>
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                  Specific segments of work{riderFeesDollars > 0 ? ' — plus riders (hazmat fees)' : ''} add to the{' '}
+                  <strong>Job Total</strong>. Each line can carry its own scope notes and be billed on its own invoice.
+                </span>
+              </div>
+            )}
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem', tableLayout: 'fixed' }}>
+              {/* No header band (v2.1149) — the inputs self-label: count wears a
+                  "×" prefix, unit price a "$", so a full row of column titles
+                  isn't spent labeling what is usually a single line. */}
               <colgroup>
                 <col />
-                <col style={{ width: '5.25rem' }} />
-                <col style={{ width: 'calc(5.5rem + 4px + 1.75rem + 0.5rem)' }} />
+                <col style={{ width: '6rem' }} />
+                <col style={{ width: 'calc(6.2rem + 4px + 1.75rem + 0.5rem)' }} />
               </colgroup>
-              <thead style={{ background: 'var(--bg-subtle)' }}>
-                <tr>
-                  <th style={{ padding: '0.625rem 0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)', fontWeight: 600 }}>Line Item</th>
-                  <th style={{ padding: '0.625rem 0.625rem', textAlign: 'center', borderBottom: '1px solid var(--border)', fontWeight: 600, whiteSpace: 'nowrap' }}>Count</th>
-                  <th
-                    style={{
-                      paddingTop: '0.625rem',
-                      paddingBottom: '0.625rem',
-                      paddingLeft: '0.625rem',
-                      paddingRight: '0.375rem',
-                      textAlign: 'center',
-                      borderBottom: '1px solid var(--border)',
-                      verticalAlign: 'middle',
-                      fontWeight: 600,
-                      whiteSpace: 'nowrap',
-                    }}
-                  >
-                    Unit price
-                  </th>
-                </tr>
-              </thead>
               <tbody>
                 {fixtures.map((row, idx) => {
                   const nameFieldId = `job-fixture-name-${row.id}`
@@ -278,23 +283,27 @@ export function JobFormFixturesSection({
                             verticalAlign: 'top',
                           }}
                         >
-                          <input
-                            type="number"
-                            min={1}
-                            value={row.count}
-                            disabled={locked}
-                            onChange={(e) => updateFixtureRow(row.id, { count: Math.max(1, Number(e.target.value) || 1) })}
-                            style={{
-                              width: '4rem',
-                              maxWidth: '100%',
-                              boxSizing: 'border-box',
-                              padding: '0.375rem 0.625rem',
-                              border: '1px solid var(--border-strong)',
-                              borderRadius: 6,
-                              fontSize: '0.875rem',
-                              textAlign: 'center',
-                            }}
-                          />
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                            <span aria-hidden style={{ color: 'var(--text-muted)', fontSize: '0.8125rem' }}>×</span>
+                            <input
+                              type="number"
+                              min={1}
+                              value={row.count}
+                              disabled={locked}
+                              aria-label="Count"
+                              onChange={(e) => updateFixtureRow(row.id, { count: Math.max(1, Number(e.target.value) || 1) })}
+                              style={{
+                                width: '4rem',
+                                maxWidth: '100%',
+                                boxSizing: 'border-box',
+                                padding: '0.375rem 0.625rem',
+                                border: '1px solid var(--border-strong)',
+                                borderRadius: 6,
+                                fontSize: '0.875rem',
+                                textAlign: 'center',
+                              }}
+                            />
+                          </span>
                         </td>
                         <td
                           style={{
@@ -315,6 +324,7 @@ export function JobFormFixturesSection({
                               flexWrap: 'nowrap',
                             }}
                           >
+                            <span aria-hidden style={{ color: 'var(--text-muted)', fontSize: '0.8125rem', alignSelf: 'center' }}>$</span>
                             <MoneyDecimalAmountInput
                               value={row.line_unit_price ?? 0}
                               onChange={(n) => updateFixtureRow(row.id, { line_unit_price: n === 0 ? null : n })}
