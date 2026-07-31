@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1171',
+    date: '2026-07-31',
+    title: 'RFI, Change Order and Lien Release Google Docs named without underscores',
+    kind: 'feature',
+    highlights: [
+      'The Google Doc copies made from Bids → RFI, Change Order and Lien Release now use spaces in their titles, matching the proposal naming from v2.1170.',
+    ],
+  },
+  {
     version: 'v2.1170',
     date: '2026-07-31',
     title: 'Proposal Google Docs are named without underscores',

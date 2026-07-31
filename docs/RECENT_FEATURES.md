@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-31 (v2.1170)
+last_updated: 2026-07-31 (v2.1171)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1171)
+
+### RFI / Change Order / Lien Release: Google Doc titles use spaces too (2026-07-31)
+Completes v2.1170 — the same underscore→space title flip, applied to the three remaining Google-Doc-copy buttons: [`BidRfiTab.tsx`](../src/components/bids/BidRfiTab.tsx) (`ClickRFI YYMMDD Project Name`), [`BidChangeOrderTab.tsx`](../src/components/bids/BidChangeOrderTab.tsx) (`ClickChangeOrder …`), and [`BidLienReleaseTab.tsx`](../src/components/bids/BidLienReleaseTab.tsx) (`ClickLienRelease …`). Same sanitizer change in each (non-alphanumeric runs → single space, trim, `Project` fallback); the title only feeds `encodeURIComponent` on the `/copy?title=` URL — nothing parses it. All four bid document-copy flows now name docs identically. Client-only.
 
 ## Latest Updates (v2.1170)
 

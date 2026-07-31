@@ -148,8 +148,8 @@ export function BidRfiTab({ bids, authUser, selectedBid, onSelectBid, onClose, o
         const mm = String(now.getMonth() + 1).padStart(2, '0')
         const dd = String(now.getDate()).padStart(2, '0')
         const datePart = `${yy}${mm}${dd}`
-        const sanitizedProjectName = (projectNameVal ?? '').replace(/[^a-zA-Z0-9]+/g, '_').replace(/^_|_$/g, '') || 'Project'
-        const templateCopyTarget = `ClickRFI_${datePart}_${sanitizedProjectName}`
+        const sanitizedProjectName = (projectNameVal ?? '').replace(/[^a-zA-Z0-9]+/g, ' ').trim() || 'Project'
+        const templateCopyTarget = `ClickRFI ${datePart} ${sanitizedProjectName}`
         let googleDocsTemplateId = '1Xs76a1fAZfj4GGyIQ-wH_x98rtjnfoB7RVt7cMBmPP8' // Default: Plumbing
         if (serviceTypeName === 'Electrical') {
           googleDocsTemplateId = '1WO7egdTaavsl3YABBc7cR9va-IwmF9PTdIubxDw7ips'
