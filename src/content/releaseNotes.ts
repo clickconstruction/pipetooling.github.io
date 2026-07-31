@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1178',
+    date: '2026-07-31',
+    title: 'See and search jobs by their GC on the Stages board',
+    kind: 'feature',
+    highlights: [
+      'Jobs with a GC/Builder set now show it under the customer name on Jobs \u2192 Stages, marked with a hard-hat icon.',
+      'The Stages search matches GC names \u2014 type a GC to see every job under them.',
+      'New help guide: track a general contractor on a job.',
+    ],
+  },
+  {
     version: 'v2.1177',
     date: '2026-07-31',
     title: 'Track a General Contractor on each job',

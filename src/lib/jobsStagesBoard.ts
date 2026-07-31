@@ -301,6 +301,7 @@ export function filterJobsByStagesSearch(
       (j.click_number ?? '').toLowerCase().includes(q) ||
       (j.job_name ?? '').toLowerCase().includes(q) ||
       (j.job_address ?? '').toLowerCase().includes(q) ||
+      (j.gcCustomer?.name ?? '').toLowerCase().includes(q) ||
       (extra?.has(j.id) ?? false),
   )
 }

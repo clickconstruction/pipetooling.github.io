@@ -28,7 +28,13 @@ export type JobsLedgerStagesPrimaryRow = JobsLedgerRow & {
   reports?: Array<{ job_ledger_id: string | null }>
   projects?: { id: string; name: string } | null
   bids?: { id: string; project_name: string | null; bid_number: string | null; service_type_id: string | null } | null
+  gc_customer?: { id: string; name: string | null } | { id: string; name: string | null }[] | null
   service_types?: { name: string } | null
+}
+
+/** PostgREST returns embedded to-one as an object or a 1-element array. */
+function oneEmbed<T>(v: T | T[] | null | undefined): T | null {
+  return Array.isArray(v) ? v[0] ?? null : v ?? null
 }
 
 export type FetchJobsLedgerWithDetailsResult =
@@ -72,6 +78,7 @@ export async function enrichJobsLedgerPrimaryRows(rows: JobsLedgerStagesPrimaryR
       reports: rep,
       projects: proj,
       bids: bidEmbed,
+      gc_customer: gcEmbed,
       service_types: serviceTypeEmbed,
       ...job
     } = row
@@ -88,6 +95,7 @@ export async function enrichJobsLedgerPrimaryRows(rows: JobsLedgerStagesPrimaryR
       team_members: team ?? [],
       report_count: (rep ?? []).length,
       project: proj ?? null,
+      gcCustomer: oneEmbed(gcEmbed),
       linkedBid: bidEmbed
         ? {
             id: bidEmbed.id,
@@ -240,6 +248,7 @@ export async function enrichJobsLedgerPrimaryRowsJobSummarySlim(
       reports: rep,
       projects: proj,
       bids: bidEmbed,
+      gc_customer: gcEmbed,
       service_types: serviceTypeEmbed,
       ...job
     } = row
@@ -256,6 +265,7 @@ export async function enrichJobsLedgerPrimaryRowsJobSummarySlim(
       team_members: team ?? [],
       report_count: (rep ?? []).length,
       project: proj ?? null,
+      gcCustomer: oneEmbed(gcEmbed),
       linkedBid: bidEmbed
         ? {
             id: bidEmbed.id,

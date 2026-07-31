@@ -80,6 +80,7 @@ export function buildJobsListStagesPrimarySelect(): string {
     reports(job_ledger_id),
     projects:project_id(id, name),
     bids:bid_id(id, project_name, bid_number, service_type_id),
+    gc_customer:gc_customer_id(id, name),
     service_types:service_type_id(name)
   `
 }
