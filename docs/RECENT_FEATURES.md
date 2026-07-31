@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-30 (v2.1136)
+last_updated: 2026-07-30 (v2.1137)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1137)
+
+### Make Invoice control: equation chips + reordered labeled track (2026-07-30)
+[`JobFormBreakOffSection.tsx`](../src/components/jobs/JobFormBreakOffSection.tsx) (rewritten) + [`useBreakOffSlider.ts`](../src/components/jobs/useBreakOffSlider.ts) + [`jobFormBreakOff.ts`](../src/lib/jobs/jobFormBreakOff.ts) (doc-only param rename). The B+C hybrid: a chip row that IS the math, the legend, the input, and the action — Paid + Billed + New invoice (amount input, "% of job" share, and the green **+** / blue **Ready to Bill** action inside the chip) → Left to bill — over a draggable track whose money coalesces LEFT in lifecycle order (paid → billed → new invoice → left), replacing the old billed-wall-at-the-right geometry. Slider math rebased: the combined axis base is now `paid + billed` (bounds min = base/total, max = 100%; all `breakDollarsFromCombinedPct` call sites pass the widened base — the kernel's `paidSum` param is renamed `baseDollars`, behavior-identical). Handle carries a live `$ · %` badge (edge-pinned near 0/100%); the field-progress dot keeps its rail position plus a labeled "▲ Job N% done" caret below; quick-set percent chips (20–80 filtered to reachable, Max) are always visible (Quick set toggle removed); legend row deleted; ⓘ explainer moved beside the chips and its dialog text rewritten for the new geometry. New quiet amber note when the bill would run >10 points ahead of field progress (informative, never blocking). Kernel tests unchanged-green. Client-only.
 
 ## Latest Updates (v2.1136)
 

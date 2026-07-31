@@ -57,9 +57,10 @@ export function useBreakOffSlider(args: {
       return { paidPct: 0, breakPreviewPct: 0, billedPct: 0, hasTotal: false as const }
     }
     const paidPct = Math.min(100, (paidSum / total) * 100)
-    // Invoices already carved off (ready_to_bill + billed) render as a "Billed"
-    // wall at the RIGHT end of the track — the slider's max is 100% minus this,
-    // so the thumb visibly bumps into it when the job is fully carved up.
+    // Invoices already carved off (ready_to_bill + billed) render directly AFTER
+    // paid (v2.1137) — allocated money coalesces on the left, matching the
+    // lifecycle order everywhere else, and the new invoice grows from where
+    // allocation ends toward the job total on the right.
     const billedPct = Math.min(
       Math.max(0, 100 - paidPct),
       Math.max(0, (allocatedInvoiceDollars(editing?.invoices) / total) * 100),
@@ -87,21 +88,28 @@ export function useBreakOffSlider(args: {
     () => unallocatedBillableDollars(jobTotalBidDollars, breakOffPaidSum, editing?.invoices),
     [jobTotalBidDollars, breakOffPaidSum, editing?.invoices],
   )
+  /** Ready-to-bill + billed invoice dollars — with paid, the slider's fixed left base (v2.1137). */
+  const breakOffBilledSum = useMemo(
+    () => allocatedInvoiceDollars(editing?.invoices),
+    [editing?.invoices],
+  )
   const breakOffCombinedSliderBounds = useMemo(() => {
     const total = jobTotalBidDollars
     if (!(total > 0)) return { min: 0, max: 0 }
-    const min = Math.min(100, Math.max(0, (breakOffPaidSum / total) * 100))
-    const max = Math.min(100, Math.max(min, ((breakOffPaidSum + breakOffRemaining) / total) * 100))
+    const base = breakOffPaidSum + breakOffBilledSum
+    const min = Math.min(100, Math.max(0, (base / total) * 100))
+    const max = Math.min(100, Math.max(min, ((base + breakOffRemaining) / total) * 100))
     return { min, max }
-  }, [jobTotalBidDollars, breakOffPaidSum, breakOffRemaining])
+  }, [jobTotalBidDollars, breakOffPaidSum, breakOffBilledSum, breakOffRemaining])
 
-  const breakOffDraftCoveragePctDisplay = useMemo(() => {
+  /** This invoice's own share of the job total (the chip's "= N% of job"), v2.1137. */
+  const breakOffInvoiceSharePct = useMemo(() => {
     const total = jobTotalBidDollars
     if (!(total > 0)) return null
     const b = parseMoneyInputToNumber(newInvoiceAmount)
-    const pct = Math.min(100, Math.max(0, ((breakOffPaidSum + b) / total) * 100))
-    return Math.round(pct)
-  }, [jobTotalBidDollars, breakOffPaidSum, newInvoiceAmount])
+    if (!(b > 0)) return null
+    return Math.round(Math.min(100, Math.max(0, (b / total) * 100)))
+  }, [jobTotalBidDollars, newInvoiceAmount])
 
   const breakOffCombinedHandlePct = useMemo(() => {
     const total = jobTotalBidDollars
@@ -111,7 +119,7 @@ export function useBreakOffSlider(args: {
       return Math.min(100, Math.max(0, breakOffSliderDragCombinedPct))
     }
     const b = parseMoneyInputToNumber(newInvoiceAmount)
-    const raw = Math.min(100, Math.max(0, ((breakOffPaidSum + b) / total) * 100))
+    const raw = Math.min(100, Math.max(0, ((breakOffPaidSum + breakOffBilledSum + b) / total) * 100))
     if (newInvoiceAmountInputFocused) {
       return Math.min(100, Math.max(0, raw))
     }
@@ -120,6 +128,7 @@ export function useBreakOffSlider(args: {
     jobTotalBidDollars,
     breakOffCombinedSliderBounds,
     breakOffPaidSum,
+    breakOffBilledSum,
     newInvoiceAmount,
     newInvoiceAmountInputFocused,
     breakOffSliderDragCombinedPct,
@@ -143,24 +152,24 @@ export function useBreakOffSlider(args: {
       breakOffSliderLastDragCombinedRef.current = unsnapped
       const combined = snapBreakOffCombinedPctToStep(unsnapped, min, max)
       setBreakOffSliderDragCombinedPct(combined)
-      const bd = breakDollarsFromCombinedPct(combined, total, breakOffPaidSum, breakOffRemaining)
+      const bd = breakDollarsFromCombinedPct(combined, total, breakOffPaidSum + breakOffBilledSum, breakOffRemaining)
       setNewInvoiceAmount(String(bd))
     },
-    [jobTotalBidDollars, breakOffCombinedSliderBounds, breakOffPaidSum, breakOffRemaining],
+    [jobTotalBidDollars, breakOffCombinedSliderBounds, breakOffPaidSum, breakOffBilledSum, breakOffRemaining],
   )
 
-  /** Quick-% buttons: set the break-off amount to a combined (paid + this bill) percent of the job total, matching the slider axis. */
+  /** Quick-% buttons: set the break-off amount so paid + billed + this bill reaches the given percent of the job total (the slider axis). */
   const applyBreakOffCombinedPct = useCallback(
     (pct: number) => {
       const total = jobTotalBidDollars
       if (!(total > 0)) return
       const { min, max } = breakOffCombinedSliderBounds
       const clamped = Math.min(max, Math.max(min, pct))
-      const bd = breakDollarsFromCombinedPct(clamped, total, breakOffPaidSum, breakOffRemaining)
+      const bd = breakDollarsFromCombinedPct(clamped, total, breakOffPaidSum + breakOffBilledSum, breakOffRemaining)
       setNewInvoiceAmount(String(bd))
       setNewInvoiceAmountInputFocused(false)
     },
-    [jobTotalBidDollars, breakOffCombinedSliderBounds, breakOffPaidSum, breakOffRemaining],
+    [jobTotalBidDollars, breakOffCombinedSliderBounds, breakOffPaidSum, breakOffBilledSum, breakOffRemaining],
   )
 
   const endBreakOffSliderPointerGesture = useCallback(() => {
@@ -173,10 +182,10 @@ export function useBreakOffSlider(args: {
     const prev = breakOffSliderLastDragCombinedRef.current
     const { min, max } = breakOffCombinedSliderBounds
     const snapped = snapBreakOffCombinedPctToStep(prev, min, max)
-    const bd = breakDollarsFromCombinedPct(snapped, total, breakOffPaidSum, breakOffRemaining)
+    const bd = breakDollarsFromCombinedPct(snapped, total, breakOffPaidSum + breakOffBilledSum, breakOffRemaining)
     setNewInvoiceAmount(String(bd))
     setNewInvoiceAmountInputFocused(false)
-  }, [jobTotalBidDollars, breakOffCombinedSliderBounds, breakOffPaidSum, breakOffRemaining])
+  }, [jobTotalBidDollars, breakOffCombinedSliderBounds, breakOffPaidSum, breakOffBilledSum, breakOffRemaining])
 
   const onBillingBreakOffTrackPointerDown = useCallback(
     (e: ReactPointerEvent<HTMLDivElement>) => {
@@ -208,10 +217,10 @@ export function useBreakOffSlider(args: {
       const snapped = snapBreakOffCombinedPctToStep(next, min, max)
       setBreakOffSliderDragCombinedPct(snapped)
       setNewInvoiceAmount(
-        String(breakDollarsFromCombinedPct(snapped, total, breakOffPaidSum, breakOffRemaining)),
+        String(breakDollarsFromCombinedPct(snapped, total, breakOffPaidSum + breakOffBilledSum, breakOffRemaining)),
       )
     },
-    [jobTotalBidDollars, breakOffCombinedSliderBounds, breakOffPaidSum, breakOffRemaining],
+    [jobTotalBidDollars, breakOffCombinedSliderBounds, breakOffPaidSum, breakOffBilledSum, breakOffRemaining],
   )
 
   const onBillingBreakOffTrackPointerUpCancel = useCallback(
@@ -255,7 +264,7 @@ export function useBreakOffSlider(args: {
         return
       }
       next = Math.min(max, Math.max(min, next))
-      const bd = breakDollarsFromCombinedPct(next, total, breakOffPaidSum, breakOffRemaining)
+      const bd = breakDollarsFromCombinedPct(next, total, breakOffPaidSum + breakOffBilledSum, breakOffRemaining)
       setNewInvoiceAmount(String(bd))
       setNewInvoiceAmountInputFocused(false)
     },
@@ -265,6 +274,7 @@ export function useBreakOffSlider(args: {
       breakOffCombinedSliderBounds,
       breakOffCombinedThumbLeftPct,
       breakOffPaidSum,
+      breakOffBilledSum,
       breakOffRemaining,
     ],
   )
@@ -282,7 +292,8 @@ export function useBreakOffSlider(args: {
     breakOffPaidSum,
     breakOffRemaining,
     breakOffCombinedSliderBounds,
-    breakOffDraftCoveragePctDisplay,
+    breakOffBilledSum,
+    breakOffInvoiceSharePct,
     breakOffCombinedHandlePct,
     breakOffCombinedThumbLeftPct,
     applyBreakOffCombinedPct,
