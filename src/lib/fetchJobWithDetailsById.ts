@@ -22,7 +22,15 @@ function mapRowToJobWithDetails(
     jobs_ledger_team_members?: (JobsLedgerTeamMember & { users: { name: string } | null })[]
     reports?: Array<{ job_ledger_id: string | null }>
     projects?: { id: string; name: string } | null
-    bids?: { id: string; project_name: string | null; bid_number: string | null; service_type_id: string | null } | null
+    bids?: {
+      id: string
+      project_name: string | null
+      bid_number: string | null
+      service_type_id: string | null
+      customer_id?: string | null
+      customers?: { id: string; name: string | null } | { id: string; name: string | null }[] | null
+    } | null
+    gc_customer?: { id: string; name: string | null } | { id: string; name: string | null }[] | null
     service_types?: { name: string } | null
   },
 ): JobWithDetails {
@@ -35,9 +43,12 @@ function mapRowToJobWithDetails(
     reports: rep,
     projects: proj,
     bids: bidEmbed,
+    gc_customer: gcEmbed,
     service_types: serviceTypeEmbed,
     ...job
   } = row
+  // PostgREST returns embedded to-one as an object or a 1-element array.
+  const one = <T,>(v: T | T[] | null | undefined): T | null => (Array.isArray(v) ? v[0] ?? null : v ?? null)
   return {
     ...job,
     serviceType: serviceTypeEmbed && typeof (serviceTypeEmbed as { name?: string }).name === 'string' ? (serviceTypeEmbed as { name: string }) : null,
@@ -48,7 +59,8 @@ function mapRowToJobWithDetails(
     team_members: team ?? [],
     report_count: (rep ?? []).length,
     project: proj ?? null,
-    linkedBid: bidEmbed ?? null,
+    linkedBid: bidEmbed ? { ...bidEmbed, customers: one(bidEmbed.customers) } : null,
+    gcCustomer: one(gcEmbed),
     last_schedule_work_date: null,
   }
 }

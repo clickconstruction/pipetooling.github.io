@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { resolveCustomerIdForJobPayload, type JobPayloadCustomerRow } from './jobLedgerCustomer'
+import {
+  resolveCustomerIdForJobPayload,
+  resolveGcCustomerIdForJobPayload,
+  type JobPayloadCustomerRow,
+} from './jobLedgerCustomer'
 
 const MASTER_A = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
 const MASTER_B = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb'
@@ -50,5 +54,25 @@ describe('resolveCustomerIdForJobPayload', () => {
 
   it('returns null when no name is supplied and there is no explicit id', () => {
     expect(resolveCustomerIdForJobPayload(null, MASTER_A, '   ', [])).toBeNull()
+  })
+})
+
+describe('resolveGcCustomerIdForJobPayload', () => {
+  it('keeps a pick that belongs to the job master', () => {
+    const customers = [cust('gc1', MASTER_A, 'Knight Contracting')]
+    expect(resolveGcCustomerIdForJobPayload('gc1', MASTER_A, customers)).toBe('gc1')
+  })
+
+  it('trusts a pick not present in the supplied list', () => {
+    expect(resolveGcCustomerIdForJobPayload('gc-unknown', MASTER_A, [])).toBe('gc-unknown')
+  })
+
+  it('drops a cross-master pick to null (no name re-resolution for GC)', () => {
+    const customers = [cust('gc-b', MASTER_B, 'Knight Contracting'), cust('gc-a', MASTER_A, 'Knight Contracting')]
+    expect(resolveGcCustomerIdForJobPayload('gc-b', MASTER_A, customers)).toBeNull()
+  })
+
+  it('null in, null out', () => {
+    expect(resolveGcCustomerIdForJobPayload(null, MASTER_A, [])).toBeNull()
   })
 })

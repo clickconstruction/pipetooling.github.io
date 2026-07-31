@@ -43,6 +43,7 @@ function identity(over: Partial<JobIdentityFormFields> = {}): JobIdentityFormFie
     customerName: 'Antonio Hernandez',
     customerEmail: '',
     customerPhone: '',
+    gcCustomerId: null,
     googleDriveLink: '',
     jobPicturesLink: '',
     jobPlansLink: '',

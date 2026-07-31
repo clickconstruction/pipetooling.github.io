@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-31 (v2.1176)
+last_updated: 2026-07-31 (v2.1177)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1177)
+
+### GC on jobs part 2: Edit Job picker + Job Detail + bid smart default (2026-07-31)
+Builds on v2.1175's `gc_customer_id`. **Edit Job**: new "GC/Builder (customer)" picker (hard-hat icon, new [`GcHardHatIcon.tsx`](../src/components/icons/GcHardHatIcon.tsx)) under Link-to-customer in [`JobFormCustomerSection.tsx`](../src/components/jobs/JobFormCustomerSection.tsx) — same search UX, Clear GC button, and a **"Use bid's GC: {name}"** one-click chip when the job's linked bid has a GC (the detail fetch's bids embed now carries `customer_id + customers(id, name)`). The field joins the **identity autosave slice** (`gcCustomerId` in [`jobFormAutosaveSlices.ts`](../src/lib/jobs/jobFormAutosaveSlices.ts) — autosave, close-guard flush, and Undo all free) and the new-job INSERT; cross-master picks drop to null via new kernel `resolveGcCustomerIdForJobPayload` (+4 tests, [`jobLedgerCustomer.ts`](../src/lib/jobLedgerCustomer.ts)). **Job Detail** shows a hard-hat GC line under the customer name (limited fetch embeds `gc_customer(name)`). **Critical fix folded in**: jobs_ledger now has TWO customers FKs, so [`Documents.tsx`](../src/pages/Documents.tsx)'s bare `customers(...)` embed became ambiguous (PGRST201) the moment the migration was pushed — now pinned to `customers!jobs_ledger_customer_id_fkey`. `database.ts` gains the column by hand-add (wholesale regen pulls unrelated drift). Stages display + search land in part 3. Client-only.
 
 ## Latest Updates (v2.1176)
 

@@ -28,7 +28,12 @@ export type JobWithDetails = JobsLedgerRow & {
     project_name: string | null
     bid_number: string | null
     service_type_id: string | null
+    /** The bid's GC/Builder (bids.customer_id) — detail fetch only (v2.1176); feeds the "Use bid's GC" chip. */
+    customer_id?: string | null
+    customers?: { id: string; name: string | null } | null
   } | null
+  /** Embedded GC (General Contractor) when `gc_customer_id` is set (v2.1176). */
+  gcCustomer?: { id: string; name: string | null } | null
   /** From `service_types:service_type_id(name)` on detail fetch (`fetchJobWithDetailsById`). */
   serviceType?: { name: string } | null
   /** Max `job_schedule_blocks.work_date` for this job; set in Jobs `loadJobs` only. */

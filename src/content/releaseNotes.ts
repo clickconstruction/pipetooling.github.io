@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1177',
+    date: '2026-07-31',
+    title: 'Track a General Contractor on each job',
+    kind: 'feature',
+    highlights: [
+      'Edit Job has a new GC/Builder picker under the Customer section \u2014 link any customer as the job\u2019s GC, or clear it any time.',
+      'When the job is linked to a bid, one click copies the bid\u2019s GC onto the job.',
+      'Job Detail shows the GC under the customer name with a hard-hat icon. The Stages board display ships next.',
+    ],
+  },
+  {
     version: 'v2.1176',
     date: '2026-07-31',
     title: 'Faster People page load for developers',

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import type { Dispatch, MutableRefObject, SetStateAction } from 'react'
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
 import { filterActiveCustomersForPicker } from '../../lib/customerArchive'
+import GcHardHatIcon from '../icons/GcHardHatIcon'
 import {
   customerListImpliesLinkedRow,
   customerTypeShortLabel,
@@ -18,6 +19,11 @@ type JobFormCustomerSectionProps = {
   setExpanded: Dispatch<SetStateAction<boolean>>
   customerId: string | null
   setCustomerId: (v: string | null) => void
+  /** Optional GC (General Contractor) — a second customers link, like bids' GC/Builder (v2.1176). */
+  gcCustomerId: string | null
+  setGcCustomerId: (v: string | null) => void
+  /** The linked bid's GC (bids.customer_id), when the job is linked to a bid — drives the "Use bid's GC" chip. */
+  linkedBidGc: { id: string; name: string } | null
   /** Shell-owned: the create/link-similar handlers and the customerId sync effect also write it. */
   customerSearch: string
   setCustomerSearch: (v: string) => void
@@ -68,6 +74,9 @@ export function JobFormCustomerSection({
   setExpanded,
   customerId,
   setCustomerId,
+  gcCustomerId,
+  setGcCustomerId,
+  linkedBidGc,
   customerSearch,
   setCustomerSearch,
   customerName,
@@ -97,6 +106,11 @@ export function JobFormCustomerSection({
   onOpenCreateCustomerModal,
 }: JobFormCustomerSectionProps) {
   const [customerDropdownOpen, setCustomerDropdownOpen] = useState(false)
+  // GC picker state is local: the modal remounts per job (remount-by-key), and
+  // no shell handler writes the GC search text (unlike customerSearch).
+  const [gcSearch, setGcSearch] = useState('')
+  const [gcDropdownOpen, setGcDropdownOpen] = useState(false)
+  const selectedGc = gcCustomerId ? customers.find((c) => c.id === gcCustomerId) ?? null : null
 
   return (
     <>
@@ -312,6 +326,120 @@ export function JobFormCustomerSection({
                   style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', border: '1px solid var(--border-strong)', background: 'var(--surface)', borderRadius: 4, cursor: 'pointer', color: 'var(--text-muted)' }}
                 >
                   Clear link
+                </button>
+              )}
+            </div>
+          </div>
+          <div style={{ marginBottom: '0.75rem', position: 'relative' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', marginBottom: '0.25rem', fontWeight: 500 }}>
+              <GcHardHatIcon size={13} style={{ color: 'var(--text-muted)' }} />
+              GC/Builder (customer)
+              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 400 }}>optional</span>
+            </label>
+            <input
+              type="text"
+              value={selectedGc ? (selectedGc.name ?? '') : gcSearch}
+              onChange={(e) => {
+                setGcSearch(e.target.value)
+                setGcDropdownOpen(true)
+                if (gcCustomerId) setGcCustomerId(null)
+              }}
+              onFocus={() => setGcDropdownOpen(true)}
+              onBlur={() => setTimeout(() => setGcDropdownOpen(false), 200)}
+              placeholder="Search customers to set a General Contractor…"
+              aria-label="Search customers to set as this job's GC/Builder"
+              style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
+            />
+            {gcDropdownOpen && (
+              <div
+                style={{
+                  position: 'absolute',
+                  top: '100%',
+                  left: 0,
+                  right: 0,
+                  background: 'var(--surface)',
+                  border: '1px solid var(--border)',
+                  borderRadius: 4,
+                  maxHeight: 180,
+                  overflowY: 'auto',
+                  zIndex: 100,
+                  marginTop: 2,
+                  boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+                }}
+              >
+                {customersLoading ? (
+                  <div style={{ padding: '0.5rem', color: 'var(--text-muted)' }}>Loading…</div>
+                ) : (
+                  (() => {
+                    const q = gcSearch.toLowerCase()
+                    const filtered = filterActiveCustomersForPicker(customers, gcCustomerId).filter(
+                      (c) => (c.name || '').toLowerCase().includes(q) || (c.address || '').toLowerCase().includes(q),
+                    )
+                    return (
+                      <>
+                        {filtered.map((c) => (
+                          <div
+                            key={c.id}
+                            onClick={() => {
+                              setGcCustomerId(c.id)
+                              setGcSearch('')
+                              setGcDropdownOpen(false)
+                            }}
+                            style={{ padding: '0.5rem', cursor: 'pointer', borderBottom: '1px solid var(--border)' }}
+                            onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--bg-muted)' }}
+                            onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--surface)' }}
+                          >
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'wrap' }}>
+                              <span style={{ fontWeight: 500 }}>{c.name}</span>
+                              <span style={{ fontSize: '0.6875rem', color: 'var(--text-muted)', fontWeight: 500 }}>
+                                {customerTypeShortLabel(c)}
+                              </span>
+                            </div>
+                            {c.address && <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginTop: 2 }}>{c.address}</div>}
+                          </div>
+                        ))}
+                        {filtered.length === 0 && (
+                          <div style={{ padding: '0.5rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>No customers found</div>
+                        )}
+                      </>
+                    )
+                  })()
+                )}
+              </div>
+            )}
+            <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem', flexWrap: 'wrap' }}>
+              {linkedBidGc && linkedBidGc.id !== gcCustomerId && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setGcCustomerId(linkedBidGc.id)
+                    setGcSearch('')
+                    setGcDropdownOpen(false)
+                  }}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '0.35rem',
+                    padding: '0.35rem 0.75rem',
+                    fontSize: '0.875rem',
+                    border: '1px solid var(--border-blue-soft, var(--border-strong))',
+                    background: 'var(--bg-blue-tint)',
+                    color: 'var(--text-blue-800)',
+                    borderRadius: 4,
+                    cursor: 'pointer',
+                  }}
+                >
+                  <GcHardHatIcon size={12} />
+                  Use bid&rsquo;s GC: {linkedBidGc.name}
+                </button>
+              )}
+              {gcCustomerId && (
+                <button
+                  type="button"
+                  onClick={() => { setGcCustomerId(null); setGcSearch('') }}
+                  style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', border: '1px solid var(--border-strong)', background: 'var(--surface)', borderRadius: 4, cursor: 'pointer', color: 'var(--text-muted)' }}
+                >
+                  Clear GC
                 </button>
               )}
             </div>

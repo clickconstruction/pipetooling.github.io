@@ -14,7 +14,11 @@
  * builders shared by autosave and the explicit save path, the identity-slice
  * validation gate, the team diff, and the paid→billed demote condition.
  */
-import { resolveCustomerIdForJobPayload, type JobPayloadCustomerRow } from '../jobLedgerCustomer'
+import {
+  resolveCustomerIdForJobPayload,
+  resolveGcCustomerIdForJobPayload,
+  type JobPayloadCustomerRow,
+} from '../jobLedgerCustomer'
 import { resolveEditJobMasterUserId } from '../resolveEditJobMasterUserId'
 import { normalizeFixtureDisplayName } from './jobFormRows'
 import type { FixtureRow, MaterialRow, PaymentRow } from './jobFormTypes'
@@ -49,6 +53,8 @@ export interface JobIdentityFormFields {
   customerName: string
   customerEmail: string
   customerPhone: string
+  /** Optional GC (General Contractor) — a customers row id, like bids' GC/Builder (v2.1176). */
+  gcCustomerId: string | null
   googleDriveLink: string
   jobPicturesLink: string
   jobPlansLink: string
@@ -67,6 +73,7 @@ export function buildIdentitySliceJson(fields: JobIdentityFormFields): string {
     cn: fields.customerName.trim(),
     ce: fields.customerEmail.trim(),
     cp: fields.customerPhone.trim(),
+    gc: fields.gcCustomerId,
     gd: fields.googleDriveLink.trim(),
     jp: fields.jobPicturesLink.trim(),
     pl: fields.jobPlansLink.trim(),
@@ -165,12 +172,14 @@ export function buildEditJobIdentityUpdatePayload(params: {
     fields.customerName.trim(),
     customers,
   )
+  const resolvedGcCustomerId = resolveGcCustomerIdForJobPayload(fields.gcCustomerId, masterUserId, customers)
   return {
     hcp_number: fields.hcpNumber.trim(),
     click_number: fields.clickNumber.trim(),
     job_name: fields.jobName.trim(),
     job_address: fields.jobAddress.trim(),
     customer_id: resolvedCustomerId,
+    gc_customer_id: resolvedGcCustomerId,
     customer_name: fields.customerName.trim() || null,
     customer_email: fields.customerEmail.trim() || null,
     customer_phone: fields.customerPhone.trim() || null,
