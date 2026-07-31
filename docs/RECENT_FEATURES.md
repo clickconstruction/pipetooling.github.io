@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-31 (v2.1175)
+last_updated: 2026-07-31 (v2.1176)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1176)
+
+### People: location indicator no longer scans all clock history (2026-07-31)
+The dev-only location indicator on People → Users pulled `user_id` from **every** `clock_sessions` row that ever recorded GPS coords (unbounded, no date filter — thousands of rows for a ~dozens-of-ids answer, growing with history). New read-RPC `get_location_enabled_user_ids()` (migration `20260731213000`, same SECURITY DEFINER pattern as `get_archived_user_names`) does `SELECT DISTINCT user_id` server-side; [`People.tsx`](../src/pages/People.tsx) makes one RPC call and fails soft (indicator simply absent) if the function isn't deployed yet, so client and migration are order-safe. Found auditing page loads during the 2026-07-31 DB freezes — the old query measured ~1ms server-side, so it was **not** a freeze cause (see `DB_FREEZE_RUNBOOK.md`), just wasted transfer on every dev visit. Client + migration (`supabase db push` after merge).
 
 ## Latest Updates (v2.1175)
 

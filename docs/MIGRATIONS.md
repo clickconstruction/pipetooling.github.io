@@ -106,6 +106,12 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 #### July 31, 2026
 
+**`20260731213000_location_enabled_user_ids_rpc.sql`** _(apply via `supabase db push` after the PR merges; the new client fails soft — the dev-only location indicator stays empty — until it lands, and the old client keeps using its table select, so either order is safe)_
+- **Purpose**: `get_location_enabled_user_ids()` (v2.1176) — `SELECT DISTINCT user_id` over GPS-bearing `clock_sessions`, replacing the People page's unbounded client-side fetch of every location-bearing session row ever recorded.
+- **Security**: read-only `STABLE` SQL function, `SECURITY DEFINER`, `SET search_path = public`, same grant set as `get_archived_user_names`; exposes only user ids the dev UI already renders.
+- **Ordering**: independent of the client deploy (fail-soft on both sides).
+- **Category**: Performance RPC
+
 **`20260731205835_gc_customer_on_jobs.sql`** _(apply via `supabase db push` right after the PR merges, BEFORE the client PRs that read the column — their `gc_customer:gc_customer_id(...)` embeds 400 against a database without it)_
 - **Purpose**: GC (General Contractor) on jobs (v2.1175) — nullable `jobs_ledger.gc_customer_id uuid REFERENCES customers(id) ON DELETE SET NULL` + partial index. A second customer link for managing work by GC; display-only server-side (billing stays keyed to `customer_id`; paying-as-GC is the per-invoice bill-to override, v2.1084). NULL = no GC, so existing jobs are untouched.
 - **Security**: same-master invariant like `customer_id` (20260630200000): new backstop trigger `jobs_ledger_gc_customer_master_match` (fires only on INSERT or when `gc_customer_id`/`master_user_id` change), and `cascade_customer_master_to_jobs_ledger()` re-created to also CLEAR gc links a customer-master change made cross-master (a GC link never moves a job's master). No RLS changes (column on an existing table).
