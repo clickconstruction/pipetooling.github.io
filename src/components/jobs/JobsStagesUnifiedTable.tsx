@@ -1005,7 +1005,7 @@ export default function JobsStagesUnifiedTable(props: JobsStagesUnifiedTableProp
                       )}
                       {renderStagesFieldAndBillingLines(job)}
                       {(() => {
-                        const eff = effectiveInvoiceEstBillDate(inv, job)
+                        const eff = effectiveInvoiceEstBillDate(inv)
                         const display = formatEstimatedCompletionDisplay(eff)
                         return (
                           <>
@@ -1024,7 +1024,7 @@ export default function JobsStagesUnifiedTable(props: JobsStagesUnifiedTableProp
                                 <button
                                   type="button"
                                   onClick={() => {
-                                    void bumpInvoiceEstimatedBillDate(inv.id, job.id, inv, job, -1)
+                                    void bumpInvoiceEstimatedBillDate(inv.id, job.id, inv, -1)
                                   }}
                                   disabled={invoiceEstimatedBillDateSavingId === inv.id}
                                   style={{
@@ -1042,7 +1042,7 @@ export default function JobsStagesUnifiedTable(props: JobsStagesUnifiedTableProp
                                 <button
                                   type="button"
                                   onClick={() => {
-                                    void bumpInvoiceEstimatedBillDate(inv.id, job.id, inv, job, 1)
+                                    void bumpInvoiceEstimatedBillDate(inv.id, job.id, inv, 1)
                                   }}
                                   disabled={invoiceEstimatedBillDateSavingId === inv.id}
                                   style={{
@@ -1067,9 +1067,7 @@ export default function JobsStagesUnifiedTable(props: JobsStagesUnifiedTableProp
                                       hcpNumber: effectiveJobLedgerNumber(job.hcp_number, job.click_number) || '—',
                                     })
                                     setWhenInvoiceBillModalDate(
-                                      inv.estimated_bill_date?.trim().slice(0, 10) ??
-                                        job.last_bill_date?.trim().slice(0, 10) ??
-                                        ''
+                                      inv.estimated_bill_date?.trim().slice(0, 10) ?? ''
                                     )
                                   }}
                                   disabled={invoiceEstimatedBillDateSavingId === inv.id}

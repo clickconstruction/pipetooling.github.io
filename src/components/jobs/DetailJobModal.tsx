@@ -470,7 +470,6 @@ function mergeLimitedFromAssignedAndLedger(
     customer_name: null,
     customer_email: null,
     customer_phone: null,
-    last_bill_date: null,
     last_work_date: null,
     status: 'working',
     service_type_name: null,
@@ -484,7 +483,7 @@ async function fetchLimitedLedgerRow(jobId: string): Promise<LimitedJobDetailSna
         await supabase
           .from('jobs_ledger')
           .select(
-            'id, hcp_number, job_name, job_address, google_drive_link, job_pictures_link, job_plans_link, revenue, project_id, customer_name, customer_email, customer_phone, last_bill_date, last_work_date, status, service_types:service_type_id(name)',
+            'id, hcp_number, job_name, job_address, google_drive_link, job_pictures_link, job_plans_link, revenue, project_id, customer_name, customer_email, customer_phone, last_work_date, status, service_types:service_type_id(name)',
           )
           .eq('id', jobId)
           .maybeSingle(),
@@ -504,7 +503,6 @@ async function fetchLimitedLedgerRow(jobId: string): Promise<LimitedJobDetailSna
       customer_name: string | null
       customer_email: string | null
       customer_phone: string | null
-      last_bill_date: string | null
       last_work_date: string | null
       status: string
       service_types?: { name: string } | null
@@ -1466,11 +1464,6 @@ export default function DetailJobModal({
                   {formatJobDetailModalDateFromYmd(fullJobRecordedBilling?.ymd) ?? '—'}
                 </span>
               </DetailRow>
-              <DetailRow label="Last manual bill date" noBottomMargin centered softBox>
-                <span title={formatJobDetailModalDateTitleFromYmd(fullJob.last_bill_date) ?? undefined}>
-                  {formatJobDetailModalDateFromYmd(fullJob.last_bill_date) ?? '—'}
-                </span>
-              </DetailRow>
             </div>
             <div style={jobDetailStatusRowStyle}>
               <DetailRow label="Status" noBottomMargin centered>
@@ -1760,11 +1753,6 @@ export default function DetailJobModal({
               {/* No invoices/payments on limited fetch — cannot derive recorded billing */}
               <DetailRow label="Last bill date" noBottomMargin centered softBox>
                 —
-              </DetailRow>
-              <DetailRow label="Last manual bill date" noBottomMargin centered softBox>
-                <span title={formatJobDetailModalDateTitleFromYmd(limitedJob.last_bill_date) ?? undefined}>
-                  {formatJobDetailModalDateFromYmd(limitedJob.last_bill_date) ?? '—'}
-                </span>
               </DetailRow>
             </div>
             <div style={jobDetailStatusRowStyle}>

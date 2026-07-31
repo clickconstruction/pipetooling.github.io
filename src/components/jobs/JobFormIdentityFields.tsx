@@ -52,8 +52,6 @@ type JobFormIdentityFieldsProps = {
   setJobName: (v: string) => void
   jobAddress: string
   setJobAddress: (v: string) => void
-  lastBillDate: string
-  setLastBillDate: (v: string) => void
   formServiceTypeId: string
   setFormServiceTypeId: (v: string) => void
   /** Shell's `jobFormServiceTypeSelectOptions` memo (role-filtered + current type injected in edit mode). */
@@ -80,8 +78,6 @@ export function JobFormIdentityFields({
   setJobName,
   jobAddress,
   setJobAddress,
-  lastBillDate,
-  setLastBillDate,
   formServiceTypeId,
   setFormServiceTypeId,
   serviceTypeOptions,
@@ -186,15 +182,6 @@ export function JobFormIdentityFields({
         </div>
       </div>
       <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'flex-end' }}>
-        <div style={{ flex: '0 0 auto', minWidth: 140 }}>
-          <label style={{ display: 'block', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}>Last manual bill date</label>
-          <input
-            type="date"
-            value={lastBillDate}
-            onChange={(e) => setLastBillDate(e.target.value)}
-            style={{ width: '100%', minWidth: 140, padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem' }}
-          />
-        </div>
         <div style={{ flex: 1, minWidth: 200 }}>
           <label style={{ display: 'block', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}>Job Address <span style={{ color: 'var(--text-red-700)' }}>*</span></label>
           <div style={{ ...JOB_FIELD_CLIPBOARD_WRAPPER_STYLE, position: 'relative' }}>

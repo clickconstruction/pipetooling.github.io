@@ -16,7 +16,6 @@ const minimalLimitedJob = (): LimitedJobDetailSnapshot => ({
   customer_name: 'ACME GC',
   customer_email: null,
   customer_phone: null,
-  last_bill_date: null,
   last_work_date: null,
   status: 'ready_to_bill',
   service_type_name: null,

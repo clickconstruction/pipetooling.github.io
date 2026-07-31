@@ -15,7 +15,6 @@ function job(p: Partial<Record<string, unknown>>): JobWithDetails {
     customer_email: null,
     revenue: 0,
     payments_made: 0,
-    last_bill_date: null,
     payments: [],
     invoices: [],
     ...p,

@@ -110,7 +110,7 @@ function buildDemandLetter(
   const invoiceDate =
     ymdFromIso(inv?.billed_at) || ymdFromIso(inv?.created_at) || todayYmd()
   const dueBase =
-    ymdFromIso(inv?.estimated_bill_date) || ymdFromIso(job.last_bill_date) || invoiceDate
+    ymdFromIso(inv?.estimated_bill_date) || invoiceDate
   const dueDate = dueBase || addDaysYmd(invoiceDate, 30)
   const payDeadline = dueDate || addDaysYmd(invoiceDate, 30)
 

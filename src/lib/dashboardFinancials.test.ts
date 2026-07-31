@@ -24,7 +24,6 @@ function job(overrides: Partial<FinancialJobRow>): FinancialJobRow {
     status: 'billed',
     revenue: 1000,
     payments_made: 0,
-    last_bill_date: '2026-06-20',
     last_work_date: '2026-06-18',
     ...overrides,
   }
@@ -58,13 +57,14 @@ describe('buildArBucket', () => {
 
   it('adds billed jobs without billed invoice rows via revenue − payments', () => {
     const bucket = buildArBucket(
-      [job({ id: 'j2', revenue: 900, payments_made: 100, last_bill_date: '2026-05-01' })],
+      [job({ id: 'j2', revenue: 900, payments_made: 100 })],
       [],
       [],
     )
     expect(bucket.total).toBeCloseTo(800)
     expect(bucket.items[0]?.sublabel).toBe('Billed job (no invoice rows)')
-    expect(bucket.oldestDateYmd).toBe('2026-05-01')
+    // Dateless since the manual last_bill_date retired (v2.1154).
+    expect(bucket.oldestDateYmd).toBe(null)
   })
 
   it('drops fully paid invoices and non-billed jobs', () => {
@@ -80,7 +80,7 @@ describe('buildArBucket', () => {
     const bucket = buildArBucket(
       [
         job({ pct_complete: 85 }),
-        job({ id: 'j2', hcp_number: '501', revenue: 900, payments_made: 100, last_bill_date: '2026-05-01' }),
+        job({ id: 'j2', hcp_number: '501', revenue: 900, payments_made: 100 }),
       ],
       [invoice({ amount: 400 })],
       [],

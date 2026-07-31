@@ -127,7 +127,6 @@ describe('buildLienToolingPrefillState demand-letter', () => {
       revenue: 5000,
       payments_made: 0,
       last_work_date: '2026-01-18',
-      last_bill_date: '2026-01-25',
       invoices: [inv],
       payments: [],
       fixtures: [],
