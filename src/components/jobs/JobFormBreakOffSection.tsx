@@ -543,12 +543,13 @@ export function JobFormBreakOffSection({
                     aria-hidden
                     style={{
                       display: 'inline-block',
-                      width: 0,
-                      height: 0,
-                      borderLeft: '4px solid transparent',
-                      borderRight: '4px solid transparent',
-                      borderBottom: '6px solid #facc15',
-                      verticalAlign: '1px',
+                      width: 8,
+                      height: 8,
+                      borderRadius: '50%',
+                      background: '#facc15',
+                      border: '1px solid #ca8a04',
+                      boxSizing: 'border-box',
+                      verticalAlign: '-1px',
                       marginRight: 3,
                     }}
                   />

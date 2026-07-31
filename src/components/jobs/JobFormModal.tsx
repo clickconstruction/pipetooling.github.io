@@ -2962,7 +2962,9 @@ export default function JobFormModal({
               }}
             >
               <span>Billing</span>
-              {editing?.id && billingAutosaveStatus !== 'idle' && (
+              {/* v2.1144: the steady-state "Saved" is noise — only in-flight and
+                  failure states earn header space. */}
+              {editing?.id && (billingAutosaveStatus === 'saving' || billingAutosaveStatus === 'error') && (
                 <span
                   aria-live="polite"
                   style={{
@@ -2970,11 +2972,7 @@ export default function JobFormModal({
                     color: billingAutosaveStatus === 'error' ? 'var(--text-red-600)' : 'var(--text-muted)',
                   }}
                 >
-                  {billingAutosaveStatus === 'saving'
-                    ? 'Saving…'
-                    : billingAutosaveStatus === 'saved'
-                      ? 'Saved'
-                      : 'Autosave failed — edit again to retry'}
+                  {billingAutosaveStatus === 'saving' ? 'Saving…' : 'Autosave failed — edit again to retry'}
                 </span>
               )}
             </div>

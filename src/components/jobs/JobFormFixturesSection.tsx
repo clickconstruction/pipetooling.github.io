@@ -310,7 +310,7 @@ export function JobFormFixturesSection({
                               display: 'flex',
                               width: '100%',
                               alignItems: 'flex-start',
-                              justifyContent: 'flex-start',
+                              justifyContent: 'flex-end',
                               gap: 4,
                               flexWrap: 'nowrap',
                             }}

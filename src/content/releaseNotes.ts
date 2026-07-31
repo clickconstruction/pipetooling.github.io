@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1144',
+    date: '2026-07-30',
+    title: 'Edit job: three small billing polish fixes',
+    kind: 'fix',
+    highlights: [
+      'The \u201cJob N% done\u201d marker under the invoice bar now uses the same yellow dot as the bar itself instead of a triangle.',
+      'Line items: the Unit price box tucks against the right edge of its column, closing the awkward gap.',
+      'The Billing header no longer shows a permanent \u201cSaved\u201d \u2014 you\u2019ll only see \u201cSaving\u2026\u201d while it works, or a failure notice. Silence means saved.',
+    ],
+  },
+  {
     version: 'v2.1143',
     date: '2026-07-30',
     title: 'Other job charges: the empty row waits to be asked',
