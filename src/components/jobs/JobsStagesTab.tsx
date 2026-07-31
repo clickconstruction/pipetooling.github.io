@@ -16,6 +16,9 @@ import {
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { formatCurrency, formatCurrencyAbbrevTruncated, formatCurrencyNoCents, formatJobNameTwoLines } from '../../lib/jobs/jobFormatting'
+import { JobsGcReviewModal } from './JobsGcReviewModal'
+import { buildGcStatementReportHtml } from '../../lib/jobsDocuments/gcStatementReport'
+import GcHardHatIcon from '../icons/GcHardHatIcon'
 import {
   buildBilledAgingBuckets,
   sortStageRowsForTotalByNameDetail,
@@ -379,6 +382,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     paid: false,
   })
   const [billedTotalByNameModalOpen, setBilledTotalByNameModalOpen] = useState(false)
+  const [gcReviewModalOpen, setGcReviewModalOpen] = useState(false)
   const [billedTotalByNameExpandedName, setBilledTotalByNameExpandedName] = useState<string | null>(null)
   const [stagesNoCustomerModalOpen, setStagesNoCustomerModalOpen] = useState(false)
   const [stagesNoCustomerBtnHover, setStagesNoCustomerBtnHover] = useState(false)
@@ -1931,6 +1935,34 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                   </div>
                   {/* AR + Print stay together as the third row on mobile — the wrapper keeps them side by side instead of stacking each on its own row. */}
                   <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '0.5rem' : '1rem', flexWrap: 'wrap' }}>
+                  <button
+                    type="button"
+                    onClick={() => setGcReviewModalOpen(true)}
+                    disabled={billedActiveRows.length === 0 && collectionsRows.length === 0}
+                    title="Billed Awaiting Payment grouped by GC/Builder with bill-out dates"
+                    aria-label="GC Review: Billed Awaiting Payment grouped by General Contractor"
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 6,
+                      flexShrink: 0,
+                      height: 36,
+                      padding: '0 0.75rem',
+                      border: '1px solid var(--border-strong)',
+                      borderRadius: 4,
+                      background:
+                        billedActiveRows.length === 0 && collectionsRows.length === 0 ? 'var(--bg-muted)' : 'var(--surface)',
+                      cursor:
+                        billedActiveRows.length === 0 && collectionsRows.length === 0 ? 'not-allowed' : 'pointer',
+                      color: 'var(--text-700)',
+                      fontSize: '0.8125rem',
+                      fontWeight: 500,
+                    }}
+                  >
+                    <GcHardHatIcon size={13} style={{ flexShrink: 0 }} />
+                    GC Review
+                  </button>
                   <div style={{ position: 'relative', flexShrink: 0, width: 'fit-content' }}>
                     <button
                       type="button"
@@ -2371,6 +2403,17 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                   </>
                 ) : null}
 
+                <JobsGcReviewModal
+                  open={gcReviewModalOpen}
+                  onClose={() => setGcReviewModalOpen(false)}
+                  billedActiveRows={billedActiveRows}
+                  collectionsRows={collectionsRows}
+                  onPrint={(groups) => {
+                    if (!openHtmlPrintWindow(buildGcStatementReportHtml(groups))) {
+                      showToast('Allow pop-ups to print the report.', 'error')
+                    }
+                  }}
+                />
                 {billedTotalByNameModalOpen && (() => {
                   const byNameRows = new Map<string, StageRow[]>()
                   for (const r of billedActiveRows) {

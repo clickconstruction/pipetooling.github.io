@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1181',
+    date: '2026-07-31',
+    title: 'GC Review: see who owes what, by General Contractor',
+    kind: 'feature',
+    highlights: [
+      'New GC Review button on Jobs \u2192 Stages \u2192 Billed Awaiting Payment groups everything awaiting payment by GC.',
+      'Each GC shows their customers, bill-out dates, days outstanding, and total \u2014 with a No-GC bucket so nothing hides.',
+      'Print a statement per GC, or Print all for one report.',
+    ],
+  },
+  {
     version: 'v2.1180',
     date: '2026-07-31',
     title: 'Edit Job shows the GC without expanding the Customer section',
