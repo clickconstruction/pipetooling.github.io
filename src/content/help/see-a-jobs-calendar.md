@@ -5,7 +5,7 @@ roles: all
 keywords: job calendar, schedule, appointments, dispatch, field date, who is scheduled, month view, worked days
 order: 64
 ---
-Every job on **Jobs → Stages** shows a **j:** date in the Team & Last-update column — the job's latest field activity. Clicking it now opens the **Job Calendar**: a month view of which days the job sits on whose calendar, with every appointment listed below.
+Every job on **Jobs → Stages** shows a **j:** date in the Crew & Dates column — the job's latest field activity. Clicking it now opens the **Job Calendar**: a month view of which days the job sits on whose calendar, with every appointment listed below.
 
 ## Open it
 
