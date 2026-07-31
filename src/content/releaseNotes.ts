@@ -19,6 +19,7 @@ export const RELEASE_NOTES: ReleaseNote[] = [
       'The \u201cJob N% done\u201d marker under the invoice bar now uses the same yellow dot as the bar itself instead of a triangle.',
       'Line items: the Unit price box tucks against the right edge of its column, closing the awkward gap.',
       'The Billing header no longer shows a permanent \u201cSaved\u201d \u2014 you\u2019ll only see \u201cSaving\u2026\u201d while it works, or a failure notice. Silence means saved.',
+      'Segment names now read on top of the coverage hatching instead of under it, and the invoice slider\u2019s handle is a matched pair of arrows pinching the bar from above and below.',
     ],
   },
   {

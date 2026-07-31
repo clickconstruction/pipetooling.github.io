@@ -286,6 +286,10 @@ export function JobFormSegmentsBar({
               })()}
               <span
                 style={{
+                  // Above the absolutely-positioned coverage hatch (v2.1144) —
+                  // the label reads on top of the stripes, not under them.
+                  position: 'relative',
+                  zIndex: 1,
                   fontSize: '0.6875rem',
                   fontWeight: 600,
                   color: seg.kind === 'riders' ? 'var(--text-700)' : '#ffffff',

@@ -359,7 +359,7 @@ export function JobFormBreakOffSection({
         <div style={{ width: '100%', minWidth: 0 }}>
           <div
             ref={billingBreakOffTrackRef}
-            style={{ position: 'relative', width: '100%', height: 58, marginTop: 2, touchAction: 'none' }}
+            style={{ position: 'relative', width: '100%', height: 60, marginTop: 2, touchAction: 'none' }}
             onPointerDown={onBillingBreakOffTrackPointerDown}
             onPointerMove={onBillingBreakOffTrackPointerMove}
             onPointerUp={onBillingBreakOffTrackPointerUpCancel}
@@ -492,13 +492,17 @@ export function JobFormBreakOffSection({
                   outline: 'none',
                 }}
               >
-                <svg width="12" height="8" viewBox="0 0 12 8" aria-hidden>
+                <svg width="12" height="20" viewBox="0 0 12 20" aria-hidden>
+                  {/* ▼ above and ▲ below pinch the boundary symmetrically (v2.1144):
+                      each tip penetrates the 12px rail by 4px, leaving a 4px
+                      sliver of rail visible between them. */}
                   <polygon points="0,0 12,0 6,8" fill="#22c55e" stroke="#15803d" strokeWidth="0.75" strokeLinejoin="round" />
+                  <polygon points="0,20 12,20 6,12" fill="#22c55e" stroke="#15803d" strokeWidth="0.75" strokeLinejoin="round" />
                 </svg>
               </div>
             ) : null}
             {/* Under-track row: the handle's live badge, the field-progress caret, and the $0/total anchors. */}
-            <div style={{ position: 'absolute', left: 0, right: 0, top: 22, height: 34, pointerEvents: 'none' }}>
+            <div style={{ position: 'absolute', left: 0, right: 0, top: 24, height: 34, pointerEvents: 'none' }}>
               {breakOffRemaining > 0 && invoiceDollars > 0 ? (
                 <span
                   style={{
