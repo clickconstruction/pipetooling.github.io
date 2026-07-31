@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1142',
+    date: '2026-07-30',
+    title: 'Labor and Parts Cost: Other job charges blends in',
+    kind: 'fix',
+    highlights: [
+      'The Other job charges editor lost its bolted-on table: charges are now quiet underline rows that match the neighboring cost sections, with a dashed \u201c+ Add other charge\u201d button \u2014 the same pattern as Line Items. The old \u201cLine Item\u201d column header is gone.',
+    ],
+  },
+  {
     version: 'v2.1141',
     date: '2026-07-30',
     title: 'Make Invoice: the slider triangle points where it acts',
