@@ -256,18 +256,38 @@ Ended by a manual restart. Established Mode B and everything in Step 2.
 - Supavisor returned `EAUTHQUERY` → `ECIRCUITBREAKER`; status page showed all
   components 100% operational; no us-east-1 incident was ever posted.
 
-**Open question — worth resolving before the next one.** 31 active backends on a
-t4g.medium's **2 vCPUs** is 15× oversubscription. Two readings fit the same data:
-host stalled → backends piled up (Supabase's problem), or a burst of concurrent
-app queries saturated CPU → cron worker startup and Supavisor's `auth_query`
-starved (ours). Distinguishing them needs host CPU for the window from
-Dashboard → Observability, which is not reachable from the CLI or MCP. **Capture
-that graph during the next incident** — it decides ownership.
+**Host metrics — checked, and they clear us.** 31 active backends on a
+t4g.medium's 2 vCPUs looked like it might be self-inflicted CPU saturation. It
+was not. Dashboard → Observability → Database for 10:04–13:04 local shows, right
+through the outage:
+
+| metric | during the freeze | ceiling |
+|---|---|---|
+| CPU usage | ~2–10%, one bar ~25% at 12:26 | 100% |
+| Disk IOPS (read+write) | flat at ~0, one trivial blip at 12:26 | 3,000 |
+| Disk throughput | flat | 125 MB/s |
+| Memory | 3.74 GB used, large free band, no swap | 5.59 GB |
+
+**Every host resource was idle while the instance could not fork a worker or
+answer a single-row query.** So the active-backend pileup was a *symptom* —
+queries accumulating because nothing could make progress — not the cause. The
+only positive signal is a small **IOwait** component on that one 12:26 CPU bar
+(the sole red bar in three hours), coinciding with the onset.
+
+This is the "idle host freeze" signature, and it is Supabase's to explain, not a
+query to tune. Caveat: these are ~2-minute buckets read off the charts, and a
+stalled host can under-report its own metrics — but the series is continuous
+through the window, so it was collecting.
+
+Host metrics are **dashboard-only** — not exposed via the CLI or MCP. Capture
+them while the window is still in retention.
 
 ## Known non-issues (checked 2026-07-30, don't re-litigate without new evidence)
 
-- Compute: Medium (t4g.medium) is generously sized on RAM/disk — though see the
-  2-vCPU oversubscription question above before calling CPU a non-issue.
+- Compute: Medium (t4g.medium) is generously sized. Re-confirmed 2026-07-31 with
+  host metrics captured *during* an outage: CPU, IOPS, disk throughput and
+  memory were all idle while the database was unreachable. Capacity is not the
+  problem — stop proposing an upgrade as the fix.
 - Replication slots healthy (0 lag); WAL at the default 1 GB ceiling; vacuum
   current; no bloat; connections ~54/120.
 - The `supabase inspect db outliers` view only sees the `postgres` role's
