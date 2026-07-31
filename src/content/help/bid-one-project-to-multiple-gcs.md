@@ -31,3 +31,4 @@ Each GC's document contains **only that GC's versions and pricing**, headed with
 
 - A version left on **Use bid default** still generates — grouped under the bid's own GC.
 - Single-GC bids are unaffected: with no overrides there's no Documents by GC box and everything works as before.
+- Outside the bundle, the single letter always follows the **active Version chip**: switch the Version and the letterhead, amount, and fixtures all switch together. When the letter is headed for someone other than the bid's own GC, a *· for {{chip:blue|GC name}}* tag appears next to **Combined document** so the mismatch with the Customer block up top explains itself.
