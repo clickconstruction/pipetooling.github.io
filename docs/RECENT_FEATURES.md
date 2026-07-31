@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-31 (v2.1179)
+last_updated: 2026-07-31 (v2.1180)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1180)
+
+### Edit Job: collapsed Customer header shows the GC/Builder line (2026-07-31)
+Follow-up to the v2.1175–v2.1178 GC train. The collapsed **Customer** section header in [`JobFormCustomerSection.tsx`](../src/components/jobs/JobFormCustomerSection.tsx) now stacks a second muted line — hard-hat icon + `GC/Builder: {name}` ("—" when unset, "…" while the customers list is still loading a set id) — so the GC is visible without expanding. Collapsed-only: the expanded body already shows the full picker. The header button's chevron pins to the first line (`alignItems: flex-start` when collapsed). Client-only.
 
 ## Latest Updates (v2.1179)
 

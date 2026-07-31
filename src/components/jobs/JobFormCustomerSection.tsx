@@ -121,7 +121,8 @@ export function JobFormCustomerSection({
           onClick={() => setExpanded((p) => !p)}
           style={{
             display: 'flex',
-            alignItems: 'center',
+            // Two text lines when collapsed (Customer + GC/Builder) — keep the chevron on the first line.
+            alignItems: expanded ? 'center' : 'flex-start',
             gap: '0.25rem',
             padding: 0,
             border: 'none',
@@ -148,28 +149,47 @@ export function JobFormCustomerSection({
           >
             {expanded ? '▼' : '▶'}
           </span>
-          <span style={{ display: 'inline-flex', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem', minWidth: 0 }}>
-            Customer: {customerName.trim() || customerEmail.trim() || customerPhone.trim() ? (customerName.trim() || '—') : '—'}
-            {(() => {
-              const showFormNotInCustomers =
-                !!(customerName.trim() || customerEmail.trim() || customerPhone.trim()) &&
-                !customerId &&
-                !customerListImpliesLinkedRow(customers, masterForFormCustomer, customerName)
-              return showFormNotInCustomers ? (
-                <span
-                  style={{
-                    padding: '0.15rem 0.4rem',
-                    fontSize: '0.75rem',
-                    fontWeight: 500,
-                    background: 'var(--bg-amber-100)',
-                    color: 'var(--text-amber-800)',
-                    borderRadius: 4,
-                  }}
-                >
-                  Not in Customers
-                </span>
-              ) : null
-            })()}
+          <span style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
+            <span style={{ display: 'inline-flex', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem', minWidth: 0 }}>
+              Customer: {customerName.trim() || customerEmail.trim() || customerPhone.trim() ? (customerName.trim() || '—') : '—'}
+              {(() => {
+                const showFormNotInCustomers =
+                  !!(customerName.trim() || customerEmail.trim() || customerPhone.trim()) &&
+                  !customerId &&
+                  !customerListImpliesLinkedRow(customers, masterForFormCustomer, customerName)
+                return showFormNotInCustomers ? (
+                  <span
+                    style={{
+                      padding: '0.15rem 0.4rem',
+                      fontSize: '0.75rem',
+                      fontWeight: 500,
+                      background: 'var(--bg-amber-100)',
+                      color: 'var(--text-amber-800)',
+                      borderRadius: 4,
+                    }}
+                  >
+                    Not in Customers
+                  </span>
+                ) : null
+              })()}
+            </span>
+            {/* Collapsed-only GC line — the expanded body shows the full picker instead. */}
+            {!expanded && (
+              <span
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.3rem',
+                  fontSize: '0.8125rem',
+                  fontWeight: 400,
+                  color: 'var(--text-muted)',
+                  minWidth: 0,
+                }}
+              >
+                <GcHardHatIcon size={12} style={{ flexShrink: 0 }} />
+                GC/Builder: {(selectedGc?.name ?? '').trim() || (gcCustomerId ? '…' : '—')}
+              </span>
+            )}
           </span>
         </button>
         {expanded && (
