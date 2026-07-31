@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-30 (v2.1149)
+last_updated: 2026-07-30 (v2.1150)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1150)
+
+### ① Line Items: tighter count/price columns on mobile (2026-07-30)
+[`JobFormFixturesSection.tsx`](../src/components/jobs/JobFormFixturesSection.tsx). Follow-up to v2.1149 after a phone screenshot showed the name field crushed to two lines: count column 6rem → 4.5rem (input 4rem → 3rem, horizontal padding 0.625rem → 0.25rem), price column drops its trailing 0.5rem and its cell paddings shrink to 0.25rem — the × / $ groups now hug the right edge and the reclaimed ~3rem goes to the name column. Verified at a 390px viewport via the Playwright harness. Client-only.
 
 ## Latest Updates (v2.1149)
 

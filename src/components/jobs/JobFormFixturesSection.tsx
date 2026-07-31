@@ -143,8 +143,8 @@ export function JobFormFixturesSection({
                   isn't spent labeling what is usually a single line. */}
               <colgroup>
                 <col />
-                <col style={{ width: '6rem' }} />
-                <col style={{ width: 'calc(6.2rem + 4px + 1.75rem + 0.5rem)' }} />
+                <col style={{ width: '4.5rem' }} />
+                <col style={{ width: 'calc(6.2rem + 4px + 1.75rem)' }} />
               </colgroup>
               <tbody>
                 {fixtures.map((row, idx) => {
@@ -276,8 +276,8 @@ export function JobFormFixturesSection({
                           style={{
                             paddingTop: '0.625rem',
                             paddingBottom: '0.35rem',
-                            paddingLeft: '0.5rem',
-                            paddingRight: '0.625rem',
+                            paddingLeft: '0.25rem',
+                            paddingRight: '0.25rem',
                             textAlign: 'right',
                             whiteSpace: 'nowrap',
                             verticalAlign: 'top',
@@ -293,10 +293,10 @@ export function JobFormFixturesSection({
                               aria-label="Count"
                               onChange={(e) => updateFixtureRow(row.id, { count: Math.max(1, Number(e.target.value) || 1) })}
                               style={{
-                                width: '4rem',
+                                width: '3rem',
                                 maxWidth: '100%',
                                 boxSizing: 'border-box',
-                                padding: '0.375rem 0.625rem',
+                                padding: '0.375rem 0.25rem',
                                 border: '1px solid var(--border-strong)',
                                 borderRadius: 6,
                                 fontSize: '0.875rem',
@@ -310,7 +310,7 @@ export function JobFormFixturesSection({
                             paddingTop: '0.625rem',
                             paddingRight: '0.375rem',
                             paddingBottom: '0.35rem',
-                            paddingLeft: '0.625rem',
+                            paddingLeft: '0.25rem',
                             verticalAlign: 'top',
                           }}
                         >
