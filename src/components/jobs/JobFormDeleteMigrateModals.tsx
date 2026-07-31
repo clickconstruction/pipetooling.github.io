@@ -20,6 +20,7 @@ type JobFormDeleteMigrateModalsProps = {
   editJobSubLaborData: { count: number; total: number } | null
   confirmDeleteJob: () => Promise<void>
   migrateJobLedgerCostsAndDelete: (fromId: string, toId: string) => Promise<boolean>
+  migrateJobLedgerCostsToBidAndDelete: (fromId: string, toBidId: string) => Promise<boolean>
   nestedOverlayZIndex: number
   migrateOverlayZIndex: number
 }
@@ -51,6 +52,7 @@ export function JobFormDeleteMigrateModals({
   editJobSubLaborData,
   confirmDeleteJob,
   migrateJobLedgerCostsAndDelete,
+  migrateJobLedgerCostsToBidAndDelete,
   nestedOverlayZIndex,
   migrateOverlayZIndex,
 }: JobFormDeleteMigrateModalsProps) {
@@ -67,7 +69,25 @@ export function JobFormDeleteMigrateModals({
     migrateTargetPreviewLoading,
     migrateTargetPreview,
     migratingJob,
+    migrateTargetKind,
+    setMigrateTargetKind,
+    migrateBidSearch,
+    setMigrateBidSearch,
+    migrateBidCandidates,
+    migrateBidSearchLoading,
+    migrateTargetBidId,
+    setMigrateTargetBidId,
+    migrateBidDryRun,
+    migrateBidDryRunLoading,
   } = migrate
+
+  const targetingBid = migrateTargetKind === 'bid'
+  const confirmDisabled = migratingJob || (targetingBid ? !migrateTargetBidId : !migrateTargetJobId)
+  // Only rows the RPC reported as non-zero are worth showing; a wall of "0"s
+  // buries the ones that matter.
+  const dryRunDropped = Object.entries(migrateBidDryRun?.dropped ?? {}).filter(([, n]) => Number(n) > 0)
+  const dryRunMoved = Object.entries(migrateBidDryRun?.moved ?? {}).filter(([, n]) => Number(n) > 0)
+  const prettyCountKey = (k: string) => k.replace(/_/g, ' ')
 
   return (
     <>
@@ -145,9 +165,9 @@ export function JobFormDeleteMigrateModals({
                     ) : null}
                   </ul>
                   <p style={{ margin: 0, color: 'var(--text-muted)' }}>
-                    To delete this job you must first reassign these to another job — otherwise card
-                    charges &amp; supply-invoice splits would be unlinked and tally parts &amp; materials
-                    removed along with it.
+                    To delete this job you must first reassign these to another job — or to a bid, if the
+                    work really belonged to one. Otherwise card charges &amp; supply-invoice splits would be
+                    unlinked and tally parts &amp; materials removed along with it.
                   </p>
                 </div>
               ) : null}
@@ -291,28 +311,96 @@ export function JobFormDeleteMigrateModals({
             >
               Migrate costs and delete this job
             </h2>
-            <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: 'var(--text-700)', lineHeight: 1.5 }}>
-              Move labor, parts, materials, Specific Work, and related rows to another job, add this job’s{' '}
-              <strong>Job total (revenue)</strong> to the target’s total, then remove{' '}
-              <strong>HCP {effectiveJobLedgerNumber(editing.hcp_number, editing.click_number) || '—'}</strong> —{' '}
-              <strong>{(editing.job_name ?? '').trim() || '—'}</strong>. <strong>Moving the costs cannot be
-              reversed.</strong>
-            </p>
-            <p style={{ margin: '0 0 1rem', fontSize: '0.8125rem', color: 'var(--text-amber-800)', lineHeight: 1.45 }}>
-              This job’s own invoices and recorded payments are deleted with it — only costs, labor, and revenue
-              move to the target. A dev can restore the deleted job and those invoices/payments for 90 days
-              (<strong>Settings → Data &amp; migration → Recently deleted</strong>), but anything moved to the target
-              stays there.
-            </p>
+            {targetingBid ? (
+              <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: 'var(--text-700)', lineHeight: 1.5 }}>
+                Move labor, parts, materials and field reports onto a bid, then remove{' '}
+                <strong>HCP {effectiveJobLedgerNumber(editing.hcp_number, editing.click_number) || '—'}</strong> —{' '}
+                <strong>{(editing.job_name ?? '').trim() || '—'}</strong>. <strong>Moving the costs cannot be
+                reversed.</strong>
+              </p>
+            ) : (
+              <>
+                <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: 'var(--text-700)', lineHeight: 1.5 }}>
+                  Move labor, parts, materials, Specific Work, and related rows to another job, add this job’s{' '}
+                  <strong>Job total (revenue)</strong> to the target’s total, then remove{' '}
+                  <strong>HCP {effectiveJobLedgerNumber(editing.hcp_number, editing.click_number) || '—'}</strong> —{' '}
+                  <strong>{(editing.job_name ?? '').trim() || '—'}</strong>. <strong>Moving the costs cannot be
+                  reversed.</strong>
+                </p>
+                <p style={{ margin: '0 0 1rem', fontSize: '0.8125rem', color: 'var(--text-amber-800)', lineHeight: 1.45 }}>
+                  This job’s own invoices and recorded payments are deleted with it — only costs, labor, and revenue
+                  move to the target. A dev can restore the deleted job and those invoices/payments for 90 days
+                  (<strong>Settings → Data &amp; migration → Recently deleted</strong>), but anything moved to the target
+                  stays there.
+                </p>
+              </>
+            )}
             {editJobSubLaborData != null && editJobSubLaborData.count > 0 ? (
               <p style={{ margin: '0 0 1rem', fontSize: '0.8125rem', color: 'var(--text-amber-800)', lineHeight: 1.45 }}>
                 Subcontractor labor on this HCP is tracked separately from this billing job; it is not changed by
                 migrate-delete. Update People Labor if the HCP should follow the target job.
               </p>
             ) : null}
+            <div role="group" aria-label="Move costs to" style={{ display: 'flex', gap: 6, marginBottom: 10 }}>
+              {([
+                { kind: 'job' as const, label: 'Another job' },
+                { kind: 'bid' as const, label: 'A bid' },
+              ]).map(({ kind, label }) => {
+                const active = migrateTargetKind === kind
+                return (
+                  <button
+                    key={kind}
+                    type="button"
+                    aria-pressed={active}
+                    disabled={migratingJob}
+                    onClick={() => setMigrateTargetKind(kind)}
+                    style={{
+                      flex: 1,
+                      padding: '0.4rem 0.65rem',
+                      borderRadius: 6,
+                      border: `1px solid ${active ? '#2563eb' : 'var(--border-strong)'}`,
+                      background: active ? 'var(--bg-blue-tint)' : 'var(--surface)',
+                      color: active ? 'var(--text-link)' : 'var(--text-700)',
+                      fontWeight: active ? 600 : 400,
+                      fontSize: '0.8125rem',
+                      cursor: migratingJob ? 'not-allowed' : 'pointer',
+                    }}
+                  >
+                    {label}
+                  </button>
+                )
+              })}
+            </div>
+            {targetingBid ? (
+              <p style={{ margin: '0 0 0.85rem', fontSize: '0.8125rem', color: 'var(--text-amber-800)', lineHeight: 1.45 }}>
+                Use this when the time and spending really belonged to a bid, not a job. Costs, team labor and
+                field reports move to the bid. <strong>This job’s revenue does not</strong> — a bid has no revenue
+                total to add it to. Anything with no place on a bid is listed below before you confirm.
+              </p>
+            ) : null}
             <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-700)', marginBottom: 6 }}>
-              Target job
+              {targetingBid ? 'Target bid' : 'Target job'}
             </label>
+            {targetingBid ? (
+              <input
+                type="search"
+                value={migrateBidSearch}
+                onChange={(e) => {
+                  setMigrateBidSearch(e.target.value)
+                  setMigrateTargetBidId(null)
+                }}
+                placeholder="Search bid number, project, or address (2+ characters)"
+                disabled={migratingJob}
+                style={{
+                  width: '100%',
+                  padding: '0.5rem 0.65rem',
+                  borderRadius: 6,
+                  border: '1px solid var(--border-strong)',
+                  fontSize: '0.875rem',
+                  marginBottom: 8,
+                }}
+              />
+            ) : (
             <input
               type="search"
               value={migrateTargetSearch}
@@ -331,12 +419,49 @@ export function JobFormDeleteMigrateModals({
                 marginBottom: 8,
               }}
             />
-            {migrateTargetSearchLoading ? (
+            )}
+            {targetingBid && migrateBidSearchLoading ? (
               <p style={{ margin: '0 0 0.75rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>Searching…</p>
             ) : null}
-            {migrateTargetSearch.trim().length >= 2 && migrateTargetCandidates.length === 0 && !migrateTargetSearchLoading ? (
+            {targetingBid && migrateBidSearch.trim().length >= 2 && migrateBidCandidates.length === 0 && !migrateBidSearchLoading ? (
+              <p style={{ margin: '0 0 0.75rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>No bids match.</p>
+            ) : null}
+            {targetingBid ? (
+              <ul style={{ listStyle: 'none', margin: '0 0 1rem', padding: 0, maxHeight: 200, overflow: 'auto', border: '1px solid var(--border)', borderRadius: 6 }}>
+                {migrateBidCandidates.map((b) => (
+                  <li key={b.id}>
+                    <button
+                      type="button"
+                      disabled={migratingJob}
+                      onClick={() => setMigrateTargetBidId(b.id)}
+                      style={{
+                        width: '100%',
+                        textAlign: 'left',
+                        padding: '0.5rem 0.65rem',
+                        border: 'none',
+                        borderBottom: '1px solid var(--border)',
+                        background: migrateTargetBidId === b.id ? 'var(--bg-blue-tint)' : 'var(--surface)',
+                        cursor: migratingJob ? 'not-allowed' : 'pointer',
+                        fontSize: '0.8125rem',
+                      }}
+                    >
+                      <strong>{(b.bid_number ?? '').trim() || '—'}</strong> — {(b.project_name ?? '').trim() || '—'}
+                      <div style={{ color: 'var(--text-muted)', fontWeight: 400 }}>
+                        {(b.customer_name ?? '').trim() || '—'}
+                        {(b.address ?? '').trim() ? ` · ${b.address}` : ''}
+                      </div>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+            {!targetingBid && migrateTargetSearchLoading ? (
+              <p style={{ margin: '0 0 0.75rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>Searching…</p>
+            ) : null}
+            {!targetingBid && migrateTargetSearch.trim().length >= 2 && migrateTargetCandidates.length === 0 && !migrateTargetSearchLoading ? (
               <p style={{ margin: '0 0 0.75rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>No jobs match.</p>
             ) : null}
+            {!targetingBid ? (
             <ul
               style={{
                 listStyle: 'none',
@@ -371,6 +496,65 @@ export function JobFormDeleteMigrateModals({
                 </li>
               ))}
             </ul>
+            ) : null}
+            {targetingBid ? (
+              // The RPC's own dry run: it performs the migration, reports it and
+              // rolls back, so these counts are exactly what Confirm will do.
+              <div style={{ marginBottom: '1rem' }}>
+                <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-strong)', marginBottom: 8 }}>
+                  What moves to the bid
+                </div>
+                {!migrateTargetBidId ? (
+                  <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-muted)' }}>Pick a bid to preview.</p>
+                ) : migrateBidDryRunLoading ? (
+                  <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-muted)' }}>Checking…</p>
+                ) : !migrateBidDryRun?.ok ? (
+                  <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-red-700)' }}>
+                    {migrateBidDryRun?.error?.trim() || 'Could not preview this move.'}
+                  </p>
+                ) : (
+                  <>
+                    <ul style={{ margin: '0 0 0.75rem', paddingLeft: '1.1rem', fontSize: '0.8125rem', color: 'var(--text-700)' }}>
+                      {dryRunMoved.length === 0 ? (
+                        <li style={{ color: 'var(--text-muted)' }}>Nothing to move.</li>
+                      ) : (
+                        dryRunMoved.map(([k, n]) => (
+                          <li key={k}>
+                            {prettyCountKey(k)}: <strong>{String(n)}</strong>
+                          </li>
+                        ))
+                      )}
+                    </ul>
+                    <div
+                      style={{
+                        padding: '0.65rem 0.75rem',
+                        background: 'var(--bg-amber-tint)',
+                        border: '1px solid var(--border-amber-soft)',
+                        borderRadius: 6,
+                      }}
+                    >
+                      <p style={{ margin: '0 0 0.4rem', fontWeight: 600, color: 'var(--text-amber-800)', fontSize: '0.8125rem' }}>
+                        Permanently deleted with the job
+                      </p>
+                      <ul style={{ margin: '0 0 0.4rem', paddingLeft: '1.1rem', fontSize: '0.8125rem', color: 'var(--text-700)' }}>
+                        <li>
+                          Job total (revenue): <strong>${formatCurrency(Number(migrateBidDryRun.revenue_dropped ?? 0))}</strong>
+                        </li>
+                        {dryRunDropped.map(([k, n]) => (
+                          <li key={k}>
+                            {prettyCountKey(k)}: <strong>{String(n)}</strong>
+                          </li>
+                        ))}
+                      </ul>
+                      <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+                        These have no place on a bid. A dev can restore the whole job for 90 days from
+                        Settings → Data &amp; migration → Recently deleted, but anything moved to the bid stays there.
+                      </p>
+                    </div>
+                  </>
+                )}
+              </div>
+            ) : (
             <div style={{ marginBottom: '1rem' }}>
               <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-strong)', marginBottom: 8 }}>Summary</div>
               <table style={{ width: '100%', fontSize: '0.8125rem', borderCollapse: 'collapse' }}>
@@ -418,6 +602,7 @@ export function JobFormDeleteMigrateModals({
                 </tbody>
               </table>
             </div>
+            )}
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
               <button
                 type="button"
@@ -439,23 +624,29 @@ export function JobFormDeleteMigrateModals({
               </button>
               <button
                 type="button"
-                disabled={migratingJob || !migrateTargetJobId}
+                disabled={confirmDisabled}
                 onClick={() => {
-                  if (!editing?.id || !migrateTargetJobId) return
+                  if (!editing?.id) return
+                  if (targetingBid) {
+                    if (!migrateTargetBidId) return
+                    void migrateJobLedgerCostsToBidAndDelete(editing.id, migrateTargetBidId)
+                    return
+                  }
+                  if (!migrateTargetJobId) return
                   void migrateJobLedgerCostsAndDelete(editing.id, migrateTargetJobId)
                 }}
                 style={{
                   padding: '0.5rem 1rem',
-                  background: migratingJob || !migrateTargetJobId ? '#9ca3af' : '#b91c1c',
+                  background: confirmDisabled ? '#9ca3af' : '#b91c1c',
                   color: 'white',
                   border: 'none',
                   borderRadius: 6,
-                  cursor: migratingJob || !migrateTargetJobId ? 'not-allowed' : 'pointer',
+                  cursor: confirmDisabled ? 'not-allowed' : 'pointer',
                   fontSize: '0.875rem',
                   fontWeight: 500,
                 }}
               >
-                {migratingJob ? 'Working…' : 'Confirm migrate and delete'}
+                {migratingJob ? 'Working…' : targetingBid ? 'Confirm move to bid and delete' : 'Confirm migrate and delete'}
               </button>
             </div>
           </div>

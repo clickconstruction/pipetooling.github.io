@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-31 (v2.1165)
+last_updated: 2026-07-31 (v2.1166)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1166)
+
+### Edit Job → migrate costs: a Bid can now be the target (2026-07-31)
+The client half of v2.1165. [`JobFormDeleteMigrateModals.tsx`](../src/components/jobs/JobFormDeleteMigrateModals.tsx) gains an **Another job / A bid** toggle above the target search; picking Bid swaps the picker to `search_bids_for_clock` (the same RPC Clock-in uses — no new search built) and replaces the Source/Target summary table with the RPC's own **dry-run** report. [`useJobMigrate.ts`](../src/components/jobs/useJobMigrate.ts) adds the bid-target state, a debounced bid search, and a dry-run effect that calls `migrate_job_ledger_costs_to_bid_and_delete(..., p_dry_run => true)` whenever a bid is selected — the preview is the real migration rolled back, so the counts shown are exactly what Confirm does, with no second estimate to drift. [`JobFormModal.tsx`](../src/components/jobs/JobFormModal.tsx) adds the `migrateJobLedgerCostsToBidAndDelete` handler alongside the untouched job→job one. The dry-run panel lists **what moves** (non-zero rows only) and, in an amber box, **what is permanently deleted with the job** — the job total (revenue) first, since a bid has no revenue column to receive it, then schedule blocks / inspections / fixtures / thread notes / status events / team members. Zero-count rows are filtered out so the ones that matter are not buried. Modal copy is now target-aware, and the delete-confirm gate mentions reassigning to a bid. `migrate_job_ledger_costs_to_bid_and_delete` hand-added to [`database.ts`](../src/types/database.ts) (prod doesn't have the RPC until `db push`, so `gen-types:linked` can't see it yet). Guide `move-a-jobs-costs-onto-a-bid`. Client-only — **requires the v2.1165 migrations to be pushed first**.
 
 ## Latest Updates (v2.1165)
 
