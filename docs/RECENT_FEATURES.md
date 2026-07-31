@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-30 (v2.1140)
+last_updated: 2026-07-30 (v2.1141)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1141)
+
+### Make Invoice: slider thumb apex centered on its boundary (2026-07-30)
+[`JobFormBreakOffSection.tsx`](../src/components/jobs/JobFormBreakOffSection.tsx) — the thumb wrapper carried a `padding: 6px 10px; margin: -6px -10px` hit-area hack inherited from the pre-v2.1137 slider. On an absolutely-positioned box the negative margin shifts the whole element AFTER `translateX(-50%)` centering, parking the triangle's apex ~10px left of the allocation edge (its right side read as the pointer). Fix: drop the negative margin — symmetric padding alone keeps the large grab target centered. DOM-verified: apex at 85.00% of track width with `aria-valuenow` 85. Client-only.
 
 ## Latest Updates (v2.1140)
 
