@@ -5,7 +5,7 @@ file: MIGRATIONS.md
 type: Reference/Changelog
 purpose: Complete database migration history organized by date and category
 audience: Developers, Database Administrators, AI Agents
-last_updated: 2026-07-30
+last_updated: 2026-07-31
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate to Advanced
 
@@ -105,6 +105,12 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 ### July 2026
 
 #### July 31, 2026
+
+**`20260731192514_fix_migrate_to_bid_safeupdate_delete.sql`** _(apply via `supabase db push` after the PR merges; the feature is fully broken in prod until this lands, so push promptly)_
+- **Purpose**: fix `migrate_job_ledger_costs_to_bid_and_delete` (v2.1173) — every call, dry-run preview included, failed with **"DELETE requires a WHERE clause"**: `pg_safeupdate` is loaded on the PostgREST path and rejected the temp-table clear `DELETE FROM _migrated_sessions;`. Full re-create of the function, byte-identical to `20260731180000` except `DELETE FROM _migrated_sessions WHERE true;` (the same always-true-predicate idiom as the April 2026 `dev_reset_estimates` fix). Validation missed it because safeupdate is not loaded on direct DB connections.
+- **Security**: unchanged — same `SECURITY DEFINER`, `SET search_path = public`, authority checks and grants restated verbatim.
+- **Ordering**: independent of the client (the modal already calls the RPC; it just starts succeeding).
+- **Category**: Bug-fix RPC
 
 **`20260731170000_bid_cost_mirror_tables.sql`** _(apply via `supabase db push` after the file is on `main`; purely additive and nothing reads it yet — either order is safe)_
 - **Purpose**: bid-side mirrors of the four job cost tables (v2.1165), so a job's real costs can be reassigned to a **bid** instead of another job. `bids_tally_parts` ← `jobs_tally_parts`, `bids_materials` ← `jobs_ledger_materials`, `supply_house_invoice_bid_allocations` ← `supply_house_invoice_job_allocations`, `mercury_transaction_bid_allocations` ← `mercury_transaction_job_allocations`. Each carries `migrated_from_job_id uuid` for provenance — **deliberately no FK**, because the source job is deleted in the same transaction that moves its costs. Team labor needed no table: `clock_sessions.bid_id` (with the `job_or_bid_not_both` CHECK) and `people_crew_bids` already exist.
