@@ -7,7 +7,7 @@
  */
 import { describe, expect, it } from 'vitest'
 import { fireEvent, screen } from '@testing-library/react'
-import { JobFormSegmentsBar } from './JobFormSegmentsBar'
+import { InvoicesSectionHeading, JobFormSegmentsBar } from './JobFormSegmentsBar'
 import type { FixtureRow } from '../../lib/jobs/jobFormTypes'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
 
@@ -26,14 +26,14 @@ function renderBar() {
       onToggleSegment={() => {}}
       onCreateInvoiceFromSelection={() => {}}
       creatingFromSelection={false}
-      jobLabel="Job 742"
     />,
   )
 }
 
-describe('JobFormSegmentsBar flow explainer', () => {
+describe('InvoicesSectionHeading flow explainer (moved beside the ② heading, v2.1146)', () => {
   it('is collapsed by default and expands with the sample chips', () => {
-    renderBar()
+    renderWithProviders(<InvoicesSectionHeading sampleDollars={400} jobLabel="Job 742" />)
+    expect(screen.getByText('② Invoices')).toBeTruthy()
     expect(screen.queryByText(/green card/)).toBeNull()
     fireEvent.click(screen.getByText(/How invoices and jobs move/))
     expect(screen.getByText(/green card/)).toBeTruthy()
@@ -44,11 +44,16 @@ describe('JobFormSegmentsBar flow explainer', () => {
   })
 
   it('collapses again on a second click', () => {
-    renderBar()
+    renderWithProviders(<InvoicesSectionHeading sampleDollars={400} jobLabel="Job 742" />)
     const toggle = screen.getByText(/How invoices and jobs move/)
     fireEvent.click(toggle)
     fireEvent.click(toggle)
     expect(screen.queryByText(/green card/)).toBeNull()
+  })
+
+  it('the bar itself no longer renders the explainer trigger', () => {
+    renderBar()
+    expect(screen.queryByText(/How invoices and jobs move/)).toBeNull()
   })
 })
 
@@ -74,7 +79,6 @@ describe('JobFormSegmentsBar dollar-invoice coverage (v2.1132)', () => {
         onToggleSegment={() => {}}
         onCreateInvoiceFromSelection={() => {}}
         creatingFromSelection={false}
-        jobLabel="Job 742"
         coverage={coverage}
       />,
     )
