@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-31 (v2.1180)
+last_updated: 2026-07-31 (v2.1181)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1181)
+
+### GC Review: Billed Awaiting Payment by General Contractor, with per-GC statements (2026-07-31)
+New **GC Review** button (hard-hat icon) left of Accounts Receivable in the Stages Billed Awaiting Payment header. New pure kernel [`gcReviewRollup.ts`](../src/lib/gcReviewRollup.ts) (6 tests) groups the SAME StageRows the section renders by `job.gcCustomer` — per-GC subtotal, distinct-job count, oldest age — with a **No GC set** bucket last so the grand total reconciles with the section header by construction. Dates use `printBilledRowReferenceDate` (actual billed date, "(est.)" fallback) matching the existing Billed print report, NOT the header aging chips (est. bill date). [`JobsGcReviewModal.tsx`](../src/components/jobs/JobsGcReviewModal.tsx) (same z-60 overlay pattern as the by-Job-Name modal): rows show customer, job, billed-on, days, remaining; **Include Collections** toggle (off by default so numbers match the section; rows marked with a red chip). **Print** per GC row and **Print all** via new builder [`gcStatementReport.ts`](../src/lib/jobsDocuments/gcStatementReport.ts) (3 tests, `billedAwaitingPaymentReport` mold — single group titles "GC statement — {name}"). Guide `track-a-general-contractor-on-a-job` gains a GC Review section. Client-only.
 
 ## Latest Updates (v2.1180)
 
