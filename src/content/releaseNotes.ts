@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1161',
+    date: '2026-07-31',
+    title: 'Set prices readable in dark mode',
+    kind: 'fix',
+    highlights: [
+      'On Bids \u2192 Pricing, custom/set Sale Prices now show as amber-on-amber in dark mode instead of white-on-cream.',
+    ],
+  },
+  {
     version: 'v2.1160',
     date: '2026-07-30',
     title: 'Job column header back to the left',
