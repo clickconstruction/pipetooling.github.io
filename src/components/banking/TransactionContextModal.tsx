@@ -175,7 +175,7 @@ export function TransactionContextModal({ open, onClose, anchor, nicknameByAccou
     )
     if (isAnchor) {
       return (
-        <tr key={r.id} aria-current="true" style={{ background: '#fef9c3', borderLeft: '3px solid #ca8a04' }}>
+        <tr key={r.id} aria-current="true" style={{ background: 'var(--bg-amber-tint)', borderLeft: '3px solid #ca8a04' }}>
           {cells}
         </tr>
       )
@@ -188,7 +188,7 @@ export function TransactionContextModal({ open, onClose, anchor, nicknameByAccou
           onClose()
         }}
         style={{ cursor: 'pointer' }}
-        onMouseEnter={(e) => (e.currentTarget.style.background = '#f8fafc')}
+        onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--bg-slate-tint)')}
         onMouseLeave={(e) => (e.currentTarget.style.background = '')}
       >
         {cells}

@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1162',
+    date: '2026-07-31',
+    title: 'More dark-mode readability fixes',
+    kind: 'fix',
+    highlights: [
+      'Highlighted rows on the crew Jobs table and the banking transaction-context view no longer show unreadable light-on-cream text in dark mode.',
+      'The Quickfill schedule-conflicts banner is readable in dark mode.',
+      'The Bid Board estimating-health meters dim correctly in dark mode and their position markers stay visible.',
+    ],
+  },
+  {
     version: 'v2.1161',
     date: '2026-07-31',
     title: 'Set prices readable in dark mode',

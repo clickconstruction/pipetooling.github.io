@@ -891,7 +891,7 @@ export function CrewJobsBlock({
                       borderBottom: '1px solid var(--border)',
                       ...(r.jobId === teamLaborHighlightJobId
                         ? {
-                            backgroundColor: '#fef9c3',
+                            backgroundColor: 'var(--bg-amber-tint)',
                             boxShadow: 'inset 4px 0 0 0 #ca8a04',
                             transition: 'background-color 0.35s ease, box-shadow 0.35s ease',
                           }

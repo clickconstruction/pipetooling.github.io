@@ -28,7 +28,7 @@ function BidBoardEstimatingHealthWonPctSliderRow({ row }: { row: BidBoardStaffOu
             overflow: 'visible',
             opacity: pct === null ? 0.45 : 1,
             background:
-              'linear-gradient(90deg, var(--bg-red-100) 0%, var(--bg-red-100) 20%, #fef9c3 20%, #fef9c3 40%, var(--bg-green-100) 40%, var(--bg-green-100) 60%, #fef9c3 60%, #fef9c3 80%, var(--bg-red-100) 80%, var(--bg-red-100) 100%)',
+              'linear-gradient(90deg, var(--bg-red-100) 0%, var(--bg-red-100) 20%, var(--bg-amber-100) 20%, var(--bg-amber-100) 40%, var(--bg-green-100) 40%, var(--bg-green-100) 60%, var(--bg-amber-100) 60%, var(--bg-amber-100) 80%, var(--bg-red-100) 80%, var(--bg-red-100) 100%)',
           }}
         >
           {pct !== null ? (
@@ -40,7 +40,7 @@ function BidBoardEstimatingHealthWonPctSliderRow({ row }: { row: BidBoardStaffOu
                 transform: 'translate(-50%, -50%)',
                 width: 5,
                 height: 18,
-                background: '#111827',
+                background: 'var(--text-strong)',
                 borderRadius: 2,
                 boxShadow: '0 1px 2px rgba(0,0,0,0.12)',
               }}
@@ -93,7 +93,7 @@ export function BidBoardEstimatingHealthWonPctSliders({ stats }: { stats: BidBoa
               padding: '0.375rem 0.75rem',
               background: 'var(--bg-subtle)',
               borderBottom: '1px solid var(--border)',
-              borderTop: stats.estimators.length > 0 ? '1px solid #e5e7eb' : undefined,
+              borderTop: stats.estimators.length > 0 ? '1px solid var(--border)' : undefined,
               fontSize: '0.875rem',
               fontWeight: 600,
             }}

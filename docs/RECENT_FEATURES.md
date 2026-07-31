@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-31 (v2.1161)
+last_updated: 2026-07-31 (v2.1162)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1162)
+
+### Dark-mode readability sweep: remaining hardcoded cream `#fef9c3` surfaces (2026-07-31)
+Follow-up to v2.1161's Bids Pricing fix — the other flagged `#fef9c3` literals move onto theme tokens so text stays readable in dark mode. [`CrewJobsBlock.tsx`](../src/components/CrewJobsBlock.tsx): the team-labor highlighted row's background → `var(--bg-amber-tint)` (the `#ca8a04` inset accent stays, saturated colors stay literal). [`TransactionContextModal.tsx`](../src/components/banking/TransactionContextModal.tsx): the anchor row's cream background → `var(--bg-amber-tint)` (keeps its `#ca8a04` left border), and the row hover `#f8fafc` (near-white in dark mode) → `var(--bg-slate-tint)`. [`quickfillSectionBannerStyle.ts`](../src/lib/quickfillSectionBannerStyle.ts): the banner already used `var(--text-yellow-800)` (light yellow in dark) on the literal cream — background → `var(--bg-yellow-tint)`. [`BidBoardEstimatingHealthSliders.tsx`](../src/components/bids/BidBoardEstimatingHealthSliders.tsx): the Won% meter's cream gradient stops → `var(--bg-amber-100)` (they glared between the dark red/green token stops) and the `#111827` position marker → `var(--text-strong)` (it was invisible on the dark gradient); section divider `#e5e7eb` → `var(--border)`. Verified in a both-theme token harness: light mode pixel-equivalent, dark mode readable. Client-only.
 
 ## Latest Updates (v2.1161)
 
