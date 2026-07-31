@@ -5,7 +5,7 @@ file: docs/E2E_SMOKE.md
 type: Engineering / Testing
 purpose: What the Playwright Tier-1 smoke suite covers, how it authenticates, when it runs, and the rules for extending it (read-only, structural assertions, non-gating).
 audience: Developers, AI Agents
-last_updated: 2026-07-24
+last_updated: 2026-07-31
 ---
 
 ## What this is
@@ -29,6 +29,7 @@ There is no staging environment, so production is the only real render target. T
 3. **Non-gating.** The workflow (`.github/workflows/e2e-smoke.yml`) runs post-deploy, nightly, and on `workflow_dispatch` — it must NOT be added to PR checks until it has proven flake-free for a while.
 4. **Credentials come only from the environment** — `E2E_TEST_EMAIL` / `E2E_TEST_PASSWORD` (GitHub Actions secrets in CI; locally from gitignored `.env.local`, auto-loaded by `playwright.config.ts`, or your shell). Never hardcode them anywhere, including test fixtures.
 5. Deep-link tests exist because of the **handle-gating rule** in [`JOBS_TABS_ARCHITECTURE.md`](./JOBS_TABS_ARCHITECTURE.md) — when adding a new handle-driven deep link, add its cold-load spec here in the same PR.
+6. **Move a button, fix its spec in the same PR.** Because the suite is non-gating it fails silently: v2.1049 (Stages toolbar → ⋯ menu) and v2.1052 ("N Reports" pill → full-screen activity view) each stranded a spec, and the suite stayed red on *every* run for ~110 versions before anyone traced it (fixed in v2.1164). Before merging a PR that renames, relocates, or re-points a surface, grep `e2e/` for its accessible name. A red suite that nobody reads is worse than no suite.
 
 ## Running
 

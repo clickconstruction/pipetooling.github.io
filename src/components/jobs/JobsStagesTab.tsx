@@ -2556,7 +2556,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                 {capableToBillModalOpen && (() => {
                   const rows = buildCapableToBillBreakdownRows(working)
                   return (
-                    <div role="dialog" aria-modal="true" aria-label="Billed Awaiting Payment by Job Name" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60 }}>
+                    <div role="dialog" aria-modal="true" aria-label="Capable of Being Billed — Breakdown" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60 }}>
                       <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, width: 'min(720px, calc(100vw - 2rem))', maxWidth: 720, maxHeight: '80vh', overflow: 'auto' }}>
                         <h2 style={{ margin: '0 0 0.5rem', fontSize: '1.25rem' }}>Capable of Being Billed — Breakdown</h2>
                         <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>

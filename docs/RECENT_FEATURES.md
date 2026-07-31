@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-31 (v2.1163)
+last_updated: 2026-07-31 (v2.1164)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1164)
+
+### E2E Smoke: the two specs that had failed every run since v2.1052 (2026-07-31)
+The nightly/post-deploy suite had been red on **every** run for ~110 versions — 30 passing, the same 2 failing through all 3 retries — because two UI moves shipped without their specs. Neither was an app bug; both locators pointed at surfaces that no longer exist. [`e2e/stages-board.spec.ts`](../e2e/stages-board.spec.ts): v2.1049 collapsed the Stages toolbar into New Job + search + a ⋯ menu, so `button "Total by Name"` is never in the DOM — the spec now clicks `button "Stages tools"` first, then the `menuitem` (it also waits for the board to load before reaching for the toolbar). [`e2e/viewport-smoke.spec.ts`](../e2e/viewport-smoke.spec.ts): v2.1052 repointed the row's "N Reports" pill at the full-screen job activity view (`openJobThreadFullscreen`), which has no report composer — the v2.990 sticky-✕ pin now routes through Job Detail → "Open reports for this job" → "Add additional report", and closes with three Escapes for the three stacked modals. Found while tracing the dialog locator: [`JobsStagesTab.tsx`](../src/components/jobs/JobsStagesTab.tsx) gave the **Capable of Being Billed — Breakdown** dialog a copy-pasted `aria-label="Billed Awaiting Payment by Job Name"` — screen readers announced the wrong modal, and the two dialogs (independent state, both openable) collided in any by-name lookup; it now matches its own heading. Client + test-only.
 
 ## Latest Updates (v2.1163)
 

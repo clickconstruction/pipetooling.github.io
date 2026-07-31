@@ -65,8 +65,11 @@ test('Additional Report modal: ✕ stays reachable at max scroll (v2.990 pin)', 
   await page.goto('/jobs?tab=stages')
   await expect(page.locator('main')).toContainText(/Working \(\d+\)/, { timeout: 20000 })
   // Open any job's Reports modal, then the Additional Report form from it.
-  const reportsBtn = page.getByRole('button', { name: /\d+ Reports?$/ }).first()
-  await reportsBtn.click()
+  // v2.1052 repointed the row's "N Reports" pill at the full-screen job
+  // activity view, so Job Detail is now the route to the Reports modal.
+  await page.getByRole('button', { name: /^Open job detail for / }).first().click()
+  const reportsBtn = page.getByRole('button', { name: 'Open reports for this job' })
+  await reportsBtn.click({ timeout: 30000 })
   const addBtn = page.getByRole('button', { name: /Add additional report/i })
   await addBtn.click()
   const heading = page.getByRole('heading', { name: 'Additional Report' })
@@ -91,7 +94,9 @@ test('Additional Report modal: ✕ stays reachable at max scroll (v2.990 pin)', 
   })
   expect(result.ok, result.why).toBe(true)
   // Close everything (read-only: no save). Escape avoids the ambiguous
-  // two-dialogs-both-named-Close click that flaked the first CI run.
+  // two-dialogs-both-named-Close click that flaked the first CI run — three
+  // presses now, for Additional Report / Reports / Job Detail.
+  await page.keyboard.press('Escape')
   await page.keyboard.press('Escape')
   await page.keyboard.press('Escape')
 })

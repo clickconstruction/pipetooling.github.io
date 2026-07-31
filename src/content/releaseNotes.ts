@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1164',
+    date: '2026-07-31',
+    title: 'Nightly smoke tests are green again',
+    kind: 'fix',
+    highlights: [
+      'The automated check that loads the app after every deploy had been failing since v2.1052 — it was still looking for two buttons that had moved, not finding real problems.',
+      'The Capable of Being Billed breakdown window now announces its own name to screen readers instead of the Total by Name window’s.',
+    ],
+  },
+  {
     version: 'v2.1163',
     date: '2026-07-31',
     title: 'Builder bid map: see where you win and lose',
