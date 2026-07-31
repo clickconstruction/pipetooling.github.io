@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1148',
+    date: '2026-07-30',
+    title: 'Segment labels get a crisp outline',
+    kind: 'fix',
+    highlights: [
+      'White segment names in the \u2461 Invoices strip now carry a thin dark rim, so they stay sharp over the \u201ccovered\u201d stripes.',
+    ],
+  },
+  {
     version: 'v2.1147',
     date: '2026-07-30',
     title: 'Invoices legend is centered',

@@ -313,6 +313,13 @@ export function JobFormSegmentsBar({
                   fontSize: '0.6875rem',
                   fontWeight: 600,
                   color: seg.kind === 'riders' ? 'var(--text-700)' : '#ffffff',
+                  // 1px dark rim around each character (8-direction shadow —
+                  // CSS has no outside text stroke) so white labels stay
+                  // crisp over the coverage hatch. Riders keep dark-on-light.
+                  textShadow:
+                    seg.kind === 'riders'
+                      ? undefined
+                      : '-1px -1px 0 rgba(31,41,55,0.9), 1px -1px 0 rgba(31,41,55,0.9), -1px 1px 0 rgba(31,41,55,0.9), 1px 1px 0 rgba(31,41,55,0.9), -1px 0 0 rgba(31,41,55,0.9), 1px 0 0 rgba(31,41,55,0.9), 0 -1px 0 rgba(31,41,55,0.9), 0 1px 0 rgba(31,41,55,0.9)',
                   whiteSpace: 'nowrap',
                   overflow: 'hidden',
                   textOverflow: 'ellipsis',

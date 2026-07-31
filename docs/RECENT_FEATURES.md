@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-30 (v2.1147)
+last_updated: 2026-07-30 (v2.1148)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1148)
+
+### ② Invoices segment labels: 1px character outline (2026-07-30)
+[`JobFormSegmentsBar.tsx`](../src/components/jobs/JobFormSegmentsBar.tsx). White segment-name labels in the strip get a 1px dark rim per character via an 8-direction `text-shadow` (`rgba(31,41,55,.9)`; CSS has no outside text stroke, and `-webkit-text-stroke` eats into 11px glyphs), keeping them crisp over the v2.1132 coverage hatch. Riders segments (dark text on light fill) are excluded. Chosen over a literal text-stroke after a live A/B on job 523. Client-only.
 
 ## Latest Updates (v2.1147)
 
