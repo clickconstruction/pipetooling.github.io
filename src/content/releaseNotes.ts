@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1167',
+    date: '2026-07-31',
+    title: 'Job Detail no longer closes when you use its pop-up windows',
+    kind: 'fix',
+    highlights: [
+      'In Job Detail, clicking anything inside Reports, the job calendar, Schedule, or the paid-job email window closed the whole Job Detail stack instead of doing what you clicked.',
+      'Reports → "Add additional report" now opens the Additional Report form. It had looked like a dead button.',
+      '"Open in popup" on a report opened from Job Detail now shows the report instead of nothing.',
+    ],
+  },
+  {
     version: 'v2.1166',
     date: '2026-07-31',
     title: 'Put a job’s costs on the bid they belonged to',

@@ -321,11 +321,23 @@ export default function JobReportsModal({
         </div>
       </div>
 
-      <ReportViewModal open={!!viewingReport} report={viewingReport} onClose={() => setViewingReport(null)} viewerRole={userRole} />
+      {/* Both children must stack above THIS modal's overlay, which callers raise
+          (Job Detail opens us at 1100). With their old fixed defaults — 60 and 65
+          — they rendered underneath our opaque backdrop and looked like dead
+          buttons. Mirrors how AdditionalReportModal raises its nested reports
+          list by +5. */}
+      <ReportViewModal
+        open={!!viewingReport}
+        report={viewingReport}
+        onClose={() => setViewingReport(null)}
+        viewerRole={userRole}
+        zIndex={zIndex + 5}
+      />
 
       <AdditionalReportModal
         open={newReportOpen}
         onClose={() => setNewReportOpen(false)}
+        overlayZIndex={zIndex + 10}
         onSaved={() => {
           handleReportAdded()
           setNewReportOpen(false)

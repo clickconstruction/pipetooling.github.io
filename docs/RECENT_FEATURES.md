@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-31 (v2.1166)
+last_updated: 2026-07-31 (v2.1167)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,15 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1167)
+
+### Job Detail's backdrop was swallowing every click in its stacked modals (2026-07-31)
+Reported as "Reports → **Add additional report** does nothing" — the button looked dead, and the whole Job Detail stack vanished instead. Two independent defects, both in [`DetailJobModal.tsx`](../src/components/jobs/DetailJobModal.tsx)'s satellite-modal region.
+
+**(1) Backdrop close-on-any-click.** The root overlay carried a bare `onClick={onClose}`. The `role="dialog"` panel stops propagation, so ordinary Job Detail clicks were safe — but the satellite modals (**JobReportsModal**, **JobCalendarModal**, **ScheduleJobModal**, **PaidJobEmailSendModal**) render their own `position: fixed` overlays as *siblings* of that panel, still inside the backdrop div, and none of them portal out. Every click inside any of them bubbled to the backdrop and called `onClose()`, unmounting Job Detail and every modal stacked on it. The two inline stacked dialogs in the same file (Add link, Add Customer Files link) already defended with `e.stopPropagation()` on their own backdrops, which is why this never surfaced there. Fixed at the source with the standard idiom — `onClick={(e) => e.target === e.currentTarget && onClose()}` — the same guard [`ReportViewModal.tsx`](../src/components/ReportViewModal.tsx) already used; backdrop-click-to-close still works, and all four satellites are fixed in one place.
+
+**(2) Nested report modals rendered underneath.** [`JobReportsModal`](../src/components/JobReportsModal.tsx) takes a `zIndex` prop (Job Detail opens it at **1100**) but passed nothing down to its two children, which sat at their hardcoded defaults — `AdditionalReportModal` at 65, `ReportViewModal` at 60. Opened from Job Detail they mounted *below* the Reports modal's opaque `var(--surface)` backdrop: invisible and unclickable. So even with (1) fixed, the button would still have looked dead. Both are now raised off the parent's own `zIndex` (`+10` and `+5`), mirroring how `AdditionalReportModal` already raises the reports list it opens; `ReportViewModal` gained an optional `zIndex` prop defaulting to 60, so every existing caller — Dashboard opens `JobReportsModal` at the default 55 — keeps its current stacking exactly. Client-only; no migration.
 
 ## Latest Updates (v2.1166)
 

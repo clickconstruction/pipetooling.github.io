@@ -96,7 +96,15 @@ export function makeSupabaseStub() {
         getPublicUrl: () => ({ data: { publicUrl: '' } }),
       }),
     },
-    channel: () => ({ on: () => ({ subscribe: () => ({}) }), subscribe: () => ({}) }),
+    // `.on()` returns the channel itself — real subscriptions chain several
+    // postgres_changes listeners before `.subscribe()` (useJobThreadNotesForModal).
+    channel: () => {
+      const ch: Record<string, unknown> = {}
+      ch.on = () => ch
+      ch.subscribe = () => ch
+      ch.unsubscribe = () => Promise.resolve('ok')
+      return ch
+    },
     removeChannel: () => {},
   }
 }
