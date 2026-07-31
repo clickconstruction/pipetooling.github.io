@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-31 (v2.1174)
+last_updated: 2026-07-31 (v2.1175)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1175)
+
+### GC (General Contractor) on jobs — schema (2026-07-31)
+Part 1 of 3 (schema only; Edit Job picker and Stages display follow). Migration `20260731205835_gc_customer_on_jobs.sql` adds nullable `jobs_ledger.gc_customer_id` (FK `customers`, ON DELETE SET NULL) + partial index — a **second** customer link so office can manage jobs by GC alongside the primary customer, using the same `customers` rows Bids already uses for GC/Builder. Nothing reads it server-side: billing stays keyed to `customer_id` (paying-as-GC is already the per-invoice bill-to override, v2.1084). Same-master invariant mirrors `customer_id`'s (20260630200000): new `jobs_ledger_gc_customer_master_match` backstop trigger, and the customer-master cascade now clears gc links a master change made cross-master. DB-only (`supabase db push` right after merge — the follow-up client PRs' embeds need the column).
 
 ## Latest Updates (v2.1174)
 

@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1175',
+    date: '2026-07-31',
+    title: 'Groundwork for tracking a GC on each job',
+    kind: 'infra',
+    highlights: [
+      'Jobs can now carry a General Contractor link behind the scenes.',
+      'The Edit Job picker and the Stages display for it ship next.',
+    ],
+  },
+  {
     version: 'v2.1174',
     date: '2026-07-31',
     title: 'Create the target bid right from the move-costs window',
