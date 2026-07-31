@@ -4,6 +4,8 @@ import { withSupabaseRetry, formatErrorMessage } from '../utils/errorHandling'
 import { expandTemplate } from '../lib/materialPOUtils'
 import { normalizeMaterialsModel, sumRoughLinesPreTaxWithCount, roughCountMultiplier, type MaterialsModel, type TakeoffStage } from '../lib/bids/bidTakeoffHelpers'
 import { loadTeamLaborDataForBids, type TeamLaborBidRow } from '../utils/teamLabor'
+import { loadBidAssignedCosts } from '../lib/bids/loadBidAssignedCosts'
+import type { BidAssignedCosts } from '../lib/bids/bidAssignedCosts'
 import { pickActiveVersion, deriveActivePricingId, resolveTaggedVersion } from '../lib/bids/pickActiveVersion'
 import { pickDefaultPriceBookTemplateId } from '../lib/bids/pickDefaultPriceBookTemplateId'
 import { fetchLastPriceBookTemplateId, saveLastPriceBookTemplateId } from '../lib/bids/pricingUserPrefs'
@@ -138,6 +140,8 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
 
   // --- Team labor (clocked) used in Pricing cost breakdown ---
   const [teamLaborDataForBids, setTeamLaborDataForBids] = useState<TeamLaborBidRow[]>([])
+  // --- Costs assigned to bids (v2.1165 mirrors), shown on the Bid Costs tab ---
+  const [bidAssignedCosts, setBidAssignedCosts] = useState<Map<string, BidAssignedCosts>>(new Map())
 
   // --- Pricing ---
   // `priceBookVersions` holds the SELECTED BID's Pricings (bid-scoped copies). The shared
@@ -1385,6 +1389,14 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
     loadTeamLaborDataForBids(supabase).then(setTeamLaborDataForBids).catch(() => setTeamLaborDataForBids([]))
   }, [activeTab])
 
+  // Assigned costs are only rendered on Bid Costs, so only load them there.
+  useEffect(() => {
+    if (activeTab !== 'bid-costs') return
+    loadBidAssignedCosts(supabase)
+      .then(setBidAssignedCosts)
+      .catch(() => setBidAssignedCosts(new Map()))
+  }, [activeTab])
+
   useEffect(() => {
     if (!selectedPricingVersionId) {
       setPriceBookEntries([])
@@ -1484,6 +1496,7 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
     pricingOtherRows,
     // team labor
     teamLaborDataForBids,
+    bidAssignedCosts,
     setTeamLaborDataForBids,
     // bid versions (named variants)
     bidVersions,

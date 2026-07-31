@@ -1027,6 +1027,94 @@ export type Database = {
           },
         ]
       }
+      bids_materials: {
+        Row: {
+          amount: number
+          bid_id: string
+          created_at: string | null
+          description: string
+          id: string
+          migrated_from_job_id: string | null
+          sequence_order: number
+        }
+        Insert: {
+          amount?: number
+          bid_id: string
+          created_at?: string | null
+          description?: string
+          id?: string
+          migrated_from_job_id?: string | null
+          sequence_order?: number
+        }
+        Update: {
+          amount?: number
+          bid_id?: string
+          created_at?: string | null
+          description?: string
+          id?: string
+          migrated_from_job_id?: string | null
+          sequence_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bids_materials_bid_id_fkey"
+            columns: ["bid_id"]
+            isOneToOne: false
+            referencedRelation: "bids"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bids_tally_parts: {
+        Row: {
+          bid_id: string
+          created_at: string | null
+          created_by_user_id: string
+          fixture_cost: number | null
+          fixture_name: string
+          id: string
+          migrated_from_job_id: string | null
+          part_id: string | null
+          purchase_order_id: string | null
+          quantity: number
+          sequence_order: number
+        }
+        Insert: {
+          bid_id: string
+          created_at?: string | null
+          created_by_user_id: string
+          fixture_cost?: number | null
+          fixture_name?: string
+          id?: string
+          migrated_from_job_id?: string | null
+          part_id?: string | null
+          purchase_order_id?: string | null
+          quantity?: number
+          sequence_order?: number
+        }
+        Update: {
+          bid_id?: string
+          created_at?: string | null
+          created_by_user_id?: string
+          fixture_cost?: number | null
+          fixture_name?: string
+          id?: string
+          migrated_from_job_id?: string | null
+          part_id?: string | null
+          purchase_order_id?: string | null
+          quantity?: number
+          sequence_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bids_tally_parts_bid_id_fkey"
+            columns: ["bid_id"]
+            isOneToOne: false
+            referencedRelation: "bids"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bids_submission_entries: {
         Row: {
           bid_id: string
@@ -9405,6 +9493,83 @@ export type Database = {
             columns: ["job_id"]
             isOneToOne: false
             referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      supply_house_invoice_bid_allocations: {
+        Row: {
+          bid_id: string
+          invoice_id: string
+          migrated_from_job_id: string | null
+          pct: number
+        }
+        Insert: {
+          bid_id: string
+          invoice_id: string
+          migrated_from_job_id?: string | null
+          pct: number
+        }
+        Update: {
+          bid_id?: string
+          invoice_id?: string
+          migrated_from_job_id?: string | null
+          pct?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "supply_house_invoice_bid_allocations_bid_id_fkey"
+            columns: ["bid_id"]
+            isOneToOne: false
+            referencedRelation: "bids"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supply_house_invoice_bid_allocations_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "supply_house_invoices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mercury_transaction_bid_allocations: {
+        Row: {
+          amount: number
+          bid_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          mercury_transaction_id: string
+          migrated_from_job_id: string | null
+          note: string | null
+        }
+        Insert: {
+          amount: number
+          bid_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          mercury_transaction_id: string
+          migrated_from_job_id?: string | null
+          note?: string | null
+        }
+        Update: {
+          amount?: number
+          bid_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          mercury_transaction_id?: string
+          migrated_from_job_id?: string | null
+          note?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mercury_transaction_bid_allocations_bid_id_fkey"
+            columns: ["bid_id"]
+            isOneToOne: false
+            referencedRelation: "bids"
             referencedColumns: ["id"]
           },
         ]

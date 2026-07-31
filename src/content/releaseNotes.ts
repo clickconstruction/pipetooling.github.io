@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1168',
+    date: '2026-07-31',
+    title: 'Bid Costs now shows what a bid really cost',
+    kind: 'feature',
+    highlights: [
+      'Bids \u2192 Bid Costs splits its cost column into Labor, Parts, Materials and Total real cost.',
+      'Parts and materials moved onto a bid from a job now show up here instead of disappearing.',
+      'Gives you an honest number to compare against next time you price similar work.',
+    ],
+  },
+  {
     version: 'v2.1167',
     date: '2026-07-31',
     title: 'Job Detail no longer closes when you use its pop-up windows',
