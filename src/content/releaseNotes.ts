@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1165',
+    date: '2026-07-31',
+    title: 'Groundwork: put a job’s costs on a bid',
+    kind: 'feature',
+    highlights: [
+      'Behind the scenes, bids can now hold parts, materials and supply-house costs the same way jobs do.',
+      'Nothing changes on screen yet — the button to move a job’s costs onto a bid comes next.',
+    ],
+  },
+  {
     version: 'v2.1164',
     date: '2026-07-31',
     title: 'Nightly smoke tests are green again',

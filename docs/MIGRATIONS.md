@@ -106,6 +106,12 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 #### July 31, 2026
 
+**`20260731170000_bid_cost_mirror_tables.sql`** _(apply via `supabase db push` after the file is on `main`; purely additive and nothing reads it yet — either order is safe)_
+- **Purpose**: bid-side mirrors of the four job cost tables (v2.1165), so a job's real costs can be reassigned to a **bid** instead of another job. `bids_tally_parts` ← `jobs_tally_parts`, `bids_materials` ← `jobs_ledger_materials`, `supply_house_invoice_bid_allocations` ← `supply_house_invoice_job_allocations`, `mercury_transaction_bid_allocations` ← `mercury_transaction_job_allocations`. Each carries `migrated_from_job_id uuid` for provenance — **deliberately no FK**, because the source job is deleted in the same transaction that moves its costs. Team labor needed no table: `clock_sessions.bid_id` (with the `job_or_bid_not_both` CHECK) and `people_crew_bids` already exist.
+- **Security**: RLS enabled on all four. The two row tables follow the bid-child pattern used by `bids_count_rows` (bid roles + bid must exist), with `(select auth.uid())` InitPlan wrapping. The two allocation mirrors match their job counterparts exactly — staff-role only (dev/master/assistant), no per-entity gate — so bid allocations are never stricter than job ones. Ends with **both** `apply_read_only_write_blocks()` and `apply_read_only_stmt_blocks()`.
+- **Ordering**: independent — dormant until the migrate RPC and UI land.
+- **Category**: Feature schema
+
 **`20260731003000_bid_versions_customer_override.sql`** _(apply via `supabase db push` immediately after the PR merges; the v2.1159 client's version query reads the column — old clients select `*` and ignore it)_
 - **Purpose**: multi-GC bids v1 (v2.1159) — nullable `bid_versions.customer_id uuid REFERENCES customers(id) ON DELETE SET NULL`, a per-Version GC/Builder override. Null = use the bid-level GC, so every existing bid is untouched; the cover letter groups included versions by effective GC and generates one document per GC.
 - **Security**: additive column only; no RLS or grant changes (bid_versions policies unchanged).

@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-31 (v2.1164)
+last_updated: 2026-07-31 (v2.1165)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2046,6 +2046,10 @@ when_to_read:
 155. [Customer and Project Management](#customer-and-project-management)
 ---
 
+## Latest Updates (v2.1165)
+
+### Bid cost mirror tables — schema for "assign these job costs to a bid" (2026-07-31)
+Groundwork (dormant; nothing reads it yet) for reassigning a job's real costs to a **bid** instead of another job. Crews sometimes put time and spending against a job when the work was really pre-job bid work, and the only existing escape hatch — Edit Job → "Migrate costs and delete this job" — could only target another job. Migration [`20260731170000_bid_cost_mirror_tables.sql`](../supabase/migrations/20260731170000_bid_cost_mirror_tables.sql) adds four bid-side mirrors of the job cost tables: `bids_tally_parts` (← `jobs_tally_parts`), `bids_materials` (← `jobs_ledger_materials`), `supply_house_invoice_bid_allocations` (← `supply_house_invoice_job_allocations`, PK `(invoice_id, bid_id)`), `mercury_transaction_bid_allocations` (← `mercury_transaction_job_allocations`, UNIQUE `(mercury_transaction_id, bid_id)`). Column-for-column faithful, same FK targets and delete actions (`material_parts` RESTRICT, `purchase_orders` SET NULL, `auth.users` for `created_by`), plus `migrated_from_job_id uuid` for provenance — **deliberately without an FK**, since the source job is deleted in the same transaction that moves its costs. **Team labor needed no new table**: `clock_sessions.bid_id` already exists with the `clock_sessions_job_or_bid_not_both` CHECK ("pre-job work; mutually exclusive with job_ledger_id") and `people_crew_bids.bid_assignments` already mirrors `people_crew_jobs`. RLS: the two row tables follow the bid-child pattern of `bids_count_rows` (bid roles + bid visibility, `(select auth.uid())`-wrapped for InitPlan-once evaluation); the two allocation mirrors match their job counterparts exactly — staff-role only, no per-entity gate — so bid allocations are never stricter than job ones. Ends with both `apply_read_only_write_blocks()` and `apply_read_only_stmt_blocks()`. The 100%-per-invoice supply-house ceiling now spans both the job and bid tables; it stays enforced in the callers, matching how the job-side ceiling has always worked (no DB-level total constraint exists on either allocation table today). DB-only.
 ## Latest Updates (v2.1164)
 
 ### E2E Smoke: the two specs that had failed every run since v2.1052 (2026-07-31)
