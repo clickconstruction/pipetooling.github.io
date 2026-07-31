@@ -214,106 +214,111 @@ export function JobFormPartsCostSection({
                 onToggle={() => toggleMaterialsAccordion('billed')}
                 busy={false}
               >
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
-                  <thead style={{ background: 'var(--bg-subtle)' }}>
-                    <tr>
-                      <th style={{ padding: '0.625rem 0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)', fontWeight: 600 }}>Line Item</th>
-                      <th style={{ padding: '0.625rem 0.75rem', textAlign: 'right', borderBottom: '1px solid var(--border)', fontWeight: 600 }}>Amount ($)</th>
-                      <th style={{ padding: '0.625rem 0.5rem', minWidth: '4.5rem', width: '4.5rem', borderBottom: '1px solid var(--border)' }} />
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {materials.map((row, idx) => {
-                      const canRemove = materials.length > 1 || materialRowHasUserContent(row)
-                      const removeTitle = materials.length > 1 ? 'Remove' : 'Clear row'
-                      const showAddMaterialRow = materials.length === 1 || idx === materials.length - 1
-                      return (
-                      <tr key={row.id} style={{ borderBottom: idx < materials.length - 1 ? '1px solid var(--border)' : 'none' }}>
-                        <td style={{ padding: '0.625rem 0.75rem' }}>
-                          <input
-                            type="text"
-                            value={row.description}
-                            onChange={(e) => updateMaterialRow(row.id, { description: e.target.value })}
-                            placeholder="Item description"
-                            style={{ width: '100%', padding: '0.375rem 0.625rem', border: '1px solid var(--border-strong)', borderRadius: 6, fontSize: '0.875rem' }}
-                          />
-                        </td>
-                        <td style={{ padding: '0.625rem 0.75rem', textAlign: 'right' }}>
-                          <input
-                            type="number"
-                            min={0}
-                            step={0.01}
-                            value={row.amount || ''}
-                            onChange={(e) => updateMaterialRow(row.id, { amount: parseFloat(e.target.value) || 0 })}
-                            placeholder="0"
-                            style={{ width: '6rem', padding: '0.375rem 0.625rem', border: '1px solid var(--border-strong)', borderRadius: 6, fontSize: '0.875rem', textAlign: 'right' }}
-                          />
-                        </td>
-                        <td style={{ padding: '0.625rem 0.5rem', verticalAlign: 'middle' }}>
-                          <div
+                {/* Headerless charge rows (v2.1142): quiet underline inputs that read
+                    like the sibling accordions' rows, with the ① Line Items ghost-add
+                    pattern below — no table chrome, no header slab. */}
+                <div style={{ display: 'flex', flexDirection: 'column', fontSize: '0.875rem' }}>
+                  {materials.map((row, idx) => {
+                    const canRemove = materials.length > 1 || materialRowHasUserContent(row)
+                    const removeTitle = materials.length > 1 ? 'Remove' : 'Clear row'
+                    return (
+                      <div
+                        key={row.id}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.5rem',
+                          padding: '0.4rem 0.75rem',
+                          borderBottom: idx < materials.length - 1 ? '1px solid var(--border)' : 'none',
+                        }}
+                      >
+                        <input
+                          type="text"
+                          value={row.description}
+                          onChange={(e) => updateMaterialRow(row.id, { description: e.target.value })}
+                          placeholder="Other charge…"
+                          aria-label="Other charge description"
+                          style={{
+                            flex: 1,
+                            minWidth: 0,
+                            padding: '0.25rem 0.1rem',
+                            border: 'none',
+                            borderBottom: '1px solid var(--border-strong)',
+                            borderRadius: 0,
+                            fontSize: '0.875rem',
+                            background: 'transparent',
+                          }}
+                        />
+                        <input
+                          type="number"
+                          min={0}
+                          step={0.01}
+                          value={row.amount || ''}
+                          onChange={(e) => updateMaterialRow(row.id, { amount: parseFloat(e.target.value) || 0 })}
+                          placeholder="0"
+                          aria-label="Other charge amount"
+                          style={{
+                            width: '6rem',
+                            padding: '0.25rem 0.1rem',
+                            border: 'none',
+                            borderBottom: '1px solid var(--border-strong)',
+                            borderRadius: 0,
+                            fontSize: '0.875rem',
+                            textAlign: 'right',
+                            background: 'transparent',
+                            fontVariantNumeric: 'tabular-nums',
+                          }}
+                        />
+                        {canRemove ? (
+                          <button
+                            type="button"
+                            onClick={() => removeMaterialRow(row.id)}
+                            title={removeTitle}
+                            aria-label={removeTitle}
                             style={{
-                              display: 'flex',
+                              padding: '0.25rem',
+                              background: 'transparent',
+                              color: '#991b1c',
+                              border: 'none',
+                              borderRadius: 4,
+                              cursor: 'pointer',
+                              display: 'inline-flex',
                               alignItems: 'center',
-                              justifyContent: 'flex-end',
-                              gap: 4,
-                              flexWrap: 'nowrap',
+                              justifyContent: 'center',
+                              flexShrink: 0,
                             }}
                           >
-                            {showAddMaterialRow ? (
-                              <button
-                                type="button"
-                                onClick={addMaterialRow}
-                                title="Add line"
-                                aria-label="Add line"
-                                style={{
-                                  padding: '0.35rem 0.5rem',
-                                  fontSize: '1rem',
-                                  fontWeight: 600,
-                                  lineHeight: 1,
-                                  background: '#3b82f6',
-                                  color: 'white',
-                                  border: 'none',
-                                  borderRadius: 6,
-                                  cursor: 'pointer',
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
-                                  minWidth: '1.75rem',
-                                  flexShrink: 0,
-                                }}
-                              >
-                                +
-                              </button>
-                            ) : null}
-                            {canRemove ? (
-                              <button
-                                type="button"
-                                onClick={() => removeMaterialRow(row.id)}
-                                title={removeTitle}
-                                aria-label={removeTitle}
-                                style={{
-                                  padding: '0.35rem',
-                                  background: 'transparent',
-                                  color: '#991b1c',
-                                  border: 'none',
-                                  borderRadius: 4,
-                                  cursor: 'pointer',
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
-                                  flexShrink: 0,
-                                }}
-                              >
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={16} height={16} fill="currentColor" aria-hidden><path d="M232.7 69.9L224 96L128 96C110.3 96 96 110.3 96 128C96 145.7 110.3 160 128 160L512 160C529.7 160 544 145.7 544 128C544 110.3 529.7 96 512 96L416 96L407.3 69.9C402.9 56.8 390.7 48 376.9 48L263.1 48C249.3 48 237.1 56.8 232.7 69.9zM512 208L128 208L149.1 531.1C150.7 556.4 171.7 576 197 576L443 576C468.3 576 489.3 556.4 490.9 531.1L512 208z" /></svg>
-                              </button>
-                            ) : null}
-                          </div>
-                        </td>
-                      </tr>
-                      )
-                    })}
-                  </tbody>
-                </table>
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={15} height={15} fill="currentColor" aria-hidden><path d="M232.7 69.9L224 96L128 96C110.3 96 96 110.3 96 128C96 145.7 110.3 160 128 160L512 160C529.7 160 544 145.7 544 128C544 110.3 529.7 96 512 96L416 96L407.3 69.9C402.9 56.8 390.7 48 376.9 48L263.1 48C249.3 48 237.1 56.8 232.7 69.9zM512 208L128 208L149.1 531.1C150.7 556.4 171.7 576 197 576L443 576C468.3 576 489.3 556.4 490.9 531.1L512 208z" /></svg>
+                          </button>
+                        ) : (
+                          <span aria-hidden style={{ width: 23, flexShrink: 0 }} />
+                        )}
+                      </div>
+                    )
+                  })}
+                  <div style={{ padding: '0.45rem 0.75rem 0.55rem' }}>
+                    <button
+                      type="button"
+                      onClick={addMaterialRow}
+                      title="Add another charge row"
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '0.35rem',
+                        padding: '0.3rem 0.8rem',
+                        background: 'transparent',
+                        border: '1px dashed var(--border-strong)',
+                        borderRadius: 6,
+                        color: 'var(--text-link)',
+                        fontSize: '0.8125rem',
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      + Add other charge
+                    </button>
+                  </div>
+                </div>
               </MaterialsCostAccordionRow>
               {editing ? <JobChargesTimelineStandalone job={editing} includeTeamLabor={showJobCostBreakdownTeamLabor(authRole)} /> : null}
           </div>

@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-30 (v2.1141)
+last_updated: 2026-07-30 (v2.1142)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1142)
+
+### Other job charges: headerless rows + ghost add (2026-07-30)
+[`JobFormPartsCostSection.tsx`](../src/components/jobs/JobFormPartsCostSection.tsx) — the "Other job charges" accordion's editor was a full table (bg-subtle "Line Item | Amount ($)" header, boxed inputs, per-row +) that clashed with the quiet read-only sibling accordions. Option A of the mockups: header slab deleted, rows become borderless underline inputs (description flex + right-aligned tabular amount, placeholder "Other charge…"), trash kept per canRemove rules (sole-empty-row shows a spacer), and adding moves to the ① Line Items dashed **+ Add other charge** ghost button. Verified in light AND dark themes (evening flip happened mid-test). Client-only.
 
 ## Latest Updates (v2.1141)
 
