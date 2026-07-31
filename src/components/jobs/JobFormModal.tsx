@@ -344,7 +344,6 @@ export default function JobFormModal({
   const [fixturesSectionHighlight, setFixturesSectionHighlight] = useState(false)
   const [jobPicturesLinkHighlight, setJobPicturesLinkHighlight] = useState(false)
   const [dateMet, setDateMet] = useState('')
-  const [lastBillDate, setLastBillDate] = useState('')
   const [googleDriveLink, setGoogleDriveLink] = useState('')
   const [jobPicturesLink, setJobPicturesLink] = useState('')
   const [jobPlansLink, setJobPlansLink] = useState('')
@@ -624,7 +623,6 @@ export default function JobFormModal({
     customerName,
     customerEmail,
     customerPhone,
-    lastBillDate,
     googleDriveLink,
     jobPicturesLink,
     jobPlansLink,
@@ -848,7 +846,6 @@ export default function JobFormModal({
     setCustomerName(s.identity.customerName)
     setCustomerEmail(s.identity.customerEmail)
     setCustomerPhone(s.identity.customerPhone)
-    setLastBillDate(s.identity.lastBillDate)
     setGoogleDriveLink(s.identity.googleDriveLink)
     setJobPicturesLink(s.identity.jobPicturesLink)
     setJobPlansLink(s.identity.jobPlansLink)
@@ -939,7 +936,6 @@ export default function JobFormModal({
       googleDriveLink,
       jobPicturesLink,
       jobPlansLink,
-      lastBillDate,
       fixtures,
       materials,
       payments,
@@ -962,7 +958,6 @@ export default function JobFormModal({
     googleDriveLink,
     jobPicturesLink,
     jobPlansLink,
-    lastBillDate,
     fixtures,
     materials,
     payments,
@@ -1313,7 +1308,6 @@ export default function JobFormModal({
     setFormServiceTypeId(job.service_type_id ?? '')
     setCustomerSearch('')
     setCustomerExpanded(picturesGate || (billingGate && !jobLedgerHasCustomerForBilling(job.customer_id)))
-    setLastBillDate(job.last_bill_date ? job.last_bill_date.slice(0, 10) : '')
     setGoogleDriveLink(job.google_drive_link ?? '')
     setJobPicturesLink(job.job_pictures_link ?? '')
     persistedPicturesLinkRef.current = (job.job_pictures_link ?? '').trim()
@@ -1362,7 +1356,6 @@ export default function JobFormModal({
     setCustomerSearch('')
     setDateMet('')
     setCustomerExpanded(true)
-    setLastBillDate('')
     setGoogleDriveLink('')
     setJobPicturesLink('')
     setJobPlansLink('')
@@ -2036,7 +2029,6 @@ export default function JobFormModal({
       const positions = selectedSegmentSequencePositions(fixturesNow, selectedSegmentIds)
       const linkedRowIds = new Set(linkableSelectedIds(fixturesNow, selectedSegmentIds))
       const nextOrder = (editing.invoices ?? []).length
-      const estBill = editing.last_bill_date?.trim().slice(0, 10) ?? null
       const { data: created, error: insErr } = await supabase
         .from('jobs_ledger_invoices')
         .insert({
@@ -2044,7 +2036,7 @@ export default function JobFormModal({
           amount: totalDollars,
           status: 'ready_to_bill',
           sequence_order: nextOrder,
-          estimated_bill_date: estBill,
+          estimated_bill_date: null,
           is_primary_rtb_bundle: false,
         })
         .select('id')
@@ -2154,7 +2146,6 @@ export default function JobFormModal({
     setError(null)
     try {
       const nextOrder = (editing.invoices ?? []).length
-      const estBill = editing.last_bill_date?.trim().slice(0, 10) ?? null
       const { error: err } = await supabase
         .from('jobs_ledger_invoices')
         .insert({
@@ -2162,7 +2153,7 @@ export default function JobFormModal({
           amount: amountToUse,
           status: 'ready_to_bill',
           sequence_order: nextOrder,
-          estimated_bill_date: estBill,
+          estimated_bill_date: null,
           is_primary_rtb_bundle: false,
         })
         .select('id')
@@ -2240,7 +2231,6 @@ export default function JobFormModal({
         ? `Biohazard remediation fee — incident ${m[2]}/${m[3]}/${m[1]}`
         : 'Biohazard remediation fee'
       const nextOrder = invoices.length
-      const estBill = editing.last_bill_date?.trim().slice(0, 10) ?? null
       const { data: created, error: insErr } = await supabase
         .from('jobs_ledger_invoices')
         .insert({
@@ -2248,7 +2238,7 @@ export default function JobFormModal({
           amount: fee,
           status: 'ready_to_bill',
           sequence_order: nextOrder,
-          estimated_bill_date: estBill,
+          estimated_bill_date: null,
           is_primary_rtb_bundle: false,
           stripe_invoice_memo: memo,
         })
@@ -2686,7 +2676,6 @@ export default function JobFormModal({
           customer_name: customerName.trim() || null,
           customer_email: customerEmail.trim() || null,
           customer_phone: customerPhone.trim() || null,
-          last_bill_date: lastBillDate.trim() || null,
           google_drive_link: googleDriveLink.trim() || null,
           job_pictures_link: jobPicturesLink.trim() || null,
           job_plans_link: jobPlansLink.trim() || null,
@@ -2889,8 +2878,6 @@ export default function JobFormModal({
             setJobName={setJobName}
             jobAddress={jobAddress}
             setJobAddress={setJobAddress}
-            lastBillDate={lastBillDate}
-            setLastBillDate={setLastBillDate}
             formServiceTypeId={formServiceTypeId}
             setFormServiceTypeId={setFormServiceTypeId}
             serviceTypeOptions={jobFormServiceTypeSelectOptions}

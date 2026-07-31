@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1154',
+    date: '2026-07-30',
+    title: 'Last manual bill date retired',
+    kind: 'feature',
+    highlights: [
+      'The manual date field is gone from Edit Job and Job Detail \u2014 billing dates now come entirely from real invoice and payment activity.',
+      'Stages b: aging, est. bill dates, lien prefill, and dashboard projections no longer read it either.',
+    ],
+  },
+  {
     version: 'v2.1153',
     date: '2026-07-30',
     title: 'Other-charge button and Cost Timeline legend tidy-ups',

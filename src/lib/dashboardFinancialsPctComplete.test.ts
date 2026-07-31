@@ -12,7 +12,6 @@ function job(overrides: Partial<FinancialJobRow>): FinancialJobRow {
     status: 'working',
     revenue: 1000,
     payments_made: 0,
-    last_bill_date: null,
     last_work_date: '2026-06-18',
     ...overrides,
   }

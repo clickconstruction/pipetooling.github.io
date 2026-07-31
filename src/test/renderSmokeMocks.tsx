@@ -240,7 +240,6 @@ export function makeJob(p: Partial<Record<string, unknown>> = {}): JobWithDetail
     payments: [],
     invoices: [],
     team_members: [],
-    last_bill_date: null,
     created_at: '2026-07-01T00:00:00Z',
     updated_at: '2026-07-01T00:00:00Z',
     ...p,

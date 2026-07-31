@@ -61,7 +61,7 @@ describe('newJobFormHasBlockingContent', () => {
   const base = {
     jobName: '', jobAddress: '', hcpNumber: '', customerName: '', customerEmail: '', customerPhone: '',
     dateMet: '', customerId: null, bidId: null, projectId: null, formServiceTypeId: 'svc', initialNewJobServiceTypeId: 'svc',
-    googleDriveLink: '', jobPicturesLink: '', jobPlansLink: '', lastBillDate: '',
+    googleDriveLink: '', jobPicturesLink: '', jobPlansLink: '',
     fixtures: [fixture()], materials: [material()], payments: [payment()], teamMemberIds: [] as string[],
   }
   it('is false for a pristine sheet (auto-picked service type does not count)', () => {

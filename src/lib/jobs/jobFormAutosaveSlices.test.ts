@@ -43,7 +43,6 @@ function identity(over: Partial<JobIdentityFormFields> = {}): JobIdentityFormFie
     customerName: 'Antonio Hernandez',
     customerEmail: '',
     customerPhone: '',
-    lastBillDate: '',
     googleDriveLink: '',
     jobPicturesLink: '',
     jobPlansLink: '',
@@ -149,13 +148,12 @@ describe('buildEditJobIdentityUpdatePayload', () => {
 
   it('nulls blank optionals and never carries money columns', () => {
     const payload = buildEditJobIdentityUpdatePayload({
-      fields: identity({ customerEmail: '  ', lastBillDate: '' }),
+      fields: identity({ customerEmail: '  ' }),
       existingJobMasterUserId: 'master-1',
       projectMasterUserId: null,
       customers: [],
     })
     expect(payload.customer_email).toBeNull()
-    expect(payload.last_bill_date).toBeNull()
     expect('revenue' in payload).toBe(false)
     expect('payments_made' in payload).toBe(false)
   })

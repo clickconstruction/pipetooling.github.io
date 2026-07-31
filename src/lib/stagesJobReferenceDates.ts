@@ -1,7 +1,6 @@
-/** Stages `j:` (field) / `b:` (billing reference: manual last bill date + invoice/payment activity) — pure date helpers for Jobs.tsx. */
+/** Stages `j:` (field) / `b:` (billing reference: invoice/payment activity) — pure date helpers for Jobs.tsx. */
 
 export type StagesBillingJobSlice = {
-  last_bill_date?: string | null
   invoices: Array<{
     sent_to_customer_at: string | null
     billed_at: string | null
@@ -55,15 +54,8 @@ export type BillingActivityDetail = { ymd: string; tooltip: string }
 
 type BillingCand = { ymd: string; label: string }
 
-function collectBillingCandidates(
-  job: StagesBillingJobSlice,
-  includeManualPlan: boolean,
-): BillingCand[] {
+function collectBillingCandidates(job: StagesBillingJobSlice): BillingCand[] {
   const cands: BillingCand[] = []
-  if (includeManualPlan) {
-    const planYmd = trimYmd(job.last_bill_date ?? null)
-    if (planYmd) cands.push({ ymd: planYmd, label: 'Last manual bill date' })
-  }
   for (const inv of job.invoices ?? []) {
     const y1 = timestampOrDateToYmd(inv.sent_to_customer_at)
     if (y1) cands.push({ ymd: y1, label: 'Invoice sent' })
@@ -92,20 +84,17 @@ function bestDetailFromCandidates(cands: BillingCand[]): BillingActivityDetail |
   }
 }
 
-/** Invoice / payment activity only — excludes job-level manual `last_bill_date` (Job Detail middle row; Stages `b:` uses {@link deriveStagesBillingActivityDetail}). */
+/** Invoice / payment activity (Job Detail middle row and Stages `b:` — identical since the manual `last_bill_date` retired, v2.1154). */
 export function deriveRecordedBillingActivityDetail(
   job: Pick<StagesBillingJobSlice, 'invoices' | 'payments'>,
 ): BillingActivityDetail | null {
   return bestDetailFromCandidates(
-    collectBillingCandidates(
-      { last_bill_date: null, invoices: job.invoices, payments: job.payments },
-      false,
-    ),
+    collectBillingCandidates({ invoices: job.invoices, payments: job.payments }),
   )
 }
 
 export function deriveStagesBillingActivityDetail(job: StagesBillingJobSlice): BillingActivityDetail | null {
-  return bestDetailFromCandidates(collectBillingCandidates(job, true))
+  return bestDetailFromCandidates(collectBillingCandidates(job))
 }
 
 export function deriveStagesBillingActivityYmd(job: StagesBillingJobSlice): string | null {

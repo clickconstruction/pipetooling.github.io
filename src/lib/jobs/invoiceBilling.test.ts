@@ -39,7 +39,6 @@ function job(p: Partial<Record<string, unknown>>): JobWithDetails {
     hcp_number: 'HCP1',
     revenue: 0,
     payments_made: 0,
-    last_bill_date: null,
     payments: [],
     invoices: [],
     ...p,
@@ -47,12 +46,11 @@ function job(p: Partial<Record<string, unknown>>): JobWithDetails {
 }
 
 describe('effectiveInvoiceEstBillDate', () => {
-  it('prefers the invoice estimated_bill_date', () => {
-    expect(effectiveInvoiceEstBillDate(inv({ estimated_bill_date: '2026-02-01' }) as Inv, job({ last_bill_date: '2026-01-01' }))).toBe('2026-02-01')
+  it('uses the invoice estimated_bill_date', () => {
+    expect(effectiveInvoiceEstBillDate(inv({ estimated_bill_date: '2026-02-01' }) as Inv)).toBe('2026-02-01')
   })
-  it('falls back to job last_bill_date, then null', () => {
-    expect(effectiveInvoiceEstBillDate(inv({}) as Inv, job({ last_bill_date: '2026-01-01' }))).toBe('2026-01-01')
-    expect(effectiveInvoiceEstBillDate(inv({}) as Inv, job({}))).toBe(null)
+  it('is null without one (the manual job-level fallback retired, v2.1154)', () => {
+    expect(effectiveInvoiceEstBillDate(inv({}) as Inv)).toBe(null)
   })
 })
 
@@ -119,11 +117,14 @@ describe('stageRowBilledAgeDays', () => {
   it('returns null when no reference date', () => {
     expect(stageRowBilledAgeDays({ kind: 'job', job: job({}) } as StageRow, now)).toBe(null)
   })
-  it('counts days for a job last_bill_date', () => {
-    expect(stageRowBilledAgeDays({ kind: 'job', job: job({ last_bill_date: '2026-05-21' }) } as StageRow, now)).toBe(10)
+  it('job rows are always null since the manual last bill date retired (v2.1154)', () => {
+    expect(stageRowBilledAgeDays({ kind: 'job', job: job({}) } as StageRow, now)).toBe(null)
+  })
+  it('counts days for an invoice estimated_bill_date', () => {
+    expect(stageRowBilledAgeDays({ kind: 'invoice', job: job({}), inv: inv({ estimated_bill_date: '2026-05-21' }) } as StageRow, now)).toBe(10)
   })
   it('returns null for a future date', () => {
-    expect(stageRowBilledAgeDays({ kind: 'job', job: job({ last_bill_date: '2026-06-10' }) } as StageRow, now)).toBe(null)
+    expect(stageRowBilledAgeDays({ kind: 'invoice', job: job({}), inv: inv({ estimated_bill_date: '2026-06-10' }) } as StageRow, now)).toBe(null)
   })
 })
 
@@ -140,24 +141,24 @@ describe('stageRowBilledLineLabel', () => {
 
 describe('sortStageRowsForTotalByNameDetail', () => {
   it('orders by oldest age first, nulls last, then larger remaining first', () => {
-    const older = { kind: 'job', job: job({ last_bill_date: '2026-01-01', revenue: 100, payments_made: 0 }) } as StageRow
-    const newer = { kind: 'job', job: job({ last_bill_date: '2026-05-01', revenue: 100, payments_made: 0 }) } as StageRow
-    const noDate = { kind: 'job', job: job({ last_bill_date: null, revenue: 999, payments_made: 0 }) } as StageRow
+    const older = { kind: 'invoice', job: job({}), inv: inv({ id: 'o', estimated_bill_date: '2026-01-01', amount: 100 }) } as StageRow
+    const newer = { kind: 'invoice', job: job({}), inv: inv({ id: 'n', estimated_bill_date: '2026-05-01', amount: 100 }) } as StageRow
+    const noDate = { kind: 'job', job: job({ revenue: 999, payments_made: 0 }) } as StageRow
     const sorted = sortStageRowsForTotalByNameDetail([newer, noDate, older])
     expect(sorted).toEqual([older, newer, noDate])
   })
   it('breaks age ties by larger remaining amount first', () => {
-    const big = { kind: 'job', job: job({ last_bill_date: '2026-03-01', revenue: 900, payments_made: 0 }) } as StageRow
-    const small = { kind: 'job', job: job({ last_bill_date: '2026-03-01', revenue: 100, payments_made: 0 }) } as StageRow
+    const big = { kind: 'invoice', job: job({}), inv: inv({ id: 'b', estimated_bill_date: '2026-03-01', amount: 900 }) } as StageRow
+    const small = { kind: 'invoice', job: job({}), inv: inv({ id: 's', estimated_bill_date: '2026-03-01', amount: 100 }) } as StageRow
     expect(sortStageRowsForTotalByNameDetail([small, big])).toEqual([big, small])
   })
 })
 
 describe('printBilledRowReferenceDate', () => {
   const now = new Date('2026-05-31T12:00:00Z')
-  it('job row uses last_bill_date', () => {
-    const r = { kind: 'job', job: job({ last_bill_date: '2026-05-21' }) } as StageRow
-    expect(printBilledRowReferenceDate(r, now)).toEqual({ display: 'May 21, 2026', ageDays: 10 })
+  it('job rows always render em dash since the manual last bill date retired (v2.1154)', () => {
+    const r = { kind: 'job', job: job({}) } as StageRow
+    expect(printBilledRowReferenceDate(r, now)).toEqual({ display: '—', ageDays: null })
   })
   it('job row with no date renders em dash', () => {
     expect(printBilledRowReferenceDate({ kind: 'job', job: job({}) } as StageRow, now)).toEqual({ display: '—', ageDays: null })
@@ -212,17 +213,26 @@ describe('stagesJobLevelStripeEmailedHintInvoice', () => {
 
 describe('buildBilledAgingBuckets', () => {
   const NOW = new Date('2026-07-20T12:00:00Z')
-  const billedJob = (id: string, lastBillDate: string | null, revenue: number, payments = 0, extra: Record<string, unknown> = {}) =>
-    job({ id, status: 'billed', last_bill_date: lastBillDate, revenue, payments_made: payments, invoices: [], ...extra })
+  const billedJobWithInvoice = (id: string, estBillDate: string | null, amount: number, extra: Record<string, unknown> = {}) =>
+    job({
+      id,
+      status: 'billed',
+      revenue: amount,
+      payments_made: 0,
+      invoices: [inv({ id: `${id}-inv`, status: 'billed', estimated_bill_date: estBillDate, amount })],
+      ...extra,
+    })
+  const billedJobNoInvoices = (id: string, revenue: number) =>
+    job({ id, status: 'billed', revenue, payments_made: 0, invoices: [] })
 
   it('buckets positive remainders at 30 and 90 days, excluding fresh, zero, and Collections rows', () => {
     const jobs = [
-      billedJob('a', '2026-06-01', 500),            // ~49 days -> 30-90 bucket
-      billedJob('b', '2026-03-01', 700),            // ~141 days -> 90+ bucket
-      billedJob('c', '2026-07-10', 900),            // 10 days -> too fresh
-      billedJob('d', '2026-06-01', 300, 300),       // zero remainder -> excluded
-      billedJob('e', null, 400),                    // no reference date -> excluded
-      billedJob('f', '2026-03-01', 1000, 0, { collections_at: '2026-07-01T00:00:00Z' }), // Collections -> excluded
+      billedJobWithInvoice('a', '2026-06-01', 500),            // ~49 days -> 30-90 bucket
+      billedJobWithInvoice('b', '2026-03-01', 700),            // ~141 days -> 90+ bucket
+      billedJobWithInvoice('c', '2026-07-10', 900),            // 10 days -> too fresh
+      billedJobWithInvoice('d', '2026-06-01', 0),              // zero remainder -> excluded
+      billedJobNoInvoices('e', 400),                           // job row: no reference date since v2.1154 -> excluded
+      billedJobWithInvoice('f', '2026-03-01', 1000, { collections_at: '2026-07-01T00:00:00Z' }), // Collections -> excluded
     ]
     expect(buildBilledAgingBuckets(jobs, NOW)).toEqual({
       count30_90: 1,

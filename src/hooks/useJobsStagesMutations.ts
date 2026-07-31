@@ -355,17 +355,15 @@ export function useJobsStagesMutations({
     }
   }
 
-  /** Ham ±1: seed from invoice date, else job est. date, else today. */
+  /** Ham ±1: seed from invoice date, else today. */
   async function bumpInvoiceEstimatedBillDate(
     invoiceId: string,
     jobId: string,
     inv: JobsLedgerInvoice,
-    job: JobWithDetails,
     deltaDays: number
   ) {
     const base =
       inv.estimated_bill_date ??
-      job.last_bill_date ??
       new Date().toISOString().slice(0, 10)
     const newDate = addDaysToDate(base, deltaDays)
     await setInvoiceEstimatedBillDate(invoiceId, jobId, newDate)

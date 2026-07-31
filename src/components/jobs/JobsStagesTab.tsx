@@ -994,8 +994,6 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     setError(null)
     try {
       const nextOrder = (createPartialInvoiceJob.invoices ?? []).length
-      const estBillModal =
-        createPartialInvoiceJob.last_bill_date?.trim().slice(0, 10) ?? null
       const { error: err } = await supabase
         .from('jobs_ledger_invoices')
         .insert({
@@ -1003,7 +1001,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
           amount: amountToUse,
           status: 'ready_to_bill',
           sequence_order: nextOrder,
-          estimated_bill_date: estBillModal,
+          estimated_bill_date: null,
           is_primary_rtb_bundle: false,
         })
         .select('id')

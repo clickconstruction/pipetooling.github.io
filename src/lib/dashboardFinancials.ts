@@ -50,7 +50,6 @@ export type FinancialJobRow = {
   status: string | null
   revenue: number | null
   payments_made: number | null
-  last_bill_date: string | null
   last_work_date: string | null
   /** Difficult-to-collect flag; in Collections = status='billed' AND collections_at set. */
   collections_at?: string | null
@@ -168,7 +167,7 @@ export function buildArBuckets(
       label: financialJobLabel(job),
       sublabel: 'Billed job (no invoice rows)',
       amount: remaining,
-      dateYmd: job.last_bill_date,
+      dateYmd: null,
       jobId: job.id,
       address: null,
       pctComplete: job.pct_complete ?? null,

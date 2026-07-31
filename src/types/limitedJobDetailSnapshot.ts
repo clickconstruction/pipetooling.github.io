@@ -12,7 +12,6 @@ export type LimitedJobDetailSnapshot = {
   customer_name: string | null
   customer_email: string | null
   customer_phone: string | null
-  last_bill_date: string | null
   last_work_date: string | null
   status: string
   /** When present from `jobs_ledger` + `service_types` join. */

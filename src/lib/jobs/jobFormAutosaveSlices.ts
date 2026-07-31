@@ -49,7 +49,6 @@ export interface JobIdentityFormFields {
   customerName: string
   customerEmail: string
   customerPhone: string
-  lastBillDate: string
   googleDriveLink: string
   jobPicturesLink: string
   jobPlansLink: string
@@ -68,7 +67,6 @@ export function buildIdentitySliceJson(fields: JobIdentityFormFields): string {
     cn: fields.customerName.trim(),
     ce: fields.customerEmail.trim(),
     cp: fields.customerPhone.trim(),
-    lb: fields.lastBillDate.trim(),
     gd: fields.googleDriveLink.trim(),
     jp: fields.jobPicturesLink.trim(),
     pl: fields.jobPlansLink.trim(),
@@ -176,7 +174,6 @@ export function buildEditJobIdentityUpdatePayload(params: {
     customer_name: fields.customerName.trim() || null,
     customer_email: fields.customerEmail.trim() || null,
     customer_phone: fields.customerPhone.trim() || null,
-    last_bill_date: fields.lastBillDate.trim() || null,
     google_drive_link: fields.googleDriveLink.trim() || null,
     job_pictures_link: fields.jobPicturesLink.trim() || null,
     job_plans_link: fields.jobPlansLink.trim() || null,

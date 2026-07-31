@@ -53,7 +53,6 @@ export function newJobFormHasBlockingContent(args: {
   googleDriveLink: string
   jobPicturesLink: string
   jobPlansLink: string
-  lastBillDate: string
   fixtures: FixtureRow[]
   materials: MaterialRow[]
   payments: PaymentRow[]
@@ -79,8 +78,7 @@ export function newJobFormHasBlockingContent(args: {
   if (
     args.googleDriveLink.trim() ||
     args.jobPicturesLink.trim() ||
-    args.jobPlansLink.trim() ||
-    args.lastBillDate.trim()
+    args.jobPlansLink.trim()
   ) {
     return true
   }

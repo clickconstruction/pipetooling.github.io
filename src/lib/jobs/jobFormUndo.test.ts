@@ -17,7 +17,6 @@ const identity: JobIdentityFormFields = {
   customerName: 'Cust',
   customerEmail: '',
   customerPhone: '',
-  lastBillDate: '',
   googleDriveLink: '',
   jobPicturesLink: '',
   jobPlansLink: '',

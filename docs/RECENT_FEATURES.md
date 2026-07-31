@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-30 (v2.1153)
+last_updated: 2026-07-30 (v2.1154)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1154)
+
+### Last manual bill date fully retired (2026-07-30)
+Full code-side removal of `jobs_ledger.last_bill_date` (the **DB column stays**, with historical values — nothing reads or writes it anymore; no migration). Removed: the Edit Job field ([`JobFormIdentityFields.tsx`](../src/components/jobs/JobFormIdentityFields.tsx) — Job Address now owns that row), both Detail Job rows (the date band is two boxes), the identity autosave/save payload + undo fingerprint ([`jobFormAutosaveSlices.ts`](../src/lib/jobs/jobFormAutosaveSlices.ts), [`jobFormRows.ts`](../src/lib/jobs/jobFormRows.ts)), the Stages `b:` candidate ([`stagesJobReferenceDates.ts`](../src/lib/stagesJobReferenceDates.ts) — `b:` is now invoice/payment activity only, identical to Job Detail's Last bill date), the est.-bill-date fallback (`effectiveInvoiceEstBillDate(inv)` drops its job param; [`invoiceBilling.ts`](../src/lib/jobs/invoiceBilling.ts) job rows age as `—`), partial/segment invoice `estimated_bill_date` seeds (now null), the Ham ±1 seed, lien prefill fallback ([`buildLienToolingPrefillFromJob.ts`](../src/lib/buildLienToolingPrefillFromJob.ts)), and dashboard AR dates for invoice-less billed jobs ([`dashboardFinancials.ts`](../src/lib/dashboardFinancials.ts) + select). 5 behavior tests rewritten to pin the new semantics; full suite 3143 green. GLOSSARY/PROJECT_DOCUMENTATION/architecture docs updated (incl. deleting stale "Missing Billed Date" references — that control was already gone). Verified via the Playwright harness on job 523.
 
 ## Latest Updates (v2.1153)
 
