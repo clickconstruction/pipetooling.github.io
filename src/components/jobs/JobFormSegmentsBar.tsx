@@ -270,7 +270,9 @@ export function JobFormSegmentsBar({
                 background: segmentFill(seg),
                 border: 'none',
                 borderRight: idx < segments.length - 1 ? '1px solid var(--surface)' : 'none',
-                borderRadius: idx === 0 ? '5px 0 0 5px' : idx === segments.length - 1 ? '0 5px 5px 0' : 0,
+                // First AND last corners round independently — a single-segment
+                // strip gets all four (it used to end hard on the right).
+                borderRadius: `${idx === 0 ? 5 : 0}px ${idx === segments.length - 1 ? 5 : 0}px ${idx === segments.length - 1 ? 5 : 0}px ${idx === 0 ? 5 : 0}px`,
                 boxSizing: 'border-box',
                 cursor: 'pointer',
                 overflow: 'hidden',
