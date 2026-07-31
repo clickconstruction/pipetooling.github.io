@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1146',
+    date: '2026-07-30',
+    title: 'Invoices section: three tidy-ups',
+    kind: 'fix',
+    highlights: [
+      'The \u201cⓘ How invoices and jobs move\u201d explainer now sits right beside the \u2461 Invoices heading.',
+      '\u201cCreate invoice from selected segments\u201d is centered under the strip and reads clearly gray until something is selected.',
+      'The 80% / Max / \u2139 shortcut row under the chips is gone \u2014 type, tap a chip, or drag; the slider covers it.',
+    ],
+  },
+  {
     version: 'v2.1145',
     date: '2026-07-30',
     title: 'Make Invoice: the slider badge leads with its percent',

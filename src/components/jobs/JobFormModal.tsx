@@ -100,7 +100,7 @@ import {
   segmentSelectionSummary,
   selectedSegmentSequencePositions,
 } from '../../lib/jobs/jobSegmentsCoverage'
-import { JobFormSegmentsBar } from './JobFormSegmentsBar'
+import { InvoicesSectionHeading, JobFormSegmentsBar } from './JobFormSegmentsBar'
 import { MultipleSegmentGeneratorModal } from './MultipleSegmentGeneratorModal'
 import type { SegmentGeneratorPayloadLine } from '../../lib/jobs/segmentGenerator'
 import {
@@ -3051,7 +3051,10 @@ export default function JobFormModal({
           <div style={{ marginBottom: '1rem' }}>
           {editing && (
             <>
-              <div style={{ fontWeight: 400, textDecoration: 'underline', fontSize: '0.9375rem', color: 'var(--text-700)', marginBottom: '0.75rem' }}>② Invoices</div>
+              <InvoicesSectionHeading
+                sampleDollars={billingSegments[0]?.dollars ?? null}
+                jobLabel={editing.hcp_number?.trim() ? `Job ${editing.hcp_number.trim()}` : null}
+              />
               <JobFormSegmentsBar
                 fixtures={fixtures}
                 riderFeesDollars={riderFeesDollars}
@@ -3060,7 +3063,6 @@ export default function JobFormModal({
                 onToggleSegment={toggleSegmentSelected}
                 onCreateInvoiceFromSelection={createInvoiceFromSelectedSegments}
                 creatingFromSelection={creatingSegmentInvoice}
-                jobLabel={editing.hcp_number?.trim() ? `Job ${editing.hcp_number.trim()}` : null}
                 coverage={segmentCoverage}
               />
               {editing ? (

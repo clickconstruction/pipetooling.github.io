@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-30 (v2.1145)
+last_updated: 2026-07-30 (v2.1146)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1146)
+
+### ② Invoices tidy-ups: heading-side explainer, centered gray create, no quick sets (2026-07-30)
+[`JobFormSegmentsBar.tsx`](../src/components/jobs/JobFormSegmentsBar.tsx) + [`JobFormModal.tsx`](../src/components/jobs/JobFormModal.tsx) + [`JobFormBreakOffSection.tsx`](../src/components/jobs/JobFormBreakOffSection.tsx). Three per-user-direction items: (1) the "ⓘ How invoices and jobs move" trigger + panel move out of the segment strip into a new exported `InvoicesSectionHeading` (heading + explainer on one line; modal passes `billingSegments[0]` for the sample chip; the bar's `jobLabel` prop is gone and its legend right-aligns alone); (2) "Create invoice from selected segments" centers under the strip and its disabled state goes properly gray (`bg-200` + faint text + border, was border-strong-on-white-text); (3) the 80% / Max / ⓘ quick-set row under the Make Invoice chips is removed along with the slider-explainer dialog (typing, chip %, and dragging cover it; the flow explainer lives at the heading). Render tests updated (explainer tests target the new component; a new test pins that the bar no longer renders the trigger). Guide paragraph updated. Client-only.
 
 ## Latest Updates (v2.1145)
 

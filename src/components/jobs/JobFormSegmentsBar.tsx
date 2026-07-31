@@ -17,8 +17,6 @@ type JobFormSegmentsBarProps = {
   onToggleSegment: (fixtureRowId: string) => void
   onCreateInvoiceFromSelection: () => void
   creatingFromSelection: boolean
-  /** Label for the blue sample chip in the how-it-moves explainer, e.g. "Job 742" (v2.1074). */
-  jobLabel?: string | null
   /**
    * Dollar-invoice coverage (v2.1132): money paid or invoiced by amount (no
    * line-item links) hatches the strip via a first-items-first waterfall,
@@ -26,6 +24,80 @@ type JobFormSegmentsBarProps = {
    * slider's Remaining. Omit (new job) to disable all three.
    */
   coverage?: JobDollarCoverage
+}
+
+/**
+ * "② Invoices" heading with the ⓘ how-it-moves explainer beside it (v2.1146) —
+ * the trigger used to live inside the segment strip's header row; the modal
+ * renders this instead so the explainer sits next to the section title.
+ */
+export function InvoicesSectionHeading({
+  sampleDollars,
+  jobLabel,
+}: {
+  sampleDollars: number | null
+  jobLabel?: string | null
+}) {
+  const [explainerOpen, setExplainerOpen] = useState(false)
+  return (
+    <div style={{ marginBottom: '0.75rem' }}>
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.75rem', flexWrap: 'wrap' }}>
+        <span style={{ fontWeight: 400, textDecoration: 'underline', fontSize: '0.9375rem', color: 'var(--text-700)' }}>
+          ② Invoices
+        </span>
+        <button
+          type="button"
+          onClick={() => setExplainerOpen((v) => !v)}
+          aria-expanded={explainerOpen}
+          style={{
+            padding: 0,
+            background: 'transparent',
+            border: 'none',
+            color: 'var(--text-link)',
+            fontSize: '0.6875rem',
+            cursor: 'pointer',
+            fontFamily: 'inherit',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          ⓘ How invoices and jobs move
+        </button>
+      </div>
+      {explainerOpen && (
+        <div
+          style={{
+            borderLeft: '2px solid var(--border-strong)',
+            padding: '0.35rem 0 0.35rem 0.75rem',
+            marginTop: '0.5rem',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '0.45rem',
+            fontSize: '0.75rem',
+            color: 'var(--text-muted)',
+          }}
+        >
+          <div>
+            1. Create an invoice here — it breaks off as its own <strong style={{ color: 'var(--text-700)' }}>green card</strong> on the
+            Stages board and moves by itself:
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
+            <span style={{ ...EXPLAINER_CHIP_BASE, background: '#16a34a', border: '1px solid rgba(255,255,255,0.5)' }}>
+              ${formatCurrency(sampleDollars ?? 1450)}
+            </span>
+            <span style={{ whiteSpace: 'nowrap' }}>→ Ready to Bill → Billed → Paid</span>
+          </div>
+          <div>
+            2. The job itself stays a <strong style={{ color: 'var(--text-700)' }}>blue card</strong> in Working. When its last payment
+            lands, it floats through on its own:
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
+            <span style={{ ...EXPLAINER_CHIP_BASE, background: '#2563eb', border: 'none' }}>{jobLabel || 'This job'}</span>
+            <span style={{ whiteSpace: 'nowrap' }}>→ Paid</span>
+          </div>
+        </div>
+      )}
+    </div>
+  )
 }
 
 /** Sample chips in the explainer wear the exact Stages colors users will see there. */
@@ -72,11 +144,9 @@ export function JobFormSegmentsBar({
   onToggleSegment,
   onCreateInvoiceFromSelection,
   creatingFromSelection,
-  jobLabel,
   coverage,
 }: JobFormSegmentsBarProps) {
   const [focusedKey, setFocusedKey] = useState<string | null>(null)
-  const [explainerOpen, setExplainerOpen] = useState(false)
   const segments = useMemo(
     () => buildJobSegmentsBar({ fixtures, riderFeesDollars, invoiceStatusById }),
     [fixtures, riderFeesDollars, invoiceStatusById],
@@ -140,28 +210,11 @@ export function JobFormSegmentsBar({
           display: 'flex',
           flexWrap: 'wrap',
           alignItems: 'baseline',
-          justifyContent: 'space-between',
+          justifyContent: 'flex-end',
           gap: '0.6rem',
           marginBottom: '0.35rem',
         }}
       >
-        <button
-          type="button"
-          onClick={() => setExplainerOpen((v) => !v)}
-          aria-expanded={explainerOpen}
-          style={{
-            padding: 0,
-            background: 'transparent',
-            border: 'none',
-            color: 'var(--text-link)',
-            fontSize: '0.6875rem',
-            cursor: 'pointer',
-            fontFamily: 'inherit',
-            whiteSpace: 'nowrap',
-          }}
-        >
-          ⓘ How invoices and jobs move
-        </button>
         <span style={{ display: 'inline-flex', gap: '0.6rem', flexWrap: 'wrap' }}>
           {LEGEND.map((l) => (
             <span key={l.label} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: '0.6875rem', color: 'var(--text-muted)' }}>
@@ -187,39 +240,6 @@ export function JobFormSegmentsBar({
           )}
         </span>
       </div>
-      {explainerOpen && (
-        <div
-          style={{
-            borderLeft: '2px solid var(--border-strong)',
-            padding: '0.35rem 0 0.35rem 0.75rem',
-            marginBottom: '0.5rem',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '0.45rem',
-            fontSize: '0.75rem',
-            color: 'var(--text-muted)',
-          }}
-        >
-          <div>
-            1. Create an invoice here — it breaks off as its own <strong style={{ color: 'var(--text-700)' }}>green card</strong> on the
-            Stages board and moves by itself:
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
-            <span style={{ ...EXPLAINER_CHIP_BASE, background: '#16a34a', border: '1px solid rgba(255,255,255,0.5)' }}>
-              ${formatCurrency(segments[0]?.dollars ?? 1450)}
-            </span>
-            <span style={{ whiteSpace: 'nowrap' }}>→ Ready to Bill → Billed → Paid</span>
-          </div>
-          <div>
-            2. The job itself stays a <strong style={{ color: 'var(--text-700)' }}>blue card</strong> in Working. When its last payment
-            lands, it floats through on its own:
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
-            <span style={{ ...EXPLAINER_CHIP_BASE, background: '#2563eb', border: 'none' }}>{jobLabel || 'This job'}</span>
-            <span style={{ whiteSpace: 'nowrap' }}>→ Paid</span>
-          </div>
-        </div>
-      )}
       <div
         style={{
           display: 'flex',
@@ -371,7 +391,7 @@ export function JobFormSegmentsBar({
         })}
       </div>
       {anySelectable && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginTop: '0.5rem', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.75rem', marginTop: '0.5rem', flexWrap: 'wrap' }}>
           <button
             type="button"
             onClick={onCreateInvoiceFromSelection}
@@ -381,9 +401,9 @@ export function JobFormSegmentsBar({
               padding: '0.4rem 0.75rem',
               fontSize: '0.8125rem',
               fontWeight: 600,
-              background: selection.count === 0 || selectionExceedsRemaining ? 'var(--border-strong)' : '#3b82f6',
-              color: 'white',
-              border: 'none',
+              background: selection.count === 0 || selectionExceedsRemaining ? 'var(--bg-200)' : '#3b82f6',
+              color: selection.count === 0 || selectionExceedsRemaining ? 'var(--text-faint)' : 'white',
+              border: selection.count === 0 || selectionExceedsRemaining ? '1px solid var(--border)' : 'none',
               borderRadius: 6,
               cursor: creatingFromSelection || selection.count === 0 || selectionExceedsRemaining ? 'default' : 'pointer',
             }}

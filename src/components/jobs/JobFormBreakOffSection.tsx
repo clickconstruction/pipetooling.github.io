@@ -1,4 +1,3 @@
-import { useEffect, useState } from 'react'
 import { useBreakOffSlider } from './useBreakOffSlider'
 import { BILLED_COLOR, DRAFT_COLOR, PAID_COLOR } from './MoneyLifecycleBar'
 import {
@@ -113,23 +112,12 @@ export function JobFormBreakOffSection({
     breakOffInvoiceSharePct,
     breakOffCombinedHandlePct,
     breakOffCombinedThumbLeftPct,
-    applyBreakOffCombinedPct,
     onBillingBreakOffTrackPointerDown,
     onBillingBreakOffTrackPointerMove,
     onBillingBreakOffTrackPointerUpCancel,
     onBillingBreakOffTrackLostPointerCapture,
     onBreakOffSliderKeyDown,
   } = breakOff
-
-  const [infoOpen, setInfoOpen] = useState(false)
-  useEffect(() => {
-    if (!infoOpen) return
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setInfoOpen(false)
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [infoOpen])
 
   const invoiceDollars = parseMoneyInputToNumber(newInvoiceAmount)
   const actionDisabled = movingJobToReadyToBill || creatingInvoice || !(invoiceDollars > 0)
@@ -283,76 +271,6 @@ export function JobFormBreakOffSection({
         >
           {formatUsdNoCents(leftAfterDollars)}
         </EquationChip>
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', marginLeft: 'auto', flexWrap: 'wrap' }}>
-          {breakOffBillingTrackPercents.hasTotal && breakOffRemaining > 0
-            ? [
-                { pct: 20, label: '20%' },
-                { pct: 40, label: '40%' },
-                { pct: 60, label: '60%' },
-                { pct: 80, label: '80%' },
-                { pct: 100, label: 'Max' },
-              ]
-                // Numeric targets only when they land strictly inside the slider's
-                // travel (below/at min = $0 invoice; at/above max = same as Max).
-                .filter((q) =>
-                  q.pct === 100
-                    ? true
-                    : q.pct > breakOffCombinedSliderBounds.min && q.pct < breakOffCombinedSliderBounds.max,
-                )
-                .map((q) => (
-                  <button
-                    key={q.label}
-                    type="button"
-                    onClick={() => applyBreakOffCombinedPct(q.pct)}
-                    title={
-                      q.label === 'Max'
-                        ? 'Break off everything left to bill'
-                        : `Paid + billed + this bill = ${q.label} of Job Total`
-                    }
-                    style={{
-                      fontSize: '0.6875rem',
-                      padding: '0.15rem 0.5rem',
-                      borderRadius: 999,
-                      border: '1px solid var(--border-strong)',
-                      background: 'var(--surface)',
-                      color: 'var(--text-700)',
-                      cursor: 'pointer',
-                      lineHeight: 1.4,
-                      fontWeight: q.label === 'Max' ? 600 : 400,
-                    }}
-                  >
-                    {q.label}
-                  </button>
-                ))
-            : null}
-          <button
-            type="button"
-            onClick={() => setInfoOpen(true)}
-            aria-label="How the invoice slider works"
-            title="How the invoice slider works"
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              width: 18,
-              height: 18,
-              flexShrink: 0,
-              borderRadius: '50%',
-              border: '1px solid var(--border-strong)',
-              background: 'var(--surface)',
-              color: 'var(--text-muted)',
-              fontFamily: 'Georgia, "Times New Roman", serif',
-              fontStyle: 'italic',
-              fontWeight: 700,
-              fontSize: '0.7rem',
-              lineHeight: 1,
-              padding: 0,
-              cursor: 'pointer',
-            }}
-          >
-            i
-          </button>
-        </span>
       </div>
 
       {breakOffBillingTrackPercents.hasTotal ? (
@@ -594,72 +512,6 @@ export function JobFormBreakOffSection({
         </div>
       ) : null}
 
-      {infoOpen ? (
-        <div
-          role="presentation"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) setInfoOpen(false)
-          }}
-          style={{
-            position: 'fixed',
-            inset: 0,
-            background: 'rgba(0,0,0,0.4)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 2000,
-            padding: '1rem',
-          }}
-        >
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="break-off-info-title"
-            style={{
-              background: 'var(--surface)',
-              padding: '1.25rem 1.5rem',
-              borderRadius: 8,
-              width: '100%',
-              maxWidth: 420,
-              boxSizing: 'border-box',
-              boxShadow: '0 10px 30px rgba(0,0,0,0.25)',
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h2
-              id="break-off-info-title"
-              style={{ margin: '0 0 0.75rem', fontSize: '1.0625rem', fontWeight: 600, color: 'var(--text-800)' }}
-            >
-              How the invoice slider works
-            </h2>
-            <p style={{ margin: '0 0 1.25rem', fontSize: '0.875rem', lineHeight: 1.5, color: 'var(--text-700)' }}>
-              Money that&rsquo;s already spoken for — paid, then billed — fills the bar from the left. The green
-              triangle sets the next bill: it grows from where allocation ends and can&rsquo;t pass what&rsquo;s left to
-              bill (job total minus payments minus invoices already carved off). Type an amount, tap a percent, or
-              drag — they all move together. The yellow marker is just how far along the work is; it never limits
-              the bill.
-            </p>
-            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-              <button
-                type="button"
-                onClick={() => setInfoOpen(false)}
-                style={{
-                  padding: '0.4rem 0.85rem',
-                  fontSize: '0.875rem',
-                  fontWeight: 600,
-                  background: '#3b82f6',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: 6,
-                  cursor: 'pointer',
-                }}
-              >
-                Got it
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
     </div>
   )
 }
