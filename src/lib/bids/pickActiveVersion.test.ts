@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { deriveActivePricingId, pickActiveVersion, resolveTaggedVersion } from './pickActiveVersion'
+import { deriveActivePricingId, pickActiveVersion, resolveTaggedVersion, versionSwitchStillActive } from './pickActiveVersion'
 
 describe('pickActiveVersion', () => {
   const versions = [
@@ -76,5 +76,60 @@ describe('resolveTaggedVersion', () => {
 
   it('returns null when the ref is unset', () => {
     expect(resolveTaggedVersion(null, 'bidA')).toBeNull()
+  })
+})
+
+describe('versionSwitchStillActive', () => {
+  it('lets the switch that is still active write', () => {
+    expect(versionSwitchStillActive({ bidId: 'b1', versionId: 'vA' }, 'b1', 'vA')).toBe(true)
+  })
+
+  it('blocks a switch the user has already moved off', () => {
+    // in flight for vA, but the ref has moved to vB
+    expect(versionSwitchStillActive({ bidId: 'b1', versionId: 'vB' }, 'b1', 'vA')).toBe(false)
+  })
+
+  it('blocks a switch belonging to a different bid', () => {
+    expect(versionSwitchStillActive({ bidId: 'b2', versionId: 'vA' }, 'b1', 'vA')).toBe(false)
+  })
+
+  it('handles the unsplit (null version) switch on both sides', () => {
+    expect(versionSwitchStillActive({ bidId: 'b1', versionId: null }, 'b1', null)).toBe(true)
+    expect(versionSwitchStillActive({ bidId: 'b1', versionId: null }, 'b1', 'vA')).toBe(false)
+    expect(versionSwitchStillActive({ bidId: 'b1', versionId: 'vA' }, 'b1', null)).toBe(false)
+  })
+
+  it('blocks when there is no ref yet', () => {
+    expect(versionSwitchStillActive(null, 'b1', 'vA')).toBe(false)
+  })
+
+  it('A -> B -> A: the two A switches both still match, and agree', () => {
+    // Clicking back to A means the ref is A again; the first A switch finishing
+    // late is harmless because it resolves the same facet.
+    expect(versionSwitchStillActive({ bidId: 'b1', versionId: 'vA' }, 'b1', 'vA')).toBe(true)
+  })
+})
+
+describe('the reported disappearing-pricing race', () => {
+  // BP364: two Versions, only the primary has a pricing copy. Switching to the
+  // other and back used to let the stale switch write null and stick.
+  const pricings = [{ id: 'pSPC', bid_version_id: 'vSPC' }]
+  const resolveFor = (versionId: string | null) =>
+    deriveActivePricingId({ activeVersionId: versionId, bidPricings: pricings, legacyFallbackPricingId: null })
+
+  it('a version with no pricing copy resolves to null — the empty state seen on screen', () => {
+    expect(resolveFor('vBURD')).toBeNull()
+    expect(resolveFor('vSPC')).toBe('pSPC')
+  })
+
+  it('the guard drops the stale write, so the active version keeps its pricing', () => {
+    // user is back on SPC; the BURD switch finishes late
+    const refNowSPC = { bidId: 'b1', versionId: 'vSPC' }
+    const staleAllowed = versionSwitchStillActive(refNowSPC, 'b1', 'vBURD')
+    expect(staleAllowed).toBe(false)
+    // what would have been written had it been allowed
+    expect(resolveFor('vBURD')).toBeNull()
+    // what the UI keeps instead
+    expect(resolveFor('vSPC')).toBe('pSPC')
   })
 })

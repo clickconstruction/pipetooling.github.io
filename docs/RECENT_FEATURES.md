@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-31 (v2.1168)
+last_updated: 2026-07-31 (v2.1169)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1169)
+
+### Bids Pricing: switching Version and back could blank the price book (2026-07-31)
+Field report on BP364 (two Versions, SPC + BURD & ASSOCIATES): clicking the other Version and back left Pricing showing "Select a price book…" with an empty Price book section — intermittent, three times. Root cause is an unguarded async race in `switchActiveVersion` ([`useBidPricingEngine.ts`](../src/hooks/useBidPricingEngine.ts)): it sets the active Version synchronously, then `await`s the bid's pricing copies before resolving which facet to show. Two rapid switches leave two awaits in flight and they can finish out of order, so the loser writes the facet it resolved for the Version the user already left. For a split Version with no pricing copy that is `null` **by design** (`deriveActivePricingId` deliberately has no template fallback for split bids — a Version may legitimately have no pricing yet), so the stale write lands as "no price book". It then *sticks*, because the safety-net effect that re-derives a missing pricing bails on `selectedBidVersionId != null` — i.e. it only rescues unsplit bids. Hence "disappears and stays gone until reload". Fix: new pure guard `versionSwitchStillActive` in [`pickActiveVersion.ts`](../src/lib/bids/pickActiveVersion.ts) — after the await, the switch only writes if the bid-tagged active-version ref still points at it (the same tagged-ref idiom the takeoff loaders already use); the later switch performs its own save. An A→B→A sequence leaves both A switches matching, which is harmless since they resolve identically. 8 new tests including the exact BP364 shape. Client-only.
 
 ## Latest Updates (v2.1168)
 

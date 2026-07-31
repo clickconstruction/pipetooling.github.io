@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1169',
+    date: '2026-07-31',
+    title: 'Bid pricing no longer vanishes when you switch versions',
+    kind: 'fix',
+    highlights: [
+      'On Bids \u2192 Pricing, clicking to another Version and back sometimes left the price book empty until you reloaded the page.',
+      'It only happened when the two clicks came close together, which is why it seemed random.',
+    ],
+  },
+  {
     version: 'v2.1168',
     date: '2026-07-31',
     title: 'Bid Costs now shows what a bid really cost',

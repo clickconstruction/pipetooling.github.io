@@ -6,7 +6,7 @@ import { normalizeMaterialsModel, sumRoughLinesPreTaxWithCount, roughCountMultip
 import { loadTeamLaborDataForBids, type TeamLaborBidRow } from '../utils/teamLabor'
 import { loadBidAssignedCosts } from '../lib/bids/loadBidAssignedCosts'
 import type { BidAssignedCosts } from '../lib/bids/bidAssignedCosts'
-import { pickActiveVersion, deriveActivePricingId, resolveTaggedVersion } from '../lib/bids/pickActiveVersion'
+import { pickActiveVersion, deriveActivePricingId, resolveTaggedVersion, versionSwitchStillActive } from '../lib/bids/pickActiveVersion'
 import { pickDefaultPriceBookTemplateId } from '../lib/bids/pickDefaultPriceBookTemplateId'
 import { fetchLastPriceBookTemplateId, saveLastPriceBookTemplateId } from '../lib/bids/pricingUserPrefs'
 import type { BidCountRow } from '../types/bids'
@@ -1148,6 +1148,13 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
   async function switchActiveVersion(bidId: string, versionId: string | null) {
     setSelectedBidVersionId(bidId, versionId)
     const pricings = await loadBidPricings(bidId)
+    // Switching twice in a row leaves two of these awaits in flight and they can
+    // finish out of order. Only the switch that is still active may write — a
+    // stale one would resolve the pricing facet for the version the user already
+    // left, and for a split version with no pricing copy that is null by design,
+    // so it lands as "no price book" and sticks (the safety net below only
+    // re-resolves unsplit bids). The later switch does its own save.
+    if (!versionSwitchStillActive(selectedBidVersionIdRef.current, bidId, versionId)) return
     setSelectedPricingVersionId(
       deriveActivePricingId({
         activeVersionId: versionId,
