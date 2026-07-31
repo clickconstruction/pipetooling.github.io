@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1183',
+    date: '2026-07-31',
+    title: 'Filter the Stages board by GC',
+    kind: 'feature',
+    highlights: [
+      'A new GC dropdown next to the Stages search shows only that GC\u2019s jobs \u2014 every section and total follows.',
+      'Pick \u201cNo GC set\u201d to see the jobs still needing a GC.',
+      'The dropdown appears once at least one job has a GC.',
+    ],
+  },
+  {
     version: 'v2.1182',
     date: '2026-07-31',
     title: 'New jobs made from a bid inherit the bid\u2019s GC',

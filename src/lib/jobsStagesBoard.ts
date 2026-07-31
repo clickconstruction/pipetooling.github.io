@@ -287,6 +287,28 @@ export function buildBilledStageRows(billedJobs: JobWithDetails[], billedInvoice
   return rows
 }
 
+/** Sentinel for the Stages GC filter: only jobs WITHOUT a GC (the fill-them-in worklist). */
+export const STAGES_GC_FILTER_NO_GC = 'no-gc'
+
+/** Distinct GCs among loaded jobs, name-sorted, for the Stages filter dropdown (v2.1183). */
+export function gcFilterOptionsFromJobs(jobs: JobWithDetails[]): Array<{ id: string; name: string }> {
+  const byId = new Map<string, string>()
+  for (const j of jobs) {
+    const gc = j.gcCustomer
+    if (gc?.id && !byId.has(gc.id)) byId.set(gc.id, (gc.name ?? '').trim() || '—')
+  }
+  return [...byId.entries()]
+    .map(([id, name]) => ({ id, name }))
+    .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }))
+}
+
+/** '' / null = all jobs; STAGES_GC_FILTER_NO_GC = jobs without a GC; else exact gc customer id. */
+export function filterJobsByGcCustomer(jobs: JobWithDetails[], gcFilter: string | null): JobWithDetails[] {
+  if (!gcFilter) return jobs
+  if (gcFilter === STAGES_GC_FILTER_NO_GC) return jobs.filter((j) => !j.gcCustomer?.id)
+  return jobs.filter((j) => j.gcCustomer?.id === gcFilter)
+}
+
 export function filterJobsByStagesSearch(
   jobs: JobWithDetails[],
   stagesSearchQuery: string,

@@ -78,6 +78,9 @@ import { getAccessTokenForEdgeFunctions } from '../../lib/supabaseAccessTokenFor
 import { runJobsStagesSerializedPipeline } from '../../lib/jobsStagesSerializedPipeline'
 import {
   buildJobsStagesBoardLists,
+  filterJobsByGcCustomer,
+  gcFilterOptionsFromJobs,
+  STAGES_GC_FILTER_NO_GC,
   clampPartialInvoiceCentsToUnallocated,
   jobBillingUnallocatedDollars,
   locateStagesInvoiceSection,
@@ -547,9 +550,17 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     )
   }, [openStagesDetailJobModal])
 
+  /** Stages GC filter (v2.1183): '' = all, STAGES_GC_FILTER_NO_GC = jobs without a GC, else gc customer id. */
+  const [stagesGcFilter, setStagesGcFilter] = useState('')
+  const stagesGcFilterOptions = useMemo(() => gcFilterOptionsFromJobs(jobs), [jobs])
   const stagesBoardLists = useMemo(
-    () => buildJobsStagesBoardLists(jobs, stagesSearchQuery, stagesSearchExtraJobIds),
-    [jobs, stagesSearchQuery, stagesSearchExtraJobIds],
+    () =>
+      buildJobsStagesBoardLists(
+        filterJobsByGcCustomer(jobs, stagesGcFilter || null),
+        stagesSearchQuery,
+        stagesSearchExtraJobIds,
+      ),
+    [jobs, stagesGcFilter, stagesSearchQuery, stagesSearchExtraJobIds],
   )
 
   /** #3 of the billing-email guardrails: soft heads-up the moment a job is marked Ready to Bill. */
@@ -1163,6 +1174,34 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
               }
               style={{ flex: '1 1 10rem', minWidth: 0, padding: '0.5rem 0.75rem', border: '1px solid var(--border-strong)', borderRadius: 4, boxSizing: 'border-box' }}
             />
+            {stagesGcFilterOptions.length > 0 ? (
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', flexShrink: 0 }}>
+                <GcHardHatIcon size={13} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
+                <select
+                  value={stagesGcFilter}
+                  onChange={(e) => setStagesGcFilter(e.target.value)}
+                  aria-label="Filter the Stages board by GC/Builder"
+                  title="Filter the Stages board by GC/Builder"
+                  style={{
+                    padding: '0.45rem 0.5rem',
+                    border: '1px solid var(--border-strong)',
+                    borderRadius: 4,
+                    background: stagesGcFilter ? 'var(--bg-blue-tint)' : 'var(--surface)',
+                    color: 'inherit',
+                    fontSize: '0.875rem',
+                    maxWidth: '11rem',
+                  }}
+                >
+                  <option value="">All GCs</option>
+                  {stagesGcFilterOptions.map((o) => (
+                    <option key={o.id} value={o.id}>
+                      {o.name}
+                    </option>
+                  ))}
+                  <option value={STAGES_GC_FILTER_NO_GC}>No GC set</option>
+                </select>
+              </span>
+            ) : null}
             {stagesIncludeScheduleTimeInSearch && stagesScheduleSessionSearchBusy ? (
               <span
                 style={{

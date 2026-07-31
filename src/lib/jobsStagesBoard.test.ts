@@ -9,6 +9,9 @@ import {
   buildReadyToBillStageRows,
   clampPartialInvoiceCentsToUnallocated,
   filterJobsByStagesSearch,
+  filterJobsByGcCustomer,
+  gcFilterOptionsFromJobs,
+  STAGES_GC_FILTER_NO_GC,
   jobBillingUnallocatedDollars,
   jobInCollections,
   readyToBillRowsExposureTotal,
@@ -363,6 +366,21 @@ describe('filterJobsByStagesSearch', () => {
     const a = jobStub({ id: 'job-a', invoices: [] })
     const b = jobStub({ id: 'job-b', invoices: [] })
     expect(filterJobsByStagesSearch([a, b], '', new Set(['job-a']))).toEqual([a, b])
+  })
+
+  it('GC filter: options are distinct + name-sorted; filter matches id or the no-GC sentinel (v2.1183)', () => {
+    const k1 = jobStub({ id: 'j1', invoices: [], gcCustomer: { id: 'gc-k', name: 'Knight Contracting' } })
+    const k2 = jobStub({ id: 'j2', invoices: [], gcCustomer: { id: 'gc-k', name: 'Knight Contracting' } })
+    const a = jobStub({ id: 'j3', invoices: [], gcCustomer: { id: 'gc-a', name: 'achilles austin' } })
+    const none = jobStub({ id: 'j4', invoices: [] })
+    const jobsList = [k1, k2, a, none]
+    expect(gcFilterOptionsFromJobs(jobsList)).toEqual([
+      { id: 'gc-a', name: 'achilles austin' },
+      { id: 'gc-k', name: 'Knight Contracting' },
+    ])
+    expect(filterJobsByGcCustomer(jobsList, null).map((j) => j.id)).toEqual(['j1', 'j2', 'j3', 'j4'])
+    expect(filterJobsByGcCustomer(jobsList, 'gc-k').map((j) => j.id)).toEqual(['j1', 'j2'])
+    expect(filterJobsByGcCustomer(jobsList, STAGES_GC_FILTER_NO_GC).map((j) => j.id)).toEqual(['j4'])
   })
 
   it('matches a job by its GC name (v2.1178)', () => {

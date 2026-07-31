@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-31 (v2.1182)
+last_updated: 2026-07-31 (v2.1183)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1183)
+
+### Stages: filter the board by GC (2026-07-31)
+A GC dropdown (hard-hat icon) next to the Stages search — **All GCs**, each GC present among loaded jobs (name-sorted), and **No GC set** (the fill-them-in worklist). Renders only when at least one loaded job has a GC, so the toolbar stays clean until adoption starts. The filter feeds `buildJobsStagesBoardLists` INPUT, so every section, count, aging chip, print, and the GC Review modal respect it, exactly like the search. New kernels `gcFilterOptionsFromJobs` + `filterJobsByGcCustomer` (+1 test) in [`jobsStagesBoard.ts`](../src/lib/jobsStagesBoard.ts); UI in [`JobsStagesTab.tsx`](../src/components/jobs/JobsStagesTab.tsx) (select tints blue when active). Guide updated. Client-only.
 
 ## Latest Updates (v2.1182)
 
