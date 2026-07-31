@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-30 (v2.1157)
+last_updated: 2026-07-30 (v2.1158)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1158)
+
+### "Crew & Dates" header: one line, never wraps (2026-07-30)
+[`JobsStagesUnifiedTable.tsx`](../src/components/jobs/JobsStagesUnifiedTable.tsx) + [`JobsStagesTable.tsx`](../src/components/jobs/JobsStagesTable.tsx): the first column's header drops the deliberate two-line `renderStagesTwoLineHeader` split for a single `white-space: nowrap` span. Client-only.
 
 ## Latest Updates (v2.1157)
 

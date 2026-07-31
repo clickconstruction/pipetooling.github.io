@@ -29,7 +29,6 @@ import {
   renderStagesThreadFullscreenJobHeader,
   renderStagesLastActivityCell as renderStagesLastActivityCellWithCtx,
   renderStagesProjectBannerRow,
-  renderStagesTwoLineHeader,
   shouldSuppressStagesRowJobThreadToggle,
   stagesRowHasProjectBanner,
   STAGES_TABLE_MIN_WIDTH,
@@ -234,7 +233,7 @@ export default function JobsStagesTable(props: JobsStagesTableProps) {
                 minWidth: '6.75rem',
               }}
             >
-              {renderStagesTwoLineHeader('Crew &', 'Dates')}
+              <span style={{ whiteSpace: 'nowrap' }}>Crew &amp; Dates</span>
             </th>
             <th style={{ padding: '0.75rem', textAlign: 'center', borderBottom: '1px solid var(--border)' }}>Job</th>
             <th style={{ padding: '0.75rem', textAlign: 'center', borderBottom: '1px solid var(--border)', minWidth: 200 }}>Activity</th>
