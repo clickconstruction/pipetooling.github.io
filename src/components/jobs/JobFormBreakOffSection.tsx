@@ -24,6 +24,7 @@ function EquationChip({
   dot,
   dotCircle,
   label,
+  pct,
   children,
   highlighted,
   title,
@@ -31,6 +32,8 @@ function EquationChip({
   dot: string
   dotCircle?: boolean
   label: string
+  /** Share of the job total shown after the label, mirroring the pill's % (v2.1141). */
+  pct?: number | null
   children: React.ReactNode
   highlighted?: boolean
   title?: string
@@ -63,6 +66,7 @@ function EquationChip({
           }}
         />
         {label}
+        {pct != null ? <span style={{ fontWeight: 400 }}> {pct}%</span> : null}
       </span>
       <span style={{ fontSize: '0.8125rem', fontWeight: 600, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
         {children}
@@ -144,11 +148,21 @@ export function JobFormBreakOffSection({
     <div style={{ marginBottom: '1rem', display: 'flex', flexDirection: 'column', gap: '0.5rem', width: '100%', minWidth: 0 }}>
       {/* The equation row: chips ARE the math, the legend, the input, and the action. */}
       <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '0.4rem', rowGap: '0.45rem', width: '100%', minWidth: 0 }}>
-        <EquationChip dot={PAID_COLOR} label="Paid" title="Payments received on the job">
+        <EquationChip
+          dot={PAID_COLOR}
+          label="Paid"
+          pct={breakOffBillingTrackPercents.hasTotal ? Math.round(paidPct) : null}
+          title="Payments received on the job"
+        >
           {formatUsdNoCents(breakOffPaidSum)}
         </EquationChip>
         <span aria-hidden style={{ color: 'var(--text-faint)', fontSize: '0.8125rem' }}>+</span>
-        <EquationChip dot={BILLED_COLOR} label="Billed" title="Invoices already carved off (drafts and sent bills)">
+        <EquationChip
+          dot={BILLED_COLOR}
+          label="Billed"
+          pct={breakOffBillingTrackPercents.hasTotal ? Math.round(billedPct) : null}
+          title="Invoices already carved off (drafts and sent bills)"
+        >
           {formatUsdNoCents(breakOffBilledSum)}
         </EquationChip>
         <span aria-hidden style={{ color: 'var(--text-faint)', fontSize: '0.8125rem' }}>+</span>
@@ -256,7 +270,16 @@ export function JobFormBreakOffSection({
             />
         </span>
         <span aria-hidden style={{ color: 'var(--text-faint)', fontSize: '0.8125rem' }}>→</span>
-        <EquationChip dot="var(--border)" label="Left to bill" title="Unallocated after this bill: job total minus payments minus every invoice, including this one">
+        <EquationChip
+          dot="var(--border)"
+          label="Left to bill"
+          pct={
+            breakOffBillingTrackPercents.hasTotal && jobTotalBidDollars > 0
+              ? Math.round(Math.min(100, Math.max(0, (leftAfterDollars / jobTotalBidDollars) * 100)))
+              : null
+          }
+          title="Unallocated after this bill: job total minus payments minus every invoice, including this one"
+        >
           {formatUsdNoCents(leftAfterDollars)}
         </EquationChip>
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', marginLeft: 'auto', flexWrap: 'wrap' }}>
@@ -387,14 +410,7 @@ export function JobFormBreakOffSection({
                   overflow: 'hidden',
                 }}
               >
-                {breakPreviewPct >= 14 ? (
-                  <span
-                    aria-hidden
-                    style={{ fontSize: '0.625rem', fontWeight: 600, color: '#0C447C', whiteSpace: 'nowrap', pointerEvents: 'none' }}
-                  >
-                    {formatUsdNoCents(invoiceDollars)}
-                  </span>
-                ) : null}
+
               </div>
             ) : null}
             {/* 5% snap rails (major every 20%). */}
@@ -560,7 +576,7 @@ export function JobFormBreakOffSection({
               }}
             >
               ⚠ Would bill through {Math.round(breakOffCombinedHandlePct)}% of a job that&rsquo;s{' '}
-              {Math.round(jobCompleteTrackPct ?? 0)}% done in the field — fine for deposits and draws, just so you know.
+              {Math.round(jobCompleteTrackPct ?? 0)}% done in the field.
             </p>
           ) : null}
         </div>
