@@ -152,17 +152,33 @@ export function JobFormBreakOffSection({
           {formatUsdNoCents(breakOffBilledSum)}
         </EquationChip>
         <span aria-hidden style={{ color: 'var(--text-faint)', fontSize: '0.8125rem' }}>+</span>
-        <EquationChip
-          dot={DRAFT_COLOR}
-          label={isSendFullUnallocatedToReadyToBill ? 'New invoice — full remainder' : 'New invoice'}
-          highlighted
+        {/* Single-line pill (v2.1138): the label sits inline with the input and the
+            action so the chip stays one row tall — "full remainder" mode is carried
+            by the blue Ready to Bill button and the tooltip, not label width. */}
+        <span
           title={
             isSendFullUnallocatedToReadyToBill
               ? 'Full unallocated amount: moves job to Ready to Bill (no separate draft line for this amount).'
               : 'Break off an amount to send through Ready to Bill. Job stays in Working.'
           }
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '0.4rem',
+            background: 'var(--surface)',
+            border: '2px solid #3b82f6',
+            borderRadius: 999,
+            padding: '0.25rem 0.65rem',
+            minWidth: 0,
+          }}
         >
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
+          <span style={{ fontSize: '0.6875rem', color: 'var(--text-blue-700)', whiteSpace: 'nowrap' }}>
+            <span
+              aria-hidden
+              style={{ display: 'inline-block', width: 7, height: 7, borderRadius: 2, background: DRAFT_COLOR, marginRight: 4, verticalAlign: 'baseline' }}
+            />
+            New invoice
+          </span>
             <input
               id="edit-job-partial-invoice-amount"
               type="text"
@@ -213,7 +229,7 @@ export function JobFormBreakOffSection({
             />
             {breakOffInvoiceSharePct != null ? (
               <span style={{ fontSize: '0.6875rem', fontWeight: 400, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
-                {breakOffInvoiceSharePct}% of job
+                {breakOffInvoiceSharePct}%
               </span>
             ) : null}
             <button
@@ -239,8 +255,7 @@ export function JobFormBreakOffSection({
             >
               {movingJobToReadyToBill || creatingInvoice ? '…' : isSendFullUnallocatedToReadyToBill ? 'Ready to Bill' : '+'}
             </button>
-          </span>
-        </EquationChip>
+        </span>
         <span aria-hidden style={{ color: 'var(--text-faint)', fontSize: '0.8125rem' }}>→</span>
         <EquationChip dot="var(--border)" label="Left to bill" title="Unallocated after this bill: job total minus payments minus every invoice, including this one">
           {formatUsdNoCents(leftAfterDollars)}

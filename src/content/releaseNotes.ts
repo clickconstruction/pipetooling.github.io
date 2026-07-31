@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1138',
+    date: '2026-07-30',
+    title: 'Make Invoice: a slimmer New invoice pill',
+    kind: 'fix',
+    highlights: [
+      'The New invoice chip is now a single-line pill \u2014 label, amount, percent, and the create button side by side \u2014 so the equation row stays low and tidy. The \u201cfull remainder\u201d nuance lives in the blue Ready to Bill button and its tooltip.',
+    ],
+  },
+  {
     version: 'v2.1137',
     date: '2026-07-30',
     title: 'Edit job: the Make Invoice control reads like the math it does',
