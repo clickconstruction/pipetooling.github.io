@@ -364,6 +364,27 @@ describe('filterJobsByStagesSearch', () => {
     const b = jobStub({ id: 'job-b', invoices: [] })
     expect(filterJobsByStagesSearch([a, b], '', new Set(['job-a']))).toEqual([a, b])
   })
+
+  it('matches a job by its GC name (v2.1178)', () => {
+    const withGc = jobStub({
+      id: 'job-gc',
+      hcp_number: '300',
+      job_name: 'Pizza Buildout',
+      job_address: '3 Elm',
+      invoices: [],
+      gcCustomer: { id: 'gc-1', name: 'Knight Contracting' },
+    })
+    const withoutGc = jobStub({
+      id: 'job-plain',
+      hcp_number: '301',
+      job_name: 'Repipe',
+      job_address: '4 Oak',
+      invoices: [],
+    })
+    expect(filterJobsByStagesSearch([withGc, withoutGc], 'knight', null).map((j) => j.id)).toEqual(['job-gc'])
+    // null gcCustomer never throws or matches
+    expect(filterJobsByStagesSearch([withoutGc], 'knight', null)).toHaveLength(0)
+  })
 })
 
 describe('buildJobsStagesBoardLists', () => {

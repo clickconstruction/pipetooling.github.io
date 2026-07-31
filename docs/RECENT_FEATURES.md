@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-31 (v2.1177)
+last_updated: 2026-07-31 (v2.1178)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1178)
+
+### GC on jobs part 3: Stages hard-hat line + search by GC (2026-07-31)
+Completes the v2.1175–v2.1177 train. The Stages primary select gains the `gc_customer:gc_customer_id(id, name)` embed ([`jobsLedgerEmbedSelects.ts`](../src/lib/jobsLedgerEmbedSelects.ts)) and both [`fetchJobsLedgerWithDetailsForStages.ts`](../src/lib/fetchJobsLedgerWithDetailsForStages.ts) mappings thread it to `JobWithDetails.gcCustomer`. [`jobsStagesRowShared.tsx`](../src/components/jobs/jobsStagesRowShared.tsx)'s `renderJobCustomerLine` shows a hard-hat + GC name line under the customer (and now renders for GC-only jobs too). `filterJobsByStagesSearch` ([`jobsStagesBoard.ts`](../src/lib/jobsStagesBoard.ts)) matches the GC name — typing "Knight" surfaces every job under that GC (+1 test). New guide `track-a-general-contractor-on-a-job`; GLOSSARY + PROJECT_DOCUMENTATION entries for the whole feature. Client-only.
 
 ## Latest Updates (v2.1177)
 

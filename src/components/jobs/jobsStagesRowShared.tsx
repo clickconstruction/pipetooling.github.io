@@ -35,6 +35,7 @@ import { useChecklistAddModal } from '../../contexts/ChecklistAddModalContext'
 import { useDispatchTaskModal } from '../../contexts/DispatchTaskModalContext'
 import type { Database } from '../../types/database'
 import type { JobWithDetails } from '../../types/jobWithDetails'
+import GcHardHatIcon from '../icons/GcHardHatIcon'
 
 type CustomerRow = Database['public']['Tables']['customers']['Row']
 type JobsLedgerInvoice = Database['public']['Tables']['jobs_ledger_invoices']['Row']
@@ -362,7 +363,8 @@ function customerListImpliesLinkedRow(customersList: CustomerRow[], jobMasterUse
 export function renderJobCustomerLine(ctx: StagesRowRenderContext, job: JobWithDetails) {
   const { customers, openEditJobAndCreateCustomerFlow } = ctx
   const hasCustomerInfo = ((job.customer_name ?? '').trim() || (job.customer_email ?? '').trim() || (job.customer_phone ?? '').trim())
-  if (!hasCustomerInfo) return null
+  const gcName = (job.gcCustomer?.name ?? '').trim()
+  if (!hasCustomerInfo && !gcName) return null
   const cn = (job.customer_name ?? '').trim()
   const impliedCustomerLink = !job.customer_id && customerListImpliesLinkedRow(customers, job.master_user_id, cn)
   const showNotInCustomersBadge = !job.customer_id && !impliedCustomerLink
@@ -392,6 +394,12 @@ export function renderJobCustomerLine(ctx: StagesRowRenderContext, job: JobWithD
         </svg>
         <span>{(job.customer_name ?? '').trim() || '—'}</span>
       </span>
+      {gcName ? (
+        <span title="GC/Builder for this job" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
+          <GcHardHatIcon size={13} style={{ flexShrink: 0 }} />
+          <span>{gcName}</span>
+        </span>
+      ) : null}
       {showNotInCustomersBadge ? (
         <button
           type="button"

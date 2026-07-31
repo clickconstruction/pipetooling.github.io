@@ -7,7 +7,7 @@ file: GLOSSARY.md
 type: Reference
 purpose: Comprehensive definitions of all domain-specific terms and technical concepts
 audience: All users (especially new developers and AI agents)
-last_updated: 2026-07-22
+last_updated: 2026-07-31
 estimated_read_time: 15-20 minutes (reference only)
 difficulty: Beginner
 
@@ -650,6 +650,9 @@ Customer in the bids context. The entity requesting the bid (can be actual GC, h
 **Database**: Uses `customers` table (linked via `customer_id`)
 
 **Alias**: "GC/Builder", "GC", "Builder", "Customer" all refer to same concept in Bids
+
+### GC on jobs (v2.1175–v2.1178)
+Optional **second** customer link on a job — `jobs_ledger.gc_customer_id` (FK `customers`, ON DELETE SET NULL) — so office can manage work by General Contractor alongside the primary (billed) customer. Set in **Edit Job → Customer → GC/Builder (customer)** (one-click "Use bid's GC" when the job links a bid); shown with a hard-hat icon on **Jobs → Stages** (Job column, under the customer) and **Job Detail**; matched by the **Stages search**. Billing is unaffected — paying-as-GC is the per-invoice **bill-to override** (v2.1084). Same-master invariant enforced by trigger `jobs_ledger_gc_customer_master_match` + client kernel `resolveGcCustomerIdForJobPayload`. **Gotcha**: `jobs_ledger` now has TWO FKs to `customers` — PostgREST embeds must name the FK (`customers!jobs_ledger_customer_id_fkey` or the `gc_customer:gc_customer_id(...)` alias); a bare `customers(...)` embed 400s (PGRST201).
 
 ### Fixture / Fixture Type
 Installed plumbing fixture in a project (toilet, sink, faucet, shower, tub, water heater, etc.). Service-type-specific categorization used in Bids system for labor and pricing calculations.
