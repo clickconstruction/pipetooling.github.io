@@ -12728,6 +12728,15 @@ export type Database = {
         Args: { p_allow_billed?: boolean; p_from: string; p_to: string }
         Returns: Json
       }
+      migrate_job_ledger_costs_to_bid_and_delete: {
+        Args: {
+          p_allow_billed?: boolean
+          p_dry_run?: boolean
+          p_from: string
+          p_to_bid: string
+        }
+        Returns: Json
+      }
       move_job_schedule_block_group: {
         Args: {
           p_job_id: string

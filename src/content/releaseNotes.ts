@@ -11,6 +11,18 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1166',
+    date: '2026-07-31',
+    title: 'Put a job’s costs on the bid they belonged to',
+    kind: 'feature',
+    highlights: [
+      'When time and spending land on a job but the work was really bid work, Edit Job → Delete → Reassign now offers "A bid" as the target.',
+      'Parts, materials, supply-house splits, card charges, team labor and field reports all move to the bid.',
+      'Before you confirm, it shows exactly what moves and what gets deleted with the job — including the job total, which a bid cannot hold.',
+      'The bid’s real cost goes up, so next time you price similar work you are comparing against an honest number.',
+    ],
+  },
+  {
     version: 'v2.1165',
     date: '2026-07-31',
     title: 'Groundwork: put a job’s costs on a bid',
