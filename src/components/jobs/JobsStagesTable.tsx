@@ -236,8 +236,8 @@ export default function JobsStagesTable(props: JobsStagesTableProps) {
             >
               {renderStagesTwoLineHeader('Team &', 'Last-update')}
             </th>
-            <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Job</th>
-            <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)', minWidth: 200 }}>Activity</th>
+            <th style={{ padding: '0.75rem', textAlign: 'center', borderBottom: '1px solid var(--border)' }}>Job</th>
+            <th style={{ padding: '0.75rem', textAlign: 'center', borderBottom: '1px solid var(--border)', minWidth: 200 }}>Activity</th>
             <th
               style={{
                 padding: '0.75rem',

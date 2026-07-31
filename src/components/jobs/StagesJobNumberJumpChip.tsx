@@ -29,6 +29,17 @@ export function StagesJobNumberJumpChip({
     return () => window.clearTimeout(t)
   }, [noMatch])
 
+  function attemptJump() {
+    const trimmed = digits.trim()
+    if (trimmed === '') return
+    if (onJump(trimmed)) {
+      setDigits('')
+      setOpen(false)
+    } else {
+      setNoMatch(true)
+    }
+  }
+
   if (!open) {
     return (
       <button
@@ -83,16 +94,7 @@ export function StagesJobNumberJumpChip({
           setNoMatch(false)
         }}
         onKeyDown={(e) => {
-          if (e.key === 'Enter') {
-            const trimmed = digits.trim()
-            if (trimmed === '') return
-            if (onJump(trimmed)) {
-              setDigits('')
-              setOpen(false)
-            } else {
-              setNoMatch(true)
-            }
-          }
+          if (e.key === 'Enter') attemptJump()
           if (e.key === 'Escape') {
             setDigits('')
             setOpen(false)
@@ -115,6 +117,31 @@ export function StagesJobNumberJumpChip({
           padding: '0.15rem 0',
         }}
       />
+      {digits.trim() !== '' ? (
+        <button
+          type="button"
+          onClick={attemptJump}
+          title="Jump to this job (or press Enter)"
+          aria-label="Jump to this job number"
+          style={{
+            width: 24,
+            height: 24,
+            flexShrink: 0,
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            border: 'none',
+            borderRadius: 6,
+            background: '#2563eb',
+            color: '#ffffff',
+            fontSize: '0.8125rem',
+            cursor: 'pointer',
+            padding: 0,
+          }}
+        >
+          ⏎
+        </button>
+      ) : null}
     </span>
   )
 }

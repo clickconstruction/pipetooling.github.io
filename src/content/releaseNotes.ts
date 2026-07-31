@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1156',
+    date: '2026-07-30',
+    title: 'Stages jump button, centered headers, tidier chart tooltip',
+    kind: 'feature',
+    highlights: [
+      'The # number search shows a blue \u23ce button while you type \u2014 click it or press Enter to jump to the job.',
+      'Job and Activity column headers center over their columns.',
+      'Cost Timeline: the legend is back to one flat line; the hover tooltip now stacks Cost / Paid / Profit / Value created one per line.',
+    ],
+  },
+  {
     version: 'v2.1155',
     date: '2026-07-30',
     title: 'Stages and Cost Timeline polish, five ways',
