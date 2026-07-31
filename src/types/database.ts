@@ -12013,6 +12013,7 @@ export type Database = {
           job_name: string
         }[]
       }
+      get_location_enabled_user_ids: { Args: never; Returns: string[] }
       get_man_hours_by_job: {
         Args: never
         Returns: {

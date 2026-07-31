@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1176',
+    date: '2026-07-31',
+    title: 'Faster People page load for developers',
+    kind: 'fix',
+    highlights: [
+      'The developer-only location indicator on People → Users now asks the database for the short answer instead of downloading every clock-in ever recorded with GPS.',
+    ],
+  },
+  {
     version: 'v2.1175',
     date: '2026-07-31',
     title: 'Groundwork for tracking a GC on each job',

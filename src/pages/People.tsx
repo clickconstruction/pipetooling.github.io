@@ -965,12 +965,13 @@ export default function People() {
 
   useEffect(() => {
     if (!isDev) return
+    // Server-side DISTINCT (v2.1176) — the old table select pulled every
+    // GPS-bearing clock_sessions row ever recorded just to build this set.
+    // Fails soft (empty set) if the RPC isn't deployed yet.
     supabase
-      .from('clock_sessions')
-      .select('user_id')
-      .or('clock_in_lat.not.is.null,clock_out_lat.not.is.null')
+      .rpc('get_location_enabled_user_ids')
       .then(({ data }) => {
-        const ids = new Set((data ?? []).map((r: { user_id: string }) => r.user_id))
+        const ids = new Set((Array.isArray(data) ? data : []).filter((x): x is string => typeof x === 'string'))
         setLocationEnabledUserIds(ids)
       })
   }, [isDev])
