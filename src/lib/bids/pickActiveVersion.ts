@@ -44,6 +44,25 @@ export function deriveActivePricingId(input: {
 }
 
 /**
+ * True when an in-flight Version switch is still the one the user wants.
+ *
+ * `switchActiveVersion` sets the active version synchronously, then awaits the bid's pricing
+ * copies before resolving which pricing facet to show. Switching twice in a row (A → B → A, the
+ * "click the other version and click back" the field reported) leaves two of those awaits in
+ * flight, and they can finish out of order. The loser must not write: it resolved a pricing facet
+ * for the version the user has already left, and {@link deriveActivePricingId} returns null for a
+ * split version with no pricing copy — so a stale write lands as "no price book" and *sticks*,
+ * because the unsplit-only safety net never re-resolves a split bid.
+ */
+export function versionSwitchStillActive(
+  tagged: { bidId: string; versionId: string | null } | null,
+  bidId: string,
+  versionId: string | null,
+): boolean {
+  return tagged != null && tagged.bidId === bidId && tagged.versionId === versionId
+}
+
+/**
  * Resolve the active version id from a bid-tagged ref. The takeoff loaders read the active
  * version synchronously from a ref; tagging it with the bid it belongs to lets a reader use
  * the version ONLY when it matches the bid being loaded. A mismatch (the ref is still set for
