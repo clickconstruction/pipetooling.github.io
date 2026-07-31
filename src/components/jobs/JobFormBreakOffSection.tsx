@@ -172,13 +172,10 @@ export function JobFormBreakOffSection({
             minWidth: 0,
           }}
         >
-          <span style={{ fontSize: '0.6875rem', color: 'var(--text-blue-700)', whiteSpace: 'nowrap' }}>
-            <span
-              aria-hidden
-              style={{ display: 'inline-block', width: 7, height: 7, borderRadius: 2, background: DRAFT_COLOR, marginRight: 4, verticalAlign: 'baseline' }}
-            />
-            New invoice
-          </span>
+          <span
+            aria-hidden
+            style={{ display: 'inline-block', width: 7, height: 7, borderRadius: 2, background: DRAFT_COLOR, flexShrink: 0 }}
+          />
             <input
               id="edit-job-partial-invoice-amount"
               type="text"
@@ -237,10 +234,10 @@ export function JobFormBreakOffSection({
               onClick={isSendFullUnallocatedToReadyToBill ? moveWorkingJobToReadyToBillFromEdit : createInvoice}
               disabled={actionDisabled}
               title={isSendFullUnallocatedToReadyToBill ? 'Move job to Ready to Bill' : 'Create invoice'}
-              aria-label={isSendFullUnallocatedToReadyToBill ? 'Ready to Bill' : 'Create invoice'}
+              aria-label={isSendFullUnallocatedToReadyToBill ? 'Ready to Bill' : 'Make new invoice'}
               style={{
-                padding: isSendFullUnallocatedToReadyToBill ? '0.25rem 0.6rem' : '0.2rem 0.45rem',
-                fontSize: isSendFullUnallocatedToReadyToBill ? '0.75rem' : '0.9375rem',
+                padding: '0.25rem 0.6rem',
+                fontSize: '0.75rem',
                 fontWeight: 600,
                 lineHeight: 1,
                 flexShrink: 0,
@@ -253,7 +250,7 @@ export function JobFormBreakOffSection({
                 cursor: actionDisabled ? 'not-allowed' : 'pointer',
               }}
             >
-              {movingJobToReadyToBill || creatingInvoice ? '…' : isSendFullUnallocatedToReadyToBill ? 'Ready to Bill' : '+'}
+              {movingJobToReadyToBill || creatingInvoice ? '…' : isSendFullUnallocatedToReadyToBill ? 'Ready to Bill' : 'Make new Invoice'}
             </button>
         </span>
         <span aria-hidden style={{ color: 'var(--text-faint)', fontSize: '0.8125rem' }}>→</span>
