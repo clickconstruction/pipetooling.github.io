@@ -577,7 +577,9 @@ export function JobFormBreakOffSection({
                 border: '1px solid #f59e0b',
                 borderRadius: 6,
                 padding: '0.3rem 0.6rem',
-                display: 'inline-block',
+                display: 'table',
+                marginLeft: 'auto',
+                marginRight: 'auto',
               }}
             >
               ⚠ Would bill through {Math.round(breakOffCombinedHandlePct)}% of a job that&rsquo;s{' '}

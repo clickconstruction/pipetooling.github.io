@@ -80,9 +80,9 @@ describe('JobFormSegmentsBar dollar-invoice coverage (v2.1132)', () => {
     )
   }
 
-  it('shows the banner, the legend entry, and per-row coverage chips', () => {
+  it('shows the legend entry and per-row coverage chips (banner removed v2.1141)', () => {
     renderWithCoverage()
-    expect(screen.getByText(/\$500\.00 of this job is already paid or on bills/)).toBeTruthy()
+    expect(screen.queryByText(/of this job is already paid or on bills/)).toBeNull()
     expect(screen.getByText('Covered by other bills')).toBeTruthy()
     expect(screen.getByText('covered')).toBeTruthy()
     expect(screen.getByText('$100.00 covered')).toBeTruthy()
@@ -104,6 +104,5 @@ describe('JobFormSegmentsBar dollar-invoice coverage (v2.1132)', () => {
   it('renders no coverage chrome without the prop', () => {
     renderBar()
     expect(screen.queryByText('Covered by other bills')).toBeNull()
-    expect(screen.queryByText(/left to bill/)).toBeNull()
   })
 })
