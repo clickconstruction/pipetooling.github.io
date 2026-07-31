@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-30 (v2.1139)
+last_updated: 2026-07-30 (v2.1140)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1140)
+
+### Make Invoice: two-level pill matches its sibling chips (2026-07-30)
+[`JobFormBreakOffSection.tsx`](../src/components/jobs/JobFormBreakOffSection.tsx) — per user direction, the pill takes the siblings' label-over-value shape: top line = legend dot + the worded action button (green **Make new Invoice** / blue **Ready to Bill**) + share %; bottom line = the amount input (widened to 7.5rem). Equal chip heights let the whole equation (Paid + Billed + pill → Left to bill) sit on one row even in the narrow modal. Client-only.
 
 ## Latest Updates (v2.1139)
 

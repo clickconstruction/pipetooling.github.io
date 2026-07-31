@@ -152,9 +152,9 @@ export function JobFormBreakOffSection({
           {formatUsdNoCents(breakOffBilledSum)}
         </EquationChip>
         <span aria-hidden style={{ color: 'var(--text-faint)', fontSize: '0.8125rem' }}>+</span>
-        {/* Single-line pill (v2.1138): the label sits inline with the input and the
-            action so the chip stays one row tall — "full remainder" mode is carried
-            by the blue Ready to Bill button and the tooltip, not label width. */}
+        {/* Two-level pill (v2.1139): the action button sits in the label slot —
+            dot + Make new Invoice / Ready to Bill + share % on top, the amount
+            input below — so the chip matches its siblings' label-over-value shape. */}
         <span
           title={
             isSendFullUnallocatedToReadyToBill
@@ -163,19 +163,49 @@ export function JobFormBreakOffSection({
           }
           style={{
             display: 'inline-flex',
-            alignItems: 'center',
-            gap: '0.4rem',
+            flexDirection: 'column',
+            gap: 2,
             background: 'var(--surface)',
             border: '2px solid #3b82f6',
-            borderRadius: 999,
-            padding: '0.25rem 0.65rem',
+            borderRadius: 8,
+            padding: '0.3rem 0.6rem',
             minWidth: 0,
           }}
         >
-          <span
-            aria-hidden
-            style={{ display: 'inline-block', width: 7, height: 7, borderRadius: 2, background: DRAFT_COLOR, flexShrink: 0 }}
-          />
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', whiteSpace: 'nowrap' }}>
+            <span
+              aria-hidden
+              style={{ display: 'inline-block', width: 7, height: 7, borderRadius: 2, background: DRAFT_COLOR, flexShrink: 0 }}
+            />
+            <button
+              type="button"
+              onClick={isSendFullUnallocatedToReadyToBill ? moveWorkingJobToReadyToBillFromEdit : createInvoice}
+              disabled={actionDisabled}
+              title={isSendFullUnallocatedToReadyToBill ? 'Move job to Ready to Bill' : 'Create invoice'}
+              aria-label={isSendFullUnallocatedToReadyToBill ? 'Ready to Bill' : 'Make new invoice'}
+              style={{
+                padding: '0.25rem 0.6rem',
+                fontSize: '0.75rem',
+                fontWeight: 600,
+                lineHeight: 1,
+                flexShrink: 0,
+                whiteSpace: 'nowrap',
+                // Green = invoice action, blue = job move — same color language as Stages.
+                background: actionDisabled ? '#9ca3af' : isSendFullUnallocatedToReadyToBill ? '#3b82f6' : '#16a34a',
+                color: 'white',
+                border: 'none',
+                borderRadius: 6,
+                cursor: actionDisabled ? 'not-allowed' : 'pointer',
+              }}
+            >
+              {movingJobToReadyToBill || creatingInvoice ? '…' : isSendFullUnallocatedToReadyToBill ? 'Ready to Bill' : 'Make new Invoice'}
+            </button>
+            {breakOffInvoiceSharePct != null ? (
+              <span style={{ fontSize: '0.6875rem', fontWeight: 400, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+                {breakOffInvoiceSharePct}%
+              </span>
+            ) : null}
+          </span>
             <input
               id="edit-job-partial-invoice-amount"
               type="text"
@@ -212,7 +242,7 @@ export function JobFormBreakOffSection({
               onChange={(e) => setNewInvoiceAmount(sanitizeMoneyTyping(e.target.value))}
               placeholder="$0"
               style={{
-                width: '6rem',
+                width: '7.5rem',
                 boxSizing: 'border-box',
                 padding: '0.1rem 0.1rem',
                 border: 'none',
@@ -224,34 +254,6 @@ export function JobFormBreakOffSection({
                 fontVariantNumeric: 'tabular-nums',
               }}
             />
-            {breakOffInvoiceSharePct != null ? (
-              <span style={{ fontSize: '0.6875rem', fontWeight: 400, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
-                {breakOffInvoiceSharePct}%
-              </span>
-            ) : null}
-            <button
-              type="button"
-              onClick={isSendFullUnallocatedToReadyToBill ? moveWorkingJobToReadyToBillFromEdit : createInvoice}
-              disabled={actionDisabled}
-              title={isSendFullUnallocatedToReadyToBill ? 'Move job to Ready to Bill' : 'Create invoice'}
-              aria-label={isSendFullUnallocatedToReadyToBill ? 'Ready to Bill' : 'Make new invoice'}
-              style={{
-                padding: '0.25rem 0.6rem',
-                fontSize: '0.75rem',
-                fontWeight: 600,
-                lineHeight: 1,
-                flexShrink: 0,
-                whiteSpace: 'nowrap',
-                // Green = invoice action, blue = job move — same color language as Stages.
-                background: actionDisabled ? '#9ca3af' : isSendFullUnallocatedToReadyToBill ? '#3b82f6' : '#16a34a',
-                color: 'white',
-                border: 'none',
-                borderRadius: 6,
-                cursor: actionDisabled ? 'not-allowed' : 'pointer',
-              }}
-            >
-              {movingJobToReadyToBill || creatingInvoice ? '…' : isSendFullUnallocatedToReadyToBill ? 'Ready to Bill' : 'Make new Invoice'}
-            </button>
         </span>
         <span aria-hidden style={{ color: 'var(--text-faint)', fontSize: '0.8125rem' }}>→</span>
         <EquationChip dot="var(--border)" label="Left to bill" title="Unallocated after this bill: job total minus payments minus every invoice, including this one">
