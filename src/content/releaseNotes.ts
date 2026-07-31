@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1140',
+    date: '2026-07-30',
+    title: 'Make Invoice: the pill lines up with its neighbors',
+    kind: 'fix',
+    highlights: [
+      'The action button (Make new Invoice / Ready to Bill) moved to the pill\u2019s top line with the percent beside it, and the amount sits below \u2014 the same two-level shape as the Paid, Billed, and Left-to-bill chips, so the whole equation reads as one tidy row.',
+      'Every chip now shows its percent of the job right on the label (Paid 65%, Billed 0%, Left to bill 10%), the bar no longer repeats the amount inside the blue segment (the badge below carries it), and the ahead-of-field note is down to the plain fact.',
+    ],
+  },
+  {
     version: 'v2.1139',
     date: '2026-07-30',
     title: 'Make Invoice: the button says what it does',
