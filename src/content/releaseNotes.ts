@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1180',
+    date: '2026-07-31',
+    title: 'Edit Job shows the GC without expanding the Customer section',
+    kind: 'feature',
+    highlights: [
+      'The collapsed Customer header now lists GC/Builder on a second line, with a hard-hat icon.',
+    ],
+  },
+  {
     version: 'v2.1179',
     date: '2026-07-31',
     title: 'Cleaner appointment times on the Stages board',
