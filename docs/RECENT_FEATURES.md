@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-31 (v2.1173)
+last_updated: 2026-07-31 (v2.1174)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1174)
+
+### Migrate-to-bid: create the target bid from the picker (2026-07-31)
+The Edit Job delete flow's **A bid** target search now ends with **+ Create new bid "«search text»"** whenever 2+ characters are typed (and the empty state says "No bids match — you can create one below."). One click inserts a minimal bid — project name = the search text, the job's `service_type_id`, `customer_id` and `job_address`, `materials_model 'rough'`, bid number assigned server-side by `set_bid_number_if_empty` (same minimal insert as the Prospects convert flow) — then prepends it to the candidate list, selects it as the target, and the dry-run preview fires immediately. New `createMigrateTargetBid` in [`useJobMigrate.ts`](../src/components/jobs/useJobMigrate.ts) (error surfaced under the list; state cleared by `resetMigrate`); the row renders in [`JobFormDeleteMigrateModals.tsx`](../src/components/jobs/JobFormDeleteMigrateModals.tsx) only when the job has a `service_type_id` (bids require one). Verified live: created BP368 from the picker with inherited customer + address, dry-run counts appeared, then the test bid was deleted. Guide `move-a-jobs-costs-onto-a-bid` updated. Client-only.
 
 ## Latest Updates (v2.1173)
 

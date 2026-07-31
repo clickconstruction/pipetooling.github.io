@@ -39,6 +39,14 @@ export type MigrateBidDryRun = {
 /** Target side of the migrate modal: another job, or a bid (v2.1166). */
 export type MigrateTargetKind = 'job' | 'bid'
 
+/** Prefills for creating a target bid inline from the picker (all from the source job). */
+export type CreateMigrateBidInput = {
+  projectName: string
+  serviceTypeId: string
+  customerId: string | null
+  address: string | null
+}
+
 /**
  * State + non-destructive search/preview effects for the Edit-Job "Migrate costs
  * to another job, then delete this one" modal. Extracted verbatim from
@@ -63,6 +71,8 @@ export function useJobMigrate(sourceJobId: string | null) {
   const [migrateTargetPreviewLoading, setMigrateTargetPreviewLoading] = useState(false)
   const [migrateTargetPreview, setMigrateTargetPreview] = useState<MigratePreview | null>(null)
   const [migratingJob, setMigratingJob] = useState(false)
+  const [creatingMigrateBid, setCreatingMigrateBid] = useState(false)
+  const [createMigrateBidError, setCreateMigrateBidError] = useState<string | null>(null)
 
   // Debounced target search (excludes the source job).
   useEffect(() => {
@@ -212,6 +222,62 @@ export function useJobMigrate(sourceJobId: string | null) {
     }
   }, [migrateTargetBidId, sourceJobId, migrateTargetKind])
 
+  // Create a target bid inline from the picker when the search finds nothing
+  // usable. Prefilled from the source job; `set_bid_number_if_empty` assigns
+  // the bid number server-side (same minimal insert as the Prospects convert
+  // flow). The new bid is prepended to the candidate list and selected, so the
+  // dry-run preview fires immediately.
+  const createMigrateTargetBid = useCallback(async (input: CreateMigrateBidInput) => {
+    setCreatingMigrateBid(true)
+    setCreateMigrateBidError(null)
+    try {
+      const { data: userData } = await supabase.auth.getUser()
+      const createdBy = userData?.user?.id
+      if (!createdBy) throw new Error('Not signed in')
+      const raw = await withSupabaseRetry(
+        async () =>
+          supabase
+            .from('bids')
+            .insert({
+              project_name: input.projectName,
+              service_type_id: input.serviceTypeId,
+              customer_id: input.customerId,
+              address: input.address,
+              created_by: createdBy,
+              materials_model: 'rough',
+            })
+            .select('id, bid_number, project_name, address, customers(name)')
+            .single(),
+        'create migrate target bid',
+      )
+      if (!raw) throw new Error('Bid was not returned after create')
+      const row = raw as unknown as {
+        id: string
+        bid_number: string | null
+        project_name: string | null
+        address: string | null
+        customers: { name: string | null } | { name: string | null }[] | null
+      }
+      // PostgREST returns embedded to-one as an object or a 1-element array.
+      const cust = Array.isArray(row.customers) ? row.customers[0] ?? null : row.customers
+      const candidate: MigrateBidCandidate = {
+        id: row.id,
+        bid_number: row.bid_number ?? '',
+        project_name: row.project_name ?? '',
+        address: row.address ?? '',
+        customer_name: cust?.name ?? '',
+      }
+      setMigrateBidCandidates((prev) => [candidate, ...prev.filter((c) => c.id !== candidate.id)])
+      setMigrateTargetBidId(candidate.id)
+      return true
+    } catch (err) {
+      setCreateMigrateBidError(err instanceof Error ? err.message : 'Failed to create the bid')
+      return false
+    } finally {
+      setCreatingMigrateBid(false)
+    }
+  }, [])
+
   /** Reset the whole migrate picker — called by the modal's close / apply-edit / reset-new lifecycle. */
   const resetMigrate = useCallback(() => {
     setMigrateJobModalOpen(false)
@@ -229,6 +295,8 @@ export function useJobMigrate(sourceJobId: string | null) {
     setMigrateTargetBidId(null)
     setMigrateBidDryRun(null)
     setMigrateBidDryRunLoading(false)
+    setCreatingMigrateBid(false)
+    setCreateMigrateBidError(null)
   }, [])
 
   return {
@@ -256,5 +324,8 @@ export function useJobMigrate(sourceJobId: string | null) {
     setMigrateTargetBidId,
     migrateBidDryRun,
     migrateBidDryRunLoading,
+    createMigrateTargetBid,
+    creatingMigrateBid,
+    createMigrateBidError,
   }
 }

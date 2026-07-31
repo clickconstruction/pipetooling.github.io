@@ -16,7 +16,8 @@ You can move it. It lives in the same place as reassigning costs to another job.
 3. Because the job has costs on it, the button becomes {{button:outline|Reassign to another job…}}. Click it.
 4. At the top of the window, switch the target from **Another job** to {{chip:blue|A bid}}.
 5. Search for the bid by number, project, or address, and pick it.
-6. Read the preview. Then click {{button:red|Confirm move to bid and delete}}.
+6. **No matching bid yet?** The bottom of the list always offers *+ Create new bid "your search text"* — one click starts a bid named after what you typed, on this job's service type, customer and address, and selects it as the target. Finish the bid's details on Bids later.
+7. Read the preview. Then click {{button:red|Confirm move to bid and delete}}.
 
 :::example The preview is the real thing
 The preview isn't an estimate. It actually performs the move on the server, counts what happened, then rolls it all back — so the numbers you read are exactly what pressing Confirm will do.

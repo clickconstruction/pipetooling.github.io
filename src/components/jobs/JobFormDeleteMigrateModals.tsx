@@ -79,10 +79,18 @@ export function JobFormDeleteMigrateModals({
     setMigrateTargetBidId,
     migrateBidDryRun,
     migrateBidDryRunLoading,
+    createMigrateTargetBid,
+    creatingMigrateBid,
+    createMigrateBidError,
   } = migrate
 
   const targetingBid = migrateTargetKind === 'bid'
   const confirmDisabled = migratingJob || (targetingBid ? !migrateTargetBidId : !migrateTargetJobId)
+  // Inline "create the target bid" escape hatch: needs 2+ chars of search text
+  // (that text becomes the project name) and the source job's service type
+  // (bids.service_type_id is required).
+  const bidCreateName = migrateBidSearch.trim()
+  const canCreateTargetBid = bidCreateName.length >= 2 && !migrateBidSearchLoading && editing?.service_type_id != null
   // Only rows the RPC reported as non-zero are worth showing; a wall of "0"s
   // buries the ones that matter.
   const dryRunDropped = Object.entries(migrateBidDryRun?.dropped ?? {}).filter(([, n]) => Number(n) > 0)
@@ -424,7 +432,9 @@ export function JobFormDeleteMigrateModals({
               <p style={{ margin: '0 0 0.75rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>Searching…</p>
             ) : null}
             {targetingBid && migrateBidSearch.trim().length >= 2 && migrateBidCandidates.length === 0 && !migrateBidSearchLoading ? (
-              <p style={{ margin: '0 0 0.75rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>No bids match.</p>
+              <p style={{ margin: '0 0 0.75rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+                No bids match{canCreateTargetBid ? ' — you can create one below.' : '.'}
+              </p>
             ) : null}
             {targetingBid ? (
               <ul style={{ listStyle: 'none', margin: '0 0 1rem', padding: 0, maxHeight: 200, overflow: 'auto', border: '1px solid var(--border)', borderRadius: 6 }}>
@@ -453,7 +463,46 @@ export function JobFormDeleteMigrateModals({
                     </button>
                   </li>
                 ))}
+                {canCreateTargetBid && editing ? (
+                  <li key="__create-bid__">
+                    <button
+                      type="button"
+                      disabled={migratingJob || creatingMigrateBid}
+                      onClick={() => {
+                        void createMigrateTargetBid({
+                          projectName: bidCreateName,
+                          serviceTypeId: editing.service_type_id!,
+                          customerId: editing.customer_id ?? null,
+                          address: (editing.job_address ?? '').trim() || null,
+                        })
+                      }}
+                      style={{
+                        width: '100%',
+                        textAlign: 'left',
+                        padding: '0.5rem 0.65rem',
+                        border: 'none',
+                        borderBottom: '1px solid var(--border)',
+                        background: 'var(--surface)',
+                        cursor: migratingJob || creatingMigrateBid ? 'not-allowed' : 'pointer',
+                        fontSize: '0.8125rem',
+                      }}
+                    >
+                      <strong style={{ color: 'var(--text-blue-800)' }}>
+                        {creatingMigrateBid ? 'Creating bid…' : <>+ Create new bid &ldquo;{bidCreateName}&rdquo;</>}
+                      </strong>
+                      <div style={{ color: 'var(--text-muted)', fontWeight: 400 }}>
+                        Starts a {(editing.serviceType?.name ?? 'same-service')} bid with this job&rsquo;s
+                        {editing.customer_id ? ' customer and' : ''} address — finish it on Bids later.
+                      </div>
+                    </button>
+                  </li>
+                ) : null}
               </ul>
+            ) : null}
+            {targetingBid && createMigrateBidError ? (
+              <p style={{ margin: '-0.5rem 0 0.75rem', fontSize: '0.8125rem', color: 'var(--text-red-700)' }}>
+                {createMigrateBidError}
+              </p>
             ) : null}
             {!targetingBid && migrateTargetSearchLoading ? (
               <p style={{ margin: '0 0 0.75rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>Searching…</p>
