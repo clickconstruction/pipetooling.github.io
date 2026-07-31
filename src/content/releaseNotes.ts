@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1143',
+    date: '2026-07-30',
+    title: 'Other job charges: the empty row waits to be asked',
+    kind: 'fix',
+    highlights: [
+      'The blank charge row no longer sits there by default \u2014 the section shows just \u201c+ Add other charge\u201d, and clicking it summons a focused row. Removing an unused row tucks it away again.',
+    ],
+  },
+  {
     version: 'v2.1142',
     date: '2026-07-30',
     title: 'Labor and Parts Cost: Other job charges blends in',

@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-30 (v2.1142)
+last_updated: 2026-07-30 (v2.1143)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1143)
+
+### Other job charges: empty rows hidden until summoned (2026-07-30)
+[`JobFormPartsCostSection.tsx`](../src/components/jobs/JobFormPartsCostSection.tsx) + new render tests. Follow-up to v2.1142 per user direction: the ever-present blank charge row is now presentation-hidden (the shell's `materials` state still keeps ≥1 row — no autosave semantics change). The accordion opens to just the dashed **+ Add other charge** button; clicking it reveals the hidden empty row (autoFocused) or appends one when none is hidden; rows with content always render; a remove tucks drafts away again. 3 render tests pin the loop. Client-only.
 
 ## Latest Updates (v2.1142)
 
