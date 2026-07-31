@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-30 (v2.1137)
+last_updated: 2026-07-30 (v2.1138)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1138)
+
+### Make Invoice: single-line New invoice pill (2026-07-30)
+[`JobFormBreakOffSection.tsx`](../src/components/jobs/JobFormBreakOffSection.tsx) — immediate compaction feedback on v2.1137: the New invoice chip was two rows tall (label over input+share+action) and dwarfed the equation. Now a rounded single-line pill: dot + "New invoice" label inline with the amount input, the share ("35%", dropping " of job"), and the green +/blue Ready to Bill action. The "— full remainder" label suffix is gone; that mode reads from the blue button + tooltip. Client-only.
 
 ## Latest Updates (v2.1137)
 
