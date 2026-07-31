@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-30 (v2.1143)
+last_updated: 2026-07-30 (v2.1144)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1144)
+
+### Edit job billing polish: dot caret, right-set unit price, no steady-state "Saved" (2026-07-30)
+[`JobFormBreakOffSection.tsx`](../src/components/jobs/JobFormBreakOffSection.tsx) + [`JobFormFixturesSection.tsx`](../src/components/jobs/JobFormFixturesSection.tsx) + [`JobFormModal.tsx`](../src/components/jobs/JobFormModal.tsx). Three per-user-direction trims: (1) the "Job N% done" label under the Make Invoice bar swaps its CSS triangle for the same 8px yellow dot that marks the rail; (2) the ① Line Items price cell flexes `flex-end` so the Unit price input hugs its column edge (the v2.1131 trash slot left a gap); (3) the Billing header autosave note only renders for `saving`/`error` — the steady-state "Saved" is gone (guide phrasing updated: "silence means saved"); (4) segment-strip block labels get `position: relative; zIndex: 1` so they render above the coverage hatch overlay; (5) the break-off thumb becomes a mirrored ▼▲ pair in one 12×20 SVG — each tip penetrating the 12px rail by 4px symmetrically, pinching the boundary it drags (under-track row re-seated accordingly). Client-only.
 
 ## Latest Updates (v2.1143)
 
