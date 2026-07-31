@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1151',
+    date: '2026-07-30',
+    title: 'Invoices strip and Cost Timeline polish',
+    kind: 'fix',
+    highlights: [
+      'A single-segment invoice strip now rounds both ends (the right end used to stop hard).',
+      'When the yellow field-progress dot meets the slider arrows, the full circle sits neatly between them.',
+      'Cost Timeline dollar labels wear a thin background halo so red numbers stay readable in dark mode.',
+    ],
+  },
+  {
     version: 'v2.1150',
     date: '2026-07-30',
     title: 'Line Items fit better on phones',

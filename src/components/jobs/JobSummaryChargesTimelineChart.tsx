@@ -105,6 +105,9 @@ function makeCostsDot(lastIndex: number) {
             fontWeight={700}
             textAnchor="end"
             fill="#dc2626"
+            stroke="var(--surface)"
+            strokeWidth={2}
+            paintOrder="stroke"
           >
             ${formatCurrency(payload.expense)}
           </text>
@@ -144,6 +147,9 @@ function makeProfitDot(lastIndex: number) {
             fontWeight={700}
             textAnchor="end"
             fill={payload.profit >= 0 ? '#15803d' : '#b91c1c'}
+            stroke="var(--surface)"
+            strokeWidth={2}
+            paintOrder="stroke"
           >
             {signedCurrency(payload.profit)}
           </text>

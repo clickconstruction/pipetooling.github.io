@@ -375,7 +375,11 @@ export function JobFormBreakOffSection({
                   background: '#facc15',
                   border: '1px solid #ca8a04',
                   boxSizing: 'border-box',
-                  zIndex: 3,
+                  // Above the pinch thumb (z 5): when the field dot and the
+                  // thumb coincide, the full circle sits centered between the
+                  // arrowheads instead of peeking through their 4px sliver as
+                  // a clipped diamond.
+                  zIndex: 6,
                   pointerEvents: 'none',
                 }}
               />

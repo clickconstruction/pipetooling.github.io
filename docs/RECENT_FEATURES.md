@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-30 (v2.1150)
+last_updated: 2026-07-30 (v2.1151)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1151)
+
+### ② Invoices strip + slider + Cost Timeline: three visual fixes (2026-07-30)
+Three per-user-direction items. (1) [`JobFormSegmentsBar.tsx`](../src/components/jobs/JobFormSegmentsBar.tsx): segment corner rounding computes first/last independently — a single-segment strip gets all four corners (the old ternary could only round one end, leaving a hard right edge). (2) [`JobFormBreakOffSection.tsx`](../src/components/jobs/JobFormBreakOffSection.tsx): the on-rail field-progress dot moves above the pinch thumb (zIndex 3 → 6) so a coinciding dot renders as a full circle centered between the arrowheads instead of a clipped diamond in their 4px sliver. (3) [`JobSummaryChargesTimelineChart.tsx`](../src/components/jobs/JobSummaryChargesTimelineChart.tsx): the end-of-line cost and profit labels get an SVG outside outline (`stroke="var(--surface)"` + `paint-order: stroke`, 2px stroke ≈ 1px halo) — dark halo in dark mode, white in light — so red numbers read over gridlines. Client-only.
 
 ## Latest Updates (v2.1150)
 
