@@ -85,11 +85,15 @@ describe('formatStagesNextDateLabel', () => {
 })
 
 describe('formatStagesCompactWindow', () => {
-  it('drops the start meridiem when both sides share it', () => {
-    expect(formatStagesCompactWindow('08:00:00', '09:30:00')).toBe('8:00\u20139:30 AM')
-    expect(formatStagesCompactWindow('13:00:00', '16:00:00')).toBe('1:00\u20134:00 PM')
+  it('drops the start meridiem when both sides share it, and :00 on whole hours', () => {
+    expect(formatStagesCompactWindow('08:00:00', '09:30:00')).toBe('8\u20139:30 AM')
+    expect(formatStagesCompactWindow('13:00:00', '16:00:00')).toBe('1\u20134 PM')
   })
-  it('keeps both meridiems across noon', () => {
-    expect(formatStagesCompactWindow('11:00:00', '12:30:00')).toBe('11:00 AM\u201312:30 PM')
+  it('keeps both meridiems across noon and drops :00 on whole hours', () => {
+    expect(formatStagesCompactWindow('10:00:00', '12:00:00')).toBe('10 AM\u201312 PM')
+    expect(formatStagesCompactWindow('11:00:00', '12:30:00')).toBe('11 AM\u201312:30 PM')
+  })
+  it('keeps minutes when not a whole hour', () => {
+    expect(formatStagesCompactWindow('08:15:00', '09:45:00')).toBe('8:15\u20139:45 AM')
   })
 })

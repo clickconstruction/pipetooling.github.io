@@ -71,10 +71,15 @@ export function formatStagesNextDateLabel(ymd: string): string {
     .replace(',', '')
 }
 
-/** "8:00–9:30 AM" — window with the start meridiem dropped when both sides share it. */
+/**
+ * "8–9:30 AM" / "10 AM–12 PM" — window with the start meridiem dropped when
+ * both sides share it, and ":00" dropped on whole hours (v2.1179).
+ */
 export function formatStagesCompactWindow(timeStart: string, timeEnd: string): string {
-  const a = scheduleFormatTimeHm(timeStart)
-  const b = scheduleFormatTimeHm(timeEnd)
+  // scheduleFormatTimeHm returns "H:MM AM" — exactly one colon, so a plain
+  // ':00' replace only ever hits the top-of-hour minutes.
+  const a = scheduleFormatTimeHm(timeStart).replace(':00', '')
+  const b = scheduleFormatTimeHm(timeEnd).replace(':00', '')
   const suffixA = a.slice(-3)
   if ((suffixA === ' AM' || suffixA === ' PM') && b.endsWith(suffixA)) {
     return `${a.slice(0, -3)}\u2013${b}`

@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-31 (v2.1178)
+last_updated: 2026-07-31 (v2.1179)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1179)
+
+### Stages NEXT times drop ":00" on whole hours (2026-07-31)
+Field request: "Wed Aug 5 10:00 AM–12:00 PM" reads better as "Wed Aug 5 10 AM–12 PM". `formatStagesCompactWindow` ([`stagesUpcomingSchedule.ts`](../src/lib/stagesUpcomingSchedule.ts)) now strips ":00" from whole-hour times (`scheduleFormatTimeHm` returns `H:MM AM` with exactly one colon, so a plain replace only ever hits top-of-hour minutes); non-whole times keep their minutes ("8:15–9:45 AM"). Affects the Stages Activity NEXT line and the job-thread panel header (both call the same kernel). Tests updated +1. Client-only.
 
 ## Latest Updates (v2.1178)
 
