@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-30 (v2.1158)
+last_updated: 2026-07-30 (v2.1159)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1159)
+
+### Multi-GC bids v1: per-Version GC + one cover-letter document per GC (2026-07-30)
+Migration `20260731003000_bid_versions_customer_override.sql` adds nullable `bid_versions.customer_id` (FK customers, ON DELETE SET NULL) — null = bid-level GC, so existing bids are untouched. New pure kernel [`coverLetterGcPackets.ts`](../src/lib/bids/coverLetterGcPackets.ts) (`groupSectionsByEffectiveGc`, 5 tests): groups bundled submission sections by effective GC (version override ?? bid GC), first-seen group order, in-group order preserved. [`BidVersionPicker.tsx`](../src/components/bids/BidVersionPicker.tsx): the ✎ dialog gains a "GC/Builder (customer) for this version" select (default "Use bid default"; customers list lazy-loaded on open); chips show "GC: {name}" when overridden and "GC: bid default" on siblings once any override exists. [`BidsCoverLetterTab.tsx`](../src/components/bids/BidsCoverLetterTab.tsx): loads the bid's version overrides (customers embed via the new FK), threads `bid_version_id` through bundle sections, and when included versions span >1 GC renders a "Documents by GC" card row — the preview/Print/Copy operate on the SELECTED packet only (a mixed-GC document can never be built: leakage guard). Single included Pricing with an override heads the single letter with that GC. Package & Send is unaffected (it emails the active pricing internally). Guide `bid-one-project-to-multiple-gcs`. Deploy order: `supabase db push` immediately after merge (the new client's version query needs the column; old clients select `*` and ignore it).
 
 ## Latest Updates (v2.1158)
 

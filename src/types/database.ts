@@ -542,6 +542,7 @@ export type Database = {
         Row: {
           bid_id: string
           created_at: string | null
+          customer_id: string | null
           id: string
           include_in_submission: boolean
           name: string
@@ -551,6 +552,7 @@ export type Database = {
         Insert: {
           bid_id: string
           created_at?: string | null
+          customer_id?: string | null
           id?: string
           include_in_submission?: boolean
           name: string
@@ -560,6 +562,7 @@ export type Database = {
         Update: {
           bid_id?: string
           created_at?: string | null
+          customer_id?: string | null
           id?: string
           include_in_submission?: boolean
           name?: string
@@ -572,6 +575,13 @@ export type Database = {
             columns: ["bid_id"]
             isOneToOne: false
             referencedRelation: "bids"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bid_versions_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
             referencedColumns: ["id"]
           },
           {

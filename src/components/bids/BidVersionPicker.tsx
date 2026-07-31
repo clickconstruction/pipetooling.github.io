@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useToastContext } from '../../contexts/ToastContext'
 import type { BidVersion } from '../../lib/bids/bidPricingEngineTypes'
@@ -54,6 +54,42 @@ export function BidVersionPicker({
 
   const [renaming, setRenaming] = useState<BidVersion | null>(null)
   const [renameValue, setRenameValue] = useState('')
+  // Per-version GC override (v2.1159). '' = use the bid-level GC.
+  const [renameGcCustomerId, setRenameGcCustomerId] = useState('')
+  const [gcCustomers, setGcCustomers] = useState<Array<{ id: string; name: string }> | null>(null)
+  const [gcNamesById, setGcNamesById] = useState<Record<string, string>>({})
+
+  // Chip tags need names for overridden versions without loading every customer.
+  useEffect(() => {
+    const missing = [...new Set(bidVersions.map((v) => v.customer_id).filter((id): id is string => !!id))].filter(
+      (id) => gcNamesById[id] === undefined,
+    )
+    if (missing.length === 0) return
+    let cancelled = false
+    void (async () => {
+      const { data } = await supabase.from('customers').select('id, name').in('id', missing)
+      if (cancelled || !data) return
+      setGcNamesById((prev) => {
+        const next = { ...prev }
+        for (const c of data) next[c.id] = c.name ?? '—'
+        return next
+      })
+    })()
+    return () => { cancelled = true }
+  }, [bidVersions, gcNamesById])
+
+  // Full pick-list only once the edit dialog opens.
+  useEffect(() => {
+    if (!renaming || gcCustomers !== null) return
+    let cancelled = false
+    void (async () => {
+      const { data } = await supabase.from('customers').select('id, name').order('name')
+      if (!cancelled) setGcCustomers((data ?? []).map((c) => ({ id: c.id, name: c.name ?? '—' })))
+    })()
+    return () => { cancelled = true }
+  }, [renaming, gcCustomers])
+
+  const anyGcOverride = bidVersions.some((v) => v.customer_id != null)
 
   function openNewVersion() {
     setCurrentName(isUnsplit ? 'To Plans' : '')
@@ -124,7 +160,7 @@ export function BidVersionPicker({
     try {
       // Update the Version and mirror onto its pricing facet so the submission bundle label matches.
       const [{ error: vErr }, { error: pErr }] = await Promise.all([
-        supabase.from('bid_versions').update({ name }).eq('id', renaming.id),
+        supabase.from('bid_versions').update({ name, customer_id: renameGcCustomerId || null }).eq('id', renaming.id),
         supabase.from('price_book_versions').update({ name }).eq('bid_version_id', renaming.id),
       ])
       if (vErr || pErr) {
@@ -187,13 +223,22 @@ export function BidVersionPicker({
                 <button
                   type="button"
                   onClick={() => onSwitch(v.id)}
-                  style={{ background: 'none', border: 'none', cursor: 'pointer', fontWeight: active ? 600 : 400, padding: 0 }}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', fontWeight: active ? 600 : 400, padding: 0, textAlign: 'left' }}
                 >
                   {v.name}
+                  {v.customer_id ? (
+                    <span style={{ display: 'block', fontSize: '0.625rem', color: 'var(--text-blue-800)', fontWeight: 600 }}>
+                      GC: {gcNamesById[v.customer_id] ?? '…'}
+                    </span>
+                  ) : anyGcOverride ? (
+                    <span style={{ display: 'block', fontSize: '0.625rem', color: 'var(--text-muted)', fontWeight: 400 }}>
+                      GC: bid default
+                    </span>
+                  ) : null}
                 </button>
                 <button
                   type="button"
-                  onClick={() => { setRenaming(v); setRenameValue(v.name) }}
+                  onClick={() => { setRenaming(v); setRenameValue(v.name); setRenameGcCustomerId(v.customer_id ?? '') }}
                   style={{ padding: '0.15rem', background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.875rem' }}
                   title="Rename / delete version"
                 >
@@ -253,10 +298,22 @@ export function BidVersionPicker({
       {renaming && (
         <Overlay onClose={() => !busy && setRenaming(null)}>
           <h3 style={{ margin: '0 0 1rem' }}>Version</h3>
-          <label style={{ display: 'block', marginBottom: '1rem' }}>
+          <label style={{ display: 'block', marginBottom: '0.75rem' }}>
             <span style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500, fontSize: '0.875rem' }}>Name</span>
             <input value={renameValue} onChange={(e) => setRenameValue(e.target.value)} autoFocus style={inputStyle} />
           </label>
+          <label style={{ display: 'block', marginBottom: '0.35rem' }}>
+            <span style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500, fontSize: '0.875rem' }}>GC/Builder (customer) for this version</span>
+            <select value={renameGcCustomerId} onChange={(e) => setRenameGcCustomerId(e.target.value)} style={inputStyle}>
+              <option value="">Use bid default</option>
+              {(gcCustomers ?? []).map((c) => (
+                <option key={c.id} value={c.id}>{c.name}</option>
+              ))}
+            </select>
+          </label>
+          <p style={{ margin: '0 0 1rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+            Cover letters group versions by GC — each GC gets its own document with only their pricing.
+          </p>
           <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem' }}>
             <button type="button" onClick={() => deleteVersion(renaming)} disabled={busy}
               style={{ ...btnGhost, color: 'var(--text-red-700)', borderColor: '#fecaca' }}>Delete</button>

@@ -23,6 +23,7 @@ import {
 } from '../../lib/bidDocuments/coverLetter'
 import { computeBidPricingRows, coverLetterTotalsFromPricingRows } from '../../lib/bidPricingRowCalculations'
 import { submissionHiddenIdsForVersion } from '../../lib/bids/submissionHides'
+import { groupSectionsByEffectiveGc, type GcPacketCustomer } from '../../lib/bids/coverLetterGcPackets'
 import {
   DEFAULT_PAYMENT_SCHEDULE_ROWS,
   PAYMENT_SCHEDULE_TIMINGS,
@@ -287,7 +288,34 @@ export function BidsCoverLetterTab({
   // data is loaded by the engine, so for the bundle we fetch each INCLUDED Pricing's entries +
   // overlays here and compute revenue (cost inputs are irrelevant to the cover letter, so they're
   // passed as zeros). Precomputed into state so Print / Copy stay synchronous (clipboard gesture).
-  const [bundlePricings, setBundlePricings] = useState<{ name: string; revenueSum: number; fixtureRows: { fixture: string; count: number }[] }[]>([])
+  const [bundlePricings, setBundlePricings] = useState<{ name: string; bidVersionId: string | null; revenueSum: number; fixtureRows: { fixture: string; count: number }[] }[]>([])
+  // Multi-GC (v2.1159): per-version GC overrides for the selected bid, and
+  // which GC packet the preview/Print/Copy act on when there are several.
+  const [versionGcById, setVersionGcById] = useState<Record<string, GcPacketCustomer | null>>({})
+  const [selectedGcPacketKey, setSelectedGcPacketKey] = useState<string | null>(null)
+  useEffect(() => {
+    setSelectedGcPacketKey(null)
+    const bid = selectedBidForPricing
+    if (!bid) {
+      setVersionGcById({})
+      return
+    }
+    let cancelled = false
+    void (async () => {
+      const { data } = await supabase
+        .from('bid_versions')
+        .select('id, customer_id, customers(id, name, address)')
+        .eq('bid_id', bid.id)
+      if (cancelled) return
+      const map: Record<string, GcPacketCustomer | null> = {}
+      for (const v of data ?? []) {
+        const c = v.customers as { id: string; name: string | null; address: string | null } | null
+        map[v.id] = v.customer_id && c ? { id: c.id, name: c.name ?? '—', address: c.address ?? '—' } : null
+      }
+      setVersionGcById(map)
+    })()
+    return () => { cancelled = true }
+  }, [selectedBidForPricing?.id])
   useEffect(() => {
     const bid = selectedBidForPricing
     const included = bidPricings
@@ -330,7 +358,7 @@ export function BidsCoverLetterTab({
           hiddenSubmissionCountRowIds: submissionHiddenIdsForVersion(allHides, p.id),
         })
         const totals = coverLetterTotalsFromPricingRows(result.rows)
-        return { name: p.name, revenueSum: totals.revenueSum, fixtureRows: totals.fixtureRows }
+        return { name: p.name, bidVersionId: p.bid_version_id ?? null, revenueSum: totals.revenueSum, fixtureRows: totals.fixtureRows }
       })
       setBundlePricings(sections)
     })()
@@ -490,22 +518,51 @@ export function BidsCoverLetterTab({
         const paymentScheduleInputs = paymentScheduleSorted.map((r) => ({ timing: r.timing, percent: Number(r.percent) }))
         const paymentSchedulePercentSum = paymentSchedulePercentTotal(paymentScheduleInputs)
         const paymentScheduleActive = paymentScheduleEnabled && paymentScheduleInputs.length > 0
-        const combinedText = buildCoverLetterText(customerName, customerAddress, projectNameVal, projectAddressVal, revenueWords, revenueNumber, fixtureRows, inclusions, exclusions, terms, designDrawingPlanDateFormatted, serviceTypeName, includeSignature, effectiveIncludeFixtures, paymentScheduleActive ? { rows: paymentScheduleInputs, amountDollars: effectiveRevenue } : null, orgCoverLetterDefaults.closing)
-        const combinedHtml = buildCoverLetterHtml(customerName, customerAddress, projectNameVal, projectAddressVal, revenueWords, revenueNumber, fixtureRows, inclusions, exclusions, terms, designDrawingPlanDateFormatted, serviceTypeName, includeSignature, effectiveIncludeFixtures, paymentScheduleActive ? { rows: paymentScheduleInputs, amountDollars: effectiveRevenue } : null, orgCoverLetterDefaults.closing)
+        // Multi-GC (v2.1159): group bundled sections by effective GC (version
+        // override ?? bid GC). The preview / Print / Copy operate on ONE
+        // packet at a time, so a document mixing GCs can never exist.
+        const bidGcPacketCustomer: GcPacketCustomer = {
+          id: (bid as { customer_id?: string | null }).customer_id ?? null,
+          name: customerName,
+          address: customerAddress,
+        }
+        const includedPricingsSorted = bidPricings
+          .filter((p) => p.include_in_submission)
+          .sort((a, b) => a.sort_order - b.sort_order)
+        const gcPackets = bundlePricings.length > 1
+          ? groupSectionsByEffectiveGc(bundlePricings, versionGcById, bidGcPacketCustomer)
+          : []
+        const selectedGcPacket = gcPackets.length > 0
+          ? gcPackets.find((pk) => pk.key === selectedGcPacketKey) ?? gcPackets[0]!
+          : null
+        const multiGc = gcPackets.length > 1
+        // Single-letter path: exactly one included Pricing whose Version has an
+        // override heads the letter with that GC instead of the bid GC.
+        const singleIncludedOverride =
+          bundlePricings.length <= 1 && includedPricingsSorted.length === 1 && includedPricingsSorted[0]!.bid_version_id
+            ? versionGcById[includedPricingsSorted[0]!.bid_version_id!] ?? null
+            : null
+        const letterCustomer = selectedGcPacket ? selectedGcPacket.customer : singleIncludedOverride ?? bidGcPacketCustomer
+        const letterCustomerName = letterCustomer.name
+        const letterCustomerAddress = letterCustomer.address
+        const combinedText = buildCoverLetterText(letterCustomerName, letterCustomerAddress, projectNameVal, projectAddressVal, revenueWords, revenueNumber, fixtureRows, inclusions, exclusions, terms, designDrawingPlanDateFormatted, serviceTypeName, includeSignature, effectiveIncludeFixtures, paymentScheduleActive ? { rows: paymentScheduleInputs, amountDollars: effectiveRevenue } : null, orgCoverLetterDefaults.closing)
+        const combinedHtml = buildCoverLetterHtml(letterCustomerName, letterCustomerAddress, projectNameVal, projectAddressVal, revenueWords, revenueNumber, fixtureRows, inclusions, exclusions, terms, designDrawingPlanDateFormatted, serviceTypeName, includeSignature, effectiveIncludeFixtures, paymentScheduleActive ? { rows: paymentScheduleInputs, amountDollars: effectiveRevenue } : null, orgCoverLetterDefaults.closing)
         // When 2+ Pricings are included in submission, the deliverable is one cover letter per
         // Pricing (each with its own amount + fixtures, shared prose), concatenated. With 0–1
         // included Pricings this stays the single letter above (no behavior change).
-        const finalCoverLetterHtml = bundlePricings.length > 1
-          ? buildCombinedCoverLetterDocument(bundlePricings.map((s) => ({
-              label: `Pricing: ${s.name}`,
-              html: buildCoverLetterHtml(customerName, customerAddress, projectNameVal, projectAddressVal, numberToWords(s.revenueSum).toUpperCase(), `$${formatCurrency(s.revenueSum)}`, s.fixtureRows, inclusions, exclusions, terms, designDrawingPlanDateFormatted, serviceTypeName, includeSignature, effectiveIncludeFixtures, paymentScheduleActive ? { rows: paymentScheduleInputs, amountDollars: s.revenueSum } : null, orgCoverLetterDefaults.closing),
-            })))
+        const packetSectionHtml = (s: { name: string; revenueSum: number; fixtureRows: { fixture: string; count: number }[] }) =>
+          buildCoverLetterHtml(letterCustomerName, letterCustomerAddress, projectNameVal, projectAddressVal, numberToWords(s.revenueSum).toUpperCase(), `$${formatCurrency(s.revenueSum)}`, s.fixtureRows, inclusions, exclusions, terms, designDrawingPlanDateFormatted, serviceTypeName, includeSignature, effectiveIncludeFixtures, paymentScheduleActive ? { rows: paymentScheduleInputs, amountDollars: s.revenueSum } : null, orgCoverLetterDefaults.closing)
+        const packetSectionText = (s: { name: string; revenueSum: number; fixtureRows: { fixture: string; count: number }[] }) =>
+          buildCoverLetterText(letterCustomerName, letterCustomerAddress, projectNameVal, projectAddressVal, numberToWords(s.revenueSum).toUpperCase(), `$${formatCurrency(s.revenueSum)}`, s.fixtureRows, inclusions, exclusions, terms, designDrawingPlanDateFormatted, serviceTypeName, includeSignature, effectiveIncludeFixtures, paymentScheduleActive ? { rows: paymentScheduleInputs, amountDollars: s.revenueSum } : null, orgCoverLetterDefaults.closing)
+        const finalCoverLetterHtml = selectedGcPacket
+          ? selectedGcPacket.sections.length > 1
+            ? buildCombinedCoverLetterDocument(selectedGcPacket.sections.map((s) => ({ label: `Pricing: ${s.name}`, html: packetSectionHtml(s) })))
+            : packetSectionHtml(selectedGcPacket.sections[0]!)
           : combinedHtml
-        const finalCoverLetterText = bundlePricings.length > 1
-          ? buildCombinedCoverLetterText(bundlePricings.map((s) => ({
-              label: `Pricing: ${s.name}`,
-              text: buildCoverLetterText(customerName, customerAddress, projectNameVal, projectAddressVal, numberToWords(s.revenueSum).toUpperCase(), `$${formatCurrency(s.revenueSum)}`, s.fixtureRows, inclusions, exclusions, terms, designDrawingPlanDateFormatted, serviceTypeName, includeSignature, effectiveIncludeFixtures, paymentScheduleActive ? { rows: paymentScheduleInputs, amountDollars: s.revenueSum } : null, orgCoverLetterDefaults.closing),
-            })))
+        const finalCoverLetterText = selectedGcPacket
+          ? selectedGcPacket.sections.length > 1
+            ? buildCombinedCoverLetterText(selectedGcPacket.sections.map((s) => ({ label: `Pricing: ${s.name}`, text: packetSectionText(s) })))
+            : packetSectionText(selectedGcPacket.sections[0]!)
           : combinedText
         const now = new Date()
         const yy = now.getFullYear() % 100
@@ -626,6 +683,45 @@ export function BidsCoverLetterTab({
                   </div>
                 ))}
                 <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>Checked versions are bundled into the submission — one cover letter each, in this order.</div>
+              </div>
+            )}
+            {multiGc && (
+              <div style={{ marginBottom: '1rem', border: '1px solid var(--border)', borderRadius: 6, padding: '0.75rem' }}>
+                <div style={{ fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.5rem' }}>
+                  Documents by GC — {gcPackets.length} documents from {bundlePricings.length} versions
+                </div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                  {gcPackets.map((pk) => {
+                    const active = pk.key === selectedGcPacket?.key
+                    return (
+                      <button
+                        key={pk.key}
+                        type="button"
+                        onClick={() => setSelectedGcPacketKey(pk.key)}
+                        style={{
+                          textAlign: 'left',
+                          padding: '0.5rem 0.75rem',
+                          borderRadius: 6,
+                          border: active ? '2px solid #3b82f6' : '1px solid var(--border-strong)',
+                          background: active ? 'var(--bg-blue-tint)' : 'var(--surface)',
+                          cursor: 'pointer',
+                          minWidth: 180,
+                        }}
+                      >
+                        <div style={{ fontWeight: 600, fontSize: '0.875rem' }}>
+                          {pk.customer.name}
+                          {pk.isBidDefault ? <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}> (bid default)</span> : null}
+                        </div>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 2 }}>
+                          {pk.sections.map((s) => s.name).join(' · ')} — {pk.sections.length} letter{pk.sections.length !== 1 ? 's' : ''}
+                        </div>
+                      </button>
+                    )
+                  })}
+                </div>
+                <div style={{ marginTop: '0.5rem', fontSize: '0.75rem', color: 'var(--text-amber-800)', background: 'var(--bg-amber-tint)', border: '1px solid var(--border-amber-soft)', borderRadius: 4, padding: '0.35rem 0.5rem' }}>
+                  Each GC gets a separate document with only their own pricing. The preview, Print, and Copy below follow the selected GC.
+                </div>
               </div>
             )}
             <div style={{ marginBottom: '1rem' }}>
@@ -890,6 +986,11 @@ export function BidsCoverLetterTab({
             <div style={{ marginBottom: '1rem' }}>
               <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>
                 Combined document (copy to send)
+                {multiGc && selectedGcPacket && (
+                  <span style={{ marginLeft: '0.5rem', fontWeight: 600, fontSize: '0.8125rem', color: 'var(--text-blue-800)' }}>
+                    · for {selectedGcPacket.customer.name}
+                  </span>
+                )}
                 {bundlePricings.length > 1 && (
                   <span style={{ marginLeft: '0.5rem', fontWeight: 400, fontSize: '0.8125rem', color: 'var(--text-blue-800)' }}>
                     · bundling {bundlePricings.length} pricings: {bundlePricings.map((p) => p.name).join(', ')}
