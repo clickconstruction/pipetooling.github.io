@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1160',
+    date: '2026-07-30',
+    title: 'Job column header back to the left',
+    kind: 'fix',
+    highlights: [
+      'The Stages \u201cJob\u201d header is left-aligned again, over the job names; Activity stays centered.',
+    ],
+  },
+  {
     version: 'v2.1159',
     date: '2026-07-30',
     title: 'Bid one project to multiple GCs',
