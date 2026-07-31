@@ -5,7 +5,7 @@ file: DB_FREEZE_RUNBOOK.md
 type: Runbook
 purpose: What to do (and what Claude does via /db-freeze) when the app looks "database down"
 audience: Devs + AI agents
-last_updated: 2026-07-30
+last_updated: 2026-07-31
 ---
 
 The app going "database down" office-wide has (so far) **never been a crash**.
@@ -49,6 +49,24 @@ select pg_terminate_backend(<blocking pid>);
 That releases the pileup without a restart (killing one session is data-safe —
 its transaction rolls back). Restart the instance only if the CLI itself
 cannot connect.
+
+## Second opinion: the smoke suite as an on-demand prod probe
+
+If the three inspections come back clean, get an independent read before
+concluding anything — the CLI connects as `postgres` and proves only that
+*one* path works:
+
+```bash
+gh workflow run e2e-smoke.yml && gh run watch $(gh run list --workflow=e2e-smoke.yml --limit 1 --json databaseId --jq '.[0].databaseId')
+```
+
+It cold-loads Dashboard, Stages, Settings, Estimates, Quickfill, People and
+Materials against production as a real signed-in user — all Supabase-heavy —
+and timestamps every one. A run that passes in ~5 minutes is strong evidence
+the app was *not* frozen during that window (2026-07-31: 31/32 passed with
+0.5–2.6s page loads while the CLI showed zero blocked locks). A run that
+fails everywhere at once, or dies in `auth.setup.ts`, corroborates a real
+outage.
 
 ## After (or if you restarted anyway)
 

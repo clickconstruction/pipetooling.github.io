@@ -61,15 +61,23 @@ test('Stages tables scroll inside their own wrappers, not the page', async ({ pa
   }
 })
 
-test('Additional Report modal: ✕ stays reachable at max scroll (v2.990 pin)', async ({ page }) => {
-  await page.goto('/jobs?tab=stages')
-  await expect(page.locator('main')).toContainText(/Working \(\d+\)/, { timeout: 20000 })
-  // Open any job's Reports modal, then the Additional Report form from it.
-  const reportsBtn = page.getByRole('button', { name: /\d+ Reports?$/ }).first()
-  await reportsBtn.click()
-  const addBtn = page.getByRole('button', { name: /Add additional report/i })
-  await addBtn.click()
-  const heading = page.getByRole('heading', { name: 'Additional Report' })
+test('sticky modal header: ✕ stays reachable at max scroll (v2.990 pin)', async ({ page }) => {
+  // The contract under test is `stickyModalHeaderStyle.ts` — the panel is the
+  // scroller and the title bar (with its ✕) must stay pinned inside it. It was
+  // reported from the field on Additional Report (v2.990) and generalised to
+  // New report / Report view / Edit report / Add inspection / Create trip
+  // charge / Review hours in v2.992, so ANY consumer pins the same helper.
+  //
+  // Add inspection is the one reachable in a single click from a tab that
+  // already has cold-load coverage. Reaching Additional Report instead now
+  // costs three nested modals (v2.1052 repointed the Stages "N Reports" pill at
+  // the full-screen activity view, leaving Job Detail → Reports → Add as the
+  // only route) — depth that made this spec fail for reasons unrelated to the
+  // invariant. Prefer the shallowest consumer.
+  await page.goto('/jobs?tab=inspections')
+  // exact: true — "Add inspection type" would otherwise match as a substring.
+  await page.getByRole('button', { name: 'Add Inspection', exact: true }).click({ timeout: 30000 })
+  const heading = page.getByRole('heading', { name: 'Add inspection' })
   await expect(heading).toBeVisible()
   // Scroll the modal panel to its bottom; the sticky title bar (and its ✕)
   // must remain inside the panel's visible box.
@@ -90,8 +98,7 @@ test('Additional Report modal: ✕ stays reachable at max scroll (v2.990 pin)', 
     }
   })
   expect(result.ok, result.why).toBe(true)
-  // Close everything (read-only: no save). Escape avoids the ambiguous
+  // Close (read-only: never save). Escape avoids the ambiguous
   // two-dialogs-both-named-Close click that flaked the first CI run.
-  await page.keyboard.press('Escape')
   await page.keyboard.press('Escape')
 })

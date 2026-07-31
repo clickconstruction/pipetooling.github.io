@@ -5,7 +5,7 @@ file: docs/E2E_SMOKE.md
 type: Engineering / Testing
 purpose: What the Playwright Tier-1 smoke suite covers, how it authenticates, when it runs, and the rules for extending it (read-only, structural assertions, non-gating).
 audience: Developers, AI Agents
-last_updated: 2026-07-24
+last_updated: 2026-07-31
 ---
 
 ## What this is
@@ -19,7 +19,7 @@ There is no staging environment, so production is the only real render target. T
 - `e2e/deep-links.spec.ts` — the cold-load deep-link matrix: `?showBilledTotalByName=`, `?openBankPayments=` (v2.832 fixes), `?editLabor=` unknown-HCP, `?newJob=true&tab=sub_sheet_ledger` (v2.835 fixes), `?stagesSection=`, plus `/accounts-receivable` and `/map` direct loads (v2.833 fixes). Each asserts the surface opened AND the param self-stripped.
 - `e2e/jobs-tabs.spec.ts` — all nine Jobs tabs cold-load with their distinctive markers and zero page errors; the Stages always-mounted contract (state survives tab switches).
 - `e2e/stages-board.spec.ts` — board sections + totals render; Total by Name modal; the print popup path (`window.print` stubbed so headless never hangs).
-- `e2e/viewport-smoke.spec.ts` — phone-viewport invariants at 375×812 (v2.1003): the top seven pages load with no document-level sideways overflow (the v2.980/v2.982 regression signature); Stages board tables scroll inside their own wrappers, never the page (v2.984 contract); the Additional Report modal's sticky ✕ stays inside the panel's visible box at max scroll (v2.990 pin).
+- `e2e/viewport-smoke.spec.ts` — phone-viewport invariants at 375×812 (v2.1003): the top seven pages load with no document-level sideways overflow (the v2.980/v2.982 regression signature); Stages board tables scroll inside their own wrappers, never the page (v2.984 contract); the sticky modal header keeps its ✕ inside the panel's visible box at max scroll (v2.990, generalised to every `stickyModalHeaderStyle.ts` consumer in v2.992 — the spec drives Add inspection, the shallowest one).
 - `e2e/settings-tabs.spec.ts` — every dev-visible Settings tab cold-loads its marker with zero page errors; `?tab=` deep link activates; the v2.855 Catalogs engines render their blocks (post-decomposition pin; the Sharing & Adoption block was removed in v2.922 — grants are auto-maintained since v2.921).
 
 ## Rules (do not break these)
@@ -29,6 +29,7 @@ There is no staging environment, so production is the only real render target. T
 3. **Non-gating.** The workflow (`.github/workflows/e2e-smoke.yml`) runs post-deploy, nightly, and on `workflow_dispatch` — it must NOT be added to PR checks until it has proven flake-free for a while.
 4. **Credentials come only from the environment** — `E2E_TEST_EMAIL` / `E2E_TEST_PASSWORD` (GitHub Actions secrets in CI; locally from gitignored `.env.local`, auto-loaded by `playwright.config.ts`, or your shell). Never hardcode them anywhere, including test fixtures.
 5. Deep-link tests exist because of the **handle-gating rule** in [`JOBS_TABS_ARCHITECTURE.md`](./JOBS_TABS_ARCHITECTURE.md) — when adding a new handle-driven deep link, add its cold-load spec here in the same PR.
+6. **Move a button, fix its spec in the same PR.** Because the suite is non-gating it fails silently: v2.1049 (Stages toolbar → ⋯ menu) and v2.1052 ("N Reports" pill → full-screen activity view) each stranded a spec, and the suite stayed red on *every* run for ~110 versions before anyone traced it (fixed in v2.1164). Before merging a PR that renames, relocates, or re-points a surface, grep `e2e/` for its accessible name. A red suite that nobody reads is worse than no suite.
 
 ## Running
 
