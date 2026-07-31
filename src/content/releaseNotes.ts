@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1158',
+    date: '2026-07-30',
+    title: 'Crew & Dates header on one line',
+    kind: 'fix',
+    highlights: [
+      'The Stages \u201cCrew & Dates\u201d column header sits on a single line and never wraps.',
+    ],
+  },
+  {
     version: 'v2.1157',
     date: '2026-07-30',
     title: 'Stages column renamed to Crew & Dates',
