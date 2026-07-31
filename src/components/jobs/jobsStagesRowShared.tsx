@@ -466,17 +466,45 @@ function renderStagesThreadExpandButton(ctx: StagesRowRenderContext, jobId: stri
   )
 }
 
+/** The "N Report(s)" pill — normally the Activity cell's footer; billed merged
+ * rows render it in the Job column instead (v2.1155), where the redundant
+ * "Billed line: $X open" text used to sit. */
+export function renderStagesViewReportsButton(ctx: StagesRowRenderContext, job: JobWithDetails) {
+  const cellReportCount = job.report_count ?? 0
+  return (
+    <div style={{ display: 'flex', justifyContent: 'flex-start', flexShrink: 0 }}>
+      <button
+        type="button"
+        onClick={() => ctx.openJobThreadFullscreen(job.id)}
+        title="Open the full-screen job activity / notes view"
+        style={{
+          padding: '0.2rem 0.5rem',
+          fontSize: '0.75rem',
+          background: 'none',
+          color: 'var(--text-link)',
+          border: '1px solid #2563eb',
+          borderRadius: 4,
+          cursor: 'pointer',
+          whiteSpace: 'nowrap',
+        }}
+      >
+        {cellReportCount} Report{cellReportCount !== 1 ? 's' : ''}
+      </button>
+    </div>
+  )
+}
+
 export function renderStagesLastActivityCell(
   ctx: StagesRowRenderContext,
   job: JobWithDetails,
   billingLineForStripeHint?: JobsLedgerInvoice | null,
+  opts?: { hideReportsButton?: boolean },
 ) {
   const {
     expandedJobThreadId,
     jobThreadStatsByJobId,
     jobThreadActivityByJobId,
     toggleStagesJobThreadExpanded,
-    openJobThreadFullscreen,
     openJobCalendar,
     stagesUpcomingByJobId,
     applyStagesInvoiceFocus,
@@ -513,7 +541,6 @@ export function renderStagesLastActivityCell(
   const titleWithNotes = titleParts.length > 0 ? titleParts.join(' · ') : titleForEmpty
   const expanded = expandedJobThreadId === jobId
   const scheduleNoTeam = (job.team_members?.length ?? 0) === 0
-  const cellReportCount = job.report_count ?? 0
 
   // "NEXT · Abraham" over "Fri Jul 31 8:00–9:30 AM" — the job's next upcoming
   // schedule appointment (who first, when below); click opens the Job Calendar.
@@ -553,7 +580,7 @@ export function renderStagesLastActivityCell(
           <span style={{ margin: '0 0.35rem' }}>·</span>
           {up.assigneeNames.join(', ')}
         </div>
-        <div style={{ fontSize: '0.6875rem', color: 'var(--text-muted)' }}>
+        <div style={{ fontSize: '0.6875rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
           {dateLabel} {windowLabel}
         </div>
         {up.note ? (
@@ -577,27 +604,8 @@ export function renderStagesLastActivityCell(
   }
 
   function renderStagesViewReportsFooterButton() {
-    return (
-      <div style={{ display: 'flex', justifyContent: 'flex-start', flexShrink: 0 }}>
-        <button
-          type="button"
-          onClick={() => openJobThreadFullscreen(job.id)}
-          title="Open the full-screen job activity / notes view"
-          style={{
-            padding: '0.2rem 0.5rem',
-            fontSize: '0.75rem',
-            background: 'none',
-            color: 'var(--text-link)',
-            border: '1px solid #2563eb',
-            borderRadius: 4,
-            cursor: 'pointer',
-            whiteSpace: 'nowrap',
-          }}
-        >
-          {cellReportCount} Report{cellReportCount !== 1 ? 's' : ''}
-        </button>
-      </div>
-    )
+    if (opts?.hideReportsButton) return null
+    return renderStagesViewReportsButton(ctx, job)
   }
 
   const stagesInvoiceJumpAmountChipStyle: CSSProperties = {

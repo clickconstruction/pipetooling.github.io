@@ -484,18 +484,17 @@ export function JobChargesTimelineChartView({
         </ResponsiveContainer>
         </div>
       </div>
-      <p style={{ color: 'var(--text-700)', fontSize: '0.75rem', margin: '0.25rem 0 0' }}>
-        <span style={{ color: 'var(--text-red-600)', fontWeight: 600 }}>Red</span> = cost to date ·{' '}
-        <span style={{ color: '#16a34a', fontWeight: 600 }}>Green</span> = profit · 💵 = payment received · 🚩 = field
-        report
+      <div style={{ color: 'var(--text-700)', fontSize: '0.75rem', margin: '0.25rem 0 0', display: 'flex', flexDirection: 'column', gap: 2 }}>
+        <div><span style={{ color: 'var(--text-red-600)', fontWeight: 600 }}>Red</span> = cost to date</div>
+        <div><span style={{ color: '#16a34a', fontWeight: 600 }}>Green</span> = profit</div>
+        <div>💵 = payment received</div>
+        <div>🚩 = field report</div>
         {valueShown && (
-          <>
-            {' · '}
-            <span style={{ color: 'var(--text-link)', fontWeight: 600 }}>Blue</span> = value created
-            (report % × job total, right axis)
-          </>
+          <div>
+            <span style={{ color: 'var(--text-link)', fontWeight: 600 }}>Blue</span> = value created (report % × job total, right axis)
+          </div>
         )}
-      </p>
+      </div>
       <p style={{ color: 'var(--text-faint)', fontSize: '0.6875rem', margin: '0.15rem 0 0' }}>
         Cost sources:{' '}
         {Object.values(JOB_CHARGE_SOURCE_META)
