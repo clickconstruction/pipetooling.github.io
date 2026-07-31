@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useAuth } from '../../hooks/useAuth'
 import { useMercuryLedgerNicknames } from '../../hooks/useMercuryLedgerNicknames'
 import type { JobWithDetails } from '../../types/jobWithDetails'
@@ -73,6 +74,10 @@ export function JobFormPartsCostSection({
 }: JobFormPartsCostSectionProps) {
   const { role: authRole } = useAuth()
   const { nicknameByDebitCard } = useMercuryLedgerNicknames()
+  // v2.1142: empty charge rows stay hidden until "+ Add other charge" summons
+  // one — the accordion opens to just the button when nothing is entered yet.
+  // (The shell's materials state always keeps >=1 row; this is presentation.)
+  const [emptyChargeRowsVisible, setEmptyChargeRowsVisible] = useState(false)
 
   return (
     <>
@@ -218,7 +223,12 @@ export function JobFormPartsCostSection({
                     like the sibling accordions' rows, with the ① Line Items ghost-add
                     pattern below — no table chrome, no header slab. */}
                 <div style={{ display: 'flex', flexDirection: 'column', fontSize: '0.875rem' }}>
-                  {materials.map((row, idx) => {
+                  {(() => {
+                    const visibleRows = materials.filter(
+                      (row) => materialRowHasUserContent(row) || emptyChargeRowsVisible,
+                    )
+                    const firstEmptyId = visibleRows.find((r) => !materialRowHasUserContent(r))?.id
+                    return visibleRows.map((row, idx) => {
                     const canRemove = materials.length > 1 || materialRowHasUserContent(row)
                     const removeTitle = materials.length > 1 ? 'Remove' : 'Clear row'
                     return (
@@ -229,7 +239,7 @@ export function JobFormPartsCostSection({
                           alignItems: 'center',
                           gap: '0.5rem',
                           padding: '0.4rem 0.75rem',
-                          borderBottom: idx < materials.length - 1 ? '1px solid var(--border)' : 'none',
+                          borderBottom: idx < visibleRows.length - 1 ? '1px solid var(--border)' : 'none',
                         }}
                       >
                         <input
@@ -238,6 +248,7 @@ export function JobFormPartsCostSection({
                           onChange={(e) => updateMaterialRow(row.id, { description: e.target.value })}
                           placeholder="Other charge…"
                           aria-label="Other charge description"
+                          autoFocus={row.id === firstEmptyId}
                           style={{
                             flex: 1,
                             minWidth: 0,
@@ -272,7 +283,10 @@ export function JobFormPartsCostSection({
                         {canRemove ? (
                           <button
                             type="button"
-                            onClick={() => removeMaterialRow(row.id)}
+                            onClick={() => {
+                              removeMaterialRow(row.id)
+                              setEmptyChargeRowsVisible(false)
+                            }}
                             title={removeTitle}
                             aria-label={removeTitle}
                             style={{
@@ -295,12 +309,16 @@ export function JobFormPartsCostSection({
                         )}
                       </div>
                     )
-                  })}
+                    })
+                  })()}
                   <div style={{ padding: '0.45rem 0.75rem 0.55rem' }}>
                     <button
                       type="button"
-                      onClick={addMaterialRow}
-                      title="Add another charge row"
+                      onClick={() => {
+                        if (!materials.some((r) => !materialRowHasUserContent(r))) addMaterialRow()
+                        setEmptyChargeRowsVisible(true)
+                      }}
+                      title="Add a charge row"
                       style={{
                         display: 'inline-flex',
                         alignItems: 'center',
