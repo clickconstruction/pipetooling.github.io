@@ -641,7 +641,8 @@ function DocumentsJobsLedger({ embedSearch }: DocumentsLedgerEmbedProps = {}) {
           await supabase
             .from('jobs_ledger')
             .select(
-              'id, hcp_number, click_number, service_type_id, job_name, job_address, status, revenue, google_drive_link, updated_at, customer_name, customer_email, customers(name, address)',
+              // jobs_ledger now has TWO customers FKs (customer_id + gc_customer_id, v2.1175) — the embed must name its FK.
+              'id, hcp_number, click_number, service_type_id, job_name, job_address, status, revenue, google_drive_link, updated_at, customer_name, customer_email, customers!jobs_ledger_customer_id_fkey(name, address)',
             )
             .order('updated_at', { ascending: false, nullsFirst: false })
             .limit(200),

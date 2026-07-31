@@ -34,3 +34,21 @@ export function resolveCustomerIdForJobPayload(
   const only = matches.length === 1 ? matches[0] : null
   return only?.id ?? null
 }
+
+/**
+ * Same cross-master protection for the job's GC link (gc_customer_id). Unlike
+ * the primary customer there is no name to re-resolve by — the GC is only ever
+ * an explicit pick — so a pick owned by a DIFFERENT master simply drops to null
+ * (the DB backstop trigger would reject it anyway). A pick not present in the
+ * supplied list is trusted, mirroring resolveCustomerIdForJobPayload.
+ */
+export function resolveGcCustomerIdForJobPayload(
+  explicitId: string | null,
+  jobMasterUserId: string,
+  customers: JobPayloadCustomerRow[],
+): string | null {
+  if (!explicitId) return null
+  const explicit = customers.find((c) => c.id === explicitId)
+  if (!explicit || explicit.master_user_id === jobMasterUserId) return explicitId
+  return null
+}

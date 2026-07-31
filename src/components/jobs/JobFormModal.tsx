@@ -51,7 +51,7 @@ import { notifyDispatchRequestsChanged } from '../../lib/dispatchRequestHelpers'
 import { JobFormSourceEstimateBanner } from './JobFormSourceEstimateBanner'
 import type { Database } from '../../types/database'
 import type { JobWithDetails } from '../../types/jobWithDetails'
-import { resolveCustomerIdForJobPayload } from '../../lib/jobLedgerCustomer'
+import { resolveCustomerIdForJobPayload, resolveGcCustomerIdForJobPayload } from '../../lib/jobLedgerCustomer'
 import { jobLedgerHasCustomerForBilling } from '../../lib/jobLedgerCustomerForBilling'
 import { revenueDollarsFromFixtures } from '../../lib/revenueFromJobFixtures'
 import { buildEditJobBillingBar } from '../../lib/jobs/editJobBillingBar'
@@ -311,6 +311,10 @@ export default function JobFormModal({
   const [customerEmail, setCustomerEmail] = useState('')
   const [customerPhone, setCustomerPhone] = useState('')
   const [customerId, setCustomerId] = useState<string | null>(null)
+  /** Optional GC (General Contractor) — a second customers link, like bids' GC/Builder (v2.1176). */
+  const [gcCustomerId, setGcCustomerId] = useState<string | null>(null)
+  /** The linked bid's GC (bids.customer_id + name) — drives the picker's "Use bid's GC" chip. */
+  const [linkedBidGc, setLinkedBidGc] = useState<{ id: string; name: string } | null>(null)
   const [projectId, setProjectId] = useState<string | null>(null)
   const [projects, setProjects] = useState<ProjectOption[]>([])
   const [bidId, setBidId] = useState<string | null>(null)
@@ -623,6 +627,7 @@ export default function JobFormModal({
     customerName,
     customerEmail,
     customerPhone,
+    gcCustomerId,
     googleDriveLink,
     jobPicturesLink,
     jobPlansLink,
@@ -846,6 +851,7 @@ export default function JobFormModal({
     setCustomerName(s.identity.customerName)
     setCustomerEmail(s.identity.customerEmail)
     setCustomerPhone(s.identity.customerPhone)
+    setGcCustomerId(s.identity.gcCustomerId)
     setGoogleDriveLink(s.identity.googleDriveLink)
     setJobPicturesLink(s.identity.jobPicturesLink)
     setJobPlansLink(s.identity.jobPlansLink)
@@ -1292,6 +1298,12 @@ export default function JobFormModal({
     setCustomerEmail(job.customer_email ?? '')
     setCustomerPhone(job.customer_phone ?? '')
     setCustomerId(job.customer_id ?? null)
+    setGcCustomerId(job.gc_customer_id ?? null)
+    setLinkedBidGc(
+      job.linkedBid?.customer_id && job.linkedBid.customers
+        ? { id: job.linkedBid.customer_id, name: (job.linkedBid.customers.name ?? '').trim() || '—' }
+        : null,
+    )
     setProjectId(job.project_id ?? null)
     setBidId(job.bid_id ?? null)
     setLinkedBidSummary(
@@ -1350,6 +1362,8 @@ export default function JobFormModal({
     setCustomerEmail('')
     setCustomerPhone('')
     setCustomerId(null)
+    setGcCustomerId(null)
+    setLinkedBidGc(null)
     setProjectId(projectPrefill)
     setBidId(null)
     setLinkedBidSummary(null)
@@ -1440,6 +1454,15 @@ export default function JobFormModal({
         } else if (b.service_type_id) {
           showToast('Bid trade is not available for your role in this form; choose a service type.', 'info')
         }
+        setLinkedBidGc(
+          b.customer_id
+            ? {
+                id: b.customer_id,
+                name:
+                  (customers.find((c) => c.id === b.customer_id)?.name ?? b.customers?.name ?? '').trim() || '—',
+              }
+            : null,
+        )
         if (b.customer_id) {
           setCustomerId(b.customer_id)
           const cList = customers.find((c) => c.id === b.customer_id)
@@ -1514,6 +1537,7 @@ export default function JobFormModal({
         }
         setBidId(null)
         setLinkedBidSummary(null)
+        setLinkedBidGc(null)
         setJobName((e.title ?? '').trim())
         setJobAddress((e.for_address ?? '').trim())
         const lines = normalizeEstimateLineItemsFromJson(e.line_items_snapshot)
@@ -2673,6 +2697,7 @@ export default function JobFormModal({
           job_name: jobName.trim(),
           job_address: jobAddress.trim(),
           customer_id: resolvedCustomerIdNew,
+          gc_customer_id: resolveGcCustomerIdForJobPayload(gcCustomerId, effectiveMasterId, customers),
           customer_name: customerName.trim() || null,
           customer_email: customerEmail.trim() || null,
           customer_phone: customerPhone.trim() || null,
@@ -2952,6 +2977,9 @@ export default function JobFormModal({
               setExpanded={setCustomerExpanded}
               customerId={customerId}
               setCustomerId={setCustomerId}
+              gcCustomerId={gcCustomerId}
+              setGcCustomerId={setGcCustomerId}
+              linkedBidGc={linkedBidGc}
               customerSearch={customerSearch}
               setCustomerSearch={setCustomerSearch}
               customerName={customerName}
@@ -3764,6 +3792,14 @@ export default function JobFormModal({
             if (opt?.customer_id && !customerId) {
               setCustomerId(opt.customer_id)
             }
+            setLinkedBidGc(
+              opt?.customer_id
+                ? {
+                    id: opt.customer_id,
+                    name: (customers.find((c) => c.id === opt.customer_id)?.name ?? '').trim() || '—',
+                  }
+                : null,
+            )
             setJobBidLinkChoiceOpen(false)
             setProjectFilesPlansExpanded(true)
             showToast('Bid linked. Save the job to keep changes.', 'info')

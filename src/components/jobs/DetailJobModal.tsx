@@ -58,6 +58,7 @@ import { JobThreadNotesPanel } from '../JobThreadNotesPanel'
 import JobReportsModal from '../JobReportsModal'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import type { LimitedJobDetailSnapshot } from '../../types/limitedJobDetailSnapshot'
+import GcHardHatIcon from '../icons/GcHardHatIcon'
 
 export type DetailJobScheduleContext = {
   workDate: string
@@ -246,14 +247,17 @@ function DetailJobModalCustomerPanel({
   customerName,
   customerPhone,
   customerEmail,
+  gcCustomerName,
 }: {
   customerName: string | null | undefined
   customerPhone: string | null | undefined
   customerEmail: string | null | undefined
+  gcCustomerName?: string | null
 }) {
   const name = customerName?.trim() ?? ''
   const phone = customerPhone?.trim() ?? ''
   const email = customerEmail?.trim() ?? ''
+  const gcName = gcCustomerName?.trim() ?? ''
 
   const openTel = () => {
     if (phone) openInExternalBrowser(`tel:${phone}`)
@@ -270,6 +274,15 @@ function DetailJobModalCustomerPanel({
           <div style={name ? customerPanelValueStyle : customerPanelMissingPlaceholderStyle}>
             {name || '[missing name]'}
           </div>
+          {gcName ? (
+            <div
+              title="GC/Builder for this job"
+              style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', marginTop: 2, fontSize: '0.8125rem', color: 'var(--text-muted)' }}
+            >
+              <GcHardHatIcon size={12} />
+              <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{gcName}</span>
+            </div>
+          ) : null}
         </div>
         <div style={{ minWidth: 0 }}>
           {phone ? (
@@ -470,6 +483,7 @@ function mergeLimitedFromAssignedAndLedger(
     customer_name: null,
     customer_email: null,
     customer_phone: null,
+    gc_customer_name: null,
     last_work_date: null,
     status: 'working',
     service_type_name: null,
@@ -483,7 +497,7 @@ async function fetchLimitedLedgerRow(jobId: string): Promise<LimitedJobDetailSna
         await supabase
           .from('jobs_ledger')
           .select(
-            'id, hcp_number, job_name, job_address, google_drive_link, job_pictures_link, job_plans_link, revenue, project_id, customer_name, customer_email, customer_phone, last_work_date, status, service_types:service_type_id(name)',
+            'id, hcp_number, job_name, job_address, google_drive_link, job_pictures_link, job_plans_link, revenue, project_id, customer_name, customer_email, customer_phone, last_work_date, status, gc_customer:gc_customer_id(name), service_types:service_type_id(name)',
           )
           .eq('id', jobId)
           .maybeSingle(),
@@ -505,10 +519,12 @@ async function fetchLimitedLedgerRow(jobId: string): Promise<LimitedJobDetailSna
       customer_phone: string | null
       last_work_date: string | null
       status: string
+      gc_customer?: { name: string | null } | { name: string | null }[] | null
       service_types?: { name: string } | null
     }
-    const { service_types: st, ...rest } = r
-    return { ...rest, service_type_name: st?.name ?? null } as LimitedJobDetailSnapshot
+    const { service_types: st, gc_customer: gcEmbed, ...rest } = r
+    const gcOne = Array.isArray(gcEmbed) ? gcEmbed[0] ?? null : gcEmbed ?? null
+    return { ...rest, gc_customer_name: gcOne?.name ?? null, service_type_name: st?.name ?? null } as LimitedJobDetailSnapshot
   } catch {
     return null
   }
@@ -1321,6 +1337,7 @@ export default function DetailJobModal({
                 customerName={detailJob.customer_name}
                 customerPhone={detailJob.customer_phone}
                 customerEmail={detailJob.customer_email}
+                gcCustomerName={'gc_customer_name' in detailJob ? detailJob.gc_customer_name : detailJob.gcCustomer?.name ?? null}
               />
             ) : null}
           </div>

@@ -4332,6 +4332,7 @@ export type Database = {
           created_at: string | null
           customer_email: string | null
           customer_id: string | null
+          gc_customer_id: string | null
           customer_name: string | null
           customer_phone: string | null
           google_drive_link: string | null
@@ -4364,6 +4365,7 @@ export type Database = {
           created_at?: string | null
           customer_email?: string | null
           customer_id?: string | null
+          gc_customer_id?: string | null
           customer_name?: string | null
           customer_phone?: string | null
           google_drive_link?: string | null
@@ -4396,6 +4398,7 @@ export type Database = {
           created_at?: string | null
           customer_email?: string | null
           customer_id?: string | null
+          gc_customer_id?: string | null
           customer_name?: string | null
           customer_phone?: string | null
           google_drive_link?: string | null
@@ -4434,6 +4437,13 @@ export type Database = {
           {
             foreignKeyName: "jobs_ledger_customer_id_fkey"
             columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "jobs_ledger_gc_customer_id_fkey"
+            columns: ["gc_customer_id"]
             isOneToOne: false
             referencedRelation: "customers"
             referencedColumns: ["id"]
