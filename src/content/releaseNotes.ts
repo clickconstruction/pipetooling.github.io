@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1172',
+    date: '2026-07-31',
+    title: 'Cover letter follows the Version you have selected',
+    kind: 'fix',
+    highlights: [
+      'On multi-GC bids, the single cover letter could be headed with one GC’s name over another Version’s numbers.',
+      'The letter now always follows the active Version chip: switch Versions and the letterhead, amount, and fixtures switch together.',
+      'A "· for {GC}" tag appears by the combined document whenever the letter is addressed to someone other than the bid’s own GC.',
+    ],
+  },
+  {
     version: 'v2.1171',
     date: '2026-07-31',
     title: 'RFI, Change Order and Lien Release Google Docs named without underscores',

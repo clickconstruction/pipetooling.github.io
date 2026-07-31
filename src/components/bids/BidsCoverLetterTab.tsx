@@ -23,7 +23,7 @@ import {
 } from '../../lib/bidDocuments/coverLetter'
 import { computeBidPricingRows, coverLetterTotalsFromPricingRows } from '../../lib/bidPricingRowCalculations'
 import { submissionHiddenIdsForVersion } from '../../lib/bids/submissionHides'
-import { groupSectionsByEffectiveGc, type GcPacketCustomer } from '../../lib/bids/coverLetterGcPackets'
+import { groupSectionsByEffectiveGc, resolveSingleLetterGc, letterGcDiffersFromBid, type GcPacketCustomer } from '../../lib/bids/coverLetterGcPackets'
 import {
   DEFAULT_PAYMENT_SCHEDULE_ROWS,
   PAYMENT_SCHEDULE_TIMINGS,
@@ -59,6 +59,8 @@ type BidsCoverLetterTabProps = {
   coverLetterPricingRows: { revenueSum: number; fixtureRows: { fixture: string; count: number }[] } | null
   /** Name of the active Pricing driving the amount above, shown so the user knows which pricing this letter reflects. */
   activePricingName: string | null
+  /** The engine's active bid Version (null = unsplit bid) — the single letter's GC follows this Version's override. */
+  activeBidVersionId: string | null
   /** The selected bid's Pricings — used to build the bundled (one-letter-per-Pricing) submission document. */
   bidPricings: PriceBookVersion[]
   /** Reload the bid's Pricings after an include/reorder change so the bundle recomputes. */
@@ -101,6 +103,7 @@ export function BidsCoverLetterTab({
   pricingCountRows,
   coverLetterPricingRows,
   activePricingName,
+  activeBidVersionId,
   bidPricings,
   reloadBidPricings,
   loadBids,
@@ -526,9 +529,6 @@ export function BidsCoverLetterTab({
           name: customerName,
           address: customerAddress,
         }
-        const includedPricingsSorted = bidPricings
-          .filter((p) => p.include_in_submission)
-          .sort((a, b) => a.sort_order - b.sort_order)
         const gcPackets = bundlePricings.length > 1
           ? groupSectionsByEffectiveGc(bundlePricings, versionGcById, bidGcPacketCustomer)
           : []
@@ -536,13 +536,14 @@ export function BidsCoverLetterTab({
           ? gcPackets.find((pk) => pk.key === selectedGcPacketKey) ?? gcPackets[0]!
           : null
         const multiGc = gcPackets.length > 1
-        // Single-letter path: exactly one included Pricing whose Version has an
-        // override heads the letter with that GC instead of the bid GC.
-        const singleIncludedOverride =
-          bundlePricings.length <= 1 && includedPricingsSorted.length === 1 && includedPricingsSorted[0]!.bid_version_id
-            ? versionGcById[includedPricingsSorted[0]!.bid_version_id!] ?? null
-            : null
-        const letterCustomer = selectedGcPacket ? selectedGcPacket.customer : singleIncludedOverride ?? bidGcPacketCustomer
+        // Single-letter path: the letter follows the ACTIVE Version — its GC
+        // override when set, else the bid GC — so the letterhead always matches
+        // the amount and fixtures below it (which come from the active Pricing).
+        // include_in_submission only matters for the multi-pricing bundle above.
+        const letterCustomer = selectedGcPacket
+          ? selectedGcPacket.customer
+          : resolveSingleLetterGc(activeBidVersionId, versionGcById, bidGcPacketCustomer)
+        const letterGcIsNotBidGc = letterGcDiffersFromBid(letterCustomer, bidGcPacketCustomer)
         const letterCustomerName = letterCustomer.name
         const letterCustomerAddress = letterCustomer.address
         const combinedText = buildCoverLetterText(letterCustomerName, letterCustomerAddress, projectNameVal, projectAddressVal, revenueWords, revenueNumber, fixtureRows, inclusions, exclusions, terms, designDrawingPlanDateFormatted, serviceTypeName, includeSignature, effectiveIncludeFixtures, paymentScheduleActive ? { rows: paymentScheduleInputs, amountDollars: effectiveRevenue } : null, orgCoverLetterDefaults.closing)
@@ -986,9 +987,9 @@ export function BidsCoverLetterTab({
             <div style={{ marginBottom: '1rem' }}>
               <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>
                 Combined document (copy to send)
-                {multiGc && selectedGcPacket && (
+                {(multiGc || letterGcIsNotBidGc) && (
                   <span style={{ marginLeft: '0.5rem', fontWeight: 600, fontSize: '0.8125rem', color: 'var(--text-blue-800)' }}>
-                    · for {selectedGcPacket.customer.name}
+                    · for {letterCustomerName}
                   </span>
                 )}
                 {bundlePricings.length > 1 && (

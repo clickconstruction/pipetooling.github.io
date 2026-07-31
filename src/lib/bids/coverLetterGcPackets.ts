@@ -59,3 +59,25 @@ export function groupSectionsByEffectiveGc<S extends GcPacketSectionInput>(
 export function hasMultipleEffectiveGcs<S extends GcPacketSectionInput>(packets: Array<GcPacket<S>>): boolean {
   return packets.length > 1
 }
+
+/**
+ * The GC the SINGLE letter is addressed to: the ACTIVE Version's override when
+ * one is set, else the bid-level GC. Keying on the active Version keeps the
+ * letterhead and the letter's numbers on the same Version (both follow the
+ * Version picker); which Pricings are flagged include_in_submission only
+ * matters for the multi-pricing bundle, never for the single letter.
+ */
+export function resolveSingleLetterGc(
+  activeBidVersionId: string | null,
+  versionCustomerById: Record<string, GcPacketCustomer | null | undefined>,
+  bidCustomer: GcPacketCustomer,
+): GcPacketCustomer {
+  const override = activeBidVersionId ? versionCustomerById[activeBidVersionId] ?? null : null
+  return override ?? bidCustomer
+}
+
+/** True when the letter's GC is someone other than the bid-level GC — drives the "· for {GC}" badge. */
+export function letterGcDiffersFromBid(letterGc: GcPacketCustomer, bidCustomer: GcPacketCustomer): boolean {
+  if (letterGc.id != null && bidCustomer.id != null) return letterGc.id !== bidCustomer.id
+  return letterGc.name !== bidCustomer.name || letterGc.address !== bidCustomer.address
+}

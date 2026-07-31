@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-31 (v2.1171)
+last_updated: 2026-07-31 (v2.1172)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1172)
+
+### Cover Letter: the single letter now follows the active Version's GC (2026-07-31)
+Field report on BP364 (multi-GC, v2.1159): with the SPC Version active, the combined document was headed **Burd & Assoc.** over SPC's numbers — a mixed-GC document, exactly what the packet grouping was built to prevent. Root cause: the single-letter path keyed the letterhead off the one Pricing flagged `include_in_submission` (whose Version pointed at Burd) while the amount and fixtures came from the **active** Pricing — two different Pricings once the user switches the Version picker. Fix: new kernel fns in [`coverLetterGcPackets.ts`](../src/lib/bids/coverLetterGcPackets.ts) — `resolveSingleLetterGc` (active Version's override ?? bid GC; 5 tests incl. the exact BP364 shape) and `letterGcDiffersFromBid` (3 tests). [`BidsCoverLetterTab.tsx`](../src/components/bids/BidsCoverLetterTab.tsx) drops the `singleIncludedOverride` block — `include_in_submission` is back to bundle-only — and heads the single letter via the new `activeBidVersionId` prop ([`Bids.tsx`](../src/pages/Bids.tsx) passes the engine's `selectedBidVersionId`). The "· for {GC}" badge next to **Combined document** now renders whenever the letter's GC differs from the bid GC (previously multi-packet only), so the mismatch with the top Customer block explains itself. Multi-packet bundling unchanged. Guide `bid-one-project-to-multiple-gcs` gains a tip. Client-only.
 
 ## Latest Updates (v2.1171)
 

@@ -3291,6 +3291,7 @@ export default function Bids() {
           pricingCountRows={pricingCountRows}
           coverLetterPricingRows={coverLetterPricingRows}
           activePricingName={priceBookVersions.find((v) => v.id === selectedPricingVersionId)?.name ?? null}
+          activeBidVersionId={selectedBidVersionId}
           bidPricings={priceBookVersions}
           reloadBidPricings={() => (selectedBidForPricing ? loadBidPricings(selectedBidForPricing.id).then(() => {}) : Promise.resolve())}
           loadBids={loadBids}
