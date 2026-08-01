@@ -51,6 +51,23 @@ describe('buildWorkflowMoneyFlow', () => {
     expect(flow.stepProjectedTotal).toEqual({})
   })
 
+  it('stepBalance is emitted for every step: projected through befores, spent through the step inclusive', () => {
+    const flow = buildWorkflowMoneyFlow(
+      steps,
+      [
+        proj({ id: 'a', step_id: 's1', placement: 'after', amount: 151000 }),
+        proj({ id: 'b', step_id: 's3', placement: 'before', amount: 9000 }),
+      ],
+      { s1: 38120, s2: 24480 },
+    )
+    // s1: after-marker lands on the NEXT position — not in s1's balance.
+    expect(flow.stepBalance.s1).toEqual({ projected: 0, spent: 38120 })
+    // s2: the s1 after-marker's $151k now counts; s2's own items included.
+    expect(flow.stepBalance.s2).toEqual({ projected: 151000, spent: 62600 })
+    // s3: its before-marker counts; no items.
+    expect(flow.stepBalance.s3).toEqual({ projected: 160000, spent: 62600 })
+  })
+
   it('orders markers within a group by sequence_order (nulls last) then id, and defaults null placement to after', () => {
     const flow = buildWorkflowMoneyFlow(
       steps,

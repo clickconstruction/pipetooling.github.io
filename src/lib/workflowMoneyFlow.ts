@@ -31,6 +31,13 @@ export type WorkflowMoneyFlow<P extends MoneyFlowProjectionInput> = {
   afterByStep: Record<string, Array<WorkflowMoneyMarker<P>>>
   /** Drawer rollup: total anchored-projection dollars per step (before + after). */
   stepProjectedTotal: Record<string, number>
+  /**
+   * Ledger rail (v2.1195): running position AS OF FINISHING each step — anchored
+   * projections through this step's before-markers, actual line items through
+   * this step inclusive (after-markers land on the next row's position).
+   * Present for EVERY ordered step. balance = projected − spent.
+   */
+  stepBalance: Record<string, { projected: number; spent: number }>
 }
 
 function groupSort<P extends MoneyFlowProjectionInput>(list: P[]): P[] {
@@ -61,6 +68,7 @@ export function buildWorkflowMoneyFlow<P extends MoneyFlowProjectionInput>(
   const beforeByStep: Record<string, Array<WorkflowMoneyMarker<P>>> = {}
   const afterByStep: Record<string, Array<WorkflowMoneyMarker<P>>> = {}
   const stepProjectedTotal: Record<string, number> = {}
+  const stepBalance: Record<string, { projected: number; spent: number }> = {}
 
   let runningProjected = 0
   let runningSpent = 0
@@ -75,6 +83,7 @@ export function buildWorkflowMoneyFlow<P extends MoneyFlowProjectionInput>(
       })
     }
     runningSpent += Number(itemsTotalByStepId[stepId] ?? 0)
+    stepBalance[stepId] = { projected: runningProjected, spent: runningSpent }
     const afters = groupSort(afterRaw.get(stepId) ?? [])
     if (afters.length > 0) {
       afterByStep[stepId] = afters.map((p) => {
@@ -86,5 +95,5 @@ export function buildWorkflowMoneyFlow<P extends MoneyFlowProjectionInput>(
     if (stepTotal !== 0) stepProjectedTotal[stepId] = stepTotal
   }
 
-  return { beforeByStep, afterByStep, stepProjectedTotal }
+  return { beforeByStep, afterByStep, stepProjectedTotal, stepBalance }
 }

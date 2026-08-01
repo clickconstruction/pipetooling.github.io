@@ -29,4 +29,8 @@ When the blue and amber numbers drift apart, that's where the plan and reality d
 
 Every expanded step card also gets a **Money** line (`Money · $X projected · $Y items`). Open it to see that step's before/after projections, its actual line-item total, and a **+ Add projection here** shortcut that pre-fills the step for you.
 
+## The ledger rail
+
+On wide screens, a running ledger appears down the **left side**: every card and marker row shows the balance at that point (projected-to-here minus spent-to-here, green when ahead, red when spending has outrun the plan), and a small card with the **project margin** and current balance stays pinned while you scroll. The rail hides on narrow screens — the marker pills carry the same numbers there.
+
 Anchored money markers follow the same visibility as Projections — devs and Masters only. Deleting a step doesn't delete its projections; they simply return to the top panel as unattached.
