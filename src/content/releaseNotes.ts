@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1216',
+    date: '2026-08-01',
+    title: 'Groundwork: work orders can be offered with dates and answered',
+    kind: 'infra',
+    highlights: [
+      'Behind the scenes, a work order can now carry a proposed work window, be declined with a reason, and be answered securely by the sub it belongs to.',
+      'Nothing visible changes yet; the sub-side Accept/Decline and the office offer flow arrive in the next updates.',
+    ],
+  },
+  {
     version: 'v2.1215',
     date: '2026-08-01',
     title: 'Cleaner GC + development line on Stages',

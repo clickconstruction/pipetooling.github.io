@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-01 (v2.1215)
+last_updated: 2026-08-01 (v2.1216)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1216)
+
+### Work-order dispatch schema: declined, proposed windows, the sub's answer RPC (2026-08-01)
+RUN_SUBS_PLAN **Phase 4** (approved from the "Sub Dispatch" mockups), PR 4.1 — DB-only groundwork. Migration [`20260801220000_work_order_dispatch.sql`](../supabase/migrations/20260801220000_work_order_dispatch.sql): **(1)** `step_commitments` status CHECK gains `declined`; new `declined_at`/`decline_reason` + `proposed_start`/`proposed_end` (the work window an offer carries; a declined row keeps its live (step, person) slot so re-offers reuse it). **(2)** `respond_to_work_order(p_commitment_id, p_accept, p_reason DEFAULT NULL)` — the sub's answer path: SECURITY DEFINER, callable only by the commitment's **account-linked** person (no name fallback for writes), only from `offered`, `FOR UPDATE` locked; declining requires a reason; accepting writes the step's expected dates **only when both are empty** (office-set dates are never overwritten — the report returns `dates_mismatch` instead, per the approved decision). **(3)** Three idempotent `email_templates` seeds (`work_order_offered/accepted/declined`) — `send-workflow-notification` looks templates up by type and 404s on unknowns, so seeding rows gives Phase 4 emails+push with **zero edge-function changes**. Types hand-added. DB-only (`supabase db push` after merge; nothing calls any of it until PRs 4.3/4.4).
 
 ## Latest Updates (v2.1215)
 

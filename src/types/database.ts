@@ -9445,12 +9445,16 @@ export type Database = {
           approved_at: string | null
           created_at: string
           created_by: string | null
+          decline_reason: string | null
+          declined_at: string | null
           display_name: string
           id: string
           labor_job_id: string | null
           notes: string | null
           offered_at: string | null
           person_id: string
+          proposed_end: string | null
+          proposed_start: string | null
           retainage_pct: number
           settled_at: string | null
           status: string
@@ -9463,12 +9467,16 @@ export type Database = {
           approved_at?: string | null
           created_at?: string
           created_by?: string | null
+          decline_reason?: string | null
+          declined_at?: string | null
           display_name: string
           id?: string
           labor_job_id?: string | null
           notes?: string | null
           offered_at?: string | null
           person_id: string
+          proposed_end?: string | null
+          proposed_start?: string | null
           retainage_pct?: number
           settled_at?: string | null
           status?: string
@@ -9481,12 +9489,16 @@ export type Database = {
           approved_at?: string | null
           created_at?: string
           created_by?: string | null
+          decline_reason?: string | null
+          declined_at?: string | null
           display_name?: string
           id?: string
           labor_job_id?: string | null
           notes?: string | null
           offered_at?: string | null
           person_id?: string
+          proposed_end?: string | null
+          proposed_start?: string | null
           retainage_pct?: number
           settled_at?: string | null
           status?: string
@@ -13370,6 +13382,10 @@ export type Database = {
           p_note: string
           p_stripe_credit_note_id: string
         }
+        Returns: Json
+      }
+      respond_to_work_order: {
+        Args: { p_accept: boolean; p_commitment_id: string; p_reason?: string | null }
         Returns: Json
       }
       set_job_collections_flag: {
