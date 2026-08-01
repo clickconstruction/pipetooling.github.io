@@ -89,48 +89,38 @@ export function JobFormIdentityFields({
 
   return (
     <>
-      <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-        <div style={{ flex: '0 0 110px', minWidth: 110 }}>
+      {/* Single line even on phones: nowrap so the fields shrink instead of wrapping.
+          The number fields shrink three times as fast (flex-shrink 3) so the Service type
+          column keeps room for its one-line label + trade pill at 375px. */}
+      <div style={{ display: 'flex', gap: '0.75rem' }}>
+        <div style={{ flex: '0 3 90px', minWidth: 52 }}>
           <label style={{ display: 'block', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}>HCP</label>
           <input
             type="text"
             value={hcpNumber}
             onChange={(e) => setHcpNumber(e.target.value)}
-            placeholder="HCP number"
+            placeholder="HCP"
             style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem' }}
           />
         </div>
-        <div style={{ flex: '0 0 110px', minWidth: 110 }}>
+        <div style={{ flex: '0 3 90px', minWidth: 52 }}>
           <label style={{ display: 'block', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}>C#</label>
           <input
             type="text"
             value={clickNumber}
             onChange={(e) => setClickNumber(e.target.value)}
-            placeholder="Click number"
+            placeholder="C#"
             style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem' }}
           />
         </div>
-        <div style={{ flex: 1, minWidth: 200 }}>
-          <label
-            htmlFor="job-form-service-type"
-            style={{ display: 'block', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}
-          >
-            Service type <span style={{ color: 'var(--text-red-700)' }}>*</span>
-          </label>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-            <div style={{ flex: '0 1 240px', minWidth: 170 }}>
-              <SearchableSelect
-                id="job-form-service-type"
-                value={formServiceTypeId}
-                onChange={setFormServiceTypeId}
-                options={serviceTypeOptions.map((st) => ({ value: st.id, label: st.name }))}
-                emptyOption={{ value: '', label: 'Select service type…' }}
-                placeholder="Select service type…"
-                required
-                listAriaLabel="Service type"
-                disabled={serviceTypeOptions.length === 0}
-              />
-            </div>
+        <div style={{ flex: '1 1 170px', minWidth: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: 4, minWidth: 0 }}>
+            <label
+              htmlFor="job-form-service-type"
+              style={{ fontWeight: 500, fontSize: '0.875rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
+            >
+              Service type <span style={{ color: 'var(--text-red-700)' }}>*</span>
+            </label>
             {tradePill ? (
               <button
                 type="button"
@@ -142,6 +132,19 @@ export function JobFormIdentityFields({
                 {tradePill.label}
               </button>
             ) : null}
+          </div>
+          <div style={{ width: '100%', maxWidth: 240, minWidth: 0 }}>
+            <SearchableSelect
+              id="job-form-service-type"
+              value={formServiceTypeId}
+              onChange={setFormServiceTypeId}
+              options={serviceTypeOptions.map((st) => ({ value: st.id, label: st.name }))}
+              emptyOption={{ value: '', label: 'Select service type…' }}
+              placeholder="Select service type…"
+              required
+              listAriaLabel="Service type"
+              disabled={serviceTypeOptions.length === 0}
+            />
           </div>
         </div>
       </div>

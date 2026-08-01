@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-01 (v2.1226)
+last_updated: 2026-08-01 (v2.1228)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,16 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1228)
+
+### Edit Job ② Invoices — the dollar scale hugs the segment strip instead of orphaning "$0" (2026-08-01)
+On phones the ② Invoices header wrapped badly: the v2.1223 combined row (`$0` + four-chip legend + `Covered by other bills` + total, one `space-between` flex row in [`JobFormSegmentsBar.tsx`](../src/components/jobs/JobFormSegmentsBar.tsx)) broke into four stacked lines — `$0` sat orphaned directly under the **② Invoices** heading where it read as a value, the legend split mid-flow, and the total (`$21,000`) stranded on its own line. The header is now two purpose-built rows: a centered legend row (the four lifecycle chips + the conditional **Covered by other bills** chip, wrapping freely with a `0.35rem` row gap) and, when `axisTotalDollars` is set, a dedicated axis row (`$0` left, total right, `space-between`) sitting 2px above the strip so the labels visibly cap the bar ends they describe. Desktop pays one extra ~12px line versus the combined row; phones drop from ~4 messy lines to legend (≤2 wrapped lines) + axis. Measured in a styles-verbatim replica: 375px and 320px → legend wraps to 2 tidy lines, axis on one line, zero overflow, header 49px tall; 700px → legend one line. Verified: `tsc -b` clean, zero new lints, vitest suite green (the component's render test asserts legend presence, unaffected). Files: modified [`src/components/jobs/JobFormSegmentsBar.tsx`](../src/components/jobs/JobFormSegmentsBar.tsx). No DB / migration / RLS / RPC / Edge / type-gen changes.
+
+## Latest Updates (v2.1227)
+
+### Edit Job — HCP / C# / Service type on one line on phones (2026-08-01)
+The identity row of the New/Edit Job modal ([`JobFormIdentityFields.tsx`](../src/components/jobs/JobFormIdentityFields.tsx)) used to wrap on mobile: HCP `flex: 0 0 110px` + C# `flex: 0 0 110px` fit the first line, but the Service type column's `minWidth: 200` (plus the select's own `minWidth: 170`) pushed it to a second line on a 375px phone (~295px of modal content inside the 560px-max card's `1.5rem` padding). Now all three sit on one line at every width. Mechanics: the row drops `flexWrap: 'wrap'` (wrapping happens at flex-*basis* sizes before shrink ever applies, so keeping wrap defeats shrinkable fields — verified empirically in a pixel-faithful replica), HCP/C# become `flex: '0 3 90px', minWidth: 52` (shrink weight 3 so the number fields give up width three times as fast as the select column), and the Service type column becomes `flex: '1 1 170px', minWidth: 0` with the `SearchableSelect` in a `width: 100%; maxWidth: 240` wrapper (240 matches its previous desktop cap). The edit-mode trade pill (PLUM/ELEC/HVAC shortcut to Jobs → Stages) moves from beside the select up beside the **Service type** label (label gains `whiteSpace: nowrap` + ellipsis so a squeezed column truncates the label instead of two-lining it and misaligning the inputs); the pill's behavior/`title`/`aria-label` are unchanged. Placeholders shortened to fit the narrower fields: `HCP number` → `HCP`, `Click number` → `C#`. Measured in a styles-verbatim replica: 375px → 60/60/151px all on one line, label intact; 390px → 66/66/155; desktop → 90/90 + select at 240 cap; 320px (legacy devices) → still one line, label ellipsizes, zero horizontal overflow. Verified: `tsc -b` clean, zero new lints, full vitest suite green. Files: modified [`src/components/jobs/JobFormIdentityFields.tsx`](../src/components/jobs/JobFormIdentityFields.tsx). No DB / migration / RLS / RPC / Edge / type-gen changes.
 
 ## Latest Updates (v2.1226)
 
