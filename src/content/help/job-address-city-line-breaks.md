@@ -1,0 +1,22 @@
+---
+title: make job addresses wrap at the city name
+category: Office
+roles: dev
+keywords: address, city, line break, wrap, stages, devine, locality, two lines, settings
+order: 75
+---
+Job addresses on **Jobs → Stages** and **Billing** show on two lines — street first, then the **City ST** part — so rows stay scannable. The split happens at a known city name (or a comma when there is one). The same city list also splits street vs city when prefilling lien documents and the AIA G702/G703 form.
+
+The app ships with a list of Central Texas cities (San Antonio, Seguin, New Braunfels, and more). When a job address uses a city that isn't on the list — and has no comma — the address can't split and runs together on one line.
+
+## Add a missing city
+
+1. Open {{icon:gear}} **Settings → Jobs &amp; dispatch**.
+2. Expand **Job address city line breaks (dev)**.
+3. Type the missing city names, one per line, and click {{button:primary|Save}}.
+
+:::example "1875 Co Rd 777 Devine TX"
+Without "Devine" on the list this stays glued together. After adding it, the row shows "1875 Co Rd 777" with "Devine TX" on its own line — and lien prefills put "Devine" in the city field.
+:::
+
+The change applies org-wide: your session updates immediately, and everyone else picks it up the next time the app loads. Built-in cities can't be removed — this list only adds to them.

@@ -10,6 +10,7 @@ import { useChecklistAddModal } from '../contexts/ChecklistAddModalContext'
 import AddTaskShortcutBanner from './AddTaskShortcutBanner'
 import { RouteChunkBoundary } from './RouteChunkBoundary'
 import { consumePendingOpenAddTask } from '../lib/iosPwa'
+import { loadAndApplyExtraJobAddressLocalities } from '../lib/jobAddressLocalitySettings'
 import { useDispatchTaskModal } from '../contexts/DispatchTaskModalContext'
 import { useEstimatorTaskModal } from '../contexts/EstimatorTaskModalContext'
 import ChecklistAddModal from './ChecklistAddModal'
@@ -119,6 +120,12 @@ export default function Layout() {
   )
   const dispatchModeMenuEligible = role != null && CAN_USE_SCHEDULE_DISPATCH_EDIT_ROLES.has(role)
   const dispatchModeActive = dispatchModeEnabled && dispatchModeMenuEligible
+
+  // Org-added address-split cities (Stages/Billing rows, lien prefill) — hydrate once per session.
+  useEffect(() => {
+    if (!authUser?.id) return
+    void loadAndApplyExtraJobAddressLocalities()
+  }, [authUser?.id])
 
   /**
    * Assistants in Dispatch Mode: opening the app after 5+ minutes away lands on

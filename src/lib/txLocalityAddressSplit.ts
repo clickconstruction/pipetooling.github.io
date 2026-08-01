@@ -21,12 +21,47 @@ export const TX_JOB_ADDRESS_LOCALITY_KEYWORDS = [
   'Blanco',
 ] as const
 
+/**
+ * Org-added city names on top of the built-in list (v2.1186). Module state so the
+ * split functions stay pure-sync in render paths; hydrated once per session from
+ * `app_settings.job_address_extra_localities_v1` (see jobAddressLocalitySettings.ts)
+ * and re-applied immediately after a dev saves the Settings block.
+ */
+let extraTxLocalityKeywords: string[] = []
+
+export function setExtraTxLocalityKeywords(list: string[]): void {
+  extraTxLocalityKeywords = list
+}
+
+export function getExtraTxLocalityKeywords(): string[] {
+  return extraTxLocalityKeywords
+}
+
+/**
+ * Parse the dev-entered extras text (one city per line; commas also accepted) into a
+ * clean list: trimmed, no empties, case-insensitively deduped, built-ins dropped.
+ */
+export function parseExtraTxLocalitiesText(text: string): string[] {
+  const builtins = new Set(TX_JOB_ADDRESS_LOCALITY_KEYWORDS.map((k) => k.toLowerCase()))
+  const seen = new Set<string>()
+  const out: string[] = []
+  for (const raw of text.split(/[\n,]+/)) {
+    const city = raw.trim()
+    if (!city) continue
+    const lower = city.toLowerCase()
+    if (builtins.has(lower) || seen.has(lower)) continue
+    seen.add(lower)
+    out.push(city)
+  }
+  return out
+}
+
 /** Start index in `original` of the earliest matching locality, or -1. */
 export function findEarliestTxLocalityIndex(original: string): number {
   const a = original
   const lower = a.toLowerCase()
   let bestIdx = -1
-  for (const kw of TX_JOB_ADDRESS_LOCALITY_KEYWORDS) {
+  for (const kw of [...TX_JOB_ADDRESS_LOCALITY_KEYWORDS, ...extraTxLocalityKeywords]) {
     const idx = lower.indexOf(kw.toLowerCase())
     if (idx === -1) continue
     if (kw === 'Blanco') {
