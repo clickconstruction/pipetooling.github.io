@@ -31,6 +31,7 @@ import {
 import { pageTabStyle } from '../../lib/pageTabStyle'
 import { ProjectsForecastSpecificTab } from './ProjectsForecastSpecificTab'
 import { ProjectsForecastAllStagesTab } from './ProjectsForecastAllStagesTab'
+import { ProjectsForecastSubsTab } from './ProjectsForecastSubsTab'
 
 type Props = {
   customerId: string | null
@@ -46,10 +47,12 @@ type ServiceTypeRow = { id: string; ledger_job_prefix: string | null; ledger_bid
 const MAX_REALTIME_IN_IDS = 80
 const REALTIME_DEBOUNCE_MS = 280
 
-export type ForecastSubTab = 'specific' | 'all-stages'
+export type ForecastSubTab = 'specific' | 'all-stages' | 'subs'
 
 export function parseForecastSubTab(value: string | null): ForecastSubTab {
-  return value === 'all-stages' ? 'all-stages' : 'specific'
+  if (value === 'all-stages') return 'all-stages'
+  if (value === 'subs') return 'subs'
+  return 'specific'
 }
 
 export function ProjectsForecastTab({ customerId, myRole = null }: Props) {
@@ -230,6 +233,13 @@ export function ProjectsForecastTab({ customerId, myRole = null }: Props) {
         >
           All Steps
         </button>
+        <button
+          type="button"
+          style={pageTabStyle(activeSub === 'subs')}
+          onClick={() => setActiveSub('subs')}
+        >
+          Subs
+        </button>
       </div>
 
       {error ? (
@@ -250,6 +260,8 @@ export function ProjectsForecastTab({ customerId, myRole = null }: Props) {
 
       {activeSub === 'specific' ? (
         <ProjectsForecastSpecificTab {...sharedProps} myRole={myRole} />
+      ) : activeSub === 'subs' ? (
+        <ProjectsForecastSubsTab />
       ) : (
         <ProjectsForecastAllStagesTab {...sharedProps} />
       )}

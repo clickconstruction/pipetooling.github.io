@@ -41,7 +41,8 @@ type JobFormFixturesSectionProps = {
   invoiceStatusById?: Record<string, string>
   /** Opens the Multiple Segment Generator modal (v2.1071). */
   onOpenSegmentGenerator: () => void
-  setStripeFixturePreviewRowId: (id: string | null) => void
+  /** Opens the all-line-items Stripe preview dialog (v2.1223, title-row trigger). */
+  onOpenStripeFixturePreview: () => void
   /** Live sum of the line items — shown as the running "Job Total" at the top right. */
   jobTotalDollars: number
   /** Rider `<tr>`s (hazmat fees) rendered after the fixture rows (v2.1029). */
@@ -52,12 +53,12 @@ type JobFormFixturesSectionProps = {
 
 /**
  * The "① Line Items" grid in the Edit/New Job
- * modal: one row per fixture (autosizing name, count, unit price) with an
- * add/remove control, plus the per-row scope/notes sub-row carrying the Stripe
- * line-length counter and the "Stripe preview" dialog trigger. Extracted
- * verbatim from JobFormModal — pure render; all state, the highlight
- * ref/effects, and the Stripe-preview dialog itself stay in the shell and come
- * in as props.
+ * modal: one row per fixture (autosizing name with an in-border scope pencil,
+ * count and unit price as ×/$ input groups) with add/remove controls, a
+ * title-row "Stripe preview" trigger (all-lines dialog, v2.1223), and a
+ * near-limit Stripe line-length counter in the expanded scope block. Pure
+ * render; all state, the highlight ref/effects, and the Stripe-preview dialog
+ * itself stay in the shell and come in as props.
  */
 export function JobFormFixturesSection({
   fixtures,
@@ -71,7 +72,7 @@ export function JobFormFixturesSection({
   moveFixtureRow,
   invoiceStatusById = {},
   onOpenSegmentGenerator,
-  setStripeFixturePreviewRowId,
+  onOpenStripeFixturePreview,
   jobTotalDollars,
   riderRows,
   riderFeesDollars = 0,
@@ -128,6 +129,33 @@ export function JobFormFixturesSection({
               >
                 Multiple Segment Generator
               </button>
+              <button
+                type="button"
+                aria-haspopup="dialog"
+                aria-controls="stripe-fixture-line-preview-dialog"
+                onClick={onOpenStripeFixturePreview}
+                title="Preview the Stripe invoice line for every line item"
+                style={{
+                  padding: 0,
+                  background: 'transparent',
+                  border: 'none',
+                  color: 'var(--text-link)',
+                  textDecoration: 'underline',
+                  fontSize: '0.75rem',
+                  cursor: 'pointer',
+                  fontFamily: 'inherit',
+                  whiteSpace: 'nowrap',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.25rem',
+                }}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width={13} height={13} fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                  <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" />
+                  <circle cx="12" cy="12" r="3" />
+                </svg>
+                Stripe preview
+              </button>
             </div>
             {helperOpen && (
               <div style={{ marginBottom: '0.5rem' }}>
@@ -140,7 +168,7 @@ export function JobFormFixturesSection({
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem', tableLayout: 'fixed' }}>
               {/* No header band (v2.1149) — the inputs self-label: count and unit
                   price carry muted "×" / "$" prefixes inside their own borders
-                  (input groups, v2.1219), so a full row of column titles isn't
+                  (input groups, v2.1223), so a full row of column titles isn't
                   spent labeling what is usually a single line. */}
               <colgroup>
                 <col />
@@ -227,10 +255,10 @@ export function JobFormFixturesSection({
                               </div>
                             )}
                             <div style={{ flex: 1, minWidth: 0 }}>
-                              {/* Input group (v2.1219): the scope pencil + Stripe-preview eye
-                                  sit INSIDE the name field's border as a suffix — one home for
-                                  the affordances on every row, expanded or not. Top-anchored so
-                                  they don't jump when a name wraps. */}
+                              {/* Input group (v2.1223): the scope pencil sits INSIDE the name
+                                  field's border as a suffix (top-anchored so it doesn't jump
+                                  when a name wraps). The Stripe preview is job-wide and lives
+                                  on the ① title row. */}
                               <div
                                 style={{
                                   display: 'flex',
@@ -269,8 +297,8 @@ export function JobFormFixturesSection({
                                     ...(locked ? { opacity: 0.75 } : {}),
                                   }}
                                 />
+                                {!locked && (
                                 <span style={{ display: 'flex', alignItems: 'flex-start', flexShrink: 0, padding: '0.1rem 0.1rem 0 0' }}>
-                                  {!locked && (
                                     <button
                                       type="button"
                                       aria-expanded={scopeExpanded}
@@ -308,31 +336,8 @@ export function JobFormFixturesSection({
                                         <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z" />
                                       </svg>
                                     </button>
-                                  )}
-                                  <button
-                                    type="button"
-                                    aria-haspopup="dialog"
-                                    aria-controls="stripe-fixture-line-preview-dialog"
-                                    onClick={() => setStripeFixturePreviewRowId(row.id)}
-                                    title="Stripe preview"
-                                    aria-label="Stripe preview"
-                                    style={{
-                                      padding: '0.3rem',
-                                      background: 'transparent',
-                                      border: 'none',
-                                      borderRadius: 4,
-                                      color: 'var(--text-link)',
-                                      cursor: 'pointer',
-                                      display: 'inline-flex',
-                                      alignItems: 'center',
-                                    }}
-                                  >
-                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width={15} height={15} fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                                      <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" />
-                                      <circle cx="12" cy="12" r="3" />
-                                    </svg>
-                                  </button>
                                 </span>
+                                )}
                               </div>
                               {linkChip && (
                                 <span
@@ -366,7 +371,7 @@ export function JobFormFixturesSection({
                             verticalAlign: 'top',
                           }}
                         >
-                          {/* Input group (v2.1219): the × lives INSIDE the field's
+                          {/* Input group (v2.1223): the × lives INSIDE the field's
                               border as a muted prefix — a floating glyph in the
                               gutter read as a stray character. */}
                           <span
@@ -528,9 +533,9 @@ export function JobFormFixturesSection({
                           {scopeExpanded ? (
                             <>
                               {/* The counter earns its space only near the Stripe line limit
-                                  (v2.1219) — under that the expanded block is just the textarea.
+                                  (v2.1223) — under that the expanded block is just the textarea.
                                   The Stripe-preview affordance lives on the row's name field
-                                  (v2.1219), not here. */}
+                                  (v2.1223), not here. */}
                               {stripeFixtureLineLen >= STRIPE_INVOICE_LINE_DESCRIPTION_MAX - 100 && (
                                 <div
                                   id={stripeLenDescId}
@@ -571,7 +576,7 @@ export function JobFormFixturesSection({
                               />
                             </>
                           ) : stripeLineOverLimit ? (
-                            /* Collapsed rows carry no secondary line (v2.1219) — the scope
+                            /* Collapsed rows carry no secondary line (v2.1223) — the scope
                                and Stripe-preview affordances are icons on the input row.
                                The counter surfaces only as this over-limit warning. */
                             <div

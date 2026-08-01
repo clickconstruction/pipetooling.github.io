@@ -2,14 +2,19 @@ import { useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { commitmentBalance, commitmentRail, nextCommitmentActions } from '../../lib/workflow/stepCommitments'
 import type { StepCommitmentRow } from '../../lib/workflow/stepCommitments'
+import { formatWorkOrderWindow, notifyWorkOrderOffered } from '../../lib/workflow/workOrderNotifications'
+import { pickerComplianceSummary, type ComplianceDocInput } from '../../lib/people/subCompliance'
+import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 
 /**
  * Sub work-order panel on an expanded step card (RUN_SUBS_PLAN Phase 2,
  * PR 2.2 — Option B of the approved mockups; first component in
  * src/components/workflow/). Lists this step's commitments with the merged
  * money/work rail, balance figures off the linked sub sheet, and the
- * office transitions (offer / mark accepted / cancel). Settlement (the
- * "Approve walk → release" button) lands in PR 2.3.
+ * office transitions. Phase 4 (PR 4.4): offers carry a proposed work
+ * window (seeded from the step's expected dates) and notify the sub; the
+ * rail shows Awaiting answer; declines surface their reason with re-offer
+ * paths; Withdraw returns an unanswered offer to draft; Nudge resends.
  *
  * Superintendents see the panel and may only mark accepted (decision 4 in
  * docs/RUN_SUBS_PLAN.md); amounts are visible to the same audience as line
@@ -26,6 +31,12 @@ type SettleReport = {
 export function StepCommitmentPanel({
   stepId,
   stepStatus,
+  stepName,
+  stepScheduledStart,
+  stepScheduledEnd,
+  projectId,
+  projectName,
+  offeredByName,
   commitments,
   paymentsByLaborJobId,
   roster,
@@ -35,6 +46,12 @@ export function StepCommitmentPanel({
 }: {
   stepId: string
   stepStatus: string
+  stepName: string
+  stepScheduledStart: string | null
+  stepScheduledEnd: string | null
+  projectId: string
+  projectName: string
+  offeredByName: string
   commitments: StepCommitmentRow[]
   /** Payments of linked sub sheets, keyed by people_labor_jobs.id (loaded by the parent alongside the commitments). */
   paymentsByLaborJobId: Record<string, Array<{ amount: number }>>
@@ -49,6 +66,38 @@ export function StepCommitmentPanel({
   const [addAmount, setAddAmount] = useState('')
   const [saving, setSaving] = useState(false)
   const [settlePreview, setSettlePreview] = useState<{ commitmentId: string; report: SettleReport } | null>(null)
+  const [offerEditor, setOfferEditor] = useState<{ commitmentId: string; start: string; end: string; amount: string; isReoffer: boolean } | null>(null)
+  const [complianceByPerson, setComplianceByPerson] = useState<Record<string, ComplianceDocInput[]>>({})
+
+  /** Load a person's compliance docs once (fail-soft — chips just don't render pre-migration). */
+  async function loadCompliance(personId: string) {
+    if (complianceByPerson[personId]) return
+    const { data, error } = await supabase
+      .from('person_contract_documents')
+      .select('doc_type, status, expires_at')
+      .eq('person_id', personId)
+    if (error) return
+    setComplianceByPerson((prev) => ({ ...prev, [personId]: (data ?? []) as ComplianceDocInput[] }))
+  }
+
+  function complianceChip(personId: string | null, windowEndYmd?: string | null) {
+    if (!personId) return null
+    const docs = complianceByPerson[personId]
+    if (!docs) return null
+    const summary = pickerComplianceSummary(docs, calendarYmdInAppTzFromIso(new Date().toISOString()), windowEndYmd)
+    const style =
+      summary.state === 'ok'
+        ? { background: 'var(--bg-green-tint)', color: 'var(--text-green-600)' }
+        : summary.state === 'warn'
+          ? { background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)' }
+          : { background: 'var(--bg-red-tint)', color: 'var(--text-red-700)' }
+    return (
+      <span style={{ ...style, fontSize: '0.7rem', fontWeight: 650, borderRadius: 999, padding: '0.08rem 0.5rem', whiteSpace: 'nowrap' }}>
+        {summary.state === 'ok' ? '✓ ' : '⚠ '}
+        {summary.label}
+      </span>
+    )
+  }
 
   // The settlement preview IS the real settlement rolled back server-side
   // (p_dry_run sentinel), so Confirm can never do something different.
@@ -84,14 +133,14 @@ export function StepCommitmentPanel({
 
   const live = commitments.filter((c) => c.status !== 'cancelled')
 
-  async function transition(commitment: StepCommitmentRow, action: 'offer' | 'accept' | 'cancel') {
+  async function transition(commitment: StepCommitmentRow, action: 'accept' | 'withdraw' | 'cancel') {
     setSaving(true)
     const nowIso = new Date().toISOString()
     const update: Record<string, unknown> =
-      action === 'offer'
-        ? { status: 'offered', offered_at: nowIso }
-        : action === 'accept'
-          ? { status: 'accepted', accepted_at: nowIso }
+      action === 'accept'
+        ? { status: 'accepted', accepted_at: nowIso }
+        : action === 'withdraw'
+          ? { status: 'draft', offered_at: null }
           : { status: 'cancelled' }
     const { error } = await supabase.from('step_commitments').update(update).eq('id', commitment.id)
     setSaving(false)
@@ -99,6 +148,70 @@ export function StepCommitmentPanel({
       onError(`Failed to update work order: ${error.message}`)
       return
     }
+    onChanged()
+  }
+
+  /** Sub contact for the offer notification: roster email, else the linked account's. Office RLS reads both. */
+  async function notifyOffer(commitment: StepCommitmentRow, proposedStart: string | null, proposedEnd: string | null, amount: number) {
+    const { data: person } = await supabase
+      .from('people')
+      .select('email, account_user_id')
+      .eq('id', commitment.person_id)
+      .maybeSingle()
+    let email = person?.email ?? null
+    const userId = person?.account_user_id ?? null
+    if (!email && userId) {
+      const { data: u } = await supabase.from('users').select('email').eq('id', userId).maybeSingle()
+      email = u?.email ?? null
+    }
+    void notifyWorkOrderOffered({
+      stepId,
+      projectId,
+      projectName,
+      stepName,
+      offeredByName,
+      recipientName: commitment.display_name,
+      recipientEmail: email,
+      recipientUserId: userId,
+      amount,
+      proposedStart,
+      proposedEnd,
+    })
+  }
+
+  function openOfferEditor(commitment: StepCommitmentRow, isReoffer: boolean) {
+    void loadCompliance(commitment.person_id)
+    setOfferEditor({
+      commitmentId: commitment.id,
+      start: commitment.proposed_start ?? stepScheduledStart ?? '',
+      end: commitment.proposed_end ?? stepScheduledEnd ?? '',
+      amount: String(commitment.amount ?? ''),
+      isReoffer,
+    })
+  }
+
+  async function sendOffer(commitment: StepCommitmentRow) {
+    if (!offerEditor) return
+    const amount = Number(offerEditor.amount)
+    if (!Number.isFinite(amount) || amount < 0) return
+    setSaving(true)
+    const update: Record<string, unknown> = {
+      status: 'offered',
+      offered_at: new Date().toISOString(),
+      proposed_start: offerEditor.start || null,
+      proposed_end: offerEditor.end || null,
+      amount,
+      declined_at: null,
+      decline_reason: null,
+    }
+    const { error } = await supabase.from('step_commitments').update(update).eq('id', commitment.id)
+    setSaving(false)
+    if (error) {
+      onError(`Failed to send offer: ${error.message}`)
+      return
+    }
+    void notifyOffer(commitment, offerEditor.start || null, offerEditor.end || null, amount)
+    setOfferEditor(null)
     onChanged()
   }
 
@@ -225,16 +338,68 @@ export function StepCommitmentPanel({
               )}
             </div>
 
+            {(c.status === 'offered' || c.status === 'accepted') && (c.proposed_start || c.proposed_end) && (
+              <div style={{ fontSize: '0.8125rem', marginBottom: '0.45rem' }}>
+                📅 {c.status === 'offered' ? 'Proposed' : 'Agreed'} window{' '}
+                <strong>{formatWorkOrderWindow(c.proposed_start ?? null, c.proposed_end ?? null)}</strong>
+                {c.status === 'offered' && c.offered_at && (
+                  <span style={{ color: 'var(--text-muted)' }}>
+                    {' '}· offered {new Date(c.offered_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                  </span>
+                )}
+                {c.status === 'accepted' &&
+                  (stepScheduledStart || stepScheduledEnd) &&
+                  (stepScheduledStart !== (c.proposed_start ?? null) || stepScheduledEnd !== (c.proposed_end ?? null)) && (
+                    <span style={{ marginLeft: 8, fontSize: '0.72rem', fontWeight: 650, background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)', borderRadius: 999, padding: '0.08rem 0.5rem' }}>
+                      ⚠ differs from the step's expected dates
+                    </span>
+                  )}
+              </div>
+            )}
+
+            {c.status === 'declined' && (
+              <div style={{ fontSize: '0.8125rem', background: 'var(--bg-red-tint)', borderRadius: 6, padding: '0.45rem 0.6rem', marginBottom: '0.55rem' }}>
+                Declined{c.decline_reason ? <> — <strong>“{c.decline_reason}”</strong></> : null}
+                {c.declined_at && (
+                  <span style={{ color: 'var(--text-muted)' }}>
+                    {' '}· {new Date(c.declined_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                  </span>
+                )}
+              </div>
+            )}
+
             {(actions.length > 0 || (!isSuperintendentOnly && (c.status === 'accepted' || c.status === 'approved'))) && (
               <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', alignItems: 'center' }}>
                 {actions.includes('offer') && (
-                  <button type="button" className="wf-btn-primary" style={{ fontSize: '0.78rem' }} disabled={saving} onClick={() => transition(c, 'offer')}>
-                    Offer to {c.display_name}
+                  <button type="button" className="wf-btn-primary" style={{ fontSize: '0.78rem' }} disabled={saving} onClick={() => openOfferEditor(c, false)}>
+                    Offer to {c.display_name}…
+                  </button>
+                )}
+                {actions.includes('reoffer') && !isSuperintendentOnly && (
+                  <button type="button" className="wf-btn-primary" style={{ fontSize: '0.78rem' }} disabled={saving} onClick={() => openOfferEditor(c, true)}>
+                    Re-offer…
                   </button>
                 )}
                 {actions.includes('accept') && (
-                  <button type="button" className="wf-btn-primary" style={{ fontSize: '0.78rem' }} disabled={saving} onClick={() => transition(c, 'accept')}>
+                  <button type="button" className="wf-btn-primary" style={{ fontSize: '0.78rem' }} disabled={saving} onClick={() => transition(c, 'accept')} title="Fallback when the sub told you directly instead of answering in the app">
                     Mark accepted
+                  </button>
+                )}
+                {actions.includes('withdraw') && !isSuperintendentOnly && (
+                  <button type="button" className="wf-btn-ghost" style={{ fontSize: '0.78rem' }} disabled={saving} onClick={() => transition(c, 'withdraw')}>
+                    Withdraw offer
+                  </button>
+                )}
+                {c.status === 'offered' && !isSuperintendentOnly && (
+                  <button
+                    type="button"
+                    className="wf-btn-ghost"
+                    style={{ fontSize: '0.78rem' }}
+                    disabled={saving}
+                    onClick={() => void notifyOffer(c, c.proposed_start ?? null, c.proposed_end ?? null, Number(c.amount))}
+                    title="Resend the offer notification"
+                  >
+                    Nudge
                   </button>
                 )}
                 {!isSuperintendentOnly && (c.status === 'accepted' || c.status === 'approved') && (
@@ -258,6 +423,55 @@ export function StepCommitmentPanel({
                     Cancel work order
                   </button>
                 )}
+              </div>
+            )}
+
+            {offerEditor?.commitmentId === c.id && (
+              <div style={{ marginTop: '0.55rem', border: '1px solid var(--border-strong)', borderRadius: 8, padding: '0.6rem 0.7rem', background: 'var(--bg-blue-tint)', fontSize: '0.8125rem' }}>
+                <div style={{ fontWeight: 700, marginBottom: '0.4rem' }}>
+                  {offerEditor.isReoffer ? `Re-offer to ${c.display_name}` : `Offer to ${c.display_name}`}
+                </div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                    $
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={offerEditor.amount}
+                      onChange={(e) => setOfferEditor((prev) => (prev ? { ...prev, amount: e.target.value } : prev))}
+                      style={{ width: '6.5rem', padding: '0.25rem 0.4rem', borderRadius: 6, border: '1px solid var(--border)', fontSize: '0.8125rem' }}
+                    />
+                  </label>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                    from
+                    <input
+                      type="date"
+                      value={offerEditor.start}
+                      onChange={(e) => setOfferEditor((prev) => (prev ? { ...prev, start: e.target.value } : prev))}
+                      style={{ padding: '0.25rem 0.4rem', borderRadius: 6, border: '1px solid var(--border)', fontSize: '0.8125rem' }}
+                    />
+                  </label>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                    to
+                    <input
+                      type="date"
+                      value={offerEditor.end}
+                      onChange={(e) => setOfferEditor((prev) => (prev ? { ...prev, end: e.target.value } : prev))}
+                      style={{ padding: '0.25rem 0.4rem', borderRadius: 6, border: '1px solid var(--border)', fontSize: '0.8125rem' }}
+                    />
+                  </label>
+                  <button type="button" className="wf-btn-primary" style={{ fontSize: '0.78rem' }} disabled={saving || offerEditor.amount.trim() === ''} onClick={() => void sendOffer(c)}>
+                    Send offer
+                  </button>
+                  <button type="button" className="wf-btn-ghost" style={{ fontSize: '0.78rem' }} disabled={saving} onClick={() => setOfferEditor(null)}>
+                    Cancel
+                  </button>
+                </div>
+                <div style={{ marginTop: '0.35rem' }}>{complianceChip(c.person_id, offerEditor.end || null)}</div>
+                <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '0.35rem' }}>
+                  Dates pre-fill from the step's expected dates. The sub gets a push + email and answers from their dashboard.
+                </div>
               </div>
             )}
 
@@ -306,7 +520,10 @@ export function StepCommitmentPanel({
         <div style={{ padding: '0.6rem 0.7rem', borderTop: '1px solid var(--border)', display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center' }}>
           <select
             value={addPersonId}
-            onChange={(e) => setAddPersonId(e.target.value)}
+            onChange={(e) => {
+              setAddPersonId(e.target.value)
+              if (e.target.value) void loadCompliance(e.target.value)
+            }}
             style={{ padding: '0.3rem 0.4rem', borderRadius: 6, border: '1px solid var(--border)', fontSize: '0.8125rem', maxWidth: '14rem' }}
           >
             <option value="">Pick a sub…</option>
@@ -316,6 +533,7 @@ export function StepCommitmentPanel({
               </option>
             ))}
           </select>
+          {addPersonId ? complianceChip(addPersonId) : null}
           <input
             type="number"
             min="0"

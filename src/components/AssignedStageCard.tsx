@@ -46,6 +46,8 @@ const STATUS_BADGE_CLASS: Record<StepStatus, string> = {
 }
 
 export type AssignedStageCardProps = {
+  /** Work-order money chip for this step, e.g. "$6,400 · accepted" (RUN_SUBS_PLAN PR 4.6). */
+  commitmentChip?: string | null
   step: AssignedStep
   userNames: Set<string>
   role: string | null
@@ -63,6 +65,7 @@ export default function AssignedStageCard({
   step,
   userNames,
   role,
+  commitmentChip,
   onSetStart,
   onMarkComplete,
   onMarkApproved,
@@ -80,6 +83,22 @@ export default function AssignedStageCard({
     <div className={`assignedStageCard assignedStageCard--${status}`}>
       <div className="assignedStageCard-header">
         <div className="assignedStageCard-titleRow">
+          {commitmentChip ? (
+            <span
+              style={{
+                fontSize: '0.7rem',
+                fontWeight: 650,
+                background: 'var(--bg-blue-tint)',
+                color: 'var(--text-link)',
+                borderRadius: 999,
+                padding: '0.08rem 0.5rem',
+                whiteSpace: 'nowrap',
+                marginRight: 6,
+              }}
+            >
+              💰 {commitmentChip}
+            </span>
+          ) : null}
           <span className="assignedStageCard-stageName">
             {isSubcontractorLikeRole(role as UserRole) && step.project_name
               ? `${step.project_name} - ${step.name}`

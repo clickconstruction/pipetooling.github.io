@@ -393,25 +393,25 @@ export default function JobFormModal({
   ])
   /** User opened "Add scope or notes" for this fixture row id (persists while row exists). */
   const [fixtureScopeExpandedById, setFixtureScopeExpandedById] = useState<Record<string, boolean>>({})
-  const [stripeFixturePreviewRowId, setStripeFixturePreviewRowId] = useState<string | null>(null)
-  const stripeFixturePreviewRow = useMemo(
-    () =>
-      stripeFixturePreviewRowId
-        ? fixtures.find((f) => f.id === stripeFixturePreviewRowId) ?? null
-        : null,
-    [fixtures, stripeFixturePreviewRowId],
+  // v2.1223: one preview for the whole job — the dialog lists every line item's
+  // Stripe line, opened from the ① Line Items title row (per-row eyes removed).
+  const [stripeFixturePreviewOpen, setStripeFixturePreviewOpen] = useState(false)
+  // Named rows only — mirrors the save filter; a blank placeholder row has no Stripe line.
+  const stripeFixturePreviewRows = useMemo(
+    () => fixtures.filter((f) => (f.name ?? '').trim() !== ''),
+    [fixtures],
   )
   useEffect(() => {
-    if (!stripeFixturePreviewRowId) return
+    if (!stripeFixturePreviewOpen) return
     const onKeyDown = (ev: WindowEventMap['keydown']) => {
       if (ev.key === 'Escape') {
         ev.preventDefault()
-        setStripeFixturePreviewRowId(null)
+        setStripeFixturePreviewOpen(false)
       }
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [stripeFixturePreviewRowId])
+  }, [stripeFixturePreviewOpen])
   const jobTotalBidDollars = useMemo(() => revenueDollarsFromFixtures(fixtures), [fixtures])
   // v2.1029: rider (hazmat) fees count toward the Job Total — display, billing
   // math, AND the revenue written on save (previously saving recomputed
@@ -481,7 +481,7 @@ export default function JobFormModal({
     createCustomerFromJobModalOpen ||
     segmentGeneratorOpen ||
     bannerOverlayOpen ||
-    stripeFixturePreviewRowId != null ||
+    stripeFixturePreviewOpen ||
     billViewInvoice != null ||
     agreedWriteDownInvoice != null ||
     billToEditorInvoice != null
@@ -2567,7 +2567,6 @@ export default function JobFormModal({
       delete next[id]
       return next
     })
-    setStripeFixturePreviewRowId((cur) => (cur === id ? null : cur))
     setFixtures((prev) => (prev.length <= 1 ? prev : prev.filter((r) => r.id !== id)))
   }
 
@@ -3197,7 +3196,7 @@ export default function JobFormModal({
             moveFixtureRow={moveFixtureRowInList}
             invoiceStatusById={fixtureInvoiceStatusById}
             onOpenSegmentGenerator={() => setSegmentGeneratorOpen(true)}
-            setStripeFixturePreviewRowId={setStripeFixturePreviewRowId}
+            onOpenStripeFixturePreview={() => setStripeFixturePreviewOpen(true)}
             jobTotalDollars={jobTotalBidDollars}
           />
           <div style={{ marginBottom: '1rem' }}>
@@ -3638,7 +3637,7 @@ export default function JobFormModal({
           </div>
         </div>
       )}
-      {stripeFixturePreviewRow && (
+      {stripeFixturePreviewOpen && (
         <div
           style={{
             position: 'fixed',
@@ -3649,7 +3648,7 @@ export default function JobFormModal({
             justifyContent: 'center',
             zIndex: JOB_FORM_NESTED_OVERLAY_Z_INDEX,
           }}
-          onClick={() => setStripeFixturePreviewRowId(null)}
+          onClick={() => setStripeFixturePreviewOpen(false)}
         >
           <div
             id="stripe-fixture-line-preview-dialog"
@@ -3677,42 +3676,48 @@ export default function JobFormModal({
                 textAlign: 'center',
               }}
             >
-              Stripe line description (this row)
+              Stripe line descriptions
             </h2>
-            <div
-              style={{
-                fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
-                fontSize: '0.875rem',
-                whiteSpace: 'pre-wrap',
-                wordBreak: 'break-word',
-                padding: '0.75rem',
-                background: 'var(--bg-subtle)',
-                borderRadius: 6,
-                border: '1px solid var(--border)',
-                color: 'var(--text-strong)',
-                marginBottom: '1rem',
-              }}
-            >
-              {buildFixtureStripeLineDescriptionForStripe(
-                stripeFixturePreviewRow.name,
-                stripeFixturePreviewRow.line_description,
-              )}
-            </div>
+            {stripeFixturePreviewRows.length === 0 ? (
+              <p style={{ margin: '0 0 1rem', fontSize: '0.8125rem', color: 'var(--text-muted)', textAlign: 'center' }}>
+                No named line items yet.
+              </p>
+            ) : (
+              stripeFixturePreviewRows.map((f) => (
+                <div
+                  key={f.id}
+                  style={{
+                    fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
+                    fontSize: '0.875rem',
+                    whiteSpace: 'pre-wrap',
+                    wordBreak: 'break-word',
+                    padding: '0.75rem',
+                    background: 'var(--bg-subtle)',
+                    borderRadius: 6,
+                    border: '1px solid var(--border)',
+                    color: 'var(--text-strong)',
+                    marginBottom: '0.5rem',
+                  }}
+                >
+                  {buildFixtureStripeLineDescriptionForStripe(f.name, f.line_description)}
+                </div>
+              ))
+            )}
             <p
               style={{
-                margin: '0 0 1rem',
+                margin: '0.5rem 0 1rem',
                 fontSize: '0.8125rem',
                 color: 'var(--text-muted)',
                 lineHeight: 1.5,
                 textAlign: 'center',
               }}
             >
-              &quot;line item&quot; - &quot;scope notes&quot;
+              One Stripe invoice line per line item: &quot;line item&quot; - &quot;scope notes&quot;
             </p>
             <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
               <button
                 type="button"
-                onClick={() => setStripeFixturePreviewRowId(null)}
+                onClick={() => setStripeFixturePreviewOpen(false)}
                 style={{
                   padding: '0.5rem 1rem',
                   fontSize: '0.875rem',

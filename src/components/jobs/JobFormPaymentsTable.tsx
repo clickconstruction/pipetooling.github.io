@@ -81,7 +81,7 @@ function ReadOnlyPaymentRefCopy({
   )
 }
 
-/** Pencil toggle for a manual row's folded Type/Ref/Memo details (v2.1219). */
+/** Pencil toggle for a manual row's folded Type/Ref/Memo details (v2.1223). */
 function PaymentDetailsToggle({ open, onToggle, controlsId }: { open: boolean; onToggle: () => void; controlsId: string }) {
   return (
     <button
@@ -149,7 +149,7 @@ export function JobFormPaymentsTable({
   // hidden behind a "Record non-Stripe payment received" button until the user
   // asks for one — recorded payments and locked (Stripe/Mercury) rows always show.
   const [manualEntryOpen, setManualEntryOpen] = useState(false)
-  // Compact layout (v2.1219): the explainer sentence hides behind the ⓘ toggle,
+  // Compact layout (v2.1223): the explainer sentence hides behind the ⓘ toggle,
   // and each row's Type/Ref/Memo inputs fold into a one-line summary. A row is
   // open when explicitly toggled, or by default while it is an unsaved manual
   // draft (so the record-a-payment flow still shows its fields immediately —
@@ -223,7 +223,7 @@ export function JobFormPaymentsTable({
           <col style={{ width: '24%' }} />
           <col style={{ width: '48%' }} />
         </colgroup>
-        {/* No header band (v2.1219) — the date picker and the $-prefixed amount
+        {/* No header band (v2.1223) — the date picker and the $-prefixed amount
             group self-label, matching the ① Line Items input groups. */}
         <tbody>
           {(() => {
@@ -615,7 +615,7 @@ export function JobFormPaymentsTable({
                       }
                     >
                       {paymentReadOnly ? (
-                        /* Locked rows compact to one wrapping line (v2.1219) — the
+                        /* Locked rows compact to one wrapping line (v2.1223) — the
                            same type / copyable ref / memo, without the stacked block. */
                         <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', columnGap: '0.75rem', rowGap: '0.15rem', color: 'var(--text-700)' }}>
                           {ptTrim ? <span>{ptTrim}</span> : null}

@@ -61,3 +61,30 @@ describe('buildSubComplianceBadges', () => {
     expect(badges.find((b) => b.key === 'coi')?.state).toBe('expiring')
   })
 })
+
+describe('pickerComplianceSummary', () => {
+  it('collapses to the worst finding: expired beats expiring beats ok; empty is none', async () => {
+    const { pickerComplianceSummary } = await import('./subCompliance')
+    expect(pickerComplianceSummary([], TODAY)).toEqual({ state: 'none', label: 'nothing on file' })
+    const full = [
+      doc({ doc_type: 'agreement', status: 'signed' }),
+      doc({ doc_type: 'coi', expires_at: '2027-01-01' }),
+      doc({ doc_type: 'w9' }),
+    ]
+    expect(pickerComplianceSummary(full, TODAY)).toEqual({ state: 'ok', label: 'compliant' })
+    expect(pickerComplianceSummary([...full.slice(0, 2)], TODAY).state).toBe('bad')
+  })
+
+  it('warns when a COI valid today lapses before the proposed window ends', async () => {
+    const { pickerComplianceSummary } = await import('./subCompliance')
+    const docs = [
+      doc({ doc_type: 'agreement', status: 'signed' }),
+      doc({ doc_type: 'coi', expires_at: '2026-09-12' }),
+      doc({ doc_type: 'w9' }),
+    ]
+    expect(pickerComplianceSummary(docs, TODAY).state).toBe('ok')
+    const withWindow = pickerComplianceSummary(docs, TODAY, '2026-09-20')
+    expect(withWindow.state).toBe('warn')
+    expect(withWindow.label).toContain('lapses before the window ends')
+  })
+})

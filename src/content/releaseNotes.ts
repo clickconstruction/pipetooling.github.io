@@ -11,15 +11,58 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
-    version: 'v2.1219',
+    version: 'v2.1223',
     date: '2026-08-01',
     title: 'Edit Job: tighter billing section; segment bills subtract covered money',
     kind: 'feature',
     highlights: [
       'Creating an invoice from selected segments now bills the remaining on those segments — money already paid or invoiced by dollar amount is subtracted automatically instead of blocking the selection.',
       'The billing area is far more compact: the Make Invoice track sits right under the segment strip, the create button sits under the math chips, and the $0-to-total scale rides the legend line.',
-      'Line items are single rows — the scope-notes pencil and Stripe-preview eye sit inside the name box, and the count and price wear their × and $ inside the field.',
+      'Line items are single rows — the scope-notes pencil sits inside the name box, the count and price wear their × and $ inside the field, and one Stripe preview beside the ① title shows every line at once.',
       'Payment rows fold their Type / Ref / Memo details into a one-line note (the pencil reopens them); new payments still open ready to fill in.',
+    ],
+  },
+  {
+    version: 'v2.1222',
+    date: '2026-08-01',
+    title: 'Paperwork warnings right where you commit to a sub',
+    kind: 'feature',
+    highlights: [
+      'Picking a sub for a work order shows their compliance at a glance \u2014 including a warning when their COI would lapse before the proposed work window ends.',
+      'Assigned steps on the Dashboard now carry a money chip with the work order\u2019s amount and status.',
+    ],
+  },
+  {
+    version: 'v2.1221',
+    date: '2026-08-01',
+    title: 'The Sub Board: see who\u2019s booked when',
+    kind: 'feature',
+    highlights: [
+      'Projects \u2192 Forecast \u2192 Subs shows a lane per sub with their work orders laid out on a timeline \u2014 unanswered offers appear ghosted with a question mark.',
+      'Overlapping bookings get a red outline, so you catch a double-booking before it happens.',
+      'Click any bar to jump into that project\u2019s workflow.',
+    ],
+  },
+  {
+    version: 'v2.1220',
+    date: '2026-08-01',
+    title: 'Offers to subs carry dates \u2014 and their answers come right back',
+    kind: 'feature',
+    highlights: [
+      'Offering a work order now proposes a work window (pre-filled from the step\u2019s expected dates) and sends the sub a push and email.',
+      'The card shows Awaiting answer until they respond; declines come back with the reason and one-click Re-offer.',
+      'Withdraw an unanswered offer or Nudge to resend \u2014 and Mark accepted stays for subs who answer by phone.',
+    ],
+  },
+  {
+    version: 'v2.1219',
+    date: '2026-08-01',
+    title: 'Subs can accept or decline work orders from their phone',
+    kind: 'feature',
+    highlights: [
+      'An offered work order shows up as a card on the sub\u2019s Dashboard \u2014 the step, the amount, and the proposed dates, with Accept and Decline buttons.',
+      'Declining asks for a quick reason so the office knows what to fix; accepting locks the dates onto the step when none were set.',
+      'The office gets a push and email the moment the sub answers.',
     ],
   },
   {
