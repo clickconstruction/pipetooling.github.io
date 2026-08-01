@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-01 (v2.1227)
+last_updated: 2026-08-01 (v2.1228)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1228)
+
+### Edit Job ② Invoices — the dollar scale hugs the segment strip instead of orphaning "$0" (2026-08-01)
+On phones the ② Invoices header wrapped badly: the v2.1223 combined row (`$0` + four-chip legend + `Covered by other bills` + total, one `space-between` flex row in [`JobFormSegmentsBar.tsx`](../src/components/jobs/JobFormSegmentsBar.tsx)) broke into four stacked lines — `$0` sat orphaned directly under the **② Invoices** heading where it read as a value, the legend split mid-flow, and the total (`$21,000`) stranded on its own line. The header is now two purpose-built rows: a centered legend row (the four lifecycle chips + the conditional **Covered by other bills** chip, wrapping freely with a `0.35rem` row gap) and, when `axisTotalDollars` is set, a dedicated axis row (`$0` left, total right, `space-between`) sitting 2px above the strip so the labels visibly cap the bar ends they describe. Desktop pays one extra ~12px line versus the combined row; phones drop from ~4 messy lines to legend (≤2 wrapped lines) + axis. Measured in a styles-verbatim replica: 375px and 320px → legend wraps to 2 tidy lines, axis on one line, zero overflow, header 49px tall; 700px → legend one line. Verified: `tsc -b` clean, zero new lints, vitest suite green (the component's render test asserts legend presence, unaffected). Files: modified [`src/components/jobs/JobFormSegmentsBar.tsx`](../src/components/jobs/JobFormSegmentsBar.tsx). No DB / migration / RLS / RPC / Edge / type-gen changes.
 
 ## Latest Updates (v2.1227)
 

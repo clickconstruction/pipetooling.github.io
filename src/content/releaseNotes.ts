@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1228',
+    date: '2026-08-01',
+    title: 'Edit Job: cleaner invoice bar header on phones',
+    kind: 'feature',
+    highlights: [
+      'The $0 and job-total labels now sit directly on the ends of the invoice segment bar instead of floating loose above the legend — no more lonely "$0" under the Invoices heading on a phone.',
+      'The color legend wraps neatly on its own line.',
+    ],
+  },
+  {
     version: 'v2.1227',
     date: '2026-08-01',
     title: 'Edit Job: HCP, C#, and Service type share one line on phones',

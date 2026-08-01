@@ -204,51 +204,52 @@ export function JobFormSegmentsBar({
 
   return (
     <div style={{ marginBottom: '1rem' }}>
+      {/* Legend and dollar scale are separate rows (v2.1228): on phones the
+          combined row wrapped into four lines with "$0" orphaned under the
+          heading. The legend wraps freely; the axis labels hug the strip. */}
       <div
         style={{
           display: 'flex',
           flexWrap: 'wrap',
           alignItems: 'baseline',
-          justifyContent: axisTotalDollars != null ? 'space-between' : 'center',
-          gap: '0.6rem',
+          justifyContent: 'center',
+          gap: '0.35rem 0.6rem',
           marginBottom: '0.35rem',
         }}
       >
-        {axisTotalDollars != null && (
-          <span style={{ fontSize: '0.625rem', color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>
-            $0
+        {LEGEND.map((l) => (
+          <span key={l.label} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: '0.6875rem', color: 'var(--text-muted)' }}>
+            <span style={{ width: 8, height: 8, borderRadius: 2, background: l.color, display: 'inline-block' }} />
+            {l.label}
           </span>
-        )}
-        <span style={{ display: 'inline-flex', gap: '0.6rem', flexWrap: 'wrap' }}>
-          {LEGEND.map((l) => (
-            <span key={l.label} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: '0.6875rem', color: 'var(--text-muted)' }}>
-              <span style={{ width: 8, height: 8, borderRadius: 2, background: l.color, display: 'inline-block' }} />
-              {l.label}
-            </span>
-          ))}
-          {showCoverage && (
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: '0.6875rem', color: 'var(--text-muted)' }}>
-              <span
-                aria-hidden
-                style={{
-                  width: 8,
-                  height: 8,
-                  borderRadius: 2,
-                  display: 'inline-block',
-                  border: '1px solid var(--border-strong)',
-                  background: 'repeating-linear-gradient(-45deg, rgba(29,95,165,0.5) 0 2px, transparent 2px 4px)',
-                }}
-              />
-              Covered by other bills
-            </span>
-          )}
-        </span>
-        {axisTotalDollars != null && (
-          <span style={{ fontSize: '0.625rem', color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>
-            {formatUsdNoCents(axisTotalDollars)}
+        ))}
+        {showCoverage && (
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: '0.6875rem', color: 'var(--text-muted)' }}>
+            <span
+              aria-hidden
+              style={{
+                width: 8,
+                height: 8,
+                borderRadius: 2,
+                display: 'inline-block',
+                border: '1px solid var(--border-strong)',
+                background: 'repeating-linear-gradient(-45deg, rgba(29,95,165,0.5) 0 2px, transparent 2px 4px)',
+              }}
+            />
+            Covered by other bills
           </span>
         )}
       </div>
+      {axisTotalDollars != null && (
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 2 }}>
+          <span style={{ fontSize: '0.625rem', color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>
+            $0
+          </span>
+          <span style={{ fontSize: '0.625rem', color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>
+            {formatUsdNoCents(axisTotalDollars)}
+          </span>
+        </div>
+      )}
       <div
         style={{
           display: 'flex',
