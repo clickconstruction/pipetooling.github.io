@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-01 (v2.1211)
+last_updated: 2026-08-01 (v2.1212)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1212)
+
+### Sub Dashboard: "Your money" card (2026-08-01)
+RUN_SUBS_PLAN Phase 3, PR 3.2 — Option D of the approved mockups. Subcontractor-like roles get a **Your money** card on the Dashboard (no route/allowlist change — the Dashboard is already theirs): headline **balance owed** (Σ positive per-sheet balances via the canonical `subLaborJobBalance` kernel — the same math as the office's Sub Labor tab, so the two can never disagree), a **Committed work** list (their offered/accepted/approved `step_commitments` with step + project names, via the own-row SELECT that shipped with the 2.1 schema), and **Your sheets** — expandable per-sheet rows with total/paid/backcharges and the dated payment history. All reads are RLS-scoped by PR 3.1's own-row policies and **fail-soft**: before the 3.1 push (or for subs with nothing) every query returns empty and the card doesn't render, so client and migration deploy in either order. New [`DashboardSubMoneySection.tsx`](../src/components/dashboard/DashboardSubMoneySection.tsx). The plan's AssignedStageCard commitment chip is deferred to the Subs HQ PR. Guide `see-what-youre-owed-as-a-sub`. Client-only.
 
 ## Latest Updates (v2.1211)
 
