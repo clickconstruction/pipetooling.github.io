@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-01 (v2.1209)
+last_updated: 2026-08-01 (v2.1210)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1210)
+
+### Settle a work order: approve releases the money into Sub Labor (2026-08-01)
+RUN_SUBS_PLAN Phase 2, PR 2.3 — Phase 2 complete. Migration [`20260801170000_settle_step_commitment_rpc.sql`](../supabase/migrations/20260801170000_settle_step_commitment_rpc.sql): `settle_step_commitment(p_commitment_id, p_dry_run DEFAULT false)` (SECURITY DEFINER, office set only — superintendents accept, they don't release money; `can_access_project_via_step` row gate; `FOR UPDATE` lock). Settlement creates (or reuses) the **`people_labor_jobs` sub sheet** — one `direct_labor_amount` line = `amount × (1 − retainage_pct/100)`, named "{step} — {project}", with the PR 0.3 `project_id`/`step_id` anchors stamped and the HCP `job_number` filled only when the project has exactly ONE linked job (ambiguity → blank) — then links `labor_job_id` and flips the commitment to `settled`. **`p_dry_run` is the rollback-sentinel preview** (`merge_user_accounts` technique): the whole settlement runs in a nested block, the report rides out as exception detail, the handler returns it — the preview IS the real settlement, zero drift; no bare DELETEs (pg_safeupdate rule). Panel ([`StepCommitmentPanel`](../src/components/workflow/StepCommitmentPanel.tsx)): **Settle → release $X** on accepted work orders (disabled until the step is completed/approved — approving the step stays its own button, no hidden coupling), amber confirm box shows the dry-run figures, settled orders link to Jobs → Sub Labor. Guide `pay-a-sub-per-step` settlement section. Client + migration (`supabase db push` after merge; the button fails soft with a clear error until pushed).
 
 ## Latest Updates (v2.1209)
 

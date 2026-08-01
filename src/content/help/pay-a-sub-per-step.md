@@ -30,6 +30,15 @@ Offered and Accepted green, In progress orange: the sub agreed and is on the job
 
 Each work order shows **Paid to date**, **Backcharges**, **Balance**, and (when set) **Retainage held** — pulled live from the linked Sub Labor sheet once one exists, so this panel and Jobs → Sub Labor always agree.
 
-## What's next
+## Settle — release the money
 
-Approving the walk step releases the balance into Jobs → Sub Labor automatically — see the settlement section of this guide after the next update.
+Once the step is **complete or approved**, the work order shows {{button:blue|Settle → release $5,760}}.
+
+1. Click it — a confirmation shows exactly what will be created: the sub, the amount (minus retainage), and the job number when there's one linked job.
+2. {{button:blue|Confirm}} creates the sub's sheet in **Jobs → Sub Labor** automatically, named after the step and project, already tied back to this step.
+
+From there, record payments and backcharges in Sub Labor exactly as you do today — the work order's balance figures follow along.
+
+:::example The full loop
+Add a $6,400 work order with 10% retainage → Offer → Mark accepted → tech completes the step → Settle releases $5,760 to Sub Labor → record the check there when it's written.
+:::

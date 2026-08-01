@@ -106,6 +106,11 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 #### August 1, 2026
 
+**`20260801170000_settle_step_commitment_rpc.sql`** _(apply via `supabase db push` after merge — the Settle button errors clearly until pushed; everything else in the panel works)_
+- **Purpose**: RUN_SUBS_PLAN Phase 2, PR 2.3 (v2.1210). `settle_step_commitment(p_commitment_id, p_dry_run)`: creates/reuses the anchored `people_labor_jobs` sub sheet (one direct-amount line = amount × (1 − retainage/100), HCP number only when the project has exactly one job), links `labor_job_id`, flips the commitment to `settled`. Dry-run via the rollback-sentinel technique — the preview is the real settlement rolled back.
+- **Security**: SECURITY DEFINER; office roles only (dev/master/assistant/controller/estimator) + `can_access_project_via_step` row gate; `FOR UPDATE` lock against double-settlement.
+- **Category**: Feature RPC
+
 **`20260801150000_step_commitments.sql`** _(apply via `supabase db push` after merge — dormant until the PR 2.2 panel ships; nothing reads it)_
 - **Purpose**: RUN_SUBS_PLAN Phase 2, PR 2.1 (v2.1208). New `step_commitments` table — sub work orders on workflow steps (person_id-keyed, denormalized display_name, amount + retainage_pct, money-lifecycle status draft/offered/accepted/approved/settled/cancelled, labor_job_id stamped by settlement). Partial unique on (step_id, person_id) where not cancelled; updated_at trigger.
 - **Security**: RLS — SELECT via `can_access_project_via_step()` OR sub own-row (account link, name fallback); INSERT office set; UPDATE + superintendent; DELETE dev/master. Ends with BOTH `apply_read_only_write_blocks()` and `apply_read_only_stmt_blocks()` (new table).

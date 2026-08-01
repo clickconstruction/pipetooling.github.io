@@ -15,6 +15,14 @@ import type { StepCommitmentRow } from '../../lib/workflow/stepCommitments'
  * docs/RUN_SUBS_PLAN.md); amounts are visible to the same audience as line
  * items (the parent gates rendering on canManageStages).
  */
+type SettleReport = {
+  released_amount: number
+  agreed_amount: number
+  retainage_pct: number
+  created_new_sheet: boolean
+  job_number: string | null
+}
+
 export function StepCommitmentPanel({
   stepId,
   stepStatus,
@@ -40,6 +48,39 @@ export function StepCommitmentPanel({
   const [addPersonId, setAddPersonId] = useState('')
   const [addAmount, setAddAmount] = useState('')
   const [saving, setSaving] = useState(false)
+  const [settlePreview, setSettlePreview] = useState<{ commitmentId: string; report: SettleReport } | null>(null)
+
+  // The settlement preview IS the real settlement rolled back server-side
+  // (p_dry_run sentinel), so Confirm can never do something different.
+  async function requestSettle(commitment: StepCommitmentRow) {
+    setSaving(true)
+    const { data, error } = await supabase.rpc('settle_step_commitment', {
+      p_commitment_id: commitment.id,
+      p_dry_run: true,
+    })
+    setSaving(false)
+    if (error) {
+      onError(`Could not preview settlement: ${error.message}`)
+      return
+    }
+    setSettlePreview({ commitmentId: commitment.id, report: data as unknown as SettleReport })
+  }
+
+  async function confirmSettle() {
+    if (!settlePreview) return
+    setSaving(true)
+    const { error } = await supabase.rpc('settle_step_commitment', {
+      p_commitment_id: settlePreview.commitmentId,
+      p_dry_run: false,
+    })
+    setSaving(false)
+    setSettlePreview(null)
+    if (error) {
+      onError(`Failed to settle work order: ${error.message}`)
+      return
+    }
+    onChanged()
+  }
 
   const live = commitments.filter((c) => c.status !== 'cancelled')
 
@@ -184,8 +225,8 @@ export function StepCommitmentPanel({
               )}
             </div>
 
-            {actions.length > 0 && (
-              <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+            {(actions.length > 0 || (!isSuperintendentOnly && (c.status === 'accepted' || c.status === 'approved'))) && (
+              <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', alignItems: 'center' }}>
                 {actions.includes('offer') && (
                   <button type="button" className="wf-btn-primary" style={{ fontSize: '0.78rem' }} disabled={saving} onClick={() => transition(c, 'offer')}>
                     Offer to {c.display_name}
@@ -196,11 +237,65 @@ export function StepCommitmentPanel({
                     Mark accepted
                   </button>
                 )}
+                {!isSuperintendentOnly && (c.status === 'accepted' || c.status === 'approved') && (
+                  <button
+                    type="button"
+                    className="wf-btn-primary"
+                    style={{ fontSize: '0.78rem' }}
+                    disabled={saving || !(stepStatus === 'completed' || stepStatus === 'approved')}
+                    title={
+                      stepStatus === 'completed' || stepStatus === 'approved'
+                        ? 'Create the Sub Labor sheet for the balance'
+                        : 'The step must be complete or approved before releasing the money'
+                    }
+                    onClick={() => requestSettle(c)}
+                  >
+                    Settle → release {money(balance.agreed - balance.retainageHeld)}
+                  </button>
+                )}
                 {actions.includes('cancel') && (
                   <button type="button" className="wf-btn-ghost" style={{ fontSize: '0.78rem' }} disabled={saving} onClick={() => transition(c, 'cancel')}>
                     Cancel work order
                   </button>
                 )}
+              </div>
+            )}
+
+            {c.status === 'settled' && (
+              <a href="/jobs?tab=sub_sheet_ledger" style={{ fontSize: '0.78rem', color: 'var(--text-link)' }}>
+                Settled — view in Sub Labor →
+              </a>
+            )}
+
+            {settlePreview?.commitmentId === c.id && (
+              <div
+                style={{
+                  marginTop: '0.55rem',
+                  border: '1px solid var(--border-strong)',
+                  borderRadius: 8,
+                  padding: '0.6rem 0.7rem',
+                  background: 'var(--bg-amber-tint)',
+                  fontSize: '0.8125rem',
+                }}
+              >
+                <div style={{ fontWeight: 700, marginBottom: '0.3rem' }}>Release to Sub Labor?</div>
+                <div>
+                  {settlePreview.report.created_new_sheet ? 'Creates a new sub sheet' : 'Updates the linked sub sheet'} for{' '}
+                  <strong>{c.display_name}</strong> with <strong>{money(Number(settlePreview.report.released_amount))}</strong>
+                  {Number(settlePreview.report.retainage_pct) > 0 && (
+                    <> ({Number(settlePreview.report.retainage_pct)}% retainage held back)</>
+                  )}
+                  {settlePreview.report.job_number ? <> · job #{settlePreview.report.job_number}</> : null}. Payments and
+                  backcharges are then recorded in Jobs → Sub Labor as usual.
+                </div>
+                <div style={{ display: 'flex', gap: '0.4rem', marginTop: '0.5rem' }}>
+                  <button type="button" className="wf-btn-primary" style={{ fontSize: '0.78rem' }} disabled={saving} onClick={confirmSettle}>
+                    Confirm — release {money(Number(settlePreview.report.released_amount))}
+                  </button>
+                  <button type="button" className="wf-btn-ghost" style={{ fontSize: '0.78rem' }} disabled={saving} onClick={() => setSettlePreview(null)}>
+                    Cancel
+                  </button>
+                </div>
               </div>
             )}
           </div>
