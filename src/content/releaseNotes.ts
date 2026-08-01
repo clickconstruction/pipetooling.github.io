@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1237',
+    date: '2026-08-01',
+    title: 'Dispatch Mode: a sharper customer summary with a billed summary',
+    kind: 'feature',
+    highlights: [
+      'The customer’s name is now the title, and their address, email, and phone are one-line tappable rows with icons — map, email, or call in one tap.',
+      'A new billed summary shows the money still outstanding across their jobs; expand it to see which jobs carry the balance, with paid-in-full jobs rolled into a count.',
+    ],
+  },
+  {
     version: 'v2.1236',
     date: '2026-08-01',
     title: 'Stages: Edit mode — one tap from any row into Edit Job',

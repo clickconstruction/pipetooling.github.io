@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-01 (v2.1236)
+last_updated: 2026-08-01 (v2.1237)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1237)
+
+### Dispatch Mode Customer Summary — name-as-title header, tappable contacts, billed summary (2026-08-01)
+Three-part rework of [`CustomerSummaryModal.tsx`](../src/components/dispatchMode/CustomerSummaryModal.tsx). **Header:** the customer's name replaces the "Customer Summary" title (the duplicate name line goes away); each contact renders as an icon row (lucide `MapPin`/`Mail`/`Phone`, muted, 14px) with single-line nowrap+ellipsis text — the address keeps its Google Maps tap-through, and `contact_info`'s free strings are classified (`classifyContact`: email regex → `mailto:`, 7+ digit phone-shaped → `tel:` with `telHref` normalizing 10/11-digit US numbers to `+1…`; anything else stays plain text). **Billed summary (Option C):** a bordered strip between the header and the filter chips shows `$X outstanding of $Y` (amber; green "All N jobs paid in full" when clear), computed by the new pure kernel [`summarizeCustomerJobsBilling`](../src/lib/customerSummaryBilling.ts) — **outstanding = job total (`revenue`) minus `payments_made`**, cents-exact in integer cents, so it includes work not yet invoiced. Tapping expands (`aria-expanded` chevron) to per-job rows (`#number · address` + amount, largest first) while **paid-in-full jobs compress to a single count line** ("N jobs paid in full"); jobs without a job total are excluded from the math and noted as their own muted count. The strip hides when no job has a total. **Data:** [`customerSummaryActivity.ts`](../src/lib/customerSummaryActivity.ts)'s jobs select adds `revenue, payments_made` (`CustomerSummaryJob` gains `revenueDollars`/`paymentsMadeDollars`) — same single query, no extra round trip. 5 unit tests on the kernel (split/clamp/cents/zero-revenue/empty). Help guide [`dispatch-mode`](../src/content/help/dispatch-mode.md) Customers section rewritten. Verified: `tsc -b` clean, zero new lints, full vitest suite green. Files: new [`src/lib/customerSummaryBilling.ts`](../src/lib/customerSummaryBilling.ts) + tests; modified [`CustomerSummaryModal.tsx`](../src/components/dispatchMode/CustomerSummaryModal.tsx), [`customerSummaryActivity.ts`](../src/lib/customerSummaryActivity.ts), help guide. No DB / migration / RLS / RPC / Edge / type-gen changes.
 
 ## Latest Updates (v2.1236)
 
