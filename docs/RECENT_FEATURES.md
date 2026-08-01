@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-01 (v2.1225)
+last_updated: 2026-08-01 (v2.1226)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1226)
+
+### Six "start here" guides — one per role, each naming what the people below see (2026-08-01)
+Completes the guides work: until now no role had a day-one orientation, and the field roles were the thinnest (subs/helpers had 4 role-specific guides, primaries 3). Six new guides in **Getting Started** (orders 4–9, so they head the category): [`start-here-as-a-master`](../src/content/help/start-here-as-a-master.md) (dev + master — includes the **role-by-role table of what each role below sees and doesn't**), [`start-here-as-a-sub`](../src/content/help/start-here-as-a-sub.md) (sub + helper — the day: clock in, steps, offers, Your money, the Job Mode tabs), [`start-here-as-a-superintendent`](../src/content/help/start-here-as-a-superintendent.md) (+ "what your people see"), [`start-here-in-the-office`](../src/content/help/start-here-in-the-office.md) (assistant + controller, + "what the field sees"), [`start-here-as-a-primary`](../src/content/help/start-here-as-a-primary.md), [`start-here-as-an-estimator`](../src/content/help/start-here-as-an-estimator.md). Each supervising guide points at the v2.1224 role-lens chips as the way to see a role's real guide list. Coverage after: sub/helper 15 guides, primary 14, superintendent 18, estimator 20, controller 26. Also fixes a category typo introduced earlier the same day — `see-what-youre-owed-as-a-sub` said `Field` (a singleton) instead of the established `Field Work`. Content-only.
 
 ## Latest Updates (v2.1225)
 
