@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-01 (v2.1235)
+last_updated: 2026-08-01 (v2.1236)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1236)
+
+### Jobs → Stages — Edit mode: a one-tap EDIT rail on every job row (2026-08-01)
+New ⋯ tools-menu toggle **Edit mode**, sitting under Ham mode with the identical pattern (per-browser `localStorage` key `jobs-stages-edit-mode`, role gate `['dev','assistant','controller']` — the dispatch/controller audience it exists for). When on, every job-backed row in BOTH Stages tables ([`JobsStagesTable`](../src/components/jobs/JobsStagesTable.tsx) job rows; [`JobsStagesUnifiedTable`](../src/components/jobs/JobsStagesUnifiedTable.tsx) job rows AND invoice-bundle rows, which carry their job) wears a thin (18px) vertical **E-D-I-T** tab on its left edge that opens that job straight in the Edit Job modal — the exact `openEdit(job)` path the tables already receive, skipping the Job Detail stop. Implementation is deliberately NOT an extra table column: the rail (`renderStagesEditModeRail` + `STAGES_EDIT_MODE_RAIL_WIDTH` in [`jobsStagesRowShared.tsx`](../src/components/jobs/jobsStagesRowShared.tsx)) absolutely positions inside each row's first cell (`position: relative` + rail-width left padding), and since table cells span the full row height the rail does too — zero colgroup/`colSpan` bookkeeping across the tables' full-width banner/expanded/empty rows. The rail `stopPropagation`s so it can't also toggle the row's thread panel, and carries `aria-label="Edit job <number>"`. Defense in depth: the tab computes `stagesEditModeActive` (state AND role gate) before passing it down, so a stale localStorage flag on a shared browser can't surface rails for roles that never saw the toggle. New render-test case in [`JobsStagesTab.render.test.tsx`](../src/components/jobs/JobsStagesTab.render.test.tsx): off by default → no rails; menu toggle on → one rail per visible row (Waiting defaults collapsed); tapping a specific row's rail calls `openEdit` with that job; toggle off → rails gone. Both table harnesses gained the `stagesEditMode: false` default. Docs: toolbar section of [`JOBS_STAGES_TAB_ARCHITECTURE.md`](./JOBS_STAGES_TAB_ARCHITECTURE.md). Verified: `tsc -b` clean, zero new lints, full vitest suite green. Files: modified [`jobsStagesRowShared.tsx`](../src/components/jobs/jobsStagesRowShared.tsx), [`JobsStagesTable.tsx`](../src/components/jobs/JobsStagesTable.tsx), [`JobsStagesUnifiedTable.tsx`](../src/components/jobs/JobsStagesUnifiedTable.tsx), [`JobsStagesTab.tsx`](../src/components/jobs/JobsStagesTab.tsx), three render-test files, architecture doc. No DB / migration / RLS / RPC / Edge / type-gen changes.
 
 ## Latest Updates (v2.1235)
 

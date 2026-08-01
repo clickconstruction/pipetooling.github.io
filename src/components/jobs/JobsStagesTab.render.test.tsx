@@ -11,7 +11,7 @@
  */
 import { act, createRef } from 'react'
 import { describe, expect, it, vi } from 'vitest'
-import { fireEvent, screen } from '@testing-library/react'
+import { fireEvent, screen, within } from '@testing-library/react'
 
 vi.mock('../../lib/supabase', async () => {
   const { makeSupabaseStub } = await import('../../test/renderSmokeMocks')
@@ -225,6 +225,29 @@ describe('JobsStagesTab render smoke', () => {
     fireEvent.click(chip)
     expect(screen.queryByTitle('Filtered by GC/Builder — tap to clear')).toBeNull()
     expect(screen.getByText('Other House')).toBeTruthy()
+  })
+
+  it('Edit mode (v2.1236): tools-menu toggle adds an EDIT rail per job row that calls openEdit', () => {
+    window.localStorage.removeItem('jobs-stages-edit-mode')
+    const openEdit = vi.fn()
+    const jobs = boardJobs()
+    renderWithProviders(<JobsStagesTab ref={createRef()} {...makeProps({ jobs, openEdit })} />)
+    // Off by default: no rails anywhere.
+    expect(screen.queryAllByLabelText(/^Edit job /)).toHaveLength(0)
+    // Toggle it on from the ⋯ tools menu.
+    fireEvent.click(screen.getByLabelText('Stages tools'))
+    fireEvent.click(screen.getByText('Edit mode'))
+    // Waiting defaults collapsed — rails appear on the two visible Working rows.
+    expect(screen.getAllByLabelText(/^Edit job /)).toHaveLength(2)
+    // Tapping a row's rail opens THAT job in Edit Job (no Job Detail stop).
+    const duplexRow = screen.getByText('Working Duplex').closest('tr') as HTMLElement
+    fireEvent.click(within(duplexRow).getByLabelText(/^Edit job /))
+    expect(openEdit).toHaveBeenCalledTimes(1)
+    expect((openEdit.mock.calls[0]![0] as { id: string }).id).toBe(jobs[1]!.id)
+    // Toggle back off: rails disappear.
+    fireEvent.click(screen.getByText('Edit mode'))
+    expect(screen.queryAllByLabelText(/^Edit job /)).toHaveLength(0)
+    window.localStorage.removeItem('jobs-stages-edit-mode')
   })
 
   it('openBankPayments opens the Accounts Receivable modal', async () => {

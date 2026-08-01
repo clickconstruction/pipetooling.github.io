@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1236',
+    date: '2026-08-01',
+    title: 'Stages: Edit mode — one tap from any row into Edit Job',
+    kind: 'feature',
+    highlights: [
+      'A new Edit mode toggle in the Stages ⋯ menu (next to Ham mode, for dispatch and controllers) puts a thin EDIT tab on the left edge of every job row.',
+      'Tap the tab and that job opens straight in Edit Job — no Job Detail stop in between.',
+      'It remembers your choice per browser, and turning it off returns the board to normal.',
+    ],
+  },
+  {
     version: 'v2.1235',
     date: '2026-08-01',
     title: 'Edit Job: Close sits after "All changes saved"',

@@ -30,6 +30,7 @@ function makeProps(overrides: Partial<JobsStagesTableProps> = {}): JobsStagesTab
     showPctComplete: false,
     stagesJobFlashId: null,
     stagesHamMode: false,
+    stagesEditMode: false,
     assignedEditJobId: null,
     setAssignedEditJobId: vi.fn(),
     assignedEditSelectedIds: [],

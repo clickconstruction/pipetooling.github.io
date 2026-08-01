@@ -45,6 +45,8 @@ import {
   shouldSuppressStagesRowJobThreadToggle,
   stagesRowHasProjectBanner,
   STAGES_TABLE_MIN_WIDTH,
+  STAGES_EDIT_MODE_RAIL_WIDTH,
+  renderStagesEditModeRail,
   type StagesRowRenderContext,
 } from './jobsStagesRowShared'
 
@@ -91,6 +93,8 @@ export type JobsStagesUnifiedTableProps = {
   // --- captured page values (same names as in Jobs.tsx; step 9b's JobsStagesTab absorbs these) ---
   stagesJobFlashId: string | null
   stagesHamMode: boolean
+  /** ⋯ tools menu "Edit mode" (v2.1236): thin vertical EDIT rail on every job-backed row → openEdit. */
+  stagesEditMode: boolean
   assignedEditJobId: string | null
   setAssignedEditJobId: (id: string | null) => void
   assignedEditSelectedIds: string[]
@@ -174,6 +178,7 @@ export default function JobsStagesUnifiedTable(props: JobsStagesUnifiedTableProp
     jobNoteLine,
     stagesJobFlashId,
     stagesHamMode,
+    stagesEditMode,
     assignedEditJobId,
     setAssignedEditJobId,
     assignedEditSelectedIds,
@@ -408,7 +413,15 @@ export default function JobsStagesUnifiedTable(props: JobsStagesUnifiedTableProp
                       toggleStagesJobThreadExpanded(j.id)
                     }}
                   >
-                    <td style={{ padding: '0.75rem', verticalAlign: 'top', position: 'relative' }}>
+                    <td
+                      style={{
+                        padding: '0.75rem',
+                        ...(stagesEditMode ? { paddingLeft: `calc(0.75rem + ${STAGES_EDIT_MODE_RAIL_WIDTH}px)` } : {}),
+                        verticalAlign: 'top',
+                        position: 'relative',
+                      }}
+                    >
+                      {stagesEditMode ? renderStagesEditModeRail(j, openEdit) : null}
                       {stagesHamMode ? (
                         <div ref={assignedEditJobId === j.id ? assignedEditDropdownRef : undefined} style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'wrap' }}>
@@ -999,7 +1012,15 @@ export default function JobsStagesUnifiedTable(props: JobsStagesUnifiedTableProp
                       toggleStagesJobThreadExpanded(job.id)
                     }}
                   >
-                    <td style={{ padding: '0.75rem', verticalAlign: 'top' }}>
+                    <td
+                      style={{
+                        padding: '0.75rem',
+                        ...(stagesEditMode ? { paddingLeft: `calc(0.75rem + ${STAGES_EDIT_MODE_RAIL_WIDTH}px)` } : {}),
+                        verticalAlign: 'top',
+                        position: 'relative',
+                      }}
+                    >
+                      {stagesEditMode ? renderStagesEditModeRail(job, openEdit) : null}
                       <div>{(job.team_members ?? []).map((t) => t.users?.name?.trim()).filter(Boolean).join(', ') || '—'}</div>
                       {stagesInvoiceHcpTrimmed ? (
                         <div style={{ marginTop: '0.15rem' }}>

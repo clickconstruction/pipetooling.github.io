@@ -33,6 +33,7 @@ function makeProps(overrides: Partial<JobsStagesUnifiedTableProps> = {}): JobsSt
     flashInvoiceId: null,
     stagesJobFlashId: null,
     stagesHamMode: false,
+    stagesEditMode: false,
     assignedEditJobId: null,
     setAssignedEditJobId: vi.fn(),
     assignedEditSelectedIds: [],

@@ -88,6 +88,58 @@ export type StagesRowRenderContext = {
 export const STAGES_TABLE_MIN_WIDTH = 940
 
 /**
+ * Edit mode rail (v2.1236): with the ⋯ tools menu's "Edit mode" on, every
+ * job-backed row in both Stages tables wears this thin vertical E-D-I-T tab on
+ * its left edge — one tap straight into the Edit Job modal, saving dispatch
+ * and controllers the Job Detail hop. Rendered inside the row's FIRST cell
+ * (which must be position: relative and add STAGES_EDIT_MODE_RAIL_WIDTH of
+ * left padding) rather than as an extra table column, so no colgroup/colSpan
+ * bookkeeping; the cell box spans the full row height, so the rail does too.
+ */
+export const STAGES_EDIT_MODE_RAIL_WIDTH = 18
+
+export function renderStagesEditModeRail(job: JobWithDetails, openEdit: (job: JobWithDetails) => void) {
+  const jobNo = job.hcp_number?.trim() || job.click_number?.trim() || ''
+  return (
+    <button
+      type="button"
+      onClick={(e) => {
+        e.stopPropagation()
+        openEdit(job)
+      }}
+      title={`Edit job${jobNo ? ` #${jobNo}` : ''}`}
+      aria-label={`Edit job ${jobNo || job.job_name || ''}`.trim()}
+      style={{
+        position: 'absolute',
+        top: 0,
+        bottom: 0,
+        left: 0,
+        width: STAGES_EDIT_MODE_RAIL_WIDTH,
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 1,
+        padding: 0,
+        border: 'none',
+        borderRight: '1px solid var(--border)',
+        background: 'var(--bg-blue-tint)',
+        color: 'var(--text-link)',
+        fontSize: '0.5625rem',
+        fontWeight: 700,
+        lineHeight: 1.15,
+        cursor: 'pointer',
+      }}
+    >
+      <span aria-hidden>E</span>
+      <span aria-hidden>D</span>
+      <span aria-hidden>I</span>
+      <span aria-hidden>T</span>
+    </button>
+  )
+}
+
+/**
  * Wrapper for full-width expanded-row panels (Job activity / notes): pins the
  * panel to the visible strip of the horizontally scrollable table so it stays
  * on-screen when the table is scrolled sideways on a phone.

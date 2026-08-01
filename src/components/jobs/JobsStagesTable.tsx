@@ -32,6 +32,8 @@ import {
   shouldSuppressStagesRowJobThreadToggle,
   stagesRowHasProjectBanner,
   STAGES_TABLE_MIN_WIDTH,
+  STAGES_EDIT_MODE_RAIL_WIDTH,
+  renderStagesEditModeRail,
   type StagesRowRenderContext,
 } from './jobsStagesRowShared'
 
@@ -59,6 +61,8 @@ export type JobsStagesTableProps = {
   // --- captured page values (same names as in Jobs.tsx; step 9b's JobsStagesTab absorbs these) ---
   stagesJobFlashId: string | null
   stagesHamMode: boolean
+  /** ⋯ tools menu "Edit mode" (v2.1236): thin vertical EDIT rail on every job row → openEdit. */
+  stagesEditMode: boolean
   assignedEditJobId: string | null
   setAssignedEditJobId: (id: string | null) => void
   assignedEditSelectedIds: string[]
@@ -125,6 +129,7 @@ export default function JobsStagesTable(props: JobsStagesTableProps) {
     showPctComplete,
     stagesJobFlashId,
     stagesHamMode,
+    stagesEditMode,
     assignedEditJobId,
     setAssignedEditJobId,
     assignedEditSelectedIds,
@@ -276,7 +281,15 @@ export default function JobsStagesTable(props: JobsStagesTableProps) {
                   toggleStagesJobThreadExpanded(j.id)
                 }}
               >
-                <td style={{ padding: '0.75rem', position: 'relative', verticalAlign: 'top' }}>
+                <td
+                  style={{
+                    padding: '0.75rem',
+                    ...(stagesEditMode ? { paddingLeft: `calc(0.75rem + ${STAGES_EDIT_MODE_RAIL_WIDTH}px)` } : {}),
+                    position: 'relative',
+                    verticalAlign: 'top',
+                  }}
+                >
+                  {stagesEditMode ? renderStagesEditModeRail(j, openEdit) : null}
                   {stagesHamMode ? (
                     <div ref={assignedEditJobId === j.id ? assignedEditDropdownRef : undefined} style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'wrap' }}>
