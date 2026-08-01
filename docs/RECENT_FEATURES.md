@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-01 (v2.1233)
+last_updated: 2026-08-01 (v2.1234)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1234)
+
+### Edit Job — the Service type select matches the HCP/C# field height (2026-08-01)
+The Service type control in the Edit/New Job identity row rendered visibly taller and lower than the HCP/C# inputs beside it. Two causes, both fixed. **(1) Height:** [`SearchableSelect`](../src/components/SearchableSelect.tsx) hard-coded `minHeight: 44` on its trigger (a touch-target floor); its padding (`0.5rem`) and font size (`0.875rem`) otherwise match the sibling inputs, so the floor was the entire ~10px difference. New opt-in prop **`triggerMinHeightPx`** (default 44 — all ~30 other consumers unchanged) applies to both the trigger button and the `searchReplacesTrigger` in-place search input; [`JobFormIdentityFields`](../src/components/jobs/JobFormIdentityFields.tsx) passes `0`, letting padding size the control to the inputs' natural ~34px. **(2) Vertical offset:** the select still sat ~3px lower because the trade pill made its label row taller than the plain HCP/C# labels; all three label rows now share `minHeight: '1.4rem'` (labels become flex/center) so the fields start flush at the same top. Verified in a trigger-markup-verbatim replica: all three fields measure identical height AND identical top edge (the v2.1227 replica had used a plain input as the select stand-in, which is exactly how this divergence slipped through). Verified: `tsc -b` clean, zero new lints, full vitest suite green. Files: modified [`src/components/SearchableSelect.tsx`](../src/components/SearchableSelect.tsx), [`src/components/jobs/JobFormIdentityFields.tsx`](../src/components/jobs/JobFormIdentityFields.tsx). No DB / migration / RLS / RPC / Edge / type-gen changes.
 
 ## Latest Updates (v2.1233)
 

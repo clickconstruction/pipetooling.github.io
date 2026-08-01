@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1234',
+    date: '2026-08-01',
+    title: 'Edit Job: the Service type box lines up with HCP and C#',
+    kind: 'fix',
+    highlights: [
+      'The Service type dropdown was taller than the number fields beside it and sat a few pixels lower — all three now share the same height and top edge.',
+    ],
+  },
+  {
     version: 'v2.1233',
     date: '2026-08-01',
     title: 'Edit Job: line item rows stay one line tall on phones',
