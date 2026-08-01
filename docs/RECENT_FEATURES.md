@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-01 (v2.1229)
+last_updated: 2026-08-01 (v2.1230)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1230)
+
+### Edit Job ② Invoices — the break-off track stops reserving space for rows that can't appear (2026-08-01)
+The draggable break-off track ([`JobFormBreakOffSection.tsx`](../src/components/jobs/JobFormBreakOffSection.tsx) → `JobFormBreakOffTrack`) had a fixed `height: 60` sized for its two under-track annotation rows: the handle's blue `% · $` badge and the yellow **Job N% done** field-progress caret. Jobs with no field progress set (`jobCompleteTrackPct == null` — most jobs) rendered the caret row as ~18px of dead white space between the badge and the ② segment list. The height is now computed: `60` when the field-progress caret renders, `44` when only the handle/badge row can appear (`breakOffRemaining > 0`), `24` when the track is view-only rail (nothing left to bill). Two invariants held deliberately: the badge reservation keys on the **thumb's existence**, not on `invoiceDollars` — the badge pops in mid-drag and the track must not change height under the user's finger — and the slider's pointer math was audited height-free (`useBreakOffSlider` uses only `rect.width`/`clientX`, so the shorter hit area affects nothing). All under-track children are absolutely positioned from the top, so the shrink only trims the empty bottom. Verified: `tsc -b` clean, zero new lints, full vitest suite green. Files: modified [`src/components/jobs/JobFormBreakOffSection.tsx`](../src/components/jobs/JobFormBreakOffSection.tsx). No DB / migration / RLS / RPC / Edge / type-gen changes.
 
 ## Latest Updates (v2.1229)
 
