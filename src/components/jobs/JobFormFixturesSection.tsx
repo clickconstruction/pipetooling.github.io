@@ -103,6 +103,22 @@ export function JobFormFixturesSection({
     holdNameFocusExpansion()
     nameFocusCollapseTimer.current = window.setTimeout(() => setNameFocusRowId(null), 120)
   }
+  // Phone column compression (v2.1233): the ×/$ columns start compact and grow
+  // with their longest value (all rows share table columns, so the grid stays
+  // aligned). commitOnType on the price input means the column widens live as
+  // the user types. Caps keep a runaway number from crushing the name field.
+  const maxCountChars = Math.min(
+    6,
+    fixtures.reduce((m, r) => Math.max(m, String(r.count ?? 1).length), 1),
+  )
+  const maxPriceChars = Math.min(
+    13,
+    fixtures.reduce(
+      (m, r) => Math.max(m, r.line_unit_price ? formatCurrency(r.line_unit_price).length : 0),
+      4,
+    ),
+  )
+  const hasDeleteColumn = fixtures.length > 1
   return (
           <div
             ref={fixturesSectionHighlightRef}
@@ -197,8 +213,14 @@ export function JobFormFixturesSection({
                   spent labeling what is usually a single line. */}
               <colgroup>
                 <col />
-                <col style={{ width: '4.5rem' }} />
-                <col style={{ width: 'calc(6.2rem + 4px + 1.75rem)' }} />
+                <col style={{ width: narrowViewport ? `calc(${maxCountChars}ch + 2.4rem)` : '4.5rem' }} />
+                <col
+                  style={{
+                    width: narrowViewport
+                      ? `calc(${maxPriceChars}ch + 2.8rem${hasDeleteColumn ? ' + 1.75rem' : ''})`
+                      : 'calc(6.2rem + 4px + 1.75rem)',
+                  }}
+                />
               </colgroup>
               <tbody>
                 {fixtures.map((row, idx) => {
@@ -216,7 +238,10 @@ export function JobFormFixturesSection({
                   const locked = fixtureRowIsLocked(row)
                   const linkChip = fixtureInvoiceLinkChip(row.invoice_id, invoiceStatusById)
                   const nameEditExpanded = narrowViewport && !locked && nameFocusRowId === row.id
-                  const countGroup = (
+                  // fill=true (phone table cells, v2.1233): the group stretches to
+                  // its content-sized column. fill=false keeps the fixed widths
+                  // (desktop cells and the v2.1229 focus-expanded row).
+                  const renderCountGroup = (fill: boolean) => (
                     <span
                       style={{
                         display: 'inline-flex',
@@ -224,6 +249,7 @@ export function JobFormFixturesSection({
                         border: '1px solid var(--border-strong)',
                         borderRadius: 6,
                         overflow: 'hidden',
+                        ...(fill ? { width: '100%', boxSizing: 'border-box' as const } : {}),
                       }}
                     >
                       <span
@@ -248,7 +274,7 @@ export function JobFormFixturesSection({
                         aria-label="Count"
                         onChange={(e) => updateFixtureRow(row.id, { count: Math.max(1, Number(e.target.value) || 1) })}
                         style={{
-                          width: '2.6rem',
+                          ...(fill ? { flex: 1, width: '100%', minWidth: 0 } : { width: '2.6rem' }),
                           maxWidth: '100%',
                           boxSizing: 'border-box',
                           padding: '0.375rem 0.25rem',
@@ -261,7 +287,7 @@ export function JobFormFixturesSection({
                       />
                     </span>
                   )
-                  const priceGroup = (
+                  const renderPriceGroup = (fill: boolean) => (
                     <span
                       style={{
                         display: 'inline-flex',
@@ -269,7 +295,7 @@ export function JobFormFixturesSection({
                         border: '1px solid var(--border-strong)',
                         borderRadius: 6,
                         overflow: 'hidden',
-                        flexShrink: 0,
+                        ...(fill ? { flex: '1 1 auto', minWidth: 0 } : { flexShrink: 0 }),
                       }}
                     >
                       <span
@@ -294,9 +320,9 @@ export function JobFormFixturesSection({
                         placeholder="—"
                         aria-label="Unit price"
                         style={{
-                          width: '5rem',
-                          minWidth: '4rem',
-                          flexShrink: 0,
+                          ...(fill
+                            ? { flex: 1, width: '100%', minWidth: 0, flexShrink: 1 }
+                            : { width: '5rem', minWidth: '4rem', flexShrink: 0 }),
                           boxSizing: 'border-box',
                           padding: '0.375rem 0.5rem',
                           border: 'none',
@@ -442,7 +468,15 @@ export function JobFormFixturesSection({
                                   onKeyDown={(e) => {
                                     if (e.key === 'Enter') e.preventDefault()
                                   }}
-                                  placeholder="Specific work or materials"
+                                  // Phone (v2.1233): the 26-char placeholder wrapped to three
+                                  // lines in the compressed cell. The numbered short form keeps
+                                  // the empty row one line; the descriptive text returns when
+                                  // the field focus-expands (and stays in the hidden label).
+                                  placeholder={
+                                    narrowViewport && !nameEditExpanded
+                                      ? `Line item ${idx + 1}`
+                                      : 'Specific work or materials'
+                                  }
                                   style={{
                                     flex: 1,
                                     width: '100%',
@@ -536,7 +570,7 @@ export function JobFormFixturesSection({
                               {/* Input group (v2.1223): the × lives INSIDE the field's
                                   border as a muted prefix — a floating glyph in the
                                   gutter read as a stray character. */}
-                              {countGroup}
+                              {renderCountGroup(narrowViewport)}
                             </td>
                             <td
                               style={{
@@ -559,7 +593,7 @@ export function JobFormFixturesSection({
                               >
                                 {/* Same input-group treatment as the count field: the $
                                     is a muted in-border prefix, not a floating glyph. */}
-                                {priceGroup}
+                                {renderPriceGroup(narrowViewport)}
                                 {deleteButton}
                               </div>
                             </td>
@@ -574,8 +608,8 @@ export function JobFormFixturesSection({
                         >
                           <td colSpan={3} style={{ padding: '0 0.75rem 0.25rem', verticalAlign: 'top' }}>
                             <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, width: '100%' }}>
-                              {countGroup}
-                              {priceGroup}
+                              {renderCountGroup(false)}
+                              {renderPriceGroup(false)}
                               {deleteButton}
                             </div>
                           </td>

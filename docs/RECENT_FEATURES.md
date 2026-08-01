@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-01 (v2.1232)
+last_updated: 2026-08-01 (v2.1233)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1233)
+
+### Edit Job ① Line Items — one-line collapsed rows on phones: numbered placeholder + grow-to-fit ×/$ columns (2026-08-01)
+Follow-up to the v2.1229 focus expansion: the COLLAPSED row was still tall on phones because the fixed ×/$ table columns (4.5rem / ~130px) left the name cell ~90px, wrapping the 26-char placeholder "Specific work or materials" to three lines. Two changes in [`JobFormFixturesSection.tsx`](../src/components/jobs/JobFormFixturesSection.tsx), both narrow-viewport-only (`useNarrowViewport640`): **(1) numbered placeholder** — empty name fields read `Line item N` (row position); the descriptive text returns while the field is focus-expanded (full width available) and stays in the visually-hidden label for screen readers. **(2) content-sized ×/$ columns** — the `colgroup` widths become `calc(maxChars·ch + fixed-chrome)` where maxChars is the longest value across rows (`String(count).length` / `formatCurrency(line_unit_price).length`, capped 6/13 so a runaway number can't crush the name; the price column adds `1.75rem` only when a delete column exists). Because all rows share table columns, the grid stays aligned, and since the price input is `commitOnType`, the column widens live as the user types. An empty row starts at ≈45px + ≈73px, giving the name ~150px — `Line item 1` fits one line. The input groups gained a `fill` parameter (`renderCountGroup`/`renderPriceGroup`): `fill=true` stretches to the content-sized cell on phones; `fill=false` keeps the fixed widths on desktop and in the v2.1229 focus-expanded row. Desktop is entirely unchanged. Render tests extended to 7 (jsdom serializes `calc()` with reordered terms — assertions check parts): numbered placeholders per row, ch-based column widths keyed to the longest price, descriptive placeholder during focus expansion, and desktop fixed widths. Verified: `tsc -b` clean, zero new lints, full vitest suite green. Files: modified [`src/components/jobs/JobFormFixturesSection.tsx`](../src/components/jobs/JobFormFixturesSection.tsx), [`JobFormFixturesSection.render.test.tsx`](../src/components/jobs/JobFormFixturesSection.render.test.tsx). No DB / migration / RLS / RPC / Edge / type-gen changes.
 
 ## Latest Updates (v2.1232)
 
