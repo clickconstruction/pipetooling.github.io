@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1193',
+    date: '2026-07-31',
+    title: 'Job chips open Job Detail right there',
+    kind: 'feature',
+    highlights: [
+      'On Projects rows and the Workflow header, clicking a job now opens the Job Detail window in place instead of jumping to the Jobs page.',
+      'The little ▶ notes arrow is gone — Job Detail shows the full notes thread.',
+    ],
+  },
+  {
     version: 'v2.1192',
     date: '2026-07-31',
     title: 'Project superintendent chips are now editable',

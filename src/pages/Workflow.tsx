@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { parseWorkflowLineItemPaste } from '../lib/parseWorkflowLineItemPaste'
@@ -6,8 +6,7 @@ import { parsePercentCompleteInput } from '../lib/parsePercentCompleteInput'
 import { useAuth } from '../hooks/useAuth'
 import { useToastContext } from '../contexts/ToastContext'
 import { useEditProjectModal } from '../contexts/EditProjectModalContext'
-import { useJobThreadNotes } from '../hooks/useJobThreadNotes'
-import { JobThreadNotesPanel } from '../components/JobThreadNotesPanel'
+import { useJobDetailModal } from '../contexts/JobDetailModalContext'
 import { isAssistantLike, isSubcontractorLikeRole } from '../lib/subcontractorLikeRole'
 import { formatProjectNumberLabel } from '../lib/projectNumberLabel'
 import { toDatetimeLocal, fromDatetimeLocal } from '../utils/datetimeLocal'
@@ -180,20 +179,9 @@ export default function Workflow() {
   const { projectId } = useParams()
   const navigate = useNavigate()
   const editProjectModal = useEditProjectModal()
-  const { user: authUser, profileName: authProfileName, role: authRole } = useAuth()
+  const { user: authUser } = useAuth()
   const { showToast } = useToastContext()
-  const {
-    expandedJobThreadId: expandedWorkflowJobThreadId,
-    setExpandedJobThreadId: setExpandedWorkflowJobThreadId,
-    jobThreadActivityByJobId: workflowJobThreadActivityByJobId,
-    jobThreadNotesLoadingId: workflowJobThreadNotesLoadingId,
-    jobThreadSubmittingId: workflowJobThreadSubmittingId,
-    jobThreadDraft: workflowJobThreadDraft,
-    setJobThreadDraft: setWorkflowJobThreadDraft,
-    submitJobThreadNote: submitWorkflowJobThreadNote,
-    jobThreadStatsByJobId: workflowJobThreadStatsByJobId,
-    refreshJobThreadStatsForJobIds: refreshWorkflowJobThreadStats,
-  } = useJobThreadNotes(showToast, authUser?.id, authProfileName)
+  const jobDetailModal = useJobDetailModal()
   const [project, setProject] = useState<Project | null>(null)
   const [workflow, setWorkflow] = useState<Workflow | null>(null)
   const [steps, setSteps] = useState<Step[]>([])
@@ -913,14 +901,6 @@ export default function Workflow() {
       setProjectJobs([])
     }
   }, [projectId])
-
-  useEffect(() => {
-    if (!authUser?.id || projectJobs.length === 0) {
-      void refreshWorkflowJobThreadStats([])
-      return
-    }
-    void refreshWorkflowJobThreadStats(projectJobs.map((j) => j.id))
-  }, [authUser?.id, projectJobs, refreshWorkflowJobThreadStats])
 
   async function loadProjections(workflowId: string) {
     if (userRole !== 'dev' && userRole !== 'master_technician') return
@@ -2422,42 +2402,28 @@ export default function Workflow() {
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', alignItems: 'center', justifyContent: 'flex-end' }}>
               <span style={{ fontSize: '0.8125rem', color: 'var(--text-faint)' }}>Jobs:</span>
               {projectJobs.length === 0 && <span style={{ color: 'var(--text-faint)', fontSize: '0.8125rem' }}>None</span>}
-              {projectJobs.map((j) => {
-                const expanded = expandedWorkflowJobThreadId === j.id
-                const stat = workflowJobThreadStatsByJobId[j.id]
-                const n = stat?.note_count ?? 0
-                return (
-                  <Fragment key={j.id}>
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 2 }}>
-                      <Link
-                        to={`/jobs?edit=${j.id}&tab=stages`}
-                        style={{ padding: '0.15rem 0.4rem', background: 'var(--bg-neutral-100)', borderRadius: 4, fontSize: '0.8125rem', textDecoration: 'none', color: 'var(--text-700)' }}
-                      >
-                        {j.hcp_number || j.job_name || 'Job'}
-                      </Link>
-                      <button
-                        type="button"
-                        onClick={() => setExpandedWorkflowJobThreadId((prev) => (prev === j.id ? null : j.id))}
-                        aria-expanded={expanded}
-                        title={n > 0 ? `${n} thread note(s)` : 'Job notes thread'}
-                        style={{
-                          padding: '0.1rem 0.25rem',
-                          fontSize: '0.7rem',
-                          border: '1px solid var(--border)',
-                          borderRadius: 4,
-                          background: 'var(--surface)',
-                          cursor: 'pointer',
-                          color: 'var(--text-700)',
-                          lineHeight: 1,
-                        }}
-                      >
-                        {expanded ? '\u25BC' : '\u25B6'}
-                        {n > 0 ? <span style={{ color: 'var(--text-link)', marginLeft: 2 }}>{n}</span> : null}
-                      </button>
-                    </span>
-                  </Fragment>
-                )
-              })}
+              {projectJobs.map((j) => (
+                // Chip opens Job Detail in place (v2.1193) \u2014 the modal carries the
+                // full activity/notes thread, replacing the old \u25B6 thread expander.
+                <button
+                  key={j.id}
+                  type="button"
+                  onClick={() => jobDetailModal?.openJobDetail({ jobId: j.id })}
+                  title="Open job detail"
+                  style={{
+                    padding: '0.15rem 0.4rem',
+                    background: 'var(--bg-neutral-100)',
+                    border: 'none',
+                    borderRadius: 4,
+                    fontSize: '0.8125rem',
+                    fontFamily: 'inherit',
+                    cursor: 'pointer',
+                    color: 'var(--text-700)',
+                  }}
+                >
+                  {j.hcp_number || j.job_name || 'Job'}
+                </button>
+              ))}
               <Link
                 to={`/jobs?newJob=true&project=${projectId}&tab=stages`}
                 style={{ padding: '0.15rem 0.4rem', background: 'var(--bg-sky-100)', borderRadius: 4, fontSize: '0.8125rem', textDecoration: 'none', color: 'var(--text-sky-700)' }}
@@ -2465,20 +2431,6 @@ export default function Workflow() {
                 + Create Job
               </Link>
             </div>
-            {expandedWorkflowJobThreadId && (
-              <div style={{ width: '100%', maxWidth: 560, alignSelf: 'stretch' }}>
-                <JobThreadNotesPanel
-                  activity={workflowJobThreadActivityByJobId[expandedWorkflowJobThreadId] ?? []}
-                  loading={workflowJobThreadNotesLoadingId === expandedWorkflowJobThreadId}
-                  canPost={!!authUser}
-                  draft={workflowJobThreadDraft}
-                  submitting={workflowJobThreadSubmittingId === expandedWorkflowJobThreadId}
-                  onDraftChange={setWorkflowJobThreadDraft}
-                  onSubmit={() => void submitWorkflowJobThreadNote(expandedWorkflowJobThreadId)}
-                  viewerRole={authRole}
-                />
-              </div>
-            )}
             {canManageStages && (
               <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 {(steps.filter(s => s.status === 'completed' || s.status === 'approved' || s.status === 'skipped').length >= 2) && (
