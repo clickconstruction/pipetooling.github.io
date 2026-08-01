@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1211',
+    date: '2026-08-01',
+    title: 'Groundwork: subs can securely read their own sub sheets',
+    kind: 'infra',
+    highlights: [
+      'Behind the scenes, subcontractor accounts can now read their own sub labor sheets, line items, and payment history — and nothing belonging to anyone else.',
+      'Nothing visible changes yet; the "Your money" view on the sub dashboard arrives next.',
+    ],
+  },
+  {
     version: 'v2.1210',
     date: '2026-08-01',
     title: 'Settling a work order creates the Sub Labor sheet automatically',
