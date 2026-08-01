@@ -490,7 +490,7 @@ function StageBar({
       type="button"
       onClick={onClick}
       title={tooltipParts.join('\n')}
-      aria-label={`Stage ${stage.name} from ${stage.startYmd} to ${stage.endYmd}`}
+      aria-label={`Step ${stage.name} from ${stage.startYmd} to ${stage.endYmd}`}
       style={barStyle}
     >
       <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>

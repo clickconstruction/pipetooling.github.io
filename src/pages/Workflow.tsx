@@ -490,7 +490,7 @@ export default function Workflow() {
     
     // Only subcontractors need this check (assistants see all stages if they have project access)
     if (isSubcontractorLikeRole(userRole) && stepData.length === 0) {
-      setError('You do not have access to this workflow. You can only view workflows where you are assigned to at least one stage.')
+      setError('You do not have access to this workflow. You can only view workflows where you are assigned to at least one step.')
       setSteps([])
       // Track that we've loaded steps for this workflow_id (even if empty)
       lastLoadedWorkflowId.current = wfId
@@ -951,7 +951,7 @@ export default function Workflow() {
     
     const amountNum = parseFloat(amount) || 0
     if (!stageName.trim() || !memo.trim()) {
-      setError('Stage name and memo are required')
+      setError('Step name and memo are required')
       return
     }
     
@@ -1433,7 +1433,7 @@ export default function Workflow() {
             email,
             { previous_stage_name: step.name },
             userId ?? undefined,
-            'Your turn: Stage completed',
+            'Your turn: Step completed',
             `${step.name} has been completed. You're up next for ${nextStep.name}.`
           )
         }
@@ -1867,7 +1867,7 @@ export default function Workflow() {
         .update({ scheduled_start_date: endVal })
         .eq('id', nextStep.id)
       if (nextError) {
-        showToast(`Saved this stage; failed to update next stage: ${nextError.message}`, 'error')
+        showToast(`Saved this step; failed to update next step: ${nextError.message}`, 'error')
       } else {
         setSteps((prev) =>
           prev.map((s) =>
@@ -2488,7 +2488,7 @@ export default function Workflow() {
                     className="wf-btn-ghost"
                     style={{ fontSize: '0.8125rem' }}
                   >
-                    {oldStagesCollapsed ? 'Show Old Stages' : 'Hide Old Stages'}
+                    {oldStagesCollapsed ? 'Show Old Steps' : 'Hide Old Steps'}
                   </button>
                 )}
                 <button type="button" onClick={() => openAddStep()} className="wf-btn-primary" style={{ whiteSpace: 'nowrap', flexShrink: 0 }}>
@@ -2620,7 +2620,7 @@ export default function Workflow() {
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
                   <thead>
                     <tr style={{ borderBottom: '1px solid var(--border-sky)' }}>
-                      <th style={{ textAlign: 'left', padding: '0.35rem 0.5rem', fontWeight: 600 }}>Stage</th>
+                      <th style={{ textAlign: 'left', padding: '0.35rem 0.5rem', fontWeight: 600 }}>Step</th>
                       <th style={{ textAlign: 'left', padding: '0.35rem 0.5rem', fontWeight: 600 }}>Memo</th>
                       {isDevOrMaster && <th style={{ textAlign: 'right', padding: '0.35rem 0.5rem', fontWeight: 600 }}>Projections</th>}
                       <th style={{ textAlign: 'right', padding: '0.35rem 0.5rem', fontWeight: 600 }}>Ledger</th>
@@ -2753,7 +2753,7 @@ export default function Workflow() {
                 <p>Or <button type="button" onClick={() => openAddStep()} className="wf-btn-link">add a step</button> to build from scratch.</p>
               </>
             ) : (
-              <p style={{ marginBottom: '1rem' }}>No stages assigned to you in this workflow.</p>
+              <p style={{ marginBottom: '1rem' }}>No steps assigned to you in this workflow.</p>
             )}
           </div>
         ) : (() => {
@@ -2801,7 +2801,7 @@ export default function Workflow() {
                       textAlign: 'center',
                     }}
                   >
-                    {item.count} previous {item.count === 1 ? 'stage' : 'stages'} · Started {formatDateShort(item.firstStarted)}
+                    {item.count} previous {item.count === 1 ? 'step' : 'steps'} · Started {formatDateShort(item.firstStarted)}
                   </div>
                 </div>
               )
@@ -3276,7 +3276,7 @@ export default function Workflow() {
                             key={`notes-${s.id}-${s.notes ?? ''}`}
                             defaultValue={s.notes ?? ''}
                             onBlur={(e) => updateNotes(s, e.target.value)}
-                            placeholder="Add notes (visible to everyone who can see this stage, including the assigned technician)"
+                            placeholder="Add notes (visible to everyone who can see this step, including the assigned technician)"
                             rows={2}
                             style={{ width: '100%', padding: '0.35rem', fontSize: '0.8125rem', border: '1px solid var(--border)', borderRadius: 4 }}
                           />
@@ -3617,14 +3617,14 @@ export default function Workflow() {
       {skipStep && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
           <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 320 }}>
-            <h3 style={{ marginTop: 0 }}>Skip stage: {skipStep.step.name}</h3>
-            <label style={{ display: 'block', marginBottom: 4 }}>Why is this stage being skipped?</label>
+            <h3 style={{ marginTop: 0 }}>Skip step: {skipStep.step.name}</h3>
+            <label style={{ display: 'block', marginBottom: 4 }}>Why is this step being skipped?</label>
             <textarea
               value={skipStep.reason}
               onChange={(e) => setSkipStep((r) => r ? { ...r, reason: e.target.value } : null)}
               rows={4}
               style={{ width: '100%', padding: '0.5rem', marginBottom: '0.5rem' }}
-              placeholder="e.g. Client waived inspection, combined with prior stage, not applicable..."
+              placeholder="e.g. Client waived inspection, combined with prior step, not applicable..."
             />
             <div style={{ marginBottom: '1rem' }}>
               <button type="button" onClick={() => setSkipStep((s) => s ? { ...s, reason: 'Not relevant' } : null)} className="wf-btn-ghost" style={{ fontSize: '0.8125rem' }}>
@@ -3780,7 +3780,7 @@ export default function Workflow() {
                     checked={current.updateNextStage}
                     onChange={(e) => setField({ updateNextStage: e.target.checked })}
                   />
-                  Also set the next stage's expected start to this stage's expected end
+                  Also set the next step's expected start to this step's expected end
                 </label>
               )}
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
@@ -3789,7 +3789,7 @@ export default function Workflow() {
                   onClick={clearExpectedDates}
                   className="wf-btn-modal-secondary"
                   disabled={!current.step.scheduled_start_date && !current.step.scheduled_end_date}
-                  title="Remove the expected start and end from this stage"
+                  title="Remove the expected start and end from this step"
                 >
                   Clear
                 </button>
@@ -3987,7 +3987,7 @@ export default function Workflow() {
               }}
             >
               <div style={{ marginBottom: '1rem' }}>
-                <label htmlFor="projection-stage" style={{ display: 'block', marginBottom: 4 }}>Stage *</label>
+                <label htmlFor="projection-stage" style={{ display: 'block', marginBottom: 4 }}>Step *</label>
                 <input
                   id="projection-stage"
                   type="text"

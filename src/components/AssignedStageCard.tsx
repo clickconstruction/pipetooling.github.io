@@ -205,7 +205,7 @@ export default function AssignedStageCard({
                 type="button"
                 onClick={onSetStart}
                 className="wf-btn-secondary"
-                aria-label="Set start date and time for this stage"
+                aria-label="Set start date and time for this step"
               >
                 <Play size={14} aria-hidden />
                 Set Start
@@ -215,7 +215,7 @@ export default function AssignedStageCard({
               type="button"
               onClick={onMarkComplete}
               className="wf-btn-primary"
-              aria-label="Mark this stage as complete"
+              aria-label="Mark this step as complete"
             >
               <Check size={14} aria-hidden />
               Mark Complete
@@ -229,7 +229,7 @@ export default function AssignedStageCard({
               type="button"
               onClick={onMarkApproved}
               className="wf-btn-info"
-              aria-label="Approve this stage"
+              aria-label="Approve this step"
             >
               <CheckCircle size={14} aria-hidden />
               Approve
@@ -249,7 +249,7 @@ export default function AssignedStageCard({
                 onClick={onSkip}
                 className="wf-btn-secondary"
                 style={{ color: 'var(--text-amber-800)' }}
-                aria-label="Skip this stage"
+                aria-label="Skip this step"
               >
                 Skip
               </button>

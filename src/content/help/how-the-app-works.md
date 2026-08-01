@@ -26,17 +26,17 @@ A job collects everything about the work in one place — schedule blocks, clock
 
 ## Sharing
 
-- Office staff (assistants, controllers) automatically have access to the company's customers and projects — assistants can manage stages and see private notes, but not financial totals.
+- Office staff (assistants, controllers) automatically have access to the company's customers and projects — assistants can manage workflow steps and see private notes, but not financial totals.
 - Masters can choose to **share with other Masters** — shared masters have the same permissions as assistants.
 
 ## Subcontractors
 
-- Only see a stage when it is assigned to them
-- Can only Start and Complete their stages
+- Only see a workflow step when it is assigned to them
+- Can only Start and Complete their steps
 - Cannot see private notes or financials
-- Cannot add, edit, delete, or assign stages
+- Cannot add, edit, delete, or assign steps
 
-When a Master or Assistant selects **Notify** on a stage, that stage shows up in their Subscribed Stages on the Dashboard.
+When a Master or Assistant selects **Notify** on a step, that step shows up in their Subscribed Steps on the Dashboard.
 
 ## Finding your way around
 

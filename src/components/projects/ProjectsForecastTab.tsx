@@ -228,7 +228,7 @@ export function ProjectsForecastTab({ customerId, myRole = null }: Props) {
           style={pageTabStyle(activeSub === 'all-stages')}
           onClick={() => setActiveSub('all-stages')}
         >
-          All Stages
+          All Steps
         </button>
       </div>
 

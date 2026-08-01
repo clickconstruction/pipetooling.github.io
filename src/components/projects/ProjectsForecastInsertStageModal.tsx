@@ -2,10 +2,10 @@
  * Projects → Forecast → Specific: "Insert stage" naming / length modal.
  *
  * Opens when the user clicks the per-row "+" affordance in a stage's gutter (insert
- * AFTER that stage) or the toolbar's "Add stage to start" button (insert as
+ * AFTER that stage) or the toolbar's "Add step to start" button (insert as
  * sequence_order = 1). Collects two inputs from the user:
  *
- *   - **Name** — required, defaults to "New stage".
+ *   - **Name** — required, defaults to "New step".
  *   - **Length in days** — required ≥ 1, defaults to whatever the user last typed
  *     (persisted across sessions via localStorage so a "I'm adding a bunch of 3-day
  *     stages right now" workflow doesn't have to re-type 3 on every insert).
@@ -19,7 +19,7 @@
  * The actual persistence (sequence_order bumps, scheduled_date updates, INSERT) lives
  * in the parent's `onConfirm` callback so this component stays presentation-only and
  * easy to test by inspection. The parent passes `dragSaving` as `applying` so the
- * footer's "Add stage" button disables across all in-flight saves (drag commits or
+ * footer's "Add step" button disables across all in-flight saves (drag commits or
  * other inserts), preventing concurrent writers from racing on `sequence_order`.
  */
 
@@ -55,7 +55,7 @@ type Props = {
    *  passes to `planInsertStageAfter`. Used as the start anchor when inserting before
    *  the first stage. */
   todayYmd: string
-  /** Disable the "Add stage" button while any save (drag commit or another insert) is
+  /** Disable the "Add step" button while any save (drag commit or another insert) is
    *  in flight. */
   applying: boolean
   onConfirm: (name: string, lengthDays: number) => Promise<void>
@@ -149,12 +149,12 @@ export function ProjectsForecastInsertStageModal({
   onConfirm,
   onClose,
 }: Props) {
-  const [name, setName] = useState<string>('New stage')
+  const [name, setName] = useState<string>('New step')
   const [lengthRaw, setLengthRaw] = useState<string>(() => String(readStoredDefaultLength()))
   const [submitting, setSubmitting] = useState<boolean>(false)
   const nameRef = useRef<HTMLInputElement | null>(null)
 
-  // Focus + select the name on mount so users can either keep "New stage" by hitting
+  // Focus + select the name on mount so users can either keep "New step" by hitting
   // Enter, or just start typing to overwrite it.
   useEffect(() => {
     const el = nameRef.current
@@ -233,7 +233,7 @@ export function ProjectsForecastInsertStageModal({
     <div
       role="dialog"
       aria-modal="true"
-      aria-label="Add a new stage"
+      aria-label="Add a new step"
       onClick={onBackdropClick}
       style={{
         position: 'fixed',
@@ -325,7 +325,7 @@ export function ProjectsForecastInsertStageModal({
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 disabled={submitting || applying}
-                aria-label="Stage name"
+                aria-label="Step name"
                 maxLength={200}
                 style={inputStyle}
               />
@@ -377,7 +377,7 @@ export function ProjectsForecastInsertStageModal({
                     borderTop: '1px dashed var(--border)',
                   }}
                 >
-                  {shiftedCount} later {shiftedCount === 1 ? 'stage' : 'stages'} will shift
+                  {shiftedCount} later {shiftedCount === 1 ? 'step' : 'steps'} will shift
                   forward by {lengthDays} {lengthDays === 1 ? 'day' : 'days'}.
                 </div>
               ) : null}
@@ -392,7 +392,7 @@ export function ProjectsForecastInsertStageModal({
                     padding: '0.375rem 0.5rem',
                   }}
                 >
-                  {skippedCount} completed/approved {skippedCount === 1 ? 'stage' : 'stages'}{' '}
+                  {skippedCount} completed/approved {skippedCount === 1 ? 'step' : 'steps'}{' '}
                   in the cascade will keep their scheduled dates (the timeline may briefly
                   show overlap until you adjust them).
                 </div>
@@ -457,7 +457,7 @@ export function ProjectsForecastInsertStageModal({
                 cursor: canSubmit ? 'pointer' : 'not-allowed',
               }}
             >
-              {submitting || applying ? 'Adding…' : 'Add stage'}
+              {submitting || applying ? 'Adding…' : 'Add step'}
             </button>
           </div>
         </form>

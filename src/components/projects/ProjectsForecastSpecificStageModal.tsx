@@ -227,7 +227,7 @@ export function ProjectsForecastSpecificStageModal({ stage, projectId, myRole, o
       setDetail(result)
     } catch (e) {
       setDetail(null)
-      setLoadError(formatErrorMessage(e, 'Failed to load stage details'))
+      setLoadError(formatErrorMessage(e, 'Failed to load step details'))
     } finally {
       setLoading(false)
     }
@@ -581,7 +581,7 @@ export function ProjectsForecastSpecificStageModal({ stage, projectId, myRole, o
     <div
       role="dialog"
       aria-modal="true"
-      aria-label={`Stage details for ${stage.name}`}
+      aria-label={`Step details for ${stage.name}`}
       onClick={onBackdropClick}
       style={{
         position: 'fixed',
@@ -750,14 +750,14 @@ export function ProjectsForecastSpecificStageModal({ stage, projectId, myRole, o
               {loadError}
             </div>
           ) : loading ? (
-            <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>Loading stage details…</div>
+            <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>Loading step details…</div>
           ) : null}
 
           {step ? (
             <>
               {/* Details readout (Stages-tab equivalents) */}
               <section
-                aria-label="Stage details"
+                aria-label="Step details"
                 style={{
                   display: 'grid',
                   gridTemplateColumns: '1fr 1fr',

@@ -192,7 +192,7 @@ export function DashboardProjectsCard({
       .select('id')
     const stRows = Array.isArray(st.data) ? st.data.length : 0
     if (st.error || stRows === 0) {
-      showToast(st.error?.message ?? 'Could not start this stage. Try again or contact the office.', 'error')
+      showToast(st.error?.message ?? 'Could not start this step. Try again or contact the office.', 'error')
       return
     }
     await recordAction(step.id, 'started')
@@ -217,7 +217,7 @@ export function DashboardProjectsCard({
     const rowsAffected = Array.isArray(upd1.data) ? upd1.data.length : upd1.data ? 1 : 0
     if (upd1.error || rowsAffected === 0) {
       showToast(
-        upd1.error?.message ?? 'Could not mark this stage complete. Try again or contact the office.',
+        upd1.error?.message ?? 'Could not mark this step complete. Try again or contact the office.',
         'error',
       )
       return
@@ -351,7 +351,7 @@ export function DashboardProjectsCard({
           >
             <span aria-hidden>{assignedStagesExpanded ? '\u25BC' : '\u25B6'}</span>
             <h3 id="dashboard-assigned-stages-heading" style={{ fontSize: '1rem', margin: 0 }}>
-              Assigned Stages ({assignedSteps.length})
+              Assigned Steps ({assignedSteps.length})
             </h3>
           </button>
           {assignedStagesExpanded &&
@@ -453,14 +453,14 @@ export function DashboardProjectsCard({
       {skipStep && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
           <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 320 }}>
-            <h3 style={{ marginTop: 0 }}>Skip stage: {skipStep.step.name}</h3>
-            <label style={{ display: 'block', marginBottom: 4 }}>Why is this stage being skipped?</label>
+            <h3 style={{ marginTop: 0 }}>Skip step: {skipStep.step.name}</h3>
+            <label style={{ display: 'block', marginBottom: 4 }}>Why is this step being skipped?</label>
             <textarea
               value={skipStep.reason}
               onChange={(e) => setSkipStep((r) => r ? { ...r, reason: e.target.value } : null)}
               rows={4}
               style={{ width: '100%', padding: '0.5rem', marginBottom: '0.5rem' }}
-              placeholder="e.g. Client waived inspection, combined with prior stage, not applicable..."
+              placeholder="e.g. Client waived inspection, combined with prior step, not applicable..."
             />
             <div style={{ marginBottom: '1rem' }}>
               <button type="button" onClick={() => setSkipStep((s) => s ? { ...s, reason: 'Not relevant' } : null)} style={{ fontSize: '0.8125rem', padding: '0.25rem 0.5rem', background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', textDecoration: 'underline' }}>
@@ -517,7 +517,7 @@ export function DashboardProjectsCard({
           >
             <span aria-hidden>{subscribedStagesExpanded ? '\u25BC' : '\u25B6'}</span>
             <h3 id="dashboard-subscribed-stages-heading" style={{ fontSize: '1rem', margin: 0 }}>
-              Subscribed Stages ({subscribedSteps.length})
+              Subscribed Steps ({subscribedSteps.length})
             </h3>
           </button>
           {subscribedStagesExpanded ? (
