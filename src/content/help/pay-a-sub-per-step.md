@@ -35,6 +35,10 @@ Offered and Accepted green, In progress orange: the sub agreed and is on the job
 
 Each work order shows **Paid to date**, **Backcharges**, **Balance**, and (when set) **Retainage held** — pulled live from the linked Sub Labor sheet once one exists, so this panel and Jobs → Sub Labor always agree.
 
+## See who's booked when
+
+**Projects → Forecast → Subs** lays every sub's work orders on a timeline — accepted work solid, unanswered offers ghosted with a **?**, and a red outline when two bookings overlap. Click a bar to open that project's workflow.
+
 ## Settle — release the money
 
 Once the step is **complete or approved**, the work order shows {{button:blue|Settle → release $5,760}}.

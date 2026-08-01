@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1221',
+    date: '2026-08-01',
+    title: 'The Sub Board: see who\u2019s booked when',
+    kind: 'feature',
+    highlights: [
+      'Projects \u2192 Forecast \u2192 Subs shows a lane per sub with their work orders laid out on a timeline \u2014 unanswered offers appear ghosted with a question mark.',
+      'Overlapping bookings get a red outline, so you catch a double-booking before it happens.',
+      'Click any bar to jump into that project\u2019s workflow.',
+    ],
+  },
+  {
     version: 'v2.1220',
     date: '2026-08-01',
     title: 'Offers to subs carry dates \u2014 and their answers come right back',

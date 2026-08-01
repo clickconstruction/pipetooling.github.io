@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-01 (v2.1220)
+last_updated: 2026-08-01 (v2.1221)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1221)
+
+### Sub Board: who's booked when (2026-08-01)
+RUN_SUBS_PLAN Phase 4, PR 4.5 — Option C of the Sub Dispatch mockups. Projects → Forecast gains a **Subs** sub-tab ([`ProjectsForecastSubsTab.tsx`](../src/components/projects/ProjectsForecastSubsTab.tsx), `?forecastSub=subs`): one lane per sub, bars = their live work orders positioned by the **step's expected dates** (else the offer's proposed window — the dates the 4.3/4.4 loop maintains). Offered-but-unanswered bars render ghosted with a "?"; any two overlapping bookings in a lane get the **red outline** — the double-booking warning before it happens. Bars link into the workflow; From/To window (default −7/+45 days); undated work orders are counted with a fix pointer instead of silently dropped. New pure kernel [`subBoardLanes.ts`](../src/lib/projects/subBoardLanes.ts) (`buildSubBoardLanes` — date precedence, window clamping, percent geometry, pairwise overlap; 3 tests). Read-only v1 (drag-to-reschedule deliberately out). Client-only.
 
 ## Latest Updates (v2.1220)
 
