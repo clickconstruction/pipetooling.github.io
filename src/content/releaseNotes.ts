@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1210',
+    date: '2026-08-01',
+    title: 'Settling a work order creates the Sub Labor sheet automatically',
+    kind: 'feature',
+    highlights: [
+      'Once a step is complete, "Settle → release" on its work order creates the sub’s sheet in Jobs → Sub Labor for the agreed amount (minus any retainage) — no retyping.',
+      'A confirmation shows exactly what will be created before anything happens.',
+      'Payments and backcharges keep working exactly as they do today, in Sub Labor.',
+    ],
+  },
+  {
     version: 'v2.1209',
     date: '2026-08-01',
     title: 'Sub work orders on workflow steps',

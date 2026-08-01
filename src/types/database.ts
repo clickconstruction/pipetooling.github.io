@@ -13367,6 +13367,10 @@ export type Database = {
         Args: { p_flagged: boolean; p_job_id: string; p_note?: string }
         Returns: Json
       }
+      settle_step_commitment: {
+        Args: { p_commitment_id: string; p_dry_run?: boolean }
+        Returns: Json
+      }
       set_mercury_transaction_ar_returned: {
         Args: { p_mercury_transaction_id: string; p_returned: boolean }
         Returns: undefined
