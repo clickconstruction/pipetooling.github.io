@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1215',
+    date: '2026-08-01',
+    title: 'Cleaner GC + development line on Stages',
+    kind: 'fix',
+    highlights: [
+      'On Jobs → Stages, the dot between the GC and the development is gone — the hard-hat and house icons keep them apart on their own.',
+    ],
+  },
+  {
     version: 'v2.1214',
     date: '2026-08-01',
     title: 'People → Subs: every subcontractor relationship in one place',

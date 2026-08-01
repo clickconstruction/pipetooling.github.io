@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-01 (v2.1214)
+last_updated: 2026-08-01 (v2.1215)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2046,6 +2046,10 @@ when_to_read:
 155. [Customer and Project Management](#customer-and-project-management)
 ---
 
+## Latest Updates (v2.1215)
+
+### Stages: GC and development split by spacing, not a dot (2026-08-01)
+Per user direction. The shared GC/development row on Stages job cards ([`jobsStagesRowShared.tsx`](../src/components/jobs/jobsStagesRowShared.tsx) `renderJobCustomerLine`) drops the `·` separator between the hard-hat GC and the house-icon development — the icons already make the pair scannable, so the glyph was noise. The row's gap widens 0.3rem → 0.6rem so the two facts still read as separate (inner icon-to-name gaps stay 0.3rem). Verified live on the Gun Dog + DSI row. Client-only.
 ## Latest Updates (v2.1214)
 
 ### People → Subs: the sub relationship in one row (2026-08-01)
