@@ -7,6 +7,15 @@ order: 79
 ---
 Your Dashboard has a **Your money** card showing everything the office owes you — no phone call needed.
 
+## New offers
+
+When the office offers you a work order, it appears at the top of the card: the step, the project, the amount (and any retainage), and the proposed dates.
+
+- {{button:green|Accept}} — you're on. If the step had no dates yet, your accepted window becomes its schedule.
+- {{button:red|Decline…}} — asks for a quick reason (busy, price, whatever it is) so the office knows what to fix.
+
+The office is notified the moment you answer.
+
 ## The balance
 
 The big number is your total open balance across every sub sheet. It updates the moment the office records a payment.

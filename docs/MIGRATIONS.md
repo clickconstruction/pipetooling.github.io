@@ -106,6 +106,11 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 #### August 1, 2026
 
+**`20260801233000_respond_rpc_returns_context.sql`** _(apply via `supabase db push` after merge — same-signature CREATE OR REPLACE; old clients ignore the extra fields)_
+- **Purpose**: RUN_SUBS_PLAN Phase 4, PR 4.3 (v2.1217). `respond_to_work_order` returns the answer-notification context (creator contact with project-master fallback, step/project names, window) — sub-role RLS can't read those rows, and the function already sits behind a hard own-person gate.
+- **Security**: unchanged gates; SECURITY DEFINER as before.
+- **Category**: Feature RPC
+
 **`20260801220000_work_order_dispatch.sql`** _(apply via `supabase db push` after merge — dormant until PRs 4.3/4.4 ship)_
 - **Purpose**: RUN_SUBS_PLAN Phase 4, PR 4.1 (v2.1216). `step_commitments`: `declined` status + `declined_at`/`decline_reason` + `proposed_start`/`proposed_end`; `respond_to_work_order()` (account-linked own-person, offered-only, decline needs a reason, accept fills EMPTY step expected dates and flags mismatches); three `email_templates` seeds so the existing edge function carries work-order notifications unchanged.
 - **Security**: RPC is SECURITY DEFINER with a hard own-person gate; no policy changes.

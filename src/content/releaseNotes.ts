@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1219',
+    date: '2026-08-01',
+    title: 'Subs can accept or decline work orders from their phone',
+    kind: 'feature',
+    highlights: [
+      'An offered work order shows up as a card on the sub\u2019s Dashboard \u2014 the step, the amount, and the proposed dates, with Accept and Decline buttons.',
+      'Declining asks for a quick reason so the office knows what to fix; accepting locks the dates onto the step when none were set.',
+      'The office gets a push and email the moment the sub answers.',
+    ],
+  },
+  {
     version: 'v2.1218',
     date: '2026-08-01',
     title: 'Manage developments from Settings',
