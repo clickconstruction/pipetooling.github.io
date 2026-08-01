@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Navigate, useNavigate, useSearchParams } from 'react-router-dom'
+import { useNarrowViewport640 } from '../../hooks/useNarrowViewport640'
 import { DndContext, PointerSensor, closestCenter, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core'
 import { useAuth } from '../../hooks/useAuth'
 import { useToastContext } from '../../contexts/ToastContext'
@@ -161,6 +162,45 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
     return 'people'
   }, [searchParams])
   const hubTab = isTomorrow ? localHubTab : hubTabFromUrl
+
+  // Phone "new mode" (v2.1240): compact header + day-first, behind a floating
+  // Old/New toggle so dispatchers can keep the layout they know. Per-browser.
+  const narrowViewport = useNarrowViewport640()
+  const [hubMobileNewMode, setHubMobileNewMode] = useState(() => {
+    try {
+      return localStorage.getItem('schedule-dispatch-mobile-mode') !== 'old'
+    } catch {
+      return true
+    }
+  })
+  const setHubMobileNewModePersisted = useCallback((next: boolean) => {
+    setHubMobileNewMode(next)
+    try {
+      localStorage.setItem('schedule-dispatch-mobile-mode', next ? 'new' : 'old')
+    } catch {
+      /* session-only */
+    }
+  }, [])
+  // Day-first: one-shot replace-redirect on mount. Only when the URL didn't ask
+  // for a tab (deep links win) and no placeJob deep link is armed (that flow
+  // expects the People grid).
+  const hubMobileDayFirstAppliedRef = useRef(false)
+  useEffect(() => {
+    if (hubMobileDayFirstAppliedRef.current) return
+    hubMobileDayFirstAppliedRef.current = true
+    if (isTomorrow || !narrowViewport || !hubMobileNewMode) return
+    if (searchParams.get('hubTab')?.trim()) return
+    if (searchParams.get('placeJob')?.trim()) return
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev)
+        next.set('hubTab', 'day')
+        return next
+      },
+      { replace: true },
+    )
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- mount-only (ref-guarded)
+  }, [])
 
   useEffect(() => {
     if (!isTomorrow) return
@@ -2117,6 +2157,9 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
             showWeekNavigation={!isTomorrow}
             showHubViewTabs={!isTomorrow}
             showHideWeekendToggle={!isTomorrow}
+            showMobileModeToggle={!isTomorrow && narrowViewport}
+            mobileNewMode={!isTomorrow && narrowViewport && hubMobileNewMode}
+            onMobileNewModeChange={setHubMobileNewModePersisted}
             weekNavRightSlot={
               canEdit && !isTomorrow ? (
                 <button
