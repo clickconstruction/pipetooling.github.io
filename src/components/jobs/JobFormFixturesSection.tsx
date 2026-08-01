@@ -1,5 +1,6 @@
-import { Fragment, useState, type CSSProperties, type Dispatch, type MutableRefObject, type ReactNode, type SetStateAction } from 'react'
+import { Fragment, useEffect, useRef, useState, type CSSProperties, type Dispatch, type MutableRefObject, type ReactNode, type SetStateAction } from 'react'
 import AutosizeTextarea from '../AutosizeTextarea'
+import { useNarrowViewport640 } from '../../hooks/useNarrowViewport640'
 import { MoneyDecimalAmountInput } from '../MoneyDecimalAmountInput'
 import { formatCurrency } from '../../lib/jobs/jobFormMoney'
 import type { FixtureRow } from '../../lib/jobs/jobFormTypes'
@@ -78,6 +79,30 @@ export function JobFormFixturesSection({
   riderFeesDollars = 0,
 }: JobFormFixturesSectionProps) {
   const [helperOpen, setHelperOpen] = useState(false)
+  // Phone-width focus expansion (v2.1229): while a row's name field (or any
+  // field in that row) holds focus on a narrow viewport, the name spans the
+  // full grid width and the ×/$ inputs drop to their own row below, so the
+  // user can read what they're typing. The collapse is delayed a beat so a
+  // tap on the relocated count/price/trash lands before the layout snaps back.
+  const narrowViewport = useNarrowViewport640()
+  const [nameFocusRowId, setNameFocusRowId] = useState<string | null>(null)
+  const nameFocusCollapseTimer = useRef<number | null>(null)
+  useEffect(
+    () => () => {
+      if (nameFocusCollapseTimer.current != null) window.clearTimeout(nameFocusCollapseTimer.current)
+    },
+    [],
+  )
+  const holdNameFocusExpansion = () => {
+    if (nameFocusCollapseTimer.current != null) {
+      window.clearTimeout(nameFocusCollapseTimer.current)
+      nameFocusCollapseTimer.current = null
+    }
+  }
+  const scheduleNameFocusCollapse = () => {
+    holdNameFocusExpansion()
+    nameFocusCollapseTimer.current = window.setTimeout(() => setNameFocusRowId(null), 120)
+  }
   return (
           <div
             ref={fixturesSectionHighlightRef}
@@ -190,10 +215,139 @@ export function JobFormFixturesSection({
                   const stripeLineOverLimit = stripeFixtureLineLen > STRIPE_INVOICE_LINE_DESCRIPTION_MAX
                   const locked = fixtureRowIsLocked(row)
                   const linkChip = fixtureInvoiceLinkChip(row.invoice_id, invoiceStatusById)
+                  const nameEditExpanded = narrowViewport && !locked && nameFocusRowId === row.id
+                  const countGroup = (
+                    <span
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'stretch',
+                        border: '1px solid var(--border-strong)',
+                        borderRadius: 6,
+                        overflow: 'hidden',
+                      }}
+                    >
+                      <span
+                        aria-hidden
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          padding: '0 0.3rem',
+                          fontSize: '0.75rem',
+                          color: 'var(--text-muted)',
+                          background: 'var(--bg-subtle)',
+                          borderRight: '1px solid var(--border)',
+                        }}
+                      >
+                        ×
+                      </span>
+                      <input
+                        type="number"
+                        min={1}
+                        value={row.count}
+                        disabled={locked}
+                        aria-label="Count"
+                        onChange={(e) => updateFixtureRow(row.id, { count: Math.max(1, Number(e.target.value) || 1) })}
+                        style={{
+                          width: '2.6rem',
+                          maxWidth: '100%',
+                          boxSizing: 'border-box',
+                          padding: '0.375rem 0.25rem',
+                          border: 'none',
+                          borderRadius: 0,
+                          fontSize: '0.875rem',
+                          textAlign: 'center',
+                          background: 'transparent',
+                        }}
+                      />
+                    </span>
+                  )
+                  const priceGroup = (
+                    <span
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'stretch',
+                        border: '1px solid var(--border-strong)',
+                        borderRadius: 6,
+                        overflow: 'hidden',
+                        flexShrink: 0,
+                      }}
+                    >
+                      <span
+                        aria-hidden
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          padding: '0 0.3rem',
+                          fontSize: '0.75rem',
+                          color: 'var(--text-muted)',
+                          background: 'var(--bg-subtle)',
+                          borderRight: '1px solid var(--border)',
+                        }}
+                      >
+                        $
+                      </span>
+                      <MoneyDecimalAmountInput
+                        value={row.line_unit_price ?? 0}
+                        onChange={(n) => updateFixtureRow(row.id, { line_unit_price: n === 0 ? null : n })}
+                        readOnly={locked}
+                        commitOnType
+                        placeholder="—"
+                        aria-label="Unit price"
+                        style={{
+                          width: '5rem',
+                          minWidth: '4rem',
+                          flexShrink: 0,
+                          boxSizing: 'border-box',
+                          padding: '0.375rem 0.5rem',
+                          border: 'none',
+                          borderRadius: 0,
+                          fontSize: '0.875rem',
+                          textAlign: 'right',
+                          background: 'transparent',
+                        }}
+                      />
+                    </span>
+                  )
+                  // The add-line-item action lives in the footer next to Job Total
+                  // (v2.1131) — a (+) pinned to the last row made freshly generated
+                  // rows read as "not added yet". Every removable row now carries
+                  // the same trash icon; the sole remaining row keeps none (the
+                  // grid always holds at least one row).
+                  const deleteButton =
+                    fixtures.length === 1 || locked ? null : (
+                      <button
+                        type="button"
+                        onClick={() => removeFixtureRow(row.id)}
+                        title="Remove"
+                        aria-label="Remove line item"
+                        style={{
+                          padding: '0.35rem',
+                          background: 'transparent',
+                          color: '#991b1c',
+                          border: 'none',
+                          borderRadius: 4,
+                          cursor: 'pointer',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          flexShrink: 0,
+                          marginLeft: 'auto',
+                        }}
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={16} height={16} fill="currentColor" aria-hidden>
+                          <path d="M232.7 69.9L224 96L128 96C110.3 96 96 110.3 96 128C96 145.7 110.3 160 128 160L512 160C529.7 160 544 145.7 544 128C544 110.3 529.7 96 512 96L416 96L407.3 69.9C402.9 56.8 390.7 48 376.9 48L263.1 48C249.3 48 237.1 56.8 232.7 69.9zM512 208L128 208L149.1 531.1C150.7 556.4 171.7 576 197 576L443 576C468.3 576 489.3 556.4 490.9 531.1L512 208z" />
+                        </svg>
+                      </button>
+                    )
                   return (
                     <Fragment key={row.id}>
-                      <tr style={{ borderBottom: 'none' }}>
+                      <tr
+                        style={{ borderBottom: 'none' }}
+                        onFocus={holdNameFocusExpansion}
+                        onBlur={scheduleNameFocusCollapse}
+                      >
                         <td
+                          colSpan={nameEditExpanded ? 3 : undefined}
                           style={{
                             padding: '0.45rem 0.75rem',
                             paddingBottom: '0.25rem',
@@ -275,6 +429,12 @@ export function JobFormFixturesSection({
                                   value={row.name}
                                   disabled={locked}
                                   onChange={(e) => updateFixtureRow(row.id, { name: e.target.value })}
+                                  onFocus={() => {
+                                    if (narrowViewport && !locked) {
+                                      holdNameFocusExpansion()
+                                      setNameFocusRowId(row.id)
+                                    }
+                                  }}
                                   onBlur={() => {
                                     const next = normalizeFixtureDisplayName(row.name ?? '')
                                     if (next !== row.name) updateFixtureRow(row.id, { name: next })
@@ -360,163 +520,67 @@ export function JobFormFixturesSection({
                             </div>
                           </div>
                         </td>
-                        <td
-                          style={{
-                            paddingTop: '0.45rem',
-                            paddingBottom: '0.25rem',
-                            paddingLeft: '0.25rem',
-                            paddingRight: '0.25rem',
-                            textAlign: 'right',
-                            whiteSpace: 'nowrap',
-                            verticalAlign: 'top',
-                          }}
-                        >
-                          {/* Input group (v2.1223): the × lives INSIDE the field's
-                              border as a muted prefix — a floating glyph in the
-                              gutter read as a stray character. */}
-                          <span
-                            style={{
-                              display: 'inline-flex',
-                              alignItems: 'stretch',
-                              border: '1px solid var(--border-strong)',
-                              borderRadius: 6,
-                              overflow: 'hidden',
-                            }}
-                          >
-                            <span
-                              aria-hidden
+                        {!nameEditExpanded && (
+                          <>
+                            <td
                               style={{
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                padding: '0 0.3rem',
-                                fontSize: '0.75rem',
-                                color: 'var(--text-muted)',
-                                background: 'var(--bg-subtle)',
-                                borderRight: '1px solid var(--border)',
+                                paddingTop: '0.45rem',
+                                paddingBottom: '0.25rem',
+                                paddingLeft: '0.25rem',
+                                paddingRight: '0.25rem',
+                                textAlign: 'right',
+                                whiteSpace: 'nowrap',
+                                verticalAlign: 'top',
                               }}
                             >
-                              ×
-                            </span>
-                            <input
-                              type="number"
-                              min={1}
-                              value={row.count}
-                              disabled={locked}
-                              aria-label="Count"
-                              onChange={(e) => updateFixtureRow(row.id, { count: Math.max(1, Number(e.target.value) || 1) })}
+                              {/* Input group (v2.1223): the × lives INSIDE the field's
+                                  border as a muted prefix — a floating glyph in the
+                                  gutter read as a stray character. */}
+                              {countGroup}
+                            </td>
+                            <td
                               style={{
-                                width: '2.6rem',
-                                maxWidth: '100%',
-                                boxSizing: 'border-box',
-                                padding: '0.375rem 0.25rem',
-                                border: 'none',
-                                borderRadius: 0,
-                                fontSize: '0.875rem',
-                                textAlign: 'center',
-                                background: 'transparent',
-                              }}
-                            />
-                          </span>
-                        </td>
-                        <td
-                          style={{
-                            paddingTop: '0.45rem',
-                            paddingRight: '0.375rem',
-                            paddingBottom: '0.25rem',
-                            paddingLeft: '0.25rem',
-                            verticalAlign: 'top',
-                          }}
-                        >
-                          <div
-                            style={{
-                              display: 'flex',
-                              width: '100%',
-                              alignItems: 'flex-start',
-                              justifyContent: 'flex-end',
-                              gap: 4,
-                              flexWrap: 'nowrap',
-                            }}
-                          >
-                            {/* Same input-group treatment as the count field: the $
-                                is a muted in-border prefix, not a floating glyph. */}
-                            <span
-                              style={{
-                                display: 'inline-flex',
-                                alignItems: 'stretch',
-                                border: '1px solid var(--border-strong)',
-                                borderRadius: 6,
-                                overflow: 'hidden',
-                                flexShrink: 0,
+                                paddingTop: '0.45rem',
+                                paddingRight: '0.375rem',
+                                paddingBottom: '0.25rem',
+                                paddingLeft: '0.25rem',
+                                verticalAlign: 'top',
                               }}
                             >
-                              <span
-                                aria-hidden
+                              <div
                                 style={{
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  padding: '0 0.3rem',
-                                  fontSize: '0.75rem',
-                                  color: 'var(--text-muted)',
-                                  background: 'var(--bg-subtle)',
-                                  borderRight: '1px solid var(--border)',
+                                  display: 'flex',
+                                  width: '100%',
+                                  alignItems: 'flex-start',
+                                  justifyContent: 'flex-end',
+                                  gap: 4,
+                                  flexWrap: 'nowrap',
                                 }}
                               >
-                                $
-                              </span>
-                              <MoneyDecimalAmountInput
-                                value={row.line_unit_price ?? 0}
-                                onChange={(n) => updateFixtureRow(row.id, { line_unit_price: n === 0 ? null : n })}
-                                readOnly={locked}
-                                commitOnType
-                                placeholder="—"
-                                aria-label="Unit price"
-                                style={{
-                                  width: '5rem',
-                                  minWidth: '4rem',
-                                  flexShrink: 0,
-                                  boxSizing: 'border-box',
-                                  padding: '0.375rem 0.5rem',
-                                  border: 'none',
-                                  borderRadius: 0,
-                                  fontSize: '0.875rem',
-                                  textAlign: 'right',
-                                  background: 'transparent',
-                                }}
-                              />
-                            </span>
-                            {/* The add-line-item action lives in the footer next to Job Total
-                                (v2.1131) — a (+) pinned to the last row made freshly generated
-                                rows read as "not added yet". Every removable row now carries
-                                the same trash icon; the sole remaining row keeps none (the
-                                grid always holds at least one row). */}
-                            {fixtures.length === 1 || locked ? null : (
-                              <button
-                                type="button"
-                                onClick={() => removeFixtureRow(row.id)}
-                                title="Remove"
-                                aria-label="Remove line item"
-                                style={{
-                                  padding: '0.35rem',
-                                  background: 'transparent',
-                                  color: '#991b1c',
-                                  border: 'none',
-                                  borderRadius: 4,
-                                  cursor: 'pointer',
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
-                                  flexShrink: 0,
-                                  marginLeft: 'auto',
-                                }}
-                              >
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={16} height={16} fill="currentColor" aria-hidden>
-                                  <path d="M232.7 69.9L224 96L128 96C110.3 96 96 110.3 96 128C96 145.7 110.3 160 128 160L512 160C529.7 160 544 145.7 544 128C544 110.3 529.7 96 512 96L416 96L407.3 69.9C402.9 56.8 390.7 48 376.9 48L263.1 48C249.3 48 237.1 56.8 232.7 69.9zM512 208L128 208L149.1 531.1C150.7 556.4 171.7 576 197 576L443 576C468.3 576 489.3 556.4 490.9 531.1L512 208z" />
-                                </svg>
-                              </button>
-                            )}
-                          </div>
-                        </td>
+                                {/* Same input-group treatment as the count field: the $
+                                    is a muted in-border prefix, not a floating glyph. */}
+                                {priceGroup}
+                                {deleteButton}
+                              </div>
+                            </td>
+                          </>
+                        )}
                       </tr>
+                      {nameEditExpanded && (
+                        <tr
+                          style={{ borderBottom: 'none' }}
+                          onFocus={holdNameFocusExpansion}
+                          onBlur={scheduleNameFocusCollapse}
+                        >
+                          <td colSpan={3} style={{ padding: '0 0.75rem 0.25rem', verticalAlign: 'top' }}>
+                            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, width: '100%' }}>
+                              {countGroup}
+                              {priceGroup}
+                              {deleteButton}
+                            </div>
+                          </td>
+                        </tr>
+                      )}
                       <tr
                         style={{
                           borderBottom: idx < fixtures.length - 1 ? '1px solid var(--border)' : 'none',

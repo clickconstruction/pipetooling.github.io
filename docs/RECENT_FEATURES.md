@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-01 (v2.1228)
+last_updated: 2026-08-01 (v2.1229)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1229)
+
+### Edit Job ① Line Items — the name field expands to full width while you type on phones (2026-08-01)
+On a phone the line-item name input shares its grid row with the × count and $ price groups, leaving it ~2/3 width — long names wrap out of view while typing. Now, on narrow viewports (`useNarrowViewport640`), focusing a row's name field expands it: the name `<td>` takes `colSpan={3}` (full grid width) and that row's ×/$ inputs + trash drop into their own `<tr>` directly below, so the user sees what they're entering. Mechanics in [`JobFormFixturesSection.tsx`](../src/components/jobs/JobFormFixturesSection.tsx): new `nameFocusRowId` state set by the name `AutosizeTextarea`'s `onFocus` (narrow + unlocked rows only); both `<tr>`s carry `onFocus`/`onBlur` (React focusin/focusout delegation) wired to a hold/schedule pair — blur schedules the collapse on a 120ms `setTimeout` and any refocus inside the row cancels it, so (a) tapping the relocated count/price/trash keeps the row expanded (the fields would otherwise remount under the user's finger mid-tap) and (b) tap-targets don't shift until focus truly leaves the row. The ×/$/trash markup was extracted into per-row `countGroup` / `priceGroup` / `deleteButton` consts rendered in either position (styles unchanged); locked rows and desktop keep the existing static three-column layout. New render test [`JobFormFixturesSection.render.test.tsx`](../src/components/jobs/JobFormFixturesSection.render.test.tsx) (4 tests, jsdom + narrow `matchMedia` mock): focus expands + relocates only the focused row, blur + 150ms collapses, name→count focus movement stays expanded, wide viewports no-op. Verified: `tsc -b` clean, zero new lints, full vitest suite green. Files: modified [`src/components/jobs/JobFormFixturesSection.tsx`](../src/components/jobs/JobFormFixturesSection.tsx); new render test. No DB / migration / RLS / RPC / Edge / type-gen changes.
 
 ## Latest Updates (v2.1228)
 
