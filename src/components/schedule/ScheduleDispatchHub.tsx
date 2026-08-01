@@ -2578,6 +2578,11 @@ type Props = {
   visibleDayKeys: string[]
   hideWeekend: boolean
   onHideWeekendChange: (hide: boolean) => void
+  /** Phone layout experiment (v2.1240): floating Old/New pill top-right; page owns the pref. */
+  showMobileModeToggle?: boolean
+  /** True = render the compact phone header (segmented tabs + "+ Schedule" sheet + ⋯ menu). */
+  mobileNewMode?: boolean
+  onMobileNewModeChange?: (next: boolean) => void
   weekNavDateRangeOverride?: string
   /** URL `day` when in the visible week; column tint + scroll. */
   columnFocusDayYmd?: string
@@ -2697,6 +2702,9 @@ export function ScheduleDispatchHub({
   visibleDayKeys,
   hideWeekend,
   onHideWeekendChange,
+  showMobileModeToggle = false,
+  mobileNewMode = false,
+  onMobileNewModeChange,
   weekNavDateRangeOverride,
   columnFocusDayYmd = '',
   rows,
@@ -2776,10 +2784,260 @@ export function ScheduleDispatchHub({
     () => allPeopleRows.map((r) => ({ userId: r.userId, displayName: r.displayName })),
     [allPeopleRows],
   )
+  // Phone "new mode" chrome (v2.1240) — menu/sheet state is shell-local; every
+  // action routes through the SAME page callbacks the desktop toolbar uses.
+  const [mobileScheduleMenuOpen, setMobileScheduleMenuOpen] = useState(false)
+  const [mobileMoreMenuOpen, setMobileMoreMenuOpen] = useState(false)
+  const [mobileQuickAssignOpen, setMobileQuickAssignOpen] = useState(false)
+  const newModeHeaderActive = mobileNewMode && showHubViewTabs
+  const mobileTabButton = (tab: 'day' | 'people' | 'jobs', label: string) => (
+    <button
+      type="button"
+      role="tab"
+      aria-selected={hubTab === tab}
+      onClick={() => onHubTabChange(tab)}
+      style={{
+        padding: '0.35rem 0.8rem',
+        fontSize: '0.8125rem',
+        border: 'none',
+        borderRadius: 6,
+        cursor: 'pointer',
+        background: hubTab === tab ? '#3b82f6' : 'none',
+        color: hubTab === tab ? 'white' : 'var(--text-muted)',
+        fontWeight: hubTab === tab ? 700 : 500,
+      }}
+    >
+      {label}
+    </button>
+  )
+  const mobileMenuItemStyle: CSSProperties = {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.5rem',
+    width: '100%',
+    padding: '0.55rem 0.85rem',
+    border: 'none',
+    background: 'none',
+    cursor: 'pointer',
+    fontSize: '0.875rem',
+    color: 'var(--text-gray-800)',
+    textAlign: 'left',
+    borderRadius: 4,
+    whiteSpace: 'nowrap',
+  }
+  const mobileMenuSurfaceStyle: CSSProperties = {
+    position: 'absolute',
+    top: 'calc(100% + 4px)',
+    zIndex: 121,
+    minWidth: 230,
+    padding: '0.3rem',
+    background: 'var(--surface)',
+    border: '1px solid var(--border-strong)',
+    borderRadius: 6,
+    boxShadow: '0 10px 25px -5px rgba(0,0,0,0.25)',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 2,
+  }
 
   return (
-    <div style={{ padding: '1rem 1.25rem', maxWidth: '100%' }}>
-      {showHubViewTabs ? (
+    <div style={{ padding: showMobileModeToggle ? '2.2rem 1.25rem 1rem' : '1rem 1.25rem', maxWidth: '100%', position: 'relative' }}>
+      {showMobileModeToggle && onMobileNewModeChange ? (
+        <div
+          role="group"
+          aria-label="Schedule layout"
+          style={{
+            position: 'absolute',
+            top: 6,
+            right: 12,
+            zIndex: 60,
+            display: 'inline-flex',
+            gap: 2,
+            padding: 2,
+            background: 'var(--bg-subtle)',
+            border: '1px solid var(--border-strong)',
+            borderRadius: 999,
+            boxShadow: '0 2px 8px rgba(0,0,0,0.14)',
+          }}
+        >
+          {([false, true] as const).map((isNew) => (
+            <button
+              key={String(isNew)}
+              type="button"
+              aria-pressed={mobileNewMode === isNew}
+              onClick={() => onMobileNewModeChange(isNew)}
+              style={{
+                padding: '0.15rem 0.6rem',
+                fontSize: '0.6875rem',
+                fontWeight: 700,
+                border: 'none',
+                borderRadius: 999,
+                cursor: 'pointer',
+                background: mobileNewMode === isNew ? '#3b82f6' : 'transparent',
+                color: mobileNewMode === isNew ? 'white' : 'var(--text-muted)',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {isNew ? 'New mode' : 'Old mode'}
+            </button>
+          ))}
+        </div>
+      ) : null}
+      {newModeHeaderActive ? (
+        <div style={{ marginBottom: '0.75rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+            <div
+              role="tablist"
+              aria-label="Hub view"
+              style={{ display: 'inline-flex', gap: 2, padding: 2, background: 'var(--bg-subtle)', borderRadius: 8, minWidth: 0 }}
+            >
+              {mobileTabButton('day', 'Day')}
+              {mobileTabButton('people', 'People')}
+              {mobileTabButton('jobs', 'Jobs')}
+            </div>
+            {canEdit && (onRequestHubAddJob || onRequestHubMultiCellAddMode || onStartLinkedCopyMode) ? (
+              <div style={{ position: 'relative', marginLeft: 'auto', flexShrink: 0 }}>
+                <button
+                  type="button"
+                  onClick={() => setMobileScheduleMenuOpen((o) => !o)}
+                  aria-haspopup="menu"
+                  aria-expanded={mobileScheduleMenuOpen}
+                  style={{
+                    padding: '0.35rem 0.7rem',
+                    fontSize: '0.8125rem',
+                    fontWeight: 600,
+                    color: 'var(--text-link)',
+                    background: 'var(--surface)',
+                    border: '1px solid #2563eb',
+                    borderRadius: 8,
+                    cursor: 'pointer',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  + Schedule
+                </button>
+                {mobileScheduleMenuOpen ? (
+                  <>
+                    <div onClick={() => setMobileScheduleMenuOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 120 }} />
+                    <div role="menu" style={{ ...mobileMenuSurfaceStyle, right: 0 }}>
+                      {onRequestHubAddJob ? (
+                        <button
+                          type="button"
+                          role="menuitem"
+                          onClick={() => {
+                            setMobileScheduleMenuOpen(false)
+                            onRequestHubAddJob()
+                          }}
+                          style={mobileMenuItemStyle}
+                        >
+                          Add one job…
+                        </button>
+                      ) : null}
+                      <button
+                        type="button"
+                        role="menuitem"
+                        onClick={() => {
+                          setMobileScheduleMenuOpen(false)
+                          setMobileQuickAssignOpen(true)
+                        }}
+                        style={mobileMenuItemStyle}
+                      >
+                        Quick Assign — job, people, time…
+                      </button>
+                      {onRequestHubMultiCellAddMode ? (
+                        <button
+                          type="button"
+                          role="menuitem"
+                          title="Pick several person-day cells on the People grid, then add one job to all of them"
+                          onClick={() => {
+                            setMobileScheduleMenuOpen(false)
+                            if (hubTab !== 'people') onHubTabChange('people')
+                            onRequestHubMultiCellAddMode()
+                          }}
+                          style={mobileMenuItemStyle}
+                        >
+                          Fill several days at once
+                        </button>
+                      ) : null}
+                      {onStartLinkedCopyMode ? (
+                        <button
+                          type="button"
+                          role="menuitem"
+                          title="Pick blocks on the People grid, then copy them to a person or lane as a linked chain"
+                          onClick={() => {
+                            setMobileScheduleMenuOpen(false)
+                            if (hubTab !== 'people') onHubTabChange('people')
+                            onStartLinkedCopyMode()
+                          }}
+                          style={mobileMenuItemStyle}
+                        >
+                          Copy as a linked chain
+                        </button>
+                      ) : null}
+                    </div>
+                  </>
+                ) : null}
+              </div>
+            ) : null}
+            {weekNavRightSlot || canEdit ? (
+              <div style={{ position: 'relative', flexShrink: 0 }}>
+                <button
+                  type="button"
+                  onClick={() => setMobileMoreMenuOpen((o) => !o)}
+                  title="More"
+                  aria-label="More schedule tools"
+                  aria-haspopup="menu"
+                  aria-expanded={mobileMoreMenuOpen}
+                  style={{
+                    width: 32,
+                    height: 32,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    padding: 0,
+                    border: '1px solid var(--border-strong)',
+                    borderRadius: 8,
+                    background: mobileMoreMenuOpen ? 'var(--bg-blue-tint)' : 'var(--surface)',
+                    color: mobileMoreMenuOpen ? 'var(--text-link)' : 'var(--text-muted)',
+                    cursor: 'pointer',
+                    fontSize: '1.1rem',
+                    fontWeight: 700,
+                    lineHeight: 1,
+                  }}
+                >
+                  ⋯
+                </button>
+                {mobileMoreMenuOpen ? (
+                  <>
+                    <div onClick={() => setMobileMoreMenuOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 120 }} />
+                    <div role="menu" style={{ ...mobileMenuSurfaceStyle, right: 0, alignItems: 'stretch' }}>
+                      {weekNavRightSlot ? (
+                        <div style={{ padding: '0.35rem 0.85rem' }} onClick={() => setMobileMoreMenuOpen(false)}>
+                          {weekNavRightSlot}
+                        </div>
+                      ) : null}
+                      {canEdit ? (
+                        <button
+                          type="button"
+                          role="menuitem"
+                          onClick={() => {
+                            setMobileMoreMenuOpen(false)
+                            setDispatchSettingsOpen(true)
+                          }}
+                          style={mobileMenuItemStyle}
+                        >
+                          Dispatch settings…
+                        </button>
+                      ) : null}
+                    </div>
+                  </>
+                ) : null}
+              </div>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
+      {!newModeHeaderActive && showHubViewTabs ? (
         <div
           role="tablist"
           aria-label="Hub view"
@@ -2879,7 +3137,8 @@ export function ScheduleDispatchHub({
           day navigation. The right slot (Share) lives in the tab-bar cluster when tabs are shown.
           On the People tab the nav renders INSIDE the panel's toolbar row (weekNav prop below) so
           it shares a line with the controls when the viewport is wide. */}
-      {showWeekNavigation && (!showHubViewTabs || hubTab === 'jobs') ? (
+      {showWeekNavigation &&
+      (!showHubViewTabs || hubTab === 'jobs' || (newModeHeaderActive && hubTab === 'people')) ? (
         <ScheduleDispatchWeekNav
           weekStart={weekStart}
           onWeekShift={onWeekShift}
@@ -2977,7 +3236,7 @@ export function ScheduleDispatchHub({
       ) : (
         <HubPeoplePanel
           weekNav={
-            showWeekNavigation ? (
+            showWeekNavigation && !newModeHeaderActive ? (
               <ScheduleDispatchWeekNav
                 inline
                 weekStart={weekStart}
@@ -3056,6 +3315,15 @@ export function ScheduleDispatchHub({
         roster={dispatchSettingsRoster}
         onSwimLanesChanged={onSwimLanesChanged}
       />
+      {/* New-mode Quick Assign lives at the shell so the + Schedule sheet can open
+          it from any tab; the People panel's own instance stays for its toolbar. */}
+      {mobileNewMode && canEdit ? (
+        <QuickAssignSheet
+          open={mobileQuickAssignOpen}
+          onClose={() => setMobileQuickAssignOpen(false)}
+          onScheduled={onQuickAssignScheduled}
+        />
+      ) : null}
     </div>
   )
 }

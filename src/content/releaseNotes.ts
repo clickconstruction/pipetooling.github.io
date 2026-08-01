@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1240',
+    date: '2026-08-01',
+    title: 'Dispatch schedule: a new phone layout — with an Old mode switch',
+    kind: 'feature',
+    highlights: [
+      'On phones the schedule opens on the Day view with a compact header: Day / People / Jobs as a switch, one + Schedule button that names every scheduling flow, and a ⋯ menu for Share and Dispatch settings.',
+      'A floating Old mode / New mode pill in the top-right corner flips you back to the classic layout any time — your choice sticks on that device.',
+      'Desktop is unchanged.',
+    ],
+  },
+  {
     version: 'v2.1239',
     date: '2026-08-01',
     title: 'Edit Job: a tidy footer on phones',

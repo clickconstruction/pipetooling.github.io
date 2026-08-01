@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-01 (v2.1239)
+last_updated: 2026-08-01 (v2.1240)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1240)
+
+### Schedule Dispatch — phone "new mode" behind a floating Old/New toggle (2026-08-01)
+Phase 1 of the mobile rework of the `/schedule-dispatch` hub, shipped as an opt-out: on narrow viewports (route variant only — the Quickfill tomorrow embed is untouched) a floating **Old mode / New mode** pill sits in the hub's top-right corner (localStorage `schedule-dispatch-mobile-mode`, default new; page-owned state passed into the shell as `showMobileModeToggle`/`mobileNewMode`/`onMobileNewModeChange`). **New mode** replaces five rows of desktop chrome with a compact header in [`ScheduleDispatchHub.tsx`](../src/components/schedule/ScheduleDispatchHub.tsx): a segmented Day-first tab switch, a **+ Schedule** button opening a sheet that NAMES all four creation flows — Add one job… (`onRequestHubAddJob`), Quick Assign (a shell-level `QuickAssignSheet` so it works from any tab), Fill several days at once (`onRequestHubMultiCellAddMode`), Copy as a linked chain (`onStartLinkedCopyMode`; the two cell-picking modes also hop to the People tab where their cells live) — and a **⋯** menu holding the Share slot (`weekNavRightSlot`) and Dispatch settings. The week nav renders at shell level for the People tab too (its inline `weekNav` prop is withheld in new mode). **Day-first:** the page adds a one-shot `replace` redirect to `?hubTab=day` on narrow new-mode mounts, skipped when the URL carries an explicit `hubTab` or a `placeJob` deep link (that flow expects the People grid) — URL-param semantics ("no param = people") are untouched. **Old mode is byte-identical** to today's rendering, and wide viewports never see any of this. Every sheet action routes through the SAME page callbacks as the desktop toolbar — no forked behavior. First render tests for this surface: [`ScheduleDispatchHub.render.test.tsx`](../src/components/schedule/ScheduleDispatchHub.render.test.tsx) (5 tests: old-mode chrome + toggle, new-mode header + hidden classic chrome + Day-first tab order, sheet→callback routing incl. the People hop, ⋯ contents, desktop unchanged). Docs: hub-shell dossier in [`SCHEDULE_DISPATCH_ARCHITECTURE.md`](./SCHEDULE_DISPATCH_ARCHITECTURE.md); help guide [`schedule-dispatch`](../src/content/help/schedule-dispatch.md) gains the new-mode paragraph. Follow-up (phase 2, separate PR): the People-tab per-person accordion for phones. Verified: `tsc -b` clean, zero new lints, full vitest suite green. Files: modified [`ScheduleDispatchHub.tsx`](../src/components/schedule/ScheduleDispatchHub.tsx), [`ScheduleDispatchHubPage.tsx`](../src/components/schedule/ScheduleDispatchHubPage.tsx), help guide, architecture doc; new render test. No DB / migration / RLS / RPC / Edge / type-gen changes.
 
 ## Latest Updates (v2.1239)
 
