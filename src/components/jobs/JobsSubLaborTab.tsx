@@ -277,6 +277,26 @@ export default function JobsSubLaborTab({
                           {laborJobNamesByHcp[(job.job_number ?? '').trim().toLowerCase()] ? (
                             <> | {laborJobNamesByHcp[(job.job_number ?? '').trim().toLowerCase()]}</>
                           ) : null}
+                          {job.project_id ? (
+                            <a
+                              href={`/workflows/${job.project_id}${job.step_id ? `#step-${job.step_id}` : ''}`}
+                              onClick={(e) => e.stopPropagation()}
+                              title={job.project_name ? `Project: ${job.project_name}` : 'Open project workflow'}
+                              style={{
+                                marginLeft: 6,
+                                fontSize: '0.6875rem',
+                                fontWeight: 600,
+                                color: 'var(--text-link)',
+                                background: 'var(--bg-blue-tint)',
+                                borderRadius: 999,
+                                padding: '0.05rem 0.5rem',
+                                textDecoration: 'none',
+                                whiteSpace: 'nowrap',
+                              }}
+                            >
+                              {job.project_name ?? 'Project'}
+                            </a>
+                          ) : null}
                         </div>
                         <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: 2 }}>
                           {job.address ? (

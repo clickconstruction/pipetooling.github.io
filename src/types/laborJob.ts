@@ -13,6 +13,11 @@ export type LaborJob = {
   distance_miles?: number | null
   paid_at?: string | null
   invoice_link?: string | null
+  /** Optional project/step anchors (RUN_SUBS_PLAN PR 0.3); set by commitment settlement in Phase 2. */
+  project_id?: string | null
+  step_id?: string | null
+  /** Project name resolved for anchored sheets (display only). */
+  project_name?: string | null
   items?: Array<{
     fixture: string
     count: number

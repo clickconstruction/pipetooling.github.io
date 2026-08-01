@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1202',
+    date: '2026-08-01',
+    title: 'Sub Labor sheets can belong to a project',
+    kind: 'feature',
+    highlights: [
+      'A sub labor sheet can now be tied to a project and workflow step — anchored sheets show a project chip in the Sub Labor ledger that jumps straight to the workflow.',
+      'Nothing changes for existing sheets; linking happens automatically with the upcoming pay-per-step features.',
+    ],
+  },
+  {
     version: 'v2.1201',
     date: '2026-08-01',
     title: 'Groundwork: step assignments remember the person, not just the name',

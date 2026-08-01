@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-01 (v2.1201)
+last_updated: 2026-08-01 (v2.1202)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1202)
+
+### Sub sheets can anchor to a project and step (2026-08-01)
+RUN_SUBS_PLAN Phase 0, PR 0.3 — the last spine piece. `people_labor_jobs` (the Sub Labor ledger) knew a job only by its HCP-number string; migration [`20260801140000_sub_sheet_project_step_anchors.sql`](../supabase/migrations/20260801140000_sub_sheet_project_step_anchors.sql) adds nullable `project_id` / `step_id` anchors (FK projects / project_workflow_steps, both ON DELETE **SET NULL** — the money record outlives the project/step, mirroring the v2.1194 projection-anchor rule) + partial indexes. Nothing writes them yet (Phase 2's commitment settlement will). Read path: [`useSubLaborLedger`](../src/hooks/useSubLaborLedger.ts) selects the anchors **fail-soft** (anchored column list first, legacy list on error — client and migration deploy in either order) and resolves project names for anchored sheets; [`JobsSubLaborTab`](../src/components/jobs/JobsSubLaborTab.tsx) rows show a small project chip linking to `/workflows/:projectId#step-:stepId`. [`LaborJob`](../src/types/laborJob.ts) + `database.ts` hand-adds. The plan's `openNewWithStepContext` modal handle is deferred to Phase 2 (settlement creates sheets server-side; no client writer needed yet). Client + migration (`supabase db push` after merge).
 
 ## Latest Updates (v2.1201)
 
