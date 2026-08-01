@@ -400,17 +400,14 @@ export function renderJobCustomerLine(ctx: StagesRowRenderContext, job: JobWithD
       </span>
       {gcName || developmentName ? (
         // GC and development share one muted row — they're the same "who/where
-        // does this roll up to" fact; wraps on narrow columns.
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', flexWrap: 'wrap' }}>
+        // does this roll up to" fact; wraps on narrow columns. The icons keep
+        // the pair scannable on their own, so a wider gap (no separator glyph)
+        // splits them.
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
           {gcName ? (
             <span title="GC/Builder for this job" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
               <GcHardHatIcon size={13} style={{ flexShrink: 0 }} />
               <span>{gcName}</span>
-            </span>
-          ) : null}
-          {gcName && developmentName ? (
-            <span aria-hidden style={{ color: 'var(--text-faint)' }}>
-              ·
             </span>
           ) : null}
           {developmentName ? (
