@@ -17,6 +17,7 @@ const minimalLimitedJob = (): LimitedJobDetailSnapshot => ({
   customer_email: null,
   customer_phone: null,
   gc_customer_name: null,
+  development_name: null,
   last_work_date: null,
   status: 'ready_to_bill',
   service_type_name: null,

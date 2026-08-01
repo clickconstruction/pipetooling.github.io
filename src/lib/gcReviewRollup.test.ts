@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildGcReviewRollup, GC_REVIEW_NO_GC_KEY } from './gcReviewRollup'
+import { buildGcReviewRollup, GC_REVIEW_NO_DEVELOPMENT_KEY, GC_REVIEW_NO_GC_KEY } from './gcReviewRollup'
 import type { StageRow } from './jobsStagesBoard'
 import type { JobWithDetails } from '../types/jobWithDetails'
 
@@ -60,6 +60,21 @@ describe('buildGcReviewRollup', () => {
     expect(rollup.groups[2]!.gcName).toBe('No GC set')
     expect(rollup.grandTotal).toBe(1400)
     expect(rollup.groups[0]!.rows[0]!.customerName).toBe('Rosemary Garza')
+  })
+
+  it("groupBy: 'development' groups by the job's development with its own bucket label (v2.1204)", () => {
+    const SAGE = { id: 'dev-sage', name: 'Sagebrush Phase 2' }
+    const a = job({ id: 'j1', development: SAGE, gcCustomer: KNIGHT })
+    const b = job({ id: 'j2', gcCustomer: LOBERG }) // GC but no development
+    const rollup = buildGcReviewRollup(
+      [invRow({ id: 'i1', job: a, amount: 700 }), invRow({ id: 'i2', job: b, amount: 200 })],
+      [],
+      { now: NOW, groupBy: 'development' },
+    )
+    expect(rollup.groups.map((g) => g.key)).toEqual(['dev-sage', GC_REVIEW_NO_DEVELOPMENT_KEY])
+    expect(rollup.groups[0]!.gcName).toBe('Sagebrush Phase 2')
+    expect(rollup.groups[1]!.gcName).toBe('No development set')
+    expect(rollup.grandTotal).toBe(900)
   })
 
   it('counts distinct jobs when one job contributes several invoice rows', () => {

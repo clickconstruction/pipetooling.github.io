@@ -31,6 +31,7 @@ On **Jobs → Stages**, the **Billed Awaiting Payment** section header has a {{b
 
 - Tick **Include Collections** to fold hard-to-collect jobs into the view (marked with a red chip).
 - Hit {{button:outline|Print}} on any GC row for that GC's **statement** — their customers, bill-out dates, days outstanding, and amounts. **Print all** makes one report of every section.
+- When any job has a **development** set, a **Group by** toggle appears — flip to **By Development** to see the same rollup per development instead.
 
 ## What the GC does *not* change
 

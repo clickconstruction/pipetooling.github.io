@@ -12,6 +12,9 @@ import {
   filterJobsByGcCustomer,
   gcFilterOptionsFromJobs,
   STAGES_GC_FILTER_NO_GC,
+  developmentFilterOptionsFromJobs,
+  filterJobsByDevelopment,
+  STAGES_DEVELOPMENT_FILTER_NONE,
   jobBillingUnallocatedDollars,
   jobInCollections,
   readyToBillRowsExposureTotal,
@@ -402,6 +405,42 @@ describe('filterJobsByStagesSearch', () => {
     expect(filterJobsByStagesSearch([withGc, withoutGc], 'knight', null).map((j) => j.id)).toEqual(['job-gc'])
     // null gcCustomer never throws or matches
     expect(filterJobsByStagesSearch([withoutGc], 'knight', null)).toHaveLength(0)
+  })
+
+  it('development filter: options are distinct + name-sorted; filter matches id or the none sentinel (v2.1204)', () => {
+    const s1 = jobStub({ id: 'j1', invoices: [], development: { id: 'dev-s', name: 'Sagebrush Phase 2' } })
+    const s2 = jobStub({ id: 'j2', invoices: [], development: { id: 'dev-s', name: 'Sagebrush Phase 2' } })
+    const w = jobStub({ id: 'j3', invoices: [], development: { id: 'dev-a', name: 'ash creek' } })
+    const none = jobStub({ id: 'j4', invoices: [] })
+    const jobsList = [s1, s2, w, none]
+    expect(developmentFilterOptionsFromJobs(jobsList)).toEqual([
+      { id: 'dev-a', name: 'ash creek' },
+      { id: 'dev-s', name: 'Sagebrush Phase 2' },
+    ])
+    expect(filterJobsByDevelopment(jobsList, null).map((j) => j.id)).toEqual(['j1', 'j2', 'j3', 'j4'])
+    expect(filterJobsByDevelopment(jobsList, 'dev-s').map((j) => j.id)).toEqual(['j1', 'j2'])
+    expect(filterJobsByDevelopment(jobsList, STAGES_DEVELOPMENT_FILTER_NONE).map((j) => j.id)).toEqual(['j4'])
+  })
+
+  it('matches a job by its development name (v2.1199)', () => {
+    const withDev = jobStub({
+      id: 'job-dev',
+      hcp_number: '400',
+      job_name: 'Lot 12',
+      job_address: '12 Bluestem',
+      invoices: [],
+      development: { id: 'dev-1', name: 'Sagebrush Phase 2' },
+    })
+    const withoutDev = jobStub({
+      id: 'job-plain2',
+      hcp_number: '401',
+      job_name: 'Repipe',
+      job_address: '4 Oak',
+      invoices: [],
+    })
+    expect(filterJobsByStagesSearch([withDev, withoutDev], 'sagebrush', null).map((j) => j.id)).toEqual(['job-dev'])
+    // null development never throws or matches
+    expect(filterJobsByStagesSearch([withoutDev], 'sagebrush', null)).toHaveLength(0)
   })
 })
 

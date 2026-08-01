@@ -31,6 +31,7 @@ function mapRowToJobWithDetails(
       customers?: { id: string; name: string | null } | { id: string; name: string | null }[] | null
     } | null
     gc_customer?: { id: string; name: string | null } | { id: string; name: string | null }[] | null
+    development?: { id: string; name: string | null } | { id: string; name: string | null }[] | null
     service_types?: { name: string } | null
   },
 ): JobWithDetails {
@@ -44,6 +45,7 @@ function mapRowToJobWithDetails(
     projects: proj,
     bids: bidEmbed,
     gc_customer: gcEmbed,
+    development: devEmbed,
     service_types: serviceTypeEmbed,
     ...job
   } = row
@@ -61,6 +63,7 @@ function mapRowToJobWithDetails(
     project: proj ?? null,
     linkedBid: bidEmbed ? { ...bidEmbed, customers: one(bidEmbed.customers) } : null,
     gcCustomer: one(gcEmbed),
+    development: one(devEmbed),
     last_schedule_work_date: null,
   }
 }

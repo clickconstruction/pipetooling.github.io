@@ -19,6 +19,7 @@ import {
   resolveGcCustomerIdForJobPayload,
   type JobPayloadCustomerRow,
 } from '../jobLedgerCustomer'
+import { resolveDevelopmentIdForJobPayload, type JobFormDevelopmentRow } from './jobDevelopments'
 import { resolveEditJobMasterUserId } from '../resolveEditJobMasterUserId'
 import { normalizeFixtureDisplayName } from './jobFormRows'
 import type { FixtureRow, MaterialRow, PaymentRow } from './jobFormTypes'
@@ -55,6 +56,8 @@ export interface JobIdentityFormFields {
   customerPhone: string
   /** Optional GC (General Contractor) — a customers row id, like bids' GC/Builder (v2.1176). */
   gcCustomerId: string | null
+  /** Optional development (group of jobs) — a developments row id (v2.1199). */
+  developmentId: string | null
   googleDriveLink: string
   jobPicturesLink: string
   jobPlansLink: string
@@ -74,6 +77,7 @@ export function buildIdentitySliceJson(fields: JobIdentityFormFields): string {
     ce: fields.customerEmail.trim(),
     cp: fields.customerPhone.trim(),
     gc: fields.gcCustomerId,
+    dv: fields.developmentId,
     gd: fields.googleDriveLink.trim(),
     jp: fields.jobPicturesLink.trim(),
     pl: fields.jobPlansLink.trim(),
@@ -159,8 +163,9 @@ export function buildEditJobIdentityUpdatePayload(params: {
   /** master_user_id of the linked project when fields.projectId is set and loaded. */
   projectMasterUserId: string | null
   customers: JobPayloadCustomerRow[]
+  developments: JobFormDevelopmentRow[]
 }) {
-  const { fields, existingJobMasterUserId, projectMasterUserId, customers } = params
+  const { fields, existingJobMasterUserId, projectMasterUserId, customers, developments } = params
   const masterUserId = resolveEditJobMasterUserId({
     projectId: fields.projectId || null,
     projectMasterUserId,
@@ -173,6 +178,7 @@ export function buildEditJobIdentityUpdatePayload(params: {
     customers,
   )
   const resolvedGcCustomerId = resolveGcCustomerIdForJobPayload(fields.gcCustomerId, masterUserId, customers)
+  const resolvedDevelopmentId = resolveDevelopmentIdForJobPayload(fields.developmentId, masterUserId, developments)
   return {
     hcp_number: fields.hcpNumber.trim(),
     click_number: fields.clickNumber.trim(),
@@ -180,6 +186,7 @@ export function buildEditJobIdentityUpdatePayload(params: {
     job_address: fields.jobAddress.trim(),
     customer_id: resolvedCustomerId,
     gc_customer_id: resolvedGcCustomerId,
+    development_id: resolvedDevelopmentId,
     customer_name: fields.customerName.trim() || null,
     customer_email: fields.customerEmail.trim() || null,
     customer_phone: fields.customerPhone.trim() || null,

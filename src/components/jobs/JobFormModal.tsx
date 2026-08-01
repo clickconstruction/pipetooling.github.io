@@ -52,6 +52,11 @@ import { JobFormSourceEstimateBanner } from './JobFormSourceEstimateBanner'
 import type { Database } from '../../types/database'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import { resolveCustomerIdForJobPayload, resolveGcCustomerIdForJobPayload } from '../../lib/jobLedgerCustomer'
+import {
+  resolveDevelopmentIdForJobPayload,
+  validateNewDevelopmentName,
+  type JobFormDevelopmentRow,
+} from '../../lib/jobs/jobDevelopments'
 import { jobLedgerHasCustomerForBilling } from '../../lib/jobLedgerCustomerForBilling'
 import { revenueDollarsFromFixtures } from '../../lib/revenueFromJobFixtures'
 import { buildEditJobBillingBar } from '../../lib/jobs/editJobBillingBar'
@@ -313,6 +318,9 @@ export default function JobFormModal({
   const [customerId, setCustomerId] = useState<string | null>(null)
   /** Optional GC (General Contractor) — a second customers link, like bids' GC/Builder (v2.1176). */
   const [gcCustomerId, setGcCustomerId] = useState<string | null>(null)
+  /** Optional development (group of jobs) — a developments row id (v2.1199). */
+  const [developmentId, setDevelopmentId] = useState<string | null>(null)
+  const [developments, setDevelopments] = useState<JobFormDevelopmentRow[]>([])
   /** The linked bid's GC (bids.customer_id + name) — drives the picker's "Use bid's GC" chip. */
   const [linkedBidGc, setLinkedBidGc] = useState<{ id: string; name: string } | null>(null)
   const [projectId, setProjectId] = useState<string | null>(null)
@@ -628,6 +636,7 @@ export default function JobFormModal({
     customerEmail,
     customerPhone,
     gcCustomerId,
+    developmentId,
     googleDriveLink,
     jobPicturesLink,
     jobPlansLink,
@@ -642,6 +651,8 @@ export default function JobFormModal({
   projectsRef.current = projects
   const customersRef = useRef(customers)
   customersRef.current = customers
+  const developmentsRef = useRef(developments)
+  developmentsRef.current = developments
   const editingMasterUserIdRef = useRef<string | null>(null)
   editingMasterUserIdRef.current = editing?.master_user_id ?? null
   /** Last PERSISTED pictures link — drives the blank→set dispatch auto-close. */
@@ -684,6 +695,7 @@ export default function JobFormModal({
         existingJobMasterUserId: existingMaster,
         projectMasterUserId: proj?.master_user_id ?? null,
         customers: customersRef.current,
+        developments: developmentsRef.current,
       })
       const { error: updErr } = await supabase.from('jobs_ledger').update(payload).eq('id', jobId)
       if (updErr) throw updErr
@@ -852,6 +864,7 @@ export default function JobFormModal({
     setCustomerEmail(s.identity.customerEmail)
     setCustomerPhone(s.identity.customerPhone)
     setGcCustomerId(s.identity.gcCustomerId)
+    setDevelopmentId(s.identity.developmentId)
     setGoogleDriveLink(s.identity.googleDriveLink)
     setJobPicturesLink(s.identity.jobPicturesLink)
     setJobPlansLink(s.identity.jobPlansLink)
@@ -1299,6 +1312,7 @@ export default function JobFormModal({
     setCustomerPhone(job.customer_phone ?? '')
     setCustomerId(job.customer_id ?? null)
     setGcCustomerId(job.gc_customer_id ?? null)
+    setDevelopmentId(job.development_id ?? null)
     setLinkedBidGc(
       job.linkedBid?.customer_id && job.linkedBid.customers
         ? { id: job.linkedBid.customer_id, name: (job.linkedBid.customers.name ?? '').trim() || '—' }
@@ -1363,6 +1377,7 @@ export default function JobFormModal({
     setCustomerPhone('')
     setCustomerId(null)
     setGcCustomerId(null)
+    setDevelopmentId(null)
     setLinkedBidGc(null)
     setProjectId(projectPrefill)
     setBidId(null)
@@ -1640,6 +1655,7 @@ export default function JobFormModal({
           { data: bidData },
           { data: stData },
           { data: meRow },
+          { data: devData },
         ] = await Promise.all([
           supabase.from('customers').select('id, name, address, contact_info, date_met, master_user_id, customer_type, archived_at').order('name'),
           supabase.from('projects').select('id, name, customer_id, master_user_id, customers(name)').order('name'),
@@ -1656,11 +1672,13 @@ export default function JobFormModal({
             )
             .eq('id', authUser.id)
             .single(),
+          supabase.from('developments').select('id, name, master_user_id, archived_at').order('name'),
         ])
         if (cancelled) return
         const allServiceTypes = (stData as JobFormServiceType[] | null) ?? []
         setCustomers((custData as CustomerRow[]) ?? [])
         setProjects((projData as ProjectOption[]) ?? [])
+        setDevelopments((devData as JobFormDevelopmentRow[]) ?? [])
         setBids((bidData as JobBidLinkOption[]) ?? [])
         setServiceTypes(allServiceTypes)
         setMeServiceTypeColumns((meRow as MeServiceTypeColumns | null) ?? null)
@@ -2665,6 +2683,39 @@ export default function JobFormModal({
   }
 
   /**
+   * Inline "+ New development" from the Links section picker. Inserts a
+   * name-only developments row under the job's effective master, prepends it
+   * to the options, and returns the new id (null on failure — error toasted).
+   */
+  async function createDevelopmentFromPicker(rawName: string): Promise<string | null> {
+    if (!authUser?.id) return null
+    const check = validateNewDevelopmentName(rawName, developments)
+    if (!check.ok) {
+      showToast(check.error, 'error')
+      return null
+    }
+    try {
+      const masterId = editing?.master_user_id ?? (await resolveEffectiveJobMasterUserId(supabase, authUser.id, projectId || null))
+      const { data: inserted, error: insErr } = await supabase
+        .from('developments')
+        .insert({ master_user_id: masterId, name: check.name })
+        .select('id, name, master_user_id, archived_at')
+        .single()
+      if (insErr) throw insErr
+      const row = inserted as JobFormDevelopmentRow
+      setDevelopments((prev) => [row, ...prev])
+      showToast(`Development "${check.name}" created.`, 'success')
+      return row.id
+    } catch (devErr) {
+      showToast(
+        `Could not create development: ${devErr instanceof Error ? devErr.message : String(devErr)}`,
+        'error',
+      )
+      return null
+    }
+  }
+
+  /**
    * CREATE a job — New Job mode only. v2.1080 removed the edit-mode Save
    * button: every edit-mode write flows through the autosave slices, and the
    * paid→billed demote + customers.date_met backfill ride the close guard
@@ -2700,6 +2751,7 @@ export default function JobFormModal({
           job_address: jobAddress.trim(),
           customer_id: resolvedCustomerIdNew,
           gc_customer_id: resolveGcCustomerIdForJobPayload(gcCustomerId, effectiveMasterId, customers),
+          development_id: resolveDevelopmentIdForJobPayload(developmentId, effectiveMasterId, developments),
           customer_name: customerName.trim() || null,
           customer_email: customerEmail.trim() || null,
           customer_phone: customerPhone.trim() || null,
@@ -3031,6 +3083,10 @@ export default function JobFormModal({
               setLinkedBidSummary={setLinkedBidSummary}
               onOpenBidLinkChoice={() => setJobBidLinkChoiceOpen(true)}
               projectDisconnectRef={jobFormProjectDisconnectRef}
+              developmentId={developmentId}
+              setDevelopmentId={setDevelopmentId}
+              developments={developments}
+              onCreateDevelopment={createDevelopmentFromPicker}
             />
           </div>
           <hr style={{ margin: '0.75rem auto', border: 'none', borderTop: '1px solid var(--border-400)', width: '50%' }} />

@@ -11,6 +11,27 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1204',
+    date: '2026-08-01',
+    title: 'Filter and review the board by development',
+    kind: 'feature',
+    highlights: [
+      'Jobs → Stages gains a house-icon development dropdown next to the GC filter — every section and total follows it, and clicking a development name on any row filters right there.',
+      'GC Review can now group by development instead: outstanding totals per development, with printable statements.',
+    ],
+  },
+  {
+    version: 'v2.1203',
+    date: '2026-08-01',
+    title: 'Developments: group jobs like a subdivision',
+    kind: 'feature',
+    highlights: [
+      'Edit Job → the Project | Plans | Bid row gains a Development picker — pick a development or create one right there, and the job joins the group.',
+      'On Jobs → Stages and Job Detail, the development shows with a house icon next to the GC hard hat.',
+      'Search the Stages board by development name to see every job in it.',
+    ],
+  },
+  {
     version: 'v2.1202',
     date: '2026-08-01',
     title: 'Sub Labor sheets can belong to a project',

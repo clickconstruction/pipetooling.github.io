@@ -1,9 +1,11 @@
-import { useCallback, useRef } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import type { CSSProperties, Dispatch, MutableRefObject, SetStateAction } from 'react'
 import { Link } from 'react-router-dom'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useLedgerPrefixMap } from '../../contexts/LedgerDisplayPrefixContext'
 import { formatJobFormBidLinkTitle, type JobFormLinkedBidSummary } from '../../lib/jobs/jobFormBidLinkTitle'
+import { developmentPickerOptions, type JobFormDevelopmentRow } from '../../lib/jobs/jobDevelopments'
+import DevelopmentHouseIcon from '../icons/DevelopmentHouseIcon'
 
 const projectFilesPlansJumpLinkStyle: CSSProperties = {
   background: 'none',
@@ -59,16 +61,24 @@ type JobFormLinksSectionProps = {
   onOpenBidLinkChoice: () => void
   /** Shell-owned so the project-link modal's onLinked can focus it after linking. */
   projectDisconnectRef: MutableRefObject<HTMLButtonElement | null>
+  /** Development (group of jobs, v2.1199) — autosaves via the identity slice, like Plans. */
+  developmentId: string | null
+  setDevelopmentId: (v: string | null) => void
+  developments: JobFormDevelopmentRow[]
+  /** Inserts a name-only development; resolves the new id, or null on failure (shell toasts). */
+  onCreateDevelopment: (name: string) => Promise<string | null>
 }
 
 /**
- * The collapsible "Project | Plans | Bid" links section of the New/Edit Job
- * modal: jump-link row (scroll + focus into the expanded panel), Project
- * select-or-disconnect, Job Plans URL, and Bid proposal link-or-disconnect
- * (+ "Open cover letter"). Link/unlink here is staged — "Save the job to
- * apply" — in contrast to the customer block's immediate writes (map quirk
- * #19). The expanded flag stays shell state; everything else the section
- * touches is controlled form state.
+ * The collapsible "Project | Plans | Bid | Development" links section of the
+ * New/Edit Job modal: jump-link row (scroll + focus into the expanded panel),
+ * Project select-or-disconnect, Job Plans URL, Bid proposal link-or-disconnect
+ * (+ "Open cover letter"), and the Development picker (select + inline
+ * create). Project/Bid link/unlink here is staged — "Save the job to apply" —
+ * in contrast to the customer block's immediate writes (map quirk #19);
+ * Plans and Development ride the identity autosave slice instead. The
+ * expanded flag stays shell state; everything else the section touches is
+ * controlled form state.
  */
 export function JobFormLinksSection({
   expanded,
@@ -86,9 +96,16 @@ export function JobFormLinksSection({
   setLinkedBidSummary,
   onOpenBidLinkChoice,
   projectDisconnectRef,
+  developmentId,
+  setDevelopmentId,
+  developments,
+  onCreateDevelopment,
 }: JobFormLinksSectionProps) {
   const { showToast } = useToastContext()
   const prefixMap = useLedgerPrefixMap()
+  const [newDevelopmentOpen, setNewDevelopmentOpen] = useState(false)
+  const [newDevelopmentName, setNewDevelopmentName] = useState('')
+  const [creatingDevelopment, setCreatingDevelopment] = useState(false)
 
   const jobFormProjectSectionRef = useRef<HTMLDivElement | null>(null)
   const jobFormProjectSelectRef = useRef<HTMLSelectElement | null>(null)
@@ -97,6 +114,8 @@ export function JobFormLinksSection({
   const jobFormBidSectionRef = useRef<HTMLDivElement | null>(null)
   const jobFormBidDisconnectRef = useRef<HTMLButtonElement | null>(null)
   const jobFormBidLinkButtonRef = useRef<HTMLButtonElement | null>(null)
+  const jobFormDevelopmentSectionRef = useRef<HTMLDivElement | null>(null)
+  const jobFormDevelopmentSelectRef = useRef<HTMLSelectElement | null>(null)
 
   const scrollToProjectSection = useCallback(() => {
     setExpanded(true)
@@ -136,6 +155,31 @@ export function JobFormLinksSection({
     })
   }, [bidId, setExpanded])
 
+  const scrollToDevelopmentSection = useCallback(() => {
+    setExpanded(true)
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        jobFormDevelopmentSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+        jobFormDevelopmentSelectRef.current?.focus()
+      })
+    })
+  }, [setExpanded])
+
+  async function submitNewDevelopment() {
+    if (creatingDevelopment) return
+    setCreatingDevelopment(true)
+    try {
+      const newId = await onCreateDevelopment(newDevelopmentName)
+      if (newId) {
+        setDevelopmentId(newId)
+        setNewDevelopmentName('')
+        setNewDevelopmentOpen(false)
+      }
+    } finally {
+      setCreatingDevelopment(false)
+    }
+  }
+
   return (
     <div style={{ marginBottom: expanded ? '0.5rem' : 0 }}>
       <div
@@ -152,7 +196,7 @@ export function JobFormLinksSection({
           id="job-form-project-files-plans-trigger"
           aria-expanded={expanded}
           aria-controls="job-form-project-files-plans-panel"
-          aria-label="Expand or collapse project, plans, and bid"
+          aria-label="Expand or collapse project, plans, bid, and development"
           onClick={() => setExpanded((p) => !p)}
           style={{
             display: 'inline-flex',
@@ -221,12 +265,30 @@ export function JobFormLinksSection({
         ) : (
           <span style={projectFilesPlansPlainSegmentStyle}>Bid</span>
         )}
+        <span aria-hidden style={projectFilesPlansPipeStyle}>
+          {' | '}
+        </span>
+        {developmentId ? (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.preventDefault()
+              scrollToDevelopmentSection()
+            }}
+            style={projectFilesPlansJumpLinkStyle}
+            aria-label="Show development"
+          >
+            Development
+          </button>
+        ) : (
+          <span style={projectFilesPlansPlainSegmentStyle}>Development</span>
+        )}
       </div>
       {expanded && (
         <div
           id="job-form-project-files-plans-panel"
           role="region"
-          aria-label="Project, plans, and bid"
+          aria-label="Project, plans, bid, and development"
           style={{ paddingLeft: '1.25rem', borderLeft: '2px solid var(--border)' }}
         >
           <div ref={jobFormProjectSectionRef} style={{ marginBottom: '0.75rem' }}>
@@ -375,6 +437,110 @@ export function JobFormLinksSection({
                   Tie this job to a bid for quick access (optional)
                 </span>
               </>
+            )}
+          </div>
+          <div ref={jobFormDevelopmentSectionRef} style={{ marginBottom: '0.75rem' }}>
+            <label
+              htmlFor="job-form-development-select"
+              style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}
+            >
+              <DevelopmentHouseIcon size={13} style={{ flexShrink: 0 }} />
+              Development
+            </label>
+            <select
+              id="job-form-development-select"
+              ref={jobFormDevelopmentSelectRef}
+              value={developmentId ?? ''}
+              onChange={(e) => setDevelopmentId(e.target.value || null)}
+              style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem' }}
+            >
+              <option value="">None</option>
+              {developmentPickerOptions(developments, developmentId).map((d) => (
+                <option key={d.id} value={d.id}>
+                  {d.name}
+                </option>
+              ))}
+            </select>
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 4, display: 'block' }}>
+              Group this job with others in the same development for review
+            </span>
+            {newDevelopmentOpen ? (
+              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginTop: '0.5rem', flexWrap: 'wrap' }}>
+                <input
+                  type="text"
+                  value={newDevelopmentName}
+                  onChange={(e) => setNewDevelopmentName(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault()
+                      void submitNewDevelopment()
+                    }
+                    if (e.key === 'Escape') {
+                      e.stopPropagation()
+                      setNewDevelopmentOpen(false)
+                      setNewDevelopmentName('')
+                    }
+                  }}
+                  placeholder="Development name…"
+                  aria-label="New development name"
+                  autoFocus
+                  style={{ flex: '1 1 10rem', minWidth: '8rem', padding: '0.4rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem' }}
+                />
+                <button
+                  type="button"
+                  onClick={() => void submitNewDevelopment()}
+                  disabled={creatingDevelopment}
+                  style={{
+                    padding: '0.4rem 0.65rem',
+                    fontSize: '0.875rem',
+                    border: 'none',
+                    background: 'var(--bg-blue-tint)',
+                    color: 'var(--text-blue-700)',
+                    borderRadius: 4,
+                    cursor: creatingDevelopment ? 'default' : 'pointer',
+                    fontWeight: 500,
+                    opacity: creatingDevelopment ? 0.6 : 1,
+                  }}
+                >
+                  {creatingDevelopment ? 'Creating…' : 'Create'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setNewDevelopmentOpen(false)
+                    setNewDevelopmentName('')
+                  }}
+                  style={{
+                    padding: '0.4rem 0.65rem',
+                    fontSize: '0.875rem',
+                    border: '1px solid var(--border-strong)',
+                    background: 'var(--bg-subtle)',
+                    borderRadius: 4,
+                    cursor: 'pointer',
+                    color: 'var(--text-700)',
+                  }}
+                >
+                  Cancel
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setNewDevelopmentOpen(true)}
+                style={{
+                  marginTop: '0.5rem',
+                  padding: '0.25rem 0.5rem',
+                  fontSize: '0.8125rem',
+                  border: '1px dashed var(--border-strong)',
+                  background: 'none',
+                  borderRadius: 4,
+                  cursor: 'pointer',
+                  color: 'var(--text-link)',
+                  fontWeight: 500,
+                }}
+              >
+                + New development
+              </button>
             )}
           </div>
         </div>

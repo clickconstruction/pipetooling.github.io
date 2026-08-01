@@ -12,11 +12,17 @@ import { formatCurrency, formatPrintDaysSince } from '../jobs/jobFormatting'
 const escapeHtml = (s: string) =>
   (s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 
-export function buildGcStatementReportHtml(groups: GcReviewGroup[], opts?: { dateStr?: string }): string {
+export function buildGcStatementReportHtml(
+  groups: GcReviewGroup[],
+  opts?: { dateStr?: string; groupBy?: 'gc' | 'development' },
+): string {
   const dateStr = opts?.dateStr ?? new Date().toLocaleDateString()
   const single = groups.length === 1 ? groups[0] : null
+  const entityLabel = opts?.groupBy === 'development' ? 'Development' : 'GC'
   const title = escapeHtml(
-    single ? `GC statement — ${single.gcName} — ${dateStr}` : `GC Review — billed awaiting payment — ${dateStr}`,
+    single
+      ? `${entityLabel} statement — ${single.gcName} — ${dateStr}`
+      : `${entityLabel} Review — billed awaiting payment — ${dateStr}`,
   )
   const grandTotal = groups.reduce((s, g) => s + g.subtotal, 0)
 

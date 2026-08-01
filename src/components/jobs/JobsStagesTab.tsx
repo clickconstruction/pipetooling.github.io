@@ -19,6 +19,7 @@ import { formatCurrency, formatCurrencyAbbrevTruncated, formatCurrencyNoCents, f
 import { JobsGcReviewModal } from './JobsGcReviewModal'
 import { buildGcStatementReportHtml } from '../../lib/jobsDocuments/gcStatementReport'
 import GcHardHatIcon from '../icons/GcHardHatIcon'
+import DevelopmentHouseIcon from '../icons/DevelopmentHouseIcon'
 import {
   buildBilledAgingBuckets,
   sortStageRowsForTotalByNameDetail,
@@ -81,6 +82,9 @@ import {
   filterJobsByGcCustomer,
   gcFilterOptionsFromJobs,
   STAGES_GC_FILTER_NO_GC,
+  developmentFilterOptionsFromJobs,
+  filterJobsByDevelopment,
+  STAGES_DEVELOPMENT_FILTER_NONE,
   clampPartialInvoiceCentsToUnallocated,
   jobBillingUnallocatedDollars,
   locateStagesInvoiceSection,
@@ -557,14 +561,17 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   /** Stages GC filter (v2.1183): '' = all, STAGES_GC_FILTER_NO_GC = jobs without a GC, else gc customer id. */
   const [stagesGcFilter, setStagesGcFilter] = useState('')
   const stagesGcFilterOptions = useMemo(() => gcFilterOptionsFromJobs(jobs), [jobs])
+  /** Stages development filter: '' = all, STAGES_DEVELOPMENT_FILTER_NONE = jobs without one, else development id. */
+  const [stagesDevelopmentFilter, setStagesDevelopmentFilter] = useState('')
+  const stagesDevelopmentFilterOptions = useMemo(() => developmentFilterOptionsFromJobs(jobs), [jobs])
   const stagesBoardLists = useMemo(
     () =>
       buildJobsStagesBoardLists(
-        filterJobsByGcCustomer(jobs, stagesGcFilter || null),
+        filterJobsByDevelopment(filterJobsByGcCustomer(jobs, stagesGcFilter || null), stagesDevelopmentFilter || null),
         stagesSearchQuery,
         stagesSearchExtraJobIds,
       ),
-    [jobs, stagesGcFilter, stagesSearchQuery, stagesSearchExtraJobIds],
+    [jobs, stagesGcFilter, stagesDevelopmentFilter, stagesSearchQuery, stagesSearchExtraJobIds],
   )
 
   /** #3 of the billing-email guardrails: soft heads-up the moment a job is marked Ready to Bill. */
@@ -1264,6 +1271,36 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                   </select>
                 </span>
               ) : null}
+              {stagesDevelopmentFilterOptions.length > 0 ? (
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', flexShrink: 0 }}>
+                  <DevelopmentHouseIcon size={13} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
+                  <select
+                    value={stagesDevelopmentFilter}
+                    onChange={(e) => setStagesDevelopmentFilter(e.target.value)}
+                    aria-label="Filter the Stages board by development"
+                    title="Filter the Stages board by development"
+                    style={{
+                      padding: '0.35rem 0.25rem',
+                      border: 'none',
+                      borderRadius: 8,
+                      background: stagesDevelopmentFilter ? 'var(--bg-blue-tint)' : 'transparent',
+                      color: stagesDevelopmentFilter ? 'var(--text-link)' : 'var(--text-muted)',
+                      fontSize: '0.875rem',
+                      maxWidth: 'clamp(4.5rem, 22vw, 10rem)',
+                      textOverflow: 'ellipsis',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    <option value="">All developments</option>
+                    {stagesDevelopmentFilterOptions.map((o) => (
+                      <option key={o.id} value={o.id}>
+                        {o.name}
+                      </option>
+                    ))}
+                    <option value={STAGES_DEVELOPMENT_FILTER_NONE}>No development set</option>
+                  </select>
+                </span>
+              ) : null}
               <span aria-hidden style={{ flexShrink: 0, width: 1, height: '1.25rem', background: 'var(--border)' }} />
               <div style={{ position: 'relative', flexShrink: 0 }}>
               <button
@@ -1776,6 +1813,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     setScheduleModalJob={setScheduleModalJob}
                     authRole={authRole}
                     loadJobs={loadJobs}
+                    onDevelopmentFilter={setStagesDevelopmentFilter}
                   />
                 )}
 
@@ -1863,6 +1901,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     setScheduleModalJob={setScheduleModalJob}
                     authRole={authRole}
                     loadJobs={loadJobs}
+                    onDevelopmentFilter={setStagesDevelopmentFilter}
                   />
                 )}
 
@@ -1998,6 +2037,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     setScheduleModalJob={setScheduleModalJob}
                     authRole={authRole}
                     loadJobs={loadJobs}
+                    onDevelopmentFilter={setStagesDevelopmentFilter}
                     stagesInvoiceUpdatingId={stagesInvoiceUpdatingId}
                     invoiceEstimatedBillDateSavingId={invoiceEstimatedBillDateSavingId}
                     bumpInvoiceEstimatedBillDate={bumpInvoiceEstimatedBillDate}
@@ -2249,6 +2289,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     setScheduleModalJob={setScheduleModalJob}
                     authRole={authRole}
                     loadJobs={loadJobs}
+                    onDevelopmentFilter={setStagesDevelopmentFilter}
                     stagesInvoiceUpdatingId={stagesInvoiceUpdatingId}
                     invoiceEstimatedBillDateSavingId={invoiceEstimatedBillDateSavingId}
                     bumpInvoiceEstimatedBillDate={bumpInvoiceEstimatedBillDate}
@@ -2348,6 +2389,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     setScheduleModalJob={setScheduleModalJob}
                     authRole={authRole}
                     loadJobs={loadJobs}
+                    onDevelopmentFilter={setStagesDevelopmentFilter}
                     stagesInvoiceUpdatingId={stagesInvoiceUpdatingId}
                     invoiceEstimatedBillDateSavingId={invoiceEstimatedBillDateSavingId}
                     bumpInvoiceEstimatedBillDate={bumpInvoiceEstimatedBillDate}
@@ -2487,6 +2529,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                       setScheduleModalJob={setScheduleModalJob}
                       authRole={authRole}
                       loadJobs={loadJobs}
+                    onDevelopmentFilter={setStagesDevelopmentFilter}
                     />
                   </>
                 ) : null}
@@ -2496,8 +2539,8 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                   onClose={() => setGcReviewModalOpen(false)}
                   billedActiveRows={billedActiveRows}
                   collectionsRows={collectionsRows}
-                  onPrint={(groups) => {
-                    if (!openHtmlPrintWindow(buildGcStatementReportHtml(groups))) {
+                  onPrint={(groups, groupBy) => {
+                    if (!openHtmlPrintWindow(buildGcStatementReportHtml(groups, { groupBy }))) {
                       showToast('Allow pop-ups to print the report.', 'error')
                     }
                   }}

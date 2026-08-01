@@ -111,6 +111,7 @@ export type JobsStagesTableProps = {
   setScheduleModalJob: StagesRowRenderContext['setScheduleModalJob']
   authRole: StagesRowRenderContext['authRole']
   loadJobs: StagesRowRenderContext['loadJobs']
+  onDevelopmentFilter?: StagesRowRenderContext['onDevelopmentFilter']
 }
 
 export default function JobsStagesTable(props: JobsStagesTableProps) {
@@ -174,6 +175,7 @@ export default function JobsStagesTable(props: JobsStagesTableProps) {
     setScheduleModalJob,
     authRole,
     loadJobs,
+    onDevelopmentFilter,
   } = props
   const navigate = useNavigate()
   const dispatchTaskModal = useDispatchTaskModal()
@@ -201,6 +203,7 @@ export default function JobsStagesTable(props: JobsStagesTableProps) {
     dispatchTaskModal,
     checklistAddModal,
     loadJobs,
+    onDevelopmentFilter,
   }
   const renderStagesFieldAndBillingLines = (job: JobWithDetails) =>
     renderStagesFieldAndBillingLinesWithCtx(stagesRowSharedCtx, job)

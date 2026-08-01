@@ -2724,6 +2724,57 @@ export type Database = {
           },
         ]
       }
+      developments: {
+        Row: {
+          archived_at: string | null
+          city: string | null
+          created_at: string
+          gc_customer_id: string | null
+          id: string
+          master_user_id: string
+          name: string
+          notes: string | null
+          updated_at: string
+        }
+        Insert: {
+          archived_at?: string | null
+          city?: string | null
+          created_at?: string
+          gc_customer_id?: string | null
+          id?: string
+          master_user_id: string
+          name: string
+          notes?: string | null
+          updated_at?: string
+        }
+        Update: {
+          archived_at?: string | null
+          city?: string | null
+          created_at?: string
+          gc_customer_id?: string | null
+          id?: string
+          master_user_id?: string
+          name?: string
+          notes?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "developments_gc_customer_id_fkey"
+            columns: ["gc_customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "developments_master_user_id_fkey"
+            columns: ["master_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       dispatch_request_notes: {
         Row: {
           author_user_id: string
@@ -4332,6 +4383,7 @@ export type Database = {
           created_at: string | null
           customer_email: string | null
           customer_id: string | null
+          development_id: string | null
           gc_customer_id: string | null
           customer_name: string | null
           customer_phone: string | null
@@ -4365,6 +4417,7 @@ export type Database = {
           created_at?: string | null
           customer_email?: string | null
           customer_id?: string | null
+          development_id?: string | null
           gc_customer_id?: string | null
           customer_name?: string | null
           customer_phone?: string | null
@@ -4398,6 +4451,7 @@ export type Database = {
           created_at?: string | null
           customer_email?: string | null
           customer_id?: string | null
+          development_id?: string | null
           gc_customer_id?: string | null
           customer_name?: string | null
           customer_phone?: string | null
@@ -4439,6 +4493,13 @@ export type Database = {
             columns: ["customer_id"]
             isOneToOne: false
             referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "jobs_ledger_development_id_fkey"
+            columns: ["development_id"]
+            isOneToOne: false
+            referencedRelation: "developments"
             referencedColumns: ["id"]
           },
           {
