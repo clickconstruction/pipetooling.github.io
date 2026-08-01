@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1226',
+    date: '2026-08-01',
+    title: 'A "start here" guide for every role',
+    kind: 'feature',
+    highlights: [
+      'New day-one guides for masters, the office, superintendents, estimators, primaries, and subs \u2014 what your screen is for and what to do first.',
+      'The supervisor guides spell out what each role below you can and cannot see, so you can answer "where do I click?" without guessing.',
+    ],
+  },
+  {
     version: 'v2.1225',
     date: '2026-08-01',
     title: 'Fixed: Sub Labor lists went empty for a couple of hours',

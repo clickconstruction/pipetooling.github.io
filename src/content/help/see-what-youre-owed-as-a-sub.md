@@ -1,6 +1,6 @@
 ---
 title: see what you're owed as a sub
-category: Field
+category: Field Work
 roles: subcontractor, helpers
 keywords: sub, money, balance, owed, payments, backcharge, work order, sheet
 order: 79
