@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-01 (v2.1238)
+last_updated: 2026-08-01 (v2.1239)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1239)
+
+### Edit Job — phone footer: status line above one deliberate button row (2026-08-01)
+On phones the Edit Job footer's `space-between` flex-wrap broke arbitrarily — Delete stranded on its own line, with Undo changes / status / Close ragging underneath. The footer in [`JobFormModal.tsx`](../src/components/jobs/JobFormModal.tsx) is now an IIFE composing shared pieces (delete / undo button / undo-confirm cluster / required list / `aria-live` status span / close button) into two layouts: **desktop keeps today's two-cluster row unchanged**, while **narrow edit mode** (`useNarrowViewport640`) stacks a full-width centered status line — which matters because that line isn't always "All changes saved": the long error ("Autosave failed — edit the field again to retry") and blocked states wrap gracefully when they own the line — over one deliberate row: `[Delete] [Undo] [Close]`, with Delete keeping its red-tinted weight, "Undo changes" shortening to "Undo", and Close stretching (`flex: 1`, weight 500) into the biggest tap target. The undo-confirm cluster ("Revert everything since opening? Revert / Keep") renders as its own centered wrap-friendly line between the status and the buttons while open (the Undo button hides meanwhile), and the Required-fields list centers above everything. Create mode (Cancel / Create Job) is untouched on all widths. No behavior changes — same handlers, same disabled/`closeFlushState` logic, same `aria-live`. Verified: `tsc -b` clean, zero new lints, full vitest suite green. Files: modified [`src/components/jobs/JobFormModal.tsx`](../src/components/jobs/JobFormModal.tsx). No DB / migration / RLS / RPC / Edge / type-gen changes.
 
 ## Latest Updates (v2.1238)
 

@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1239',
+    date: '2026-08-01',
+    title: 'Edit Job: a tidy footer on phones',
+    kind: 'fix',
+    highlights: [
+      'The bottom of Edit Job no longer scatters across ragged lines on a phone — the save status sits centered on its own line, with Delete, Undo, and a wide Close in one row beneath it.',
+    ],
+  },
+  {
     version: 'v2.1238',
     date: '2026-08-01',
     title: 'Teams Inbox: tidy one-line section headers on phones',

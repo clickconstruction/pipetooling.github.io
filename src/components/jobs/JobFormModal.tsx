@@ -8,6 +8,7 @@ import {
   useState,
 } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useNarrowViewport640 } from '../../hooks/useNarrowViewport640'
 import { buildServiceTypeTradePill } from '../../lib/serviceTypeTradePill'
 import { JOB_FORM_SECTION_HEADER_STYLE } from '../../lib/jobFormSectionHeaderStyle'
 import { supabase } from '../../lib/supabase'
@@ -216,6 +217,8 @@ export default function JobFormModal({
   const { user: authUser, role: authRole } = useAuth()
   const { showToast } = useToastContext()
   const navigate = useNavigate()
+  /** Phone footer layout (v2.1239): status line above one deliberate button row. */
+  const narrowViewport = useNarrowViewport640()
   const prefixMap = useLedgerPrefixMap()
   const { incidents: hazmatIncidents, hazmatInvoiceIds, refresh: refreshHazmatIncidents } = useJobHazmatIncidents(editJobId)
   const billCustomer = useBillCustomerModal()
@@ -3367,98 +3370,107 @@ export default function JobFormModal({
             </span>
           </div>
         )}
-        <div
-          style={{
-            display: 'flex',
-            marginTop: '1.25rem',
-            flexWrap: 'wrap',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: '0.75rem',
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-            {editing && authRole !== 'primary' && (
-              <>
-                <button
-                  type="button"
-                  onClick={() => setDeleteJobConfirmOpen(true)}
-                  disabled={deletingId === editing?.id || migratingJob}
-                  style={{
-                    padding: '0.5rem 1rem',
-                    background:
-                      deletingId === editing?.id || migratingJob ? 'var(--bg-muted)' : 'var(--bg-red-100)',
-                    color: deletingId === editing?.id || migratingJob ? 'var(--text-faint)' : 'var(--text-red-700)',
-                    border: 'none',
-                    borderRadius: 4,
-                    cursor: deletingId === editing?.id || migratingJob ? 'not-allowed' : 'pointer',
-                  }}
-                >
-                  {deletingId === editing?.id ? 'Deleting…' : 'Delete'}
-                </button>
-              </>
-            )}
-          </div>
-          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
-            {editing &&
-              (undoConfirmOpen ? (
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8rem' }}>
-                  <span style={{ color: 'var(--text-muted)' }}>Revert everything since opening?</span>
-                  <button
-                    type="button"
-                    onClick={performUndo}
-                    style={{
-                      padding: '0.3rem 0.7rem',
-                      background: 'var(--bg-red-100)',
-                      color: 'var(--text-red-700)',
-                      border: '1px solid var(--border-red)',
-                      borderRadius: 4,
-                      cursor: 'pointer',
-                      fontSize: '0.8rem',
-                    }}
-                  >
-                    Revert
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setUndoConfirmOpen(false)}
-                    style={{
-                      padding: '0.3rem 0.7rem',
-                      background: 'var(--bg-200)',
-                      color: 'var(--text-700)',
-                      border: 'none',
-                      borderRadius: 4,
-                      cursor: 'pointer',
-                      fontSize: '0.8rem',
-                    }}
-                  >
-                    Keep
-                  </button>
-                </span>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => setUndoConfirmOpen(true)}
-                  disabled={!undoAvailable}
-                  title={
-                    undoAvailable
-                      ? 'Revert every change made since this modal was opened (or since the last invoice was created/deleted)'
-                      : 'Nothing to undo'
-                  }
-                  style={{
-                    padding: '0.5rem 1rem',
-                    background: 'transparent',
-                    color: undoAvailable ? 'var(--text-700)' : 'var(--text-faint)',
-                    border: '1px solid var(--border)',
-                    borderRadius: 4,
-                    cursor: undoAvailable ? 'pointer' : 'not-allowed',
-                  }}
-                >
-                  Undo changes
-                </button>
-              ))}
-            {!jobFormCanSubmit && !saving && jobFormMissingFields.length > 0 && (
-              <span style={{ fontSize: '0.8rem', color: '#FF6600', display: 'inline-block' }}>
+        {(() => {
+          // Footer pieces shared by both layouts (v2.1239): desktop keeps the
+          // two-cluster space-between row; phone edit mode stacks a full-width
+          // centered status line over one deliberate [Delete][Undo][Close] row.
+          const narrowEditFooter = editing && narrowViewport
+          const deleteButton =
+            editing && authRole !== 'primary' ? (
+              <button
+                type="button"
+                onClick={() => setDeleteJobConfirmOpen(true)}
+                disabled={deletingId === editing?.id || migratingJob}
+                style={{
+                  padding: '0.5rem 1rem',
+                  flexShrink: 0,
+                  background:
+                    deletingId === editing?.id || migratingJob ? 'var(--bg-muted)' : 'var(--bg-red-100)',
+                  color: deletingId === editing?.id || migratingJob ? 'var(--text-faint)' : 'var(--text-red-700)',
+                  border: 'none',
+                  borderRadius: 4,
+                  cursor: deletingId === editing?.id || migratingJob ? 'not-allowed' : 'pointer',
+                }}
+              >
+                {deletingId === editing?.id ? 'Deleting…' : 'Delete'}
+              </button>
+            ) : null
+          const undoConfirmCluster = (
+            <span
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.4rem',
+                fontSize: '0.8rem',
+                ...(narrowEditFooter ? { justifyContent: 'center', flexWrap: 'wrap' as const } : {}),
+              }}
+            >
+              <span style={{ color: 'var(--text-muted)' }}>Revert everything since opening?</span>
+              <button
+                type="button"
+                onClick={performUndo}
+                style={{
+                  padding: '0.3rem 0.7rem',
+                  background: 'var(--bg-red-100)',
+                  color: 'var(--text-red-700)',
+                  border: '1px solid var(--border-red)',
+                  borderRadius: 4,
+                  cursor: 'pointer',
+                  fontSize: '0.8rem',
+                }}
+              >
+                Revert
+              </button>
+              <button
+                type="button"
+                onClick={() => setUndoConfirmOpen(false)}
+                style={{
+                  padding: '0.3rem 0.7rem',
+                  background: 'var(--bg-200)',
+                  color: 'var(--text-700)',
+                  border: 'none',
+                  borderRadius: 4,
+                  cursor: 'pointer',
+                  fontSize: '0.8rem',
+                }}
+              >
+                Keep
+              </button>
+            </span>
+          )
+          const undoButton = (
+            <button
+              type="button"
+              onClick={() => setUndoConfirmOpen(true)}
+              disabled={!undoAvailable}
+              title={
+                undoAvailable
+                  ? 'Revert every change made since this modal was opened (or since the last invoice was created/deleted)'
+                  : 'Nothing to undo'
+              }
+              style={{
+                padding: '0.5rem 1rem',
+                flexShrink: 0,
+                background: 'transparent',
+                color: undoAvailable ? 'var(--text-700)' : 'var(--text-faint)',
+                border: '1px solid var(--border)',
+                borderRadius: 4,
+                cursor: undoAvailable ? 'pointer' : 'not-allowed',
+              }}
+            >
+              {narrowEditFooter ? 'Undo' : 'Undo changes'}
+            </button>
+          )
+          const requiredList =
+            !jobFormCanSubmit && !saving && jobFormMissingFields.length > 0 ? (
+              <span
+                style={{
+                  fontSize: '0.8rem',
+                  color: '#FF6600',
+                  display: 'inline-block',
+                  ...(narrowEditFooter ? { textAlign: 'center' as const } : {}),
+                }}
+              >
                 <span style={{ display: 'block' }}>Required:</span>
                 {jobFormMissingFields.map((f) => (
                   <span key={f} style={{ display: 'block', marginLeft: '0.25em' }}>
@@ -3466,88 +3478,113 @@ export default function JobFormModal({
                   </span>
                 ))}
               </span>
-            )}
-            {/* Edit mode ends [status → Close] so Close anchors the corner (v2.1235);
-                create mode keeps the conventional [Cancel → Create Job]. */}
-            {editing ? (
-              <>
-                <span
-                  aria-live="polite"
-                  style={{
-                    fontSize: '0.8rem',
-                    fontWeight: 500,
-                    color:
-                      editAutosaveAggregate === 'error'
-                        ? 'var(--text-red-600)'
-                        : editAutosaveAggregate === 'saved'
-                          ? 'var(--text-green-600)'
-                          : 'var(--text-muted)',
-                  }}
-                >
-                  {editAutosaveAggregate === 'saving'
-                    ? 'Saving…'
-                    : editAutosaveAggregate === 'error'
-                      ? 'Autosave failed — edit the field again to retry'
-                      : editAutosaveAggregate === 'blocked'
-                        ? 'Waiting on required fields'
-                        : editAutosaveAggregate === 'pending'
-                          ? 'Unsaved changes…'
-                          : 'All changes saved'}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => void closeForm()}
-                  disabled={closeFlushState === 'saving'}
-                  style={{
-                    padding: '0.5rem 1rem',
-                    background: 'var(--bg-200)',
-                    color: closeFlushState === 'saving' ? 'var(--text-faint)' : 'var(--text-700)',
-                    border: 'none',
-                    borderRadius: 4,
-                    cursor: closeFlushState === 'saving' ? 'wait' : 'pointer',
-                  }}
-                >
-                  {closeFlushState === 'saving' ? 'Saving…' : 'Close'}
-                </button>
-              </>
-            ) : (
-              <>
-                <button
-                  type="button"
-                  onClick={() => void closeForm()}
-                  disabled={closeFlushState === 'saving'}
-                  style={{
-                    padding: '0.5rem 1rem',
-                    background: 'var(--bg-200)',
-                    color: closeFlushState === 'saving' ? 'var(--text-faint)' : 'var(--text-700)',
-                    border: 'none',
-                    borderRadius: 4,
-                    cursor: closeFlushState === 'saving' ? 'wait' : 'pointer',
-                  }}
-                >
-                  {closeFlushState === 'saving' ? 'Saving…' : 'Cancel'}
-                </button>
-                <button
-                  type="button"
-                  onClick={createJob}
-                  disabled={!jobFormCanSubmit || saving}
-                  title={!jobFormCanSubmit ? `Required: ${jobFormMissingFields.join(', ')}` : undefined}
-                  style={{
-                    padding: '0.5rem 1rem',
-                    background: '#3b82f6',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: 4,
-                    cursor: jobFormCanSubmit && !saving ? 'pointer' : 'not-allowed',
-                    fontWeight: 500,
-                  }}
-                >
-                  {saving ? 'Creating…' : 'Create Job'}
-                </button>
-              </>
-            )}
-          </div>
-        </div>
+            ) : null
+          const statusSpan = (
+            <span
+              aria-live="polite"
+              style={{
+                fontSize: '0.8rem',
+                fontWeight: 500,
+                ...(narrowEditFooter ? { textAlign: 'center' as const } : {}),
+                color:
+                  editAutosaveAggregate === 'error'
+                    ? 'var(--text-red-600)'
+                    : editAutosaveAggregate === 'saved'
+                      ? 'var(--text-green-600)'
+                      : 'var(--text-muted)',
+              }}
+            >
+              {editAutosaveAggregate === 'saving'
+                ? 'Saving…'
+                : editAutosaveAggregate === 'error'
+                  ? 'Autosave failed — edit the field again to retry'
+                  : editAutosaveAggregate === 'blocked'
+                    ? 'Waiting on required fields'
+                    : editAutosaveAggregate === 'pending'
+                      ? 'Unsaved changes…'
+                      : 'All changes saved'}
+            </span>
+          )
+          const closeButton = (
+            <button
+              type="button"
+              onClick={() => void closeForm()}
+              disabled={closeFlushState === 'saving'}
+              style={{
+                padding: '0.5rem 1rem',
+                ...(narrowEditFooter ? { flex: 1, fontWeight: 500 } : {}),
+                background: 'var(--bg-200)',
+                color: closeFlushState === 'saving' ? 'var(--text-faint)' : 'var(--text-700)',
+                border: 'none',
+                borderRadius: 4,
+                cursor: closeFlushState === 'saving' ? 'wait' : 'pointer',
+              }}
+            >
+              {closeFlushState === 'saving' ? 'Saving…' : editing ? 'Close' : 'Cancel'}
+            </button>
+          )
+          if (narrowEditFooter) {
+            return (
+              <div style={{ marginTop: '1.25rem', display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+                {requiredList}
+                {statusSpan}
+                {undoConfirmOpen ? undoConfirmCluster : null}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  {deleteButton}
+                  {!undoConfirmOpen ? undoButton : null}
+                  {closeButton}
+                </div>
+              </div>
+            )
+          }
+          return (
+            <div
+              style={{
+                display: 'flex',
+                marginTop: '1.25rem',
+                flexWrap: 'wrap',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: '0.75rem',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>{deleteButton}</div>
+              <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                {editing ? (undoConfirmOpen ? undoConfirmCluster : undoButton) : null}
+                {requiredList}
+                {/* Edit mode ends [status → Close] so Close anchors the corner (v2.1235);
+                    create mode keeps the conventional [Cancel → Create Job]. */}
+                {editing ? (
+                  <>
+                    {statusSpan}
+                    {closeButton}
+                  </>
+                ) : (
+                  <>
+                    {closeButton}
+                    <button
+                      type="button"
+                      onClick={createJob}
+                      disabled={!jobFormCanSubmit || saving}
+                      title={!jobFormCanSubmit ? `Required: ${jobFormMissingFields.join(', ')}` : undefined}
+                      style={{
+                        padding: '0.5rem 1rem',
+                        background: '#3b82f6',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: 4,
+                        cursor: jobFormCanSubmit && !saving ? 'pointer' : 'not-allowed',
+                        fontWeight: 500,
+                      }}
+                    >
+                      {saving ? 'Creating…' : 'Create Job'}
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+          )
+        })()}
       </div>
       {paymentRemoveConfirmRowId && (
         <div
