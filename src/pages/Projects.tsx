@@ -83,7 +83,7 @@ export default function Projects() {
   const [myRole, setMyRole] = useState<UserRole | null>(null)
   const [projects, setProjects] = useState<ProjectWithCustomer[]>([])
   const [workflowsRaw, setWorkflowsRaw] = useState<WorkflowRow[]>([])
-  const [moneyByProject, setMoneyByProject] = useState<Record<string, { projected: number; spent: number }>>({})
+  const [moneyByProject, setMoneyByProject] = useState<Record<string, { projected: number; spent: number; committed: number }>>({})
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [customerName, setCustomerName] = useState<string | null>(null)
@@ -305,21 +305,26 @@ export default function Projects() {
         const workflowIds = workflowRows.map((w) => w.id)
         if (workflowIds.length > 0) {
           const projectIdByWorkflowId = new Map(workflowRows.map((w) => [w.id, w.project_id]))
-          const [projectionsRes, lineItemsRes] = await Promise.all([
+          const [projectionsRes, lineItemsRes, commitmentsRes] = await Promise.all([
             supabase.from('workflow_projections').select('workflow_id, amount').in('workflow_id', workflowIds),
             supabase
               .from('workflow_step_line_items')
               .select('amount, project_workflow_steps!inner(workflow_id)')
               .in('project_workflow_steps.workflow_id', workflowIds),
+            // Fail-soft until the step_commitments migration is pushed.
+            supabase
+              .from('step_commitments')
+              .select('amount, status, project_workflow_steps!inner(workflow_id)')
+              .in('project_workflow_steps.workflow_id', workflowIds),
           ])
           if (cancelled) return
-          const money: Record<string, { projected: number; spent: number }> = {}
-          const bump = (workflowId: string | null | undefined, key: 'projected' | 'spent', amount: unknown) => {
+          const money: Record<string, { projected: number; spent: number; committed: number }> = {}
+          const bump = (workflowId: string | null | undefined, key: 'projected' | 'spent' | 'committed', amount: unknown) => {
             const projectId = workflowId ? projectIdByWorkflowId.get(workflowId) : undefined
             if (!projectId) return
             const n = Number(amount)
             if (!Number.isFinite(n)) return
-            const entry = money[projectId] ?? { projected: 0, spent: 0 }
+            const entry = money[projectId] ?? { projected: 0, spent: 0, committed: 0 }
             entry[key] += n
             money[projectId] = entry
           }
@@ -329,6 +334,14 @@ export default function Projects() {
           for (const row of (lineItemsRes.data ?? []) as Array<{ amount: unknown; project_workflow_steps: { workflow_id: string } | { workflow_id: string }[] | null }>) {
             const joined = Array.isArray(row.project_workflow_steps) ? row.project_workflow_steps[0] : row.project_workflow_steps
             bump(joined?.workflow_id, 'spent', row.amount)
+          }
+          if (!commitmentsRes.error) {
+            const COMMITTED_STATUSES = new Set(['offered', 'accepted', 'approved', 'settled'])
+            for (const row of (commitmentsRes.data ?? []) as Array<{ amount: unknown; status: string; project_workflow_steps: { workflow_id: string } | { workflow_id: string }[] | null }>) {
+              if (!COMMITTED_STATUSES.has(row.status)) continue
+              const joined = Array.isArray(row.project_workflow_steps) ? row.project_workflow_steps[0] : row.project_workflow_steps
+              bump(joined?.workflow_id, 'committed', row.amount)
+            }
           }
           setMoneyByProject(money)
         } else {
@@ -702,7 +715,7 @@ export default function Projects() {
                 )}
                 {(myRole === 'dev' || myRole === 'master_technician') &&
                   moneyByProject[p.id] &&
-                  (moneyByProject[p.id]!.projected !== 0 || moneyByProject[p.id]!.spent !== 0) && (
+                  (moneyByProject[p.id]!.projected !== 0 || moneyByProject[p.id]!.spent !== 0 || moneyByProject[p.id]!.committed !== 0) && (
                     <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: 6, display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
                       <span>
                         Projected{' '}
@@ -710,6 +723,14 @@ export default function Projects() {
                           ${moneyByProject[p.id]!.projected.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </strong>
                       </span>
+                      {moneyByProject[p.id]!.committed !== 0 && (
+                        <span>
+                          Committed{' '}
+                          <strong style={{ color: 'var(--text-strong)', fontVariantNumeric: 'tabular-nums' }}>
+                            ${moneyByProject[p.id]!.committed.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </strong>
+                        </span>
+                      )}
                       <span>
                         Spent{' '}
                         <strong style={{ color: 'var(--text-strong)', fontVariantNumeric: 'tabular-nums' }}>

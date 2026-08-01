@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-01 (v2.1208)
+last_updated: 2026-08-01 (v2.1209)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1209)
+
+### Step cards gain the Sub work-order panel (2026-08-01)
+RUN_SUBS_PLAN Phase 2, PR 2.2 — Option B of the approved mockups; **first component in `src/components/workflow/`** ([`StepCommitmentPanel.tsx`](../src/components/workflow/StepCommitmentPanel.tsx)). Every expanded step card (`canManageStages`) shows the step's work orders: sub chip + agreed amount (+retainage note), the **merged rail** (Offered · Accepted · In progress · Complete · Approved · Settled — money states from the commitment, the middle two from the STEP's own status: one source of truth each), balance figures (Paid to date / Backcharges / Balance / Retainage held) read live from the linked sub sheet's payments, and the transitions — **+ Add** (roster picker, people-sourced person_id entries only), **Offer**, **Mark accepted** (the only action superintendents get, per plan decision 4), **Cancel**. New pure kernel [`stepCommitments.ts`](../src/lib/workflow/stepCommitments.ts) (`commitmentRail` / `commitmentBalance` / `nextCommitmentActions`, 7 tests). Loader piggybacks the line-items effect and is **fail-soft** (select error → panel shows empty states) so client and the 2.1 migration deploy in either order. The Projects money strip gains its **Committed** figure (Σ non-draft live commitments via the steps inner join, fail-soft). Settlement + draws land in PR 2.3. Guide `pay-a-sub-per-step`. Verified live on the branch server (panel renders on the in-progress test step). Client-only — **push the 2.1 migration before or right after merge**.
 
 ## Latest Updates (v2.1208)
 
