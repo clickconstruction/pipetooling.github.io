@@ -110,6 +110,22 @@ GRANT ALL ON FUNCTION public.respond_to_work_order(uuid, boolean, text) TO servi
 
 -- ── (3) notification templates (idempotent seeds) ───────────────────────
 
+-- email_templates.template_type carries a CHECK whitelist (the original
+-- eleven types) — widen it first or the seeds below violate it. (Caught on
+-- the first push attempt: this migration merged but never applied, so an
+-- in-place fix is drift-safe.)
+ALTER TABLE public.email_templates
+  DROP CONSTRAINT IF EXISTS email_templates_template_type_check;
+ALTER TABLE public.email_templates
+  ADD CONSTRAINT email_templates_template_type_check
+  CHECK (template_type = ANY (ARRAY[
+    'invitation'::text, 'sign_in'::text, 'login_as'::text,
+    'stage_assigned_started'::text, 'stage_assigned_complete'::text, 'stage_assigned_reopened'::text,
+    'stage_me_started'::text, 'stage_me_complete'::text, 'stage_me_reopened'::text,
+    'stage_next_complete_or_approved'::text, 'stage_prior_rejected'::text,
+    'work_order_offered'::text, 'work_order_accepted'::text, 'work_order_declined'::text
+  ]));
+
 INSERT INTO public.email_templates (template_type, subject, body)
 SELECT 'work_order_offered',
        'New work order: {{stage_name}} at {{project_name}}',
