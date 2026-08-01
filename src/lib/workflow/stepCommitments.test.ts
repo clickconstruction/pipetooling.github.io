@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { commitmentBalance, commitmentRail, nextCommitmentActions } from './stepCommitments'
 
 describe('commitmentRail', () => {
-  it('marks the money front as "now" before work starts', () => {
+  it('marks the money front as "now" before work starts, labeled Awaiting answer while offered', () => {
     const rail = commitmentRail('offered', 'pending')
     expect(rail.map((s) => `${s.key}:${s.state}`)).toEqual([
       'offered:done',
@@ -12,6 +12,8 @@ describe('commitmentRail', () => {
       'approved:todo',
       'settled:todo',
     ])
+    expect(rail.find((s) => s.key === 'accepted')?.label).toBe('Awaiting answer')
+    expect(commitmentRail('accepted', 'pending').find((s) => s.key === 'accepted')?.label).toBe('Accepted')
   })
 
   it('work status drives the middle segments once accepted', () => {
@@ -25,9 +27,10 @@ describe('commitmentRail', () => {
     expect(rail.map((s) => s.state)).toEqual(['done', 'done', 'done', 'done', 'done', 'now'])
   })
 
-  it('settled shows everything done; cancelled renders no rail', () => {
+  it('settled shows everything done; cancelled and declined render no rail', () => {
     expect(commitmentRail('settled', 'approved').every((s) => s.state === 'done')).toBe(true)
     expect(commitmentRail('cancelled', 'pending')).toEqual([])
+    expect(commitmentRail('declined', 'pending')).toEqual([])
   })
 })
 
@@ -50,9 +53,10 @@ describe('commitmentBalance', () => {
 })
 
 describe('nextCommitmentActions', () => {
-  it('walks draft → offer, offered → accept, accepted → cancel-only, terminal → none', () => {
+  it('walks the full dispatch state machine including withdraw and reoffer', () => {
     expect(nextCommitmentActions('draft')).toEqual(['offer', 'cancel'])
-    expect(nextCommitmentActions('offered')).toEqual(['accept', 'cancel'])
+    expect(nextCommitmentActions('offered')).toEqual(['accept', 'withdraw', 'cancel'])
+    expect(nextCommitmentActions('declined')).toEqual(['reoffer', 'cancel'])
     expect(nextCommitmentActions('accepted')).toEqual(['cancel'])
     expect(nextCommitmentActions('approved')).toEqual([])
     expect(nextCommitmentActions('settled')).toEqual([])

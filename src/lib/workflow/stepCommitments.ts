@@ -26,16 +26,21 @@ function moneyRank(status: string): number {
   return idx === -1 ? 0 : idx
 }
 
-/** Rail for one commitment given its step's work status. Cancelled → empty (the panel renders a cancelled note instead). */
+/**
+ * Rail for one commitment given its step's work status. Cancelled and
+ * declined return empty — the panel renders their banners instead. While a
+ * commitment sits at 'offered', the Accepted segment reads "Awaiting answer"
+ * (Phase 4: the sub now answers for real).
+ */
 export function commitmentRail(commitmentStatus: string, stepStatus: string): CommitmentRailSegment[] {
-  if (commitmentStatus === 'cancelled') return []
+  if (commitmentStatus === 'cancelled' || commitmentStatus === 'declined') return []
   const rank = moneyRank(commitmentStatus)
   const workStarted = stepStatus === 'in_progress' || stepStatus === 'completed' || stepStatus === 'approved'
   const workComplete = stepStatus === 'completed' || stepStatus === 'approved'
 
   const segs: CommitmentRailSegment[] = [
     { key: 'offered', label: 'Offered', state: rank >= 1 ? 'done' : 'todo' },
-    { key: 'accepted', label: 'Accepted', state: rank >= 2 ? 'done' : 'todo' },
+    { key: 'accepted', label: commitmentStatus === 'offered' ? 'Awaiting answer' : 'Accepted', state: rank >= 2 ? 'done' : 'todo' },
     { key: 'in_progress', label: 'In progress', state: workComplete ? 'done' : workStarted ? 'now' : 'todo' },
     { key: 'complete', label: 'Complete', state: workComplete ? 'done' : 'todo' },
     { key: 'approved', label: 'Approved', state: rank >= 3 ? 'done' : 'todo' },
@@ -84,13 +89,19 @@ export function commitmentBalance(
   return { agreed, retainageHeld, paidToDate, backcharges, balanceRemaining }
 }
 
-/** Transitions the office can take from each money status (superintendents: accept only — enforced by caller). */
-export function nextCommitmentActions(status: string): Array<'offer' | 'accept' | 'cancel'> {
+/**
+ * Transitions the office can take from each money status (superintendents:
+ * accept only — enforced by caller). 'withdraw' returns an unanswered offer
+ * to draft; 'reoffer' reopens a declined order (new window/amount allowed).
+ */
+export function nextCommitmentActions(status: string): Array<'offer' | 'accept' | 'withdraw' | 'reoffer' | 'cancel'> {
   switch (status) {
     case 'draft':
       return ['offer', 'cancel']
     case 'offered':
-      return ['accept', 'cancel']
+      return ['accept', 'withdraw', 'cancel']
+    case 'declined':
+      return ['reoffer', 'cancel']
     case 'accepted':
       return ['cancel']
     default:
