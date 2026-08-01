@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-01 (v2.1224)
+last_updated: 2026-08-01 (v2.1225)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1225)
+
+### HOTFIX: Sub Labor reads were broken by RLS recursion (2026-08-01)
+The v2.1211 sub own-row policy on `people_labor_jobs` queried `people_labor_job_assignees`, whose own `plja_select` policy (20260722270000) queries `people_labor_jobs` back — **infinite recursion (42P17)**, which errored EVERY read of the ledger for every role (Jobs → Sub Labor empty, Job Detail sub cost, the Dashboard AP figure, People → Subs) from that push until this fix. Caught by the first end-to-end Playwright run of the work-order loop (the settle succeeded; the ledger verify failed). Migration [`20260802010000_fix_labor_rls_recursion.sql`](../supabase/migrations/20260802010000_fix_labor_rls_recursion.sql): new SECURITY DEFINER helper `user_is_assignee_of_labor_job(uuid)` (the house anti-recursion pattern) replaces the junction subquery in the policy; the trimmed-name fallback branch is unchanged. **Applied via the documented emergency path** (psql + hand-inserted ledger row matching this filename, same session) because the money ledger was down during office hours; `db push` and the drift check both see it as applied once this file lands. Post-fix, the full e2e loop passes in 12s. Lesson recorded: any policy referencing a table whose policies point back must go through a SECURITY DEFINER helper.
 
 ## Latest Updates (v2.1224)
 

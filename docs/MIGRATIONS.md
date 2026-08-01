@@ -106,6 +106,11 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 #### August 1, 2026
 
+**`20260802010000_fix_labor_rls_recursion.sql`** _(ALREADY APPLIED via the documented emergency path — psql + hand-inserted ledger row matching this filename, 2026-08-01; the money ledger was down during office hours. `db push` sees it as applied.)_
+- **Purpose**: HOTFIX (v2.1223). The v2.1211 sub own-row policy recursed (people_labor_jobs ↔ people_labor_job_assignees policies, 42P17), erroring all ledger reads. New SECURITY DEFINER `user_is_assignee_of_labor_job(uuid)` breaks the cycle; policy recreated on it.
+- **Security**: Same intended grants; helper bypasses RLS only for the assignee-membership check.
+- **Category**: Hotfix / RLS
+
 **`20260801233000_respond_rpc_returns_context.sql`** _(apply via `supabase db push` after merge — same-signature CREATE OR REPLACE; old clients ignore the extra fields)_
 - **Purpose**: RUN_SUBS_PLAN Phase 4, PR 4.3 (v2.1217). `respond_to_work_order` returns the answer-notification context (creator contact with project-master fallback, step/project names, window) — sub-role RLS can't read those rows, and the function already sits behind a hard own-person gate.
 - **Security**: unchanged gates; SECURITY DEFINER as before.

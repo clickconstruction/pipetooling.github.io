@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1225',
+    date: '2026-08-01',
+    title: 'Fixed: Sub Labor lists went empty for a couple of hours',
+    kind: 'fix',
+    highlights: [
+      'A security-rule loop introduced earlier today made every Sub Labor list (and the related dashboard figures) come back empty. Fixed and verified end to end \u2014 no data was lost or changed.',
+    ],
+  },
+  {
     version: 'v2.1224',
     date: '2026-08-01',
     title: 'Guides are now in Settings \u2014 and you can see what your crew sees',
