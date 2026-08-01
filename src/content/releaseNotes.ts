@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1241',
+    date: '2026-08-01',
+    title: 'Stages: Mobile cards — a phone-first board you can switch on',
+    kind: 'feature',
+    highlights: [
+      'A new Mobile cards toggle in the Stages ⋯ menu turns every section into full-width cards — no more sideways scrolling on a phone.',
+      'Each card leads with the job and its stage button, then crew, address, the money bar, and latest activity; tap a card for the message thread and a row of labeled actions.',
+      'Works together with Edit mode, remembers your choice per device, and flipping it off brings the classic table straight back.',
+    ],
+  },
+  {
     version: 'v2.1240',
     date: '2026-08-01',
     title: 'Dispatch schedule: a new phone layout — with an Old mode switch',
