@@ -106,6 +106,11 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 #### August 1, 2026
 
+**`20260801113000_widen_step_action_type_check.sql`** _(apply via `supabase db push` after merge — either order is harmless: until pushed, Skip keeps failing to write its ledger row exactly as it always has)_
+- **Purpose**: Bug fix (v2.1199, RUN_SUBS_PLAN PR 0.0). Widens `project_workflow_step_actions_action_type_check` to include `'skipped'`. Both Skip flows (Workflow page + Dashboard Projects card) always inserted `action_type='skipped'`, which the baseline CHECK rejected — and both `recordAction` callers swallowed the error, so every Skip flipped the step with no action-ledger row. Existing rows only use the old five values, so the ADD CONSTRAINT revalidation is safe. Also updates the column comment.
+- **Security**: No RLS/permission changes; constraint-only.
+- **Category**: Bug fix
+
 **`20260801100000_developments_on_jobs.sql`** _(apply via `supabase db push` right after the PR merges — purely additive and dormant until the client PRs land, but the follow-up client PR's embeds need the column live)_
 - **Purpose**: Developments — named groups of jobs (v2.1198, part 1 of 3). New `public.developments` table (master-scoped; `name`, optional default `gc_customer_id` → customers ON DELETE SET NULL, `city`, `notes`, soft `archived_at`; active-name unique per master via partial index on `(master_user_id, lower(name))`) + nullable `jobs_ledger.development_id` (FK developments, ON DELETE **SET NULL** — deleting a development un-groups, never deletes, its jobs) + partial index. A development is a real row, not a free-text tag, so grouping can't fragment on typos. Two same-master backstop triggers mirroring the GC pattern (`20260731205835`): `jobs_ledger_development_master_match` and `developments_gc_customer_master_match`, both firing only on INSERT or when the relevant columns change.
 - **Security**: RLS on `developments` mirrors the customers table — read for owner/dev/adopted assistant-likes (role-agnostic `master_assistants` join covers controller)/share viewers plus the blanket estimator/primary/superintendent branch customers grants; writes owner/dev/adopted; delete owner/dev only. Ends with BOTH `apply_read_only_write_blocks()` and `apply_read_only_stmt_blocks()` (new table).

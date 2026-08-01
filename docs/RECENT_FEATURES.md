@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-31 (v2.1198)
+last_updated: 2026-08-01 (v2.1199)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1199)
+
+### Workflow: Skip finally writes its action-ledger row (2026-08-01)
+RUN_SUBS_PLAN Phase 0, PR 0.0. Both Skip flows ([`Workflow.tsx`](../src/pages/Workflow.tsx) `submitSkip` and the Dashboard Projects card) have always inserted `action_type='skipped'` into `project_workflow_step_actions`, but the baseline CHECK only allowed `started|completed|approved|rejected|reopened` — every Skip's insert failed the constraint, silently, because neither `recordAction` surfaced insert errors. The step flipped to skipped with **no ledger row**, ever. Migration [`20260801113000_widen_step_action_type_check.sql`](../supabase/migrations/20260801113000_widen_step_action_type_check.sql) re-creates the CHECK with `'skipped'` added (existing rows all use old values — revalidation safe) and updates the column comment. Both `recordAction` implementations now `console.error` insert failures so the next constraint drift is visible instead of invisible. Client + migration (`supabase db push` after merge; harmless either order — skips just keep failing to log until pushed).
 
 ## Latest Updates (v2.1198)
 

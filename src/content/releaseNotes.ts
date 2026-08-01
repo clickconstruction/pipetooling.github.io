@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1199',
+    date: '2026-08-01',
+    title: 'Skipping a project step now records it in the step history',
+    kind: 'fix',
+    highlights: [
+      'Skipping a workflow step never wrote a "skipped" entry into the step’s action history — the record silently failed. It now logs like every other action.',
+    ],
+  },
+  {
     version: 'v2.1198',
     date: '2026-07-31',
     title: 'Groundwork for Developments (groups of jobs)',
