@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1196',
+    date: '2026-07-31',
+    title: 'Money balances on the Forecast timeline',
+    kind: 'feature',
+    highlights: [
+      'Projects → Forecast → Specific now shows a balance column beside each stage — the same running numbers as the Workflow page.',
+      'Margin and balance chips sit in the toolbar; the column hides itself for jobs with no money data.',
+    ],
+  },
+  {
     version: 'v2.1195',
     date: '2026-07-31',
     title: 'Running ledger beside the workflow',

@@ -66,6 +66,7 @@ import {
 } from '../../lib/projectsForecastStageResolver'
 import { forecastBarSwatch, forecastStageColorKey } from '../../lib/projectsForecastColors'
 import { parsePercentCompleteInput } from '../../lib/parsePercentCompleteInput'
+import { buildWorkflowMoneyFlow, type MoneyFlowProjectionInput } from '../../lib/workflowMoneyFlow'
 import {
   filterForecastJobsBySearch,
   normalizeForecastJobSearchQuery,
@@ -298,6 +299,55 @@ export function ProjectsForecastSpecificTab({
     () => resolveForecastStages(selectedStages, todayYmd),
     [selectedStages, todayYmd],
   )
+
+  // Balance column (v2.1196): the Workflow money-flow numbers folded into the
+  // Forecast gutter. Dev/master only — same visibility as Projections.
+  const canSeeMoney = myRole === 'dev' || myRole === 'master_technician'
+  const [moneyProjections, setMoneyProjections] = useState<MoneyFlowProjectionInput[]>([])
+  const [moneyItemsByStep, setMoneyItemsByStep] = useState<Record<string, number>>({})
+  useEffect(() => {
+    if (!canSeeMoney || !selectedWorkflowId || selectedStages.length === 0) {
+      setMoneyProjections([])
+      setMoneyItemsByStep({})
+      return
+    }
+    let cancelled = false
+    const stepIds = selectedStages.map((s) => s.id)
+    void (async () => {
+      try {
+        const [projRes, liRes] = await Promise.all([
+          supabase
+            .from('workflow_projections')
+            .select('id, step_id, placement, amount, sequence_order')
+            .eq('workflow_id', selectedWorkflowId),
+          supabase.from('workflow_step_line_items').select('step_id, amount').in('step_id', stepIds),
+        ])
+        if (cancelled) return
+        setMoneyProjections((projRes.data ?? []) as MoneyFlowProjectionInput[])
+        const totals: Record<string, number> = {}
+        for (const r of (liRes.data ?? []) as Array<{ step_id: string; amount: number | null }>) {
+          totals[r.step_id] = (totals[r.step_id] ?? 0) + (r.amount || 0)
+        }
+        setMoneyItemsByStep(totals)
+      } catch {
+        // fail-soft — the column simply doesn't render
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [canSeeMoney, selectedWorkflowId, selectedStages])
+
+  const moneyBalances = useMemo(() => {
+    if (!canSeeMoney) return null
+    const orderedIds = resolvedBars.map((b) => b.stageId)
+    const flow = buildWorkflowMoneyFlow(orderedIds, moneyProjections, moneyItemsByStep)
+    const projectionsTotal = moneyProjections.reduce((sum, p) => sum + Number(p.amount ?? 0), 0)
+    const ledgerTotal = orderedIds.reduce((sum, id) => sum + (moneyItemsByStep[id] ?? 0), 0)
+    return { flow, projectionsTotal, ledgerTotal }
+  }, [canSeeMoney, resolvedBars, moneyProjections, moneyItemsByStep])
+  const showBalanceColumn =
+    !!moneyBalances && (moneyBalances.projectionsTotal !== 0 || moneyBalances.ledgerTotal !== 0)
 
   // Apply any in-flight drag overrides + optimistic-insert overlays on top of the
   // resolved bars. Three sources of "this is what the user should see right now,
@@ -602,6 +652,12 @@ export function ProjectsForecastSpecificTab({
         percentEditable={canEditPercentComplete}
         onPercentCommit={(next) => onCommitPercentComplete(stage.stageId, next)}
         showPercentCell={showPercentColumn}
+        showBalanceCell={showBalanceColumn}
+        balanceValue={(() => {
+          if (!showBalanceColumn || !moneyBalances) return null
+          const bal = moneyBalances.flow.stepBalance[stage.stageId]
+          return bal ? bal.projected - bal.spent : null
+        })()}
       />
     ),
     [
@@ -611,6 +667,8 @@ export function ProjectsForecastSpecificTab({
       canEditPercentComplete,
       onCommitPercentComplete,
       showPercentColumn,
+      showBalanceColumn,
+      moneyBalances,
     ],
   )
 
@@ -1379,6 +1437,43 @@ export function ProjectsForecastSpecificTab({
           >
             {showDates ? 'Showing dates' : 'Show dates'}
           </button>
+          {showBalanceColumn && moneyBalances ? (
+            <span
+              title="Project money at a glance — margin = (projections − line items) ÷ projections; balance = projections − line items. Matches the Workflow page."
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}
+            >
+              {moneyBalances.projectionsTotal !== 0 ? (
+                <span
+                  style={{
+                    padding: '0.15rem 0.55rem',
+                    borderRadius: 999,
+                    background: 'var(--bg-green-tint)',
+                    color: 'var(--text-green-700)',
+                    fontSize: '0.75rem',
+                    fontWeight: 600,
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  margin{' '}
+                  {(((moneyBalances.projectionsTotal - moneyBalances.ledgerTotal) / moneyBalances.projectionsTotal) * 100).toFixed(1)}%
+                </span>
+              ) : null}
+              <span
+                style={{
+                  padding: '0.15rem 0.55rem',
+                  borderRadius: 999,
+                  background: 'var(--bg-blue-tint)',
+                  color: 'var(--text-blue-700)',
+                  fontSize: '0.75rem',
+                  fontWeight: 600,
+                  whiteSpace: 'nowrap',
+                  fontVariantNumeric: 'tabular-nums',
+                }}
+              >
+                balance {formatGutterBalance(moneyBalances.projectionsTotal - moneyBalances.ledgerTotal)}
+              </span>
+            </span>
+          ) : null}
           {canAlign && dragEdit && (
             <button
               type="button"
@@ -1435,9 +1530,13 @@ export function ProjectsForecastSpecificTab({
           // squeezing the stage name's ellipsis budget. When the column is hidden (no
           // values + not in Edit mode) we drop back to the pre-v2.559 260px so the
           // stage name reclaims the freed space.
-          labelGutterWidth={showPercentColumn ? 300 : 260}
+          labelGutterWidth={(showPercentColumn ? 300 : 260) + (showBalanceColumn ? BALANCE_CELL_WIDTH_PX + 6 : 0)}
           rowLabel={renderGutterLabel}
-          gutterHeader={showPercentColumn ? <PercentColumnGutterHeader /> : undefined}
+          gutterHeader={
+            showPercentColumn || showBalanceColumn ? (
+              <PercentColumnGutterHeader showPercent={showPercentColumn} showBalance={showBalanceColumn} />
+            ) : undefined
+          }
           // Pan-pillar wiring: the grid renders in-line `←` / `→` columns at the
           // rail's start / end (visible only when scrolled to that edge); clicks
           // invoke these handlers which extend the visible window in 90-day chunks.
@@ -1476,9 +1575,13 @@ export function ProjectsForecastSpecificTab({
           // Same conditional gutter sizing as the dense grid above: 300 when the `%`
           // column is showing (cell + "+" button fit), 260 when it's hidden so the
           // stage name reclaims the freed space.
-          labelGutterWidth={showPercentColumn ? 300 : 260}
+          labelGutterWidth={(showPercentColumn ? 300 : 260) + (showBalanceColumn ? BALANCE_CELL_WIDTH_PX + 6 : 0)}
           rowLabel={renderGutterLabel}
-          gutterHeader={showPercentColumn ? <PercentColumnGutterHeader /> : undefined}
+          gutterHeader={
+            showPercentColumn || showBalanceColumn ? (
+              <PercentColumnGutterHeader showPercent={showPercentColumn} showBalance={showBalanceColumn} />
+            ) : undefined
+          }
           onOpenWorkflow={onOpenStage}
           emptyState={emptyState ? <span>{emptyState}</span> : null}
         />
@@ -1549,13 +1652,23 @@ const PERCENT_CELL_WIDTH_PX = 58
 /** Right-side padding for the `%` column header so it visually sits over the percent cell
  *  (which itself sits before the optional 18px `+` button + a 2px gap). */
 const PERCENT_HEADER_RIGHT_PADDING_PX = 28
+/** Width of the running-balance cell (v2.1196) — right-aligned whole dollars like
+ *  "+$112,880"; sized so seven digits + sign fit at 0.75rem tabular-nums. */
+const BALANCE_CELL_WIDTH_PX = 82
 
 /** Right-aligned `%` label rendered into the grid's sticky gutter header. Sized so it
  *  visually sits over the per-row percent cell on the right of the gutter (which itself
  *  sits to the LEFT of the optional `+` insert button, so we pad in by roughly that
  *  button's footprint). Kept as a tiny presentational component so both grid invocations
  *  (dense + sparse) share the same markup without re-typing it. */
-function PercentColumnGutterHeader() {
+function PercentColumnGutterHeader({
+  showPercent = true,
+  showBalance = false,
+}: {
+  showPercent?: boolean
+  /** v2.1196: label for the running-balance cell, sitting left of the % cell. */
+  showBalance?: boolean
+}) {
   return (
     <div
       style={{
@@ -1570,9 +1683,22 @@ function PercentColumnGutterHeader() {
       }}
       aria-hidden
     >
-      %
+      {showBalance ? (
+        <span style={{ width: BALANCE_CELL_WIDTH_PX + 6, minWidth: BALANCE_CELL_WIDTH_PX + 6, textAlign: 'right' }}>
+          balance
+        </span>
+      ) : null}
+      {showPercent ? (
+        <span style={{ width: showBalance ? PERCENT_CELL_WIDTH_PX : undefined, textAlign: 'right' }}>%</span>
+      ) : null}
     </div>
   )
+}
+
+/** Running balance after this step (projected-to-here − spent-to-here), formatted as
+ *  compact whole dollars. Mirrors the Workflow page's ledger rail (v2.1195). */
+function formatGutterBalance(n: number): string {
+  return `${n < 0 ? '-' : n > 0 ? '+' : ''}$${Math.abs(Math.round(n)).toLocaleString('en-US')}`
 }
 
 function StageGutterLabel({
@@ -1586,6 +1712,8 @@ function StageGutterLabel({
   percentEditable,
   onPercentCommit,
   showPercentCell = true,
+  showBalanceCell = false,
+  balanceValue = null,
 }: {
   resolved: ResolvedStageBar
   /** Row-position number (1..N) shown in the chip — see callsite for rationale. */
@@ -1613,6 +1741,10 @@ function StageGutterLabel({
    *  current job has a percent value. Defaults to `true` to preserve the existing
    *  contract for any future caller that doesn't think about this. */
   showPercentCell?: boolean
+  /** v2.1196: render the running-balance cell (dev/master, hide-when-no-money). */
+  showBalanceCell?: boolean
+  /** Running balance after this step; null renders an empty cell. */
+  balanceValue?: number | null
   /** Called on input blur with the parsed/clamped percent value (or null when cleared).
    *  No-op when `percentEditable` is false. */
   onPercentCommit?: (next: number | null) => void
@@ -1724,6 +1856,36 @@ function StageGutterLabel({
           The entire wrapper is omitted when `showPercentCell` is false so the stage name
           reclaims the freed space and the gutter can shrink (see callsite for the matching
           `labelGutterWidth` flip). */}
+      {/* Running-balance cell (v2.1196) — read-only, right-aligned, colored by sign.
+          Sits LEFT of the percent cell so the % + "+" cluster keeps its edge position. */}
+      {showBalanceCell ? (
+        <div
+          title="Running balance after this step: projections placed up to here minus line items recorded through this step (matches the Workflow page's ledger rail)"
+          style={{
+            width: BALANCE_CELL_WIDTH_PX,
+            minWidth: BALANCE_CELL_WIDTH_PX,
+            maxWidth: BALANCE_CELL_WIDTH_PX,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'flex-end',
+            flexShrink: 0,
+            fontSize: '0.75rem',
+            fontWeight: 600,
+            whiteSpace: 'nowrap',
+            fontVariantNumeric: 'tabular-nums',
+            color:
+              balanceValue == null
+                ? 'var(--text-slate-400)'
+                : balanceValue > 0.004
+                  ? 'var(--text-green-700)'
+                  : balanceValue < -0.004
+                    ? 'var(--text-red-700)'
+                    : 'var(--text-muted)',
+          }}
+        >
+          {balanceValue == null ? '' : formatGutterBalance(balanceValue)}
+        </div>
+      ) : null}
       {showPercentCell ? (
       <div
         style={{
