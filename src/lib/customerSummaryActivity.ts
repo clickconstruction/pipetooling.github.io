@@ -22,6 +22,9 @@ export type CustomerSummaryJob = {
   numberLabel: string
   jobName: string
   jobAddress: string
+  /** jobs_ledger.revenue (job total) — null when no total is set (v2.1237 billed summary). */
+  revenueDollars: number | null
+  paymentsMadeDollars: number
 }
 
 /** One thread item tagged with the job it belongs to. */
@@ -91,7 +94,7 @@ export async function fetchCustomerSummaryActivity(
       async () =>
         supabase
           .from('jobs_ledger')
-          .select('id, hcp_number, click_number, job_name, job_address, created_at')
+          .select('id, hcp_number, click_number, job_name, job_address, created_at, revenue, payments_made')
           .eq('customer_id', customerId)
           .order('created_at', { ascending: false }),
       'customer summary jobs',
@@ -102,6 +105,8 @@ export async function fetchCustomerSummaryActivity(
       click_number: string | null
       job_name: string | null
       job_address: string | null
+      revenue: number | string | null
+      payments_made: number | string | null
     }>).filter((j) => j?.id)
     const truncated = allJobs.length > CUSTOMER_SUMMARY_MAX_JOBS
     const jobs: CustomerSummaryJob[] = allJobs.slice(0, CUSTOMER_SUMMARY_MAX_JOBS).map((j) => ({
@@ -109,6 +114,8 @@ export async function fetchCustomerSummaryActivity(
       numberLabel: effectiveJobLedgerNumber(j.hcp_number, j.click_number) || '—',
       jobName: (j.job_name ?? '').trim() || 'Job',
       jobAddress: (j.job_address ?? '').trim(),
+      revenueDollars: j.revenue != null && Number.isFinite(Number(j.revenue)) ? Number(j.revenue) : null,
+      paymentsMadeDollars: j.payments_made != null && Number.isFinite(Number(j.payments_made)) ? Number(j.payments_made) : 0,
     }))
     const perJob = await Promise.all(jobs.map((j) => loadItemsForJob(j)))
     const items = perJob.flat().sort((a, b) => activitySortMs(b.inner) - activitySortMs(a.inner))

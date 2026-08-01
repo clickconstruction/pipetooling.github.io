@@ -1,6 +1,9 @@
-import { useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react'
+import { ChevronDown, Mail, MapPin, Phone } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
+import { summarizeCustomerJobsBilling } from '../../lib/customerSummaryBilling'
+import { formatCurrency } from '../../lib/jobs/jobFormMoney'
 import { ACTIVITY_FILTERS, filterActivity, type ActivityFilter } from '../../lib/jobActivityFilter'
 import {
   fetchCustomerSummaryActivity,
@@ -53,6 +56,51 @@ function contactStrings(contactInfo: unknown): string[] {
     if (typeof v === 'string' && v.trim()) out.push(v.trim())
   }
   return out.slice(0, 4)
+}
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
+/** contact_info values are free strings — classify so email/phone become tappable (v2.1237). */
+function classifyContact(c: string): 'email' | 'phone' | 'other' {
+  if (EMAIL_RE.test(c)) return 'email'
+  const digits = c.replace(/\D/g, '')
+  if (digits.length >= 7 && /^[\d\s()+.-]+$/.test(c)) return 'phone'
+  return 'other'
+}
+
+function telHref(c: string): string {
+  const digits = c.replace(/\D/g, '')
+  if (digits.length === 10) return `tel:+1${digits}`
+  if (digits.length === 11 && digits.startsWith('1')) return `tel:+${digits}`
+  return `tel:${digits}`
+}
+
+const HEADER_CONTACT_ROW_STYLE: CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: '0.4rem',
+  minWidth: 0,
+  fontSize: '0.8125rem',
+}
+
+const HEADER_CONTACT_TEXT_STYLE: CSSProperties = {
+  whiteSpace: 'nowrap',
+  overflow: 'hidden',
+  textOverflow: 'ellipsis',
+  minWidth: 0,
+  color: 'var(--text-link)',
+  textDecoration: 'underline',
+}
+
+function headerContactRow(icon: ReactNode, content: ReactNode, key?: string) {
+  return (
+    <div key={key} style={HEADER_CONTACT_ROW_STYLE}>
+      <span aria-hidden style={{ display: 'inline-flex', flexShrink: 0, color: 'var(--text-muted)' }}>
+        {icon}
+      </span>
+      {content}
+    </div>
+  )
 }
 
 function ItemRow({ it, onOpenReport }: { it: CustomerSummaryItem; onOpenReport: (r: ReportForView) => void }) {
@@ -200,6 +248,9 @@ export default function CustomerSummaryModal({
   const [error, setError] = useState<string | null>(null)
   const [filter, setFilter] = useState<ActivityFilter>('all')
   const [viewReport, setViewReport] = useState<ReportForView | null>(null)
+  const [billingExpanded, setBillingExpanded] = useState(false)
+
+  const billing = useMemo(() => (data ? summarizeCustomerJobsBilling(data.jobs) : null), [data])
 
   useEffect(() => {
     let cancelled = false
@@ -268,33 +319,75 @@ export default function CustomerSummaryModal({
         onClick={(e) => e.stopPropagation()}
       >
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '0.5rem' }}>
-          <div style={{ minWidth: 0 }}>
-            <h2 id="customer-summary-title" style={{ margin: 0, fontSize: '1.05rem', color: 'var(--text-strong)' }}>
-              Customer Summary
+          <div style={{ minWidth: 0, flex: 1, display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+            {/* v2.1237: the customer's name IS the title; contact rows carry icons,
+                never wrap (ellipsize), and email/phone are tappable. */}
+            <h2
+              id="customer-summary-title"
+              style={{
+                margin: 0,
+                fontSize: '1.05rem',
+                color: 'var(--text-strong)',
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+              }}
+            >
+              {header?.name ?? 'Customer'}
             </h2>
-            <div style={{ fontSize: '0.9375rem', fontWeight: 700, color: 'var(--text-strong)', marginTop: 4 }}>
-              {header?.name ?? '…'}
-            </div>
-            {header?.address?.trim() ? (
-              <button
-                type="button"
-                onClick={() =>
-                  openInExternalBrowser(
-                    `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(header.address ?? '')}`,
-                  )
-                }
-                style={{ padding: 0, border: 'none', background: 'none', cursor: 'pointer', font: 'inherit', fontSize: '0.8125rem', color: 'var(--text-link)', textDecoration: 'underline', textAlign: 'left' }}
-              >
-                {header.address}
-              </button>
-            ) : null}
-            {contacts.map((c) => (
-              <div key={c} style={{ fontSize: '0.8125rem', color: 'var(--text-600)' }}>
-                {c}
-              </div>
-            ))}
+            {header?.address?.trim()
+              ? headerContactRow(
+                  <MapPin size={14} />,
+                  <button
+                    type="button"
+                    onClick={() =>
+                      openInExternalBrowser(
+                        `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(header.address ?? '')}`,
+                      )
+                    }
+                    title={header.address}
+                    style={{
+                      ...HEADER_CONTACT_TEXT_STYLE,
+                      padding: 0,
+                      border: 'none',
+                      background: 'none',
+                      cursor: 'pointer',
+                      font: 'inherit',
+                      textAlign: 'left',
+                    }}
+                  >
+                    {header.address}
+                  </button>,
+                )
+              : null}
+            {contacts.map((c) => {
+              const kind = classifyContact(c)
+              if (kind === 'email') {
+                return headerContactRow(
+                  <Mail size={14} />,
+                  <a href={`mailto:${c}`} title={c} style={HEADER_CONTACT_TEXT_STYLE}>
+                    {c}
+                  </a>,
+                  c,
+                )
+              }
+              if (kind === 'phone') {
+                return headerContactRow(
+                  <Phone size={14} />,
+                  <a href={telHref(c)} title={c} style={HEADER_CONTACT_TEXT_STYLE}>
+                    {c}
+                  </a>,
+                  c,
+                )
+              }
+              return (
+                <div key={c} style={{ ...HEADER_CONTACT_ROW_STYLE, color: 'var(--text-600)' }}>
+                  <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>{c}</span>
+                </div>
+              )
+            })}
             {data ? (
-              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 2 }}>
+              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                 {data.jobs.length} {data.jobs.length === 1 ? 'job' : 'jobs'}
                 {data.truncated ? ' (newest shown)' : ''}
               </div>
@@ -309,6 +402,99 @@ export default function CustomerSummaryModal({
             Close
           </button>
         </div>
+
+        {/* Billed summary (v2.1237): outstanding = job total minus payments, so it
+            includes work not yet invoiced. Outstanding jobs list on expand;
+            paid-in-full jobs compress to a count line. */}
+        {billing && data && data.jobs.length > 0 && billing.noTotalCount < data.jobs.length ? (
+          <div style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '0.5rem 0.65rem' }}>
+            <button
+              type="button"
+              onClick={() => setBillingExpanded((v) => !v)}
+              aria-expanded={billingExpanded}
+              aria-controls="customer-summary-billing-jobs"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: '0.5rem',
+                width: '100%',
+                padding: 0,
+                border: 'none',
+                background: 'none',
+                cursor: 'pointer',
+                font: 'inherit',
+                fontSize: '0.8125rem',
+                textAlign: 'left',
+              }}
+            >
+              <span style={{ minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                {billing.outstandingDollars > 0 ? (
+                  <>
+                    <strong style={{ color: 'var(--text-amber-800)', fontVariantNumeric: 'tabular-nums' }}>
+                      ${formatCurrency(billing.outstandingDollars)} outstanding
+                    </strong>
+                    <span style={{ color: 'var(--text-muted)' }}> of ${formatCurrency(billing.totalDollars)}</span>
+                  </>
+                ) : (
+                  <strong style={{ color: 'var(--text-green-600)' }}>
+                    All {billing.paidInFullCount} {billing.paidInFullCount === 1 ? 'job' : 'jobs'} paid in full
+                  </strong>
+                )}
+              </span>
+              <span
+                aria-hidden
+                style={{
+                  display: 'inline-flex',
+                  flexShrink: 0,
+                  color: 'var(--text-muted)',
+                  transform: billingExpanded ? 'rotate(180deg)' : 'none',
+                }}
+              >
+                <ChevronDown size={15} />
+              </span>
+            </button>
+            {billingExpanded ? (
+              <div
+                id="customer-summary-billing-jobs"
+                style={{
+                  borderTop: '1px solid var(--border)',
+                  marginTop: '0.45rem',
+                  paddingTop: '0.45rem',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '0.3rem',
+                  fontSize: '0.75rem',
+                }}
+              >
+                {billing.outstandingJobs.map((j) => (
+                  <div key={j.id} style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: '0.5rem' }}>
+                    <span
+                      title={`#${j.numberLabel}${j.jobAddress ? ` · ${j.jobAddress}` : ''}`}
+                      style={{ minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: 'var(--text-blue-700)' }}
+                    >
+                      #{j.numberLabel}
+                      {j.jobAddress ? ` · ${j.jobAddress}` : ''}
+                    </span>
+                    <span style={{ flexShrink: 0, fontWeight: 600, color: 'var(--text-amber-800)', fontVariantNumeric: 'tabular-nums' }}>
+                      ${formatCurrency(j.outstandingDollars)}
+                    </span>
+                  </div>
+                ))}
+                {billing.paidInFullCount > 0 && billing.outstandingJobs.length > 0 ? (
+                  <div style={{ color: 'var(--text-muted)' }}>
+                    {billing.paidInFullCount} {billing.paidInFullCount === 1 ? 'job' : 'jobs'} paid in full
+                  </div>
+                ) : null}
+                {billing.noTotalCount > 0 ? (
+                  <div style={{ color: 'var(--text-muted)' }}>
+                    {billing.noTotalCount} {billing.noTotalCount === 1 ? 'job' : 'jobs'} without a job total
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
+          </div>
+        ) : null}
 
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }} role="group" aria-label="Filter interactions">
           {ACTIVITY_FILTERS.map((f) => (
