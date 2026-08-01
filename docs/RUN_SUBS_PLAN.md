@@ -173,6 +173,17 @@ CREATE TABLE IF NOT EXISTS public.step_commitments (
 
 ---
 
+## Phase 4 — Sub Dispatch (approved 2026-08-01; mockups in the "Phase 4 — Sub Dispatch" artifact)
+
+The offer/answer loop: office offers work WITH a proposed window, the sub accepts/declines from their Dashboard, the Sub Board shows who's booked when. Decisions locked with the owner's approval: no offer auto-expiry (Withdraw + Nudge instead); declined orders keep the reason office-side but drop off the sub's view; accepting writes the step's expected dates only when EMPTY (mismatch flagged, never overwritten); answer notifications go to the order's creator, falling back to the project master.
+
+- **PR 4.1 — schema + RPC + templates**: `step_commitments` status CHECK gains `declined`; `declined_at`/`decline_reason`/`proposed_start`/`proposed_end`; `respond_to_work_order(p_commitment_id, p_accept, p_reason)` (SECURITY DEFINER — the commitment's own account-linked person only, `offered` only, decline requires a reason; accept-writes-empty-dates lives server-side so every client gets it). Three `email_templates` seeds (`work_order_offered/accepted/declined`) — the edge function 404s on unknown types, so seeding rows means **no edge redeploy**. A declined row keeps the live (step, person) unique slot; re-offer reuses it.
+- **PR 4.3 — sub answers**: offer cards atop `DashboardSubMoneySection` (amount, retainage, window) → Accept / Decline-with-reason via the RPC; fires `work_order_accepted/declined` to the creator (fallback project master).
+- **PR 4.4 — office loop**: Offer gains the date-window inputs (seeded from step expected dates); rail gains Awaiting-answer/Declined; decline banner (reason + Re-offer / Offer someone else); Withdraw (offered→draft) + Nudge (resend); `work_order_offered` fired on offer. Kernel + tests updated.
+- **PR 4.5 — Sub Board**: read-only `Subs` view on Projects → Forecast — lane per sub, bars = commitments × (step expected dates ?? proposed window), offered ghosted, overlap outlines. Pure lane/overlap kernel.
+- **PR 4.6 — polish**: window-aware compliance chips (`buildSubComplianceBadges` + expiry-vs-window wrapper) in the work-order picker and the Assign modal; AssignedStageCard commitment chip.
+- (PR 4.2 from the proposal folded into 4.1/4.3/4.4 — no separate notification PR needed once the edge-function investigation showed template rows suffice.)
+
 ## Dependency graph & suggested order
 
 ```
