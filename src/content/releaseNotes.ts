@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1229',
+    date: '2026-08-01',
+    title: 'Edit Job: line item names get the full width while you type on phones',
+    kind: 'feature',
+    highlights: [
+      'Tap into a line item name on a phone and the field stretches across the whole screen — the × and $ boxes slide down a row so you can read what you are entering.',
+      'Everything snaps back into place when you tap elsewhere.',
+    ],
+  },
+  {
     version: 'v2.1228',
     date: '2026-08-01',
     title: 'Edit Job: cleaner invoice bar header on phones',
