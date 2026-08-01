@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-31 (v2.1191)
+last_updated: 2026-07-31 (v2.1192)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1192)
+
+### Projects: superintendent chips show real assignments only (2026-07-31)
+Field report ("Mike Z shows on Gun Dog Rough In but I can't remove him"). The Projects-row superintendent chips merged two sources: real `project_superintendents` assignments (which get the ×) and `master_superintendents` adoption rows. Since the v2.921 auto-sync made adoption company-wide — and grants no project access — the merge painted every superintendent onto every project row with no × (not actually assigned) and hid the + (the "available" filter excluded anyone already shown). An archived superintendent's pre-v2.921 adoption row made it a permanent ghost. [`Projects.tsx`](../src/pages/Projects.tsx) now builds the chips from `project_superintendents` only: ghosts disappear, every chip has its ×, and + renders whenever a live superintendent is assignable (the + list already excluded archived accounts). Verified live: the ghost vanished from every row while the one real assignment kept its removable chip. The stale adoption row itself is inert (nothing user-facing reads it for archived users) and the sync maintains the table for live pairs going forward. Client-only.
 
 ## Latest Updates (v2.1191)
 

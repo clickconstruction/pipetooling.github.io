@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1192',
+    date: '2026-07-31',
+    title: 'Project superintendent chips are now editable',
+    kind: 'fix',
+    highlights: [
+      'Project rows only show superintendents actually assigned to that project — each chip has an × to remove, and + appears when someone can be added.',
+      'Previously, adoption records painted every superintendent onto every project with no way to edit.',
+    ],
+  },
+  {
     version: 'v2.1191',
     date: '2026-07-31',
     title: 'Link bank deposits to payments you already recorded',

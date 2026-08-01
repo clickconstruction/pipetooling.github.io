@@ -242,26 +242,27 @@ export default function Projects() {
       // Load active steps, step summaries, and superintendent access in background
       if (projectsWithMasters.length > 0) {
         const projectIds = projectsWithMasters.map((p) => p.id)
-        const masterIds = [...new Set(projectsWithMasters.map((p) => p.master_user_id).filter(Boolean))] as string[]
 
         // Parallel: workflows + superintendent data + linked jobs
-        const [workflowsRes, psRes, msRes, jobsRes] = await Promise.all([
+        const [workflowsRes, psRes, jobsRes] = await Promise.all([
           supabase
             .from('project_workflows')
             .select('id, project_id, project_workflow_steps(name, status, sequence_order)')
             .in('project_id', projectIds),
           supabase.from('project_superintendents').select('project_id, superintendent_id').in('project_id', projectIds),
-          masterIds.length > 0 ? supabase.from('master_superintendents').select('master_id, superintendent_id').in('master_id', masterIds) : Promise.resolve({ data: [] as { master_id: string; superintendent_id: string }[] }),
           supabase.from('jobs_ledger').select('id, hcp_number, job_name, project_id, status').in('project_id', projectIds),
         ])
         if (cancelled) return
 
         const { data: workflows, error: workflowsErr } = workflowsRes
         const psData = (psRes as { data: { project_id: string; superintendent_id: string }[] | null }).data ?? []
-        const msData = (msRes as { data: { master_id: string; superintendent_id: string }[] | null }).data ?? []
 
-        // Build superintendentsByProject
-        const superintendentIds = [...new Set([...psData.map((r) => r.superintendent_id), ...msData.map((r) => r.superintendent_id)])]
+        // Build superintendentsByProject from real per-project assignments only.
+        // Adoption rows (master_superintendents) are deliberately NOT merged in
+        // (v2.1192): since the v2.921 auto-sync they are company-wide and grant
+        // no project access, so merging painted every superintendent onto every
+        // row — with no × (not assigned) and the + hidden (already "shown").
+        const superintendentIds = [...new Set(psData.map((r) => r.superintendent_id))]
         const usersMap: Record<string, { id: string; name: string | null; email: string | null }> = {}
         if (superintendentIds.length > 0) {
           const { data: usersData } = await supabase.from('users').select('id, name, email').in('id', superintendentIds)
@@ -275,7 +276,6 @@ export default function Projects() {
         const psIdsMap: Record<string, Set<string>> = {}
         projectsWithMasters.forEach((p) => {
           const ids = new Set<string>()
-          msData.filter((r) => r.master_id === p.master_user_id).forEach((r) => ids.add(r.superintendent_id))
           psData.filter((r) => r.project_id === p.id).forEach((r) => ids.add(r.superintendent_id))
           map[p.id] = [...ids].map((id) => usersMap[id]).filter((u): u is { id: string; name: string | null; email: string | null } => !!u)
           psIdsMap[p.id] = new Set(psData.filter((r) => r.project_id === p.id).map((r) => r.superintendent_id))
