@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-01 (v2.1213)
+last_updated: 2026-08-01 (v2.1214)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1214)
+
+### People → Subs: the sub relationship in one row (2026-08-01)
+RUN_SUBS_PLAN Phase 3, PR 3.4 — Option C of the approved mockups; **Phase 3 complete**. New **Subs** tab on People ([`PeopleSubsTab.tsx`](../src/components/people/PeopleSubsTab.tsx), self-contained loader; tab visible to all People-page viewers, RLS scopes the data): one row per active roster sub — login status, **open work orders** (offered/accepted/approved commitments with step @ project + amount), **balance due** (junction-attributed sub-sheet balances via the canonical `subLaborJobBalance`), **compliance badges** (the 3.3 kernel), and a track record (sheets · settled count · backcharges). New pure kernel [`subsHqRows.ts`](../src/lib/people/subsHqRows.ts) (`buildSubsHqRows`, 4 tests): sheet attribution is **junction-first** — identity-plan **C1-7 done for this surface** — and sheets resolving to no one or several people land in an explicit **Unattributed** note (with the fix pointer) instead of inflating or splitting balances. The **▶ Documents** expander is the compliance micro-editor: set each contract document's `doc_type` + `expires_at` inline (badges update live); send-for-signature stays on Contracts. Deviations from the plan, deferred deliberately: assign-modal warning chips + the AssignedStageCard commitment chip (polish once the surfaces prove out in use). Guide `review-your-subs`. Client-only (needs the 3.3 migration pushed for the doc editor columns).
 
 ## Latest Updates (v2.1213)
 

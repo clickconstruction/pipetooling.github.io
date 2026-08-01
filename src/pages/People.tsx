@@ -10,6 +10,7 @@ import PeopleHousingTab from '../components/people/PeopleHousingTab'
 import PeopleLicensesTab from '../components/people/PeopleLicensesTab'
 import PeopleOffsetsTab from '../components/people/PeopleOffsetsTab'
 import PeopleContractsTab from '../components/people/PeopleContractsTab'
+import PeopleSubsTab from '../components/people/PeopleSubsTab'
 import PeopleOverheadTab from '../components/people/PeopleOverheadTab'
 import PeopleReviewTab from '../components/people/PeopleReviewTab'
 import PeoplePayStubsTab, { type PayStubRow } from '../components/people/PeoplePayStubsTab'
@@ -199,6 +200,7 @@ type PersonActiveProject = { id: string; name: string }
 type PeopleTab =
   | 'review'
   | 'users'
+  | 'subs'
   | 'teams'
   | 'overhead'
   | 'employment'
@@ -709,6 +711,7 @@ export default function People() {
       setActiveTab('hours')
     } else if (
       tab === 'users' ||
+      tab === 'subs' ||
       tab === 'teams' ||
       tab === 'overhead' ||
       tab === 'employment' ||
@@ -2883,6 +2886,20 @@ export default function People() {
         >
           Users
         </button>
+        <button
+          type="button"
+          onClick={() => {
+            setActiveTab('subs')
+            setSearchParams((p) => {
+              const next = new URLSearchParams(p)
+              next.set('tab', 'subs')
+              return next
+            })
+          }}
+          style={tabStyle(activeTab === 'subs')}
+        >
+          Subs
+        </button>
         {canAccessTeamsTab && (
           <button
             type="button"
@@ -3123,6 +3140,8 @@ export default function People() {
         </div>
         <h1 style={{ flexShrink: 0, margin: 0, marginLeft: '0.5rem', fontSize: '1.5rem', fontWeight: 700, color: 'var(--text-strong)' }}>People</h1>
       </div>
+
+      {activeTab === 'subs' && <PeopleSubsTab />}
 
       {activeTab === 'users' && (
         <PeopleUsersTab

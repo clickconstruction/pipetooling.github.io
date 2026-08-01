@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1214',
+    date: '2026-08-01',
+    title: 'People → Subs: every subcontractor relationship in one place',
+    kind: 'feature',
+    highlights: [
+      'A new Subs tab shows one row per sub: open work orders, balance due, compliance badges (agreement, COI, W-9, license), and their track record.',
+      'Click Documents under any sub to classify their paperwork and set expiration dates — badges warn 30 days before anything lapses.',
+      'Sheets that can’t be tied to one sub are called out for cleanup instead of miscounting anyone’s balance.',
+    ],
+  },
+  {
     version: 'v2.1213',
     date: '2026-08-01',
     title: 'Groundwork: contract documents know what they are and when they lapse',
