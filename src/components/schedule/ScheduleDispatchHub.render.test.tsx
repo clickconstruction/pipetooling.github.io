@@ -1,10 +1,10 @@
 // @vitest-environment jsdom
 /**
- * Render tests for the Schedule Dispatch hub shell's phone "new mode" (v2.1240):
- * the floating Old/New pill, the compact header (segmented tabs, + Schedule
- * sheet, ⋯ menu), and the guarantee that every sheet action routes through the
- * SAME page callbacks the desktop toolbar uses. Old mode must keep the classic
- * tab bar + Dispatch Settings button untouched.
+ * Render tests for the Schedule Dispatch hub shell's phone layout (v2.1240;
+ * the Old/New toggle was removed in v2.1242 — the compact header is the sole
+ * phone rendering): segmented tabs, + Schedule sheet, ⋯ menu, and the
+ * guarantee that every sheet action routes through the SAME page callbacks
+ * the desktop toolbar uses. Desktop keeps the classic chrome untouched.
  */
 import { describe, expect, it, vi } from 'vitest'
 
@@ -74,27 +74,14 @@ function makeProps(overrides: Partial<HubProps> = {}): HubProps {
   } as HubProps
 }
 
-describe('ScheduleDispatchHub phone new mode (v2.1240)', () => {
-  it('old mode keeps the classic tab bar and shows the floating layout toggle', () => {
-    const onMobileNewModeChange = vi.fn()
-    renderWithProviders(
-      <ScheduleDispatchHub
-        {...makeProps({ showMobileModeToggle: true, mobileNewMode: false, onMobileNewModeChange })}
-      />,
-    )
-    expect(screen.getByText('Dispatch Settings')).toBeTruthy()
-    expect(screen.queryByText('+ Schedule')).toBeNull()
-    fireEvent.click(screen.getByText('New mode'))
-    expect(onMobileNewModeChange).toHaveBeenCalledWith(true)
-  })
-
-  it('new mode renders the compact header and hides the classic chrome', () => {
-    renderWithProviders(
-      <ScheduleDispatchHub {...makeProps({ showMobileModeToggle: true, mobileNewMode: true, onMobileNewModeChange: vi.fn() })} />,
-    )
+describe('ScheduleDispatchHub phone layout (v2.1240, toggle removed v2.1242)', () => {
+  it('phone layout renders the compact header and hides the classic chrome', () => {
+    renderWithProviders(<ScheduleDispatchHub {...makeProps({ mobileNewMode: true })} />)
     expect(screen.getByText('+ Schedule')).toBeTruthy()
     expect(screen.getByLabelText('More schedule tools')).toBeTruthy()
     expect(screen.queryByText('Dispatch Settings')).toBeNull()
+    expect(screen.queryByText('Old mode')).toBeNull()
+    expect(screen.queryByText('New mode')).toBeNull()
     const tabs = screen.getAllByRole('tab').map((t) => t.textContent)
     expect(tabs).toEqual(['Day', 'People', 'Jobs'])
   })
@@ -107,9 +94,7 @@ describe('ScheduleDispatchHub phone new mode (v2.1240)', () => {
     renderWithProviders(
       <ScheduleDispatchHub
         {...makeProps({
-          showMobileModeToggle: true,
           mobileNewMode: true,
-          onMobileNewModeChange: vi.fn(),
           hubTab: 'day',
           onHubTabChange,
           onRequestHubAddJob,
@@ -135,9 +120,7 @@ describe('ScheduleDispatchHub phone new mode (v2.1240)', () => {
     renderWithProviders(
       <ScheduleDispatchHub
         {...makeProps({
-          showMobileModeToggle: true,
           mobileNewMode: true,
-          onMobileNewModeChange: vi.fn(),
           weekNavRightSlot: <button type="button">Share</button>,
         })}
       />,

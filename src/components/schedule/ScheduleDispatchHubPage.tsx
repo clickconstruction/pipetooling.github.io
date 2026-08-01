@@ -163,24 +163,9 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
   }, [searchParams])
   const hubTab = isTomorrow ? localHubTab : hubTabFromUrl
 
-  // Phone "new mode" (v2.1240): compact header + day-first, behind a floating
-  // Old/New toggle so dispatchers can keep the layout they know. Per-browser.
+  // Phone layout (v2.1240; the toggle was removed in v2.1242 — the compact
+  // header IS the phone rendering now): compact header + day-first on narrow.
   const narrowViewport = useNarrowViewport640()
-  const [hubMobileNewMode, setHubMobileNewMode] = useState(() => {
-    try {
-      return localStorage.getItem('schedule-dispatch-mobile-mode') !== 'old'
-    } catch {
-      return true
-    }
-  })
-  const setHubMobileNewModePersisted = useCallback((next: boolean) => {
-    setHubMobileNewMode(next)
-    try {
-      localStorage.setItem('schedule-dispatch-mobile-mode', next ? 'new' : 'old')
-    } catch {
-      /* session-only */
-    }
-  }, [])
   // Day-first: one-shot replace-redirect on mount. Only when the URL didn't ask
   // for a tab (deep links win) and no placeJob deep link is armed (that flow
   // expects the People grid).
@@ -188,7 +173,7 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
   useEffect(() => {
     if (hubMobileDayFirstAppliedRef.current) return
     hubMobileDayFirstAppliedRef.current = true
-    if (isTomorrow || !narrowViewport || !hubMobileNewMode) return
+    if (isTomorrow || !narrowViewport) return
     if (searchParams.get('hubTab')?.trim()) return
     if (searchParams.get('placeJob')?.trim()) return
     setSearchParams(
@@ -2157,9 +2142,7 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
             showWeekNavigation={!isTomorrow}
             showHubViewTabs={!isTomorrow}
             showHideWeekendToggle={!isTomorrow}
-            showMobileModeToggle={!isTomorrow && narrowViewport}
-            mobileNewMode={!isTomorrow && narrowViewport && hubMobileNewMode}
-            onMobileNewModeChange={setHubMobileNewModePersisted}
+            mobileNewMode={!isTomorrow && narrowViewport}
             weekNavRightSlot={
               canEdit && !isTomorrow ? (
                 <button

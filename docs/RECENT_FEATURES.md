@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-01 (v2.1241)
+last_updated: 2026-08-01 (v2.1242)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1242)
+
+### Schedule Dispatch — the phone layout graduates: Old mode and its toggle removed (2026-08-01)
+The v2.1240 floating **Old mode / New mode** pill is gone; the compact phone header (segmented Day-first tabs, **+ Schedule** sheet, **⋯** menu) is now the sole rendering on narrow viewports for the `/schedule-dispatch` route. Removed: the pill and its `showMobileModeToggle`/`onMobileNewModeChange` props from [`ScheduleDispatchHub.tsx`](../src/components/schedule/ScheduleDispatchHub.tsx), and the page's `hubMobileNewMode` state + `schedule-dispatch-mobile-mode` localStorage pref from [`ScheduleDispatchHubPage.tsx`](../src/components/schedule/ScheduleDispatchHubPage.tsx) (`mobileNewMode` is now simply narrow-and-not-embed; the day-first replace-redirect drops its mode condition). A stale `'old'` value in localStorage is simply ignored. Desktop and the Quickfill tomorrow embed are unchanged. Render tests updated (4): compact header without any Old/New pill, sheet→callback routing, ⋯ contents, desktop classic chrome. Docs: help guide + architecture dossier updated. Verified: `tsc -b` clean, zero new lints, full vitest suite green. Files: modified [`ScheduleDispatchHub.tsx`](../src/components/schedule/ScheduleDispatchHub.tsx), [`ScheduleDispatchHubPage.tsx`](../src/components/schedule/ScheduleDispatchHubPage.tsx), render test, help guide, architecture doc. No DB / migration / RLS / RPC / Edge / type-gen changes.
 
 ## Latest Updates (v2.1241)
 
