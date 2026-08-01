@@ -81,6 +81,36 @@ function ReadOnlyPaymentRefCopy({
   )
 }
 
+/** Pencil toggle for a manual row's folded Type/Ref/Memo details (v2.1223). */
+function PaymentDetailsToggle({ open, onToggle, controlsId }: { open: boolean; onToggle: () => void; controlsId: string }) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-expanded={open}
+      aria-controls={controlsId}
+      title="Payment details (type, ref, memo)"
+      aria-label="Toggle payment details"
+      style={{
+        padding: '0.35rem',
+        background: 'transparent',
+        border: 'none',
+        borderRadius: 4,
+        color: open ? 'var(--text-blue-500)' : 'var(--text-link)',
+        cursor: 'pointer',
+        display: 'inline-flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}
+    >
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width={15} height={15} fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+        <path d="M12 20h9" />
+        <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z" />
+      </svg>
+    </button>
+  )
+}
+
 type JobFormPaymentsTableProps = {
   editing: JobWithDetails | null
   payments: PaymentRow[]
@@ -119,8 +149,17 @@ export function JobFormPaymentsTable({
   // hidden behind a "Record non-Stripe payment received" button until the user
   // asks for one — recorded payments and locked (Stripe/Mercury) rows always show.
   const [manualEntryOpen, setManualEntryOpen] = useState(false)
+  // Compact layout (v2.1223): the explainer sentence hides behind the ⓘ toggle,
+  // and each row's Type/Ref/Memo inputs fold into a one-line summary. A row is
+  // open when explicitly toggled, or by default while it is an unsaved manual
+  // draft (so the record-a-payment flow still shows its fields immediately —
+  // persistedLedgerPaymentIds only changes on refetch, never mid-typing).
+  const [explainerOpen, setExplainerOpen] = useState(false)
+  const [detailsOpenById, setDetailsOpenById] = useState<Record<string, boolean>>({})
   useEffect(() => {
     setManualEntryOpen(false)
+    setExplainerOpen(false)
+    setDetailsOpenById({})
   }, [editing?.id])
   const isBlankManualRow = useCallback(
     // paid_on is deliberately NOT part of blankness: newEmptyPaymentRow() seeds
@@ -145,8 +184,29 @@ export function JobFormPaymentsTable({
 
   return (
     <div style={{ marginBottom: '1rem' }}>
-      <h4 style={{ margin: '0 0 0.15rem', fontSize: '0.9375rem', fontWeight: 400, textDecoration: 'underline', color: 'var(--text-700)' }}>③ Payments received</h4>
-      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: '0 0 0.5rem' }}>Money collected on the job. Updates automatically when customer pays through Stripe.</div>
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.75rem', flexWrap: 'wrap', margin: '0 0 0.4rem' }}>
+        <h4 style={{ margin: 0, fontSize: '0.9375rem', fontWeight: 400, textDecoration: 'underline', color: 'var(--text-700)' }}>③ Payments received</h4>
+        <button
+          type="button"
+          onClick={() => setExplainerOpen((v) => !v)}
+          aria-expanded={explainerOpen}
+          style={{
+            padding: 0,
+            background: 'transparent',
+            border: 'none',
+            color: 'var(--text-link)',
+            fontSize: '0.6875rem',
+            cursor: 'pointer',
+            fontFamily: 'inherit',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          ⓘ How payments update
+        </button>
+      </div>
+      {explainerOpen && (
+        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: '0 0 0.5rem' }}>Money collected on the job. Updates automatically when customer pays through Stripe.</div>
+      )}
       {visiblePayments.length > 0 && (
       <div style={{ overflowX: 'auto' }}>
       <table
@@ -163,13 +223,8 @@ export function JobFormPaymentsTable({
           <col style={{ width: '24%' }} />
           <col style={{ width: '48%' }} />
         </colgroup>
-        <thead style={{ background: 'var(--bg-subtle)' }}>
-          <tr>
-            <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)', fontWeight: 600 }}>Date</th>
-            <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderBottom: '1px solid var(--border)', fontWeight: 600 }}>Paid</th>
-            <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderBottom: '1px solid var(--border)', fontWeight: 600 }} aria-hidden />
-          </tr>
-        </thead>
+        {/* No header band (v2.1223) — the date picker and the $-prefixed amount
+            group self-label, matching the ① Line Items input groups. */}
         <tbody>
           {(() => {
             // Last non–Stripe-locked row hosts the add (+) control. If all rows are Stripe-backed (-1), there is no inline +.
@@ -196,8 +251,26 @@ export function JobFormPaymentsTable({
             const noteTrim = (row.note ?? '').trim()
             const ptTrim = (row.payment_type ?? '').trim()
             const refTrim = (row.reference_number ?? '').trim()
-            const hasMemoSubRow =
-              !paymentReadOnly || noteTrim.length > 0 || ptTrim.length > 0 || refTrim.length > 0
+            // Unsaved manual drafts open by default (the entry flow); saved rows
+            // fold to a summary until the pencil toggles them.
+            const detailsOpen =
+              detailsOpenById[row.id] ?? (!paymentReadOnly && !persistedLedgerPaymentIds.has(row.id))
+            const appliedInvoice = row.invoice_id
+              ? (editing?.invoices ?? []).find((i) => i.id === row.invoice_id) ?? null
+              : null
+            const detailsSummaryText = [
+              ptTrim,
+              refTrim ? `ref ${refTrim}` : '',
+              noteTrim,
+              row.invoice_id
+                ? `applies to ${appliedInvoice ? `$${formatCurrency(Number(appliedInvoice.amount ?? 0))} bill` : 'a bill'}`
+                : '',
+            ]
+              .filter(Boolean)
+              .join(' · ')
+            const hasMemoSubRow = paymentReadOnly
+              ? noteTrim.length > 0 || ptTrim.length > 0 || refTrim.length > 0
+              : detailsOpen || detailsSummaryText.length > 0
             const rowSep = idx < visiblePayments.length - 1 ? '1px solid #e5e7eb' : 'none'
             const parentCellPad = hasMemoSubRow ? '0.5rem 0.75rem 0.1rem' : '0.5rem 0.75rem'
             const paymentDateCellStyle = {
@@ -362,23 +435,49 @@ export function JobFormPaymentsTable({
                         </span>
                       </div>
                     ) : (
-                      <MoneyDecimalAmountInput
-                        value={row.amount}
-                        onChange={(amount) => updatePaymentRow(row.id, { amount })}
-                        commitOnType
-                        placeholder="0"
-                        aria-label="Payment amount"
+                      <span
                         style={{
-                          width: '100%',
-                          maxWidth: '100%',
-                          boxSizing: 'border-box',
-                          padding: '0.375rem 0.5rem',
+                          display: 'flex',
+                          alignItems: 'stretch',
                           border: '1px solid var(--border-strong)',
                           borderRadius: 6,
-                          fontSize: '0.875rem',
-                          textAlign: 'right',
+                          overflow: 'hidden',
                         }}
-                      />
+                      >
+                        <span
+                          aria-hidden
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            padding: '0 0.3rem',
+                            fontSize: '0.75rem',
+                            color: 'var(--text-muted)',
+                            background: 'var(--bg-subtle)',
+                            borderRight: '1px solid var(--border)',
+                          }}
+                        >
+                          $
+                        </span>
+                        <MoneyDecimalAmountInput
+                          value={row.amount}
+                          onChange={(amount) => updatePaymentRow(row.id, { amount })}
+                          commitOnType
+                          placeholder="0"
+                          aria-label="Payment amount"
+                          style={{
+                            flex: 1,
+                            width: '100%',
+                            minWidth: 0,
+                            boxSizing: 'border-box',
+                            padding: '0.375rem 0.5rem',
+                            border: 'none',
+                            borderRadius: 0,
+                            fontSize: '0.875rem',
+                            textAlign: 'right',
+                            background: 'transparent',
+                          }}
+                        />
+                      </span>
                     )}
                   </td>
                   <td
@@ -421,6 +520,11 @@ export function JobFormPaymentsTable({
                           flexWrap: 'wrap',
                         }}
                       >
+                        <PaymentDetailsToggle
+                          open={detailsOpen}
+                          onToggle={() => setDetailsOpenById((prev) => ({ ...prev, [row.id]: !detailsOpen }))}
+                          controlsId={`edit-job-payment-details-${row.id}`}
+                        />
                         <button
                           type="button"
                           onClick={() => {
@@ -470,57 +574,86 @@ export function JobFormPaymentsTable({
                         ) : null}
                       </div>
                     ) : (
-                      <button
-                        type="button"
-                        onClick={() => requestRemovePaymentRow(row)}
-                        disabled={!payRowCanRemove}
-                        title="Remove"
-                        aria-label="Remove payment row"
-                        style={{
-                          padding: '0.35rem',
-                          background: !payRowCanRemove ? 'var(--bg-muted)' : 'transparent',
-                          color: !payRowCanRemove ? 'var(--text-faint)' : '#991b1c',
-                          border: 'none',
-                          borderRadius: 4,
-                          cursor: !payRowCanRemove ? 'not-allowed' : 'pointer',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                        }}
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={16} height={16} fill="currentColor" aria-hidden><path d="M232.7 69.9L224 96L128 96C110.3 96 96 110.3 96 128C96 145.7 110.3 160 128 160L512 160C529.7 160 544 145.7 544 128C544 110.3 529.7 96 512 96L416 96L407.3 69.9C402.9 56.8 390.7 48 376.9 48L263.1 48C249.3 48 237.1 56.8 232.7 69.9zM512 208L128 208L149.1 531.1C150.7 556.4 171.7 576 197 576L443 576C468.3 576 489.3 556.4 490.9 531.1L512 208z" /></svg>
-                      </button>
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
+                        <PaymentDetailsToggle
+                          open={detailsOpen}
+                          onToggle={() => setDetailsOpenById((prev) => ({ ...prev, [row.id]: !detailsOpen }))}
+                          controlsId={`edit-job-payment-details-${row.id}`}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => requestRemovePaymentRow(row)}
+                          disabled={!payRowCanRemove}
+                          title="Remove"
+                          aria-label="Remove payment row"
+                          style={{
+                            padding: '0.35rem',
+                            background: !payRowCanRemove ? 'var(--bg-muted)' : 'transparent',
+                            color: !payRowCanRemove ? 'var(--text-faint)' : '#991b1c',
+                            border: 'none',
+                            borderRadius: 4,
+                            cursor: !payRowCanRemove ? 'not-allowed' : 'pointer',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                          }}
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={16} height={16} fill="currentColor" aria-hidden><path d="M232.7 69.9L224 96L128 96C110.3 96 96 110.3 96 128C96 145.7 110.3 160 128 160L512 160C529.7 160 544 145.7 544 128C544 110.3 529.7 96 512 96L416 96L407.3 69.9C402.9 56.8 390.7 48 376.9 48L263.1 48C249.3 48 237.1 56.8 232.7 69.9zM512 208L128 208L149.1 531.1C150.7 556.4 171.7 576 197 576L443 576C468.3 576 489.3 556.4 490.9 531.1L512 208z" /></svg>
+                        </button>
+                      </span>
                     )}
                   </td>
                 </tr>
                 {hasMemoSubRow ? (
                   <tr style={{ borderBottom: rowSep }}>
-                    <td colSpan={3} style={PAYMENT_MEMO_SUB_ROW_CELL_STYLE}>
+                    <td
+                      colSpan={3}
+                      style={
+                        !paymentReadOnly && detailsOpen
+                          ? PAYMENT_MEMO_SUB_ROW_CELL_STYLE
+                          : { ...PAYMENT_MEMO_SUB_ROW_CELL_STYLE, paddingLeft: '0.75rem', paddingBottom: '0.4rem' }
+                      }
+                    >
                       {paymentReadOnly ? (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                          {(ptTrim || refTrim) ? (
-                            <div style={{ fontSize: '0.75rem', color: 'var(--text-700)' }}>
-                              {ptTrim ? (
-                                <span style={{ marginRight: '0.75rem' }}>
-                                  <span style={{ fontWeight: 600, color: 'var(--text-600)' }}>Type: </span>
-                                  {ptTrim}
-                                </span>
-                              ) : null}
-                              {refTrim ? (
-                                <span>
-                                  <span style={{ fontWeight: 600, color: 'var(--text-600)' }}>Ref: </span>
-                                  <ReadOnlyPaymentRefCopy refText={refTrim} showToast={showToast} />
-                                </span>
-                              ) : null}
-                            </div>
+                        /* Locked rows compact to one wrapping line (v2.1223) — the
+                           same type / copyable ref / memo, without the stacked block. */
+                        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', columnGap: '0.75rem', rowGap: '0.15rem', color: 'var(--text-700)' }}>
+                          {ptTrim ? <span>{ptTrim}</span> : null}
+                          {refTrim ? (
+                            <span>
+                              <span style={{ color: 'var(--text-600)' }}>ref </span>
+                              <ReadOnlyPaymentRefCopy refText={refTrim} showToast={showToast} />
+                            </span>
                           ) : null}
-                          <div>
-                            <span style={{ fontWeight: 600, color: 'var(--text-600)' }}>Memo: </span>
-                            {noteTrim || '—'}
-                          </div>
+                          {noteTrim ? <span>{noteTrim}</span> : null}
                         </div>
+                      ) : !detailsOpen ? (
+                        <button
+                          type="button"
+                          onClick={() => setDetailsOpenById((prev) => ({ ...prev, [row.id]: true }))}
+                          title="Edit payment details (type, ref, memo)"
+                          aria-label="Edit payment details"
+                          style={{
+                            display: 'block',
+                            width: '100%',
+                            textAlign: 'left',
+                            padding: 0,
+                            border: 'none',
+                            background: 'none',
+                            font: 'inherit',
+                            fontSize: '0.75rem',
+                            color: 'var(--text-muted)',
+                            cursor: 'pointer',
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                          }}
+                        >
+                          {detailsSummaryText}
+                        </button>
                       ) : (
                         <div
+                          id={`edit-job-payment-details-${row.id}`}
                           style={{
                             display: 'flex',
                             flexDirection: 'column',

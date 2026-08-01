@@ -227,6 +227,41 @@ export function segmentSelectionSummary(
 }
 
 /**
+ * Selection totals net of dollar coverage: what "create invoice from
+ * remaining on selected segments" will actually bill. For each selected,
+ * still-billable row, the waterfall's covered dollars are subtracted from the
+ * row's dollars (cents-exact, clamped at zero per row). With no coverage
+ * model (new job) net equals gross. Fully covered rows are unselectable
+ * upstream, so a non-empty selection always nets > 0.
+ */
+export function segmentSelectionNetSummary(
+  fixtures: SegmentFixtureLine[],
+  selectedIds: ReadonlySet<string>,
+  coverage: JobDollarCoverage | null | undefined,
+): { grossDollars: number; coveredDollars: number; netDollars: number; count: number } {
+  let grossCents = 0
+  let coveredCents = 0
+  let count = 0
+  for (const f of fixtures) {
+    if (!selectedIds.has(f.id)) continue
+    if (f.invoice_id != null) continue
+    const d = lineDollars(f)
+    if (!(d > 0)) continue
+    const segCents = Math.round(d * 100)
+    const c = Math.min(segCents, Math.round((coverage?.bySegmentKey[f.id]?.coveredDollars ?? 0) * 100))
+    grossCents += segCents
+    coveredCents += c
+    count += 1
+  }
+  return {
+    grossDollars: grossCents / 100,
+    coveredDollars: coveredCents / 100,
+    netDollars: (grossCents - coveredCents) / 100,
+    count,
+  }
+}
+
+/**
  * Row ids that a "create invoice from selection" will actually link — the
  * same validity rules as segmentSelectionSummary. Used to mirror the DB link
  * write into local fixtures state so the next delete+reinsert keeps it.

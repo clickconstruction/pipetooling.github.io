@@ -5,7 +5,7 @@ file: docs/JOB_FORM_MODAL_ARCHITECTURE.md
 type: Engineering / Refactor Map
 purpose: Step-0 map for the JobFormModal.tsx decomposition (per PAGE_DECOMPOSITION_PLAYBOOK.md, adapted from tabs to form sections) — inventory what every section of the New/Edit Job modal touches (state, handlers, supabase tables/RPCs, sub-components, coupling) to drive the multi-PR extraction, with a deep-dive on the money-path save engine.
 audience: Developers, AI Agents
-last_updated: 2026-07-29
+last_updated: 2026-08-01
 ---
 
 ## Overview
@@ -120,6 +120,13 @@ The ①/② billing area gained the job-stages family; all money math is in test
 - **`jobFormFixtureLinks.ts`** — linked-row lock predicate + lifecycle chip; linked rows disable name/count/price/scope and hide remove in `JobFormFixturesSection`.
 - **`jobSegmentsCoverage.ts`** + **`JobFormSegmentsBar`** (v2.1070) — the ② Invoices 100%-strip and the create-invoice-from-selected-segments flow (`createInvoiceFromSelectedSegments` in the shell: flush autosave → insert invoice → link by `sequence_order` positions → mirror links into local fixtures state → RTB remainder resync → refetch). Selection state (`selectedSegmentIds`) clears on hydrate/reset/import.
 - **`segmentGenerator.ts`** + **`MultipleSegmentGeneratorModal`** (v2.1071) — %-split generator with Commercial 30/30/30/10 and Residential 40/40/20 presets; "Add to Job" appends `FixtureRow`s via `addGeneratedSegmentsToJob`.
+
+### Billing-area compaction + segment net billing (v2.1223)
+
+- **`segmentSelectionNetSummary`** (`jobSegmentsCoverage.ts`, tested) — "Create invoice from remaining on selected segments": the create flow bills the selection NET of the v2.1132 dollar-coverage waterfall. Consumers: the shell's `createInvoiceFromSelectedSegments` (invoice `amount`), `toggleSegmentSelected` (slider sync), and the button/summary UI. The exceeds-Remaining check survives as a stale-state backstop only.
+- **`JobFormSegmentsBar` split three ways**: the bar itself (legend row now carries the $0/$total axis anchors via `axisTotalDollars`; new `trackSlot` renders between the strip and the per-segment rows), `JobFormBreakOffTrack` (the draggable track, rendered in `trackSlot`; tip-anchored thumb, no edge clamp), and `JobFormSegmentsCreateAction` (the create button + helper text, rendered by the shell BELOW `JobFormBreakOffSection`'s equation row). All share the shell's single `useBreakOffSlider` instance.
+- **§7 fixtures compaction** (`JobFormFixturesSection`): count/unit-price are in-border `[× n]`/`[$ amount]` input groups; the per-row secondary line is gone — the scope pencil lives inside the name field's border (opens/closes-empty/focuses-nonempty), and the Stripe char counter renders only within 100 of the limit. **Stripe preview is job-wide**: one title-row trigger opens the §17 dialog listing every named line's Stripe description (`stripeFixturePreviewOpen` boolean replaced `stripeFixturePreviewRowId`; section prop `onOpenStripeFixturePreview`).
+- **§12 payments compaction** (`JobFormPaymentsTable`): explainer behind an ⓘ toggle; Date/Paid `<thead>` removed ($-prefix amount group); Type/Ref/Memo + Applies-to fold to a one-line summary per row (`detailsOpenById`; unsaved manual rows auto-expand — `persistedLedgerPaymentIds` only changes on refetch, so rows never fold mid-typing); locked rows compact to one wrapping line keeping `ReadOnlyPaymentRefCopy`. Lock predicates and the last-unlocked `+` placement unchanged.
 
 ---
 

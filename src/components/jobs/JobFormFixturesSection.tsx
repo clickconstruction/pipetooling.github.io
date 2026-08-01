@@ -41,7 +41,8 @@ type JobFormFixturesSectionProps = {
   invoiceStatusById?: Record<string, string>
   /** Opens the Multiple Segment Generator modal (v2.1071). */
   onOpenSegmentGenerator: () => void
-  setStripeFixturePreviewRowId: (id: string | null) => void
+  /** Opens the all-line-items Stripe preview dialog (v2.1223, title-row trigger). */
+  onOpenStripeFixturePreview: () => void
   /** Live sum of the line items — shown as the running "Job Total" at the top right. */
   jobTotalDollars: number
   /** Rider `<tr>`s (hazmat fees) rendered after the fixture rows (v2.1029). */
@@ -52,12 +53,12 @@ type JobFormFixturesSectionProps = {
 
 /**
  * The "① Line Items" grid in the Edit/New Job
- * modal: one row per fixture (autosizing name, count, unit price) with an
- * add/remove control, plus the per-row scope/notes sub-row carrying the Stripe
- * line-length counter and the "Stripe preview" dialog trigger. Extracted
- * verbatim from JobFormModal — pure render; all state, the highlight
- * ref/effects, and the Stripe-preview dialog itself stay in the shell and come
- * in as props.
+ * modal: one row per fixture (autosizing name with an in-border scope pencil,
+ * count and unit price as ×/$ input groups) with add/remove controls, a
+ * title-row "Stripe preview" trigger (all-lines dialog, v2.1223), and a
+ * near-limit Stripe line-length counter in the expanded scope block. Pure
+ * render; all state, the highlight ref/effects, and the Stripe-preview dialog
+ * itself stay in the shell and come in as props.
  */
 export function JobFormFixturesSection({
   fixtures,
@@ -71,7 +72,7 @@ export function JobFormFixturesSection({
   moveFixtureRow,
   invoiceStatusById = {},
   onOpenSegmentGenerator,
-  setStripeFixturePreviewRowId,
+  onOpenStripeFixturePreview,
   jobTotalDollars,
   riderRows,
   riderFeesDollars = 0,
@@ -128,6 +129,33 @@ export function JobFormFixturesSection({
               >
                 Multiple Segment Generator
               </button>
+              <button
+                type="button"
+                aria-haspopup="dialog"
+                aria-controls="stripe-fixture-line-preview-dialog"
+                onClick={onOpenStripeFixturePreview}
+                title="Preview the Stripe invoice line for every line item"
+                style={{
+                  padding: 0,
+                  background: 'transparent',
+                  border: 'none',
+                  color: 'var(--text-link)',
+                  textDecoration: 'underline',
+                  fontSize: '0.75rem',
+                  cursor: 'pointer',
+                  fontFamily: 'inherit',
+                  whiteSpace: 'nowrap',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.25rem',
+                }}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width={13} height={13} fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                  <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" />
+                  <circle cx="12" cy="12" r="3" />
+                </svg>
+                Stripe preview
+              </button>
             </div>
             {helperOpen && (
               <div style={{ marginBottom: '0.5rem' }}>
@@ -138,9 +166,10 @@ export function JobFormFixturesSection({
               </div>
             )}
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem', tableLayout: 'fixed' }}>
-              {/* No header band (v2.1149) — the inputs self-label: count wears a
-                  "×" prefix, unit price a "$", so a full row of column titles
-                  isn't spent labeling what is usually a single line. */}
+              {/* No header band (v2.1149) — the inputs self-label: count and unit
+                  price carry muted "×" / "$" prefixes inside their own borders
+                  (input groups, v2.1223), so a full row of column titles isn't
+                  spent labeling what is usually a single line. */}
               <colgroup>
                 <col />
                 <col style={{ width: '4.5rem' }} />
@@ -166,8 +195,8 @@ export function JobFormFixturesSection({
                       <tr style={{ borderBottom: 'none' }}>
                         <td
                           style={{
-                            padding: '0.625rem 0.75rem',
-                            paddingBottom: '0.35rem',
+                            padding: '0.45rem 0.75rem',
+                            paddingBottom: '0.25rem',
                             minWidth: 0,
                             verticalAlign: 'top',
                           }}
@@ -226,31 +255,90 @@ export function JobFormFixturesSection({
                               </div>
                             )}
                             <div style={{ flex: 1, minWidth: 0 }}>
-                              <AutosizeTextarea
-                                minRows={1}
-                                extraLines={0}
-                                id={nameFieldId}
-                                value={row.name}
-                                disabled={locked}
-                                onChange={(e) => updateFixtureRow(row.id, { name: e.target.value })}
-                                onBlur={() => {
-                                  const next = normalizeFixtureDisplayName(row.name ?? '')
-                                  if (next !== row.name) updateFixtureRow(row.id, { name: next })
-                                }}
-                                onKeyDown={(e) => {
-                                  if (e.key === 'Enter') e.preventDefault()
-                                }}
-                                placeholder="Specific work or materials"
+                              {/* Input group (v2.1223): the scope pencil sits INSIDE the name
+                                  field's border as a suffix (top-anchored so it doesn't jump
+                                  when a name wraps). The Stripe preview is job-wide and lives
+                                  on the ① title row. */}
+                              <div
                                 style={{
-                                  padding: '0.375rem 0.625rem',
+                                  display: 'flex',
+                                  alignItems: 'stretch',
                                   border: '1px solid var(--border-strong)',
                                   borderRadius: 6,
-                                  fontSize: '0.875rem',
-                                  lineHeight: 1.4,
-                                  fontFamily: 'inherit',
-                                  ...(locked ? { opacity: 0.75 } : {}),
+                                  overflow: 'hidden',
                                 }}
-                              />
+                              >
+                                <AutosizeTextarea
+                                  minRows={1}
+                                  extraLines={0}
+                                  id={nameFieldId}
+                                  value={row.name}
+                                  disabled={locked}
+                                  onChange={(e) => updateFixtureRow(row.id, { name: e.target.value })}
+                                  onBlur={() => {
+                                    const next = normalizeFixtureDisplayName(row.name ?? '')
+                                    if (next !== row.name) updateFixtureRow(row.id, { name: next })
+                                  }}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') e.preventDefault()
+                                  }}
+                                  placeholder="Specific work or materials"
+                                  style={{
+                                    flex: 1,
+                                    width: '100%',
+                                    minWidth: 0,
+                                    padding: '0.375rem 0.625rem',
+                                    border: 'none',
+                                    borderRadius: 0,
+                                    fontSize: '0.875rem',
+                                    lineHeight: 1.4,
+                                    fontFamily: 'inherit',
+                                    background: 'transparent',
+                                    ...(locked ? { opacity: 0.75 } : {}),
+                                  }}
+                                />
+                                {!locked && (
+                                <span style={{ display: 'flex', alignItems: 'flex-start', flexShrink: 0, padding: '0.1rem 0.1rem 0 0' }}>
+                                    <button
+                                      type="button"
+                                      aria-expanded={scopeExpanded}
+                                      aria-controls={descFieldId}
+                                      onClick={() => {
+                                        if (!scopeExpanded) {
+                                          setFixtureScopeExpandedById((prev) => ({ ...prev, [row.id]: true }))
+                                        } else if (scopeTrim.length === 0) {
+                                          setFixtureScopeExpandedById((prev) => ({ ...prev, [row.id]: false }))
+                                        } else {
+                                          document.getElementById(descFieldId)?.focus()
+                                        }
+                                      }}
+                                      title={
+                                        !scopeExpanded
+                                          ? 'Add scope or notes'
+                                          : scopeTrim.length === 0
+                                            ? 'Hide scope or notes'
+                                            : 'Edit the scope notes below'
+                                      }
+                                      aria-label={!scopeExpanded ? 'Add scope or notes' : 'Scope or notes'}
+                                      style={{
+                                        padding: '0.3rem',
+                                        background: 'transparent',
+                                        border: 'none',
+                                        borderRadius: 4,
+                                        color: scopeExpanded ? 'var(--text-blue-500)' : 'var(--text-link)',
+                                        cursor: 'pointer',
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                      }}
+                                    >
+                                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width={15} height={15} fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                                        <path d="M12 20h9" />
+                                        <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z" />
+                                      </svg>
+                                    </button>
+                                </span>
+                                )}
+                              </div>
                               {linkChip && (
                                 <span
                                   title="This line item is billed by an invoice in ② Invoices. Send the invoice back or delete it to edit the line."
@@ -274,8 +362,8 @@ export function JobFormFixturesSection({
                         </td>
                         <td
                           style={{
-                            paddingTop: '0.625rem',
-                            paddingBottom: '0.35rem',
+                            paddingTop: '0.45rem',
+                            paddingBottom: '0.25rem',
                             paddingLeft: '0.25rem',
                             paddingRight: '0.25rem',
                             textAlign: 'right',
@@ -283,8 +371,32 @@ export function JobFormFixturesSection({
                             verticalAlign: 'top',
                           }}
                         >
-                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                            <span aria-hidden style={{ color: 'var(--text-muted)', fontSize: '0.8125rem' }}>×</span>
+                          {/* Input group (v2.1223): the × lives INSIDE the field's
+                              border as a muted prefix — a floating glyph in the
+                              gutter read as a stray character. */}
+                          <span
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'stretch',
+                              border: '1px solid var(--border-strong)',
+                              borderRadius: 6,
+                              overflow: 'hidden',
+                            }}
+                          >
+                            <span
+                              aria-hidden
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                padding: '0 0.3rem',
+                                fontSize: '0.75rem',
+                                color: 'var(--text-muted)',
+                                background: 'var(--bg-subtle)',
+                                borderRight: '1px solid var(--border)',
+                              }}
+                            >
+                              ×
+                            </span>
                             <input
                               type="number"
                               min={1}
@@ -293,23 +405,24 @@ export function JobFormFixturesSection({
                               aria-label="Count"
                               onChange={(e) => updateFixtureRow(row.id, { count: Math.max(1, Number(e.target.value) || 1) })}
                               style={{
-                                width: '3rem',
+                                width: '2.6rem',
                                 maxWidth: '100%',
                                 boxSizing: 'border-box',
                                 padding: '0.375rem 0.25rem',
-                                border: '1px solid var(--border-strong)',
-                                borderRadius: 6,
+                                border: 'none',
+                                borderRadius: 0,
                                 fontSize: '0.875rem',
                                 textAlign: 'center',
+                                background: 'transparent',
                               }}
                             />
                           </span>
                         </td>
                         <td
                           style={{
-                            paddingTop: '0.625rem',
+                            paddingTop: '0.45rem',
                             paddingRight: '0.375rem',
-                            paddingBottom: '0.35rem',
+                            paddingBottom: '0.25rem',
                             paddingLeft: '0.25rem',
                             verticalAlign: 'top',
                           }}
@@ -324,26 +437,53 @@ export function JobFormFixturesSection({
                               flexWrap: 'nowrap',
                             }}
                           >
-                            <span aria-hidden style={{ color: 'var(--text-muted)', fontSize: '0.8125rem', alignSelf: 'center' }}>$</span>
-                            <MoneyDecimalAmountInput
-                              value={row.line_unit_price ?? 0}
-                              onChange={(n) => updateFixtureRow(row.id, { line_unit_price: n === 0 ? null : n })}
-                              readOnly={locked}
-                              commitOnType
-                              placeholder="—"
-                              aria-label="Unit price"
+                            {/* Same input-group treatment as the count field: the $
+                                is a muted in-border prefix, not a floating glyph. */}
+                            <span
                               style={{
-                                width: '5.5rem',
-                                minWidth: '4.5rem',
-                                flexShrink: 0,
-                                boxSizing: 'border-box',
-                                padding: '0.375rem 0.5rem',
+                                display: 'inline-flex',
+                                alignItems: 'stretch',
                                 border: '1px solid var(--border-strong)',
                                 borderRadius: 6,
-                                fontSize: '0.875rem',
-                                textAlign: 'right',
+                                overflow: 'hidden',
+                                flexShrink: 0,
                               }}
-                            />
+                            >
+                              <span
+                                aria-hidden
+                                style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  padding: '0 0.3rem',
+                                  fontSize: '0.75rem',
+                                  color: 'var(--text-muted)',
+                                  background: 'var(--bg-subtle)',
+                                  borderRight: '1px solid var(--border)',
+                                }}
+                              >
+                                $
+                              </span>
+                              <MoneyDecimalAmountInput
+                                value={row.line_unit_price ?? 0}
+                                onChange={(n) => updateFixtureRow(row.id, { line_unit_price: n === 0 ? null : n })}
+                                readOnly={locked}
+                                commitOnType
+                                placeholder="—"
+                                aria-label="Unit price"
+                                style={{
+                                  width: '5rem',
+                                  minWidth: '4rem',
+                                  flexShrink: 0,
+                                  boxSizing: 'border-box',
+                                  padding: '0.375rem 0.5rem',
+                                  border: 'none',
+                                  borderRadius: 0,
+                                  fontSize: '0.875rem',
+                                  textAlign: 'right',
+                                  background: 'transparent',
+                                }}
+                              />
+                            </span>
                             {/* The add-line-item action lives in the footer next to Job Total
                                 (v2.1131) — a (+) pinned to the last row made freshly generated
                                 rows read as "not added yet". Every removable row now carries
@@ -385,52 +525,30 @@ export function JobFormFixturesSection({
                         <td
                           colSpan={3}
                           style={{
-                            padding: '0 0.75rem 0.625rem',
+                            padding: scopeExpanded || stripeLineOverLimit ? '0 0.75rem 0.45rem' : '0 0 0.2rem',
                             verticalAlign: 'top',
                             position: 'relative',
                           }}
                         >
                           {scopeExpanded ? (
                             <>
-                              <div
-                                style={{
-                                  display: 'flex',
-                                  flexWrap: 'wrap',
-                                  justifyContent: 'space-between',
-                                  alignItems: 'baseline',
-                                  gap: '0.5rem',
-                                  marginBottom: 6,
-                                }}
-                              >
+                              {/* The counter earns its space only near the Stripe line limit
+                                  (v2.1223) — under that the expanded block is just the textarea.
+                                  The Stripe-preview affordance lives on the row's name field
+                                  (v2.1223), not here. */}
+                              {stripeFixtureLineLen >= STRIPE_INVOICE_LINE_DESCRIPTION_MAX - 100 && (
                                 <div
                                   id={stripeLenDescId}
                                   aria-live="polite"
                                   style={{
                                     fontSize: '0.75rem',
                                     color: stripeLineOverLimit ? '#d97706' : 'var(--text-muted)',
+                                    marginBottom: 4,
                                   }}
                                 >
                                   ({stripeFixtureLineLen} / {STRIPE_INVOICE_LINE_DESCRIPTION_MAX})
                                 </div>
-                                <button
-                                  type="button"
-                                  aria-haspopup="dialog"
-                                  aria-controls="stripe-fixture-line-preview-dialog"
-                                  onClick={() => setStripeFixturePreviewRowId(row.id)}
-                                  style={{
-                                    padding: '0.25rem 0',
-                                    border: 'none',
-                                    background: 'none',
-                                    cursor: 'pointer',
-                                    fontSize: '0.8125rem',
-                                    color: 'var(--text-link)',
-                                    textDecoration: 'underline',
-                                    textUnderlineOffset: '2px',
-                                  }}
-                                >
-                                  Stripe preview
-                                </button>
-                              </div>
+                              )}
                               <label htmlFor={descFieldId} style={FIXTURE_SCOPE_FIELD_LABEL_VISUALLY_HIDDEN}>
                                 Optional scope or notes for this line
                               </label>
@@ -457,71 +575,18 @@ export function JobFormFixturesSection({
                                 }}
                               />
                             </>
-                          ) : (
+                          ) : stripeLineOverLimit ? (
+                            /* Collapsed rows carry no secondary line (v2.1223) — the scope
+                               and Stripe-preview affordances are icons on the input row.
+                               The counter surfaces only as this over-limit warning. */
                             <div
-                              style={{
-                                display: 'flex',
-                                flexWrap: 'wrap',
-                                justifyContent: 'space-between',
-                                alignItems: 'baseline',
-                                gap: '0.35rem',
-                                marginBottom: 4,
-                                fontSize: '0.75rem',
-                              }}
+                              id={stripeLenDescId}
+                              aria-live="polite"
+                              style={{ padding: '0 0.75rem', fontSize: '0.75rem', color: '#d97706' }}
                             >
-                              <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: '0.35rem' }}>
-                                <span
-                                  id={stripeLenDescId}
-                                  aria-live="polite"
-                                  style={{ color: stripeLineOverLimit ? '#d97706' : 'var(--text-muted)' }}
-                                >
-                                  ({stripeFixtureLineLen} / {STRIPE_INVOICE_LINE_DESCRIPTION_MAX})
-                                </span>
-                                <button
-                                  type="button"
-                                  aria-expanded={false}
-                                  aria-controls={descFieldId}
-                                  aria-describedby={stripeLenDescId}
-                                  onClick={() =>
-                                    setFixtureScopeExpandedById((prev) => ({
-                                      ...prev,
-                                      [row.id]: true,
-                                    }))
-                                  }
-                                  style={{
-                                    padding: '0.25rem 0',
-                                    border: 'none',
-                                    background: 'none',
-                                    cursor: 'pointer',
-                                    fontSize: '0.8125rem',
-                                    color: 'var(--text-link)',
-                                    textDecoration: 'underline',
-                                    textUnderlineOffset: '2px',
-                                  }}
-                                >
-                                  Add scope or notes
-                                </button>
-                              </div>
-                              <button
-                                type="button"
-                                aria-haspopup="dialog"
-                                aria-controls="stripe-fixture-line-preview-dialog"
-                                onClick={() => setStripeFixturePreviewRowId(row.id)}
-                                style={{
-                                  padding: '0.25rem 0',
-                                  border: 'none',
-                                  background: 'none',
-                                  cursor: 'pointer',
-                                  fontSize: '0.8125rem',
-                                  color: 'var(--text-link)',
-                                  textDecoration: 'underline',
-                                  textUnderlineOffset: '2px',
-                                }}
-                              >
-                                Stripe preview
-                              </button>
+                              ({stripeFixtureLineLen} / {STRIPE_INVOICE_LINE_DESCRIPTION_MAX}) — over the Stripe line limit
                             </div>
-                          )}
+                          ) : null}
                         </td>
                       </tr>
                     </Fragment>

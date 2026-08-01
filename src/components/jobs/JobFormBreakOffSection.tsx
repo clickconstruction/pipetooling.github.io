@@ -67,7 +67,7 @@ function EquationChip({
         {pct != null ? <span style={{ fontWeight: 400 }}>{pct}% </span> : null}
         {label}
       </span>
-      <span style={{ fontSize: '0.8125rem', fontWeight: 600, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
+      <span style={{ fontSize: '0.8125rem', fontWeight: 600, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', textAlign: 'center' }}>
         {children}
       </span>
     </span>
@@ -79,12 +79,11 @@ function EquationChip({
  * reworked v2.1137 into the equation + labeled-track hybrid: a chip row that IS
  * the math and the legend (Paid + Billed + New invoice → Left to bill, with the
  * amount input and the create/RTB action living inside the New invoice chip and
- * the quick-set percents always visible), over a draggable track whose money
- * coalesces left in lifecycle order (paid → billed → new invoice → left). The
- * handle carries a live "$ · %" badge; the yellow field-progress marker keeps
- * its dot plus a labeled caret below the track (no legend row anymore). A quiet
- * note appears when the bill would run well ahead of field progress — informative,
- * never blocking (deposits and rough-in draws are legitimate).
+ * the quick-set percents always visible). The draggable track whose money
+ * coalesces left in lifecycle order (paid → billed → new invoice → left) is
+ * `JobFormBreakOffTrack` below — the shell renders it separately via the
+ * segment bar's `trackSlot` (between the ② strip and its segment rows),
+ * sharing the same `useBreakOffSlider` state.
  * Slider math stays in useBreakOffSlider; the combined axis base is paid+billed.
  */
 export function JobFormBreakOffSection({
@@ -100,37 +99,21 @@ export function JobFormBreakOffSection({
     setNewInvoiceAmount,
     newInvoiceAmountInputFocused,
     setNewInvoiceAmountInputFocused,
-    breakOffSliderDragCombinedPct,
-    billingBreakOffTrackRef,
     isSendFullUnallocatedToReadyToBill,
     breakOffBillingTrackPercents,
-    jobCompleteTrackPct,
     breakOffPaidSum,
     breakOffBilledSum,
     breakOffRemaining,
     breakOffCombinedSliderBounds,
     breakOffInvoiceSharePct,
-    breakOffCombinedHandlePct,
-    breakOffCombinedThumbLeftPct,
-    onBillingBreakOffTrackPointerDown,
-    onBillingBreakOffTrackPointerMove,
-    onBillingBreakOffTrackPointerUpCancel,
-    onBillingBreakOffTrackLostPointerCapture,
-    onBreakOffSliderKeyDown,
   } = breakOff
 
   const invoiceDollars = parseMoneyInputToNumber(newInvoiceAmount)
   const actionDisabled = movingJobToReadyToBill || creatingInvoice || !(invoiceDollars > 0)
   const leftAfterDollars = Math.max(0, Math.round((breakOffRemaining - Math.max(0, invoiceDollars)) * 100) / 100)
-  const { paidPct, breakPreviewPct, billedPct } = breakOffBillingTrackPercents.hasTotal
+  const { paidPct, billedPct } = breakOffBillingTrackPercents.hasTotal
     ? breakOffBillingTrackPercents
-    : { paidPct: 0, breakPreviewPct: 0, billedPct: 0 }
-  const previewStartPct = Math.min(100, paidPct + billedPct)
-  // Quiet heads-up when the bill runs well ahead of the field (>10 points).
-  const billsAheadOfField =
-    jobCompleteTrackPct != null &&
-    invoiceDollars > 0 &&
-    breakOffCombinedHandlePct > jobCompleteTrackPct + 10
+    : { paidPct: 0, billedPct: 0 }
 
   return (
     <div style={{ marginBottom: '1rem', display: 'flex', flexDirection: 'column', gap: '0.5rem', width: '100%', minWidth: 0 }}>
@@ -255,6 +238,7 @@ export function JobFormBreakOffSection({
                 fontWeight: 600,
                 background: 'transparent',
                 fontVariantNumeric: 'tabular-nums',
+                textAlign: 'center',
               }}
             />
         </span>
@@ -273,8 +257,53 @@ export function JobFormBreakOffSection({
         </EquationChip>
       </div>
 
-      {breakOffBillingTrackPercents.hasTotal ? (
-        <div style={{ width: '100%', minWidth: 0 }}>
+    </div>
+  )
+}
+
+/**
+ * The draggable break-off track — rendered inside the ② segment bar's
+ * `trackSlot`, between the strip and its per-segment rows, separately from
+ * the equation row. Money coalesces left in
+ * lifecycle order (paid → billed → new invoice preview → left); the handle
+ * carries a live "$ · %" badge; the yellow field-progress marker keeps its dot
+ * plus a labeled caret below the track. A quiet note appears when the bill
+ * would run well ahead of field progress — informative, never blocking
+ * (deposits and rough-in draws are legitimate). Shares the shell's single
+ * useBreakOffSlider instance with the equation row, so the amount input,
+ * handle, and badges stay in lockstep.
+ */
+export function JobFormBreakOffTrack({ breakOff }: { breakOff: ReturnType<typeof useBreakOffSlider> }) {
+  const {
+    newInvoiceAmount,
+    breakOffSliderDragCombinedPct,
+    billingBreakOffTrackRef,
+    breakOffBillingTrackPercents,
+    jobCompleteTrackPct,
+    breakOffRemaining,
+    breakOffCombinedSliderBounds,
+    breakOffInvoiceSharePct,
+    breakOffCombinedHandlePct,
+    breakOffCombinedThumbLeftPct,
+    onBillingBreakOffTrackPointerDown,
+    onBillingBreakOffTrackPointerMove,
+    onBillingBreakOffTrackPointerUpCancel,
+    onBillingBreakOffTrackLostPointerCapture,
+    onBreakOffSliderKeyDown,
+  } = breakOff
+
+  if (!breakOffBillingTrackPercents.hasTotal) return null
+  const { paidPct, breakPreviewPct, billedPct } = breakOffBillingTrackPercents
+  const previewStartPct = Math.min(100, paidPct + billedPct)
+  const invoiceDollars = parseMoneyInputToNumber(newInvoiceAmount)
+  // Quiet heads-up when the bill runs well ahead of the field (>10 points).
+  const billsAheadOfField =
+    jobCompleteTrackPct != null &&
+    invoiceDollars > 0 &&
+    breakOffCombinedHandlePct > jobCompleteTrackPct + 10
+
+  return (
+        <div style={{ width: '100%', minWidth: 0, marginTop: '0.5rem' }}>
           <div
             ref={billingBreakOffTrackRef}
             style={{ position: 'relative', width: '100%', height: 60, marginTop: 2, touchAction: 'none' }}
@@ -423,7 +452,8 @@ export function JobFormBreakOffSection({
                 </svg>
               </div>
             ) : null}
-            {/* Under-track row: the handle's live badge, the field-progress caret, and the $0/total anchors. */}
+            {/* Under-track row: the handle's live badge and the field-progress caret
+                (the $0/total axis anchors moved up to the legend row). */}
             <div style={{ position: 'absolute', left: 0, right: 0, top: 24, height: 34, pointerEvents: 'none' }}>
               {breakOffRemaining > 0 && invoiceDollars > 0 ? (
                 <span
@@ -482,16 +512,6 @@ export function JobFormBreakOffSection({
                   Job {Math.round(jobCompleteTrackPct)}% done
                 </span>
               ) : null}
-              {(jobCompleteTrackPct == null || jobCompleteTrackPct > 12) && (
-                <span style={{ position: 'absolute', left: 0, top: 18, fontSize: '0.625rem', color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>
-                  $0
-                </span>
-              )}
-              {(jobCompleteTrackPct == null || jobCompleteTrackPct < 88) && (
-                <span style={{ position: 'absolute', right: 0, top: 18, fontSize: '0.625rem', color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>
-                  {formatUsdNoCents(jobTotalBidDollars)}
-                </span>
-              )}
             </div>
           </div>
           {billsAheadOfField ? (
@@ -514,8 +534,5 @@ export function JobFormBreakOffSection({
             </p>
           ) : null}
         </div>
-      ) : null}
-
-    </div>
   )
 }

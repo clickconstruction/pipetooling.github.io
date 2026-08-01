@@ -69,7 +69,7 @@ import { JobFormHazmatRiderRows } from './JobFormHazmatRidersStrip'
 import { JobFormPaymentsTable } from './JobFormPaymentsTable'
 import { JobFormPartsCostSection } from './JobFormPartsCostSection'
 import { JobFormLaborCostPanel } from './JobFormLaborCostPanel'
-import { JobFormBreakOffSection } from './JobFormBreakOffSection'
+import { JobFormBreakOffSection, JobFormBreakOffTrack } from './JobFormBreakOffSection'
 import { JobFormFixturesSection } from './JobFormFixturesSection'
 import { JobFormPeoplePicker } from './JobFormPeoplePicker'
 import { JobFormDeleteMigrateModals } from './JobFormDeleteMigrateModals'
@@ -102,10 +102,10 @@ import {
   dollarCoverageForSegments,
   linkableSelectedIds,
   segmentBoundaryMarks,
-  segmentSelectionSummary,
+  segmentSelectionNetSummary,
   selectedSegmentSequencePositions,
 } from '../../lib/jobs/jobSegmentsCoverage'
-import { InvoicesSectionHeading, JobFormSegmentsBar } from './JobFormSegmentsBar'
+import { InvoicesSectionHeading, JobFormSegmentsBar, JobFormSegmentsCreateAction } from './JobFormSegmentsBar'
 import { MultipleSegmentGeneratorModal } from './MultipleSegmentGeneratorModal'
 import type { SegmentGeneratorPayloadLine } from '../../lib/jobs/segmentGenerator'
 import {
@@ -393,25 +393,25 @@ export default function JobFormModal({
   ])
   /** User opened "Add scope or notes" for this fixture row id (persists while row exists). */
   const [fixtureScopeExpandedById, setFixtureScopeExpandedById] = useState<Record<string, boolean>>({})
-  const [stripeFixturePreviewRowId, setStripeFixturePreviewRowId] = useState<string | null>(null)
-  const stripeFixturePreviewRow = useMemo(
-    () =>
-      stripeFixturePreviewRowId
-        ? fixtures.find((f) => f.id === stripeFixturePreviewRowId) ?? null
-        : null,
-    [fixtures, stripeFixturePreviewRowId],
+  // v2.1223: one preview for the whole job — the dialog lists every line item's
+  // Stripe line, opened from the ① Line Items title row (per-row eyes removed).
+  const [stripeFixturePreviewOpen, setStripeFixturePreviewOpen] = useState(false)
+  // Named rows only — mirrors the save filter; a blank placeholder row has no Stripe line.
+  const stripeFixturePreviewRows = useMemo(
+    () => fixtures.filter((f) => (f.name ?? '').trim() !== ''),
+    [fixtures],
   )
   useEffect(() => {
-    if (!stripeFixturePreviewRowId) return
+    if (!stripeFixturePreviewOpen) return
     const onKeyDown = (ev: WindowEventMap['keydown']) => {
       if (ev.key === 'Escape') {
         ev.preventDefault()
-        setStripeFixturePreviewRowId(null)
+        setStripeFixturePreviewOpen(false)
       }
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [stripeFixturePreviewRowId])
+  }, [stripeFixturePreviewOpen])
   const jobTotalBidDollars = useMemo(() => revenueDollarsFromFixtures(fixtures), [fixtures])
   // v2.1029: rider (hazmat) fees count toward the Job Total — display, billing
   // math, AND the revenue written on save (previously saving recomputed
@@ -481,7 +481,7 @@ export default function JobFormModal({
     createCustomerFromJobModalOpen ||
     segmentGeneratorOpen ||
     bannerOverlayOpen ||
-    stripeFixturePreviewRowId != null ||
+    stripeFixturePreviewOpen ||
     billViewInvoice != null ||
     agreedWriteDownInvoice != null ||
     billToEditorInvoice != null
@@ -525,10 +525,11 @@ export default function JobFormModal({
     // but never locks it (v2.1152) — the user can still drag the slider or
     // edit the amount afterward and use New Invoice instead of the
     // segment-linked create. Deselecting everything restores the prefill.
-    const { totalDollars, count } = segmentSelectionSummary(fixtures, next)
-    // Clamp to the unallocated remainder — a partially covered segment's raw
-    // total can exceed what's actually billable, and the bar clamps anyway.
-    const syncDollars = Math.min(totalDollars, breakOff.breakOffRemaining)
+    // Net of coverage: the bar mirrors what the segment create will bill.
+    const { netDollars, count } = segmentSelectionNetSummary(fixtures, next, segmentCoverage)
+    // Clamp to the unallocated remainder — the net can still exceed it when
+    // dollar coverage landed on unselected rows, and the bar clamps anyway.
+    const syncDollars = Math.min(netDollars, breakOff.breakOffRemaining)
     setNewInvoiceAmount(
       count > 0 && syncDollars > 0
         ? syncDollars.toFixed(2)
@@ -2051,14 +2052,21 @@ export default function JobFormModal({
   async function createInvoiceFromSelectedSegments() {
     if (!editing) return
     const fixturesNow = autosaveFixturesRef.current
-    const { totalDollars, count } = segmentSelectionSummary(fixturesNow, selectedSegmentIds)
-    if (count === 0 || !(totalDollars > 0)) {
+    // The invoice bills the selection NET of dollar coverage — money already
+    // paid or invoiced by amount against these rows is subtracted, so a
+    // partially covered segment bills only what's left on it.
+    const { netDollars, coveredDollars, count } = segmentSelectionNetSummary(
+      fixturesNow,
+      selectedSegmentIds,
+      segmentCoverage,
+    )
+    if (count === 0 || !(netDollars > 0)) {
       setError('Select at least one unbilled segment first')
       return
     }
     // Cents-exact backstop for the UI clamp (v2.1132): never invoice past the
     // slider's Remaining — dollar invoices already cover that money.
-    if (Math.round(totalDollars * 100) > Math.round(segmentCoverage.remainingDollars * 100)) {
+    if (Math.round(netDollars * 100) > Math.round(segmentCoverage.remainingDollars * 100)) {
       setError(
         `This selection would bill more than the $${formatCurrency(segmentCoverage.remainingDollars)} left on the job — void or delete an existing bill first.`,
       )
@@ -2077,7 +2085,7 @@ export default function JobFormModal({
         .from('jobs_ledger_invoices')
         .insert({
           job_id: editing.id,
-          amount: totalDollars,
+          amount: netDollars,
           status: 'ready_to_bill',
           sequence_order: nextOrder,
           estimated_bill_date: null,
@@ -2119,7 +2127,10 @@ export default function JobFormModal({
       }
       setSelectedSegmentIds(new Set())
       onSavedRef.current?.()
-      showToast(`Invoice created for ${count} segment${count === 1 ? '' : 's'} ($${formatCurrency(totalDollars)})`, 'success')
+      showToast(
+        `Invoice created for the remaining $${formatCurrency(netDollars)} on ${count} segment${count === 1 ? '' : 's'}${coveredDollars > 0 ? ` ($${formatCurrency(coveredDollars)} already covered was subtracted)` : ''}`,
+        'success',
+      )
     } catch (e: unknown) {
       const err = e as { message?: string; details?: string; hint?: string }
       const msg = err?.message || 'Failed to create invoice from segments'
@@ -2556,7 +2567,6 @@ export default function JobFormModal({
       delete next[id]
       return next
     })
-    setStripeFixturePreviewRowId((cur) => (cur === id ? null : cur))
     setFixtures((prev) => (prev.length <= 1 ? prev : prev.filter((r) => r.id !== id)))
   }
 
@@ -3186,7 +3196,7 @@ export default function JobFormModal({
             moveFixtureRow={moveFixtureRowInList}
             invoiceStatusById={fixtureInvoiceStatusById}
             onOpenSegmentGenerator={() => setSegmentGeneratorOpen(true)}
-            setStripeFixturePreviewRowId={setStripeFixturePreviewRowId}
+            onOpenStripeFixturePreview={() => setStripeFixturePreviewOpen(true)}
             jobTotalDollars={jobTotalBidDollars}
           />
           <div style={{ marginBottom: '1rem' }}>
@@ -3198,12 +3208,12 @@ export default function JobFormModal({
               />
               <JobFormSegmentsBar
                 fixtures={fixtures}
+                trackSlot={<JobFormBreakOffTrack breakOff={breakOff} />}
+                axisTotalDollars={jobTotalBidDollars}
                 riderFeesDollars={riderFeesDollars}
                 invoiceStatusById={fixtureInvoiceStatusById}
                 selectedIds={selectedSegmentIds}
                 onToggleSegment={toggleSegmentSelected}
-                onCreateInvoiceFromSelection={createInvoiceFromSelectedSegments}
-                creatingFromSelection={creatingSegmentInvoice}
                 coverage={segmentCoverage}
               />
               {editing ? (
@@ -3216,6 +3226,15 @@ export default function JobFormModal({
                   moveWorkingJobToReadyToBillFromEdit={moveWorkingJobToReadyToBillFromEdit}
                 />
               ) : null}
+              <JobFormSegmentsCreateAction
+                fixtures={fixtures}
+                riderFeesDollars={riderFeesDollars}
+                invoiceStatusById={fixtureInvoiceStatusById}
+                selectedIds={selectedSegmentIds}
+                onCreateInvoiceFromSelection={createInvoiceFromSelectedSegments}
+                creatingFromSelection={creatingSegmentInvoice}
+                coverage={segmentCoverage}
+              />
               <JobFormInvoiceList
                 editing={editing}
                 payments={payments}
@@ -3618,7 +3637,7 @@ export default function JobFormModal({
           </div>
         </div>
       )}
-      {stripeFixturePreviewRow && (
+      {stripeFixturePreviewOpen && (
         <div
           style={{
             position: 'fixed',
@@ -3629,7 +3648,7 @@ export default function JobFormModal({
             justifyContent: 'center',
             zIndex: JOB_FORM_NESTED_OVERLAY_Z_INDEX,
           }}
-          onClick={() => setStripeFixturePreviewRowId(null)}
+          onClick={() => setStripeFixturePreviewOpen(false)}
         >
           <div
             id="stripe-fixture-line-preview-dialog"
@@ -3657,42 +3676,48 @@ export default function JobFormModal({
                 textAlign: 'center',
               }}
             >
-              Stripe line description (this row)
+              Stripe line descriptions
             </h2>
-            <div
-              style={{
-                fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
-                fontSize: '0.875rem',
-                whiteSpace: 'pre-wrap',
-                wordBreak: 'break-word',
-                padding: '0.75rem',
-                background: 'var(--bg-subtle)',
-                borderRadius: 6,
-                border: '1px solid var(--border)',
-                color: 'var(--text-strong)',
-                marginBottom: '1rem',
-              }}
-            >
-              {buildFixtureStripeLineDescriptionForStripe(
-                stripeFixturePreviewRow.name,
-                stripeFixturePreviewRow.line_description,
-              )}
-            </div>
+            {stripeFixturePreviewRows.length === 0 ? (
+              <p style={{ margin: '0 0 1rem', fontSize: '0.8125rem', color: 'var(--text-muted)', textAlign: 'center' }}>
+                No named line items yet.
+              </p>
+            ) : (
+              stripeFixturePreviewRows.map((f) => (
+                <div
+                  key={f.id}
+                  style={{
+                    fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
+                    fontSize: '0.875rem',
+                    whiteSpace: 'pre-wrap',
+                    wordBreak: 'break-word',
+                    padding: '0.75rem',
+                    background: 'var(--bg-subtle)',
+                    borderRadius: 6,
+                    border: '1px solid var(--border)',
+                    color: 'var(--text-strong)',
+                    marginBottom: '0.5rem',
+                  }}
+                >
+                  {buildFixtureStripeLineDescriptionForStripe(f.name, f.line_description)}
+                </div>
+              ))
+            )}
             <p
               style={{
-                margin: '0 0 1rem',
+                margin: '0.5rem 0 1rem',
                 fontSize: '0.8125rem',
                 color: 'var(--text-muted)',
                 lineHeight: 1.5,
                 textAlign: 'center',
               }}
             >
-              &quot;line item&quot; - &quot;scope notes&quot;
+              One Stripe invoice line per line item: &quot;line item&quot; - &quot;scope notes&quot;
             </p>
             <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
               <button
                 type="button"
-                onClick={() => setStripeFixturePreviewRowId(null)}
+                onClick={() => setStripeFixturePreviewOpen(false)}
                 style={{
                   padding: '0.5rem 1rem',
                   fontSize: '0.875rem',

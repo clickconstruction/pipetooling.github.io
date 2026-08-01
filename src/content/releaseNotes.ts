@@ -21,6 +21,18 @@ export const RELEASE_NOTES: ReleaseNote[] = [
     ],
   },
   {
+    version: 'v2.1223',
+    date: '2026-08-01',
+    title: 'Edit Job: tighter billing section; segment bills subtract covered money',
+    kind: 'feature',
+    highlights: [
+      'Creating an invoice from selected segments now bills the remaining on those segments — money already paid or invoiced by dollar amount is subtracted automatically instead of blocking the selection.',
+      'The billing area is far more compact: the Make Invoice track sits right under the segment strip, the create button sits under the math chips, and the $0-to-total scale rides the legend line.',
+      'Line items are single rows — the scope-notes pencil sits inside the name box, the count and price wear their × and $ inside the field, and one Stripe preview beside the ① title shows every line at once.',
+      'Payment rows fold their Type / Ref / Memo details into a one-line note (the pencil reopens them); new payments still open ready to fill in.',
+    ],
+  },
+  {
     version: 'v2.1222',
     date: '2026-08-01',
     title: 'Paperwork warnings right where you commit to a sub',
