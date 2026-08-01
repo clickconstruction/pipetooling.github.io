@@ -76,6 +76,8 @@ Parallel: C1 reader flips (different files than B) → C2 → C3 (audit-gated)
 
 ## Status log
 
+- 2026-08-01 — **BILLING_FLOWS.md caught up to workstream A** (docs-only): the stale pre-A narrative ("no test/live mode column", "mode is per-request", ungated pref reads, void-deletes-the-row) rewritten to the invoice-row-is-authority model (v2.1114–v2.1118); optimization gotchas 9/10/19 marked fixed (B5/B3+B4/A5). Ground-rule "docs ship with each PR" debt from the A-steps, now cleared.
+
 - 2026-08-01 — **B1 audit script committed** (`scripts/audit-payments-made-drift.sql`): the read-only auditor the 2026-07-30 B1/B3 runs used, now in the repo so the B6 gate ("fresh audit after a week of real use" — due ~2026-08-06) has its detector on record. No behavior change.
 
 - 2026-07-30 (later) — **Workstream A COMPLETE**: A3 (v2.1116, seven functions row-authoritative; E2E-verified against prod — wrong-mode 409 with row untouched, omitted-mode 200 via row mode), A4 (v2.1117, migration `20260730173258`, per-mode customer ids; column verified via psql), A5 (v2.1118, ungated pref reads closed, omitted-mode default → live, 6 new unit tests). **Workstream B behavior changes COMPLETE**: B3 (v2.1119, migration `20260730174929`, trigger + atomic five-RPC rewrite; post-push audit still 771/771 exact), B4 (v2.1120, client stops writing the column), B5 (v2.1121, diff-based payment persistence via tested `paymentRowsDiff` kernel + `hydratedPaymentIdsRef`; RLS upsert path verified against prod). **Remaining**: B6 (hard guard — deliberately gated on B4/B5 baking in real billing use; ship with a fresh audit), C1 reader flips (audit-cleared), C2/C3 (gated on C1 + owner roster decisions: Kyle duplicate, Behar variant, Mike Z / MIke Rodriguez / Edgar).
