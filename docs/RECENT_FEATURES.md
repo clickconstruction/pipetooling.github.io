@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-01 (v2.1218)
+last_updated: 2026-08-01 (v2.1219)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1219)
+
+### Subs answer offers from their Dashboard (2026-08-01)
+RUN_SUBS_PLAN Phase 4, PR 4.3 — Option A of the Sub Dispatch mockups. Offered work orders now render as **answer cards** at the top of the sub's "Your money" Dashboard card: step @ project, amount (+retainage note), the proposed window, and **Accept** / **Decline…** (reason required, inline input). Answers go through `respond_to_work_order` — own-person, offered-only, server-side; accepting fills the step's empty expected dates. The RPC now returns the notification **context** (creator contact with project-master fallback + step/project names — migration [`20260801233000_respond_rpc_returns_context.sql`](../supabase/migrations/20260801233000_respond_rpc_returns_context.sql), CREATE OR REPLACE, same signature) because sub-role RLS can't read those rows; the client fires `work_order_accepted/declined` through the existing edge function via new [`workOrderNotifications.ts`](../src/lib/workflow/workOrderNotifications.ts) (`formatWorkOrderWindow`/`formatWorkOrderAmount` pure + tested). Answered offers leave the card (accepted ones move into Committed work); loads stay fail-soft pre-push. Guide `see-what-youre-owed-as-a-sub` gains the offers section. Client + migration (`supabase db push` after merge).
 
 ## Latest Updates (v2.1218)
 
