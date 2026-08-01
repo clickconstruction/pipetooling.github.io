@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1198',
+    date: '2026-07-31',
+    title: 'Groundwork for Developments (groups of jobs)',
+    kind: 'feature',
+    highlights: [
+      'Behind the scenes: the database can now store Developments — named groups like a subdivision that many jobs belong to.',
+      'Nothing visible changes yet; the Edit Job picker and Stages display arrive in the next updates.',
+    ],
+  },
+  {
     version: 'v2.1197',
     date: '2026-07-31',
     title: 'Balance line under the Forecast timeline',
