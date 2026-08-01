@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-31 (v2.1195)
+last_updated: 2026-07-31 (v2.1196)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1196)
+
+### Forecast Specific: running-balance gutter column + margin/balance chips (2026-07-31)
+User-picked option A — the Workflow money-flow numbers folded into Projects → Forecast → Specific. [`ProjectsForecastSpecificTab.tsx`](../src/components/projects/ProjectsForecastSpecificTab.tsx) fetches the selected workflow's `workflow_projections` + per-step `workflow_step_line_items` totals (two selects, fail-soft, dev/master-gated) and runs the same [`buildWorkflowMoneyFlow`](../src/lib/workflowMoneyFlow.ts) kernel over `resolvedBars` order, so the numbers agree with the Workflow ledger rail (v2.1195) by construction. The sticky stage gutter gains a **balance** cell per row (right of the name, LEFT of the % cell so the %+"+" cluster keeps its edge; `BALANCE_CELL_WIDTH_PX = 82`, right-aligned whole dollars ±$X, green/red, read-only with an explanatory title) following the % column's hide-when-empty idiom — `labelGutterWidth` bumps by 88 only when money exists, and `PercentColumnGutterHeader` grew `showPercent`/`showBalance` props rendering both labels. Toolbar gains **margin X%** / **balance ±$X** pills next to Show dates. None of the drag/pan/insert machinery touched (the column is pure gutter). Verified live on a throwaway project-linked job: −$38,120 → +$112,880 progression, chips at margin 74.8%, and Edit mode composing balance + % + insert buttons cleanly; test job deleted after. Guide updated. Client-only.
 
 ## Latest Updates (v2.1195)
 
