@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1191',
+    date: '2026-07-31',
+    title: 'Link bank deposits to payments you already recorded',
+    kind: 'feature',
+    highlights: [
+      'Accounts Receivable allocations now have a “Billed line / Payment received” switch.',
+      'Pick “Payment received” to link a deposit to a payment already recorded in Edit Job — no duplicate payment, and the deposit’s remaining drops just the same.',
+    ],
+  },
+  {
     version: 'v2.1190',
     date: '2026-07-31',
     title: 'Clearer names on Projects and Workflow',

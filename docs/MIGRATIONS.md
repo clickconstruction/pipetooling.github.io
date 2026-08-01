@@ -104,6 +104,14 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 ### July 2026
 
+#### August 1, 2026
+
+**`20260801020903_ar_link_recorded_payments.sql`** _(apply via `supabase db push` after the PR merges; order-safe both ways — the new client's "Payment received" toggle only renders once the candidates RPC exists, and old clients never send `payment_id` entries)_
+- **Purpose**: AR modal "link a recorded payment" (v2.1191). New `list_unlinked_payments_for_bank_payments()` — recorded `jobs_ledger_payments` rows with no Mercury link and no Stripe provenance (no `stripe_invoice_id` on the invoice, note ≠ 'Stripe'), positive amount, `paid_on` within 180 Chicago days, LIMIT 500. `apply_mercury_bank_payment_allocations` re-created with a third allocation shape `{payment_id}`: validates unlinked + non-Stripe + job access, counts the ROW's amount toward the deposit cap (client amount ignored), then UPDATEs the row stamping `mercury_transaction_id` (+ Mercury id as reference when blank) — no INSERT, no status/`payments_made` changes. Duplicate-payment-in-call and already-linked guards; a concurrent link makes the UPDATE match 0 rows and raises. Invoice/job branches byte-faithful to `20260730174929`.
+- **Security**: candidates RPC is `LANGUAGE sql` SECURITY DEFINER with a role-gate WHERE (dev/master/assistant/primary; zero rows otherwise — deliberate fail-soft for pre-push clients). Apply RPC keeps its existing role + per-job access gates on the new branch.
+- **Ordering**: independent of the client deploy (fail-soft on both sides).
+- **Category**: Feature RPC
+
 #### July 31, 2026
 
 **`20260731235401_stages_schedule_clock_search_rpc.sql`** _(apply via `supabase db push` after the PR merges; the new client tries the RPC and falls back to the legacy chunked client-side path until it lands, and the old client never calls it — either order is safe)_

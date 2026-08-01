@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-31 (v2.1190)
+last_updated: 2026-07-31 (v2.1191)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1191)
+
+### Accounts Receivable: allocations can link a recorded payment (2026-07-31)
+Option A from the user-picked mockups. Each allocation line in the AR modal ([`BankPaymentsModal.tsx`](../src/components/jobs/BankPaymentsModal.tsx)) gains a **Billed line / Payment received** pill toggle: *Billed line* is the unchanged existing flow (creates a payment against a billed non-Stripe target); *Payment received* LINKS the deposit to an existing `jobs_ledger_payments` row (Edit Job → Payments received) by stamping `mercury_transaction_id` — **no duplicate payment**, totals/status untouched, and the deposit's consumed/remaining picks the row up automatically since consumed is already Σ(linked payments). Amount locks to the row (whole-row link); two lines can't pick the same payment; mixed billed+payment applies work in one submit. Migration [`20260801020903_ar_link_recorded_payments.sql`](../supabase/migrations/20260801020903_ar_link_recorded_payments.sql): new `list_unlinked_payments_for_bank_payments()` (SQL, SECURITY DEFINER, role-gate WHERE → zero rows for unauthorized; unlinked + non-Stripe (no `stripe_invoice_id`, note ≠ 'Stripe') + positive + 180-day Chicago window, LIMIT 500) and `apply_mercury_bank_payment_allocations` extended with `{payment_id}` entries (row amount counts toward the cap; duplicate-in-call and already-linked guards; concurrent-link loses with a clear error; invoice/job branches byte-faithful to 20260730174929). **Order-safe both ways**: the toggle renders only when candidates load (RPC missing → fail-soft empty), and old clients never send `payment_id`. New kernel [`arRecordedPaymentTargets.ts`](../src/lib/arRecordedPaymentTargets.ts) (labels/options/locked-amount, 5 tests); RPC hand-added to `database.ts`. Verified pre-push that the modal renders byte-identical (toggle hidden). Client + migration (`supabase db push` after merge).
 
 ## Latest Updates (v2.1190)
 
