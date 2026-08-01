@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1220',
+    date: '2026-08-01',
+    title: 'Offers to subs carry dates \u2014 and their answers come right back',
+    kind: 'feature',
+    highlights: [
+      'Offering a work order now proposes a work window (pre-filled from the step\u2019s expected dates) and sends the sub a push and email.',
+      'The card shows Awaiting answer until they respond; declines come back with the reason and one-click Re-offer.',
+      'Withdraw an unanswered offer or Nudge to resend \u2014 and Mark accepted stays for subs who answer by phone.',
+    ],
+  },
+  {
     version: 'v2.1219',
     date: '2026-08-01',
     title: 'Subs can accept or decline work orders from their phone',

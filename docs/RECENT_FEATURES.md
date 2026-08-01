@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-01 (v2.1219)
+last_updated: 2026-08-01 (v2.1220)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1220)
+
+### Office offer loop: windows on offers, Awaiting answer, declines with paths forward (2026-08-01)
+RUN_SUBS_PLAN Phase 4, PR 4.4 — Option B of the Sub Dispatch mockups. The work-order panel's **Offer** now opens an inline editor (amount + from/to dates **pre-filled from the step's expected dates**) and **Send offer** fires the `work_order_offered` push+email via [`workOrderNotifications.ts`](../src/lib/workflow/workOrderNotifications.ts) (sub contact = roster email, else linked account — office RLS reads both). The rail's second segment reads **Awaiting answer** while offered ([`stepCommitments.ts`](../src/lib/workflow/stepCommitments.ts): `commitmentRail` label + `declined` returns no rail; `nextCommitmentActions` gains `withdraw` (offered→draft) and `reoffer`; tests updated). Offered orders show the proposed window + offered date and gain **Withdraw** and **Nudge** (resend); **Mark accepted** stays as the told-you-directly fallback. **Declined** orders show the red reason banner (+date) with **Re-offer…** (same editor, new amount/window allowed — clears the decline bookkeeping) and Cancel. Accepted orders show the agreed window and an amber "differs from the step's expected dates" pill when the office had set different dates (the RPC never overwrites them). Superintendents keep accept-only. Guide `pay-a-sub-per-step` rewritten around the real loop. Client-only (needs the 4.1/4.3 migrations pushed).
 
 ## Latest Updates (v2.1219)
 

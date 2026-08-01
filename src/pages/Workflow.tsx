@@ -3336,6 +3336,12 @@ export default function Workflow() {
                   <StepCommitmentPanel
                     stepId={s.id}
                     stepStatus={s.status}
+                    stepName={s.name}
+                    stepScheduledStart={s.scheduled_start_date}
+                    stepScheduledEnd={s.scheduled_end_date}
+                    projectId={project.id}
+                    projectName={project.name}
+                    offeredByName={currentUserName ?? 'The office'}
                     commitments={commitmentsByStep[s.id] ?? []}
                     paymentsByLaborJobId={commitmentPaymentsByLaborJobId}
                     roster={roster.filter((r): r is { name: string; personId: string } => !!r.personId)}

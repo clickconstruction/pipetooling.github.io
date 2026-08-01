@@ -15,10 +15,15 @@ A **sub work order** ties a subcontractor to one workflow step for an agreed amo
 
 The work order starts as a draft — nothing is promised yet.
 
-## Offer and accept
+## Offer and the sub's answer
 
-- {{button:blue|Offer to Behar Kraja}} marks the amount as offered to the sub.
-- {{button:blue|Mark accepted}} records that the sub agreed. Superintendents can mark accepted; only office roles can create, offer, or cancel.
+1. {{button:blue|Offer to Behar Kraja…}} opens the offer editor — the amount plus a proposed work window, pre-filled from the step's expected dates.
+2. {{button:blue|Send offer}} notifies the sub (push + email). The rail shows **Awaiting answer**.
+3. The sub accepts or declines from their own dashboard. You're notified either way:
+   - **Accepted** — if the step had no expected dates, the agreed window becomes them.
+   - **Declined** — the reason shows on the card with {{button:blue|Re-offer…}} (change the amount or dates) ready to go.
+
+While an offer waits: {{button:outline|Withdraw offer}} takes it back to draft, {{button:outline|Nudge}} resends the notification, and {{button:blue|Mark accepted}} still works when the sub answered you by phone. Superintendents can mark accepted; only office roles create, offer, or cancel.
 
 The status rail on each work order shows the whole journey: **Offered · Accepted · In progress · Complete · Approved · Settled**. The middle segments follow the step itself — when the tech starts and completes the step, the rail moves with it.
 
