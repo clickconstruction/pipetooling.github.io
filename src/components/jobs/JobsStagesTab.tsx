@@ -45,6 +45,7 @@ import { fetchStagesUpcomingScheduleForJobs, type StagesUpcomingAppointment } fr
 import { scheduleTodayDateKey } from '../../lib/jobScheduleChicago'
 import JobsStagesTable from './JobsStagesTable'
 import JobsStagesUnifiedTable from './JobsStagesUnifiedTable'
+import JobsStagesCardList, { JobsStagesUnifiedCardList } from './JobsStagesCardList'
 import { jobBillingContextFromJob } from '../../lib/jobBillingContext'
 import BankPaymentsModal from './BankPaymentsModal'
 import PaidInFullEmailSettingsModal from './PaidInFullEmailSettingsModal'
@@ -540,6 +541,14 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
       return false
     }
   })
+  /** ⋯ tools menu "Mobile cards" (v2.1241): render sections as full-width cards instead of tables. */
+  const [stagesMobileCards, setStagesMobileCards] = useState(() => {
+    try {
+      return localStorage.getItem('jobs-stages-mobile-cards') === 'true'
+    } catch {
+      return false
+    }
+  })
   const [stagesFollowMoves, setStagesFollowMoves] = useState(() => {
     try {
       return localStorage.getItem('jobs-stages-follow-moves') === 'true'
@@ -810,6 +819,23 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
       return next
     })
   }
+
+  function toggleStagesMobileCards() {
+    setStagesMobileCards((prev) => {
+      const next = !prev
+      try {
+        localStorage.setItem('jobs-stages-mobile-cards', String(next))
+      } catch {
+        /* ignore */
+      }
+      return next
+    })
+  }
+
+  // Component switch (v2.1241): cards and tables share the exact props types,
+  // so each section render site just swaps the tag.
+  const StagesSectionList = stagesMobileCards ? JobsStagesCardList : JobsStagesTable
+  const StagesUnifiedSectionList = stagesMobileCards ? JobsStagesUnifiedCardList : JobsStagesUnifiedTable
 
   /** Rails render only for the roles that can see the toggle — a stale
       localStorage flag on a shared browser must not surface them elsewhere. */
@@ -1568,6 +1594,21 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                         </button>
                       </>
                     ) : null}
+                    <button
+                      type="button"
+                      role="menuitemcheckbox"
+                      aria-checked={stagesMobileCards}
+                      onClick={toggleStagesMobileCards}
+                      title={
+                        stagesMobileCards
+                          ? 'Mobile cards on: sections render as full-width cards built for phones'
+                          : 'Mobile cards off: sections render as the classic desktop tables'
+                      }
+                      style={stagesToolsMenuItemStyle}
+                    >
+                      <span>Mobile cards</span>
+                      {renderStagesToolsMenuToggleState(stagesMobileCards)}
+                    </button>
                   </div>
                 </>
               ) : null}
@@ -1880,7 +1921,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                   </button>
                 </div>
                 {stagesSectionOpen.waiting && (
-                  <JobsStagesTable
+                  <StagesSectionList
                     jobList={waiting}
                     actionLabel={'Move to Working'}
                     onAction={(j) => void updateJobStatus(j.id, 'working')}
@@ -1964,7 +2005,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                   </button>
                 </div>
                 {stagesSectionOpen.working && (
-                  <JobsStagesTable
+                  <StagesSectionList
                     jobList={working}
                     actionLabel={'Ready to Bill'}
                     onAction={(j) =>
@@ -2046,7 +2087,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                   </button>
                 </div>
                 {stagesSectionOpen.readyToBill && (
-                  <JobsStagesUnifiedTable
+                  <StagesUnifiedSectionList
                     rows={readyToBillRows}
                     actionLabel={'Bill Customer'}
                     onJobAction={(j) => {
@@ -2331,7 +2372,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                   </div>
                 </div>
                 {stagesSectionOpen.billed && (
-                  <JobsStagesUnifiedTable
+                  <StagesUnifiedSectionList
                     rows={billedActiveRows}
                     actionLabel={'Mark Paid'}
                     onJobAction={(j) => setMarkPaidJob(j)}
@@ -2448,7 +2489,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     No jobs in Collections. Use “Move to Collections” on a Billed Awaiting Payment row to park a hard-to-collect job here.
                   </p>
                 ) : (
-                  <JobsStagesUnifiedTable
+                  <StagesUnifiedSectionList
                     rows={collectionsRows}
                     actionLabel={'Mark Paid'}
                     onJobAction={(j) => setMarkPaidJob(j)}
@@ -2600,7 +2641,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                         Loading paid jobs…
                       </p>
                     ) : null}
-                    <JobsStagesTable
+                    <StagesSectionList
                       jobList={paid}
                       actionLabel={null}
                       onAction={() => {}}

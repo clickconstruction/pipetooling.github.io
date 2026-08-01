@@ -250,6 +250,52 @@ describe('JobsStagesTab render smoke', () => {
     window.localStorage.removeItem('jobs-stages-edit-mode')
   })
 
+  it('Mobile cards (v2.1241): tools-menu toggle swaps tables for cards, tap requests the thread', () => {
+    window.localStorage.removeItem('jobs-stages-mobile-cards')
+    const jobs = boardJobs()
+    // Thread expansion is page-owned state — pre-expand one working job so the
+    // card's toolbelt + thread panel branch renders in the harness.
+    const setExpandedJobThreadId = vi.fn()
+    const props = makeProps({ jobs, expandedJobThreadId: jobs[1]!.id, setExpandedJobThreadId })
+    const { container } = renderWithProviders(<JobsStagesTab ref={createRef()} {...props} />)
+    // Off by default: the classic tables render.
+    expect(container.querySelector('table')).toBeTruthy()
+    // Toggle on from the ⋯ tools menu (available to every role).
+    fireEvent.click(screen.getByLabelText('Stages tools'))
+    fireEvent.click(screen.getByText('Mobile cards'))
+    expect(container.querySelector('table')).toBeNull()
+    const cards = container.querySelectorAll('[data-stages-job-id]')
+    expect(cards.length).toBeGreaterThanOrEqual(2)
+    // The section's primary action rides the card header.
+    expect(screen.getAllByText('Ready to Bill').length).toBeGreaterThanOrEqual(1)
+    // The pre-expanded card shows its labeled toolbelt in place.
+    expect(screen.getByText('Job detail')).toBeTruthy()
+    expect(screen.getByText('Edit job')).toBeTruthy()
+    // Tapping a collapsed card requests its thread through the page setter.
+    const collapsed = container.querySelector(`[data-stages-job-id="${jobs[2]!.id}"]`) as HTMLElement
+    fireEvent.click(collapsed)
+    expect(setExpandedJobThreadId).toHaveBeenCalled()
+    // Toggle back off restores the tables.
+    fireEvent.click(screen.getByText('Mobile cards'))
+    expect(container.querySelector('table')).toBeTruthy()
+    window.localStorage.removeItem('jobs-stages-mobile-cards')
+  })
+
+  it('Mobile cards compose with Edit mode: cards wear the EDIT rail', () => {
+    window.localStorage.setItem('jobs-stages-mobile-cards', 'true')
+    window.localStorage.setItem('jobs-stages-edit-mode', 'true')
+    const openEdit = vi.fn()
+    const jobs = boardJobs()
+    const { container } = renderWithProviders(<JobsStagesTab ref={createRef()} {...makeProps({ jobs, openEdit })} />)
+    const rails = screen.getAllByLabelText(/^Edit job /)
+    expect(rails.length).toBeGreaterThanOrEqual(2)
+    expect(container.querySelector('table')).toBeNull()
+    fireEvent.click(rails[0]!)
+    expect(openEdit).toHaveBeenCalledTimes(1)
+    window.localStorage.removeItem('jobs-stages-mobile-cards')
+    window.localStorage.removeItem('jobs-stages-edit-mode')
+  })
+
   it('openBankPayments opens the Accounts Receivable modal', async () => {
     const ref = createRef<JobsStagesTabHandle>()
     renderWithProviders(<JobsStagesTab ref={ref} {...makeProps({ jobs: boardJobs() })} />)

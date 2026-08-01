@@ -605,7 +605,11 @@ export function renderStagesLastActivityCell(
   ctx: StagesRowRenderContext,
   job: JobWithDetails,
   billingLineForStripeHint?: JobsLedgerInvoice | null,
-  opts?: { hideReportsButton?: boolean },
+  opts?: {
+    hideReportsButton?: boolean
+    /** Mobile cards (v2.1241): return the cell body in a <div> instead of a <td>. */
+    asDiv?: boolean
+  },
 ) {
   const {
     expandedJobThreadId,
@@ -1048,9 +1052,18 @@ export function renderStagesLastActivityCell(
     return Number.isNaN(t) ? null : t
   }
 
+  // Card view reuses this cell verbatim minus the table wrapper: same flex
+  // shell, no td padding, and no desktop maxWidth clamp (cards are full-width).
+  const shell = (children: ReactNode, wide?: boolean) =>
+    opts?.asDiv ? (
+      <div style={{ ...tdShellStyle, padding: 0 }}>{children}</div>
+    ) : (
+      <td style={wide ? { ...tdShellStyle, maxWidth: 280 } : tdShellStyle}>{children}</td>
+    )
+
   if (!stat) {
-    return (
-      <td style={tdShellStyle}>
+    return shell(
+      <>
         {renderStagesLastActivityLeadingControls()}
         <div style={lastActivityMainColumnStyle}>
           <div {...lastActivityBodyInteractiveProps(titleForEmpty)}>
@@ -1062,14 +1075,14 @@ export function renderStagesLastActivityCell(
           {renderStagesInvoiceJumpChips(job)}
           {renderStagesViewReportsFooterButton()}
         </div>
-      </td>
+      </>,
     )
   }
   const tNote = threadActivityWireMs(stat.last_note_at)
   const tReport = threadActivityWireMs(stat.last_report_at)
   if (tNote == null && tReport == null) {
-    return (
-      <td style={tdShellStyle}>
+    return shell(
+      <>
         {renderStagesLastActivityLeadingControls()}
         <div style={lastActivityMainColumnStyle}>
           <div {...lastActivityBodyInteractiveProps(titleForEmpty)}>
@@ -1081,7 +1094,7 @@ export function renderStagesLastActivityCell(
           {renderStagesInvoiceJumpChips(job)}
           {renderStagesViewReportsFooterButton()}
         </div>
-      </td>
+      </>,
     )
   }
   const useReport = tReport != null && (tNote == null || tReport > tNote)
@@ -1098,8 +1111,8 @@ export function renderStagesLastActivityCell(
         return prev || `Report: ${tmpl}`
       })()
     : (stat.last_note_body ?? '').trim() || fromThreadBody
-  return (
-    <td style={{ ...tdShellStyle, maxWidth: 280 }}>
+  return shell(
+    <>
       {renderStagesLastActivityLeadingControls()}
       <div style={lastActivityMainColumnStyle}>
         <div {...lastActivityBodyInteractiveProps(titleWithNotes)}>
@@ -1133,7 +1146,8 @@ export function renderStagesLastActivityCell(
         {renderStagesInvoiceJumpChips(job)}
         {renderStagesViewReportsFooterButton()}
       </div>
-    </td>
+    </>,
+    true,
   )
 }
 

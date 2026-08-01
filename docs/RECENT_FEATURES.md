@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-01 (v2.1240)
+last_updated: 2026-08-01 (v2.1241)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1241)
+
+### Jobs → Stages — "Mobile cards": a phone-first board behind a ⋯ menu toggle (2026-08-01)
+New **Mobile cards** toggle in the Stages ⋯ tools menu (all roles — it's a layout preference, unlike the gated Ham/Edit modes; localStorage `jobs-stages-mobile-cards`, default off). When on, every section renders as full-width vertical cards via the new [`JobsStagesCardList.tsx`](../src/components/jobs/JobsStagesCardList.tsx) (default export for the job-only sections; `JobsStagesUnifiedCardList` for Ready to Bill / Billed / Collections `StageRow`s — every row kind carries its job, so bundle and standalone-invoice rows become job-anchored cards with an `Invoice $X (· #seq · remaining)` line and per-kind primary actions). **Card anatomy:** identity (`renderStagesOpenDetailJobName` + HCP subline) with the **section's primary action pinned top-right** (the table buried it in an off-screen fifth column), crew, address+map, customer line, estimate footer, field/billing lines, the full money cell (`StagesProgressPaymentCell` — % editing intact, `Open Nd` footnote), and the entire activity cell body — thread teaser, Next-appointment chip, Stripe-emailed hint, invoice jump chips, View reports, and the schedule/dispatch/call/task quick icons — via a new `asDiv` option on `renderStagesLastActivityCell` (the shared renderer's three `<td>` roots became a shell wrapper; table markup unchanged). **Tap a card** = tap a row: the job thread expands in place (`JobThreadNotesPanel`, identical prop wiring) plus a labeled toolbelt (Job detail, Edit job, Calendar, Partial invoice, AIA G702, Hazmat fee, View bill, Lien tooling, To collections, Send back — each gated exactly as its table counterpart). **Zero forked behavior:** the card lists consume the SAME exported props types as the two tables, so the six section render sites in [`JobsStagesTab.tsx`](../src/components/jobs/JobsStagesTab.tsx) just swap the component tag (`StagesSectionList` / `StagesUnifiedSectionList`), and every action routes through the table handlers. Composes with v2.1236 Edit mode (EDIT rail on the card's left edge) and flash/deep-link focus (`data-stages-job-id` / `data-stages-invoice-id` preserved). Known v1 gaps (all reachable via Job detail / bill view; the toggle is the instant fallback): the Ham-mode inline assigned-crew editor and the billed rows' est-bill-date picker stay table-only. Render tests extended to 11: toggle off→tables / on→cards, primary action on the card header, pre-expanded card shows the toolbelt, tap requests the thread via the page setter, toggle-off restores tables, and Edit-mode rails on cards. Docs: toolbar dossier in [`JOBS_STAGES_TAB_ARCHITECTURE.md`](./JOBS_STAGES_TAB_ARCHITECTURE.md); help guide [`search-the-stages-board`](../src/content/help/search-the-stages-board.md) gains the Mobile cards section. Verified: `tsc -b` clean, zero new lints, full vitest suite green. Files: new [`JobsStagesCardList.tsx`](../src/components/jobs/JobsStagesCardList.tsx); modified [`jobsStagesRowShared.tsx`](../src/components/jobs/jobsStagesRowShared.tsx), [`JobsStagesTab.tsx`](../src/components/jobs/JobsStagesTab.tsx), render test, architecture doc, help guide. No DB / migration / RLS / RPC / Edge / type-gen changes.
 
 ## Latest Updates (v2.1240)
 

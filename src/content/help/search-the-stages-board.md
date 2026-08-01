@@ -28,3 +28,7 @@ Searching dispatch-schedule notes and clock-session notes (plus the people and d
 2. Turn on **Schedule &amp; time in search**.
 
 While it's on, the search placeholder reads "Search HCP, name, address, schedule notes, or clock notes", and results can include jobs matched only by a schedule block or clock session. The setting is remembered per device, so turn it off again from the same menu when you're done.
+
+## Optional: Mobile cards — a phone-friendly board
+
+The same {{button:outline|⋯}} menu has a **Mobile cards** toggle. When it's on, every section renders as full-width cards instead of the wide desktop table — no sideways scrolling on a phone. Each card leads with the job and its stage button (like **Ready to Bill**), then the crew, address, money bar, and latest activity; tap a card to open its message thread and a row of labeled buttons (Job detail, Edit job, Calendar, and the rest). It's remembered per device, works with Edit mode's EDIT tabs, and flipping it off brings the classic table straight back.
