@@ -39,6 +39,12 @@ import { APP_CALENDAR_TZ, denverCalendarDayKey, formatWorkDateYmdFriendly } from
 import { withSupabaseRetry } from '../../utils/errorHandling'
 import type { Database } from '../../types/database'
 import { isAssistantLike } from '../../lib/subcontractorLikeRole'
+import {
+  arRecordedPaymentAmountStr,
+  arRecordedPaymentOptions,
+  arRecordedPaymentSearchLabel,
+  type ArRecordedPaymentCandidate,
+} from '../../lib/arRecordedPaymentTargets'
 
 type MercuryCandidate =
   Database['public']['Functions']['list_mercury_transactions_for_bank_payments']['Returns'][number]
@@ -136,7 +142,12 @@ export type BankPaymentsModalProps = {
   onOpenEditJob?: (jobId: string) => void
 }
 
-type AllocLine = { id: string; targetKey: string; amountStr: string }
+/**
+ * kind 'billed' (default) targets a billed non-Stripe line (creates a payment);
+ * kind 'payment' (v2.1191) LINKS an existing recorded payment row — targetKey is
+ * the jobs_ledger_payments id and the amount is locked to that row.
+ */
+type AllocLine = { id: string; kind: 'billed' | 'payment'; targetKey: string; amountStr: string }
 
 export default function BankPaymentsModal({
   open,
@@ -168,6 +179,7 @@ export default function BankPaymentsModal({
 
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [allocLines, setAllocLines] = useState<AllocLine[]>([])
+  const [recordedPayments, setRecordedPayments] = useState<ArRecordedPaymentCandidate[]>([])
   const [internalNote, setInternalNote] = useState('')
   const [applyError, setApplyError] = useState<string | null>(null)
   const [applySubmitting, setApplySubmitting] = useState(false)
@@ -263,6 +275,32 @@ export default function BankPaymentsModal({
       })
     },
     [selected, targetByKey],
+  )
+
+  const recordedPaymentById = useMemo(
+    () => new Map(recordedPayments.map((p) => [p.payment_id, p] as const)),
+    [recordedPayments],
+  )
+
+  /** Switch an allocation line's kind, clearing its target and amount. */
+  const setAllocLineKind = useCallback((lineId: string, kind: 'billed' | 'payment') => {
+    setAllocLines((rows) =>
+      rows.map((r) => (r.id === lineId && r.kind !== kind ? { ...r, kind, targetKey: '', amountStr: '' } : r)),
+    )
+  }, [])
+
+  /** Pick a recorded payment for a line — the amount locks to the row. */
+  const applyRecordedPaymentTarget = useCallback(
+    (lineId: string, paymentId: string) => {
+      setAllocLines((rows) =>
+        rows.map((r) => {
+          if (r.id !== lineId) return r
+          const p = paymentId.trim() ? recordedPaymentById.get(paymentId) : undefined
+          return { ...r, targetKey: paymentId, amountStr: p ? arRecordedPaymentAmountStr(p) : '' }
+        }),
+      )
+    },
+    [recordedPaymentById],
   )
 
   const bankPaymentQuickMatchTargets = useMemo(() => {
@@ -424,9 +462,32 @@ export default function BankPaymentsModal({
 
   useEffect(() => {
     if (!open || !selectedId) return
-    setAllocLines([{ id: crypto.randomUUID(), targetKey: '', amountStr: '' }])
+    setAllocLines([{ id: crypto.randomUUID(), kind: 'billed', targetKey: '', amountStr: '' }])
     setApplyError(null)
   }, [open, selectedId])
+
+  // Recorded-payment candidates for the "Payment received" allocation kind
+  // (v2.1191). Fail-soft: before the RPC is deployed (or on any error) the list
+  // stays empty and the per-line kind toggle simply doesn't render.
+  useEffect(() => {
+    if (!open) {
+      setRecordedPayments([])
+      return
+    }
+    let cancelled = false
+    void (async () => {
+      try {
+        const { data, error } = await supabase.rpc('list_unlinked_payments_for_bank_payments')
+        if (cancelled || error || !Array.isArray(data)) return
+        setRecordedPayments(data as ArRecordedPaymentCandidate[])
+      } catch {
+        /* fail-soft — billed-line allocations still work */
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [open])
 
   useEffect(() => {
     if (!open) return
@@ -550,6 +611,17 @@ export default function BankPaymentsModal({
     const cap = selected.remaining_available
     let sum = 0
     for (const line of allocLines) {
+      if (line.kind === 'payment') {
+        const p = line.targetKey ? recordedPaymentById.get(line.targetKey) : undefined
+        if (!p) continue
+        const amt = Math.abs(Number(p.amount) || 0)
+        if (!(amt > 0)) continue
+        sum += amt
+        if (amt > cap + 0.01) {
+          return `Recorded payment ${formatMoney(amt)} exceeds this bank transaction remaining (${formatMoney(cap)}).`
+        }
+        continue
+      }
       const t = line.targetKey ? targetByKey.get(line.targetKey) : undefined
       if (!t) continue
       const amt = parseBankPaymentAllocationAmount(line.amountStr)
@@ -563,14 +635,14 @@ export default function BankPaymentsModal({
       return `Total allocations (${formatMoney(sum)}) exceed this bank transaction remaining (${formatMoney(cap)}).`
     }
     return null
-  }, [selected, allocLines, targetByKey])
+  }, [selected, allocLines, targetByKey, recordedPaymentById])
 
   const applyDisabled =
     !canApply ||
     !selected ||
     applySubmitting ||
     !!validationMessage ||
-    targets.length === 0 ||
+    (targets.length === 0 && recordedPayments.length === 0) ||
     !paidOnYmdFromMercury ||
     !canAllocateRemaining
 
@@ -582,8 +654,17 @@ export default function BankPaymentsModal({
     }
     setApplySubmitting(true)
     setApplyError(null)
-    const allocations: Array<{ invoice_id?: string; job_id?: string; amount: number }> = []
+    const allocations: Array<{ invoice_id?: string; job_id?: string; payment_id?: string; amount: number }> = []
     for (const line of allocLines) {
+      if (line.kind === 'payment') {
+        const p = line.targetKey ? recordedPaymentById.get(line.targetKey) : undefined
+        if (!p) continue
+        const amt = Math.abs(Number(p.amount) || 0)
+        if (!(amt > 0)) continue
+        // Server uses the row's amount; amount is included for transparency only.
+        allocations.push({ payment_id: p.payment_id, amount: amt })
+        continue
+      }
       const t = line.targetKey ? targetByKey.get(line.targetKey) : undefined
       if (!t) continue
       const amt = parseBankPaymentAllocationAmount(line.amountStr)
@@ -1185,7 +1266,7 @@ export default function BankPaymentsModal({
                   {canAllocateRemaining ? (
                     <>
                       <div style={{ fontWeight: 600, fontSize: '0.875rem', marginBottom: '0.5rem' }}>Allocations</div>
-                      {targets.length === 0 ? (
+                      {targets.length === 0 && recordedPayments.length === 0 ? (
                         <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>
                           {billedTargetsLoading
                             ? 'Loading billed job lines…'
@@ -1194,8 +1275,27 @@ export default function BankPaymentsModal({
                       ) : (
                         <>
                           {allocLines.map((line) => {
-                        const picked = line.targetKey ? targetByKey.get(line.targetKey) : undefined
+                        const picked =
+                          line.kind === 'billed' && line.targetKey ? targetByKey.get(line.targetKey) : undefined
                         const detailLead = picked ? bankPaymentTargetDetailLead(picked) : ''
+                        const pickedPayment =
+                          line.kind === 'payment' && line.targetKey
+                            ? recordedPaymentById.get(line.targetKey)
+                            : undefined
+                        const takenPaymentIds = new Set(
+                          allocLines
+                            .filter((r) => r.id !== line.id && r.kind === 'payment' && r.targetKey.trim())
+                            .map((r) => r.targetKey),
+                        )
+                        const kindToggleSegStyle = (active: boolean): CSSProperties => ({
+                          padding: '0.25rem 0.6rem',
+                          fontSize: '0.75rem',
+                          border: 'none',
+                          background: active ? 'var(--bg-blue-tint)' : 'transparent',
+                          color: active ? 'var(--text-link)' : 'var(--text-muted)',
+                          cursor: canApply ? 'pointer' : 'not-allowed',
+                          fontWeight: active ? 600 : 400,
+                        })
                         return (
                           <div
                             key={line.id}
@@ -1207,6 +1307,53 @@ export default function BankPaymentsModal({
                             }}
                           >
                             <div style={{ flex: '1 1 auto', minWidth: 0 }}>
+                              {recordedPayments.length > 0 ? (
+                                <div
+                                  role="group"
+                                  aria-label="Allocation target type"
+                                  style={{
+                                    display: 'inline-flex',
+                                    border: '1px solid var(--border-strong)',
+                                    borderRadius: 999,
+                                    overflow: 'hidden',
+                                    marginBottom: 6,
+                                  }}
+                                >
+                                  <button
+                                    type="button"
+                                    disabled={!canApply}
+                                    aria-pressed={line.kind === 'billed'}
+                                    onClick={() => setAllocLineKind(line.id, 'billed')}
+                                    style={kindToggleSegStyle(line.kind === 'billed')}
+                                  >
+                                    Billed line
+                                  </button>
+                                  <button
+                                    type="button"
+                                    disabled={!canApply}
+                                    aria-pressed={line.kind === 'payment'}
+                                    onClick={() => setAllocLineKind(line.id, 'payment')}
+                                    title="Link this deposit to a payment already recorded on the job (Edit Job → Payments received) — no new payment is created"
+                                    style={kindToggleSegStyle(line.kind === 'payment')}
+                                  >
+                                    Payment received
+                                  </button>
+                                </div>
+                              ) : null}
+                              {line.kind === 'payment' ? (
+                                <SearchableSelect
+                                  id={`ar-alloc-target-${line.id}`}
+                                  value={line.targetKey}
+                                  onChange={(v) => applyRecordedPaymentTarget(line.id, v)}
+                                  options={arRecordedPaymentOptions(recordedPayments, takenPaymentIds)}
+                                  emptyOption={{ value: '', label: '— Select recorded payment —' }}
+                                  hideEmptyOptionInListWhenUnset
+                                  disabled={!canApply}
+                                  placeholder="— Select recorded payment —"
+                                  listAriaLabel="Recorded payment to link"
+                                  portalZIndex={1200}
+                                />
+                              ) : (
                               <SearchableSelect
                                 id={`ar-alloc-target-${line.id}`}
                                 value={line.targetKey}
@@ -1219,7 +1366,24 @@ export default function BankPaymentsModal({
                                 listAriaLabel="Billed line for allocation"
                                 portalZIndex={1200}
                               />
-                              {allocLines[0]?.id === line.id &&
+                              )}
+                              {pickedPayment ? (
+                                <div
+                                  style={{
+                                    marginTop: 6,
+                                    fontSize: '0.75rem',
+                                    color: 'var(--text-600)',
+                                    lineHeight: 1.4,
+                                  }}
+                                >
+                                  <div style={{ fontWeight: 600 }}>{arRecordedPaymentSearchLabel(pickedPayment)}</div>
+                                  <div style={{ color: 'var(--text-muted)' }}>
+                                    Links the deposit to this recorded payment — amount locked, no new payment created.
+                                  </div>
+                                </div>
+                              ) : null}
+                              {line.kind === 'billed' &&
+                              allocLines[0]?.id === line.id &&
                               bankPaymentQuickMatchTargets.length > 0 &&
                               !line.targetKey.trim() ? (
                                 <div style={{ marginTop: 8 }}>
@@ -1305,7 +1469,8 @@ export default function BankPaymentsModal({
                                   rows.map((r) => (r.id === line.id ? { ...r, amountStr: v } : r)),
                                 )
                               }}
-                              disabled={!canApply}
+                              title={line.kind === 'payment' ? 'Amount is locked to the recorded payment' : undefined}
+                              disabled={!canApply || line.kind === 'payment'}
                               style={{
                                 flexShrink: 0,
                                 alignSelf: 'flex-start',
@@ -1367,7 +1532,7 @@ export default function BankPaymentsModal({
                             onClick={() =>
                               setAllocLines((rows) => [
                                 ...rows,
-                                { id: crypto.randomUUID(), targetKey: '', amountStr: '' },
+                                { id: crypto.randomUUID(), kind: 'billed', targetKey: '', amountStr: '' },
                               ])
                             }
                             style={{

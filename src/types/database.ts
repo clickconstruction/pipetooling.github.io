@@ -12729,6 +12729,22 @@ export type Database = {
           user_id: string
         }[]
       }
+      list_unlinked_payments_for_bank_payments: {
+        Args: never
+        Returns: {
+          payment_id: string
+          job_id: string
+          amount: number
+          paid_on: string | null
+          note: string | null
+          payment_type: string | null
+          reference_number: string | null
+          invoice_id: string | null
+          hcp_number: string | null
+          click_number: string | null
+          job_name: string | null
+        }[]
+      }
       list_unlabeled_mercury_transactions: {
         Args: { p_limit?: number }
         Returns: {

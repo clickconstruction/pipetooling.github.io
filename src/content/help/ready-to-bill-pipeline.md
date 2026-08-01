@@ -104,6 +104,10 @@ A job needs a linked customer (with an email, for Stripe) before it can be bille
 
 Once billed, the job shows under **Billed Waiting for Payment** on the Dashboard and on the Accounts Receivable page. Stripe payments mark themselves; outside payments (cash, check, ACH) you record yourself. In the Edit Job window's **③ Payments received** section, click {{button:outline|+ Record non-Stripe payment received}} — the section stays folded until you need it — and fill in the date and amount (Type, Ref, and Memo are optional). To apply it against a specific bill, set the row's **Applies to** dropdown to that billed invoice — the payment then pays *that* bill down; leave it on **Job (unassigned)** for a general job payment. When everything is collected, the job moves to {{chip:green|Paid}}.
 
+:::example Bank deposit for a payment you already recorded?
+In **Accounts Receivable**, each allocation line has a **Billed line / Payment received** switch. Pick **Payment received** to link the deposit to a payment already sitting in Edit Job → Payments received — the amount locks to that row and no duplicate payment is created; the deposit's remaining balance drops just the same.
+:::
+
 Jobs that are billed but proving hard to collect can be flagged for **Collections** — they get their own section so the AR picture stays honest.
 
 ## The "paid in full" email
