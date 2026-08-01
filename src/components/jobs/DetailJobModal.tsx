@@ -59,6 +59,7 @@ import JobReportsModal from '../JobReportsModal'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import type { LimitedJobDetailSnapshot } from '../../types/limitedJobDetailSnapshot'
 import GcHardHatIcon from '../icons/GcHardHatIcon'
+import DevelopmentHouseIcon from '../icons/DevelopmentHouseIcon'
 
 export type DetailJobScheduleContext = {
   workDate: string
@@ -248,16 +249,19 @@ function DetailJobModalCustomerPanel({
   customerPhone,
   customerEmail,
   gcCustomerName,
+  developmentName,
 }: {
   customerName: string | null | undefined
   customerPhone: string | null | undefined
   customerEmail: string | null | undefined
   gcCustomerName?: string | null
+  developmentName?: string | null
 }) {
   const name = customerName?.trim() ?? ''
   const phone = customerPhone?.trim() ?? ''
   const email = customerEmail?.trim() ?? ''
   const gcName = gcCustomerName?.trim() ?? ''
+  const devName = developmentName?.trim() ?? ''
 
   const openTel = () => {
     if (phone) openInExternalBrowser(`tel:${phone}`)
@@ -281,6 +285,15 @@ function DetailJobModalCustomerPanel({
             >
               <GcHardHatIcon size={12} />
               <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{gcName}</span>
+            </div>
+          ) : null}
+          {devName ? (
+            <div
+              title="Development for this job"
+              style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', marginTop: 2, fontSize: '0.8125rem', color: 'var(--text-muted)' }}
+            >
+              <DevelopmentHouseIcon size={12} />
+              <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{devName}</span>
             </div>
           ) : null}
         </div>
@@ -484,6 +497,7 @@ function mergeLimitedFromAssignedAndLedger(
     customer_email: null,
     customer_phone: null,
     gc_customer_name: null,
+    development_name: null,
     last_work_date: null,
     status: 'working',
     service_type_name: null,
@@ -497,7 +511,7 @@ async function fetchLimitedLedgerRow(jobId: string): Promise<LimitedJobDetailSna
         await supabase
           .from('jobs_ledger')
           .select(
-            'id, hcp_number, job_name, job_address, google_drive_link, job_pictures_link, job_plans_link, revenue, project_id, customer_name, customer_email, customer_phone, last_work_date, status, gc_customer:gc_customer_id(name), service_types:service_type_id(name)',
+            'id, hcp_number, job_name, job_address, google_drive_link, job_pictures_link, job_plans_link, revenue, project_id, customer_name, customer_email, customer_phone, last_work_date, status, gc_customer:gc_customer_id(name), development:development_id(name), service_types:service_type_id(name)',
           )
           .eq('id', jobId)
           .maybeSingle(),
@@ -520,11 +534,18 @@ async function fetchLimitedLedgerRow(jobId: string): Promise<LimitedJobDetailSna
       last_work_date: string | null
       status: string
       gc_customer?: { name: string | null } | { name: string | null }[] | null
+      development?: { name: string | null } | { name: string | null }[] | null
       service_types?: { name: string } | null
     }
-    const { service_types: st, gc_customer: gcEmbed, ...rest } = r
+    const { service_types: st, gc_customer: gcEmbed, development: devEmbed, ...rest } = r
     const gcOne = Array.isArray(gcEmbed) ? gcEmbed[0] ?? null : gcEmbed ?? null
-    return { ...rest, gc_customer_name: gcOne?.name ?? null, service_type_name: st?.name ?? null } as LimitedJobDetailSnapshot
+    const devOne = Array.isArray(devEmbed) ? devEmbed[0] ?? null : devEmbed ?? null
+    return {
+      ...rest,
+      gc_customer_name: gcOne?.name ?? null,
+      development_name: devOne?.name ?? null,
+      service_type_name: st?.name ?? null,
+    } as LimitedJobDetailSnapshot
   } catch {
     return null
   }
@@ -1338,6 +1359,7 @@ export default function DetailJobModal({
                 customerPhone={detailJob.customer_phone}
                 customerEmail={detailJob.customer_email}
                 gcCustomerName={'gc_customer_name' in detailJob ? detailJob.gc_customer_name : detailJob.gcCustomer?.name ?? null}
+                developmentName={'development_name' in detailJob ? detailJob.development_name : detailJob.development?.name ?? null}
               />
             ) : null}
           </div>

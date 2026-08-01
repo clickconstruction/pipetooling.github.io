@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1201',
+    date: '2026-08-01',
+    title: 'Developments: group jobs like a subdivision',
+    kind: 'feature',
+    highlights: [
+      'Edit Job → the Project | Plans | Bid row gains a Development picker — pick a development or create one right there, and the job joins the group.',
+      'On Jobs → Stages and Job Detail, the development shows with a house icon next to the GC hard hat.',
+      'Search the Stages board by development name to see every job in it.',
+    ],
+  },
+  {
     version: 'v2.1200',
     date: '2026-08-01',
     title: 'Step actions from the Dashboard now send the same notifications as the Workflow page',

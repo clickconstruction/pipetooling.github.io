@@ -44,6 +44,7 @@ function identity(over: Partial<JobIdentityFormFields> = {}): JobIdentityFormFie
     customerEmail: '',
     customerPhone: '',
     gcCustomerId: null,
+    developmentId: null,
     googleDriveLink: '',
     jobPicturesLink: '',
     jobPlansLink: '',
@@ -130,6 +131,7 @@ describe('buildEditJobIdentityUpdatePayload', () => {
       existingJobMasterUserId: 'master-1',
       projectMasterUserId: null,
       customers,
+      developments: [],
     })
     expect(payload.master_user_id).toBe('master-1')
     // cross-master explicit pick falls back to the name match under the job master
@@ -142,6 +144,7 @@ describe('buildEditJobIdentityUpdatePayload', () => {
       existingJobMasterUserId: 'master-1',
       projectMasterUserId: 'master-2',
       customers,
+      developments: [],
     })
     expect(payload.master_user_id).toBe('master-2')
     expect(payload.project_id).toBe('proj-9')
@@ -153,6 +156,7 @@ describe('buildEditJobIdentityUpdatePayload', () => {
       existingJobMasterUserId: 'master-1',
       projectMasterUserId: null,
       customers: [],
+      developments: [],
     })
     expect(payload.customer_email).toBeNull()
     expect('revenue' in payload).toBe(false)

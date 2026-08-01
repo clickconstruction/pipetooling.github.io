@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-01 (v2.1200)
+last_updated: 2026-08-01 (v2.1201)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1201)
+
+### Developments part 2: Edit Job picker + Stages/Job Detail display + search (2026-08-01)
+The client half of v2.1198, with the user-picked house icon (new [`DevelopmentHouseIcon.tsx`](../src/components/icons/DevelopmentHouseIcon.tsx), FA house glyph, sibling of `GcHardHatIcon`). **Edit Job**: the links row becomes **Project | Plans | Bid | Development** ([`JobFormLinksSection.tsx`](../src/components/jobs/JobFormLinksSection.tsx)) — a Development select (active developments name-sorted; the linked one kept even when archived) + inline **"+ New development"** (name-only insert under the job's effective master, auto-selected; Enter/Escape handled; create-from-the-picker per the v2.1174 precedent). The field joins the **identity autosave slice** like Plans (`developmentId` in [`jobFormAutosaveSlices.ts`](../src/lib/jobs/jobFormAutosaveSlices.ts) — autosave, close-guard flush, Undo free) and the new-job INSERT; cross-master picks drop to null via new kernel [`jobDevelopments.ts`](../src/lib/jobs/jobDevelopments.ts) (`resolveDevelopmentIdForJobPayload` + `developmentPickerOptions` + `validateNewDevelopmentName` — dupe names rejected against ACTIVE developments only, matching the partial unique index; 11 tests). **Stages**: the primary select gains `development:development_id(id, name)` ([`jobsLedgerEmbedSelects.ts`](../src/lib/jobsLedgerEmbedSelects.ts), both fetch mappings, `JobWithDetails.development`), and [`jobsStagesRowShared.tsx`](../src/components/jobs/jobsStagesRowShared.tsx) renders the development on the SAME muted line as the GC (`⛑ GC · 🏠 Development`, wrapping on narrow columns) — one "who/where does this roll up to" row instead of a third line. **Job Detail** ([`DetailJobModal.tsx`](../src/components/jobs/DetailJobModal.tsx)): house-icon line under the GC line in the Customer panel; the limited snapshot select embeds `development:development_id(name)` (`LimitedJobDetailSnapshot.development_name`). **Search**: `filterJobsByStagesSearch` matches the development name (+1 test) — typing "Sagebrush" surfaces every job in it. `developments` table + `jobs_ledger.development_id` hand-added to [`database.ts`](../src/types/database.ts) (wholesale regen pulls unrelated drift). Guide `group-jobs-into-a-development`; GLOSSARY + PROJECT_DOCUMENTATION entries. Filter dropdown + Development Review land in part 3. Client-only (v2.1198 already pushed).
 
 ## Latest Updates (v2.1200)
 

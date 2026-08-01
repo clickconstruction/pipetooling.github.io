@@ -36,6 +36,7 @@ import { useDispatchTaskModal } from '../../contexts/DispatchTaskModalContext'
 import type { Database } from '../../types/database'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import GcHardHatIcon from '../icons/GcHardHatIcon'
+import DevelopmentHouseIcon from '../icons/DevelopmentHouseIcon'
 
 type CustomerRow = Database['public']['Tables']['customers']['Row']
 type JobsLedgerInvoice = Database['public']['Tables']['jobs_ledger_invoices']['Row']
@@ -364,7 +365,8 @@ export function renderJobCustomerLine(ctx: StagesRowRenderContext, job: JobWithD
   const { customers, openEditJobAndCreateCustomerFlow } = ctx
   const hasCustomerInfo = ((job.customer_name ?? '').trim() || (job.customer_email ?? '').trim() || (job.customer_phone ?? '').trim())
   const gcName = (job.gcCustomer?.name ?? '').trim()
-  if (!hasCustomerInfo && !gcName) return null
+  const developmentName = (job.development?.name ?? '').trim()
+  if (!hasCustomerInfo && !gcName && !developmentName) return null
   const cn = (job.customer_name ?? '').trim()
   const impliedCustomerLink = !job.customer_id && customerListImpliesLinkedRow(customers, job.master_user_id, cn)
   const showNotInCustomersBadge = !job.customer_id && !impliedCustomerLink
@@ -394,10 +396,27 @@ export function renderJobCustomerLine(ctx: StagesRowRenderContext, job: JobWithD
         </svg>
         <span>{(job.customer_name ?? '').trim() || '—'}</span>
       </span>
-      {gcName ? (
-        <span title="GC/Builder for this job" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
-          <GcHardHatIcon size={13} style={{ flexShrink: 0 }} />
-          <span>{gcName}</span>
+      {gcName || developmentName ? (
+        // GC and development share one muted row — they're the same "who/where
+        // does this roll up to" fact; wraps on narrow columns.
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', flexWrap: 'wrap' }}>
+          {gcName ? (
+            <span title="GC/Builder for this job" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
+              <GcHardHatIcon size={13} style={{ flexShrink: 0 }} />
+              <span>{gcName}</span>
+            </span>
+          ) : null}
+          {gcName && developmentName ? (
+            <span aria-hidden style={{ color: 'var(--text-faint)' }}>
+              ·
+            </span>
+          ) : null}
+          {developmentName ? (
+            <span title="Development for this job" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
+              <DevelopmentHouseIcon size={13} style={{ flexShrink: 0 }} />
+              <span>{developmentName}</span>
+            </span>
+          ) : null}
         </span>
       ) : null}
       {showNotInCustomersBadge ? (

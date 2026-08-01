@@ -403,6 +403,27 @@ describe('filterJobsByStagesSearch', () => {
     // null gcCustomer never throws or matches
     expect(filterJobsByStagesSearch([withoutGc], 'knight', null)).toHaveLength(0)
   })
+
+  it('matches a job by its development name (v2.1199)', () => {
+    const withDev = jobStub({
+      id: 'job-dev',
+      hcp_number: '400',
+      job_name: 'Lot 12',
+      job_address: '12 Bluestem',
+      invoices: [],
+      development: { id: 'dev-1', name: 'Sagebrush Phase 2' },
+    })
+    const withoutDev = jobStub({
+      id: 'job-plain2',
+      hcp_number: '401',
+      job_name: 'Repipe',
+      job_address: '4 Oak',
+      invoices: [],
+    })
+    expect(filterJobsByStagesSearch([withDev, withoutDev], 'sagebrush', null).map((j) => j.id)).toEqual(['job-dev'])
+    // null development never throws or matches
+    expect(filterJobsByStagesSearch([withoutDev], 'sagebrush', null)).toHaveLength(0)
+  })
 })
 
 describe('buildJobsStagesBoardLists', () => {

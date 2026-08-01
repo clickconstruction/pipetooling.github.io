@@ -81,6 +81,7 @@ export function buildJobsListStagesPrimarySelect(): string {
     projects:project_id(id, name),
     bids:bid_id(id, project_name, bid_number, service_type_id),
     gc_customer:gc_customer_id(id, name),
+    development:development_id(id, name),
     service_types:service_type_id(name)
   `
 }
@@ -102,6 +103,7 @@ export function buildJobsLedgerFullDetailSelect(): string {
     projects:project_id(id, name),
     bids:bid_id(id, project_name, bid_number, service_type_id, customer_id, customers:customer_id(id, name)),
     gc_customer:gc_customer_id(id, name),
+    development:development_id(id, name),
     service_types:service_type_id(name)
   `
 }
