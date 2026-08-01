@@ -94,7 +94,7 @@ export function JobFormIdentityFields({
           column keeps room for its one-line label + trade pill at 375px. */}
       <div style={{ display: 'flex', gap: '0.75rem' }}>
         <div style={{ flex: '0 3 90px', minWidth: 52 }}>
-          <label style={{ display: 'block', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}>HCP</label>
+          <label style={{ display: 'flex', alignItems: 'center', minHeight: '1.4rem', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}>HCP</label>
           <input
             type="text"
             value={hcpNumber}
@@ -104,7 +104,7 @@ export function JobFormIdentityFields({
           />
         </div>
         <div style={{ flex: '0 3 90px', minWidth: 52 }}>
-          <label style={{ display: 'block', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}>C#</label>
+          <label style={{ display: 'flex', alignItems: 'center', minHeight: '1.4rem', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}>C#</label>
           <input
             type="text"
             value={clickNumber}
@@ -114,7 +114,7 @@ export function JobFormIdentityFields({
           />
         </div>
         <div style={{ flex: '1 1 170px', minWidth: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: 4, minWidth: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', minHeight: '1.4rem', marginBottom: 4, minWidth: 0 }}>
             <label
               htmlFor="job-form-service-type"
               style={{ fontWeight: 500, fontSize: '0.875rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
@@ -144,6 +144,9 @@ export function JobFormIdentityFields({
               required
               listAriaLabel="Service type"
               disabled={serviceTypeOptions.length === 0}
+              // Match the HCP/C# inputs beside it (v2.1234): same 0.5rem vertical
+              // padding + font size, so without the 44px floor the heights equalize.
+              triggerMinHeightPx={0}
             />
           </div>
         </div>

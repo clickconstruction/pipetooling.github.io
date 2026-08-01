@@ -126,6 +126,12 @@ export type SearchableSelectProps = {
    * Use for large pickers where showing every option on open is noisy. Default 0 (show all on open).
    */
   minSearchChars?: number
+  /**
+   * Trigger (and in-place search input) min-height in px; default 44 (touch target).
+   * Pass 0 to let padding size the control — e.g. to match sibling text inputs
+   * in a shared form row (v2.1234, Edit Job identity fields).
+   */
+  triggerMinHeightPx?: number
 }
 
 /** List rows for the open panel; may hide empty option while selection is still empty. */
@@ -253,6 +259,7 @@ export function SearchableSelect({
   listOptionFontSize = DEFAULT_LIST_OPTION_FONT_SIZE,
   listMinWidthPx,
   minSearchChars = 0,
+  triggerMinHeightPx = 44,
 }: SearchableSelectProps) {
   const searchReplacesTrigger = searchReplacesTriggerProp && searchable
   const resolvedListMaxHeightPx = listMaxHeightPx ?? LIST_MAX_HEIGHT_PX
@@ -619,7 +626,7 @@ export function SearchableSelect({
       document.body
     )
 
-  const triggerMinHeight = 44
+  const triggerMinHeight = triggerMinHeightPx
   const showInlineSearch = open && searchReplacesTrigger && !disabled
 
   const comboboxActivedescendantId =
