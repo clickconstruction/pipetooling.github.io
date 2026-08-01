@@ -1,4 +1,5 @@
 import { useBreakOffSlider } from './useBreakOffSlider'
+import { useNarrowViewport640 } from '../../hooks/useNarrowViewport640'
 import { BILLED_COLOR, DRAFT_COLOR, PAID_COLOR } from './MoneyLifecycleBar'
 import {
   formatCurrency,
@@ -27,6 +28,7 @@ function EquationChip({
   children,
   highlighted,
   title,
+  stretch,
 }: {
   dot: string
   dotCircle?: boolean
@@ -36,6 +38,8 @@ function EquationChip({
   children: React.ReactNode
   highlighted?: boolean
   title?: string
+  /** Phone 2×2 grid cell (v2.1231): fill the cell, center content vertically. */
+  stretch?: boolean
 }) {
   return (
     <span
@@ -49,9 +53,17 @@ function EquationChip({
         borderRadius: 8,
         padding: '0.3rem 0.6rem',
         minWidth: 0,
+        ...(stretch ? { width: '100%', boxSizing: 'border-box', justifyContent: 'center' } : {}),
       }}
     >
-      <span style={{ fontSize: '0.6875rem', color: highlighted ? 'var(--text-blue-700)' : 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+      <span
+        style={{
+          fontSize: '0.6875rem',
+          color: highlighted ? 'var(--text-blue-700)' : 'var(--text-muted)',
+          whiteSpace: 'nowrap',
+          ...(stretch ? { textAlign: 'center' } : {}),
+        }}
+      >
         <span
           aria-hidden
           style={{
@@ -114,29 +126,57 @@ export function JobFormBreakOffSection({
   const { paidPct, billedPct } = breakOffBillingTrackPercents.hasTotal
     ? breakOffBillingTrackPercents
     : { paidPct: 0, billedPct: 0 }
+  // Phone layout (v2.1231): the wrapping flex row broke arbitrarily — three
+  // chips crammed on line one, "→ Left to bill" stranded on line two. On
+  // narrow viewports the equation becomes a 2×2 grid (chip | operator | chip):
+  // row one is money already accounted for (Paid + Billed), row two is the
+  // decision (New Invoice → Left to bill), with equal-width stretched chips.
+  const narrowViewport = useNarrowViewport640()
+  const operatorStyle = {
+    color: 'var(--text-faint)',
+    fontSize: '0.8125rem',
+    ...(narrowViewport ? ({ alignSelf: 'center', textAlign: 'center' } as const) : {}),
+  } as const
 
   return (
     <div style={{ marginBottom: '1rem', display: 'flex', flexDirection: 'column', gap: '0.5rem', width: '100%', minWidth: 0 }}>
       {/* The equation row: chips ARE the math, the legend, the input, and the action. */}
-      <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '0.4rem', rowGap: '0.45rem', width: '100%', minWidth: 0 }}>
+      <div
+        style={
+          narrowViewport
+            ? {
+                display: 'grid',
+                gridTemplateColumns: 'minmax(0, 1fr) auto minmax(0, 1fr)',
+                gap: '0.5rem 0.3rem',
+                alignItems: 'stretch',
+                width: '100%',
+                minWidth: 0,
+              }
+            : { display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '0.4rem', rowGap: '0.45rem', width: '100%', minWidth: 0 }
+        }
+      >
         <EquationChip
           dot={PAID_COLOR}
           label="Paid"
           pct={breakOffBillingTrackPercents.hasTotal ? Math.round(paidPct) : null}
           title="Payments received on the job"
+          stretch={narrowViewport}
         >
           {formatUsdNoCents(breakOffPaidSum)}
         </EquationChip>
-        <span aria-hidden style={{ color: 'var(--text-faint)', fontSize: '0.8125rem' }}>+</span>
+        <span aria-hidden style={operatorStyle}>+</span>
         <EquationChip
           dot={BILLED_COLOR}
           label="Billed"
           pct={breakOffBillingTrackPercents.hasTotal ? Math.round(billedPct) : null}
           title="Invoices already carved off (drafts and sent bills)"
+          stretch={narrowViewport}
         >
           {formatUsdNoCents(breakOffBilledSum)}
         </EquationChip>
-        <span aria-hidden style={{ color: 'var(--text-faint)', fontSize: '0.8125rem' }}>+</span>
+        {/* On the phone grid the row break replaces this "+": row one ends after
+            Billed, so the operator cell would render as a stray glyph. */}
+        {!narrowViewport && <span aria-hidden style={operatorStyle}>+</span>}
         {/* Two-level pill (v2.1139): the action button sits in the label slot —
             dot + Make new Invoice / Ready to Bill + share % on top, the amount
             input below — so the chip matches its siblings' label-over-value shape. */}
@@ -155,9 +195,18 @@ export function JobFormBreakOffSection({
             borderRadius: 8,
             padding: '0.3rem 0.6rem',
             minWidth: 0,
+            ...(narrowViewport ? { width: '100%', boxSizing: 'border-box' as const } : {}),
           }}
         >
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', whiteSpace: 'nowrap' }}>
+          <span
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.35rem',
+              whiteSpace: 'nowrap',
+              ...(narrowViewport ? { justifyContent: 'center' as const } : {}),
+            }}
+          >
             <span
               aria-hidden
               style={{ display: 'inline-block', width: 7, height: 7, borderRadius: 2, background: DRAFT_COLOR, flexShrink: 0 }}
@@ -228,7 +277,7 @@ export function JobFormBreakOffSection({
               onChange={(e) => setNewInvoiceAmount(sanitizeMoneyTyping(e.target.value))}
               placeholder="$0"
               style={{
-                width: '7.5rem',
+                width: narrowViewport ? '100%' : '7.5rem',
                 boxSizing: 'border-box',
                 padding: '0.1rem 0.1rem',
                 border: 'none',
@@ -242,7 +291,7 @@ export function JobFormBreakOffSection({
               }}
             />
         </span>
-        <span aria-hidden style={{ color: 'var(--text-faint)', fontSize: '0.8125rem' }}>→</span>
+        <span aria-hidden style={operatorStyle}>→</span>
         <EquationChip
           dot="var(--border)"
           label="Left to bill"
@@ -252,6 +301,7 @@ export function JobFormBreakOffSection({
               : null
           }
           title="Unallocated after this bill: job total minus payments minus every invoice, including this one"
+          stretch={narrowViewport}
         >
           {formatUsdNoCents(leftAfterDollars)}
         </EquationChip>
