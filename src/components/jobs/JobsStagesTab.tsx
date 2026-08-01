@@ -532,6 +532,14 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
       return false
     }
   })
+  /** ⋯ tools menu "Edit mode" (v2.1236): EDIT rail on every job row → Edit Job in one tap. */
+  const [stagesEditMode, setStagesEditMode] = useState(() => {
+    try {
+      return localStorage.getItem('jobs-stages-edit-mode') === 'true'
+    } catch {
+      return false
+    }
+  })
   const [stagesFollowMoves, setStagesFollowMoves] = useState(() => {
     try {
       return localStorage.getItem('jobs-stages-follow-moves') === 'true'
@@ -790,6 +798,24 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
       return next
     })
   }
+
+  function toggleStagesEditMode() {
+    setStagesEditMode((prev) => {
+      const next = !prev
+      try {
+        localStorage.setItem('jobs-stages-edit-mode', String(next))
+      } catch {
+        /* ignore */
+      }
+      return next
+    })
+  }
+
+  /** Rails render only for the roles that can see the toggle — a stale
+      localStorage flag on a shared browser must not surface them elsewhere. */
+  const stagesEditModeActive =
+    stagesEditMode &&
+    (['dev', 'assistant', 'controller'] as const).includes((authRole || myRole) as 'dev' | 'assistant' | 'controller')
 
   function toggleStagesIncludeScheduleTimeInSearch() {
     setStagesIncludeScheduleTimeInSearch((prev) => {
@@ -1513,17 +1539,34 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                       {renderStagesToolsMenuToggleState(stagesFollowMoves)}
                     </button>
                     {(['dev', 'assistant', 'controller'] as const).includes((authRole || myRole) as 'dev' | 'assistant' | 'controller') ? (
-                      <button
-                        type="button"
-                        role="menuitemcheckbox"
-                        aria-checked={stagesHamMode}
-                        onClick={toggleStagesHamMode}
-                        title={stagesHamMode ? 'Ham mode on: faster shortcuts for some stage actions' : 'Ham mode off: all stage confirmations'}
-                        style={stagesToolsMenuItemStyle}
-                      >
-                        <span>Ham mode</span>
-                        {renderStagesToolsMenuToggleState(stagesHamMode)}
-                      </button>
+                      <>
+                        <button
+                          type="button"
+                          role="menuitemcheckbox"
+                          aria-checked={stagesHamMode}
+                          onClick={toggleStagesHamMode}
+                          title={stagesHamMode ? 'Ham mode on: faster shortcuts for some stage actions' : 'Ham mode off: all stage confirmations'}
+                          style={stagesToolsMenuItemStyle}
+                        >
+                          <span>Ham mode</span>
+                          {renderStagesToolsMenuToggleState(stagesHamMode)}
+                        </button>
+                        <button
+                          type="button"
+                          role="menuitemcheckbox"
+                          aria-checked={stagesEditMode}
+                          onClick={toggleStagesEditMode}
+                          title={
+                            stagesEditMode
+                              ? 'Edit mode on: every job row wears an EDIT tab that opens Edit Job in one tap'
+                              : 'Edit mode off: open Edit Job through Job Detail as usual'
+                          }
+                          style={stagesToolsMenuItemStyle}
+                        >
+                          <span>Edit mode</span>
+                          {renderStagesToolsMenuToggleState(stagesEditMode)}
+                        </button>
+                      </>
                     ) : null}
                   </div>
                 </>
@@ -1847,6 +1890,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     showPctComplete={true}
                     stagesJobFlashId={stagesJobFlashId}
                     stagesHamMode={stagesHamMode}
+                    stagesEditMode={stagesEditModeActive}
                     assignedEditJobId={assignedEditJobId}
                     setAssignedEditJobId={setAssignedEditJobId}
                     assignedEditSelectedIds={assignedEditSelectedIds}
@@ -1935,6 +1979,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     showPctComplete={true}
                     stagesJobFlashId={stagesJobFlashId}
                     stagesHamMode={stagesHamMode}
+                    stagesEditMode={stagesEditModeActive}
                     assignedEditJobId={assignedEditJobId}
                     setAssignedEditJobId={setAssignedEditJobId}
                     assignedEditSelectedIds={assignedEditSelectedIds}
@@ -2071,6 +2116,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     flashInvoiceId={stagesInvoiceFlashId}
                     stagesJobFlashId={stagesJobFlashId}
                     stagesHamMode={stagesHamMode}
+                    stagesEditMode={stagesEditModeActive}
                     assignedEditJobId={assignedEditJobId}
                     setAssignedEditJobId={setAssignedEditJobId}
                     assignedEditSelectedIds={assignedEditSelectedIds}
@@ -2323,6 +2369,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                       : undefined}
                     stagesJobFlashId={stagesJobFlashId}
                     stagesHamMode={stagesHamMode}
+                    stagesEditMode={stagesEditModeActive}
                     assignedEditJobId={assignedEditJobId}
                     setAssignedEditJobId={setAssignedEditJobId}
                     assignedEditSelectedIds={assignedEditSelectedIds}
@@ -2423,6 +2470,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     jobNoteLine={(j) => j.collections_note ?? null}
                     stagesJobFlashId={stagesJobFlashId}
                     stagesHamMode={stagesHamMode}
+                    stagesEditMode={stagesEditModeActive}
                     assignedEditJobId={assignedEditJobId}
                     setAssignedEditJobId={setAssignedEditJobId}
                     assignedEditSelectedIds={assignedEditSelectedIds}
@@ -2564,6 +2612,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                       showPctComplete={true}
                       stagesJobFlashId={stagesJobFlashId}
                       stagesHamMode={stagesHamMode}
+                      stagesEditMode={stagesEditModeActive}
                       assignedEditJobId={assignedEditJobId}
                       setAssignedEditJobId={setAssignedEditJobId}
                       assignedEditSelectedIds={assignedEditSelectedIds}
