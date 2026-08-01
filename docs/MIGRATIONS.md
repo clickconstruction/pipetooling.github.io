@@ -106,6 +106,11 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 #### August 1, 2026
 
+**`20260801190000_sub_own_row_labor_reads.sql`** _(apply via `supabase db push` after merge — additive policies; nothing user-facing until the sub Dashboard money view ships)_
+- **Purpose**: RUN_SUBS_PLAN Phase 3, PR 3.1 (v2.1211). Sub own-row SELECT policies on `people_labor_jobs` (junction-first via `people_labor_job_assignees` × `people.account_user_id`, trimmed-name segment fallback) and on items/payments via parent-EXISTS. The three tables previously had no subcontractor branch.
+- **Security**: SELECT-only, additive; office policies untouched; subs cannot write. Test focus: a sub login sees only sheets naming them; helpers-role and other subs see nothing extra.
+- **Category**: RLS / feature enablement
+
 **`20260801170000_settle_step_commitment_rpc.sql`** _(apply via `supabase db push` after merge — the Settle button errors clearly until pushed; everything else in the panel works)_
 - **Purpose**: RUN_SUBS_PLAN Phase 2, PR 2.3 (v2.1210). `settle_step_commitment(p_commitment_id, p_dry_run)`: creates/reuses the anchored `people_labor_jobs` sub sheet (one direct-amount line = amount × (1 − retainage/100), HCP number only when the project has exactly one job), links `labor_job_id`, flips the commitment to `settled`. Dry-run via the rollback-sentinel technique — the preview is the real settlement rolled back.
 - **Security**: SECURITY DEFINER; office roles only (dev/master/assistant/controller/estimator) + `can_access_project_via_step` row gate; `FOR UPDATE` lock against double-settlement.

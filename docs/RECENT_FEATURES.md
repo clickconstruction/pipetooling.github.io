@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-01 (v2.1210)
+last_updated: 2026-08-01 (v2.1211)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1211)
+
+### Subs can read their own sub sheets (2026-08-01)
+RUN_SUBS_PLAN Phase 3, PR 3.1 (DB-only; the Dashboard money view that uses this lands next). Migration [`20260801190000_sub_own_row_labor_reads.sql`](../supabase/migrations/20260801190000_sub_own_row_labor_reads.sql): additive **SELECT-only** policies on the three `people_labor_*` tables, which previously had no subcontractor branch at all — a sub could not see their own balance or payments. `people_labor_jobs`: junction-first identity (`people_labor_job_assignees` × the sub's `people.account_user_id` link) OR the legacy trimmed-name segment match (the `people_pay_config` dual-path precedent); items/payments follow the parent via bare EXISTS (the `plja_select` pattern — whoever can read the sheet can read its rows). Office policies untouched; subs still cannot write. Data prerequisites landed first: Kyle combined by the owner, the "Behar Kraja (Rough In)" variant fixed on its 1 step + 2 sheets (triggers resolved ids/junction automatically) — unresolved segments are down to archived "Edgar" + the "MIke Rodriguez"/"Miguel Rodriguez" question. DB-only (`supabase db push` after merge).
 
 ## Latest Updates (v2.1210)
 
