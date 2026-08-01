@@ -201,6 +201,32 @@ describe('JobsStagesTab render smoke', () => {
     expect(screen.getByText('take me to Job: Stages: Billed')).toBeTruthy()
   })
 
+  it('GC/development filters live in the ⋯ tools menu, not the search bar (v2.1232)', () => {
+    const jobs = [
+      makeJob({ job_name: 'Horton House', gcCustomer: { id: 'gc-1', name: 'D.R. Horton' } }),
+      makeJob({ job_name: 'Other House' }),
+    ]
+    renderWithProviders(<JobsStagesTab ref={createRef()} {...makeProps({ jobs })} />)
+    // Bar default: no filter selects, no active-filter chip.
+    expect(screen.queryByLabelText('Filter the Stages board by GC/Builder')).toBeNull()
+    expect(screen.queryByTitle('Filtered by GC/Builder — tap to clear')).toBeNull()
+    // The selects render inside the tools menu.
+    fireEvent.click(screen.getByLabelText('Stages tools'))
+    const gcSelect = screen.getByLabelText('Filter the Stages board by GC/Builder')
+    expect(screen.getByText('Filters')).toBeTruthy()
+    // Selecting applies the filter, keeps the menu open, and raises the bar chip.
+    fireEvent.change(gcSelect, { target: { value: 'gc-1' } })
+    expect(screen.getByLabelText('Filter the Stages board by GC/Builder')).toBeTruthy()
+    const chip = screen.getByTitle('Filtered by GC/Builder — tap to clear')
+    expect(chip.textContent).toContain('D.R. Horton')
+    expect(screen.getByText('Horton House')).toBeTruthy()
+    expect(screen.queryByText('Other House')).toBeNull()
+    // Tapping the chip clears the filter.
+    fireEvent.click(chip)
+    expect(screen.queryByTitle('Filtered by GC/Builder — tap to clear')).toBeNull()
+    expect(screen.getByText('Other House')).toBeTruthy()
+  })
+
   it('openBankPayments opens the Accounts Receivable modal', async () => {
     const ref = createRef<JobsStagesTabHandle>()
     renderWithProviders(<JobsStagesTab ref={ref} {...makeProps({ jobs: boardJobs() })} />)

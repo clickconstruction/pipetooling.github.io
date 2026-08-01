@@ -216,6 +216,37 @@ export type JobsStagesTabProps = {
   refreshJobThreadStatsForJobIds: ReturnType<typeof useJobThreadNotes>['refreshJobThreadStatsForJobIds']
 }
 
+/** Active-filter chip in the search bar (v2.1232): the GC/development selects
+    live in the ⋯ tools menu now, so an applied filter must announce itself —
+    a filtered board with no visible cause reads as missing jobs. Tap clears. */
+const stagesActiveFilterChipStyle: CSSProperties = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  gap: '0.3rem',
+  flexShrink: 0,
+  maxWidth: 'clamp(6rem, 30vw, 12rem)',
+  padding: '0.2rem 0.6rem',
+  border: 'none',
+  borderRadius: 999,
+  background: 'var(--bg-blue-tint)',
+  color: 'var(--text-link)',
+  fontSize: '0.8125rem',
+  fontWeight: 600,
+  cursor: 'pointer',
+  whiteSpace: 'nowrap',
+}
+
+const stagesToolsMenuFilterSelectStyle: CSSProperties = {
+  flex: 1,
+  minWidth: 0,
+  padding: '0.35rem 0.5rem',
+  border: '1px solid var(--border-strong)',
+  borderRadius: 6,
+  fontSize: '0.875rem',
+  textOverflow: 'ellipsis',
+  cursor: 'pointer',
+}
+
 const stagesToolsMenuItemStyle: CSSProperties = {
   display: 'flex',
   alignItems: 'center',
@@ -1241,65 +1272,54 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                   return true
                 }}
               />
-              {stagesGcFilterOptions.length > 0 ? (
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', flexShrink: 0 }}>
-                  <GcHardHatIcon size={13} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
-                  <select
-                    value={stagesGcFilter}
-                    onChange={(e) => setStagesGcFilter(e.target.value)}
-                    aria-label="Filter the Stages board by GC/Builder"
-                    title="Filter the Stages board by GC/Builder"
-                    style={{
-                      padding: '0.35rem 0.25rem',
-                      border: 'none',
-                      borderRadius: 8,
-                      background: stagesGcFilter ? 'var(--bg-blue-tint)' : 'transparent',
-                      color: stagesGcFilter ? 'var(--text-link)' : 'var(--text-muted)',
-                      fontSize: '0.875rem',
-                      maxWidth: 'clamp(4.5rem, 22vw, 10rem)',
-                      textOverflow: 'ellipsis',
-                      cursor: 'pointer',
-                    }}
-                  >
-                    <option value="">All GCs</option>
-                    {stagesGcFilterOptions.map((o) => (
-                      <option key={o.id} value={o.id}>
-                        {o.name}
-                      </option>
-                    ))}
-                    <option value={STAGES_GC_FILTER_NO_GC}>No GC set</option>
-                  </select>
-                </span>
+              {/* v2.1232: the GC/development selects moved into the ⋯ tools menu.
+                  The bar only shows an APPLIED filter, as a tap-to-clear chip —
+                  hidden active filters would make the board look short. */}
+              {stagesGcFilter ? (
+                <button
+                  type="button"
+                  onClick={() => setStagesGcFilter('')}
+                  title="Filtered by GC/Builder — tap to clear"
+                  aria-label={`Clear GC filter: ${
+                    stagesGcFilter === STAGES_GC_FILTER_NO_GC
+                      ? 'No GC set'
+                      : stagesGcFilterOptions.find((o) => o.id === stagesGcFilter)?.name ?? 'GC'
+                  }`}
+                  style={stagesActiveFilterChipStyle}
+                >
+                  <GcHardHatIcon size={13} style={{ flexShrink: 0 }} />
+                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>
+                    {stagesGcFilter === STAGES_GC_FILTER_NO_GC
+                      ? 'No GC set'
+                      : stagesGcFilterOptions.find((o) => o.id === stagesGcFilter)?.name ?? 'GC'}
+                  </span>
+                  <span aria-hidden style={{ flexShrink: 0 }}>
+                    ×
+                  </span>
+                </button>
               ) : null}
-              {stagesDevelopmentFilterOptions.length > 0 ? (
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', flexShrink: 0 }}>
-                  <DevelopmentHouseIcon size={13} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
-                  <select
-                    value={stagesDevelopmentFilter}
-                    onChange={(e) => setStagesDevelopmentFilter(e.target.value)}
-                    aria-label="Filter the Stages board by development"
-                    title="Filter the Stages board by development"
-                    style={{
-                      padding: '0.35rem 0.25rem',
-                      border: 'none',
-                      borderRadius: 8,
-                      background: stagesDevelopmentFilter ? 'var(--bg-blue-tint)' : 'transparent',
-                      color: stagesDevelopmentFilter ? 'var(--text-link)' : 'var(--text-muted)',
-                      fontSize: '0.875rem',
-                      maxWidth: 'clamp(4.5rem, 22vw, 10rem)',
-                      textOverflow: 'ellipsis',
-                      cursor: 'pointer',
-                    }}
-                  >
-                    <option value="">All developments</option>
-                    {stagesDevelopmentFilterOptions.map((o) => (
-                      <option key={o.id} value={o.id}>
-                        {o.name}
-                      </option>
-                    ))}
-                    <option value={STAGES_DEVELOPMENT_FILTER_NONE}>No development set</option>
-                  </select>
-                </span>
+              {stagesDevelopmentFilter ? (
+                <button
+                  type="button"
+                  onClick={() => setStagesDevelopmentFilter('')}
+                  title="Filtered by development — tap to clear"
+                  aria-label={`Clear development filter: ${
+                    stagesDevelopmentFilter === STAGES_DEVELOPMENT_FILTER_NONE
+                      ? 'No development set'
+                      : stagesDevelopmentFilterOptions.find((o) => o.id === stagesDevelopmentFilter)?.name ?? 'Development'
+                  }`}
+                  style={stagesActiveFilterChipStyle}
+                >
+                  <DevelopmentHouseIcon size={13} style={{ flexShrink: 0 }} />
+                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>
+                    {stagesDevelopmentFilter === STAGES_DEVELOPMENT_FILTER_NONE
+                      ? 'No development set'
+                      : stagesDevelopmentFilterOptions.find((o) => o.id === stagesDevelopmentFilter)?.name ?? 'Development'}
+                  </span>
+                  <span aria-hidden style={{ flexShrink: 0 }}>
+                    ×
+                  </span>
+                </button>
               ) : null}
               <span aria-hidden style={{ flexShrink: 0, width: 1, height: '1.25rem', background: 'var(--border)' }} />
               <div style={{ position: 'relative', flexShrink: 0 }}>
@@ -1319,9 +1339,15 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                   padding: 0,
                   border: 'none',
                   borderRadius: 8,
-                  background: stagesToolsMenuOpen ? 'var(--bg-blue-tint)' : 'transparent',
+                  background:
+                    stagesToolsMenuOpen || stagesGcFilter || stagesDevelopmentFilter
+                      ? 'var(--bg-blue-tint)'
+                      : 'transparent',
                   cursor: 'pointer',
-                  color: stagesToolsMenuOpen ? 'var(--text-link)' : 'var(--text-muted)',
+                  color:
+                    stagesToolsMenuOpen || stagesGcFilter || stagesDevelopmentFilter
+                      ? 'var(--text-link)'
+                      : 'var(--text-muted)',
                   fontSize: '1.2rem',
                   fontWeight: 700,
                   lineHeight: 1,
@@ -1353,6 +1379,64 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                       gap: 2,
                     }}
                   >
+                    {stagesGcFilterOptions.length > 0 || stagesDevelopmentFilterOptions.length > 0 ? (
+                      <>
+                        {/* Filters group (v2.1232) — moved out of the search bar.
+                            Selecting keeps the menu open so both can be set at once. */}
+                        <div style={{ fontSize: '0.6875rem', color: 'var(--text-muted)', padding: '0.25rem 0.75rem 0.1rem' }}>
+                          Filters
+                        </div>
+                        {stagesGcFilterOptions.length > 0 ? (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.2rem 0.75rem' }}>
+                            <GcHardHatIcon size={15} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
+                            <select
+                              value={stagesGcFilter}
+                              onChange={(e) => setStagesGcFilter(e.target.value)}
+                              aria-label="Filter the Stages board by GC/Builder"
+                              title="Filter the Stages board by GC/Builder"
+                              style={{
+                                ...stagesToolsMenuFilterSelectStyle,
+                                background: stagesGcFilter ? 'var(--bg-blue-tint)' : 'var(--surface)',
+                                color: stagesGcFilter ? 'var(--text-link)' : 'inherit',
+                              }}
+                            >
+                              <option value="">All GCs</option>
+                              {stagesGcFilterOptions.map((o) => (
+                                <option key={o.id} value={o.id}>
+                                  {o.name}
+                                </option>
+                              ))}
+                              <option value={STAGES_GC_FILTER_NO_GC}>No GC set</option>
+                            </select>
+                          </div>
+                        ) : null}
+                        {stagesDevelopmentFilterOptions.length > 0 ? (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.2rem 0.75rem 0.35rem' }}>
+                            <DevelopmentHouseIcon size={15} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
+                            <select
+                              value={stagesDevelopmentFilter}
+                              onChange={(e) => setStagesDevelopmentFilter(e.target.value)}
+                              aria-label="Filter the Stages board by development"
+                              title="Filter the Stages board by development"
+                              style={{
+                                ...stagesToolsMenuFilterSelectStyle,
+                                background: stagesDevelopmentFilter ? 'var(--bg-blue-tint)' : 'var(--surface)',
+                                color: stagesDevelopmentFilter ? 'var(--text-link)' : 'inherit',
+                              }}
+                            >
+                              <option value="">All developments</option>
+                              {stagesDevelopmentFilterOptions.map((o) => (
+                                <option key={o.id} value={o.id}>
+                                  {o.name}
+                                </option>
+                              ))}
+                              <option value={STAGES_DEVELOPMENT_FILTER_NONE}>No development set</option>
+                            </select>
+                          </div>
+                        ) : null}
+                        <div style={{ height: 1, background: 'var(--border)', margin: '0.2rem 0.3rem' }} />
+                      </>
+                    ) : null}
                     {(['dev', 'master_technician', 'assistant', 'controller'] as const).some(
                       (r) => r === authRole || r === myRole,
                     ) ? (

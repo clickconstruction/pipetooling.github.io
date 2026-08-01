@@ -23,7 +23,7 @@ Jobs **created from a bid** inherit the bid's GC/Builder automatically, and link
 - **Jobs → Stages**: under the customer name in the Job column, marked with a hard-hat icon.
 - **Job Detail**: under the customer name in the Customer block.
 - **Stages search**: typing a GC's name surfaces every job under that GC.
-- **Stages GC filter**: once any job has a GC, a hard-hat dropdown appears next to the search — pick a GC to see only their jobs (every section and total follows), or **No GC set** to see the jobs still needing one.
+- **Stages GC filter**: once any job has a GC, open the **⋯** menu at the right end of the search bar — a **Filters** group at the top holds the hard-hat GC dropdown. Pick a GC to see only their jobs (every section and total follows), or **No GC set** to see the jobs still needing one. While a filter is on, a blue chip with the GC's name sits in the search bar — tap its × to clear it.
 
 ## GC Review — outstanding money by GC
 

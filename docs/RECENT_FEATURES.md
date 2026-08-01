@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-01 (v2.1231)
+last_updated: 2026-08-01 (v2.1232)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1232)
+
+### Jobs → Stages — GC/development filters move from the search bar into the ⋯ tools menu (2026-08-01)
+The Stages search bar carried the **All GCs** and **All developments** `<select>`s inline (v2.1183), which crowded the input, especially on phones. Both selects now live in a new **Filters** group at the top of the existing ⋯ tools menu ([`JobsStagesTab.tsx`](../src/components/jobs/JobsStagesTab.tsx), above Job Book…), rendered as icon + full-width bordered selects; picking a value deliberately does NOT close the menu, so both filters can be set in one visit. The bar instead announces an **applied** filter with a tap-to-clear chip (blue pill, hard-hat/house icon + selected name + ×, `stagesActiveFilterChipStyle`, max-width clamp with ellipsis) — a filtered board with no visible cause reads as missing jobs — and the ⋯ trigger tints blue whenever a filter is applied. Sentinel options (`No GC set` / `No development set`) label their chips accordingly. Filter state, options builders (`gcFilterOptionsFromJobs` / `developmentFilterOptionsFromJobs`), and the board filtering pipeline are untouched — this is purely a placement/affordance change. New render-test case in [`JobsStagesTab.render.test.tsx`](../src/components/jobs/JobsStagesTab.render.test.tsx): bar has no selects/chip by default, the menu holds the selects under a Filters heading, selecting filters the board + raises the named chip + keeps the menu open, and tapping the chip clears the filter. Docs: toolbar section of [`JOBS_STAGES_TAB_ARCHITECTURE.md`](./JOBS_STAGES_TAB_ARCHITECTURE.md) updated; help guide [`track-a-general-contractor-on-a-job`](../src/content/help/track-a-general-contractor-on-a-job.md) rewritten for the new location. Verified: `tsc -b` clean, zero new lints, full vitest suite green. Files: modified [`src/components/jobs/JobsStagesTab.tsx`](../src/components/jobs/JobsStagesTab.tsx), render test, architecture doc, help guide. No DB / migration / RLS / RPC / Edge / type-gen changes.
 
 ## Latest Updates (v2.1231)
 
