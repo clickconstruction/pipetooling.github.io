@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1207',
+    date: '2026-08-01',
+    title: 'Workflow page shows which subs are on the project',
+    kind: 'feature',
+    highlights: [
+      'A Subs strip in the Workflow header lists every subcontractor assigned to a step, with how many of their steps are still open — hover for the step they are on now.',
+    ],
+  },
+  {
     version: 'v2.1206',
     date: '2026-08-01',
     title: 'Projects rows show Projected and Spent totals',
