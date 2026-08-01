@@ -301,12 +301,20 @@ export function JobFormBreakOffTrack({ breakOff }: { breakOff: ReturnType<typeof
     jobCompleteTrackPct != null &&
     invoiceDollars > 0 &&
     breakOffCombinedHandlePct > jobCompleteTrackPct + 10
+  // Reserve under-track height only for rows that can actually appear
+  // (v2.1230): the fixed 60px assumed both the handle badge AND the yellow
+  // field-progress caret; jobs with no field progress rendered the caret row
+  // as dead white space above the segment list. The badge reservation keys on
+  // the thumb's existence (breakOffRemaining), NOT on invoiceDollars — the
+  // badge pops in mid-drag and the track must not change height under the
+  // user's finger.
+  const trackHeight = jobCompleteTrackPct != null ? 60 : breakOffRemaining > 0 ? 44 : 24
 
   return (
         <div style={{ width: '100%', minWidth: 0, marginTop: '0.5rem' }}>
           <div
             ref={billingBreakOffTrackRef}
-            style={{ position: 'relative', width: '100%', height: 60, marginTop: 2, touchAction: 'none' }}
+            style={{ position: 'relative', width: '100%', height: trackHeight, marginTop: 2, touchAction: 'none' }}
             onPointerDown={onBillingBreakOffTrackPointerDown}
             onPointerMove={onBillingBreakOffTrackPointerMove}
             onPointerUp={onBillingBreakOffTrackPointerUpCancel}

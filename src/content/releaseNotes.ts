@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1230',
+    date: '2026-08-01',
+    title: 'Edit Job: less empty space under the invoice slider',
+    kind: 'feature',
+    highlights: [
+      'The draggable billing slider no longer reserves a blank row for the "Job % done" marker when a job has no field progress — the segment list moves up to fill the gap.',
+    ],
+  },
+  {
     version: 'v2.1229',
     date: '2026-08-01',
     title: 'Edit Job: line item names get the full width while you type on phones',
