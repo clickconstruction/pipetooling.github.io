@@ -3457,21 +3457,6 @@ export default function JobFormModal({
                   Undo changes
                 </button>
               ))}
-            <button
-              type="button"
-              onClick={() => void closeForm()}
-              disabled={closeFlushState === 'saving'}
-              style={{
-                padding: '0.5rem 1rem',
-                background: 'var(--bg-200)',
-                color: closeFlushState === 'saving' ? 'var(--text-faint)' : 'var(--text-700)',
-                border: 'none',
-                borderRadius: 4,
-                cursor: closeFlushState === 'saving' ? 'wait' : 'pointer',
-              }}
-            >
-              {closeFlushState === 'saving' ? 'Saving…' : editing ? 'Close' : 'Cancel'}
-            </button>
             {!jobFormCanSubmit && !saving && jobFormMissingFields.length > 0 && (
               <span style={{ fontSize: '0.8rem', color: '#FF6600', display: 'inline-block' }}>
                 <span style={{ display: 'block' }}>Required:</span>
@@ -3482,48 +3467,84 @@ export default function JobFormModal({
                 ))}
               </span>
             )}
+            {/* Edit mode ends [status → Close] so Close anchors the corner (v2.1235);
+                create mode keeps the conventional [Cancel → Create Job]. */}
             {editing ? (
-              <span
-                aria-live="polite"
-                style={{
-                  fontSize: '0.8rem',
-                  fontWeight: 500,
-                  color:
-                    editAutosaveAggregate === 'error'
-                      ? 'var(--text-red-600)'
-                      : editAutosaveAggregate === 'saved'
-                        ? 'var(--text-green-600)'
-                        : 'var(--text-muted)',
-                }}
-              >
-                {editAutosaveAggregate === 'saving'
-                  ? 'Saving…'
-                  : editAutosaveAggregate === 'error'
-                    ? 'Autosave failed — edit the field again to retry'
-                    : editAutosaveAggregate === 'blocked'
-                      ? 'Waiting on required fields'
-                      : editAutosaveAggregate === 'pending'
-                        ? 'Unsaved changes…'
-                        : 'All changes saved'}
-              </span>
+              <>
+                <span
+                  aria-live="polite"
+                  style={{
+                    fontSize: '0.8rem',
+                    fontWeight: 500,
+                    color:
+                      editAutosaveAggregate === 'error'
+                        ? 'var(--text-red-600)'
+                        : editAutosaveAggregate === 'saved'
+                          ? 'var(--text-green-600)'
+                          : 'var(--text-muted)',
+                  }}
+                >
+                  {editAutosaveAggregate === 'saving'
+                    ? 'Saving…'
+                    : editAutosaveAggregate === 'error'
+                      ? 'Autosave failed — edit the field again to retry'
+                      : editAutosaveAggregate === 'blocked'
+                        ? 'Waiting on required fields'
+                        : editAutosaveAggregate === 'pending'
+                          ? 'Unsaved changes…'
+                          : 'All changes saved'}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => void closeForm()}
+                  disabled={closeFlushState === 'saving'}
+                  style={{
+                    padding: '0.5rem 1rem',
+                    background: 'var(--bg-200)',
+                    color: closeFlushState === 'saving' ? 'var(--text-faint)' : 'var(--text-700)',
+                    border: 'none',
+                    borderRadius: 4,
+                    cursor: closeFlushState === 'saving' ? 'wait' : 'pointer',
+                  }}
+                >
+                  {closeFlushState === 'saving' ? 'Saving…' : 'Close'}
+                </button>
+              </>
             ) : (
-              <button
-                type="button"
-                onClick={createJob}
-                disabled={!jobFormCanSubmit || saving}
-                title={!jobFormCanSubmit ? `Required: ${jobFormMissingFields.join(', ')}` : undefined}
-                style={{
-                  padding: '0.5rem 1rem',
-                  background: '#3b82f6',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: 4,
-                  cursor: jobFormCanSubmit && !saving ? 'pointer' : 'not-allowed',
-                  fontWeight: 500,
-                }}
-              >
-                {saving ? 'Creating…' : 'Create Job'}
-              </button>
+              <>
+                <button
+                  type="button"
+                  onClick={() => void closeForm()}
+                  disabled={closeFlushState === 'saving'}
+                  style={{
+                    padding: '0.5rem 1rem',
+                    background: 'var(--bg-200)',
+                    color: closeFlushState === 'saving' ? 'var(--text-faint)' : 'var(--text-700)',
+                    border: 'none',
+                    borderRadius: 4,
+                    cursor: closeFlushState === 'saving' ? 'wait' : 'pointer',
+                  }}
+                >
+                  {closeFlushState === 'saving' ? 'Saving…' : 'Cancel'}
+                </button>
+                <button
+                  type="button"
+                  onClick={createJob}
+                  disabled={!jobFormCanSubmit || saving}
+                  title={!jobFormCanSubmit ? `Required: ${jobFormMissingFields.join(', ')}` : undefined}
+                  style={{
+                    padding: '0.5rem 1rem',
+                    background: '#3b82f6',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: 4,
+                    cursor: jobFormCanSubmit && !saving ? 'pointer' : 'not-allowed',
+                    fontWeight: 500,
+                  }}
+                >
+                  {saving ? 'Creating…' : 'Create Job'}
+                </button>
+              </>
             )}
           </div>
         </div>
