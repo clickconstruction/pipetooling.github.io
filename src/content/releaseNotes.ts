@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1187',
+    date: '2026-07-31',
+    title: 'A cleaner Stages search bar',
+    kind: 'feature',
+    highlights: [
+      'The search box, # jump, GC filter, and ⋯ tools now sit together in one rounded bar with a search icon.',
+      'Focusing the search highlights the whole bar; everything works exactly as before.',
+    ],
+  },
+  {
     version: 'v2.1186',
     date: '2026-07-31',
     title: 'Add your own cities to job-address line breaks',

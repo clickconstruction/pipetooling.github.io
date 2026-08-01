@@ -513,6 +513,8 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
       return false
     }
   })
+  /** Focus ring for the unified command bar (v2.1187) — the input inside is borderless. */
+  const [stagesSearchBarFocused, setStagesSearchBarFocused] = useState(false)
   const [assignedEditJobId, setAssignedEditJobId] = useState<string | null>(null)
   const [assignedEditSelectedIds, setAssignedEditSelectedIds] = useState<string[]>([])
   const [assignedEditSavingId, setAssignedEditSavingId] = useState<string | null>(null)
@@ -1146,80 +1148,124 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
             >
               {shortNewJobButtonLabel ? 'New' : 'New Job'}
             </button>
-            <StagesJobNumberJumpChip
-              onJump={(digits) => {
-                const matches = findJobsByNumber(jobs, digits)
-                const hit = matches[0]
-                if (!hit) return false
-                const section = stagesSectionKeyForJobRow(hit)
-                if (section) setStagesSectionOpen((prev) => ({ ...prev, [section]: true }))
-                setPendingStagesJobFocusId(hit.id)
-                setStagesJobFlashId(hit.id)
-                if (matches.length > 1) {
-                  showToast(`${matches.length} jobs start with #${digits} — showing the first`, 'info', 4000)
-                }
-                return true
+            {/* Unified command bar (v2.1187): search + jump chip + GC filter + tools in one container. */}
+            <div
+              style={{
+                flex: '1 1 16rem',
+                minWidth: 0,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.35rem',
+                minHeight: '2.5rem',
+                padding: '0 0.25rem 0 0.65rem',
+                background: 'var(--surface)',
+                border: `1px solid ${stagesSearchBarFocused ? '#3b82f6' : 'var(--border-strong)'}`,
+                borderRadius: 10,
+                boxShadow: stagesSearchBarFocused ? '0 0 0 3px var(--bg-blue-tint)' : 'none',
+                boxSizing: 'border-box',
               }}
-            />
-            <input
-              type="text"
-              placeholder={
-                stagesIncludeScheduleTimeInSearch
-                  ? 'Search HCP, name, address, schedule notes, or clock notes'
-                  : 'Search HCP, name, address'
-              }
-              value={stagesSearchQuery}
-              onChange={(e) => setStagesSearchQuery(e.target.value)}
-              aria-busy={stagesIncludeScheduleTimeInSearch && stagesScheduleSessionSearchBusy}
-              aria-describedby={
-                stagesIncludeScheduleTimeInSearch ? 'stages-search-supplemental-desc' : undefined
-              }
-              style={{ flex: '1 1 10rem', minWidth: 0, padding: '0.5rem 0.75rem', border: '1px solid var(--border-strong)', borderRadius: 4, boxSizing: 'border-box' }}
-            />
-            {stagesGcFilterOptions.length > 0 ? (
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', flexShrink: 0 }}>
-                <GcHardHatIcon size={13} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
-                <select
-                  value={stagesGcFilter}
-                  onChange={(e) => setStagesGcFilter(e.target.value)}
-                  aria-label="Filter the Stages board by GC/Builder"
-                  title="Filter the Stages board by GC/Builder"
+            >
+              <svg
+                width={16}
+                height={16}
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={2}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden
+                style={{ flexShrink: 0, color: 'var(--text-muted)' }}
+              >
+                <circle cx={11} cy={11} r={7} />
+                <line x1={21} y1={21} x2={16.4} y2={16.4} />
+              </svg>
+              <input
+                type="text"
+                placeholder={
+                  stagesIncludeScheduleTimeInSearch
+                    ? 'Search HCP, name, address, schedule notes, or clock notes'
+                    : 'Search HCP, name, address'
+                }
+                value={stagesSearchQuery}
+                onChange={(e) => setStagesSearchQuery(e.target.value)}
+                onFocus={() => setStagesSearchBarFocused(true)}
+                onBlur={() => setStagesSearchBarFocused(false)}
+                aria-busy={stagesIncludeScheduleTimeInSearch && stagesScheduleSessionSearchBusy}
+                aria-describedby={
+                  stagesIncludeScheduleTimeInSearch ? 'stages-search-supplemental-desc' : undefined
+                }
+                style={{
+                  flex: '1 1 6rem',
+                  minWidth: '3.5rem',
+                  padding: '0.45rem 0',
+                  border: 'none',
+                  outline: 'none',
+                  background: 'transparent',
+                  color: 'inherit',
+                  font: 'inherit',
+                  fontSize: '0.9375rem',
+                }}
+              />
+              {stagesIncludeScheduleTimeInSearch && stagesScheduleSessionSearchBusy ? (
+                <span
                   style={{
-                    padding: '0.45rem 0.5rem',
-                    border: '1px solid var(--border-strong)',
-                    borderRadius: 4,
-                    background: stagesGcFilter ? 'var(--bg-blue-tint)' : 'var(--surface)',
-                    color: 'inherit',
-                    fontSize: '0.875rem',
-                    maxWidth: '11rem',
+                    flexShrink: 0,
+                    fontSize: '0.75rem',
+                    color: 'var(--text-muted)',
+                    whiteSpace: 'nowrap',
                   }}
                 >
-                  <option value="">All GCs</option>
-                  {stagesGcFilterOptions.map((o) => (
-                    <option key={o.id} value={o.id}>
-                      {o.name}
-                    </option>
-                  ))}
-                  <option value={STAGES_GC_FILTER_NO_GC}>No GC set</option>
-                </select>
-              </span>
-            ) : null}
-            {stagesIncludeScheduleTimeInSearch && stagesScheduleSessionSearchBusy ? (
-              <span
-                style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  fontSize: '0.8125rem',
-                  color: 'var(--text-muted)',
-                  lineHeight: 1.25,
-                  textAlign: 'left',
+                  + schedule &amp; clock…
+                </span>
+              ) : null}
+              <StagesJobNumberJumpChip
+                onJump={(digits) => {
+                  const matches = findJobsByNumber(jobs, digits)
+                  const hit = matches[0]
+                  if (!hit) return false
+                  const section = stagesSectionKeyForJobRow(hit)
+                  if (section) setStagesSectionOpen((prev) => ({ ...prev, [section]: true }))
+                  setPendingStagesJobFocusId(hit.id)
+                  setStagesJobFlashId(hit.id)
+                  if (matches.length > 1) {
+                    showToast(`${matches.length} jobs start with #${digits} — showing the first`, 'info', 4000)
+                  }
+                  return true
                 }}
-              >
-                <span>Search includes schedule</span>
-                <span>and session notes</span>
-              </span>
-            ) : null}
-            <div style={{ position: 'relative', flexShrink: 0 }}>
+              />
+              {stagesGcFilterOptions.length > 0 ? (
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', flexShrink: 0 }}>
+                  <GcHardHatIcon size={13} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
+                  <select
+                    value={stagesGcFilter}
+                    onChange={(e) => setStagesGcFilter(e.target.value)}
+                    aria-label="Filter the Stages board by GC/Builder"
+                    title="Filter the Stages board by GC/Builder"
+                    style={{
+                      padding: '0.35rem 0.25rem',
+                      border: 'none',
+                      borderRadius: 8,
+                      background: stagesGcFilter ? 'var(--bg-blue-tint)' : 'transparent',
+                      color: stagesGcFilter ? 'var(--text-link)' : 'var(--text-muted)',
+                      fontSize: '0.875rem',
+                      maxWidth: 'clamp(4.5rem, 22vw, 10rem)',
+                      textOverflow: 'ellipsis',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    <option value="">All GCs</option>
+                    {stagesGcFilterOptions.map((o) => (
+                      <option key={o.id} value={o.id}>
+                        {o.name}
+                      </option>
+                    ))}
+                    <option value={STAGES_GC_FILTER_NO_GC}>No GC set</option>
+                  </select>
+                </span>
+              ) : null}
+              <span aria-hidden style={{ flexShrink: 0, width: 1, height: '1.25rem', background: 'var(--border)' }} />
+              <div style={{ position: 'relative', flexShrink: 0 }}>
               <button
                 type="button"
                 onClick={() => setStagesToolsMenuOpen((o) => !o)}
@@ -1231,12 +1277,12 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  width: 36,
-                  height: 36,
+                  width: 32,
+                  height: 32,
                   padding: 0,
-                  border: '1px solid var(--border-strong)',
-                  borderRadius: 4,
-                  background: stagesToolsMenuOpen ? 'var(--bg-blue-tint)' : 'var(--surface)',
+                  border: 'none',
+                  borderRadius: 8,
+                  background: stagesToolsMenuOpen ? 'var(--bg-blue-tint)' : 'transparent',
                   cursor: 'pointer',
                   color: stagesToolsMenuOpen ? 'var(--text-link)' : 'var(--text-muted)',
                   fontSize: '1.2rem',
@@ -1361,6 +1407,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                   </div>
                 </>
               ) : null}
+            </div>
             </div>
             </div>
           </div>

@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-31 (v2.1186)
+last_updated: 2026-07-31 (v2.1187)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1187)
+
+### Stages toolbar: unified command bar (2026-07-31)
+Visual-only restyle of the Stages toolbar (user-picked from four mocked options). The search input, **#** jump chip, GC filter, and **⋯** tools button now live inside ONE rounded container (radius 10, `var(--surface)`, 1px `var(--border-strong)`) with an inline magnifier icon; **New Job** stays a separate primary button. The borderless input drives a whole-bar focus ring via new `stagesSearchBarFocused` state (border → `#3b82f6` + `0 0 0 3px var(--bg-blue-tint)` — saturated action blue stays literal per the token rule). GC select goes borderless/ghost (blue tint + `var(--text-link)` when active; `maxWidth: clamp(4.5rem, 22vw, 10rem)` so the input keeps ≥3.5rem on phones — verified no document overflow at 375×812); ⋯ becomes a 32px ghost button (menu anchoring unchanged); the two-line schedule/clock busy hint becomes a compact inline "+ schedule &amp; clock…" inside the bar. Every accessible name, placeholder, aria attribute, and behavior is unchanged — e2e locators (`button "Stages tools"`, placeholder text) untouched; verified live in light + dark + mobile. [`JobsStagesTab.tsx`](../src/components/jobs/JobsStagesTab.tsx) only. Guide `search-the-stages-board` wording updated. Client-only.
 
 ## Latest Updates (v2.1186)
 
