@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1224',
+    date: '2026-08-01',
+    title: 'Guides are now in Settings \u2014 and you can see what your crew sees',
+    kind: 'feature',
+    highlights: [
+      'Settings \u2192 Guides puts the whole "How do I\u2026" library one tap away for everyone, the same guides as the Help page.',
+      'If you supervise people, chips let you flip the list to any role below you \u2014 see exactly which guides a Sub, Helper, or Superintendent gets.',
+    ],
+  },
+  {
     version: 'v2.1222',
     date: '2026-08-01',
     title: 'Paperwork warnings right where you commit to a sub',

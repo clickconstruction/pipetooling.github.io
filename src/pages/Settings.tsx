@@ -23,6 +23,7 @@ import SettingsDataTab from '../components/settings/SettingsDataTab'
 import SettingsJobsTab from '../components/settings/SettingsJobsTab'
 import TeamFeedbackMasterAggregates from '../components/team-feedback/TeamFeedbackMasterAggregates'
 import { pageTabStyle } from '../lib/pageTabStyle'
+import { GuideBrowser } from '../components/GuideBrowser'
 import type { Database } from '../types/database'
 import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
 import SettingsTemplatesTab from '../components/settings/SettingsTemplatesTab'
@@ -171,6 +172,7 @@ function getSettingsJumpGroups(myRole: UserRole | null): { id: string; label: st
   if (r === 'dev' || r === 'estimator') groups.push({ id: 'settings-catalogs', label: 'Catalogs & trades' })
   if (r === 'dev') groups.push({ id: 'settings-templates', label: 'Templates & testing' })
   if (!isSubcontractorLikeRole(r)) groups.push({ id: 'settings-advanced-tools', label: 'Advanced' })
+  groups.push({ id: 'settings-guides', label: 'Guides' })
   groups.push({ id: 'settings-release-notes', label: 'Release notes' })
   groups.push({ id: 'settings-how-it-works', label: 'How it works' })
   return groups
@@ -1699,6 +1701,15 @@ export default function Settings() {
         onClose={() => setMuteModalItemId(null)}
         onSaved={() => loadMutedTasks()}
       />
+
+      {/* Guides (all roles): the same "How do I…" browser as /help.
+          Mounted only while active so its URL param + search focus stay inert
+          on other tabs. */}
+      {activeSettingsTab === 'settings-guides' && (
+        <div id="settings-guides">
+          <GuideBrowser />
+        </div>
+      )}
 
       <SettingsGroup
         id="settings-release-notes"
