@@ -9,10 +9,16 @@ import { effectiveJobLedgerNumber } from './ledgerDisplayPrefixes'
  * were billed out. Pure — consumes the same StageRows the section renders, so
  * the modal's grand total reconciles with the section header by construction.
  *
+ * `groupBy: 'development'` reuses the whole rollup for the job's development
+ * (jobs_ledger.development_id) — the Gc-named fields then hold the
+ * development's id/name and the bucket reads "No development set".
+ *
  * Dates use printBilledRowReferenceDate — the ACTUAL billed date with an
  * "(est.)" fallback — matching the existing Billed print report, NOT the
  * header aging chips (which run on est. bill date only).
  */
+
+export type GcReviewGroupBy = 'gc' | 'development'
 
 export type GcReviewRow = {
   /** Stable row key: jobId for shells/merged rows, invoice id for invoice rows. */
@@ -29,8 +35,9 @@ export type GcReviewRow = {
 }
 
 export type GcReviewGroup = {
-  /** gc customer id, or 'no-gc' for the bucket. */
+  /** Grouping-entity id (gc customer / development), or the no-entity sentinel. */
   key: string
+  /** The grouping entity's id/name — the GC by default, the development under groupBy: 'development'. */
   gcId: string | null
   gcName: string
   isNoGc: boolean
@@ -76,14 +83,18 @@ function sortReviewRows(rows: GcReviewRow[]): GcReviewRow[] {
 }
 
 export const GC_REVIEW_NO_GC_KEY = 'no-gc'
+export const GC_REVIEW_NO_DEVELOPMENT_KEY = 'no-development'
 
 export function buildGcReviewRollup(
   billedActiveRows: StageRow[],
   collectionsRows: StageRow[],
-  opts?: { includeCollections?: boolean; now?: Date },
+  opts?: { includeCollections?: boolean; now?: Date; groupBy?: GcReviewGroupBy },
 ): GcReviewRollup {
   const now = opts?.now ?? new Date()
   const includeCollections = opts?.includeCollections === true
+  const byDevelopment = opts?.groupBy === 'development'
+  const noEntityKey = byDevelopment ? GC_REVIEW_NO_DEVELOPMENT_KEY : GC_REVIEW_NO_GC_KEY
+  const noEntityLabel = byDevelopment ? 'No development set' : 'No GC set'
 
   let collectionsCount = 0
   let collectionsTotal = 0
@@ -99,15 +110,15 @@ export function buildGcReviewRollup(
 
   const byKey = new Map<string, GcReviewGroup>()
   for (const { row, inCollections } of sourceRows) {
-    const gc = row.job.gcCustomer ?? null
+    const gc = (byDevelopment ? row.job.development : row.job.gcCustomer) ?? null
     const gcName = (gc?.name ?? '').trim()
-    const key = gc?.id ?? GC_REVIEW_NO_GC_KEY
+    const key = gc?.id ?? noEntityKey
     let group = byKey.get(key)
     if (!group) {
       group = {
         key,
         gcId: gc?.id ?? null,
-        gcName: gc ? gcName || '—' : 'No GC set',
+        gcName: gc ? gcName || '—' : noEntityLabel,
         isNoGc: gc == null,
         rows: [],
         subtotal: 0,

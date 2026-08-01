@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-01 (v2.1202)
+last_updated: 2026-08-01 (v2.1204)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,18 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1204)
+
+### Developments part 3: Stages filter + click-to-filter + Development Review (2026-08-01)
+Completes the v2.1198 + v2.1203 train. **Filter**: a house-icon dropdown next to the Stages GC filter — **All developments**, each development among loaded jobs (name-sorted), **No development set** (the fill-them-in worklist) — rendered only when at least one loaded job has a development, feeding `buildJobsStagesBoardLists` INPUT so every section, count, aging chip, print, and AR modal follow, exactly like the GC filter. New kernels `developmentFilterOptionsFromJobs` + `filterJobsByDevelopment` + `STAGES_DEVELOPMENT_FILTER_NONE` in [`jobsStagesBoard.ts`](../src/lib/jobsStagesBoard.ts) (+1 test). **Click-to-filter**: the house-icon development label on Stages rows becomes a dotted-underline button that sets the filter (new optional `onDevelopmentFilter` on `StagesRowRenderContext`, threaded through both Stages tables; absent = plain text, so other callers are untouched). **Development Review**: [`JobsGcReviewModal.tsx`](../src/components/jobs/JobsGcReviewModal.tsx) gains a **Group by: By GC | By Development** pill toggle (shown only when a billed row has a development) — [`gcReviewRollup.ts`](../src/lib/gcReviewRollup.ts) takes `groupBy: 'development'` and groups the SAME StageRows by `job.development` with a **No development set** bucket last (+1 test; grand total still reconciles with the section header by construction), and [`gcStatementReport.ts`](../src/lib/jobsDocuments/gcStatementReport.ts) titles prints "Development statement — {name}" via the new `groupBy` opt. Guides `group-jobs-into-a-development` + `track-a-general-contractor-on-a-job` updated. Client-only.
+
+## Latest Updates (v2.1201)
+
+## Latest Updates (v2.1203)
+
+### Developments part 2: Edit Job picker + Stages/Job Detail display + search (2026-08-01)
+The client half of v2.1198, with the user-picked house icon (new [`DevelopmentHouseIcon.tsx`](../src/components/icons/DevelopmentHouseIcon.tsx), FA house glyph, sibling of `GcHardHatIcon`). **Edit Job**: the links row becomes **Project | Plans | Bid | Development** ([`JobFormLinksSection.tsx`](../src/components/jobs/JobFormLinksSection.tsx)) — a Development select (active developments name-sorted; the linked one kept even when archived) + inline **"+ New development"** (name-only insert under the job's effective master, auto-selected; Enter/Escape handled; create-from-the-picker per the v2.1174 precedent). The field joins the **identity autosave slice** like Plans (`developmentId` in [`jobFormAutosaveSlices.ts`](../src/lib/jobs/jobFormAutosaveSlices.ts) — autosave, close-guard flush, Undo free) and the new-job INSERT; cross-master picks drop to null via new kernel [`jobDevelopments.ts`](../src/lib/jobs/jobDevelopments.ts) (`resolveDevelopmentIdForJobPayload` + `developmentPickerOptions` + `validateNewDevelopmentName` — dupe names rejected against ACTIVE developments only, matching the partial unique index; 11 tests). **Stages**: the primary select gains `development:development_id(id, name)` ([`jobsLedgerEmbedSelects.ts`](../src/lib/jobsLedgerEmbedSelects.ts), both fetch mappings, `JobWithDetails.development`), and [`jobsStagesRowShared.tsx`](../src/components/jobs/jobsStagesRowShared.tsx) renders the development on the SAME muted line as the GC (`⛑ GC · 🏠 Development`, wrapping on narrow columns) — one "who/where does this roll up to" row instead of a third line. **Job Detail** ([`DetailJobModal.tsx`](../src/components/jobs/DetailJobModal.tsx)): house-icon line under the GC line in the Customer panel; the limited snapshot select embeds `development:development_id(name)` (`LimitedJobDetailSnapshot.development_name`). **Search**: `filterJobsByStagesSearch` matches the development name (+1 test) — typing "Sagebrush" surfaces every job in it. `developments` table + `jobs_ledger.development_id` hand-added to [`database.ts`](../src/types/database.ts) (wholesale regen pulls unrelated drift). Guide `group-jobs-into-a-development`; GLOSSARY + PROJECT_DOCUMENTATION entries. Filter dropdown + Development Review land in part 3. Client-only (v2.1198 already pushed).
 
 ## Latest Updates (v2.1202)
 

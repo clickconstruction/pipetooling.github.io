@@ -1,8 +1,9 @@
 import { useMemo, useState } from 'react'
 import type { StageRow } from '../../lib/jobsStagesBoard'
-import { buildGcReviewRollup, type GcReviewGroup } from '../../lib/gcReviewRollup'
+import { buildGcReviewRollup, type GcReviewGroup, type GcReviewGroupBy } from '../../lib/gcReviewRollup'
 import { formatCurrency } from '../../lib/jobs/jobFormMoney'
 import GcHardHatIcon from '../icons/GcHardHatIcon'
+import DevelopmentHouseIcon from '../icons/DevelopmentHouseIcon'
 
 type JobsGcReviewModalProps = {
   open: boolean
@@ -10,28 +11,49 @@ type JobsGcReviewModalProps = {
   billedActiveRows: StageRow[]
   collectionsRows: StageRow[]
   /** Shell glue: build the statement HTML and open the print window (toast on popup block). */
-  onPrint: (groups: GcReviewGroup[]) => void
+  onPrint: (groups: GcReviewGroup[], groupBy: GcReviewGroupBy) => void
 }
 
 /**
  * GC Review (v2.1181): Billed Awaiting Payment grouped by the job's GC — each
  * General Contractor's outstanding total and their customers' bill-out dates.
- * Same overlay pattern as the "by Job Name" modal in JobsStagesTab; rollup
- * math lives in the pure gcReviewRollup kernel so the grand total reconciles
- * with the section header by construction.
+ * A "Group by" pill toggle re-runs the same rollup by the job's DEVELOPMENT
+ * instead (shown only when a row has one). Same overlay pattern as the "by
+ * Job Name" modal in JobsStagesTab; rollup math lives in the pure
+ * gcReviewRollup kernel so the grand total reconciles with the section header
+ * by construction.
  */
 export function JobsGcReviewModal({ open, onClose, billedActiveRows, collectionsRows, onPrint }: JobsGcReviewModalProps) {
   const [includeCollections, setIncludeCollections] = useState(false)
+  const [groupBy, setGroupBy] = useState<GcReviewGroupBy>('gc')
+  const anyDevelopment = useMemo(
+    () => [...billedActiveRows, ...collectionsRows].some((r) => r.job.development?.id),
+    [billedActiveRows, collectionsRows],
+  )
+  const effectiveGroupBy: GcReviewGroupBy = anyDevelopment ? groupBy : 'gc'
+  const byDevelopment = effectiveGroupBy === 'development'
   const rollup = useMemo(
-    () => buildGcReviewRollup(billedActiveRows, collectionsRows, { includeCollections }),
-    [billedActiveRows, collectionsRows, includeCollections],
+    () => buildGcReviewRollup(billedActiveRows, collectionsRows, { includeCollections, groupBy: effectiveGroupBy }),
+    [billedActiveRows, collectionsRows, includeCollections, effectiveGroupBy],
   )
   if (!open) return null
+  const EntityIcon = byDevelopment ? DevelopmentHouseIcon : GcHardHatIcon
+  const groupByPillStyle = (active: boolean): React.CSSProperties => ({
+    padding: '0.2rem 0.6rem',
+    fontSize: '0.75rem',
+    fontWeight: 500,
+    fontFamily: 'inherit',
+    border: 'none',
+    borderRadius: 999,
+    cursor: 'pointer',
+    background: active ? 'var(--bg-blue-tint)' : 'transparent',
+    color: active ? 'var(--text-link)' : 'var(--text-muted)',
+  })
   return (
     <div
       role="dialog"
       aria-modal="true"
-      aria-label="GC Review — Billed Awaiting Payment by General Contractor"
+      aria-label={byDevelopment ? 'GC Review — Billed Awaiting Payment by Development' : 'GC Review — Billed Awaiting Payment by General Contractor'}
       style={{
         position: 'fixed',
         inset: 0,
@@ -59,9 +81,36 @@ export function JobsGcReviewModal({ open, onClose, billedActiveRows, collections
       >
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', marginBottom: '0.5rem' }}>
           <h2 style={{ margin: 0, fontSize: '1.25rem', flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <GcHardHatIcon size={18} style={{ color: 'var(--text-muted)' }} />
+            <EntityIcon size={18} style={{ color: 'var(--text-muted)' }} />
             GC Review
           </h2>
+          {anyDevelopment ? (
+            <span
+              role="group"
+              aria-label="Group rows by"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.15rem',
+                padding: '0.15rem',
+                border: '1px solid var(--border)',
+                borderRadius: 999,
+                flexShrink: 0,
+              }}
+            >
+              <button type="button" onClick={() => setGroupBy('gc')} aria-pressed={!byDevelopment} style={groupByPillStyle(!byDevelopment)}>
+                By GC
+              </button>
+              <button
+                type="button"
+                onClick={() => setGroupBy('development')}
+                aria-pressed={byDevelopment}
+                style={groupByPillStyle(byDevelopment)}
+              >
+                By Development
+              </button>
+            </span>
+          ) : null}
           <button
             type="button"
             onClick={onClose}
@@ -72,8 +121,11 @@ export function JobsGcReviewModal({ open, onClose, billedActiveRows, collections
           </button>
         </div>
         <p style={{ margin: '0 0 0.75rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-          Billed Awaiting Payment grouped by each job&rsquo;s GC/Builder, with bill-out dates. Set a GC in Edit Job →
-          Customer.
+          {byDevelopment ? (
+            <>Billed Awaiting Payment grouped by each job&rsquo;s development, with bill-out dates. Set a development in Edit Job → Project | Plans | Bid | Development.</>
+          ) : (
+            <>Billed Awaiting Payment grouped by each job&rsquo;s GC/Builder, with bill-out dates. Set a GC in Edit Job → Customer.</>
+          )}
         </p>
         <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8125rem', marginBottom: '1rem', cursor: 'pointer' }}>
           <input
@@ -102,10 +154,10 @@ export function JobsGcReviewModal({ open, onClose, billedActiveRows, collections
                 }}
               >
                 {g.isNoGc ? (
-                  <span style={{ fontWeight: 600, color: 'var(--text-muted)' }}>No GC set</span>
+                  <span style={{ fontWeight: 600, color: 'var(--text-muted)' }}>{g.gcName}</span>
                 ) : (
                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', fontWeight: 600 }}>
-                    <GcHardHatIcon size={14} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
+                    <EntityIcon size={14} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
                     {g.gcName}
                   </span>
                 )}
@@ -115,7 +167,7 @@ export function JobsGcReviewModal({ open, onClose, billedActiveRows, collections
                 </span>
                 <button
                   type="button"
-                  onClick={() => onPrint([g])}
+                  onClick={() => onPrint([g], effectiveGroupBy)}
                   title={`Print the ${g.gcName} statement`}
                   aria-label={`Print statement for ${g.gcName}`}
                   style={{
@@ -198,8 +250,8 @@ export function JobsGcReviewModal({ open, onClose, billedActiveRows, collections
             {rollup.groups.length > 0 ? (
               <button
                 type="button"
-                onClick={() => onPrint(rollup.groups)}
-                title="Print every GC section as one report"
+                onClick={() => onPrint(rollup.groups, effectiveGroupBy)}
+                title={byDevelopment ? 'Print every development section as one report' : 'Print every GC section as one report'}
                 style={{
                   padding: '0.2rem 0.6rem',
                   fontSize: '0.75rem',

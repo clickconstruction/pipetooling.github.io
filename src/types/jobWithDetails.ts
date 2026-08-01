@@ -34,6 +34,8 @@ export type JobWithDetails = JobsLedgerRow & {
   } | null
   /** Embedded GC (General Contractor) when `gc_customer_id` is set (v2.1176). */
   gcCustomer?: { id: string; name: string | null } | null
+  /** Embedded development (group of jobs) when `development_id` is set (v2.1199). */
+  development?: { id: string; name: string | null } | null
   /** From `service_types:service_type_id(name)` on detail fetch (`fetchJobWithDetailsById`). */
   serviceType?: { name: string } | null
   /** Max `job_schedule_blocks.work_date` for this job; set in Jobs `loadJobs` only. */

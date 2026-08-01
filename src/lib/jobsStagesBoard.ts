@@ -309,6 +309,28 @@ export function filterJobsByGcCustomer(jobs: JobWithDetails[], gcFilter: string 
   return jobs.filter((j) => j.gcCustomer?.id === gcFilter)
 }
 
+/** Sentinel for the Stages development filter: only jobs WITHOUT a development (the fill-them-in worklist). */
+export const STAGES_DEVELOPMENT_FILTER_NONE = 'no-development'
+
+/** Distinct developments among loaded jobs, name-sorted, for the Stages filter dropdown. */
+export function developmentFilterOptionsFromJobs(jobs: JobWithDetails[]): Array<{ id: string; name: string }> {
+  const byId = new Map<string, string>()
+  for (const j of jobs) {
+    const d = j.development
+    if (d?.id && !byId.has(d.id)) byId.set(d.id, (d.name ?? '').trim() || '—')
+  }
+  return [...byId.entries()]
+    .map(([id, name]) => ({ id, name }))
+    .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }))
+}
+
+/** '' / null = all jobs; STAGES_DEVELOPMENT_FILTER_NONE = jobs without a development; else exact development id. */
+export function filterJobsByDevelopment(jobs: JobWithDetails[], developmentFilter: string | null): JobWithDetails[] {
+  if (!developmentFilter) return jobs
+  if (developmentFilter === STAGES_DEVELOPMENT_FILTER_NONE) return jobs.filter((j) => !j.development?.id)
+  return jobs.filter((j) => j.development?.id === developmentFilter)
+}
+
 export function filterJobsByStagesSearch(
   jobs: JobWithDetails[],
   stagesSearchQuery: string,
@@ -324,6 +346,7 @@ export function filterJobsByStagesSearch(
       (j.job_name ?? '').toLowerCase().includes(q) ||
       (j.job_address ?? '').toLowerCase().includes(q) ||
       (j.gcCustomer?.name ?? '').toLowerCase().includes(q) ||
+      (j.development?.name ?? '').toLowerCase().includes(q) ||
       (extra?.has(j.id) ?? false),
   )
 }
