@@ -1241,6 +1241,9 @@ export default function Workflow() {
       })
       .select()
       .single()
+    if (error) {
+      console.error('Failed to record step action', actionType, error)
+    }
     if (!error && data) {
       // Update local state
       setStepActions((prev) => {

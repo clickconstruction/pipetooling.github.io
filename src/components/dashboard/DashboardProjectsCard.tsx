@@ -84,7 +84,7 @@ export function DashboardProjectsCard({
   async function recordAction(stepId: string, actionType: 'started' | 'completed' | 'approved' | 'rejected' | 'reopened' | 'skipped', notes?: string | null) {
     const performedBy = await getCurrentUserName()
     const performedAt = new Date().toISOString()
-    await supabase
+    const { error } = await supabase
       .from('project_workflow_step_actions')
       .insert({
         step_id: stepId,
@@ -93,6 +93,9 @@ export function DashboardProjectsCard({
         performed_at: performedAt,
         notes: notes || null,
       })
+    if (error) {
+      console.error('Failed to record step action', actionType, error)
+    }
   }
 
   async function findPreviousStep(step: AssignedStep): Promise<AssignedStep | null> {
