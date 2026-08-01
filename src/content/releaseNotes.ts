@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1218',
+    date: '2026-08-01',
+    title: 'Manage developments from Settings',
+    kind: 'feature',
+    highlights: [
+      'Settings → Jobs & dispatch gains a Manage developments block: rename a development (every job follows), set its default GC/Builder, archive finished ones, or delete.',
+      'Deleting un-groups the linked jobs — never deletes them — and the confirmation tells you how many.',
+      'Archived developments stay on their jobs but drop out of the Edit Job picker.',
+    ],
+  },
+  {
     version: 'v2.1216',
     date: '2026-08-01',
     title: 'Groundwork: work orders can be offered with dates and answered',

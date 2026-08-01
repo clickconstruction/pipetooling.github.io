@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-01 (v2.1216)
+last_updated: 2026-08-01 (v2.1218)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1218)
+
+### Settings: Manage developments block (2026-08-01)
+Completes the developments train (v2.1198–v2.1204): the missing admin surface. New self-contained [`DevelopmentsSettingsBlock.tsx`](../src/components/settings/DevelopmentsSettingsBlock.tsx) in **Settings → Jobs & dispatch** (dev-only tab; TripCharge/city-list block mold — own loads on expand: developments, customers, and a bare `jobs_ledger.development_id` pull counted client-side). Per active development: **inline rename** (Enter/blur; every linked job follows — that's the point of the FK), **Default GC/Builder** select (same-master customers only, archived kept visible when currently picked; `developments_gc_customer_master_match` backstops), linked-job count, **Archive/Un-archive** (archived rows collapse behind "Show archived (N)", render at 65% opacity, keep their jobs but leave the Edit Job picker), and **Delete** with an inline confirm strip that says the un-group count out loud (FK is ON DELETE SET NULL — jobs untouched). "+ New development" footer (insert under the acting user's account). Kernel additions in [`jobDevelopments.ts`](../src/lib/jobs/jobDevelopments.ts): `validateRenameDevelopment` (self-excluded active-name clash), `developmentUnarchiveClash` (re-entering the active namespace can collide), `sortDevelopmentsForSettings` (generic, input type preserved), `buildDevelopmentJobCountMap` (+10 tests). Guide `group-jobs-into-a-development` gains a manage section; SETTINGS_TABS_ARCHITECTURE + GLOSSARY updated. Client-only — the v2.1198 schema anticipated all four operations (soft archive, partial unique index, SET NULL delete), so no migration.
 
 ## Latest Updates (v2.1216)
 

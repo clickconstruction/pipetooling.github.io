@@ -29,6 +29,15 @@ Developments are shared: once anyone creates *Sagebrush Phase 2*, everyone picks
 
 In **Jobs → Stages → Billed Awaiting Payment**, open {{button:outline|GC Review}} and flip **Group by** to **By Development**: everything awaiting payment grouped per development — job counts, oldest age, outstanding totals, and a **No development set** bucket so the grand total always matches the section. {{button:outline|Print}} on a row makes that development's statement; **Print all** makes one report of every group.
 
+## Rename, archive, or delete a development
+
+Admins manage the list under {{icon:gear}} **Settings → Jobs & dispatch → Manage developments**:
+
+- **Rename** — click the name, type, press Enter. Every linked job follows automatically.
+- **Default GC/Builder** — pick the GC that development belongs to (informational for now).
+- **Archive** — a finished development stays on its jobs but leaves the Edit Job picker. Un-archive any time.
+- **Delete** — removes the group entirely; its jobs are un-grouped, never deleted. The confirm tells you how many jobs that affects.
+
 ## What a development does *not* change
 
 Billing, scheduling, and the customer are untouched — a development is purely a label for grouping and review. It's also separate from **Projects** (multi-phase billing workflows): a job can have both.
