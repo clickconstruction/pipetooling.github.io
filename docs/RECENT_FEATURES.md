@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-01 (v2.1212)
+last_updated: 2026-08-01 (v2.1213)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1213)
+
+### Contract documents gain compliance shape: type, expiry, person-id (2026-08-01)
+RUN_SUBS_PLAN Phase 3, PR 3.3 (DB + kernel; the Subs HQ tab consuming this lands next). Migration [`20260801200000_contract_doc_types_expiry.sql`](../supabase/migrations/20260801200000_contract_doc_types_expiry.sql): `person_contract_documents` gains `doc_type` (CHECK `agreement|coi|w9|license|other`, DEFAULT `'agreement'` — correct for every existing row, they all came from send-for-signature), `expires_at date` (NULL = never), and `person_id` (FK people, SET NULL) with the standard resolver backfill + `contract_docs_set_person_id` trigger — contract tables were absent from the Phase-B identity backfill; this brings them into the spine. New pure kernel [`subCompliance.ts`](../src/lib/people/subCompliance.ts) (`buildSubComplianceBadges`, 6 tests): per-person badge set — Agreement judges signature status, COI/W-9 judge presence + expiry (best document wins; ≤30 days = `expiring`), License appears only when one exists, `other` ignored. Warn-never-block by design; nothing gates on any of it. Client + migration (`supabase db push` after merge; nothing reads the columns until the HQ tab ships).
 
 ## Latest Updates (v2.1212)
 
