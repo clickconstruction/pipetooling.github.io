@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1209',
+    date: '2026-08-01',
+    title: 'Sub work orders on workflow steps',
+    kind: 'feature',
+    highlights: [
+      'Every step card can now carry a sub work order — pick the sub, set the agreed amount, then walk it through Offered and Accepted right on the card.',
+      'A status rail shows the whole journey (offer through settlement), with the in-progress and complete segments following the step itself.',
+      'Balance, paid-to-date, and backcharge figures read live from the linked Sub Labor sheet, and the Projects board money line gains a Committed total.',
+    ],
+  },
+  {
     version: 'v2.1208',
     date: '2026-08-01',
     title: 'Groundwork for pay-per-step sub work orders',

@@ -12,6 +12,8 @@ import { formatProjectNumberLabel } from '../lib/projectNumberLabel'
 import { buildWorkflowMoneyFlow, type WorkflowMoneyMarker } from '../lib/workflowMoneyFlow'
 import { planStepTransition, type StepLifecyclePlan } from '../lib/workflow/stepLifecycle'
 import { buildProjectSubRoster } from '../lib/workflow/projectSubRoster'
+import { StepCommitmentPanel } from '../components/workflow/StepCommitmentPanel'
+import type { StepCommitmentRow } from '../lib/workflow/stepCommitments'
 import { sendStepLifecycleNotifications } from '../lib/workflow/stepLifecycleNotifications'
 import { toDatetimeLocal, fromDatetimeLocal } from '../utils/datetimeLocal'
 import { APP_CALENDAR_TZ } from '../utils/dateUtils'
@@ -200,6 +202,8 @@ export default function Workflow() {
   const [assignPersonFilter, setAssignPersonFilter] = useState('')
   const [roster, setRoster] = useState<{ name: string; personId?: string | null }[]>([])
   const [subIdentity, setSubIdentity] = useState<{ ids: Set<string>; namesLower: Set<string> }>({ ids: new Set(), namesLower: new Set() })
+  const [commitmentsByStep, setCommitmentsByStep] = useState<Record<string, StepCommitmentRow[]>>({})
+  const [commitmentPaymentsByLaborJobId, setCommitmentPaymentsByLaborJobId] = useState<Record<string, Array<{ amount: number }>>>({})
   const [currentUserName, setCurrentUserName] = useState<string | null>(null)
   const [userSubscriptions, setUserSubscriptions] = useState<Record<string, { notify_when_started: boolean; notify_when_complete: boolean; notify_when_reopened: boolean }>>({})
   const [stepActions, setStepActions] = useState<Record<string, StepAction[]>>({})
@@ -778,6 +782,39 @@ export default function Workflow() {
     }
   }
 
+  // Step commitments (RUN_SUBS_PLAN PR 2.2). Fail-soft: before the 2.1
+  // migration is pushed the select errors and the panel simply never renders.
+  async function loadCommitmentsForSteps(stepIds: string[]) {
+    if (!canManageStages) return
+    if (stepIds.length === 0) {
+      setCommitmentsByStep({})
+      return
+    }
+    const { data, error } = await supabase.from('step_commitments').select('*').in('step_id', stepIds)
+    if (error) return
+    const rows = (data ?? []) as StepCommitmentRow[]
+    const byStep: Record<string, StepCommitmentRow[]> = {}
+    const laborJobIds: string[] = []
+    rows.forEach((r) => {
+      ;(byStep[r.step_id] ??= []).push(r)
+      if (r.labor_job_id) laborJobIds.push(r.labor_job_id)
+    })
+    setCommitmentsByStep(byStep)
+    if (laborJobIds.length > 0) {
+      const { data: pays } = await supabase
+        .from('people_labor_job_payments')
+        .select('job_id, amount')
+        .in('job_id', laborJobIds)
+      const byJob: Record<string, Array<{ amount: number }>> = {}
+      for (const p of (pays ?? []) as Array<{ job_id: string; amount: number }>) {
+        ;(byJob[p.job_id] ??= []).push({ amount: Number(p.amount) })
+      }
+      setCommitmentPaymentsByLaborJobId(byJob)
+    } else {
+      setCommitmentPaymentsByLaborJobId({})
+    }
+  }
+
   async function loadLineItemsForSteps(stepIds: string[]) {
     if (userRole !== 'dev' && userRole !== 'master_technician' && !isAssistantLike(userRole) && userRole !== 'superintendent') return
     if (stepIds.length === 0) {
@@ -869,7 +906,7 @@ export default function Workflow() {
   useEffect(() => {
     if (steps.length > 0 && (userRole === 'dev' || userRole === 'master_technician' || isAssistantLike(userRole) || userRole === 'superintendent')) {
       const stepIds = steps.map(s => s.id)
-      const t = setTimeout(() => loadLineItemsForSteps(stepIds), 50)
+      const t = setTimeout(() => { loadLineItemsForSteps(stepIds); void loadCommitmentsForSteps(stepIds) }, 50)
       return () => clearTimeout(t)
     } else {
       setLineItems({})
@@ -3293,6 +3330,20 @@ export default function Workflow() {
                     </div>
                   )
                 })()}
+
+                {/* Sub work orders (step commitments) - RUN_SUBS_PLAN PR 2.2 */}
+                {canManageStages && (
+                  <StepCommitmentPanel
+                    stepId={s.id}
+                    stepStatus={s.status}
+                    commitments={commitmentsByStep[s.id] ?? []}
+                    paymentsByLaborJobId={commitmentPaymentsByLaborJobId}
+                    roster={roster.filter((r): r is { name: string; personId: string } => !!r.personId)}
+                    isSuperintendentOnly={userRole === 'superintendent'}
+                    onChanged={() => void loadCommitmentsForSteps(steps.map((st) => st.id))}
+                    onError={(m) => setError(m)}
+                  />
+                )}
 
                 {/* Line Items For Office - dev/master/assistant */}
                 {canManageStages && (
