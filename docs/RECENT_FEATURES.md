@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-31 (v2.1188)
+last_updated: 2026-07-31 (v2.1189)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1189)
+
+### Workflow: Approve collapses the card and advances to the next stage (2026-07-31)
+Per user request. In [`Workflow.tsx`](../src/pages/Workflow.tsx) `markApproved`, after `refreshSteps()` the approved card is explicitly collapsed (`rowCollapsed[step.id] = true` — status flip alone wouldn't override a manual expand), the next stage by `sequence_order` (the existing `findNextStep`, which the handler already used for the reopen-rejected branch) is explicitly expanded (`pending` defaults collapsed per `isRowDefaultCollapsed`), and the page smooth-scrolls to `#step-<nextId>` after a 120 ms paint delay (same idiom as the hash-scroll effect). Last stage approved → just collapses, no scroll. Verified live on a throwaway 3-step test project (created + deleted; in the restore archive): Approve on stage 1 tucked it to the slim approved row, expanded stage 2 with its full action set, and centered it. Client-only.
 
 ## Latest Updates (v2.1188)
 

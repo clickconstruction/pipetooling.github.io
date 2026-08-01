@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1189',
+    date: '2026-07-31',
+    title: 'Approve moves you to the next stage',
+    kind: 'feature',
+    highlights: [
+      'On the Workflow page, approving a stage now collapses its card, expands the next stage, and scrolls you to it.',
+    ],
+  },
+  {
     version: 'v2.1188',
     date: '2026-07-31',
     title: 'Clearer email-sent line on billed jobs',

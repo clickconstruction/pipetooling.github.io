@@ -60,6 +60,8 @@ This document provides detailed information about all workflow-related features.
 
 **Note**: Approve and Previous work incomplete refer to the card they appear on (same step), not the previous card.
 
+**Approve advances** (v2.1189): approving a stage collapses its card, expands the next stage (by `sequence_order`), and smooth-scrolls the page to it — approving the last stage just collapses it.
+
 **Access Control**:
 - Assistants/subcontractors can only use Set Start and Complete on stages assigned to them
 - Owners/masters can use all actions on any stage
