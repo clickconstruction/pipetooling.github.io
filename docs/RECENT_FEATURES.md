@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-31 (v2.1189)
+last_updated: 2026-07-31 (v2.1190)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1190)
+
+### Terminology: Projects tab rename + workflow "stages" become "steps" (2026-07-31)
+Two alignment renames per user direction, strings-only. **(1)** The Projects page's default tab, labeled *Stages* (colliding with the unrelated Jobs → Stages billing board one nav-click away), is now labeled **Projects** — the internal `?tab=` key stays `stages`, so URLs/deep links are untouched. **(2)** Every user-facing "stage" on the project-workflow surfaces now says **"step"** (matching the `project_workflow_steps` schema and the existing "Add step" button): [`Workflow.tsx`](../src/pages/Workflow.tsx) (16 strings — Hide/Show Old Steps, skip modal, expected-dates modal, projections table/labels, access error, notification title, summary-row pluralization), [`Projects.tsx`](../src/pages/Projects.tsx) ("Current step:"), the Forecast cluster ([`ProjectsForecastInsertStageModal`](../src/components/projects/ProjectsForecastInsertStageModal.tsx) incl. the "New step" default name, [`…SpecificStageModal`](../src/components/projects/ProjectsForecastSpecificStageModal.tsx), [`…SpecificGrid`](../src/components/projects/ProjectsForecastSpecificGrid.tsx) aria, [`…StageLineItemsSection`](../src/components/projects/ProjectsForecastStageLineItemsSection.tsx), the **All Steps** sub-tab in [`ProjectsForecastTab`](../src/components/projects/ProjectsForecastTab.tsx)), and the Dashboard Projects card ([`DashboardProjectsCard`](../src/components/dashboard/DashboardProjectsCard.tsx) — **Assigned Steps** / **Subscribed Steps** headings, toasts, skip modal; [`AssignedStageCard`](../src/components/AssignedStageCard.tsx) button titles). Applied via an exact-match count-asserted script; identifiers, CSS classes, element ids, `?tab=` keys, DB names, and the unrelated Jobs → Stages / Bids stage vocabulary untouched. Jobs → Stages remains "Stages" deliberately (most-used surface, deep links + e2e + muscle memory). Guides `how-the-app-works` + `dashboard-section-bar` and the GLOSSARY Stage/Step entry updated. Context: 60-day usage telemetry showed Projects/Workflow at ~0.3 h combined vs 65 h on Jobs → Stages — renames were chosen over the ~10-PR Workflow.tsx decomposition, which stays unscheduled while the surface is dormant. Client-only.
 
 ## Latest Updates (v2.1189)
 

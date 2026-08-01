@@ -202,7 +202,7 @@ export function ProjectsForecastStageLineItemsSection({ stepId, stepName, myRole
       return
     }
     setPoPickerOpen(false)
-    showToast('PO added to stage.', 'success')
+    showToast('PO added to step.', 'success')
     await refreshItems()
   }
 
@@ -214,7 +214,7 @@ export function ProjectsForecastStageLineItemsSection({ stepId, stepName, myRole
     }
     setInvoicePickerOpen(false)
     setInvoiceSearch('')
-    showToast('Invoice added to stage.', 'success')
+    showToast('Invoice added to step.', 'success')
     await refreshItems()
   }
 
@@ -559,7 +559,7 @@ export function ProjectsForecastStageLineItemsSection({ stepId, stepName, myRole
 
       {/* Nested modal: Add PO picker */}
       {poPickerOpen ? (
-        <NestedModal onClose={() => setPoPickerOpen(false)} ariaLabel="Add purchase order to stage">
+        <NestedModal onClose={() => setPoPickerOpen(false)} ariaLabel="Add purchase order to step">
           <h3 style={{ marginTop: 0, marginBottom: '0.75rem', fontSize: '1rem' }}>
             Add Purchase Order to “{stepName}”
           </h3>

@@ -583,7 +583,7 @@ export default function Projects() {
                   <span style={projectStatusPillStyle(p.status)}>{projectStatusLabel(p.status)}</span>
                   {projectStepInfo[p.id]?.current && (
                     <span>
-                      {' · Current stage: '}
+                      {' · Current step: '}
                       {projectStepInfo[p.id]!.current!.name}
                       {projectStepInfo[p.id]!.total > 0 && (
                         <span> [{projectStepInfo[p.id]!.current!.position} / {projectStepInfo[p.id]!.total}]</span>
@@ -826,7 +826,7 @@ export default function Projects() {
           style={pageTabStyle(activeTab === 'stages')}
           onClick={() => setActiveTab('stages')}
         >
-          Stages
+          Projects
         </button>
         <button
           type="button"

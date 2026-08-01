@@ -32,5 +32,5 @@ Want it gone for a while? Click the **&gt;** at the bar's right edge to collapse
 | Reports | Recent Reports |
 | Assigned Jobs | Assigned Jobs card (starts collapsed — tap the ▶ title to expand; your choice is remembered) |
 | Billing | Billing Pipeline card (sits below Assigned Jobs) |
-| Projects | The **Projects** card — Assigned Stages and Subscribed Stages grouped together |
+| Projects | The **Projects** card — Assigned Steps and Subscribed Steps grouped together |
 | Me | My Time |

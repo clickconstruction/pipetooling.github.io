@@ -184,7 +184,7 @@ Individual work phase in a project workflow (e.g., "Rough In", "Inspection", "To
 
 **Database**: `project_workflow_steps` table
 
-**Alias**: "Stage" and "Step" used interchangeably
+**Alias**: "Stage" and "Step" were historically used interchangeably. Since **v2.1190** the UI says **"Step"** everywhere for project-workflow work items (Workflow page, Projects Forecast, Dashboard Projects card) — disambiguating from **Jobs → Stages** (the billing pipeline board) and from Bids/Takeoff stages (Rough In / Top Out / Trim Set). Code identifiers, element ids, and DB names (`project_workflow_steps`, `sequence_order` helpers named `*Stage*`) are unchanged.
 
 **Statuses**: pending, in_progress, completed, approved, rejected (rejected displays as "Previous work incomplete"), skipped
 

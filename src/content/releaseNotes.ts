@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1190',
+    date: '2026-07-31',
+    title: 'Clearer names on Projects and Workflow',
+    kind: 'feature',
+    highlights: [
+      'The Projects page’s first tab is now labeled “Projects” (it was “Stages”, which clashed with the Jobs Stages board).',
+      'Project workflows now say “step” everywhere — Add step, Hide Old Steps, Assigned Steps — instead of mixing “stage” and “step”.',
+      'Jobs → Stages keeps its name.',
+    ],
+  },
+  {
     version: 'v2.1189',
     date: '2026-07-31',
     title: 'Approve moves you to the next stage',
