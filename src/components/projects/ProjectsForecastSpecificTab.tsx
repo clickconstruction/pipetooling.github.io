@@ -68,6 +68,11 @@ import { forecastBarSwatch, forecastStageColorKey } from '../../lib/projectsFore
 import { parsePercentCompleteInput } from '../../lib/parsePercentCompleteInput'
 import { buildWorkflowMoneyFlow, type MoneyFlowProjectionInput } from '../../lib/workflowMoneyFlow'
 import {
+  buildForecastBalanceSeries,
+  type ForecastBalanceEvent,
+  type ForecastBalanceSeries,
+} from '../../lib/forecastBalanceSeries'
+import {
   filterForecastJobsBySearch,
   normalizeForecastJobSearchQuery,
 } from '../../lib/projectsForecastJobSearch'
@@ -304,11 +309,13 @@ export function ProjectsForecastSpecificTab({
   // Forecast gutter. Dev/master only — same visibility as Projections.
   const canSeeMoney = myRole === 'dev' || myRole === 'master_technician'
   const [moneyProjections, setMoneyProjections] = useState<MoneyFlowProjectionInput[]>([])
-  const [moneyItemsByStep, setMoneyItemsByStep] = useState<Record<string, number>>({})
+  const [moneyItems, setMoneyItems] = useState<
+    Array<{ step_id: string; amount: number | null; item_date: string | null }>
+  >([])
   useEffect(() => {
     if (!canSeeMoney || !selectedWorkflowId || selectedStages.length === 0) {
       setMoneyProjections([])
-      setMoneyItemsByStep({})
+      setMoneyItems([])
       return
     }
     let cancelled = false
@@ -320,15 +327,20 @@ export function ProjectsForecastSpecificTab({
             .from('workflow_projections')
             .select('id, step_id, placement, amount, sequence_order')
             .eq('workflow_id', selectedWorkflowId),
-          supabase.from('workflow_step_line_items').select('step_id, amount').in('step_id', stepIds),
+          supabase
+            .from('workflow_step_line_items')
+            .select('step_id, amount, item_date')
+            .in('step_id', stepIds),
         ])
         if (cancelled) return
         setMoneyProjections((projRes.data ?? []) as MoneyFlowProjectionInput[])
-        const totals: Record<string, number> = {}
-        for (const r of (liRes.data ?? []) as Array<{ step_id: string; amount: number | null }>) {
-          totals[r.step_id] = (totals[r.step_id] ?? 0) + (r.amount || 0)
-        }
-        setMoneyItemsByStep(totals)
+        setMoneyItems(
+          (liRes.data ?? []) as Array<{
+            step_id: string
+            amount: number | null
+            item_date: string | null
+          }>,
+        )
       } catch {
         // fail-soft — the column simply doesn't render
       }
@@ -337,6 +349,13 @@ export function ProjectsForecastSpecificTab({
       cancelled = true
     }
   }, [canSeeMoney, selectedWorkflowId, selectedStages])
+  const moneyItemsByStep = useMemo(() => {
+    const totals: Record<string, number> = {}
+    for (const r of moneyItems) {
+      totals[r.step_id] = (totals[r.step_id] ?? 0) + (r.amount || 0)
+    }
+    return totals
+  }, [moneyItems])
 
   const moneyBalances = useMemo(() => {
     if (!canSeeMoney) return null
@@ -461,6 +480,32 @@ export function ProjectsForecastSpecificTab({
   )
   const denseRangeStart = denseDayKeys[0] ?? ''
   const denseRangeEnd = denseDayKeys[denseDayKeys.length - 1] ?? ''
+
+  // Balance step-line (v2.1197): the running balance drawn as a per-day strip under
+  // the dense rail. Money becomes dated events — anchored projections land on their
+  // step's resolved start day (`before`) or end day (`after`); line items land on
+  // their own `item_date` when set, else their step's resolved end day. Unanchored
+  // projections have no place on the time axis, so the curve skips them (the toolbar
+  // chip still counts them).
+  const balanceSeries = useMemo<ForecastBalanceSeries | null>(() => {
+    if (!showDates || !showBalanceColumn || denseDayKeys.length === 0) return null
+    const barByStepId = new Map(effectiveResolvedBars.map((b) => [b.stageId, b]))
+    const events: ForecastBalanceEvent[] = []
+    for (const p of moneyProjections) {
+      const bar = p.step_id ? barByStepId.get(p.step_id) : undefined
+      if (!bar) continue
+      const ymd = p.placement === 'before' ? bar.startYmd : bar.endYmd
+      if (!ymd) continue
+      events.push({ ymd, delta: Number(p.amount ?? 0) })
+    }
+    for (const it of moneyItems) {
+      const ymd = it.item_date ?? barByStepId.get(it.step_id)?.endYmd
+      if (!ymd) continue
+      events.push({ ymd, delta: -(it.amount || 0) })
+    }
+    if (events.length === 0) return null
+    return buildForecastBalanceSeries(denseDayKeys, events)
+  }, [showDates, showBalanceColumn, denseDayKeys, effectiveResolvedBars, moneyProjections, moneyItems])
 
   // Imperative scroll handle on the dense grid: used by the `←` pan callback below
   // to preserve the user's visual position after the rail grows on the left (see
@@ -1551,6 +1596,17 @@ export function ProjectsForecastSpecificTab({
           onPanLeft={onPanLeft}
           onPanRight={onPanRight}
           autoCenterTodayResetKey={`${selectedJobId ?? ''}::${todayResetTick}`}
+          footer={
+            balanceSeries
+              ? {
+                  height: FORECAST_BALANCE_STRIP_H,
+                  gutter: <ForecastBalanceStripGutterCell series={balanceSeries} />,
+                  content: (
+                    <ForecastBalanceStrip dayKeys={denseDayKeys} series={balanceSeries} />
+                  ),
+                }
+              : undefined
+          }
           renderRow={(s) => (
             <SpecificDenseStageBar
               stage={s}
@@ -1699,6 +1755,102 @@ function PercentColumnGutterHeader({
  *  compact whole dollars. Mirrors the Workflow page's ledger rail (v2.1195). */
 function formatGutterBalance(n: number): string {
   return `${n < 0 ? '-' : n > 0 ? '+' : ''}$${Math.abs(Math.round(n)).toLocaleString('en-US')}`
+}
+
+/** Height of the balance step-line strip (v2.1197) rendered under the dense rail. */
+const FORECAST_BALANCE_STRIP_H = 56
+
+/** Gutter cell for the balance strip: "Balance" label + the balance at the right edge
+ *  of the drawn window, colored like the per-step balance cells. */
+function ForecastBalanceStripGutterCell({ series }: { series: ForecastBalanceSeries }) {
+  const end = series.values.length > 0 ? series.values[series.values.length - 1]! : series.initial
+  return (
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        width: '100%',
+        fontSize: '0.75rem',
+      }}
+    >
+      <span style={{ color: 'var(--text-muted)', fontWeight: 600 }}>Balance</span>
+      <span
+        style={{
+          fontVariantNumeric: 'tabular-nums',
+          fontWeight: 700,
+          color: end < 0 ? '#dc2626' : end > 0 ? '#16a34a' : 'var(--text-muted)',
+        }}
+        title="Balance at the right edge of the visible window (anchored money only)"
+      >
+        {formatGutterBalance(end)}
+      </span>
+    </div>
+  )
+}
+
+/** The balance step-line itself: one horizontal segment per day at that day's
+ *  end-of-day balance, vertical risers where money lands, a dashed $0 line, and a
+ *  soft red wash on days the balance is negative. Pure SVG sized to the day rail
+ *  (`dayKeys.length × FORECAST_COL_W`) so it pans/scrolls in lockstep with the
+ *  columns above it. */
+function ForecastBalanceStrip({
+  dayKeys,
+  series,
+}: {
+  dayKeys: readonly string[]
+  series: ForecastBalanceSeries
+}) {
+  const width = dayKeys.length * FORECAST_COL_W
+  const H = FORECAST_BALANCE_STRIP_H
+  const PAD = 7
+  const lo = Math.min(0, series.min)
+  const hi = Math.max(0, series.max)
+  const span = hi - lo || 1
+  const y = (v: number) => PAD + ((hi - v) / span) * (H - PAD * 2)
+
+  // Step path: the balance holds flat across each day and jumps (vertical riser) at
+  // the start of any day with events — `values[i]` is the balance at day i's END.
+  let d = `M 0 ${y(series.initial).toFixed(1)}`
+  let prev = series.initial
+  series.values.forEach((v, i) => {
+    if (v !== prev) d += ` L ${i * FORECAST_COL_W} ${y(v).toFixed(1)}`
+    d += ` L ${(i + 1) * FORECAST_COL_W} ${y(v).toFixed(1)}`
+    prev = v
+  })
+
+  return (
+    <svg
+      width={width}
+      height={H}
+      viewBox={`0 0 ${width} ${H}`}
+      aria-hidden
+      style={{ display: 'block', pointerEvents: 'none' }}
+    >
+      {series.values.map((v, i) =>
+        v < -0.004 ? (
+          <rect
+            key={`neg-${i}`}
+            x={i * FORECAST_COL_W}
+            y={0}
+            width={FORECAST_COL_W}
+            height={H}
+            fill="rgba(220, 38, 38, 0.07)"
+          />
+        ) : null,
+      )}
+      <line
+        x1={0}
+        y1={y(0)}
+        x2={width}
+        y2={y(0)}
+        stroke="var(--border)"
+        strokeWidth={1}
+        strokeDasharray="4 4"
+      />
+      <path d={d} fill="none" stroke="#16a34a" strokeWidth={2} strokeLinejoin="round" />
+    </svg>
+  )
 }
 
 function StageGutterLabel({

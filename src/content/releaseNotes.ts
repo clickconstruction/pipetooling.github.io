@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1197',
+    date: '2026-07-31',
+    title: 'Balance line under the Forecast timeline',
+    kind: 'feature',
+    highlights: [
+      'Projects → Forecast → Specific (with dates showing) draws the running balance as a line under the day rail — flat where nothing happens, stepping up or down on the day money lands.',
+      'Days where the balance is negative get a soft red wash, and a Balance cell in the gutter shows where the line ends.',
+      'Line items with a date land on that exact day; undated ones land at the end of their step.',
+    ],
+  },
+  {
     version: 'v2.1196',
     date: '2026-07-31',
     title: 'Money balances on the Forecast timeline',

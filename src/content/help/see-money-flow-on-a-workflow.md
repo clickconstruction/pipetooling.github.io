@@ -33,6 +33,12 @@ Every expanded step card also gets a **Money** line (`Money · $X projected · $
 
 The same numbers follow the job onto **Projects → Forecast → Specific**: when a job's workflow has projections or line items, the stage gutter gains a **balance** column (running balance as of each stage, green/red), and the toolbar shows the same **margin** and **balance** chips. It composes with the % column in Edit mode and hides itself entirely for jobs with no money data.
 
+With dates showing, a **balance line** also runs under the day rail: it stays flat where nothing happens and steps up or down on the day money lands — projections land on their step's start (before) or end (after) day, and line items land on their own date when they have one, else at the end of their step. Days where the balance dips negative get a soft red wash, a dashed line marks $0, and a **Balance** cell at the left shows where the line ends. The strip scrolls and pans with the timeline.
+
+:::example Reading the line
+A dip below the dashed $0 line means spending has landed before the money that covers it — the red-washed days show exactly how long you'd be out of pocket.
+:::
+
 ## The ledger rail
 
 On wide screens, a running ledger appears down the **left side**: every card and marker row shows the balance at that point (projected-to-here minus spent-to-here, green when ahead, red when spending has outrun the plan), and a small card with the **project margin** and current balance stays pinned while you scroll. The rail hides on narrow screens — the marker pills carry the same numbers there.
