@@ -1962,8 +1962,24 @@ export default function Workflow() {
       // Send notifications for the next step being reopened (fire and forget)
       void sendWorkflowNotifications(nextStep, 'reopened')
     }
-    
+
     await refreshSteps()
+
+    // v2.1189: after approving, tuck this card away and take the user to the
+    // next stage — collapse the approved card (explicit, in case it was
+    // manually expanded), expand the next card (pending defaults collapsed),
+    // and scroll it into view once the refreshed list has painted.
+    setRowCollapsed((prev) => ({
+      ...prev,
+      [step.id]: true,
+      ...(nextStep ? { [nextStep.id]: false } : {}),
+    }))
+    if (nextStep) {
+      const nextStepId = nextStep.id
+      window.setTimeout(() => {
+        document.getElementById(`step-${nextStepId}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      }, 120)
+    }
   }
 
   async function markReopened(step: Step) {
