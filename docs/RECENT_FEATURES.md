@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-01 (v2.1237)
+last_updated: 2026-08-01 (v2.1238)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1238)
+
+### Teams Inbox — one-line section headers: count chip + icon-only archive button on phones (2026-08-01)
+The Dispatch/Estimator inbox section headers wrapped badly on phones: the "View dismissed…" pill squeezed the title button, breaking "Dispatch inbox" onto two lines and splitting the parenthetical "(3 open)" mid-token. Three changes across [`DispatchInboxSection.tsx`](../src/components/DispatchInboxSection.tsx) and [`EstimatorInboxSection.tsx`](../src/components/EstimatorInboxSection.tsx) (the shared header pattern, so the fix lands on the Dispatch Mode Inbox tab AND the Dashboard Teams Inbox card): **(1)** the section title gets nowrap+ellipsis; **(2)** the open/closed count becomes a nowrap pill chip — solid amber with white text while open work waits (doubling the existing amber-header signal), muted gray for the closed-count variant — replacing the wrap-prone `(N open)` text; **(3)** on narrow viewports (the components' existing `useNarrowViewport640` flag) the Dispatch section's "View dismissed…" pill collapses to a 30px round lucide `Archive` icon button with matching `title`/`aria-label`; desktop keeps the labeled pill. The empty-inbox slim line and all behavior are unchanged. Verified: `tsc -b` clean, zero new lints, full vitest suite green. Files: modified [`DispatchInboxSection.tsx`](../src/components/DispatchInboxSection.tsx), [`EstimatorInboxSection.tsx`](../src/components/EstimatorInboxSection.tsx). No DB / migration / RLS / RPC / Edge / type-gen changes.
 
 ## Latest Updates (v2.1237)
 

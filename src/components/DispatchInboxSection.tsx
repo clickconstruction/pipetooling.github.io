@@ -1,4 +1,5 @@
 import { Fragment } from 'react'
+import { Archive } from 'lucide-react'
 import { ChecklistTitleWithLinks } from './ChecklistTitleWithLinks'
 import { DispatchNoteCombobox } from './DispatchNoteCombobox'
 import {
@@ -781,43 +782,78 @@ export function DispatchInboxSection({
           }}
         >
           <span aria-hidden>{sectionOpen ? '▼' : '▶'}</span>
-          {sectionTitle}
+          {/* One-line header (v2.1238): the title ellipsizes and the count is a
+              nowrap chip, so neither can wrap under the archive button. */}
+          <span style={{ minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            {sectionTitle}
+          </span>
           {!loading && requests.length > 0 && headerBadge !== 'none' ? (
             <span
               style={{
-                marginLeft: '0.5rem',
-                fontSize: '0.875rem',
-                fontWeight: 500,
-                color: hasOpenWork ? 'var(--text-amber-800)' : 'var(--text-link)',
+                flexShrink: 0,
+                marginLeft: '0.35rem',
+                padding: '0.1rem 0.6rem',
+                borderRadius: 999,
+                fontSize: '0.75rem',
+                fontWeight: 700,
+                whiteSpace: 'nowrap',
+                background: hasOpenWork ? '#f59e0b' : 'var(--bg-muted)',
+                color: hasOpenWork ? '#ffffff' : 'var(--text-700)',
               }}
             >
               {headerBadge === 'open'
-                ? `(${requests.filter((r) => r.status === 'open').length} open)`
-                : `(${requests.filter((r) => r.status === 'closed').length} closed)`}
+                ? `${requests.filter((r) => r.status === 'open').length} open`
+                : `${requests.filter((r) => r.status === 'closed').length} closed`}
             </span>
           ) : null}
         </button>
         {onOpenDismissedArchive ? (
-          <button
-            type="button"
-            onClick={onOpenDismissedArchive}
-            title="View dismissed dispatch items"
-            style={{
-              flexShrink: 0,
-              marginRight: '0.75rem',
-              padding: '0.25rem 0.75rem',
-              fontSize: '0.75rem',
-              fontWeight: 600,
-              background: 'var(--surface)',
-              border: '1px solid var(--border-strong)',
-              borderRadius: 999,
-              color: 'var(--text-700)',
-              cursor: 'pointer',
-              whiteSpace: 'nowrap',
-            }}
-          >
-            View dismissed…
-          </button>
+          narrow ? (
+            <button
+              type="button"
+              onClick={onOpenDismissedArchive}
+              title="View dismissed dispatch items"
+              aria-label="View dismissed dispatch items"
+              style={{
+                flexShrink: 0,
+                marginRight: '0.75rem',
+                width: 30,
+                height: 30,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: 0,
+                background: 'var(--surface)',
+                border: '1px solid var(--border-strong)',
+                borderRadius: 999,
+                color: 'var(--text-700)',
+                cursor: 'pointer',
+              }}
+            >
+              <Archive size={15} aria-hidden />
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={onOpenDismissedArchive}
+              title="View dismissed dispatch items"
+              style={{
+                flexShrink: 0,
+                marginRight: '0.75rem',
+                padding: '0.25rem 0.75rem',
+                fontSize: '0.75rem',
+                fontWeight: 600,
+                background: 'var(--surface)',
+                border: '1px solid var(--border-strong)',
+                borderRadius: 999,
+                color: 'var(--text-700)',
+                cursor: 'pointer',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              View dismissed…
+            </button>
+          )
         ) : null}
       </div>
       {sectionOpen && body}
