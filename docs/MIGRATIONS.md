@@ -106,6 +106,11 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 #### August 1, 2026
 
+**`20260801130000_step_assigned_person_id.sql`** _(apply via `supabase db push` after merge — either order is safe: the client falls back to the legacy RPC until the new one exists, and nothing reads the new column yet)_
+- **Purpose**: RUN_SUBS_PLAN Phase 0, PR 0.2 (v2.1201). Workflow steps join the person-id spine: nullable `project_workflow_steps.assigned_person_id` (FK `people` ON DELETE SET NULL) + partial index; backfill via `resolve_pay_person_id(assigned_to_name)`; `steps_set_assigned_person_id` BEFORE INSERT OR UPDATE OF `assigned_to_name` trigger (NOT-DISTINCT re-resolve semantics, mirroring `20260730164728`) so every writer maintains the id; new 3-arg `update_step_assignment(p_step_id, p_assigned_to_name, p_person_id DEFAULT NULL)` — explicit id wins, else resolver. The 2-arg `update_step_assigned_to` is untouched (old clients).
+- **Security**: The new RPC is SECURITY DEFINER with the permission block byte-copied from `update_step_assigned_to` (dev/master/owner/adopted/shared, or assistant assigned/can-access). No RLS changes; names remain the RLS key for sub access (later phase).
+- **Category**: Feature schema / identity spine
+
 **`20260801113000_widen_step_action_type_check.sql`** _(apply via `supabase db push` after merge — either order is harmless: until pushed, Skip keeps failing to write its ledger row exactly as it always has)_
 - **Purpose**: Bug fix (v2.1199, RUN_SUBS_PLAN PR 0.0). Widens `project_workflow_step_actions_action_type_check` to include `'skipped'`. Both Skip flows (Workflow page + Dashboard Projects card) always inserted `action_type='skipped'`, which the baseline CHECK rejected — and both `recordAction` callers swallowed the error, so every Skip flipped the step with no action-ledger row. Existing rows only use the old five values, so the ADD CONSTRAINT revalidation is safe. Also updates the column comment.
 - **Security**: No RLS/permission changes; constraint-only.

@@ -197,7 +197,7 @@ export default function Workflow() {
   const [setStartStep, setSetStartStep] = useState<{ step: Step; startDateTime: string } | null>(null)
   const [assignPersonStep, setAssignPersonStep] = useState<Step | null>(null)
   const [assignPersonFilter, setAssignPersonFilter] = useState('')
-  const [roster, setRoster] = useState<{ name: string }[]>([])
+  const [roster, setRoster] = useState<{ name: string; personId?: string | null }[]>([])
   const [currentUserName, setCurrentUserName] = useState<string | null>(null)
   const [userSubscriptions, setUserSubscriptions] = useState<Record<string, { notify_when_started: boolean; notify_when_complete: boolean; notify_when_reopened: boolean }>>({})
   const [stepActions, setStepActions] = useState<Record<string, StepAction[]>>({})
@@ -1054,7 +1054,7 @@ export default function Workflow() {
       }
 
       const role = (userData as { role: string } | null)?.role
-      let peopleRes: { data: { name: string; email: string | null; phone: string | null }[] | null }
+      let peopleRes: { data: { id: string; name: string; email: string | null; phone: string | null }[] | null }
       let usersRes: { data: { name: string | null; email: string | null }[] | null }
 
       if (role === 'superintendent') {
@@ -1065,20 +1065,25 @@ export default function Workflow() {
         const adoptedMasterIds = (adopted ?? []).map((r) => r.master_id)
         ;[peopleRes, usersRes] = await Promise.all([
           adoptedMasterIds.length > 0
-            ? supabase.from('people').select('name, email, phone').is('archived_at', null).in('master_user_id', adoptedMasterIds).order('name')
-            : { data: [] as { name: string; email: string | null; phone: string | null }[] },
+            ? supabase.from('people').select('id, name, email, phone').is('archived_at', null).in('master_user_id', adoptedMasterIds).order('name')
+            : { data: [] as { id: string; name: string; email: string | null; phone: string | null }[] },
           supabase.from('users').select('name, email').in('role', ['subcontractor', 'helpers', 'primary']),
         ])
       } else {
         ;[peopleRes, usersRes] = await Promise.all([
-          supabase.from('people').select('name, email, phone').is('archived_at', null).eq('master_user_id', authUser.id).order('name'),
+          supabase.from('people').select('id, name, email, phone').is('archived_at', null).eq('master_user_id', authUser.id).order('name'),
           supabase.from('users').select('name, email'),
         ])
       }
-      const fromPeople = (peopleRes.data as { name: string; email: string | null; phone: string | null }[] | null) ?? []
+      const fromPeople = (peopleRes.data as { id: string; name: string; email: string | null; phone: string | null }[] | null) ?? []
       const fromUsers = (usersRes.data as { name: string; email: string | null }[] | null) ?? []
-      const names = [...fromUsers.map((r) => r.name), ...fromPeople.map((r) => r.name)].filter(Boolean).sort()
-      setRoster(names.map((name) => ({ name })))
+      // people-sourced entries carry their roster id so assignment can write
+      // assigned_person_id explicitly (users-sourced entries resolve server-side)
+      const rosterEntries = [
+        ...fromUsers.filter((r): r is { name: string; email: string | null } => !!r.name).map((r) => ({ name: r.name, personId: null as string | null })),
+        ...fromPeople.filter((r) => !!r.name).map((r) => ({ name: r.name, personId: r.id })),
+      ].sort((a, b) => a.name.localeCompare(b.name))
+      setRoster(rosterEntries)
       
       // Build set of user names (case-insensitive comparison)
       const userNamesSet = new Set<string>()
@@ -2002,18 +2007,29 @@ export default function Workflow() {
     }
   }
 
-  async function assignPerson(step: Step, name: string | null) {
+  async function assignPerson(step: Step, name: string | null, personId?: string | null) {
     const previousName = step.assigned_to_name
     setAssignPersonStep(null)
     setSteps((prev) =>
       prev.map((s) => (s.id === step.id ? { ...s, assigned_to_name: name } : s))
     )
+    // Prefer the 3-arg RPC (writes assigned_person_id too; explicit id wins for
+    // duplicate roster names). Fall back to the legacy RPC, then the direct
+    // update — the DB trigger resolves the person id on both fallbacks.
     let err: { message: string } | null = null
-    const rpcRes = await supabase.rpc('update_step_assigned_to', {
+    const rpcRes = await supabase.rpc('update_step_assignment', {
       p_step_id: step.id,
       p_assigned_to_name: name ?? '',
+      p_person_id: personId ?? null,
     })
     err = rpcRes.error
+    if (err?.message?.includes('Could not find the function')) {
+      const legacyRes = await supabase.rpc('update_step_assigned_to', {
+        p_step_id: step.id,
+        p_assigned_to_name: name ?? '',
+      })
+      err = legacyRes.error
+    }
     if (err?.message?.includes('Could not find the function')) {
       const directRes = await supabase.from('project_workflow_steps').update({ assigned_to_name: name ?? '' }).eq('id', step.id)
       err = directRes.error
@@ -3769,7 +3785,7 @@ export default function Workflow() {
                       <button
                         key={`${r.name}-${i}`}
                         type="button"
-                        onClick={() => assignPerson(assignPersonStep, r.name)}
+                        onClick={() => assignPerson(assignPersonStep, r.name, r.personId ?? null)}
                         style={{ padding: '0.5rem 0.75rem', textAlign: 'left', background: 'var(--bg-subtle)', border: '1px solid var(--border)', borderRadius: 6, cursor: 'pointer', color: 'var(--text-strong)' }}
                       >
                         {r.name}
