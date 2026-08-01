@@ -106,6 +106,11 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 #### August 1, 2026
 
+**`20260801200000_contract_doc_types_expiry.sql`** _(apply via `supabase db push` after merge — additive; nothing reads the new columns until the Subs HQ tab ships)_
+- **Purpose**: RUN_SUBS_PLAN Phase 3, PR 3.3 (v2.1213). `person_contract_documents` gains `doc_type` (agreement|coi|w9|license|other, default agreement), `expires_at`, and `person_id` (resolver backfill + `contract_docs_set_person_id` trigger — brings contract tables into the identity spine).
+- **Security**: No RLS changes; column-additive.
+- **Category**: Feature schema / identity spine
+
 **`20260801190000_sub_own_row_labor_reads.sql`** _(apply via `supabase db push` after merge — additive policies; nothing user-facing until the sub Dashboard money view ships)_
 - **Purpose**: RUN_SUBS_PLAN Phase 3, PR 3.1 (v2.1211). Sub own-row SELECT policies on `people_labor_jobs` (junction-first via `people_labor_job_assignees` × `people.account_user_id`, trimmed-name segment fallback) and on items/payments via parent-EXISTS. The three tables previously had no subcontractor branch.
 - **Security**: SELECT-only, additive; office policies untouched; subs cannot write. Test focus: a sub login sees only sheets naming them; helpers-role and other subs see nothing extra.

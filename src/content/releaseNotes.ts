@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1213',
+    date: '2026-08-01',
+    title: 'Groundwork: contract documents know what they are and when they lapse',
+    kind: 'infra',
+    highlights: [
+      'Behind the scenes, a contract document can now be typed (agreement, COI, W-9, license) and carry an expiration date.',
+      'Nothing visible changes yet; the Subs page with compliance badges arrives next.',
+    ],
+  },
+  {
     version: 'v2.1212',
     date: '2026-08-01',
     title: 'Subs see what they’re owed, right on their Dashboard',

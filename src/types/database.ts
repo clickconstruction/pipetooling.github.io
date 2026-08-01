@@ -7334,10 +7334,13 @@ export type Database = {
           contract_lineage_id: string
           created_at: string | null
           dashboard_prompt_after_clock_in: boolean
+          doc_type: string
           document_name: string
+          expires_at: string | null
           id: string
           lineage_version: number
           note: string | null
+          person_id: string | null
           person_name: string
           public_token_expires_at: string | null
           public_token_hash: string | null
@@ -7364,7 +7367,10 @@ export type Database = {
           document_name: string
           id?: string
           lineage_version?: number
+          doc_type?: string
+          expires_at?: string | null
           note?: string | null
+          person_id?: string | null
           person_name: string
           public_token_expires_at?: string | null
           public_token_hash?: string | null
@@ -7391,7 +7397,10 @@ export type Database = {
           document_name?: string
           id?: string
           lineage_version?: number
+          doc_type?: string
+          expires_at?: string | null
           note?: string | null
+          person_id?: string | null
           person_name?: string
           public_token_expires_at?: string | null
           public_token_hash?: string | null
