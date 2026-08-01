@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1194',
+    date: '2026-07-31',
+    title: 'See the money flow on a workflow',
+    kind: 'feature',
+    highlights: [
+      'Projections can now attach to a step — before or after it — and show up as $ markers right in the step flow.',
+      'Each marker shows running “projected to here” vs “spent” totals, so you can spot where plan and reality diverge.',
+      'Every step card gains a Money drawer with its projections, actual line items, and a quick add.',
+    ],
+  },
+  {
     version: 'v2.1193',
     date: '2026-07-31',
     title: 'Job chips open Job Detail right there',

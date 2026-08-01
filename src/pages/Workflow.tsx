@@ -9,6 +9,7 @@ import { useEditProjectModal } from '../contexts/EditProjectModalContext'
 import { useJobDetailModal } from '../contexts/JobDetailModalContext'
 import { isAssistantLike, isSubcontractorLikeRole } from '../lib/subcontractorLikeRole'
 import { formatProjectNumberLabel } from '../lib/projectNumberLabel'
+import { buildWorkflowMoneyFlow, type WorkflowMoneyMarker } from '../lib/workflowMoneyFlow'
 import { toDatetimeLocal, fromDatetimeLocal } from '../utils/datetimeLocal'
 import { APP_CALENDAR_TZ } from '../utils/dateUtils'
 import type { Database } from '../types/database'
@@ -236,7 +237,9 @@ export default function Workflow() {
   const [availableInvoices, setAvailableInvoices] = useState<Array<{ id: string; invoice_number: string; supply_house_name: string; amount: number; invoice_date: string; due_date: string | null; is_paid: boolean; purchase_order_number: string | null }>>([])
   const [invoiceSearchText, setInvoiceSearchText] = useState('')
   const [viewingInvoice, setViewingInvoice] = useState<{ id: string; invoice_number: string; supply_house_name: string; amount: number; link: string | null } | null>(null)
-  const [editingProjection, setEditingProjection] = useState<{ item: Projection | null; stage_name: string; memo: string; amount: string } | null>(null)
+  const [editingProjection, setEditingProjection] = useState<{ item: Projection | null; stage_name: string; memo: string; amount: string; step_id: string; placement: 'before' | 'after' } | null>(null)
+  /** Inline money markers (v2.1194): projection ids whose between-card row is expanded. */
+  const [expandedProjectionIds, setExpandedProjectionIds] = useState<Set<string>>(new Set())
   const [projectMaster, setProjectMaster] = useState<{ id: string; name: string | null; email: string | null } | null>(null)
   const [sectionExpanded, setSectionExpanded] = useState<Record<string, boolean>>({})
   const [rowCollapsed, setRowCollapsed] = useState<Record<string, boolean>>({})
@@ -918,7 +921,13 @@ export default function Workflow() {
     }
   }
 
-  async function saveProjection(item: Projection | null, stageName: string, memo: string, amount: string) {
+  async function saveProjection(
+    item: Projection | null,
+    stageName: string,
+    memo: string,
+    amount: string,
+    anchor?: { step_id: string; placement: 'before' | 'after' },
+  ) {
     // Ensure we have a workflow_id - fetch from DB if state isn't ready
     let workflowId: string | null = workflow?.id ?? null
     if (!workflowId && projectId) {
@@ -935,11 +944,16 @@ export default function Workflow() {
       return
     }
     
+    // Anchor (v2.1194): '' step means unanchored; placement only matters when anchored.
+    const anchorFields = {
+      step_id: anchor?.step_id ? anchor.step_id : null,
+      placement: anchor?.step_id ? anchor.placement : null,
+    }
     if (item) {
       // Update existing
       const { error } = await supabase
         .from('workflow_projections')
-        .update({ stage_name: stageName.trim(), memo: memo.trim(), amount: amountNum })
+        .update({ stage_name: stageName.trim(), memo: memo.trim(), amount: amountNum, ...anchorFields })
         .eq('id', item.id)
       if (error) {
         setError(`Failed to update projection: ${error.message}`)
@@ -950,7 +964,7 @@ export default function Workflow() {
       const maxOrder = Math.max(0, ...projections.map(p => p.sequence_order))
       const { error } = await supabase
         .from('workflow_projections')
-        .insert({ workflow_id: workflowId, stage_name: stageName.trim(), memo: memo.trim(), amount: amountNum, sequence_order: maxOrder + 1 })
+        .insert({ workflow_id: workflowId, stage_name: stageName.trim(), memo: memo.trim(), amount: amountNum, sequence_order: maxOrder + 1, ...anchorFields })
       if (error) {
         setError(`Failed to insert projection: ${error.message}`)
         return
@@ -974,12 +988,14 @@ export default function Workflow() {
     await loadProjections(workflowId)
   }
 
-  function openEditProjection(item: Projection | null) {
+  function openEditProjection(item: Projection | null, seed?: { step_id?: string; placement?: 'before' | 'after' }) {
     setEditingProjection({
       item,
       stage_name: item?.stage_name || '',
       memo: item?.memo || '',
       amount: item?.amount?.toString() || '',
+      step_id: item?.step_id ?? seed?.step_id ?? '',
+      placement: item?.placement === 'before' ? 'before' : (seed?.placement ?? 'after'),
     })
   }
 
@@ -2735,6 +2751,79 @@ export default function Workflow() {
               }
             }
           }
+          // Money flow (v2.1194): projections anchored to steps render as inline
+          // markers with running projected/spent totals. Dev/master only — same
+          // visibility as the top Projections panel.
+          const orderedStepIds = [...steps].sort((a, b) => (a.sequence_order ?? 0) - (b.sequence_order ?? 0)).map((st) => st.id)
+          const itemsTotalByStepId: Record<string, number> = {}
+          for (const sid of orderedStepIds) {
+            itemsTotalByStepId[sid] = (lineItems[sid] ?? []).reduce((sum, li) => sum + (li.amount || 0), 0)
+          }
+          const moneyFlow = isDevOrMaster
+            ? buildWorkflowMoneyFlow(orderedStepIds, projections, itemsTotalByStepId)
+            : { beforeByStep: {}, afterByStep: {}, stepProjectedTotal: {} }
+          const renderMoneyMarker = (m: WorkflowMoneyMarker<Projection>) => {
+            const p = m.projection
+            const expanded = expandedProjectionIds.has(p.id)
+            const toggle = () =>
+              setExpandedProjectionIds((prev) => {
+                const next = new Set(prev)
+                if (next.has(p.id)) next.delete(p.id)
+                else next.add(p.id)
+                return next
+              })
+            const anchorStep = steps.find((st) => st.id === p.step_id)
+            return (
+              <div key={p.id} style={{ alignSelf: 'stretch', display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '0.25rem' }}>
+                <button
+                  type="button"
+                  onClick={toggle}
+                  aria-expanded={expanded}
+                  title="Projection — click for details"
+                  style={{
+                    display: 'flex',
+                    flexWrap: 'wrap',
+                    alignItems: 'center',
+                    gap: '0.45rem',
+                    maxWidth: 'min(100%, 640px)',
+                    padding: '0.2rem 0.6rem',
+                    border: 'none',
+                    background: 'none',
+                    cursor: 'pointer',
+                    fontFamily: 'inherit',
+                    fontSize: '0.8125rem',
+                    color: 'var(--text-700)',
+                  }}
+                >
+                  <span aria-hidden style={{ fontWeight: 700, color: 'var(--text-green-700)' }}>$</span>
+                  <span style={{ color: 'var(--text-muted)' }}>Projection · {p.memo}</span>
+                  <span style={{ fontWeight: 600, color: 'var(--text-green-700)', whiteSpace: 'nowrap' }}>{formatAmount(p.amount)}</span>
+                  <span style={{ padding: '0.1rem 0.5rem', borderRadius: 999, background: 'var(--bg-blue-tint)', color: 'var(--text-blue-700)', fontSize: '0.6875rem', whiteSpace: 'nowrap' }}>
+                    projected to here {formatAmount(m.runningProjected)}
+                  </span>
+                  <span style={{ padding: '0.1rem 0.5rem', borderRadius: 999, background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)', fontSize: '0.6875rem', whiteSpace: 'nowrap' }}>
+                    spent {formatAmount(m.runningSpent)}
+                  </span>
+                  <span aria-hidden style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{expanded ? '▼' : '▶'}</span>
+                </button>
+                {expanded && (
+                  <div style={{ border: '1px solid var(--border)', borderRadius: 6, background: 'var(--surface)', padding: '0.5rem 0.75rem', fontSize: '0.8125rem', maxWidth: 'min(100%, 480px)', width: '100%', boxSizing: 'border-box' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem', fontWeight: 600 }}>
+                      <span>{p.stage_name}{p.memo ? ` — ${p.memo}` : ''}</span>
+                      <span style={{ color: 'var(--text-green-700)', whiteSpace: 'nowrap' }}>{formatAmount(p.amount)}</span>
+                    </div>
+                    <div style={{ color: 'var(--text-muted)', marginTop: 2 }}>
+                      {p.placement === 'before' ? 'before' : 'after'} · {anchorStep?.name ?? 'step'}
+                    </div>
+                    <div style={{ display: 'flex', gap: '0.75rem', marginTop: 6 }}>
+                      <button type="button" onClick={() => openEditProjection(p)} className="wf-btn-ghost" style={{ fontSize: '0.75rem' }}>Edit</button>
+                      <button type="button" onClick={() => deleteProjection(p.id)} className="wf-btn-danger" style={{ fontSize: '0.75rem' }}>Delete</button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )
+          }
           return displayItems.map((item, index) => {
             if (item.type === 'summary') {
               return (
@@ -2772,6 +2861,7 @@ export default function Workflow() {
                 width: isCollapsed ? 'fit-content' : '100%',
               }}
             >
+              {(moneyFlow.beforeByStep[s.id] ?? []).map(renderMoneyMarker)}
               <div
                 style={{
                   border: '1px solid var(--border-sky)',
@@ -3273,6 +3363,65 @@ export default function Workflow() {
                   </div>
                 )}
                 
+                {/* Money drawer (v2.1194) - dev/master: this step's anchored projections + actual items */}
+                {isDevOrMaster && (() => {
+                  const key = `${s.id}-money`
+                  const isExpanded = sectionExpanded[key] ?? false
+                  const beforeProjs = (moneyFlow.beforeByStep[s.id] ?? []).map((m) => m.projection)
+                  const afterProjs = (moneyFlow.afterByStep[s.id] ?? []).map((m) => m.projection)
+                  const projectedTotal = moneyFlow.stepProjectedTotal[s.id] ?? 0
+                  const itemsTotal = itemsTotalByStepId[s.id] ?? 0
+                  return (
+                    <div style={{ marginBottom: 4 }}>
+                      <div
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => setSectionExpanded((p) => ({ ...p, [key]: !isExpanded }))}
+                        onKeyDown={(e) => e.key === 'Enter' && setSectionExpanded((p) => ({ ...p, [key]: !isExpanded }))}
+                        style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', marginBottom: 2, cursor: 'pointer' }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.8125rem' }}>
+                          <span style={{ fontSize: '0.75rem', minWidth: 16 }}>{isExpanded ? '▼' : '▶'}</span>
+                          <span style={{ fontWeight: 500, color: 'var(--text-green-700)' }}>
+                            Money
+                            {projectedTotal !== 0 && <> · {formatAmount(projectedTotal)} projected</>}
+                            {itemsTotal !== 0 && <> · {formatAmount(itemsTotal)} items</>}
+                          </span>
+                        </div>
+                      </div>
+                      {isExpanded && (
+                        <div style={{ fontSize: '0.8125rem', maxWidth: 480, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 4 }}>
+                          {beforeProjs.length === 0 && afterProjs.length === 0 && (
+                            <div style={{ color: 'var(--text-muted)', textAlign: 'center' }}>No projections attached to this step.</div>
+                          )}
+                          {[...beforeProjs.map((p) => ({ p, tag: 'before' })), ...afterProjs.map((p) => ({ p, tag: 'after' }))].map(({ p, tag }) => (
+                            <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                              <span style={{ color: 'var(--text-muted)', width: 42, flexShrink: 0 }}>{tag}</span>
+                              <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.memo}</span>
+                              <span style={{ fontWeight: 600, color: 'var(--text-green-700)', whiteSpace: 'nowrap' }}>{formatAmount(p.amount)}</span>
+                              <button type="button" onClick={() => openEditProjection(p)} className="wf-btn-ghost" style={{ fontSize: '0.75rem' }}>Edit</button>
+                            </div>
+                          ))}
+                          <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem', borderTop: '1px dashed var(--border)', paddingTop: 4, color: 'var(--text-muted)' }}>
+                            <span>Line items (actual)</span>
+                            <span>{formatAmount(itemsTotal)}</span>
+                          </div>
+                          <div style={{ textAlign: 'center' }}>
+                            <button
+                              type="button"
+                              onClick={() => openEditProjection(null, { step_id: s.id, placement: 'after' })}
+                              className="wf-btn-ghost"
+                              style={{ fontSize: '0.75rem' }}
+                            >
+                              + Add projection here
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )
+                })()}
+
                 {/* Line Items For Office - dev/master/assistant */}
                 {canManageStages && (
                   <div style={{ marginBottom: 4 }}>
@@ -3448,6 +3597,7 @@ export default function Workflow() {
                   )
                 })()}
               </div>
+              {(moneyFlow.afterByStep[s.id] ?? []).map(renderMoneyMarker)}
               {index < displayItems.length - 1 && <div style={{ textAlign: 'center', marginBottom: '0.15rem', color: 'var(--text-faint)' }}>{"\u2193"}</div>}
             </div>
             )
@@ -3935,11 +4085,14 @@ export default function Workflow() {
             <form
               onSubmit={(e) => {
                 e.preventDefault()
-                saveProjection(editingProjection.item, editingProjection.stage_name, editingProjection.memo, editingProjection.amount)
+                saveProjection(editingProjection.item, editingProjection.stage_name, editingProjection.memo, editingProjection.amount, {
+                  step_id: editingProjection.step_id,
+                  placement: editingProjection.placement,
+                })
               }}
             >
               <div style={{ marginBottom: '1rem' }}>
-                <label htmlFor="projection-stage" style={{ display: 'block', marginBottom: 4 }}>Step *</label>
+                <label htmlFor="projection-stage" style={{ display: 'block', marginBottom: 4 }}>Label *</label>
                 <input
                   id="projection-stage"
                   type="text"
@@ -3949,6 +4102,42 @@ export default function Workflow() {
                   placeholder="e.g. Rough In, Trim, Inspection"
                   style={{ width: '100%', padding: '0.5rem' }}
                 />
+              </div>
+              <div style={{ marginBottom: '1rem' }}>
+                <label htmlFor="projection-step" style={{ display: 'block', marginBottom: 4 }}>Attach to step (optional)</label>
+                <select
+                  id="projection-step"
+                  value={editingProjection.step_id}
+                  onChange={(e) => setEditingProjection({ ...editingProjection, step_id: e.target.value })}
+                  style={{ width: '100%', padding: '0.5rem' }}
+                >
+                  <option value="">Not attached (top panel only)</option>
+                  {[...steps].sort((a, b) => a.sequence_order - b.sequence_order).map((st) => (
+                    <option key={st.id} value={st.id}>{st.name}</option>
+                  ))}
+                </select>
+                {editingProjection.step_id ? (
+                  <div style={{ display: 'flex', gap: '1rem', marginTop: 8, fontSize: '0.875rem' }}>
+                    <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
+                      <input
+                        type="radio"
+                        name="projection-placement"
+                        checked={editingProjection.placement === 'before'}
+                        onChange={() => setEditingProjection({ ...editingProjection, placement: 'before' })}
+                      />
+                      Before the step
+                    </label>
+                    <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
+                      <input
+                        type="radio"
+                        name="projection-placement"
+                        checked={editingProjection.placement === 'after'}
+                        onChange={() => setEditingProjection({ ...editingProjection, placement: 'after' })}
+                      />
+                      After the step
+                    </label>
+                  </div>
+                ) : null}
               </div>
               <div style={{ marginBottom: '1rem' }}>
                 <label htmlFor="projection-memo" style={{ display: 'block', marginBottom: 4 }}>Memo *</label>
