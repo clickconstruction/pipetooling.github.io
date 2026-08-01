@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-31 (v2.1197)
+last_updated: 2026-07-31 (v2.1198)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1198)
+
+### Developments — named groups of jobs: schema (2026-07-31)
+Part 1 of 3 (schema only; the Edit Job picker + Stages display land in part 2, the filter + review rollup in part 3). A **development** is a named group of jobs (a subdivision/builder development like "Sagebrush Phase 2") for reviewing many jobs as one unit. Migration [`20260801100000_developments_on_jobs.sql`](../supabase/migrations/20260801100000_developments_on_jobs.sql): new master-scoped `public.developments` table (name, optional default `gc_customer_id` → customers, city, notes, soft `archived_at`; one ACTIVE name per master via partial unique on `(master_user_id, lower(name))` — archiving frees the name) + nullable `jobs_ledger.development_id` (FK, ON DELETE **SET NULL** — deleting a development un-groups its jobs) + partial indexes. A real table, not a free-text tag, so grouping can't fragment on typos (the name-join fragility lesson). Same-master invariants mirror the GC train (v2.1175): backstop triggers `jobs_ledger_development_master_match` (job's development must belong to the job's master) and `developments_gc_customer_master_match` (a development's default GC — future "Use development's GC" chip — must belong to its master), both firing only on INSERT or relevant-column change. RLS mirrors the customers table (read: owner/dev/adopted assistant-likes/shares + the blanket estimator/primary/superintendent branch; write: owner/dev/adopted; delete: owner/dev); ends with both read-only blocks. DB-only (`supabase db push` right after merge — part 2's embeds need the column).
 
 ## Latest Updates (v2.1197)
 

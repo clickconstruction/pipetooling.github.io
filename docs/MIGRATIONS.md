@@ -9,8 +9,8 @@ last_updated: 2026-07-31
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate to Advanced
 
-total_migrations: "132 live in supabase/migrations/ (baseline + post-baseline) + 847 archived pre-baseline files (squashed into the 2026-06-04 baseline)"
-date_range: "Through July 30, 2026 — the latest real migration. Archive filenames dated 2027 are typos; that work happened March–June 2026 (see the note atop Recent Migrations)."
+total_migrations: "145 live in supabase/migrations/ (baseline + post-baseline) + 847 archived pre-baseline files (squashed into the 2026-06-04 baseline)"
+date_range: "Through August 1, 2026 — the latest real migration. Archive filenames dated 2027 are typos; that work happened March–June 2026 (see the note atop Recent Migrations)."
 categories: "Bids, Materials, Workflow, RLS, Database Improvements"
 
 key_sections:
@@ -105,6 +105,12 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 ### July 2026
 
 #### August 1, 2026
+
+**`20260801100000_developments_on_jobs.sql`** _(apply via `supabase db push` right after the PR merges — purely additive and dormant until the client PRs land, but the follow-up client PR's embeds need the column live)_
+- **Purpose**: Developments — named groups of jobs (v2.1198, part 1 of 3). New `public.developments` table (master-scoped; `name`, optional default `gc_customer_id` → customers ON DELETE SET NULL, `city`, `notes`, soft `archived_at`; active-name unique per master via partial index on `(master_user_id, lower(name))`) + nullable `jobs_ledger.development_id` (FK developments, ON DELETE **SET NULL** — deleting a development un-groups, never deletes, its jobs) + partial index. A development is a real row, not a free-text tag, so grouping can't fragment on typos. Two same-master backstop triggers mirroring the GC pattern (`20260731205835`): `jobs_ledger_development_master_match` and `developments_gc_customer_master_match`, both firing only on INSERT or when the relevant columns change.
+- **Security**: RLS on `developments` mirrors the customers table — read for owner/dev/adopted assistant-likes (role-agnostic `master_assistants` join covers controller)/share viewers plus the blanket estimator/primary/superintendent branch customers grants; writes owner/dev/adopted; delete owner/dev only. Ends with BOTH `apply_read_only_write_blocks()` and `apply_read_only_stmt_blocks()` (new table).
+- **Ordering**: push before merging the client part 2 (its Stages embeds select `development_id`).
+- **Category**: Feature schema
 
 **`20260801030726_workflow_projection_step_anchor.sql`** _(apply via `supabase db push` right after the PR merges — loading is order-safe (`select('*')` tolerates missing columns) but saving an ANCHORED projection 400s until the columns exist)_
 - **Purpose**: workflow money flow (v2.1194) — nullable `workflow_projections.step_id` (FK `project_workflow_steps` ON DELETE **SET NULL**: deleting a step un-anchors its projections instead of deleting them) + `placement` text CHECK before/after (default 'after') + partial index on `step_id`. Anchored projections render as inline $ markers between Workflow step cards with running projected/spent totals; NULL `step_id` = the pre-existing top-panel-only behavior.
