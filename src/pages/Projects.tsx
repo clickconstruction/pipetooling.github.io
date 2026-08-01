@@ -6,6 +6,7 @@ import { isAssistantLike } from '../lib/subcontractorLikeRole'
 import { useNarrowViewport640 } from '../hooks/useNarrowViewport640'
 import { useNewProjectModal } from '../contexts/NewProjectModalContext'
 import { useEditProjectModal } from '../contexts/EditProjectModalContext'
+import { useJobDetailModal } from '../contexts/JobDetailModalContext'
 import { withSupabaseRetry } from '../utils/errorHandling'
 import { formatProjectNumberLabel } from '../lib/projectNumberLabel'
 import { pageTabStyle } from '../lib/pageTabStyle'
@@ -61,6 +62,7 @@ export default function Projects() {
   const activeTab = parseProjectsPageTab(searchParams.get('tab'))
   const newProjectModal = useNewProjectModal()
   const editProjectModal = useEditProjectModal()
+  const jobDetailModal = useJobDetailModal()
   const navigate = useNavigate()
   const location = useLocation()
 
@@ -787,13 +789,25 @@ export default function Projects() {
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', justifyContent: narrow ? 'flex-start' : 'flex-end' }}>
                     <span style={{ fontSize: '0.8125rem', color: 'var(--text-faint)' }}>Jobs:</span>
                     {(jobsByProject[p.id] ?? []).map((j) => (
-                      <Link
+                      // Chip opens Job Detail in place (v2.1193) instead of navigating to Jobs → Edit Job.
+                      <button
                         key={j.id}
-                        to={`/jobs?edit=${j.id}&tab=stages`}
-                        style={{ padding: '0.2rem 0.5rem', background: 'var(--bg-neutral-100)', borderRadius: 4, fontSize: '0.8125rem', textDecoration: 'none', color: 'var(--text-700)' }}
+                        type="button"
+                        onClick={() => jobDetailModal?.openJobDetail({ jobId: j.id })}
+                        title="Open job detail"
+                        style={{
+                          padding: '0.2rem 0.5rem',
+                          background: 'var(--bg-neutral-100)',
+                          border: 'none',
+                          borderRadius: 4,
+                          fontSize: '0.8125rem',
+                          fontFamily: 'inherit',
+                          cursor: 'pointer',
+                          color: 'var(--text-700)',
+                        }}
                       >
                         {j.hcp_number || j.job_name || 'Job'}
-                      </Link>
+                      </button>
                     ))}
                     <Link
                       to={`/jobs?newJob=true&project=${p.id}&tab=stages`}

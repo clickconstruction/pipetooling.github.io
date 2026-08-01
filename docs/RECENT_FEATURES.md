@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-31 (v2.1192)
+last_updated: 2026-07-31 (v2.1193)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1193)
+
+### Projects + Workflow: job chips open Job Detail in place (2026-07-31)
+Per user request. The job chips on Projects rows ([`Projects.tsx`](../src/pages/Projects.tsx)) and the Workflow header's Jobs strip ([`Workflow.tsx`](../src/pages/Workflow.tsx)) were `Link`s to `/jobs?edit=<id>&tab=stages` (full navigation into Edit Job); they're now buttons opening **`DetailJobModal`** in place via `useJobDetailModal()` (the app-level `JobDetailModalContext`, mounted in Layout — available on every page). The Workflow strip's **▶ thread-notes expander** (per-job `JobThreadNotesPanel` with note count) is removed along with its whole self-contained wiring (`useJobThreadNotes` call, stats effect, panel render) — Job Detail carries the full activity/notes thread, so the expander was redundant. "+ Create Job" links unchanged. Chip buttons keep the exact chip look (fontFamily inherit, NOT the `font` shorthand — the v2.770 shorthand-clobbers-longhand gotcha). Verified live on both pages (chip → modal; arrow gone). Client-only.
 
 ## Latest Updates (v2.1192)
 
