@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1235',
+    date: '2026-08-01',
+    title: 'Edit Job: Close sits after "All changes saved"',
+    kind: 'fix',
+    highlights: [
+      'The Close button now anchors the bottom-right corner, after the autosave status — read the confirmation, then close.',
+    ],
+  },
+  {
     version: 'v2.1234',
     date: '2026-08-01',
     title: 'Edit Job: the Service type box lines up with HCP and C#',

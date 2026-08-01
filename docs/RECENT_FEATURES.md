@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-01 (v2.1234)
+last_updated: 2026-08-01 (v2.1235)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1235)
+
+### Edit Job — Close moves to the right of the autosave status (2026-08-01)
+The Edit Job footer's right cluster rendered `[Undo changes] [Close] [autosave status]`, leaving "All changes saved" dangling past the button. The edit-mode order is now `[Undo changes] [status] [Close]` so Close anchors the bottom-right corner and reads as the natural last action after the status confirms the save. Real DOM reorder (not CSS `order`), so tab/screen-reader order matches the visual order; the `aria-live` status span and all button behavior (`closeForm()` guarded flush, `closeFlushState` Saving… label) are unchanged. Create mode keeps the conventional `[Cancel] [Create Job]` pair — the previously-shared Close/Cancel button now renders per branch with its mode's label. The Required-fields list renders ahead of both. Implementation in [`JobFormModal.tsx`](../src/components/jobs/JobFormModal.tsx) (footer, ~3460–3550). Verified: `tsc -b` clean, zero new lints, full vitest suite green. Files: modified [`src/components/jobs/JobFormModal.tsx`](../src/components/jobs/JobFormModal.tsx). No DB / migration / RLS / RPC / Edge / type-gen changes.
 
 ## Latest Updates (v2.1234)
 
