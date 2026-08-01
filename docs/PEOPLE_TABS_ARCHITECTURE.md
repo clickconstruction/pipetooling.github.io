@@ -5,6 +5,7 @@ file: docs/PEOPLE_TABS_ARCHITECTURE.md
 type: Engineering / Refactor Map
 purpose: Inventory what every tab in src/pages/People.tsx touches (state, loaders, handlers, sub-components, supabase tables, cross-tab coupling) to prioritize decomposition of the ~21.4k-line God component.
 audience: Developers, AI Agents
+last_updated_note: "v2.1214 added the Subs tab (PeopleSubsTab.tsx, self-contained loader + subsHqRows kernel) — not yet mapped below."
 last_updated: 2026-07-29
 ---
 
