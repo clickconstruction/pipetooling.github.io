@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1242',
+    date: '2026-08-01',
+    title: 'Dispatch schedule: the new phone layout is now the only one',
+    kind: 'feature',
+    highlights: [
+      'The Old mode / New mode switch is gone — phones always get the compact header with Day first, + Schedule, and the ⋯ menu. Desktop is unchanged.',
+    ],
+  },
+  {
     version: 'v2.1241',
     date: '2026-08-01',
     title: 'Stages: Mobile cards — a phone-first board you can switch on',

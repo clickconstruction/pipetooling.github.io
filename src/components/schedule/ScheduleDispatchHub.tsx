@@ -2578,11 +2578,8 @@ type Props = {
   visibleDayKeys: string[]
   hideWeekend: boolean
   onHideWeekendChange: (hide: boolean) => void
-  /** Phone layout experiment (v2.1240): floating Old/New pill top-right; page owns the pref. */
-  showMobileModeToggle?: boolean
-  /** True = render the compact phone header (segmented tabs + "+ Schedule" sheet + ⋯ menu). */
+  /** Phone layout (v2.1240; sole phone rendering since v2.1242): compact header — segmented tabs + "+ Schedule" sheet + ⋯ menu. */
   mobileNewMode?: boolean
-  onMobileNewModeChange?: (next: boolean) => void
   weekNavDateRangeOverride?: string
   /** URL `day` when in the visible week; column tint + scroll. */
   columnFocusDayYmd?: string
@@ -2702,9 +2699,7 @@ export function ScheduleDispatchHub({
   visibleDayKeys,
   hideWeekend,
   onHideWeekendChange,
-  showMobileModeToggle = false,
   mobileNewMode = false,
-  onMobileNewModeChange,
   weekNavDateRangeOverride,
   columnFocusDayYmd = '',
   rows,
@@ -2841,48 +2836,7 @@ export function ScheduleDispatchHub({
   }
 
   return (
-    <div style={{ padding: showMobileModeToggle ? '2.2rem 1.25rem 1rem' : '1rem 1.25rem', maxWidth: '100%', position: 'relative' }}>
-      {showMobileModeToggle && onMobileNewModeChange ? (
-        <div
-          role="group"
-          aria-label="Schedule layout"
-          style={{
-            position: 'absolute',
-            top: 6,
-            right: 12,
-            zIndex: 60,
-            display: 'inline-flex',
-            gap: 2,
-            padding: 2,
-            background: 'var(--bg-subtle)',
-            border: '1px solid var(--border-strong)',
-            borderRadius: 999,
-            boxShadow: '0 2px 8px rgba(0,0,0,0.14)',
-          }}
-        >
-          {([false, true] as const).map((isNew) => (
-            <button
-              key={String(isNew)}
-              type="button"
-              aria-pressed={mobileNewMode === isNew}
-              onClick={() => onMobileNewModeChange(isNew)}
-              style={{
-                padding: '0.15rem 0.6rem',
-                fontSize: '0.6875rem',
-                fontWeight: 700,
-                border: 'none',
-                borderRadius: 999,
-                cursor: 'pointer',
-                background: mobileNewMode === isNew ? '#3b82f6' : 'transparent',
-                color: mobileNewMode === isNew ? 'white' : 'var(--text-muted)',
-                whiteSpace: 'nowrap',
-              }}
-            >
-              {isNew ? 'New mode' : 'Old mode'}
-            </button>
-          ))}
-        </div>
-      ) : null}
+    <div style={{ padding: '1rem 1.25rem', maxWidth: '100%', position: 'relative' }}>
       {newModeHeaderActive ? (
         <div style={{ marginBottom: '0.75rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
