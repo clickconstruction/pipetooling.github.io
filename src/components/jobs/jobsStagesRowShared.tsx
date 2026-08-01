@@ -896,11 +896,11 @@ export function renderStagesLastActivityCell(
     const sentMeta = getDispatchNoteDisplayMeta(String(sentRaw))
     const stripePaid =
       String(line.stripe_invoice_status ?? '').toLowerCase() === 'paid'
-    // One scan line (v2.1041): "Stripe emailed Mon 10:28 PM (1d) Resend".
-    // Full wording lives in the tooltip; the resend control keeps its own
-    // confirm/disable behavior. The text is two nowrap chunks (label, time)
-    // so narrow Activity columns wrap between them instead of overflowing
-    // into the next column (v2.1042).
+    // One scan line: "Resend Email sent Fri 3:36 PM (today)" (v2.1188 — action
+    // first, then the state label). Full wording lives in the tooltip; the
+    // resend control keeps its own confirm/disable behavior. The action+label
+    // and the time are two nowrap chunks so narrow Activity columns wrap
+    // between them instead of overflowing into the next column (v2.1042).
     return (
       <div
         title={`Stripe emailed the customer ${sentMeta.weekdayTimeChicago} (${sentMeta.daysAgoLabel})`}
@@ -917,12 +917,7 @@ export function renderStagesLastActivityCell(
           textAlign: 'center',
         }}
       >
-        <span style={{ whiteSpace: 'nowrap' }}>Stripe emailed</span>
-        <span style={{ whiteSpace: 'nowrap' }}>
-          {formatDispatchNoteWeekdayShortTimeChicago(String(sentRaw))} (
-          {formatDispatchNoteDaysAgoShort(String(sentRaw))})
-        </span>
-        <span style={{ display: 'inline-flex', alignItems: 'center', whiteSpace: 'nowrap' }}>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', whiteSpace: 'nowrap' }}>
           <StripeInvoiceSendFromStripeButton
             jobsLedgerInvoiceId={line.id}
             stripeInvoiceId={String(line.stripe_invoice_id).trim()}
@@ -938,6 +933,11 @@ export function renderStagesLastActivityCell(
             sendDisabled={stripePaid}
             sendDisabledTitle="This Stripe invoice is paid; Stripe will not send another email."
           />
+          <span>Email sent</span>
+        </span>
+        <span style={{ whiteSpace: 'nowrap' }}>
+          {formatDispatchNoteWeekdayShortTimeChicago(String(sentRaw))} (
+          {formatDispatchNoteDaysAgoShort(String(sentRaw))})
         </span>
       </div>
     )

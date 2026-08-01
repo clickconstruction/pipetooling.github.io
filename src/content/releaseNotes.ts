@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1188',
+    date: '2026-07-31',
+    title: 'Clearer email-sent line on billed jobs',
+    kind: 'feature',
+    highlights: [
+      'The billed-row hint now reads "Resend · Email sent · [time]" — the Resend button leads, so the action is right where you look.',
+    ],
+  },
+  {
     version: 'v2.1187',
     date: '2026-07-31',
     title: 'A cleaner Stages search bar',
