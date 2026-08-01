@@ -101,3 +101,45 @@ export function buildSubComplianceBadges(docs: ComplianceDocInput[], todayYmd: s
 
   return badges
 }
+
+export type PickerComplianceSummary = {
+  state: 'ok' | 'warn' | 'bad' | 'none'
+  label: string
+}
+
+/**
+ * One compact chip for assignment/offer pickers (Phase 4, PR 4.6). Collapses
+ * the badge set to the worst finding, and is WINDOW-AWARE when an end date is
+ * given: a COI/license that is fine today but lapses before the proposed
+ * window ends warns now — the failure would land mid-job.
+ */
+export function pickerComplianceSummary(
+  docs: ComplianceDocInput[],
+  todayYmd: string,
+  windowEndYmd?: string | null,
+): PickerComplianceSummary {
+  if (docs.length === 0) return { state: 'none', label: 'nothing on file' }
+  const badges = buildSubComplianceBadges(docs, todayYmd)
+
+  const expired = badges.find((b) => b.state === 'expired')
+  if (expired) return { state: 'bad', label: expired.label }
+  const missing = badges.find((b) => b.state === 'missing')
+  if (missing) return { state: 'bad', label: missing.label }
+
+  // Window-aware: judge dated docs against the end of the proposed work.
+  if (windowEndYmd) {
+    for (const key of ['coi', 'license'] as const) {
+      const dated = docs.filter((d) => d.doc_type === key && d.expires_at)
+      if (dated.length === 0) continue
+      const sorted = dated.map((d) => d.expires_at!).sort()
+      const latest = sorted[sorted.length - 1]!
+      if (latest < windowEndYmd) {
+        return { state: 'warn', label: `${key === 'coi' ? 'COI' : 'License'} lapses before the window ends (${latest})` }
+      }
+    }
+  }
+
+  const expiring = badges.find((b) => b.state === 'expiring')
+  if (expiring) return { state: 'warn', label: expiring.label }
+  return { state: 'ok', label: 'compliant' }
+}

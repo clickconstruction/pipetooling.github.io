@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-01 (v2.1221)
+last_updated: 2026-08-01 (v2.1222)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1222)
+
+### Compliance at the moment of commitment + work-order chips on assigned steps (2026-08-01)
+RUN_SUBS_PLAN Phase 4, PR 4.6 — Phase 4 complete. **(1)** New kernel fn `pickerComplianceSummary` ([`subCompliance.ts`](../src/lib/people/subCompliance.ts), +2 tests): collapses a sub's badges to one worst-finding chip and is **window-aware** — a COI/license fine today that lapses before the proposed window's END warns now ("COI lapses before the window ends (2026-09-12)"). The work-order panel shows the chip when a sub is picked in **+ Add** and inside the **offer editor** (judged against the offer's end date); docs load lazily per person, fail-soft. Warn-never-block, as always. **(2)** [`AssignedStageCard`](../src/components/AssignedStageCard.tsx) gains the deferred **💰 work-order chip** — "$6,400 · accepted" (or "2 work orders · $9,400") — loaded per assigned step on the Dashboard card; RLS scopes it, so a sub sees only their own money. Deviation noted: the step **Assign modal** chips are deferred again — the commitment moment (the work order) is where the money risk lives, and that's covered. Client-only.
 
 ## Latest Updates (v2.1221)
 

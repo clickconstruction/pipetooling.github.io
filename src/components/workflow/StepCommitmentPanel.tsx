@@ -3,6 +3,8 @@ import { supabase } from '../../lib/supabase'
 import { commitmentBalance, commitmentRail, nextCommitmentActions } from '../../lib/workflow/stepCommitments'
 import type { StepCommitmentRow } from '../../lib/workflow/stepCommitments'
 import { formatWorkOrderWindow, notifyWorkOrderOffered } from '../../lib/workflow/workOrderNotifications'
+import { pickerComplianceSummary, type ComplianceDocInput } from '../../lib/people/subCompliance'
+import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 
 /**
  * Sub work-order panel on an expanded step card (RUN_SUBS_PLAN Phase 2,
@@ -65,6 +67,37 @@ export function StepCommitmentPanel({
   const [saving, setSaving] = useState(false)
   const [settlePreview, setSettlePreview] = useState<{ commitmentId: string; report: SettleReport } | null>(null)
   const [offerEditor, setOfferEditor] = useState<{ commitmentId: string; start: string; end: string; amount: string; isReoffer: boolean } | null>(null)
+  const [complianceByPerson, setComplianceByPerson] = useState<Record<string, ComplianceDocInput[]>>({})
+
+  /** Load a person's compliance docs once (fail-soft — chips just don't render pre-migration). */
+  async function loadCompliance(personId: string) {
+    if (complianceByPerson[personId]) return
+    const { data, error } = await supabase
+      .from('person_contract_documents')
+      .select('doc_type, status, expires_at')
+      .eq('person_id', personId)
+    if (error) return
+    setComplianceByPerson((prev) => ({ ...prev, [personId]: (data ?? []) as ComplianceDocInput[] }))
+  }
+
+  function complianceChip(personId: string | null, windowEndYmd?: string | null) {
+    if (!personId) return null
+    const docs = complianceByPerson[personId]
+    if (!docs) return null
+    const summary = pickerComplianceSummary(docs, calendarYmdInAppTzFromIso(new Date().toISOString()), windowEndYmd)
+    const style =
+      summary.state === 'ok'
+        ? { background: 'var(--bg-green-tint)', color: 'var(--text-green-600)' }
+        : summary.state === 'warn'
+          ? { background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)' }
+          : { background: 'var(--bg-red-tint)', color: 'var(--text-red-700)' }
+    return (
+      <span style={{ ...style, fontSize: '0.7rem', fontWeight: 650, borderRadius: 999, padding: '0.08rem 0.5rem', whiteSpace: 'nowrap' }}>
+        {summary.state === 'ok' ? '✓ ' : '⚠ '}
+        {summary.label}
+      </span>
+    )
+  }
 
   // The settlement preview IS the real settlement rolled back server-side
   // (p_dry_run sentinel), so Confirm can never do something different.
@@ -147,6 +180,7 @@ export function StepCommitmentPanel({
   }
 
   function openOfferEditor(commitment: StepCommitmentRow, isReoffer: boolean) {
+    void loadCompliance(commitment.person_id)
     setOfferEditor({
       commitmentId: commitment.id,
       start: commitment.proposed_start ?? stepScheduledStart ?? '',
@@ -434,6 +468,7 @@ export function StepCommitmentPanel({
                     Cancel
                   </button>
                 </div>
+                <div style={{ marginTop: '0.35rem' }}>{complianceChip(c.person_id, offerEditor.end || null)}</div>
                 <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '0.35rem' }}>
                   Dates pre-fill from the step's expected dates. The sub gets a push + email and answers from their dashboard.
                 </div>
@@ -485,7 +520,10 @@ export function StepCommitmentPanel({
         <div style={{ padding: '0.6rem 0.7rem', borderTop: '1px solid var(--border)', display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center' }}>
           <select
             value={addPersonId}
-            onChange={(e) => setAddPersonId(e.target.value)}
+            onChange={(e) => {
+              setAddPersonId(e.target.value)
+              if (e.target.value) void loadCompliance(e.target.value)
+            }}
             style={{ padding: '0.3rem 0.4rem', borderRadius: 6, border: '1px solid var(--border)', fontSize: '0.8125rem', maxWidth: '14rem' }}
           >
             <option value="">Pick a sub…</option>
@@ -495,6 +533,7 @@ export function StepCommitmentPanel({
               </option>
             ))}
           </select>
+          {addPersonId ? complianceChip(addPersonId) : null}
           <input
             type="number"
             min="0"
