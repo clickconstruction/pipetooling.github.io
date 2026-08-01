@@ -65,6 +65,7 @@ import { DispatchDismissedItemsModal } from '../components/DispatchDismissedItem
 import CreateTripChargeModal, { type CreateTripChargeTarget } from '../components/CreateTripChargeModal'
 import { DashboardTeamsInboxCard } from '../components/dashboard/DashboardTeamsInboxCard'
 import { DashboardProjectsCard } from '../components/dashboard/DashboardProjectsCard'
+import { DashboardSubMoneySection } from '../components/dashboard/DashboardSubMoneySection'
 import { DashboardMyInboxCard } from '../components/dashboard/DashboardMyInboxCard'
 import { type JobBillingContext } from '../lib/jobBillingContext'
 import { useBillCustomerModal } from '../contexts/BillCustomerModalContext'
@@ -1537,6 +1538,10 @@ export default function Dashboard() {
           loadAssignedSteps={loadAssignedSteps}
         />
       )}
+
+      {/* Sub money view (RUN_SUBS_PLAN PR 3.2) — renders only for sub-like
+          roles with data; fail-soft before the 3.1 RLS push. */}
+      <DashboardSubMoneySection visible={isSubcontractorLikeRole(role)} />
 
       {authUser?.id && (
         <Suspense fallback={<MyTeamSectionSkeleton />}>

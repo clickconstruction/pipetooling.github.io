@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1212',
+    date: '2026-08-01',
+    title: 'Subs see what they’re owed, right on their Dashboard',
+    kind: 'feature',
+    highlights: [
+      'Subcontractors get a "Your money" card: total balance owed, each sheet with its open amount, and the full payment and backcharge history.',
+      'Offered and accepted work orders show too, so a sub always knows what’s committed and what’s coming.',
+      'Same numbers the office sees in Jobs → Sub Labor — one source of truth.',
+    ],
+  },
+  {
     version: 'v2.1211',
     date: '2026-08-01',
     title: 'Groundwork: subs can securely read their own sub sheets',
