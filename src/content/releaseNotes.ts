@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1208',
+    date: '2026-08-01',
+    title: 'Groundwork for pay-per-step sub work orders',
+    kind: 'infra',
+    highlights: [
+      'Behind the scenes: the database can now store a commitment — a sub, a workflow step, and an agreed amount, with offer/accept/approve/settle states.',
+      'Nothing visible changes yet; the work-order panel on step cards arrives in the next updates.',
+    ],
+  },
+  {
     version: 'v2.1207',
     date: '2026-08-01',
     title: 'Workflow page shows which subs are on the project',

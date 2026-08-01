@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-01 (v2.1207)
+last_updated: 2026-08-01 (v2.1208)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1208)
+
+### step_commitments — schema for pay-per-step sub work orders (2026-08-01)
+RUN_SUBS_PLAN Phase 2, PR 2.1 (dormant groundwork, the v2.1165 pattern — nothing reads it yet). Migration [`20260801150000_step_commitments.sql`](../supabase/migrations/20260801150000_step_commitments.sql): new `public.step_commitments` — "this sub does this step for this amount." `step_id` (FK steps, CASCADE) + `person_id` (FK people, **RESTRICT** — a sub with money history can't be hard-deleted) + denormalized `display_name`, `amount` ≥ 0, `retainage_pct` 0–100 (stored now, released later), **money-lifecycle-only** status CHECK (`draft → offered → accepted → approved → settled` + `cancelled` — work progress reads from the step, one source of truth each), `labor_job_id` (FK people_labor_jobs, SET NULL) stamped by PR 2.3's settlement, timestamps per state, `created_by`. One live commitment per (step, person) via partial unique (cancelled frees the slot); `update_updated_at_column` trigger. **RLS**: SELECT = `can_access_project_via_step()` (the step-RPC helper — covers dev/master/adopted/shared/superintendent) OR the sub's own rows (`people.account_user_id` link first, trimmed-`display_name` legacy fallback — the `people_pay_config` self-read precedent, so the Phase 3 sub money view needs no new policy here); INSERT = office set (dev/master/assistant/controller/estimator) with project access; UPDATE adds superintendent (client limits them to offered→accepted); DELETE dev/master only (cancel via status). Ends with both read-only blocks. Types hand-added. DB-only (`supabase db push` after merge).
 
 ## Latest Updates (v2.1207)
 
