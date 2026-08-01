@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, type ReactNode } from 'react'
+import { useEffect, useState, useRef, useMemo, type ReactNode } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { parseWorkflowLineItemPaste } from '../lib/parseWorkflowLineItemPaste'
@@ -11,6 +11,7 @@ import { isAssistantLike, isSubcontractorLikeRole } from '../lib/subcontractorLi
 import { formatProjectNumberLabel } from '../lib/projectNumberLabel'
 import { buildWorkflowMoneyFlow, type WorkflowMoneyMarker } from '../lib/workflowMoneyFlow'
 import { planStepTransition, type StepLifecyclePlan } from '../lib/workflow/stepLifecycle'
+import { buildProjectSubRoster } from '../lib/workflow/projectSubRoster'
 import { sendStepLifecycleNotifications } from '../lib/workflow/stepLifecycleNotifications'
 import { toDatetimeLocal, fromDatetimeLocal } from '../utils/datetimeLocal'
 import { APP_CALENDAR_TZ } from '../utils/dateUtils'
@@ -198,6 +199,7 @@ export default function Workflow() {
   const [assignPersonStep, setAssignPersonStep] = useState<Step | null>(null)
   const [assignPersonFilter, setAssignPersonFilter] = useState('')
   const [roster, setRoster] = useState<{ name: string; personId?: string | null }[]>([])
+  const [subIdentity, setSubIdentity] = useState<{ ids: Set<string>; namesLower: Set<string> }>({ ids: new Set(), namesLower: new Set() })
   const [currentUserName, setCurrentUserName] = useState<string | null>(null)
   const [userSubscriptions, setUserSubscriptions] = useState<Record<string, { notify_when_started: boolean; notify_when_complete: boolean; notify_when_reopened: boolean }>>({})
   const [stepActions, setStepActions] = useState<Record<string, StepAction[]>>({})
@@ -1054,8 +1056,8 @@ export default function Workflow() {
       }
 
       const role = (userData as { role: string } | null)?.role
-      let peopleRes: { data: { id: string; name: string; email: string | null; phone: string | null }[] | null }
-      let usersRes: { data: { name: string | null; email: string | null }[] | null }
+      let peopleRes: { data: { id: string; name: string; email: string | null; phone: string | null; kind: string }[] | null }
+      let usersRes: { data: { name: string | null; email: string | null; role?: string }[] | null }
 
       if (role === 'superintendent') {
         const { data: adopted } = await supabase
@@ -1065,18 +1067,18 @@ export default function Workflow() {
         const adoptedMasterIds = (adopted ?? []).map((r) => r.master_id)
         ;[peopleRes, usersRes] = await Promise.all([
           adoptedMasterIds.length > 0
-            ? supabase.from('people').select('id, name, email, phone').is('archived_at', null).in('master_user_id', adoptedMasterIds).order('name')
-            : { data: [] as { id: string; name: string; email: string | null; phone: string | null }[] },
-          supabase.from('users').select('name, email').in('role', ['subcontractor', 'helpers', 'primary']),
+            ? supabase.from('people').select('id, name, email, phone, kind').is('archived_at', null).in('master_user_id', adoptedMasterIds).order('name')
+            : { data: [] as { id: string; name: string; email: string | null; phone: string | null; kind: string }[] },
+          supabase.from('users').select('name, email, role').in('role', ['subcontractor', 'helpers', 'primary']),
         ])
       } else {
         ;[peopleRes, usersRes] = await Promise.all([
-          supabase.from('people').select('id, name, email, phone').is('archived_at', null).eq('master_user_id', authUser.id).order('name'),
-          supabase.from('users').select('name, email'),
+          supabase.from('people').select('id, name, email, phone, kind').is('archived_at', null).eq('master_user_id', authUser.id).order('name'),
+          supabase.from('users').select('name, email, role'),
         ])
       }
-      const fromPeople = (peopleRes.data as { id: string; name: string; email: string | null; phone: string | null }[] | null) ?? []
-      const fromUsers = (usersRes.data as { name: string; email: string | null }[] | null) ?? []
+      const fromPeople = (peopleRes.data as { id: string; name: string; email: string | null; phone: string | null; kind: string }[] | null) ?? []
+      const fromUsers = (usersRes.data as { name: string; email: string | null; role?: string }[] | null) ?? []
       // people-sourced entries carry their roster id so assignment can write
       // assigned_person_id explicitly (users-sourced entries resolve server-side)
       const rosterEntries = [
@@ -1110,6 +1112,21 @@ export default function Workflow() {
         }
       })
       setPersonContacts(contacts)
+
+      // Sub identity for the header "Subs" strip: roster ids of kind='sub'
+      // plus subcontractor-role login names (person-id first, name fallback).
+      const subIds = new Set<string>()
+      const subNamesLower = new Set<string>()
+      fromPeople.forEach((p) => {
+        if (p.kind === 'sub') {
+          subIds.add(p.id)
+          if (p.name) subNamesLower.add(p.name.trim().toLowerCase())
+        }
+      })
+      fromUsers.forEach((u) => {
+        if (u.role === 'subcontractor' && u.name) subNamesLower.add(u.name.trim().toLowerCase())
+      })
+      setSubIdentity({ ids: subIds, namesLower: subNamesLower })
     })()
   }, [authUser?.id])
 
@@ -2044,6 +2061,11 @@ export default function Workflow() {
     refreshSteps()
   }
 
+  const projectSubRoster = useMemo(
+    () => buildProjectSubRoster(steps, subIdentity.ids, subIdentity.namesLower),
+    [steps, subIdentity],
+  )
+
   if (loading) return <p>Loading...</p>
   if (error) return <p style={{ color: 'var(--text-red-700)' }}>{error}</p>
   if (!project || !workflow) return <p>Project or workflow not found.</p>
@@ -2179,6 +2201,32 @@ export default function Workflow() {
                 + Create Job
               </Link>
             </div>
+            {canManageStages && projectSubRoster.length > 0 && (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', alignItems: 'center', justifyContent: 'flex-end' }}>
+                <span style={{ fontSize: '0.8125rem', color: 'var(--text-faint)' }}>Subs:</span>
+                {projectSubRoster.map((sub) => (
+                  <span
+                    key={sub.key}
+                    title={
+                      sub.currentStepName
+                        ? `${sub.name} — on ${sub.currentStepName} (${sub.activeStepCount} of ${sub.totalStepCount} steps open)`
+                        : `${sub.name} — all ${sub.totalStepCount} assigned steps finished`
+                    }
+                    style={{
+                      padding: '0.15rem 0.5rem',
+                      background: sub.activeStepCount > 0 ? 'var(--bg-blue-tint)' : 'var(--bg-neutral-100)',
+                      borderRadius: 999,
+                      fontSize: '0.8125rem',
+                      color: sub.activeStepCount > 0 ? 'var(--text-link)' : 'var(--text-muted)',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    🔧 {sub.name}
+                    {sub.activeStepCount > 0 && <> · {sub.activeStepCount} open</>}
+                  </span>
+                ))}
+              </div>
+            )}
             {canManageStages && (
               <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 {(steps.filter(s => s.status === 'completed' || s.status === 'approved' || s.status === 'skipped').length >= 2) && (

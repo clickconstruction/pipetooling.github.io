@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-01 (v2.1206)
+last_updated: 2026-08-01 (v2.1207)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1207)
+
+### Workflow header: "Subs on this project" strip (2026-08-01)
+RUN_SUBS_PLAN Phase 1, PR 1.3 — the first reader of `assigned_person_id`. The Workflow header (under the Jobs chips, `canManageStages` only) now shows one chip per distinct subcontractor assigned to any step: 🔧 name + "N open" (blue tint while steps are pending/in_progress/rejected, muted once all theirs are finished; tooltip names the current step). New pure kernel [`projectSubRoster.ts`](../src/lib/workflow/projectSubRoster.ts) (`buildProjectSubRoster`, 4 tests): groups **person-id first** with trimmed-name fallback per the identity-plan invariant; sub identity = roster `people.kind='sub'` ids + subcontractor-role login names (the page's existing roster load gains `kind`/`role` columns — additive). Known data note: "Behar Kraja (Rough In)" stays invisible until that name variant is Combined into the real roster row — the strip is only as good as the identity spine, by design. Client-only.
 
 ## Latest Updates (v2.1206)
 

@@ -46,6 +46,10 @@ Projects with warnings sort to the top of the list, so the ones needing a decisi
 
 Under the pills, rows with money show **Projected** (the workflow's projections) and **Spent** (step line items) — the same numbers as the Workflow page's money panel, without opening it.
 
+## Subs on the Workflow page
+
+Opening a project's Workflow shows a **Subs** strip in the header — one chip per subcontractor assigned to any step, with how many of their steps are still open. Hover a chip to see which step they're on right now.
+
 ## Where to act
 
 Click the project name to open its Workflow page — assign the step, set expected dates, or approve the work from there.
