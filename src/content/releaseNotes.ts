@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1195',
+    date: '2026-07-31',
+    title: 'Running ledger beside the workflow',
+    kind: 'feature',
+    highlights: [
+      'On wide screens, a left rail shows the running balance beside every step and money marker — green when ahead, red when spending outruns the plan.',
+      'A small card with the project margin and current balance stays pinned while you scroll.',
+    ],
+  },
+  {
     version: 'v2.1194',
     date: '2026-07-31',
     title: 'See the money flow on a workflow',

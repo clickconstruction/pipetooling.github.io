@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef, type ReactNode } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { parseWorkflowLineItemPaste } from '../lib/parseWorkflowLineItemPaste'
@@ -240,6 +240,13 @@ export default function Workflow() {
   const [editingProjection, setEditingProjection] = useState<{ item: Projection | null; stage_name: string; memo: string; amount: string; step_id: string; placement: 'before' | 'after' } | null>(null)
   /** Inline money markers (v2.1194): projection ids whose between-card row is expanded. */
   const [expandedProjectionIds, setExpandedProjectionIds] = useState<Set<string>>(new Set())
+  /** Ledger rail (v2.1195): the left balance column needs real horizontal room. */
+  const [wideForLedger, setWideForLedger] = useState(() => typeof window !== 'undefined' && window.innerWidth >= 1100)
+  useEffect(() => {
+    const onResize = () => setWideForLedger(window.innerWidth >= 1100)
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [])
   const [projectMaster, setProjectMaster] = useState<{ id: string; name: string | null; email: string | null } | null>(null)
   const [sectionExpanded, setSectionExpanded] = useState<Record<string, boolean>>({})
   const [rowCollapsed, setRowCollapsed] = useState<Record<string, boolean>>({})
@@ -2761,7 +2768,92 @@ export default function Workflow() {
           }
           const moneyFlow = isDevOrMaster
             ? buildWorkflowMoneyFlow(orderedStepIds, projections, itemsTotalByStepId)
-            : { beforeByStep: {}, afterByStep: {}, stepProjectedTotal: {} }
+            : { beforeByStep: {}, afterByStep: {}, stepProjectedTotal: {}, stepBalance: {} }
+          // Ledger rail (v2.1195): a left balance column aligned to every card and
+          // marker, plus a sticky margin/balance summary. Wide viewports only —
+          // narrow screens keep the marker pills.
+          const projectionsTotal = projections.reduce((sum, p) => sum + (p.amount || 0), 0)
+          const ledgerTotal = orderedStepIds.reduce((sum, id) => sum + (itemsTotalByStepId[id] ?? 0), 0)
+          const showLedgerRail = isDevOrMaster && wideForLedger && (projectionsTotal !== 0 || ledgerTotal !== 0)
+          const RAIL_W = 150
+          const railAmount = (n: number) => `${n < 0 ? '-' : n > 0 ? '+' : ''}$${Math.abs(Math.round(n)).toLocaleString('en-US')}`
+          const balanceColor = (n: number) =>
+            n > 0.004 ? 'var(--text-green-700)' : n < -0.004 ? 'var(--text-red-700)' : 'var(--text-muted)'
+          const railGutter = (value: number | null) =>
+            showLedgerRail ? (
+              <div
+                style={{
+                  width: RAIL_W,
+                  flexShrink: 0,
+                  boxSizing: 'border-box',
+                  textAlign: 'right',
+                  paddingRight: 14,
+                  fontSize: '0.75rem',
+                  fontWeight: 600,
+                  whiteSpace: 'nowrap',
+                  fontVariantNumeric: 'tabular-nums',
+                  color: value == null ? 'var(--text-faint)' : balanceColor(value),
+                  borderRight: '2px solid var(--border)',
+                  alignSelf: 'stretch',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'flex-end',
+                }}
+              >
+                {value == null ? '' : railAmount(value)}
+              </div>
+            ) : null
+          const railRow = (value: number | null, content: ReactNode, centerContent = false, key?: string) =>
+            showLedgerRail ? (
+              <div key={key} style={{ display: 'flex', width: '100%', alignItems: 'stretch' }}>
+                {railGutter(value)}
+                <div
+                  style={{
+                    flex: 1,
+                    minWidth: 0,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: centerContent ? 'center' : 'stretch',
+                    justifyContent: 'center',
+                  }}
+                >
+                  {content}
+                </div>
+              </div>
+            ) : (
+              content
+            )
+          const marginPct = projectionsTotal !== 0 ? ((projectionsTotal - ledgerTotal) / projectionsTotal) * 100 : null
+          const balanceNow = projectionsTotal - ledgerTotal
+          const stickyLedgerCard = showLedgerRail ? (
+            <div key="ledger-sticky" style={{ alignSelf: 'flex-start', position: 'sticky', top: 60, zIndex: 5, marginBottom: 8 }}>
+              <div
+                style={{
+                  width: RAIL_W - 16,
+                  boxSizing: 'border-box',
+                  border: '1px solid var(--border-strong)',
+                  borderRadius: 8,
+                  background: 'var(--surface)',
+                  padding: '0.5rem 0.65rem',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                }}
+              >
+                <div style={{ fontSize: '0.6875rem', color: 'var(--text-muted)' }}>Project margin</div>
+                <div style={{ fontSize: '1.05rem', fontWeight: 700, color: marginPct == null ? 'var(--text-muted)' : balanceColor(marginPct) }}>
+                  {marginPct == null ? '—' : `${marginPct.toFixed(1)}%`}
+                </div>
+                <div style={{ fontSize: '0.6875rem', color: 'var(--text-muted)', marginTop: 4 }}>Balance</div>
+                <div style={{ fontSize: '0.875rem', fontWeight: 600, color: balanceColor(balanceNow), fontVariantNumeric: 'tabular-nums' }}>
+                  {railAmount(balanceNow)}
+                </div>
+                <div style={{ fontSize: '0.6875rem', color: 'var(--text-muted)', marginTop: 4, lineHeight: 1.4 }}>
+                  proj {railAmount(projectionsTotal)}
+                  <br />
+                  spent {railAmount(-ledgerTotal)}
+                </div>
+              </div>
+            </div>
+          ) : null
           const renderMoneyMarker = (m: WorkflowMoneyMarker<Projection>) => {
             const p = m.projection
             const expanded = expandedProjectionIds.has(p.id)
@@ -2824,7 +2916,9 @@ export default function Workflow() {
               </div>
             )
           }
-          return displayItems.map((item, index) => {
+          return (<>
+          {stickyLedgerCard}
+          {displayItems.map((item, index) => {
             if (item.type === 'summary') {
               return (
                 <div key="old-stages-summary" id="old-stages-summary">
@@ -2849,6 +2943,8 @@ export default function Workflow() {
             }
             const s = item.step
             const isCollapsed = rowCollapsed[s.id] ?? isRowDefaultCollapsed(s)
+            const stepBal = moneyFlow.stepBalance[s.id]
+            const stepBalValue = showLedgerRail && stepBal ? stepBal.projected - stepBal.spent : null
             return (
             <div
               key={s.id}
@@ -2856,12 +2952,15 @@ export default function Workflow() {
               style={{
                 display: 'flex',
                 flexDirection: 'column',
-                alignItems: isCollapsed ? 'center' : 'stretch',
-                alignSelf: isCollapsed ? 'center' : 'stretch',
-                width: isCollapsed ? 'fit-content' : '100%',
+                alignItems: showLedgerRail ? 'stretch' : isCollapsed ? 'center' : 'stretch',
+                alignSelf: showLedgerRail ? 'stretch' : isCollapsed ? 'center' : 'stretch',
+                width: showLedgerRail ? '100%' : isCollapsed ? 'fit-content' : '100%',
               }}
             >
-              {(moneyFlow.beforeByStep[s.id] ?? []).map(renderMoneyMarker)}
+              {(moneyFlow.beforeByStep[s.id] ?? []).map((m) =>
+                railRow(m.runningProjected - m.runningSpent, renderMoneyMarker(m), true, `rail-${m.projection.id}`),
+              )}
+              {railRow(stepBalValue, (
               <div
                 style={{
                   border: '1px solid var(--border-sky)',
@@ -3597,11 +3696,16 @@ export default function Workflow() {
                   )
                 })()}
               </div>
-              {(moneyFlow.afterByStep[s.id] ?? []).map(renderMoneyMarker)}
-              {index < displayItems.length - 1 && <div style={{ textAlign: 'center', marginBottom: '0.15rem', color: 'var(--text-faint)' }}>{"\u2193"}</div>}
+              ), isCollapsed)}
+              {(moneyFlow.afterByStep[s.id] ?? []).map((m) =>
+                railRow(m.runningProjected - m.runningSpent, renderMoneyMarker(m), true, `rail-${m.projection.id}`),
+              )}
+              {index < displayItems.length - 1 &&
+                railRow(null, <div style={{ textAlign: 'center', marginBottom: '0.15rem', color: 'var(--text-faint)' }}>{"\u2193"}</div>)}
             </div>
             )
-          })
+          })}
+          </>)
         })()
         }
       </div>

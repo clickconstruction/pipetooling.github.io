@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-31 (v2.1194)
+last_updated: 2026-07-31 (v2.1195)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1195)
+
+### Workflow: left ledger rail with sticky margin/balance card (2026-07-31)
+User-picked design B on top of v2.1194. On viewports ≥1100px (resize-listened state; narrow screens keep the marker pills), the Workflow steps list gains a **left ledger rail**: every card and money-marker row renders a right-aligned running balance in a 150px gutter with a 2px rule (green positive / red negative, tabular-nums, whole dollars ±$X), and a **sticky summary card** (in-flow, `position: sticky` top 60 — deliberately not a zero-height overlay, which hid the first rows' values) pins **Project margin** ((projections − ledger)/projections), **Balance now**, and proj/spent lines while scrolling. Kernel [`workflowMoneyFlow.ts`](../src/lib/workflowMoneyFlow.ts) gains `stepBalance` per step — projected through the step's before-markers, spent through the step inclusive (after-markers land on the next row) — +1 test pinning the exact semantics. Rows restructure via a `railRow(value, content)` helper in [`Workflow.tsx`](../src/pages/Workflow.tsx): when the rail is on, step wrappers force full-width and collapsed cards center inside the content cell so the rail stays a straight column; markers/arrows/cards all thread through it, gated `isDevOrMaster` and only when any projections or line items exist. Rail totals reconcile with the top panel by construction (same inputs). Verified live at 1360px (stick-on-scroll, red −$38,120 → green +$112,880 progression) and 769px (rail hidden, no overflow). Guide updated. Client-only.
 
 ## Latest Updates (v2.1194)
 
