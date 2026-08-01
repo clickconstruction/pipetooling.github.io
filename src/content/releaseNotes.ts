@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1227',
+    date: '2026-08-01',
+    title: 'Edit Job: HCP, C#, and Service type share one line on phones',
+    kind: 'feature',
+    highlights: [
+      'The top row of Edit Job no longer wraps on a phone — the two number fields slim down so the service type fits beside them.',
+      'The trade shortcut pill (PLUM, ELEC, …) now sits next to the Service type label instead of crowding the dropdown.',
+    ],
+  },
+  {
     version: 'v2.1226',
     date: '2026-08-01',
     title: 'A "start here" guide for every role',
