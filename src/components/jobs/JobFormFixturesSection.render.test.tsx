@@ -114,3 +114,39 @@ describe('JobFormFixturesSection phone name-focus expansion (v2.1229)', () => {
     expect(nameField(0).closest('tr')).toBe(countField(0).closest('tr'))
   })
 })
+
+describe('JobFormFixturesSection phone column compression (v2.1233)', () => {
+  it('narrow: numbered placeholder, content-sized ×/$ columns keyed to the longest value', () => {
+    narrowMatches = true
+    const { container } = renderSection()
+    expect(nameField(0).placeholder).toBe('Line item 1')
+    expect(nameField(1).placeholder).toBe('Line item 2')
+    const cols = container.querySelectorAll('col')
+    // Counts are all "1" (1 char); prices are all 8400 → "8,400.00" (8 chars);
+    // two rows → the delete column reserves its slice.
+    // jsdom reorders calc() terms on serialization — assert the parts.
+    expect((cols[1] as HTMLElement).style.width).toContain('1ch')
+    const priceColWidth = (cols[2] as HTMLElement).style.width
+    expect(priceColWidth).toContain('8ch')
+    expect(priceColWidth).toContain('1.75rem')
+  })
+
+  it('narrow: the descriptive placeholder returns while the name field is focus-expanded', () => {
+    narrowMatches = true
+    renderSection()
+    act(() => nameField(0).focus())
+    expect(nameField(0).placeholder).toBe('Specific work or materials')
+    expect(nameField(1).placeholder).toBe('Line item 2')
+  })
+
+  it('wide: descriptive placeholder and the fixed desktop column widths', () => {
+    narrowMatches = false
+    const { container } = renderSection()
+    expect(nameField(0).placeholder).toBe('Specific work or materials')
+    const cols = container.querySelectorAll('col')
+    expect((cols[1] as HTMLElement).style.width).toBe('4.5rem')
+    const priceColWidth = (cols[2] as HTMLElement).style.width
+    expect(priceColWidth).toContain('6.2rem')
+    expect(priceColWidth).not.toContain('ch')
+  })
+})

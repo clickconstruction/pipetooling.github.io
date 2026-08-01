@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1233',
+    date: '2026-08-01',
+    title: 'Edit Job: line item rows stay one line tall on phones',
+    kind: 'feature',
+    highlights: [
+      'Empty line items now show a short "Line item 1" hint instead of wrapping "Specific work or materials" across three lines.',
+      'The × and $ boxes start compact and widen automatically as your numbers grow, so the name field keeps the most room.',
+      'Tap into the name and it still expands to the full screen width for typing.',
+    ],
+  },
+  {
     version: 'v2.1232',
     date: '2026-08-01',
     title: 'Stages: a cleaner search bar — filters tucked into the ⋯ menu',
