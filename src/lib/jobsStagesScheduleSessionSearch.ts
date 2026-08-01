@@ -7,6 +7,17 @@ const MAX_ROWS_PER_CHUNK = 8000
 /** Minimum Stages search length before querying schedule blocks and clock sessions. */
 export const STAGES_SCHEDULE_SESSION_SEARCH_MIN_CHARS = 2
 
+/** localStorage key for the Stages tools-menu "Schedule & time in search" toggle. */
+export const STAGES_INCLUDE_SCHEDULE_TIME_STORAGE_KEY = 'jobs-stages-search-include-schedule-time'
+
+/**
+ * Off unless the user explicitly opted in (v2.1184) — the schedule/clock lookup is the expensive
+ * part of Stages search, so a missing/unreadable stored value means plain job-field search only.
+ */
+export function parseStagesIncludeScheduleTimePref(raw: string | null): boolean {
+  return raw === 'true'
+}
+
 /**
  * Whether supplementary schedule/clock search should run (caller ensures Stages tab). Trims `query` for length checks.
  */
@@ -51,18 +62,52 @@ function sessionRowMatches(qLower: string, row: SessionRow): boolean {
 }
 
 /**
+ * Result of the server-side matcher RPC as a job-id set, or null when the payload
+ * isn't the uuid[] shape (caller falls back to the legacy client-side path).
+ */
+export function scheduleClockSearchRpcJobIdSet(data: unknown): Set<string> | null {
+  if (!Array.isArray(data)) return null
+  return new Set(data.filter((v): v is string => typeof v === 'string'))
+}
+
+/**
  * Job IDs in `jobIds` that have a schedule block or non-revoked clock session matching `queryRaw`
  * (substring match on note/notes, assignee/puncher name, work_date).
+ *
+ * Prefers the server-side matcher RPC (v2.1185 — one round trip, matching in SQL under the
+ * caller's RLS); falls back to the legacy chunked client-side path when the RPC isn't deployed
+ * yet or errors, so client and migration are order-safe.
  */
 export async function fetchJobIdsMatchingScheduleOrClockSessions(
   jobIds: string[],
   queryRaw: string,
 ): Promise<{ data: Set<string>; error: string | null }> {
   const trimmed = queryRaw.trim()
-  const qLower = trimmed.toLowerCase()
   if (jobIds.length === 0 || trimmed.length < STAGES_SCHEDULE_SESSION_SEARCH_MIN_CHARS) {
     return { data: new Set(), error: null }
   }
+
+  try {
+    const { data, error } = await supabase.rpc('search_job_ids_matching_schedule_or_clock', {
+      p_job_ids: jobIds,
+      p_query: trimmed,
+    })
+    if (!error) {
+      const ids = scheduleClockSearchRpcJobIdSet(data)
+      if (ids) return { data: ids, error: null }
+    }
+  } catch {
+    // fall through to the legacy client-side path
+  }
+  return fetchJobIdsMatchingScheduleOrClockSessionsClientSide(jobIds, trimmed)
+}
+
+/** Legacy client-side matcher: chunked .in() fetches + substring matching in the browser. */
+async function fetchJobIdsMatchingScheduleOrClockSessionsClientSide(
+  jobIds: string[],
+  trimmed: string,
+): Promise<{ data: Set<string>; error: string | null }> {
+  const qLower = trimmed.toLowerCase()
 
   const out = new Set<string>()
   let firstError: string | null = null

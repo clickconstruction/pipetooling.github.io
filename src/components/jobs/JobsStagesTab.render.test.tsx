@@ -95,7 +95,8 @@ function makeProps(overrides: Partial<JobsStagesTabProps> = {}): JobsStagesTabPr
   } as JobsStagesTabProps
 }
 
-const SEARCH_PLACEHOLDER = 'Search HCP, name, address, schedule notes, or clock notes'
+// Default placeholder — the schedule/clock supplement is opt-in since v2.1184.
+const SEARCH_PLACEHOLDER = 'Search HCP, name, address'
 
 function boardJobs() {
   return [
