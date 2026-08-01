@@ -106,6 +106,11 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 #### August 1, 2026
 
+**`20260801150000_step_commitments.sql`** _(apply via `supabase db push` after merge — dormant until the PR 2.2 panel ships; nothing reads it)_
+- **Purpose**: RUN_SUBS_PLAN Phase 2, PR 2.1 (v2.1208). New `step_commitments` table — sub work orders on workflow steps (person_id-keyed, denormalized display_name, amount + retainage_pct, money-lifecycle status draft/offered/accepted/approved/settled/cancelled, labor_job_id stamped by settlement). Partial unique on (step_id, person_id) where not cancelled; updated_at trigger.
+- **Security**: RLS — SELECT via `can_access_project_via_step()` OR sub own-row (account link, name fallback); INSERT office set; UPDATE + superintendent; DELETE dev/master. Ends with BOTH `apply_read_only_write_blocks()` and `apply_read_only_stmt_blocks()` (new table).
+- **Category**: Feature schema
+
 **`20260801140000_sub_sheet_project_step_anchors.sql`** _(apply via `supabase db push` after merge — either order is safe: the ledger read is fail-soft and nothing writes the anchors yet)_
 - **Purpose**: RUN_SUBS_PLAN Phase 0, PR 0.3 (v2.1202). Nullable `people_labor_jobs.project_id` / `step_id` anchors (FK projects / project_workflow_steps, ON DELETE SET NULL — the money record outlives the project/step) + partial indexes, so sub sheets can point at the workflow step that earned them. Written by Phase 2's commitment settlement; read by the Sub Labor ledger's project chip.
 - **Security**: No RLS changes — existing `people_labor_jobs` policies govern.

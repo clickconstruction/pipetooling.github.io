@@ -9429,6 +9429,85 @@ export type Database = {
         }
         Relationships: []
       }
+      step_commitments: {
+        Row: {
+          accepted_at: string | null
+          amount: number
+          approved_at: string | null
+          created_at: string
+          created_by: string | null
+          display_name: string
+          id: string
+          labor_job_id: string | null
+          notes: string | null
+          offered_at: string | null
+          person_id: string
+          retainage_pct: number
+          settled_at: string | null
+          status: string
+          step_id: string
+          updated_at: string
+        }
+        Insert: {
+          accepted_at?: string | null
+          amount: number
+          approved_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          display_name: string
+          id?: string
+          labor_job_id?: string | null
+          notes?: string | null
+          offered_at?: string | null
+          person_id: string
+          retainage_pct?: number
+          settled_at?: string | null
+          status?: string
+          step_id: string
+          updated_at?: string
+        }
+        Update: {
+          accepted_at?: string | null
+          amount?: number
+          approved_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          display_name?: string
+          id?: string
+          labor_job_id?: string | null
+          notes?: string | null
+          offered_at?: string | null
+          person_id?: string
+          retainage_pct?: number
+          settled_at?: string | null
+          status?: string
+          step_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "step_commitments_step_id_fkey"
+            columns: ["step_id"]
+            isOneToOne: false
+            referencedRelation: "project_workflow_steps"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "step_commitments_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "step_commitments_labor_job_id_fkey"
+            columns: ["labor_job_id"]
+            isOneToOne: false
+            referencedRelation: "people_labor_jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       step_subscriptions: {
         Row: {
           created_at: string | null
