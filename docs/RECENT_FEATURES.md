@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-01 (v2.1223)
+last_updated: 2026-08-01 (v2.1224)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2046,6 +2046,10 @@ when_to_read:
 155. [Customer and Project Management](#customer-and-project-management)
 ---
 
+## Latest Updates (v2.1224)
+
+### Guides move into Settings, with a "see what they see" role lens (2026-08-01)
+Per user request. **(1)** The `/help` "How do I…" browser is extracted verbatim to [`GuideBrowser.tsx`](../src/components/GuideBrowser.tsx) and mounted as a new **Settings → Guides** tab for **every role** (the Settings tab list is role-built, but this entry is unconditional — subs/helpers/primaries reach Settings from their allowlist, so guides are now one tap from anywhere). `/help` becomes a thin wrapper; every `?g=<slug>` deep link keeps working on both surfaces. The tab mounts only while active so its URL param and search autofocus stay inert elsewhere. **(2)** New **role lens**: supervising roles get "Viewing guides for:" chips — Everything plus every role *below* them on the supervision ladder — that re-filter the list exactly as that role sees it, with a banner naming the role ("Showing the guides a Sub sees on their Help page"). Pure kernel [`roleGuideLens.ts`](../src/lib/roleGuideLens.ts) (`guideLensRolesFor` ranks dev > master > controller > assistant > superintendent > estimator/primary > sub/helper; only superintendent-and-above get a lens; `guideLensRoleLabel` gives spoken names — `displayLabelForUserRole` deliberately keeps legacy dropdown formatting like "Master_technician"). 4 tests. Verified live: 61 guides for a dev, 14 through the Sub lens, 17 through Superintendent. Client-only.
 ## Latest Updates (v2.1223)
 
 ### Edit Job billing area: segment invoices bill the remaining; ①/②/③ compaction (2026-08-01)
