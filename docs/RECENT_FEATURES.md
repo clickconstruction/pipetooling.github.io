@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-01 (v2.1204)
+last_updated: 2026-08-01 (v2.1205)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2046,12 +2046,15 @@ when_to_read:
 155. [Customer and Project Management](#customer-and-project-management)
 ---
 
+## Latest Updates (v2.1205)
+
+### Projects list becomes a run-of-show board (2026-08-01)
+RUN_SUBS_PLAN Phase 1, PR 1.1 — Option A of the approved mockups. The Projects rows' full text step-chain (11 step names with arrows) is replaced by a segmented **phase bar** (one flex segment per step, colored by the existing status palette — green done, orange in progress, red sent back, striped skipped, per-segment `title` tooltips), a **current-step chip** (name · [position/total] · assignee · "day N" from `started_at`), and **attention pills**: `waiting on {assignee} · {N}d` (in_progress ≥ 3 days), `current step unassigned`, `no schedule on current step`, `sent back: {step}`. New pure kernel [`projectAttention.ts`](../src/lib/projects/projectAttention.ts) (`buildProjectAttention`, 8 tests) pins the legacy current-step resolution exactly (first rejected → first in_progress → first pending) and adds the flag/score model; day math is TZ-correct via `calendarYmdInAppTzFromIso`. The list **sorts needs-attention first** (stable within equal scores). The page's steps embed widens to carry `assigned_to_name, started_at, scheduled_*` (additive, no migration). The old "· Current step:" text and inline chain colors are gone — same info, one glance. Guide `see-project-status-at-a-glance`. Verified live on the branch dev server. Client-only.
+
 ## Latest Updates (v2.1204)
 
 ### Developments part 3: Stages filter + click-to-filter + Development Review (2026-08-01)
 Completes the v2.1198 + v2.1203 train. **Filter**: a house-icon dropdown next to the Stages GC filter — **All developments**, each development among loaded jobs (name-sorted), **No development set** (the fill-them-in worklist) — rendered only when at least one loaded job has a development, feeding `buildJobsStagesBoardLists` INPUT so every section, count, aging chip, print, and AR modal follow, exactly like the GC filter. New kernels `developmentFilterOptionsFromJobs` + `filterJobsByDevelopment` + `STAGES_DEVELOPMENT_FILTER_NONE` in [`jobsStagesBoard.ts`](../src/lib/jobsStagesBoard.ts) (+1 test). **Click-to-filter**: the house-icon development label on Stages rows becomes a dotted-underline button that sets the filter (new optional `onDevelopmentFilter` on `StagesRowRenderContext`, threaded through both Stages tables; absent = plain text, so other callers are untouched). **Development Review**: [`JobsGcReviewModal.tsx`](../src/components/jobs/JobsGcReviewModal.tsx) gains a **Group by: By GC | By Development** pill toggle (shown only when a billed row has a development) — [`gcReviewRollup.ts`](../src/lib/gcReviewRollup.ts) takes `groupBy: 'development'` and groups the SAME StageRows by `job.development` with a **No development set** bucket last (+1 test; grand total still reconciles with the section header by construction), and [`gcStatementReport.ts`](../src/lib/jobsDocuments/gcStatementReport.ts) titles prints "Development statement — {name}" via the new `groupBy` opt. Guides `group-jobs-into-a-development` + `track-a-general-contractor-on-a-job` updated. Client-only.
-
-## Latest Updates (v2.1201)
 
 ## Latest Updates (v2.1203)
 
