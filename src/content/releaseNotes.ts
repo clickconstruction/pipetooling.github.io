@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1231',
+    date: '2026-08-01',
+    title: 'Edit Job: the billing math reads as a tidy 2×2 on phones',
+    kind: 'feature',
+    highlights: [
+      'The Paid + Billed + New Invoice → Left to bill chips now split into two even rows on a phone: what is already accounted for on top, the new bill and what remains below.',
+      'All four chips share the width evenly, and the invoice amount box stretches with its chip — easier to tap and type.',
+    ],
+  },
+  {
     version: 'v2.1230',
     date: '2026-08-01',
     title: 'Edit Job: less empty space under the invoice slider',

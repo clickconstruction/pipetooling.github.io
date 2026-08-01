@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-01 (v2.1230)
+last_updated: 2026-08-01 (v2.1231)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1231)
+
+### Edit Job ② Invoices — the billing equation becomes a 2×2 grid on phones (2026-08-01)
+The equation row (`Paid + Billed + New Invoice → Left to bill`, [`JobFormBreakOffSection.tsx`](../src/components/jobs/JobFormBreakOffSection.tsx)) was a single wrapping flex row of content-sized chips; on a phone it broke arbitrarily — three chips crammed on line one, `→ Left to bill` stranded on line two beside dead space. On narrow viewports (`useNarrowViewport640`) the row is now a `grid-template-columns: minmax(0,1fr) auto minmax(0,1fr)` grid: row one is money already accounted for (**Paid + Billed**), row two is the decision (**New Invoice → Left to bill**), with all four chips stretched to equal width (`EquationChip` gains a `stretch` prop: fill the cell, center the label, vertically center next to the taller New Invoice chip) and the `+`/`→` operators centered in the middle column. The second `+` (between Billed and New Invoice) is deliberately dropped on the grid — the row break replaces it, and a stray operator cell would break the 3-per-row auto-placement. The amount input inside the New Invoice chip stretches to the chip width (`7.5rem` → `100%`), a larger tap target. Desktop keeps the single-line flex equation untouched. New render test [`JobFormBreakOffSection.render.test.tsx`](../src/components/jobs/JobFormBreakOffSection.render.test.tsx) (2 tests, jsdom + narrow `matchMedia` mock, partial-cast `useBreakOffSlider` mock): narrow renders the grid with one `+` and stretched chips; wide keeps flex with both `+` operators and content-sized chips. Verified: `tsc -b` clean, zero new lints, full vitest suite green. Files: modified [`src/components/jobs/JobFormBreakOffSection.tsx`](../src/components/jobs/JobFormBreakOffSection.tsx); new render test. No DB / migration / RLS / RPC / Edge / type-gen changes.
 
 ## Latest Updates (v2.1230)
 
