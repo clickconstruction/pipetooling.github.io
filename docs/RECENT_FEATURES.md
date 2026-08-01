@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-31 (v2.1185)
+last_updated: 2026-07-31 (v2.1186)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1186)
+
+### Job address split cities: dev-editable list (2026-07-31)
+The hardcoded `TX_JOB_ADDRESS_LOCALITY_KEYWORDS` list (16 Central-Texas cities) decides where one-line job addresses break into street / "City ST" lines (Stages + Billing rows via `formatAddressTwoLines`, lien-tooling + AIA prefills via `splitJobAddressForPrefill`) — addresses in unlisted cities (field case: "1875 Co Rd 777 **Devine** TX") never split. Devs can now append cities in **Settings → Jobs &amp; dispatch → Job address city line breaks** ([`JobAddressCityListSettingsBlock.tsx`](../src/components/settings/JobAddressCityListSettingsBlock.tsx), modeled on the TripCharge block; new `app_settings` key `job_address_extra_localities_v1`, newline text, generic all-read/dev-write RLS — no migration). Kernel additions in [`txLocalityAddressSplit.ts`](../src/lib/txLocalityAddressSplit.ts): `parseExtraTxLocalitiesText` (newline/comma split, case-insensitive dedupe, built-ins dropped) + module-state `set/getExtraTxLocalityKeywords` so the split fns stay pure-sync in render paths; `findEarliestTxLocalityIndex` scans built-ins + extras (Blanco Rd guard untouched). Hydration: [`jobAddressLocalitySettings.ts`](../src/lib/jobAddressLocalitySettings.ts) loads once per session from [`Layout.tsx`](../src/components/Layout.tsx) (fail-soft) and re-applies immediately after a dev saves. New test file (7 tests incl. the exact Devine shape + built-in regression pins). Guide `job-address-city-line-breaks`. Client-only.
 
 ## Latest Updates (v2.1185)
 

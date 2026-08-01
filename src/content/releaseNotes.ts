@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1186',
+    date: '2026-07-31',
+    title: 'Add your own cities to job-address line breaks',
+    kind: 'feature',
+    highlights: [
+      'Job addresses wrap to a second line at known city names — devs can now add missing cities (like Devine) in Settings → Jobs & dispatch.',
+      'The same list also fills the city field correctly in lien and AIA prefills.',
+    ],
+  },
+  {
     version: 'v2.1185',
     date: '2026-07-31',
     title: 'Schedule & time in search got much lighter',

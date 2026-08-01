@@ -177,3 +177,12 @@ export const APP_SETTINGS_KEY_TEAM_REVIEW_CADENCE_DAYS = 'team_review_cadence_da
  * all authenticated read. @see `src/lib/crewPnlSummary.ts`
  */
 export const APP_SETTINGS_KEY_CREW_PNL_SUB_EQUIVALENT_RATE = 'crew_pnl_sub_equivalent_rate_v1' as const
+
+/**
+ * `value_text`: org-added city names (one per line) appended to the built-in
+ * TX_JOB_ADDRESS_LOCALITY_KEYWORDS list that decides where one-line job addresses split
+ * into street / "City ST" lines (Stages + Billing rows, lien prefill, AIA form).
+ * Dev writes (Settings → Jobs & dispatch); all authenticated read (hydrated once per
+ * session in Layout). @see `src/lib/jobAddressLocalitySettings.ts`
+ */
+export const APP_SETTINGS_KEY_JOB_ADDRESS_EXTRA_LOCALITIES_V1 = 'job_address_extra_localities_v1' as const
