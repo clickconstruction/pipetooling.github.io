@@ -106,6 +106,12 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 #### August 1, 2026
 
+**`20260801030726_workflow_projection_step_anchor.sql`** _(apply via `supabase db push` right after the PR merges — loading is order-safe (`select('*')` tolerates missing columns) but saving an ANCHORED projection 400s until the columns exist)_
+- **Purpose**: workflow money flow (v2.1194) — nullable `workflow_projections.step_id` (FK `project_workflow_steps` ON DELETE **SET NULL**: deleting a step un-anchors its projections instead of deleting them) + `placement` text CHECK before/after (default 'after') + partial index on `step_id`. Anchored projections render as inline $ markers between Workflow step cards with running projected/spent totals; NULL `step_id` = the pre-existing top-panel-only behavior.
+- **Security**: additive columns on an existing RLS'd table — existing owner/master policies cover them; no policy changes.
+- **Ordering**: push promptly after the client merge (see note above); old clients ignore the columns entirely.
+- **Category**: Feature schema
+
 **`20260801020903_ar_link_recorded_payments.sql`** _(apply via `supabase db push` after the PR merges; order-safe both ways — the new client's "Payment received" toggle only renders once the candidates RPC exists, and old clients never send `payment_id` entries)_
 - **Purpose**: AR modal "link a recorded payment" (v2.1191). New `list_unlinked_payments_for_bank_payments()` — recorded `jobs_ledger_payments` rows with no Mercury link and no Stripe provenance (no `stripe_invoice_id` on the invoice, note ≠ 'Stripe'), positive amount, `paid_on` within 180 Chicago days, LIMIT 500. `apply_mercury_bank_payment_allocations` re-created with a third allocation shape `{payment_id}`: validates unlinked + non-Stripe + job access, counts the ROW's amount toward the deposit cap (client amount ignored), then UPDATEs the row stamping `mercury_transaction_id` (+ Mercury id as reference when blank) — no INSERT, no status/`payments_made` changes. Duplicate-payment-in-call and already-linked guards; a concurrent link makes the UPDATE match 0 rows and raises. Invoice/job branches byte-faithful to `20260730174929`.
 - **Security**: candidates RPC is `LANGUAGE sql` SECURITY DEFINER with a role-gate WHERE (dev/master/assistant/primary; zero rows otherwise — deliberate fail-soft for pre-push clients). Apply RPC keeps its existing role + per-job access gates on the new branch.

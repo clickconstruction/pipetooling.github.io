@@ -11151,8 +11151,10 @@ export type Database = {
           created_at: string | null
           id: string
           memo: string
+          placement: string | null
           sequence_order: number
           stage_name: string
+          step_id: string | null
           updated_at: string | null
           workflow_id: string
         }
@@ -11162,8 +11164,10 @@ export type Database = {
           created_at?: string | null
           id?: string
           memo: string
+          placement?: string | null
           sequence_order?: number
           stage_name: string
+          step_id?: string | null
           updated_at?: string | null
           workflow_id: string
         }
@@ -11173,8 +11177,10 @@ export type Database = {
           created_at?: string | null
           id?: string
           memo?: string
+          placement?: string | null
           sequence_order?: number
           stage_name?: string
+          step_id?: string | null
           updated_at?: string | null
           workflow_id?: string
         }

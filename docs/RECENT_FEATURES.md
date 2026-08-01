@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-31 (v2.1193)
+last_updated: 2026-07-31 (v2.1194)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1194)
+
+### Workflow money flow: projections anchor to steps with running totals (2026-07-31)
+User-picked design "B + C's drawer". Projections can now attach to a workflow step, placed **before** or **after** it. Migration [`20260801030726_workflow_projection_step_anchor.sql`](../supabase/migrations/20260801030726_workflow_projection_step_anchor.sql): nullable `workflow_projections.step_id` (FK `project_workflow_steps`, ON DELETE **SET NULL** — deleting a step un-anchors, never deletes, its projections) + `placement` CHECK before/after (default after) + partial index; existing rows stay unanchored. New pure kernel [`workflowMoneyFlow.ts`](../src/lib/workflowMoneyFlow.ts) (`buildWorkflowMoneyFlow`, 4 tests): walks steps in `sequence_order` and emits per-marker running totals — `runningProjected` (cumulative anchored projections incl. self, flow order befores→step→afters) and `runningSpent` (line-item dollars for steps fully before the marker: before-markers exclude their own step, after-markers include it). [`Workflow.tsx`](../src/pages/Workflow.tsx): **inline $ markers** between cards (memo + amount + blue "projected to here" / amber "spent" pills; click-to-expand box with placement, Edit, Delete), a **Money drawer** in each expanded card (`Money · $X projected · $Y items` header; before/after rows, actual-items total, "+ Add projection here" seeding the step), and the Add/Edit Projection modal gains an **Attach to step** picker + before/after radios (free-text field relabeled "Label"; unattached = top-panel-only, exactly the old behavior). All new UI is `isDevOrMaster` — same visibility as the Projections panel, whose totals are unchanged (same table). Load is order-safe (`select('*')` tolerates missing columns); anchored saves need the migration — push right after merge. Guide `see-money-flow-on-a-workflow`. Client + migration.
 
 ## Latest Updates (v2.1193)
 
