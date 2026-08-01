@@ -12,6 +12,7 @@ import { AssignedSkeleton, SubscribedSkeleton } from './DashboardSkeletons'
 import type { AssignedStep, Step, SubscribedStep } from '../../lib/dashboardBootTypes'
 import { daysOpen, formatDatetime, personDisplay } from '../../lib/dashboardProjectsCard'
 import { planStepTransition, type StepLifecyclePlan } from '../../lib/workflow/stepLifecycle'
+import { formatWorkOrderAmount } from '../../lib/workflow/workOrderNotifications'
 import { sendStepLifecycleNotifications } from '../../lib/workflow/stepLifecycleNotifications'
 
 /**
@@ -85,6 +86,44 @@ export function DashboardProjectsCard({
     const hasInProgress = assignedSteps.some((s) => s.status === 'in_progress')
     setAssignedStagesExpanded(hasInProgress)
   }, [assignedLoading, assignedSteps])
+
+  const [commitmentChipByStep, setCommitmentChipByStep] = useState<Record<string, string>>({})
+
+  // Work-order chip per assigned step (RUN_SUBS_PLAN PR 4.6). RLS scopes rows
+  // (a sub sees only their own); fail-soft pre-migration.
+  useEffect(() => {
+    const stepIds = [...new Set(assignedSteps.map((s) => s.id))]
+    if (stepIds.length === 0) {
+      setCommitmentChipByStep({})
+      return
+    }
+    let cancelled = false
+    ;(async () => {
+      const { data, error } = await supabase
+        .from('step_commitments')
+        .select('step_id, amount, status')
+        .in('step_id', stepIds)
+        .in('status', ['offered', 'accepted', 'approved', 'settled'])
+      if (cancelled || error) return
+      const byStep: Record<string, Array<{ amount: number; status: string }>> = {}
+      for (const row of (data ?? []) as Array<{ step_id: string; amount: number; status: string }>) {
+        ;(byStep[row.step_id] ??= []).push({ amount: Number(row.amount), status: row.status })
+      }
+      const chips: Record<string, string> = {}
+      for (const [stepId, rows] of Object.entries(byStep)) {
+        if (rows.length === 1) {
+          chips[stepId] = `${formatWorkOrderAmount(rows[0]!.amount)} · ${rows[0]!.status}`
+        } else {
+          const total = rows.reduce((sum, r) => sum + r.amount, 0)
+          chips[stepId] = `${rows.length} work orders · ${formatWorkOrderAmount(total)}`
+        }
+      }
+      setCommitmentChipByStep(chips)
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [assignedSteps])
 
   async function recordAction(stepId: string, actionType: 'started' | 'completed' | 'approved' | 'rejected' | 'reopened' | 'skipped', notes?: string | null) {
     const performedBy = await getCurrentUserName()
@@ -338,6 +377,7 @@ export function DashboardProjectsCard({
               <div id="dashboard-assigned-stages-panel" role="region" aria-labelledby="dashboard-assigned-stages-heading">
                 {activeAssignedSteps.map((s) => (
                   <AssignedStageCard
+                    commitmentChip={commitmentChipByStep[s.id] ?? null}
                     key={s.id}
                     step={s}
                     userNames={userNames}
@@ -378,6 +418,7 @@ export function DashboardProjectsCard({
                     {assignedStagesCompleteExpanded &&
                       completedAssignedSteps.map((s) => (
                         <AssignedStageCard
+                          commitmentChip={commitmentChipByStep[s.id] ?? null}
                           key={s.id}
                           step={s}
                           userNames={userNames}

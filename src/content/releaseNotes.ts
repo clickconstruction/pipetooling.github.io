@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1222',
+    date: '2026-08-01',
+    title: 'Paperwork warnings right where you commit to a sub',
+    kind: 'feature',
+    highlights: [
+      'Picking a sub for a work order shows their compliance at a glance \u2014 including a warning when their COI would lapse before the proposed work window ends.',
+      'Assigned steps on the Dashboard now carry a money chip with the work order\u2019s amount and status.',
+    ],
+  },
+  {
     version: 'v2.1221',
     date: '2026-08-01',
     title: 'The Sub Board: see who\u2019s booked when',
