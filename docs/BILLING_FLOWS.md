@@ -5,7 +5,7 @@ file: BILLING_FLOWS.md
 type: System Documentation
 purpose: End-to-end map of the billing system — job lifecycle, invoices, the three billing channels, Stripe test/live plumbing, payments, send-backs, routes, cleanup — plus a live-test safety brief and optimization candidates
 audience: Developers, AI Agents, anyone running a live end-to-end billing test (there is no staging)
-last_updated: 2026-07-18
+last_updated: 2026-08-01
 
 key_sections:
   - name: "Job billing lifecycle"
@@ -103,7 +103,7 @@ Audit table (baseline): `job_id` FK CASCADE, `from_status`, `to_status`, `change
 
 ### Shape and statuses
 
-Created once in the baseline migration; no later ALTERs. Key columns: `job_id` (FK CASCADE), `amount` numeric(12,2), `status` CHECK `ready_to_bill`/`billed`/`paid` (default `ready_to_bill` = "draft bill"), `sequence_order`, `billed_at`, `estimated_bill_date`, `is_primary_rtb_bundle` (the ensure-RPC remainder line), Stripe group (`stripe_invoice_id`, `stripe_invoice_status`, `hosted_invoice_url`, `stripe_invoice_memo`, `stripe_invoice_footer`), `external_send_channel` CHECK NULL/`housecallpro`/`physical`/`stripe_manual`/`stripe` + `external_send_note`, `sent_to_customer_at`, and the five `agreed_write_down_*` audit columns. **There is no test/live mode column** — Stripe mode is a per-request client preference (see below). Row type: `src/types/database.ts`.
+Created in the baseline migration; one later ALTER (`supabase/migrations/20260730165312_stripe_mode_on_invoices.sql`, v2.1114). Key columns: `job_id` (FK CASCADE), `amount` numeric(12,2), `status` CHECK `ready_to_bill`/`billed`/`paid` (default `ready_to_bill` = "draft bill"), `sequence_order`, `billed_at`, `estimated_bill_date`, `is_primary_rtb_bundle` (the ensure-RPC remainder line), Stripe group (`stripe_invoice_id`, `stripe_invoice_status`, `hosted_invoice_url`, `stripe_invoice_memo`, `stripe_invoice_footer`, and **`stripe_mode`** — CHECK `'live'`/`'test'`, stamped by `create-stripe-invoice`, NULL = pre-v2.1114 legacy treated as live; the row is the authority on its own mode, see below), `external_send_channel` CHECK NULL/`housecallpro`/`physical`/`stripe_manual`/`stripe` + `external_send_note`, `sent_to_customer_at`, and the five `agreed_write_down_*` audit columns. Row type: `src/types/database.ts`.
 
 Multiple invoices per job are first-class ("Partial invoices per job" per the table comment). Related: `jobs_ledger_invoice_stripe_email_sends` (append-only Stripe-email log), `job_collect_payment_flows.jobs_ledger_invoice_id` (SET NULL), `stripe_oob_payment_reverts` (CASCADE).
 
@@ -158,8 +158,8 @@ flowchart LR
 
 ### Stripe bill
 
-- **Preview** (debounced 450 ms while the tab is open): edge `preview-stripe-invoice` — no DB writes; retrieves the saved `customers.stripe_customer_id` or creates+deletes an **ephemeral Stripe customer** per preview (delete failure only warns). Rendered by `src/components/jobs/StripeBillPreSubmitPreview.tsx`.
-- **"Create Stripe invoice"** → edge `create-stripe-invoice`: customer upsert (persists `customers.stripe_customer_id` — one column shared by test and live), `invoices.create` with `collection_method:'send_invoice'` + `days_until_due`, custom number `<hcp digits>-YYMMDDHHmm` (`_shared/pipetoolingStripeInvoiceNumber.ts`; duplicate → 409 "change the due date"), per-fixture invoice items, `finalizeInvoice`. DB patch: `status:'billed'`, `external_send_channel:'stripe'`, `stripe_invoice_id/status`, `hosted_invoice_url`, memo/footer. Idempotent on re-call. **Finalize does not email the customer** (no `sendInvoice` call) — but Stripe *account-level* email settings could; verify in the Stripe Dashboard before a live test.
+- **Preview** (debounced 450 ms while the tab is open): edge `preview-stripe-invoice` — no DB writes; retrieves the saved customer id from the **mode-appropriate column** (`customers.stripe_customer_id` live / `stripe_customer_id_test` test, v2.1117) or creates+deletes an **ephemeral Stripe customer** per preview (delete failure only warns). Rendered by `src/components/jobs/StripeBillPreSubmitPreview.tsx`.
+- **"Create Stripe invoice"** → edge `create-stripe-invoice`: customer upsert (persists the mode-appropriate `customers.stripe_customer_id`/`stripe_customer_id_test` column — since v2.1117 (A4) a cross-mode miss clears/replaces ONLY that mode's column, never the other mode's link), `invoices.create` with `collection_method:'send_invoice'` + `days_until_due`, custom number `<hcp digits>-YYMMDDHHmm` (`_shared/pipetoolingStripeInvoiceNumber.ts`; duplicate → 409 "change the due date"), per-fixture invoice items, `finalizeInvoice`. DB patch: `status:'billed'`, `external_send_channel:'stripe'`, `stripe_invoice_id/status`, `hosted_invoice_url`, memo/footer, **`stripe_mode`** (v2.1114). Idempotent on re-call. **Finalize does not email the customer** (no `sendInvoice` call) — but Stripe *account-level* email settings could; verify in the Stripe Dashboard before a live test.
 - **Post-create panel / "View bill"** (`src/components/jobs/HostedStripeBillPanel.tsx`): edge `get-stripe-invoice-details` (reads + silent memo/footer DB backfill); "Customer pay page" opens `hosted_invoice_url` (what the customer sees); `StripeInvoiceSharePanel` copy-link/SMS-draft/email-draft buttons **send nothing** (`SmsBillDraftModal`/`EmailBillDraftModal` are clipboard + `mailto:` only; templates in `src/lib/stripeInvoiceShareCopy.ts`).
 - **"Send Email invoice from Stripe"** (`src/components/jobs/StripeInvoiceSendFromStripeButton.tsx`) → edge `send-stripe-invoice`: the **only path where the Stripe bill is emailed to the customer** — `stripe.invoices.sendInvoice()`, from Stripe, to the email on the Stripe invoice/customer object. Logs to `jobs_ledger_invoice_stripe_email_sends`, stamps `sent_to_customer_at`. Test mode: Stripe accepts the send but delivers no real email.
 - **Paid**: the customer pays the hosted page → `stripe-webhook` → `mark_invoice_paid_from_stripe` (payment row, invoice+job → paid) + `complete_job_collect_payment_flow_for_invoice`. Off-Stripe closes go through `record-stripe-invoice-out-of-band-payment` (full open balance only; ledger flips paid **only via the webhook** seconds later).
@@ -185,25 +185,29 @@ flowchart LR
 
 ### Key selection and mode plumbing
 
-- Server: `supabase/functions/_shared/stripeSecrets.ts` — `stripeApiKeyForMode` picks `STRIPE_SECRET_KEY_TEST` / `STRIPE_SECRET_KEY_LIVE` (legacy `STRIPE_SECRET_KEY` fallback by `sk_test_`/`sk_live_` prefix). `resolveStripeBillingMode` honors the request-body `stripe_mode`; **when omitted and both keys are configured the server defaults to `test`** (scripts/curl are safe by default). Webhook signatures are tried against `STRIPE_WEBHOOK_SECRET_LIVE` → `_TEST` → legacy.
-- Client: `src/lib/billingStripeModePref.ts` — localStorage `pipetooling-billing-stripe-mode-pref`, default `'live'` (legacy `auto` migrates to `live`); `stripeModeInvokeBody` adds `stripe_mode` to every invoke; `stripeDashboardInvoiceUrl` builds test/live dashboard deep links.
-- Role gate: `stripeModeForBillingFromRole` (`src/lib/voidStripeInvoiceForRevert.ts`) — **only `dev` reads the pref; every other role is hard-pinned `'live'`**.
+- **The invoice row is the authority on its own mode** (workstream A of `docs/FRAGILITY_REMEDIATION_PLAN.md`, v2.1114–v2.1118, 2026-07-30): `jobs_ledger_invoices.stripe_mode` records which mode each invoice was created in (stamped by `create-stripe-invoice`; existing Stripe-linked rows backfilled `'live'`; NULL = pre-A1 legacy treated as live, self-healed by the webhook). Every operation bound to an existing row resolves its Stripe key from the row, not the request (v2.1116, below).
+- Server: `supabase/functions/_shared/stripeSecrets.ts` — `stripeApiKeyForMode` picks `STRIPE_SECRET_KEY_TEST` / `STRIPE_SECRET_KEY_LIVE` (legacy `STRIPE_SECRET_KEY` fallback by `sk_test_`/`sk_live_` prefix). `resolveStripeBillingMode` honors the request-body `stripe_mode`; **when omitted and both keys are configured the server defaults to `live`** (v2.1118 — was test, which let scripts/curl silently operate in test mode; the default now only reaches `create`/`preview`, since row-bound functions resolve from the row). `effectiveRowStripeMode(rowMode, requested)` implements the row-authority rule: explicit request ≠ row mode → conflict (409, no side effects); NULL row mode falls back to requested/default. Webhook signing secrets carry their env-var's mode (`stripeWebhookSecretsWithModes`, tried live → test → legacy).
+- Client: `src/lib/billingStripeModePref.ts` — localStorage `pipetooling-billing-stripe-mode-pref`, default `'live'` (legacy `auto` migrates to `live`); `stripeModeInvokeBody` adds `stripe_mode` to every invoke; `stripeDashboardInvoiceUrl` builds test/live dashboard deep links. Unit-tested since v2.1118 (`src/lib/billingStripeModePref.test.ts`).
+- Role gate: `stripeModeForBillingFromRole` (`src/lib/voidStripeInvoiceForRevert.ts`) — **only `dev` reads the pref; every other role is hard-pinned `'live'`**. Since v2.1118 (A5) **every** pref read goes through this gate — the two formerly ungated call sites (`AgreedWriteDownModal.tsx`, the memo/footer backfill in `JobFormModal.tsx`) are closed.
 - UI toggle: `src/components/jobs/StripeBillingModeToggle.tsx`, rendered **only** in the Bill Customer modal header (Stripe tab, pre-submit, dev role). It is *not* in Settings.
-- **Mode is per-request; nothing stores which mode an invoice was created in.** Cross-mode operations surface as Stripe `resource_missing` — except void (below). Two call sites read the raw pref **without** the dev gate: `src/components/jobs/AgreedWriteDownModal.tsx` and the memo/footer backfill in `src/components/jobs/JobFormModal.tsx`.
+- Per-mode customer links (v2.1117, A4): `customers.stripe_customer_id` (live) + `customers.stripe_customer_id_test`; `create`/`preview` read/clear/persist only the requested mode's column. Pre-A4, a cross-mode create **cleared and replaced the other mode's id** — that bug class is closed. Exception: `update-collect-payment-stripe-customer-email` still reads only the live column (subs are effectively live-pinned; a dev test-mode collect flow gets the friendly missing-customer error).
+- Cross-mode requests against a stamped row no longer surface as Stripe `resource_missing` — they are rejected server-side with **409 `stripe_mode_mismatch`** (`{error, code, row_mode, requested_mode}`) before any Stripe call (v2.1116, A3).
 
-### Edge functions (all `verify_jwt=false` with in-body Bearer auth + RLS; all accept `stripe_mode`)
+### Edge functions (all `verify_jwt=false` with in-body Bearer auth + RLS)
+
+`stripe_mode` in the request body is an **input** only for `create-stripe-invoice`/`preview-stripe-invoice` (no pre-existing row). For the row-bound functions it is a cross-check: the row's `stripe_mode` wins; an explicit mismatch → 409 `stripe_mode_mismatch` with zero side effects; omitted → the row's mode; NULL-mode legacy rows fall back to requested/default (v2.1116, A3 — shared `effectiveRowStripeMode`).
 
 | Function | Stripe calls | DB writes | Notes |
 |---|---|---|---|
-| `create-stripe-invoice` | customer upsert, invoice create+finalize, invoice items | invoice row → billed/stripe fields; `customers.stripe_customer_id` | idempotent; no email |
-| `preview-stripe-invoice` | createPreview (+ ephemeral customer create/delete) | none | debounced from the modal |
-| `send-stripe-invoice` | `invoices.sendInvoice` — **emails customer** | `sent_to_customer_at`, send-log row | sub/helpers allowed via collect-flow gate |
-| `get-stripe-invoice-details` | retrieve + lines + account | memo/footer backfill | used by panels/queues |
-| `void-stripe-invoice-for-revert` | draft→delete, open→void; paid → 409 | deletes the invoice row | payments block; **"No such invoice" (e.g. wrong mode) is treated as noop and the row is deleted anyway** |
-| `record-stripe-invoice-out-of-band-payment` | metadata + `invoices.pay({paid_out_of_band})` | none directly — webhook writes the ledger | full open balance only |
-| `reverse-stripe-invoice-out-of-band-payment` | credit note | via RPC `revert_stripe_oob_invoice_payment` | `src/components/jobs/UnwindStripeOobPaymentModal.tsx` |
-| `stripe-invoice-agreed-write-down` | credit note | via service RPC | only Stripe function with a server role gate (dev/master/assistant/primary) |
-| `update-collect-payment-stripe-customer-email` | `customers.update({email})` | `jobs_ledger.customer_email`, `customers.contact_info` | sub/helpers + flow gate |
+| `create-stripe-invoice` | customer upsert, invoice create+finalize, invoice items | invoice row → billed/stripe fields incl. `stripe_mode`; mode-appropriate `customers.stripe_customer_id`/`_test` | idempotent; no email |
+| `preview-stripe-invoice` | createPreview (+ ephemeral customer create/delete when no saved id for the mode) | none | debounced from the modal |
+| `send-stripe-invoice` | `invoices.sendInvoice` — **emails customer** | `sent_to_customer_at`, send-log row | row-mode authoritative; sub/helpers allowed via collect-flow gate |
+| `get-stripe-invoice-details` | retrieve + lines + account | memo/footer backfill | row-mode authoritative; used by panels/queues |
+| `void-stripe-invoice-for-revert` | draft→delete, open→void; paid → 409 | deletes the invoice row | payments block; "No such invoice" → noop + row delete is **safe since v2.1116** — the lookup runs in the row's own mode, so "missing" genuinely means deleted upstream (pre-A3 a wrong-mode void deleted the row and orphaned the live Stripe invoice) |
+| `record-stripe-invoice-out-of-band-payment` | metadata + `invoices.pay({paid_out_of_band})` | none directly — webhook writes the ledger | row-mode authoritative; full open balance only |
+| `reverse-stripe-invoice-out-of-band-payment` | credit note | via RPC `revert_stripe_oob_invoice_payment` | row-mode authoritative; `src/components/jobs/UnwindStripeOobPaymentModal.tsx` |
+| `stripe-invoice-agreed-write-down` | credit note | via service RPC | row-mode authoritative; only Stripe function with a server role gate (dev/master/assistant/primary) |
+| `update-collect-payment-stripe-customer-email` | `customers.update({email})` | `jobs_ledger.customer_email`, `customers.contact_info` | row-mode authoritative for the invoice; still reads the **live** customer-id column only | 
 
 ### `stripe-webhook`
 
@@ -211,12 +215,12 @@ flowchart LR
 
 ### Which actions hit LIVE Stripe
 
-- **dev + pref=test**: none of the billing actions (all pass `stripe_mode:'test'`). Caveats: acting on a live-created invoice fails — except void, which deletes the ledger row and orphans the live Stripe invoice; webhook still writes prod DB either way.
+- **dev + pref=test**: none of the billing actions (all pass `stripe_mode:'test'`). Caveats: acting on a live-created (or live-stamped legacy) invoice returns **409 `stripe_mode_mismatch` with no side effects** (v2.1116 — pre-A3, void was the trap: it deleted the ledger row and orphaned the live Stripe invoice); webhook still writes prod DB either way.
 - **dev + pref=live, and ALL non-dev roles**: preview, create, details (incl. the silent JobFormModal backfill), send (**emails the real customer**), void, record-OOB (**marks the live invoice paid**), reverse-OOB and write-down (**live credit notes**), collect-payment email update.
 
 ### Banking read-only panels
 
-`src/components/BankingStripeInvoicesPanel.tsx` (DB rows, newest 500 — test and live rows are indistinguishable) and `src/components/BankingStripeWebhookEventsPanel.tsx` (`stripe_webhook_events` log). Parsers: `src/lib/stripeInvoiceDetailsResponse.ts`, `stripeInvoicePreview.ts`, `stripeInvoiceFooter.ts`.
+`src/components/BankingStripeInvoicesPanel.tsx` (DB rows, newest 500 — rows carry `stripe_mode` since v2.1114, but the panel does not render it yet) and `src/components/BankingStripeWebhookEventsPanel.tsx` (`stripe_webhook_events` log; events record `livemode` since v2.1115, likewise not rendered yet). Parsers: `src/lib/stripeInvoiceDetailsResponse.ts`, `stripeInvoicePreview.ts`, `stripeInvoiceFooter.ts`.
 
 ## Collect Payment field flow
 
@@ -239,7 +243,7 @@ Baseline: `job_id` FK CASCADE, `amount`, `sequence_order`, `paid_on` (user-enter
 |---|---|---|---|
 | A | RPC `mark_invoice_paid` | `src/components/jobs/BilledPaymentConfirmationModal.tsx` mode `invoice` (non-Stripe lines; Dashboard + Stages "Mark Paid") | partial allowed, ≤ invoice remaining; flips invoice/job paid when covered |
 | B | RPC `mark_job_paid` (6-arg; 3-arg legacy appears unused) | same modal, mode `job` | job-level row, `invoice_id` NULL |
-| C | RPC `mark_invoice_paid_from_stripe` (service-role, no auth) | `stripe-webhook` only | full remaining; note defaults `'Stripe'`; also how OOB records land (via `record-stripe-invoice-out-of-band-payment` → Stripe → webhook) |
+| C | RPC `mark_invoice_paid_from_stripe` (service-role only — EXECUTE revoked from anon/authenticated in v2.1110, A0) | `stripe-webhook` only | full remaining; note defaults `'Stripe'`; also how OOB records land (via `record-stripe-invoice-out-of-band-payment` → Stripe → webhook) |
 | D | RPC `apply_mercury_bank_payment_allocations` | `src/components/jobs/BankPaymentsModal.tsx` ("Accounts Receivable"; Jobs Stages + `/accounts-receivable`) | allocations `{invoice_id|job_id, amount}` against a Mercury deposit; caps at deposit remainder; non-Stripe billed targets only; `paid_on` forced to the deposit's posted Chicago day; `reference_number` = `mercury_id` |
 | E | Direct client writes | `src/components/jobs/JobFormModal.tsx` `persistBillingSlice` (edit autosave; `createJob` for new jobs) | Since v2.1121 (B5): **diff-based** — `diffPaymentRows` upserts persist-worthy form rows under stable ids and deletes only ids the form owns; rows born mid-edit (webhook payments) survive. The client no longer writes `payments_made` (B4) — the B3 trigger derives it from rows. Close-time demote paid→billed unchanged. (Pre-v2.1121: delete-all + reinsert with new ids + form-sum overwrite.) |
 
@@ -332,7 +336,7 @@ Checklist for a live end-to-end billing test on prod (there is no staging; every
 | **Open Bill Customer** (job) | ensure RPC may INSERT the primary RTB invoice row | none | Yes (row deleted on send-back to working) |
 | Stripe tab open (preview) | none | Stripe createPreview; may create+delete an **ephemeral Stripe customer** per cycle | Yes with pref=test; in live mode it churns real (deleted) customer objects |
 | Edit a preview line | UPDATEs `jobs_ledger_fixtures`/`materials` | none | Yes on the test job only |
-| "Create Stripe invoice" | invoice → billed/stripe fields; `customers.stripe_customer_id`; job → billed | Stripe customer upsert + finalized numbered invoice; **no email from the app** | Yes with pref=test; live only on the fake customer after pre-flight #1 |
+| "Create Stripe invoice" | invoice → billed/stripe fields incl. `stripe_mode`; mode-appropriate `customers.stripe_customer_id`/`_test`; job → billed | Stripe customer upsert + finalized numbered invoice; **no email from the app** | Yes with pref=test (a test create can no longer touch the live customer link — v2.1117); live only on the fake customer after pre-flight #1 |
 | "Send Email invoice from Stripe" | `sent_to_customer_at`, send log | **Stripe emails the invoice** (test mode: no real delivery) | Only to an email you control |
 | Copy link / SMS draft / Email draft | none | clipboard / your own mail app | Yes |
 | HCP "Save" | invoice → billed (`housecallpro`) | **none** | Yes — the zero-side-effect channel; use it to test lifecycle without Stripe |
@@ -341,9 +345,9 @@ Checklist for a live end-to-end billing test on prod (there is no staging; every
 | Pay the hosted invoice (test mode, card 4242…) | webhook → payment row, invoice+job → paid | none beyond Stripe test | Yes (needs pre-flight #2) |
 | Mark Paid (`BilledPaymentConfirmationModal`) | payment row via `mark_invoice_paid`/`mark_job_paid` | none (non-Stripe lines) | Yes; **payments block send-back — unlink before cleanup** |
 | Record OOB payment (Stripe line) | Stripe `invoices.pay(paid_out_of_band)`; ledger via webhook | marks the Stripe invoice paid | pref=test only; full balance only |
-| Apply discount (write-down) | invoice amount + audit; maybe paid cascade | **Stripe credit note** (email behavior unverified) | pref=test only; note the modal reads the pref **without** the dev gate |
+| Apply discount (write-down) | invoice amount + audit; maybe paid cascade | **Stripe credit note** (email behavior unverified) | pref=test only; the modal's pref read is dev-gated since v2.1118, and the row's mode wins server-side regardless |
 | Mercury AR allocation (`BankPaymentsModal`) | payment rows linked to a real deposit | none | **No** — only real bank deposits are listed; do not allocate real deposits to a test job. Test unlink via a manual `mark_invoice_paid` payment instead |
-| Send back (billed → RTB) | deletes billed row(s); job demote | Stripe void/delete for Stripe lines (permanent for that invoice number) | Yes after unlinking payments; **never flip the mode pref mid-test** — a wrong-mode void deletes the ledger row and orphans the real Stripe invoice |
+| Send back (billed → RTB) | deletes billed row(s); job demote | Stripe void/delete for Stripe lines (permanent for that invoice number) | Yes after unlinking payments; a wrong-mode void is rejected with 409 and the row survives (v2.1116) — keeping one mode for the whole test is still the clean habit |
 | Send Job Back (RTB → working) | deletes RTB drafts; status | none; cancels an active Collect Payment flow (modal warns) | Yes |
 | Collect Payment certify/approve | `job_collect_payment_flows` transitions | none (no notifications) | Yes |
 | Delete draft bill | deletes RTB row | none | Yes |
@@ -354,7 +358,7 @@ Checklist for a live end-to-end billing test on prod (there is no staging; every
 
 1. Only a `dev` user can use Stripe test mode, via the toggle inside Bill Customer (Stripe tab). The pref is per-browser localStorage (`pipetooling-billing-stripe-mode-pref`, default live). Everyone else always hits live Stripe.
 2. Two customer-visible sends exist: `send-stripe-invoice` (Stripe emails) and Physical "Send email" (Resend from `team@noreply.pipetooling.com`). Creating a Stripe invoice does **not** email. HCP records only. Draft/SMS/copy buttons never send.
-3. Keep one mode for the whole test. Cross-mode void silently deletes the ledger row and orphans the Stripe invoice; other cross-mode ops fail loudly.
+3. The invoice row records its mode (`stripe_mode`, v2.1114) and row-bound operations obey it: an explicit cross-mode request — including void — is rejected with 409 `stripe_mode_mismatch` and no side effects (v2.1116). Keeping one mode for the whole test is still simplest.
 4. Payments block send-backs; unlink via Edit Job (or the OOB unwind for Stripe) before cleanup.
 5. The webhook mode-matches since v2.1115: a test-mode payment flips a job to paid only when the invoice row itself is `stripe_mode='test'` (that's the designed test path); test events can no longer touch live rows.
 6. Cleanup: delete the job then the customer; everything lands in the dev-restorable 90-day archive. Stay under 5 bundles/hour to avoid alerting other devs. Stripe-side objects are never cleaned by the app.
@@ -371,8 +375,8 @@ Findings only (no fixes) — seeds for a later pass.
 6. Two hand-maintained invoice select lists: `DASHBOARD_INVOICES_JOBS_LEDGER_SELECT` (drift-tested) vs `JOBS_LEDGER_INVOICES_EMBED` (untested, silently omits write-down columns).
 7. `useDashboardBillingInvoices.refreshInvoices` duplicates the two initial-load effects nearly verbatim; payments are over-fetched (`select('*')` for all billed jobs on load and every refresh) while `useDashboardFinancials` needs only `(invoice_id, amount)`.
 8. Quickfill `BilledAwaitingPaymentSection` is a 4-round-trip sequential waterfall duplicating `useBilledTotal`'s aggregation.
-9. `JobFormModal.saveJob` deletes **all** payment rows and re-inserts the form rows on every save — new UUIDs for locked Stripe/Mercury rows, paired activity events per row per save, archive churn, and a non-transactional client loop that can desync `payments_made`.
-10. `payments_made` has three writers (RPC increments, reconcile recompute, JobFormModal overwrite) and no DB-side invariant.
+9. ~~`JobFormModal.saveJob` deletes **all** payment rows and re-inserts the form rows on every save~~ **Fixed in v2.1121 (B5)**: `persistBillingSlice` is diff-based (`src/lib/jobs/paymentRowsDiff.ts`) — stable ids, no delete-all, webhook-mid-edit rows survive.
+10. ~~`payments_made` has three writers (RPC increments, reconcile recompute, JobFormModal overwrite) and no DB-side invariant.~~ **Fixed in v2.1119–v2.1121 (B3/B4)**: an AFTER trigger on `jobs_ledger_payments` derives the column from rows; the incrementing RPCs and the client stopped writing it. (B6 hard write-guard still pending.)
 11. `list_mercury_transactions_for_bank_payments` re-runs the same correlated payments-sum subquery 2–3× per tx and duplicates ~120 lines of filter parsing with its `count_` sibling.
 12. `get_jobs_ledger_by_status` is SECURITY DEFINER with no auth/role check and broad EXECUTE (exposes revenue/payments_made by status).
 13. `update_job_status` takes no row lock (unlike `set_job_collections_flag`); concurrency relies on client-side per-id locks only.
@@ -381,7 +385,7 @@ Findings only (no fixes) — seeds for a later pass.
 16. Fixture allocator / billable filter / line-description builders are intentionally duplicated client vs edge with keep-in-sync comments (`isBillableFixtureRow` has 4 copies).
 17. `'billed'` in the `JobsTab` union renders no tab (vestigial; the query param redirects to `stages`).
 18. Role-gate predicates duplicated across three files (`canRoleApplyBankPayments` / `canUnlinkMercuryPayment` / `canRoleUseArBankCount`); the SQL job-access EXISTS block is copy-pasted in ~10 payment RPCs.
-19. `AgreedWriteDownModal` and `JobFormModal`'s details-backfill read the Stripe mode pref without the dev-role gate (a stale test pref on a shared browser routes a non-dev write-down to test mode).
+19. ~~`AgreedWriteDownModal` and `JobFormModal`'s details-backfill read the Stripe mode pref without the dev-role gate.~~ **Fixed in v2.1118 (A5)**: both route through `stripeModeForBillingFromRole`; no ungated pref reads remain (and the row's mode wins server-side since A3 anyway).
 20. ~~Fixed in v2.1115 (A2)~~: `credit_note.created` now retrieves with the event-mode key, and `stripe_webhook_events.livemode` + `jobs_ledger_invoices.stripe_mode` (v2.1114) record modes — Banking's Stripe panels can distinguish test rows once they read the column.
 21. `delete_ready_to_bill_invoice` on a trip-charge row does not unwind the `create_turnaway_trip_charge` revenue bump (documented caveat in `supabase/migrations/20260709130000_turnaway_trip_charge.sql`).
 22. UX friction: partial billing has two divergent entry points (Edit Job slider vs Stages plain-dollar modal), and billing a partial then the remainder requires hopping between the row card and Bill Customer per invoice.
