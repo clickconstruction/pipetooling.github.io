@@ -86,6 +86,14 @@ type Props<TRow> = {
    *  label its per-row percent-complete cell. The caller is responsible for matching the
    *  cell's right-aligned positioning so the header sits over the value column. */
   gutterHeader?: ReactNode
+  /**
+   * Optional footer strip (v2.1197): a height-matched row rendered after the data
+   * rows. `gutter` lands in the sticky gutter column (stays put while panning);
+   * `content` renders inside the scrolled day-grid block spanning the full rail
+   * width, so it pans/scrolls with the day columns. Used by Forecast Specific for
+   * the running-balance step-line.
+   */
+  footer?: { gutter?: ReactNode; content: ReactNode; height: number }
   /** When provided, the grid renders an in-line `←` pillar column at the START of the
    *  day rail (the first flex child inside the scroller). It scrolls WITH the rail, so
    *  the user only sees it after scrolling all the way to the left edge — then a click
@@ -180,6 +188,7 @@ function ProjectsForecastTimelineGridInner<TRow>(
     renderRow,
     emptyState,
     gutterHeader,
+    footer,
     onPanLeft,
     onPanRight,
     panLeftLabel,
@@ -362,6 +371,20 @@ function ProjectsForecastTimelineGridInner<TRow>(
                 {rowLabel!(row, idx)}
               </div>
             ))
+          )}
+          {footer != null && (
+            <div
+              style={{
+                height: footer.height,
+                display: 'flex',
+                alignItems: 'center',
+                padding: '0 8px',
+                borderBottom: '1px solid var(--border)',
+                overflow: 'hidden',
+              }}
+            >
+              {footer.gutter ?? null}
+            </div>
           )}
         </div>
       )}
@@ -572,6 +595,21 @@ function ProjectsForecastTimelineGridInner<TRow>(
                 {renderRow(row, idx, { gridTemplateColumns })}
               </div>
             ))
+          )}
+
+          {/* Footer strip — spans the full rail width inside the day-grid block so it
+              scrolls/pans with the day columns (and the absolute today-line, which runs
+              to `bottom: 0`, crosses it too). */}
+          {footer != null && (
+            <div
+              style={{
+                height: footer.height,
+                position: 'relative',
+                borderBottom: '1px solid var(--border)',
+              }}
+            >
+              {footer.content}
+            </div>
           )}
           </div>
           {onPanRight != null && (

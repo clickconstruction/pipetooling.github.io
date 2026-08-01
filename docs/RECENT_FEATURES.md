@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-31 (v2.1196)
+last_updated: 2026-07-31 (v2.1197)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1197)
+
+### Forecast Specific: balance step-line strip under the dense rail (2026-07-31)
+User-picked option C on top of v2.1196 — the running balance drawn over TIME, not just per step. New pure kernel [`forecastBalanceSeries.ts`](../src/lib/forecastBalanceSeries.ts) (`buildForecastBalanceSeries(dayKeys, events)` → per-day end-of-day values + initial/min/max/final; 4 tests) turns money into dated events: step-anchored projections land on their step's resolved **start** day (`before`) or **end** day (`after`), line items land on their own `item_date` when set else their step's resolved end day; unanchored projections have no time-axis home so the curve skips them (chips still count them). [`ProjectsForecastTimelineGrid.tsx`](../src/components/projects/ProjectsForecastTimelineGrid.tsx) gains an optional `footer` prop (`{gutter, content, height}`) — the gutter cell joins the sticky label column, the content div joins the day-grid block so it pans/scrolls in lockstep and the today-line (which runs to `bottom: 0`) crosses it. [`ProjectsForecastSpecificTab.tsx`](../src/components/projects/ProjectsForecastSpecificTab.tsx) now keeps raw line items (select adds `item_date`; per-step totals derived by memo), builds the series over `denseDayKeys` × `effectiveResolvedBars`, and renders a 56px SVG strip: green step-line (flat per day, vertical risers where money lands), dashed $0 line, soft red wash on negative-balance days, plus a "Balance ±$X" gutter cell showing the window-edge value. Dense ("Showing dates") mode only, same dev/master + has-money gating as the balance column. Verified live on a throwaway project-linked job both same-day (flat 0 → +$112,880) and with a back-dated line item (0 → −$38,120 for 11 red-washed days → +$112,880, riser exactly on Jul 20); test row deleted after. Guide updated. Client-only.
 
 ## Latest Updates (v2.1196)
 
