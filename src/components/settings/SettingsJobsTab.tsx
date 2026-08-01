@@ -6,6 +6,7 @@
 import type { Dispatch, FormEvent, SetStateAction } from 'react'
 import TripChargeAmountsSettingsBlock from './TripChargeAmountsSettingsBlock'
 import JobAddressCityListSettingsBlock from './JobAddressCityListSettingsBlock'
+import DevelopmentsSettingsBlock from './DevelopmentsSettingsBlock'
 
 type JobsTabUserRow = { id: string; name: string; email: string; role: string }
 
@@ -278,6 +279,7 @@ export default function SettingsJobsTab({
       <TripChargeAmountsSettingsBlock />
 
       <JobAddressCityListSettingsBlock />
+      <DevelopmentsSettingsBlock />
     </>
   )
 }

@@ -66,3 +66,67 @@ export function validateNewDevelopmentName(
   if (clash) return { ok: false, error: `"${(clash.name ?? '').trim()}" already exists — pick it from the list.` }
   return { ok: true, name }
 }
+
+// ---------------------------------------------------------------------------
+// Settings → Manage developments (v2.1216)
+// ---------------------------------------------------------------------------
+
+/**
+ * Rename validation: same active-name clash rule as create, but the renamed
+ * development itself is excluded (renaming only its casing is fine). Archived
+ * rows never clash — the partial unique index ignores them.
+ */
+export function validateRenameDevelopment(
+  developmentId: string,
+  raw: string,
+  developments: JobFormDevelopmentRow[],
+): { ok: true; name: string } | { ok: false; error: string } {
+  const name = raw.trim()
+  if (!name) return { ok: false, error: 'A development needs a name.' }
+  const key = name.toLowerCase()
+  const clash = developments.find(
+    (d) => d.id !== developmentId && !d.archived_at && (d.name ?? '').trim().toLowerCase() === key,
+  )
+  if (clash) return { ok: false, error: `"${(clash.name ?? '').trim()}" already exists.` }
+  return { ok: true, name }
+}
+
+/**
+ * Un-archiving re-enters the active-name namespace, so it can collide with an
+ * active development created since. Returns the clashing active row, or null
+ * when un-archiving is safe.
+ */
+export function developmentUnarchiveClash(
+  dev: JobFormDevelopmentRow,
+  developments: JobFormDevelopmentRow[],
+): JobFormDevelopmentRow | null {
+  const key = (dev.name ?? '').trim().toLowerCase()
+  return (
+    developments.find(
+      (d) => d.id !== dev.id && !d.archived_at && (d.name ?? '').trim().toLowerCase() === key,
+    ) ?? null
+  )
+}
+
+/** Active and archived lists, each name-sorted, for the Settings block (input row type preserved). */
+export function sortDevelopmentsForSettings<T extends JobFormDevelopmentRow>(developments: T[]): {
+  active: T[]
+  archived: T[]
+} {
+  const byName = (a: T, b: T) =>
+    ((a.name ?? '').trim() || '—').localeCompare((b.name ?? '').trim() || '—', undefined, { sensitivity: 'base' })
+  return {
+    active: developments.filter((d) => !d.archived_at).sort(byName),
+    archived: developments.filter((d) => !!d.archived_at).sort(byName),
+  }
+}
+
+/** development_id → linked-job count, from a bare `jobs_ledger.development_id` column pull. */
+export function buildDevelopmentJobCountMap(rows: Array<{ development_id: string | null }>): Map<string, number> {
+  const map = new Map<string, number>()
+  for (const r of rows) {
+    if (!r.development_id) continue
+    map.set(r.development_id, (map.get(r.development_id) ?? 0) + 1)
+  }
+  return map
+}

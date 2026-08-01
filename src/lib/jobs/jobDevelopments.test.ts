@@ -1,8 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import {
+  buildDevelopmentJobCountMap,
   developmentPickerOptions,
+  developmentUnarchiveClash,
   resolveDevelopmentIdForJobPayload,
+  sortDevelopmentsForSettings,
   validateNewDevelopmentName,
+  validateRenameDevelopment,
   type JobFormDevelopmentRow,
 } from './jobDevelopments'
 
@@ -71,5 +75,62 @@ describe('validateNewDevelopmentName', () => {
       ok: true,
       name: 'Old Town',
     })
+  })
+})
+
+describe('validateRenameDevelopment', () => {
+  const devs = [dev('d1', 'Sagebrush'), dev('d2', 'Wildflower'), dev('d3', 'Old Town', MASTER, '2026-07-01')]
+
+  it('accepts a fresh name and trims it', () => {
+    expect(validateRenameDevelopment('d1', '  Sagebrush Phase 2 ', devs)).toEqual({ ok: true, name: 'Sagebrush Phase 2' })
+  })
+
+  it('excludes the renamed row itself (casing-only rename allowed)', () => {
+    expect(validateRenameDevelopment('d1', 'SAGEBRUSH', devs)).toEqual({ ok: true, name: 'SAGEBRUSH' })
+  })
+
+  it('rejects a clash with another ACTIVE development', () => {
+    const r = validateRenameDevelopment('d1', 'wildflower', devs)
+    expect(r.ok).toBe(false)
+  })
+
+  it('ignores archived rows and rejects empty', () => {
+    expect(validateRenameDevelopment('d1', 'Old Town', devs)).toEqual({ ok: true, name: 'Old Town' })
+    expect(validateRenameDevelopment('d1', '   ', devs).ok).toBe(false)
+  })
+})
+
+describe('developmentUnarchiveClash', () => {
+  it('finds the active row blocking an unarchive, else null', () => {
+    const archived = dev('d3', 'Sagebrush', MASTER, '2026-07-01')
+    expect(developmentUnarchiveClash(archived, [archived, dev('d1', 'sagebrush')])?.id).toBe('d1')
+    expect(developmentUnarchiveClash(archived, [archived, dev('d1', 'Wildflower')])).toBeNull()
+  })
+})
+
+describe('sortDevelopmentsForSettings', () => {
+  it('splits active/archived, each name-sorted case-insensitively', () => {
+    const { active, archived } = sortDevelopmentsForSettings([
+      dev('d2', 'wildflower'),
+      dev('d1', 'Sagebrush'),
+      dev('d4', 'zz old', MASTER, '2026-07-01'),
+      dev('d3', 'Aged Oaks', MASTER, '2026-07-01'),
+    ])
+    expect(active.map((d) => d.id)).toEqual(['d1', 'd2'])
+    expect(archived.map((d) => d.id)).toEqual(['d3', 'd4'])
+  })
+})
+
+describe('buildDevelopmentJobCountMap', () => {
+  it('counts non-null development ids', () => {
+    const map = buildDevelopmentJobCountMap([
+      { development_id: 'a' },
+      { development_id: null },
+      { development_id: 'a' },
+      { development_id: 'b' },
+    ])
+    expect(map.get('a')).toBe(2)
+    expect(map.get('b')).toBe(1)
+    expect(map.size).toBe(2)
   })
 })
