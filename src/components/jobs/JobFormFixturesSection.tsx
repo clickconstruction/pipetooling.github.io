@@ -325,7 +325,7 @@ export function JobFormFixturesSection({
                                         background: 'transparent',
                                         border: 'none',
                                         borderRadius: 4,
-                                        color: scopeExpanded ? '#3b82f6' : 'var(--text-link)',
+                                        color: scopeExpanded ? 'var(--text-blue-500)' : 'var(--text-link)',
                                         cursor: 'pointer',
                                         display: 'inline-flex',
                                         alignItems: 'center',

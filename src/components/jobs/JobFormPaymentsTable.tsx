@@ -96,7 +96,7 @@ function PaymentDetailsToggle({ open, onToggle, controlsId }: { open: boolean; o
         background: 'transparent',
         border: 'none',
         borderRadius: 4,
-        color: open ? '#3b82f6' : 'var(--text-link)',
+        color: open ? 'var(--text-blue-500)' : 'var(--text-link)',
         cursor: 'pointer',
         display: 'inline-flex',
         alignItems: 'center',
