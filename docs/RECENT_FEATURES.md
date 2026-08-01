@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-31 (v2.1187)
+last_updated: 2026-07-31 (v2.1188)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1188)
+
+### Stages: "Stripe emailed … Resend" line becomes "Resend · Email sent …" (2026-07-31)
+Per user direction, the billed-row Stripe-email hint in [`jobsStagesRowShared.tsx`](../src/components/jobs/jobsStagesRowShared.tsx) (`renderStagesStripeEmailedCustomerHint`) reorders its chunks: the **Resend** control now leads, followed by an "Email sent" label (one nowrap chunk), with the timestamp as the second chunk — so narrow Activity columns wrap as "Resend Email sent" / "Fri 3:36 PM (today)" instead of the old three-line "Stripe emailed" / time / "Resend". Tooltip ("Stripe emailed the customer …"), resend confirm/disable behavior, and the v2.1042 nowrap-chunk wrapping strategy unchanged. Client-only.
 
 ## Latest Updates (v2.1187)
 
