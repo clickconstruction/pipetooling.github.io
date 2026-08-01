@@ -106,6 +106,11 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 #### August 1, 2026
 
+**`20260801140000_sub_sheet_project_step_anchors.sql`** _(apply via `supabase db push` after merge — either order is safe: the ledger read is fail-soft and nothing writes the anchors yet)_
+- **Purpose**: RUN_SUBS_PLAN Phase 0, PR 0.3 (v2.1202). Nullable `people_labor_jobs.project_id` / `step_id` anchors (FK projects / project_workflow_steps, ON DELETE SET NULL — the money record outlives the project/step) + partial indexes, so sub sheets can point at the workflow step that earned them. Written by Phase 2's commitment settlement; read by the Sub Labor ledger's project chip.
+- **Security**: No RLS changes — existing `people_labor_jobs` policies govern.
+- **Category**: Feature schema
+
 **`20260801130000_step_assigned_person_id.sql`** _(apply via `supabase db push` after merge — either order is safe: the client falls back to the legacy RPC until the new one exists, and nothing reads the new column yet)_
 - **Purpose**: RUN_SUBS_PLAN Phase 0, PR 0.2 (v2.1201). Workflow steps join the person-id spine: nullable `project_workflow_steps.assigned_person_id` (FK `people` ON DELETE SET NULL) + partial index; backfill via `resolve_pay_person_id(assigned_to_name)`; `steps_set_assigned_person_id` BEFORE INSERT OR UPDATE OF `assigned_to_name` trigger (NOT-DISTINCT re-resolve semantics, mirroring `20260730164728`) so every writer maintains the id; new 3-arg `update_step_assignment(p_step_id, p_assigned_to_name, p_person_id DEFAULT NULL)` — explicit id wins, else resolver. The 2-arg `update_step_assigned_to` is untouched (old clients).
 - **Security**: The new RPC is SECURITY DEFINER with the permission block byte-copied from `update_step_assigned_to` (dev/master/owner/adopted/shared, or assistant assigned/can-access). No RLS changes; names remain the RLS key for sub access (later phase).

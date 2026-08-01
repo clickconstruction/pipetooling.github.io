@@ -40,10 +40,27 @@ export function useSubLaborLedger({
     if (!authUserId) return
     setLaborJobsLoading(true)
     setError(null)
-    const { data: jobs, error: jobsErr } = await supabase
-      .from('people_labor_jobs')
-      .select('id, assigned_to_name, address, job_number, labor_rate, job_date, created_at, distance_miles, invoice_link')
-      .order('created_at', { ascending: false })
+    // Anchored select first (project_id/step_id, RUN_SUBS_PLAN PR 0.3); fall
+    // back to the legacy column list if the migration isn't applied yet, so
+    // client and migration deploy in either order.
+    let jobs: LaborJob[] | null = null
+    let jobsErr: { message: string } | null = null
+    {
+      const withAnchors = await supabase
+        .from('people_labor_jobs')
+        .select('id, assigned_to_name, address, job_number, labor_rate, job_date, created_at, distance_miles, invoice_link, project_id, step_id')
+        .order('created_at', { ascending: false })
+      if (withAnchors.error) {
+        const legacy = await supabase
+          .from('people_labor_jobs')
+          .select('id, assigned_to_name, address, job_number, labor_rate, job_date, created_at, distance_miles, invoice_link')
+          .order('created_at', { ascending: false })
+        jobs = legacy.data as LaborJob[] | null
+        jobsErr = legacy.error
+      } else {
+        jobs = withAnchors.data as LaborJob[] | null
+      }
+    }
     if (jobsErr) {
       setError(jobsErr.message)
       setLaborJobs([])
@@ -108,7 +125,21 @@ export function useSubLaborLedger({
         if (key && j.job_name) jobNamesByHcp[key] = j.job_name.trim()
       }
       setLaborJobNamesByHcp(jobNamesByHcp)
-      const mappedJobs = (jobs as LaborJob[]).map((j) => ({ ...j, items: itemsByJob.get(j.id) ?? [], payments: paymentsByJob.get(j.id) ?? [] }))
+      // Resolve project names for anchored sheets (display only, fail-soft).
+      const projectIds = [...new Set((jobs as LaborJob[]).map((j) => j.project_id).filter((id): id is string => !!id))]
+      const projectNamesById = new Map<string, string>()
+      if (projectIds.length > 0) {
+        const { data: projectRows } = await supabase.from('projects').select('id, name').in('id', projectIds)
+        for (const p of (projectRows ?? []) as Array<{ id: string; name: string }>) {
+          projectNamesById.set(p.id, p.name)
+        }
+      }
+      const mappedJobs = (jobs as LaborJob[]).map((j) => ({
+        ...j,
+        items: itemsByJob.get(j.id) ?? [],
+        payments: paymentsByJob.get(j.id) ?? [],
+        project_name: j.project_id ? projectNamesById.get(j.project_id) ?? null : null,
+      }))
       setLaborJobs(mappedJobs)
       onLaborJobsReloaded?.(mappedJobs)
     } else {

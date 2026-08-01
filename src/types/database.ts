@@ -7102,6 +7102,8 @@ export type Database = {
           labor_rate: number | null
           master_user_id: string
           paid_at: string | null
+          project_id: string | null
+          step_id: string | null
         }
         Insert: {
           address?: string
@@ -7115,6 +7117,8 @@ export type Database = {
           labor_rate?: number | null
           master_user_id: string
           paid_at?: string | null
+          project_id?: string | null
+          step_id?: string | null
         }
         Update: {
           address?: string
@@ -7128,6 +7132,8 @@ export type Database = {
           labor_rate?: number | null
           master_user_id?: string
           paid_at?: string | null
+          project_id?: string | null
+          step_id?: string | null
         }
         Relationships: [
           {
