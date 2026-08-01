@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1232',
+    date: '2026-08-01',
+    title: 'Stages: a cleaner search bar — filters tucked into the ⋯ menu',
+    kind: 'feature',
+    highlights: [
+      'The GC and development dropdowns moved out of the search bar into a Filters group at the top of the ⋯ menu, giving search the full width.',
+      'When a filter is on, a blue chip with its name sits in the bar — tap the × to clear it, and the ⋯ button glows blue so an active filter is never invisible.',
+    ],
+  },
+  {
     version: 'v2.1231',
     date: '2026-08-01',
     title: 'Edit Job: the billing math reads as a tidy 2×2 on phones',
