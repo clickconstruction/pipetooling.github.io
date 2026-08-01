@@ -268,6 +268,12 @@ describe('JobsStagesTab render smoke', () => {
     expect(cards.length).toBeGreaterThanOrEqual(2)
     // The section's primary action rides the card header.
     expect(screen.getAllByText('Ready to Bill').length).toBeGreaterThanOrEqual(1)
+    // Compact zones (v2.1244): the j:/b: shorthand became labeled chips and the
+    // money legend a single condensed line.
+    expect(screen.getAllByLabelText('Field / job-activity date (click to open the job calendar)').length).toBeGreaterThanOrEqual(2)
+    expect(screen.queryByText(/^j: /)).toBeNull()
+    expect(screen.queryByText('Left on Job')).toBeNull()
+    expect(screen.getAllByText(/^Left /).length).toBeGreaterThanOrEqual(2)
     // The pre-expanded card shows its labeled toolbelt in place.
     expect(screen.getByText('Job detail')).toBeTruthy()
     expect(screen.getByText('Edit job')).toBeTruthy()

@@ -23,6 +23,12 @@ type StagesProgressPaymentCellProps = {
    * ① Line Items so the user can add the value. Omit for plain text.
    */
   onNoBidValueClick?: () => void
+  /**
+   * Mobile cards (v2.1244): swap the four-row legend for one condensed line
+   * (Paid · Billed · Unbilled? · Left). The pct control, bar, dot, and no-bid
+   * state are unchanged; the table keeps the full legend.
+   */
+  compact?: boolean
 }
 
 function swatch(color?: string) {
@@ -48,13 +54,13 @@ function swatch(color?: string) {
  * total on top, a paid/unbilled bar of the total bill, and a labeled legend.
  * Pure presentation — all math comes in via the model (see stagesMoneyBar.ts).
  */
-export default function StagesProgressPaymentCell({ model, pctComplete, pctSaving, onPctCommit, footnote, onNoBidValueClick }: StagesProgressPaymentCellProps) {
+export default function StagesProgressPaymentCell({ model, pctComplete, pctSaving, onPctCommit, footnote, onNoBidValueClick, compact = false }: StagesProgressPaymentCellProps) {
   const rowStyle: React.CSSProperties = { display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '0.5rem' }
   const labelStyle: React.CSSProperties = { fontSize: '0.75rem', color: 'var(--text-muted)' }
   const amountStyle: React.CSSProperties = { fontSize: '0.75rem', fontVariantNumeric: 'tabular-nums' }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem', minWidth: '11rem', textAlign: 'left' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: compact ? '0.2rem' : '0.3rem', minWidth: compact ? 0 : '11rem', textAlign: 'left' }}>
       <div style={rowStyle}>
         <span style={{ whiteSpace: 'nowrap' }}>
           {onPctCommit ? (
@@ -197,6 +203,32 @@ export default function StagesProgressPaymentCell({ model, pctComplete, pctSavin
         ) : null}
       </div>
 
+      {compact ? (
+        <div
+          style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: '0.1rem 0.3rem', fontSize: '0.75rem' }}
+          title="Payments received · invoiced but unpaid · done but unbilled · bid minus payments"
+        >
+          <span style={{ color: '#15803d', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
+            {swatch(PAID_COLOR)}Paid {model.paid > 0 ? formatUsdNoCents(model.paid) : '—'}
+          </span>
+          <span aria-hidden style={{ color: 'var(--text-faint)' }}>·</span>
+          <span style={{ color: 'var(--text-blue-700)', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
+            {swatch(BILLED_COLOR)}Billed {model.billedUnpaid > 0 ? formatUsdNoCents(model.billedUnpaid) : '—'}
+          </span>
+          {model.unbilled != null && model.unbilled > 0 ? (
+            <>
+              <span aria-hidden style={{ color: 'var(--text-faint)' }}>·</span>
+              <span style={{ color: 'var(--text-amber-700)', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
+                {swatch(UNBILLED_COLOR)}Unbilled {formatUsdNoCents(model.unbilled)}
+              </span>
+            </>
+          ) : null}
+          <span aria-hidden style={{ color: 'var(--text-faint)' }}>·</span>
+          <span style={{ fontWeight: 600, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
+            Left {model.hasBar || model.paid > 0 ? formatUsdNoCents(model.owed) : '—'}
+          </span>
+        </div>
+      ) : (
       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.1rem' }}>
         {/* Each label leads with ITS OWN slice's share of the job total (slices + the
             un-done remainder sum to 100%): "80% Paid · 20% Billed · 0% Unbilled" reads
@@ -235,6 +267,7 @@ export default function StagesProgressPaymentCell({ model, pctComplete, pctSavin
           </span>
         </div>
       </div>
+      )}
       {footnote != null && (
         <div style={{ fontSize: '0.6875rem', color: 'var(--text-muted)', textAlign: 'center' }}>{footnote}</div>
       )}
