@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1238',
+    date: '2026-08-01',
+    title: 'Teams Inbox: tidy one-line section headers on phones',
+    kind: 'fix',
+    highlights: [
+      'The Dispatch and Estimator inbox headers no longer wrap on a phone — the open count is now a small amber chip, and View dismissed becomes a compact archive icon.',
+      'Applies to the inbox in Dispatch Mode and the Teams Inbox card on the Dashboard.',
+    ],
+  },
+  {
     version: 'v2.1237',
     date: '2026-08-01',
     title: 'Dispatch Mode: a sharper customer summary with a billed summary',
