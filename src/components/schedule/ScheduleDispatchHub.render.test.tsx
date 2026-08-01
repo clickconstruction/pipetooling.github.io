@@ -130,10 +130,21 @@ describe('ScheduleDispatchHub phone layout (v2.1240, toggle removed v2.1242)', (
     expect(screen.getByText('Dispatch settings…')).toBeTruthy()
   })
 
-  it('desktop (no toggle) renders exactly the classic chrome', () => {
+  it('desktop keeps the classic tabs but settings live in the shared ⋯ menu (v2.1243)', () => {
     renderWithProviders(<ScheduleDispatchHub {...makeProps()} />)
-    expect(screen.getByText('Dispatch Settings')).toBeTruthy()
     expect(screen.queryByText('Old mode')).toBeNull()
     expect(screen.queryByText('+ Schedule')).toBeNull()
+    // The standalone Dispatch Settings button is gone at every width.
+    expect(screen.queryByText('Dispatch Settings')).toBeNull()
+    fireEvent.click(screen.getByLabelText('More schedule tools'))
+    expect(screen.getByText('Dispatch settings…')).toBeTruthy()
+    // Visible hours only appears while the Day view has registered its control.
+    expect(screen.queryByText('Visible hours…')).toBeNull()
+  })
+
+  it('Day view registers Visible hours into the ⋯ menu (v2.1243)', async () => {
+    renderWithProviders(<ScheduleDispatchHub {...makeProps({ hubTab: 'day' })} />)
+    fireEvent.click(screen.getByLabelText('More schedule tools'))
+    expect(await screen.findByText('Visible hours…')).toBeTruthy()
   })
 })

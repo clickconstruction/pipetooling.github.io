@@ -2784,6 +2784,8 @@ export function ScheduleDispatchHub({
   const [mobileScheduleMenuOpen, setMobileScheduleMenuOpen] = useState(false)
   const [mobileMoreMenuOpen, setMobileMoreMenuOpen] = useState(false)
   const [mobileQuickAssignOpen, setMobileQuickAssignOpen] = useState(false)
+  /** Day tab's visible-hours control, reported by QuickfillScheduleSection (v2.1243). */
+  const [daySettingsApi, setDaySettingsApi] = useState<{ open: () => void; windowLabel: string | null } | null>(null)
   const newModeHeaderActive = mobileNewMode && showHubViewTabs
   const mobileTabButton = (tab: 'day' | 'people' | 'jobs', label: string) => (
     <button
@@ -2834,6 +2836,100 @@ export function ScheduleDispatchHub({
     flexDirection: 'column',
     gap: 2,
   }
+
+  // One ⋯ menu at every width (v2.1243): Visible hours (Day view), Dispatch
+  // settings, and Share live here on desktop and phones alike. The trigger
+  // tints while a visible-hours window is active — the old inline gear doubled
+  // as that status, and hidden state is worse than a hidden control.
+  const moreMenuTinted = mobileMoreMenuOpen || daySettingsApi?.windowLabel != null
+  const moreMenu =
+    weekNavRightSlot || canEdit || daySettingsApi ? (
+      <div style={{ position: 'relative', flexShrink: 0 }}>
+        <button
+          type="button"
+          onClick={() => setMobileMoreMenuOpen((o) => !o)}
+          title="More"
+          aria-label="More schedule tools"
+          aria-haspopup="menu"
+          aria-expanded={mobileMoreMenuOpen}
+          style={{
+            width: 32,
+            height: 32,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 0,
+            border: '1px solid var(--border-strong)',
+            borderRadius: 8,
+            background: moreMenuTinted ? 'var(--bg-blue-tint)' : 'var(--surface)',
+            color: moreMenuTinted ? 'var(--text-link)' : 'var(--text-muted)',
+            cursor: 'pointer',
+            fontSize: '1.1rem',
+            fontWeight: 700,
+            lineHeight: 1,
+          }}
+        >
+          ⋯
+        </button>
+        {mobileMoreMenuOpen ? (
+          <>
+            <div onClick={() => setMobileMoreMenuOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 120 }} />
+            <div role="menu" style={{ ...mobileMenuSurfaceStyle, right: 0, alignItems: 'stretch' }}>
+              {daySettingsApi ? (
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    setMobileMoreMenuOpen(false)
+                    daySettingsApi.open()
+                  }}
+                  style={{ ...mobileMenuItemStyle, justifyContent: 'space-between' }}
+                >
+                  <span>Visible hours…</span>
+                  {daySettingsApi.windowLabel ? (
+                    <span
+                      style={{
+                        flexShrink: 0,
+                        fontSize: '0.6875rem',
+                        fontWeight: 700,
+                        background: 'var(--bg-blue-tint)',
+                        color: 'var(--text-blue-700)',
+                        borderRadius: 999,
+                        padding: '0.1rem 0.5rem',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      {daySettingsApi.windowLabel}
+                    </span>
+                  ) : null}
+                </button>
+              ) : null}
+              {canEdit ? (
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    setMobileMoreMenuOpen(false)
+                    setDispatchSettingsOpen(true)
+                  }}
+                  style={mobileMenuItemStyle}
+                >
+                  Dispatch settings…
+                </button>
+              ) : null}
+              {weekNavRightSlot ? (
+                <>
+                  <div style={{ height: 1, background: 'var(--border)', margin: '0.2rem 0.3rem' }} />
+                  <div style={{ padding: '0.35rem 0.85rem' }} onClick={() => setMobileMoreMenuOpen(false)}>
+                    {weekNavRightSlot}
+                  </div>
+                </>
+              ) : null}
+            </div>
+          </>
+        ) : null}
+      </div>
+    ) : null
 
   return (
     <div style={{ padding: '1rem 1.25rem', maxWidth: '100%', position: 'relative' }}>
@@ -2933,61 +3029,7 @@ export function ScheduleDispatchHub({
                 ) : null}
               </div>
             ) : null}
-            {weekNavRightSlot || canEdit ? (
-              <div style={{ position: 'relative', flexShrink: 0 }}>
-                <button
-                  type="button"
-                  onClick={() => setMobileMoreMenuOpen((o) => !o)}
-                  title="More"
-                  aria-label="More schedule tools"
-                  aria-haspopup="menu"
-                  aria-expanded={mobileMoreMenuOpen}
-                  style={{
-                    width: 32,
-                    height: 32,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    padding: 0,
-                    border: '1px solid var(--border-strong)',
-                    borderRadius: 8,
-                    background: mobileMoreMenuOpen ? 'var(--bg-blue-tint)' : 'var(--surface)',
-                    color: mobileMoreMenuOpen ? 'var(--text-link)' : 'var(--text-muted)',
-                    cursor: 'pointer',
-                    fontSize: '1.1rem',
-                    fontWeight: 700,
-                    lineHeight: 1,
-                  }}
-                >
-                  ⋯
-                </button>
-                {mobileMoreMenuOpen ? (
-                  <>
-                    <div onClick={() => setMobileMoreMenuOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 120 }} />
-                    <div role="menu" style={{ ...mobileMenuSurfaceStyle, right: 0, alignItems: 'stretch' }}>
-                      {weekNavRightSlot ? (
-                        <div style={{ padding: '0.35rem 0.85rem' }} onClick={() => setMobileMoreMenuOpen(false)}>
-                          {weekNavRightSlot}
-                        </div>
-                      ) : null}
-                      {canEdit ? (
-                        <button
-                          type="button"
-                          role="menuitem"
-                          onClick={() => {
-                            setMobileMoreMenuOpen(false)
-                            setDispatchSettingsOpen(true)
-                          }}
-                          style={mobileMenuItemStyle}
-                        >
-                          Dispatch settings…
-                        </button>
-                      ) : null}
-                    </div>
-                  </>
-                ) : null}
-              </div>
-            ) : null}
+            {moreMenu}
           </div>
         </div>
       ) : null}
@@ -3059,31 +3101,7 @@ export function ScheduleDispatchHub({
           >
             Day
           </button>
-          {weekNavRightSlot || canEdit ? (
-            <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
-              {weekNavRightSlot}
-              {canEdit ? (
-                <button
-                  type="button"
-                  onClick={() => setDispatchSettingsOpen(true)}
-                  title="Dispatch settings"
-                  aria-label="Open dispatch settings"
-                  style={{
-                    padding: '0.4rem 0.85rem',
-                    fontSize: '0.8125rem',
-                    background: 'var(--surface)',
-                    border: '1px solid var(--border-strong)',
-                    borderRadius: 4,
-                    color: 'var(--text-700)',
-                    cursor: 'pointer',
-                    fontWeight: 500,
-                  }}
-                >
-                  Dispatch Settings
-                </button>
-              ) : null}
-            </div>
-          ) : null}
+          <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>{moreMenu}</div>
         </div>
       ) : null}
 
@@ -3172,6 +3190,7 @@ export function ScheduleDispatchHub({
           initialWorkDateYmd={dayTabWorkDateYmd}
           onBlocksSaved={onDayScheduleChanged}
           showDaySettings
+          onDaySettingsApiChange={setDaySettingsApi}
         />
       ) : hubTab === 'jobs' ? (
         <HubJobsPanel

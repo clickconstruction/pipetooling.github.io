@@ -127,14 +127,22 @@ export function QuickfillScheduleSection({
   initialWorkDateYmd,
   onBlocksSaved,
   showDaySettings = false,
+  onDaySettingsApiChange,
 }: {
   hideConflictPrompt?: boolean
   /** When set (e.g. Dispatch hub / Quickfill tomorrow), use this as the initial schedule day. */
   initialWorkDateYmd?: string
   /** Fires after this section writes schedule blocks (dot auto-save, separation, add-block) so host views (e.g. the Dispatch hub People/Jobs tabs) can refresh their own caches. */
   onBlocksSaved?: () => void
-  /** Dispatch Day tab only: show the gear that opens the visible-hours (rail window) settings modal. The stored window applies wherever this section renders. */
+  /** Dispatch Day tab only: enable the visible-hours (rail window) settings modal. The stored window applies wherever this section renders. */
   showDaySettings?: boolean
+  /**
+   * v2.1243: the visible-hours control moved from an inline gear on the day nav
+   * row into the Dispatch hub's ⋯ menu. When provided, the section reports
+   * { open, windowLabel } (null on unmount) so the host renders the menu item
+   * and the active-window tint; the inline gear no longer renders.
+   */
+  onDaySettingsApiChange?: (api: { open: () => void; windowLabel: string | null } | null) => void
 } = {}) {
   const navigate = useNavigate()
   const { role, user: authUser } = useAuth()
@@ -212,6 +220,17 @@ export function QuickfillScheduleSection({
     setDaySettingsDraftEnd(dayRailWindow?.endMin ?? MAX_MIN)
     setDaySettingsOpen(true)
   }, [dayRailWindow])
+  // Report the visible-hours control to the host (Dispatch hub ⋯ menu, v2.1243).
+  useEffect(() => {
+    if (!onDaySettingsApiChange || !showDaySettings) return
+    onDaySettingsApiChange({
+      open: openDaySettings,
+      windowLabel: dayRailWindow
+        ? `${formatDispatchQuickTimeLabel(dispatchMinutesToHHmm(dayRailWindow.startMin))}–${formatDispatchQuickTimeLabel(dispatchMinutesToHHmm(dayRailWindow.endMin))}`
+        : null,
+    })
+    return () => onDaySettingsApiChange(null)
+  }, [onDaySettingsApiChange, showDaySettings, openDaySettings, dayRailWindow])
   const saveDaySettings = useCallback(() => {
     const s = daySettingsDraftStart
     const e = daySettingsDraftEnd
@@ -1280,28 +1299,8 @@ export function QuickfillScheduleSection({
             Today
           </button>
         ) : null}
-        {showDaySettings ? (
-          <button
-            type="button"
-            onClick={openDaySettings}
-            title="Day view settings — visible hours"
-            aria-label="Open Day view settings (visible hours)"
-            style={{
-              marginLeft: 'auto',
-              padding: '0.25rem 0.5rem',
-              fontSize: '0.8125rem',
-              border: dayRailWindow ? '1px solid #2563eb' : '1px solid var(--border-strong)',
-              borderRadius: 4,
-              background: dayRailWindow ? 'var(--bg-blue-tint)' : 'var(--surface)',
-              color: dayRailWindow ? 'var(--text-blue-700)' : 'var(--text-700)',
-              cursor: 'pointer',
-            }}
-          >
-            {dayRailWindow
-              ? `${formatDispatchQuickTimeLabel(dispatchMinutesToHHmm(dayRailWindow.startMin))}–${formatDispatchQuickTimeLabel(dispatchMinutesToHHmm(dayRailWindow.endMin))} ⚙`
-              : 'Visible hours ⚙'}
-          </button>
-        ) : null}
+        {/* v2.1243: the Visible hours gear moved into the Dispatch hub's ⋯ menu
+            (onDaySettingsApiChange) — the day nav row stays slim. */}
       </div>
   )
 
