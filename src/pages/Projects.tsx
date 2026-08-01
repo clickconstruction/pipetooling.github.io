@@ -9,6 +9,8 @@ import { useEditProjectModal } from '../contexts/EditProjectModalContext'
 import { useJobDetailModal } from '../contexts/JobDetailModalContext'
 import { withSupabaseRetry } from '../utils/errorHandling'
 import { formatProjectNumberLabel } from '../lib/projectNumberLabel'
+import { buildProjectAttention, type ProjectAttention } from '../lib/projects/projectAttention'
+import { calendarYmdInAppTzFromIso } from '../utils/dateUtils'
 import { pageTabStyle } from '../lib/pageTabStyle'
 import { ProjectsJobHistoryTab } from '../components/projects/ProjectsJobHistoryTab'
 import { ProjectsForecastTab } from '../components/projects/ProjectsForecastTab'
@@ -42,17 +44,19 @@ function parseProjectsPageTab(value: string | null): ProjectsPageTab {
   return 'stages'
 }
 
-type WorkflowStepRow = { name: string; status: string; sequence_order: number }
+type WorkflowStepRow = {
+  name: string
+  status: string
+  sequence_order: number
+  assigned_to_name: string | null
+  started_at: string | null
+  scheduled_start_date: string | null
+  scheduled_end_date: string | null
+}
 type WorkflowRow = {
   id: string
   project_id: string
   project_workflow_steps: WorkflowStepRow[] | null
-}
-
-type ProjectStepInfo = {
-  steps: Array<{ name: string; status: string }>
-  current: { name: string; position: number } | null
-  total: number
 }
 
 export default function Projects() {
@@ -126,31 +130,24 @@ export default function Projects() {
     })
   }, [projects, searchQuery, statusFilter])
 
-  const projectStepInfo = useMemo<Record<string, ProjectStepInfo>>(() => {
-    const byProject: Record<string, ProjectStepInfo> = {}
+  const projectAttention = useMemo<Record<string, ProjectAttention>>(() => {
+    const todayYmd = calendarYmdInAppTzFromIso(new Date().toISOString())
+    const byProject: Record<string, ProjectAttention> = {}
     for (const w of workflowsRaw) {
-      const sorted = [...(w.project_workflow_steps ?? [])].sort(
-        (a, b) => a.sequence_order - b.sequence_order
-      )
-      if (sorted.length === 0) continue
-      const steps = sorted.map((s) => ({ name: s.name, status: s.status }))
-      const firstRejected = sorted.find((s) => s.status === 'rejected')
-      let current: ProjectStepInfo['current'] = null
-      if (firstRejected) {
-        const position = sorted.findIndex((s) => s.sequence_order === firstRejected.sequence_order) + 1
-        current = { name: firstRejected.name, position }
-      } else {
-        const inProgress = sorted.find((s) => s.status === 'in_progress')
-        const firstActive = inProgress ?? sorted.find((s) => s.status === 'pending')
-        if (firstActive) {
-          const position = sorted.findIndex((s) => s.sequence_order === firstActive.sequence_order) + 1
-          current = { name: firstActive.name, position }
-        }
-      }
-      byProject[w.project_id] = { steps, current, total: sorted.length }
+      const steps = w.project_workflow_steps ?? []
+      if (steps.length === 0) continue
+      byProject[w.project_id] = buildProjectAttention(steps, todayYmd, calendarYmdInAppTzFromIso)
     }
     return byProject
   }, [workflowsRaw])
+
+  // Needs-attention-first ordering (stable within equal scores, so the
+  // load order is preserved for quiet projects).
+  const orderedProjects = useMemo(() => {
+    return [...visibleProjects].sort(
+      (a, b) => (projectAttention[b.id]?.attentionScore ?? 0) - (projectAttention[a.id]?.attentionScore ?? 0),
+    )
+  }, [visibleProjects, projectAttention])
 
   const hasActiveFilter = searchQuery.trim().length > 0 || statusFilter.size > 0
 
@@ -249,7 +246,7 @@ export default function Projects() {
         const [workflowsRes, psRes, jobsRes] = await Promise.all([
           supabase
             .from('project_workflows')
-            .select('id, project_id, project_workflow_steps(name, status, sequence_order)')
+            .select('id, project_id, project_workflow_steps(name, status, sequence_order, assigned_to_name, started_at, scheduled_start_date, scheduled_end_date)')
             .in('project_id', projectIds),
           supabase.from('project_superintendents').select('project_id, superintendent_id').in('project_id', projectIds),
           supabase.from('jobs_ledger').select('id, hcp_number, job_name, project_id, status').in('project_id', projectIds),
@@ -560,7 +557,7 @@ export default function Projects() {
         </p>
       ) : (
         <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-          {visibleProjects.map((p) => (
+          {orderedProjects.map((p) => (
             <li
               key={p.id}
               style={{
@@ -583,38 +580,83 @@ export default function Projects() {
                 <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>
                   {p.customers?.name ?? '—'}{' '}·{' '}
                   <span style={projectStatusPillStyle(p.status)}>{projectStatusLabel(p.status)}</span>
-                  {projectStepInfo[p.id]?.current && (
-                    <span>
-                      {' · Current step: '}
-                      {projectStepInfo[p.id]!.current!.name}
-                      {projectStepInfo[p.id]!.total > 0 && (
-                        <span> [{projectStepInfo[p.id]!.current!.position} / {projectStepInfo[p.id]!.total}]</span>
-                      )}
-                    </span>
-                  )}
                 </div>
                 {p.description && <div style={{ fontSize: '0.875rem', marginTop: 2 }}>{p.description}</div>}
-                {projectStepInfo[p.id] && projectStepInfo[p.id]!.steps.length > 0 && (
-                  <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginTop: 4 }}>
-                    {projectStepInfo[p.id]!.steps.map((step, i) => {
-                      let color = '#6b7280'
-                      let fontWeight: 'normal' | 'bold' = 'normal'
+                {projectAttention[p.id] && projectAttention[p.id]!.steps.length > 0 && (
+                  <div
+                    style={{ display: 'flex', gap: 2, height: 10, marginTop: 8, maxWidth: 520 }}
+                    aria-label={`Step progress: ${projectAttention[p.id]!.current ? `on step ${projectAttention[p.id]!.current!.position} of ${projectAttention[p.id]!.total}` : 'all steps finished'}`}
+                  >
+                    {projectAttention[p.id]!.steps.map((step, i) => {
+                      let background = 'var(--border)'
+                      let opacity = 1
                       if (step.status === 'completed' || step.status === 'approved') {
-                        color = '#059669'
-                      } else if (step.status === 'skipped') {
-                        color = '#6b7280'
+                        background = '#059669'
+                        opacity = 0.7
                       } else if (step.status === 'rejected') {
-                        color = 'var(--text-red-700)'
+                        background = '#dc2626'
                       } else if (step.status === 'in_progress') {
-                        color = '#E87600'
-                        fontWeight = 'bold'
+                        background = '#E87600'
+                      } else if (step.status === 'skipped') {
+                        background = 'repeating-linear-gradient(45deg, var(--border), var(--border) 3px, var(--bg-subtle) 3px, var(--bg-subtle) 6px)'
                       }
+                      const total = projectAttention[p.id]!.steps.length
                       return (
-                        <span key={i}>
-                          <span style={{ color, fontWeight }}>
-                            {step.name}
-                          </span>
-                          {i < projectStepInfo[p.id]!.steps.length - 1 && <span> → </span>}
+                        <span
+                          key={i}
+                          title={`${step.name} — ${step.status.replace('_', ' ')}`}
+                          style={{
+                            flex: 1,
+                            background,
+                            opacity,
+                            borderRadius: i === 0 ? '5px 0 0 5px' : i === total - 1 ? '0 5px 5px 0' : 0,
+                          }}
+                        />
+                      )
+                    })}
+                  </div>
+                )}
+                {projectAttention[p.id]?.current && (
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 6, alignItems: 'center' }}>
+                    <span
+                      style={{
+                        fontSize: '0.75rem',
+                        fontWeight: 600,
+                        background: projectAttention[p.id]!.flags.some((f) => f.kind === 'rejected') ? 'var(--bg-red-tint)' : 'var(--bg-orange-tint)',
+                        color: 'var(--text-strong)',
+                        borderRadius: 999,
+                        padding: '0.1rem 0.6rem',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      {projectAttention[p.id]!.current!.name} [{projectAttention[p.id]!.current!.position}/{projectAttention[p.id]!.total}]
+                      {' · '}
+                      {projectAttention[p.id]!.current!.assignee ?? 'unassigned'}
+                      {projectAttention[p.id]!.current!.daysInStep != null && projectAttention[p.id]!.current!.daysInStep! > 0 && (
+                        <> · day {projectAttention[p.id]!.current!.daysInStep}</>
+                      )}
+                    </span>
+                    {projectAttention[p.id]!.flags.map((flag, i) => {
+                      const label =
+                        flag.kind === 'rejected' ? `sent back: ${flag.stepName}`
+                        : flag.kind === 'waiting' ? `waiting on ${flag.assignee} · ${flag.days}d`
+                        : flag.kind === 'unassigned-current' ? 'current step unassigned'
+                        : 'no schedule on current step'
+                      const isRed = flag.kind === 'rejected' || flag.kind === 'no-schedule'
+                      return (
+                        <span
+                          key={`${flag.kind}-${i}`}
+                          style={{
+                            fontSize: '0.72rem',
+                            fontWeight: 600,
+                            background: isRed ? 'var(--bg-red-tint)' : 'var(--bg-amber-tint)',
+                            color: isRed ? 'var(--text-red-700)' : 'var(--text-amber-800)',
+                            borderRadius: 999,
+                            padding: '0.1rem 0.55rem',
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
+                          ⚠ {label}
                         </span>
                       )
                     })}

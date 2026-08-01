@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1205',
+    date: '2026-08-01',
+    title: 'Projects list shows progress bars and what needs attention',
+    kind: 'feature',
+    highlights: [
+      'Each project row now has a step progress bar (hover a segment for the step name), a chip naming the current step, its assignee, and how many days it has been open.',
+      'Warning pills call out projects that are waiting on someone, have an unassigned current step, no schedule, or a sent-back step — and those projects sort to the top.',
+      'The long text list of step names is retired; the bar carries the same information at a glance.',
+    ],
+  },
+  {
     version: 'v2.1204',
     date: '2026-08-01',
     title: 'Filter and review the board by development',
