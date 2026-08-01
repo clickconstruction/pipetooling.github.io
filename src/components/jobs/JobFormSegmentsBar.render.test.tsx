@@ -7,7 +7,7 @@
  */
 import { describe, expect, it } from 'vitest'
 import { fireEvent, screen } from '@testing-library/react'
-import { InvoicesSectionHeading, JobFormSegmentsBar } from './JobFormSegmentsBar'
+import { InvoicesSectionHeading, JobFormSegmentsBar, JobFormSegmentsCreateAction } from './JobFormSegmentsBar'
 import type { FixtureRow } from '../../lib/jobs/jobFormTypes'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
 
@@ -24,8 +24,6 @@ function renderBar() {
       invoiceStatusById={{}}
       selectedIds={new Set<string>()}
       onToggleSegment={() => {}}
-      onCreateInvoiceFromSelection={() => {}}
-      creatingFromSelection={false}
     />,
   )
 }
@@ -77,9 +75,21 @@ describe('JobFormSegmentsBar dollar-invoice coverage (v2.1132)', () => {
         invoiceStatusById={{}}
         selectedIds={selectedIds}
         onToggleSegment={() => {}}
+        coverage={coverage}
+      />,
+    )
+  }
+
+  function renderCreateAction(selectedIds = new Set<string>(), cov = coverage) {
+    return renderWithProviders(
+      <JobFormSegmentsCreateAction
+        fixtures={fixtures}
+        riderFeesDollars={0}
+        invoiceStatusById={{}}
+        selectedIds={selectedIds}
         onCreateInvoiceFromSelection={() => {}}
         creatingFromSelection={false}
-        coverage={coverage}
+        coverage={cov}
       />,
     )
   }
@@ -98,11 +108,19 @@ describe('JobFormSegmentsBar dollar-invoice coverage (v2.1132)', () => {
     expect(screen.getByLabelText('Select segment Top Out for invoicing')).toBeTruthy()
   })
 
-  it('disables Create invoice when the selection exceeds the remaining, with the red note', () => {
-    renderWithCoverage(new Set(['b']))
-    const button = screen.getByText(/Create invoice from 1 segment \(\$600\.00\)/) as HTMLButtonElement
+  it('bills the remaining on the selection: covered dollars are subtracted from the amount', () => {
+    renderCreateAction(new Set(['b']))
+    // Top Out is $600 with $100 covered — the button offers the $500 net.
+    const button = screen.getByText(/Create invoice from remaining on 1 segment \(\$500\.00\)/) as HTMLButtonElement
+    expect(button.disabled).toBe(false)
+    expect(screen.getByText(/\$100\.00 already covered is subtracted/)).toBeTruthy()
+  })
+
+  it('backstop: disables Create invoice when the net still exceeds a stale remaining, with the red note', () => {
+    renderCreateAction(new Set(['b']), { ...coverage, remainingDollars: 400 })
+    const button = screen.getByText(/Create invoice from remaining on 1 segment \(\$500\.00\)/) as HTMLButtonElement
     expect(button.disabled).toBe(true)
-    expect(screen.getByText(/Exceeds the \$500\.00 left to bill/)).toBeTruthy()
+    expect(screen.getByText(/Exceeds the \$400\.00 left to bill/)).toBeTruthy()
   })
 
   it('renders no coverage chrome without the prop', () => {

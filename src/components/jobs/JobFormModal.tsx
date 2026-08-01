@@ -69,7 +69,7 @@ import { JobFormHazmatRiderRows } from './JobFormHazmatRidersStrip'
 import { JobFormPaymentsTable } from './JobFormPaymentsTable'
 import { JobFormPartsCostSection } from './JobFormPartsCostSection'
 import { JobFormLaborCostPanel } from './JobFormLaborCostPanel'
-import { JobFormBreakOffSection } from './JobFormBreakOffSection'
+import { JobFormBreakOffSection, JobFormBreakOffTrack } from './JobFormBreakOffSection'
 import { JobFormFixturesSection } from './JobFormFixturesSection'
 import { JobFormPeoplePicker } from './JobFormPeoplePicker'
 import { JobFormDeleteMigrateModals } from './JobFormDeleteMigrateModals'
@@ -102,10 +102,10 @@ import {
   dollarCoverageForSegments,
   linkableSelectedIds,
   segmentBoundaryMarks,
-  segmentSelectionSummary,
+  segmentSelectionNetSummary,
   selectedSegmentSequencePositions,
 } from '../../lib/jobs/jobSegmentsCoverage'
-import { InvoicesSectionHeading, JobFormSegmentsBar } from './JobFormSegmentsBar'
+import { InvoicesSectionHeading, JobFormSegmentsBar, JobFormSegmentsCreateAction } from './JobFormSegmentsBar'
 import { MultipleSegmentGeneratorModal } from './MultipleSegmentGeneratorModal'
 import type { SegmentGeneratorPayloadLine } from '../../lib/jobs/segmentGenerator'
 import {
@@ -525,10 +525,11 @@ export default function JobFormModal({
     // but never locks it (v2.1152) — the user can still drag the slider or
     // edit the amount afterward and use New Invoice instead of the
     // segment-linked create. Deselecting everything restores the prefill.
-    const { totalDollars, count } = segmentSelectionSummary(fixtures, next)
-    // Clamp to the unallocated remainder — a partially covered segment's raw
-    // total can exceed what's actually billable, and the bar clamps anyway.
-    const syncDollars = Math.min(totalDollars, breakOff.breakOffRemaining)
+    // Net of coverage: the bar mirrors what the segment create will bill.
+    const { netDollars, count } = segmentSelectionNetSummary(fixtures, next, segmentCoverage)
+    // Clamp to the unallocated remainder — the net can still exceed it when
+    // dollar coverage landed on unselected rows, and the bar clamps anyway.
+    const syncDollars = Math.min(netDollars, breakOff.breakOffRemaining)
     setNewInvoiceAmount(
       count > 0 && syncDollars > 0
         ? syncDollars.toFixed(2)
@@ -2051,14 +2052,21 @@ export default function JobFormModal({
   async function createInvoiceFromSelectedSegments() {
     if (!editing) return
     const fixturesNow = autosaveFixturesRef.current
-    const { totalDollars, count } = segmentSelectionSummary(fixturesNow, selectedSegmentIds)
-    if (count === 0 || !(totalDollars > 0)) {
+    // The invoice bills the selection NET of dollar coverage — money already
+    // paid or invoiced by amount against these rows is subtracted, so a
+    // partially covered segment bills only what's left on it.
+    const { netDollars, coveredDollars, count } = segmentSelectionNetSummary(
+      fixturesNow,
+      selectedSegmentIds,
+      segmentCoverage,
+    )
+    if (count === 0 || !(netDollars > 0)) {
       setError('Select at least one unbilled segment first')
       return
     }
     // Cents-exact backstop for the UI clamp (v2.1132): never invoice past the
     // slider's Remaining — dollar invoices already cover that money.
-    if (Math.round(totalDollars * 100) > Math.round(segmentCoverage.remainingDollars * 100)) {
+    if (Math.round(netDollars * 100) > Math.round(segmentCoverage.remainingDollars * 100)) {
       setError(
         `This selection would bill more than the $${formatCurrency(segmentCoverage.remainingDollars)} left on the job — void or delete an existing bill first.`,
       )
@@ -2077,7 +2085,7 @@ export default function JobFormModal({
         .from('jobs_ledger_invoices')
         .insert({
           job_id: editing.id,
-          amount: totalDollars,
+          amount: netDollars,
           status: 'ready_to_bill',
           sequence_order: nextOrder,
           estimated_bill_date: null,
@@ -2119,7 +2127,10 @@ export default function JobFormModal({
       }
       setSelectedSegmentIds(new Set())
       onSavedRef.current?.()
-      showToast(`Invoice created for ${count} segment${count === 1 ? '' : 's'} ($${formatCurrency(totalDollars)})`, 'success')
+      showToast(
+        `Invoice created for the remaining $${formatCurrency(netDollars)} on ${count} segment${count === 1 ? '' : 's'}${coveredDollars > 0 ? ` ($${formatCurrency(coveredDollars)} already covered was subtracted)` : ''}`,
+        'success',
+      )
     } catch (e: unknown) {
       const err = e as { message?: string; details?: string; hint?: string }
       const msg = err?.message || 'Failed to create invoice from segments'
@@ -3198,12 +3209,12 @@ export default function JobFormModal({
               />
               <JobFormSegmentsBar
                 fixtures={fixtures}
+                trackSlot={<JobFormBreakOffTrack breakOff={breakOff} />}
+                axisTotalDollars={jobTotalBidDollars}
                 riderFeesDollars={riderFeesDollars}
                 invoiceStatusById={fixtureInvoiceStatusById}
                 selectedIds={selectedSegmentIds}
                 onToggleSegment={toggleSegmentSelected}
-                onCreateInvoiceFromSelection={createInvoiceFromSelectedSegments}
-                creatingFromSelection={creatingSegmentInvoice}
                 coverage={segmentCoverage}
               />
               {editing ? (
@@ -3216,6 +3227,15 @@ export default function JobFormModal({
                   moveWorkingJobToReadyToBillFromEdit={moveWorkingJobToReadyToBillFromEdit}
                 />
               ) : null}
+              <JobFormSegmentsCreateAction
+                fixtures={fixtures}
+                riderFeesDollars={riderFeesDollars}
+                invoiceStatusById={fixtureInvoiceStatusById}
+                selectedIds={selectedSegmentIds}
+                onCreateInvoiceFromSelection={createInvoiceFromSelectedSegments}
+                creatingFromSelection={creatingSegmentInvoice}
+                coverage={segmentCoverage}
+              />
               <JobFormInvoiceList
                 editing={editing}
                 payments={payments}

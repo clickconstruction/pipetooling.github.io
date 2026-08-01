@@ -1,10 +1,11 @@
 import { useMemo, useState } from 'react'
 import { BILLED_COLOR, DRAFT_COLOR, PAID_COLOR, UNBILLED_COLOR } from './MoneyLifecycleBar'
 import { formatCurrency } from '../../lib/jobs/jobFormMoney'
+import { formatUsdNoCents } from '../../lib/jobs/jobFormatting'
 import type { FixtureRow } from '../../lib/jobs/jobFormTypes'
 import {
   buildJobSegmentsBar,
-  segmentSelectionSummary,
+  segmentSelectionNetSummary,
   type JobBarSegment,
   type JobDollarCoverage,
 } from '../../lib/jobs/jobSegmentsCoverage'
@@ -15,8 +16,14 @@ type JobFormSegmentsBarProps = {
   invoiceStatusById: Record<string, string>
   selectedIds: ReadonlySet<string>
   onToggleSegment: (fixtureRowId: string) => void
-  onCreateInvoiceFromSelection: () => void
-  creatingFromSelection: boolean
+  /** Rendered between the strip and the per-segment rows (the break-off track). */
+  trackSlot?: React.ReactNode
+  /**
+   * The break-off track's dollar axis total. When set, the legend row carries
+   * the $0 / $total anchors at its far left and right (they used to sit under
+   * the track itself).
+   */
+  axisTotalDollars?: number
   /**
    * Dollar-invoice coverage (v2.1132): money paid or invoiced by amount (no
    * line-item links) hatches the strip via a first-items-first waterfall,
@@ -142,8 +149,8 @@ export function JobFormSegmentsBar({
   invoiceStatusById,
   selectedIds,
   onToggleSegment,
-  onCreateInvoiceFromSelection,
-  creatingFromSelection,
+  trackSlot,
+  axisTotalDollars,
   coverage,
 }: JobFormSegmentsBarProps) {
   const [focusedKey, setFocusedKey] = useState<string | null>(null)
@@ -151,20 +158,12 @@ export function JobFormSegmentsBar({
     () => buildJobSegmentsBar({ fixtures, riderFeesDollars, invoiceStatusById }),
     [fixtures, riderFeesDollars, invoiceStatusById],
   )
-  const selection = useMemo(
-    () => segmentSelectionSummary(fixtures, selectedIds),
-    [fixtures, selectedIds],
-  )
   if (segments.length === 0) return null
 
   const segCoverage = (key: string) => coverage?.bySegmentKey[key]
   /** Selectable for invoicing: unbilled AND not fully covered by dollar invoices/payments. */
   const isSelectable = (seg: JobBarSegment) => seg.selectable && !(segCoverage(seg.key)?.fullyCovered ?? false)
-  const anySelectable = segments.some(isSelectable)
   const showCoverage = coverage != null && coverage.unattributedDollars > 0
-  /** Cents-exact: the selection would push total invoicing past the slider's Remaining. */
-  const selectionExceedsRemaining =
-    coverage != null && Math.round(selection.totalDollars * 100) > Math.round(coverage.remainingDollars * 100)
 
   const isHighlighted = (seg: JobBarSegment) =>
     (isSelectable(seg) && selectedIds.has(seg.key)) || focusedKey === seg.key
@@ -210,11 +209,16 @@ export function JobFormSegmentsBar({
           display: 'flex',
           flexWrap: 'wrap',
           alignItems: 'baseline',
-          justifyContent: 'center',
+          justifyContent: axisTotalDollars != null ? 'space-between' : 'center',
           gap: '0.6rem',
           marginBottom: '0.35rem',
         }}
       >
+        {axisTotalDollars != null && (
+          <span style={{ fontSize: '0.625rem', color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>
+            $0
+          </span>
+        )}
         <span style={{ display: 'inline-flex', gap: '0.6rem', flexWrap: 'wrap' }}>
           {LEGEND.map((l) => (
             <span key={l.label} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: '0.6875rem', color: 'var(--text-muted)' }}>
@@ -239,6 +243,11 @@ export function JobFormSegmentsBar({
             </span>
           )}
         </span>
+        {axisTotalDollars != null && (
+          <span style={{ fontSize: '0.625rem', color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>
+            {formatUsdNoCents(axisTotalDollars)}
+          </span>
+        )}
       </div>
       <div
         style={{
@@ -334,6 +343,7 @@ export function JobFormSegmentsBar({
           )
         })}
       </div>
+      {trackSlot}
       <div style={{ display: 'flex', flexDirection: 'column', marginTop: '0.4rem' }}>
         {segments.map((seg) => {
           const highlighted = isHighlighted(seg)
@@ -399,42 +409,85 @@ export function JobFormSegmentsBar({
           )
         })}
       </div>
-      {anySelectable && (
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.75rem', marginTop: '0.5rem', flexWrap: 'wrap' }}>
-          <button
-            type="button"
-            onClick={onCreateInvoiceFromSelection}
-            disabled={creatingFromSelection || selection.count === 0 || selectionExceedsRemaining}
-            title={selectionExceedsRemaining && coverage ? `The selection would bill more than the $${formatCurrency(coverage.remainingDollars)} left on the job` : undefined}
-            style={{
-              padding: '0.4rem 0.75rem',
-              fontSize: '0.8125rem',
-              fontWeight: 600,
-              background: selection.count === 0 || selectionExceedsRemaining ? 'var(--bg-200)' : '#3b82f6',
-              color: selection.count === 0 || selectionExceedsRemaining ? 'var(--text-faint)' : 'white',
-              border: selection.count === 0 || selectionExceedsRemaining ? '1px solid var(--border)' : 'none',
-              borderRadius: 6,
-              cursor: creatingFromSelection || selection.count === 0 || selectionExceedsRemaining ? 'default' : 'pointer',
-            }}
-          >
-            {creatingFromSelection
-              ? 'Creating…'
-              : selection.count === 0
-                ? 'Create invoice from selected segments'
-                : `Create invoice from ${selection.count} segment${selection.count === 1 ? '' : 's'} ($${formatCurrency(selection.totalDollars)})`}
-          </button>
-          {selectionExceedsRemaining && coverage ? (
-            <span style={{ fontSize: '0.75rem', color: 'var(--text-red-600)', fontWeight: 600 }}>
-              Exceeds the ${formatCurrency(coverage.remainingDollars)} left to bill — money already paid or invoiced
-              covers the rest.
-            </span>
-          ) : selection.count > 0 ? (
-            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-              Breaks off a Ready-to-Bill invoice for exactly these segments and locks them in ① Line Items.
-            </span>
-          ) : null}
-        </div>
-      )}
+    </div>
+  )
+}
+
+/**
+ * The "Create invoice from remaining on selected segments" action + its
+ * helper/warning text. Rendered by the shell BELOW the equation row (the
+ * Paid + Billed + New invoice → Left to bill chips), separate from the bar.
+ * The amount is the selection NET of dollar coverage — covered money is
+ * subtracted, so a partially covered segment bills only what's left on it.
+ */
+export function JobFormSegmentsCreateAction({
+  fixtures,
+  riderFeesDollars,
+  invoiceStatusById,
+  selectedIds,
+  onCreateInvoiceFromSelection,
+  creatingFromSelection,
+  coverage,
+}: Omit<JobFormSegmentsBarProps, 'onToggleSegment' | 'trackSlot'> & {
+  onCreateInvoiceFromSelection: () => void
+  creatingFromSelection: boolean
+}) {
+  const segments = useMemo(
+    () => buildJobSegmentsBar({ fixtures, riderFeesDollars, invoiceStatusById }),
+    [fixtures, riderFeesDollars, invoiceStatusById],
+  )
+  // Net of dollar coverage: the button bills what's LEFT on the selection,
+  // not its face value — covered money is already spoken for.
+  const selection = useMemo(
+    () => segmentSelectionNetSummary(fixtures, selectedIds, coverage),
+    [fixtures, selectedIds, coverage],
+  )
+  const anySelectable = segments.some(
+    (seg) => seg.selectable && !(coverage?.bySegmentKey[seg.key]?.fullyCovered ?? false),
+  )
+  if (segments.length === 0 || !anySelectable) return null
+
+  /** Cents-exact backstop: with consistent coverage the net can't exceed the
+   * slider's Remaining (coverage nets out first), but stale state still can. */
+  const selectionExceedsRemaining =
+    coverage != null && Math.round(selection.netDollars * 100) > Math.round(coverage.remainingDollars * 100)
+
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.75rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
+      <button
+        type="button"
+        onClick={onCreateInvoiceFromSelection}
+        disabled={creatingFromSelection || selection.count === 0 || selectionExceedsRemaining}
+        title={selectionExceedsRemaining && coverage ? `The selection would bill more than the $${formatCurrency(coverage.remainingDollars)} left on the job` : undefined}
+        style={{
+          padding: '0.4rem 0.75rem',
+          fontSize: '0.8125rem',
+          fontWeight: 600,
+          background: selection.count === 0 || selectionExceedsRemaining ? 'var(--bg-200)' : '#3b82f6',
+          color: selection.count === 0 || selectionExceedsRemaining ? 'var(--text-faint)' : 'white',
+          border: selection.count === 0 || selectionExceedsRemaining ? '1px solid var(--border)' : 'none',
+          borderRadius: 6,
+          cursor: creatingFromSelection || selection.count === 0 || selectionExceedsRemaining ? 'default' : 'pointer',
+        }}
+      >
+        {creatingFromSelection
+          ? 'Creating…'
+          : selection.count === 0
+            ? 'Create invoice from remaining on selected segments'
+            : `Create invoice from remaining on ${selection.count} segment${selection.count === 1 ? '' : 's'} ($${formatCurrency(selection.netDollars)})`}
+      </button>
+      {selectionExceedsRemaining && coverage ? (
+        <span style={{ fontSize: '0.75rem', color: 'var(--text-red-600)', fontWeight: 600 }}>
+          Exceeds the ${formatCurrency(coverage.remainingDollars)} left to bill — money already paid or invoiced
+          covers the rest.
+        </span>
+      ) : selection.count > 0 ? (
+        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+          {selection.coveredDollars > 0
+            ? `Breaks off a Ready-to-Bill invoice for what's left on these segments — $${formatCurrency(selection.coveredDollars)} already covered is subtracted — and locks them in ① Line Items.`
+            : 'Breaks off a Ready-to-Bill invoice for exactly these segments and locks them in ① Line Items.'}
+        </span>
+      ) : null}
     </div>
   )
 }

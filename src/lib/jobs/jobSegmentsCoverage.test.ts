@@ -4,8 +4,10 @@ import {
   dollarCoverageForSegments,
   linkableSelectedIds,
   segmentBoundaryMarks,
+  segmentSelectionNetSummary,
   segmentSelectionSummary,
   selectedSegmentSequencePositions,
+  type JobDollarCoverage,
   type SegmentFixtureLine,
 } from './jobSegmentsCoverage'
 
@@ -89,6 +91,53 @@ describe('segmentSelectionSummary', () => {
     ]
     const sum = segmentSelectionSummary(fixtures, new Set(['a', 'linked', 'unnamed']))
     expect(sum).toEqual({ totalDollars: 0.3, count: 1 })
+  })
+})
+
+describe('segmentSelectionNetSummary', () => {
+  const cov = (bySegmentKey: JobDollarCoverage['bySegmentKey']): JobDollarCoverage => ({
+    unattributedDollars: 0,
+    remainingDollars: 0,
+    bySegmentKey,
+  })
+
+  it('subtracts each selected row\'s covered dollars from its total (cents-exact)', () => {
+    const fixtures = [
+      line({ id: 'a', line_unit_price: 8400 }),
+      line({ id: 'b', line_unit_price: 8400 }),
+    ]
+    const sum = segmentSelectionNetSummary(
+      fixtures,
+      new Set(['a', 'b']),
+      cov({ b: { coveredDollars: 1600, fullyCovered: false } }),
+    )
+    expect(sum).toEqual({ grossDollars: 16800, coveredDollars: 1600, netDollars: 15200, count: 2 })
+  })
+
+  it('ignores coverage on unselected rows and clamps a row\'s coverage at its own dollars', () => {
+    const fixtures = [
+      line({ id: 'a', line_unit_price: 100 }),
+      line({ id: 'covered-elsewhere', line_unit_price: 500 }),
+    ]
+    const sum = segmentSelectionNetSummary(
+      fixtures,
+      new Set(['a']),
+      cov({
+        a: { coveredDollars: 250, fullyCovered: true },
+        'covered-elsewhere': { coveredDollars: 500, fullyCovered: true },
+      }),
+    )
+    expect(sum).toEqual({ grossDollars: 100, coveredDollars: 100, netDollars: 0, count: 1 })
+  })
+
+  it('equals the gross summary with no coverage model, and skips invalid rows the same way', () => {
+    const fixtures = [
+      line({ id: 'a', line_unit_price: 0.1, count: 3 }),
+      line({ id: 'linked', invoice_id: 'rtb' }),
+      line({ id: 'unnamed', name: '' }),
+    ]
+    const sum = segmentSelectionNetSummary(fixtures, new Set(['a', 'linked', 'unnamed']), null)
+    expect(sum).toEqual({ grossDollars: 0.3, coveredDollars: 0, netDollars: 0.3, count: 1 })
   })
 })
 

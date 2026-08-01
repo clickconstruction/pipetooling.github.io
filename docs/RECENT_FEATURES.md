@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-01 (v2.1218)
+last_updated: 2026-08-01 (v2.1219)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1219)
+
+### Edit Job billing area: segment invoices bill the remaining; ①/②/③ compaction (2026-08-01)
+Per user direction, one behavioral change plus a layout sweep across the Edit-Job billing area. **Behavioral (money-path):** "Create invoice from selected segments" became **"Create invoice from remaining on selected segments"** — new cents-exact kernel `segmentSelectionNetSummary` ([`jobSegmentsCoverage.ts`](../src/lib/jobs/jobSegmentsCoverage.ts), +3 tests) subtracts each selected row's dollar-coverage (v2.1132 waterfall) from its total; the invoice insert, button label/disable, selection→slider sync, and success toast all use the net, so a partly covered segment bills only what's left. With consistent coverage a selection can no longer exceed the slider's Remaining (the subtraction is what prevents over-billing); the red "Exceeds…" warning survives as a stale-state backstop (render test updated). **Layout:** the break-off track split out of the equation section as `JobFormBreakOffTrack`, rendered via the segment bar's new `trackSlot` between the ② strip and its rows (shared `useBreakOffSlider` instance keeps input/handle/badges in lockstep); the create action extracted as `JobFormSegmentsCreateAction`, rendered below the equation row; the $0/$total axis anchors moved onto the legend row (new `axisTotalDollars` prop); equation-chip amounts centered; the pinch thumb anchors by its tip at every position (edge clamp and 100% suppression tried and reverted per review). **① Line Items** ([`JobFormFixturesSection.tsx`](../src/components/jobs/JobFormFixturesSection.tsx)): count/unit-price became in-border `[× n]` / `[$ amount]` input groups; the per-row secondary text line is gone — the scope pencil + Stripe-preview eye sit INSIDE the name field's border on every row (the eye is the preview's only home; the pencil opens a closed box, closes an open empty one, focuses non-empty notes); the char counter appears only within 100 of the Stripe 500 limit; row padding tightened. **③ Payments** ([`JobFormPaymentsTable.tsx`](../src/components/jobs/JobFormPaymentsTable.tsx)): explainer behind an ⓘ toggle; Date/Paid header band dropped ($-prefix amount group matches ①); Type/Ref/Memo + Applies-to fold to a one-line summary with a pencil toggle (`detailsOpenById`) — unsaved manual rows auto-expand so the record-payment flow is unchanged; locked Stripe/Mercury rows compact to one wrapping line keeping the copyable ref. Lock predicates, the last-unlocked `+`, remove/unlink flows, and aria wiring unchanged. Guides `split-a-job-into-stages` + `ready-to-bill-pipeline` updated; JOB_FORM_MODAL_ARCHITECTURE updated. Client-only.
 
 ## Latest Updates (v2.1218)
 
