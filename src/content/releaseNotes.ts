@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1206',
+    date: '2026-08-01',
+    title: 'Projects rows show Projected and Spent totals',
+    kind: 'feature',
+    highlights: [
+      'Each project row now carries a small money line — Projected (from the workflow projections) and Spent (from step line items) — so owners can scan the board without opening every workflow.',
+      'Visible to dev and master accounts only, matching the Workflow page money panel.',
+    ],
+  },
+  {
     version: 'v2.1205',
     date: '2026-08-01',
     title: 'Projects list shows progress bars and what needs attention',

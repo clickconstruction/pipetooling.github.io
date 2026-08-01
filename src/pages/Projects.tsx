@@ -83,6 +83,7 @@ export default function Projects() {
   const [myRole, setMyRole] = useState<UserRole | null>(null)
   const [projects, setProjects] = useState<ProjectWithCustomer[]>([])
   const [workflowsRaw, setWorkflowsRaw] = useState<WorkflowRow[]>([])
+  const [moneyByProject, setMoneyByProject] = useState<Record<string, { projected: number; spent: number }>>({})
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [customerName, setCustomerName] = useState<string | null>(null)
@@ -296,6 +297,43 @@ export default function Projects() {
           console.error('Projects: workflows+steps query failed', workflowsErr)
         }
         setWorkflowsRaw((workflows ?? []) as WorkflowRow[])
+
+        // Money strip (dev/master render gate; RLS scopes the reads anyway):
+        // projections + step line-item sums per workflow → per project.
+        // PostgREST serialises numeric as strings — coerce every amount.
+        const workflowRows = (workflows ?? []) as WorkflowRow[]
+        const workflowIds = workflowRows.map((w) => w.id)
+        if (workflowIds.length > 0) {
+          const projectIdByWorkflowId = new Map(workflowRows.map((w) => [w.id, w.project_id]))
+          const [projectionsRes, lineItemsRes] = await Promise.all([
+            supabase.from('workflow_projections').select('workflow_id, amount').in('workflow_id', workflowIds),
+            supabase
+              .from('workflow_step_line_items')
+              .select('amount, project_workflow_steps!inner(workflow_id)')
+              .in('project_workflow_steps.workflow_id', workflowIds),
+          ])
+          if (cancelled) return
+          const money: Record<string, { projected: number; spent: number }> = {}
+          const bump = (workflowId: string | null | undefined, key: 'projected' | 'spent', amount: unknown) => {
+            const projectId = workflowId ? projectIdByWorkflowId.get(workflowId) : undefined
+            if (!projectId) return
+            const n = Number(amount)
+            if (!Number.isFinite(n)) return
+            const entry = money[projectId] ?? { projected: 0, spent: 0 }
+            entry[key] += n
+            money[projectId] = entry
+          }
+          for (const row of (projectionsRes.data ?? []) as Array<{ workflow_id: string; amount: unknown }>) {
+            bump(row.workflow_id, 'projected', row.amount)
+          }
+          for (const row of (lineItemsRes.data ?? []) as Array<{ amount: unknown; project_workflow_steps: { workflow_id: string } | { workflow_id: string }[] | null }>) {
+            const joined = Array.isArray(row.project_workflow_steps) ? row.project_workflow_steps[0] : row.project_workflow_steps
+            bump(joined?.workflow_id, 'spent', row.amount)
+          }
+          setMoneyByProject(money)
+        } else {
+          setMoneyByProject({})
+        }
       }
     }
     void fetchProjects()
@@ -662,6 +700,24 @@ export default function Projects() {
                     })}
                   </div>
                 )}
+                {(myRole === 'dev' || myRole === 'master_technician') &&
+                  moneyByProject[p.id] &&
+                  (moneyByProject[p.id]!.projected !== 0 || moneyByProject[p.id]!.spent !== 0) && (
+                    <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: 6, display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+                      <span>
+                        Projected{' '}
+                        <strong style={{ color: 'var(--text-strong)', fontVariantNumeric: 'tabular-nums' }}>
+                          ${moneyByProject[p.id]!.projected.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </strong>
+                      </span>
+                      <span>
+                        Spent{' '}
+                        <strong style={{ color: 'var(--text-strong)', fontVariantNumeric: 'tabular-nums' }}>
+                          ${moneyByProject[p.id]!.spent.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </strong>
+                      </span>
+                    </div>
+                  )}
                 {(p.housecallpro_number || p.plans_link || p.address) && (
                   <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginTop: 4, display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
                     {p.housecallpro_number && <span>HouseCallPro #: {p.housecallpro_number}</span>}

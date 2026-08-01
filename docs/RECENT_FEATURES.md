@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-01 (v2.1205)
+last_updated: 2026-08-01 (v2.1206)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1206)
+
+### Projects rows: Projected / Spent money strip (2026-08-01)
+RUN_SUBS_PLAN Phase 1, PR 1.2. Each project row on the Projects board gains a one-line money strip — `Projected $X · Spent $Y` — visible to **dev/master only** (the same audience as the Workflow page's Projections panel; RLS scopes the reads regardless). Projected = Σ `workflow_projections.amount` per workflow; Spent = Σ `workflow_step_line_items.amount` via a `project_workflow_steps!inner(workflow_id)` join — two batched `.in()` queries for the whole page, PostgREST numeric-string amounts coerced (the v2.1168 rule). Rows with no money render no strip. The mockup's **Committed** figure arrives with the `step_commitments` work-order panel (Phase 2, PR 2.2) rather than as a fail-soft probe here — no point shipping untyped feature-detection for a table that lands next. Guide `see-project-status-at-a-glance` gains the money line. [`Projects.tsx`](../src/pages/Projects.tsx) only. Client-only.
 
 ## Latest Updates (v2.1205)
 
