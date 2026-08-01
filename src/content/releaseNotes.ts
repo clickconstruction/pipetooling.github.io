@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1201',
+    date: '2026-08-01',
+    title: 'Groundwork: step assignments remember the person, not just the name',
+    kind: 'infra',
+    highlights: [
+      'Behind the scenes, assigning someone to a project step now records who they are on the roster, not just their display name — so renaming someone no longer risks disconnecting them from their assigned steps.',
+      'Nothing visible changes yet; this powers the upcoming subcontractor features on Projects.',
+    ],
+  },
+  {
     version: 'v2.1200',
     date: '2026-08-01',
     title: 'Step actions from the Dashboard now send the same notifications as the Workflow page',

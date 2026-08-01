@@ -7666,6 +7666,7 @@ export type Database = {
         Row: {
           approved_at: string | null
           approved_by: string | null
+          assigned_person_id: string | null
           assigned_skill: string | null
           assigned_to_name: string | null
           created_at: string | null
@@ -7699,6 +7700,7 @@ export type Database = {
         Insert: {
           approved_at?: string | null
           approved_by?: string | null
+          assigned_person_id?: string | null
           assigned_skill?: string | null
           assigned_to_name?: string | null
           created_at?: string | null
@@ -7732,6 +7734,7 @@ export type Database = {
         Update: {
           approved_at?: string | null
           approved_by?: string | null
+          assigned_person_id?: string | null
           assigned_skill?: string | null
           assigned_to_name?: string | null
           created_at?: string | null
@@ -13355,6 +13358,10 @@ export type Database = {
       }
       update_step_assigned_to: {
         Args: { p_assigned_to_name: string; p_step_id: string }
+        Returns: undefined
+      }
+      update_step_assignment: {
+        Args: { p_assigned_to_name: string; p_person_id?: string | null; p_step_id: string }
         Returns: undefined
       }
       update_step_notes: {

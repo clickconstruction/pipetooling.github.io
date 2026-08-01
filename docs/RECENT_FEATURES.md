@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-01 (v2.1200)
+last_updated: 2026-08-01 (v2.1201)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1201)
+
+### Workflow steps join the person-id spine (2026-08-01)
+RUN_SUBS_PLAN Phase 0, PR 0.2. `project_workflow_steps.assigned_to_name` was pure name-text (workflow tables were absent from the PERSON_IDENTITY_PLAN inventory) — a rename silently orphans a sub's stage access. Migration [`20260801130000_step_assigned_person_id.sql`](../supabase/migrations/20260801130000_step_assigned_person_id.sql): nullable `assigned_person_id` (FK `people`, ON DELETE SET NULL) + partial index; backfill via `resolve_pay_person_id`; `steps_set_assigned_person_id` trigger (BEFORE INSERT OR UPDATE OF `assigned_to_name`, the widened NOT-DISTINCT re-resolve semantics from 20260730164728) so **every** writer — StepFormModal inserts, the Forecast stage modal's legacy RPC, direct updates — maintains the id with zero client changes; and new 3-arg RPC `update_step_assignment(p_step_id, p_assigned_to_name, p_person_id DEFAULT NULL)` (permission block byte-copied from `update_step_assigned_to`, which stays for old clients) where an explicit id wins — the disambiguator for duplicate roster names ("Kyle" ×2). Client: the Workflow Assign modal roster carries `personId` for people-sourced entries (users-sourced resolve server-side, account-link first) and `assignPerson` tries the new RPC → legacy RPC → direct update, so client and migration deploy in either order. Names stay display + fallback per the identity-plan invariant; nothing reads the new column yet (Phase 1+ will). `database.ts` hand-adds. Client + migration (`supabase db push` after merge).
 
 ## Latest Updates (v2.1200)
 
