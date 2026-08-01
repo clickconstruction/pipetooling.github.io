@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-01 (v2.1199)
+last_updated: 2026-08-01 (v2.1200)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1200)
+
+### Workflow: one step-lifecycle engine for both surfaces (2026-08-01)
+RUN_SUBS_PLAN Phase 0, PR 0.1. The step lifecycle was implemented twice — [`Workflow.tsx`](../src/pages/Workflow.tsx) and [`DashboardProjectsCard.tsx`](../src/components/dashboard/DashboardProjectsCard.tsx) — with real divergences: the Dashboard copy sent **no notifications at all**, and its reject cascade reopened the previous step to `pending` where the Workflow page uses `in_progress`. New pure kernel [`stepLifecycle.ts`](../src/lib/workflow/stepLifecycle.ts) (`planStepTransition`, 11 tests) plans every transition — ordered column updates, action-ledger rows, notification intents — pinning the Workflow page's exact semantics (start/complete/approve/reject/skip/reopen + both cascades). The notification dispatcher moved verbatim to [`stepLifecycleNotifications.ts`](../src/lib/workflow/stepLifecycleNotifications.ts) (`sendStepLifecycleNotifications` — same template table, name-keyed recipient resolution, best-effort). Both surfaces are now thin executors keeping their own refresh/toast/UX (v2.1189 approve-collapse untouched). **Dashboard card behavior changes**: it now fires the same emails/pushes as the Workflow page (incl. the "Your turn" next-assignee push), its reject cascade matches (previous step → `in_progress`), and Approve gains the rows-affected error toast the other actions already had. Workflow page: update failures now surface via `setError` and abort the refresh (previously some were silently ignored). First files in `src/lib/workflow/` — the directory the WORKFLOW_PAGE_ARCHITECTURE decomposition plan called for. Client-only.
 
 ## Latest Updates (v2.1199)
 

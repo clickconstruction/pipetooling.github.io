@@ -10,6 +10,8 @@ import { useJobDetailModal } from '../contexts/JobDetailModalContext'
 import { isAssistantLike, isSubcontractorLikeRole } from '../lib/subcontractorLikeRole'
 import { formatProjectNumberLabel } from '../lib/projectNumberLabel'
 import { buildWorkflowMoneyFlow, type WorkflowMoneyMarker } from '../lib/workflowMoneyFlow'
+import { planStepTransition, type StepLifecyclePlan } from '../lib/workflow/stepLifecycle'
+import { sendStepLifecycleNotifications } from '../lib/workflow/stepLifecycleNotifications'
 import { toDatetimeLocal, fromDatetimeLocal } from '../utils/datetimeLocal'
 import { APP_CALENDAR_TZ } from '../utils/dateUtils'
 import type { Database } from '../types/database'
@@ -1253,252 +1255,41 @@ export default function Workflow() {
     }
   }
 
-  async function sendNotification(
-    templateType: string,
-    step: Step,
-    recipientName: string,
-    recipientEmail: string,
-    additionalVariables?: Record<string, string>,
-    recipientUserId?: string,
-    pushTitle?: string,
-    pushBody?: string
-  ) {
-    if (!project || !workflow || !recipientEmail) return
-
-    // Build workflow link
-    const workflowLink = `${window.location.origin}/workflows/${project.id}#step-${step.id}`
-
-    // Base variables for all workflow notifications
-    const variables: Record<string, string> = {
-      name: recipientName,
-      email: recipientEmail,
-      project_name: project.name,
-      stage_name: step.name,
-      assigned_to_name: step.assigned_to_name || '',
-      workflow_link: workflowLink,
-      ...additionalVariables,
-    }
-
-    try {
-      const { data, error: eFn } = await supabase.functions.invoke('send-workflow-notification', {
-        body: {
-          template_type: templateType,
-          step_id: step.id,
-          recipient_email: recipientEmail,
-          recipient_name: recipientName,
-          recipient_user_id: recipientUserId,
-          push_title: pushTitle,
-          push_body: pushBody,
-          push_url: workflowLink,
-          variables,
-        },
-      })
-
-      if (eFn) {
-        console.error('Failed to send notification:', {
-          error: eFn,
-          message: eFn.message,
-          status: eFn.status,
-          details: eFn,
-        })
-        // Don't show error to user - notifications are best-effort
-      } else {
-        console.log('Notification sent successfully:', data)
-      }
-    } catch (error) {
-      console.error('Error sending notification:', {
-        error,
-        message: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : undefined,
-      })
-      // Don't show error to user - notifications are best-effort
-    }
-  }
-
+  // Lifecycle notifications live in the shared sender (RUN_SUBS_PLAN PR 0.1);
+  // this wrapper pins the page's project/workflow guard and session identity.
   async function sendWorkflowNotifications(
     step: Step,
     actionType: 'started' | 'completed' | 'approved' | 'rejected' | 'reopened'
   ) {
-    if (!project) return
+    if (!project || !workflow) return
+    await sendStepLifecycleNotifications({
+      step,
+      actionType,
+      projectId: project.id,
+      projectName: project.name,
+      currentUserId: authUser?.id ?? null,
+    })
+  }
 
-    // Get all steps in workflow to find next/previous
-    const { data: allSteps } = await supabase
-      .from('project_workflow_steps')
-      .select('id, sequence_order, name, assigned_to_name')
-      .eq('workflow_id', step.workflow_id)
-      .order('sequence_order', { ascending: true })
-
-    const sortedSteps = (allSteps as Array<{ id: string; sequence_order: number; name: string; assigned_to_name: string | null }>) || []
-    const currentIndex = sortedSteps.findIndex((s) => s.id === step.id)
-    const nextStep = currentIndex >= 0 && currentIndex < sortedSteps.length - 1 ? sortedSteps[currentIndex + 1] : null
-    const previousStep = currentIndex > 0 ? sortedSteps[currentIndex - 1] : null
-
-    // Get contact info for people (email and userId when available for push)
-    const getContactForName = async (name: string | null): Promise<{ email: string | null; userId: string | null }> => {
-      if (!name) return { email: null, userId: null }
-      const trimmedName = name.trim()
-
-      // Check users table first (most reliable - has both email and id)
-      const { data: user } = await supabase
-        .from('users')
-        .select('id, email')
-        .eq('name', trimmedName)
-        .maybeSingle()
-      if (user?.email) return { email: user.email, userId: user.id }
-
-      // Check people table (may be limited by RLS, but try anyway)
-      const { data: people } = await supabase
-        .from('people')
-        .select('email')
-        .is('archived_at', null)
-        .eq('name', trimmedName)
-        .limit(1)
-      if (people && people.length > 0 && people[0]?.email) {
-        return { email: people[0].email, userId: null }
-      }
-
-      return { email: null, userId: null }
-    }
-
-    // Handle different action types
-    if (actionType === 'started') {
-      // Notify assigned person if enabled
-      if (step.notify_assigned_when_started && step.assigned_to_name) {
-        const { email, userId } = await getContactForName(step.assigned_to_name)
-        if (email) {
-          await sendNotification('stage_assigned_started', step, step.assigned_to_name, email, undefined, userId ?? undefined)
-        }
-      }
-
-      // Notify subscribed users (ME)
-      if (authUser?.id) {
-        const { data: subscriptions } = await supabase
-          .from('step_subscriptions')
-          .select('user_id, notify_when_started')
-          .eq('step_id', step.id)
-          .eq('notify_when_started', true)
-
-        if (subscriptions) {
-          for (const sub of subscriptions) {
-            const { data: user } = await supabase
-              .from('users')
-              .select('name, email')
-              .eq('id', sub.user_id)
-              .single()
-            if (user?.email) {
-              await sendNotification('stage_me_started', step, user.name || user.email, user.email, undefined, sub.user_id ?? undefined)
-            }
-          }
-        }
-      }
-    } else if (actionType === 'completed' || actionType === 'approved') {
-      // Notify assigned person if enabled
-      if (step.notify_assigned_when_complete && step.assigned_to_name) {
-        const { email, userId } = await getContactForName(step.assigned_to_name)
-        if (email) {
-          await sendNotification('stage_assigned_complete', step, step.assigned_to_name, email, undefined, userId ?? undefined)
-        }
-      }
-
-      // Notify subscribed users (ME)
-      if (authUser?.id) {
-        const { data: subscriptions } = await supabase
-          .from('step_subscriptions')
-          .select('user_id, notify_when_complete')
-          .eq('step_id', step.id)
-          .eq('notify_when_complete', true)
-
-        if (subscriptions) {
-          for (const sub of subscriptions) {
-            const { data: user } = await supabase
-              .from('users')
-              .select('name, email')
-              .eq('id', sub.user_id)
-              .single()
-            if (user?.email) {
-              await sendNotification('stage_me_complete', step, user.name || user.email, user.email, undefined, sub.user_id ?? undefined)
-            }
-          }
-        }
-      }
-
-      // Cross-step: Notify next assignee (primary handoff - include push title/body)
-      if (step.notify_next_assignee_when_complete_or_approved && nextStep?.assigned_to_name) {
-        const { email, userId } = await getContactForName(nextStep.assigned_to_name)
-        if (email) {
-          const nextStepForNotification: Step = {
-            ...step,
-            id: nextStep.id,
-            name: nextStep.name,
-            assigned_to_name: nextStep.assigned_to_name,
-          } as Step
-          await sendNotification(
-            'stage_next_complete_or_approved',
-            nextStepForNotification,
-            nextStep.assigned_to_name,
-            email,
-            { previous_stage_name: step.name },
-            userId ?? undefined,
-            'Your turn: Step completed',
-            `${step.name} has been completed. You're up next for ${nextStep.name}.`
-          )
-        }
-      }
-    } else if (actionType === 'rejected') {
-      // Cross-step: Notify prior assignee
-      if (step.notify_prior_assignee_when_rejected && previousStep?.assigned_to_name) {
-        const { email, userId } = await getContactForName(previousStep.assigned_to_name)
-        if (email) {
-          const previousStepForNotification: Step = {
-            ...step,
-            id: previousStep.id,
-            name: previousStep.name,
-            assigned_to_name: previousStep.assigned_to_name,
-          } as Step
-          await sendNotification(
-            'stage_prior_rejected',
-            previousStepForNotification,
-            previousStep.assigned_to_name,
-            email,
-            {
-              previous_stage_name: previousStep.name,
-              rejection_reason: step.rejection_reason || '',
-            },
-            userId ?? undefined
-          )
-        }
-      }
-    } else if (actionType === 'reopened') {
-      // Notify assigned person if enabled
-      if (step.notify_assigned_when_reopened && step.assigned_to_name) {
-        const { email, userId } = await getContactForName(step.assigned_to_name)
-        if (email) {
-          await sendNotification('stage_assigned_reopened', step, step.assigned_to_name, email, undefined, userId ?? undefined)
-        }
-      }
-
-      // Notify subscribed users (ME)
-      if (authUser?.id) {
-        const { data: subscriptions } = await supabase
-          .from('step_subscriptions')
-          .select('user_id, notify_when_reopened')
-          .eq('step_id', step.id)
-          .eq('notify_when_reopened', true)
-
-        if (subscriptions) {
-          for (const sub of subscriptions) {
-            const { data: user } = await supabase
-              .from('users')
-              .select('name, email')
-              .eq('id', sub.user_id)
-              .single()
-            if (user?.email) {
-              await sendNotification('stage_me_reopened', step, user.name || user.email, user.email, undefined, sub.user_id ?? undefined)
-            }
-          }
-        }
+  // Run a planned lifecycle transition: sequential column updates (first
+  // failure aborts and surfaces), action-ledger rows, then fire-and-forget
+  // notifications resolved against the in-memory step objects.
+  async function executeLifecyclePlan(plan: StepLifecyclePlan, stepsById: Map<string, Step>): Promise<boolean> {
+    for (const u of plan.updates) {
+      const { error } = await supabase.from('project_workflow_steps').update(u.update).eq('id', u.stepId)
+      if (error) {
+        setError(`Failed to update step: ${error.message}`)
+        return false
       }
     }
+    for (const a of plan.actions) {
+      await recordAction(a.stepId, a.actionType, a.notes)
+    }
+    for (const n of plan.notifications) {
+      const s = stepsById.get(n.stepId)
+      if (s) void sendWorkflowNotifications({ ...s, ...(n.stepOverrides ?? {}) } as Step, n.actionType)
+    }
+    return true
   }
 
   async function openAddStep(insertAfterStepId?: string) {
@@ -1755,23 +1546,6 @@ export default function Workflow() {
     }
   }
 
-  async function updateStepStatus(step: Step, status: StepStatus, extra?: { ended_at?: string | null; rejection_reason?: string | null; skipped_reason?: string | null; approved_by?: string | null; approved_at?: string | null; next_step_rejected_notice?: string | null; next_step_rejection_reason?: string | null }) {
-    const up: Record<string, unknown> = { status }
-    if (extra?.ended_at !== undefined) up.ended_at = extra.ended_at
-    if (extra?.rejection_reason !== undefined) up.rejection_reason = extra.rejection_reason
-    if (extra?.skipped_reason !== undefined) up.skipped_reason = extra.skipped_reason
-    if (extra?.approved_by !== undefined) up.approved_by = extra.approved_by
-    if (extra?.approved_at !== undefined) up.approved_at = extra.approved_at
-    if (extra?.next_step_rejected_notice !== undefined) up.next_step_rejected_notice = extra.next_step_rejected_notice
-    if (extra?.next_step_rejection_reason !== undefined) up.next_step_rejection_reason = extra.next_step_rejection_reason
-    const { error } = await supabase.from('project_workflow_steps').update(up).eq('id', step.id)
-    if (error) {
-      setError(`Failed to update step: ${error.message}`)
-      return
-    }
-    await refreshSteps()
-  }
-
   function findPreviousStep(step: Step): Step | null {
     const sortedSteps = [...steps].sort((a, b) => a.sequence_order - b.sequence_order)
     const currentIndex = sortedSteps.findIndex((s) => s.id === step.id)
@@ -1785,11 +1559,13 @@ export default function Workflow() {
   }
 
   async function markStarted(step: Step, startDateTime?: string) {
-    const startedAt = startDateTime ? fromDatetimeLocal(startDateTime) : new Date().toISOString()
-    await supabase.from('project_workflow_steps').update({ started_at: startedAt, status: 'in_progress' }).eq('id', step.id)
-    await recordAction(step.id, 'started')
-    // Send notifications (fire and forget - don't block UI)
-    void sendWorkflowNotifications(step, 'started')
+    const plan = planStepTransition({
+      transition: 'start',
+      step,
+      nowIso: new Date().toISOString(),
+      startedAtIso: (startDateTime ? fromDatetimeLocal(startDateTime) : undefined) ?? undefined,
+    })
+    if (!(await executeLifecyclePlan(plan, new Map([[step.id, step]])))) return
     await refreshSteps()
   }
 
@@ -1908,66 +1684,27 @@ export default function Workflow() {
   }
 
   async function markCompleted(step: Step) {
-    await updateStepStatus(step, 'completed', { ended_at: new Date().toISOString() })
-    await recordAction(step.id, 'completed')
-    // Send notifications (fire and forget - don't block UI)
-    void sendWorkflowNotifications(step, 'completed')
-    
-    // Check if next step is rejected and reopen it
     const nextStep = findNextStep(step)
-    if (nextStep && nextStep.status === 'rejected') {
-      // Clear the notice and rejection reason from current step if they were set
-      if (step.next_step_rejected_notice) {
-        await supabase.from('project_workflow_steps').update({ 
-          next_step_rejected_notice: null,
-          next_step_rejection_reason: null,
-        }).eq('id', step.id)
-      }
-      // Reopen the rejected next step
-      await updateStepStatus(nextStep, 'pending', {
-        rejection_reason: null,
-        ended_at: null,
-      })
-      await recordAction(nextStep.id, 'reopened', 'Previous step was re-completed')
-      // Send notifications for the next step being reopened (fire and forget)
-      void sendWorkflowNotifications(nextStep, 'reopened')
-    }
-    
+    const plan = planStepTransition({ transition: 'complete', step, nextStep, nowIso: new Date().toISOString() })
+    const stepsById = new Map([[step.id, step]])
+    if (nextStep) stepsById.set(nextStep.id, nextStep)
+    if (!(await executeLifecyclePlan(plan, stepsById))) return
     await refreshSteps()
   }
 
   async function markApproved(step: Step) {
-    // Get current user's name
     const approvedByName = await getCurrentUserName()
-    const approvedAt = new Date().toISOString()
-    await updateStepStatus(step, 'approved', { 
-      ended_at: approvedAt,
-      approved_by: approvedByName,
-      approved_at: approvedAt,
-    })
-    await recordAction(step.id, 'approved')
-    // Send notifications (fire and forget - don't block UI)
-    void sendWorkflowNotifications(step, 'approved')
-    
-    // Check if next step is rejected and reopen it
     const nextStep = findNextStep(step)
-    if (nextStep && nextStep.status === 'rejected') {
-      // Clear the notice and rejection reason from current step if they were set
-      if (step.next_step_rejected_notice) {
-        await supabase.from('project_workflow_steps').update({ 
-          next_step_rejected_notice: null,
-          next_step_rejection_reason: null,
-        }).eq('id', step.id)
-      }
-      // Reopen the rejected next step
-      await updateStepStatus(nextStep, 'pending', {
-        rejection_reason: null,
-        ended_at: null,
-      })
-      await recordAction(nextStep.id, 'reopened', 'Previous step was re-approved')
-      // Send notifications for the next step being reopened (fire and forget)
-      void sendWorkflowNotifications(nextStep, 'reopened')
-    }
+    const plan = planStepTransition({
+      transition: 'approve',
+      step,
+      nextStep,
+      approvedByName,
+      nowIso: new Date().toISOString(),
+    })
+    const stepsById = new Map([[step.id, step]])
+    if (nextStep) stepsById.set(nextStep.id, nextStep)
+    if (!(await executeLifecyclePlan(plan, stepsById))) return
 
     await refreshSteps()
 
@@ -1989,18 +1726,8 @@ export default function Workflow() {
   }
 
   async function markReopened(step: Step) {
-    await updateStepStatus(step, 'pending', { 
-      ended_at: null,
-      rejection_reason: null,
-      skipped_reason: null,
-      approved_by: null,
-      approved_at: null,
-      next_step_rejected_notice: null,
-      next_step_rejection_reason: null,
-    })
-    await recordAction(step.id, 'reopened')
-    // Send notifications (fire and forget - don't block UI)
-    void sendWorkflowNotifications(step, 'reopened')
+    const plan = planStepTransition({ transition: 'reopen', step, nowIso: new Date().toISOString() })
+    if (!(await executeLifecyclePlan(plan, new Map([[step.id, step]])))) return
     await refreshSteps()
   }
 
@@ -2207,53 +1934,32 @@ export default function Workflow() {
 
   async function submitReject() {
     if (!rejectStep) return
-    await supabase.from('project_workflow_steps').update({
-      status: 'rejected',
-      rejection_reason: rejectStep.reason.trim() || null,
-      ended_at: new Date().toISOString(),
-    }).eq('id', rejectStep.step.id)
-    await recordAction(rejectStep.step.id, 'rejected', rejectStep.reason.trim() || null)
-    
-    // Create updated step object with rejection reason for notifications
-    const updatedStep = { ...rejectStep.step, rejection_reason: rejectStep.reason.trim() || null }
-    // Send notifications (fire and forget - don't block UI)
-    void sendWorkflowNotifications(updatedStep, 'rejected')
-    
-    // Find previous step and reopen it if it's completed/approved, or set notice if already pending/in_progress
     const previousStep = findPreviousStep(rejectStep.step)
-    const rejectionReason = rejectStep.reason.trim() || null
-    if (previousStep) {
-      if (previousStep.status === 'completed' || previousStep.status === 'approved') {
-        // Reopen the previous step with notice and rejection reason
-        await updateStepStatus(previousStep, 'in_progress', {
-          ended_at: null,
-          approved_by: null,
-          approved_at: null,
-          next_step_rejected_notice: rejectStep.step.name,
-          next_step_rejection_reason: rejectionReason,
-        })
-        await recordAction(previousStep.id, 'reopened', `Next step "${rejectStep.step.name}" was rejected`)
-        // Send notifications for the previous step being reopened (fire and forget)
-        void sendWorkflowNotifications(previousStep, 'reopened')
-      } else if (previousStep.status === 'pending' || previousStep.status === 'in_progress') {
-        // Previous step is already pending/in_progress, just set the notice and rejection reason
-        await supabase.from('project_workflow_steps').update({ 
-          next_step_rejected_notice: rejectStep.step.name,
-          next_step_rejection_reason: rejectionReason,
-        }).eq('id', previousStep.id)
-      }
-    }
-    
+    const plan = planStepTransition({
+      transition: 'reject',
+      step: rejectStep.step,
+      prevStep: previousStep,
+      reason: rejectStep.reason,
+      nowIso: new Date().toISOString(),
+    })
+    const stepsById = new Map([[rejectStep.step.id, rejectStep.step]])
+    if (previousStep) stepsById.set(previousStep.id, previousStep)
+    const ok = await executeLifecyclePlan(plan, stepsById)
     setRejectStep(null)
-    await refreshSteps()
+    if (ok) await refreshSteps()
   }
 
   async function submitSkip() {
     if (!skipStep || !skipStep.reason.trim()) return
-    await updateStepStatus(skipStep.step, 'skipped', { skipped_reason: skipStep.reason.trim(), ended_at: new Date().toISOString() })
-    await recordAction(skipStep.step.id, 'skipped', skipStep.reason.trim())
+    const plan = planStepTransition({
+      transition: 'skip',
+      step: skipStep.step,
+      reason: skipStep.reason,
+      nowIso: new Date().toISOString(),
+    })
+    const ok = await executeLifecyclePlan(plan, new Map([[skipStep.step.id, skipStep.step]]))
     setSkipStep(null)
-    await refreshSteps()
+    if (ok) await refreshSteps()
   }
 
   async function deleteStep(step: Step) {

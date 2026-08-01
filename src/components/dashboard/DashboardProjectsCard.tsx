@@ -11,11 +11,16 @@ import { DashboardGroupCard } from './DashboardGroupCard'
 import { AssignedSkeleton, SubscribedSkeleton } from './DashboardSkeletons'
 import type { AssignedStep, Step, SubscribedStep } from '../../lib/dashboardBootTypes'
 import { daysOpen, formatDatetime, personDisplay } from '../../lib/dashboardProjectsCard'
+import { planStepTransition, type StepLifecyclePlan } from '../../lib/workflow/stepLifecycle'
+import { sendStepLifecycleNotifications } from '../../lib/workflow/stepLifecycleNotifications'
 
 /**
  * Dashboard "Projects" group card: Assigned Stages (+ Complete sub-list) and
- * Subscribed Stages, plus the workflow-step action engine and the reject/skip/
- * set-start step modals (extraction-series refactor; no behavior change).
+ * Subscribed Stages, plus the reject/skip/set-start step modals. Step
+ * transitions run through the shared lifecycle kernel (planStepTransition +
+ * sendStepLifecycleNotifications) — the same engine as the Workflow page, so
+ * this surface sends the same notifications and uses the same reject cascade
+ * (previous step reopens to in_progress).
  *
  * The parent gates the render on `projectsCardVisible` — the three step modals
  * live INSIDE that conditional (as before the extraction), so they cannot render
@@ -186,19 +191,50 @@ export function DashboardProjectsCard({
     return null
   }
 
-  async function markStarted(step: AssignedStep, startDateTime?: string) {
-    const startedAt = startDateTime ? fromDatetimeLocal(startDateTime) : new Date().toISOString()
-    const st = await supabase
-      .from('project_workflow_steps')
-      .update({ started_at: startedAt, status: 'in_progress' })
-      .eq('id', step.id)
-      .select('id')
-    const stRows = Array.isArray(st.data) ? st.data.length : 0
-    if (st.error || stRows === 0) {
-      showToast(st.error?.message ?? 'Could not start this step. Try again or contact the office.', 'error')
-      return
+  // Run a planned lifecycle transition (shared kernel with the Workflow page,
+  // RUN_SUBS_PLAN PR 0.1). The first update is load-bearing: a failure or zero
+  // rows affected (RLS) surfaces as a toast and aborts. Cascade updates log
+  // only, matching the legacy fire-and-continue behavior. Notifications are
+  // new on this surface — the card previously sent none.
+  async function executeLifecyclePlan(plan: StepLifecyclePlan, stepsById: Map<string, AssignedStep>): Promise<boolean> {
+    let first = true
+    for (const u of plan.updates) {
+      const res = await supabase.from('project_workflow_steps').update(u.update).eq('id', u.stepId).select('id')
+      const rows = Array.isArray(res.data) ? res.data.length : 0
+      if (res.error || rows === 0) {
+        if (first) {
+          showToast(res.error?.message ?? 'Could not update this step. Try again or contact the office.', 'error')
+          return false
+        }
+        console.error('Failed to update step in lifecycle cascade', u.stepId, res.error)
+      }
+      first = false
     }
-    await recordAction(step.id, 'started')
+    for (const a of plan.actions) {
+      await recordAction(a.stepId, a.actionType, a.notes)
+    }
+    for (const n of plan.notifications) {
+      const s = stepsById.get(n.stepId)
+      if (s) {
+        void sendStepLifecycleNotifications({
+          step: { ...s, ...(n.stepOverrides ?? {}) },
+          actionType: n.actionType,
+          projectId: s.project_id,
+          projectName: s.project_name,
+        })
+      }
+    }
+    return true
+  }
+
+  async function markStarted(step: AssignedStep, startDateTime?: string) {
+    const plan = planStepTransition({
+      transition: 'start',
+      step,
+      nowIso: new Date().toISOString(),
+      startedAtIso: (startDateTime ? fromDatetimeLocal(startDateTime) : undefined) ?? undefined,
+    })
+    if (!(await executeLifecyclePlan(plan, new Map([[step.id, step]])))) return
     await loadAssignedSteps()
   }
 
@@ -209,126 +245,58 @@ export function DashboardProjectsCard({
   }
 
   async function markCompleted(step: AssignedStep) {
-    const upd1 = await supabase
-      .from('project_workflow_steps')
-      .update({
-      status: 'completed',
-      ended_at: new Date().toISOString(),
-    })
-      .eq('id', step.id)
-      .select('id')
-    const rowsAffected = Array.isArray(upd1.data) ? upd1.data.length : upd1.data ? 1 : 0
-    if (upd1.error || rowsAffected === 0) {
-      showToast(
-        upd1.error?.message ?? 'Could not mark this step complete. Try again or contact the office.',
-        'error',
-      )
-      return
-    }
-    await recordAction(step.id, 'completed')
-
-    // Check if next step is rejected and reopen it
     const nextStep = await findNextStep(step)
-    if (nextStep && nextStep.status === 'rejected') {
-      // Clear the notice and rejection reason from current step if they were set
-      if (step.next_step_rejected_notice) {
-        await supabase.from('project_workflow_steps').update({
-          next_step_rejected_notice: null,
-          next_step_rejection_reason: null,
-        }).eq('id', step.id)
-      }
-      // Reopen the rejected next step
-      await supabase.from('project_workflow_steps').update({
-        status: 'pending',
-        rejection_reason: null,
-        ended_at: null,
-      }).eq('id', nextStep.id)
-      await recordAction(nextStep.id, 'reopened', 'Previous step was re-completed')
-    }
-
+    const plan = planStepTransition({ transition: 'complete', step, nextStep, nowIso: new Date().toISOString() })
+    const stepsById = new Map([[step.id, step]])
+    if (nextStep) stepsById.set(nextStep.id, nextStep)
+    if (!(await executeLifecyclePlan(plan, stepsById))) return
     await loadAssignedSteps()
   }
 
   async function markApproved(step: AssignedStep) {
     const approvedByName = await getCurrentUserName()
-    const approvedAt = new Date().toISOString()
-    await supabase.from('project_workflow_steps').update({
-      status: 'approved',
-      ended_at: approvedAt,
-      approved_by: approvedByName,
-      approved_at: approvedAt,
-    }).eq('id', step.id)
-    await recordAction(step.id, 'approved')
-
-    // Check if next step is rejected and reopen it
     const nextStep = await findNextStep(step)
-    if (nextStep && nextStep.status === 'rejected') {
-      // Clear the notice and rejection reason from current step if they were set
-      if (step.next_step_rejected_notice) {
-        await supabase.from('project_workflow_steps').update({
-          next_step_rejected_notice: null,
-          next_step_rejection_reason: null,
-        }).eq('id', step.id)
-      }
-      // Reopen the rejected next step
-      await supabase.from('project_workflow_steps').update({
-        status: 'pending',
-        rejection_reason: null,
-        ended_at: null,
-      }).eq('id', nextStep.id)
-      await recordAction(nextStep.id, 'reopened', 'Previous step was re-approved')
-    }
-
+    const plan = planStepTransition({
+      transition: 'approve',
+      step,
+      nextStep,
+      approvedByName,
+      nowIso: new Date().toISOString(),
+    })
+    const stepsById = new Map([[step.id, step]])
+    if (nextStep) stepsById.set(nextStep.id, nextStep)
+    if (!(await executeLifecyclePlan(plan, stepsById))) return
     await loadAssignedSteps()
   }
 
   async function submitReject() {
     if (!rejectStep) return
-    await supabase.from('project_workflow_steps').update({
-      status: 'rejected',
-      rejection_reason: rejectStep.reason.trim() || null,
-      ended_at: new Date().toISOString(),
-    }).eq('id', rejectStep.step.id)
-    await recordAction(rejectStep.step.id, 'rejected', rejectStep.reason.trim() || null)
-
-    // Find previous step and reopen it if it's completed/approved, or set notice if already pending/in_progress
     const previousStep = await findPreviousStep(rejectStep.step)
-    const rejectionReason = rejectStep.reason.trim() || null
-    if (previousStep) {
-      if (previousStep.status === 'completed' || previousStep.status === 'approved') {
-        // Reopen the previous step with notice and rejection reason
-        await supabase.from('project_workflow_steps').update({
-          status: 'pending',
-          ended_at: null,
-          approved_by: null,
-          approved_at: null,
-          next_step_rejected_notice: rejectStep.step.name,
-          next_step_rejection_reason: rejectionReason,
-        }).eq('id', previousStep.id)
-        await recordAction(previousStep.id, 'reopened', `Next step "${rejectStep.step.name}" was rejected`)
-      } else if (previousStep.status === 'pending' || previousStep.status === 'in_progress') {
-        // Previous step is already pending/in_progress, just set the notice and rejection reason
-        await supabase.from('project_workflow_steps').update({
-          next_step_rejected_notice: rejectStep.step.name,
-          next_step_rejection_reason: rejectionReason,
-        }).eq('id', previousStep.id)
-      }
-    }
-
+    const plan = planStepTransition({
+      transition: 'reject',
+      step: rejectStep.step,
+      prevStep: previousStep,
+      reason: rejectStep.reason,
+      nowIso: new Date().toISOString(),
+    })
+    const stepsById = new Map([[rejectStep.step.id, rejectStep.step]])
+    if (previousStep) stepsById.set(previousStep.id, previousStep)
+    const ok = await executeLifecyclePlan(plan, stepsById)
     setRejectStep(null)
-    await loadAssignedSteps()
+    if (ok) await loadAssignedSteps()
   }
 
   async function submitSkip() {
     if (!skipStep || !skipStep.reason.trim()) return
-    await supabase.from('project_workflow_steps').update({
-      status: 'skipped',
-      skipped_reason: skipStep.reason.trim(),
-      ended_at: new Date().toISOString(),
-    }).eq('id', skipStep.step.id)
-    await recordAction(skipStep.step.id, 'skipped', skipStep.reason.trim())
+    const plan = planStepTransition({
+      transition: 'skip',
+      step: skipStep.step,
+      reason: skipStep.reason,
+      nowIso: new Date().toISOString(),
+    })
+    const ok = await executeLifecyclePlan(plan, new Map([[skipStep.step.id, skipStep.step]]))
     setSkipStep(null)
-    await loadAssignedSteps()
+    if (ok) await loadAssignedSteps()
   }
 
   return (

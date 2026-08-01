@@ -5,7 +5,7 @@ file: docs/WORKFLOW_PAGE_ARCHITECTURE.md
 type: Architecture Map / Decomposition
 purpose: Step-0 map for the Workflow.tsx decomposition (per PAGE_DECOMPOSITION_PLAYBOOK.md) — inventory what every region of the ~4,782-line src/pages/Workflow.tsx touches (state, loaders, handlers, sub-components, supabase tables/RPCs/edge functions, coupling) so extraction can start without re-deriving the strategy. Sections — What this surface is; Key structural differences from Bids/Materials; Master summary table; Per-region dossiers; Shared infrastructure; Stage-A pure-logic inventory; Preserve-quirks list; Recommended extraction order.
 audience: Developers, AI Agents
-last_updated: 2026-07-29
+last_updated: 2026-08-01
 ---
 
 ## What this surface is
@@ -39,6 +39,8 @@ Each section lists: render location (anchored by JSX comment/symbol), **owned lo
 - Prefer symbol names over line numbers; treat any line number here as approximate.
 
 ---
+
+> **v2.1200 (RUN_SUBS_PLAN PR 0.1):** the step-lifecycle engine (markStarted/markCompleted/markApproved/submitReject/submitSkip/markReopened) now plans through the shared pure kernel `src/lib/workflow/stepLifecycle.ts` (`planStepTransition`) and fires notifications via `src/lib/workflow/stepLifecycleNotifications.ts` — the page keeps a thin `executeLifecyclePlan` runner plus its own refresh/toast/scroll behavior. `updateStepStatus`, `sendNotification`, and the inline dispatcher body are gone. The Dashboard Projects card consumes the same kernel (it previously sent no notifications and diverged on the reject cascade). These are the first files in `src/lib/workflow/` — the Stage-A direction below.
 
 ## Master summary table
 

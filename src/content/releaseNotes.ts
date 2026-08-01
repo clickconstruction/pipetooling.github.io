@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1200',
+    date: '2026-08-01',
+    title: 'Step actions from the Dashboard now send the same notifications as the Workflow page',
+    kind: 'feature',
+    highlights: [
+      'Starting, completing, approving, or sending back a project step from the Dashboard card now fires the same emails and pushes as doing it on the Workflow page — including the "Your turn" handoff to the next assignee.',
+      'Sending a step back from the Dashboard now reopens the previous step as In Progress (matching the Workflow page) instead of Pending.',
+      'Step updates that fail now show an error instead of silently doing nothing.',
+    ],
+  },
+  {
     version: 'v2.1199',
     date: '2026-08-01',
     title: 'Skipping a project step now records it in the step history',
