@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1243',
+    date: '2026-08-01',
+    title: 'Dispatch schedule: one ⋯ menu for Visible hours, settings, and Share',
+    kind: 'feature',
+    highlights: [
+      'Visible hours moved off the Day row into the ⋯ menu — the item shows your active window, and the ⋯ button glows blue while one is set.',
+      'The desktop Dispatch Settings button folded into the same ⋯ menu, so the page tools live in one place on every screen size.',
+    ],
+  },
+  {
     version: 'v2.1242',
     date: '2026-08-01',
     title: 'Dispatch schedule: the new phone layout is now the only one',

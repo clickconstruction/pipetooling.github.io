@@ -9,7 +9,9 @@ The Schedule page (`/schedule-dispatch`) is where the office puts people on jobs
 
 ## The views
 
-On a phone, the page uses a compact header: the three view tabs as a segmented switch with **Day** first, a {{button:outline|+ Schedule}} button whose menu names every scheduling flow (Add one job, Quick Assign, Fill several days at once, Copy as a linked chain — the last two hop you to the People grid where the cells live), and a **⋯** menu holding **Share** and **Dispatch settings**. The page also opens on the **Day** view on phones; desktop keeps the full layout.
+On a phone, the page uses a compact header: the three view tabs as a segmented switch with **Day** first, and a {{button:outline|+ Schedule}} button whose menu names every scheduling flow (Add one job, Quick Assign, Fill several days at once, Copy as a linked chain — the last two hop you to the People grid where the cells live). The page also opens on the **Day** view on phones; desktop keeps the full layout.
+
+At every width, a single **⋯** menu at the top right holds the page's tools: **Visible hours** (on the Day view — the item shows the active window, and the ⋯ button glows blue while one is set), **Dispatch settings**, and **Share**.
 
 On a phone, the People toolbar adds a green **⚡ Assign work** button — the same quick flow described in the Dispatch Mode guide (job → people with availability ribbons → suggested time → schedule). The hub has three view tabs — **People**, **Jobs**, and **Day** — plus a {{button:outline|Dispatch Settings}} button for edit roles. The People view is the workhorse: a weekly grid with people down the left and days across the top — today's column is tinted yellow and boxed in orange so it's easy to spot. Use the **Search Person or Job** box to jump around, and hide weekend columns when you don't need them. An **Expected manpower** readout totals who's scheduled.
 

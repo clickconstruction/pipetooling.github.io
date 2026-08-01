@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-01 (v2.1242)
+last_updated: 2026-08-01 (v2.1243)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1243)
+
+### Schedule Dispatch — one ⋯ menu at every width: Visible hours + Dispatch settings + Share (2026-08-01)
+The hub's tools consolidate into a single ⋯ menu on desktop AND phones. **Visible hours** moves off the Day nav row: the inline gear (which doubled as a status chip showing the active window) is removed from [`QuickfillScheduleSection`](../src/components/quickfill/QuickfillScheduleSection.tsx); the section instead reports `{ open, windowLabel }` through a new `onDaySettingsApiChange` prop (null on unmount/tab-leave), and the hub shell renders a **Visible hours…** menu item carrying the window as a chip — with the ⋯ trigger tinting blue while a window is active, so the state never goes invisible (Quickfill's own mount never showed the gear, so nothing changes there). **Dispatch settings** loses its standalone desktop tab-bar button — the shell's phone ⋯ menu is now a shared `moreMenu` node rendered in both the compact and classic headers, holding Visible hours (Day view only), Dispatch settings… (canEdit), a divider, and the **Share** slot (`weekNavRightSlot`). Every item routes through the existing handlers (`openDaySettings`, the Dispatch Settings modal, the page's Share button node). The Quickfill tomorrow embed is untouched. Render tests: 5 (desktop's standalone button gone + ⋯ contents; Day view registering Visible hours into the menu; the phone header/sheet suites unchanged). Docs: help guide + architecture dossier. Verified: `tsc -b` clean, zero new lints, full vitest suite green. Files: modified [`ScheduleDispatchHub.tsx`](../src/components/schedule/ScheduleDispatchHub.tsx), [`QuickfillScheduleSection.tsx`](../src/components/quickfill/QuickfillScheduleSection.tsx), render test, help guide, architecture doc. No DB / migration / RLS / RPC / Edge / type-gen changes.
 
 ## Latest Updates (v2.1242)
 
