@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1247',
+    date: '2026-08-01',
+    title: 'People Review: popup Team Summary now matches the on-page table',
+    kind: 'fix',
+    highlights: [
+      'The "Open in new window" Team Summary used an outdated overhead formula, so its Profit column and ranking disagreed with the table on the page. Both now share one calculation.',
+      'The popup gains the Overhead Burden column, and its Profit breakdowns explain the same split-model math as the on-page drilldowns.',
+      'Overhead Method B/C were labeled one way in the job rows and the opposite way in the rate breakdown — the letters now agree everywhere.',
+    ],
+  },
+  {
     version: 'v2.1246',
     date: '2026-08-01',
     title: 'People Review: numbers no longer silently truncate as history grows',

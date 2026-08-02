@@ -1039,10 +1039,10 @@ export function OverheadHoursBody(props: { entry: TeamSummaryBreakdown }) {
         people, total work is their weekday salary days (8 hrs/weekday);
         for hourly, it is people_hours / clock sessions.{' '}
         <strong>
-          Every hour worked is charged the per-hour overhead in the
+          Office and bid hours are charged as your own overhead labor in the
           &ldquo;Profit (after overhead)&rdquo; column
         </strong>{' '}
-        &mdash; field, office, and bid hours all incur the same rate.
+        &mdash; field hours carry the parts burden instead (split model).
       </p>
       <p className="caption">
         Overhead hours are approved clock sessions on the configured Office
@@ -1254,14 +1254,12 @@ export function OverheadLaborBody(props: { entry: TeamSummaryBreakdown }) {
         it again would visually double-count.
       </p>
       <p className="caption">
-        Office and bid hours fund the rolling 90-day overhead pool (office
-        labor + bid labor + office parts), which is then deducted from
-        every person as <code>total hours × rate</code> in the
-        &ldquo;Profit (after overhead)&rdquo; column &mdash; every hour
-        worked (field + office + bid) is charged the per-hour overhead.
-        This Overhead labor column simply makes the office + bid wage
-        contribution visible in each person&rsquo;s own row &mdash; it
-        does <strong>not</strong> change Gross, Net, or Profit numbers.
+        Split overhead model: this person&rsquo;s own office + bid wages
+        (this column) are deducted directly in &ldquo;Profit (after
+        overhead)&rdquo;, and the non-labor pool (office parts) is spread
+        across field hours as the Overhead Burden column. Office and bid
+        wages are charged to whoever logged them &mdash; they are not
+        spread across the team.
       </p>
       <div style={{ marginTop: '1rem', color: 'var(--text-700)' }}>
         <strong>Source:</strong> {srcLabel}
@@ -1301,11 +1299,9 @@ export function FieldHoursBody(props: {
     : 'All days in period (clocked / salary, minus office + bid)'
   const ohRateNote =
     overheadRate != null
-      ? `$${overheadRate.toFixed(2)} per hour × ${fmtH(fieldHrs + officeHrs + bidHrs)} all hours = ${fmtMoney(
-          (fieldHrs + officeHrs + bidHrs) * overheadRate,
-        )} overhead charged in "Profit (after overhead)" (field component: ${fmtH(fieldHrs)} × $${overheadRate.toFixed(
-          2,
-        )} = ${fmtMoney(fieldHrs * overheadRate)})`
+      ? `Field hours drive the Overhead Burden in "Profit (after overhead)" — your ${fmtH(
+          fieldHrs,
+        )} field hrs × the office-parts rate (see the Profit breakdown for the dollar waterfall). Office/bid hours are charged as your own overhead labor instead. Method A reference: $${overheadRate.toFixed(2)}/field hr.`
       : 'Overhead rate unavailable — reload Review.'
   const jobsForDisplay = jobs
     .slice()
@@ -1495,15 +1491,13 @@ export function OverheadRateBody(props: { overheadDecomp: OverheadRateDecomp }) 
       <div style={{ marginBottom: '0.75rem', color: 'var(--text-700)' }}>
         <div style={{ marginBottom: '0.5rem' }}>
           Rolling 90-day overhead rate. Method A is{' '}
-          <strong>$ per field hour</strong>: it spreads the overhead pool
-          (office labor, bid labor, office parts) over the hours that
-          actually produce billable field work. The Team Summary applies
-          this rate against{' '}
-          <code>all hours × rate</code> when deducting overhead from each
-          person in the &ldquo;Profit (after overhead)&rdquo; column
-          &mdash; office and bid hours fund the pool but are still charged
-          the per-hour overhead so every hour the person worked reflects
-          its full share of the overhead burden.
+          <strong>$ per field hour</strong>: it spreads the whole overhead
+          pool (office labor, bid labor, office parts) over billable field
+          hours &mdash; a reference rate. The Team Summary&rsquo;s
+          &ldquo;Profit (after overhead)&rdquo; column uses the{' '}
+          <strong>split model</strong> instead: each person&rsquo;s own
+          office/bid wages are charged directly, and only the office-parts
+          pool is spread across field hours (the Overhead Burden column).
         </div>
         {d.windowStart && d.windowEnd ? (
           <div style={{ marginBottom: '0.25rem' }}>
@@ -1583,25 +1577,14 @@ export function OverheadRateBody(props: { overheadDecomp: OverheadRateDecomp }) 
               {ratePerHour == null ? <DashCell /> : `$${Number(ratePerHour).toFixed(2)}/hr`}
             </td>
             <td>
-              Used to deduct overhead in the Team Summary: Profit after
-              overhead = Net &minus; <strong>field hours</strong> &times;
-              rate. Office and bid hours are not charged (they fund the
-              rate).
+              Reference rate: whole pool &divide; field hours. The Profit
+              (after overhead) column uses the split model &mdash; own
+              office/bid wages charged directly + field-hour share of office
+              parts &mdash; not this rate.
             </td>
           </tr>
           <tr>
-            <td>Method B &mdash; per field labor $</td>
-            <td className="num">
-              {ratePerLaborDollar == null ? (
-                <DashCell />
-              ) : (
-                `$${Number(ratePerLaborDollar).toFixed(2)} / $1 labor`
-              )}
-            </td>
-            <td>Reference only: ratio of overhead pool to field labor dollars.</td>
-          </tr>
-          <tr>
-            <td>Method C &mdash; per revenue $ (invoices sent)</td>
+            <td>Method B &mdash; per revenue $ (invoices sent)</td>
             <td className="num">
               {ratePerRevenueDecimal == null ? (
                 <DashCell />
@@ -1609,7 +1592,18 @@ export function OverheadRateBody(props: { overheadDecomp: OverheadRateDecomp }) 
                 `${(Number(ratePerRevenueDecimal) * 100).toFixed(1)}% of revenue`
               )}
             </td>
-            <td>Reference only: invoices sent in window = {fmtMoney(invoices)}.</td>
+            <td>Reference only: invoices sent in window = {fmtMoney(invoices)}. Matches the &ldquo;B. Overhead by revenue&rdquo; rows in Jobs Worked.</td>
+          </tr>
+          <tr>
+            <td>Method C &mdash; per field labor $</td>
+            <td className="num">
+              {ratePerLaborDollar == null ? (
+                <DashCell />
+              ) : (
+                `$${Number(ratePerLaborDollar).toFixed(2)} / $1 labor`
+              )}
+            </td>
+            <td>Reference only: ratio of overhead pool to field labor dollars. Matches the &ldquo;C. Overhead by direct labor cost&rdquo; rows in Jobs Worked.</td>
           </tr>
         </tbody>
       </table>

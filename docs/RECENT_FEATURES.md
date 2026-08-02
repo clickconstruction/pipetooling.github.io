@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-01 (v2.1246)
+last_updated: 2026-08-01 (v2.1247)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1247)
+
+### People → Review — popup Team Summary rejoins the split overhead model; Method B/C labels unswapped (2026-08-01)
+The "Open in new window" Team Summary had kept the **retired all-hours overhead model** (`profit − totalHours × ratePerHour`, whole pool) while the inline table moved to the **split model** (own office/bid wages charged directly + field-hour share of office parts) — same person, same period, different Profit and different ranking between the two windows, with a comment claiming they matched. The popup now consumes the same [`enrichTeamSummaryRowsForInline`](../src/components/people/teamSummary/formatters.ts) payload as the inline table: identical Profit / Profit-per-hour numbers, the previously missing **Overhead Burden column** (plain cell + footer total), and split-model **Profit / Profit-per-hour modals** mirroring `drilldowns.tsx`. Rates are read through a new `reviewOverheadRatesRef` inside the row-fetch `.then()`, so a popup opened while the 90-day rate is still loading picks the rate up when it lands instead of rendering permanently rate-less/alphabetical. Ride-alongs: popup `fmtH` gains thousands separators; the popup Net modal's Parts/Total-labor now render negated like inline; **Method B/C letter swap fixed** — the rate-decomposition tables (popup + inline `drilldowns.tsx`) said B=labor/C=revenue while the Jobs Worked grids said B=revenue/C=labor; both rate tables now match the grids (B=revenue, C=labor); and the stale "all hours × rate" narration in the Field-hours/Overhead-hours/rate-decomposition drilldowns is rewritten for the split model. Docs: [`PEOPLE_REVIEW_TAB_ARCHITECTURE.md`](./PEOPLE_REVIEW_TAB_ARCHITECTURE.md) §D + preserve-quirk #5 no longer contradict §C. Verified: `tsc -b` clean, zero new lints, vitest 3,336 green. Files: modified [`PeopleReviewTab.tsx`](../src/components/people/PeopleReviewTab.tsx), [`drilldowns.tsx`](../src/components/people/teamSummary/drilldowns.tsx), architecture doc. No DB / migration / RLS / RPC / Edge / type-gen changes.
 
 ## Latest Updates (v2.1246)
 
