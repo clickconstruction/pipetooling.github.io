@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  countDispatchModeJobsByDay,
   dispatchModeAddDays,
   dispatchModeAddMonths,
   dispatchModeAgendaHeading,
@@ -94,5 +95,33 @@ describe('dispatchModeTwoWeekGrid', () => {
     expect(weeks[1]?.[0]?.ymd).toBe('2026-07-26')
     expect(weeks[1]?.[6]?.ymd).toBe('2026-08-01') // crosses the month boundary
     for (const w of weeks) expect(w).toHaveLength(7)
+  })
+})
+
+describe('countDispatchModeJobsByDay', () => {
+  it('counts distinct jobs per day — multiple blocks on one job count once', () => {
+    const counts = countDispatchModeJobsByDay([
+      { work_date: '2026-08-03', job_id: 'a' },
+      { work_date: '2026-08-03', job_id: 'a' },
+      { work_date: '2026-08-03', job_id: 'b' },
+      { work_date: '2026-08-04', job_id: 'a' },
+    ])
+    expect(counts.get('2026-08-03')).toBe(2)
+    expect(counts.get('2026-08-04')).toBe(1)
+    expect(counts.get('2026-08-05')).toBeUndefined()
+  })
+
+  it('counts job-less blocks individually so a scheduled day is never empty', () => {
+    const counts = countDispatchModeJobsByDay([
+      { work_date: '2026-08-03', job_id: null },
+      { work_date: '2026-08-03', job_id: null },
+      { work_date: '2026-08-03', job_id: 'a' },
+    ])
+    expect(counts.get('2026-08-03')).toBe(3)
+  })
+
+  it('ignores rows without a work_date and handles empty input', () => {
+    expect(countDispatchModeJobsByDay([]).size).toBe(0)
+    expect(countDispatchModeJobsByDay([{ work_date: '', job_id: 'a' }]).size).toBe(0)
   })
 })

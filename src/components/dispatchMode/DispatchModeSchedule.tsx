@@ -17,7 +17,7 @@ import {
   dispatchModeAgendaHeading,
   dispatchModeMonthTitle,
   dispatchModeTwoWeekGrid,
-  fetchDispatchModeBusyDays,
+  fetchDispatchModeDayJobCounts,
   fetchDispatchModeDayBlocks,
   type DispatchModeAgendaBlock,
 } from '../../lib/dispatchModeSchedule'
@@ -52,11 +52,11 @@ export default function DispatchModeSchedule({ selfUserId }: { selfUserId?: stri
   const gridStart = weeks[0]?.[0]?.ymd ?? todayYmd
   const gridEnd = weeks[weeks.length - 1]?.[6]?.ymd ?? todayYmd
 
-  const [busyDays, setBusyDays] = useState<Set<string>>(() => new Set())
+  const [dayJobCounts, setDayJobCounts] = useState<Map<string, number>>(() => new Map())
   useEffect(() => {
     let cancelled = false
-    void fetchDispatchModeBusyDays(gridStart, gridEnd, selfUserId).then(({ data }) => {
-      if (!cancelled) setBusyDays(data)
+    void fetchDispatchModeDayJobCounts(gridStart, gridEnd, selfUserId).then(({ data }) => {
+      if (!cancelled) setDayJobCounts(data)
     })
     return () => {
       cancelled = true
@@ -220,7 +220,7 @@ export default function DispatchModeSchedule({ selfUserId }: { selfUserId?: stri
               <button
                 key={day.ymd}
                 type="button"
-                aria-label={`Show schedule for ${day.ymd}`}
+                aria-label={`Show schedule for ${day.ymd}${(dayJobCounts.get(day.ymd) ?? 0) > 0 ? ` — ${dayJobCounts.get(day.ymd)} job${(dayJobCounts.get(day.ymd) ?? 0) === 1 ? "" : "s"}` : ""}`}
                 aria-pressed={selected}
                 onClick={() => setSelectedYmd(day.ymd)}
                 style={{
@@ -259,12 +259,16 @@ export default function DispatchModeSchedule({ selfUserId }: { selfUserId?: stri
                 <span
                   aria-hidden="true"
                   style={{
-                    width: 4,
-                    height: 4,
-                    borderRadius: '50%',
-                    background: busyDays.has(day.ymd) ? 'var(--text-muted)' : 'transparent',
+                    height: 14,
+                    lineHeight: '14px',
+                    fontSize: '0.6875rem',
+                    fontWeight: 600,
+                    fontVariantNumeric: 'tabular-nums',
+                    color: selected ? 'var(--text-link)' : 'var(--text-muted)',
                   }}
-                />
+                >
+                  {(dayJobCounts.get(day.ymd) ?? 0) > 0 ? dayJobCounts.get(day.ymd) : ''}
+                </span>
               </button>
                 )
               }),
