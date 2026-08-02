@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-02 (v2.1287)
+last_updated: 2026-08-02 (v2.1288)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1288)
+
+### Materials decomposition: assembly-cluster seam (useMaterialsAssemblies) (2026-08-02)
+Seam #3 from the architecture map: [`hooks/useMaterialsAssemblies.ts`](../src/hooks/useMaterialsAssemblies.ts) owns the templates cache, the shared `selectedTemplate` + `templateItems` selection (the working selection of BOTH Assembly Book and PO Builder), the shared filters — including the single `filterAssemblyTypeDropdownRef` both tabs render (preserve-quirk #7: filter state deliberately carries over between the tabs) with its click-outside effect — the `allTemplateItemsForStats`/`partIdToLowestPrice` stats caches, and the three loaders (`loadMaterialTemplates`, `loadTemplateItems` with its part/price/nested hydration, `loadAllTemplateItemsForStats`). Template/item CRUD and the shared modals stay in the page (they write page-owned modal state). `MaterialTemplate`/`TemplateItemWithDetails` types export from the hook. Behavior-preserving only. Materials.tsx 3,915 → 3,773 lines (7,033 at train start). 380 files / 3,429 tests green. Next: the Assembly Book tab JSX, then PO Builder last.
 
 ## Latest Updates (v2.1287)
 
