@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-02 (v2.1299)
+last_updated: 2026-08-02 (v2.1300)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1300)
+
+### Takeoff decomposition T6: the two small modals extracted (2026-08-02)
+[`TakeoffPartPricesModal`](../src/components/bids/TakeoffPartPricesModal.tsx) (~230 lines — catalog price viewer/editor with optimistic add, opened from rough rows and both authoring modals; deliberately NOT merged with Materials' spirit-twin `PartPricesManager`) and [`TakeoffBundleBreakdownModal`](../src/components/bids/TakeoffBundleBreakdownModal.tsx) (~175 lines — parts-vs-bundle comparison, data via the already-extracted `assemblyBundleBreakdown` lib). **Both open-target pointers stay parent-owned** per the shared-state rule: `partPricesModal` is watched by the parent's close-edge ref effect (rough catalog-price refresh preserved verbatim) and `bundleBreakdownModal` is written from rough rows; `applyBundleQuoteToLine` and `openEditTemplateModal` stay parent handlers passed as props. Internal data/edit states and load effects moved. Behavior-preserving only. BidsTakeoffTab.tsx 4,293 → 3,982 lines (5,765 at train start). 391 files / 3,506 tests green.
 
 ## Latest Updates (v2.1299)
 
