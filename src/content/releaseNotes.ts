@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1284',
+    date: '2026-08-02',
+    title: 'Team leads moved next to the people roster',
+    kind: 'feature',
+    highlights: [
+      'Team-lead assignments are now managed from People → Users via the new "Team leads" button — pick a leader, add members, and set each member’s dashboard-hours visibility.',
+      'The old copy of this manager in Settings → Dashboard is gone; a pointer there tells you where it went.',
+      'The People → Teams tab is unchanged for now.',
+    ],
+  },
+  {
     version: 'v2.1283',
     date: '2026-08-02',
     title: 'People Overhead: the numbers are now trustworthy',

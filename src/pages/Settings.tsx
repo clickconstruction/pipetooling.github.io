@@ -41,7 +41,6 @@ import { useSettingsProspectsCatalog } from '../hooks/useSettingsProspectsCatalo
 import { useSettingsPeopleDirectory } from '../hooks/useSettingsPeopleDirectory'
 import { useSettingsFinancialPins } from '../hooks/useSettingsFinancialPins'
 import { useSettingsMyReports } from '../hooks/useSettingsMyReports'
-import { useSettingsTeamLeaderAssignments } from '../hooks/useSettingsTeamLeaderAssignments'
 import { useSettingsAccount } from '../hooks/useSettingsAccount'
 import type { UserRow } from '../types/settingsRows'
 import { isAssistantLike, isSubcontractorLikeRole } from '../lib/subcontractorLikeRole'
@@ -230,7 +229,6 @@ export default function Settings() {
   const [dailyGoalsLoading, setDailyGoalsLoading] = useState(false)
   const [dashboardButtonsSectionOpen, setDashboardButtonsSectionOpen] = useState(false)
   const [dailyGoalsSectionOpen, setDailyGoalsSectionOpen] = useState(false)
-  const [teamLeadAssignmentsSectionOpen, setTeamLeadAssignmentsSectionOpen] = useState(false)
   const [reportNotificationsSectionOpen, setReportNotificationsSectionOpen] = useState(false)
   const [dataBackupSectionOpen, setDataBackupSectionOpen] = useState(false)
 
@@ -542,33 +540,6 @@ export default function Settings() {
     myReportsReportEditWindowDays,
     loadMyReportsRef,
   } = useSettingsMyReports(showMyReports, authUser?.id ?? null)
-
-  const {
-    teamLeaderAssignments,
-    setTeamLeaderAssignments,
-    teamLeaderVisibilitySavingId,
-    setTeamLeaderVisibilitySavingId,
-    teamAssignLeaderId,
-    setTeamAssignLeaderId,
-    teamAssignMemberId,
-    setTeamAssignMemberId,
-    teamAssignSaving,
-    setTeamAssignSaving,
-    teamLeaderSortColumn,
-    setTeamLeaderSortColumn,
-    teamLeaderSortDir,
-    setTeamLeaderSortDir,
-    teamLeaderAssignmentsSearchQuery,
-    setTeamLeaderAssignmentsSearchQuery,
-    filteredTeamLeaderAssignments,
-    teamHoursMemberPickerUsers,
-    teamHoursMemberPickerDisabled,
-    teamHoursMemberPlaceholder,
-  } = useSettingsTeamLeaderAssignments({
-    enabled: myRole === 'dev' || myRole === 'master_technician' || isAssistantLike(myRole),
-    goalPickerUsers,
-    setError,
-  })
 
   // Your account engine — extracted to useSettingsAccount (v2.859)
   const {
@@ -1226,7 +1197,6 @@ export default function Settings() {
           dashboardQuickButtonsPlacement={dashboardQuickButtonsPlacement}
           dashboardQuickButtonsPlacementSaving={dashboardQuickButtonsPlacementSaving}
           externalTeamTotal={externalTeamTotal}
-          filteredTeamLeaderAssignments={filteredTeamLeaderAssignments}
           financialPinsSectionOpen={financialPinsSectionOpen}
           goalPickerUsers={goalPickerUsers}
           hasNotificationHistory={hasNotificationHistory}
@@ -1317,29 +1287,8 @@ export default function Settings() {
           setReportForEdit={setReportForEdit}
           setReportNotificationsSectionOpen={setReportNotificationsSectionOpen}
           setSelectedReport={setSelectedReport}
-          setTeamAssignLeaderId={setTeamAssignLeaderId}
-          setTeamAssignMemberId={setTeamAssignMemberId}
-          setTeamAssignSaving={setTeamAssignSaving}
-          setTeamLeadAssignmentsSectionOpen={setTeamLeadAssignmentsSectionOpen}
-          setTeamLeaderAssignments={setTeamLeaderAssignments}
-          setTeamLeaderAssignmentsSearchQuery={setTeamLeaderAssignmentsSearchQuery}
-          setTeamLeaderSortColumn={setTeamLeaderSortColumn}
-          setTeamLeaderSortDir={setTeamLeaderSortDir}
-          setTeamLeaderVisibilitySavingId={setTeamLeaderVisibilitySavingId}
           setViewReportModalOpen={setViewReportModalOpen}
           showMyReports={showMyReports}
-          teamAssignLeaderId={teamAssignLeaderId}
-          teamAssignMemberId={teamAssignMemberId}
-          teamAssignSaving={teamAssignSaving}
-          teamHoursMemberPickerDisabled={teamHoursMemberPickerDisabled}
-          teamHoursMemberPickerUsers={teamHoursMemberPickerUsers}
-          teamHoursMemberPlaceholder={teamHoursMemberPlaceholder}
-          teamLeadAssignmentsSectionOpen={teamLeadAssignmentsSectionOpen}
-          teamLeaderAssignments={teamLeaderAssignments}
-          teamLeaderAssignmentsSearchQuery={teamLeaderAssignmentsSearchQuery}
-          teamLeaderSortColumn={teamLeaderSortColumn}
-          teamLeaderSortDir={teamLeaderSortDir}
-          teamLeaderVisibilitySavingId={teamLeaderVisibilitySavingId}
           toggleReportNotificationTemplate={toggleReportNotificationTemplate}
           users={users}
         />
