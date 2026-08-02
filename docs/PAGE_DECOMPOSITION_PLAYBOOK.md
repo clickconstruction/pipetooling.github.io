@@ -16,7 +16,7 @@ The repo still has several God components (line counts at 2026-07-29, the date o
 
 | File | Lines | Map | Notes |
 |---|---|---|---|
-| `src/pages/Materials.tsx` | 6,940 | [`MATERIALS_TABS_ARCHITECTURE.md`](./MATERIALS_TABS_ARCHITECTURE.md) | low-churn, no extraction scheduled |
+| `src/pages/Materials.tsx` | ~2,120 | [`MATERIALS_TABS_ARCHITECTURE.md`](./MATERIALS_TABS_ARCHITECTURE.md) | **decomposition complete** (v2.1275–v2.1293, 12-PR train from 7,033 lines): all 6 tabs extracted, 3 seam hooks (`useMaterialsCatalog`/`useMaterialsAssemblies`/`useMaterialsPurchaseOrders`), Stage-A kernels in `lib/materials/*` + `lib/materialsDocuments/*` |
 | `src/pages/Estimates.tsx` | 5,365 | [`ESTIMATES_TABS_ARCHITECTURE.md`](./ESTIMATES_TABS_ARCHITECTURE.md) | two page components behind a URL router; Stage-A-mature already |
 | `src/pages/Workflow.tsx` | 4,782 | [`WORKFLOW_PAGE_ARCHITECTURE.md`](./WORKFLOW_PAGE_ARCHITECTURE.md) | region-based (not tabbed); StepFormModal is the first peel-off |
 | `src/pages/People.tsx` | 4,313 | [`PEOPLE_TABS_ARCHITECTURE.md`](./PEOPLE_TABS_ARCHITECTURE.md) | decomposition essentially done |

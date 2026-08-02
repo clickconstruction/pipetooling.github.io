@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1293',
+    date: '2026-08-02',
+    title: 'Behind the scenes: Materials page cleanup complete',
+    kind: 'infra',
+    highlights: [
+      'The PO Builder tab moved into its own component — completing the Materials page restructuring that began earlier today.',
+      'All six Materials tabs now live in their own components; nothing visible changed anywhere along the way.',
+    ],
+  },
+  {
     version: 'v2.1291',
     date: '2026-08-02',
     title: 'Team leads: one better manager, everywhere',
