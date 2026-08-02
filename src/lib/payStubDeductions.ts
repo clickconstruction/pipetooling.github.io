@@ -1,4 +1,4 @@
-/** Deduction lines (Less) on a pay stub — see pay_stub_deductions. */
+/** Deduction lines (Less) on a pay report — see pay_stub_deductions. */
 
 export type PayStubDeductionRow = {
   id: string

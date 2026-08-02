@@ -13,7 +13,7 @@ Sometimes the same person ends up in the roster twice — usually because their 
 2. Press {{button:outline|Combine…}} next to Edit and Link account.
 3. Pick the person to keep, review the preview — it counts exactly how many hours, pay, crew, and sub-sheet rows will move — and confirm.
 
-Everything follows the keeper: hours, pay config, crew records, pay stubs, and sub sheets. The duplicate row is then **archived**, never deleted, so nothing is lost.
+Everything follows the keeper: hours, pay config, crew records, pay reports, and sub sheets. The duplicate row is then **archived**, never deleted, so nothing is lost.
 
 :::example When both rows have app accounts
 If both people are linked to logins, combine the accounts first (a dev can do this under Settings), then combine the people. The button explains this when it applies.

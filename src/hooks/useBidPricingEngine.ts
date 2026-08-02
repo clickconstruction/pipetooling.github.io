@@ -462,7 +462,7 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
       supabase.from('bids').select('materials_model').eq('id', bidId).maybeSingle(),
     ])
     if (e) {
-      setError(`Failed to load cost estimate: ${e.message}`)
+      setError(`Failed to load labor costs: ${e.message}`)
       setCostEstimate(null)
       return null
     }
@@ -650,7 +650,7 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
           est = await loadCostEstimate(bidId)
           if (est) return est
         }
-        setError(`Failed to create cost estimate: ${insErr.message}`)
+        setError(`Failed to create labor costs: ${insErr.message}`)
         return null
       }
       est = inserted as CostEstimate

@@ -1,4 +1,4 @@
-/** Physical payment installments recorded against a pay stub (see pay_stub_payments). */
+/** Physical payment installments recorded against a pay report (see pay_stub_payments). */
 
 import { relativeDayOffset } from './relativeDayPhrase'
 

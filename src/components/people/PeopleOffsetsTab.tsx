@@ -230,7 +230,7 @@ export default function PeopleOffsetsTab({ people, users, payStubs, loadPayStubs
                               type="button"
                               onClick={() => unapplyOffset(o)}
                               title="Unapply"
-                              aria-label="Unapply from pay stub"
+                              aria-label="Unapply from pay report"
                               style={{ padding: '0.35rem', cursor: 'pointer', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 6, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}
                             >
                               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width={16} height={16} fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -241,8 +241,8 @@ export default function PeopleOffsetsTab({ people, users, payStubs, loadPayStubs
                             <button
                               type="button"
                               disabled
-                              title="Applying employee credit to Net Pay is not wired yet (future: Additional line on a pay stub)."
-                              aria-label="Apply to pay stub unavailable for employee credit"
+                              title="Applying employee credit to Net Pay is not wired yet (future: Additional line on a pay report)."
+                              aria-label="Apply to pay report unavailable for employee credit"
                               style={{
                                 padding: '0.35rem',
                                 cursor: 'not-allowed',
@@ -263,8 +263,8 @@ export default function PeopleOffsetsTab({ people, users, payStubs, loadPayStubs
                             <button
                               type="button"
                               onClick={() => { setOffsetToApply(o); setOffsetApplyPayStubId(''); setOffsetApplyModalOpen(true) }}
-                              title="Apply to pay stub"
-                              aria-label="Apply to pay stub"
+                              title="Apply to pay report"
+                              aria-label="Apply to pay report"
                               style={{ padding: '0.35rem', cursor: 'pointer', background: 'var(--bg-blue-tint)', border: '1px solid var(--border-blue)', borderRadius: 6, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-link)' }}
                             >
                               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width={16} height={16} fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -329,10 +329,10 @@ export default function PeopleOffsetsTab({ people, users, payStubs, loadPayStubs
       {offsetApplyModalOpen && offsetToApply && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
           <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 320 }}>
-            <h3 style={{ marginTop: 0 }}>Apply offset to pay stub</h3>
-            <p style={{ marginBottom: '1rem', fontSize: '0.875rem' }}>Apply {offsetToApply.type} ${formatCurrency(offsetToApply.amount)} for {offsetToApply.person_name} to a pay stub:</p>
+            <h3 style={{ marginTop: 0 }}>Apply offset to pay report</h3>
+            <p style={{ marginBottom: '1rem', fontSize: '0.875rem' }}>Apply {offsetToApply.type} ${formatCurrency(offsetToApply.amount)} for {offsetToApply.person_name} to a pay report:</p>
             <div style={{ marginBottom: '1rem' }}>
-              <label style={{ display: 'block', marginBottom: 4 }}>Pay stub</label>
+              <label style={{ display: 'block', marginBottom: 4 }}>Pay report</label>
               <select value={offsetApplyPayStubId} onChange={(e) => setOffsetApplyPayStubId(e.target.value)} style={{ width: '100%', padding: '0.5rem' }}>
                 <option value="">— Select —</option>
                 {payStubs.filter((s) => s.person_name === offsetToApply.person_name).sort((a, b) => b.period_start.localeCompare(a.period_start)).map((s) => (

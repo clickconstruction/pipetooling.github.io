@@ -8,7 +8,7 @@ import type {
 export type PayReportAssignmentDayBreakdown = { date: string; hours: number; jobsText: string }
 
 /**
- * Per-day crew job/bid allocation lines for pay reports (same math as pay stub HTML).
+ * Per-day crew job/bid allocation lines for pay reports (same math as pay report HTML).
  */
 export function computePayReportAssignmentsBreakdown(
   personName: string,

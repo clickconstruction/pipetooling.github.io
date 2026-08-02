@@ -26,7 +26,7 @@ export function appActivityPageKey(pathname: string, search: string): string {
   return tab ? `${page}:${tab}` : page
 }
 
-/** 'bids:pricing' -> 'Bids · Pricing'; 'people:pay_stubs' -> 'People · Pay Stubs'. */
+/** 'bids:pricing' -> 'Bids · Pricing'; 'people:pay_stubs' -> 'People · Pay Reports'. */
 export function formatAppActivityPageLabel(key: string): string {
   const pretty = (seg: string) =>
     seg

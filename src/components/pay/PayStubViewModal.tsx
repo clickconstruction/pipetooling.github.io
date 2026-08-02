@@ -10,7 +10,7 @@ export type PayStubViewModalProps = {
 }
 
 /**
- * In-app viewer for a generated pay stub: the built HTML document renders in an iframe
+ * In-app viewer for a generated pay report: the built HTML document renders in an iframe
  * (it is a complete `<!DOCTYPE html>` document with its own styles), and Print calls the
  * iframe window's print() so only the stub prints — not the app page.
  */

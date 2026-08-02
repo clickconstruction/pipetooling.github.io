@@ -208,7 +208,7 @@ export function HoursBreakdownBody(props: {
                 <thead>
                   <tr>
                     <th>Date</th>
-                    <th>HCP</th>
+                    <th>Job #</th>
                     <th className="num">Hours</th>
                   </tr>
                 </thead>
@@ -268,7 +268,7 @@ export function HoursBreakdownBody(props: {
                 <thead>
                   <tr>
                     <th>Date</th>
-                    <th>HCP</th>
+                    <th>Job #</th>
                     <th className="num">Hours</th>
                   </tr>
                 </thead>
@@ -430,7 +430,7 @@ export function NetRevenueBody(props: { nb: NetRevenueBreakdown }) {
       <table>
         <thead>
           <tr>
-            <th className="num">HCP</th>
+            <th className="num">Job #</th>
             <th>Job</th>
             <th className="num">Value<br />Created</th>
             <th className="num">&minus; Parts</th>
@@ -647,7 +647,7 @@ export function GrossPerHourBody(props: { entry: TeamSummaryBreakdown }) {
       <table>
         <thead>
           <tr>
-            <th className="num">HCP</th>
+            <th className="num">Job #</th>
             <th>Job</th>
             <th className="num">Allocated<br />Gross Rev</th>
             <th className="num">Your hours<br />(period)</th>
@@ -754,7 +754,7 @@ export function NetPerHourBody(props: { entry: TeamSummaryBreakdown }) {
         <table>
           <thead>
             <tr>
-              <th className="num">HCP</th>
+              <th className="num">Job #</th>
               <th>Job</th>
               <th className="num">Allocated<br />Net Rev</th>
               <th className="num">Your hours<br />(period)</th>

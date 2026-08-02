@@ -1081,7 +1081,7 @@ function JobsSubLaborFormModalInner(
               <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
                 <div style={{ flex: '0 0 120px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: 4 }}>
-                    <label style={{ fontWeight: 500, margin: 0 }}>HCP</label>
+                    <label style={{ fontWeight: 500, margin: 0 }}>Job #</label>
                     {!editingLaborJob && (
                       <button
                         type="button"

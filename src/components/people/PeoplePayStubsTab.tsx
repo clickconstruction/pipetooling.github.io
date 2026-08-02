@@ -348,7 +348,7 @@ export default function PeoplePayStubsTab({
     try {
       await withSupabaseRetry(
         async () => await supabase.from('pay_stub_payments').delete().eq('id', paymentId),
-        'delete pay stub payment',
+        'delete pay report payment',
       )
       await loadPayStubs()
     } catch (e) {
@@ -503,7 +503,7 @@ export default function PeoplePayStubsTab({
                       disabled={forecastDisabled}
                       title={
                         forecastDisabled
-                          ? 'Nothing to forecast — all pay stubs are fully paid.'
+                          ? 'Nothing to forecast — all pay reports are fully paid.'
                           : 'Plan how upcoming cash bars will be split across unpaid balances'
                       }
                       style={{

@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-01 (v2.1253)
+last_updated: 2026-08-01 (v2.1254)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1254)
+
+### "Pay Report" everywhere, Bids "cost estimate" residue gone, "Job #" headers (2026-08-01)
+Naming-audit batch 4 (owner decisions N5+N6+N9). **(1) "Pay Report" replaces "pay stub" in every user-visible string** (~20 files: Payroll ledger, offsets modals, Dashboard AP drill-down sublabels, the printed pay document from `buildPayStubHtml`, Combine-people modal, guides) — everyone on payroll is a 1099 contractor and "pay stub" reads W-2; the `pay_stubs` tables and `PayStub*` identifiers stay. **(2)** The last three visible "cost estimate" strings (two engine error messages + the approval PDF's "No cost estimate created.") now say **labor costs**, finishing the v2.588 tab rename. **(3)** Column headers that show merged HCP/Click numbers now read **"Job #"** (Review drilldowns + popup, Sub Labor form label, Billed Awaiting Payment section) — the actual HouseCall-number input on Edit Job keeps its "HCP" label. `tsc -b` clean, vitest 3,336 green (2 sublabel expectations updated). No DB / migration / RLS / RPC / Edge changes.
 
 ## Latest Updates (v2.1253)
 

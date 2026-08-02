@@ -167,7 +167,7 @@ export function BilledAwaitingPaymentSection() {
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
           <thead>
             <tr style={{ borderBottom: '1px solid var(--border)' }}>
-              <th style={{ padding: '0.75rem 0.5rem', textAlign: 'left' }}>HCP</th>
+              <th style={{ padding: '0.75rem 0.5rem', textAlign: 'left' }}>Job #</th>
               <th style={{ padding: '0.75rem 0.5rem', textAlign: 'left' }}>Job</th>
               <th style={{ padding: '0.75rem 0.5rem', textAlign: 'left' }}>Assigned</th>
               <th style={{ padding: '0.75rem 0.5rem', textAlign: 'right' }}>Remaining</th>

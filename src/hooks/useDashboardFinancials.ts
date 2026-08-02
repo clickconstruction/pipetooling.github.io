@@ -136,7 +136,7 @@ export function useDashboardFinancials(
                   await supabase
                     .from('pay_stubs')
                     .select('id, person_name, period_start, period_end, gross_pay'),
-                'dashboard financials pay stubs',
+                'dashboard financials pay reports',
               ),
           assistantAggregates
             ? Promise.resolve(null)

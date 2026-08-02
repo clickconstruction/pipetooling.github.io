@@ -1273,7 +1273,7 @@ export default function People() {
             .from('pay_stubs')
             .select('id, person_name, period_start, period_end, hours_total, gross_pay, created_at, paid_at, paid_by, paid_note')
             .order('created_at', { ascending: false }),
-        'load pay stubs'
+        'load pay reports'
       )
       const stubs = (data ?? []) as PayStubRow[]
       setPayStubs(stubs)
@@ -1303,7 +1303,7 @@ export default function People() {
                 .select('id, pay_stub_id, amount, paid_at, memo, created_at, created_by')
                 .in('pay_stub_id', chunk)
                 .order('paid_at', { ascending: true }),
-            'load pay stub payments',
+            'load pay report payments',
           ),
           withSupabaseRetry(
             async () =>
@@ -1312,7 +1312,7 @@ export default function People() {
                 .select('id, pay_stub_id, amount, source, person_offset_id, description, created_at, created_by')
                 .in('pay_stub_id', chunk)
                 .order('created_at', { ascending: true }),
-            'load pay stub deductions',
+            'load pay report deductions',
           ),
           withSupabaseRetry(
             async () =>
@@ -1321,7 +1321,7 @@ export default function People() {
                 .select('id, pay_stub_id, description, quantity, rate, line_total, created_at, created_by, source_clock_session_id')
                 .in('pay_stub_id', chunk)
                 .order('created_at', { ascending: true }),
-            'load pay stub additional lines',
+            'load pay report additional lines',
           ),
         ])
         for (const p of (payments ?? []) as PayStubPaymentRow[]) {
@@ -2089,7 +2089,7 @@ export default function People() {
             memo: noteTrim || null,
             created_by: authUser.id,
           }),
-        'record pay stub payment'
+        'record pay report payment'
       )
       closePayStubMarkPaidModal()
       await loadPayStubs()

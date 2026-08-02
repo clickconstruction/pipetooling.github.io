@@ -312,7 +312,7 @@ export function buildApBucketFromAggregates(
   const aggregate: FinancialItem = {
     key: 'payroll:aggregate',
     label: 'Payroll',
-    sublabel: `${totals.dueCount} open pay stub${totals.dueCount === 1 ? '' : 's'}`,
+    sublabel: `${totals.dueCount} open pay report${totals.dueCount === 1 ? '' : 's'}`,
     amount: totals.dueTotal,
     dateYmd: null,
     jobId: null,
@@ -370,7 +370,7 @@ export function redactUpcomingApSection(section: UpcomingPayrollApSection): Upco
 }
 
 /**
- * Assistant view of the AP drill-down: collapse per-person payroll rows — open pay stubs AND
+ * Assistant view of the AP drill-down: collapse per-person payroll rows — open pay reports AND
  * merged-in upcoming estimate lines — into aggregate "Payroll" lines (individual pay amounts
  * are private; the outstanding totals are not). Totals and subtotals are unchanged by
  * construction; extra fields (subLaborTotal, upcomingTotal) pass through.
@@ -390,7 +390,7 @@ export function redactApPayrollItems<T extends FinancialBucket & { supplyTotal: 
     aggregates.push({
       key: 'payroll:aggregate',
       label: 'Payroll',
-      sublabel: `${stubItems.length} open pay stub${stubItems.length === 1 ? '' : 's'}`,
+      sublabel: `${stubItems.length} open pay report${stubItems.length === 1 ? '' : 's'}`,
       amount: ap.payrollTotal,
       dateYmd: oldest,
       jobId: null,
