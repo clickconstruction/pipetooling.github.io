@@ -35,7 +35,7 @@ The repo still has several God components (line counts at 2026-07-29, the date o
 
 | File | Lines | Map | Notes |
 |---|---|---|---|
-| `src/components/bids/BidsTakeoffTab.tsx` | ~3,982 | [`BIDS_TAKEOFF_TAB_ARCHITECTURE.md`](./BIDS_TAKEOFF_TAB_ARCHITECTURE.md) | **decomposition underway** (T0–T6 done, v2.1294–v2.1300: kernels, row file move, book admin, materials summary, both small modals); T7 authoring cluster / T8 catalog seam + exact / T9 rough remain — see the map's Decomposition log |
+| `src/components/bids/BidsTakeoffTab.tsx` | ~2,958 | [`BIDS_TAKEOFF_TAB_ARCHITECTURE.md`](./BIDS_TAKEOFF_TAB_ARCHITECTURE.md) | **decomposition underway** (T0–T7 done, v2.1294–v2.1304: kernels, row file move, book admin, materials summary, both small modals, authoring cluster); T8 catalog seam + exact / T9 rough remain — see the map's Decomposition log |
 | `src/components/people/PeopleReviewTab.tsx` | 5,009 | [`PEOPLE_REVIEW_TAB_ARCHITECTURE.md`](./PEOPLE_REVIEW_TAB_ARCHITECTURE.md) | ~1,660-line popup HTML builder is a third of the file — Stage A first |
 | `src/components/jobs/JobsStagesTab.tsx` (+ 3,100 lines of table/row sub-files) | 3,664 | [`JOBS_STAGES_TAB_ARCHITECTURE.md`](./JOBS_STAGES_TAB_ARCHITECTURE.md) | hot (churn 18); always-mounted contract is the hazard |
 | `src/components/people/PeopleContractsTab.tsx` + `PeopleOverheadTab.tsx` | 2,981 + 2,038 | [`PEOPLE_CONTRACTS_OVERHEAD_TABS_ARCHITECTURE.md`](./PEOPLE_CONTRACTS_OVERHEAD_TABS_ARCHITECTURE.md) | Overhead's calc already in tested libs |

@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-02 (v2.1303)
+last_updated: 2026-08-02 (v2.1304)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1304)
+
+### Takeoff decomposition T7: assembly authoring modal cluster extracted (2026-08-02)
+The biggest single chunk of the BidsTakeoffTab train: the Add Assembly, Add Parts to Template, and Edit Template modals move as ONE unit to [`components/bids/TakeoffAssemblyAuthoringModals.tsx`](../src/components/bids/TakeoffAssemblyAuthoringModals.tsx) (~1,280 lines) with their internal edit state (25 states) and the full catalog-writing CRUD (`saveTakeoffNewTemplate` incl. the Save-as-Assembly bundle override, `savePartsToTemplate`, Edit Template item/price/rename handlers — all four merge variants still via the v2.1295 `mergeTemplateItemDrafts` kernels). **Trap doors honored:** `PartFormModal` + `handleBidsPartFormSave` (routes on which of FOUR contexts opened it) stay in the tab, so the picker states it writes (`takeoffNewItemPartId`/`addPartsSelectedPartId`/`editTemplateNewItemPartId` + search/dropdown trios) stay parent-owned as controlled props; the Save-as-Assembly bridge (`saveAsAssemblyCountRowId`, `takeoffNewTemplateApplyPriceIndex`) and the Add-Assembly name/items drafts seeded by `openSaveAsAssemblyFromRough` stay parent-owned; the shared `takeoffAddTemplateParts` catalog + both load effects and the `takeoffTemplatePreviewCache` stay in the tab until T8's catalog seam; all three modal open pointers stay parent-owned per the T5/T6 rule. Edit Template's open-time reset + item/price loads became an open-edge effect inside the cluster (keyed on open+id, deliberately not on name so renames don't reload); the parent's openers shrank to pointer-sets. The assembly parts *preview modal* deliberately stays in the tab (its state belongs to the exact region, which extracts at T8). Behavior-preserving only. BidsTakeoffTab.tsx 3,982 → 2,958 lines (5,765 at train start). 393 files / 3,517 tests green.
 
 ## Latest Updates (v2.1303)
 
