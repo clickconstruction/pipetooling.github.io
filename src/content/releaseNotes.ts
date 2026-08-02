@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1255',
+    date: '2026-08-01',
+    title: 'Pipeline rename: last few stragglers',
+    kind: 'fix',
+    highlights: [
+      'A full walk-through found eight leftover "Stages" labels in links, tooltips, and Dispatch Mode — all now say Pipeline.',
+    ],
+  },
+  {
     version: 'v2.1254',
     date: '2026-08-01',
     title: 'Pay Reports, not pay stubs \u2014 plus Job # column headers',

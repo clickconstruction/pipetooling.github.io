@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-01 (v2.1254)
+last_updated: 2026-08-01 (v2.1255)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1255)
+
+### Pipeline rename stragglers — eight strings live testing caught (2026-08-01)
+Follow-up to v2.1251: a full click-through of the app with the dev test account (every surface the naming audit touched) surfaced eight user-visible "Stages" strings the grep sweep missed — mostly end-of-line JSX text and title/aria attributes: Quickfill's "View in Jobs Pipeline" link, Dispatch Mode's "Job Pipeline" section header, Edit Job's "See in Pipeline" / "Go to this invoice row on Pipeline" / open-in-Pipeline titles ([`JobFormInvoiceList.tsx`](../src/components/jobs/JobFormInvoiceList.tsx), [`JobFormIdentityFields.tsx`](../src/components/jobs/JobFormIdentityFields.tsx)), the Dashboard "% complete from Jobs → Pipeline" tooltip, the Settings role-access table's superintendent row, and the no-customer modal's "current Pipeline search" description. Verified live: zero visible "Stages" remains on Dashboard, Jobs, Quickfill, Dispatch Mode, or Settings. Also noted during testing: the Paste Fill widget (v2.1253) is currently unreachable — every live caller passes `showQuickFill={false}` (`CustomerForm.tsx`'s true-path is unrouted); the rename is in place for when it returns. `tsc -b` clean, vitest green. Files: 7 src. No DB / migration / RLS / RPC / Edge changes.
 
 ## Latest Updates (v2.1254)
 
