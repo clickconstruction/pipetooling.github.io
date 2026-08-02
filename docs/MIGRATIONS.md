@@ -5,12 +5,12 @@ file: MIGRATIONS.md
 type: Reference/Changelog
 purpose: Complete database migration history organized by date and category
 audience: Developers, Database Administrators, AI Agents
-last_updated: 2026-08-01
+last_updated: 2026-08-02
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate to Advanced
 
-total_migrations: "145 live in supabase/migrations/ (baseline + post-baseline) + 847 archived pre-baseline files (squashed into the 2026-06-04 baseline)"
-date_range: "Through August 1, 2026 — the latest real migration. Archive filenames dated 2027 are typos; that work happened March–June 2026 (see the note atop Recent Migrations)."
+total_migrations: "155 live in supabase/migrations/ (baseline + post-baseline) + 847 archived pre-baseline files (squashed into the 2026-06-04 baseline)"
+date_range: "Through August 2, 2026 — the latest real migration. Archive filenames dated 2027 are typos; that work happened March–June 2026 (see the note atop Recent Migrations)."
 categories: "Bids, Materials, Workflow, RLS, Database Improvements"
 
 key_sections:
@@ -34,14 +34,13 @@ key_sections:
     description: "Viewing applied migrations and status"
 
 quick_navigation:
-  - "[Latest Changes](#recent-migrations) - July 2026 · June 2026 baseline · archived pre-baseline"
+  - "[Latest Changes](#recent-migrations) - August 2026 · June 2026 baseline · archived pre-baseline"
   - "[By Category](#migrations-by-category) - Grouped by system"
   - "[Best Practices](#migration-best-practices) - How to migrate safely"
   - "[Rollback](#rollback-procedures) - Reverting changes"
 
 related_docs:
   - "[PROJECT_DOCUMENTATION.md](./PROJECT_DOCUMENTATION.md) - Current schema"
-  - "DATABASE_IMPROVEMENTS_SUMMARY.md - v2.22 improvements"
   - "[supabase/archive/README.md](../supabase/archive/README.md) - Migration files"
 
 prerequisites:
@@ -102,11 +101,11 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 > **Reading older entries:** filenames beginning **`2027…`** are **typo-dated** (the real work happened March–June 2026). All of them predate the **2026-06-04 baseline squash** — the files now live in [`supabase/archive/migrations-pre-baseline/`](../supabase/archive/migrations-pre-baseline/) and their schema is part of [`20250101000000_baseline.sql`](../supabase/migrations/20250101000000_baseline.sql). Entries below keep the original filenames so they match the archive. The prod ledger was fully reconciled on **2026-07-04** (backup: `supabase_migrations._schema_migrations_backup_20260704`); since then, migrations apply **only** via `supabase db push` (see `CLAUDE.md`).
 
-### July 2026
+### August 2026
 
 #### August 1, 2026
 
-**`20260802010000_fix_labor_rls_recursion.sql`** _(ALREADY APPLIED via the documented emergency path — psql + hand-inserted ledger row matching this filename, 2026-08-01; the money ledger was down during office hours. `db push` sees it as applied.)_
+**`20260802010000_fix_labor_rls_recursion.sql`** _(ALREADY APPLIED out-of-band during the 2026-08-01 labor-RLS-recursion incident — psql + a hand-inserted ledger row matching this filename; the money ledger was down during office hours. **This is NOT a sanctioned path**: the only documented emergency path is MCP `apply_migration` + immediately renaming the ledger row to match the repo filename (see `CLAUDE.md`), and hand-edited ledger rows are exactly the drift class that forced the 2026-07-04 ledger rewrite. Alignment was verified afterward via `npm run check:migration-drift`; `db push` sees it as applied.)_
 - **Purpose**: HOTFIX (v2.1225). The v2.1211 sub own-row policy recursed (people_labor_jobs ↔ people_labor_job_assignees policies, 42P17), erroring all ledger reads. New SECURITY DEFINER `user_is_assignee_of_labor_job(uuid)` breaks the cycle; policy recreated on it.
 - **Security**: Same intended grants; helper bypasses RLS only for the assignee-membership check.
 - **Category**: Hotfix / RLS
@@ -173,6 +172,8 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 - **Security**: candidates RPC is `LANGUAGE sql` SECURITY DEFINER with a role-gate WHERE (dev/master/assistant/primary; zero rows otherwise — deliberate fail-soft for pre-push clients). Apply RPC keeps its existing role + per-job access gates on the new branch.
 - **Ordering**: independent of the client deploy (fail-soft on both sides).
 - **Category**: Feature RPC
+
+### July 2026
 
 #### July 31, 2026
 
@@ -501,7 +502,10 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 - **Ordering**: apply BEFORE the v2.851 client deploys ideally (the footer append and Copy-link read `public_token`; until applied those surfaces simply don't render). Client handles missing column gracefully only by TS types — apply promptly.
 - **Category**: Jobs / billing / feature
 
-#### July 20, 2026
+**`20260721160000_assigned_jobs_customer_name.sql`** (v2.842)
+- **Purpose**: Appends `customer_name` to the END of `list_assigned_jobs_for_dashboard`'s RETURNS TABLE and selects `jl.customer_name`, for the Dashboard Assigned Jobs rows' customer line. **DROP + CREATE + re-GRANT** (amended pre-apply, v2.845: `CREATE OR REPLACE` cannot change a return type — 42P13 — and DROP discards the baseline's explicit grants, so they're restated). Body otherwise identical to section 11 of `20260619160000_click_number_remaining_rpcs_2.sql`.
+- **Security**: No table/RLS changes.
+- **Category**: Dashboard / RPC
 
 **`20260720212209_hazmat_fee_incidents.sql`** _(apply via `supabase db push` after the file is on `main`)_
 - **Purpose**: **Hazmat Fee** (v2.804). New table `job_hazmat_incidents` (incident record: description, exposed people, photo links jsonb, technician testimonials jsonb, verbatim ToS §11 snapshot, fee, `invoice_id`) + SECURITY DEFINER RPC `create_hazmat_fee_incident(p_job_id, p_amount, p_incident jsonb)` that validates evidence (≥1 photo link, ≥1 testimonial, non-empty clause snapshot), then atomically mints an independent `ready_to_bill` rider invoice (memo "Hazmat remediation fee — incident MM/DD/YYYY", must match `buildHazmatFeeMemo` in `src/lib/hazmatFee.ts`), bumps `jobs_ledger.revenue` (same invariant rationale as the trip charge), and inserts the incident row. Office gate cloned from `create_turnaway_trip_charge`. Also seeds `app_settings.hazmat_fee_default = 500`.
@@ -894,7 +898,7 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 #### June 7, 2026
 
 **`20260607234914_add_get_man_hours_by_job_rpc.sql`**
-- **Purpose**: **Jobs → Stages** — back the new **man-hours applied** card line. New function **`get_man_hours_by_job()`** (`language sql`, `stable`, **`SECURITY INVOKER`**, `set search_path = public`) returns `table (job_id text, person_name text, man_hours numeric)`, one row per `(job_id, person_name)`. Mirrors the canonical [`teamLabor.ts`](../src/lib/teamLabor.ts) kernel: salaried = 8h Mon–Fri, hourly = `people_hours` (last 2 years), each crew day split across that day's `job_assignments` by `pct`. `grant execute … to authenticated`. **[`RECENT_FEATURES.md`](RECENT_FEATURES.md) v2.592**.
+- **Purpose**: **Jobs → Stages** — back the new **man-hours applied** card line. New function **`get_man_hours_by_job()`** (`language sql`, `stable`, **`SECURITY INVOKER`**, `set search_path = public`) returns `table (job_id text, person_name text, man_hours numeric)`, one row per `(job_id, person_name)`. Mirrors the canonical [`teamLabor.ts`](../src/utils/teamLabor.ts) kernel: salaried = 8h Mon–Fri, hourly = `people_hours` (last 2 years), each crew day split across that day's `job_assignments` by `pct`. `grant execute … to authenticated`. **[`RECENT_FEATURES.md`](RECENT_FEATURES.md) v2.592**.
 - **Impact**: [`Jobs.tsx`](../src/pages/Jobs.tsx) Stages board (`loadStagesManHours`, per-job total + per-person hover breakdown). `SECURITY INVOKER` → runs under the caller's RLS, so roles without labor read-access get no rows (line shows `—`). Already applied to prod (the regenerated `src/types/database.ts` includes it, `Args: never`); the migration file lands on `main` to keep history complete. PR #94.
 - **Category**: Jobs / Labor / RPC
 
@@ -4064,53 +4068,50 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 ## Migration Best Practices
 
-### Before Creating Migration
+> **There is no staging and no local Supabase stack.** Every migration runs against **prod** (`yewfzhbofbbyvkvtaatw`) while crews use the app, via `supabase db push` ONLY, after the file is on `main` (or in the PR merging right now). Write every migration as if it executes mid-workday — because it does.
 
-1. **Test locally first**: Use Supabase local development
-   ```bash
-   supabase migration new descriptive_name
-   ```
+### Writing a Migration
 
-2. **Make idempotent when possible**:
+1. **Create the file** with `supabase migration new descriptive_name` (never hand-invent timestamps), and number from `origin/main`'s latest file (`git ls-tree origin/main supabase/migrations/ | tail`), not from your branch.
+
+2. **Start with `SET lock_timeout = '3s';`** — mandatory, CI-enforced (`scripts/check-migrations.sh`) for versions after 2026-07-29. Without it, DDL waiting on a lock queues every query behind it and the whole app freezes; with it, the push fails fast and you retry in a quieter moment.
+
+3. **Make it idempotent and additive** — it hits prod, and re-runnable DDL survives drift recovery:
    ```sql
-   -- Good: Will succeed if already exists
+   -- Good: safe to re-apply
    CREATE TABLE IF NOT EXISTS my_table (...);
-   
-   -- Good: Will succeed if already exists
-   DO $$ BEGIN
-     ALTER TABLE my_table ADD COLUMN IF NOT EXISTS new_col TEXT;
-   EXCEPTION WHEN duplicate_column THEN
-     -- Column already exists, that's fine
-   END $$;
+   ALTER TABLE my_table ADD COLUMN IF NOT EXISTS new_col TEXT;
+   CREATE OR REPLACE FUNCTION ...;
+   DROP POLICY IF EXISTS my_policy ON my_table;  -- before re-creating it
    ```
 
-3. **Check dependencies**: Verify foreign keys and constraints
+4. **CREATE TABLE migrations must end with BOTH sweep calls** (CI-enforced):
+   ```sql
+   SELECT public.apply_read_only_write_blocks();
+   SELECT public.apply_read_only_stmt_blocks();
+   ```
+   Miss either and the new table is writable by read-only (training-mode) users.
 
-4. **Consider data migration**: If altering columns with data, handle existing records
+5. **Check dependencies and existing data**: verify foreign keys/constraints, and handle existing rows when altering populated columns.
 
-### After Creating Migration
+### Applying and Following Up
 
-1. **Test in development**: Apply to local database first
+1. **Apply with `supabase db push`** — only after the file is on `main` (or in the PR merging right now). Never MCP `apply_migration` / `execute_sql` / dashboard SQL editor (see Key Principles above). Sequence with the client deploy when the change is coupled (usually client first).
+
+2. **Update TypeScript types**:
    ```bash
-   supabase migration up
+   npm run gen-types:linked
    ```
 
-2. **Test rollback** (if possible): Create down migration or test revert
+3. **Verify alignment**: `npm run check:migration-drift`.
 
-3. **Update TypeScript types**: Run type generation
-   ```bash
-   supabase gen types typescript --local > src/types/database.ts
-   ```
-
-4. **Document in RECENT_FEATURES.md**: Add to feature log
-
-5. **Update this file**: Add to Recent Migrations section
+4. **Document**: add the entry to this file's Recent Migrations section and to `docs/RECENT_FEATURES.md`.
 
 ### Migration Safety
 
 **Safe Operations**:
 - Adding nullable columns
-- Creating new tables
+- Creating new tables (with the read-only-block footer)
 - Adding indexes
 - Creating functions
 - Adding RLS policies
@@ -4123,28 +4124,26 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 **Destructive Operations**:
 - Require explicit confirmation
-- Document rollback procedure
+- Document the forward-migration recovery plan
 - Consider data export first
 
 ---
 
 ## Rollback Procedures
 
-### Revert Migration (Generic)
+**Rollback = a new forward migration.** The history is append-only: never edit or renumber an applied migration (see Key Principles). To undo a change, write a *new* migration that reverses it and apply it the normal way (`supabase db push` after merge).
 
 ```bash
-# Create rollback migration
+# Create the reverting migration
 supabase migration new revert_feature_name
 
-# In migration file:
-# - DROP tables in reverse dependency order
-# - Remove columns with ALTER TABLE DROP COLUMN
-# - Drop functions with DROP FUNCTION
+# In the file (idempotent, dependency order):
+# - DROP TABLE IF EXISTS ... (reverse dependency order)
+# - ALTER TABLE ... DROP COLUMN IF EXISTS ...
+# - DROP FUNCTION IF EXISTS ...
 ```
 
-### Example Rollback Migrations
-
-**`revert_price_book_and_bids_job_type.sql`** (Feb 1, 2026):
+**Example** — `revert_price_book_and_bids_job_type.sql` (Feb 1, 2026):
 ```sql
 -- Drops in dependency order
 DROP TABLE IF EXISTS bid_pricing_assignments;
@@ -4153,15 +4152,9 @@ DROP TABLE IF EXISTS price_book_versions;
 ALTER TABLE bids DROP COLUMN IF EXISTS job_type;
 ```
 
-### Emergency Rollback
+### Emergency Path (prod down and the fix cannot wait for a merge)
 
-**If migration causes production issues**:
-
-1. **Identify breaking migration**: Check error logs
-2. **Create hotfix migration**: Revert specific changes
-3. **Deploy immediately**: `supabase migration up`
-4. **Verify functionality**: Test affected features
-5. **Post-mortem**: Document issue and prevention
+The **only** sanctioned emergency path (per `CLAUDE.md`): apply via Supabase MCP `apply_migration`, then **immediately, in the same session, rename the new ledger row's `version`/`name` to match the repo filename** — otherwise the server-minted timestamp drifts from the repo and `db push` starts refusing. Afterward: merge the identical file to `main`, run `npm run check:migration-drift`, and document the incident here. Do not hand-insert ledger rows or apply via psql/SQL editor — unledgered and hand-ledgered changes are the drift class that forced the 2026-07-04 full ledger rewrite.
 
 ---
 
@@ -4194,8 +4187,6 @@ supabase db diff
 ## Related Documentation
 
 - [PROJECT_DOCUMENTATION.md - Database Schema](./PROJECT_DOCUMENTATION.md#database-schema)
-- DATABASE_IMPROVEMENTS_SUMMARY.md - v2.22 improvements
-- DATABASE_FIXES_TEST_PLAN.md - Testing procedures
 - [supabase/archive/README.md](../supabase/archive/README.md) - Migration directory readme
 
 ---
@@ -4219,6 +4210,3 @@ supabase db diff
 - Additional CHECK constraints for business rules
 - Computed columns for derived values
 - Audit trigger for sensitive operations
-
-### 20260721160000_assigned_jobs_customer_name.sql (v2.842)
-Appends `customer_name` to the END of `list_assigned_jobs_for_dashboard`'s RETURNS TABLE and selects `jl.customer_name`, for the Dashboard Assigned Jobs rows' customer line. **DROP + CREATE + re-GRANT** (amended pre-apply, v2.845: `CREATE OR REPLACE` cannot change a return type — 42P13 — and DROP discards the baseline's explicit grants, so they're restated). Body otherwise identical to section 11 of `20260619160000_click_number_remaining_rpcs_2.sql`. No table/RLS changes.

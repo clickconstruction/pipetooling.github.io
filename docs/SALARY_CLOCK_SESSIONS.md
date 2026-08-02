@@ -1,5 +1,13 @@
 # Salaried clock sessions (`salary_schedule`)
 
+---
+file: SALARY_CLOCK_SESSIONS.md
+type: Runbook / Reference
+purpose: Salaried auto-session sync behavior (salary_sync_one_user_clock_sessions)
+audience: Developers, Operators
+last_updated: 2026-08-02
+---
+
 > **Audience**: Developers and operators changing pay, My Time, or salary Settings.  
 > **Companion**: [`PROJECT_DOCUMENTATION.md`](./PROJECT_DOCUMENTATION.md) (`clock_sessions` + salary tables), [`EDGE_FUNCTIONS.md`](./EDGE_FUNCTIONS.md) (**sync-salary-sessions**), [`MIGRATIONS.md`](./MIGRATIONS.md) (salary migrations).
 
@@ -147,7 +155,7 @@ Week editability uses **America/Chicago** (current week for single session; this
 
 ---
 
-## Staging verification (after deploy)
+## Post-deploy verification (production)
 
 - Continuous: mid-block first tick opens; end tick mass-closes at `t_end`; late cron inserts fully closed day.
 - Continuous + My Time split: any open indexed (`salary_segment_index 1..N`) `salary_schedule` rows close at `t_end` once `p_now ≥ t_end` — including approved-but-open ones.
@@ -161,8 +169,8 @@ Week editability uses **America/Chicago** (current week for single session; this
 ## Operator notes (Supabase CLI)
 
 - **`supabase db push --linked`** and **`supabase migration list --linked`** work **without Docker**.
-- **`supabase db pull`** / **`supabase db diff --linked`** use a **shadow** Postgres (Docker). If you do not use Docker, treat **`supabase/migrations/`** as source of truth and use **Dashboard SQL** or **Supabase MCP `execute_sql`** for one-off verification.
-- If remote **`supabase_migrations.schema_migrations`** drifts from local filenames, the CLI will suggest **`supabase migration repair`**; see [`MIGRATIONS.md`](./MIGRATIONS.md).
+- **`supabase db pull`** / **`supabase db diff --linked`** use a **shadow** Postgres (Docker). If you do not use Docker, treat **`supabase/migrations/`** as source of truth and run read-only verification queries via `psql` / `supabase db …` against the linked project — **not** the Dashboard SQL editor (see [`REMOTE_SCHEMA_INSPECTION.md`](./REMOTE_SCHEMA_INSPECTION.md): keeping SQL access on the CLI avoids the ad-hoc-edit habits that caused the original drift).
+- If remote **`supabase_migrations.schema_migrations`** looks drifted from local filenames, run **`npm run check:migration-drift`** and see [`REMOTE_SCHEMA_INSPECTION.md`](./REMOTE_SCHEMA_INSPECTION.md). **Never run `supabase migration repair`** — the ledger was fully reconciled on 2026-07-04 and repair commands would corrupt it.
 - **Tail migration** **`20270601000000`** exists so that any fresh build (e.g. **`supabase db reset`** against a Docker shadow, or a brand-new project) lands on the same `salary_sync_one_user_clock_sessions` body as the linked DB. It is identical to **`20260515092032`**; if you change the function in the future, write a **new tail** with a timestamp later than every other salary migration rather than editing either of these two files.
 
 ---

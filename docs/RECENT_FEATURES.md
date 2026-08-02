@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-02 (v2.1268)
+last_updated: 2026-08-02 (v2.1269)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1269)
+
+### Docs audit: ops/incident/migration docs no longer contradict the repo's own rules (2026-08-02)
+Ops-safety wave of the 2026-08-02 documentation audit, across 11 docs + DB_FREEZE_RUNBOOK cross-link. Highlights: **MIGRATIONS.md** Best Practices/Rollback rewritten to match reality (`supabase db push` only, no local/staging, `lock_timeout`, mandatory read-only block pair on CREATE TABLE, `gen-types:linked`, rollback = new forward migration); the `20260802010000` entry no longer calls its psql+hand-inserted-ledger-row application a "documented emergency path" (the only sanctioned path is MCP `apply_migration` + immediate ledger rename); frontmatter counts (155 migrations) and August heading structure fixed. **TROUBLESHOOTING.md** frozen-DB section now routes to `/db-freeze` + `DB_FREEZE_RUNBOOK.md` evidence-first triage instead of restart/upgrade-compute advice. **Runbooks**: hardcoded "90 ceiling" replaced with the monitor-view ceiling (`current_setting('max_connections')`, 120 currently), step numbering fixed, reciprocal cross-links between the two runbooks' monitoring tables added. **ACCESS_CONTROL.md** caught up on v2.1194–v2.1225: step_commitments, `settle_step_commitment`, `respond_to_work_order`, developments, contract doc types, and the first subcontractor own-row reads on `people_labor_jobs` (+`user_is_assignee_of_labor_job()` fix); Banking "Card Review" label. **EDGE_FUNCTIONS.md**: counts 58→61, all-9-roles RBAC section, three auth styles documented, dead pre-baseline links repointed. **SALARY_CLOCK_SESSIONS.md** no longer recommends `supabase migration repair` (ledger-corrupting post-reconciliation; use `npm run check:migration-drift`); "Staging verification" → post-deploy prod checklist. **PRIVATE_NOTES_SETUP.md** security section now states the real RLS enforcement instead of claiming UI-only. **ADDING_A_NEW_ROLE.md** enum template includes helpers+controller; `gen-types:linked`. **E2E_SMOKE.md** notes the always-mounted contract spec is quarantined (`test.fixme`). docs/README.md indexes DB_FREEZE_RUNBOOK + E2E_SMOKE. Docs only.
 
 ## Latest Updates (v2.1268)
 

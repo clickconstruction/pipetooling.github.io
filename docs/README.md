@@ -9,13 +9,13 @@
 2. [`../AGENTS.md`](../AGENTS.md) — agent entry point: dev login, non-negotiable constraints, migration-drift recovery.
 3. [`AI_CONTEXT.md`](./AI_CONTEXT.md) — project overview: systems, concepts, file map, patterns, glossary.
 4. The specialist doc for your task — see the table below.
-5. [`RECENT_FEATURES.md`](./RECENT_FEATURES.md) — grep it (don't read it top-to-bottom; it's a 17k-line changelog) for the history of any surface you're touching.
+5. [`RECENT_FEATURES.md`](./RECENT_FEATURES.md) — grep it (don't read it top-to-bottom; it's a ~20k-line changelog) for the history of any surface you're touching.
 
 ## Specialist docs
 
 | Doc | Purpose |
 |---|---|
-| [`PROJECT_DOCUMENTATION.md`](./PROJECT_DOCUMENTATION.md) | Full technical reference: schema, pages, features. Documents ~55 of 234 tables; feature sections carry the rest. |
+| [`PROJECT_DOCUMENTATION.md`](./PROJECT_DOCUMENTATION.md) | Full technical reference: schema, pages, features. Documents ~55 of 252 tables; feature sections carry the rest. |
 | [`ACCESS_CONTROL.md`](./ACCESS_CONTROL.md) | Authoritative role/permission matrices for all 9 roles. Prefer this over role notes in other docs. |
 | [`ADDING_A_NEW_ROLE.md`](./ADDING_A_NEW_ROLE.md) | Step-by-step checklist for adding a role (updated with controller-rollout lessons). |
 | [`GLOSSARY.md`](./GLOSSARY.md) | Domain terms, abbreviations, feature names. |
@@ -61,8 +61,10 @@
 | [`WORKFLOW_FEATURES.md`](./WORKFLOW_FEATURES.md) | Workflow page: stage management, line items, financials. |
 | [`PRIVATE_NOTES_SETUP.md`](./PRIVATE_NOTES_SETUP.md) | Notes-for-Office + line items + projections on workflow steps. |
 | [`TROUBLESHOOTING.md`](./TROUBLESHOOTING.md) | White screen, RPC 404s, sign-in, load problems. |
+| [`DB_FREEZE_RUNBOOK.md`](./DB_FREEZE_RUNBOOK.md) | App looks "database down": lock-pileup vs instance-stall triage (`/db-freeze` runs it). Read BEFORE restarting anything. |
 | [`runbooks/AGENT_APP_CRASH_INVESTIGATION.md`](./runbooks/AGENT_APP_CRASH_INVESTIGATION.md) | Ordered checklist for "why did the app crash" (503s, timeouts). |
 | [`runbooks/SUPABASE_INCIDENT_RUNBOOK.md`](./runbooks/SUPABASE_INCIDENT_RUNBOOK.md) | Deep Supabase incident inspection (CLI + Dashboard logs). |
+| [`E2E_SMOKE.md`](./E2E_SMOKE.md) | Playwright Tier-1 smoke suite: coverage, auth, extension rules (read-only, structural, non-gating). |
 | [`REMOTE_SCHEMA_INSPECTION.md`](./REMOTE_SCHEMA_INSPECTION.md) | Obsolete incident snapshot; kept for its generic schema-inspection queries only. |
 | `../src/content/help/*.md` | User-facing help guides (ship with features — see `../CLAUDE.md`). |
 
@@ -73,4 +75,4 @@
 - Docs ship with features: `RECENT_FEATURES.md` entry per PR, `MIGRATIONS.md` entry per migration, `EDGE_FUNCTIONS.md` section per function, help guide per user-facing flow (all enforced by convention in `../CLAUDE.md`).
 - Migration files cited in docs may live in `supabase/archive/migrations-pre-baseline/` — history was squash-baselined at `20250101000000_baseline.sql` (2026-06-04); "2027"-dated filenames in the archive are typos from spring 2026.
 
-last_updated: 2026-07-29
+last_updated: 2026-08-02

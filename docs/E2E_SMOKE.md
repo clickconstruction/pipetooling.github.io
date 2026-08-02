@@ -5,7 +5,7 @@ file: docs/E2E_SMOKE.md
 type: Engineering / Testing
 purpose: What the Playwright Tier-1 smoke suite covers, how it authenticates, when it runs, and the rules for extending it (read-only, structural assertions, non-gating).
 audience: Developers, AI Agents
-last_updated: 2026-07-31
+last_updated: 2026-08-02
 ---
 
 ## What this is
@@ -17,7 +17,7 @@ There is no staging environment, so production is the only real render target. T
 ## Coverage
 
 - `e2e/deep-links.spec.ts` — the cold-load deep-link matrix: `?showBilledTotalByName=`, `?openBankPayments=` (v2.832 fixes), `?editLabor=` unknown-HCP, `?newJob=true&tab=sub_sheet_ledger` (v2.835 fixes), `?stagesSection=`, plus `/accounts-receivable` and `/map` direct loads (v2.833 fixes). Each asserts the surface opened AND the param self-stripped.
-- `e2e/jobs-tabs.spec.ts` — all nine Jobs tabs cold-load with their distinctive markers and zero page errors; the Stages always-mounted contract (state survives tab switches).
+- `e2e/jobs-tabs.spec.ts` — all nine Jobs tabs cold-load with their distinctive markers and zero page errors (active). The Stages always-mounted contract spec (state survives tab switches) is currently quarantined with `test.fixme` — the fill lands but reads back empty after Billing→Stages in CI; tracked in the spec's FIXME comment, do not delete.
 - `e2e/stages-board.spec.ts` — board sections + totals render; Total by Name modal; the print popup path (`window.print` stubbed so headless never hangs).
 - `e2e/viewport-smoke.spec.ts` — phone-viewport invariants at 375×812 (v2.1003): the top seven pages load with no document-level sideways overflow (the v2.980/v2.982 regression signature); Stages board tables scroll inside their own wrappers, never the page (v2.984 contract); the sticky modal header keeps its ✕ inside the panel's visible box at max scroll (v2.990, generalised to every `stickyModalHeaderStyle.ts` consumer in v2.992 — the spec drives Add inspection, the shallowest one).
 - `e2e/settings-tabs.spec.ts` — every dev-visible Settings tab cold-loads its marker with zero page errors; `?tab=` deep link activates; the v2.855 Catalogs engines render their blocks (post-decomposition pin; the Sharing & Adoption block was removed in v2.922 — grants are auto-maintained since v2.921).
