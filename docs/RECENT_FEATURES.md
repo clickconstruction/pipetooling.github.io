@@ -16,6 +16,10 @@ navigation: "No table of contents — find entries by grepping for the version (
 
 ### Materials decomposition COMPLETE: PO Builder tab extracted (2026-08-02)
 The final move of the 12-PR Materials.tsx decomposition train (v2.1275–v2.1293, plus the version-less #974 smoke net). The PO Builder (`assemblies-po`) JSX (~960 lines) moves to [`components/materials/MaterialsPoBuilderTab.tsx`](../src/components/materials/MaterialsPoBuilderTab.tsx) as a pure JSX consumer (~85 props) of all three seams — it sat at the intersection of the assembly and PO engines, so every state atom and handler stays page-owned (most shared with Assembly Book, Purchase Orders, or the shared modals). The Template Form modal stays page-level (opened from 2 tabs + `?addAssembly=true`); `filteredDraftPOs` derivation moved with its only consumer. **End state: Materials.tsx 7,033 → 2,123 lines** — a pure orchestrator (role/service-type scope, URL router, 3 seam hooks, shared modals, 6 thin tab renders). All 16 preserve-quirks intact; behavior-preserving throughout. 388 files / 3,491 tests green (train added ~140 tests).
+## Latest Updates (v2.1292)
+
+### People Teams tab removed — Team leads modal is the single surface (2026-08-02)
+Follow-through on v2.1284/v2.1291: with the shared `TeamLeadsManager` living in the People → Users **Team leads** modal, the Teams tab was a redundant second entrance. Removed: the `teams` key from the `PeopleTab` union (16 → 15 tabs), the tab button, `canAccessTeamsTab`, the render block, and [`PeopleTeamsTab.tsx`](../src/components/people/TeamLeadsManager.tsx) (deleted). Legacy `?tab=teams` deep links redirect to `?tab=users` (replace-state, param preserved as `tab=users`). The Hours tab's crew-teams sections (`people_teams` tables) are unrelated and unchanged. Docs (PEOPLE_TABS_ARCHITECTURE dossier → REMOVED note, ACCESS_CONTROL rows re-pointed) and help guides (`crew-pnl`, `manage-team-leads`) updated. Live-verified: no Teams tab button, `?tab=teams` lands on Users, modal renders 8 leader cards. 388 files / 3,491 tests green.
 
 ## Latest Updates (v2.1291)
 
