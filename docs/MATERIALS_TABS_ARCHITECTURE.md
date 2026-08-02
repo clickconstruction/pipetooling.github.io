@@ -164,9 +164,9 @@ The URL guard effect rewrites disallowed `?tab=` values to `parts-book` (`replac
 
 | Candidate | Currently | Target |
 |---|---|---|
-| `calculateAssemblyCost` (recursive, cycle guard) | closure inside component body | `lib/materials/assemblyCost.ts` (explicit args) + tests |
-| `filterPartsByQuery`, `filterTemplatesByQuery` | functions inside component body | `lib/materials/materialsFilters.ts` + tests |
-| `displayParts` Load-All filter/sort IIFE | inline IIFE | pure function + test |
+| `calculateAssemblyCost` (recursive, cycle guard) | **done (v2.1276)** — [`lib/materials/assemblyCost.ts`](../src/lib/materials/assemblyCost.ts); Materials keeps a thin closure wrapper | — |
+| `filterPartsByQuery`, `filterTemplatesByQuery` | **done (v2.1276)** — [`lib/materials/materialsFilters.ts`](../src/lib/materials/materialsFilters.ts) | — |
+| `displayParts` Load-All filter/sort IIFE | **done (v2.1276)** — `computeLoadAllDisplayParts` in [`lib/materials/materialsFilters.ts`](../src/lib/materials/materialsFilters.ts) | — |
 | `fetchPricesForParts` (chunked batch fetch) | module-level in Materials.tsx | `lib/materials/fetchPricesForParts.ts` (already pure-ish; takes supabase) |
 | `purchase_order_items` join + `itemsWithDetails` mapping (~10 copies) | **done (v2.1275)** — [`lib/materials/poItemDetails.ts`](../src/lib/materials/poItemDetails.ts) `loadPOItemsWithDetails` (+ `POItemWithDetails`/`PurchaseOrderWithItems` types), 12 call sites migrated | — |
 | `printPO` / `printPOForSupplyHouse` HTML builders | inline, one does N price fetches | `lib/materialsDocuments/poPrint.ts` (context object; fetch stays outside) + tests |

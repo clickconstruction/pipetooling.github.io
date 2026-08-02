@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1276',
+    date: '2026-08-02',
+    title: 'Behind the scenes: Materials page groundwork, part 2',
+    kind: 'infra',
+    highlights: [
+      'The assembly cost roll-up and the part/assembly search filters on the Materials page moved into shared, tested routines.',
+      'No visible changes; costs, badges, and search behave exactly as before.',
+    ],
+  },
+  {
     version: 'v2.1275',
     date: '2026-08-02',
     title: 'Behind the scenes: Materials page groundwork',
