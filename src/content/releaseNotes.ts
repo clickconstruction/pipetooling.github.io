@@ -34,6 +34,16 @@ export const RELEASE_NOTES: ReleaseNote[] = [
     ],
   },
   {
+    version: 'v2.1282',
+    date: '2026-08-02',
+    title: 'Behind the scenes: Materials parts catalog restructured',
+    kind: 'infra',
+    highlights: [
+      'The parts catalog that powers the Materials page (part lists, search, filters, Load All mode) moved into a shared engine.',
+      'No visible changes; browsing and searching parts works exactly as before.',
+    ],
+  },
+  {
     version: 'v2.1281',
     date: '2026-08-02',
     title: 'Behind the scenes: Materials Purchase Orders tab restructured',
