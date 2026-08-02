@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-02 (v2.1280)
+last_updated: 2026-08-02 (v2.1281)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1281)
+
+### Materials decomposition: PO engine seam + Purchase Orders tab extracted (2026-08-02)
+The biggest Stage-B move so far. **(1) The PO engine seam**: [`hooks/useMaterialsPurchaseOrders.ts`](../src/hooks/useMaterialsPurchaseOrders.ts) now owns `allPOs`/`draftPOs`/`selectedPO`/`editingPO`/`userNamesMap`, `loadPurchaseOrders`, and the reload-on-`editingPO.id` effect; the parent destructures it so the deep-link router, `handleNavigateToPOFromSupplyHouses`, and the still-inline PO Builder keep their references unchanged. **(2) The tab**: [`components/materials/MaterialsPurchaseOrdersTab.tsx`](../src/components/materials/MaterialsPurchaseOrdersTab.tsx) (~1,070 lines) takes the ~600-line JSX block, the tab-owned state (status/search filters, tax percent, notes, duplicate/confirm spinners), and the PO-view handlers (`finalizePO`, add-only `addNotesToFinalizedPO`, `deletePO`, `duplicatePOAsDraft`, `confirmPOItemPrice`/`unconfirmPOItemPrice`, print). Always-mounted contract preserves filter-state carry-over. **What stayed in the parent, per the playbook**: the `?po=`/`openPOId` deep-link router + `selectedPODetailRef`, and — because `updatePOItemSupplyHouse` (shared with PO Builder) writes them — the price-editing-in-place cluster and draft supply-house options state + their loaders (`loadAvailablePricesForPart`, `loadSupplyHouseOptionsForPart`, `updatePartPriceInBook`, `addPartPriceFromPOModal`), all passed down as props. `updatePOName`/`startEditPOName`/`cancelEditPOName` (PO Builder-only) remain in the page. Behavior-preserving only. Materials.tsx 5,448 → 4,458 lines (7,033 at train start). 379 files / 3,417 tests green.
 
 ## Latest Updates (v2.1280)
 

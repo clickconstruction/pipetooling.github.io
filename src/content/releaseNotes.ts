@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1281',
+    date: '2026-08-02',
+    title: 'Behind the scenes: Materials Purchase Orders tab restructured',
+    kind: 'infra',
+    highlights: [
+      'The Purchase Orders tab on the Materials page moved into its own component, backed by a shared purchase-order engine.',
+      'No visible changes; viewing, finalizing, duplicating, printing, and price-confirming POs all work exactly as before, and search/filter state still survives switching tabs.',
+    ],
+  },
+  {
     version: 'v2.1280',
     date: '2026-08-02',
     title: 'Behind the scenes: Materials price editors restructured',
