@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-01 (v2.1249)
+last_updated: 2026-08-01 (v2.1250)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1250)
+
+### People → Review — negative money in Jobs Worked reads -$244, not $-244 (2026-08-01)
+Found during live browser verification of the v2.1245–v2.1249 fixes (dev test session, real data): the Jobs Worked rows, expanded-grid per-hour cells, and collapsed-strip `$X/hr revenue|profit` summaries still interpolated raw `$${…}` around negative values, rendering `$-244.16` / `93% of $-304` / `$-71/hr profit`. New local `signedCurrency()` (fmtMoney's sign idiom + `formatCurrency`'s cents) for the cents-precision cells; the whole-dollar and per-hour sites move to the shared `fmtMoney`. Verified live: zero `$-` occurrences remain on a fully expanded panel. Files: modified [`PeopleReviewTab.tsx`](../src/components/people/PeopleReviewTab.tsx) only. `tsc -b` clean, zero new lints, vitest 3,336 green. No DB / migration / RLS / RPC / Edge / type-gen changes.
 
 ## Latest Updates (v2.1249)
 

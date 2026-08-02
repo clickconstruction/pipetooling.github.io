@@ -84,6 +84,15 @@ function paged<T>(
   return fetchAllRows<T>(makePage, label).then((rows) => ({ data: rows, error: null }))
 }
 
+/**
+ * Sign-aware cents-precision money: -$244.16 instead of $-244.16 (fmtMoney's
+ * sign idiom, formatCurrency's decimals). For the Jobs Worked cells that can
+ * legitimately go negative.
+ */
+function signedCurrency(n: number): string {
+  return `${n < 0 ? '-$' : '$'}${formatCurrency(Math.abs(n))}`
+}
+
 export type PeopleReviewTabProps = {
   payConfig: Record<string, PayConfigRow>
   archivedUserNames: Set<string>
@@ -4011,8 +4020,8 @@ export default function PeopleReviewTab({
                               if (j.job_id) revenueBeforeOverheadByJob.set(j.job_id, j.revenueBeforeOverhead)
                             }
                             const totalRevBeforeOverhead = [...revenueBeforeOverheadByJob.values()].reduce((s, v) => s + v, 0)
-                            const revenueStr = totalRevenue !== 0 ? `$${Math.round(totalRevenue).toLocaleString('en-US', { maximumFractionDigits: 0 })}` : null
-                            const revBeforeStr = totalRevBeforeOverhead !== 0 ? `$${Math.round(totalRevBeforeOverhead).toLocaleString('en-US', { maximumFractionDigits: 0 })}` : null
+                            const revenueStr = totalRevenue !== 0 ? fmtMoney(totalRevenue) : null
+                            const revBeforeStr = totalRevBeforeOverhead !== 0 ? fmtMoney(totalRevBeforeOverhead) : null
                             const text = [revenueStr, revBeforeStr].filter(Boolean).join(' / ') || '—'
                             return <span style={{ fontWeight: 600, color: totalRevenue < 0 ? 'var(--text-red-700)' : undefined }}>{text}</span>
                           })()}
@@ -4117,8 +4126,8 @@ export default function PeopleReviewTab({
                               const revProfitStr = revPerHour != null && profitPerHour != null
                                 ? (
                                   <>
-                                    <div>$<strong>{Math.round(revPerHour).toLocaleString('en-US', { maximumFractionDigits: 0 })}</strong>/hr revenue</div>
-                                    <div style={{ color: profitPerHour < 0 ? 'var(--text-red-700)' : undefined }}>$<strong>{Math.round(profitPerHour).toLocaleString('en-US', { maximumFractionDigits: 0 })}</strong>/hr profit</div>
+                                    <div><strong>{fmtMoney(revPerHour)}</strong>/hr revenue</div>
+                                    <div style={{ color: profitPerHour < 0 ? 'var(--text-red-700)' : undefined }}><strong>{fmtMoney(profitPerHour)}</strong>/hr profit</div>
                                   </>
                                 )
                                 : '—'
@@ -4197,12 +4206,12 @@ export default function PeopleReviewTab({
                                       }}
                                       title={j.job_id && j.revenueBeforeOverhead !== 0 && j.totalLaborOnJob > 0 ? "See everyone's profit share on this job" : undefined}
                                     >
-                                      <div style={{ fontWeight: 600, color: j.allocatedRevenueBeforeOverhead >= 0 ? undefined : '#b91c1c' }}>{j.allocatedRevenueBeforeOverhead !== 0 ? `$${formatCurrency(j.allocatedRevenueBeforeOverhead)}` : '—'}</div>
+                                      <div style={{ fontWeight: 600, color: j.allocatedRevenueBeforeOverhead >= 0 ? undefined : '#b91c1c' }}>{j.allocatedRevenueBeforeOverhead !== 0 ? signedCurrency(j.allocatedRevenueBeforeOverhead) : '—'}</div>
                                       <div style={{ fontSize: '0.8em', color: 'var(--text-muted)' }}>{(() => {
                                         if (j.revenueBeforeOverhead === 0) return '—'
                                         const pct = Math.round((j.allocatedRevenueBeforeOverhead / j.revenueBeforeOverhead) * 100)
                                         if (pct === 100) return `${pct}%`
-                                        return `${pct}% of $${Math.round(j.revenueBeforeOverhead).toLocaleString('en-US')}`
+                                        return `${pct}% of ${fmtMoney(j.revenueBeforeOverhead)}`
                                       })()}</div>
                                     </td>
                                     <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', verticalAlign: 'top' }}>
@@ -4226,7 +4235,7 @@ export default function PeopleReviewTab({
                                           <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
                                             {(() => {
                                               const v = j.userTotalHoursOnJob > 0 ? j.userTotalContributionToRevenue / j.userTotalHoursOnJob : null
-                                              return <span style={{ color: v != null && v < 0 ? 'var(--text-red-700)' : undefined }}>{v != null ? `$${Math.round(v).toLocaleString('en-US', { maximumFractionDigits: 0 })}` : '—'}</span>
+                                              return <span style={{ color: v != null && v < 0 ? 'var(--text-red-700)' : undefined }}>{v != null ? fmtMoney(v) : '—'}</span>
                                             })()}
                                             <span
                                               title="Both Revenue/hr and Profit/hr are allocated by labor cost: this user's lifetime labor cost on the job ÷ everyone's lifetime labor cost on the job. So a person paid above the blended crew average is credited with a larger share of both the job's revenue and its profit per hour, and someone paid below it gets a smaller share of both. Because both shares use the same allocation rule, the per-user Revenue/hr ÷ Profit/hr ratio for a given job is constant (= valueCreated ÷ profit, the inverse of the job's profit margin)."
@@ -4250,7 +4259,7 @@ export default function PeopleReviewTab({
                                             const netRevPerHr = j.userTotalHoursOnJob > 0 ? j.userTotalContributionToRevenue / j.userTotalHoursOnJob : null
                                             if (netRevPerHr == null) return '—'
                                             const profitPerHr = netRevPerHr - r
-                                            return <span style={{ color: profitPerHr < 0 ? 'var(--text-red-700)' : undefined }}>{`$${Math.round(profitPerHr).toLocaleString('en-US', { maximumFractionDigits: 0 })}`}</span>
+                                            return <span style={{ color: profitPerHr < 0 ? 'var(--text-red-700)' : undefined }}>{fmtMoney(profitPerHr)}</span>
                                           })()}</span>
                                           <span style={{ gridColumn: '1 / -1', height: '0.5rem', display: 'block' }} />
                                           <span style={{ gridColumn: '1 / -1', fontWeight: 600, marginTop: '0.25rem', marginBottom: '0.25rem' }}>Gross Revenue</span>
@@ -4348,7 +4357,7 @@ export default function PeopleReviewTab({
                                           <span style={{ color: 'var(--text-muted)', paddingLeft: '1rem' }}>{`${showPeopleForReview[selectedReviewPersonIndex] ?? 'User'}'s Net Revenue on Job`}</span>
                                           <span style={{ color: j.userTotalContributionToRevenue >= 0 ? undefined : '#b91c1c', paddingLeft: '1rem' }}>{j.userTotalContributionToRevenue !== 0 ? `$${formatCurrency(j.userTotalContributionToRevenue)}` : '—'}</span>
                                           <span style={{ color: 'var(--text-muted)', paddingLeft: '1rem' }}>{`${showPeopleForReview[selectedReviewPersonIndex] ?? 'User'}'s Net Revenue this Day`}</span>
-                                          <span style={{ textDecoration: 'underline', color: j.allocatedRevenueBeforeOverhead >= 0 ? undefined : '#b91c1c', paddingLeft: '1rem' }}>{j.allocatedRevenueBeforeOverhead !== 0 ? `$${formatCurrency(j.allocatedRevenueBeforeOverhead)}` : '—'}</span>
+                                          <span style={{ textDecoration: 'underline', color: j.allocatedRevenueBeforeOverhead >= 0 ? undefined : '#b91c1c', paddingLeft: '1rem' }}>{j.allocatedRevenueBeforeOverhead !== 0 ? signedCurrency(j.allocatedRevenueBeforeOverhead) : '—'}</span>
                                           <span style={{ gridColumn: '1 / -1', height: '0.5rem', display: 'block' }} />
                                           <span style={{ gridColumn: '1 / -1', fontWeight: 600, marginTop: '0.25rem', marginBottom: '0.25rem' }}>Profit</span>
                                           <span style={{ color: 'var(--text-muted)', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
@@ -4459,8 +4468,8 @@ export default function PeopleReviewTab({
                               const revProfitStr = revPerHour != null && profitPerHour != null
                                 ? (
                                   <>
-                                    <div>$<strong>{Math.round(revPerHour).toLocaleString('en-US', { maximumFractionDigits: 0 })}</strong>/hr revenue</div>
-                                    <div style={{ color: profitPerHour < 0 ? 'var(--text-red-700)' : undefined }}>$<strong>{Math.round(profitPerHour).toLocaleString('en-US', { maximumFractionDigits: 0 })}</strong>/hr profit</div>
+                                    <div><strong>{fmtMoney(revPerHour)}</strong>/hr revenue</div>
+                                    <div style={{ color: profitPerHour < 0 ? 'var(--text-red-700)' : undefined }}><strong>{fmtMoney(profitPerHour)}</strong>/hr profit</div>
                                   </>
                                 )
                                 : '—'
@@ -4539,12 +4548,12 @@ export default function PeopleReviewTab({
                                       }}
                                       title={j.revenueBeforeOverhead !== 0 && j.totalLaborOnJob > 0 ? "See everyone's profit share on this job" : undefined}
                                     >
-                                      <div style={{ fontWeight: 600, color: j.allocatedRevenueBeforeOverhead >= 0 ? undefined : '#b91c1c' }}>{j.allocatedRevenueBeforeOverhead !== 0 ? `$${formatCurrency(j.allocatedRevenueBeforeOverhead)}` : '—'}</div>
+                                      <div style={{ fontWeight: 600, color: j.allocatedRevenueBeforeOverhead >= 0 ? undefined : '#b91c1c' }}>{j.allocatedRevenueBeforeOverhead !== 0 ? signedCurrency(j.allocatedRevenueBeforeOverhead) : '—'}</div>
                                       <div style={{ fontSize: '0.8em', color: 'var(--text-muted)' }}>{(() => {
                                         if (j.revenueBeforeOverhead === 0) return '—'
                                         const pct = Math.round((j.allocatedRevenueBeforeOverhead / j.revenueBeforeOverhead) * 100)
                                         if (pct === 100) return `${pct}%`
-                                        return `${pct}% of $${Math.round(j.revenueBeforeOverhead).toLocaleString('en-US')}`
+                                        return `${pct}% of ${fmtMoney(j.revenueBeforeOverhead)}`
                                       })()}</div>
                                     </td>
                                     <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', verticalAlign: 'top' }}>
@@ -4568,7 +4577,7 @@ export default function PeopleReviewTab({
                                           <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
                                             {(() => {
                                               const v = j.userTotalHoursOnJob > 0 ? j.userTotalContributionToRevenue / j.userTotalHoursOnJob : null
-                                              return <span style={{ color: v != null && v < 0 ? 'var(--text-red-700)' : undefined }}>{v != null ? `$${Math.round(v).toLocaleString('en-US', { maximumFractionDigits: 0 })}` : '—'}</span>
+                                              return <span style={{ color: v != null && v < 0 ? 'var(--text-red-700)' : undefined }}>{v != null ? fmtMoney(v) : '—'}</span>
                                             })()}
                                             <span
                                               title="Both Revenue/hr and Profit/hr are allocated by labor cost: this user's lifetime labor cost on the job ÷ everyone's lifetime labor cost on the job. So a person paid above the blended crew average is credited with a larger share of both the job's revenue and its profit per hour, and someone paid below it gets a smaller share of both. Because both shares use the same allocation rule, the per-user Revenue/hr ÷ Profit/hr ratio for a given job is constant (= valueCreated ÷ profit, the inverse of the job's profit margin)."
@@ -4592,7 +4601,7 @@ export default function PeopleReviewTab({
                                             const netRevPerHr = j.userTotalHoursOnJob > 0 ? j.userTotalContributionToRevenue / j.userTotalHoursOnJob : null
                                             if (netRevPerHr == null) return '—'
                                             const profitPerHr = netRevPerHr - r
-                                            return <span style={{ color: profitPerHr < 0 ? 'var(--text-red-700)' : undefined }}>{`$${Math.round(profitPerHr).toLocaleString('en-US', { maximumFractionDigits: 0 })}`}</span>
+                                            return <span style={{ color: profitPerHr < 0 ? 'var(--text-red-700)' : undefined }}>{fmtMoney(profitPerHr)}</span>
                                           })()}</span>
                                           <span style={{ gridColumn: '1 / -1', height: '0.5rem', display: 'block' }} />
                                           <span style={{ gridColumn: '1 / -1', fontWeight: 600, marginTop: '0.25rem', marginBottom: '0.25rem' }}>Gross Revenue</span>
@@ -4690,7 +4699,7 @@ export default function PeopleReviewTab({
                                           <span style={{ color: 'var(--text-muted)', paddingLeft: '1rem' }}>{`${showPeopleForReview[selectedReviewPersonIndex] ?? 'User'}'s Net Revenue on Job`}</span>
                                           <span style={{ color: j.userTotalContributionToRevenue >= 0 ? undefined : '#b91c1c', paddingLeft: '1rem' }}>{j.userTotalContributionToRevenue !== 0 ? `$${formatCurrency(j.userTotalContributionToRevenue)}` : '—'}</span>
                                           <span style={{ color: 'var(--text-muted)', paddingLeft: '1rem' }}>{`${showPeopleForReview[selectedReviewPersonIndex] ?? 'User'}'s Net Revenue this Day`}</span>
-                                          <span style={{ textDecoration: 'underline', color: j.allocatedRevenueBeforeOverhead >= 0 ? undefined : '#b91c1c', paddingLeft: '1rem' }}>{j.allocatedRevenueBeforeOverhead !== 0 ? `$${formatCurrency(j.allocatedRevenueBeforeOverhead)}` : '—'}</span>
+                                          <span style={{ textDecoration: 'underline', color: j.allocatedRevenueBeforeOverhead >= 0 ? undefined : '#b91c1c', paddingLeft: '1rem' }}>{j.allocatedRevenueBeforeOverhead !== 0 ? signedCurrency(j.allocatedRevenueBeforeOverhead) : '—'}</span>
                                           <span style={{ gridColumn: '1 / -1', height: '0.5rem', display: 'block' }} />
                                           <span style={{ gridColumn: '1 / -1', fontWeight: 600, marginTop: '0.25rem', marginBottom: '0.25rem' }}>Profit</span>
                                           <span style={{ color: 'var(--text-muted)', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
@@ -4851,8 +4860,8 @@ export default function PeopleReviewTab({
                                   const profitHr = totalProfit / totalHrs
                                   return (
                                     <>
-                                      <div>$<strong>{Math.round(revHr).toLocaleString('en-US', { maximumFractionDigits: 0 })}</strong>/hr revenue</div>
-                                      <div style={{ color: profitHr < 0 ? 'var(--text-red-700)' : undefined }}>$<strong>{Math.round(profitHr).toLocaleString('en-US', { maximumFractionDigits: 0 })}</strong>/hr profit</div>
+                                      <div><strong>{fmtMoney(revHr)}</strong>/hr revenue</div>
+                                      <div style={{ color: profitHr < 0 ? 'var(--text-red-700)' : undefined }}><strong>{fmtMoney(profitHr)}</strong>/hr profit</div>
                                     </>
                                   )
                                 })()}
