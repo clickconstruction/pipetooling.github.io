@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
+import { Pencil, Plus } from 'lucide-react'
+import { jobsLedgerStatusDotColor, labelJobsLedgerStatusForDashboard } from '../lib/jobsLedgerStatusPipeline'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import { isAssistantLike } from '../lib/subcontractorLikeRole'
@@ -96,6 +98,7 @@ export default function Projects() {
   const [allSuperintendents, setAllSuperintendents] = useState<Array<{ id: string; name: string | null; email: string | null }>>([])
   const [projectSuperintendentIdsByProject, setProjectSuperintendentIdsByProject] = useState<Record<string, Set<string>>>({})
   const [projectSuperintendentSaving, setProjectSuperintendentSaving] = useState(false)
+  const [expandedJobChips, setExpandedJobChips] = useState<Set<string>>(new Set())
   const [addSuperintendentProject, setAddSuperintendentProject] = useState<{ id: string; name: string } | null>(null)
   const [selectedSuperintendentId, setSelectedSuperintendentId] = useState('')
   const [removeTarget, setRemoveTarget] = useState<{
@@ -805,22 +808,27 @@ export default function Projects() {
                     })
                   }}
                   style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '0.3rem',
                     background: 'none',
-                    border: 'none',
-                    color: 'var(--text-link)',
+                    border: '1px solid var(--border)',
+                    borderRadius: 6,
+                    color: 'var(--text-700)',
                     cursor: 'pointer',
-                    textDecoration: 'underline',
-                    padding: 0,
-                    font: 'inherit',
+                    padding: '0.2rem 0.6rem',
+                    fontFamily: 'inherit',
+                    fontSize: '0.8125rem',
                   }}
                 >
+                  <Pencil size={13} aria-hidden="true" />
                   Edit
                 </button>
-                {canAssignSuperintendents && (
+                {/* Empty + nobody to add renders nothing — "Superintendents: None" was dead text (v2.1273). */}
+                {canAssignSuperintendents && ((superintendentsByProject[p.id]?.length ?? 0) > 0 || allSuperintendents.some((s) => !(superintendentsByProject[p.id] ?? []).some((ps) => ps.id === s.id))) && (
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', justifyContent: narrow ? 'flex-start' : 'flex-end', alignItems: 'center' }}>
-                    <span style={{ fontSize: '0.8125rem', color: 'var(--text-faint)' }}>Superintendents:</span>
-                    {(superintendentsByProject[p.id] ?? []).length === 0 && (
-                      <span style={{ color: 'var(--text-faint)', fontSize: '0.8125rem' }}>None</span>
+                    {(superintendentsByProject[p.id]?.length ?? 0) > 0 && (
+                      <span style={{ fontSize: '0.8125rem', color: 'var(--text-faint)' }}>Superintendents</span>
                     )}
                     {(superintendentsByProject[p.id] ?? []).map((s) => (
                       <span
@@ -856,7 +864,8 @@ export default function Projects() {
                       </span>
                     ))}
                     {(() => {
-                      const available = allSuperintendents.filter((s) => !(superintendentsByProject[p.id] ?? []).some((ps) => ps.id === s.id))
+                      const assigned = superintendentsByProject[p.id] ?? []
+                      const available = allSuperintendents.filter((s) => !assigned.some((ps) => ps.id === s.id))
                       return available.length > 0 ? (
                         <button
                           type="button"
@@ -871,19 +880,28 @@ export default function Projects() {
                             display: 'inline-flex',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            width: 24,
+                            gap: '0.25rem',
                             height: 24,
-                            padding: 0,
-                            border: '1px solid var(--border-sky)',
-                            borderRadius: 4,
+                            padding: assigned.length === 0 ? '0 0.6rem' : 0,
+                            width: assigned.length === 0 ? undefined : 24,
+                            border: '1px dashed var(--border-sky)',
+                            borderRadius: 6,
                             background: 'var(--surface)',
                             color: 'var(--text-sky-700)',
-                            fontSize: '1.125rem',
+                            fontFamily: 'inherit',
+                            fontSize: assigned.length === 0 ? '0.8125rem' : '1.125rem',
                             lineHeight: 1,
                             cursor: projectSuperintendentSaving ? 'not-allowed' : 'pointer',
                           }}
                         >
-                          +
+                          {assigned.length === 0 ? (
+                            <>
+                              <Plus size={13} aria-hidden="true" />
+                              Superintendent
+                            </>
+                          ) : (
+                            '+'
+                          )}
                         </button>
                       ) : null
                     })()}
@@ -891,7 +909,7 @@ export default function Projects() {
                 )}
                 {!canAssignSuperintendents && (superintendentsByProject[p.id]?.length ?? 0) > 0 && (
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', justifyContent: narrow ? 'flex-start' : 'flex-end' }}>
-                    <span style={{ fontSize: '0.8125rem', color: 'var(--text-faint)' }}>Superintendents:</span>
+                    <span style={{ fontSize: '0.8125rem', color: 'var(--text-faint)' }}>Superintendents</span>
                     {(superintendentsByProject[p.id] ?? []).map((s) => (
                       <span key={s.id} style={{ padding: '0.2rem 0.5rem', background: 'var(--bg-green-tint)', borderRadius: 4, fontSize: '0.8125rem' }}>
                         {s.name || s.email || 'Unknown'}
@@ -899,45 +917,67 @@ export default function Projects() {
                     ))}
                   </div>
                 )}
-                {(jobsByProject[p.id]?.length ?? 0) > 0 ? (
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', justifyContent: narrow ? 'flex-start' : 'flex-end' }}>
-                    <span style={{ fontSize: '0.8125rem', color: 'var(--text-faint)' }}>Jobs:</span>
-                    {(jobsByProject[p.id] ?? []).map((j) => (
-                      // Chip opens Job Detail in place (v2.1193) instead of navigating to Jobs → Edit Job.
-                      <button
-                        key={j.id}
-                        type="button"
-                        onClick={() => jobDetailModal?.openJobDetail({ jobId: j.id })}
-                        title="Open job detail"
-                        style={{
-                          padding: '0.2rem 0.5rem',
-                          background: 'var(--bg-neutral-100)',
-                          border: 'none',
-                          borderRadius: 4,
-                          fontSize: '0.8125rem',
-                          fontFamily: 'inherit',
-                          cursor: 'pointer',
-                          color: 'var(--text-700)',
-                        }}
+                {/* Segmented jobs control (v2.1273): label cap + one segment per job (status dot,
+                    opens Job Detail in place per v2.1193) + trailing create segment. Capped at 3
+                    visible segments with a "+N more" expander so the pill can't overflow the card. */}
+                {(() => {
+                  const jobs = jobsByProject[p.id] ?? []
+                  const expanded = expandedJobChips.has(p.id)
+                  const visible = expanded ? jobs : jobs.slice(0, 3)
+                  const hiddenCount = jobs.length - visible.length
+                  const segmentStyle = {
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '0.35rem',
+                    padding: '0.25rem 0.6rem',
+                    border: 'none',
+                    borderLeft: '1px solid var(--border)',
+                    background: 'var(--surface)',
+                    fontSize: '0.8125rem',
+                    fontFamily: 'inherit',
+                    cursor: 'pointer',
+                  } as const
+                  return (
+                    <div style={{ display: 'inline-flex', alignItems: 'stretch', border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
+                      <span style={{ display: 'inline-flex', alignItems: 'center', padding: '0.25rem 0.6rem', fontSize: '0.75rem', color: 'var(--text-faint)', background: 'var(--bg-neutral-100)' }}>
+                        Jobs
+                      </span>
+                      {visible.map((j) => (
+                        <button
+                          key={j.id}
+                          type="button"
+                          onClick={() => jobDetailModal?.openJobDetail({ jobId: j.id })}
+                          title={`Open job detail — ${labelJobsLedgerStatusForDashboard(j.status)}`}
+                          style={{ ...segmentStyle, color: 'var(--text-link)' }}
+                        >
+                          <span aria-hidden="true" style={{ width: 8, height: 8, borderRadius: '50%', background: jobsLedgerStatusDotColor(j.status), flexShrink: 0 }} />
+                          <span style={{ maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {j.hcp_number || j.job_name || 'Job'}
+                          </span>
+                        </button>
+                      ))}
+                      {hiddenCount > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => setExpandedJobChips((prev) => new Set(prev).add(p.id))}
+                          title="Show all jobs"
+                          style={{ ...segmentStyle, color: 'var(--text-700)' }}
+                        >
+                          +{hiddenCount} more
+                        </button>
+                      )}
+                      <Link
+                        to={`/jobs?newJob=true&project=${p.id}&tab=stages`}
+                        title="Create job"
+                        aria-label={`Create job for ${p.name ?? 'project'}`}
+                        style={{ ...segmentStyle, textDecoration: 'none', color: 'var(--text-sky-700)', background: 'var(--bg-sky-100)' }}
                       >
-                        {j.hcp_number || j.job_name || 'Job'}
-                      </button>
-                    ))}
-                    <Link
-                      to={`/jobs?newJob=true&project=${p.id}&tab=stages`}
-                      style={{ padding: '0.2rem 0.5rem', background: 'var(--bg-sky-100)', borderRadius: 4, fontSize: '0.8125rem', textDecoration: 'none', color: 'var(--text-sky-700)' }}
-                    >
-                      + Create Job
-                    </Link>
-                  </div>
-                ) : (
-                  <Link
-                    to={`/jobs?newJob=true&project=${p.id}&tab=stages`}
-                    style={{ fontSize: '0.8125rem', color: 'var(--text-sky-700)', textDecoration: 'none' }}
-                  >
-                    + Create Job for this project
-                  </Link>
-                )}
+                        <Plus size={14} aria-hidden="true" />
+                        {jobs.length === 0 && 'Job'}
+                      </Link>
+                    </div>
+                  )
+                })()}
               </div>
             </li>
           ))}

@@ -11,6 +11,18 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1273',
+    date: '2026-08-02',
+    title: 'Projects: cleaner cards with a combined Jobs control',
+    kind: 'feature',
+    highlights: [
+      'Each project card now shows one compact Jobs control: every linked job as a clickable segment with a status dot, plus a built-in "+" to create a job.',
+      'Hover a job segment to see its pipeline status; projects with many jobs collapse to "+N more".',
+      '"Superintendents: None" no longer appears when there is nothing to show — an "+ Superintendent" button shows only when someone can actually be added.',
+      'The Edit link is now a proper button with a pencil icon.',
+    ],
+  },
+  {
     version: 'v2.1272',
     date: '2026-08-02',
     title: 'Projects: the "Master" badge is gone',
