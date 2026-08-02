@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-02 (v2.1275)
+last_updated: 2026-08-02 (v2.1276)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1276)
+
+### Materials decomposition Stage A: assemblyCost + materialsFilters kernels (2026-08-02)
+Second Stage-A PR of the Materials.tsx decomposition. **(1)** The recursive `calculateAssemblyCost` closure becomes [`lib/materials/assemblyCost.ts`](../src/lib/materials/assemblyCost.ts) with explicit args (`items`, `lowestPriceByPartId`) + 7 tests covering recursion, quantity multiplication through nesting, the cycle guard, the `quantity || 1` quirk, and non-positive-lowest-price counting as *missing* (not zero-cost); Materials keeps a thin closure wrapper so the 3 call sites are unchanged. **(2)** `filterPartsByQuery` / `filterTemplatesByQuery` (part/assembly picker filters, 7 call sites) and the Parts Book Load-All `displayParts` IIFE become [`lib/materials/materialsFilters.ts`](../src/lib/materials/materialsFilters.ts) (`computeLoadAllDisplayParts`) + 9 tests — generic over structural shapes, verbatim matching/limit/sort semantics (price-count sort ties broken by name; unsorted output keeps input order). Behavior-preserving only. Materials.tsx 6,884 → 6,807 lines. Typecheck/lint clean; kernels + render smokes green.
 
 ## Latest Updates (v2.1275)
 
