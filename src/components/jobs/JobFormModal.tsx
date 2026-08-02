@@ -2623,7 +2623,11 @@ export default function JobFormModal({
       const cid = (newCustomer as { id: string })?.id
       if (!cid) throw new Error('Failed to create customer')
       setCustomerId(cid)
-      const c = { id: cid, name, address: jobAddress.trim() || null, contact_info: contactInfo, date_met: dateMet.trim() || null } as CustomerRow
+      // master_user_id is REQUIRED here: the identity autosave re-resolves the
+      // customer link through resolveCustomerIdForJobPayload, which drops any
+      // pick whose master doesn't match the job's — omitting it made the
+      // autosave null the link right after creation (create-customer bug).
+      const c = { id: cid, name, address: jobAddress.trim() || null, contact_info: contactInfo, date_met: dateMet.trim() || null, master_user_id: customerMasterId } as CustomerRow
       setCustomers((prev) => [...prev.filter((x) => x.id !== cid), c].sort((a, b) => (a.name || '').localeCompare(b.name || '')))
       setCustomerSearch(getCustomerDisplay(c))
       if (editing) {
