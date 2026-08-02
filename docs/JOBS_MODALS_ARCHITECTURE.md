@@ -6,7 +6,7 @@ type: Architecture Map / Decomposition
 purpose: Step-0 map (per PAGE_DECOMPOSITION_PLAYBOOK.md) for the two remaining large Jobs-area modals — JobsSubLaborFormModal.tsx (~2,154 lines) and DetailJobModal.tsx (~2,035 lines). Inventories every logical region's state, handlers, supabase tables, sub-components, and coupling so a future sub-decomposition can start without re-deriving the strategy. Both files were themselves produced by earlier mapped extractions (JOBS_TABS_ARCHITECTURE.md step 4a; the app-wide Job Detail modal) and have since grown; this map treats each as its own surface.
 audience: Developers, AI Agents
 sections: What this surface is; The shared substrate (or lack of one); Master summary table; JobsSubLaborFormModal dossiers; DetailJobModal dossiers; Preserve-quirks list; Stage-A pure-logic inventory; Recommended extraction order
-last_updated: 2026-07-29
+last_updated: 2026-08-01
 ---
 
 ## What this surface is
@@ -16,7 +16,7 @@ Two Jobs-area modal "God components", mapped together because they are the Jobs 
 | File | Lines | What it is | Mounted by |
 |---|---|---|---|
 | [`src/components/jobs/JobsSubLaborFormModal.tsx`](../src/components/jobs/JobsSubLaborFormModal.tsx) | 2,154 | The New/Edit Sub Labor form modal + Add Subcontractor modal + labor-book version/entry form modals. Extracted verbatim from `Jobs.tsx` in v2.823 (step 4a of [`JOBS_TABS_ARCHITECTURE.md`](./JOBS_TABS_ARCHITECTURE.md)); **always mounted** by `Jobs.tsx`, driven by a `forwardRef` imperative handle so form state survives open/close. | [`Jobs.tsx`](../src/pages/Jobs.tsx) via `subLaborFormRef` |
-| [`src/components/jobs/DetailJobModal.tsx`](../src/components/jobs/DetailJobModal.tsx) | 2,035 | The app-wide read-mostly **Job Detail** window: two-tier (full/limited) job fetch, header action cluster, address/Street-View/customer band, thread-notes + % complete, cost/profit bands, and four satellite modals. | [`JobDetailModalContext`](../src/contexts/JobDetailModalContext.tsx) (singleton under `App.tsx`); opened via `openJobDetail()` from Dashboard, Jobs (`?jobDetail=` deep link), header global search, Schedule Dispatch hub, `ClockInOutButton`, Job Mode, the Billing Pipeline section, and the Stages tables |
+| [`src/components/jobs/DetailJobModal.tsx`](../src/components/jobs/DetailJobModal.tsx) | 2,035 | The app-wide read-mostly **Job Detail** window: two-tier (full/limited) job fetch, header action cluster, address/Street-View/customer band, thread-notes + % complete, cost/profit bands, and four satellite modals. | [`JobDetailModalContext`](../src/contexts/JobDetailModalContext.tsx) (singleton under `App.tsx`); opened via `openJobDetail()` from Dashboard, Jobs (`?jobDetail=` deep link), header global search, Schedule Dispatch hub, `ClockInOutButton`, Job Mode, the Billing Pipeline section, and the Pipeline board tables |
 
 Unlike the tab-switched pages this playbook usually targets, neither file has an `activeTab` switch. The regions below are **logical clusters** (state + handlers + a JSX block), gated by mode flags (`editingLaborJob`, `laborBookSectionOpen`, `fullJob` vs `limitedJob`, sub-modal open states) rather than tab keys. Line numbers are "as of 2026-07-29" and rot — always search the named symbol.
 
@@ -32,7 +32,7 @@ There is **no Bids-style shared substrate spanning the two modals** — no commo
 
 - **Selection pointer:** `editingLaborJob` / `setEditingLaborJob` — **parent-owned controlled props**. It doubles as an open-gate: the modal renders when `laborModalOpen || editingLaborJob`. It must stay in `Jobs.tsx` because (a) the `?editLabor=<hcp>` deep-link router sets it, and (b) [`useSubLaborLedger`](../src/hooks/useSubLaborLedger.ts)'s `onLaborJobsReloaded` callback re-syncs the open edit record after every ledger reload.
 - **Data engine:** [`useSubLaborLedger`](../src/hooks/useSubLaborLedger.ts) (parent-side, v2.822) supplies `loadLaborJobs`, `deleteLaborJob`, `laborJobDeletingId`, `setLaborJobs`, and the payment mutations consumed by the sibling [`SubLaborPaymentModals`](../src/components/jobs/SubLaborPaymentModals.tsx). The modal never queries the ledger itself — it writes `people_labor_jobs`/`people_labor_job_items` directly and then calls `loadLaborJobs()`.
-- **Roster substrate:** `jobs`, `users`, `people`, `loadRoster` are parent props (roster is shared with Stages assigned-edit). The modal only *partitions* them (`byKind`, `rosterNames*`).
+- **Roster substrate:** `jobs`, `users`, `people`, `loadRoster` are parent props (roster is shared with Pipeline assigned-edit). The modal only *partitions* them (`byKind`, `rosterNames*`).
 - **Page-global `error`:** the single `error`/`setError` pair shared by every Jobs tab (quirk #7 in `JOBS_TABS_ARCHITECTURE.md`) is threaded in as props and rendered in **two places** inside this file (main form + labor-book entry modal).
 
 **Consequence for extraction:** any internal split of this modal keeps `editingLaborJob`, the imperative handle, and the save/close orchestration in the (current) component shell; extracted sections receive controlled props exactly as the page-level playbook prescribes — one level down.
@@ -182,7 +182,7 @@ Component: default-export function `DetailJobModal`. ~25 `useState`, 10 `useEffe
 ### D5 — Thread notes + % complete (~894–930, JSX ~1368–1400)
 
 - **State:** `pctSaving`; everything else lives in [`useJobThreadNotesForModal`](../src/hooks/useJobThreadNotesForModal.ts) (already extracted).
-- **Derived:** `canEditJobPctComplete` (dev / master / assistant-like / primary — same roles as Stages).
+- **Derived:** `canEditJobPctComplete` (dev / master / assistant-like / primary — same roles as Pipeline).
 - **Handlers:** `commitPctWithNote(value, note)` — posts the thread note first via `threadNotes.submitNoteWithBody(composePctCompleteNoteBody(value, note), 'draft')` (**bails silently if the note post fails — no pct write**), then UPDATEs `jobs_ledger.pct_complete`, toasts, `loadDetail()`. Arrived/Leaving stamps via `threadNotes.submitStamp`; a successful "leaving" also calls `requestOpenUpdateFocus()` (opener-bridge context).
 - **Renders:** [`JobThreadNotesPanel`](../src/components/JobThreadNotesPanel.tsx) (extracted, 939 lines) with chrome-light props.
 - **Supabase tables:** `jobs_ledger` (UPDATE `pct_complete`); notes tables inside the hook.
@@ -231,7 +231,7 @@ Component: default-export function `DetailJobModal`. ~25 `useState`, 10 `useEffe
 9. **`laborDate` default `new Date().toLocaleDateString('en-CA')`** — local-timezone YYYY-MM-DD. `job_number` is truncated `.slice(0, 10)`.
 10. **`openEditLaborJob` mode detection:** `'simple'` only when the job has items AND every item has a finite `direct_labor_amount`; otherwise `'itemized'` (rows' missing per-line rate falls back to the job's `labor_rate`).
 11. **`getOrCreateFixtureTypeId` silently creates fixture types** (`category: 'Other'`, next `sequence_order`) when a labor-book entry names an unknown fixture; failure logs to console and aborts the entry save with a message.
-12. **Page-global `error` renders in two places** in this file (main form top + labor-book entry modal) and is shared with every Jobs tab — a labor error can appear on Stages and vice versa. Keep the single state.
+12. **Page-global `error` renders in two places** in this file (main form top + labor-book entry modal) and is shared with every Jobs tab — a labor error can appear on Pipeline and vice versa. Keep the single state.
 13. **`closeLaborModal` calls `onClearEditPayment()`** — closing the form also clears the parent-side SubLaborPaymentModals edit target.
 14. **Invoice-link save is dual-mode** (immediate UPDATE + optimistic parent-cache patch in edit mode; deferred to the job INSERT in new mode) — see S4.
 15. **Handle-gating rule:** parent router effects that call this modal's ref must gate on `useSubLaborLedger`'s `laborJobsLoadedOnce` (v2.835) — an ungated cold-load call no-ops while stripping the URL param.
