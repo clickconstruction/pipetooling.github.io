@@ -5,7 +5,7 @@ file: docs/ESTIMATES_TABS_ARCHITECTURE.md
 type: Architecture Map / Decomposition
 purpose: Step-0 map for the Estimates.tsx decomposition (per PAGE_DECOMPOSITION_PLAYBOOK.md) — inventory what every region of the ~5,365-line src/pages/Estimates.tsx touches (state, loaders, handlers, sub-components, supabase tables/edge functions, cross-region coupling), identify the shared substrate, and set the recommended extraction order. Sections — What this surface is; Shared substrate; Master summary table; Per-region dossiers; Shared infrastructure; Stage-A pure-logic inventory; Preserve-quirks list; Recommended extraction order.
 audience: Developers, AI Agents
-last_updated: 2026-07-29
+last_updated: 2026-08-01
 ---
 
 ## What this surface is
@@ -20,7 +20,7 @@ export default function Estimates() {
 }
 ```
 
-- **`EstimateList`** (~440 lines) — `/estimates`. Two list tabs on `listTab: 'followup' | 'all'` (labels **Stages** and **Ledger**; `followup`/Stages is the default). Backed by two large module-level presentational components, `EstimateListTable` (~368 lines) and `EstimateListCards` (~325 lines, the ≤640px card variant via `useNarrowViewport640`).
+- **`EstimateList`** (~440 lines) — `/estimates`. Two list tabs on `listTab: 'followup' | 'all'` (labels **Pipeline** and **Ledger**; `followup`/Pipeline is the default — the tab label was renamed from "Stages" in the v2.1251–v2.1263 naming audit (key `'followup'` and DOM id `estimates-tab-stages` unchanged)). Backed by two large module-level presentational components, `EstimateListTable` (~368 lines) and `EstimateListCards` (~325 lines, the ≤640px card variant via `useNarrowViewport640`).
 - **`EstimateDetail`** (~3,360 lines) — `/estimates/:id`, where `:id` is a quote number (canonical) or a UUID (redirected to the number, `replace: true`). This is the real God component. It is **not** tab-switched: its regions are gated on `row.status` (`isDraft = row?.status === 'draft'` vs sent/accepted), plus one `<details>` section (Customer experience) with its own inner tab state `customerPreviewTab: 'email' | 'page' | 'thankyou'`.
 - **Module-level shared layer** (~860 lines above `EstimateListTable`) — types, CSS strings, `est*Button`/`estInput*` style helpers, ~20 small pure helpers, three tiny components (`EstimateCustomerActivityDetails`, `EstimateDetailCustomerActivitySection`, `EstimateDraftCustomerGate`), and one IO helper (`resolveMasterUserId`, queries `master_assistants`).
 
@@ -41,7 +41,7 @@ Each section lists: render location (anchored by symbol/status gate — line num
 Consequences for extraction:
 
 1. The two page components can be decomposed **independently**; the only shared code is the module-level helper layer (which should become `lib/` + a shared components file, not a hook).
-2. **Within `EstimateList`**, the shared engine already exists as an extracted hook: [`useEstimateThreadNotes`](../src/hooks/useEstimateThreadNotes.ts) (294 lines; `estimates_thread_notes` table) plus the `rows`/`filteredRows`/`listSearch` cache consumed by both list tabs. The two list tabs share one search input state (`listSearch` persists across the Stages↔Ledger switch) and all four page-level modals — so the list tabs are cheap to extract against props, but the modal openers stay in `EstimateList`.
+2. **Within `EstimateList`**, the shared engine already exists as an extracted hook: [`useEstimateThreadNotes`](../src/hooks/useEstimateThreadNotes.ts) (294 lines; `estimates_thread_notes` table) plus the `rows`/`filteredRows`/`listSearch` cache consumed by both list tabs. The two list tabs share one search input state (`listSearch` persists across the Pipeline↔Ledger switch) and all four page-level modals — so the list tabs are cheap to extract against props, but the modal openers stay in `EstimateList`.
 3. **Within `EstimateDetail`**, the substrate is the `row: EstimateDetailRow` record + the ~25-field draft form-state cluster (`title`, `terms`, `lines`, `customerId`, `validUntil`, `forAddress`, `internalNotes`, `customerAttachmentUrl/Label`, `acceptHeaderBrand`, `cxOverrideFields`, `acceptNotifyUserIds`, …) + the `customers` cache + `load()`. Nearly every region reads several of these, so detail regions must be extracted **against a seam** (a `useEstimateDetailData` hook or a fat props object), not piecemeal — this is the page's equivalent of Bids' `useBidPricingEngine`, except it does not exist yet.
 
 ---
@@ -52,7 +52,7 @@ Consequences for extraction:
 |---|---|---|---|---|---|---|
 | Module shared layer | module scope, lines ~116–860 | ~745 | consumed by everything in-file | low | inline | Stage-A sweep → `lib/estimates/*`; tiny components → `components/estimates/` |
 | List table + cards | `EstimateListTable`, `EstimateListCards` | ~695 | props-only (one `useAuth()` for role) | **low** | inline (module-level) | **Extract first** — pure file move to `components/estimates/EstimateListTable.tsx` |
-| List: Stages tab | `listTab === 'followup'` inside `EstimateList` | ~120 JSX | med (thread hook + shared modals + `listSearch`) | low-med | inline | Extract with Ledger as one `EstimatesListPage`, or leave — shell is small once tables move |
+| List: Pipeline tab | `listTab === 'followup'` inside `EstimateList` | ~120 JSX | med (thread hook + shared modals + `listSearch`) | low-med | inline | Extract with Ledger as one `EstimatesListPage`, or leave — shell is small once tables move |
 | List: Ledger tab | `listTab === 'all'` inside `EstimateList` | ~45 JSX | low (same modals, no thread) | low | inline | same as above |
 | Detail: loader + hydration | `load` / `hydrateCustomerFieldsFromEstimate` | ~250 | highest — writes ~20 states | high | inline | Becomes `useEstimateDetailData` seam hook (Step 2) |
 | Detail: draft customer picker | `isDraft` block at top of return | ~215 JSX + handlers | high (title derivation, autosave, gate) | med-high | inline | Extract after seam → `EstimateDraftCustomerSection` |
@@ -79,7 +79,7 @@ Consequences for extraction:
 
 ### `EstimateListTable` + `EstimateListCards` (module components, ~862–1555)
 
-- **Render location:** module scope; rendered by `EstimateList` in 8 call sites (table vs cards per `narrowViewport640`, ×4 buckets: Ledger, Stages Unsent/Sent/Accepted).
+- **Render location:** module scope; rendered by `EstimateList` in 8 call sites (table vs cards per `narrowViewport640`, ×4 buckets: Ledger, Pipeline Unsent/Sent/Accepted).
 - **Owned local state:** none — both are controlled by `EstimateListTableProps`. Only hook: `useAuth()` for `estimateListViewerRole` (passed to `JobThreadNotesPanel`).
 - **Props (the seam already exists):** `rows: EstimateListRow[]`, `setAcceptanceModalEstimateId`, `setCreateJobFromListRow`, `showCustomerColumn?`, `onCustomerSnapshotRequest?`, `stagesThread?: EstimateListStagesThread` (the thread-notes bundle: stats/notes maps, `expandedEstimateThreadId`, `toggleEstimateThreadExpanded`, `estimateThreadDraft` + setter, `submitEstimateThreadNote`, `canPostNotes`).
 - **Derived:** none memoized; per-row `formatEstimateListUpdatedLines`, `getDispatchNoteDisplayMeta`, `estimateLinkedJobHcp`, `estimateListCustomerSubline` / `estimateListCustomerColumnLines`.
@@ -88,13 +88,13 @@ Consequences for extraction:
 - **External coupling:** "Create job" button and "Accepted — view" button only invoke parent setters. `threadColSpan = 6 + (showCustomerColumn ? 1 : 0)` — colspan arithmetic must track the column count if columns ever change.
 - **Extraction status + risk + approach:** Inline module components. **Lowest risk on the page — extract first.** Pure file move to `src/components/estimates/EstimateListTable.tsx` (both components + `EstimateListTableProps` + `EstimateListStagesThread` + the three `estimateListCustomer*` style constants + `ESTIMATE_LIST_CUSTOMER_SNAPSHOT_BTN_CLASS`). Their pure row helpers (`estimateListCustomerSubline`, `estimateListCustomerColumnLines`, `estimateListRowMatchesSearch`, `splitFollowupRows`, `sortEstimatesByUpdatedDesc`, `statusLabel`, `formatMoney`, `estimateLinkedJobHcp`) go Stage-A to `lib/estimates/estimateListRows.ts` in the same wave.
 
-### `EstimateList` — Stages + Ledger tabs (~1559–1999)
+### `EstimateList` — Pipeline + Ledger tabs (~1559–1999)
 
-- **Render location:** whole component when the route has no `:id`. Stages panel behind `listTab === 'followup'` (the `else` branch, `aria-labelledby="estimates-tab-stages"`); Ledger behind `listTab === 'all'`.
+- **Render location:** whole component when the route has no `:id`. Pipeline panel behind `listTab === 'followup'` (the `else` branch, `aria-labelledby="estimates-tab-stages"`); Ledger behind `listTab === 'all'`.
 - **Owned local state:** `listTab` (default `'followup'`), `listSearch` (**one input state shared by both tabs** — persists across tab switch), `rows`, `loading`, `creating`, `acceptanceModalEstimateId`, `createJobFromListRow`, `customerSnapshotId`, `acceptNotifySettingsOpen` (dev/master ⚙ button).
-- **Shared engine (extracted hook):** `useEstimateThreadNotes(showToast, user?.id, profileName)` → `expandedEstimateThreadId` + setter, `estimateThreadNotesByEstimateId`, `estimateThreadNotesLoadingId`, `estimateThreadSubmittingId`, `estimateThreadDraft` + setter, `submitEstimateThreadNote`, `estimateThreadStatsByEstimateId`, `refreshEstimateThreadStatsForEstimateIds`. Bundled into the `estimatesStagesThread` object and passed only to Stages buckets.
+- **Shared engine (extracted hook):** `useEstimateThreadNotes(showToast, user?.id, profileName)` → `expandedEstimateThreadId` + setter, `estimateThreadNotesByEstimateId`, `estimateThreadNotesLoadingId`, `estimateThreadSubmittingId`, `estimateThreadDraft` + setter, `submitEstimateThreadNote`, `estimateThreadStatsByEstimateId`, `refreshEstimateThreadStatsForEstimateIds`. Bundled into the `estimatesStagesThread` object and passed only to Pipeline buckets.
 - **Derived memos:** `filteredRows` (search via `estimateListRowMatchesSearch`), `followupBuckets` (`splitFollowupRows`: draft→Unsent; sent+**declined**→Sent; customer_accepted→Accepted; superseded omitted; each bucket re-sorted by `updated_at` desc).
-- **Handlers/loaders:** `load` (useCallback: `estimates` SELECT `*, customers(name, address, contact_info), jobs_ledger(hcp_number)`, optional `.eq('customer_id', …)` from the `?customer=` URL param, order `updated_at` desc, **limit 200**), `createDraft` (resolves master via `resolveMasterUserId`, INSERTs a draft with `line_items_snapshot: [defaultDraftFirstLine()]`, navigates to `/estimates/:number`), `toggleEstimateThreadExpanded`. Effects: load-on-mount/param-change; 320ms-debounced `refreshEstimateThreadStatsForEstimateIds` over visible row ids (gated `listTab === 'followup'`); collapse expanded thread when leaving Stages.
+- **Handlers/loaders:** `load` (useCallback: `estimates` SELECT `*, customers(name, address, contact_info), jobs_ledger(hcp_number)`, optional `.eq('customer_id', …)` from the `?customer=` URL param, order `updated_at` desc, **limit 200**), `createDraft` (resolves master via `resolveMasterUserId`, INSERTs a draft with `line_items_snapshot: [defaultDraftFirstLine()]`, navigates to `/estimates/:number`), `toggleEstimateThreadExpanded`. Effects: load-on-mount/param-change; 320ms-debounced `refreshEstimateThreadStatsForEstimateIds` over visible row ids (gated `listTab === 'followup'`); collapse expanded thread when leaving Pipeline.
 - **Supabase tables/edge functions:** `estimates` (SELECT, INSERT), `master_assistants` (SELECT via `resolveMasterUserId`), `estimates_thread_notes` (SELECT/INSERT via the hook). Modals do their own IO (`CreateJobFromEstimateModal` → `create_job_from_estimate` RPC; `CustomerAcceptanceRecordModal`; `EstimateAcceptedNotifySettingsModal` → `lib/estimateAcceptedNotify.ts`).
 - **Sub-components:** `EstimateListTable`/`EstimateListCards` (in-file, see above), `EstimateAcceptedNotifySettingsModal`, `CustomerAcceptanceRecordModal`, `CustomerSnapshotModal`, `CreateJobFromEstimateModal` (all **extracted**).
 - **External coupling:** `?customer=<id>` deep link (mirrors Jobs' `?customer=`) with a "Filtered by customer / Clear filter" banner; `CreateJobFromEstimateModal.onSuccess` navigates to `/jobs?edit=<jobId>` after `load()`.
@@ -205,7 +205,7 @@ The API surface extracted regions must be handed.
 | `master_assistants` | SELECT (`resolveMasterUserId`) | list (createDraft) |
 | `app_settings` | SELECT (`ESTIMATE_EXPERIENCE_APP_KEY_LIST`) | detail CX |
 | `estimate_customer_events` | SELECT (+ window-focus refresh) | detail sent/accepted |
-| `estimates_thread_notes` | SELECT/INSERT (via `useEstimateThreadNotes`) | list Stages |
+| `estimates_thread_notes` | SELECT/INSERT (via `useEstimateThreadNotes`) | list Pipeline |
 | `estimate_catalog_items`, `estimate_catalog_item_events` | SELECT/replace-writes (via `lib/estimateCatalogApi.ts`) | detail catalog modal |
 | storage `estimate-acceptor-signatures` | `createSignedUrl` | detail accepted |
 | edge `send-estimate-to-customer` | direct `fetch` (JWT + anon apikey) | detail send |
@@ -254,8 +254,8 @@ The API surface extracted regions must be handed.
 10. **Send flow ordering**: `saveDraft()` runs before the edge call (so the frozen snapshots match the screen); when the edge function reports `emailed: false` but returns `accept_url`, the URL is auto-copied to the clipboard; the attachment "Check link" is advisory only and never blocks sending.
 11. **`updateLine` and the catalog edit rows coerce quantity ≤ 0 (or NaN) to 1**; unit price inputs are dollars in the UI, rounded to cents (`Math.round(... * 100)`); `amount_cents` is always recomputed via `computeEstimateLineExtendedCents`, never trusted from input.
 12. **Empty draft line-items hydrate to `[defaultDraftFirstLine()]`** ("Custom Service Visit" stub), and `isDefaultDraftStubShape` recognizes BOTH the new shape (default in `line_item`) and the legacy shape (default in `description`) so catalog inserts replace either.
-13. **`declined` estimates bucket into "Sent"** on the Stages tab; `superseded` is omitted entirely; each bucket independently re-sorts by `updated_at` desc.
-14. **One `listSearch` state serves both list tabs** — the query persists across the Stages↔Ledger switch (two separate input elements, same state).
+13. **`declined` estimates bucket into "Sent"** on the Pipeline tab; `superseded` is omitted entirely; each bucket independently re-sorts by `updated_at` desc.
+14. **One `listSearch` state serves both list tabs** — the query persists across the Pipeline↔Ledger switch (two separate input elements, same state).
 15. **`estimate_customer_events` refresh on window focus** (only while sent/accepted) so staff see link-view events after tabbing back from email.
 16. **`EstimateDraftCustomerGate` appears twice** (draft body + Customer experience section) with the same `draftNeedsCustomer`/`requestCustomerFirst` pair; `requestCustomerFirst` throttles its toast to one per 700ms and pulses the combobox for 2400ms.
 17. **`customers` is loaded unpaginated** (full table, ordered by name) in both `load` and `refetchCustomersAfterEdit`; `filterActiveCustomersForPicker(customers, customerId)` keeps the archived-but-selected customer visible in the picker.

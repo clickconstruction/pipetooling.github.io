@@ -5,7 +5,7 @@ file: docs/BANKING_TABS_ARCHITECTURE.md
 type: Architecture Map / Decomposition
 purpose: Step-0 map for the Banking surface decomposition (per PAGE_DECOMPOSITION_PLAYBOOK.md) — inventory what every tab/region of the 3,104-line src/pages/Banking.tsx touches (state, loaders, handlers, sub-components, supabase tables/RPCs, cross-tab coupling), plus sub-decomposition dossiers for its two biggest already-extracted tabs, BankingMercuryAccountingTab (2,304 lines) and BankingMercuryDragSortTab (1,392 lines). MercuryTransactionAllocationsModal (1,540 lines) is noted as external coupling only — it is not mapped here.
 audience: Developers, AI Agents
-last_updated: 2026-07-29
+last_updated: 2026-08-01
 ---
 
 ## What this surface is
@@ -16,7 +16,7 @@ The two biggest extracted tabs have themselves become God components and are map
 
 | File | Lines | Role |
 |---|---|---|
-| [`src/pages/Banking.tsx`](../src/pages/Banking.tsx) | 3,104 | parent shell + Ledger + Sorting + data engine + modals |
+| [`src/pages/Banking.tsx`](../src/pages/Banking.tsx) | 3,104 | parent shell + Ledger + User Sort + data engine + modals |
 | [`src/components/banking/BankingMercuryAccountingTab.tsx`](../src/components/banking/BankingMercuryAccountingTab.tsx) | 2,304 | Accounting tab: rules engine, approvals queue, sorting ledger |
 | [`src/components/banking/BankingMercuryDragSortTab.tsx`](../src/components/banking/BankingMercuryDragSortTab.tsx) | 1,392 | Drag Sort tab: dnd-kit label buckets + quick-label focus flow |
 
@@ -48,13 +48,13 @@ Each section lists: render location (symbol/JSX anchor — line numbers are "as 
 
 | Region | Render anchor | Lines est. | Status | Coupling | Risk | Recommended action |
 |---|---|---|---|---|---|---|
-| In-file `BankingMercuryTable` (+ `SortTh`, `TransactionDetailPanel`) | module level, ~566–1096 | ~530 | in-file module components | low (props-only; rendered by Ledger + Sorting) | **low** | **Extract first** — verbatim file move to `src/components/banking/BankingMercuryTable.tsx` |
+| In-file `BankingMercuryTable` (+ `SortTh`, `TransactionDetailPanel`) | module level, ~566–1096 | ~530 | in-file module components | low (props-only; rendered by Ledger + User Sort) | **low** | **Extract first** — verbatim file move to `src/components/banking/BankingMercuryTable.tsx` |
 | In-file `BankingNicknamesMenu`, `BankingLedgerAdvancedMenu` | module level, ~167–471 | ~305 | in-file module components | low (props-only) | low | Verbatim file move(s) |
 | `sorting` — User Sort tab | `bankingView.mercuryTab === 'sorting'` panel | ~175 + header tools ~70 | inline | med (shares `rows` engine, `expandedRowId`, search, allocations, org notes) | low-med | Extract → `BankingMercurySortingTab` after the table component moves |
 | `ledger` — Ledger tab (dev-only) | `bankingView.mercuryTab === 'ledger'` panel | ~170 | inline | med-high (Advanced menu drives sync/backfill/import/manual-accounts; nickname CRUD) | med | Extract → `BankingMercuryLedgerTab`; sync/backfill/import handlers stay in parent |
 | `drag_sort` — Drag Sort tab | thin wrapper → `BankingMercuryDragSortTab` | ~29 (wrapper) / 1,392 (component) | **extracted** | med (16 props off the shared engine) | — | Sub-decompose later (bucket-stats kernel → lib; add-label modal → file) |
 | `accounting` — Accounting tab | thin wrapper → `BankingMercuryAccountingTab` | ~33 (wrapper) / 2,304 (component) | **extracted** | high (23 props; lifted prefs; assignment-change callback loop) | — | Sub-decompose: rules-engine hook + approvals hook + section components |
-| `user_review` — User Review tab | thin wrapper → `BankingMercuryUserReviewTab` | ~12 / 1,098 | **extracted** | low (self-sources via `user_review_rows` RPC) | — | Done |
+| `user_review` — Card Review tab | thin wrapper → `BankingMercuryUserReviewTab` | ~12 / 1,098 | **extracted** | low (self-sources via `user_review_rows` RPC) | — | Done |
 | `category_review` — Category Review tab | thin wrapper → `BankingMercuryCategoryReviewTab` | ~19 / 1,073 | **extracted** | med (reads shared engine) | — | Done |
 | `reconciliation` — Reconciliation tab | `<BankingMercuryReconciliationTab />` | ~5 / 233 | **extracted** | none (zero props) | — | Done — the target end-state |
 | Stripe `invoices` / `data` | `BankingStripeInvoicesPanel` / `BankingStripeWebhookEventsPanel` | ~11 | **extracted** | none | — | Done |
@@ -73,10 +73,10 @@ The substrate has four layers, all owned by `Banking()`:
 ### 1. The transaction list engine (`rows` + the tab-aware loader dispatcher)
 
 - `rows: MercuryTxRow[]` — the master in-memory list, capped at `MERCURY_TRANSACTIONS_BANKING_LIST_LIMIT = 15000` (`rowsTruncated` flags a full page). **What `rows` contains depends on the active view**:
-  - Ledger / Sorting / Drag Sort / Category Review → `loadAllRows` (plain `mercury_transactions` select, newest-first, `MERCURY_TRANSACTIONS_BANKING_LIST_COLUMNS` — raw omitted, hydrated lazily).
+  - Ledger / User Sort / Drag Sort / Category Review → `loadAllRows` (plain `mercury_transactions` select, newest-first, `MERCURY_TRANSACTIONS_BANKING_LIST_COLUMNS` — raw omitted, hydrated lazily).
   - Accounting + Hide labeled **on** (the default) → `loadUnlabeledRows` (RPC `list_unlabeled_mercury_transactions`, a server-side anti-join against `mercury_transaction_drag_sort_assignments`).
   - Accounting + Hide labeled **off** → `loadLabeledFirstPage` / `loadLabeledNextPage` (RPC `list_mercury_transactions_keyset`, `ACCOUNTING_LABELED_PAGE_SIZE = 500` pages; cursor = `labeledCursor {postedAt, id}`, flags `labeledHasMore`/`labeledLoadingMore`, refs `labeledLoadingMoreRef` re-entry guard + `labeledLoadedCountRef` silent-refresh depth).
-  - User Review → **no fetch** (the tab self-sources via its own `user_review_rows` RPC; the dispatcher `loadRowsForActiveView` early-returns).
+  - Card Review → **no fetch** (the tab self-sources via its own `user_review_rows` RPC; the dispatcher `loadRowsForActiveView` early-returns).
 - `listLoadSeqRef` — monotonic token; every fresh load bumps it and in-flight responses with a stale token are discarded. **Any seam extraction must preserve this token discipline.**
 - Raw hydration effects: three `useEffect`s lazily fetch the `raw` JSON column via `fetchMercuryTransactionRawById`/`ByIds` + `applyMercuryRawPatch` — (a) when Drag Sort or Accounting is active, (b) when the debit-card recent-tx modal opens, (c) when a row expands.
 
@@ -90,7 +90,7 @@ The substrate has four layers, all owned by `Banking()`:
 
 ### 4. Org team notes
 
-`useMercuryOrgNotesByTxId(bankingOrgNoteFetchIds)` — already a hook; the parent feeds it the visible-row ids of the active tab (Sorting → `sortingFilteredSorted`; Ledger/Drag Sort/Accounting → `filteredSorted`; otherwise the stable `NO_MERCURY_TX_IDS_FOR_BANKING_NOTES` constant). `onOrgNoteUpdated` patches locally via `updateOrgNoteLocal`.
+`useMercuryOrgNotesByTxId(bankingOrgNoteFetchIds)` — already a hook; the parent feeds it the visible-row ids of the active tab (User Sort → `sortingFilteredSorted`; Ledger/Drag Sort/Accounting → `filteredSorted`; otherwise the stable `NO_MERCURY_TX_IDS_FOR_BANKING_NOTES` constant). `onOrgNoteUpdated` patches locally via `updateOrgNoteLocal`.
 
 ### Accounting prefs cluster (lifted from the child, stays in parent)
 
@@ -122,11 +122,11 @@ The parent destructures each hook so downstream references (and the ~23-prop Acc
 
 | Component | Anchor | ~Lines | Notes |
 |---|---|---|---|
-| `BankingNicknamesMenu` | ~167–287 | 120 | click-outside/Escape dropdown; rendered in the Sorting header tools AND the Ledger toolbar |
+| `BankingNicknamesMenu` | ~167–287 | 120 | click-outside/Escape dropdown; rendered in the User Sort header tools AND the Ledger toolbar |
 | `BankingLedgerAdvancedMenu` | ~289–471 | 183 | Ledger's Advanced dropdown (Refresh / Backfill / Import CSV / Manual accounts / Reload); role-gated items via optional-prop presence |
 | `SortTh` | ~566–596 | 30 | sortable `<th>` with `aria-sort` |
 | `TransactionDetailPanel` | ~598–693 | 96 | expanded-row detail grid + raw JSON `<pre>` |
-| `BankingMercuryTable` | ~695–1096 | 402 | the shared Ledger/Sorting table: expandable rows, notes preview/editor sub-rows (via `MercuryTxNotesDisclosure` pieces + `bankingMercuryNotesSubRowColSpans`), allocation Person/Jobs cells, excluded-duplicate strike-through badge, and 4 layout-variant flags (`allocationsAfterCounterparty`, `hideKindColumn`, `debitAndAccountAfterAmount`, `counterpartyNoteCombined`). Owns only `notesExpandedTxId` locally. |
+| `BankingMercuryTable` | ~695–1096 | 402 | the shared Ledger/User Sort table: expandable rows, notes preview/editor sub-rows (via `MercuryTxNotesDisclosure` pieces + `bankingMercuryNotesSubRowColSpans`), allocation Person/Jobs cells, excluded-duplicate strike-through badge, and 4 layout-variant flags (`allocationsAfterCounterparty`, `hideKindColumn`, `debitAndAccountAfterAmount`, `counterpartyNoteCombined`). Owns only `notesExpandedTxId` locally. |
 
 All are props-only (no parent closure). Moving them to `src/components/banking/` is a verbatim cut/paste worth ~830 lines.
 
@@ -138,7 +138,7 @@ All are props-only (no parent closure). Moving them to `src/components/banking/`
 
 - **Render location:** `role="tabpanel" id="banking-panel-mercury-ledger"` behind `bankingView.mercuryTab === 'ledger' && isDevBanking` (~2801–2968).
 - **Owned local state:** `accountFilter`, `kindFilter` (⚠ also passed into Drag Sort — see cross-tab), `sort` (+ `setSortForColumn`), `ledgerAdvancedMenuOpen`.
-- **Cross-tab/shared state:** `rows`/`loading`/`error` engine, `bankingSearchText` (**shared with the Sorting tab's search box and Drag Sort's** — one string state feeds all three), `expandedRowId` (shared with Sorting), nickname caches + both nickname modals, allocations caches, org notes, `rowsTruncated`.
+- **Cross-tab/shared state:** `rows`/`loading`/`error` engine, `bankingSearchText` (**shared with the User Sort tab's search box and Drag Sort's** — one string state feeds all three), `expandedRowId` (shared with Sorting), nickname caches + both nickname modals, allocations caches, org notes, `rowsTruncated`.
 - **Derived memos:** `filteredSorted` (accountFilter + kindFilter + search over `buildMercuryTxSearchHaystackWithJobPerson` → `sortMercuryRowsStable`), `booksFilteredSorted` (drops `duplicate_of_transaction_id` rows — feeds totals AND the Drag Sort/Accounting/Category Review wrappers), `totalAmount`, `accountOptions`, `kindOptions`, `nicknameManageIds`, `debitCardIdsFromRows`, `debitCardManageIds`.
 - **Handlers:** `handleSync` (edge fn `sync-mercury-transactions`, hardcoded `lookback_days: 90`, bumps `autoApplyResetTick`), `handleBackfill` (same fn with `{start, end}`), `handleImportCsv` (edge fn `import-manual-transactions`), nickname CRUD (see substrate §3).
 - **Supabase:** `mercury_transactions` (via engine), `mercury_account_nicknames`, `mercury_debit_card_nicknames`; edge functions `sync-mercury-transactions`, `import-manual-transactions`.
@@ -170,7 +170,7 @@ All are props-only (no parent closure). Moving them to `src/components/banking/`
 - **Props from parent (23):** everything Drag Sort gets (minus the account/kind filter pair) plus `mercurySearchNicknameCtx`, `mercurySearchEnrich`, the lifted prefs (`hideLabeledTransactions`/`onHideLabeledTransactionsChange`, `applyRulesByDefault`/`onApplyRulesByDefaultChange`, `autoApplyResetTick`, `approveByDefault`/`onApproveByDefaultChange`), `onAfterAssignmentChange={() => loadRowsForActiveView({silent: true})}` (the label⇄list feedback loop), and the keyset trio `labeledHasMore` (gated by `isAccountingLabeledView`), `labeledLoadingMore`, `onLoadMoreLabeled`.
 - **Status:** extracted; its dossier is below.
 
-### `user_review` — User Review (extracted, done)
+### `user_review` — Card Review (extracted, done; key `user_review`, tab label renamed from "User Review" in v2.1262 — the Dashboard clock-strip "User Review" modal kept its name)
 
 - Wrapper (~2762–2773) passes only `mercurySearchNicknameCtx`, `attributionOptions` (memo: [`buildBankingAttributionOptions`](../src/lib/bankingAttributionOptions.ts) merging `usersSelectOptions` + `peopleAttribRows` with `u:`/`p:` prefixed values), `recentPersonPicksStorageKey`, and `onAttributionChanged={loadMercuryAllocations}`. The tab **self-sources** its rows from the `user_review_rows` RPC — the parent dispatcher deliberately skips the master fetch when this tab is active. The attribution option sources are loaded page-level via RPCs `list_users_for_banking_attribution` and `list_people_with_kind_for_banking_attribution` (the latter cast `as unknown as` — not yet in generated types).
 
@@ -190,15 +190,15 @@ All are props-only (no parent closure). Moving them to `src/components/banking/`
 
 | Modal | Opened from | Key wiring |
 |---|---|---|
-| `BankingAccountNicknamesModal` (dev) | Nicknames menu (Sorting header + Ledger toolbar) | `nicknameManageIds`, drafts + CRUD callbacks |
+| `BankingAccountNicknamesModal` (dev) | Nicknames menu (User Sort header + Ledger toolbar) | `nicknameManageIds`, drafts + CRUD callbacks |
 | `BankingDebitCardNicknamesModal` | Nicknames menu (both) | `debitCardManageIds`, CRUD callbacks, `onOpenRecentTransactions` |
 | `BankingDebitCardRecentTxModal` | debit-card nicknames modal AND user-card-link modal | `recentTxDebitCardId`, `rows`, `DEBIT_CARD_RECENT_TX_CAP = 50`; triggers a raw-hydration effect |
 | `MercuryBackfillModal` (dev) | Ledger Advanced menu | `onSubmit={handleBackfill}` |
 | `MercuryImportCsvModal` (dev/master) | Ledger Advanced menu | `onSubmit={handleImportCsv}` |
 | `ManualAccountsModal` (dev/master) | Ledger Advanced menu | `onChanged` → full reload trio |
-| **`MercuryTransactionAllocationsModal`** | Ledger, Sorting, Drag Sort, Accounting (all via `onEditAllocations` → `openAllocModalForMercuryRow`) | see external coupling below |
-| `BankingSortingConfigModal` (dev) | Sorting header tools | `initialConfig={sortingConfig}`, kind/account/debit choices, `onSave={handleSortingConfigSave}` |
-| `BankingUserCardLinkModal` | Sorting header tools | `debitCardManageIds`, `usersOptions`, `onSaved={loadMercuryAllocations}`, `onOpenRecentTransactions` |
+| **`MercuryTransactionAllocationsModal`** | Ledger, User Sort, Drag Sort, Accounting (all via `onEditAllocations` → `openAllocModalForMercuryRow`) | see external coupling below |
+| `BankingSortingConfigModal` (dev) | User Sort header tools | `initialConfig={sortingConfig}`, kind/account/debit choices, `onSave={handleSortingConfigSave}` |
+| `BankingUserCardLinkModal` | User Sort header tools | `debitCardManageIds`, `usersOptions`, `onSaved={loadMercuryAllocations}`, `onOpenRecentTransactions` |
 
 **All of these stay in the parent** (each is opened from 2+ tabs or from the shared header) — except `MercuryBackfillModal`/`MercuryImportCsvModal`/`ManualAccountsModal`, which are Ledger-only but whose completion callbacks touch parent loaders, so keep them parent-owned too (open via callback from the extracted Ledger tab).
 
@@ -291,8 +291,8 @@ Extract to `src/lib/*` + colocated tests **before** any component moves. Note: B
 4. **Prefs dual-write protocol** — localStorage write is synchronous truth for this device; `banking_user_prefs` row syncs cross-device; server values found on load are mirrored back into localStorage. Failure toasts "Saved here, but could not sync…".
 5. **Silent realtime refresh preserves scroll depth** — `loadLabeledFirstPage({silent: true})` requests `max(500, labeledLoadedCountRef.current)` rows so a background sync doesn't yank the user to page 1.
 6. **Excluded duplicates**: the Ledger *shows* `duplicate_of_transaction_id` rows struck-through for audit; `booksFilteredSorted` / `booksSortingFilteredSorted` exclude them from totals and from what Drag Sort / Accounting / Category Review receive.
-7. **One `bankingSearchText` feeds three tabs** (Ledger, Sorting, Drag Sort) and `accountFilter`/`kindFilter` are shared between Ledger and Drag Sort — typed state carries across tab switches by design.
-8. **User Review skips the master fetch** — `loadRowsForActiveView` early-returns (and clears `loading`) when it's the active tab; toggling to another tab pulls the 15k list.
+7. **One `bankingSearchText` feeds three tabs** (Ledger, User Sort, Drag Sort) and `accountFilter`/`kindFilter` are shared between Ledger and Drag Sort — typed state carries across tab switches by design.
+8. **Card Review skips the master fetch** — `loadRowsForActiveView` early-returns (and clears `loading`) when it's the active tab; toggling to another tab pulls the 15k list.
 9. **Auto-apply/auto-approve signature protocol** — `lastAutoAppliedSignatureRef` reset only by `autoApplyResetTick` (bumped after sync/backfill); auto-approve's signature is built from the **conflict-pre-filtered** list so a conflict-only residue quiets the effect without toast spam; auto-approve commits the full approvable set **ignoring the user's search filter** (deliberate).
 10. **Caps are behavioral, not just perf**: `APPLY_RULES_PER_CLICK_CAP = 500` (forces review-then-iterate cadence), `APPLY_RULES_CONFIRM_THRESHOLD = 200`, `APPROVALS_PAGE_SIZE = 50`, `GROUP_BULK_CONFIRM_THRESHOLD = 25`, `ACCOUNTING_PENDING_ID_IN_CHUNK_SIZE = 200` (HTTP/2 header-limit fix), `DEBIT_CARD_RECENT_TX_CAP = 50`, quick-label undo stack depth 2.
 11. **Internal Transfers × job splits are mutually exclusive**, enforced in four places: `handleQuickAssignLabel`, `handleApprove`, `approvePendingItems` (skip + toast), and Drag Sort's `applyDragSortAssignment`. Keep all four.
@@ -326,6 +326,6 @@ Extract to `src/lib/*` + colocated tests **before** any component moves. Note: B
 - The **accounting prefs cluster** incl. `hideLabeledTransactions` (it selects the parent's loader) and `autoApplyResetTick` (bumped by parent sync handlers, consumed by the child effect).
 - `handleSync` / `handleBackfill` / `handleImportCsv` and their modals (completion must reload parent caches + bump the tick).
 - **All shared modals**, especially `MercuryTransactionAllocationsModal` + `openAllocModalForMercuryRow` (opened from four tabs) and `BankingDebitCardRecentTxModal` (opened from two other modals).
-- `expandedRowId` (shared by Ledger + Sorting tables) and the shared filter/search state (`bankingSearchText`, `accountFilter`, `kindFilter`).
+- `expandedRowId` (shared by Ledger + User Sort tables) and the shared filter/search state (`bankingSearchText`, `accountFilter`, `kindFilter`).
 
 Definition of done per region, verification gates, and anti-patterns: see [`PAGE_DECOMPOSITION_PLAYBOOK.md`](./PAGE_DECOMPOSITION_PLAYBOOK.md) (`npm run typecheck && npm run lint && npm test` green after every step; behavior-preserving only).

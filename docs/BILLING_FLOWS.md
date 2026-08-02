@@ -67,7 +67,7 @@ Latest definition: `supabase/migrations/20260608120000_allow_helpers_working_to_
 | ready_to_bill → working | OFFICE; side effect: **deletes all `ready_to_bill` invoice rows** for the job (count returned as `deleted_ready_to_bill_invoices`) |
 | working → waiting, waiting → working | OFFICE |
 
-Side effects: `jobs_ledger` update + one `job_status_events` insert (`from_status`, `to_status`, `changed_by_user_id`). It does **not** stamp bill/paid timestamps (those live on invoice rows), does not clear the Collections flag, and takes **no row lock** — concurrency is only mitigated client-side (v2.732 per-id mutation locks in `src/hooks/useDashboardBillingInvoices.ts`; serialized pipeline in `src/pages/Jobs.tsx`).
+Side effects: `jobs_ledger` update + one `job_status_events` insert (`from_status`, `to_status`, `changed_by_user_id`). It does **not** stamp bill/paid timestamps (those live on invoice rows), does not clear the Collections flag, and takes **no row lock** — concurrency is only mitigated client-side (v2.732 per-id mutation locks in `src/hooks/useDashboardBillingInvoices.ts`; serialized pipeline in `src/lib/jobsStagesSerializedPipeline.ts`, driven from `src/hooks/useJobsStagesMutations.ts` / `src/components/jobs/JobsStagesTab.tsx`).
 
 Other server-side status writers:
 
@@ -78,7 +78,7 @@ Other server-side status writers:
 
 ### `job_status_events`
 
-Audit table (baseline): `job_id` FK CASCADE, `from_status`, `to_status`, `changed_at`, `changed_by_user_id`. Written by `update_job_status` and the clock-out trigger; mirrored into `job_activity_events` as `status_change` rows by `supabase/migrations/20260608010000_job_activity_events.sql`. Read directly by the send-back modals in `src/components/dashboard/DashboardBillingPipelineSection.tsx` and `src/pages/Jobs.tsx` ("Move into <stage> by: <name> on <date>" via `formatMoveIntoStageByOnLine`, `src/lib/formatMoveIntoStageByOnLine.ts`). Archived on delete since `supabase/migrations/20260716120000_deleted_records_archive.sql`.
+Audit table (baseline): `job_id` FK CASCADE, `from_status`, `to_status`, `changed_at`, `changed_by_user_id`. Written by `update_job_status` and the clock-out trigger; mirrored into `job_activity_events` as `status_change` rows by `supabase/migrations/20260608010000_job_activity_events.sql`. Read directly by the send-back modals in `src/components/dashboard/DashboardBillingPipelineSection.tsx` and `src/components/jobs/JobsStagesTab.tsx` ("Move into <stage> by: <name> on <date>" via `formatMoveIntoStageByOnLine`, `src/lib/formatMoveIntoStageByOnLine.ts`). Archived on delete since `supabase/migrations/20260716120000_deleted_records_archive.sql`.
 
 ### Client callers
 
@@ -87,16 +87,16 @@ Audit table (baseline): `job_id` FK CASCADE, `from_status`, `to_status`, `change
 - `src/lib/syncJobToReadyToBillIfNoBilledInvoicesRemain.ts` — job billed→RTB after the last billed invoice row is removed.
 - `src/lib/updateJobStatusClientFeedback.ts` — shared toast/resync mapping for RPC failures.
 - `src/hooks/useDashboardBillingInvoices.ts` — dashboard `updateJobStatus`, `moveJobToReadyToBillWithStripePrep`, `revertBilledDashboardInvoiceToReadyToBill`, `deleteInvoice`.
-- `src/pages/Jobs.tsx` — Stages-board equivalents of all of the above.
+- `src/components/jobs/JobsStagesTab.tsx` + `src/hooks/useJobsStagesMutations.ts` — Pipeline-board equivalents of all of the above (extracted from `src/pages/Jobs.tsx` in v2.828–v2.831).
 - `src/components/jobs/JobLedgerStatusPipeline.tsx` — read-only pipeline renderer inside `DetailJobModal`.
 
 ### Surfaces
 
 - **Dashboard Billing Pipeline** (`src/components/dashboard/BillingPipelineCard.tsx` → `DashboardBillingPipelineSection.tsx`, engine `src/hooks/useDashboardBillingInvoices.ts`): Stage 1 = `DashboardFieldCollectPaymentQueue`; Stage 2 "Ready to Bill" (Bill Customer, Delete draft bill, Send Back); Stage 3 "Billed Waiting for Payment" (Mark Paid, Send back). Units built by `src/lib/buildReadyToBillDashboardUnits.ts` / `src/lib/dashboardBillingInvoiceUnits.ts`.
 - **Dashboard field RTB list** (`src/components/dashboard/DashboardTeamReadyToBillSection.tsx`) — field roles; Collect Payment entry point; no direct status mutations.
-- **Jobs → Stages tab** (`src/pages/Jobs.tsx`, board kernels in `src/lib/jobsStagesBoard.ts`): Waiting / Working / Ready to Bill / Billed Awaiting Payment / Collections / Paid in Full sections with the full action set (promote, Bill Customer, partial invoice, Mark Paid, send-backs, Collections flag, AR modal, aging chips). `readyToBillJobs` includes working jobs that own an RTB draft (break-offs).
+- **Jobs → Pipeline tab** (label renamed from "Stages" in the v2.1251+ naming audit; `src/components/jobs/JobsStagesTab.tsx`, board kernels in `src/lib/jobsStagesBoard.ts`): Waiting / Working / Ready to Bill / Billed Awaiting Payment / Collections / Paid in Full sections with the full action set (promote, Bill Customer, partial invoice, Mark Paid, send-backs, Collections flag, AR modal, aging chips). `readyToBillJobs` includes working jobs that own an RTB draft (break-offs).
 - **Jobs → Billing tab** — flat job-content table (fixtures, charges, totals); **no status transitions**.
-- **Quickfill** (`src/pages/Quickfill.tsx`): read-only "Billing Awaiting Payments" (`src/components/quickfill/BilledAwaitingPaymentSection.tsx`) and "Complete, no Total Bill" (`src/hooks/useQuickfillCompleteNoBillJobs.ts`) reminder sections.
+- **Quickfill** (`src/pages/Quickfill.tsx`): read-only "Billed Awaiting Payment" (`src/components/quickfill/BilledAwaitingPaymentSection.tsx`) and "Complete, no Total Bill" (`src/hooks/useQuickfillCompleteNoBillJobs.ts`) reminder sections.
 - **Edit Job** (`src/components/jobs/JobFormModal.tsx`): break-off invoice creation, payments table, delete/migrate; participates in billed→RTB prep.
 
 ## Invoices (`jobs_ledger_invoices`)
@@ -124,7 +124,7 @@ Source tables: `jobs_ledger_fixtures` (Specific Work: `name`, `count`, `line_uni
 "Break off" = create a fixed-dollar partial RTB row; the primary remainder re-syncs via the ensure RPC. Percentages are display-only — **only dollars are persisted**.
 
 - **Edit Job slider** (`src/components/jobs/JobFormModal.tsx`): combined-coverage slider — thumb = (payments + break amount) / job total, snapped to 5% steps (`BREAK_OFF_COMBINED_SLIDER_STEP_PCT`); kernels `unallocatedBillableDollars`, `breakDollarsFromCombinedPct`, `breakOffPrefillAmountStringFromJob` (prefills 80%, or 95% when paid > 80%). `createInvoice()` clamps to the unallocated remainder; a full-remainder amount on an RTB job opens Bill Customer instead; insert is `{status:'ready_to_bill', is_primary_rtb_bundle:false}` + conditional ensure re-run.
-- **Jobs Stages modal** (`src/pages/Jobs.tsx` `createInvoiceFromModal`, green "Create partial invoice" icon on RTB rows): plain dollar input, no slider. Since v2.735 its Remaining display, blur-clamp, submit clamp, and the icon's disabled gate all use the billing-unallocated basis (`jobBillingUnallocatedDollars` + `clampPartialInvoiceCentsToUnallocated` in `src/lib/jobsStagesBoard.ts`), matching `JobFormModal.createInvoice`.
+- **Jobs Pipeline modal** (`src/components/jobs/JobsStagesTab.tsx` `createInvoiceFromModal`, ~line 1062; green "Create partial invoice" icon on RTB rows): plain dollar input, no slider. Since v2.735 its Remaining display, blur-clamp, submit clamp, and the icon's disabled gate all use the billing-unallocated basis (`jobBillingUnallocatedDollars` + `clampPartialInvoiceCentsToUnallocated` in `src/lib/jobsStagesBoard.ts`), matching `JobFormModal.createInvoice`.
 - **Trip charges**: `create_turnaway_trip_charge` (`supabase/migrations/20260709130000_turnaway_trip_charge.sql`) inserts a non-primary RTB row and bumps `revenue` equally (caveats in its SQL COMMENT).
 
 Billing a partial = Bill Customer with `kind:'invoice'` (fixed amount); billing the remainder = `kind:'job'` (ensure → primary). `resolveReadyToBillBillCustomerTarget` (`src/lib/buildReadyToBillDashboardUnits.ts`) keeps the Field queue and Dashboard pointing at the same target.
@@ -132,14 +132,14 @@ Billing a partial = Bill Customer with `kind:'invoice'` (fixed amount); billing 
 ### Loaders
 
 - `src/hooks/useDashboardBillingInvoices.ts` — dashboard engine: `jobs_ledger_invoices.select(DASHBOARD_INVOICES_JOBS_LEDGER_SELECT)` per status + RPC `get_jobs_ledger_by_status` + `jobs_ledger_payments.select('*')` for billed jobs. The select constant + flattener live in `src/lib/dashboardBillingInvoiceUnits.ts` (drift-guarded by its test; `dashboardInvoiceToPaymentModal` strips flattened fields — the v2.734 leak fix).
-- `src/lib/jobsLedgerEmbedSelects.ts` — Stages/detail embeds (`JOBS_LEDGER_INVOICES_EMBED` omits the write-down columns); used by `src/lib/fetchJobsLedgerWithDetailsForStages.ts` (Jobs `loadJobs`, AR page) and `src/lib/fetchJobWithDetailsById.ts` (single-job detail, Bill Customer refresh).
+- `src/lib/jobsLedgerEmbedSelects.ts` — Pipeline/detail embeds (`JOBS_LEDGER_INVOICES_EMBED` omits the write-down columns); used by `src/lib/fetchJobsLedgerWithDetailsForStages.ts` (Jobs `loadJobs`, AR page) and `src/lib/fetchJobWithDetailsById.ts` (single-job detail, Bill Customer refresh).
 - `src/hooks/useBilledTotal.ts` — billed-and-unpaid headline (includes Collections). `src/lib/invoiceWithJobFromJobList.ts`, `src/lib/jobBillingContext.ts`, `src/lib/jobLedgerCustomerForBilling.ts` — rehydration/context helpers.
 - RPC `get_jobs_ledger_by_status` (baseline): SECURITY DEFINER, **no auth/role check** (comment: "Bypasses RLS for Dashboard").
 
 ### "Remaining" kernels (v2.727)
 
 - Dashboard: `src/lib/dashboardBillingInvoiceUnits.ts` (`dashboardBilledInvoiceAmounts` = applied/open per invoice; `buildBilledWaitingDashboardUnits` merge rules) and `src/lib/buildReadyToBillDashboardUnits.ts` (`jobRemainingCents`, `dashboardJobBillingUnallocCents`, bundle rules) — semantics pinned by their tests.
-- Stages: `src/lib/jobsStagesBoard.ts` (`jobBillingUnallocatedDollars`, `buildReadyToBillStageRows`, `buildBilledStageRows`, `bankPaymentTargetsFromStageRows`) and `src/lib/jobs/invoiceBilling.ts` (`invoiceOpenRemainingOnJob`, `stageRowBilledRemainingAmount`, aging helpers).
+- Pipeline: `src/lib/jobsStagesBoard.ts` (`jobBillingUnallocatedDollars`, `buildReadyToBillStageRows`, `buildBilledStageRows`, `bankPaymentTargetsFromStageRows`) and `src/lib/jobs/invoiceBilling.ts` (`invoiceOpenRemainingOnJob`, `stageRowBilledRemainingAmount`, aging helpers).
 - Two bases everywhere: invoice-line remaining = `amount − Σ payments(invoice_id)`; job-shell remaining = `revenue − payments_made`; the billing-unallocated variant additionally subtracts RTB+billed invoice amounts.
 
 ## The three billing channels (Bill Customer)
@@ -241,10 +241,10 @@ Baseline: `job_id` FK CASCADE, `amount`, `sequence_order`, `paid_on` (user-enter
 
 | # | Path | Trigger UI | Notes |
 |---|---|---|---|
-| A | RPC `mark_invoice_paid` | `src/components/jobs/BilledPaymentConfirmationModal.tsx` mode `invoice` (non-Stripe lines; Dashboard + Stages "Mark Paid") | partial allowed, ≤ invoice remaining; flips invoice/job paid when covered |
+| A | RPC `mark_invoice_paid` | `src/components/jobs/BilledPaymentConfirmationModal.tsx` mode `invoice` (non-Stripe lines; Dashboard + Pipeline "Mark Paid") | partial allowed, ≤ invoice remaining; flips invoice/job paid when covered |
 | B | RPC `mark_job_paid` (6-arg; 3-arg legacy appears unused) | same modal, mode `job` | job-level row, `invoice_id` NULL |
 | C | RPC `mark_invoice_paid_from_stripe` (service-role only — EXECUTE revoked from anon/authenticated in v2.1110, A0) | `stripe-webhook` only | full remaining; note defaults `'Stripe'`; also how OOB records land (via `record-stripe-invoice-out-of-band-payment` → Stripe → webhook) |
-| D | RPC `apply_mercury_bank_payment_allocations` | `src/components/jobs/BankPaymentsModal.tsx` ("Accounts Receivable"; Jobs Stages + `/accounts-receivable`) | allocations `{invoice_id|job_id, amount}` against a Mercury deposit; caps at deposit remainder; non-Stripe billed targets only; `paid_on` forced to the deposit's posted Chicago day; `reference_number` = `mercury_id` |
+| D | RPC `apply_mercury_bank_payment_allocations` | `src/components/jobs/BankPaymentsModal.tsx` ("Accounts Receivable"; Jobs Pipeline + `/accounts-receivable`) | allocations `{invoice_id|job_id, amount}` against a Mercury deposit; caps at deposit remainder; non-Stripe billed targets only; `paid_on` forced to the deposit's posted Chicago day; `reference_number` = `mercury_id` |
 | E | Direct client writes | `src/components/jobs/JobFormModal.tsx` `persistBillingSlice` (edit autosave; `createJob` for new jobs) | Since v2.1121 (B5): **diff-based** — `diffPaymentRows` upserts persist-worthy form rows under stable ids and deletes only ids the form owns; rows born mid-edit (webhook payments) survive. The client no longer writes `payments_made` (B4) — the B3 trigger derives it from rows. Close-time demote paid→billed unchanged. (Pre-v2.1121: delete-all + reinsert with new ids + form-sum overwrite.) |
 
 ### Unlink / reconcile
@@ -265,11 +265,11 @@ Edit Job "Payments received" table (locked Stripe/Mercury rows; refs via `src/li
 
 | Path | Trigger | Mechanics |
 |---|---|---|
-| Billed invoice → removed | "Send back" on a billed invoice card (Dashboard Stage 3 / Stages Billed / bill-view panel) | Non-Stripe: RPC `delete_billed_invoice_on_send_back` (roles dev/master_technician/assistant/primary + job access; status must be `billed`; **blocked if any payment references the invoice**; idempotent). Stripe-backed (`invoiceNeedsStripeVoidForRevert`): edge `void-stripe-invoice-for-revert` (payments block → 409; Stripe paid/partially-paid → 409 "resolve in Stripe"; draft→delete, open→void, void/uncollectible/missing→noop) then row delete + client `ensureLedgerInvoiceRemovedAfterStripeSendBack`. Either way `syncJobToReadyToBillIfNoBilledInvoicesRemain` demotes the job when the last billed row is gone. |
+| Billed invoice → removed | "Send back" on a billed invoice card (Dashboard Stage 3 / Pipeline Billed / bill-view panel) | Non-Stripe: RPC `delete_billed_invoice_on_send_back` (roles dev/master_technician/assistant/primary + job access; status must be `billed`; **blocked if any payment references the invoice**; idempotent). Stripe-backed (`invoiceNeedsStripeVoidForRevert`): edge `void-stripe-invoice-for-revert` (payments block → 409; Stripe paid/partially-paid → 409 "resolve in Stripe"; draft→delete, open→void, void/uncollectible/missing→noop) then row delete + client `ensureLedgerInvoiceRemovedAfterStripeSendBack`. Either way `syncJobToReadyToBillIfNoBilledInvoicesRemain` demotes the job when the last billed row is gone. |
 | Job billed → ready_to_bill | "Send back" on a billed job row | `prepareBilledInvoicesBeforeJobRevertToReadyToBill` (`src/lib/voidStripeInvoiceForRevert.ts`) clears ALL billed rows (Stripe void or RPC per row; any failure aborts) then `update_job_status('ready_to_bill')`. |
 | Job ready_to_bill → working | "Send Job Back" on an RTB job row | Confirm modal shows RTB-draft-count warning, collect-payment-flow cancellation notice (`src/hooks/useSendBackCollectPaymentFlowNotice.ts` + `src/lib/collectPaymentFlowSendBackNotice.ts`), and the `job_status_events` "Move into stage by" line. `update_job_status('working')` deletes all RTB draft rows server-side. |
 | Draft bill deletion | "Delete draft bill" on RTB invoice/bundle cards | RPC `delete_ready_to_bill_invoice` (same gates; status must be `ready_to_bill`; no payments check needed — payments can't exist on RTB rows). Job status untouched. |
-| Paid → billed | Stages Paid section send-back; automatic via payment unlink / OOB unwind | `update_job_status('billed')` |
+| Paid → billed | Pipeline Paid section send-back; automatic via payment unlink / OOB unwind | `update_job_status('billed')` |
 | Collections ↔ Billed | "Move to Collections" / "Send back to Billed" | `set_job_collections_flag` only — not a status transition |
 | Field send-back | Collect Payment step 3 | `invokeVoidStripeInvoiceForCollectPaymentSendBack` → same edge with flow verification (service-role path) |
 
@@ -284,7 +284,7 @@ All routes render inside the authed layout in `src/App.tsx`. Billing-relevant:
 | `/jobs` | `src/pages/Jobs.tsx` | `?tab=` `stages` \| `billing` \| `reports` \| `sub_sheet_ledger` \| `combined-labor` \| `teams-summary` \| `parts` \| `job-summary` \| `inspections` (union also has a vestigial `billed`; legacy redirects: `receivables`→`reports`, `ledger`→`billing`, `billed`→`stages`, `labor`→`sub_sheet_ledger`; role redirects strip `combined-labor`/`teams-summary` for assistant/superintendent). Deep links: `?edit=<jobId>` (opens Edit Job), `?editLabor=<hcp>`, `?editParts=<jobId>`, `?openBankPayments=true|1` (opens the AR/Bank Payments modal on Stages), `?customer=<id>` (filter), `?teamLaborJob=…`, `?newJob=true&project=<id>` |
 | `/accounts-receivable` | `src/pages/JobsAccountsReceivable.tsx` | none — thin wrapper that mounts `BankPaymentsModal` always-open over the billed rows (role-gated by `canRoleSeeArBankUnallocatedOrgNudge`); linked from the Dashboard pinned quick row and Quickfill |
 | `/banking` | `src/pages/Banking.tsx` | `?product=mercury|stripe` (`stripe` = dev only) + `?tab=`. Mercury tabs: `ledger` \| `sorting` \| `drag_sort` \| `accounting` \| `user_review` \| `category_review` \| `reconciliation` (assistant-like/master_technician are pinned to Mercury; non-dev/non-office default `ledger`). Stripe tabs: `invoices` \| `data` (the read-only panels above). Feeds payments only indirectly (Mercury sync + sorting config used by the AR modal). |
-| `/quickfill` | `src/pages/Quickfill.tsx` | no URL params; billing sections: "Billing Awaiting Payments", "Complete, no Total Bill", unallocated-deposits banner linking to `/accounts-receivable` |
+| `/quickfill` | `src/pages/Quickfill.tsx` | no URL params; billing sections: "Billed Awaiting Payment", "Complete, no Total Bill", unallocated-deposits banner linking to `/accounts-receivable` |
 | `/dashboard` | `src/pages/Dashboard.tsx` | Billing Pipeline card + field RTB/collect queues (role-driven, no params) |
 | `/customers`, `/customers/:id/edit` | customer records incl. `customer_email` used by billing | `customers/new` redirects with modal state |
 | `/settings` | Settings → Data → "Recently deleted" (dev-only archive restore UI) | |
@@ -370,8 +370,8 @@ Findings only (no fixes) — seeds for a later pass.
 1. "Billed remaining" math re-implemented ≥6× (`dashboardBilledInvoiceAmounts`, `useBilledTotal`, Quickfill `BilledAwaitingPaymentSection`, `jobsStagesBoard.billedStageRowRemainingAmount`, `jobs/invoiceBilling.stageRowBilledRemainingAmount`, `useDashboardFinancials`) — and the two stage-row variants disagree on clamping (jobsStagesBoard clamps at 0; invoiceBilling doesn't).
 2. Invoice-applied-payments sum has ≥5 client copies (`BilledPaymentConfirmationModal`, `HostedStripeBillPanel`, `jobsStagesBoard.sumPaymentsForInvoiceOnJob`, Quickfill, `dashboardBillingInvoiceUnits`) plus ~6 SQL equivalents in payment RPCs.
 3. The "unallocated" kernel exists 5× (ensure RPC SQL, `dashboardJobBillingUnallocCents`, `jobsStagesBoard.jobBillingUnallocatedDollars`, `wouldEnsureNothingLeftToBillForJob`, `JobFormModal.unallocatedBillableDollars`).
-4. ~~**Inconsistency**: the Jobs Stages "Create partial invoice" modal (`Jobs.tsx createInvoiceFromModal`) computes remaining as `revenue − payments_made` without subtracting existing invoice allocations, unlike `JobFormModal.createInvoice` — it can accept an over-allocating amount; the ensure RPC only guards the primary row.~~ **Fixed in v2.735**: display, clamps, and icon gate now use `jobBillingUnallocatedDollars`/`clampPartialInvoiceCentsToUnallocated`. Still open: its insert+ensure block remains copy-pasted from JobFormModal.
-5. RTB/Billed bundling logic duplicated Dashboard vs Stages (`buildReadyToBillDashboardUnits`/`buildBilledWaitingDashboardUnits` vs `buildReadyToBillStageRows`/`buildBilledStageRows`).
+4. ~~**Inconsistency**: the Jobs Pipeline "Create partial invoice" modal (`createInvoiceFromModal`, now in `JobsStagesTab.tsx`) computes remaining as `revenue − payments_made` without subtracting existing invoice allocations, unlike `JobFormModal.createInvoice` — it can accept an over-allocating amount; the ensure RPC only guards the primary row.~~ **Fixed in v2.735**: display, clamps, and icon gate now use `jobBillingUnallocatedDollars`/`clampPartialInvoiceCentsToUnallocated`. Still open: its insert+ensure block remains copy-pasted from JobFormModal.
+5. RTB/Billed bundling logic duplicated Dashboard vs Pipeline (`buildReadyToBillDashboardUnits`/`buildBilledWaitingDashboardUnits` vs `buildReadyToBillStageRows`/`buildBilledStageRows`).
 6. Two hand-maintained invoice select lists: `DASHBOARD_INVOICES_JOBS_LEDGER_SELECT` (drift-tested) vs `JOBS_LEDGER_INVOICES_EMBED` (untested, silently omits write-down columns).
 7. `useDashboardBillingInvoices.refreshInvoices` duplicates the two initial-load effects nearly verbatim; payments are over-fetched (`select('*')` for all billed jobs on load and every refresh) while `useDashboardFinancials` needs only `(invoice_id, amount)`.
 8. Quickfill `BilledAwaitingPaymentSection` is a 4-round-trip sequential waterfall duplicating `useBilledTotal`'s aggregation.
@@ -388,4 +388,4 @@ Findings only (no fixes) — seeds for a later pass.
 19. ~~`AgreedWriteDownModal` and `JobFormModal`'s details-backfill read the Stripe mode pref without the dev-role gate.~~ **Fixed in v2.1118 (A5)**: both route through `stripeModeForBillingFromRole`; no ungated pref reads remain (and the row's mode wins server-side since A3 anyway).
 20. ~~Fixed in v2.1115 (A2)~~: `credit_note.created` now retrieves with the event-mode key, and `stripe_webhook_events.livemode` + `jobs_ledger_invoices.stripe_mode` (v2.1114) record modes — Banking's Stripe panels can distinguish test rows once they read the column.
 21. `delete_ready_to_bill_invoice` on a trip-charge row does not unwind the `create_turnaway_trip_charge` revenue bump (documented caveat in `supabase/migrations/20260709130000_turnaway_trip_charge.sql`).
-22. UX friction: partial billing has two divergent entry points (Edit Job slider vs Stages plain-dollar modal), and billing a partial then the remainder requires hopping between the row card and Bill Customer per invoice.
+22. UX friction: partial billing has two divergent entry points (Edit Job slider vs Pipeline plain-dollar modal), and billing a partial then the remainder requires hopping between the row card and Bill Customer per invoice.
