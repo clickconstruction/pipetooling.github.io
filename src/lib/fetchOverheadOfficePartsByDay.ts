@@ -99,6 +99,11 @@ const SUPPLY_ALLOC_SELECT =
 /**
  * Office job materials by calendar day (Chicago wall date for Mercury/Tally timestamps),
  * same sources as job materials snapshot: Mercury allocations, supply invoice allocations, tally parts.
+ *
+ * Rejects when any source fetch fails (after `withSupabaseRetry` gives up) —
+ * callers surface the error instead of silently rendering a $0 Materials
+ * column. The old per-source `catch {}` swallows made an RLS/network failure
+ * indistinguishable from "no materials".
  */
 export async function fetchOverheadOfficePartsByDay(args: {
   officeJobLedgerId: string
@@ -117,7 +122,7 @@ export async function fetchOverheadOfficePartsByDay(args: {
     partsDetailByDay.set(ymd, list)
   }
 
-  try {
+  {
     const { lowIso, highIso } = mercuryPostedAtBounds(startYmd, endYmd)
     // `!inner` makes the nested posted_at range drop parent rows server-side
     // (a plain embed filter only nulls the embed and keeps the row).
@@ -154,11 +159,9 @@ export async function fetchOverheadOfficePartsByDay(args: {
         mercuryTransactionId: row.mercury_transaction_id ?? null,
       })
     }
-  } catch {
-    /* RLS or network */
   }
 
-  try {
+  {
     const raw = await pagedRetry<SupplyAllocationJoinRow>(
       (from, to) =>
         supabase
@@ -188,11 +191,9 @@ export async function fetchOverheadOfficePartsByDay(args: {
       const label = [sh?.name?.trim(), invNum ? `#${invNum}` : null].filter(Boolean).join(' · ') || 'Supply invoice'
       addLine(ymd, { source: 'supply', amountUsd: allocated, label, sortKey: `supply:${row.invoice_id}:${row.job_id}` })
     }
-  } catch {
-    /* empty */
   }
 
-  try {
+  {
     // The RPC takes no filter args — page it (deterministic created_at ORDER
     // BY, the v2.1246 Review-tab pattern) and keep filtering client-side.
     const raw = await pagedRetry<TallyPoRow>(
@@ -216,8 +217,6 @@ export async function fetchOverheadOfficePartsByDay(args: {
       const label = partName ? `${fixture} — ${partName}` : fixture
       addLine(ymd, { source: 'tally', amountUsd: lineTotal, label, sortKey: `tally:${row.id}` })
     }
-  } catch {
-    /* empty */
   }
 
   for (const [k, list] of partsDetailByDay) {
@@ -234,7 +233,7 @@ export async function fetchOverheadOfficePartsByDay(args: {
 
 /**
  * Materials on all jobs except the overhead office job (or all jobs when `officeJobLedgerId` is null).
- * Same line rules and date keys as `fetchOverheadOfficePartsByDay`.
+ * Same line rules, date keys, and error propagation as `fetchOverheadOfficePartsByDay`.
  */
 export async function fetchOtherJobsPartsByDay(args: {
   officeJobLedgerId: string | null
@@ -256,7 +255,7 @@ export async function fetchOtherJobsPartsByDay(args: {
   const jobExcludedFromTally = (jobId: string): boolean =>
     officeJobLedgerId != null && officeJobLedgerId !== '' && jobId === officeJobLedgerId
 
-  try {
+  {
     const { lowIso, highIso } = mercuryPostedAtBounds(startYmd, endYmd)
     const raw = await pagedRetry<MercuryAllocationJoinRow>(
       (from, to) => {
@@ -293,11 +292,9 @@ export async function fetchOtherJobsPartsByDay(args: {
         mercuryTransactionId: row.mercury_transaction_id ?? null,
       })
     }
-  } catch {
-    /* RLS or network */
   }
 
-  try {
+  {
     const raw = await pagedRetry<SupplyAllocationJoinRow>(
       (from, to) => {
         let q = supabase
@@ -329,11 +326,9 @@ export async function fetchOtherJobsPartsByDay(args: {
       const label = [sh?.name?.trim(), invNum ? `#${invNum}` : null].filter(Boolean).join(' · ') || 'Supply invoice'
       addLine(ymd, { source: 'supply', amountUsd: allocated, label, sortKey: `supply:${row.invoice_id}:${row.job_id}` })
     }
-  } catch {
-    /* empty */
   }
 
-  try {
+  {
     // The RPC takes no filter args — page it (deterministic created_at ORDER
     // BY, the v2.1246 Review-tab pattern) and keep filtering client-side.
     const raw = await pagedRetry<TallyPoRow>(
@@ -357,8 +352,6 @@ export async function fetchOtherJobsPartsByDay(args: {
       const label = partName ? `${fixture} — ${partName}` : fixture
       addLine(ymd, { source: 'tally', amountUsd: lineTotal, label, sortKey: `tally:${row.id}` })
     }
-  } catch {
-    /* empty */
   }
 
   for (const [k, list] of partsDetailByDay) {

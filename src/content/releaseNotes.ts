@@ -33,6 +33,17 @@ export const RELEASE_NOTES: ReleaseNote[] = [
     ],
   },
   {
+    version: 'v2.1285',
+    date: '2026-08-02',
+    title: 'Overhead: one pool, three lenses',
+    kind: 'feature',
+    highlights: [
+      'The Overhead tab now shows your 90-day overhead rate three ways — per field hour (pricing labor), per revenue dollar (bidding), and per labor dollar (crew burden) — each with a note on when to use it.',
+      'The Review tab computes its overhead rates from the exact same code, so the two tabs can never disagree again.',
+      'A rename no longer zeroes anyone’s labor dollars, data-load failures now say so instead of showing an empty table, and dollar figures in the breakdown read correctly.',
+    ],
+  },
+  {
     version: 'v2.1284',
     date: '2026-08-02',
     title: 'Team leads moved next to the people roster',
