@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-02 (v2.1273)
+last_updated: 2026-08-02 (v2.1275)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1275)
+
+### Materials decomposition Stage A: loadPOItemsWithDetails kernel (2026-08-02)
+First code PR of the Materials.tsx decomposition (per [`PAGE_DECOMPOSITION_PLAYBOOK.md`](./PAGE_DECOMPOSITION_PLAYBOOK.md) + [`MATERIALS_TABS_ARCHITECTURE.md`](./MATERIALS_TABS_ARCHITECTURE.md); the render-smoke safety net landed version-less in PR #974). The `purchase_order_items` join (`*, material_parts(*), supply_houses(*), source_template:material_templates!source_template_id(id, name)` + `sequence_order` ordering) and its `itemsWithDetails` mapping were copy-pasted at **12 call sites** in [`Materials.tsx`](../src/pages/Materials.tsx); they now all call `loadPOItemsWithDetails()` in new [`lib/materials/poItemDetails.ts`](../src/lib/materials/poItemDetails.ts) (+9 tests). The helper returns `null` on query error so every call site keeps its distinct pre-extraction fallback (`?? []` vs skip-the-update gate); the mapping keeps the raw join keys via spread, exactly as before. `POItemWithDetails` / `PurchaseOrderWithItems` types moved to the lib (Materials re-imports them). Materials.tsx 7,033 → 6,884 lines. Behavior-preserving only — no UX, schema, or query-shape change. Typecheck/lint clean; 372 files / 3,376 tests green (incl. the new Materials render smokes).
 
 ## Latest Updates (v2.1273)
 

@@ -168,7 +168,7 @@ The URL guard effect rewrites disallowed `?tab=` values to `parts-book` (`replac
 | `filterPartsByQuery`, `filterTemplatesByQuery` | functions inside component body | `lib/materials/materialsFilters.ts` + tests |
 | `displayParts` Load-All filter/sort IIFE | inline IIFE | pure function + test |
 | `fetchPricesForParts` (chunked batch fetch) | module-level in Materials.tsx | `lib/materials/fetchPricesForParts.ts` (already pure-ish; takes supabase) |
-| `purchase_order_items` join + `itemsWithDetails` mapping (~10 copies) | copy-pasted per call site | `lib/materials/poItemDetails.ts` `loadPOWithItems` |
+| `purchase_order_items` join + `itemsWithDetails` mapping (~10 copies) | **done (v2.1275)** — [`lib/materials/poItemDetails.ts`](../src/lib/materials/poItemDetails.ts) `loadPOItemsWithDetails` (+ `POItemWithDetails`/`PurchaseOrderWithItems` types), 12 call sites migrated | — |
 | `printPO` / `printPOForSupplyHouse` HTML builders | inline, one does N price fetches | `lib/materialsDocuments/poPrint.ts` (context object; fetch stays outside) + tests |
 | supply-house stats grouping (`loadSupplyHouseStatsByServiceType`) | inline grouping loops | pure `groupSupplyHouseStats(rows)` + test |
 | `formatTimeSince`, `formatCurrency` | in-file | shared lib (check for existing equivalents first) |

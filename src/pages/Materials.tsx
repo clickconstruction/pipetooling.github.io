@@ -3,6 +3,10 @@ import { pageTabStyle } from '../lib/pageTabStyle'
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { addExpandedPartsToPO, expandTemplate } from '../lib/materialPOUtils'
+import {
+  loadPOItemsWithDetails,
+  type PurchaseOrderWithItems,
+} from '../lib/materials/poItemDetails'
 import { effectiveJobLedgerNumber } from '../lib/ledgerDisplayPrefixes'
 import { useAuth } from '../hooks/useAuth'
 import { isAssistantLike } from '../lib/subcontractorLikeRole'
@@ -64,15 +68,7 @@ type TemplateItemWithDetails = MaterialTemplateItem & {
   nested_template?: MaterialTemplate
 }
 
-type POItemWithDetails = PurchaseOrderItem & {
-  part: MaterialPart
-  supply_house?: SupplyHouse
-  source_template?: { id: string; name: string } | null
-}
-
-type PurchaseOrderWithItems = PurchaseOrder & {
-  items: POItemWithDetails[]
-}
+// POItemWithDetails / PurchaseOrderWithItems now live in lib/materials/poItemDetails
 
 type PoGeneratorJobPick = {
   id: string
@@ -935,25 +931,8 @@ export default function Materials() {
     // Load items for each PO
     const posWithItems: PurchaseOrderWithItems[] = await Promise.all(
       pos.map(async (po) => {
-        const { data: itemsData, error: itemsError } = await supabase
-          .from('purchase_order_items')
-          .select('*, material_parts(*), supply_houses(*), source_template:material_templates!source_template_id(id, name)')
-          .eq('purchase_order_id', po.id)
-          .order('sequence_order', { ascending: true })
-        
-        if (itemsError) {
-          return { ...po, items: [] }
-        }
-
-        const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: MaterialPart; supply_houses: SupplyHouse | null; source_template?: { id: string; name: string } | null })[]) ?? []
-        const itemsWithDetails: POItemWithDetails[] = items.map(item => ({
-          ...item,
-          part: item.material_parts,
-          supply_house: item.supply_houses || undefined,
-          source_template: item.source_template ?? null,
-        }))
-
-        return { ...po, items: itemsWithDetails }
+        const itemsWithDetails = await loadPOItemsWithDetails(supabase, po.id)
+        return { ...po, items: itemsWithDetails ?? [] }
       })
     )
 
@@ -983,19 +962,8 @@ export default function Materials() {
     setActiveTab('purchase-orders')
     const { data: poData } = await supabase.from('purchase_orders').select('*').eq('id', poId).single()
     if (poData) {
-      const { data: itemsData } = await supabase
-        .from('purchase_order_items')
-        .select('*, material_parts(*), supply_houses(*), source_template:material_templates!source_template_id(id, name)')
-        .eq('purchase_order_id', poId)
-        .order('sequence_order', { ascending: true })
-      const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: MaterialPart; supply_houses: SupplyHouse | null; source_template?: { id: string; name: string } | null })[]) ?? []
-      const itemsWithDetails: POItemWithDetails[] = items.map(item => ({
-        ...item,
-        part: item.material_parts,
-        supply_house: item.supply_houses || undefined,
-        source_template: item.source_template ?? null,
-      }))
-      const poWithItems: PurchaseOrderWithItems = { ...(poData as PurchaseOrder), items: itemsWithDetails }
+      const itemsWithDetails = await loadPOItemsWithDetails(supabase, poId)
+      const poWithItems: PurchaseOrderWithItems = { ...(poData as PurchaseOrder), items: itemsWithDetails ?? [] }
       setEditingPO(poWithItems)
       setSelectedPO(poWithItems)
       setDraftPOs(prev => (prev.some(p => p.id === poId) ? prev : [poWithItems, ...prev]))
@@ -1187,20 +1155,8 @@ export default function Materials() {
           .single()
         
         if (poData) {
-          const { data: itemsData, error: itemsError } = await supabase
-            .from('purchase_order_items')
-            .select('*, material_parts(*), supply_houses(*), source_template:material_templates!source_template_id(id, name)')
-            .eq('purchase_order_id', editingPO.id)
-            .order('sequence_order', { ascending: true })
-          
-          if (!itemsError && itemsData) {
-            const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: MaterialPart; supply_houses: SupplyHouse | null; source_template?: { id: string; name: string } | null })[]) ?? []
-            const itemsWithDetails: POItemWithDetails[] = items.map(item => ({
-              ...item,
-              part: item.material_parts,
-              supply_house: item.supply_houses || undefined,
-              source_template: item.source_template ?? null,
-            }))
+          const itemsWithDetails = await loadPOItemsWithDetails(supabase, editingPO.id)
+          if (itemsWithDetails) {
             setEditingPO({ ...poData as PurchaseOrder, items: itemsWithDetails })
           }
         }
@@ -1221,19 +1177,8 @@ export default function Materials() {
         .eq('id', openPOId)
         .single()
       if (poData) {
-        const { data: itemsData, error: itemsError } = await supabase
-          .from('purchase_order_items')
-          .select('*, material_parts(*), supply_houses(*), source_template:material_templates!source_template_id(id, name)')
-          .eq('purchase_order_id', openPOId)
-          .order('sequence_order', { ascending: true })
-        if (!itemsError && itemsData) {
-          const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: MaterialPart; supply_houses: SupplyHouse | null; source_template?: { id: string; name: string } | null })[]) ?? []
-          const itemsWithDetails: POItemWithDetails[] = items.map(item => ({
-            ...item,
-            part: item.material_parts,
-            supply_house: item.supply_houses || undefined,
-            source_template: item.source_template ?? null,
-          }))
+        const itemsWithDetails = await loadPOItemsWithDetails(supabase, openPOId)
+        if (itemsWithDetails) {
           const poWithItems = { ...poData as PurchaseOrder, items: itemsWithDetails }
           setEditingPO(poWithItems)
           setSelectedPO(poWithItems)
@@ -2125,20 +2070,8 @@ export default function Materials() {
         .single()
       
       if (poData) {
-        const { data: itemsData, error: itemsError } = await supabase
-          .from('purchase_order_items')
-          .select('*, material_parts(*), supply_houses(*), source_template:material_templates!source_template_id(id, name)')
-          .eq('purchase_order_id', poId)
-          .order('sequence_order', { ascending: true })
-        
-        if (!itemsError && itemsData) {
-          const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: MaterialPart; supply_houses: SupplyHouse | null; source_template?: { id: string; name: string } | null })[]) ?? []
-          const itemsWithDetails: POItemWithDetails[] = items.map(item => ({
-            ...item,
-            part: item.material_parts,
-            supply_house: item.supply_houses || undefined,
-            source_template: item.source_template ?? null,
-          }))
+        const itemsWithDetails = await loadPOItemsWithDetails(supabase, poId)
+        if (itemsWithDetails) {
           setEditingPO({ ...poData as PurchaseOrder, items: itemsWithDetails })
         }
       }
@@ -2160,20 +2093,8 @@ export default function Materials() {
 
     // Reload the editing PO
     if (editingPO) {
-      const { data: itemsData, error: itemsError } = await supabase
-        .from('purchase_order_items')
-        .select('*, material_parts(*), supply_houses(*), source_template:material_templates!source_template_id(id, name)')
-        .eq('purchase_order_id', editingPO.id)
-        .order('sequence_order', { ascending: true })
-      
-      if (!itemsError && itemsData) {
-        const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: MaterialPart; supply_houses: SupplyHouse | null; source_template?: { id: string; name: string } | null })[]) ?? []
-        const itemsWithDetails: POItemWithDetails[] = items.map(item => ({
-          ...item,
-          part: item.material_parts,
-          supply_house: item.supply_houses || undefined,
-          source_template: item.source_template ?? null,
-        }))
+      const itemsWithDetails = await loadPOItemsWithDetails(supabase, editingPO.id)
+      if (itemsWithDetails) {
         setEditingPO({ ...editingPO, items: itemsWithDetails })
       }
     }
@@ -2196,20 +2117,8 @@ export default function Materials() {
 
     // Reload the editing PO
     if (editingPO) {
-      const { data: itemsData, error: itemsError } = await supabase
-        .from('purchase_order_items')
-        .select('*, material_parts(*), supply_houses(*), source_template:material_templates!source_template_id(id, name)')
-        .eq('purchase_order_id', editingPO.id)
-        .order('sequence_order', { ascending: true })
-      
-      if (!itemsError && itemsData) {
-        const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: MaterialPart; supply_houses: SupplyHouse | null; source_template?: { id: string; name: string } | null })[]) ?? []
-        const itemsWithDetails: POItemWithDetails[] = items.map(item => ({
-          ...item,
-          part: item.material_parts,
-          supply_house: item.supply_houses || undefined,
-          source_template: item.source_template ?? null,
-        }))
+      const itemsWithDetails = await loadPOItemsWithDetails(supabase, editingPO.id)
+      if (itemsWithDetails) {
         setEditingPO({ ...editingPO, items: itemsWithDetails })
       }
     }
@@ -2461,20 +2370,8 @@ export default function Materials() {
       setError(`Failed to update supply house: ${error.message}`)
       // Revert optimistic update - reload from server
       if (selectedPO) {
-        const { data: itemsData, error: itemsError } = await supabase
-          .from('purchase_order_items')
-          .select('*, material_parts(*), supply_houses(*), source_template:material_templates!source_template_id(id, name)')
-          .eq('purchase_order_id', selectedPO.id)
-          .order('sequence_order', { ascending: true })
-        
-        if (!itemsError && itemsData) {
-          const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: MaterialPart; supply_houses: SupplyHouse | null; source_template?: { id: string; name: string } | null })[]) ?? []
-          const itemsWithDetails: POItemWithDetails[] = items.map(item => ({
-            ...item,
-            part: item.material_parts,
-            supply_house: item.supply_houses || undefined,
-            source_template: item.source_template ?? null,
-          }))
+        const itemsWithDetails = await loadPOItemsWithDetails(supabase, selectedPO.id)
+        if (itemsWithDetails) {
           setSelectedPO({ ...selectedPO, items: itemsWithDetails })
           if (editingPO && editingPO.id === selectedPO.id) {
             setEditingPO({ ...editingPO, items: itemsWithDetails })
@@ -2600,20 +2497,8 @@ export default function Materials() {
       setError(`Failed to unconfirm price: ${error.message}`)
       // Revert optimistic update - reload from server
       if (selectedPO) {
-        const { data: itemsData, error: itemsError } = await supabase
-          .from('purchase_order_items')
-          .select('*, material_parts(*), supply_houses(*), source_template:material_templates!source_template_id(id, name)')
-          .eq('purchase_order_id', selectedPO.id)
-          .order('sequence_order', { ascending: true })
-        
-        if (!itemsError && itemsData) {
-          const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: MaterialPart; supply_houses: SupplyHouse | null; source_template?: { id: string; name: string } | null })[]) ?? []
-          const itemsWithDetails: POItemWithDetails[] = items.map(item => ({
-            ...item,
-            part: item.material_parts,
-            supply_house: item.supply_houses || undefined,
-            source_template: item.source_template ?? null,
-          }))
+        const itemsWithDetails = await loadPOItemsWithDetails(supabase, selectedPO.id)
+        if (itemsWithDetails) {
           setSelectedPO({ ...selectedPO, items: itemsWithDetails })
         }
       }
@@ -2771,20 +2656,9 @@ export default function Materials() {
       .single()
 
     if (!loadError && newPO) {
-      const { data: itemsData, error: itemsError2 } = await supabase
-        .from('purchase_order_items')
-        .select('*, material_parts(*), supply_houses(*), source_template:material_templates!source_template_id(id, name)')
-        .eq('purchase_order_id', newPOData.id)
-        .order('sequence_order', { ascending: true })
+      const itemsWithDetails = await loadPOItemsWithDetails(supabase, newPOData.id)
 
-      if (!itemsError2 && itemsData) {
-        const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: MaterialPart; supply_houses: SupplyHouse | null; source_template?: { id: string; name: string } | null })[]) ?? []
-        const itemsWithDetails: POItemWithDetails[] = items.map(item => ({
-          ...item,
-          part: item.material_parts,
-          supply_house: item.supply_houses || undefined,
-          source_template: item.source_template ?? null,
-        }))
+      if (itemsWithDetails) {
         const poWithItems: PurchaseOrderWithItems = { ...newPO as PurchaseOrder, items: itemsWithDetails }
         setEditingPO(poWithItems)
         setSelectedPO(null) // Close the view modal
@@ -2882,20 +2756,8 @@ export default function Materials() {
     
     if (updatedPOData && selectedPO && selectedPO.id === poId) {
       // Load items for the updated PO
-      const { data: itemsData } = await supabase
-        .from('purchase_order_items')
-        .select('*, material_parts(*), supply_houses(*), source_template:material_templates!source_template_id(id, name)')
-        .eq('purchase_order_id', poId)
-        .order('sequence_order', { ascending: true })
-      
-      if (itemsData) {
-        const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: MaterialPart; supply_houses: SupplyHouse | null; source_template?: { id: string; name: string } | null })[]) ?? []
-        const itemsWithDetails: POItemWithDetails[] = items.map(item => ({
-          ...item,
-          part: item.material_parts,
-          supply_house: item.supply_houses || undefined,
-          source_template: item.source_template ?? null,
-        }))
+      const itemsWithDetails = await loadPOItemsWithDetails(supabase, poId)
+      if (itemsWithDetails) {
         const poWithItems: PurchaseOrderWithItems = { ...updatedPOData as PurchaseOrder, items: itemsWithDetails }
         setSelectedPO(poWithItems)
       }
@@ -4783,20 +4645,8 @@ export default function Materials() {
                           setEditingPOItem(null)
                           
                           // Load full PO details with items
-                          const { data: itemsData, error: itemsError } = await supabase
-                            .from('purchase_order_items')
-                            .select('*, material_parts(*), supply_houses(*), source_template:material_templates!source_template_id(id, name)')
-                            .eq('purchase_order_id', po.id)
-                            .order('sequence_order', { ascending: true })
-                          
-                          if (!itemsError && itemsData) {
-const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: MaterialPart; supply_houses: SupplyHouse | null; source_template?: { id: string; name: string } | null })[]) ?? []
-          const itemsWithDetails: POItemWithDetails[] = items.map(item => ({
-            ...item,
-            part: item.material_parts,
-            supply_house: item.supply_houses || undefined,
-            source_template: item.source_template ?? null,
-          }))
+                          const itemsWithDetails = await loadPOItemsWithDetails(supabase, po.id)
+                          if (itemsWithDetails) {
                             setEditingPO({ ...po, items: itemsWithDetails })
                             setSelectedPO({ ...po, items: itemsWithDetails })
                           } else {
