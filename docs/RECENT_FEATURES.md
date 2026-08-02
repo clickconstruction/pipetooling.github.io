@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-02 (v2.1271)
+last_updated: 2026-08-02 (v2.1272)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1272)
+
+### Projects/Workflow: "Master: …" owner badge removed (2026-08-02)
+The per-project "Master: <name>" chip on Projects cards and the "Project Master: <name>" line on the Workflow header were adoption-era UI — they told assistants whose data silo they were in. Since v2.921's company-wide role-based access grants (`sync_company_access_grants()`), ownership no longer changes what anyone sees, so the badge repeated the same name on every card. Removed the chip render from `Projects.tsx` and the `projectMaster` state + per-project `users` fetch + render from `Workflow.tsx` (one fewer query per Workflow load). Ownership is untouched mechanically — RLS and the owner-match triggers still key on `master_user_id`, project search still matches the owner's name, and the Edit Customer form (where ownership is assigned) keeps its "(Customer Master: …)" display. Verified live on the dev server: zero "Master:"/"Project Master:" occurrences on `/projects` and a workflow page. Typecheck clean, lint 0 errors, 3,350 tests green.
 
 ## Latest Updates (v2.1271)
 

@@ -816,11 +816,6 @@ export default function Projects() {
                 >
                   Edit
                 </button>
-                {p.master_user && (
-                  <span style={{ padding: '0.2rem 0.5rem', background: 'var(--bg-blue-tint)', borderRadius: 4, fontSize: '0.8125rem', fontWeight: 500 }}>
-                    Master: {p.master_user.name || p.master_user.email || 'Unknown'}
-                  </span>
-                )}
                 {canAssignSuperintendents && (
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', justifyContent: narrow ? 'flex-start' : 'flex-end', alignItems: 'center' }}>
                     <span style={{ fontSize: '0.8125rem', color: 'var(--text-faint)' }}>Superintendents:</span>
