@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1295',
+    date: '2026-08-02',
+    title: 'Behind the scenes: Bids Takeoff groundwork, part 2',
+    kind: 'infra',
+    highlights: [
+      'The rule for combining duplicate parts when building assemblies on the Takeoff tab now lives in one shared, tested routine (it previously existed in four separate copies).',
+      'No visible changes; adding parts and assemblies works exactly as before.',
+    ],
+  },
+  {
     version: 'v2.1294',
     date: '2026-08-02',
     title: 'Behind the scenes: Bids Takeoff groundwork',
