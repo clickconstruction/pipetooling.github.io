@@ -21,6 +21,16 @@ export const RELEASE_NOTES: ReleaseNote[] = [
     ],
   },
   {
+    version: 'v2.1292',
+    date: '2026-08-02',
+    title: 'People: the Teams tab is retired',
+    kind: 'feature',
+    highlights: [
+      'Team leads are now managed in one place — the Team leads button on People → Users. The Teams tab, which showed the same manager, is removed.',
+      'Old links to the Teams tab land on the Users tab automatically.',
+    ],
+  },
+  {
     version: 'v2.1291',
     date: '2026-08-02',
     title: 'Team leads: one better manager, everywhere',

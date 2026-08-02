@@ -27,6 +27,6 @@ Pick a preset (This month, Last month, Quarter, Year) or a custom range. It filt
 
 Click any person to expand their per-job lines (hours, labor cost, billing credit); click a job number to open Job Detail. Sub-sheet labor shows as separate lines. People are matched to the roster, so different spellings of the same name land in one row — a small **unmatched** tag means the name only exists in free-text fields.
 
-## Not the same as People → Teams
+## Not the same as team leads
 
-People → Teams manages leader/member team structures. This tab is a per-person profit rollup across jobs.
+The {{button:outline|Team leads}} modal on People → Users manages leader/member links. This tab is a per-person profit rollup across jobs.

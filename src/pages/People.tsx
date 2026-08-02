@@ -107,7 +107,6 @@ import { ClockSessionEditSplitModal } from '../components/ClockSessionEditSplitM
 import { DashboardMyTimeDayEditorModal } from '../components/DashboardMyTimeDayEditorModal'
 import { ReviewHoursModal } from '../components/ReviewHoursModal'
 import PeopleAppActivityPanel from '../components/people/PeopleAppActivityPanel'
-import PeopleTeamsTab from '../components/people/PeopleTeamsTab'
 import TeamFeedbackDevSettingsBlock from '../components/team-feedback/TeamFeedbackDevSettingsBlock'
 import { PeoplePayConfigModal } from '../components/people/PeoplePayConfigModal'
 import { SalariedWorkdaysBulkModal } from '../components/people/SalariedWorkdaysBulkModal'
@@ -201,7 +200,6 @@ type PeopleTab =
   | 'review'
   | 'users'
   | 'subs'
-  | 'teams'
   | 'overhead'
   | 'employment'
   | 'pay_stubs'
@@ -557,8 +555,6 @@ export default function People() {
     isDev,
     authUserRole,
   }
-  const canAccessTeamsTab =
-    authRole !== null && ['dev', 'master_technician', 'assistant', 'controller'].includes(authRole)
   // Overhead reads pay-gated data (clock_sessions RLS + people_pay_config
   // wages both require pay_approved_masters membership for masters), so a
   // non-approved master would only ever see a silently-zero tab — gate on
@@ -713,10 +709,18 @@ export default function People() {
         return next
       }, { replace: true })
       setActiveTab('hours')
+    } else if (tab === 'teams') {
+      // Legacy: the Teams tab was removed (v2.1292) — team leads live in the
+      // Users tab's Team leads modal. Old links land on Users.
+      setSearchParams((p) => {
+        const next = new URLSearchParams(p)
+        next.set('tab', 'users')
+        return next
+      }, { replace: true })
+      setActiveTab('users')
     } else if (
       tab === 'users' ||
       tab === 'subs' ||
-      tab === 'teams' ||
       tab === 'overhead' ||
       tab === 'employment' ||
       tab === 'pay_stubs' ||
@@ -731,15 +735,6 @@ export default function People() {
       tab === 'feedback' ||
       tab === 'activity'
     ) {
-      if (tab === 'teams' && !canAccessTeamsTab) {
-        setSearchParams((p) => {
-          const next = new URLSearchParams(p)
-          next.set('tab', 'users')
-          return next
-        }, { replace: true })
-        setActiveTab('users')
-        return
-      }
       if (tab === 'overhead' && !canAccessOverheadTab) {
         setSearchParams((p) => {
           const next = new URLSearchParams(p)
@@ -784,7 +779,7 @@ export default function People() {
         return next
       }, { replace: true })
     }
-  }, [searchParams, activityAccessResolved, canSeeActivityTab, canAccessContracts, canAccessTeamsTab, canAccessOverheadTab, canAccessPay, setSearchParams])
+  }, [searchParams, activityAccessResolved, canSeeActivityTab, canAccessContracts, canAccessOverheadTab, canAccessPay, setSearchParams])
 
   useEffect(() => {
     if (searchParams.get('tab') !== 'contracts') return
@@ -2904,22 +2899,6 @@ export default function People() {
         >
           Subs
         </button>
-        {canAccessTeamsTab && (
-          <button
-            type="button"
-            onClick={() => {
-              setActiveTab('teams')
-              setSearchParams((p) => {
-                const next = new URLSearchParams(p)
-                next.set('tab', 'teams')
-                return next
-              })
-            }}
-            style={tabStyle(activeTab === 'teams')}
-          >
-            Teams
-          </button>
-        )}
         {canAccessOverheadTab && (
           <button
             type="button"
@@ -2936,7 +2915,7 @@ export default function People() {
             Overhead
           </button>
         )}
-        {(canAccessTeamsTab || canAccessOverheadTab) && canOpenHoursTab ? (
+        {canAccessOverheadTab && canOpenHoursTab ? (
           <span
             aria-hidden
             style={{
@@ -3188,10 +3167,6 @@ export default function People() {
           setArchivedSectionOpen={setArchivedSectionOpen}
         />
       )}
-
-      {activeTab === 'teams' && canAccessTeamsTab && authUser?.id ? (
-        <PeopleTeamsTab authUserId={authUser.id} authUserRole={authRole ?? authUserRole} />
-      ) : null}
 
       {activeTab === 'overhead' && canAccessOverheadTab && (
         <PeopleOverheadTab
