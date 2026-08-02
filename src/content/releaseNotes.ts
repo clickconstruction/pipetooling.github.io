@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1300',
+    date: '2026-08-02',
+    title: 'Behind the scenes: Takeoff price popups restructured',
+    kind: 'infra',
+    highlights: [
+      'The catalog part-prices popup and the assembly bundle-comparison popup on the Bids Takeoff tab moved into their own components.',
+      'No visible changes; checking prices and applying bundle quotes works exactly as before.',
+    ],
+  },
+  {
     version: 'v2.1299',
     date: '2026-08-02',
     title: 'Behind the scenes: Takeoff materials summary restructured',
@@ -38,6 +48,17 @@ export const RELEASE_NOTES: ReleaseNote[] = [
     highlights: [
       'The draggable part-line row on the Takeoff tab moved into its own component file.',
       'No visible changes; dragging, editing, and pricing part lines works exactly as before.',
+    ],
+  },
+  {
+    version: 'v2.1296',
+    date: '2026-08-02',
+    title: 'Subs: unlinked sheets are now fixable on the spot',
+    kind: 'feature',
+    highlights: [
+      'The wall of text about unattributed sub sheets is now a proper panel at the top of People → Subs — one row per sheet showing the name that failed to match, why, and the open balance, sorted money-first.',
+      'Each row has an Assign picker and an Open button that jumps straight to the sheet in Jobs → Sub Labor; when the name is close to one roster person, a one-tap "Link to …" suggestion appears.',
+      'The panel disappears entirely once every sheet is linked.',
     ],
   },
   {

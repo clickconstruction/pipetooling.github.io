@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-02 (v2.1299)
+last_updated: 2026-08-02 (v2.1300)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1300)
+
+### Takeoff decomposition T6: the two small modals extracted (2026-08-02)
+[`TakeoffPartPricesModal`](../src/components/bids/TakeoffPartPricesModal.tsx) (~230 lines — catalog price viewer/editor with optimistic add, opened from rough rows and both authoring modals; deliberately NOT merged with Materials' spirit-twin `PartPricesManager`) and [`TakeoffBundleBreakdownModal`](../src/components/bids/TakeoffBundleBreakdownModal.tsx) (~175 lines — parts-vs-bundle comparison, data via the already-extracted `assemblyBundleBreakdown` lib). **Both open-target pointers stay parent-owned** per the shared-state rule: `partPricesModal` is watched by the parent's close-edge ref effect (rough catalog-price refresh preserved verbatim) and `bundleBreakdownModal` is written from rough rows; `applyBundleQuoteToLine` and `openEditTemplateModal` stay parent handlers passed as props. Internal data/edit states and load effects moved. Behavior-preserving only. BidsTakeoffTab.tsx 4,293 → 3,982 lines (5,765 at train start). 391 files / 3,506 tests green.
 
 ## Latest Updates (v2.1299)
 
@@ -26,6 +31,11 @@ The map's momentum extraction (the tab's `po-generator` equivalent): the collaps
 
 ### Takeoff decomposition T3: SortableRoughPartLineRow file move (2026-08-02)
 The architecture map's zero-risk opener: the ~650-line module-level `SortableRoughPartLineRow` (the Rough sheet's draggable line row — dnd handle, inline part picker, numpad wiring, catalog-price display) moves verbatim from [`BidsTakeoffTab.tsx`](../src/components/bids/BidsTakeoffTab.tsx) to [`components/bids/SortableRoughPartLineRow.tsx`](../src/components/bids/SortableRoughPartLineRow.tsx). The `PartType` / `RoughTakeoffMaterialPart` types move with it (the tab imports `PartType` back); tab imports slimmed (`useSortable`/`CSS`/`MoneyDecimalAmountInput`/`TakeoffPartEditIcon`/`roughCountMultiplier`/`catalogUnitPricesEffectivelyEqual` now live at the row). Pure file move — no logic change. BidsTakeoffTab.tsx 5,696 → 5,034 lines (5,765 at train start). 391 files / 3,506 tests green.
+
+## Latest Updates (v2.1296)
+
+### Subs tab: actionable Unattributed sheets panel (2026-08-02)
+The bottom-of-tab text blob ("Unattributed sheets (9): 892 · … — fix names or assignments in Jobs → Sub Labor") becomes an amber attention panel at the TOP of People → Subs (hidden when clean). Per sheet-group row (deduped by job label + raw name, "· K sheets" count): job-number chip, address, **the raw `assigned_to_name` that failed to match** (mono; "— (blank)" when empty), reason badge (red **No roster match** / accent **Multiple subs**), open balance (sorted desc), and actions — **Open →** (the `?editLabor=` deep link now accepts a sheet id, HCP fallback preserved), **Assign…** roster picker writing `people_labor_job_assignees` (the exact attribution `subsHqRows` counts, so fixed sheets leave the panel and land in Owed), and a conservative one-tap **"Link to <person>"** via new kernel [`subSheetNameSuggestion.ts`](../src/lib/people/subSheetNameSuggestion.ts) (exact-normalized / initial+last / unambiguous containment; never on multiple candidates). 3 rows + "Show all N". Kernels tested (`subsHqRows` gained `rawAssignedTo` + grouping; +11 tests incl. a Subs render smoke). Help guide `review-your-subs` updated. 390 files / 3,502 tests green.
 
 ## Latest Updates (v2.1295)
 
