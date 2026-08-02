@@ -508,6 +508,13 @@ export default function PeopleReviewTab({
   // can read the latest roster without a re-create churn.
   const showPeopleForReviewRef = useRef<string[]>([])
   showPeopleForReviewRef.current = showPeopleForReview
+  // Same idiom for the 90-day rates: the popup path reads rates inside a
+  // `.then()` that resolves seconds after the click — reading through this
+  // ref (instead of the click-time closure) picks up a rate that finished
+  // loading while the row fetch was in flight, so a popup opened during
+  // the rate load no longer renders permanently rate-less.
+  const reviewOverheadRatesRef = useRef(reviewOverheadRates)
+  reviewOverheadRatesRef.current = reviewOverheadRates
 
   // Derived view-models passed to `<TeamSummaryInline>`. Kept as memos
   // so the table doesn't reflow on unrelated People state changes.
@@ -1894,21 +1901,6 @@ export default function PeopleReviewTab({
         showToast('Loading Team Summary…', 'info')
       }
     }
-    const overheadRate = reviewOverheadRates.ratePerHour
-    const overheadRateLoading = reviewOverheadRates.loading
-    const overheadDecomp = {
-      ratePerHour: reviewOverheadRates.ratePerHour,
-      ratePerRevenueDecimal: reviewOverheadRates.ratePerRevenueDecimal,
-      ratePerLaborDollar: reviewOverheadRates.ratePerLaborDollar,
-      windowStart: reviewOverheadRates.windowStart,
-      windowEnd: reviewOverheadRates.windowEnd,
-      officeLabor90d: reviewOverheadRates.officeLabor90d,
-      bidLabor90d: reviewOverheadRates.bidLabor90d,
-      officeParts90d: reviewOverheadRates.officeParts90d,
-      invoices90d: reviewOverheadRates.invoices90d,
-      fieldHours90d: reviewOverheadRates.fieldHours90d,
-      fieldLaborUsd90d: reviewOverheadRates.fieldLaborUsd90d,
-    }
     const dataPromise = canReuseCache && cached
       ? Promise.resolve(cached.rows)
       : loadTeamSummaryData()
@@ -1948,21 +1940,33 @@ export default function PeopleReviewTab({
           // Number/HTML formatting now lives inside the iframe IIFE; the
           // parent only escapes the period label below. See iframe `renderTable()`.
           const escapeHtml = (s: string) => (s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
-          type DisplayRow = TeamSummaryRow & {
-            profitAfterOverhead: number | null
-            profitPerHourAfterOverhead: number | null
+          // Rates read through the ref (not the click-time closure) so a
+          // rate load that finished while the rows were fetching still
+          // reaches the popup. Same source as the inline memo.
+          const rates = reviewOverheadRatesRef.current
+          const overheadRate = rates.ratePerHour
+          const overheadRateLoading = rates.loading
+          const overheadDecomp = {
+            ratePerHour: rates.ratePerHour,
+            ratePerRevenueDecimal: rates.ratePerRevenueDecimal,
+            ratePerLaborDollar: rates.ratePerLaborDollar,
+            windowStart: rates.windowStart,
+            windowEnd: rates.windowEnd,
+            officeLabor90d: rates.officeLabor90d,
+            bidLabor90d: rates.bidLabor90d,
+            officeParts90d: rates.officeParts90d,
+            invoices90d: rates.invoices90d,
+            fieldHours90d: rates.fieldHours90d,
+            fieldLaborUsd90d: rates.fieldLaborUsd90d,
           }
-          const enriched: DisplayRow[] = rows.map((r) => {
-            // Charge overhead on ALL hours (field + office + bid) so the
-            // popup's Team Summary column matches the inline path
-            // (formatters.ts) and the Profit (after overhead) breakdown
-            // modal's bottom-line total. See enrichTeamSummaryRowsForInline.
-            const profitAfterOverhead = overheadRate != null ? r.profit - r.totalHours * overheadRate : null
-            const profitPerHourAfterOverhead =
-              profitAfterOverhead != null && r.totalHours > 0 ? profitAfterOverhead / r.totalHours : null
-            return { ...r, profitAfterOverhead, profitPerHourAfterOverhead }
-          })
-          const sortedRows = [...enriched].sort((a, b) => b.profit - a.profit || a.personName.localeCompare(b.personName))
+          // ONE enrichment for both surfaces: the popup rows come from the
+          // same `enrichTeamSummaryRowsForInline` (split overhead model —
+          // own office/bid wages charged directly + field-hour share of
+          // office parts) that feeds `teamSummaryBreakdowns`. The popup
+          // used to recompute Profit with the retired all-hours model here,
+          // so the two windows disagreed on Profit and on row order.
+          const fh = rates.fieldHours90d
+          const partsRate = fh != null && fh > 0 ? (rates.officeParts90d ?? 0) / fh : null
 
           // Cell builders, footer totals, and the row/footer HTML are now
           // built inside the iframe IIFE so client-side search + sort can
@@ -1982,32 +1986,10 @@ export default function PeopleReviewTab({
           // Single payload that drives both the table render (sortable + filterable)
           // and the per-cell drilldown modals. `idx` is stable across sort/filter so
           // `breakdowns[idx]` lookups in the modal click router stay valid.
-          const breakdownsPayload = sortedRows.map((r, i) => {
-            const cfg = payConfig[r.personName]
-            const payConfigSource = !cfg ? 'unknown' : (cfg.is_salary ? 'salary' : 'hourly')
-            return {
-              idx: i,
-              name: r.personName,
-              hb: r.hoursBreakdown,
-              gb: r.grossBreakdown,
-              nb: r.netBreakdown,
-              pb: r.profitBreakdown,
-              totalHours: r.totalHours,
-              overheadHours: r.overheadHours,
-              officeHours: r.officeHours,
-              bidHours: r.bidHours,
-              fieldHours: r.fieldHours,
-              hourlyWage: r.hourlyWage,
-              overheadLaborCost: r.overheadLaborCost,
-              overheadSessions: r.overheadSessions,
-              gross: r.gross,
-              net: r.profit,
-              profitAfterOverhead: r.profitAfterOverhead,
-              revPerHour: r.revPerHour,
-              netPerHour: r.profitPerHour,
-              profitPerHourAfterOverhead: r.profitPerHourAfterOverhead,
-              payConfigSource,
-            }
+          const breakdownsPayload = enrichTeamSummaryRowsForInline(rows, partsRate, (name) => {
+            const cfg = payConfig[name]
+            if (!cfg) return 'unknown'
+            return cfg.is_salary ? 'salary' : 'hourly'
           })
           const breakdownsJson = JSON.stringify(breakdownsPayload).replace(/</g, '\\u003c')
           const overheadRateJson = overheadRate == null ? 'null' : String(overheadRate)
@@ -2191,7 +2173,7 @@ export default function PeopleReviewTab({
       }
     </style></head><body>
       <h1>Team Summary</h1>
-      <div class="meta">${escapeHtml(getReviewPeriodLabel())} &middot; ${sortedRows.length} ${sortedRows.length === 1 ? 'person' : 'people'}</div>
+      <div class="meta">${escapeHtml(getReviewPeriodLabel())} &middot; ${breakdownsPayload.length} ${breakdownsPayload.length === 1 ? 'person' : 'people'}</div>
       <div class="meta-sub">${overheadMetaHtml}</div>
       <div class="tools" id="tools">
         <input type="search" id="search-input" placeholder="Search by name…" aria-label="Filter people by name">
@@ -2204,6 +2186,7 @@ export default function PeopleReviewTab({
           <th class="num" data-sort="totalHours" tabindex="0" role="columnheader" aria-sort="none">Hours<span class="sort-indicator" aria-hidden="true"></span></th>
           <th class="num" data-sort="overheadHours" tabindex="0" role="columnheader" aria-sort="none">Overhead<br>hrs<span class="sort-indicator" aria-hidden="true"></span></th>
           <th class="num" data-sort="overheadLaborCost" tabindex="0" role="columnheader" aria-sort="none">Overhead<br>labor<span class="sort-indicator" aria-hidden="true"></span></th>
+          <th class="num" data-sort="overheadBurden" tabindex="0" role="columnheader" aria-sort="none">Overhead<br>Burden<span class="sort-indicator" aria-hidden="true"></span></th>
           <th class="num" data-sort="fieldHours" tabindex="0" role="columnheader" aria-sort="none">Field<br>hrs<span class="sort-indicator" aria-hidden="true"></span></th>
           <th class="num" data-sort="gross" tabindex="0" role="columnheader" aria-sort="none">Gross<br>Revenue<span class="sort-indicator" aria-hidden="true"></span></th>
           <th class="num" data-sort="net" tabindex="0" role="columnheader" aria-sort="none">Net<br>Revenue<span class="sort-indicator" aria-hidden="true"></span></th>
@@ -2238,7 +2221,7 @@ export default function PeopleReviewTab({
         // highlight or accidentally surfaces a stale selection.
         var selectedPersonName = ${selectedPersonNameJson};
         function escH(s){ return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
-        function fmtH(n){ return (Math.round(n*10)/10).toFixed(1); }
+        function fmtH(n){ return (Math.round(n*10)/10).toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 }); }
         function fmtPct(n){ return Math.round(n) + '%'; }
         function fmtPct1(n){ return (Math.round(n*10)/10).toFixed(1) + '%'; }
         function fmtMoney(n){ return (n < 0 ? '-$' : '$') + Math.round(Math.abs(n)).toLocaleString('en-US', { maximumFractionDigits: 0 }); }
@@ -2326,6 +2309,12 @@ export default function PeopleReviewTab({
             title: 'Click for overhead-labor breakdown',
             colored: false, extraStyle: negS(n) });
         }
+        function overheadBurdenTd(n){
+          // Plain (non-clickable) cell — the inline surface has a full
+          // OverheadBurdenBody drilldown; here a tooltip explains the number.
+          if (n == null || !(n < 0)) return dashTd();
+          return '<td style="' + CELL_STYLE_BASE + negS(n) + '" title="Field-hour share of office parts (field hrs × parts rate)">' + fmtMoney(n) + '</td>';
+        }
         function fieldHoursClickableTd(n, idx, name){
           if (n <= 0) return dashTd();
           return clickCellTd({ idx: idx, type: 'field_hours', content: fmtH(n),
@@ -2378,6 +2367,7 @@ export default function PeopleReviewTab({
             + hoursClickableTd(r.totalHours, i, r.name, r.payConfigSource === 'salary')
             + overheadHoursClickableTd(r.overheadHours, i, r.name)
             + overheadLaborClickableTd(r.overheadLaborCost, i, r.name)
+            + overheadBurdenTd(r.overheadBurden)
             + fieldHoursClickableTd(r.fieldHours, i, r.name)
             + grossClickableTd(r.gross, i, r.name)
             + netClickableTd(r.net, i, r.name)
@@ -2388,13 +2378,14 @@ export default function PeopleReviewTab({
             + '</tr>';
         }
         function buildFooterHtml(visibleRows){
-          var totals = { hours: 0, overheadHours: 0, fieldHours: 0, overheadLaborCost: 0, gross: 0, net: 0, profit: null };
+          var totals = { hours: 0, overheadHours: 0, fieldHours: 0, overheadLaborCost: 0, overheadBurden: null, gross: 0, net: 0, profit: null };
           for (var i = 0; i < visibleRows.length; i++) {
             var r = visibleRows[i];
             totals.hours += r.totalHours;
             totals.overheadHours += r.overheadHours;
             totals.fieldHours += r.fieldHours;
             totals.overheadLaborCost += r.overheadLaborCost;
+            if (r.overheadBurden != null) totals.overheadBurden = (totals.overheadBurden || 0) + r.overheadBurden;
             totals.gross += r.gross;
             totals.net += r.net;
             if (r.profitAfterOverhead != null) totals.profit = (totals.profit || 0) + r.profitAfterOverhead;
@@ -2412,6 +2403,7 @@ export default function PeopleReviewTab({
           html += plainHoursTd(totals.hours);
           html += plainHoursTd(totals.overheadHours);
           html += plainMoneyTd(totals.overheadLaborCost);
+          html += moneyOrDashTd(totals.overheadBurden);
           html += plainHoursTd(totals.fieldHours);
           html += plainMoneyTd(totals.gross);
           html += plainMoneyTd(totals.net);
@@ -2746,8 +2738,8 @@ export default function PeopleReviewTab({
             html += '<td class="num">' + escH(j.hcp) + '</td>';
             html += '<td>' + escH(j.jobName || '—') + '</td>';
             html += '<td class="num">' + fmtMoney(j.valueCreated) + '</td>';
-            html += '<td class="num">' + fmtMoney(j.partsCost) + '</td>';
-            html += '<td class="num">' + fmtMoney(j.totalLaborOnJob) + '</td>';
+            html += '<td class="num">' + fmtMoney(-(j.partsCost || 0)) + '</td>';
+            html += '<td class="num">' + fmtMoney(-(j.totalLaborOnJob || 0)) + '</td>';
             html += '<td class="num"' + (j.revenueBeforeOverhead < 0 ? ' style="color:#b91c1c;"' : '') + '>' + fmtMoney(j.revenueBeforeOverhead) + '</td>';
             html += '<td class="num">' + fmtMoney(j.costInPeriod) + '</td>';
             html += '<td class="num">' + fmtPct1(j.ratio * 100) + '</td>';
@@ -2761,95 +2753,51 @@ export default function PeopleReviewTab({
           html += '<p class="caption">Net Revenue is each job\\'s <strong>Net Revenue (before overhead)</strong> &mdash; Value Created minus parts and total labor &mdash; multiplied by your <strong>share</strong> on that job (your labor cost in this period &divide; total labor on the job, all-time).</p>';
           return html;
         }
-        function buildProfitBody(pb) {
+        function buildProfitBody(entry) {
+          // Split overhead model — mirrors drilldowns.tsx ProfitBody: the
+          // person's OWN office/bid wages (overheadLaborCost, negative) are
+          // charged directly, and only the non-labor pool (office parts) is
+          // spread across field hours (overheadBurden, negative). All three
+          // figures come pre-computed from enrichTeamSummaryRowsForInline,
+          // so this bottom line always equals the table cell.
+          var pb = entry.pb;
+          var net = pb.totalNet;
+          var overheadLabor = entry.overheadLaborCost;
+          var burden = entry.overheadBurden;
+          var profit = entry.profitAfterOverhead;
           var html = '';
           html += '<div style="margin-bottom:0.75rem;color:#374151;">';
-          if (overheadRate == null) {
+          if (burden == null || profit == null) {
             html += '<div style="margin-bottom:0.5rem;color:#b91c1c;">Overhead rate is unavailable. Open the Review tab and let the rate finish loading, then reopen Team Summary.</div>';
-            html += '<div style="font-size:1.05rem;"><strong>Net Revenue: ' + fmtMoney(pb.totalNet) + '</strong></div>';
+            html += '<div style="font-size:1.05rem;"><strong>Net Revenue: ' + fmtMoney(net) + '</strong></div>';
+            html += '</div>';
             return html;
           }
-          var fieldHrs = (pb.fieldHours != null ? pb.fieldHours : pb.totalHours);
-          var overheadHrs = (pb.overheadHours != null ? pb.overheadHours : 0);
-          // Overhead is charged on every hour worked in the period (field
-          // + office + bid). See enrichTeamSummaryRowsForInline and
-          // drilldowns.tsx ProfitBody — same math so the popup column,
-          // inline column, and breakdown total all reconcile.
-          var fieldOverhead = fieldHrs * overheadRate;
-          var overheadHoursOverhead = overheadHrs * overheadRate;
-          var totalOverhead = fieldOverhead + overheadHoursOverhead;
-          var totalProfit = pb.totalNet - totalOverhead;
-          html += '<div style="margin-bottom:0.25rem;"><strong>Overhead rate (Method A):</strong> $' + overheadRate.toFixed(2) + ' per hour</div>';
-          html += '<div style="margin-bottom:0.25rem;"><strong>Net Revenue:</strong> ' + fmtMoney(pb.totalNet) + '</div>';
-          html += '<div style="margin-bottom:0.25rem;"><strong>Total hours:</strong> ' + fmtH(pb.totalHours) + ' (field ' + fmtH(fieldHrs) + (overheadHrs > 0.005 ? ' + overhead ' + fmtH(overheadHrs) : '') + ')</div>';
-          html += '<div style="margin-bottom:0.25rem;"><strong>&minus; Overhead deduction:</strong> ' + fmtH(pb.totalHours) + ' &times; $' + overheadRate.toFixed(2) + ' = ' + fmtMoney(totalOverhead) + '</div>';
-          if (overheadHrs > 0.005) {
-            html += '<div style="margin-bottom:0.25rem;padding-left:1.5rem;color:#6b7280;">(' + fmtMoney(fieldOverhead) + ' field + ' + fmtMoney(overheadHoursOverhead) + ' overhead hours)</div>';
-          }
-          html += '<div style="font-size:1.05rem;"><strong>Profit (after overhead): <span' + (totalProfit < 0 ? ' style="color:#b91c1c;"' : '') + '>' + fmtMoney(totalProfit) + '</span></strong></div>';
+          var partsRate = (overheadDecomp && overheadDecomp.fieldHours90d > 0) ? overheadDecomp.officeParts90d / overheadDecomp.fieldHours90d : 0;
+          html += '<div style="margin-bottom:0.25rem;"><strong>Net Revenue (before overhead):</strong> ' + fmtMoney(net) + '</div>';
+          html += '<div style="margin-bottom:0.25rem;"><strong>&minus; Overhead labor</strong> (your office + bid wages): <span' + (overheadLabor < 0 ? ' style="color:#b91c1c;"' : '') + '>' + fmtMoney(overheadLabor) + '</span></div>';
+          html += '<div style="margin-bottom:0.25rem;"><strong>&minus; Overhead burden</strong> (your share of office parts): <span' + (burden < 0 ? ' style="color:#b91c1c;"' : '') + '>' + fmtMoney(burden) + '</span><span style="color:#6b7280;"> (' + fmtH(entry.fieldHours) + ' field hrs &times; $' + partsRate.toFixed(2) + '/hr)</span></div>';
+          html += '<div style="font-size:1.05rem;"><strong>= Profit (after overhead): <span' + (profit < 0 ? ' style="color:#b91c1c;"' : '') + '>' + fmtMoney(profit) + '</span></strong></div>';
           html += '</div>';
-          var rows = (pb.jobs || []).map(function(j){
-            var oh = j.hoursInPeriod * overheadRate;
-            var profit = j.allocatedNet - oh;
-            return { hcp: j.hcp, jobName: j.jobName, allocatedNet: j.allocatedNet, hoursInPeriod: j.hoursInPeriod, overhead: oh, profit: profit };
-          });
-          rows.sort(function(a, b){ return b.profit - a.profit; });
-          if (rows.length === 0 && overheadHrs < 0.005 && pb.unaccountedHours < 0.01) {
-            html += '<p class="caption">No jobs contributed to net revenue in this period.</p>';
-            return html;
+          var rows = (pb.jobs || []).slice().sort(function(a, b){ return b.allocatedNet - a.allocatedNet; });
+          if (rows.length > 0) {
+            html += '<table>';
+            html += '<thead><tr>';
+            html += '<th>Job</th>';
+            html += '<th class="num">Net Rev<br>(allocated)</th>';
+            html += '<th class="num">Your hours<br>(period)</th>';
+            html += '</tr></thead><tbody>';
+            for (var i = 0; i < rows.length; i++) {
+              var r = rows[i];
+              html += '<tr>';
+              html += '<td>' + (r.hcp ? '<span style="color:#6b7280;font-variant-numeric:tabular-nums;">' + escH(r.hcp) + '</span> ' : '') + escH(r.jobName || '—') + '</td>';
+              html += '<td class="num"' + (r.allocatedNet < 0 ? ' style="color:#b91c1c;"' : '') + '>' + fmtMoney(r.allocatedNet) + '</td>';
+              html += '<td class="num">' + fmtH(r.hoursInPeriod) + '</td>';
+              html += '</tr>';
+            }
+            html += '</tbody></table>';
           }
-          html += '<table>';
-          html += '<thead><tr>';
-          html += '<th class="num">HCP</th>';
-          html += '<th>Job</th>';
-          html += '<th class="num">Net Rev<br>(allocated)</th>';
-          html += '<th class="num">Your hours<br>(period)</th>';
-          html += '<th class="num">&minus; Overhead<br>(hrs &times; rate)</th>';
-          html += '<th class="num">= Profit<br>(after overhead)</th>';
-          html += '</tr></thead><tbody>';
-          for (var i = 0; i < rows.length; i++) {
-            var r = rows[i];
-            html += '<tr>';
-            html += '<td class="num">' + escH(r.hcp) + '</td>';
-            html += '<td>' + escH(r.jobName || '—') + '</td>';
-            html += '<td class="num"' + (r.allocatedNet < 0 ? ' style="color:#b91c1c;"' : '') + '>' + fmtMoney(r.allocatedNet) + '</td>';
-            html += '<td class="num">' + fmtH(r.hoursInPeriod) + '</td>';
-            html += '<td class="num">' + fmtMoney(r.overhead) + '</td>';
-            html += '<td class="num"' + (r.profit < 0 ? ' style="color:#b91c1c;"' : '') + '>' + fmtMoney(r.profit) + '</td>';
-            html += '</tr>';
-          }
-          if (overheadHrs > 0.005) {
-            html += '<tr style="background:#f9fafb;">';
-            html += '<td class="num">&mdash;</td>';
-            html += '<td><em>Overhead hours</em></td>';
-            html += '<td class="num">' + fmtMoney(0) + '</td>';
-            html += '<td class="num">' + fmtH(overheadHrs) + '</td>';
-            html += '<td class="num">' + fmtMoney(overheadHoursOverhead) + '</td>';
-            html += '<td class="num" style="color:#b91c1c;">' + fmtMoney(-overheadHoursOverhead) + '</td>';
-            html += '</tr>';
-          }
-          if (pb.unaccountedHours > 0.01) {
-            var unOh = pb.unaccountedHours * overheadRate;
-            html += '<tr style="background:#fff7ed;">';
-            html += '<td class="num">&mdash;</td>';
-            html += '<td><em>Unallocated hours</em><div style="color:#6b7280;font-size:0.8rem;">Hours worked in the period that were not tied to a job, but still incur overhead.</div></td>';
-            html += '<td class="num">' + fmtMoney(0) + '</td>';
-            html += '<td class="num">' + fmtH(pb.unaccountedHours) + '</td>';
-            html += '<td class="num">' + fmtMoney(unOh) + '</td>';
-            html += '<td class="num" style="color:#b91c1c;">' + fmtMoney(-unOh) + '</td>';
-            html += '</tr>';
-          }
-          html += '</tbody>';
-          html += '<tfoot><tr>';
-          html += '<td colspan="2" style="text-align:right;font-weight:600;">Total<br>(all hours)</td>';
-          html += '<td class="num" style="font-weight:600;">' + fmtMoney(pb.totalNet) + '</td>';
-          html += '<td class="num" style="font-weight:600;">' + fmtH(pb.totalHours) + '</td>';
-          html += '<td class="num" style="font-weight:600;">' + fmtMoney(totalOverhead) + '</td>';
-          html += '<td class="num"' + (totalProfit < 0 ? ' style="color:#b91c1c;font-weight:600;"' : ' style="font-weight:600;"') + '>' + fmtMoney(totalProfit) + '</td>';
-          html += '</tr></tfoot>';
-          html += '</table>';
-          html += '<p class="caption">Per-job overhead = your hours on that job &times; rate. Profit (job) = Allocated Net Rev &minus; Overhead. Job rows sorted by profit. Overhead hours (' + fmtH(overheadHrs) + ') are charged the same rate as field hours but contribute no revenue, so they appear as a single deduction-only row.</p>';
-          html += '<p class="caption">Profit (after overhead) = Net Revenue &minus; (<strong>all hours</strong> &times; rate). The rate is the rolling 90-day overhead spend per field hour; we apply it to every hour the person worked (field + office + bid) so the deduction reflects this person\\'s full share of the overhead burden.</p>';
+          html += '<p class="caption">Split overhead model: Profit = Net Revenue &minus; <strong>your own overhead labor</strong> (office + bid wages) &minus; <strong>overhead burden</strong> (your field-hour share of office parts). Office and bid labor are charged directly to whoever logged them; only the non-labor pool (office parts) is spread across field hours. The two deductions are disjoint, so the team total reconciles to the overhead pool exactly once. The job rows above show how your Net Revenue was allocated (before overhead).</p>';
           return html;
         }
         function fmtMoneyPerHr(n) { return fmtMoney(n) + '/hr'; }
@@ -2980,100 +2928,31 @@ export default function PeopleReviewTab({
           return html;
         }
         function buildProfitPerHourBody(entry) {
-          var nb = entry.nb;
-          var pb = entry.pb;
-          var totalHours = pb.totalHours;
-          var fieldHrs = (pb.fieldHours != null ? pb.fieldHours : totalHours);
-          var overheadHrs = (pb.overheadHours != null ? pb.overheadHours : 0);
-          var totalNet = nb.total;
+          // Mirrors drilldowns.tsx ProfitPerHourBody (split overhead model):
+          // Overhead/hr blends the person's own overhead labor + their parts
+          // burden over every hour worked, so the bottom line always equals
+          // the table cell (profitPerHourAfterOverhead comes pre-computed
+          // from the shared enrichTeamSummaryRowsForInline).
+          var totalHours = entry.pb.totalHours;
+          var totalNet = entry.nb.total;
+          var netPerHr = entry.netPerHour;
+          var profit = entry.profitAfterOverhead;
+          var profitPerHr = entry.profitPerHourAfterOverhead;
           var html = '';
           html += '<div style="margin-bottom:0.75rem;color:#374151;">';
-          if (overheadRate == null) {
+          if (profit == null || profitPerHr == null) {
             html += '<div style="margin-bottom:0.5rem;color:#b91c1c;">Overhead rate is unavailable. Open the Review tab and let the rate finish loading, then reopen Team Summary.</div>';
             html += '<div><strong>Net Revenue:</strong> ' + fmtMoney(totalNet) + '</div>';
             html += '<div><strong>Total hours:</strong> ' + fmtH(totalHours) + '</div>';
+            html += '</div>';
             return html;
           }
-          // Charge overhead on all hours (field + office + bid) so the
-          // popup Profit/hr drilldown stays in sync with ProfitBody and
-          // ProfitPerHourBody in drilldowns.tsx + the parent column math.
-          var fieldOverhead = fieldHrs * overheadRate;
-          var overheadHoursOverhead = overheadHrs * overheadRate;
-          var totalOverhead = fieldOverhead + overheadHoursOverhead;
-          var totalProfit = totalNet - totalOverhead;
-          var rate = totalHours > 0 ? totalProfit / totalHours : 0;
-          html += '<div style="margin-bottom:0.25rem;"><strong>Overhead rate (Method A):</strong> $' + overheadRate.toFixed(2) + ' per hour</div>';
-          html += '<div style="margin-bottom:0.25rem;"><strong>Net Revenue:</strong> ' + fmtMoney(totalNet) + '</div>';
-          html += '<div style="margin-bottom:0.25rem;"><strong>Total hours:</strong> ' + fmtH(totalHours) + ' (field ' + fmtH(fieldHrs) + (overheadHrs > 0.005 ? ' + overhead ' + fmtH(overheadHrs) : '') + ')</div>';
-          html += '<div style="margin-bottom:0.25rem;"><strong>&minus; Overhead deduction:</strong> ' + fmtH(totalHours) + ' &times; $' + overheadRate.toFixed(2) + ' = ' + fmtMoney(totalOverhead) + '</div>';
-          if (overheadHrs > 0.005) {
-            html += '<div style="margin-bottom:0.25rem;padding-left:1.5rem;color:#6b7280;">(' + fmtMoney(fieldOverhead) + ' field + ' + fmtMoney(overheadHoursOverhead) + ' overhead hours)</div>';
-          }
-          html += '<div style="margin-bottom:0.25rem;"><strong>Profit (after overhead):</strong> <span' + (totalProfit < 0 ? ' style="color:#b91c1c;"' : '') + '>' + fmtMoney(totalProfit) + '</span></div>';
-          html += '<div style="font-size:1.05rem;"><strong>Profit/hr (after overhead): <span' + (rate < 0 ? ' style="color:#b91c1c;"' : '') + '>' + fmtMoneyPerHr(rate) + '</span></strong></div>';
+          var overheadPerHr = totalHours > 0 ? (entry.overheadLaborCost + (entry.overheadBurden || 0)) / totalHours : 0;
+          html += '<div style="margin-bottom:0.25rem;"><strong>Net Revenue/hr (before overhead):</strong> ' + fmtMoneyPerHr(netPerHr) + '</div>';
+          html += '<div style="margin-bottom:0.25rem;"><strong>&minus; Overhead/hr:</strong> <span' + (overheadPerHr < 0 ? ' style="color:#b91c1c;"' : '') + '>' + fmtMoneyPerHr(overheadPerHr) + '</span><span style="color:#6b7280;"> (own overhead labor + parts burden &divide; ' + fmtH(totalHours) + ' hrs)</span></div>';
+          html += '<div style="font-size:1.05rem;"><strong>= Profit/hr (after overhead): <span' + (profitPerHr < 0 ? ' style="color:#b91c1c;"' : '') + '>' + fmtMoneyPerHr(profitPerHr) + '</span></strong></div>';
           html += '</div>';
-          var hoursByJob = {};
-          for (var i = 0; i < pb.jobs.length; i++) hoursByJob[pb.jobs[i].jobId] = pb.jobs[i].hoursInPeriod;
-          var rows = (nb.jobs || []).map(function(j){
-            var h = hoursByJob[j.jobId] || 0;
-            var netPerHr = h > 0 ? j.allocatedNet / h : null;
-            var profitPerHr = netPerHr == null ? null : netPerHr - overheadRate;
-            return { hcp: j.hcp, jobName: j.jobName, allocatedNet: j.allocatedNet, hoursInPeriod: h, netPerHr: netPerHr, profitPerHr: profitPerHr };
-          });
-          rows.sort(function(a, b){ return (b.profitPerHr == null ? -Infinity : b.profitPerHr) - (a.profitPerHr == null ? -Infinity : a.profitPerHr); });
-          if (rows.length === 0 && overheadHrs < 0.005 && pb.unaccountedHours < 0.01) {
-            html += '<p class="caption">No jobs contributed to net revenue in this period.</p>';
-            return html;
-          }
-          html += '<table>';
-          html += '<thead><tr>';
-          html += '<th class="num">HCP</th>';
-          html += '<th>Job</th>';
-          html += '<th class="num">Net Rev/hr<br>(this job)</th>';
-          html += '<th class="num">&minus; Overhead<br>rate</th>';
-          html += '<th class="num">= Profit/hr<br>(this job)</th>';
-          html += '<th class="num">Your hours<br>(period)</th>';
-          html += '</tr></thead><tbody>';
-          for (var k = 0; k < rows.length; k++) {
-            var r = rows[k];
-            html += '<tr>';
-            html += '<td class="num">' + escH(r.hcp) + '</td>';
-            html += '<td>' + escH(r.jobName || '—') + '</td>';
-            html += '<td class="num"' + (r.netPerHr != null && r.netPerHr < 0 ? ' style="color:#b91c1c;"' : '') + '>' + (r.netPerHr == null ? '<span style="color:#9ca3af;">—</span>' : fmtMoneyPerHr(r.netPerHr)) + '</td>';
-            html += '<td class="num">' + (r.hoursInPeriod > 0 ? '$' + overheadRate.toFixed(2) + '/hr' : '<span style="color:#9ca3af;">—</span>') + '</td>';
-            html += '<td class="num"' + (r.profitPerHr != null && r.profitPerHr < 0 ? ' style="color:#b91c1c;"' : '') + '>' + (r.profitPerHr == null ? '<span style="color:#9ca3af;">—</span>' : fmtMoneyPerHr(r.profitPerHr)) + '</td>';
-            html += '<td class="num">' + fmtH(r.hoursInPeriod) + '</td>';
-            html += '</tr>';
-          }
-          if (overheadHrs > 0.005) {
-            html += '<tr style="background:#f9fafb;">';
-            html += '<td class="num">&mdash;</td>';
-            html += '<td><em>Overhead hours</em><div style="color:#6b7280;font-size:0.8rem;">Office + bid time. No revenue, but still charged the overhead rate now that overhead hours are included in the deduction.</div></td>';
-            html += '<td class="num">' + fmtMoneyPerHr(0) + '</td>';
-            html += '<td class="num">$' + overheadRate.toFixed(2) + '/hr</td>';
-            html += '<td class="num" style="color:#b91c1c;">' + fmtMoneyPerHr(-overheadRate) + '</td>';
-            html += '<td class="num">' + fmtH(overheadHrs) + '</td>';
-            html += '</tr>';
-          }
-          if (pb.unaccountedHours > 0.01) {
-            html += '<tr style="background:#fff7ed;">';
-            html += '<td class="num">&mdash;</td>';
-            html += '<td><em>Unallocated hours</em><div style="color:#6b7280;font-size:0.8rem;">Hours worked in the period that weren\\'t tied to a job &mdash; they earn no net revenue but still incur overhead.</div></td>';
-            html += '<td class="num">' + fmtMoneyPerHr(0) + '</td>';
-            html += '<td class="num">$' + overheadRate.toFixed(2) + '/hr</td>';
-            html += '<td class="num" style="color:#b91c1c;">' + fmtMoneyPerHr(-overheadRate) + '</td>';
-            html += '<td class="num">' + fmtH(pb.unaccountedHours) + '</td>';
-            html += '</tr>';
-          }
-          html += '</tbody>';
-          html += '<tfoot><tr>';
-          html += '<td colspan="4" style="text-align:right;font-weight:600;">Headline rate</td>';
-          html += '<td class="num"' + (rate < 0 ? ' style="color:#b91c1c;font-weight:600;"' : ' style="font-weight:600;"') + '>' + fmtMoneyPerHr(rate) + '</td>';
-          html += '<td class="num" style="font-weight:600;">' + fmtH(totalHours) + '</td>';
-          html += '</tr></tfoot>';
-          html += '</table>';
-          html += '<p class="caption">Per-job: Profit/hr = (Allocated Net &divide; Your hours) &minus; Overhead rate. Headline rate = (Net Revenue &minus; Total overhead) &divide; Total hours, where <strong>total overhead = All hours &times; rate</strong> (every hour the person worked &mdash; field + office + bid &mdash; is charged the rate). Sorted by per-job profit/hr.</p>';
-          html += '<p class="caption">Profit/hr (after overhead) divides your <strong>Profit (after overhead)</strong> by your <strong>total hours</strong>. The overhead deduction is <strong>all hours &times; rate</strong> &mdash; office and bid hours are charged the same per-hour overhead as field hours even though they earn no revenue, which is why those rows show a flat &minus;$ rate per hour.</p>';
+          html += '<p class="caption">Profit/hr (after overhead) = Profit (after overhead) &divide; total hours. Overhead/hr blends this person&rsquo;s own overhead labor (office + bid wages) and their field-hour share of office parts over every hour worked. See the Profit (after overhead) breakdown for the dollar waterfall.</p>';
           return html;
         }
         function buildOverheadSessionsSection(label, sessions, bucketTotalHrs) {
@@ -3212,7 +3091,7 @@ export default function PeopleReviewTab({
             html += '<p class="caption" style="color:#b45309;">No <code>hourly_wage</code> is set for this person in <code>people_pay_config</code>, so the cost columns above show as $0. Set their wage on the People \u2192 Hours \u2192 Pay config row to make this column meaningful.</p>';
           }
           html += '<p class="caption">Overhead labor is what the company paid this person for hours that are <strong>not</strong> billed to a field job \u2014 the configured Office job and any time clocked into a bid. Field labor is excluded here on purpose: it is already subtracted at the per-job level inside Net Revenue (<code>job net = revenue \u2212 parts \u2212 total labor</code>), so showing it again would visually double-count.</p>';
-          html += '<p class="caption">Office and bid hours fund the rolling 90-day overhead pool (office labor + bid labor + office parts), which is then deducted from every person as <code>total hours \u00d7 rate</code> in the &ldquo;Profit (after overhead)&rdquo; column \u2014 every hour worked (field + office + bid) is charged the per-hour overhead. This Overhead labor column simply makes the office + bid wage contribution visible in each person\\'s own row \u2014 it does <strong>not</strong> change Gross, Net, or Profit numbers.</p>';
+          html += '<p class="caption">Split overhead model: this person\\'s own office + bid wages (this column) are deducted directly in &ldquo;Profit (after overhead)&rdquo;, and the non-labor pool (office parts) is spread across field hours as the Overhead Burden column. Office and bid wages are charged to whoever logged them &mdash; they are not spread across the team.</p>';
           return html;
         }
         function buildFieldHoursBody(entry) {
@@ -3304,7 +3183,7 @@ export default function PeopleReviewTab({
           var ratePerRevenueDecimal = d.ratePerRevenueDecimal;
           var html = '';
           html += '<div style="margin-bottom:0.75rem;color:#374151;">';
-          html += '<div style="margin-bottom:0.5rem;">Rolling 90-day overhead rate. Method A is <strong>$ per field hour</strong>: it spreads the overhead pool (office labor, bid labor, office parts) over the hours that actually produce billable field work. The Team Summary applies this rate against <code>all hours &times; rate</code> when deducting overhead from each person in the &ldquo;Profit (after overhead)&rdquo; column &mdash; office and bid hours fund the pool but are still charged the per-hour overhead so every hour the person worked reflects its full share of the overhead burden.</div>';
+          html += '<div style="margin-bottom:0.5rem;">Rolling 90-day overhead rate. Method A is <strong>$ per field hour</strong>: it spreads the whole overhead pool (office labor, bid labor, office parts) over billable field hours &mdash; a reference rate. The Team Summary&rsquo;s &ldquo;Profit (after overhead)&rdquo; column uses the <strong>split model</strong> instead: each person&rsquo;s own office/bid wages are charged directly, and only the office-parts pool is spread across field hours (the Overhead Burden column).</div>';
           if (d.windowStart && d.windowEnd) {
             html += '<div style="margin-bottom:0.25rem;"><strong>Window:</strong> ' + escH(d.windowStart) + ' &rarr; ' + escH(d.windowEnd) + '</div>';
           }
@@ -3335,9 +3214,9 @@ export default function PeopleReviewTab({
           html += '<h3>Resulting rates</h3>';
           html += '<table>';
           html += '<thead><tr><th>Rate</th><th class="num">Value</th><th>How it is used</th></tr></thead><tbody>';
-          html += '<tr><td>Method A &mdash; per field hour</td><td class="num">' + (ratePerHour == null ? '<span style="color:#9ca3af;">&mdash;</span>' : '$' + Number(ratePerHour).toFixed(2) + '/hr') + '</td><td>Used to deduct overhead in the Team Summary: Profit after overhead = Net &minus; <strong>all hours</strong> &times; rate. Every hour the person worked (field + office + bid) is charged the per-hour overhead.</td></tr>';
-          html += '<tr><td>Method B &mdash; per field labor $</td><td class="num">' + (ratePerLaborDollar == null ? '<span style="color:#9ca3af;">&mdash;</span>' : '$' + Number(ratePerLaborDollar).toFixed(2) + ' / $1 labor') + '</td><td>Reference only: ratio of overhead pool to field labor dollars.</td></tr>';
-          html += '<tr><td>Method C &mdash; per revenue $ (invoices sent)</td><td class="num">' + (ratePerRevenueDecimal == null ? '<span style="color:#9ca3af;">&mdash;</span>' : (Number(ratePerRevenueDecimal) * 100).toFixed(1) + '% of revenue') + '</td><td>Reference only: invoices sent in window = ' + fmtMoney(invoices) + '.</td></tr>';
+          html += '<tr><td>Method A &mdash; per field hour</td><td class="num">' + (ratePerHour == null ? '<span style="color:#9ca3af;">&mdash;</span>' : '$' + Number(ratePerHour).toFixed(2) + '/hr') + '</td><td>Reference rate: whole pool &divide; field hours. The Profit (after overhead) column uses the split model &mdash; own office/bid wages charged directly + field-hour share of office parts &mdash; not this rate.</td></tr>';
+          html += '<tr><td>Method B &mdash; per revenue $ (invoices sent)</td><td class="num">' + (ratePerRevenueDecimal == null ? '<span style="color:#9ca3af;">&mdash;</span>' : (Number(ratePerRevenueDecimal) * 100).toFixed(1) + '% of revenue') + '</td><td>Reference only: invoices sent in window = ' + fmtMoney(invoices) + '. Matches the &ldquo;B. Overhead by revenue&rdquo; rows in Jobs Worked.</td></tr>';
+          html += '<tr><td>Method C &mdash; per field labor $</td><td class="num">' + (ratePerLaborDollar == null ? '<span style="color:#9ca3af;">&mdash;</span>' : '$' + Number(ratePerLaborDollar).toFixed(2) + ' / $1 labor') + '</td><td>Reference only: ratio of overhead pool to field labor dollars. Matches the &ldquo;C. Overhead by direct labor cost&rdquo; rows in Jobs Worked.</td></tr>';
           html += '</tbody></table>';
           html += '<p class="caption">Method A is the headline rate. Sessions used: approved, not revoked, not rejected, with a clock-out. Wages come from <code>people_pay_config.hourly_wage</code>. Office job is the one configured in People &rarr; Overhead settings.</p>';
           return html;
@@ -3489,7 +3368,7 @@ export default function PeopleReviewTab({
             body = buildNetBody(entry.nb);
           } else if (type === 'profit') {
             title = 'Profit (after overhead) breakdown \\u2014 ' + entry.name;
-            body = buildProfitBody(entry.pb);
+            body = buildProfitBody(entry);
           } else if (type === 'rev_per_hr') {
             title = 'Gross Revenue/hr breakdown \\u2014 ' + entry.name;
             body = buildGrossPerHourBody(entry);
