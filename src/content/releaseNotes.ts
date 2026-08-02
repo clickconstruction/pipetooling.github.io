@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1289',
+    date: '2026-08-02',
+    title: 'Team leads: names instead of IDs',
+    kind: 'fix',
+    highlights: [
+      'Rows in the Team leads manager that pointed at archived accounts showed raw IDs — every row now shows the person’s name, with "(archived)" marking stale links so they’re easy to spot and remove.',
+    ],
+  },
+  {
     version: 'v2.1288',
     date: '2026-08-02',
     title: 'Behind the scenes: Materials assembly engine restructured',

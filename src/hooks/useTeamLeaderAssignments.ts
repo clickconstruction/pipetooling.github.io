@@ -23,12 +23,18 @@ export type TeamLeaderAssignmentRow = {
 export function useTeamLeaderAssignments({
   enabled,
   goalPickerUsers,
+  labelUsers,
   setError,
 }: {
   enabled: boolean
   goalPickerUsers: GoalPickerUser[]
+  /** Roster for DISPLAY labels (sort/search). Defaults to goalPickerUsers; pass a
+   * superset including archived users so existing links never render raw UUIDs
+   * (the pickers stay non-archived via goalPickerUsers). */
+  labelUsers?: GoalPickerUser[]
   setError: (message: string | null) => void
 }) {
+  const labelRoster = labelUsers ?? goalPickerUsers
   const [teamLeaderAssignments, setTeamLeaderAssignments] = useState<TeamLeaderAssignmentRow[]>([])
   const [teamLeaderVisibilitySavingId, setTeamLeaderVisibilitySavingId] = useState<string | null>(null)
   const [teamAssignLeaderId, setTeamAssignLeaderId] = useState('')
@@ -71,27 +77,27 @@ export function useTeamLeaderAssignments({
     rows.sort((a, b) => {
       const aKey =
         teamLeaderSortColumn === 'leader'
-          ? displayLabelForGoalPickerUser(a.leader_user_id, goalPickerUsers)
-          : displayLabelForGoalPickerUser(a.member_user_id, goalPickerUsers)
+          ? displayLabelForGoalPickerUser(a.leader_user_id, labelRoster)
+          : displayLabelForGoalPickerUser(a.member_user_id, labelRoster)
       const bKey =
         teamLeaderSortColumn === 'leader'
-          ? displayLabelForGoalPickerUser(b.leader_user_id, goalPickerUsers)
-          : displayLabelForGoalPickerUser(b.member_user_id, goalPickerUsers)
+          ? displayLabelForGoalPickerUser(b.leader_user_id, labelRoster)
+          : displayLabelForGoalPickerUser(b.member_user_id, labelRoster)
       const base = aKey.localeCompare(bKey, undefined, { sensitivity: 'base' })
       return teamLeaderSortDir === 'asc' ? base : -base
     })
     return rows
-  }, [teamLeaderAssignments, goalPickerUsers, teamLeaderSortColumn, teamLeaderSortDir])
+  }, [teamLeaderAssignments, labelRoster, teamLeaderSortColumn, teamLeaderSortDir])
 
   const filteredTeamLeaderAssignments = useMemo(() => {
     const q = teamLeaderAssignmentsSearchQuery.trim().toLowerCase()
     if (!q) return sortedTeamLeaderAssignments
     return sortedTeamLeaderAssignments.filter((row) => {
-      const leaderLabel = displayLabelForGoalPickerUser(row.leader_user_id, goalPickerUsers).toLowerCase()
-      const memberLabel = displayLabelForGoalPickerUser(row.member_user_id, goalPickerUsers).toLowerCase()
+      const leaderLabel = displayLabelForGoalPickerUser(row.leader_user_id, labelRoster).toLowerCase()
+      const memberLabel = displayLabelForGoalPickerUser(row.member_user_id, labelRoster).toLowerCase()
       return leaderLabel.includes(q) || memberLabel.includes(q)
     })
-  }, [sortedTeamLeaderAssignments, goalPickerUsers, teamLeaderAssignmentsSearchQuery])
+  }, [sortedTeamLeaderAssignments, labelRoster, teamLeaderAssignmentsSearchQuery])
 
   const teamHoursMemberPickerUsers = useMemo(() => {
     if (!teamAssignLeaderId) return []
