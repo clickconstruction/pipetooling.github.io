@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1300',
+    date: '2026-08-02',
+    title: 'Behind the scenes: Takeoff price popups restructured',
+    kind: 'infra',
+    highlights: [
+      'The catalog part-prices popup and the assembly bundle-comparison popup on the Bids Takeoff tab moved into their own components.',
+      'No visible changes; checking prices and applying bundle quotes works exactly as before.',
+    ],
+  },
+  {
     version: 'v2.1299',
     date: '2026-08-02',
     title: 'Behind the scenes: Takeoff materials summary restructured',
