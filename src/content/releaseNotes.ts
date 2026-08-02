@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1269',
+    date: '2026-08-02',
+    title: 'Behind the scenes: incident and database runbooks no longer contradict each other',
+    kind: 'infra',
+    highlights: [
+      'The troubleshooting guide now routes a frozen-database incident to evidence-first triage instead of restart-first advice, matching the freeze runbook.',
+      'The migration guide’s "best practices" section matches how migrations actually ship here (no local database, prod-only, safety blocks required).',
+      'The access-control reference caught up on all recent permission changes, including subcontractors’ new own-row visibility into their labor sheets.',
+    ],
+  },
+  {
     version: 'v2.1268',
     date: '2026-08-02',
     title: 'Behind the scenes: Jobs, Banking, and Materials developer docs match the new names',

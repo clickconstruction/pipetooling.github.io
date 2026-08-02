@@ -113,6 +113,11 @@ are ordinary tables inside the database, so they **survive a restart**. They gav
 the complete 2026-07-31 picture in three queries, after the instance was back,
 while every live-forensics path had been blind from the first second.
 
+> Companion evidence: `docs/runbooks/SUPABASE_INCIDENT_RUNBOOK.md` Phase B2 reads the
+> other half of the monitor — `monitoring.connection_samples` / `connection_totals` /
+> `checkpoint_activity` — while this runbook leans on `monitoring.health_checks`.
+> Pull both when reconstructing a freeze window.
+
 Run these via MCP `execute_sql` or the SQL editor (read-only).
 
 **a) Find the freeze window — gaps in the per-minute sampler.** Cron job 13
