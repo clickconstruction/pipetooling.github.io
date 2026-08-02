@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../lib/supabase'
-import { displayLabelForGoalPickerUser } from '../lib/goalPickerUserLabel'
 
 type GoalPickerUser = { id: string; name: string | null; email: string | null }
 
@@ -12,37 +11,32 @@ export type TeamLeaderAssignmentRow = {
 }
 
 /**
- * Team leads manager engine (People → Users → Team leads modal): the
- * team_leader_assignments rows + sort/filter/picker derivations. Extracted
- * verbatim from Settings.tsx (v2.858) as useSettingsTeamLeaderAssignments,
- * renamed/rehomed when the manager moved off Settings → Dashboard & alerts.
- * Loads on mount when `enabled` (dev|master|assistant-like). Row
- * insert/update/delete writes stay in the caller (TeamLeadsModal) via the
- * returned setter. `setError` is the caller's shared error state.
+ * Team leads manager engine: the team_leader_assignments rows + add-flow
+ * picker derivations. Extracted verbatim from Settings.tsx (v2.858) as
+ * useSettingsTeamLeaderAssignments, renamed/rehomed when the manager moved off
+ * Settings → Dashboard & alerts, then slimmed when both People surfaces
+ * (Users → Team leads modal and the Teams tab) converged on the shared
+ * TeamLeadsManager — grouping/sort/search now live in the pure kernel
+ * `src/lib/people/teamLeadsGrouping.ts`. Loads on mount when `enabled`
+ * (dev|master|assistant-like|controller). Row insert/update/delete writes stay
+ * in the caller (TeamLeadsManager) via the returned setter. `setError` is the
+ * caller's shared error state.
  */
 export function useTeamLeaderAssignments({
   enabled,
   goalPickerUsers,
-  labelUsers,
   setError,
 }: {
   enabled: boolean
+  /** Non-archived roster — what the leader/member pickers offer. */
   goalPickerUsers: GoalPickerUser[]
-  /** Roster for DISPLAY labels (sort/search). Defaults to goalPickerUsers; pass a
-   * superset including archived users so existing links never render raw UUIDs
-   * (the pickers stay non-archived via goalPickerUsers). */
-  labelUsers?: GoalPickerUser[]
   setError: (message: string | null) => void
 }) {
-  const labelRoster = labelUsers ?? goalPickerUsers
   const [teamLeaderAssignments, setTeamLeaderAssignments] = useState<TeamLeaderAssignmentRow[]>([])
   const [teamLeaderVisibilitySavingId, setTeamLeaderVisibilitySavingId] = useState<string | null>(null)
   const [teamAssignLeaderId, setTeamAssignLeaderId] = useState('')
   const [teamAssignMemberId, setTeamAssignMemberId] = useState('')
   const [teamAssignSaving, setTeamAssignSaving] = useState(false)
-  const [teamLeaderSortColumn, setTeamLeaderSortColumn] = useState<'leader' | 'member'>('leader')
-  const [teamLeaderSortDir, setTeamLeaderSortDir] = useState<'asc' | 'desc'>('asc')
-  const [teamLeaderAssignmentsSearchQuery, setTeamLeaderAssignmentsSearchQuery] = useState('')
 
   // Initial load (was part of Settings.tsx loadData's dev|master|assistant branch)
   useEffect(() => {
@@ -71,33 +65,6 @@ export function useTeamLeaderAssignments({
     })()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [enabled])
-
-  const sortedTeamLeaderAssignments = useMemo(() => {
-    const rows = [...teamLeaderAssignments]
-    rows.sort((a, b) => {
-      const aKey =
-        teamLeaderSortColumn === 'leader'
-          ? displayLabelForGoalPickerUser(a.leader_user_id, labelRoster)
-          : displayLabelForGoalPickerUser(a.member_user_id, labelRoster)
-      const bKey =
-        teamLeaderSortColumn === 'leader'
-          ? displayLabelForGoalPickerUser(b.leader_user_id, labelRoster)
-          : displayLabelForGoalPickerUser(b.member_user_id, labelRoster)
-      const base = aKey.localeCompare(bKey, undefined, { sensitivity: 'base' })
-      return teamLeaderSortDir === 'asc' ? base : -base
-    })
-    return rows
-  }, [teamLeaderAssignments, labelRoster, teamLeaderSortColumn, teamLeaderSortDir])
-
-  const filteredTeamLeaderAssignments = useMemo(() => {
-    const q = teamLeaderAssignmentsSearchQuery.trim().toLowerCase()
-    if (!q) return sortedTeamLeaderAssignments
-    return sortedTeamLeaderAssignments.filter((row) => {
-      const leaderLabel = displayLabelForGoalPickerUser(row.leader_user_id, labelRoster).toLowerCase()
-      const memberLabel = displayLabelForGoalPickerUser(row.member_user_id, labelRoster).toLowerCase()
-      return leaderLabel.includes(q) || memberLabel.includes(q)
-    })
-  }, [sortedTeamLeaderAssignments, labelRoster, teamLeaderAssignmentsSearchQuery])
 
   const teamHoursMemberPickerUsers = useMemo(() => {
     if (!teamAssignLeaderId) return []
@@ -136,14 +103,6 @@ export function useTeamLeaderAssignments({
     setTeamAssignMemberId,
     teamAssignSaving,
     setTeamAssignSaving,
-    teamLeaderSortColumn,
-    setTeamLeaderSortColumn,
-    teamLeaderSortDir,
-    setTeamLeaderSortDir,
-    teamLeaderAssignmentsSearchQuery,
-    setTeamLeaderAssignmentsSearchQuery,
-    sortedTeamLeaderAssignments,
-    filteredTeamLeaderAssignments,
     teamHoursMemberPickerUsers,
     teamHoursNoMembersAvailable,
     teamHoursMemberPickerDisabled,
