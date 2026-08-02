@@ -67,7 +67,7 @@ const SECTIONS: { id: string; sectionId: string; label: string }[] = [
   { id: 'quickfill-office-arriving', sectionId: 'office-arriving', label: 'Office Arriving' },
   { id: 'quickfill-my-inbox', sectionId: 'my-inbox', label: 'My Inbox' },
   { id: 'quickfill-hours', sectionId: 'hours', label: 'People Hours (Old)' },
-  { id: 'quickfill-people-hours-new', sectionId: 'people-hours-new', label: 'People Hours (new)' },
+  { id: 'quickfill-people-hours-new', sectionId: 'people-hours-new', label: 'People Hours' },
   {
     id: 'quickfill-unassigned-field-time',
     sectionId: 'unassigned-field-time',
@@ -76,7 +76,7 @@ const SECTIONS: { id: string; sectionId: string; label: string }[] = [
   { id: 'quickfill-difficult-people', sectionId: 'difficult-people', label: 'Difficult people' },
   { id: 'quickfill-banking-sorting', sectionId: 'banking-sorting', label: 'Banking sorting' },
   { id: 'quickfill-crew-jobs', sectionId: 'crew-jobs', label: 'Crew Jobs / Bids' },
-  { id: 'quickfill-billed-awaiting', sectionId: 'billed-awaiting', label: 'Billing Awaiting Payments' },
+  { id: 'quickfill-billed-awaiting', sectionId: 'billed-awaiting', label: 'Billed Awaiting Payment' },
   { id: 'quickfill-unpriced-fixtures', sectionId: 'unpriced-fixtures', label: 'Unpriced Fixtures' },
   { id: 'quickfill-cant-reach', sectionId: 'cant-reach', label: 'Unreachable Prospects' },
   { id: 'quickfill-prospects', sectionId: 'prospects', label: 'Prospects' },
@@ -985,7 +985,7 @@ function QuickfillPage() {
             mark={sectionMarks['people-hours-new']}
             onMarkUpToDate={() => markSectionUpToDate('people-hours-new')}
             onOpenNow={() => openSectionNow('people-hours-new')}
-            onOpenHistory={() => setMarkHistoryModal({ sectionId: 'people-hours-new', label: 'People Hours (new)' })}
+            onOpenHistory={() => setMarkHistoryModal({ sectionId: 'people-hours-new', label: 'People Hours' })}
           >
             <QuickfillPeopleHoursNewSection />
           </QuickfillSectionWrapper>
@@ -1083,7 +1083,7 @@ function QuickfillPage() {
             mark={sectionMarks['billed-awaiting']}
             onMarkUpToDate={() => markSectionUpToDate('billed-awaiting')}
             onOpenNow={() => openSectionNow('billed-awaiting')}
-            onOpenHistory={() => setMarkHistoryModal({ sectionId: 'billed-awaiting', label: 'Billing Awaiting Payments' })}
+            onOpenHistory={() => setMarkHistoryModal({ sectionId: 'billed-awaiting', label: 'Billed Awaiting Payment' })}
           >
             <BilledAwaitingPaymentSection />
           </QuickfillSectionWrapper>

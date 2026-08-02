@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1252',
+    date: '2026-08-01',
+    title: 'Quickfill: sections match the Pipeline wording',
+    kind: 'fix',
+    highlights: [
+      'The "Billing Awaiting Payments" section is now "Billed Awaiting Payment" — the same words as the board section it tracks.',
+      '"People Hours (new)" is just "People Hours" — it stopped being new a while ago.',
+    ],
+  },
+  {
     version: 'v2.1251',
     date: '2026-08-01',
     title: 'Jobs & Estimates: the "Stages" boards are now called "Pipeline"',

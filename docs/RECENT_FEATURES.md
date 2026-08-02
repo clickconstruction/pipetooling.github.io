@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-01 (v2.1251)
+last_updated: 2026-08-01 (v2.1252)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1252)
+
+### Quickfill — "Billed Awaiting Payment" everywhere + "People Hours (new)" loses its stale marker (2026-08-01)
+Naming-audit batch 2 (owner decisions N3+N7). The Quickfill section labeled **"Billing Awaiting Payments"** now matches the Jobs Pipeline section it mirrors: **"Billed Awaiting Payment"** is the canonical phrasing app-wide (section label + mark-history label in [`Quickfill.tsx`](../src/pages/Quickfill.tsx), plus the quickfill and ready-to-bill help guides). And the **"People Hours (new)"** section drops its long-stale "(new)" suffix. Labels only — section ids (`billed-awaiting`, `people-hours-new`) and mark-history keys unchanged, so freshness history carries over. `tsc -b` clean, vitest 3,336 green. Files: 1 src + 2 guides. No DB / migration / RLS / RPC / Edge changes.
 
 ## Latest Updates (v2.1251)
 
