@@ -7,6 +7,12 @@ import {
   loadPOItemsWithDetails,
   type PurchaseOrderWithItems,
 } from '../lib/materials/poItemDetails'
+import { calculateAssemblyCost as calculateAssemblyCostKernel } from '../lib/materials/assemblyCost'
+import {
+  computeLoadAllDisplayParts,
+  filterPartsByQuery,
+  filterTemplatesByQuery,
+} from '../lib/materials/materialsFilters'
 import { effectiveJobLedgerNumber } from '../lib/ledgerDisplayPrefixes'
 import { useAuth } from '../hooks/useAuth'
 import { isAssistantLike } from '../lib/subcontractorLikeRole'
@@ -1383,64 +1389,14 @@ export default function Materials() {
     return <div style={{ padding: '2rem', textAlign: 'center' }}>Access denied. Only devs, masters, assistants, estimators, primaries, and superintendents can access materials.</div>
   }
 
-  // Filter parts by search query (name, manufacturer, part_type, notes) — used by part pickers
-  function filterPartsByQuery(partList: PartWithPrices[], query: string, limit = 50): PartWithPrices[] {
-    const q = (query || '').trim().toLowerCase()
-    if (!q) return partList.slice(0, limit)
-    return partList
-      .filter(p => [p.name, p.manufacturer, p.part_type?.name, p.notes].some(f => (f || '').toLowerCase().includes(q)))
-      .slice(0, limit)
-  }
-
-  // Filter templates by search query (name, description, assembly type) — used by nested assembly pickers
-  function filterTemplatesByQuery(
-    templateList: MaterialTemplate[],
-    query: string,
-    assemblyTypes: AssemblyType[],
-    limit = 50
-  ): MaterialTemplate[] {
-    const q = (query || '').trim().toLowerCase()
-    return templateList
-      .filter(t => {
-        const typeName = t.assembly_type_id ? assemblyTypes.find(at => at.id === t.assembly_type_id)?.name ?? '' : ''
-        if (!q) return true
-        return [t.name, t.description, typeName].some(f => (f || '').toLowerCase().includes(q))
-      })
-      .slice(0, limit)
-  }
+  // filterPartsByQuery / filterTemplatesByQuery now live in lib/materials/materialsFilters
 
   // Parts are already filtered and sorted server-side, so just use them directly
   const sortedParts = parts
 
   // Determine which parts to display (load all mode with client-side filtering/sorting)
-  const displayParts = loadAllMode 
-    ? (() => {
-        // Filter by part type
-        let filtered = allParts
-        if (filterPartTypeId) {
-          filtered = filtered.filter(part => part.part_type_id === filterPartTypeId)
-        }
-        if (filterManufacturer) {
-          filtered = filtered.filter(part => part.manufacturer === filterManufacturer)
-        }
-        // Filter by search query
-        if (clientSearchQuery) {
-          const q = clientSearchQuery.toLowerCase()
-          filtered = filtered.filter(part =>
-            part.name.toLowerCase().includes(q) ||
-            part.manufacturer?.toLowerCase().includes(q) ||
-            part.part_type?.name?.toLowerCase().includes(q) ||
-            part.notes?.toLowerCase().includes(q)
-          )
-        }
-        // Sort by price count if active
-        if (sortByPriceCountAsc) {
-          return [...filtered].sort((a, b) => {
-            return a.prices.length - b.prices.length || a.name.localeCompare(b.name)
-          })
-        }
-        return filtered
-      })()
+  const displayParts = loadAllMode
+    ? computeLoadAllDisplayParts(allParts, { filterPartTypeId, filterManufacturer, clientSearchQuery, sortByPriceCountAsc })
     : sortedParts
 
   // Note: Virtual scrolling with useVirtualizer could be added here for even better
@@ -1494,46 +1450,14 @@ export default function Materials() {
   const templateStatsPctWithNoPrice = templateStatsTotal === 0 ? 0 : Math.round((templatesWithItemsWithNoPrice / templateStatsTotal) * 100)
 
   // Assembly cost calculation helper
+  // Thin wrapper over the lib kernel, closing over the page's stats cache +
+  // lowest-price map so call sites keep their (templateId, parentQuantity) shape.
   function calculateAssemblyCost(
-    templateId: string, 
+    templateId: string,
     parentQuantity: number = 1,
     visited: Set<string> = new Set()
   ): { total: number; missingPrices: number; partCount: number; nestedCount: number } {
-    // Prevent infinite recursion
-    if (visited.has(templateId)) {
-      return { total: 0, missingPrices: 0, partCount: 0, nestedCount: 0 }
-    }
-    visited.add(templateId)
-    
-    const items = allTemplateItemsForStats.filter(i => i.template_id === templateId)
-    let total = 0
-    let missingPrices = 0
-    let partCount = 0
-    let nestedCount = 0
-    
-    for (const item of items) {
-      const itemQuantity = item.quantity || 1
-      const effectiveQuantity = itemQuantity * parentQuantity
-      
-      if (item.item_type === 'part' && item.part_id) {
-        partCount++
-        const lowestPrice = partIdToLowestPrice[item.part_id]
-        if (lowestPrice != null && lowestPrice > 0) {
-          total += lowestPrice * effectiveQuantity
-        } else {
-          missingPrices++
-        }
-      } else if (item.item_type === 'template' && item.nested_template_id) {
-        nestedCount++
-        const nestedResult = calculateAssemblyCost(item.nested_template_id, effectiveQuantity, visited)
-        total += nestedResult.total
-        missingPrices += nestedResult.missingPrices
-        partCount += nestedResult.partCount
-        nestedCount += nestedResult.nestedCount
-      }
-    }
-    
-    return { total, missingPrices, partCount, nestedCount }
+    return calculateAssemblyCostKernel(templateId, allTemplateItemsForStats, partIdToLowestPrice, parentQuantity, visited)
   }
 
   // Parts Book Tab Functions
