@@ -5,7 +5,7 @@ roles: dev, master_technician, assistant, estimator
 keywords: prospects, team, hiring, candidates, rank, crew, recruiting, hire, roles, columns, board
 order: 40
 ---
-The Prospects page has two pipelines: **Customers** (leads who might buy work) and **Team** (people who might join the crew). The Team tab is a board — one column for each role you're hiring for — so when a spot opens up you already know who to call first.
+The Prospects page has two pipelines: **Customers** (leads who might buy work) and **Hiring** (people who might join the crew). The Hiring tab is a board — one column for each role you're hiring for — so when a spot opens up you already know who to call first.
 
 ## Set up your role columns
 
@@ -53,7 +53,7 @@ A role column can be deleted only once **every candidate in it has been individu
 
 ## Who can see this
 
-The Team tab is granted **per person**, on top of normal Prospects access. If you don't see the tab, you haven't been granted it. A dev can turn it on for someone under {{icon:gear}} **Settings → Active accounts → Edit** with the **Can see Prospects → Team (hiring board)** checkbox.
+The Hiring tab is granted **per person**, on top of normal Prospects access. If you don't see the tab, you haven't been granted it. A dev can turn it on for someone under {{icon:gear}} **Settings → Active accounts → Edit** with the **Can see Prospects → Hiring** checkbox.
 
 ## The four stages
 
@@ -102,7 +102,7 @@ Reviews are monthly: saving again in the same month updates that month's review;
 
 You don't have to remember the cadence: when teammates go 30+ days without your review, a **Team reviews due** notice appears on your Dashboard and in the Dispatch Mode Inbox — tap it to land right here. A dev can change the 30-day interval under Settings → Dashboard & alerts.
 
-**Reflect** shows the whole picture: for each person, every reviewer's latest scores and notes side by side, a team **average** of the three dimensions, how long they've been **at the company**, and a **History** toggle with the earlier months. The **Group by** toggle at the top switches how each card lists the feedback: {{chip:blue|Reviewer}} keeps each reviewer's three scores and notes together (the classic view), while {{chip:blue|Dimension}} regroups the same feedback under **Ability**, **Drive**, and **Integrity** headings — every reviewer's score and comment for that one dimension in a row, highest score first, with the team average next to the heading — handy when you want to read everything people said about, say, someone's Drive at once. **Click a person's card** to expand a chart of their three ratings over time — each point is the team's average for that month. Everyone who can see the Team board sees everyone's reviews — no blind reviewing, same as candidate reviews.
+**Reflect** shows the whole picture: for each person, every reviewer's latest scores and notes side by side, a team **average** of the three dimensions, how long they've been **at the company**, and a **History** toggle with the earlier months. The **Group by** toggle at the top switches how each card lists the feedback: {{chip:blue|Reviewer}} keeps each reviewer's three scores and notes together (the classic view), while {{chip:blue|Dimension}} regroups the same feedback under **Ability**, **Drive**, and **Integrity** headings — every reviewer's score and comment for that one dimension in a row, highest score first, with the team average next to the heading — handy when you want to read everything people said about, say, someone's Drive at once. **Click a person's card** to expand a chart of their three ratings over time — each point is the team's average for that month. Everyone who can see the Hiring board sees everyone's reviews — no blind reviewing, same as candidate reviews.
 
 Some people grade tough and some grade easy, so Reflect also corrects for it: the **Reviewer tendencies** panel shows each reviewer's own average, every score carries a small "+6 vs their norm" anchor, and each person gets a blue **adj** average that re-centers every reviewer's scores around the company norm (a reviewer needs at least 3 people rated before their correction kicks in). While you rate, the deck shows **your own running average** so you can keep yourself calibrated.
 

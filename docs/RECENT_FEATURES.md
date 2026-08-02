@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-01 (v2.1252)
+last_updated: 2026-08-01 (v2.1253)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1253)
+
+### Nav "Schedule", Prospects "Hiring", customer-form "Paste Fill" (2026-08-01)
+Naming-audit batch 3 (owner decisions N4+N8+N10), all label-only. **(1)** The main-nav item for `/schedule-dispatch` now reads **Schedule** (it IS the schedule hub; "Dispatch Mode" and the "Dispatch inbox" keep their names) — [`Layout.tsx`](../src/components/Layout.tsx); the schedule-dispatch guide already called it "The Schedule page". **(2)** Prospects' second pipeline tab is now **Hiring** (was "Team" — the word already means People→Teams, Dashboard My Team, and Crew P&L); internal `topTab` value stays `team`, the Settings grant checkbox and team-prospects guide updated. **(3)** The customer-form paste-autofill widget is now **Paste Fill** (was "Quick Fill", one space away from the unrelated Quickfill page); code identifiers stay. `tsc -b` clean, vitest 3,336 green. Files: 4 src + 1 guide. No DB / migration / RLS / RPC / Edge changes.
 
 ## Latest Updates (v2.1252)
 

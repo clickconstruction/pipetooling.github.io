@@ -279,7 +279,7 @@ export default function NewCustomerForm({ showQuickFill = false, onCreated, onCa
                 color: 'var(--text-700)',
               }}
             >
-              Quick Fill {quickFillExpanded ? '\u25BC' : '\u25B6'}
+              Paste Fill {quickFillExpanded ? '\u25BC' : '\u25B6'}
             </button>
           </div>
           {quickFillExpanded && (

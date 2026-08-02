@@ -1566,7 +1566,7 @@ export default function Prospects() {
             </button>
             {teamProspectsAccess && (
               <button type="button" onClick={openTeamTab} style={pageTabStyle(topTab === 'team')}>
-                Team
+                Hiring
               </button>
             )}
           </div>
