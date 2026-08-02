@@ -450,7 +450,7 @@ export function JobThreadNotesPanel({
           })}
           {pctComplete != null ? (
             <span
-              title="Stages % complete for this job"
+              title="Pipeline % complete for this job"
               style={{ marginLeft: 'auto', fontSize: '0.8125rem', color: 'var(--text-700)', whiteSpace: 'nowrap' }}
             >
               {pctComplete}% complete

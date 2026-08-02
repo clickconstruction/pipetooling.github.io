@@ -9,7 +9,7 @@ A job's line items can double as its **stages**: put them in the order the work 
 
 ## Set up the stages in ① Line Items
 
-1. Open the job (Jobs → Stages → {{button:secondary|Edit}}) and find **① Line Items**.
+1. Open the job (Jobs → Pipeline → {{button:secondary|Edit}}) and find **① Line Items**.
 2. Enter one line per stage of work with its price — for a plumbing job that's usually *Rough In*, *Top Out*, *Trim Set*, and maybe a *Final* line.
 3. Use the small **▲▼ arrows** on the left of each line to put them in work order. The order sticks with the job.
 
@@ -30,7 +30,7 @@ Rough In $3,000 → Top Out $3,000 → Trim Set $3,000 → Final $1,000 — Job 
 
 The colored strip at the top of **② Invoices** shows the whole job as blocks, one per line item, in your ① order, each sized by its share of the Job Total — with the segment's name right in the block (trimmed with … when narrow). The colors follow the same lifecycle as everywhere else: {{chip:yellow|Unbilled}}, light-blue {{chip:blue|Ready to Bill}}, {{chip:blue|Billed}}, {{chip:green|Paid}}. Hazmat riders show as a gray block at the end. Money that went out as a **dollar-amount bill** (the Make Invoice slider or a partial invoice) isn't tied to any one line item, so it shows as **hatching** across the blocks instead — first items first (the Make Invoice chips below the strip carry the paid / billed / left-to-bill totals). A line item the hatching covers completely gets a {{chip:blue|covered}} tag and loses its checkbox until that bill is voided or deleted; a partly covered item stays selectable — the **Create invoice from remaining on selected segments** button subtracts the covered money automatically and bills only what's left on your selection. The draggable **Make Invoice** track sits right under the strip (its $0-to-total scale rides the legend line above), and below it every segment is listed one per line; clicking a block highlights it and its line together (for unbilled segments, that's the same as ticking its checkbox).
 
-Not sure how the pieces travel? Click **ⓘ How invoices and jobs move** above the strip — it shows how invoices break off as green cards that move through Stages on their own, while the blue job card floats through to Paid when the last payment lands.
+Not sure how the pieces travel? Click **ⓘ How invoices and jobs move** above the strip — it shows how invoices break off as green cards that move through the Pipeline on their own, while the blue job card floats through to Paid when the last payment lands.
 
 ## Bill a stage
 

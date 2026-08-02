@@ -1,11 +1,11 @@
 ---
-title: search jobs on the Stages board
+title: search jobs on the Pipeline board
 category: Office
 roles: dev, master_technician, assistant
 keywords: stages, search, find a job, schedule notes, clock notes, session notes, schedule and time in search, tools menu
 order: 74
 ---
-The search box on **Jobs → Stages** filters every section of the board at once — counts, totals, and prints all follow what you type.
+The search box on **Jobs → Pipeline** filters every section of the board at once — counts, totals, and prints all follow what you type.
 
 ## What the search matches
 

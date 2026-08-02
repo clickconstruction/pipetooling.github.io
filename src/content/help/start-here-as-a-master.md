@@ -9,7 +9,7 @@ You see everything: customers, projects, jobs, money, people, and payroll. This 
 
 ## The four surfaces you'll live in
 
-1. **Jobs → Stages** — the busiest board: every job by billing state, from Ready to Bill through Collections.
+1. **Jobs → Pipeline** — the busiest board: every job by billing state, from Ready to Bill through Collections.
 2. **Projects** — long-running work as step chains, with attention pills for whatever is stuck. See [project status at a glance](?g=see-project-status-at-a-glance).
 3. **Bids** — estimating, from takeoff to submitted proposal.
 4. **People** — accounts, hours, payroll, contracts, and [your subs](?g=review-your-subs).

@@ -2390,7 +2390,7 @@ export default function JobFormModal({
 
   function requestRemovePaymentRow(row: PaymentRow) {
     if (mercuryLinkedPaymentRow(row)) {
-      showToast('This payment is linked to a bank transaction. Remove it from Jobs Stages → Bank Payments workflow if needed.', 'error')
+      showToast('This payment is linked to a bank transaction. Remove it from Jobs Pipeline → Bank Payments workflow if needed.', 'error')
       return
     }
     if (stripeBillInvoiceForPaymentRow(row, editing)) {

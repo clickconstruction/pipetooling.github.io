@@ -9,7 +9,7 @@ You can see who's assigned to a job and change it right from the job's activity 
 
 ## See who's on a job
 
-1. On **Jobs → Stages**, click a job's notes icon to expand its **Job activity / notes** panel.
+1. On **Jobs → Pipeline**, click a job's notes icon to expand its **Job activity / notes** panel.
 2. Top-left, you'll see the **people assigned** to the job listed next to a {{icon:help}} people button.
 
 ## Add or remove people

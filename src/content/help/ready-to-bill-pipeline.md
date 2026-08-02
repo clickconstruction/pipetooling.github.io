@@ -15,7 +15,7 @@ New jobs — from **New Job** or from an accepted estimate — land straight in 
 
 ## Reading the Progress & payment bar
 
-Every stage on the Jobs Stages board — Waiting through Paid in Full — shows one **Progress & payment** cell instead of separate money columns. The bar is the job's whole bid, filled in order: the green part is **paid**, the blue part is **billed but not yet paid** (an invoice has gone out and you're waiting on the money), the amber part is work **done but not yet billed** (unbilled), and the empty part is work not done yet. Under the bar the same numbers are spelled out — **Paid**, **Billed** (shown only when an invoice is out and unpaid), **Unbilled**, and **Left on Job** (bid minus payments). In Waiting and Working, the **% done** box at the top is where the office records how complete the job is — type a number and press Enter (later stages show the % read-only). No % and no bid value yet shows an empty dashed bar. On billed rows, a small line under the numbers shows what **this row's bill** covers (e.g. `This bill: $0 paid · $3,850 left`) and any amount **unallocated** — money on the job that isn't on any bill yet.
+Every stage on the Jobs Pipeline board — Waiting through Paid in Full — shows one **Progress & payment** cell instead of separate money columns. The bar is the job's whole bid, filled in order: the green part is **paid**, the blue part is **billed but not yet paid** (an invoice has gone out and you're waiting on the money), the amber part is work **done but not yet billed** (unbilled), and the empty part is work not done yet. Under the bar the same numbers are spelled out — **Paid**, **Billed** (shown only when an invoice is out and unpaid), **Unbilled**, and **Left on Job** (bid minus payments). In Waiting and Working, the **% done** box at the top is where the office records how complete the job is — type a number and press Enter (later stages show the % read-only). No % and no bid value yet shows an empty dashed bar. On billed rows, a small line under the numbers shows what **this row's bill** covers (e.g. `This bill: $0 paid · $3,850 left`) and any amount **unallocated** — money on the job that isn't on any bill yet.
 
 :::example One glance at a Working job
 70 % done · $41,550 bid
@@ -35,7 +35,7 @@ Under the break-off control, **all of the job's bills sit in one Invoices list**
 
 A big amber slice is the signal to bill: work is finished but the money hasn't been asked for. A blue bar means the bill is already out — you're waiting on the customer, not on the office.
 
-Know the job's number? The small **#** chip left of the Stages search bar is the fast lane: click it, type a C# or HCP number, press Enter — the board opens the right section and scrolls to the job with a highlight flash. Partial numbers land on the first match. The big search bar stays what it was: the broad filter for names, addresses, and notes.
+Know the job's number? The small **#** chip left of the Pipeline search bar is the fast lane: click it, type a C# or HCP number, press Enter — the board opens the right section and scrolls to the job with a highlight flash. Partial numbers land on the first match. The big search bar stays what it was: the broad filter for names, addresses, and notes.
 
 Next to each job's **Last activity**, a small stack of shortcuts covers the common jump-offs: the green calendar opens the job's **schedule**, the blue grid opens its **week dispatch**, the red pin opens the address in **Google Maps**, the phone icon **calls the customer** (it only appears when the job has a phone number on file), and the purple send arrow **sends the job to someone as a task** — it opens the New task form with the job attached as a link, you add your note and pick who it's for, and when they open the task, clicking the job's name takes them straight to its **Job Detail**.
 
@@ -52,7 +52,7 @@ A job usually reaches Ready to bill one of two ways:
 {{button:outline|Not yet}} &nbsp; {{button:green|Move to Ready to Bill}}
 :::
 
-- Or the office moves it manually from the Jobs Stages board.
+- Or the office moves it manually from the Jobs Pipeline board.
 
 Trip charges from Turnaways also land in Ready to Bill as their own standalone lines, independent of the job's status.
 
@@ -71,7 +71,7 @@ The **Not Billed Out** card in Dashboard Financials shows the total revenue that
 
 ## Breaking off a partial invoice
 
-To bill part of a job now and the rest later, use the green partial-invoice icon on a Jobs → Stages row. It opens a small modal:
+To bill part of a job now and the rest later, use the green partial-invoice icon on a Jobs → Pipeline row. It opens a small modal:
 
 :::example Create partial invoice
 **J512** · Smith House Repipe
@@ -114,7 +114,7 @@ Jobs that are billed but proving hard to collect can be flagged for **Collection
 
 The moment a job lands in {{chip:green|Paid}}, the app can email the good news automatically. Devs and masters on the list get the **detailed review** — a {{chip:green|PAID IN FULL}} banner, job start and last-work dates, then the full scoreboard: revenue, every payment with its date, team labor person by person (hours × wage), sub labor, parts, and the profit line, plus a month-by-month timeline. Everyone else on the list gets the **summary** — same banner and dates, the payment amount and time but no cost or profit figures anywhere.
 
-Who gets it lives behind the {{icon:gear}} button across from the **Paid in Full** section header on Jobs → Stages (devs and masters can open it; only devs can change the list — each person shows a Detailed or Summary badge so there are no surprises). The same window has a **Preview & test** block: search for any job, then
+Who gets it lives behind the {{icon:gear}} button across from the **Paid in Full** section header on Jobs → Pipeline (devs and masters can open it; only devs can change the list — each person shows a Detailed or Summary badge so there are no surprises). The same window has a **Preview & test** block: search for any job, then
 
 :::example Preview & test
 Selected: **J512** · Smith House Repipe
@@ -145,7 +145,7 @@ The detailed version ends with a **Cost & payment timeline** — the same story 
 ## Where to watch it all
 
 - **Dashboard** — Ready to Bill and Billed Waiting for Payment queues, plus the Financials cards (Accounts Receivable / Accounts Payable / Not Billed Out).
-- **Jobs → Stages** — the full board, every status.
+- **Jobs → Pipeline** — the full board, every status.
 - **Quickfill** — the **Jobs Billing** and **Billing Awaiting Payments** sections put billing review into the office's daily loop.
 
 ## Sending to more than one person
@@ -158,6 +158,6 @@ The primary **Email** field stays the billing identity: **Stripe hosted invoices
 
 Stripe and emailed invoices need a customer email, and the app now flags the gap early:
 
-- On **Jobs → Stages**, an amber {{chip:yellow|No email (N)}} chip appears by the section chips whenever Ready to Bill jobs are missing one — click it for the list, then open Edit Job to fix.
+- On **Jobs → Pipeline**, an amber {{chip:yellow|No email (N)}} chip appears by the section chips whenever Ready to Bill jobs are missing one — click it for the list, then open Edit Job to fix.
 - Marking a job **Ready to Bill** without an email shows a heads-up toast right then.
 - If you reach **Bill Customer** anyway, an amber banner at the top lets you **type the email right there** — it saves to the job (and optionally to the customer's record if that's blank too) and Stripe billing unlocks immediately, no reopening.

@@ -5,7 +5,7 @@ roles: dev
 keywords: address, city, line break, wrap, stages, devine, locality, two lines, settings
 order: 75
 ---
-Job addresses on **Jobs → Stages** and **Billing** show on two lines — street first, then the **City ST** part — so rows stay scannable. The split happens at a known city name (or a comma when there is one). The same city list also splits street vs city when prefilling lien documents and the AIA G702/G703 form.
+Job addresses on **Jobs → Pipeline** and **Billing** show on two lines — street first, then the **City ST** part — so rows stay scannable. The split happens at a known city name (or a comma when there is one). The same city list also splits street vs city when prefilling lien documents and the AIA G702/G703 form.
 
 The app ships with a list of Central Texas cities (San Antonio, Seguin, New Braunfels, and more). When a job address uses a city that isn't on the list — and has no comma — the address can't split and runs together on one line.
 

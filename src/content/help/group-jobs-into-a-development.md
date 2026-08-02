@@ -20,14 +20,14 @@ Developments are shared: once anyone creates *Sagebrush Phase 2*, everyone picks
 
 ## Where the development shows up
 
-- **Jobs → Stages**: under the customer name in the Job column, marked with a house icon (next to the GC's hard hat when both are set). Click the development name on any row to filter the whole board to it.
+- **Jobs → Pipeline**: under the customer name in the Job column, marked with a house icon (next to the GC's hard hat when both are set). Click the development name on any row to filter the whole board to it.
 - **Job Detail**: under the customer name in the Customer block.
-- **Stages search**: typing a development's name surfaces every job in it.
-- **Stages development filter**: once any job has a development, a house-icon dropdown appears next to the search — pick a development to see only its jobs (every section and total follows), or **No development set** to see the jobs still needing one.
+- **Pipeline search**: typing a development's name surfaces every job in it.
+- **Pipeline development filter**: once any job has a development, a house-icon dropdown appears next to the search — pick a development to see only its jobs (every section and total follows), or **No development set** to see the jobs still needing one.
 
 ## Review money by development
 
-In **Jobs → Stages → Billed Awaiting Payment**, open {{button:outline|GC Review}} and flip **Group by** to **By Development**: everything awaiting payment grouped per development — job counts, oldest age, outstanding totals, and a **No development set** bucket so the grand total always matches the section. {{button:outline|Print}} on a row makes that development's statement; **Print all** makes one report of every group.
+In **Jobs → Pipeline → Billed Awaiting Payment**, open {{button:outline|GC Review}} and flip **Group by** to **By Development**: everything awaiting payment grouped per development — job counts, oldest age, outstanding totals, and a **No development set** bucket so the grand total always matches the section. {{button:outline|Print}} on a row makes that development's statement; **Print all** makes one report of every group.
 
 ## Rename, archive, or delete a development
 

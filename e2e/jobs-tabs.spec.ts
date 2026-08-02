@@ -39,6 +39,6 @@ test.fixme('Stages tab state survives switching tabs and back (always-mounted co
   await search.fill('e2e-persistence-probe')
   await page.getByRole('button', { name: 'Billing' }).click()
   await expect(page.locator('main')).toContainText('Specific Work')
-  await page.getByRole('button', { name: 'Stages' }).click()
+  await page.getByRole('button', { name: 'Pipeline' }).click()
   await expect(page.getByPlaceholder(/Search HCP, name, address/)).toHaveValue('e2e-persistence-probe')
 })

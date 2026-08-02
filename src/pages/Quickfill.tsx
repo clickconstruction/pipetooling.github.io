@@ -83,7 +83,7 @@ const SECTIONS: { id: string; sectionId: string; label: string }[] = [
   { id: 'quickfill-supply-houses', sectionId: 'supply-houses', label: 'Supply Houses' },
   { id: 'quickfill-jobs-billing', sectionId: 'jobs-billing', label: 'Jobs Billing' },
   { id: 'quickfill-complete-no-bill', sectionId: 'complete-no-bill', label: 'Complete, no Total Bill' },
-  { id: 'quickfill-no-customer-stages', sectionId: 'no-customer-stages', label: 'Stages: customer link & customer pictures' },
+  { id: 'quickfill-no-customer-stages', sectionId: 'no-customer-stages', label: 'Pipeline: customer link & customer pictures' },
   { id: 'quickfill-dispatch-inbox', sectionId: 'dispatch-inbox', label: 'Dispatch inbox' },
   { id: 'quickfill-schedule', sectionId: 'schedule', label: 'Schedule' },
   {
@@ -1217,7 +1217,7 @@ function QuickfillPage() {
             onMarkUpToDate={() => void markSectionUpToDate('no-customer-stages')}
             onOpenNow={() => openSectionNow('no-customer-stages')}
             onOpenHistory={() =>
-              setMarkHistoryModal({ sectionId: 'no-customer-stages', label: 'Stages: customer link & customer pictures' })
+              setMarkHistoryModal({ sectionId: 'no-customer-stages', label: 'Pipeline: customer link & customer pictures' })
             }
           >
             <QuickfillStagesNoCustomerSection

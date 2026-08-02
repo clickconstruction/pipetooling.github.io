@@ -9,7 +9,7 @@ Every expanded job on **Jobs → Job Summary** starts with a timeline chart of t
 
 ## Open it
 
-Go to **Jobs → Job Summary** and click any job row. The row expands with a quick header — {{button:outline-blue|Job Detail}} and {{button:outline|Edit Job}} links plus the same **Assigned / HCP / Last activity** info you see on Stages — followed by the **Cost breakdown** with the chart at the top.
+Go to **Jobs → Job Summary** and click any job row. The row expands with a quick header — {{button:outline-blue|Job Detail}} and {{button:outline|Edit Job}} links plus the same **Assigned / HCP / Last activity** info you see on the Pipeline — followed by the **Cost breakdown** with the chart at the top.
 
 The same chart also lives at the bottom of the **Parts cost** section in the **Job Detail** and **Edit Job** modals. When a job has many transaction days, the chart widens and **scrolls left–right** instead of crushing the icons together.
 

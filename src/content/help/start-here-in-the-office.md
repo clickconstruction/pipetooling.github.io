@@ -10,7 +10,7 @@ You run the day from the office: dispatch, billing, people, and paperwork. Contr
 ## Your day
 
 1. **Dashboard** — clocked-in crews, unallocated bank deposits, follow-ups, and anything flagged overnight.
-2. **Jobs → Stages** — the busiest board in the app: every job by billing state, with search, GC and development filters, and print. Set progress, bill, and collect from here.
+2. **Jobs → Pipeline** — the busiest board in the app: every job by billing state, with search, GC and development filters, and print. Set progress, bill, and collect from here.
 3. **Schedule Dispatch** — who is where, day by day. See [dispatch mode](?g=dispatch-mode) and [schedule dispatch](?g=schedule-dispatch).
 4. **Quickfill** — the fast path for filling in hours and job time.
 5. **People** — accounts, hours, contracts, and [your subs](?g=review-your-subs).
