@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-02 (v2.1265)
+last_updated: 2026-08-02 (v2.1266)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1266)
+
+### People Review multi-assignee sub sheets + work-order template types + send-report-email config (2026-08-02)
+Three fixes from the docs audit. **(1) People → Review missed shared sub sheets**: the panel queried `people_labor_jobs` with `.eq('assigned_to_name', personName)`, but that column is a `' | '`-delimited multi-name string, so any sheet with 2+ assignees returned zero rows for every person on it (Jobs Worked, allocations, lifetime labor all undercounted). Now resolves junction-first via `people_labor_job_assignees` (identity plan C1-7) with a delimited-name-split fallback when no junction row exists; matching logic extracted to pure kernel [`laborJobPersonMatch.ts`](../src/lib/people/laborJobPersonMatch.ts) (+13 tests). **(2)** `settingsTemplates.ts` `template_type` union widened 11 → 14 with `work_order_offered/accepted/declined` (DB constraint was widened by `20260801220000_work_order_dispatch.sql`; the client type had drifted) — the three templates now render/edit in Settings → Email templates. **(3)** `supabase/config.toml` gains the missing `[functions.send-report-email] verify_jwt = false` block — its handler validates JWT in-handler like the other 58 functions but was the only such function without a config block. **Requires manual `supabase functions deploy send-report-email` to take effect.** Typecheck clean; 369 files / 3,350 tests green.
 
 ## Latest Updates (v2.1265)
 

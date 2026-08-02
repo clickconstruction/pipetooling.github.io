@@ -15,6 +15,7 @@ import {
 import {
   NOTIFICATION_VARIABLE_HINT,
   VARIABLE_HINT,
+  WORK_ORDER_VARIABLE_HINT,
   WORKFLOW_FN_EMAIL_TEST_OPTIONS,
   type WorkflowFnEmailTemplateType,
 } from '../../lib/settingsTemplates'
@@ -723,6 +724,57 @@ export default function SettingsTemplatesTab({ authUser, users, setError }: Sett
                 </div>
               )
             })}
+
+            <h4 style={{ margin: '1rem 0 0.5rem 0', fontSize: '0.875rem', fontWeight: 500, color: 'var(--text-muted)' }}>Work Orders</h4>
+            {[
+              { type: 'work_order_offered' as const, label: 'Work Order Offered', description: 'Sent to the sub when a work order is offered' },
+              { type: 'work_order_accepted' as const, label: 'Work Order Accepted', description: 'Sent to the office when the sub accepts a work order' },
+              { type: 'work_order_declined' as const, label: 'Work Order Declined', description: 'Sent to the office when the sub declines a work order' },
+            ].map(({ type, label, description }) => {
+              const template = emailTemplates.find(t => t.template_type === type)
+              return (
+                <div key={type} style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '1rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                    <div>
+                      <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600 }}>{label}</h3>
+                      <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.875rem', color: 'var(--text-muted)' }}>{description}</p>
+                    </div>
+                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                      {template && (
+                        <button
+                          type="button"
+                          onClick={() => openTestEmail(template)}
+                          disabled={!templateTestTargetUserId}
+                          style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'var(--bg-sky-tint)', color: 'var(--text-sky-700)', border: '1px solid var(--border-sky)' }}
+                        >
+                          Test
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => openEditTemplate(template, type)}
+                        style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem' }}
+                      >
+                        {template ? 'Edit' : 'Create'}
+                      </button>
+                    </div>
+                  </div>
+                  {template && (
+                    <div style={{ marginTop: '0.75rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
+                      <div><strong>Subject:</strong> {template.subject}</div>
+                      <div style={{ marginTop: '0.25rem', whiteSpace: 'pre-wrap', maxHeight: '3rem', overflow: 'hidden' }}>
+                        <strong>Body:</strong> {template.body.substring(0, 100)}{template.body.length > 100 ? '...' : ''}
+                      </div>
+                      {template.updated_at && (
+                        <div style={{ marginTop: '0.25rem', fontSize: '0.8125rem' }}>
+                          Last updated: {new Date(template.updated_at).toLocaleString()}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
                 </div>
               </div>
             )}
@@ -743,6 +795,9 @@ export default function SettingsTemplatesTab({ authUser, users, setError }: Sett
                     editingTemplate.template_type === 'stage_me_reopened' ? 'Stage Re-opened (ME)' :
                     editingTemplate.template_type === 'stage_next_complete_or_approved' ? 'Next Stage Ready' :
                     editingTemplate.template_type === 'stage_prior_rejected' ? 'Prior work incomplete' :
+                    editingTemplate.template_type === 'work_order_offered' ? 'Work Order Offered' :
+                    editingTemplate.template_type === 'work_order_accepted' ? 'Work Order Accepted' :
+                    editingTemplate.template_type === 'work_order_declined' ? 'Work Order Declined' :
                     'Email'} Template
                 </h2>
                 <form onSubmit={saveEmailTemplate}>
@@ -760,9 +815,11 @@ export default function SettingsTemplatesTab({ authUser, users, setError }: Sett
                     />
                     <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
                       Available variables: {
-                        editingTemplate.template_type.startsWith('stage_') 
+                        editingTemplate.template_type.startsWith('stage_')
                           ? '{{name}}, {{email}}, {{project_name}}, {{stage_name}}, {{assigned_to_name}}, {{workflow_link}}, {{previous_stage_name}}, {{rejection_reason}}'
-                          : VARIABLE_HINT
+                          : editingTemplate.template_type.startsWith('work_order_')
+                            ? WORK_ORDER_VARIABLE_HINT
+                            : VARIABLE_HINT
                       }
                     </p>
                   </div>
@@ -780,9 +837,11 @@ export default function SettingsTemplatesTab({ authUser, users, setError }: Sett
                     />
                     <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
                       Available variables: {
-                        editingTemplate.template_type.startsWith('stage_') 
+                        editingTemplate.template_type.startsWith('stage_')
                           ? '{{name}}, {{email}}, {{project_name}}, {{stage_name}}, {{assigned_to_name}}, {{workflow_link}}, {{previous_stage_name}}, {{rejection_reason}}'
-                          : VARIABLE_HINT
+                          : editingTemplate.template_type.startsWith('work_order_')
+                            ? WORK_ORDER_VARIABLE_HINT
+                            : VARIABLE_HINT
                       }
                     </p>
                   </div>

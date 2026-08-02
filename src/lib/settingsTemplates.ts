@@ -9,6 +9,12 @@ export const VARIABLE_HINT = '{{name}}, {{email}}, {{role}}, {{link}}'
 export const NOTIFICATION_VARIABLE_HINT =
   '{{assignee_name}}, {{item_title}}, {{name}}, {{stage_name}}, {{project_name}}, {{assigned_to_name}}, {{next_stage_name}}, {{rejection_reason}}'
 
+/** Variable placeholders advertised for the work_order_* email templates
+ * (the set substituted by workOrderNotifications.ts: offered fills
+ * {{offered_by}}, accepted/declined fill {{responder}}/{{reason}}). */
+export const WORK_ORDER_VARIABLE_HINT =
+  '{{name}}, {{email}}, {{project_name}}, {{stage_name}}, {{offered_by}}, {{responder}}, {{amount}}, {{window}}, {{reason}}, {{workflow_link}}'
+
 /** Placeholder step id for send-workflow-notification test (no recipient_user_id → no notification_history insert). */
 export const WORKFLOW_FN_TEST_PLACEHOLDER_STEP_ID = '00000000-0000-4000-8000-000000000001'
 
@@ -27,6 +33,9 @@ export type EmailTemplate = {
     | 'stage_me_reopened'
     | 'stage_next_complete_or_approved'
     | 'stage_prior_rejected'
+    | 'work_order_offered'
+    | 'work_order_accepted'
+    | 'work_order_declined'
   subject: string
   body: string
   updated_at: string | null
@@ -159,6 +168,20 @@ export const EMAIL_TEMPLATE_DEFAULTS: Record<EmailTemplate['template_type'], { s
   stage_prior_rejected: {
     subject: 'Prior work incomplete: {{stage_name}}',
     body: 'Hi {{assigned_to_name}},\n\nThe workflow stage "{{stage_name}}" for project "{{project_name}}" that you completed has been marked as incomplete.\n\nProject: {{project_name}}\nStage: {{stage_name}}\nReason: {{rejection_reason}}\n\nView the workflow: {{workflow_link}}',
+  },
+  // Work-order dispatch (RUN_SUBS_PLAN Phase 4) — verbatim copies of the row
+  // seeds in migration 20260801220000_work_order_dispatch.sql.
+  work_order_offered: {
+    subject: 'New work order: {{stage_name}} at {{project_name}}',
+    body: 'Hi {{name}},\n\n{{offered_by}} offered you a work order:\n\n{{stage_name}} at {{project_name}}\nAmount: {{amount}}\nProposed window: {{window}}\n\nOpen your dashboard to accept or decline: {{workflow_link}}',
+  },
+  work_order_accepted: {
+    subject: '{{responder}} accepted: {{stage_name}} at {{project_name}}',
+    body: '{{responder}} accepted the work order for {{stage_name}} at {{project_name}} ({{amount}}).\n\nWindow: {{window}}\n\nOpen the workflow: {{workflow_link}}',
+  },
+  work_order_declined: {
+    subject: '{{responder}} declined: {{stage_name}} at {{project_name}}',
+    body: '{{responder}} declined the work order for {{stage_name}} at {{project_name}} ({{amount}}).\n\nReason: {{reason}}\n\nRe-price or offer someone else: {{workflow_link}}',
   },
 }
 

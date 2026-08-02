@@ -561,6 +561,10 @@ verify_jwt = false
 [functions.paid-job-email]
 verify_jwt = false
 
+# Emails reports to subscribed recipients via Resend: JWT validated in function (getUser); same gateway pattern as test-email.
+[functions.send-report-email]
+verify_jwt = false
+
 [edge_runtime]
 enabled = true
 # Supported request policies: `oneshot`, `per_worker`.
