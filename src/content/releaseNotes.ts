@@ -11,6 +11,18 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1283',
+    date: '2026-08-02',
+    title: 'People Overhead: the numbers are now trustworthy',
+    kind: 'fix',
+    highlights: [
+      'Field materials and 90-day figures no longer silently drop rows on large histories — Overhead % and the KPI cards were overstating overhead.',
+      'Invoices sent in the evening now count in the right day for the per-$100-of-revenue figure.',
+      'Office and bid labor is now valued at the office wage for people paid a dual rate, matching payroll exactly; internal transfers are excluded from all materials totals consistently.',
+      'The Overhead tab now requires payroll access — masters without it previously saw a page of silent zeros.',
+    ],
+  },
+  {
     version: 'v2.1281',
     date: '2026-08-02',
     title: 'Behind the scenes: Materials Purchase Orders tab restructured',

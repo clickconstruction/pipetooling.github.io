@@ -1,7 +1,8 @@
 import { supabase } from './supabase'
 import type { Database, Json } from '../types/database'
-import { calendarYmdInAppTzFromIso } from '../utils/dateUtils'
-import { withSupabaseRetry } from '../utils/errorHandling'
+import { calendarYmdInAppTzFromIso, ymdAddDays } from '../utils/dateUtils'
+import { withSupabaseRetry, type SupabaseClientResult } from '../utils/errorHandling'
+import { fetchAllRows } from './supabasePaging'
 import { mercuryDebitCardIdFromRaw } from './mercuryRawDebitCard'
 
 export type OverheadPartsSource = 'mercury' | 'supply' | 'tally'
@@ -37,6 +38,64 @@ function ymdInRangeInclusive(ymd: string, startYmd: string, endYmd: string): boo
   return ymd >= startYmd && ymd <= endYmd
 }
 
+type MercuryTxEmbed = { posted_at: string | null; counterparty_name: string | null; raw: Json | null }
+type MercuryAllocationJoinRow = {
+  id: string
+  amount: number | string
+  note: string | null
+  mercury_transaction_id: string | null
+  mercury_transactions: MercuryTxEmbed | MercuryTxEmbed[] | null
+}
+type SupplyInvoiceEmbed = {
+  invoice_number: string
+  invoice_date: string
+  amount: string | number
+  supply_houses?: { name: string } | { name: string }[] | null
+}
+type SupplyAllocationJoinRow = {
+  invoice_id: string
+  job_id: string
+  pct: number | string | null
+  supply_house_invoices: SupplyInvoiceEmbed | SupplyInvoiceEmbed[] | null
+}
+type TallyPoRow = Database['public']['Functions']['list_tally_parts_with_po']['Returns'][number]
+
+/**
+ * Pages a fresh-builder-per-call query with {@link fetchAllRows}, retrying
+ * each page. These are company-lifetime tables: un-ranged, PostgREST silently
+ * caps them at `max_rows` (1000) and — ordered `created_at` asc — returns the
+ * 1,000 OLDEST rows, so the current window's materials vanish first.
+ */
+function pagedRetry<T>(
+  makePage: (from: number, to: number) => PromiseLike<SupabaseClientResult<T[]>>,
+  label: string,
+): Promise<T[]> {
+  return fetchAllRows<T>(
+    async (from, to) => ({
+      data: (await withSupabaseRetry(async () => makePage(from, to), label)) ?? [],
+      error: null,
+    }),
+    label,
+  )
+}
+
+/**
+ * Mercury `posted_at` fetch bounds: one day wide on BOTH sides of the ymd
+ * window because `addLine` re-buckets each timestamp into its Chicago
+ * calendar day (a UTC-bounded window would drop evening rows on the edges).
+ */
+function mercuryPostedAtBounds(startYmd: string, endYmd: string): { lowIso: string; highIso: string } {
+  return {
+    lowIso: `${ymdAddDays(startYmd, -1)}T00:00:00-00:00`,
+    highIso: `${ymdAddDays(endYmd, 2)}T00:00:00-00:00`,
+  }
+}
+
+const MERCURY_ALLOC_SELECT =
+  'id, amount, note, mercury_transaction_id, mercury_transactions!inner(posted_at, counterparty_name, raw)'
+const SUPPLY_ALLOC_SELECT =
+  'invoice_id, job_id, pct, supply_house_invoices!inner(invoice_number, invoice_date, amount, supply_houses(name))'
+
 /**
  * Office job materials by calendar day (Chicago wall date for Mercury/Tally timestamps),
  * same sources as job materials snapshot: Mercury allocations, supply invoice allocations, tally parts.
@@ -59,20 +118,24 @@ export async function fetchOverheadOfficePartsByDay(args: {
   }
 
   try {
-    const raw = await withSupabaseRetry(
-      async () =>
+    const { lowIso, highIso } = mercuryPostedAtBounds(startYmd, endYmd)
+    // `!inner` makes the nested posted_at range drop parent rows server-side
+    // (a plain embed filter only nulls the embed and keeps the row).
+    const raw = await pagedRetry<MercuryAllocationJoinRow>(
+      (from, to) =>
         supabase
           .from('mercury_transaction_job_allocations')
-          .select('id, amount, note, mercury_transaction_id, mercury_transactions(posted_at, counterparty_name, raw)')
+          .select(MERCURY_ALLOC_SELECT)
           .eq('job_id', officeJobLedgerId)
-          .order('created_at', { ascending: true }),
+          .gte('mercury_transactions.posted_at', lowIso)
+          .lt('mercury_transactions.posted_at', highIso)
+          .order('created_at', { ascending: true })
+          .order('id')
+          .range(from, to) as unknown as PromiseLike<SupabaseClientResult<MercuryAllocationJoinRow[]>>,
       'overhead office parts mercury',
     )
-    for (const row of raw ?? []) {
-      const txNested = row.mercury_transactions as
-        | { posted_at: string | null; counterparty_name: string | null; raw: Json | null }
-        | { posted_at: string | null; counterparty_name: string | null; raw: Json | null }[]
-        | null
+    for (const row of raw) {
+      const txNested = row.mercury_transactions
       const tx = Array.isArray(txNested) ? txNested[0] : txNested
       const posted = tx?.posted_at
       if (!posted) continue
@@ -96,29 +159,21 @@ export async function fetchOverheadOfficePartsByDay(args: {
   }
 
   try {
-    const raw = await withSupabaseRetry(
-      async () =>
+    const raw = await pagedRetry<SupplyAllocationJoinRow>(
+      (from, to) =>
         supabase
           .from('supply_house_invoice_job_allocations')
-          .select('invoice_id, job_id, pct, supply_house_invoices(invoice_number, invoice_date, amount, supply_houses(name))')
-          .eq('job_id', officeJobLedgerId),
+          .select(SUPPLY_ALLOC_SELECT)
+          .eq('job_id', officeJobLedgerId)
+          .gte('supply_house_invoices.invoice_date', startYmd)
+          .lte('supply_house_invoices.invoice_date', endYmd)
+          .order('invoice_id')
+          .order('job_id')
+          .range(from, to) as unknown as PromiseLike<SupabaseClientResult<SupplyAllocationJoinRow[]>>,
       'overhead office parts supply',
     )
-    for (const row of raw ?? []) {
-      const invNested = row.supply_house_invoices as
-        | {
-            invoice_number: string
-            invoice_date: string
-            amount: string | number
-            supply_houses?: { name: string } | { name: string }[] | null
-          }
-        | {
-            invoice_number: string
-            invoice_date: string
-            amount: string | number
-            supply_houses?: { name: string } | { name: string }[] | null
-          }[]
-        | null
+    for (const row of raw) {
+      const invNested = row.supply_house_invoices
       const inv = Array.isArray(invNested) ? invNested[0] : invNested
       if (!inv) continue
       const ymd = inv.invoice_date ? String(inv.invoice_date).slice(0, 10) : ''
@@ -138,12 +193,13 @@ export async function fetchOverheadOfficePartsByDay(args: {
   }
 
   try {
-    const raw = await withSupabaseRetry(
-      () => supabase.rpc('list_tally_parts_with_po'),
+    // The RPC takes no filter args — page it (deterministic created_at ORDER
+    // BY, the v2.1246 Review-tab pattern) and keep filtering client-side.
+    const raw = await pagedRetry<TallyPoRow>(
+      (from, to) => supabase.rpc('list_tally_parts_with_po').range(from, to),
       'overhead office parts tally',
     )
-    type TallyPoRow = Database['public']['Functions']['list_tally_parts_with_po']['Returns'][number]
-    const rows = ((raw ?? []) as TallyPoRow[]).filter((r) => r.job_id === officeJobLedgerId)
+    const rows = raw.filter((r) => r.job_id === officeJobLedgerId)
     for (const row of rows) {
       const created = row.created_at
       if (!created) continue
@@ -201,22 +257,24 @@ export async function fetchOtherJobsPartsByDay(args: {
     officeJobLedgerId != null && officeJobLedgerId !== '' && jobId === officeJobLedgerId
 
   try {
-    const raw = await withSupabaseRetry(
-      async () => {
+    const { lowIso, highIso } = mercuryPostedAtBounds(startYmd, endYmd)
+    const raw = await pagedRetry<MercuryAllocationJoinRow>(
+      (from, to) => {
         let q = supabase
           .from('mercury_transaction_job_allocations')
-          .select('id, amount, note, mercury_transaction_id, mercury_transactions(posted_at, counterparty_name, raw)')
-          .order('created_at', { ascending: true })
+          .select(MERCURY_ALLOC_SELECT)
+          .gte('mercury_transactions.posted_at', lowIso)
+          .lt('mercury_transactions.posted_at', highIso)
         if (officeJobLedgerId) q = q.neq('job_id', officeJobLedgerId)
         return q
+          .order('created_at', { ascending: true })
+          .order('id')
+          .range(from, to) as unknown as PromiseLike<SupabaseClientResult<MercuryAllocationJoinRow[]>>
       },
       'overhead other jobs parts mercury',
     )
-    for (const row of raw ?? []) {
-      const txNested = row.mercury_transactions as
-        | { posted_at: string | null; counterparty_name: string | null; raw: Json | null }
-        | { posted_at: string | null; counterparty_name: string | null; raw: Json | null }[]
-        | null
+    for (const row of raw) {
+      const txNested = row.mercury_transactions
       const tx = Array.isArray(txNested) ? txNested[0] : txNested
       const posted = tx?.posted_at
       if (!posted) continue
@@ -240,31 +298,23 @@ export async function fetchOtherJobsPartsByDay(args: {
   }
 
   try {
-    const raw = await withSupabaseRetry(
-      async () => {
+    const raw = await pagedRetry<SupplyAllocationJoinRow>(
+      (from, to) => {
         let q = supabase
           .from('supply_house_invoice_job_allocations')
-          .select('invoice_id, job_id, pct, supply_house_invoices(invoice_number, invoice_date, amount, supply_houses(name))')
+          .select(SUPPLY_ALLOC_SELECT)
+          .gte('supply_house_invoices.invoice_date', startYmd)
+          .lte('supply_house_invoices.invoice_date', endYmd)
         if (officeJobLedgerId) q = q.neq('job_id', officeJobLedgerId)
         return q
+          .order('invoice_id')
+          .order('job_id')
+          .range(from, to) as unknown as PromiseLike<SupabaseClientResult<SupplyAllocationJoinRow[]>>
       },
       'overhead other jobs parts supply',
     )
-    for (const row of raw ?? []) {
-      const invNested = row.supply_house_invoices as
-        | {
-            invoice_number: string
-            invoice_date: string
-            amount: string | number
-            supply_houses?: { name: string } | { name: string }[] | null
-          }
-        | {
-            invoice_number: string
-            invoice_date: string
-            amount: string | number
-            supply_houses?: { name: string } | { name: string }[] | null
-          }[]
-        | null
+    for (const row of raw) {
+      const invNested = row.supply_house_invoices
       const inv = Array.isArray(invNested) ? invNested[0] : invNested
       if (!inv) continue
       const ymd = inv.invoice_date ? String(inv.invoice_date).slice(0, 10) : ''
@@ -284,12 +334,13 @@ export async function fetchOtherJobsPartsByDay(args: {
   }
 
   try {
-    const raw = await withSupabaseRetry(
-      () => supabase.rpc('list_tally_parts_with_po'),
+    // The RPC takes no filter args — page it (deterministic created_at ORDER
+    // BY, the v2.1246 Review-tab pattern) and keep filtering client-side.
+    const raw = await pagedRetry<TallyPoRow>(
+      (from, to) => supabase.rpc('list_tally_parts_with_po').range(from, to),
       'overhead other jobs parts tally',
     )
-    type TallyPoRow = Database['public']['Functions']['list_tally_parts_with_po']['Returns'][number]
-    const rows = ((raw ?? []) as TallyPoRow[]).filter((r) => !jobExcludedFromTally(r.job_id))
+    const rows = raw.filter((r) => !jobExcludedFromTally(r.job_id))
     for (const row of rows) {
       const created = row.created_at
       if (!created) continue
