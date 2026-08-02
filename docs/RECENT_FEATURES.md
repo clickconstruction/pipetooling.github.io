@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-02 (v2.1283)
+last_updated: 2026-08-02 (v2.1284)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1284)
+
+### Team leads manager: Settings → People → Users modal (2026-08-02)
+The `team_leader_assignments` manager (leader→member links driving Dashboard **My Team**, team-lead clock notifications, and lead read-scope; per-link **Leader dashboard** visibility full/strip-only, dev-only editable) moves from Settings → Dashboard into a **"Team leads" modal on People → Users**, opened by a header button beside search. New [`TeamLeadsModal.tsx`](../src/components/people/TeamLeadsModal.tsx) (+4 render smokes) reuses the manager verbatim via the renamed hook `useSettingsTeamLeaderAssignments` → [`useTeamLeaderAssignments`](../src/hooks/useTeamLeaderAssignments.ts); Settings → Dashboard sheds the section + 25 props (1,985 → 1,560 lines) and keeps a one-line pointer. Gating unchanged (dev/master/assistant-like — the Settings and People gates were already identical sets). `People.tsx` untouched (the tab component owns the button/modal). The **People → Teams tab is intentionally unchanged** — its fate is a separate decision. Live-verified on a branch dev server (modal opens with real rows, Escape closes, Settings shows the pointer). Docs: SETTINGS_TABS/PEOPLE_TABS/ACCESS_CONTROL re-pointed. 3,421 tests green.
 
 ## Latest Updates (v2.1283)
 
