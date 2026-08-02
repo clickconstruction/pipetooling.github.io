@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-02 (v2.1298)
+last_updated: 2026-08-02 (v2.1299)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1299)
+
+### Takeoff decomposition T5: BidsTakeoffMaterialsSummarySection extracted (2026-08-02)
+The cost-estimate materials section ("MATERIALS BY STAGE" three-PO selects with per-stage/grand totals for exact, the "MATERIALS" roll-up for rough) plus the PO review modal move verbatim to [`components/bids/BidsTakeoffMaterialsSummarySection.tsx`](../src/components/bids/BidsTakeoffMaterialsSummarySection.tsx) (~380 lines) with their two owned states and the `loadPOItemsSummary`-backed modal effect. Engine values arrive as props; `costEstimatePOModalTaxPercent` stays a parent-owned controlled prop (the Labor tab reads the same value). Quirks preserved: stage totals default tax to **8.25**, the modal to **0**; PO selects still list stage-null POs. One benign DOM note: the fixed-overlay modal now renders inside the workspace wrapper rather than after it (identical visually — `position: fixed`). BidsTakeoffTab.tsx 4,603 → 4,293 lines (5,765 at train start). 391 files / 3,506 tests green.
 
 ## Latest Updates (v2.1298)
 

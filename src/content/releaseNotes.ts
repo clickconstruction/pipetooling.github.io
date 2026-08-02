@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1299',
+    date: '2026-08-02',
+    title: 'Behind the scenes: Takeoff materials summary restructured',
+    kind: 'infra',
+    highlights: [
+      'The materials-by-stage summary and PO review popup on the Bids Takeoff tab moved into their own component.',
+      'No visible changes; stage totals, tax, and PO printing work exactly as before.',
+    ],
+  },
+  {
     version: 'v2.1298',
     date: '2026-08-02',
     title: 'Behind the scenes: Takeoff book manager restructured',
