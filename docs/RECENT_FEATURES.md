@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-01 (v2.1259)
+last_updated: 2026-08-01 (v2.1260)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1260)
+
+### Materials — "Assemblies & Purchase Orders" tab renamed "PO Builder" (2026-08-01)
+Owner follow-up to the N12 convergence: Materials had three PO-flavored tab names ("Assemblies & Purchase Orders", "Purchase Orders", "PO Generator") plus Assembly Book also listing assemblies — maximum word-collision for a 30-character label. The workbench tab (pick assemblies → compose draft POs) is now **PO Builder**, giving a clean three-way contrast: PO Builder (compose) → Purchase Orders (the list) → PO Generator (job-parts ledger). Label-only in [`Materials.tsx`](../src/pages/Materials.tsx); the `assemblies-po` slug and its `templates-po` back-compat rewrite are unchanged. [`GLOSSARY.md`](./GLOSSARY.md) Assembly entry updated. Verified live with the dev test account: tab renders "PO Builder", both panels (Material Assemblies + Draft Purchase Orders) intact, and a legacy `?tab=templates-po` pin still self-rewrites and lands correctly. `tsc -b` clean, vitest green. No DB / migration / RLS / RPC / Edge changes.
 
 ## Latest Updates (v2.1259)
 

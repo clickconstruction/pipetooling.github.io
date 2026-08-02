@@ -2782,7 +2782,7 @@ export default function Materials() {
         const poWithItems: PurchaseOrderWithItems = { ...newPO as PurchaseOrder, items: itemsWithDetails }
         setEditingPO(poWithItems)
         setSelectedPO(null) // Close the view modal
-        setActiveTab('assemblies-po') // Switch to Assemblies & Purchase Orders tab
+        setActiveTab('assemblies-po') // Switch to the PO Builder tab
       } else {
         const poWithItems: PurchaseOrderWithItems = { ...newPO as PurchaseOrder, items: [] }
         setEditingPO(poWithItems)
@@ -3085,7 +3085,7 @@ export default function Materials() {
             }}
             style={pageTabStyle(activeTab === 'assemblies-po')}
           >
-            Assemblies & Purchase Orders
+            PO Builder
           </button>
           <button
             type="button"
