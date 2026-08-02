@@ -241,6 +241,7 @@ export default function Materials() {
   const [allTemplateItemsForStats, setAllTemplateItemsForStats] = useState<Array<{ template_id: string; item_type: string; part_id: string | null; nested_template_id: string | null; quantity: number }>>([])
   const [partIdToLowestPrice, setPartIdToLowestPrice] = useState<Record<string, number>>({})
   const [draftPOs, setDraftPOs] = useState<PurchaseOrderWithItems[]>([])
+  const [draftPOSearch, setDraftPOSearch] = useState('')
   const [selectedPO, setSelectedPO] = useState<PurchaseOrderWithItems | null>(null)
   const [editingPO, setEditingPO] = useState<PurchaseOrderWithItems | null>(null)
   const [templateFormOpen, setTemplateFormOpen] = useState(false)
@@ -1514,6 +1515,11 @@ export default function Materials() {
   const templateIdsWithItems = new Set(allTemplateItemsForStats.map(i => i.template_id))
 
   // Filter material templates by search (name, description)
+  const draftPOSearchLower = draftPOSearch.trim().toLowerCase()
+  const filteredDraftPOs = draftPOSearchLower
+    ? draftPOs.filter(po => (po.name ?? '').toLowerCase().includes(draftPOSearchLower))
+    : draftPOs
+
   const filteredTemplates = materialTemplates.filter(t => {
     const isEmpty = !templateIdsWithItems.has(t.id)
     const hasActiveFilter = filterIncludeEmpty || filterAssemblyTypeIds.length > 0
@@ -4144,18 +4150,11 @@ export default function Materials() {
 
       {/* Assemblies & PO Builder Tab */}
       {activeTab === 'assemblies-po' && (
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
+        <div className="po-builder-grid" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: '2rem' }}>
           {/* Left Panel: Material Assemblies */}
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
               <h2>Material Assemblies</h2>
-              <button
-                type="button"
-                onClick={openAddTemplate}
-                style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
-              >
-                Add Assembly
-              </button>
             </div>
 
             <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.75rem' }}>
@@ -4241,6 +4240,23 @@ export default function Materials() {
                 style={{ flex: 1, padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
               />
             </div>
+            <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', margin: '0 0 0.75rem' }}>
+              Build POs here — add or edit assemblies in{' '}
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveTab('assembly-book')
+                  setSearchParams((prev) => {
+                    const next = new URLSearchParams(prev)
+                    next.set('tab', 'assembly-book')
+                    return next
+                  })
+                }}
+                style={{ background: 'none', border: 'none', padding: 0, color: 'var(--text-link)', textDecoration: 'underline dotted', cursor: 'pointer', font: 'inherit' }}
+              >
+                Assembly Book →
+              </button>
+            </div>
 
             <div style={{ border: '1px solid var(--border)', borderRadius: 4, maxHeight: '600px', overflow: 'auto' }}>
               {materialTemplates.length === 0 ? (
@@ -4260,6 +4276,21 @@ export default function Materials() {
                     const partsButtonBackground = partCount === 0 ? '#dc2626' : unpricedCount > 0 ? '#ca8a04' : '#3b82f6'
                     const partsButtonColor = partsButtonBackground === '#ca8a04' ? '#1f2937' : 'white'
                     const assemblyType = assemblyTypes.find(at => at.id === template.assembly_type_id)
+                    // Estimated cost at each part's lowest supply-house price (direct parts
+                    // only, mirroring partCount above). null while any part is unpriced or
+                    // unresolved so we never show a misleading partial number.
+                    const assemblyEstimatedCost = (() => {
+                      if (partItems.length === 0) return null
+                      let sum = 0
+                      for (const i of partItems) {
+                        const part = parts.find(pp => pp.id === i.part_id) ?? allParts.find(pp => pp.id === i.part_id)
+                        const prices = (part?.prices ?? []).map(pr => Number(pr.price)).filter(n => Number.isFinite(n) && n > 0)
+                        if (prices.length === 0) return null
+                        sum += Math.min(...prices) * i.quantity
+                      }
+                      return sum
+                    })()
+                    const canQuickAddToPO = editingPO != null && editingPO.status === 'draft'
                     return (
                     <div
                       key={template.id}
@@ -4271,8 +4302,8 @@ export default function Materials() {
                       }}
                       onClick={() => setSelectedTemplate(template)}
                     >
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
-                        <div style={{ flex: 1 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', gap: '0.5rem' }}>
+                        <div style={{ flex: 1, minWidth: 0 }}>
                           <div style={{ fontWeight: 600, marginBottom: '0.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
                             {template.name}
                             {assemblyType && (
@@ -4280,33 +4311,49 @@ export default function Materials() {
                                 {assemblyType.name}
                               </span>
                             )}
+                            {assemblyEstimatedCost != null && (
+                              <span
+                                title="Estimated at each part's lowest supply-house price (direct parts only — nested assemblies not included)"
+                                style={{ marginLeft: 'auto', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-green-600)', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}
+                              >
+                                ${formatCurrency(assemblyEstimatedCost)}
+                              </span>
+                            )}
                           </div>
                           {template.description && (
-                            <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>{template.description}</div>
+                            // Clamped to two lines — full text on hover; expand by opening Parts.
+                            <div
+                              title={template.description}
+                              style={{ fontSize: '0.875rem', color: 'var(--text-muted)', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}
+                            >
+                              {template.description}
+                            </div>
                           )}
-                        </div>
-                        <div style={{ display: 'flex', gap: '0.5rem' }}>
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              setSelectedTemplate(template)
-                              setTimeout(() => templateItemsSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 150)
-                            }}
-                            style={{ padding: '0.25rem 0.5rem', background: partsButtonBackground, color: partsButtonColor, border: 'none', borderRadius: 4, cursor: 'pointer' }}
-                          >
-                            Parts
-                          </button>
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              openEditTemplate(template)
-                            }}
-                            style={{ padding: '0.25rem 0.5rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}
-                          >
-                            Edit
-                          </button>
+                          <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
+                            <button
+                              type="button"
+                              disabled={!canQuickAddToPO || addingTemplateToPO}
+                              title={canQuickAddToPO ? `Add every part in "${template.name}" to the selected draft PO` : 'Select or create a draft PO first'}
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                if (canQuickAddToPO && editingPO) addTemplateToPO(editingPO.id, template.id)
+                              }}
+                              style={{ padding: '0.25rem 0.6rem', background: canQuickAddToPO ? '#3b82f6' : 'var(--bg-muted)', color: canQuickAddToPO ? 'white' : 'var(--text-faint)', border: 'none', borderRadius: 4, cursor: canQuickAddToPO ? 'pointer' : 'not-allowed', fontWeight: 600 }}
+                            >
+                              → Add to PO
+                            </button>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                setSelectedTemplate(template)
+                                setTimeout(() => templateItemsSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 150)
+                              }}
+                              style={{ padding: '0.25rem 0.5rem', background: partsButtonBackground, color: partsButtonColor, border: 'none', borderRadius: 4, cursor: 'pointer' }}
+                            >
+                              Parts
+                            </button>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -4689,14 +4736,36 @@ export default function Materials() {
               </button>
             </div>
 
-            <div style={{ border: '1px solid var(--border)', borderRadius: 4, maxHeight: '300px', overflow: 'auto', marginBottom: '1.5rem' }}>
+            {draftPOs.length > 0 && (
+              <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.75rem' }}>
+                <input
+                  type="text"
+                  value={draftPOSearch}
+                  onChange={(e) => setDraftPOSearch(e.target.value)}
+                  placeholder="Search drafts by name…"
+                  style={{ flex: 1, padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
+                />
+              </div>
+            )}
+            <div style={{ border: '1px solid var(--border)', borderRadius: 4, marginBottom: '1.5rem' }}>
               {draftPOs.length === 0 ? (
                 <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
-                  No draft purchase orders. Create one from an assembly or manually.
+                  <div style={{ marginBottom: '0.75rem' }}>No draft purchase orders yet.</div>
+                  <button
+                    type="button"
+                    onClick={createEmptyPO}
+                    style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 600 }}
+                  >
+                    Create PO
+                  </button>
+                </div>
+              ) : filteredDraftPOs.length === 0 ? (
+                <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+                  No drafts match "{draftPOSearch.trim()}"
                 </div>
               ) : (
                 <div>
-                  {draftPOs.map(po => {
+                  {filteredDraftPOs.map(po => {
                     const total = po.items.reduce((sum, item) => sum + (item.price_at_time * item.quantity), 0)
                     return (
                       <div
@@ -4741,7 +4810,7 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
                             <div style={{ fontWeight: 600, marginBottom: '0.25rem' }}>{po.name}</div>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '0.75rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
                               <span>
-                                {po.items.filter(i => Number(i.price_at_time ?? 0) > 0).length}/{po.items.length} items • ${formatCurrency(total)} total
+                                {po.items.filter(i => Number(i.price_at_time ?? 0) > 0).length} of {po.items.length} priced • ${formatCurrency(total)}
                               </span>
                               <span
                                 title={po.created_at ? `Created ${new Date(po.created_at).toLocaleString()}` : undefined}
@@ -4803,12 +4872,12 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
                           onClick={() => startEditPOName(editingPO.id, editingPO.name)}
                           style={{ padding: '0.25rem 0.5rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}
                         >
-                          Edit
+                          Rename
                         </button>
                       </div>
                     )}
                     <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-                      Status: <strong>{editingPO.status}</strong> • {editingPO.items.filter(i => Number(i.price_at_time ?? 0) > 0).length}/{editingPO.items.length} items • ${formatCurrency(editingPO.items.reduce((sum, item) => sum + (item.price_at_time * item.quantity), 0))} total
+                      {editingPO.items.filter(i => Number(i.price_at_time ?? 0) > 0).length} of {editingPO.items.length} priced • ${formatCurrency(editingPO.items.reduce((sum, item) => sum + (item.price_at_time * item.quantity), 0))} total
                     </div>
                   </div>
                   <button
@@ -4829,8 +4898,8 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
 
                 {/* Items Table */}
                 {editingPO.items.length > 0 && (
-                  <div style={{ marginBottom: '1.5rem', border: '1px solid var(--border)', borderRadius: 4, overflow: 'hidden' }}>
-                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <div style={{ marginBottom: '1.5rem', border: '1px solid var(--border)', borderRadius: 4, overflowX: 'auto' }}>
+                    <table style={{ width: '100%', minWidth: 640, borderCollapse: 'collapse' }}>
                       <thead style={{ background: 'var(--bg-subtle)' }}>
                         <tr>
                           <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Part</th>
@@ -5013,7 +5082,7 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
                                       }}
                                       style={{ marginLeft: '0.5rem', padding: '0.15rem 0.4rem', fontSize: '0.75rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}
                                     >
-                                      Edit
+                                      Notes
                                     </button>
                                   </>
                                 )}

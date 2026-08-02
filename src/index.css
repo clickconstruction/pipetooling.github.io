@@ -1975,3 +1975,12 @@ body.my-time-boundary-dragging {
     height: 28px;
   }
 }
+
+/* PO Builder (Materials → assemblies-po): two fluid columns on wide screens,
+   stacked with Drafts first on narrow ones. The columns are minmax(0,1fr) so
+   the selected-PO items table can never force the page into sideways scroll —
+   it scrolls inside its own wrapper instead (v2.1261). */
+@media (max-width: 1099px) {
+  .po-builder-grid { grid-template-columns: minmax(0, 1fr) !important; }
+  .po-builder-grid > div:last-child { order: -1; }
+}

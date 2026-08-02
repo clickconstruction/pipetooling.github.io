@@ -11,6 +11,18 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1261',
+    date: '2026-08-01',
+    title: 'PO Builder redesign: faster to scan, one tap to add',
+    kind: 'feature',
+    highlights: [
+      'The page fits your screen now \u2014 no more scrolling sideways; on phones the columns stack with your drafts on top.',
+      'Every assembly card has an "\u2192 Add to PO" button that drops its parts straight into the selected draft.',
+      'Drafts are searchable, show "2 of 3 priced" at a glance, and assembly cards show an estimated cost.',
+      'Assemblies are now managed in Assembly Book \u2014 PO Builder is for building POs.',
+    ],
+  },
+  {
     version: 'v2.1260',
     date: '2026-08-01',
     title: 'Materials: the PO workbench tab is now "PO Builder"',
