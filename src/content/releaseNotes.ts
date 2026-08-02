@@ -11,13 +11,23 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
-    version: 'v2.1304',
+    version: 'v2.1306',
     date: '2026-08-02',
     title: 'Behind the scenes: Takeoff assembly editors restructured',
     kind: 'infra',
     highlights: [
       'The three assembly-editing popups on Bids → Takeoffs (Add Assembly, Add Parts, Edit Assembly) moved into their own component.',
       'No visible changes; creating and editing assemblies — including Save as Assembly with a bundle price — works exactly as before.',
+    ],
+  },
+  {
+    version: 'v2.1304',
+    date: '2026-08-02',
+    title: 'Behind the scenes: Banking groundwork, part 1',
+    kind: 'infra',
+    highlights: [
+      'The shared Banking transaction table and the Nicknames and Advanced dropdown menus moved into their own component files.',
+      'No visible changes; the Ledger and User Sort tabs work exactly as before.',
     ],
   },
   {
