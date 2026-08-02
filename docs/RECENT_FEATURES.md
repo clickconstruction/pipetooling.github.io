@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-01 (v2.1260)
+last_updated: 2026-08-01 (v2.1261)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1261)
+
+### PO Builder redesign — no more sideways scroll, one-tap assembly adds, drafts as a worklist (2026-08-01)
+Implements the owner-approved mockup for **Materials → PO Builder**. **(1) Overflow fixed:** the two-column grid becomes `minmax(0,1fr)` with a `.po-builder-grid` media query that stacks columns under 1100px — **Drafts first** on narrow screens; the selected-PO items table (`minWidth: 640`) scrolls inside its own wrapper (`overflowX: auto`, was `overflow: hidden`). The page previously panned sideways at 1280px, hiding Create PO and the created dates. **(2) Drafts worklist:** search box, the 300px inner scrollbox removed (list grows), rows read "2 of 2 priced • $55.68", the editor header drops the redundant "Status: draft" and its Edit button becomes **Rename**; the empty state gains a Create PO button. **(3) One-tap add:** every assembly card gets **→ Add to PO** targeting the selected draft (reuses `addTemplateToPO`; disabled with "Select or create a draft PO first" until a draft is selected). **(4) Compact cards:** descriptions clamp to two lines (full text on hover) and each card shows an **estimated cost** at each part's lowest supply-house price (direct parts only; hidden while any part is unpriced). **(5)** The items table's notes-cell button says **Notes**, killing the Edit/Edit/Remove stutter. **(6) Consume-only assemblies:** the tab's Add Assembly button and per-card Edit are gone — authoring lives in **Assembly Book** (which already had full add/edit), linked from a line under the search. Verified live with the dev test account on real Electrical data: no horizontal overflow at any width (was 1370px wide at a 1280px window), quick-add gates correctly, stacked order on phones, all wording in place. `tsc -b` clean, theme-token check OK, vitest 3,336 green. Files: [`Materials.tsx`](../src/pages/Materials.tsx) + one `index.css` rule. No DB / migration / RLS / RPC / Edge changes.
 
 ## Latest Updates (v2.1260)
 
