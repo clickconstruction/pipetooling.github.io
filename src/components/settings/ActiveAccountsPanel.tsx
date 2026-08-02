@@ -490,7 +490,7 @@ export default function ActiveAccountsPanel({ variant, onDataChanged, onOpenFind
                             onChange={(e) => setEditTeamProspectsAccess(e.target.checked)}
                             disabled={updatingId === u.id}
                           />
-                          Can see Prospects → Team (hiring board)
+                          Can see Prospects → Hiring (the hiring board)
                         </label>
                       </td>
                     </tr>

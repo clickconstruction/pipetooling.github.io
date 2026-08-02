@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1253',
+    date: '2026-08-01',
+    title: 'Clearer names: Schedule, Hiring, and Paste Fill',
+    kind: 'feature',
+    highlights: [
+      'The nav item for the day-schedule hub now says Schedule (Dispatch Mode and the Dispatch inbox keep their names).',
+      'Prospects\u2019 people pipeline is now the Hiring tab \u2014 "Team" was already taken three other places.',
+      'The paste-to-autofill box on the new-customer form is now Paste Fill, so it can\u2019t be confused with the Quickfill page.',
+    ],
+  },
+  {
     version: 'v2.1252',
     date: '2026-08-01',
     title: 'Quickfill: sections match the Pipeline wording',

@@ -601,10 +601,10 @@ export default function Layout() {
                   ...(isAssistantLike(role) ? { fontWeight: 700 } : {}),
                 })}
                 onClick={onNavClick}
-                title="Dispatch"
-                aria-label="Dispatch"
+                title="Schedule"
+                aria-label="Schedule"
               >
-                Dispatch
+                Schedule
               </NavLink>
             )}
             {(role === 'dev' || role === 'master_technician' || isAssistantLike(role)) && (
