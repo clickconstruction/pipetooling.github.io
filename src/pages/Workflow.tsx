@@ -255,7 +255,6 @@ export default function Workflow() {
     window.addEventListener('resize', onResize)
     return () => window.removeEventListener('resize', onResize)
   }, [])
-  const [projectMaster, setProjectMaster] = useState<{ id: string; name: string | null; email: string | null } | null>(null)
   const [sectionExpanded, setSectionExpanded] = useState<Record<string, boolean>>({})
   const [rowCollapsed, setRowCollapsed] = useState<Record<string, boolean>>({})
   const [oldStagesCollapsed, setOldStagesCollapsed] = useState(false)
@@ -382,22 +381,6 @@ export default function Workflow() {
 
     const projectData = data as Project
     setProject(projectData)
-    
-    // Load master information if master_user_id exists
-    if (projectData.master_user_id) {
-      const { data: masterData } = await supabase
-        .from('users')
-        .select('id, name, email')
-        .eq('id', projectData.master_user_id)
-        .single()
-      if (masterData) {
-        setProjectMaster(masterData as { id: string; name: string | null; email: string | null })
-      } else {
-        setProjectMaster(null)
-      }
-    } else {
-      setProjectMaster(null)
-    }
     return true
   }
 
@@ -2144,11 +2127,6 @@ export default function Workflow() {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
             <h1 style={{ marginBottom: '0.5rem' }}>{project.name}{" \u2013 "}Workflow</h1>
-            {projectMaster && (
-              <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginBottom: '0.5rem', fontWeight: 500 }}>
-                Project Master: {projectMaster.name || projectMaster.email || 'Unknown'}
-              </div>
-            )}
             {canAssignSuperintendents && (
               <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.375rem', flexWrap: 'wrap' }}>
                 <span style={{ fontWeight: 500 }}>Superintendents:</span>

@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1272',
+    date: '2026-08-02',
+    title: 'Projects: the "Master" badge is gone',
+    kind: 'feature',
+    highlights: [
+      'Project cards and the Workflow page no longer show the "Master: …" owner badge — since access became company-wide by role, it repeated the same name everywhere and carried no information.',
+      'Ownership itself is unchanged behind the scenes; the Edit Customer form still shows and sets it.',
+    ],
+  },
+  {
     version: 'v2.1271',
     date: '2026-08-02',
     title: 'Behind the scenes: local dev sessions last as long as production ones',
