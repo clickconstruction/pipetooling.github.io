@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { useAuth } from '../../hooks/useAuth'
 import { useTeamLeaderAssignments } from '../../hooks/useTeamLeaderAssignments'
 import { supabase } from '../../lib/supabase'
@@ -23,21 +23,27 @@ export default function TeamLeadsModal({ open, onClose }: { open: boolean; onClo
   const { user: authUser, role: myRole } = useAuth()
   const canManage = myRole === 'dev' || myRole === 'master_technician' || isAssistantLike(myRole)
   const [error, setError] = useState<string | null>(null)
-  const [goalPickerUsers, setGoalPickerUsers] = useState<Array<{ id: string; name: string | null; email: string | null }>>([])
+  const [allUsers, setAllUsers] = useState<Array<{ id: string; name: string | null; email: string | null; archived_at: string | null }>>([])
 
-  // Same picker roster Settings loaded: all non-archived accounts by name.
+  // One unfiltered fetch: pickers use the non-archived subset (same roster Settings
+  // loaded), but display labels use everyone — existing links to archived accounts
+  // must render their name, not a raw UUID.
   useEffect(() => {
     if (!open || !canManage) return
     void (async () => {
-      const { data: goalUsers, error: usersErr } = await supabase
+      const { data: userRows, error: usersErr } = await supabase
         .from('users')
-        .select('id, name, email')
-        .is('archived_at', null)
+        .select('id, name, email, archived_at')
         .order('name')
       if (usersErr) setError(usersErr.message)
-      else setGoalPickerUsers((goalUsers ?? []) as Array<{ id: string; name: string | null; email: string | null }>)
+      else setAllUsers((userRows ?? []) as Array<{ id: string; name: string | null; email: string | null; archived_at: string | null }>)
     })()
   }, [open, canManage])
+
+  const goalPickerUsers = useMemo(() => allUsers.filter((u) => u.archived_at == null), [allUsers])
+  const archivedIds = useMemo(() => new Set(allUsers.filter((u) => u.archived_at != null).map((u) => u.id)), [allUsers])
+  const labelForUser = (userId: string): string =>
+    displayLabelForGoalPickerUser(userId, allUsers) + (archivedIds.has(userId) ? ' (archived)' : '')
 
   const {
     teamLeaderAssignments,
@@ -63,6 +69,7 @@ export default function TeamLeadsModal({ open, onClose }: { open: boolean; onClo
   } = useTeamLeaderAssignments({
     enabled: open && canManage,
     goalPickerUsers,
+    labelUsers: allUsers,
     setError,
   })
 
@@ -389,8 +396,8 @@ export default function TeamLeadsModal({ open, onClose }: { open: boolean; onClo
                   </thead>
                   <tbody>
                     {filteredTeamLeaderAssignments.map((row) => {
-                      const leaderLabel = displayLabelForGoalPickerUser(row.leader_user_id, goalPickerUsers)
-                      const memberLabel = displayLabelForGoalPickerUser(row.member_user_id, goalPickerUsers)
+                      const leaderLabel = labelForUser(row.leader_user_id)
+                      const memberLabel = labelForUser(row.member_user_id)
                       return (
                         <tr key={row.id} style={{ borderBottom: '1px solid var(--border)' }}>
                           <td style={{ padding: '0.5rem 0.75rem' }}>{leaderLabel}</td>

@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-02 (v2.1288)
+last_updated: 2026-08-02 (v2.1289)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1289)
+
+### Team leads modal: names for archived accounts (2026-08-02)
+Follow-up to v2.1284: the modal's display labels resolved from the non-archived picker roster, so assignment rows pointing at archived accounts rendered raw UUIDs (a flaw inherited verbatim from the old Settings copy). Now one unfiltered `users` fetch feeds two rosters — pickers keep the non-archived subset, display labels use everyone, and archived accounts render as "Name (archived)". `useTeamLeaderAssignments` gained an optional `labelUsers` roster for sort/search so archived names sort and match correctly. Live-verified: 0 raw UUIDs, 14 links flagged "(archived)" in prod data. Typecheck/lint clean; render tests green.
 
 ## Latest Updates (v2.1288)
 
