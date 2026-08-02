@@ -6,6 +6,7 @@ import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } 
 import { CSS } from '@dnd-kit/utilities'
 import { supabase } from '../../lib/supabase'
 import { loadPOItemsSummary } from '../../lib/bids/poItemsSummary'
+import { mergeItemIntoDrafts, mergeTemplateItemDrafts, mergedPartQuantity } from '../../lib/bids/mergeTemplateItemDrafts'
 import { addExpandedPartsToPO, expandTemplate, getTemplatePartsPreview } from '../../lib/materialPOUtils'
 import {
   catalogUnitPricesEffectivelyEqual,
@@ -541,20 +542,7 @@ export function BidsTakeoffTab({
     }
     const templateId = (templateData as { id: string }).id
     // Merge parts by part_id (unique constraint: one part per template) - nested templates can repeat
-    const merged: Array<{ item_type: string; part_id: string | null; nested_template_id: string | null; quantity: number }> = []
-    for (const item of takeoffNewTemplateItems) {
-      if (!item) continue
-      if (item.item_type === 'part' && item.part_id) {
-        const existing = merged.find((m) => m.item_type === 'part' && m.part_id === item.part_id)
-        if (existing) {
-          existing.quantity += item.quantity
-        } else {
-          merged.push({ ...item, quantity: item.quantity })
-        }
-      } else {
-        merged.push({ ...item, quantity: item.quantity })
-      }
-    }
+    const merged = mergeTemplateItemDrafts(takeoffNewTemplateItems)
     for (let i = 0; i < merged.length; i++) {
       const item = merged[i]
       if (!item) continue
@@ -628,28 +616,15 @@ export function BidsTakeoffTab({
     if (takeoffNewItemType === 'part' && !takeoffNewItemPartId) return
     if (takeoffNewItemType === 'template' && !takeoffNewItemTemplateId) return
     const qty = Math.max(1, parseInt(takeoffNewItemQuantity, 10) || 1)
-    setTakeoffNewTemplateItems((prev) => {
+    setTakeoffNewTemplateItems((prev) =>
       // For parts: merge with existing same part instead of adding duplicate row
-      if (takeoffNewItemType === 'part' && takeoffNewItemPartId) {
-        const idx = prev.findIndex(
-          (p) => p.item_type === 'part' && p.part_id === takeoffNewItemPartId
-        )
-        if (idx >= 0) {
-          const next = [...prev]
-          next[idx] = { ...next[idx]!, quantity: (next[idx]!.quantity ?? 1) + qty }
-          return next
-        }
-      }
-      return [
-        ...prev,
-        {
-          item_type: takeoffNewItemType,
-          part_id: takeoffNewItemType === 'part' ? takeoffNewItemPartId : null,
-          nested_template_id: takeoffNewItemType === 'template' ? takeoffNewItemTemplateId : null,
-          quantity: qty,
-        },
-      ]
-    })
+      mergeItemIntoDrafts(prev, {
+        item_type: takeoffNewItemType,
+        part_id: takeoffNewItemType === 'part' ? takeoffNewItemPartId : null,
+        nested_template_id: takeoffNewItemType === 'template' ? takeoffNewItemTemplateId : null,
+        quantity: qty,
+      })
+    )
     setTakeoffNewItemPartId('')
     setTakeoffNewItemTemplateId('')
     setTakeoffNewItemQuantity('1')
@@ -847,7 +822,7 @@ export function BidsTakeoffTab({
       if (existing) {
         const { error: updateErr } = await supabase
           .from('material_template_items')
-          .update({ quantity: (existing.quantity ?? 1) + quantity })
+          .update({ quantity: mergedPartQuantity(existing.quantity, quantity) })
           .eq('id', existing.id)
         if (updateErr) {
           setError(updateErr.message)
@@ -934,7 +909,7 @@ export function BidsTakeoffTab({
     if (existingPart) {
       const { error: updateErr } = await supabase
         .from('material_template_items')
-        .update({ quantity: (existingPart.quantity ?? 1) + qty })
+        .update({ quantity: mergedPartQuantity(existingPart.quantity, qty) })
         .eq('id', existingPart.id)
       if (updateErr) {
         setError(updateErr.message)

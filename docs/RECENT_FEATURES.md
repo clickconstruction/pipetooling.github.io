@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-02 (v2.1294)
+last_updated: 2026-08-02 (v2.1295)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1295)
+
+### Takeoff decomposition Stage A: mergeTemplateItemDrafts kernel (2026-08-02)
+Preserve-quirk #15's four divergent part-merge implementations collapse into [`lib/bids/mergeTemplateItemDrafts.ts`](../src/lib/bids/mergeTemplateItemDrafts.ts) (+7 tests): `mergeTemplateItemDrafts` (the batch pre-insert loop in `saveTakeoffNewTemplate`), `mergeItemIntoDrafts` (the setState-updater form in `addTakeoffNewTemplateItem`), and `mergedPartQuantity` (the `(existing.quantity ?? 1) + qty` rule the two DB-backed variants `addEditTemplateItem`/`savePartsToTemplate` apply on UPDATE). Parts merge by `part_id`, nested templates repeat — each variant's exact semantics pinned (first-occurrence order, `?? 1` default, no input mutation). Behavior-preserving only. 391 files / 3,506 tests green.
 
 ## Latest Updates (v2.1294)
 
