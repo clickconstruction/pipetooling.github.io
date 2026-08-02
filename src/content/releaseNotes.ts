@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1303',
+    date: '2026-08-02',
+    title: 'Behind the scenes: Workflow step form restructured',
+    kind: 'infra',
+    highlights: [
+      'The Add/Edit step popup on the project Workflow page (including its Add Person form) moved into its own component.',
+      'No visible changes; adding, editing, and assigning steps works exactly as before.',
+    ],
+  },
+  {
     version: 'v2.1302',
     date: '2026-08-02',
     title: 'Subs: sheets from archived people stop nagging',

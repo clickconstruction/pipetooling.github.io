@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-02 (v2.1302)
+last_updated: 2026-08-02 (v2.1303)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1303)
+
+### Workflow decomposition: StepFormModal extracted (2026-08-02)
+First component move of the Workflow page decomposition (per [`WORKFLOW_PAGE_ARCHITECTURE.md`](./WORKFLOW_PAGE_ARCHITECTURE.md)): the ~505-line Add/Edit step modal moves verbatim from the bottom of [`Workflow.tsx`](../src/pages/Workflow.tsx) to [`components/workflow/StepFormModal.tsx`](../src/components/workflow/StepFormModal.tsx), and the small `PersonDisplayWithContact` component (+ its `PersonContactInfo` type) co-moves to [`components/workflow/PersonDisplayWithContact.tsx`](../src/components/workflow/PersonDisplayWithContact.tsx) per the map's same-wave pairing. Parent wiring (`stepForm` state, `saveStep`/`copyStep`/`closeStepForm`, the page-level contact modal, the `#step-<id>` hash-scroll receiver) unchanged; quirks preserved verbatim (non-interactive first "change order:" chip, whole-table `checkDuplicateName`, noon-anchored date formatting, sequential `sequence_order` semantics, 200ms dropdown blur). Also corrects the map's stale "nothing is extracted / no src/components/workflow/ directory" claims (StepCommitmentPanel + `lib/workflow/*` already existed) and notes the 556-line `StepCommitmentPanel` in the stage-cards dossier. Workflow.tsx 4,851 → 4,288 lines. Typecheck/lint/tests green.
 
 ## Latest Updates (v2.1302)
 
