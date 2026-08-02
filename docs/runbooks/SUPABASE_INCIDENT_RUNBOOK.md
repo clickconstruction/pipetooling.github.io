@@ -1,5 +1,13 @@
 # Supabase incident runbook (CLI + logs)
 
+---
+file: SUPABASE_INCIDENT_RUNBOOK.md
+type: Runbook
+purpose: Supabase CLI inspect + platform-logs workflow for incident evidence
+audience: Devs + AI agents
+last_updated: 2026-08-02
+---
+
 **AI agents:** start with **[AGENT_APP_CRASH_INVESTIGATION.md](./AGENT_APP_CRASH_INVESTIGATION.md)** (short checklist). **Quick capture:** [`scripts/capture-supabase-incident.sh`](../../scripts/capture-supabase-incident.sh) from repo root.
 
 Use this when the app feels like it **crashed**, **spins**, or **times out**, and you want evidence before changing schema or infra.
@@ -67,11 +75,15 @@ Save stdout or the CSV folder and attach to an incident ticket or chat **with se
 
 ## Phase B2 — Connection-usage + health monitor (is it a *freeze* or real *exhaustion*?)
 
-> **⚠️ Root-cause correction (2026-06-30).** Realtime's `:queue_timeout` / "connection pool cannot serve them fast enough" looks like connection-pool exhaustion, but **it is the generic error Realtime emits whenever it can't reach the DB — including when the DB is *frozen*, not full.** On 2026-06-30 the monitor caught a crash live: the DB was at **49/90 connections, 1–2 active queries, fully cached, near-idle** yet went unresponsive ~3.5 min, with a **stalled checkpoint in the Postgres log (`total=129.9s`, `write=13.5s`)**. That is a **storage/host-level I/O freeze**, *not* pool/CPU/memory pressure — and raising `max_connections` or compute would **not** fix it. **Always confirm with the monitor before assuming "pool exhaustion."**
+> **⚠️ Root-cause correction (2026-06-30).** Realtime's `:queue_timeout` / "connection pool cannot serve them fast enough" looks like connection-pool exhaustion, but **it is the generic error Realtime emits whenever it can't reach the DB — including when the DB is *frozen*, not full.** On 2026-06-30 the monitor caught a crash live: the DB was at **49 connections (ceiling was 90 on the then-current Small compute), 1–2 active queries, fully cached, near-idle** yet went unresponsive ~3.5 min, with a **stalled checkpoint in the Postgres log (`total=129.9s`, `write=13.5s`)**. That is a **storage/host-level I/O freeze**, *not* pool/CPU/memory pressure — and raising `max_connections` or compute would **not** fix it. **Always confirm with the monitor before assuming "pool exhaustion."**
+
+> **Connection ceiling: don't hardcode it.** The monitor reads the ceiling live from `current_setting('max_connections')` (the `max_connections` / `pct_of_max` columns of `monitoring.connection_totals`, migration `20260630180000`). It was **90** on the old Small compute and is **120** currently — always compare against the view's own ceiling column, not a remembered number.
 
 A 1-minute sampler (migration `20260630180000` + health extension `20260630190000`) records into a private `monitoring` schema (not exposed to PostgREST): connection breakdown **and** checkpoint/IO/latency health. Two distinct diagnoses:
-- **True pool exhaustion** → `connection_totals` shows total climbing toward/at **90**, `connection_breakdown` shows which service.
-- **Infra freeze (what 06-30 was)** → connections **well under 90**, but a **sampling gap** (the cron itself couldn't run), a **checkpoint-stall** (`checkpoint_activity.write_time_delta_ms` large with ~flat `buffers_delta`), `io_wait_backends > 0`, and/or `sample_ms` (latency canary) spiking. This is a **Supabase-side** problem — escalate with this evidence; don't upgrade reflexively.
+- **True pool exhaustion** → `connection_totals` shows total climbing toward/at the ceiling (`pct_of_max` → 100), `connection_breakdown` shows which service.
+- **Infra freeze (what 06-30 was)** → connections **well under the ceiling**, but a **sampling gap** (the cron itself couldn't run), a **checkpoint-stall** (`checkpoint_activity.write_time_delta_ms` large with ~flat `buffers_delta`), `io_wait_backends > 0`, and/or `sample_ms` (latency canary) spiking. This is a **Supabase-side** problem — escalate with this evidence; don't upgrade reflexively.
+
+**Live-freeze triage first:** if the app is unresponsive right now, run [`DB_FREEZE_RUNBOOK.md`](../DB_FREEZE_RUNBOOK.md) (`/db-freeze`) before this phase — it uses the same `monitoring` schema via `monitoring.health_checks` and `monitoring.connection_samples` (the raw tables behind this phase's `connection_totals` / `connection_breakdown` / `checkpoint_activity` views) and tells you lock pileup vs instance stall in ~30 seconds.
 
 ```sql
 -- A) Sampling GAPS = the DB was frozen/unreachable (the cron couldn't run)
@@ -87,10 +99,10 @@ from monitoring.checkpoint_activity
 where sampled_at between '2026-06-30 20:30+00' and '2026-06-30 20:45+00' order by sampled_at;
 ```
 
-Use the connection views to answer **"how close to 90, and which service?"** — the evidence that separates a real `max_connections`/compute decision from an infra escalation:
+Use the connection views to answer **"how close to the ceiling, and which service?"** — the evidence that separates a real `max_connections`/compute decision from an infra escalation:
 
 ```sql
--- 1) Daily peak total vs the 90 ceiling (is the wall actually being hit?)
+-- 1) Daily peak total vs the max_connections ceiling (is the wall actually being hit?)
 select date_trunc('day', sampled_at) as day,
        max(total_conns) as peak_conns, max(pct_of_max) as peak_pct
 from monitoring.connection_totals
@@ -112,7 +124,7 @@ where sampled_at = (select sampled_at from monitoring.connection_totals order by
 group by service order by conns desc;
 ```
 
-**Reading it:** `postgrest` (the app's REST pool) is normally the largest consumer, `auth` holds up to a fixed 10, `realtime` a handful. If a peak shows ~90 with `postgrest` dominating, the lever is **more headroom** (raise `max_connections` / upgrade) and/or **less app demand**; if `auth` 10 + idle bloat dominate, the **Auth percentage-based** switch + idle-connection trimming help. Retention is 14 days (rolling). To pause sampling: `select cron.unschedule('connection-usage-sample');`
+**Reading it:** `postgrest` (the app's REST pool) is normally the largest consumer, `auth` holds up to a fixed 10, `realtime` a handful. If a peak shows `pct_of_max` near 100 with `postgrest` dominating, the lever is **more headroom** (raise `max_connections` / upgrade) and/or **less app demand**; if `auth` 10 + idle bloat dominate, the **Auth percentage-based** switch + idle-connection trimming help. Retention is 14 days (rolling). To pause sampling: `select cron.unschedule('connection-usage-sample');`
 
 ---
 

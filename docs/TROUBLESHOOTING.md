@@ -1,5 +1,13 @@
 # PipeTooling Troubleshooting
 
+---
+file: TROUBLESHOOTING.md
+type: Troubleshooting guide
+purpose: Common issues and how to resolve them
+audience: Devs + AI agents
+last_updated: 2026-08-02
+---
+
 Common issues and how to resolve them.
 
 ---
@@ -23,24 +31,22 @@ Common issues and how to resolve them.
 
 ## Supabase database unresponsive / high disk I/O
 
-**Symptoms**: Supabase Dashboard slow or not loading table counts; "High Disk I/O" in metrics; app can't connect.
+**Symptoms**: App looks "database down" office-wide; Supabase Dashboard slow or not loading table counts; "High Disk I/O" in metrics; app can't connect.
 
-**Possible causes**:
-- Paused project (free tier pauses after 7 days inactivity)
-- Critical autovacuum (wraparound prevention) consuming resources
-- Long-running or runaway queries
-- Disk I/O budget depleted
+**Every office-wide freeze so far has been a lock pileup or an instance stall — never a crash and never a capacity problem.** Do NOT reflexively restart, pause/restore, or upgrade compute: a restart destroys the evidence, and in the lock-pileup case it only helps by accident.
 
-**Solutions**:
+**Steps, in order**:
 
-### 1. Paused project
-- Go to [Supabase Dashboard](https://supabase.com/dashboard) → your project
-- **Project Settings** → **General**
-- Click **Restore project** (or **Resume project**)
-- Wait several minutes; you'll get an email when ready
+### 1. FIRST: run the freeze triage — /db-freeze
+Run the `/db-freeze` skill in Claude Code (or follow [DB_FREEZE_RUNBOOK.md](./DB_FREEZE_RUNBOOK.md) manually). Its 30-second probe distinguishes the two failure modes, which need opposite responses:
+- **Mode A — lock pileup**: CLI connects, `supabase inspect db blocking` names a blocker. Fix by terminating just the blocking backend (`SELECT pg_terminate_backend(<pid>);`) — no restart.
+- **Mode B — instance stall**: CLI cannot connect at all, no lock waits visible. Restart is the correct and only lever — but only after the runbook's evidence capture, and only when its criteria say you are in Mode B.
 
-### 2. Find and terminate long-running queries
-In Supabase **SQL Editor**, run:
+### 2. Check for a platform outage
+[Supabase status](https://status.supabase.com) — if both the DB-touching and HTTP-only probes hang, suspect networking or a platform incident rather than your database.
+
+### 3. Find and terminate long-running queries (Mode A follow-up)
+Via `supabase inspect db long-running-queries --linked`, or in SQL:
 ```sql
 SELECT pid, now() - pg_stat_activity.query_start AS duration, query, state
 FROM pg_stat_activity
@@ -50,23 +56,15 @@ ORDER BY duration DESC;
 ```
 To terminate a query: `SELECT pg_terminate_backend(<pid>);`
 
-### 3. Critical autovacuum (cannot be stopped)
-If a wraparound-prevention autovacuum is running, it cannot be terminated. Monitor progress:
+### 4. Critical autovacuum (cannot be stopped)
+If a wraparound-prevention autovacuum is running, it cannot be terminated. Monitor progress and wait it out:
 ```sql
 SELECT relid::regclass AS table_name,
        round(100.0 * heap_blks_scanned / nullif(heap_blks_total, 0), 2) AS pct_scanned
 FROM pg_stat_progress_vacuum;
 ```
-Options: wait for it to finish, or temporarily upgrade compute to speed it up.
 
-### 4. Upgrade compute
-- **Project Settings** → **Compute and disk**
-- Temporarily upgrade to a larger compute size for more disk throughput
-
-### 5. Last resort: pause and restore
-- **Project Settings** → **General** → **Pause project**
-- After it pauses, click **Restore project**
-- Causes downtime but can clear stuck state
+**Not remedies**: upgrading compute (capacity has never been the problem — see DB_FREEZE_RUNBOOK.md), and pause/restore cycles (this is a paid project that never auto-pauses; pausing is pure downtime plus evidence loss).
 
 ---
 
@@ -124,7 +122,7 @@ In this repo, **Cursor** loads **[`.cursor/rules/supabase-incident-triage.mdc`](
 ## Sign-in not working
 
 **Check**:
-1. Supabase project is not paused (see above)
+1. Database is responsive (see "Supabase database unresponsive" above)
 2. Correct email and password
 3. User exists in Supabase Auth and `users` table
 4. [Supabase status](https://status.supabase.com) for outages

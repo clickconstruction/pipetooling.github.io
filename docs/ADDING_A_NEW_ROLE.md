@@ -1,5 +1,13 @@
 # Adding a New Role
 
+---
+file: ADDING_A_NEW_ROLE.md
+type: How-to checklist
+purpose: Step-by-step guide for adding a new user role without missing touchpoints
+audience: Developers, AI Agents
+last_updated: 2026-08-02
+---
+
 > **Purpose**: Step-by-step guide for adding a new user role (e.g., Primary) to PipeTooling. Use this to avoid policy/permission mistakes and ensure all touchpoints are updated.
 
 **Related**: [ACCESS_CONTROL.md](./ACCESS_CONTROL.md) — Role permissions matrix; [supabase/archive/README.md](../supabase/archive/README.md) — Migration reference.
@@ -16,17 +24,17 @@ Create a migration to add the role to the `user_role` enum:
 
 ```sql
 ALTER TYPE user_role ADD VALUE IF NOT EXISTS 'new_role';
-COMMENT ON TYPE user_role IS 'User role enum: dev (formerly owner), master_technician, assistant, subcontractor, estimator, primary, superintendent, new_role';
+COMMENT ON TYPE user_role IS 'User role enum: dev (formerly owner), master_technician, assistant, subcontractor, helpers, estimator, primary, superintendent, controller, new_role';
 ```
 
 **Reference**: [supabase/archive/migrations-pre-baseline/20260221210000_add_user_role_primary.sql](../supabase/archive/migrations-pre-baseline/20260221210000_add_user_role_primary.sql) (pre-baseline history — see note under "RLS by Table Category")
 
 ### 2. Regenerate types
 
-After applying the migration:
+After applying the migration (there is no local Supabase stack — types generate from the linked prod project):
 
 ```bash
-supabase gen types typescript --local > src/types/database.ts
+npm run gen-types:linked
 ```
 
 ### 3. Edge Functions
@@ -71,7 +79,7 @@ Add the role to the `handle_new_user` accepted `invited_role` list (new migratio
 ### Settings / role pickers
 
 - **ROLES**: the canonical assignable-role list lives in [src/lib/userRoles.ts](../src/lib/userRoles.ts) — add `'new_role'` there
-- **PAGE_ACCESS**: the page-access matrix lives in [src/components/settings/SettingsPeopleTab.tsx](../src/components/settings/SettingsPeopleTab.tsx) (`PAGE_ACCESS` constant near the top) — add a `new_role` column to each row with `'yes'`, `'no'`, or `'yes limited'` as appropriate. *(Known gap: the matrix currently lacks a `controller` column — being fixed separately.)*
+- **PAGE_ACCESS**: the page-access matrix lives in [src/components/settings/SettingsPeopleTab.tsx](../src/components/settings/SettingsPeopleTab.tsx) (`PAGE_ACCESS` constant near the top) — add a `new_role` column to each row with `'yes'`, `'no'`, or `'yes limited'` as appropriate. *(Known gap: the matrix has no `controller` column — controller reads as the assistant column per the convention in [ACCESS_CONTROL.md](./ACCESS_CONTROL.md).)*
 - **Report-enabled users** ([src/pages/Settings.tsx](../src/pages/Settings.tsx) — search `report_enabled_users`, currently used around lines 1103 and 1365): If the role can be report-enabled (like subcontractor), add logic to show the checkbox for users with this role
 - **Service type filtering** (if applicable): Add UI for `new_role_service_type_ids` when creating/editing users with this role
 
@@ -205,7 +213,7 @@ Use this when adding a new role:
 
 - [ ] Migration: Add role to `user_role` enum + update COMMENT
 - [ ] Migration: Add role to `handle_new_user` accepted `invited_role` list
-- [ ] Regenerate types: `supabase gen types typescript --local > src/types/database.ts`
+- [ ] Regenerate types: `npm run gen-types:linked`
 - [ ] Edge Functions: Add role to `validRoles` in `create-user/index.ts` AND `VALID_ROLES` in `invite-user/index.ts`, then redeploy both
 - [ ] Layout.tsx: Add `NEW_ROLE_PATHS` and redirect logic (+ mirror in `src/lib/layoutRouteAccess.ts`)
 - [ ] Dashboard.tsx: Add `NEW_ROLE_PATHS` and `getPathsForRole` branch

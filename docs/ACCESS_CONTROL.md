@@ -5,7 +5,7 @@ file: ACCESS_CONTROL.md
 type: Reference Matrix
 purpose: Complete role-based permissions matrix and access control patterns
 audience: Developers, Security Auditors, AI Agents
-last_updated: 2026-07-28
+last_updated: 2026-08-02
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate
 
@@ -90,6 +90,32 @@ Pipetooling implements comprehensive role-based access control (RBAC) using nine
 - **Backend**: Row Level Security (RLS) policies on all tables
 - **Database**: Foreign key relationships enforce data ownership
 - **Edge Functions**: Role validation before privileged operations
+
+### Subcontractors can read their OWN sub sheets — first sub money access (v2.1211, `20260801190000_sub_own_row_labor_reads.sql`; hotfix v2.1225, `20260802010000_fix_labor_rls_recursion.sql`)
+- **What changed — call this out**: `people_labor_jobs`, `people_labor_job_items`, and `people_labor_job_payments` previously had **no subcontractor policies at all** — a sub could not see their own balance or payment history. v2.1211 adds **SELECT-only, additive** sub policies: this is the first time the subcontractor role can read any sub-labor money data.
+- **Scope**: own rows only. On `people_labor_jobs`: the caller is an account-linked assignee of the sheet, OR (legacy fallback) the caller's trimmed `users.name` matches a segment of `assigned_to_name` (`' | '`-separated). Items/payments follow the parent via an EXISTS on the readable `people_labor_jobs` row. Office policies untouched; subs still cannot write anything.
+- **Hotfix (v2.1225)**: the original junction-based policy recursed — `people_labor_jobs`'s new policy queried `people_labor_job_assignees`, whose own `plja_select` policy queries `people_labor_jobs` back (42P17), breaking every Sub Labor ledger read for everyone. `20260802010000` replaces the junction EXISTS with SECURITY DEFINER helper **`user_is_assignee_of_labor_job(uuid)`** (evaluates the assignee link without invoking RLS); same intended grants, name fallback unchanged.
+
+### Sub work orders: `step_commitments` (v2.1208, `20260801150000_step_commitments.sql`)
+- **SELECT**: anyone with project access via the step (`can_access_project_via_step(step_id)` — dev/master/adopted/shared/superintendent), **OR** the sub's own rows (`people.account_user_id` link first, trimmed-name match on `display_name` as fallback).
+- **INSERT**: office roles with project access — dev, master_technician, assistant, controller, estimator (+ `can_access_project_via_step`).
+- **UPDATE**: the office set **plus superintendent** (client limits supers to offered → accepted; the DB grants row access, not transition logic).
+- **DELETE**: dev/master_technician only — money records cancel via status, not deletion.
+- New table: ends with both read-only sweep calls (training-mode users blocked).
+
+### `settle_step_commitment` RPC (v2.1210, `20260801170000_settle_step_commitment_rpc.sql`)
+- **Who**: dev, master_technician, assistant, controller, estimator — SECURITY DEFINER with an inlined role gate plus a `can_access_project_via_step` row gate on the commitment's step; `FOR UPDATE` lock prevents double-settlement. `EXECUTE` is granted to `authenticated` but the in-body gate is the boundary.
+- **What**: settles an accepted work order into a `people_labor_jobs` sub sheet (dry-run preview via rollback sentinel).
+
+### `respond_to_work_order` RPC — sub own-person gate (v2.1216, `20260801220000_work_order_dispatch.sql`)
+- **Who**: only the person the work order is addressed to — SECURITY DEFINER with a hard own-person gate (`people.account_user_id = auth.uid()` on the commitment's `person_id`; no role branch, no office override). Offered-status only; declining requires a reason.
+- **What**: accept/decline a `step_commitments` work order; accept fills empty step expected dates and flags mismatches. No policy changes — table RLS above still governs direct reads/writes.
+
+### Developments (v2.1198, `20260801100000_developments_on_jobs.sql`)
+- New `developments` table (named groups of jobs) with RLS mirroring the `customers` table: **SELECT** for the owning master, dev, adopted assistant-likes (`master_assistants` is role-agnostic — covers controller), share viewers (`master_shares`), plus the blanket estimator/primary/superintendent branch; **INSERT/UPDATE** owner/dev/adopted assistant-likes; **DELETE** owner/dev only. Ends with both read-only sweep calls (new table). `jobs_ledger.development_id` is a nullable FK (ON DELETE SET NULL) covered by existing `jobs_ledger` policies.
+
+### Contract documents: type/expiry/identity columns (v2.1213, `20260801200000_contract_doc_types_expiry.sql`)
+- `person_contract_documents` gains `doc_type` (agreement|coi|w9|license|other, default agreement), `expires_at`, and `person_id` (FK `people`, resolver backfill + `contract_docs_set_person_id` trigger). **No RLS changes** — column-additive; existing contract-document policies govern who sees the new compliance fields.
 
 ### claim-dev is break-glass only (v2.706, `20260717150000_claim_dev_break_glass.sql`)
 - **What**: the "Enter code" form (Settings → Advanced) promotes to dev **only when no usable dev exists** (`role='dev' AND archived_at IS NULL AND read_only=false`). A `read_only` or archived caller is refused even then — a frozen account never escalates. Previously it promoted **any** non-subcontractor role instantly, bypassing the v2.695 self-promotion guard (service-role ⇒ `auth.uid()` NULL ⇒ guard early-returns).
@@ -342,7 +368,7 @@ Pipetooling implements comprehensive role-based access control (RBAC) using nine
 - Cannot view customer or project information
 - Cannot access materials or bids
 - Cannot see other stages in same project
-- No access to financial information
+- No access to financial information, **except** (v2.1211/v2.1225): read-only access to their **own** sub sheets — `people_labor_jobs` rows naming them plus those sheets' items/payments (see "Subcontractors can read their OWN sub sheets" above), and their own `step_commitments` work orders (accept/decline via `respond_to_work_order`)
 
 **Use Cases**:
 - External plumbers assigned to specific work
@@ -562,7 +588,7 @@ Pipetooling implements comprehensive role-based access control (RBAC) using nine
 | **People** | ✅ | ✅ | ✅ limited | ❌ | ❌ | ❌ | ❌ |
 | **Jobs** | ✅ | ✅ | ✅ limited | ❌ | ❌ | ✅ Reports + Billing | ✅ Reports + Sub Ledger |
 | **Dispatch** (`/schedule-dispatch`) | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ✅ week grid (same `job_schedule_blocks` rules; **+ → Linked copy** / **Linked** crew rows; DnD reassign **solo** legs only) |
-| **Banking** | ✅ full Mercury (Ledger + User Sort + Drag Sort + **Accounting** + **User Review** + **Category Review** + **Reconciliation** + Configuration + sync); RLS SELECT on **`mercury_transactions`** + nicknames; org-wide **`mercury_drag_sort_labels`** / **`mercury_transaction_drag_sort_assignments`** (Drag Sort / Accounting approvals); **`mercury_accounting_label_rules`** / **`mercury_accounting_label_suggestions`** (**Accounting** tab, banking-staff RLS); **Stripe** segment (**dev-only**): **Invoices** (`jobs_ledger_invoices` + job embed, rows without **`stripe_invoice_id`** highlighted) and **Data** (`stripe_webhook_events` webhook log) | ✅ same staff tabs as assistant (`canAccessBanking` = dev / master_technician / assistant-like — [`Banking.tsx`](../src/pages/Banking.tsx)) | ✅ **User Sort** + **Drag Sort** + **Accounting** + **User Review** + **Category Review** + **Reconciliation** (default User Sort slice, no Configuration / no sync); read **`mercury_transactions`** + nicknames; **edit `mercury_debit_card_nicknames`** only (RLS); rules/suggestions/approvals per banking-staff policies | ❌ | ❌ | ❌ | ❌ |
+| **Banking** | ✅ full Mercury (Ledger + User Sort + Drag Sort + **Accounting** + **Card Review** (renamed from "User Review", v2.1262) + **Category Review** + **Reconciliation** + Configuration + sync); RLS SELECT on **`mercury_transactions`** + nicknames; org-wide **`mercury_drag_sort_labels`** / **`mercury_transaction_drag_sort_assignments`** (Drag Sort / Accounting approvals); **`mercury_accounting_label_rules`** / **`mercury_accounting_label_suggestions`** (**Accounting** tab, banking-staff RLS); **Stripe** segment (**dev-only**): **Invoices** (`jobs_ledger_invoices` + job embed, rows without **`stripe_invoice_id`** highlighted) and **Data** (`stripe_webhook_events` webhook log) | ✅ same staff tabs as assistant (`canAccessBanking` = dev / master_technician / assistant-like — [`Banking.tsx`](../src/pages/Banking.tsx)) | ✅ **User Sort** + **Drag Sort** + **Accounting** + **Card Review** + **Category Review** + **Reconciliation** (default User Sort slice, no Configuration / no sync); read **`mercury_transactions`** + nicknames; **edit `mercury_debit_card_nicknames`** only (RLS); rules/suggestions/approvals per banking-staff policies | ❌ | ❌ | ❌ | ❌ |
 
 Non-dev roles do not see the Banking **Stripe** segment; master/assistant deep links with `product=stripe` normalize to Mercury **User Sort**.
 

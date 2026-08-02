@@ -3,20 +3,20 @@
 ---
 file: EDGE_FUNCTIONS.md
 type: API Reference
-purpose: Complete API documentation for all 58 Supabase Edge Functions
+purpose: Complete API documentation for all 61 Supabase Edge Functions
 audience: Developers, DevOps, AI Agents
-last_updated: 2026-07-28
+last_updated: 2026-08-02
 estimated_read_time: 20-25 minutes
 difficulty: Intermediate
 
 runtime: "Deno (TypeScript)"
 authentication: "In-function JWT / signature / cron-secret validation for most functions (see Overview for the two gateway-verified exceptions)"
-total_functions: 58
+total_functions: 61
 
 key_sections:
   - name: "Functions"
     anchor: "#functions"
-    description: "Per-function reference (all 58), user admin through Stripe/Mercury"
+    description: "Per-function reference (all 61), user admin through Stripe/Mercury"
   - name: "create-user"
     anchor: "#create-user"
     description: "Create users with roles (dev-only)"
@@ -50,7 +50,6 @@ quick_navigation:
 related_docs:
   - "[PROJECT_DOCUMENTATION.md](./PROJECT_DOCUMENTATION.md) - Architecture context"
   - "[ACCESS_CONTROL.md](./ACCESS_CONTROL.md) - Role requirements"
-  - "EMAIL_TEMPLATES_SETUP.md - Email config"
 
 prerequisites:
   - Understanding of Supabase Edge Functions
@@ -151,7 +150,7 @@ PipeTooling uses Supabase Edge Functions (Deno runtime) for privileged server-si
 
 ### Key Characteristics
 - **Runtime**: Deno (TypeScript)
-- **Authentication**: Manual JWT validation from `Authorization` header
+- **Authentication**: In-handler validation — user JWT, webhook signature, or cron secret / public token depending on the function (see Authentication)
 - **CORS**: Enabled for all origins
 - **Service Role Key**: Required for admin operations
 - **Error Format**: Consistent JSON error responses
@@ -160,20 +159,26 @@ PipeTooling uses Supabase Edge Functions (Deno runtime) for privileged server-si
 
 ## Authentication
 
-### Authorization Header
+### Three auth styles
 
-All Edge Functions require an `Authorization` header with a valid JWT token:
+Not every function takes an `Authorization` header — each function authenticates in one of three ways (see the Overview note on `verify_jwt`):
 
-```typescript
-Authorization: Bearer <jwt_token>
-```
+1. **In-handler user JWT** (the majority): the client sends `Authorization: Bearer <jwt_token>`; the handler calls `auth.getUser` and checks the caller's role from `public.users` before doing anything privileged.
+2. **Webhook signature**: `stripe-webhook` and `mercury-webhook` are called by the provider, not a signed-in user — they validate the provider's signature header instead of a JWT.
+3. **Cron secret / public token**: scheduled functions (`send-scheduled-reminders`, `sync-salary-sessions`, `recurring-job-report-dispatch`, `schedule-day-email-dispatch`, …) require the `X-Cron-Secret` header; public-token functions (`accept-estimate`, `get-estimate-for-customer`, `get-contract-for-signer`, `dev-login`, …) authenticate by an exact token/code in the request rather than a session.
 
 ### Role-Based Access Control
 
-Each function checks the caller's role from the `public.users` table:
-- **dev**: Full admin access (create users, delete users, set passwords)
-- **master_technician**: Limited admin access (login as other users)
-- **assistant, subcontractor, estimator**: No privileged access
+JWT-validating functions check the caller's role from the `public.users` table. The nine roles:
+- **dev**: Full admin access (create/archive/restore users, set passwords, claim-dev administration, Stripe data surfaces)
+- **master_technician**: Broad operational access; limited admin (e.g. login-as-user impersonation)
+- **assistant**: Office staff — most operational functions (billing, notifications, reports) but no user administration
+- **controller**: Assistant-like office access **plus** payroll/financial surfaces; included wherever functions gate on the assistant-like set
+- **estimator**: Bid/estimate functions (e.g. `gsa-per-diem`, estimate sends) and limited customer surfaces
+- **primary**: Billing-adjacent functions on jobs they can access (e.g. invoice flows); no admin functions
+- **superintendent**: Project/schedule-scoped functions (e.g. schedule share/dispatch surfaces); no financial administration
+- **subcontractor**: Own-scoped functions only (e.g. correcting payer email on their collect-payment flow); no privileged access
+- **helpers**: Treated as subcontractor by every function gate (sub-like role)
 
 ### Error Responses
 
@@ -801,7 +806,7 @@ const { data, error } = await supabase.functions.invoke('send-workflow-notificat
 
 #### Dev smoke test (Settings UI)
 
-Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (collapsible): one-shot invoke with placeholder data; omits **`recipient_user_id`** so **`notification_history`** is not written. See **`WORKFLOW_EMAIL_TESTING.md`** and **[`RECENT_FEATURES.md`](./RECENT_FEATURES.md)** v2.186.
+Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (collapsible): one-shot invoke with placeholder data; omits **`recipient_user_id`** so **`notification_history`** is not written. See **[`RECENT_FEATURES.md`](./RECENT_FEATURES.md)** v2.186.
 
 #### Implementation Details
 
@@ -811,11 +816,6 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 4. POST to Resend
 5. Optional Web Push to **`push_subscriptions`** for **`recipient_user_id`**
 6. Optional **`notification_history`** insert when **`recipient_user_id`** and service role resolve **`step_id`** → workflow/project
-
-**See Also**:
-
-- EMAIL_TEMPLATES_SETUP.md
-- WORKFLOW_EMAIL_TESTING.md
 
 **Deployment**: [`supabase/functions/send-workflow-notification/DEPLOY.md`](../supabase/functions/send-workflow-notification/DEPLOY.md)
 
@@ -835,7 +835,7 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 
 **200 response**: Includes **`for_line`** (`string | null`): staff **For:** line — trimmed **`for_address`** if set, else trimmed linked **`customers.address`**, else `null` (UI may show em dash).
 
-**Audit**: On each successful **200** for **`status = sent`**, calls Postgres **`record_estimate_public_link_view`** via **`service_role`** **`rpc`** to append **`estimate_customer_events`** with **`event_type = public_link_view`** and **`client_ip` / `user_agent`** from the request ( **`SECURITY DEFINER`** in-db insert; failures are **`console.error`**’d and do not change the response). See migration [`20260406034514_record_estimate_public_link_view_rpc.sql`](../supabase/migrations/20260406034514_record_estimate_public_link_view_rpc.sql). **Dedupe**: [`20260412184127_dedupe_record_estimate_public_link_view.sql`](../supabase/migrations/20260412184127_dedupe_record_estimate_public_link_view.sql) skips a second **`public_link_view`** for the same estimate, IP, and user-agent within **5 seconds** (Strict Mode double-fetch, etc.).
+**Audit**: On each successful **200** for **`status = sent`**, calls Postgres **`record_estimate_public_link_view`** via **`service_role`** **`rpc`** to append **`estimate_customer_events`** with **`event_type = public_link_view`** and **`client_ip` / `user_agent`** from the request ( **`SECURITY DEFINER`** in-db insert; failures are **`console.error`**’d and do not change the response). See migration [`20260406034514_record_estimate_public_link_view_rpc.sql`](../supabase/archive/migrations-pre-baseline/20260406034514_record_estimate_public_link_view_rpc.sql) (pre-baseline archive; the live schema comes from the baseline). **Dedupe**: [`20260412184127_dedupe_record_estimate_public_link_view.sql`](../supabase/archive/migrations-pre-baseline/20260412184127_dedupe_record_estimate_public_link_view.sql) skips a second **`public_link_view`** for the same estimate, IP, and user-agent within **5 seconds** (Strict Mode double-fetch, etc.).
 
 ---
 
@@ -880,10 +880,10 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 **Draft app default (not Edge)**: When the column is **`NULL`**, [`Estimates.tsx`](../src/pages/Estimates.tsx) pre-selects the signed-in user and every **`master_technician`** on estimate detail load (Supabase **`users`** query; dedupe; on failure, self only)—until staff save the draft, which persists the array. **`[]`** remains explicitly no recipients.
 
 **Audit**:
-- **First acceptance** (**`sent` → `customer_accepted`**): the **`estimate_customer_events`** row (**`public_accept_submitted`**, IP/UA, **`metadata.had_signature`**) is written by the **database trigger** [`estimates_audit_customer_accepted_trigger`](../supabase/migrations/20260406033952_estimates_audit_customer_accepted_trigger.sql) in the **same transaction** as the **`estimates`** update (Edge does not insert that row on the success path).
+- **First acceptance** (**`sent` → `customer_accepted`**): the **`estimate_customer_events`** row (**`public_accept_submitted`**, IP/UA, **`metadata.had_signature`**) is written by the **database trigger** [`estimates_audit_customer_accepted_trigger`](../supabase/archive/migrations-pre-baseline/20260406033952_estimates_audit_customer_accepted_trigger.sql) in the **same transaction** as the **`estimates`** update (Edge does not insert that row on the success path).
 - **`alreadyAccepted: true`** (repeat **POST** while already accepted): best-effort **`insertEstimateCustomerEvent`** via **`log_estimate_customer_event`** / insert fallback in [`_shared/logEstimateCustomerEvent.ts`](../supabase/functions/_shared/logEstimateCustomerEvent.ts), with **`metadata.repeat_after_accepted`** (does not change **`200`** success).
 
-**Related (Postgres, not Edge)**: Staff create **`jobs_ledger`** and set **`estimates.job_ledger_id`** via authenticated RPC **`create_job_from_estimate`** — see [`20260405072854_estimate_create_job_rpc.sql`](../supabase/migrations/20260405072854_estimate_create_job_rpc.sql) and [`Estimates.tsx`](../src/pages/Estimates.tsx).
+**Related (Postgres, not Edge)**: Staff create **`jobs_ledger`** and set **`estimates.job_ledger_id`** via authenticated RPC **`create_job_from_estimate`** — see [`20260405072854_estimate_create_job_rpc.sql`](../supabase/archive/migrations-pre-baseline/20260405072854_estimate_create_job_rpc.sql) and [`Estimates.tsx`](../src/pages/Estimates.tsx).
 
 ---
 
@@ -1919,7 +1919,6 @@ const { data, error } = await supabase.functions.invoke('test-email', {
 **Request body** (required): **`to`**, **`subject`**, **`body`**; **`template_type`** is optional metadata for logging.
 
 **See Also**: 
-- EMAIL_TESTING.md - Complete testing documentation
 - [`supabase/functions/test-email/README.md`](../supabase/functions/test-email/README.md)
 
 **Deployment**: See [`supabase/functions/test-email/DEPLOY.md`](../supabase/functions/test-email/DEPLOY.md)
@@ -2900,7 +2899,7 @@ curl -X POST http://localhost:54321/functions/v1/create-user \
 
 ### Function-Specific Deployment Notes
 
-Each function has a `DEPLOY.md` or `DEPLOY_NOW.md` file with specific deployment instructions:
+A few legacy functions carry a `DEPLOY.md` (some also a `DEPLOY_NOW.md`) with function-specific deployment instructions — currently `create-user`, `archive-user`, `restore-user`, `login-as-user`, `send-workflow-notification`, and `test-email`; the rest deploy with the standard `supabase functions deploy <name>`:
 
 - [`create-user/DEPLOY.md`](../supabase/functions/create-user/DEPLOY.md)
 - [`archive-user`](../supabase/functions/archive-user/) - Archive users (replaces delete-user)
@@ -2914,8 +2913,6 @@ Each function has a `DEPLOY.md` or `DEPLOY_NOW.md` file with specific deployment
 ## Related Documentation
 
 - [PROJECT_DOCUMENTATION.md](./PROJECT_DOCUMENTATION.md) - Overall architecture
-- EMAIL_TEMPLATES_SETUP.md - Email template configuration
-- EMAIL_TESTING.md - Email testing procedures
 - [Settings page](../src/pages/Settings.tsx) - UI for user management and edge function calls
 
 ---

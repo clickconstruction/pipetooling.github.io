@@ -1,5 +1,13 @@
 # Private Notes, Line Items For Office, and Projections for Workflows
 
+---
+file: PRIVATE_NOTES_SETUP.md
+type: Feature reference
+purpose: Notes-for-Office + line items + projections on workflow steps
+audience: Developers, AI Agents
+last_updated: 2026-08-02
+---
+
 This document describes the private notes (labeled "Notes for Office" in the UI), line items (labeled "Line Items For Office"), and projections features added to workflows. Notes and line items are visible to devs, masters, assistant-like roles (assistant, controller), and superintendents; projections stay dev/master-only.
 
 ## Overview
@@ -41,6 +49,7 @@ for historical reference in `supabase/archive/` (`add_private_notes_to_workflow_
   - `link` (TEXT, optional) - URL for external references
   - `memo` (TEXT, required) - Description of the line item
   - `amount` (NUMERIC(10, 2), required) - **Supports negative numbers** for credits/refunds
+  - `purchase_order_id` (UUID, optional) - Link to a `purchase_orders` row (line item added from a PO)
   - `supply_house_invoice_id` (UUID, optional) - Link to a `supply_house_invoices` row
   - `sequence_order` (INTEGER) - Order within the step
   - `created_at`, `updated_at` (timestamps)
@@ -55,10 +64,13 @@ for historical reference in `supabase/archive/` (`add_private_notes_to_workflow_
   - `stage_name` (TEXT, required) - Stage name for the projection
   - `memo` (TEXT, required) - Description
   - `amount` (NUMERIC(10, 2), required) - **Supports negative numbers**
+  - `collected` (BOOLEAN, NOT NULL, default false) - Whether the projected amount has been collected (drives Total Collected vs Total Left on Job)
+  - `step_id` (UUID, optional, FK `project_workflow_steps` ON DELETE SET NULL) - Anchor step for the inline money marker (v2.1194, `20260801030726_workflow_projection_step_anchor.sql`); NULL = unanchored (top panel only)
+  - `placement` (TEXT, `before`|`after`, default `after`) - Where an anchored projection sits relative to its step (same migration)
   - `sequence_order` (INTEGER) - Order within the workflow
   - `created_at`, `updated_at` (timestamps)
 - Indexes for performance
-- RLS policies restricting access to owners and master_technicians
+- RLS policies: writes (INSERT/UPDATE/DELETE) restricted to dev and master_technician; SELECT extends to the project's master, adopted assistants (`master_assistants`), and share viewers (`master_shares`)
 
 ## UI Changes
 
@@ -204,24 +216,14 @@ Updated `src/types/database.ts` to include:
 
 ## Security Considerations
 
-**Important**: This feature relies on:
-1. **Frontend role checking** - The UI only shows private notes to owners/masters
-2. **RLS policies** - Database policies should restrict access to `private_notes` field
+Enforcement is **both** at the database and the UI level:
 
-### Recommended RLS Policy
+1. **RLS policies (the real enforcement)** — in the baseline (`supabase/migrations/20250101000000_baseline.sql`):
+   - `workflow_step_line_items`: all four operations (SELECT/INSERT/UPDATE/DELETE) require role ∈ {dev, master_technician, assistant, superintendent} **AND** `can_access_project_via_step(step_id)` (a SECURITY DEFINER helper — avoids policy recursion and keeps access scoped to projects the user can reach).
+   - `workflow_projections`: writes are dev/master_technician-only; SELECT additionally covers the project's master, adopted assistants, and share viewers.
+2. **Frontend role checking (UX only)** — the `canSeePrivateNotesAndApprove` gate in `src/pages/Workflow.tsx` hides the sections from non-privileged roles; it is a convenience layer on top of RLS, not the security boundary.
 
-You may want to add an RLS policy to ensure only owners and masters can read/write `private_notes`:
-
-```sql
--- Policy: Only owners and master_technicians can read private_notes
--- Note: This is handled at the application level currently
--- For additional security, you could add a policy that filters out private_notes
--- for non-dev/master users, but this would require a view or function
-```
-
-Currently, the security is enforced at the UI level. For production, consider:
-- Adding a database view that excludes `private_notes` for non-privileged users
-- Or using a function that conditionally returns `private_notes` based on user role
+One caveat: `private_notes` is a **column on `project_workflow_steps`**, and RLS is row-level — any role that can SELECT the step row can technically read the column via the API even though the UI hides it. The financially sensitive data (line items, projections) lives in the two separate tables above, which RLS locks down fully.
 
 ## Usage
 
