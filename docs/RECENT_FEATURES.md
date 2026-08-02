@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-02 (v2.1289)
+last_updated: 2026-08-02 (v2.1291)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1291)
+
+### Shared leader-centric Team leads manager — modal + Teams tab (2026-08-02)
+The two team-lead surfaces (Users-tab modal's flat link table, Teams tab's old 624-line implementation) consolidate into one shared [`TeamLeadsManager.tsx`](../src/components/people/TeamLeadsManager.tsx): collapsible per-leader cards (default expanded when ≤3 leaders; search auto-expands) with member rows, **Full/Strip segmented toggle** for `dashboard_hours_visibility` (dev-only editable preserved, replaces the truncating select), per-card **"+ Add member"** picker (eligible = non-archived, not leader, not already linked), **"+ New leader"** flow, search across leaders AND members, archived members "(archived)" with a dedicated **"Remove stale link"** action, archived counts in card headers. Pure kernel [`teamLeadsGrouping.ts`](../src/lib/people/teamLeadsGrouping.ts) (+tests) owns grouping/sort/search. `TeamLeadsModal` is now 92 lines of chrome; **`PeopleTeamsTab` 624 → 17 lines** — both render the shared manager, so the surfaces can't drift. `useTeamLeaderAssignments` slimmed (sort/search superseded by the kernel). New help guide `manage-team-leads`. Behavior notes: backdrop-click now always closes the modal (previously ignored mid-save; Escape already closed); the old tab's role labels and separate archived-leaders section are superseded by inline "(archived)" flags. Live-verified on the dev server: 8 leader cards on both surfaces, toggle/add/stale actions render, zero raw UUIDs. 388 files / 3,491 tests green.
 
 ## Latest Updates (v2.1289)
 

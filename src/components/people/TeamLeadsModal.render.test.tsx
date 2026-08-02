@@ -1,9 +1,11 @@
 // @vitest-environment jsdom
 /**
- * Render-smoke tests for TeamLeadsModal (the team_leader_assignments manager
- * moved here from Settings → Dashboard & alerts): open/close wiring, the role
- * gate, and that loaded assignment rows render with leader/member labels.
- * Crash-on-mount / missed-prop class — kernels can't pin the modal wiring.
+ * Render-smoke tests for TeamLeadsModal — now modal chrome around the shared
+ * leader-centric TeamLeadsManager (also rendered by People → Teams):
+ * open/close wiring, the role gate, leader-card grouping, archived-member
+ * labeling ("(archived)" + "Remove stale link"), and the dev-only Full/Strip
+ * segmented toggle. Crash-on-mount / missed-prop class — the grouping kernel
+ * tests can't pin the modal/manager wiring.
  */
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent } from '@testing-library/react'
@@ -28,8 +30,9 @@ vi.mock('../../hooks/useAuth', async () => {
 vi.mock('../../lib/supabase', () => {
   const tableData: Record<string, unknown[]> = {
     users: [
-      { id: 'u-lead', name: 'Lena Leader', email: 'lena@example.com' },
-      { id: 'u-member', name: 'Manny Member', email: 'manny@example.com' },
+      { id: 'u-lead', name: 'Lena Leader', email: 'lena@example.com', archived_at: null },
+      { id: 'u-member', name: 'Manny Member', email: 'manny@example.com', archived_at: null },
+      { id: 'u-arch', name: 'Arnie Archived', email: 'arnie@example.com', archived_at: '2026-01-01T00:00:00Z' },
     ],
     team_leader_assignments: [
       {
@@ -37,6 +40,12 @@ vi.mock('../../lib/supabase', () => {
         leader_user_id: 'u-lead',
         member_user_id: 'u-member',
         dashboard_hours_visibility: 'full',
+      },
+      {
+        id: 'tla-2',
+        leader_user_id: 'u-lead',
+        member_user_id: 'u-arch',
+        dashboard_hours_visibility: 'strip_only',
       },
     ],
   }
@@ -63,25 +72,36 @@ describe('TeamLeadsModal render smoke', () => {
     expect(container.querySelector('[role="dialog"]')).toBeNull()
   })
 
-  it('open: dialog mounts with title, pickers, and the loaded assignment row', async () => {
+  it('open: dialog mounts with title, one expanded leader card, and its member rows', async () => {
     const utils = renderWithProviders(<TeamLeadsModal open={true} onClose={() => {}} />)
     expect(utils.getByRole('dialog', { name: 'Team leads' })).toBeTruthy()
-    expect(utils.getByText('Leader')).toBeTruthy()
-    expect(utils.getByText('Member')).toBeTruthy()
-    // Assignment row loads async from the mocked supabase (the names show in
-    // both the leader-picker options and the table row, so expect >= 2 hits).
-    expect((await utils.findAllByText('Lena Leader')).length).toBeGreaterThanOrEqual(2)
-    expect((await utils.findAllByText('Manny Member')).length).toBeGreaterThanOrEqual(1)
-    // Per-row visibility select renders with the row's value.
-    const visibilitySelect = utils.container.querySelector<HTMLSelectElement>('tbody select')
-    expect(visibilitySelect).toBeTruthy()
-    expect(visibilitySelect?.value).toBe('full')
+    // Leader card header loads async from the mocked supabase; one leader
+    // (≤3) defaults to expanded, so both member rows are visible.
+    expect(await utils.findByText('Lena Leader')).toBeTruthy()
+    expect(utils.getByText(/2 members/)).toBeTruthy()
+    expect(utils.getByText(/1 archived/)).toBeTruthy()
+    expect(await utils.findByText('Manny Member')).toBeTruthy()
+    // One Full/Strip segmented toggle per member row, pressed per row value.
+    const fullButtons = utils.getAllByRole('button', { name: 'Full' })
+    const stripButtons = utils.getAllByRole('button', { name: 'Strip' })
+    expect(fullButtons).toHaveLength(2)
+    expect(stripButtons).toHaveLength(2)
+    expect(fullButtons.some((b) => b.getAttribute('aria-pressed') === 'true')).toBe(true)
+    expect(stripButtons.some((b) => b.getAttribute('aria-pressed') === 'true')).toBe(true)
+  })
+
+  it('archived member is labeled "(archived)" and gets "Remove stale link" instead of the × button', async () => {
+    const utils = renderWithProviders(<TeamLeadsModal open={true} onClose={() => {}} />)
+    expect(await utils.findByText('Arnie Archived (archived)')).toBeTruthy()
+    expect(utils.getByRole('button', { name: 'Remove stale link' })).toBeTruthy()
+    // The active member keeps the compact × remove control.
+    expect(utils.getByRole('button', { name: "Remove Manny Member from Lena Leader's team" })).toBeTruthy()
   })
 
   it('Close button calls onClose', async () => {
     const onClose = vi.fn()
     const utils = renderWithProviders(<TeamLeadsModal open={true} onClose={onClose} />)
-    await utils.findAllByText('Lena Leader')
+    await utils.findByText('Lena Leader')
     fireEvent.click(utils.getByRole('button', { name: 'Close' }))
     expect(onClose).toHaveBeenCalledTimes(1)
   })
@@ -91,6 +111,25 @@ describe('TeamLeadsModal render smoke', () => {
     try {
       const { container } = renderWithProviders(<TeamLeadsModal open={true} onClose={() => {}} />)
       expect(container.querySelector('[role="dialog"]')).toBeNull()
+    } finally {
+      delete AUTH_OVERRIDES.role
+    }
+  })
+
+  it('non-dev managers see the visibility state but the Full/Strip toggle is disabled with an explainer title', async () => {
+    AUTH_OVERRIDES.role = 'assistant'
+    try {
+      const utils = renderWithProviders(<TeamLeadsModal open={true} onClose={() => {}} />)
+      await utils.findByText('Lena Leader')
+      const toggles = [
+        ...utils.getAllByRole('button', { name: 'Full' }),
+        ...utils.getAllByRole('button', { name: 'Strip' }),
+      ]
+      expect(toggles).toHaveLength(4)
+      for (const b of toggles) {
+        expect((b as HTMLButtonElement).disabled).toBe(true)
+        expect(b.getAttribute('title')).toBe('Only a developer can change this setting.')
+      }
     } finally {
       delete AUTH_OVERRIDES.role
     }

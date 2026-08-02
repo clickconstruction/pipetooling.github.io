@@ -11,6 +11,18 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1291',
+    date: '2026-08-02',
+    title: 'Team leads: one better manager, everywhere',
+    kind: 'feature',
+    highlights: [
+      'The Team leads manager is now organized by leader — each leader is a card with their members underneath, so "who reports to whom" is one glance.',
+      'Adding a member happens right inside the leader’s card; the visibility choice is now a clear Full/Strip toggle instead of a cramped dropdown.',
+      'Links to archived people show a "Remove stale link" button, and the same improved manager appears in both the People → Users modal and the Teams tab.',
+      'New help guide: manage team leads.',
+    ],
+  },
+  {
     version: 'v2.1289',
     date: '2026-08-02',
     title: 'Team leads: names instead of IDs',
