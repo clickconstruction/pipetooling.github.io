@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-02 (v2.1300)
+last_updated: 2026-08-02 (v2.1301)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1301)
+
+### Edit Job create-customer link no longer vanishes (2026-08-02)
+Creating a customer from Edit Job's "Link to customer" wrote the row and linked it (`customer_id` UPDATE) — then the **identity autosave nulled the link right back**. Root cause: the locally-appended customer object in [`JobFormModal.tsx`](../src/components/jobs/JobFormModal.tsx) (~line 2626) omitted `master_user_id` (hidden by an `as CustomerRow` cast), so `resolveCustomerIdForJobPayload`'s cross-master guard saw `undefined !== jobMaster`, fell through to name re-resolution (which also filters on master), and resolved `null` — the next autosave persisted it. Deterministically reproduced via the kernel: `{withoutMasterField: null, withMasterField: 'new-cust'}`. Fix: append the row with `master_user_id: customerMasterId` (+ a comment pinning the constraint); the modal's normal customer fetches already selected the column, only the local append missed it. Typecheck clean; jobLedgerCustomer + jobFormAutosaveSlices kernels 27 tests green.
 
 ## Latest Updates (v2.1300)
 

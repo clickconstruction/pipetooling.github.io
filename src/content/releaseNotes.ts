@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1301',
+    date: '2026-08-02',
+    title: 'Edit Job: creating a customer now keeps it linked',
+    kind: 'fix',
+    highlights: [
+      'Creating a customer from Edit Job’s "Link to customer" saved the customer but the link quietly vanished moments later — the background autosave was second-guessing the brand-new customer and clearing the field. The link now sticks.',
+    ],
+  },
+  {
     version: 'v2.1300',
     date: '2026-08-02',
     title: 'Behind the scenes: Takeoff price popups restructured',
