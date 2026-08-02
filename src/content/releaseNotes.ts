@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1251',
+    date: '2026-08-01',
+    title: 'Jobs & Estimates: the "Stages" boards are now called "Pipeline"',
+    kind: 'feature',
+    highlights: [
+      'The boards track billing status (Waiting, Working, Ready to Bill…), so the tab now says Pipeline — "stages" stays reserved for Rough In / Top Out / Trim Set on Bids.',
+      'All links, pins, and bookmarks keep working — only the words changed.',
+    ],
+  },
+  {
     version: 'v2.1250',
     date: '2026-08-01',
     title: 'People Review: negative amounts in Jobs Worked read -$244, not $-244',

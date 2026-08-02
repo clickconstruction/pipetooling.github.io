@@ -85,7 +85,7 @@ export function InvoicesSectionHeading({
         >
           <div>
             1. Create an invoice here — it breaks off as its own <strong style={{ color: 'var(--text-700)' }}>green card</strong> on the
-            Stages board and moves by itself:
+            Pipeline board and moves by itself:
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
             <span style={{ ...EXPLAINER_CHIP_BASE, background: '#16a34a', border: '1px solid rgba(255,255,255,0.5)' }}>

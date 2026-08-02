@@ -8,7 +8,7 @@ When a technician is exposed to biohazardous material on a job (sewage, waste di
 
 ## Creating the fee
 
-On **Jobs → Stages**, every job card has a red ☣ button (next to the AIA G702 button). It opens a four-step wizard:
+On **Jobs → Pipeline**, every job card has a red ☣ button (next to the AIA G702 button). It opens a four-step wizard:
 
 1. **Incident** — when it happened, what happened, who was exposed, and (optionally) the stage of work.
 2. **Evidence** — at least one **photo link** (paste URLs — the job's customer-pictures folder works well) and at least one **technician testimonial** in the tech's own words. Both are required; the fee won't generate without them.
@@ -50,7 +50,7 @@ If the fee belongs to a different payer than the job's customer, click {{button:
 
 ## Spotting jobs that have a fee
 
-On **Jobs → Stages**, the ☣ button wears a **bright green box** on any job that already carries a live hazmat fee — hover it to confirm. Clicking still opens the wizard if the job needs another fee. Voided fees don't count.
+On **Jobs → Pipeline**, the ☣ button wears a **bright green box** on any job that already carries a live hazmat fee — hover it to confirm. Clicking still opens the wizard if the job needs another fee. Voided fees don't count.
 
 ## Sending the notice email after the fact
 

@@ -5,11 +5,11 @@ roles: all
 keywords: job calendar, schedule, appointments, dispatch, field date, who is scheduled, month view, worked days
 order: 64
 ---
-Every job on **Jobs → Stages** shows a **j:** date in the Crew & Dates column — the job's latest field activity. Clicking it now opens the **Job Calendar**: a month view of which days the job sits on whose calendar, with every appointment listed below.
+Every job on **Jobs → Pipeline** shows a **j:** date in the Crew & Dates column — the job's latest field activity. Clicking it now opens the **Job Calendar**: a month view of which days the job sits on whose calendar, with every appointment listed below.
 
 ## Open it
 
-1. On **Jobs → Stages**, find the job's **j:** line (for example `j: T-3 (fri)`).
+1. On **Jobs → Pipeline**, find the job's **j:** line (for example `j: T-3 (fri)`).
 2. Click it. The Job Calendar opens with the job's number, service type, name, and address at the top.
 
 The same green **NEXT** summary is pinned at the top of the **Job activity / notes** panel when you expand a job. It also opens from the green **NEXT** line in the Activity column — every job with an upcoming appointment shows the date, time window, crew, and dispatch note right on the row; click it for the whole plan.

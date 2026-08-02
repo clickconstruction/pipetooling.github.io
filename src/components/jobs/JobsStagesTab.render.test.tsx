@@ -193,7 +193,7 @@ describe('JobsStagesTab render smoke', () => {
       ref.current!.showBilledTotalByName()
     })
     // focusJob for an unknown id falls back to a toast
-    expect(showToast).toHaveBeenCalledWith('That job isn’t on the Stages board right now.', 'info')
+    expect(showToast).toHaveBeenCalledWith('That job isn’t on the Pipeline board right now.', 'info')
     // Billed section opened by focusSection stays expanded
     const billedHeader = screen.getByText(/Billed Awaiting Payment \(0\)/)
     expect(billedHeader.closest('button')!.getAttribute('aria-expanded')).toBe('true')
@@ -208,15 +208,15 @@ describe('JobsStagesTab render smoke', () => {
     ]
     renderWithProviders(<JobsStagesTab ref={createRef()} {...makeProps({ jobs })} />)
     // Bar default: no filter selects, no active-filter chip.
-    expect(screen.queryByLabelText('Filter the Stages board by GC/Builder')).toBeNull()
+    expect(screen.queryByLabelText('Filter the Pipeline board by GC/Builder')).toBeNull()
     expect(screen.queryByTitle('Filtered by GC/Builder — tap to clear')).toBeNull()
     // The selects render inside the tools menu.
-    fireEvent.click(screen.getByLabelText('Stages tools'))
-    const gcSelect = screen.getByLabelText('Filter the Stages board by GC/Builder')
+    fireEvent.click(screen.getByLabelText('Pipeline tools'))
+    const gcSelect = screen.getByLabelText('Filter the Pipeline board by GC/Builder')
     expect(screen.getByText('Filters')).toBeTruthy()
     // Selecting applies the filter, keeps the menu open, and raises the bar chip.
     fireEvent.change(gcSelect, { target: { value: 'gc-1' } })
-    expect(screen.getByLabelText('Filter the Stages board by GC/Builder')).toBeTruthy()
+    expect(screen.getByLabelText('Filter the Pipeline board by GC/Builder')).toBeTruthy()
     const chip = screen.getByTitle('Filtered by GC/Builder — tap to clear')
     expect(chip.textContent).toContain('D.R. Horton')
     expect(screen.getByText('Horton House')).toBeTruthy()
@@ -235,7 +235,7 @@ describe('JobsStagesTab render smoke', () => {
     // Off by default: no rails anywhere.
     expect(screen.queryAllByLabelText(/^Edit job /)).toHaveLength(0)
     // Toggle it on from the ⋯ tools menu.
-    fireEvent.click(screen.getByLabelText('Stages tools'))
+    fireEvent.click(screen.getByLabelText('Pipeline tools'))
     fireEvent.click(screen.getByText('Edit mode'))
     // Waiting defaults collapsed — rails appear on the two visible Working rows.
     expect(screen.getAllByLabelText(/^Edit job /)).toHaveLength(2)
@@ -261,7 +261,7 @@ describe('JobsStagesTab render smoke', () => {
     // Off by default: the classic tables render.
     expect(container.querySelector('table')).toBeTruthy()
     // Toggle on from the ⋯ tools menu (available to every role).
-    fireEvent.click(screen.getByLabelText('Stages tools'))
+    fireEvent.click(screen.getByLabelText('Pipeline tools'))
     fireEvent.click(screen.getByText('Mobile cards'))
     expect(container.querySelector('table')).toBeNull()
     const cards = container.querySelectorAll('[data-stages-job-id]')

@@ -62,4 +62,4 @@ The page is built for one pass in the morning and a lighter pass after lunch. If
 
 ## Missing job info
 
-The **Missing job info** section lists every job that's missing a **linked customer**, a **customer pictures link**, or (for Ready to Bill jobs) a **billing email** — the same three chips that appear at the top of Jobs → Stages. Each row shows the job number, name, customer, and address so you know exactly which job it is. For pictures and email, type the value right in the row and press **Save** (or Enter) — the row disappears once it's fixed. Linking a customer opens Edit Job with one click.
+The **Missing job info** section lists every job that's missing a **linked customer**, a **customer pictures link**, or (for Ready to Bill jobs) a **billing email** — the same three chips that appear at the top of Jobs → Pipeline. Each row shows the job number, name, customer, and address so you know exactly which job it is. For pictures and email, type the value right in the row and press **Save** (or Enter) — the row disappears once it's fixed. Linking a customer opens Edit Job with one click.

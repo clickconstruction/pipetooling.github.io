@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-01 (v2.1250)
+last_updated: 2026-08-01 (v2.1251)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1251)
+
+### Jobs + Estimates — "Stages" boards renamed "Pipeline" (2026-08-01)
+First batch of the 2026-08-01 naming audit (owner-approved decision map): the status boards on **Jobs** and **Estimates** are now labeled **Pipeline** — their sections (Waiting/Working/Ready to Bill/Billed Awaiting Payment/Collections; Unsent/Sent/Accepted) are job/estimate *statuses*, not construction stages, and "stage" stays reserved for Bids' Rough In / Top Out / Trim Set. **Label-only by design**: the `?tab=stages` URL slug, `stagesSection`/`stagesInvoice` params, and component/file names are unchanged so pins, bookmarks, and deep links keep working. Sweep covered the tab labels ([`Jobs.tsx`](../src/pages/Jobs.tsx), [`Estimates.tsx`](../src/pages/Estimates.tsx)), toasts/aria/titles in [`JobsStagesTab.tsx`](../src/components/jobs/JobsStagesTab.tsx), Dashboard "Open Jobs Pipeline" links, JobFormModal/SegmentsBar/ThreadNotes strings, the Quickfill section label, 18 help guides, the render-test selectors, and the e2e tab selector. Bonus: two leftover "Project Stages" strings (How-it-works) now say "Project Steps" per the v2.1190 rename. Verified live on the dev server (tab labels render "Pipeline"; zero visible "Stages" on either board). `tsc -b` clean, vitest 3,336 green. Files: 14 src files + 18 guides + 1 e2e spec. No DB / migration / RLS / RPC / Edge changes.
 
 ## Latest Updates (v2.1250)
 

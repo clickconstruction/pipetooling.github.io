@@ -13,7 +13,7 @@ export default function SettingsHowItWorksTab({ active }: { active: boolean }) {
         <ol style={{ margin: 0, paddingLeft: '1.5rem', fontSize: '0.875rem', color: 'var(--text-700)', lineHeight: 1.6 }}>
           <li style={{ marginBottom: '0.5rem' }}>Master accounts have Customers</li>
           <li style={{ marginBottom: '0.5rem' }}>Customers can have Projects</li>
-          <li style={{ marginBottom: '0.5rem' }}>Masters assign People to Project Stages</li>
+          <li style={{ marginBottom: '0.5rem' }}>Masters assign People to Project Steps</li>
           <li>When People complete Stages, Masters are updated</li>
         </ol>
         <div style={{ marginTop: '0.75rem', fontSize: '0.875rem', color: 'var(--text-700)' }}>

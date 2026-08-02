@@ -1753,7 +1753,7 @@ function EstimateList() {
           onClick={() => setListTab('followup')}
           style={pageTabStyle(listTab === 'followup')}
         >
-          Stages
+          Pipeline
         </button>
         <button
           type="button"

@@ -1495,7 +1495,7 @@ export default function Jobs() {
             }}
             style={pageTabStyle(activeTab === 'stages')}
           >
-            Stages
+            Pipeline
           </button>
         )}
         {showPrimaryRestrictedTabs && (

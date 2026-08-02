@@ -21,7 +21,7 @@ const CARD_META: Record<CardKey, { title: string; hint: string; linkTo: string; 
     title: 'Accounts Receivable',
     hint: 'Open balances on billed invoices and billed jobs — money owed to us.',
     linkTo: '/jobs?tab=stages',
-    linkLabel: 'Open Jobs Stages',
+    linkLabel: 'Open Jobs Pipeline',
   },
   ap: {
     title: 'Accounts Payable',
@@ -33,7 +33,7 @@ const CARD_META: Record<CardKey, { title: string; hint: string; linkTo: string; 
     title: 'Not Billed Out',
     hint: 'Working and Ready-to-Bill jobs whose revenue is not yet on a billed customer invoice.',
     linkTo: '/jobs?tab=stages',
-    linkLabel: 'Open Jobs Stages',
+    linkLabel: 'Open Jobs Pipeline',
   },
 }
 
@@ -638,7 +638,7 @@ function ItemsModal({
                         {STAGES_SECTION_LINKS[section.title] ? (
                           <Link
                             to={STAGES_SECTION_LINKS[section.title]!}
-                            title={`Open Jobs Stages at ${section.title}`}
+                            title={`Open Jobs Pipeline at ${section.title}`}
                             style={{
                               fontWeight: 600,
                               color: 'var(--text-blue-700)',

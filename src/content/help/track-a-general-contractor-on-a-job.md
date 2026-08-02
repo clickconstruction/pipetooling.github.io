@@ -20,14 +20,14 @@ Jobs **created from a bid** inherit the bid's GC/Builder automatically, and link
 
 ## Where the GC shows up
 
-- **Jobs → Stages**: under the customer name in the Job column, marked with a hard-hat icon.
+- **Jobs → Pipeline**: under the customer name in the Job column, marked with a hard-hat icon.
 - **Job Detail**: under the customer name in the Customer block.
-- **Stages search**: typing a GC's name surfaces every job under that GC.
-- **Stages GC filter**: once any job has a GC, open the **⋯** menu at the right end of the search bar — a **Filters** group at the top holds the hard-hat GC dropdown. Pick a GC to see only their jobs (every section and total follows), or **No GC set** to see the jobs still needing one. While a filter is on, a blue chip with the GC's name sits in the search bar — tap its × to clear it.
+- **Pipeline search**: typing a GC's name surfaces every job under that GC.
+- **Pipeline GC filter**: once any job has a GC, open the **⋯** menu at the right end of the search bar — a **Filters** group at the top holds the hard-hat GC dropdown. Pick a GC to see only their jobs (every section and total follows), or **No GC set** to see the jobs still needing one. While a filter is on, a blue chip with the GC's name sits in the search bar — tap its × to clear it.
 
 ## GC Review — outstanding money by GC
 
-On **Jobs → Stages**, the **Billed Awaiting Payment** section header has a {{button:outline|GC Review}} button (next to Accounts Receivable). It groups everything awaiting payment by GC: each General Contractor's customers, when each was billed out, how many days ago, and the GC's outstanding total. Jobs without a GC gather in a **No GC set** bucket at the bottom, so the grand total always matches the section header — and that bucket doubles as your list of jobs to go set GCs on.
+On **Jobs → Pipeline**, the **Billed Awaiting Payment** section header has a {{button:outline|GC Review}} button (next to Accounts Receivable). It groups everything awaiting payment by GC: each General Contractor's customers, when each was billed out, how many days ago, and the GC's outstanding total. Jobs without a GC gather in a **No GC set** bucket at the bottom, so the grand total always matches the section header — and that bucket doubles as your list of jobs to go set GCs on.
 
 - Tick **Include Collections** to fold hard-to-collect jobs into the view (marked with a red chip).
 - Hit {{button:outline|Print}} on any GC row for that GC's **statement** — their customers, bill-out dates, days outstanding, and amounts. **Print all** makes one report of every section.

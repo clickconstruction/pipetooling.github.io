@@ -936,7 +936,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         if (stagesInvoiceVisibleWithEmptySearch(raw, jobs)) {
           showToast('Clear the Stages search to see this invoice.', 'info')
         } else {
-          showToast('That invoice isn’t on the Stages board right now.', 'info')
+          showToast('That invoice isn’t on the Pipeline board right now.', 'info')
         }
         return false
       }
@@ -1185,7 +1185,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
           setPendingStagesJobFocusId(jobId)
           setStagesJobFlashId(jobId)
         } else {
-          showToast('That job isn’t on the Stages board right now.', 'info')
+          showToast('That job isn’t on the Pipeline board right now.', 'info')
         }
       },
       focusInvoice: applyStagesInvoiceFocus,
@@ -1378,8 +1378,8 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
               <button
                 type="button"
                 onClick={() => setStagesToolsMenuOpen((o) => !o)}
-                title="Stages tools"
-                aria-label="Stages tools"
+                title="Pipeline tools"
+                aria-label="Pipeline tools"
                 aria-haspopup="menu"
                 aria-expanded={stagesToolsMenuOpen}
                 style={{
@@ -1444,8 +1444,8 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                             <select
                               value={stagesGcFilter}
                               onChange={(e) => setStagesGcFilter(e.target.value)}
-                              aria-label="Filter the Stages board by GC/Builder"
-                              title="Filter the Stages board by GC/Builder"
+                              aria-label="Filter the Pipeline board by GC/Builder"
+                              title="Filter the Pipeline board by GC/Builder"
                               style={{
                                 ...stagesToolsMenuFilterSelectStyle,
                                 background: stagesGcFilter ? 'var(--bg-blue-tint)' : 'var(--surface)',
@@ -1468,8 +1468,8 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                             <select
                               value={stagesDevelopmentFilter}
                               onChange={(e) => setStagesDevelopmentFilter(e.target.value)}
-                              aria-label="Filter the Stages board by development"
-                              title="Filter the Stages board by development"
+                              aria-label="Filter the Pipeline board by development"
+                              title="Filter the Pipeline board by development"
                               style={{
                                 ...stagesToolsMenuFilterSelectStyle,
                                 background: stagesDevelopmentFilter ? 'var(--bg-blue-tint)' : 'var(--surface)',

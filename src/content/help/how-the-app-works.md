@@ -11,8 +11,8 @@ PipeTooling helps Masters better manage Projects with Subs. There are three main
 
 1. Master accounts have **Customers**
 2. Customers can have **Projects**
-3. Masters assign People to **Project Stages**
-4. When People complete Stages, Masters are updated
+3. Masters assign People to **Project Steps**
+4. When People complete Steps, Masters are updated
 
 Day-to-day service work runs through **Jobs**: each job belongs to a customer and moves through a simple pipeline. You'll see these status chips all over the app:
 
@@ -47,7 +47,7 @@ The header is your map. On a phone, most of these live behind the {{icon:gear}} 
 :::
 
 - **Dashboard** — your day at a glance: assigned jobs, clock, inboxes, and (for office roles) billing queues.
-- **Jobs** — the job ledger and its Stages board. Jobs open in two modals that link to each other: **Job Detail** (read-only view with the activity history; has an Edit affordance) and **Edit Job** (the form; its {{button:outline-blue|Job Detail}} button at the top closes the form and opens the detail view). Edit Job has no Save button — changes save automatically as you make them (see the "know when Edit Job saves my changes" guide).
+- **Jobs** — the job ledger and its Pipeline board. Jobs open in two modals that link to each other: **Job Detail** (read-only view with the activity history; has an Edit affordance) and **Edit Job** (the form; its {{button:outline-blue|Job Detail}} button at the top closes the form and opens the detail view). Edit Job has no Save button — changes save automatically as you make them (see the "know when Edit Job saves my changes" guide).
 - **Schedule** — who is on which job, each day.
 - **Bids / Estimates** — winning the work before it becomes a job.
 - **Settings** — your profile, notifications, and role-specific configuration.
