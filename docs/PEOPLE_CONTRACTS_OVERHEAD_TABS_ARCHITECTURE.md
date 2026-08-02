@@ -3,7 +3,7 @@
 ---
 file: docs/PEOPLE_CONTRACTS_OVERHEAD_TABS_ARCHITECTURE.md
 type: Architecture Map / Decomposition
-purpose: Step-0 map (per PAGE_DECOMPOSITION_PLAYBOOK.md) for the two largest already-extracted People tabs — src/components/people/PeopleContractsTab.tsx (~2,981 lines) and src/components/people/PeopleOverheadTab.tsx (~2,038 lines). Inventories every region's state, handlers, supabase tables/RPCs, and coupling so their sub-decomposition (Stage-A lib extraction + modal/section component moves) can start without re-deriving the strategy.
+purpose: Step-0 map (per PAGE_DECOMPOSITION_PLAYBOOK.md) for the two largest already-extracted People tabs — src/components/people/PeopleContractsTab.tsx (~2,981 lines) and src/components/people/PeopleOverheadTab.tsx (~2,510 lines). Inventories every region's state, handlers, supabase tables/RPCs, and coupling so their sub-decomposition (Stage-A lib extraction + modal/section component moves) can start without re-deriving the strategy.
 audience: Developers, AI Agents
 last_updated: 2026-08-02
 ---
@@ -13,7 +13,7 @@ last_updated: 2026-08-02
 Both files are **already-extracted tabs** of `src/pages/People.tsx` (see [`PEOPLE_TABS_ARCHITECTURE.md`](./PEOPLE_TABS_ARCHITECTURE.md), rows `contracts` and `overhead` — both marked Done). They kept growing after extraction, the same pattern as `BidsTakeoffTab` and `PeopleReviewTab`, so this map treats each **tab component as the "parent"** and its modals/sections as the extraction units:
 
 - [`src/components/people/PeopleContractsTab.tsx`](../src/components/people/PeopleContractsTab.tsx) — **2,981 lines**. Staff contract tracking: roster table with per-person document status, template management, template assignment, Add/Edit document modal (Upload Signed vs Request Signature), digital-signature send flow, Contract Book library. Props from `People.tsx`: `people`, `users`, `canDeletePeopleContracts`.
-- [`src/components/people/PeopleOverheadTab.tsx`](../src/components/people/PeopleOverheadTab.tsx) — **2,038 lines**. Daily overhead cost table (office/bid labor + office materials vs field totals), trailing-average KPIs, per-day breakdown modals, office-job configuration. Props from `People.tsx`: `payConfig`, `authUser`, `setError` (declared but **unused** — see quirks), `canAccessOverheadTab`, `isDev`, `loadPayConfig`.
+- [`src/components/people/PeopleOverheadTab.tsx`](../src/components/people/PeopleOverheadTab.tsx) — **~2,510 lines** (2,038 when this map was written; it has kept growing). Daily overhead cost table (office/bid labor + office materials vs field totals), trailing-average KPIs, per-day breakdown modals, office-job configuration. Props from `People.tsx`: `payConfig`, `authUser`, `setError` (declared but **unused** — see quirks), `canAccessOverheadTab`, `isDev`, `loadPayConfig`.
 
 The two tabs share **nothing with each other** (no common state, tables, or selection). One doc covers both because they are the two remaining oversized People components and their maps are small enough to co-locate.
 
