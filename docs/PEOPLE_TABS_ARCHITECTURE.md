@@ -17,10 +17,10 @@ last_updated: 2026-08-02
 - **Phase 2 (shared hooks) — DONE.** Extracted: `usePeopleAccess`, `usePeopleRoster`, `useCrewJobMap`, `usePayConfig`, `usePeopleHoursData` (under `src/hooks/`). `useTeamSummaryData` was folded into the `review` extraction (intricate review-UI orchestration) rather than a standalone hook; its pure kernel lives at `src/lib/people/derivePersonTeamSummary.ts`.
 - **Phase 3 (hub tabs) — IN PROGRESS.** ~~`overhead`~~ (`PeopleOverheadTab`), ~~`review`~~ (`PeopleReviewTab`), ~~`pay_stubs`~~ (`PeoplePayStubsTab`, the **Ledger** half only — see the dossier), and ~~`users`~~ (`PeopleUsersTab` + `useUsersTabTags`/`PeopleUserTagsPanel`) are extracted. The only inline tab left is `hours` (the pay/hours hub), which is too large for a single component — it is being decomposed **sub-section by sub-section**, each its own reviewable PR. Shared hours-section primitives (`HOURS_TAB_SECTION_*` styles, `hoursTabSectionHeaderGap`, `textColorForBackground`, `getDaysInRange`) now live in [`peopleHoursTabShared`](../src/components/people/peopleHoursTabShared.ts). Sub-sections extracted so far: **Teams** (incl. its delete-team modal) → [`PeopleHoursTeams`](../src/components/people/PeopleHoursTeams.tsx) (the `PeopleHoursTeam` type now lives there; `getCostForPersonDateTeams`/`addTeam`/`deleteTeam` etc. stay in the parent as props since they mutate shared hours state); **Due by Team** (formerly Due by Trade/Team, incl. its ledger modal) → [`PeopleHoursDueSummaries`](../src/components/people/PeopleHoursDueSummaries.tsx) (the `teamLedgerModalTeam` modal state moved into the component since nothing else reads it; the trade-tag half died with the cost-matrix retirement — see below); **Clock sessions** (active/pending/approved/rejected tables, search, the salaried-workdays button, and the nested rejected sub-section) → [`PeopleHoursSessions`](../src/components/people/PeopleHoursSessions.tsx) (the inline force-clock-out/approve/reject/revoke mutations moved into the component, which imports `supabase`/`approveClockSessions`/`useToastContext` directly; the parent passes the session lists, search state, `reloadSessions`/`reloadHours` callbacks wired to its load refs, and `setEditClockSession`/`setError`/`openHoursMyTimeFromSession`); **Week range** (the prev/next-week nav + custom start/end date inputs, with narrow vs wide layouts) → [`PeopleHoursWeekRange`](../src/components/people/PeopleHoursWeekRange.tsx) (a pure presentational section — props are `narrowViewport`, `hoursDateStart`/`hoursDateEnd` + setters, and `shiftHoursWeek`; it imports `formatDateRangeLabel` directly). Separately, the `WeekdayCostTable` totals math was lifted to the tested kernel [`computeWeekdayCostTotals`](../src/lib/people/computeWeekdayCostTotals.ts). The first vertical carved off the large **Hours grid** section is its **"Highlight by job" search** (the debounced `search_jobs_ledger` lookup + selected-job chip) → [`PeopleHoursGridJobHighlight`](../src/components/people/PeopleHoursGridJobHighlight.tsx) (owns its own search/results/list-open/blur-ref state + the debounce effect; the parent keeps `selectedJobHighlight` state — read by the `jobHighlightPeople`/`jobHighlightCells` memo and the grid render — and passes it down with its setter; the `HoursGridJobHighlightPick` type now lives in that component). The grid's **pending-hours warning banner** (the "N people · X h not yet in payroll" status + bulk Review &amp; approve CTA) also came out → [`PeopleHoursPendingBanner`](../src/components/people/PeopleHoursPendingBanner.tsx) (a pure presentational banner that returns null when nothing is pending; props are the `PeopleHoursPendingSummary`, `canAccessHours`/`canAccessPay`, and an `onReviewApprove` callback). **Cost matrix — RETIRED (2026-07-15, PRs #322/#324/#326, v2.671–v2.677):** the Cost matrix grid, per-person trade tags, and the view-sharing mechanism were removed entirely — `PeopleCostMatrix.tsx` and `PeopleHoursSharing.tsx` are **deleted**, and migrations `20260715090000`/`20260715120000` dropped the share/tag tables and `show_in_cost_matrix`. "See costs without pay admin" is now the **controller** role's job (v2.662). The only vestige in `People.tsx` is the `#cost-matrix` hash handler that still opens/scrolls the Hours-tab section for old deep links. The hard core — the **Hours grid `<table>`** itself (per-person daily-hours matrix with inline cell editing, pending badges, job-highlight/flash styling, and the totals/Correct footer) — is now extracted → [`PeopleHoursGrid`](../src/components/people/PeopleHoursGrid.tsx). The grid-local cell-edit state (`editingHoursCell`/`editingHoursValue`) moved **into** the component as local `useState`; the blur handler `openManualHoursDraftFromBlur` (kept in the parent and passed as a prop) no longer clears the edit cell since the grid clears its own. The shared helpers (`getHoursGridDisplayHours`/`canEditHours`/`isCorrectDayMissingJob`/`hasUnassignedCorrectDays`) stay parent-owned and pass as function props because other sections call them; `setPendingCellPopover` stays in the parent (its sync effect + the popover render live outside the grid). As prep, two pure kernels were lifted out first: the time formatters [`hoursGridTime`](../src/lib/people/hoursGridTime.ts) (`decimalToHms`/`hmsToDecimal`) and the blur predicate [`shouldOfferManualHoursSession`](../src/lib/people/shouldOfferManualHoursSession.ts); the Add-session people list is the tested kernel [`buildAddSessionPeople`](../src/lib/people/buildAddSessionPeople.ts). Remaining hours sub-section: only the trivial clock-strip wrapper.
 
-Tabs switch on a single `activeTab` state ([`People.tsx`](../src/pages/People.tsx), search `useState<PeopleTab>`), type `PeopleTab` at [lines 200-216](../src/pages/People.tsx) — **15 keys** — Subs landed v2.1214, Teams removed v2.1292:
+Tabs switch on a single `activeTab` state ([`People.tsx`](../src/pages/People.tsx), search `useState<PeopleTab>`), type `PeopleTab` (search `type PeopleTab`) — **15 keys** — Subs landed v2.1214, Teams removed v2.1292 (`?tab=teams` redirects to Users):
 
 ```
-'review' | 'users' | 'subs' | 'teams' | 'overhead' | 'employment' | 'pay_stubs'
+'review' | 'users' | 'subs' | 'overhead' | 'employment' | 'pay_stubs'
 | 'hours' | 'offsets' | 'vehicles' | 'housing' | 'licenses' | 'contracts'
 | 'writeups' | 'feedback' | 'activity'
 ```
@@ -43,7 +43,7 @@ Tabs switch on a single `activeTab` state ([`People.tsx`](../src/pages/People.ts
 | `overhead` | thin wrapper | ~1,989 | extracted (`PeopleOverheadTab`) | 0 in parent | reads `payConfig` only (NOT `crewJobsByDatePerson`) | low data / dev-master | Done |
 | `employment` | thin wrapper | ~1,151 (component) | extracted (`PeopleEmploymentTab`, self-loading) | 0 in parent | reads the `usePayConfig` cluster + `users` via props | low-med | Done (see dossier) |
 | `pay_stubs` | thin wrapper (tab button reads **Payroll**, v2.1257; Ledger half) | ~1,331 | extracted (`PeoplePayStubsTab`, Ledger half) | draft-payroll + mark-paid clusters stay in parent | high | Done — conservative seam (see dossier) |
-| `hours` | inline (sub-sections extracting) | ~1,280 | partial | ~39 (`hours*`, clock sessions) | **owns** `payConfig`/`teams`/`crewJobsByDatePerson` | very high | Phase 3 — decomposing sub-section by sub-section; Teams → `PeopleHoursTeams`, Due-Summaries → `PeopleHoursDueSummaries`, Sessions → `PeopleHoursSessions`, Week → `PeopleHoursWeekRange`, Hours grid → `PeopleHoursGrid` done (Cost matrix + Sharing sections retired 2026-07-15); only the clock-strip wrapper left |
+| `hours` | inline orchestration only (~320 render lines; every major sub-section is an extracted component) | ~320 render + parent-owned state/loaders | partial | ~39 (`hours*`, clock sessions) | **owns** `payConfig`/`teams`/`crewJobsByDatePerson` | very high | Phase 3 sub-section decomposition done: Teams → `PeopleHoursTeams`, Due-Summaries → `PeopleHoursDueSummaries`, Sessions → `PeopleHoursSessions`, Week → `PeopleHoursWeekRange`, Hours grid → `PeopleHoursGrid` (+ `PeopleHoursGridJobHighlight`/`PeopleHoursPendingBanner`) (Cost matrix + Sharing sections retired 2026-07-15); inline remains the clock-strip wrapper + the orchestration/wiring |
 | `vehicles` | thin wrapper | ~235 | extracted (`PeopleVehiclesTab`) | 0 in parent | `users` prop | low | Done (PR #19) |
 | `housing` | thin wrapper | ~200 | extracted (`PeopleHousingTab`) | 0 in parent | `users` prop | low | Done (PR #20) |
 | `offsets` | thin wrapper | ~195 | extracted (`PeopleOffsetsTab`) | 0 in parent | `payStubs`/`loadPayStubs` props | low-med | Done (PR #22) |
@@ -247,30 +247,29 @@ From [`usePeopleAccess`](../src/hooks/usePeopleAccess.ts) (**6 flags**): `canAcc
 
 ```mermaid
 graph TD
-    subgraph done [Extracted tabs - Phase 1 done]
+    subgraph done [Extracted tabs]
         VH[vehicles]
         HO[housing]
         LI[licenses]
         OF[offsets]
         CT[contracts]
-        TE[teams]
         WR[writeups]
         FB[feedback]
         AC[activity]
-    end
-    subgraph hub [Pay/Hours hub - still inline]
         US[users]
-        HR[hours]
         PS[pay_stubs]
         OV[overhead]
         RV[review]
+    end
+    subgraph hub [Pay/Hours hub - the one tab still inline]
+        HR[hours]
     end
     subgraph hooks [Shared hooks]
         ROSTER["usePeopleRoster (done)"]
         PERMS["usePeopleAccess (done)"]
         CREW["useCrewJobMap (done)"]
-        PAYCFG["usePayConfig (planned)"]
-        HOURS["usePeopleHoursData (planned)"]
+        PAYCFG["usePayConfig (done)"]
+        HOURS["usePeopleHoursData (done)"]
     end
 
     US & PS & OV & RV --> ROSTER
