@@ -3,23 +3,23 @@
 ---
 file: docs/PEOPLE_REVIEW_TAB_ARCHITECTURE.md
 type: Architecture Map / Decomposition
-purpose: Step-0 map for the sub-decomposition of src/components/people/PeopleReviewTab.tsx (~5,009 lines) per PAGE_DECOMPOSITION_PLAYBOOK.md — an already-extracted People tab that kept growing. Inventories every logical region (state, memos, effects, loaders, supabase tables/RPCs, sub-components, coupling) so extraction can proceed without re-reading the whole file.
+purpose: Step-0 map for the sub-decomposition of src/components/people/PeopleReviewTab.tsx (~3,777 lines) per PAGE_DECOMPOSITION_PLAYBOOK.md — an already-extracted People tab that kept growing. Inventories every logical region (state, memos, effects, loaders, supabase tables/RPCs, sub-components, coupling) so extraction can proceed without re-reading the whole file.
 audience: Developers, AI Agents
-last_updated: 2026-07-29
+last_updated: 2026-08-02
 ---
 
 ## What this surface is
 
 [`src/components/people/PeopleReviewTab.tsx`](../src/components/people/PeopleReviewTab.tsx) is the **Review** tab of the People page — a dev-only analytics surface with two halves: the **Team Summary** table (one row per pay-config person: hours, overhead hours/labor, field hours, gross/net revenue, profit after overhead, per-hour rates, each cell opening a drilldown modal) and a **per-person Review panel** (headline stats, Jobs Worked with expandable per-job economics, Hours & Pay, Reports Filed, Tasks Completed/Outstanding) that expands when a name in the Team Summary is clicked.
 
-It was extracted from `People.tsx` as one unit (see [`PEOPLE_TABS_ARCHITECTURE.md`](./PEOPLE_TABS_ARCHITECTURE.md) §review — People.tsx shrank 13,487 → 8,598 in that move) and has since grown to **5,009 lines**. Hook census: **23 `useState`**, **3 `useEffect`**, **5 `useMemo` + 1 `useCallback`**, **2 `useRef`** (`teamSummaryReqIdRef`, `showPeopleForReviewRef`). It is a single default-exported component with no module-level sub-components; the bulk is three monsters:
+It was extracted from `People.tsx` as one unit (see [`PEOPLE_TABS_ARCHITECTURE.md`](./PEOPLE_TABS_ARCHITECTURE.md) §review — People.tsx shrank 13,487 → 8,598 in that move) and had grown to **5,267 lines** before its own Stage-A decomposition began; after step 1 (popup builder → `lib/peopleDocuments/buildTeamSummaryHtml.ts`, v2.1305) it stands at **3,777 lines**. Hook census: **23 `useState`**, **3 `useEffect`**, **5 `useMemo` + 1 `useCallback`**, **2 `useRef`** (`teamSummaryReqIdRef`, `showPeopleForReviewRef`). It is a single default-exported component with no module-level sub-components; the bulk was three monsters:
 
 | Block | Symbol | Approx lines |
 |---|---|---|
-| Per-person data loader | `loadReviewData` | ~659–1325 (~665) |
-| Team-wide union loader | `loadTeamReviewUnion` | ~1351–1641 (~290) |
-| Popup Team Summary HTML/JS document builder | inside `openTeamSummaryWindow` | ~1779–3438 (~1,660) |
-| Render IIFE (header, controls, inline table mount, per-person panel, contributors modal) | `return (() => { … })()` | ~3472–5009 (~1,537) |
+| Per-person data loader | `loadReviewData` | ~665 |
+| Team-wide union loader | `loadTeamReviewUnion` | ~290 |
+| Popup Team Summary HTML/JS document builder | inside `openTeamSummaryWindow` | **extracted v2.1305** → [`lib/peopleDocuments/buildTeamSummaryHtml.ts`](../src/lib/peopleDocuments/buildTeamSummaryHtml.ts) (~1,490 moved) |
+| Render IIFE (header, controls, inline table mount, per-person panel, contributors modal) | `return (() => { … })()` | ~1,537 |
 
 This map is a **sub-decomposition** map: the parent-side facts (render gate, props contract, what stayed in `People.tsx`) are recorded in [`PEOPLE_TABS_ARCHITECTURE.md`](./PEOPLE_TABS_ARCHITECTURE.md) §review and are only summarized here. Line numbers are as of v2.1088 and rot — search the symbol.
 
@@ -36,7 +36,7 @@ Rendered at `People.tsx` ~3866 behind `activeTab === 'review' && isDev` (the com
 | A. 90-day overhead-rates engine | `reviewOverheadRates` state + effect at ~268 | ~215 | med — read by B, C, D, E (rates thread everywhere) | low as a hook, high as a component | inline |
 | B. Roster + period scope (shared substrate) | `showPeopleForReview`, `getReviewDateRange` | ~120 | highest — every region reads it | must stay in this component | inline (stays) |
 | C. Team Summary inline orchestration | `teamSummaryRows` + auto-refresh effect + `loadTeamReviewUnion`/`loadTeamSummaryData` | ~430 | high — bridge refs, cache, overhead rates, roster | med | partially extracted (`TeamSummaryInline` + `derivePersonTeamSummary` already out) |
-| D. Team Summary popup document builder | popup branch of `openTeamSummaryWindow` | ~1,660 | low — pure HTML/JS string from a payload | **low — best first target (Stage A)** | inline |
+| D. Team Summary popup document builder | popup branch of `openTeamSummaryWindow` | ~1,660 | low — pure HTML/JS string from a payload | low | **extracted (v2.1305)** → [`lib/peopleDocuments/buildTeamSummaryHtml.ts`](../src/lib/peopleDocuments/buildTeamSummaryHtml.ts) |
 | E. Per-person Review panel | `loadReviewData` + render ~3656–4877 | ~1,900 | med — reads B, A, `teamSummaryBreakdowns` headline mirror | med-high (loader math is untested) | inline |
 | F. Jobs Worked expanded-row detail grid | inside E, duplicated for labor + crew rows | ~600 (2 × ~300 near-identical) | low — pure render off a row object | low | inline (duplicated) |
 | G. Labor/Profit contributors modal | `reviewLaborBreakdownContext` render ~4880–5005 | ~125 | low — reads `reviewLaborByJobAndPerson` | low | inline |
@@ -84,7 +84,7 @@ Rendered at `People.tsx` ~3866 behind `activeTab === 'review' && isDev` (the com
 - **Data flow:** `dataPromise` = cache hit (`teamSummaryDataCacheRef` key match, popup only) or `loadTeamSummaryData()`. Rows are enriched by the SAME `enrichTeamSummaryRowsForInline` (split overhead model: own office/bid wages charged directly + field-hour share of office parts) that feeds `teamSummaryBreakdowns` — the popup's retired local all-hours enrichment (`profit − totalHours × overheadRate`) was removed in v2.1247 after the two windows were caught disagreeing on Profit and row order. Rates are read through `reviewOverheadRatesRef` inside the `.then()` so a rate load finishing mid-fetch still reaches the popup.
 - **Sub-components:** none (dead `embeddedResizeScript` iframe-resize branch survives behind `isEmbedded` which is always false on this path — the inline iframe era ended when `TeamSummaryInline` landed; preserve, do not "clean up", during the move).
 - **External coupling:** `showToast` for popup-blocked / loading / error; `window.open` + `document.write`.
-- **Extraction status + risk + approach:** inline. **The single biggest, lowest-risk extraction on this surface (Stage A).** Move the HTML construction to `src/lib/peopleDocuments/buildTeamSummaryHtml.ts` taking an explicit context object (`{ breakdowns, overheadRate, overheadRateLoading, overheadDecomp, periodLabel, selectedPersonName }`) and returning the HTML string — exactly the `buildPayStubHtml` pattern proven on the pay_stubs tab. Add snapshot-ish tests (row html for salary vs hourly, footer totals, escaping of `<`/quotes, null `profitAfterOverhead` sort-to-bottom). Removes ~1,600 lines from the component in one behavior-preserving PR. The `openTeamSummaryWindow` shell (window management, cache check, toasts) stays.
+- **Extraction status + risk + approach:** **extracted (v2.1305)** → [`src/lib/peopleDocuments/buildTeamSummaryHtml.ts`](../src/lib/peopleDocuments/buildTeamSummaryHtml.ts) + colocated test (12 cases: popup vs dead-embedded branch, meta states, JSON `</`-escaping, script machinery, determinism). Takes an explicit `TeamSummaryHtmlContext` (`{ isEmbedded, periodLabel, breakdowns, overheadRate, overheadRateLoading, overheadDecomp, selectedPersonName }`) and returns the HTML string — the `buildPayStubHtml` pattern. The template moved byte-verbatim (only `getReviewPeriodLabel()` → the threaded `periodLabel`); the dead `embeddedResizeScript` branch is preserved. Note `overheadDecomp` is typed as the WIDER `TeamSummaryHtmlOverheadDecomp` (raw nullable `reviewOverheadRates` fields) — the popup has always serialized raw nulls while the inline memo coerces to 0. The `openTeamSummaryWindow` shell (window management, cache check, enrichment call, toasts) stays in the component.
 
 ### E. Per-person Review panel
 
@@ -134,7 +134,7 @@ Implication: sub-extractions here are **children of PeopleReviewTab**, which rem
 
 | Candidate | Currently | Target |
 |---|---|---|
-| Popup Team Summary HTML/JS document (~1,660 lines incl. 14 `build*Body`/cell-builder functions) | template literal inside `openTeamSummaryWindow` | `lib/peopleDocuments/buildTeamSummaryHtml.ts` (explicit context object) + tests — **do first** |
+| Popup Team Summary HTML/JS document (~1,660 lines incl. 14 `build*Body`/cell-builder functions) | ~~template literal inside `openTeamSummaryWindow`~~ | **done (v2.1305)** — [`lib/peopleDocuments/buildTeamSummaryHtml.ts`](../src/lib/peopleDocuments/buildTeamSummaryHtml.ts) (explicit context object) + 12 tests |
 | `loadTeamReviewUnion` | component method (already pure-async, no state reads) | `lib/people/loadTeamReviewUnion.ts` (types already in `teamReviewTypes.ts`) |
 | `loadReviewData` allocation core (drive cost, item-hours reduce, cost maps, ratio allocation, contributor breakdown) | inline in the 665-line loader | `lib/people/reviewPersonAllocation.ts` + tests |
 | `getReviewDateRange` + `getReviewPeriodLabel` | component functions | `lib/people/reviewDateRange.ts` (inject `now`) + tests |
@@ -168,7 +168,7 @@ The Team Summary half churned heavily through the v2.539–v2.547 wave (Conventi
 
 ## Recommended extraction order (value ÷ risk)
 
-1. **Stage A: `buildTeamSummaryHtml`** — move the popup document builder to `lib/peopleDocuments/` + tests. ~1,660 lines out, near-zero risk, file drops to ~3,350.
+1. ~~**Stage A: `buildTeamSummaryHtml`**~~ — **done (v2.1305)**: popup document builder moved to [`lib/peopleDocuments/buildTeamSummaryHtml.ts`](../src/lib/peopleDocuments/buildTeamSummaryHtml.ts) + 12 tests; file dropped 5,267 → 3,777.
 2. **Stage A: `loadTeamReviewUnion` → `lib/people/`** — already pure; unblocks the hook seam.
 3. **Stage A sweep** — `reviewDateRange`, `laborCostMath`, cache key, formatter dedupe (with the `decimalToHms` diff check).
 4. **`useReviewOverheadRates` hook** — region A; consumers unchanged.
