@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1263',
+    date: '2026-08-01',
+    title: 'Behind the scenes: nightly checks follow the Pipeline rename',
+    kind: 'fix',
+    highlights: [
+      'The automated nightly test that watches the Pipeline board was still looking for the old "Stages" name \u2014 updated so the nightly stays green.',
+    ],
+  },
+  {
     version: 'v2.1262',
     date: '2026-08-01',
     title: 'Banking: "User Review" is now "Card Review"',

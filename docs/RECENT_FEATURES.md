@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-01 (v2.1262)
+last_updated: 2026-08-01 (v2.1263)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1263)
+
+### E2E — stages-board spec follows the "Pipeline tools" rename (2026-08-01)
+The full production smoke run after today's deploys came back 31/32: [`stages-board.spec.ts`](../e2e/stages-board.spec.ts) still located the board's ⋯ menu by the old `Stages tools` aria-label (renamed `Pipeline tools` in v2.1251 — that PR fixed `jobs-tabs.spec.ts` but missed this one, exactly the "move a button, fix its spec in the same PR" failure mode the e2e doc warns about). Selector updated; no app code changes.
 
 ## Latest Updates (v2.1262)
 

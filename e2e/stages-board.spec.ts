@@ -32,7 +32,7 @@ test('Total by Name modal opens from the ⋯ tools menu and its Print builds the
   await expect(page.locator('main')).toContainText(/Working \(\d+\)/, { timeout: 20000 })
   // v2.1049 collapsed the Stages toolbar to New Job + search + a ⋯ menu; Total
   // by Name is a menuitem there and is not in the DOM until the menu opens.
-  await page.getByRole('button', { name: 'Stages tools' }).click()
+  await page.getByRole('button', { name: 'Pipeline tools' }).click()
   await page.getByRole('menuitem', { name: /^Total by Name/ }).click()
   // Scope to the dialog: the board's Billed section header carries a print button
   // with the SAME accessible name, so page-level lookups are ambiguous.
