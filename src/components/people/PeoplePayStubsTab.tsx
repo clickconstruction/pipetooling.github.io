@@ -123,6 +123,8 @@ export type PeoplePayStubsTabProps = {
   }) => void
   /** Bumped by the parent after a My-Time save so the upcoming-payroll data refetches. */
   upcomingRefreshTick: number
+  /** Open the parent-owned People pay config modal (wages/salary setup — moved here from the Hours tab, v2.1257). */
+  onOpenPayConfig: () => void
   /** Open the parent-owned Payroll Forecast modal. */
   onOpenForecast: () => void
   forecastDisabled: boolean
@@ -152,6 +154,7 @@ export default function PeoplePayStubsTab({
   deletingPayStubId,
   onOpenMyTimeForDay,
   upcomingRefreshTick,
+  onOpenPayConfig,
   onOpenForecast,
   forecastDisabled,
   onOpenDraftPayroll,
@@ -499,6 +502,23 @@ export default function PeoplePayStubsTab({
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>
                     <button
                       type="button"
+                      onClick={onOpenPayConfig}
+                      title="Set wages, office rates, and salary flags per person"
+                      style={{
+                        padding: '0.5rem 1rem',
+                        fontSize: '0.9375rem',
+                        background: 'var(--bg-subtle)',
+                        color: 'var(--text-700)',
+                        border: '1px solid var(--border-strong)',
+                        borderRadius: 6,
+                        cursor: 'pointer',
+                        fontWeight: 600,
+                      }}
+                    >
+                      People pay config
+                    </button>
+                    <button
+                      type="button"
                       onClick={onOpenForecast}
                       disabled={forecastDisabled}
                       title={
@@ -525,7 +545,7 @@ export default function PeoplePayStubsTab({
                       disabled={draftPayrollDisabled}
                       title={
                         draftPayrollDisabled
-                          ? 'In Hours, open People pay config and check Show in Hours for people to track'
+                          ? 'Open People pay config and check Show in Hours for people to track'
                           : undefined
                       }
                       style={{
