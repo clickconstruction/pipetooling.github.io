@@ -43,7 +43,7 @@ Each section lists: render location (anchored by symbol/JSX comment — line num
 | Tab key | Label | Render anchor | Approx inline lines | Status | Owned state (approx) | Cross-tab coupling | Risk | Recommended action |
 |---|---|---|---|---|---|---|---|---|
 | `supply-houses` | Supply Houses | `activeTab === 'supply-houses'` wrapper | ~9 | **extracted** (`SupplyHousesTab`) | 0 in parent | low (`handleNavigateToPOFromSupplyHouses` writes PO state) | — | Done; later fold the legacy Supply House modal (Parts Book) into it |
-| `po-generator` | PO Generator | `activeTab === 'po-generator'` | ~409 + effects | inline | ~14 (`poGen*` cluster) | low (reads `supplyHouses`, `selectedServiceTypeId`, `myRole`) | low | **Extract first** → `MaterialsPoGeneratorTab` |
+| `po-generator` | PO Generator | always-mounted `<MaterialsPoGeneratorTab active={…}>` | ~9 | **extracted (v2.1279)** ([`MaterialsPoGeneratorTab`](../src/components/materials/MaterialsPoGeneratorTab.tsx)) | 0 in parent | low (props: `supplyHouses`, `selectedServiceTypeId`, `myRole`, `onError`) | — | Done |
 | `purchase-orders` | Purchase Orders | `activeTab === 'purchase-orders'` | ~600 | inline | ~12 (PO view/edit fields) | high (PO engine shared with `assemblies-po`; deep-link router) | med | Extract after the PO engine seam |
 | `parts-book` | Parts Book | `activeTab === 'parts-book'` | ~255 + modals | inline | ~10 (search/filter/paging) | med-high (parts caches feed pickers in 3 other tabs) | med | Extract after the parts-catalog seam |
 | `assembly-book` | Assembly Book | `activeTab === 'assembly-book'` | ~565 | inline | ~2 truly own | high (shares `selectedTemplate`, filters, stats, parts caches with `assemblies-po`) | high | Extract with/after `assemblies-po` (assembly cluster) |
@@ -120,7 +120,7 @@ Page-level modals (stay in parent or move with a cluster): `PartFormModal` (extr
 - **Supabase tables/RPCs:** `material_po_generator_entries` (SELECT with `jobs_ledger!inner`, `users` ×2 FK-named joins, `supply_houses`), RPC `search_jobs_ledger` (job search — results then filtered client-side by service type via a second `jobs_ledger` SELECT), `users` (ILIKE search, `%`/`_` escaped), RPC `insert_material_po_generator_entry` (allocates the unique shop code, 10000–99999 per GLOSSARY).
 - **Sub-components:** none; pickers are inline.
 - **External coupling:** ledger codes are what `SupplyHousesTab` invoice PO-number warnings match against (read path only — no shared client state; the coupling is via the DB table).
-- **Extraction status + risk + approach:** Inline. **Low risk — extract first.** Fully self-contained state + effects; props needed: `active` (or mount-gating by the parent), `supplyHouses`, `selectedServiceTypeId`, `myRole`, `onError`. Stage A is minimal (the debounce/search effects are IO, not calc); optionally lift the job-result service-type filtering into a pure function with a test. This is the momentum-builder extraction that validates the page's prop seam, exactly like `bid-costs` was for Bids.
+- **Extraction status:** **Done (v2.1279)** — [`MaterialsPoGeneratorTab`](../src/components/materials/MaterialsPoGeneratorTab.tsx), props `active`/`myRole`/`supplyHouses`/`selectedServiceTypeId`/`onError`, toasts via `useToastContext` inside. **Always mounted** (parent renders it unconditionally; it returns null when inactive) so form state survives tab switches; the former `activeTab === 'po-generator'` effect gates became `active` gates. The `PoGenerator*` types moved with it.
 
 ---
 

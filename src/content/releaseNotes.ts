@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1279',
+    date: '2026-08-02',
+    title: 'Behind the scenes: Materials PO Generator tab restructured',
+    kind: 'infra',
+    highlights: [
+      'The PO Generator tab on the Materials page now lives in its own component — the first tab extraction of the Materials cleanup.',
+      'No visible changes; generating PO numbers and the ledger work exactly as before, and your in-progress form survives switching tabs just like it always did.',
+    ],
+  },
+  {
     version: 'v2.1277',
     date: '2026-08-02',
     title: 'Behind the scenes: Materials page groundwork, part 3',

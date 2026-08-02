@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-02 (v2.1277)
+last_updated: 2026-08-02 (v2.1279)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1279)
+
+### Materials decomposition Stage B begins: PO Generator tab extracted (2026-08-02)
+First component move of the Materials.tsx decomposition — the map's designated momentum-builder. The entire `po-generator` surface (the 14-state `poGen*` cluster, the supply-house picker memo, `loadPoGeneratorLedger`, the four tab-gated effects, `handlePoGeneratorGenerate`, the `PoGenerator*` types, and the ~410-line JSX block) moves verbatim to [`components/materials/MaterialsPoGeneratorTab.tsx`](../src/components/materials/MaterialsPoGeneratorTab.tsx) (682 lines). Props: `active`, `myRole`, `supplyHouses`, `selectedServiceTypeId`, `onError`; toasts come from `useToastContext` inside. **Always-mounted contract** (the JobsStagesTab pattern): the parent renders it unconditionally and the component returns null when inactive, so in-progress form state (selected job/user, notes) survives tab switches exactly as it did when the state lived in the page; the effects' `activeTab === 'po-generator'` gates became `active` gates. The page shed its last `useMemo` and its only `useToastContext`/`withSupabaseRetry`/`effectiveJobLedgerNumber` uses. Behavior-preserving only. Materials.tsx 6,615 → 5,983 lines (7,033 at train start). 379 files / 3,417 tests green — the render smokes now exercise the extracted component through the page.
 
 ## Latest Updates (v2.1277)
 
