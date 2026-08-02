@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-02 (v2.1293)
+last_updated: 2026-08-02 (v2.1294)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1294)
+
+### Takeoff decomposition Stage A: loadPOItemsSummary kernel (2026-08-02)
+First code PR of the BidsTakeoffTab decomposition (per [`BIDS_TAKEOFF_TAB_ARCHITECTURE.md`](./BIDS_TAKEOFF_TAB_ARCHITECTURE.md); the render-smoke net landed version-less in #995). The `purchase_order_items` summary query + `{part_name, quantity, price_at_time, template_name}` mapping was copy-pasted at **3 call sites** in [`BidsTakeoffTab.tsx`](../src/components/bids/BidsTakeoffTab.tsx) (existing-PO effect, `addTakeoffToExistingPO`, the cost-estimate PO modal effect); they now all call `loadPOItemsSummary()` in new [`lib/bids/poItemsSummary.ts`](../src/lib/bids/poItemsSummary.ts) (+4 tests). Null-on-error return preserves each site's "null = failed" state semantics; the em-dash part-name and null template fallbacks are pinned. Behavior-preserving only. 390 files / 3,499 tests green.
 
 ## Latest Updates (v2.1293)
 

@@ -5,6 +5,7 @@ import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, type D
 import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { supabase } from '../../lib/supabase'
+import { loadPOItemsSummary } from '../../lib/bids/poItemsSummary'
 import { addExpandedPartsToPO, expandTemplate, getTemplatePartsPreview } from '../../lib/materialPOUtils'
 import {
   catalogUnitPricesEffectivelyEqual,
@@ -1826,24 +1827,8 @@ export function BidsTakeoffTab({
     setTakeoffCreatedPOId(takeoffExistingPOId)
     loadDraftPOs()
     setTakeoffExistingPOItems('loading')
-    const { data, error } = await supabase
-      .from('purchase_order_items')
-      .select('quantity, price_at_time, material_parts(name), source_template:material_templates!source_template_id(id, name)')
-      .eq('purchase_order_id', takeoffExistingPOId)
-      .order('sequence_order', { ascending: true })
-    if (!error && data) {
-      const rows = data as unknown as Array<{ quantity: number; price_at_time: number; material_parts: { name: string } | null; source_template: { id: string; name: string } | null }>
-      setTakeoffExistingPOItems(
-        rows.map((row) => ({
-          part_name: row.material_parts?.name ?? '—',
-          quantity: row.quantity,
-          price_at_time: row.price_at_time,
-          template_name: row.source_template?.name ?? null,
-        }))
-      )
-    } else {
-      setTakeoffExistingPOItems(null)
-    }
+    const items = await loadPOItemsSummary(supabase, takeoffExistingPOId)
+    setTakeoffExistingPOItems(items)
   }
 
   async function printTakeoffBreakdown() {
@@ -2265,25 +2250,9 @@ export function BidsTakeoffTab({
     setTakeoffExistingPOItems('loading')
     let cancelled = false
     void (async () => {
-      const { data, error } = await supabase
-        .from('purchase_order_items')
-        .select('quantity, price_at_time, material_parts(name), source_template:material_templates!source_template_id(id, name)')
-        .eq('purchase_order_id', takeoffExistingPOId)
-        .order('sequence_order', { ascending: true })
+      const items = await loadPOItemsSummary(supabase, takeoffExistingPOId)
       if (cancelled) return
-      if (error) {
-        setTakeoffExistingPOItems(null)
-        return
-      }
-      const rows = (data ?? []) as unknown as Array<{ quantity: number; price_at_time: number; material_parts: { name: string } | null; source_template: { id: string; name: string } | null }>
-      setTakeoffExistingPOItems(
-        rows.map((row) => ({
-          part_name: row.material_parts?.name ?? '—',
-          quantity: row.quantity,
-          price_at_time: row.price_at_time,
-          template_name: row.source_template?.name ?? null,
-        }))
-      )
+      setTakeoffExistingPOItems(items)
     })()
     return () => { cancelled = true }
   }, [takeoffExistingPOId])
@@ -2427,26 +2396,13 @@ export function BidsTakeoffTab({
     const poName = purchaseOrdersForCostEstimate.find((p) => p.id === costEstimatePOModalPoId)?.name ?? 'Purchase order'
     let cancelled = false
     void (async () => {
-      const { data, error } = await supabase
-        .from('purchase_order_items')
-        .select('quantity, price_at_time, material_parts(name), source_template:material_templates!source_template_id(id, name)')
-        .eq('purchase_order_id', costEstimatePOModalPoId)
-        .order('sequence_order', { ascending: true })
+      const items = await loadPOItemsSummary(supabase, costEstimatePOModalPoId)
       if (cancelled) return
-      if (error) {
+      if (items === null) {
         setCostEstimatePOModalData(null)
         return
       }
-      const rows = (data ?? []) as unknown as Array<{ quantity: number; price_at_time: number; material_parts: { name: string } | null; source_template: { id: string; name: string } | null }>
-      setCostEstimatePOModalData({
-        name: poName,
-        items: rows.map((row) => ({
-          part_name: row.material_parts?.name ?? '—',
-          quantity: row.quantity,
-          price_at_time: row.price_at_time,
-          template_name: row.source_template?.name ?? null,
-        })),
-      })
+      setCostEstimatePOModalData({ name: poName, items })
     })()
     return () => { cancelled = true }
   }, [costEstimatePOModalPoId, purchaseOrdersForCostEstimate])
