@@ -167,12 +167,12 @@ The URL guard effect rewrites disallowed `?tab=` values to `parts-book` (`replac
 | `calculateAssemblyCost` (recursive, cycle guard) | **done (v2.1276)** — [`lib/materials/assemblyCost.ts`](../src/lib/materials/assemblyCost.ts); Materials keeps a thin closure wrapper | — |
 | `filterPartsByQuery`, `filterTemplatesByQuery` | **done (v2.1276)** — [`lib/materials/materialsFilters.ts`](../src/lib/materials/materialsFilters.ts) | — |
 | `displayParts` Load-All filter/sort IIFE | **done (v2.1276)** — `computeLoadAllDisplayParts` in [`lib/materials/materialsFilters.ts`](../src/lib/materials/materialsFilters.ts) | — |
-| `fetchPricesForParts` (chunked batch fetch) | module-level in Materials.tsx | `lib/materials/fetchPricesForParts.ts` (already pure-ish; takes supabase) |
+| `fetchPricesForParts` (chunked batch fetch) | **done (v2.1277)** — [`lib/materials/partPrices.ts`](../src/lib/materials/partPrices.ts) (takes supabase; + `fetchPricesForPart`) | — |
 | `purchase_order_items` join + `itemsWithDetails` mapping (~10 copies) | **done (v2.1275)** — [`lib/materials/poItemDetails.ts`](../src/lib/materials/poItemDetails.ts) `loadPOItemsWithDetails` (+ `POItemWithDetails`/`PurchaseOrderWithItems` types), 12 call sites migrated | — |
-| `printPO` / `printPOForSupplyHouse` HTML builders | inline, one does N price fetches | `lib/materialsDocuments/poPrint.ts` (context object; fetch stays outside) + tests |
-| supply-house stats grouping (`loadSupplyHouseStatsByServiceType`) | inline grouping loops | pure `groupSupplyHouseStats(rows)` + test |
-| `formatTimeSince`, `formatCurrency` | in-file | shared lib (check for existing equivalents first) |
-| `expandTemplate` / `addExpandedPartsToPO` | already in [`lib/materialPOUtils.ts`](../src/lib/materialPOUtils.ts) | add colocated tests if missing |
+| `printPO` / `printPOForSupplyHouse` HTML builders | **done (v2.1277)** — [`lib/materialsDocuments/poPrint.ts`](../src/lib/materialsDocuments/poPrint.ts); page keeps `openPrintWindow` + the draft price prefetch | — |
+| supply-house stats grouping (`loadSupplyHouseStatsByServiceType`) | **done (v2.1277)** — [`lib/materials/supplyHouseStats.ts`](../src/lib/materials/supplyHouseStats.ts) `groupSupplyHouseStats` | — |
+| `formatTimeSince`, `formatCurrency` | **done (v2.1277)** — `formatCurrency` was identical to [`lib/format.ts`](../src/lib/format.ts)'s (now imported); `formatTimeSince` → [`lib/formatTimeSinceAgo.ts`](../src/lib/formatTimeSinceAgo.ts) (distinct from dashboard's suffix-less variant) | — |
+| `expandTemplate` / `addExpandedPartsToPO` | **done (v2.1277)** — 7 tests added in [`lib/materialPOUtils.test.ts`](../src/lib/materialPOUtils.test.ts) | — |
 
 ---
 

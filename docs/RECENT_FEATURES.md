@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-02 (v2.1276)
+last_updated: 2026-08-02 (v2.1277)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1277)
+
+### Materials decomposition Stage A complete: poPrint builders + remaining pure helpers (2026-08-02)
+Final Stage-A PR of the Materials.tsx decomposition — every item in the [architecture map's pure-logic inventory](./MATERIALS_TABS_ARCHITECTURE.md#stage-a-pure-logic-inventory-extract-to-lib--tests-before-any-component-moves) is now extracted. **(1)** `printPO` / `printPOForSupplyHouse` become pure builders in [`lib/materialsDocuments/poPrint.ts`](../src/lib/materialsDocuments/poPrint.ts) (+10 tests): the page fetches the draft "All prices" lists and owns the `window.open` plumbing (`openPrintWindow`), the builders just return HTML — draft N+1 price fetch, escaping, em-dash fallbacks, and the finalized/draft column split preserved verbatim. **(2)** Module-level `fetchPricesForParts` (v2.46 batching: 500-ID chunks + client re-sort) and `fetchPricesForPart` move to [`lib/materials/partPrices.ts`](../src/lib/materials/partPrices.ts) (+5 tests incl. a cross-chunk re-sort case), now taking the supabase client. **(3)** The `get_supply_house_stats_by_service_type` grouping loops become pure `groupSupplyHouseStats` in [`lib/materials/supplyHouseStats.ts`](../src/lib/materials/supplyHouseStats.ts) (+3 tests, first-row-wins duplicate semantics pinned). **(4)** In-file `formatCurrency` deleted in favor of the identical existing [`lib/format.ts`](../src/lib/format.ts) export; `formatTimeSince` moves to [`lib/formatTimeSinceAgo.ts`](../src/lib/formatTimeSinceAgo.ts) (+1 test) — deliberately NOT merged with `dashboardJobRowActivity.formatTimeSince`, which omits the " ago" suffix. **(5)** [`lib/materialPOUtils.ts`](../src/lib/materialPOUtils.ts) (extracted long ago, never tested) gains 7 tests: `expandTemplate` recursion/multiplication, `getTemplatePartsPreview` merge+sort, `addExpandedPartsToPO` lowest-price pick, sequence-order continuation, `source_template_id` tagging, error propagation. Behavior-preserving only. Materials.tsx 6,807 → 6,615 lines. 379 files / 3,417 tests green.
 
 ## Latest Updates (v2.1276)
 
