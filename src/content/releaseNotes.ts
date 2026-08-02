@@ -188,6 +188,16 @@ export const RELEASE_NOTES: ReleaseNote[] = [
     ],
   },
   {
+    version: 'v2.1244',
+    date: '2026-08-01',
+    title: 'Pipeline Mobile cards: three jobs per screen instead of one',
+    kind: 'feature',
+    highlights: [
+      'The cryptic j:/b: lines are now labeled chips (job date, bill date, hours), the money summary is one line instead of six, and the side icon rail lies flat along the card footer.',
+      'Same information, same taps — each card is about a third of its old height.',
+    ],
+  },
+  {
     version: 'v2.1243',
     date: '2026-08-01',
     title: 'Dispatch schedule: one ⋯ menu for Visible hours, settings, and Share',

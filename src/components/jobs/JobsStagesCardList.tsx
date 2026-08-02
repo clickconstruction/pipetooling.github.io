@@ -2,46 +2,69 @@ import { useNavigate } from 'react-router-dom'
 import type { CSSProperties, ReactNode } from 'react'
 import { useChecklistAddModal } from '../../contexts/ChecklistAddModalContext'
 import { useDispatchTaskModal } from '../../contexts/DispatchTaskModalContext'
-import { formatTimeSince } from '../../lib/jobs/jobFormatting'
-import { jobBilledUnpaidDollars } from '../../lib/jobs/invoiceBilling'
+import { formatEstimatedCompletionDisplay, formatTimeSince, formatUsdNoCents } from '../../lib/jobs/jobFormatting'
+import {
+  invoiceOpenRemainingOnJob,
+  jobBilledUnpaidDollars,
+  jobStagesInvoiceJumpChipTargets,
+} from '../../lib/jobs/invoiceBilling'
 import { jobBillingUnallocatedDollars } from '../../lib/jobsStagesBoard'
 import type { InvoiceWithJob } from '../../lib/jobsStagesBoard'
 import { buildStagesMoneyBarModel } from '../../lib/stagesMoneyBar'
-import { formatUsdNoCents } from '../../lib/jobs/jobFormatting'
+import {
+  deriveStagesBillingActivityDetail,
+  deriveStagesFieldReferenceYmd,
+  deriveStagesFieldTooltip,
+} from '../../lib/stagesJobReferenceDates'
+import { formatStagesCompactWindow, formatStagesNextDateLabel } from '../../lib/stagesUpcomingSchedule'
+import { formatDecimalWorkHoursToHhMm } from '../../lib/formatDecimalWorkHoursHhMm'
+import {
+  formatDispatchNoteDaysAgoShortPhrase,
+  formatDispatchNoteWeekdayShortTimeChicago,
+  getDispatchNoteDisplayMeta,
+} from '../../utils/dispatchNoteDisplay'
+import { showTaskDispatchButton } from '../../lib/headerTaskDispatchEstimatorEligible'
+import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
+import { stripeModeForBillingFromRole } from '../../lib/voidStripeInvoiceForRevert'
+import { StripeInvoiceSendFromStripeButton } from './StripeInvoiceSendFromStripeButton'
 import { showAiaG702G703 } from '../../lib/aiaG702G703Eligibility'
 import { getDefaultWeekRange } from '../../utils/dateUtils'
 import StagesProgressPaymentCell from './StagesProgressPaymentCell'
 import { JobThreadNotesPanel } from '../JobThreadNotesPanel'
+import type { Database } from '../../types/database'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import type { JobsStagesTableProps } from './JobsStagesTable'
 import type { JobsStagesUnifiedTableProps } from './JobsStagesUnifiedTable'
 import {
   renderJobAddressWithMap,
   renderJobCustomerLine as renderJobCustomerLineWithCtx,
-  renderStagesFieldAndBillingLines as renderStagesFieldAndBillingLinesWithCtx,
   renderStagesJobColumnEstimateFooter,
   renderStagesJobHcpSubline,
-  renderStagesLastActivityCell as renderStagesLastActivityCellWithCtx,
+  renderStagesThreadExpandButton,
   renderStagesThreadFullscreenJobHeader,
+  renderStagesViewReportsButton,
   renderStagesEditModeRail,
   shouldSuppressStagesRowJobThreadToggle,
   STAGES_EDIT_MODE_RAIL_WIDTH,
   type StagesRowRenderContext,
 } from './jobsStagesRowShared'
 
+type JobsLedgerInvoice = Database['public']['Tables']['jobs_ledger_invoices']['Row']
+
 /**
- * Stages "Mobile cards" view (v2.1241, ⋯ tools menu toggle): the same section
- * data as JobsStagesTable / JobsStagesUnifiedTable rendered as full-width
- * vertical cards instead of a 940px-min table — built for phones, no sideways
+ * Stages "Mobile cards" view (v2.1241, compacted v2.1244; ⋯ tools menu
+ * toggle): the same section data as JobsStagesTable / JobsStagesUnifiedTable
+ * rendered as full-width vertical cards — built for phones, no sideways
  * scroll. Deliberately consumes the SAME props types as the tables so the
- * section render sites just swap the component, and reuses the shared row
- * renderers (`jobsStagesRowShared`) + `StagesProgressPaymentCell` +
- * `JobThreadNotesPanel`, so every action routes through the table handlers.
- * Card anatomy: identity + the section's primary action pinned top-right,
- * address/customer, crew, field/billing lines, money bar, the activity body
- * (thread teaser, Next appointment, invoice chips, View reports), then — when
- * the card is expanded (tap, same as a table row) — the thread panel and a
- * labeled toolbelt.
+ * section render sites just swap the component; every action routes through
+ * the table handlers. Card anatomy (top to bottom): identity + the section's
+ * primary action pinned top-right, HCP subline, crew, address/customer,
+ * meta chips (the desktop j:/b:/hours stack on one row + open-time), the
+ * money cell in `compact` mode (pct + bar + one condensed legend line), the
+ * Next-appointment chip, a one-line activity teaser (2-line note clamp,
+ * expand chevron), then an always-visible footer: invoice jump chips, View
+ * reports, and the quick-icon row laid horizontally. Tapping the card (same
+ * as a table row) expands the thread panel and a labeled toolbelt.
  */
 
 const cardStyle: CSSProperties = {
@@ -49,10 +72,10 @@ const cardStyle: CSSProperties = {
   border: '1px solid var(--border)',
   borderRadius: 10,
   background: 'var(--surface)',
-  padding: '0.6rem 0.75rem',
+  padding: '0.5rem 0.65rem',
   display: 'flex',
   flexDirection: 'column',
-  gap: '0.45rem',
+  gap: '0.3rem',
   overflow: 'hidden',
 }
 
@@ -86,6 +109,388 @@ function crewLine(job: JobWithDetails) {
     .join(', ')
   return (
     <div style={{ fontSize: '0.8125rem', color: 'var(--text-700)' }}>{names || '—'}</div>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Compact card zones (v2.1244): the v1 card reused the desktop cell renderers,
+// whose stacked single-purpose lines made each card ~2 screens tall. These
+// re-render the SAME data (same derivation helpers, same handlers) in
+// phone-shaped rows: labeled chips for the j/b/hours shorthand, a one-line
+// activity teaser, a compact Next chip, invoice jump chips, and a horizontal
+// quick-icon row on the card footer.
+// ---------------------------------------------------------------------------
+
+const cardChipStyle: CSSProperties = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  gap: 4,
+  fontSize: '0.6875rem',
+  background: 'var(--bg-subtle)',
+  border: '1px solid var(--border)',
+  borderRadius: 999,
+  padding: '0.1rem 0.55rem',
+  color: 'var(--text-700)',
+  whiteSpace: 'nowrap',
+}
+
+const cardQuickIconStyle: CSSProperties = {
+  padding: '0.3rem',
+  background: 'none',
+  border: 'none',
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  cursor: 'pointer',
+}
+
+function cardClockGlyph() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width={10} height={10} fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" aria-hidden style={{ flexShrink: 0 }}>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 7v5l3 2" />
+    </svg>
+  )
+}
+
+/** The desktop "j: / b: / hours" stack as one row of labeled chips (+ open-time). */
+function cardMetaChips(ctx: StagesRowRenderContext, job: JobWithDetails, openLabel: string | null) {
+  const jYmd = deriveStagesFieldReferenceYmd({
+    lastWorkDate: job.last_work_date,
+    lastScheduleWorkDate: job.last_schedule_work_date ?? null,
+  })
+  const bDetail = deriveStagesBillingActivityDetail(job)
+  const jDisplay = jYmd ? formatEstimatedCompletionDisplay(jYmd) : null
+  const bDisplay = bDetail ? formatEstimatedCompletionDisplay(bDetail.ymd) : null
+  const jTitle = deriveStagesFieldTooltip({
+    lastWorkDate: job.last_work_date,
+    lastScheduleWorkDate: job.last_schedule_work_date ?? null,
+    resolvedYmd: jYmd,
+  })
+  const hoursKnown = ctx.stagesManHoursByJobId.has(job.id)
+  const hoursTotal = ctx.stagesManHoursByJobId.get(job.id) ?? 0
+  const hours = ctx.stagesManHoursLoading && !hoursKnown ? '…' : formatDecimalWorkHoursToHhMm(hoursTotal)
+  const breakdown = ctx.stagesLaborBreakdownByJobId.get(job.id) ?? []
+  const hoursTip = breakdown.length
+    ? breakdown.map((p) => `${p.personName} ${formatDecimalWorkHoursToHhMm(p.hours)}`).join(' · ')
+    : 'Man-hours applied (crew assignments)'
+  return (
+    <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.3rem' }}>
+      <button
+        type="button"
+        title={jTitle ?? undefined}
+        aria-label="Field / job-activity date (click to open the job calendar)"
+        onClick={(e) => {
+          e.stopPropagation()
+          ctx.openJobCalendar(job)
+        }}
+        style={{ ...cardChipStyle, cursor: 'pointer' }}
+      >
+        job {jDisplay ?? '—'}
+      </button>
+      <button
+        type="button"
+        title={bDetail?.tooltip}
+        aria-label="Billing-activity date (click for explanation)"
+        onClick={(e) => {
+          e.stopPropagation()
+          ctx.showToast('Billing-activity date', 'info', 2000, { clientX: e.clientX, clientY: e.clientY })
+        }}
+        style={{ ...cardChipStyle, cursor: 'pointer' }}
+      >
+        bill {bDisplay ?? '—'}
+      </button>
+      <span style={cardChipStyle} title={hoursTip} aria-label={`Man-hours applied: ${hours === '…' ? 'loading' : hours}`}>
+        {cardClockGlyph()}
+        {hours}
+      </span>
+      {openLabel ? (
+        <span style={{ fontSize: '0.6875rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }} title="Time since job created">
+          open {openLabel}
+        </span>
+      ) : null}
+    </div>
+  )
+}
+
+/** "NEXT" upcoming appointment as one compact green-edged chip → job calendar. */
+function cardNextChip(ctx: StagesRowRenderContext, job: JobWithDetails) {
+  const up = ctx.stagesUpcomingByJobId[job.id]
+  if (!up) return null
+  const headline = `${formatStagesNextDateLabel(up.ymd)} ${formatStagesCompactWindow(up.timeStart, up.timeEnd)} · ${up.assigneeNames.join(', ')}`
+  return (
+    <button
+      type="button"
+      onClick={(e) => {
+        e.stopPropagation()
+        ctx.openJobCalendar(job)
+      }}
+      title={`Next scheduled: ${headline}${up.note ? ` — ${up.note}` : ''}. Click to open the job calendar.`}
+      aria-label={`Next scheduled appointment ${headline}. Open the job calendar.`}
+      style={{
+        display: 'block',
+        width: '100%',
+        padding: '0.1rem 0 0.1rem 0.5rem',
+        border: 'none',
+        borderLeft: '3px solid var(--border-green)',
+        background: 'transparent',
+        cursor: 'pointer',
+        textAlign: 'left',
+        font: 'inherit',
+      }}
+    >
+      <span style={{ fontSize: '0.6875rem', color: 'var(--text-muted)' }}>
+        <span style={{ fontSize: '0.65rem', fontWeight: 700, textTransform: 'uppercase', color: '#15803d' }}>Next</span>
+        <span style={{ margin: '0 0.35rem' }}>·</span>
+        {headline}
+      </span>
+    </button>
+  )
+}
+
+/** One-line author · time teaser + 2-line note clamp; expand chevron routes to the thread. */
+function cardActivityTeaser(ctx: StagesRowRenderContext, job: JobWithDetails) {
+  const stat = ctx.jobThreadStatsByJobId[job.id]
+  const wireMs = (iso: string | null | undefined): number | null => {
+    if (iso == null || !String(iso).trim()) return null
+    const t = Date.parse(String(iso))
+    return Number.isNaN(t) ? null : t
+  }
+  const tNote = wireMs(stat?.last_note_at)
+  const tReport = wireMs(stat?.last_report_at)
+  let atIso: string | null = null
+  let author = ''
+  let body = ''
+  if (stat && (tNote != null || tReport != null)) {
+    const useReport = tReport != null && (tNote == null || tReport > tNote)
+    atIso = useReport ? stat.last_report_at! : stat.last_note_at!
+    author = (useReport ? stat.last_report_author_name : stat.last_note_author_name)?.trim() || ''
+    body = useReport
+      ? (stat.last_report_preview ?? '').trim() || `Report: ${(stat.last_report_template_name ?? '').trim() || 'Report'}`
+      : (stat.last_note_body ?? '').trim()
+  }
+  return (
+    <div style={{ fontSize: '0.75rem', minWidth: 0 }}>
+      <div style={{ color: 'var(--text-muted)', display: 'flex', alignItems: 'baseline', flexWrap: 'wrap', columnGap: '0.35rem' }}>
+        {atIso ? (
+          <>
+            {author ? <strong style={{ color: 'var(--text-strong)' }}>{author}</strong> : null}
+            <span style={{ whiteSpace: 'nowrap' }}>
+              {formatDispatchNoteWeekdayShortTimeChicago(atIso)} ({formatDispatchNoteDaysAgoShortPhrase(atIso)})
+            </span>
+          </>
+        ) : (
+          <span style={{ color: 'var(--text-faint)' }}>—</span>
+        )}
+        {renderStagesThreadExpandButton(ctx, job.id)}
+      </div>
+      {body ? (
+        <div
+          style={{
+            color: 'var(--text-700)',
+            lineHeight: 1.35,
+            wordBreak: 'break-word',
+            overflow: 'hidden',
+            display: '-webkit-box',
+            WebkitBoxOrient: 'vertical',
+            WebkitLineClamp: 2,
+          }}
+        >
+          {body}
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
+/** Green $-amount chips jumping to the invoice's own Stages row. */
+function cardInvoiceChips(ctx: StagesRowRenderContext, job: JobWithDetails) {
+  const invs = jobStagesInvoiceJumpChipTargets(job)
+  if (invs.length === 0) return null
+  return (
+    <span style={{ display: 'inline-flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.3rem' }}>
+      {invs.map((inv) => {
+        const amt = formatUsdNoCents(Number(inv.amount ?? 0))
+        const openCents = Math.round(invoiceOpenRemainingOnJob(inv, job) * 100)
+        const paidLabel = openCents === 0 ? 'Paid' : 'Unpaid'
+        const statusLabel = inv.status === 'billed' ? 'Billed' : 'Ready to bill'
+        return (
+          <button
+            key={inv.id}
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation()
+              ctx.applyStagesInvoiceFocus(inv.id)
+            }}
+            title={`Go to this invoice row on Stages (${statusLabel}, ${paidLabel})`}
+            aria-label={`Go to invoice ${inv.sequence_order} for ${amt}, ${paidLabel}, on Stages`}
+            style={{
+              padding: '0.15rem 0.5rem',
+              fontSize: '0.6875rem',
+              fontWeight: 600,
+              border: 'none',
+              borderRadius: 4,
+              background: '#16a34a',
+              color: 'white',
+              cursor: 'pointer',
+              lineHeight: 1.2,
+            }}
+          >
+            {amt}
+          </button>
+        )
+      })}
+    </span>
+  )
+}
+
+/** Billed Stripe invoices: compact "Resend · Email sent …" line (parity with the table's hint). */
+function cardStripeEmailedHint(ctx: StagesRowRenderContext, job: JobWithDetails, line: JobsLedgerInvoice) {
+  if (line.external_send_channel !== 'stripe') return null
+  if (!String(line.stripe_invoice_id ?? '').trim()) return null
+  const sentRaw = line.sent_to_customer_at
+  if (sentRaw == null || !String(sentRaw).trim()) return null
+  const sentMeta = getDispatchNoteDisplayMeta(String(sentRaw))
+  const stripePaid = String(line.stripe_invoice_status ?? '').toLowerCase() === 'paid'
+  return (
+    <div
+      title={`Stripe emailed the customer ${sentMeta.weekdayTimeChicago} (${sentMeta.daysAgoLabel})`}
+      style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.3rem', fontSize: '0.6875rem', color: 'var(--text-muted)' }}
+    >
+      <StripeInvoiceSendFromStripeButton
+        jobsLedgerInvoiceId={line.id}
+        stripeInvoiceId={String(line.stripe_invoice_id).trim()}
+        customerEmail={job.customer_email ?? null}
+        stripeModeForBilling={stripeModeForBillingFromRole(ctx.authRole)}
+        onSent={() => void ctx.loadJobs()}
+        compact
+        micro
+        unboxed
+        hideInlineSuccessLine
+        recordedLastSendAt={line.sent_to_customer_at}
+        buttonLabel="Resend"
+        sendDisabled={stripePaid}
+        sendDisabledTitle="This Stripe invoice is paid; Stripe will not send another email."
+      />
+      <span style={{ whiteSpace: 'nowrap' }}>
+        Email sent {sentMeta.weekdayTimeChicago} ({sentMeta.daysAgoLabel})
+      </span>
+    </div>
+  )
+}
+
+/** The desktop activity cell's vertical icon rail, laid horizontally on the card footer. */
+function cardQuickIcons(ctx: StagesRowRenderContext, job: JobWithDetails) {
+  const scheduleNoTeam = (job.team_members?.length ?? 0) === 0
+  const customerPhone = (job.customer_phone ?? '').trim()
+  return (
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.15rem' }}>
+      {ctx.canOpenJobScheduleModal ? (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation()
+            ctx.setScheduleModalJob(job)
+          }}
+          disabled={scheduleNoTeam}
+          title={scheduleNoTeam ? 'Assign team members to open schedule' : 'Open schedule'}
+          aria-label={scheduleNoTeam ? 'Schedule: assign team members first' : 'Open schedule'}
+          style={{ ...cardQuickIconStyle, cursor: scheduleNoTeam ? 'not-allowed' : 'pointer', color: scheduleNoTeam ? 'var(--text-faint)' : '#16a34a' }}
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={16} height={16} fill="currentColor" aria-hidden>
+            <path d="M224 64C206.3 64 192 78.3 192 96L192 128L160 128C124.7 128 96 156.7 96 192L96 240L544 240L544 192C544 156.7 515.3 128 480 128L448 128L448 96C448 78.3 433.7 64 416 64C398.3 64 384 78.3 384 96L384 128L256 128L256 96C256 78.3 241.7 64 224 64zM96 288L96 480C96 515.3 124.7 544 160 544L480 544C515.3 544 544 515.3 544 480L544 288L96 288z" />
+          </svg>
+        </button>
+      ) : null}
+      {ctx.canOpenJobScheduleModal ? (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation()
+            const week = getDefaultWeekRange().start
+            ctx.navigate(`/schedule-dispatch?jobId=${encodeURIComponent(job.id)}&week=${encodeURIComponent(week)}`)
+          }}
+          disabled={scheduleNoTeam}
+          title={scheduleNoTeam ? 'Assign team members to open week dispatch' : 'Open week dispatch'}
+          aria-label={scheduleNoTeam ? 'Week dispatch: assign team members first' : 'Open week dispatch'}
+          style={{ ...cardQuickIconStyle, cursor: scheduleNoTeam ? 'not-allowed' : 'pointer', color: scheduleNoTeam ? 'var(--text-faint)' : 'var(--text-link)' }}
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={16} height={16} fill="currentColor" aria-hidden>
+            <path d="M128 96L512 96C547.3 96 576 124.7 576 160L576 480C576 515.3 547.3 544 512 544L128 544C92.7 544 64 515.3 64 480L64 160C64 124.7 92.7 96 128 96zM128 192L128 480L232 480L232 192L128 192zM280 192L280 480L360 480L360 192L280 192zM408 192L408 480L512 480L512 192L408 192z" />
+          </svg>
+        </button>
+      ) : null}
+      {customerPhone ? (
+        <a
+          href={`tel:${customerPhone}`}
+          title={`Call customer: ${customerPhone}`}
+          aria-label={`Call customer at ${customerPhone}`}
+          style={{ ...cardQuickIconStyle, color: '#0f766e' }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={16} height={16} fill="currentColor" aria-hidden>
+            <path d="M224.2 89C216.3 70.1 195.7 60.1 176.1 65.4L170.6 66.9C106 84.5 50.8 147.1 66.9 223.3C104 398.3 241.7 536 416.7 573.1C492.9 589.2 555.5 534 573.1 469.4L574.6 463.9C579.9 444.2 569.9 423.7 551 415.8L453.8 375.3C437.3 368.4 418.2 373.2 406.8 387.1L368.2 434.3C297.9 399.4 240.7 342.2 205.8 271.9L253 233.3C266.9 221.9 271.7 202.9 264.8 186.3L224.2 89z" />
+          </svg>
+        </a>
+      ) : null}
+      {showTaskDispatchButton(ctx.authRole) ? (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation()
+            ctx.dispatchTaskModal?.openDispatchModal({
+              reference: {
+                source: 'job',
+                id: job.id,
+                hcp_number: job.hcp_number ?? '',
+                click_number: job.click_number ?? null,
+                job_name: job.job_name ?? '',
+                job_address: job.job_address ?? '',
+              },
+            })
+          }}
+          title="Send this job to Dispatch with a note"
+          aria-label="Send job to Dispatch"
+          style={{ ...cardQuickIconStyle, color: '#0ea5e9' }}
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={16} height={16} fill="currentColor" aria-hidden>
+            <path d="M280 128C266.7 128 256 138.7 256 152C256 165.3 266.7 176 280 176L296 176L296 209.3C188.8 220.7 104.2 307.7 96.6 416L543.5 416C535.8 307.7 451.2 220.7 344 209.3L344 176L360 176C373.3 176 384 165.3 384 152C384 138.7 373.3 128 360 128L280 128zM88 464C74.7 464 64 474.7 64 488C64 501.3 74.7 512 88 512L552 512C565.3 512 576 501.3 576 488C576 474.7 565.3 464 552 464L88 464z" />
+          </svg>
+        </button>
+      ) : null}
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation()
+          const numLabel = effectiveJobLedgerNumber(job.hcp_number, job.click_number)
+          const label = `${(numLabel ?? '').trim() || '—'} · ${(job.job_name ?? '').trim() || 'Job'}`
+          ctx.checklistAddModal?.openAddModal({
+            preset: {
+              title: `{{1:${label}}} — `,
+              links: [`${window.location.origin}/jobs?jobDetail=${encodeURIComponent(job.id)}`],
+            },
+          })
+        }}
+        title="Send this job to someone as a task"
+        aria-label="Send job as a task"
+        style={{ ...cardQuickIconStyle, color: '#7c3aed' }}
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={16} height={16} fill="currentColor" aria-hidden>
+          <path d="M576 64L64 288L240 352L240 496L328 400L472 512L576 64z" />
+        </svg>
+      </button>
+    </span>
+  )
+}
+
+/** The card's always-visible footer: invoice chips + reports + the horizontal icon row. */
+function cardFooterRow(ctx: StagesRowRenderContext, job: JobWithDetails) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '0.4rem' }}>
+      {cardInvoiceChips(ctx, job)}
+      {renderStagesViewReportsButton(ctx, job)}
+      <span style={{ marginLeft: 'auto' }}>{cardQuickIcons(ctx, job)}</span>
+    </div>
   )
 }
 
@@ -260,8 +665,9 @@ export default function JobsStagesCardList(props: JobsStagesTableProps) {
             {renderJobAddressWithMap(j.job_address)}
             {renderJobCustomerLineWithCtx(ctx, j)}
             {renderStagesJobColumnEstimateFooter(j.linkedEstimateForStages)}
-            {renderStagesFieldAndBillingLinesWithCtx(ctx, j)}
+            {cardMetaChips(ctx, j, showTimeOpen ? formatTimeSince(j.created_at ?? null) : null)}
             <StagesProgressPaymentCell
+              compact
               model={buildStagesMoneyBarModel({
                 totalBill: j.revenue != null ? Number(j.revenue) : null,
                 paymentsMade: j.payments_made != null ? Number(j.payments_made) : null,
@@ -271,10 +677,11 @@ export default function JobsStagesCardList(props: JobsStagesTableProps) {
               pctComplete={j.pct_complete ?? null}
               pctSaving={showPctComplete ? pctCompleteSavingId === j.id : undefined}
               onPctCommit={showPctComplete && canEditJobPctComplete ? (n) => updateJobPctComplete(j.id, n) : undefined}
-              footnote={showTimeOpen ? `Open ${formatTimeSince(j.created_at ?? null)}` : undefined}
               onNoBidValueClick={() => openEdit(j, { fixturesSectionHighlight: true })}
             />
-            {renderStagesLastActivityCellWithCtx(ctx, j, undefined, { asDiv: true })}
+            {cardNextChip(ctx, j)}
+            {cardActivityTeaser(ctx, j)}
+            {cardFooterRow(ctx, j)}
             {expanded ? (
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem' }}>
                 <button type="button" style={cardToolbeltButtonStyle} onClick={() => openStagesDetailJobModal(j)}>
@@ -485,8 +892,9 @@ export function JobsStagesUnifiedCardList(props: JobsStagesUnifiedTableProps) {
             {crewLine(j)}
             {renderJobAddressWithMap(j.job_address)}
             {renderJobCustomerLineWithCtx(ctx, j)}
-            {renderStagesFieldAndBillingLinesWithCtx(ctx, j)}
+            {cardMetaChips(ctx, j, showTimeOpen ? formatTimeSince(j.created_at ?? null) : null)}
             <StagesProgressPaymentCell
+              compact
               model={buildStagesMoneyBarModel({
                 totalBill: j.revenue != null ? Number(j.revenue) : null,
                 paymentsMade: j.payments_made != null ? Number(j.payments_made) : null,
@@ -496,10 +904,12 @@ export function JobsStagesUnifiedCardList(props: JobsStagesUnifiedTableProps) {
               pctComplete={j.pct_complete ?? null}
               pctSaving={pctCompleteSavingId === j.id}
               onPctCommit={canEditJobPctComplete ? (n) => updateJobPctComplete(j.id, n) : undefined}
-              footnote={showTimeOpen ? `Open ${formatTimeSince(j.created_at ?? null)}` : undefined}
               onNoBidValueClick={() => openEdit(j, { fixturesSectionHighlight: true })}
             />
-            {renderStagesLastActivityCellWithCtx(ctx, j, inv ?? undefined, { asDiv: true })}
+            {cardNextChip(ctx, j)}
+            {cardActivityTeaser(ctx, j)}
+            {inv ? cardStripeEmailedHint(ctx, j, inv) : null}
+            {cardFooterRow(ctx, j)}
             {expanded ? (
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem' }}>
                 <button type="button" style={cardToolbeltButtonStyle} onClick={() => openStagesDetailJobModal(j)}>

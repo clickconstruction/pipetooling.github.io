@@ -536,7 +536,7 @@ export function shouldSuppressStagesRowJobThreadToggle(target: EventTarget | nul
 /** Chevron + note count, inline at the END of the last-activity header line
  * (v2.1043 — used to be a stacked column in front of it). Lives inside the
  * clickable body, so the click stops propagation to avoid a double toggle. */
-function renderStagesThreadExpandButton(ctx: StagesRowRenderContext, jobId: string) {
+export function renderStagesThreadExpandButton(ctx: StagesRowRenderContext, jobId: string) {
   const { expandedJobThreadId, jobThreadStatsByJobId, toggleStagesJobThreadExpanded } = ctx
   const expanded = expandedJobThreadId === jobId
   const stat = jobThreadStatsByJobId[jobId]
