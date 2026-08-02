@@ -3,6 +3,7 @@ title: search for jobs, bids, customers, and estimates
 category: Getting Started
 roles: dev, master_technician, assistant, controller
 keywords: search, global search, find job, find bid, find customer, find estimate, keyboard shortcut, cmd k, ctrl k, s key
+order: 10
 ---
 The magnifier {{icon:help|gear}} in the header opens a search box that looks across jobs, bids, customers, and estimates at once. Type at least two characters and matching results appear as you type.
 

@@ -3,6 +3,7 @@ title: bill part of a job to someone else
 category: Billing & Money
 roles: dev, master_technician, assistant, controller
 keywords: bill to, tenant, alternate payer, split invoice, hazmat fee, third party, property manager, recipient
+order: 12
 ---
 Sometimes one bill on a job needs to go to a different payer than the job's customer — the classic case is a **hazmat fee the customer's tenant is responsible for**, while the customer pays everything else. Any draft invoice can be given its own recipient.
 

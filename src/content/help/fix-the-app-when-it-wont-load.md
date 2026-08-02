@@ -3,6 +3,7 @@ title: fix the app when it won't load
 category: Getting Started
 roles: dev, master_technician, assistant, controller, estimator, helpers, subcontractor
 keywords: loading, stuck, black screen, white screen, blank, crash, cache, fix, offline, reload
+order: 3
 ---
 If the app opens to a stuck **Loading…** screen or a blank page, work down this list — each step fixes a different cause.
 

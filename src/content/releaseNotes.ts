@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1265',
+    date: '2026-08-02',
+    title: 'Help guides: tidier ordering and current page names',
+    kind: 'fix',
+    highlights: [
+      'The two scheduling guides now sit together in one "Scheduling" section instead of two one-guide sections.',
+      'Eleven guides that sorted to the bottom of their section now appear in a sensible order — including "fix the app when it won’t load", which now ranks near the top of Getting Started.',
+      'Guides that said "Schedule Dispatch" now say "Schedule", matching the menu, and a dead "bill a customer" guide link now opens the right guide.',
+    ],
+  },
+  {
     version: 'v2.1264',
     date: '2026-08-01',
     title: 'Dispatch Mode: the schedule shows how many jobs each day has',

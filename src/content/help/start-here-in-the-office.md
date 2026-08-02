@@ -11,13 +11,13 @@ You run the day from the office: dispatch, billing, people, and paperwork. Contr
 
 1. **Dashboard** — clocked-in crews, unallocated bank deposits, follow-ups, and anything flagged overnight.
 2. **Jobs → Pipeline** — the busiest board in the app: every job by billing state, with search, GC and development filters, and print. Set progress, bill, and collect from here.
-3. **Schedule Dispatch** — who is where, day by day. See [dispatch mode](?g=dispatch-mode) and [schedule dispatch](?g=schedule-dispatch).
+3. **Schedule** — who is where, day by day. See [dispatch mode](?g=dispatch-mode) and [scheduling people onto jobs](?g=schedule-dispatch).
 4. **Quickfill** — the fast path for filling in hours and job time.
 5. **People** — accounts, hours, contracts, and [your subs](?g=review-your-subs).
 
 ## Money
 
-[Bill a customer and get paid](?g=bill-a-customer-and-get-paid) is the main flow; [bill part of a job to someone else](?g=bill-part-of-a-job-to-someone-else) covers split billing. What you owe subs lives in [sub labor outstanding](?g=sub-labor-outstanding) and per-step work orders in [pay a sub per step](?g=pay-a-sub-per-step).
+[Bill a customer and get paid](?g=ready-to-bill-pipeline) is the main flow; [bill part of a job to someone else](?g=bill-part-of-a-job-to-someone-else) covers split billing. What you owe subs lives in [sub labor outstanding](?g=sub-labor-outstanding) and per-step work orders in [pay a sub per step](?g=pay-a-sub-per-step).
 
 ## What the field sees
 

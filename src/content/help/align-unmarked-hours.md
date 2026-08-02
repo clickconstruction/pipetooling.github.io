@@ -3,6 +3,7 @@ title: align unmarked hours with jobs in one pass
 category: Office
 roles: dev, master_technician, assistant, controller
 keywords: align hours, unmarked, unassigned, clock session, no job, assign job, schedule, split, hours grid, people hours
+order: 59
 ---
 When someone clocks in and only types what they're working on — without picking the job or bid — their hours land as **unmarked**: the time is counted, but no job gets the labor. **Align hours** collects every unmarked session in the week so you can link them all in one pass, instead of opening each day one at a time.
 
