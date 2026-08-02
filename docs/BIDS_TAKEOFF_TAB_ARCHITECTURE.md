@@ -192,7 +192,7 @@ Executed with the [`PAGE_DECOMPOSITION_PLAYBOOK.md`](./PAGE_DECOMPOSITION_PLAYBO
 | T4 | #1000 | v2.1298 | `TakeoffBookAdminSection` (+2 modals, 11 states, CRUD; cascade quirk intact) |
 | T5 | #1001 | v2.1299 | `BidsTakeoffMaterialsSummarySection` (+PO review modal; tax stays controlled prop) |
 | T6 | #1002 | v2.1300 | `TakeoffPartPricesModal` + `TakeoffBundleBreakdownModal` (pointers stay parent-owned) |
-| T7 | #1009 | v2.1304 | `TakeoffAssemblyAuthoringModals` (Add Assembly / Add Parts / Edit Template as one cluster; open pointers + PartFormModal-routed picker states + Save-as-Assembly bridge + seeded drafts stay parent-owned; Edit Template reset/loads → open-edge effect; preview modal stays for T8) |
+| T7 | #1010 | v2.1304 | `TakeoffAssemblyAuthoringModals` (Add Assembly / Add Parts / Edit Template as one cluster; open pointers + PartFormModal-routed picker states + Save-as-Assembly bridge + seeded drafts stay parent-owned; Edit Template reset/loads → open-edge effect; preview modal stays for T8) |
 
 **Remaining (in order):**
 - **T8 — `useTakeoffPartsCatalog` seam, then the Exact body** (~800 lines, incl. the assembly parts preview modal). Seam owns `takeoffAddTemplateParts` + its two load effects, `supplyHouses`/`partTypes` mount effect, `takeoffTemplatePreviewCache`. Fold in the remaining Stage-A kernels as touched: `computeTakeoffBookMappingsToAdd`, `takeoffPickerFilters` (now passed as props into the T7 cluster — extract to lib and update both call sites), the exact-print row assembler.
