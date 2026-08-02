@@ -58,9 +58,52 @@ describe('buildSubsHqRows', () => {
     })
     expect(result.rows.every((r) => r.sheetCount === 0)).toBe(true)
     expect(result.unattributed).toEqual([
-      { sheetId: 'ghost', label: 'MIke Rodriguez sheet', jobNumber: '892', balance: 500, reason: 'unmatched', rawAssignedTo: 'MIke Rodriguez' },
-      { sheetId: 'both', label: 'shared', jobNumber: null, balance: 900, reason: 'shared', rawAssignedTo: 'Behar Kraja | Kyle' },
+      { sheetId: 'ghost', label: 'MIke Rodriguez sheet', jobNumber: '892', balance: 500, reason: 'unmatched', rawAssignedTo: 'MIke Rodriguez', archivedPersonName: null },
+      { sheetId: 'both', label: 'shared', jobNumber: null, balance: 900, reason: 'shared', rawAssignedTo: 'Behar Kraja | Kyle', archivedPersonName: null },
     ])
+  })
+
+  it('classifies sheets matching an archived person as reason archived (name match and junction match)', () => {
+    const EDGAR: SubsHqPersonInput = { id: 'p-edgar', name: 'Edgar', archived: true, accountUserId: null }
+    const result = buildSubsHqRows({
+      people: [BEHAR, EDGAR],
+      users: [],
+      sheets: [
+        sheet({ id: 'by-name', label: '251 · 180 Go Away Rd', assignedToName: ' edgar ', jobNumber: '251' }),
+        sheet({ id: 'by-junction', label: '273 · 9703 Lenox Hl', assignedToName: 'someone else', jobNumber: '273' }),
+      ],
+      assignees: [{ labor_job_id: 'by-junction', person_id: 'p-edgar' }],
+      commitments: [],
+      docs: [],
+      todayYmd: TODAY,
+    })
+    expect(result.unattributed.map((u) => [u.sheetId, u.reason, u.archivedPersonName])).toEqual([
+      ['by-name', 'archived', 'Edgar'],
+      ['by-junction', 'archived', 'Edgar'],
+    ])
+  })
+
+  it('does not classify archived when the archived name is ambiguous or shared with multiple owners', () => {
+    const E1: SubsHqPersonInput = { id: 'p-e1', name: 'Edgar', archived: true, accountUserId: null }
+    const E2: SubsHqPersonInput = { id: 'p-e2', name: 'edgar', archived: true, accountUserId: null }
+    const result = buildSubsHqRows({
+      people: [BEHAR, KYLE, E1, E2],
+      users: [],
+      sheets: [
+        sheet({ id: 'ambig', label: 'ambiguous edgar', assignedToName: 'Edgar' }),
+        sheet({ id: 'multi', label: 'two owners', assignedToName: 'Behar Kraja | Kyle' }),
+      ],
+      assignees: [
+        { labor_job_id: 'multi', person_id: 'p-behar' },
+        { labor_job_id: 'multi', person_id: 'p-kyle' },
+      ],
+      commitments: [],
+      docs: [],
+      todayYmd: TODAY,
+    })
+    const byId = new Map(result.unattributed.map((u) => [u.sheetId, u]))
+    expect(byId.get('ambig')).toMatchObject({ reason: 'unmatched', archivedPersonName: null })
+    expect(byId.get('multi')).toMatchObject({ reason: 'shared', archivedPersonName: null })
   })
 
   it('splits commitments into open (with total) and settled count; docs resolve id-first then name', () => {
@@ -110,6 +153,7 @@ describe('groupUnattributedSheets', () => {
     balance: 0,
     reason: 'unmatched',
     rawAssignedTo: '',
+    archivedPersonName: null,
     ...overrides,
   })
 
