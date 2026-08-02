@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1297',
+    date: '2026-08-02',
+    title: 'Behind the scenes: Bids Takeoff groundwork, part 3',
+    kind: 'infra',
+    highlights: [
+      'The draggable part-line row on the Takeoff tab moved into its own component file.',
+      'No visible changes; dragging, editing, and pricing part lines works exactly as before.',
+    ],
+  },
+  {
     version: 'v2.1295',
     date: '2026-08-02',
     title: 'Behind the scenes: Bids Takeoff groundwork, part 2',
