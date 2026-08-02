@@ -6,7 +6,7 @@
 
 ## Quick Orientation
 
-**PipeTooling** — Workflow management for master plumbers. React + TypeScript + Supabase, deployed to GitHub Pages. 9 user roles, 4 major systems (Projects/Workflows, Bids, Materials, Checklist) plus significant subsystems (Jobs, Estimates, Banking, People/Payroll, Prospects, Schedule Dispatch, Documents, Map). ~234 tables, all with RLS. ~58 Edge Functions.
+**PipeTooling** — Workflow management for master plumbers. React + TypeScript + Supabase, deployed to GitHub Pages. 9 user roles, 4 major systems (Projects/Workflows, Bids, Materials, Checklist) plus significant subsystems (Jobs, Estimates, Banking, People/Payroll, Prospects, Schedule Dispatch, Documents, Map). ~252 tables, all with RLS. ~61 Edge Functions.
 
 ---
 
@@ -104,4 +104,4 @@ The Supabase MCP server (when available) is for **read/inspect operations**: `li
 
 *This file stays minimal — feature detail belongs in `docs/RECENT_FEATURES.md` and the specialist docs.*
 
-last_updated: 2026-07-17
+last_updated: 2026-08-01

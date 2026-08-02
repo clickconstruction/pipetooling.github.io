@@ -89,7 +89,7 @@ Customer (has master_user_id)
 
 ### Backend
 - Supabase: PostgreSQL 15 + RLS, Auth, Edge Functions (Deno), some Realtime
-- ~234 tables; ~58 Edge Functions (`docs/EDGE_FUNCTIONS.md`)
+- ~252 tables; ~61 Edge Functions (`docs/EDGE_FUNCTIONS.md`)
 - Linked prod project: `yewfzhbofbbyvkvtaatw` ("plumbing-stage-manager"); **no staging** — migrations hit prod
 
 ### Deployment (three separate tracks — see `../CLAUDE.md`)
@@ -267,11 +267,11 @@ type Customer = Database['public']['Tables']['customers']['Row']
                            │ Supabase JS client
 ┌──────────────────────────┼──────────────────────────────┐
 │                 Supabase Backend (prod only)             │
-│  PostgreSQL: ~234 tables, RLS everywhere, triggers,      │
+│  PostgreSQL: ~252 tables, RLS everywhere, triggers,      │
 │    SECURITY DEFINER helpers, transaction functions       │
 │  Auth: email/password + magic links (dev-login,          │
 │    login-as-user)                                        │
-│  Edge Functions (Deno, ~58): email (Resend), Stripe,     │
+│  Edge Functions (Deno, ~61): email (Resend), Stripe,     │
 │    Mercury sync, geocoding, notifications, cron jobs     │
 └─────────────────────────────────────────────────────────┘
 ```
@@ -309,4 +309,4 @@ See `../AGENTS.md` → Critical Constraints (authoritative list): append-only mi
 
 **For new developers**: `../README.md` for setup → this file → `PROJECT_DOCUMENTATION.md` for depth → run the app (`npm install && npm run dev`).
 
-last_updated: 2026-07-30
+last_updated: 2026-08-01

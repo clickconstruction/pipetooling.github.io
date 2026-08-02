@@ -1,13 +1,21 @@
 # Workflow Features Documentation
 
+---
+file: docs/WORKFLOW_FEATURES.md
+type: Feature documentation
+purpose: Detailed reference for the Projects/Workflow surface — stage management, sub work orders (step commitments), financial tracking, access control, and notifications
+audience: Developers, AI Agents
+last_updated: 2026-08-01
+---
+
 This document provides detailed information about all workflow-related features.
 
 ## Table of Contents
 1. [Stage Management](#stage-management)
-2. [Financial Tracking](#financial-tracking)
-3. [Access Control](#access-control)
-4. [Notifications](#notifications)
-5. [Action History](#action-history)
+2. [Sub Work Orders (Step Commitments)](#sub-work-orders-step-commitments)
+3. [Financial Tracking](#financial-tracking)
+4. [Access Control](#access-control)
+5. [Notifications](#notifications)
 
 ---
 
@@ -32,7 +40,8 @@ This document provides detailed information about all workflow-related features.
 - **Data sources**: 
   - Queries `users` table for roles `'master_technician'`, `'subcontractor'`, `'helpers'`, and `'primary'`
   - Queries `people` table for kinds `'master_technician'`, `'sub'`, and `'helper'`, excluding archived entries (`archived_at IS NULL`); scoped to the current user's roster (`master_user_id`), or to adopted masters' rosters for superintendents (via `master_superintendents`)
-  - Combines and deduplicates by name (case-insensitive)
+  - Combines both sources; since v2.1201 roster entries carry `{ name, personId }` (not name text alone), so duplicate roster names stay distinguishable
+- **Person-id keyed saves** (v2.1201): assignment saves through the 3-arg `update_step_assignment(p_step_id, p_assigned_to_name, p_person_id)` RPC, which writes `project_workflow_steps.assigned_person_id` alongside the display name — an explicit `personId` wins over name resolution (the duplicate-name disambiguator). Fallbacks: the legacy 2-arg `update_step_assigned_to` RPC, then a direct update; on both, a DB trigger (`steps_set_assigned_person_id`) resolves the person id from the name.
 
 **Implementation**: `src/pages/Workflow.tsx` - `StepFormModal` component
 
@@ -56,6 +65,7 @@ This document provides detailed information about all workflow-related features.
 - **Complete**: Pending or in-progress stages
 - **Approve**: Pending or in-progress (dev, master, assistant, superintendent)
 - **Previous work incomplete**: Pending or in-progress (dev, master, assistant, superintendent)
+- **Skip**: Marks a stage `skipped` with a required reason; skipped stages render like completed ones in the breadcrumb/old-stages logic and write a `'skipped'` row to the Action Ledger (the CHECK constraint was widened for this by migration `20260801113000`)
 - **Re-open**: Completed, approved, or rejected (owners/masters only)
 
 **Note**: Approve and Previous work incomplete refer to the card they appear on (same step), not the previous card.
@@ -96,6 +106,30 @@ Workflow uses scoped CSS classes (`wf-btn-ghost`, `wf-btn-primary`, `wf-btn-succ
 - **Full width**: Breadcrumb spans full width; no longer competes with buttons on the same row.
 - **Horizontal scroll**: Stages stay on one line (`whiteSpace: nowrap`); horizontal scrollbar when content exceeds viewport. Uses `overflowX: auto`, `minWidth: 0`, `WebkitOverflowScrolling: touch` following Materials/People pattern.
 - **Click to scroll**: Each stage name is clickable and scrolls the corresponding step card into view.
+
+---
+
+## Sub Work Orders (Step Commitments)
+
+Shipped v2.1199–v2.1222 (RUN_SUBS_PLAN Phases 0–4): running subcontractors through Projects. A **step commitment** is "this sub does this step for this amount" — a row in `step_commitments` living on a workflow step and pointing at a roster person (`person_id`-keyed from day one; `display_name` is denormalized display plus the legacy-name RLS fallback).
+
+### Where it appears
+
+The **work-order panel** (`src/components/workflow/StepCommitmentPanel.tsx` — the first component in `src/components/workflow/`) renders on each **expanded step card** for `canManageStages` roles, below the projections block. It lists the step's commitments with a merged money/work state rail, balance figures off the linked sub sheet, and the office transition buttons. Collapsed cards show a `$amount · state` pill. Subs see their side on the Dashboard: `DashboardSubMoneySection` shows offer cards (amount, retainage, proposed window) plus per-sheet balances via the Phase 3 own-row RLS policies (migration `20260801190000`).
+
+### Lifecycle
+
+`draft → offered → accepted → approved → settled`, plus `declined` and `cancelled`. The status covers the **money lifecycle only** — work progress (in progress / complete) is read from the step itself, so each has exactly one source of truth; the UI rail merges them visually. One live (non-cancelled) commitment per (step, person); a declined order keeps the slot and can be re-offered.
+
+- **Offer** (office): stamps `offered_at` and a proposed work window (`proposed_start`/`proposed_end`, seeded from the step's expected dates); sends the `work_order_offered` email to the sub. **Withdraw** returns an unanswered offer to draft; **Nudge** resends it.
+- **Accept / Decline** (sub, from the Dashboard offer card): via SECURITY DEFINER RPC `respond_to_work_order(p_commitment_id, p_accept, p_reason)` — only the commitment's own account-linked person, only from `offered`; decline requires a reason (kept office-side, shown with re-offer paths). Accepting writes the proposed window to the step's expected dates **only when they are empty** (never overwrites office-set dates; mismatches are flagged). Answers notify the order's creator (fallback: project master) via `work_order_accepted`/`work_order_declined`. Superintendents may mark `accepted` office-side but cannot create or settle.
+- **Settlement** (office, dev/master/assistant/controller/estimator): `settle_step_commitment(p_commitment_id, p_dry_run)` creates (or reuses) the `people_labor_jobs` sub sheet with one direct-amount line = `amount × (1 − retainage_pct/100)`, stamps the sheet's `project_id`/`step_id` anchors, links `labor_job_id`, and flips the commitment to `settled`. The Sub Labor tab stays the single AP ledger — draws/backcharges are recorded there as always. `p_dry_run` previews via the rollback-sentinel pattern (the preview IS the real settlement rolled back, so numbers can't drift). Step approval and settlement are two explicit buttons — no hidden coupling.
+
+### Related surfaces
+
+Compliance chips (COI/W9/agreement badges from `person_contract_documents` doc types + expiry, migration `20260801200000`) surface in the work-order picker; the **Sub Board** (Projects → Forecast → Subs view) shows a read-only lane per sub with bars from step expected dates or the proposed window; **Subs HQ** (People → Subs, `PeopleSubsTab.tsx`) rolls up open commitments, balances, and compliance per sub.
+
+**Migrations**: `20260801150000_step_commitments.sql` (table + RLS), `20260801170000_settle_step_commitment_rpc.sql`, `20260801220000_work_order_dispatch.sql` (declined status + windows + `respond_to_work_order` + the three `work_order_*` email templates), `20260801233000_respond_rpc_returns_context.sql`. Full history: `docs/RUN_SUBS_PLAN.md` and RECENT_FEATURES v2.1199–v2.1222.
 
 ---
 
@@ -280,12 +314,24 @@ All monetary amounts throughout the application use comma formatting:
 
 3. **`email_templates`**
    - Customizable email content
-   - 11 template types supported
+   - 14 template types supported (the original 11 plus `work_order_offered` / `work_order_accepted` / `work_order_declined`, added by migration `20260801220000`)
+
+4. **`project_workflow_step_actions`**
+   - The Action Ledger backing table (see [Action Ledger](#action-ledger))
+   - `action_type` CHECK: `started | completed | approved | rejected | reopened | skipped` (`skipped` added by migration `20260801113000`)
+
+5. **`step_commitments`**
+   - Sub work orders on workflow steps (see [Sub Work Orders](#sub-work-orders-step-commitments))
+   - Migration `20260801150000`; extended with decline/window columns by `20260801220000`
 
 ### Modified Tables
 
 1. **`project_workflow_steps`**
    - Added `private_notes` field (TEXT, nullable)
+   - Added `assigned_person_id` (uuid → `people.id`, migration `20260801130000`): backfilled from `assigned_to_name` via `resolve_pay_person_id`, kept fresh by the `steps_set_assigned_person_id` trigger and the 3-arg `update_step_assignment` RPC
+
+2. **`people_labor_jobs`**
+   - Added `project_id` / `step_id` anchors (uuid, ON DELETE SET NULL, migration `20260801140000`) so settled sub sheets link back to the workflow step that produced them
 
 ---
 
