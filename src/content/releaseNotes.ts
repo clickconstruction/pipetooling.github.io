@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1262',
+    date: '2026-08-01',
+    title: 'Banking: "User Review" is now "Card Review"',
+    kind: 'feature',
+    highlights: [
+      'The Mercury tab that reviews card spending per person is now Card Review \u2014 no more sharing a name with the Dashboard\u2019s schedule User Review.',
+    ],
+  },
+  {
     version: 'v2.1261',
     date: '2026-08-01',
     title: 'PO Builder redesign: faster to scan, one tap to add',
