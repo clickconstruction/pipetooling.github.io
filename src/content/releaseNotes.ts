@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1275',
+    date: '2026-08-02',
+    title: 'Behind the scenes: Materials page groundwork',
+    kind: 'infra',
+    highlights: [
+      'Internal restructuring of how the Materials page loads purchase-order line items — one shared, tested routine now backs a dozen screens (PO Builder, Purchase Orders, deep links).',
+      'No visible changes; everything on the Materials page works exactly as before.',
+    ],
+  },
+  {
     version: 'v2.1273',
     date: '2026-08-02',
     title: 'Projects: cleaner cards with a combined Jobs control',
