@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-02 (v2.1301)
+last_updated: 2026-08-02 (v2.1302)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1302)
+
+### Subs panel: archived-person sheets go quiet (2026-08-02)
+Follow-up to v2.1296. The unattributed panel treated "assigned to someone who was archived" as a problem to fix, but there is no fix — the Assign picker only offers ACTIVE roster people (matching `buildSubsHqRows`, which attributes against active people only), so those rows nagged forever with no valid action. New kernel reason **`archived`** in [`subsHqRows.ts`](../src/lib/people/subsHqRows.ts): a sheet whose junction owner is archived, or whose raw `assigned_to_name` uniquely matches an archived person (ambiguous archived names deliberately stay `unmatched`). Panel behavior: archived sheets **with nothing owed** leave the amber panel for one muted line ("N sheets belong to archived person (Edgar) — nothing owed"); archived sheets **with an open balance** stay in the panel with an amber **Archived person** badge + tooltip naming them, since owed money still deserves attention. `UnattributedGroup` carries `archivedPersonName`; +2 kernel tests (name match, junction match, ambiguity/multi-owner negatives). Live-verified: 5 Edgar sheets went quiet, the 4 genuinely-broken "MIke Rodriguez" sheets remain actionable.
 
 ## Latest Updates (v2.1301)
 
