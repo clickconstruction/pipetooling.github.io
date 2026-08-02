@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { Pencil, Plus } from 'lucide-react'
 import { jobsLedgerStatusDotColor, labelJobsLedgerStatusForDashboard } from '../lib/jobsLedgerStatusPipeline'
+import { bidOutcomeDotColor } from '../lib/bidOutcomeDotColor'
+import { estimateStatusDotColor } from '../lib/estimateStatusDotColor'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import { isAssistantLike } from '../lib/subcontractorLikeRole'
@@ -9,6 +11,7 @@ import { useNarrowViewport640 } from '../hooks/useNarrowViewport640'
 import { useNewProjectModal } from '../contexts/NewProjectModalContext'
 import { useEditProjectModal } from '../contexts/EditProjectModalContext'
 import { useJobDetailModal } from '../contexts/JobDetailModalContext'
+import { useBidPreview } from '../contexts/BidPreviewModalContext'
 import { withSupabaseRetry } from '../utils/errorHandling'
 import { formatProjectNumberLabel } from '../lib/projectNumberLabel'
 import { buildProjectAttention, type ProjectAttention } from '../lib/projects/projectAttention'
@@ -61,6 +64,115 @@ type WorkflowRow = {
   project_workflow_steps: WorkflowStepRow[] | null
 }
 
+/* ---------------------------------------------------------------------------
+ * Segmented card-rail pill (v2.1273 Jobs pill shape, shared since the Bids/
+ * Estimates pills landed): a muted label cap, bordered segments, trailing
+ * sky "+" segment. The Jobs pill keeps its own page-level expansion state, so
+ * it consumes only the shared style objects; Bids/Estimates render through
+ * <ProjectRailPill>, which owns a local "+N more" expander.
+ * ------------------------------------------------------------------------- */
+const railPillContainerStyle = {
+  display: 'inline-flex',
+  alignItems: 'stretch',
+  border: '1px solid var(--border)',
+  borderRadius: 8,
+  overflow: 'hidden',
+} as const
+
+const railPillCapStyle = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  padding: '0.25rem 0.6rem',
+  fontSize: '0.75rem',
+  color: 'var(--text-faint)',
+  background: 'var(--bg-neutral-100)',
+} as const
+
+const railPillSegmentStyle = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  gap: '0.35rem',
+  padding: '0.25rem 0.6rem',
+  border: 'none',
+  borderLeft: '1px solid var(--border)',
+  background: 'var(--surface)',
+  fontSize: '0.8125rem',
+  fontFamily: 'inherit',
+  cursor: 'pointer',
+} as const
+
+const railPillPlusStyle = {
+  ...railPillSegmentStyle,
+  textDecoration: 'none',
+  color: 'var(--text-sky-700)',
+  background: 'var(--bg-sky-100)',
+} as const
+
+type RailPillSegment = {
+  key: string
+  label: string
+  title: string
+  dotColor?: string
+  onClick: () => void
+}
+
+function ProjectRailPill(props: {
+  cap: string
+  segments: RailPillSegment[]
+  plusTo: string
+  plusTitle: string
+  plusAriaLabel: string
+  /** Rendered beside the "+" when there are no segments (e.g. "Bid"). */
+  emptyPlusLabel: string
+}) {
+  const [expanded, setExpanded] = useState(false)
+  const visible = expanded ? props.segments : props.segments.slice(0, 3)
+  const hiddenCount = props.segments.length - visible.length
+  return (
+    <div style={railPillContainerStyle}>
+      <span style={railPillCapStyle}>{props.cap}</span>
+      {visible.map((s) => (
+        <button
+          key={s.key}
+          type="button"
+          onClick={s.onClick}
+          title={s.title}
+          style={{ ...railPillSegmentStyle, color: 'var(--text-link)' }}
+        >
+          {s.dotColor && (
+            <span aria-hidden="true" style={{ width: 8, height: 8, borderRadius: '50%', background: s.dotColor, flexShrink: 0 }} />
+          )}
+          <span style={{ maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {s.label}
+          </span>
+        </button>
+      ))}
+      {hiddenCount > 0 && (
+        <button
+          type="button"
+          onClick={() => setExpanded(true)}
+          title={`Show all ${props.cap.toLowerCase()}`}
+          style={{ ...railPillSegmentStyle, color: 'var(--text-700)' }}
+        >
+          +{hiddenCount} more
+        </button>
+      )}
+      <Link to={props.plusTo} title={props.plusTitle} aria-label={props.plusAriaLabel} style={railPillPlusStyle}>
+        <Plus size={14} aria-hidden="true" />
+        {props.segments.length === 0 && props.emptyPlusLabel}
+      </Link>
+    </div>
+  )
+}
+
+const ESTIMATE_PILL_STATUS_LABELS: Record<string, string> = {
+  draft: 'Draft',
+  sent: 'Sent',
+  customer_accepted: 'Accepted',
+  declined: 'Declined',
+  superseded: 'Superseded',
+}
+
 export default function Projects() {
   const { user: authUser } = useAuth()
   const [searchParams, setSearchParams] = useSearchParams()
@@ -69,6 +181,7 @@ export default function Projects() {
   const newProjectModal = useNewProjectModal()
   const editProjectModal = useEditProjectModal()
   const jobDetailModal = useJobDetailModal()
+  const bidPreview = useBidPreview()
   const navigate = useNavigate()
   const location = useLocation()
 
@@ -94,6 +207,12 @@ export default function Projects() {
   >({})
   const [jobsByProject, setJobsByProject] = useState<
     Record<string, Array<{ id: string; hcp_number: string; job_name: string; status: string }>>
+  >({})
+  const [bidsByProject, setBidsByProject] = useState<
+    Record<string, Array<{ id: string; bid_number: string | null; project_name: string | null; outcome: string | null }>>
+  >({})
+  const [estimatesByProject, setEstimatesByProject] = useState<
+    Record<string, Array<{ id: string; estimate_number: number; title: string; status: string }>>
   >({})
   const [allSuperintendents, setAllSuperintendents] = useState<Array<{ id: string; name: string | null; email: string | null }>>([])
   const [projectSuperintendentIdsByProject, setProjectSuperintendentIdsByProject] = useState<Record<string, Set<string>>>({})
@@ -246,14 +365,16 @@ export default function Projects() {
       if (projectsWithMasters.length > 0) {
         const projectIds = projectsWithMasters.map((p) => p.id)
 
-        // Parallel: workflows + superintendent data + linked jobs
-        const [workflowsRes, psRes, jobsRes] = await Promise.all([
+        // Parallel: workflows + superintendent data + linked jobs/bids/estimates
+        const [workflowsRes, psRes, jobsRes, bidsRes, estimatesRes] = await Promise.all([
           supabase
             .from('project_workflows')
             .select('id, project_id, project_workflow_steps(name, status, sequence_order, assigned_to_name, started_at, scheduled_start_date, scheduled_end_date)')
             .in('project_id', projectIds),
           supabase.from('project_superintendents').select('project_id, superintendent_id').in('project_id', projectIds),
           supabase.from('jobs_ledger').select('id, hcp_number, job_name, project_id, status').in('project_id', projectIds),
+          supabase.from('bids').select('id, bid_number, project_name, outcome, project_id').in('project_id', projectIds),
+          supabase.from('estimates').select('id, estimate_number, title, status, project_id').in('project_id', projectIds),
         ])
         if (cancelled) return
 
@@ -295,6 +416,27 @@ export default function Projects() {
           }
         })
         setJobsByProject(jobsMap)
+
+        // Linked bids/estimates → segmented pills (staff-only render; RLS scopes the reads anyway).
+        const bidsData = (bidsRes as { data: Array<{ id: string; bid_number: string | null; project_name: string | null; outcome: string | null; project_id: string | null }> | null }).data ?? []
+        const bidsMap: Record<string, Array<{ id: string; bid_number: string | null; project_name: string | null; outcome: string | null }>> = {}
+        bidsData.forEach((b) => {
+          if (b.project_id) {
+            const arr = bidsMap[b.project_id] ?? []
+            bidsMap[b.project_id] = [...arr, { id: b.id, bid_number: b.bid_number, project_name: b.project_name, outcome: b.outcome }]
+          }
+        })
+        setBidsByProject(bidsMap)
+
+        const estimatesData = (estimatesRes as { data: Array<{ id: string; estimate_number: number; title: string; status: string; project_id: string | null }> | null }).data ?? []
+        const estimatesMap: Record<string, Array<{ id: string; estimate_number: number; title: string; status: string }>> = {}
+        estimatesData.forEach((e) => {
+          if (e.project_id) {
+            const arr = estimatesMap[e.project_id] ?? []
+            estimatesMap[e.project_id] = [...arr, { id: e.id, estimate_number: e.estimate_number, title: e.title, status: e.status }]
+          }
+        })
+        setEstimatesByProject(estimatesMap)
 
         if (workflowsErr) {
           console.error('Projects: workflows+steps query failed', workflowsErr)
@@ -820,21 +962,9 @@ export default function Projects() {
                   const expanded = expandedJobChips.has(p.id)
                   const visible = expanded ? jobs : jobs.slice(0, 3)
                   const hiddenCount = jobs.length - visible.length
-                  const segmentStyle = {
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '0.35rem',
-                    padding: '0.25rem 0.6rem',
-                    border: 'none',
-                    borderLeft: '1px solid var(--border)',
-                    background: 'var(--surface)',
-                    fontSize: '0.8125rem',
-                    fontFamily: 'inherit',
-                    cursor: 'pointer',
-                  } as const
                   return (
-                    <div style={{ display: 'inline-flex', alignItems: 'stretch', border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
-                      <span style={{ display: 'inline-flex', alignItems: 'center', padding: '0.25rem 0.6rem', fontSize: '0.75rem', color: 'var(--text-faint)', background: 'var(--bg-neutral-100)' }}>
+                    <div style={railPillContainerStyle}>
+                      <span style={railPillCapStyle}>
                         Jobs
                       </span>
                       {visible.map((j) => (
@@ -843,7 +973,7 @@ export default function Projects() {
                           type="button"
                           onClick={() => jobDetailModal?.openJobDetail({ jobId: j.id })}
                           title={`Open job detail — ${labelJobsLedgerStatusForDashboard(j.status)}`}
-                          style={{ ...segmentStyle, color: 'var(--text-link)' }}
+                          style={{ ...railPillSegmentStyle, color: 'var(--text-link)' }}
                         >
                           <span aria-hidden="true" style={{ width: 8, height: 8, borderRadius: '50%', background: jobsLedgerStatusDotColor(j.status), flexShrink: 0 }} />
                           <span style={{ maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -856,7 +986,7 @@ export default function Projects() {
                           type="button"
                           onClick={() => setExpandedJobChips((prev) => new Set(prev).add(p.id))}
                           title="Show all jobs"
-                          style={{ ...segmentStyle, color: 'var(--text-700)' }}
+                          style={{ ...railPillSegmentStyle, color: 'var(--text-700)' }}
                         >
                           +{hiddenCount} more
                         </button>
@@ -865,7 +995,7 @@ export default function Projects() {
                         to={`/jobs?newJob=true&project=${p.id}&tab=stages`}
                         title="Create job"
                         aria-label={`Create job for ${p.name ?? 'project'}`}
-                        style={{ ...segmentStyle, textDecoration: 'none', color: 'var(--text-sky-700)', background: 'var(--bg-sky-100)' }}
+                        style={railPillPlusStyle}
                       >
                         <Plus size={14} aria-hidden="true" />
                         {jobs.length === 0 && 'Job'}
@@ -873,6 +1003,40 @@ export default function Projects() {
                     </div>
                   )
                 })()}
+                {/* Bids/Estimates pills (staff-only: dev/master/assistant-like — hidden from
+                    superintendents and field roles). Same segmented shape as the Jobs pill. */}
+                {(myRole === 'dev' || myRole === 'master_technician' || isAssistantLike(myRole)) && (
+                  <>
+                    <ProjectRailPill
+                      cap="Bids"
+                      segments={(bidsByProject[p.id] ?? []).map((b) => ({
+                        key: b.id,
+                        label: b.bid_number || b.project_name || 'Bid',
+                        title: `Open bid preview — ${b.outcome === 'won' ? 'Won' : b.outcome === 'lost' ? 'Lost' : b.outcome === 'started_or_complete' ? 'Started/Complete' : 'Pending'}`,
+                        dotColor: bidOutcomeDotColor(b.outcome),
+                        onClick: () => bidPreview?.openBidPreview(b.id),
+                      }))}
+                      plusTo={`/bids?newBid=true&project=${p.id}`}
+                      plusTitle="Create bid"
+                      plusAriaLabel={`Create bid for ${p.name ?? 'project'}`}
+                      emptyPlusLabel="Bid"
+                    />
+                    <ProjectRailPill
+                      cap="Estimates"
+                      segments={(estimatesByProject[p.id] ?? []).map((est) => ({
+                        key: est.id,
+                        label: est.title.trim() || `#${est.estimate_number}`,
+                        title: `Open estimate #${est.estimate_number} — ${ESTIMATE_PILL_STATUS_LABELS[est.status] ?? est.status}`,
+                        dotColor: estimateStatusDotColor(est.status),
+                        onClick: () => navigate(`/estimates/${est.estimate_number}`),
+                      }))}
+                      plusTo={`/estimates?newEstimate=true&project=${p.id}`}
+                      plusTitle="Create estimate"
+                      plusAriaLabel={`Create estimate for ${p.name ?? 'project'}`}
+                      emptyPlusLabel="Estimate"
+                    />
+                  </>
+                )}
                 {/* Empty + nobody to add renders nothing — "Superintendents: None" was dead text (v2.1273). */}
                 {canAssignSuperintendents && ((superintendentsByProject[p.id]?.length ?? 0) > 0 || allSuperintendents.some((s) => !(superintendentsByProject[p.id] ?? []).some((ps) => ps.id === s.id))) && (
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', justifyContent: narrow ? 'flex-start' : 'flex-end', alignItems: 'center' }}>

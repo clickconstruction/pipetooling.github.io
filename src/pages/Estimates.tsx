@@ -68,7 +68,8 @@ import EstimateCustomerDocument, {
 import EstimateCustomerAcceptLinkButtons from '../components/estimates/EstimateCustomerAcceptLinkButtons'
 import IpAddressMapButton from '../components/estimates/IpAddressMapButton'
 import { SearchableMultiSelect } from '../components/SearchableMultiSelect'
-import type { SearchableSelectOption } from '../components/SearchableSelect'
+import { SearchableSelect, type SearchableSelectOption } from '../components/SearchableSelect'
+import { formatProjectNumberLabel } from '../lib/projectNumberLabel'
 import {
   estimateLineItemRecentsStorageKey,
   loadRecentCatalogIds,
@@ -1642,7 +1643,28 @@ function EstimateList() {
     if (listTab !== 'followup') setExpandedEstimateThreadId(null)
   }, [listTab, setExpandedEstimateThreadId])
 
-  async function createDraft() {
+  // Projects card "+ Estimate" deep link (?newEstimate=true&project=<id>):
+  // create a draft pre-linked to the project, then navigate to it. This INSERTS
+  // a row, so it fires once per mount (ref guard) and strips its params before
+  // creating (deep-link contract; no e2e spec — cold-loading it would write to prod).
+  const newEstimateParamFiredRef = useRef(false)
+  useEffect(() => {
+    if (searchParams.get('newEstimate') !== 'true') return
+    if (!user?.id || newEstimateParamFiredRef.current) return
+    newEstimateParamFiredRef.current = true
+    const projectParam = searchParams.get('project')?.trim() || null
+    setSearchParams((p) => {
+      const next = new URLSearchParams(p)
+      next.delete('newEstimate')
+      next.delete('project')
+      return next
+    }, { replace: true })
+    void createDraft(projectParam)
+    // createDraft reads latest state when it runs; ref guard prevents refire.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, user?.id, setSearchParams])
+
+  async function createDraft(projectId?: string | null) {
     if (!user?.id || creating) return
     setCreating(true)
     try {
@@ -1662,6 +1684,7 @@ function EstimateList() {
               line_items_snapshot: [defaultDraftFirstLine()],
               terms_snapshot: '',
               total_cents: 0,
+              project_id: projectId?.trim() || null,
             })
             .select('id, estimate_number')
             .single(),
@@ -2019,6 +2042,9 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
   const [validUntil, setValidUntil] = useState('')
   const [validUntilPreset, setValidUntilPreset] = useState<ValidUntilPresetDays | null>(null)
   const [forAddress, setForAddress] = useState('')
+  /** Linked `projects.id` ('' = not linked); internal-only, saved with the draft. */
+  const [linkedProjectId, setLinkedProjectId] = useState('')
+  const [projectsForPicker, setProjectsForPicker] = useState<Array<{ id: string; name: string | null; project_number: string | null }> | null>(null)
   const [internalNotes, setInternalNotes] = useState('')
   const [customerAttachmentUrl, setCustomerAttachmentUrl] = useState('')
   const [customerAttachmentLabel, setCustomerAttachmentLabel] = useState('')
@@ -2376,6 +2402,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
         setValidUntilPreset(null)
       }
       setForAddress(r.for_address ?? '')
+      setLinkedProjectId(r.project_id ?? '')
       setInternalNotes(r.internal_notes ?? '')
       {
         const raw = r.accept_notify_user_ids
@@ -2991,6 +3018,20 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
     }
   }
 
+  // Lazy projects fetch for the draft's linked-project picker (first draft render only).
+  useEffect(() => {
+    if (!row || !isDraft || projectsForPicker !== null) return
+    let cancelled = false
+    void (async () => {
+      const { data } = await supabase.from('projects').select('id, name, project_number').order('name')
+      if (cancelled) return
+      setProjectsForPicker((data ?? []) as Array<{ id: string; name: string | null; project_number: string | null }>)
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [row, isDraft, projectsForPicker])
+
   async function saveDraft(options?: { quiet?: boolean }): Promise<boolean> {
     if (!row || !isDraft || saving) return false
     const quiet = options?.quiet ?? false
@@ -3012,6 +3053,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
               total_cents: totalCents,
               valid_until: validUntil.trim() ? validUntil.trim() : null,
               for_address: forAddress.trim() ? forAddress.trim() : null,
+              project_id: linkedProjectId || null,
               internal_notes: internalNotes.trim() ? internalNotes.trim() : null,
               customer_id: customerId,
               customer_email: resolveCustomerEmailForPersist(),
@@ -4718,6 +4760,23 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
               pinSelectedToTop
             />
           </fieldset>
+          <div style={{ marginTop: '1rem' }}>
+            <label htmlFor="estimate-linked-project" style={{ display: 'block', fontWeight: 500, marginBottom: '0.25rem' }}>
+              Project
+            </label>
+            <SearchableSelect
+              id="estimate-linked-project"
+              value={linkedProjectId}
+              onChange={setLinkedProjectId}
+              options={(projectsForPicker ?? []).map((p) => ({
+                value: p.id,
+                label: `${p.name ?? 'Unnamed project'}${formatProjectNumberLabel(p.project_number) ? ` — ${formatProjectNumberLabel(p.project_number)}` : ''}`,
+              }))}
+              emptyOption={{ value: '', label: 'Not linked' }}
+              placeholder="Not linked"
+              listAriaLabel="Linked project"
+            />
+          </div>
           <label style={{ display: 'block', marginTop: '1rem' }}>
             <span style={{ fontWeight: 500 }}>Internal notes</span>
             <AutosizeTextarea

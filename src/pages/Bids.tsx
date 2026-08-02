@@ -245,6 +245,8 @@ export default function Bids() {
 
   // Bid Board
   const [bidFormOpen, setBidFormOpen] = useState(false)
+  /** Projects for the bid form's linked-project picker; null = not fetched yet (lazy, on first form open). */
+  const [projectsForPicker, setProjectsForPicker] = useState<Array<{ id: string; name: string | null; project_number: string | null }> | null>(null)
   const [pendingBidFormFocus, setPendingBidFormFocus] = useState<'projectName' | 'gcBuilder' | 'bidValue' | null>(null)
   const [editingBid, setEditingBid] = useState<BidWithBuilder | null>(null)
   const [viewingCustomer, setViewingCustomer] = useState<Customer | null>(null)
@@ -294,6 +296,7 @@ export default function Bids() {
     countToolingPlansLink,
     bidSubmissionLink,
     projectName,
+    projectId: formProjectId,
     bidNumber,
     address,
     gcContactName,
@@ -1068,6 +1071,46 @@ export default function Bids() {
 
   const BIDS_TABS = ['bid-board', 'builder-review', 'working', 'bid-costs', 'estimators', 'counts', 'takeoffs', 'labor', 'pricing', 'cover-letter', 'submission-followup', 'rfi', 'change-order', 'lien-release'] as const
 
+  // Lazy projects fetch for the bid form's linked-project picker (first open only).
+  useEffect(() => {
+    if (!bidFormOpen || projectsForPicker !== null) return
+    let cancelled = false
+    void (async () => {
+      const { data } = await supabase.from('projects').select('id, name, project_number').order('name')
+      if (cancelled) return
+      setProjectsForPicker((data ?? []) as Array<{ id: string; name: string | null; project_number: string | null }>)
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [bidFormOpen, projectsForPicker])
+
+  // Projects card "+ Bid" deep link (?newBid=true&project=<id>): open New Bid
+  // pre-linked to the project. Gated on auth so a cold load doesn't fire before
+  // the session resolves (handle-gating rule); params strip once it fires.
+  useEffect(() => {
+    const params = new URLSearchParams(location.search)
+    if (params.get('newBid') !== 'true') return
+    if (!authUser?.id) return
+    const projectIdParam = params.get('project')?.trim() || null
+    void (async () => {
+      let project: { id: string; name: string | null } | null = null
+      if (projectIdParam) {
+        const { data } = await supabase.from('projects').select('id, name').eq('id', projectIdParam).maybeSingle()
+        project = (data as { id: string; name: string | null } | null) ?? null
+      }
+      openNewBidFromProject(project)
+    })()
+    setSearchParams((p) => {
+      const next = new URLSearchParams(p)
+      next.delete('newBid')
+      next.delete('project')
+      return next
+    }, { replace: true })
+    // openNewBidFromProject reads latest form/service-type state when the IIFE runs.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.search, authUser?.id, setSearchParams])
+
   useEffect(() => {
     const params = new URLSearchParams(location.search)
     if (params.get('new') === 'true') {
@@ -1513,6 +1556,18 @@ export default function Bids() {
     setError(null)
   }
 
+  /** Projects card "+ Bid" deep link: new bid pre-linked to the project, name seeded from it. */
+  function openNewBidFromProject(project: { id: string; name: string | null } | null) {
+    clearBidDateSentAttestationFlow()
+    savedBidDateSentRef.current = ''
+    setEditingBid(null)
+    bidForm.reset({ serviceTypeId: selectedServiceTypeId, accountManagerId: authUser?.id ?? '', project })
+    setBidDateSent('')
+    setPendingBidFormFocus(null)
+    setBidFormOpen(true)
+    setError(null)
+  }
+
   function openNewBidWithCustomer(customer: Customer) {
     clearBidDateSentAttestationFlow()
     savedBidDateSentRef.current = ''
@@ -1909,6 +1964,7 @@ export default function Bids() {
       gc_builder_id: null,
       ...(editingBid && (myRole === 'dev' || myRole === 'master_technician' || isAssistantLike(myRole)) ? { bid_number: bidNumber.trim() || null } : {}),
       project_name: projectName.trim() || null,
+      project_id: formProjectId || null,
       address: address.trim() || null,
       gc_contact_name: gcContactName.trim() || null,
       gc_contact_phone: gcContactPhone.trim() || null,
@@ -2015,6 +2071,7 @@ export default function Bids() {
       gc_builder_id: null,
       ...(editingBid && (myRole === 'dev' || myRole === 'master_technician' || isAssistantLike(myRole)) ? { bid_number: bidNumber.trim() || null } : {}),
       project_name: projectName.trim() || null,
+      project_id: formProjectId || null,
       address: address.trim() || null,
       gc_contact_name: gcContactName.trim() || null,
       gc_contact_phone: gcContactPhone.trim() || null,
@@ -3391,6 +3448,7 @@ export default function Bids() {
         closeBidForm={closeBidForm}
         saveBid={saveBid}
         form={bidForm}
+        projects={projectsForPicker ?? []}
         estimatorUsers={estimatorUsers}
         myRole={myRole === 'controller' ? 'assistant' : myRole}
         visibleServiceTypes={visibleServiceTypes}

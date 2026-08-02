@@ -11,6 +11,7 @@ import {
   normalizeBidDateInput,
   wholeCalendarDaysSinceSentDate,
 } from '../../lib/bidDateSentDisplay'
+import { formatProjectNumberLabel } from '../../lib/projectNumberLabel'
 import { getBidServiceTypeTag } from '../../utils/unifiedJobBidSearch'
 import { useJobFormModal } from '../../contexts/JobFormModalContext'
 import { isAssistantLike } from '../../lib/subcontractorLikeRole'
@@ -37,6 +38,8 @@ export type BidFormModalProps = {
   saveBid: (e: FormEvent<HTMLFormElement>) => void
   /** Owns all editable bid-form data fields (values + setters). */
   form: BidEditForm
+  /** Projects for the linked-project picker (id/name/number; empty until the lazy fetch lands). */
+  projects: Array<{ id: string; name: string | null; project_number: string | null }>
   estimatorUsers: EstimatorUser[]
   myRole: BidFormUserRole
   visibleServiceTypes: { id: string; name: string; color: string | null }[]
@@ -105,6 +108,7 @@ export function BidFormModal(props: BidFormModalProps) {
     closeBidForm,
     saveBid,
     form,
+    projects,
     estimatorUsers,
     myRole,
     visibleServiceTypes,
@@ -140,6 +144,7 @@ export function BidFormModal(props: BidFormModalProps) {
     countToolingPlansLink,
     bidSubmissionLink,
     projectName,
+    projectId,
     bidNumber,
     address,
     gcContactName,
@@ -172,6 +177,7 @@ export function BidFormModal(props: BidFormModalProps) {
     setCountToolingPlansLink,
     setBidSubmissionLink,
     setProjectName,
+    setProjectId,
     setBidNumber,
     setAddress,
     setGcContactName,
@@ -435,6 +441,48 @@ export function BidFormModal(props: BidFormModalProps) {
                     required
                     style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
                   />
+                  <div style={{ marginTop: '0.5rem' }}>
+                    <label htmlFor="bid-form-linked-project" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Project</label>
+                    <SearchableSelect
+                      id="bid-form-linked-project"
+                      value={projectId}
+                      onChange={setProjectId}
+                      options={projects.map((p) => ({
+                        value: p.id,
+                        label: `${p.name ?? 'Unnamed project'}${formatProjectNumberLabel(p.project_number) ? ` — ${formatProjectNumberLabel(p.project_number)}` : ''}`,
+                      }))}
+                      emptyOption={{ value: '', label: 'Not linked' }}
+                      placeholder="Not linked"
+                      listAriaLabel="Linked project"
+                    />
+                    {(() => {
+                      // One-tap suggestion: free-text name exactly matches a project (trim/case-insensitive).
+                      if (projectId) return null
+                      const needle = projectName.trim().toLowerCase()
+                      if (!needle) return null
+                      const match = projects.find((p) => (p.name ?? '').trim().toLowerCase() === needle)
+                      if (!match) return null
+                      return (
+                        <button
+                          type="button"
+                          onClick={() => setProjectId(match.id)}
+                          style={{
+                            marginTop: '0.35rem',
+                            padding: '0.2rem 0.6rem',
+                            fontSize: '0.8125rem',
+                            border: '1px dashed var(--border-sky)',
+                            borderRadius: 6,
+                            background: 'var(--surface)',
+                            color: 'var(--text-sky-700)',
+                            fontFamily: 'inherit',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          Suggested: link to “{match.name}”
+                        </button>
+                      )
+                    })()}
+                  </div>
                 </div>
               </div>
               <div className="bid-form-service-outcome-sent-row" style={{ marginBottom: '1rem', display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'flex-start' }}>
