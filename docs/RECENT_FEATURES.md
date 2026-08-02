@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-02 (v2.1304)
+last_updated: 2026-08-02 (v2.1305)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1305)
+
+### Behind the scenes: Team Summary popup document builder extracted (2026-08-02)
+Step 1 of the [`PeopleReviewTab` sub-decomposition](./PEOPLE_REVIEW_TAB_ARCHITECTURE.md) (Stage A per the [playbook](./PAGE_DECOMPOSITION_PLAYBOOK.md)). The ~1,490-line popup Team Summary HTML/JS document builder — the standalone document's CSS, table skeleton, and ES5 IIFE script (client-side sort/search, nine drilldown modal-body builders, modal-only print mode) — moved byte-verbatim from the popup branch of `openTeamSummaryWindow` in [`PeopleReviewTab.tsx`](../src/components/people/PeopleReviewTab.tsx) into a pure kernel [`lib/peopleDocuments/buildTeamSummaryHtml.ts`](../src/lib/peopleDocuments/buildTeamSummaryHtml.ts) taking an explicit `TeamSummaryHtmlContext` (`isEmbedded`, `periodLabel`, enriched `breakdowns`, `overheadRate`/`overheadRateLoading`, `overheadDecomp`, `selectedPersonName`) — the `buildPayStubHtml` pattern. The only in-template change is threading `getReviewPeriodLabel()` as `periodLabel`; the dead `embeddedResizeScript`/`bridgeTarget` iframe branch is preserved intentionally, and the ctx types `overheadDecomp` as the raw nullable rate fields (the popup has always serialized nulls; the inline memo coerces to 0). +12 colocated tests (popup vs embedded branches, meta states, JSON `</`-escaping, script machinery, byte-determinism). `PeopleReviewTab.tsx` drops 5,267 → 3,777 lines; the window-management/cache/toast shell and the enrichment call stay put. No behavior change.
 
 ## Latest Updates (v2.1304)
 

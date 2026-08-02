@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1305',
+    date: '2026-08-02',
+    title: 'Behind the scenes: Team Summary popup restructured',
+    kind: 'infra',
+    highlights: [
+      'The document that powers the People Review tab’s "open in new window" Team Summary moved into its own tested module.',
+      'No visible changes; the popup table, sorting, search, and drilldown printouts work exactly as before.',
+    ],
+  },
+  {
     version: 'v2.1304',
     date: '2026-08-02',
     title: 'Behind the scenes: Banking groundwork, part 1',
