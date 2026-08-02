@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-01 (v2.1247)
+last_updated: 2026-08-01 (v2.1248)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1248)
+
+### People → Review — per-person panel agrees with the Team Summary: office job excluded, card charges counted, click-only jobs resolved (2026-08-01)
+Consistency pass making `loadReviewData` (the per-person panel) and `loadTeamReviewUnion`/`derivePersonTeamSummary` (the Team Summary) compute from the same rules. **(1) Office job excluded from the panel** — the panel used to list the configured Office job as a Jobs Worked row with a large negative revenue allocation that the Team Summary row above deliberately filters out; the panel now applies the same sub-labor + crew filters. **(2) Parts cost includes Mercury card charges** — both loaders add the `mercury_transaction_job_allocations` bucket (canonical composition per Jobs/Job Summary: tally + supply invoices + billed materials + **card charges**); card-heavy jobs stop overstating profit. Kernel + union type + fixtures updated. **(3) Click-only jobs resolved** — `get_jobs_ledger_by_hcp_numbers` deliberately returns jobs whose hcp is empty but click number matches (migration `20260619140000`); both loaders' number→job maps only keyed `hcp_number`, so those jobs rendered `—`/$0 and vanished in paid-only mode. Maps now also key `click_number`, with first-resolution-wins guards on duplicate numbers. **(4) Identity hardening** — id-first pay-config resolution in all six crew-cost loops (crew rows carry `person_id` post-Phase-B; matches `utils/teamLabor.ts`, C1-6 spirit), a case-insensitive fallback for the overhead-hours person lookup (users.name vs pay-config-key casing zeroed office hours), and trimmed comparisons for the user-id/reports lookups (a trailing space blanked Tasks/Reports). **(5) "Subs:" unified** — labor and crew rows now both mean sub-labor by *others* on the job (they previously subtracted different things and disagreed on shared jobs). Verified: `tsc -b` clean, zero new lints, vitest 3,336 green. Files: modified [`PeopleReviewTab.tsx`](../src/components/people/PeopleReviewTab.tsx), [`derivePersonTeamSummary.ts`](../src/lib/people/derivePersonTeamSummary.ts) (+test), [`teamReviewTypes.ts`](../src/lib/people/teamReviewTypes.ts). No DB / migration / RLS / RPC / Edge / type-gen changes.
 
 ## Latest Updates (v2.1247)
 

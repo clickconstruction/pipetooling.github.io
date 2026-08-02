@@ -11,6 +11,18 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1248',
+    date: '2026-08-01',
+    title: 'People Review: person panel now matches the Team Summary',
+    kind: 'fix',
+    highlights: [
+      'The per-person panel no longer lists the Office job as a money-losing "job worked" — it is overhead, exactly as the Team Summary already treated it.',
+      'Parts cost now includes company-card purchases allocated to jobs, so profit stops reading high on card-heavy jobs.',
+      'Jobs tracked by Click number (no HCP number) now resolve properly instead of showing dashes and zero dollars.',
+      'Renamed people and names with stray spaces no longer silently drop wages, office hours, tasks, or reports.',
+    ],
+  },
+  {
     version: 'v2.1247',
     date: '2026-08-01',
     title: 'People Review: popup Team Summary now matches the on-page table',
