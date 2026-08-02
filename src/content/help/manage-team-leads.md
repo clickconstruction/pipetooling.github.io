@@ -11,7 +11,6 @@ A **team lead** is someone who sees and approves their members' hours from **Das
 The same manager appears in two places — use whichever is closer:
 
 - **People → Users** → the {{button:outline-blue|Team leads}} button beside the search box (opens a window).
-- **People → Teams** tab.
 
 You'll see one card per leader, like {{chip:blue|Maria Lopez}} **· 3 members**. Click a card to expand or collapse it, and use the search box to find a leader *or* a member by name.
 
