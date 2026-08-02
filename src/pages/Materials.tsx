@@ -8,6 +8,11 @@ import {
   type PurchaseOrderWithItems,
 } from '../lib/materials/poItemDetails'
 import { calculateAssemblyCost as calculateAssemblyCostKernel } from '../lib/materials/assemblyCost'
+import { fetchPricesForPart, fetchPricesForParts } from '../lib/materials/partPrices'
+import { groupSupplyHouseStats, type SupplyHouseStatsRow } from '../lib/materials/supplyHouseStats'
+import { buildPOForSupplyHousePrintHtml, buildPOPrintHtml } from '../lib/materialsDocuments/poPrint'
+import { formatCurrency } from '../lib/format'
+import { formatTimeSinceAgo } from '../lib/formatTimeSinceAgo'
 import {
   computeLoadAllDisplayParts,
   filterPartsByQuery,
@@ -109,44 +114,7 @@ type PoGeneratorLedgerRow = {
 
 const PARTS_PAGE_SIZE = 50
 
-/** Batch-fetch prices for multiple parts in one query, then group by part_id. */
-async function fetchPricesForParts(partIds: string[]): Promise<Map<string, (MaterialPartPrice & { supply_house: SupplyHouse })[]>> {
-  const map = new Map<string, (MaterialPartPrice & { supply_house: SupplyHouse })[]>()
-  if (partIds.length === 0) return map
-
-  // Supabase .in() works with many IDs; chunk if needed for very large sets (e.g. 1000+)
-  const CHUNK = 500
-  for (let i = 0; i < partIds.length; i += CHUNK) {
-    const chunk = partIds.slice(i, i + CHUNK)
-    const { data: pricesData } = await supabase
-      .from('material_part_prices')
-      .select('*, supply_houses(*)')
-      .in('part_id', chunk)
-      .order('price', { ascending: true })
-
-    const rows = (pricesData as unknown as (MaterialPartPrice & { supply_houses: SupplyHouse })[]) ?? []
-    for (const row of rows) {
-      const pid = row.part_id
-      const priceRow = { ...row, supply_house: row.supply_houses }
-      const existing = map.get(pid)
-      if (existing) {
-        existing.push(priceRow)
-      } else {
-        map.set(pid, [priceRow])
-      }
-    }
-  }
-
-  // Sort each part's prices by price ascending (chunked results may not be fully ordered)
-  for (const prices of map.values()) {
-    prices.sort((a, b) => a.price - b.price)
-  }
-  return map
-}
-
-function formatCurrency(n: number): string {
-  return n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-}
+// fetchPricesForParts now lives in lib/materials/partPrices; formatCurrency in lib/format
 
 const MATERIALS_TABS = ['parts-book', 'assembly-book', 'assemblies-po', 'purchase-orders', 'supply-houses', 'po-generator'] as const
 
@@ -575,7 +543,7 @@ export default function Materials() {
         .filter(p => p !== undefined) as MaterialPart[]
       
       // Batch-fetch prices for all parts in one query
-      const pricesByPartId = await fetchPricesForParts(orderedPartsList.map(p => p.id))
+      const pricesByPartId = await fetchPricesForParts(supabase, orderedPartsList.map(p => p.id))
       const partsWithPrices: PartWithPrices[] = orderedPartsList.map(part => ({
         ...part,
         prices: pricesByPartId.get(part.id) ?? [],
@@ -645,7 +613,7 @@ export default function Materials() {
     }
 
     // Batch-fetch prices for all parts in one query
-    const pricesByPartId = await fetchPricesForParts(partsList.map(p => p.id))
+    const pricesByPartId = await fetchPricesForParts(supabase, partsList.map(p => p.id))
     const partsWithPrices: PartWithPrices[] = partsList.map(part => ({
       ...part,
       prices: pricesByPartId.get(part.id) ?? [],
@@ -696,7 +664,7 @@ export default function Materials() {
       })) as MaterialPart[]
       
       // Batch-fetch all prices in one or few queries
-      const pricesByPartId = await fetchPricesForParts(partsList.map(p => p.id))
+      const pricesByPartId = await fetchPricesForParts(supabase, partsList.map(p => p.id))
       const partsWithPrices: PartWithPrices[] = partsList.map(part => ({
         ...part,
         prices: pricesByPartId.get(part.id) ?? [],
@@ -737,64 +705,8 @@ export default function Materials() {
       return
     }
 
-    type StatsRow = {
-      service_type_id: string
-      service_type_name: string
-      total_parts: number
-      parts_with_prices: number
-      parts_with_multiple_prices: number
-      supply_house_id: string
-      supply_house_name: string
-      price_count: number
-    }
-    
-    const rows = (data as unknown as StatsRow[] | null) ?? []
-    
-    // Group by service type
-    const serviceTypeMap = new Map<string, {
-      id: string
-      name: string
-      totalParts: number
-      partsWithPrices: number
-      partsWithMultiplePrices: number
-    }>()
-    
-    // Group by supply house
-    const supplyHouseMap = new Map<string, {
-      id: string
-      name: string
-      pricesByServiceType: Record<string, number>
-    }>()
-    
-    for (const row of rows) {
-      // Service type stats (same for all rows with same service_type_id)
-      if (!serviceTypeMap.has(row.service_type_id)) {
-        serviceTypeMap.set(row.service_type_id, {
-          id: row.service_type_id,
-          name: row.service_type_name,
-          totalParts: row.total_parts,
-          partsWithPrices: row.parts_with_prices,
-          partsWithMultiplePrices: row.parts_with_multiple_prices,
-        })
-      }
-      
-      // Supply house prices
-      if (!supplyHouseMap.has(row.supply_house_id)) {
-        supplyHouseMap.set(row.supply_house_id, {
-          id: row.supply_house_id,
-          name: row.supply_house_name,
-          pricesByServiceType: {},
-        })
-      }
-      
-      const sh = supplyHouseMap.get(row.supply_house_id)!
-      sh.pricesByServiceType[row.service_type_id] = row.price_count
-    }
-    
-    setSupplyHouseStatsByServiceType({
-      serviceTypes: Array.from(serviceTypeMap.values()),
-      supplyHouses: Array.from(supplyHouseMap.values()),
-    })
+    const rows = (data as unknown as SupplyHouseStatsRow[] | null) ?? []
+    setSupplyHouseStatsByServiceType(groupSupplyHouseStats(rows))
   }
 
   const reloadPartsFirstPage = useCallback(async () => {
@@ -829,7 +741,7 @@ export default function Materials() {
       partIds.length > 0
         ? supabase.from('material_parts').select('*, part_types(*)').in('id', partIds)
         : Promise.resolve({ data: [] }),
-      partIds.length > 0 ? fetchPricesForParts(partIds) : Promise.resolve(new Map()),
+      partIds.length > 0 ? fetchPricesForParts(supabase, partIds) : Promise.resolve(new Map()),
       nestedTemplateIds.length > 0
         ? supabase.from('material_templates').select('*').in('id', nestedTemplateIds)
         : Promise.resolve({ data: [] }),
@@ -2101,114 +2013,29 @@ export default function Materials() {
     setLoadingDraftPOSupplyHouseOptions(false)
   }
 
-  async function fetchPricesForPart(partId: string): Promise<Array<{ supply_house_name: string; price: number }>> {
-    const { data, error } = await supabase
-      .from('material_part_prices')
-      .select('*, supply_houses(*)')
-      .eq('part_id', partId)
-      .order('price', { ascending: true })
-    if (error) return []
-    const pricesList = (data as unknown as (MaterialPartPrice & { supply_houses: SupplyHouse })[]) ?? []
-    return pricesList.map(p => ({
-      supply_house_name: p.supply_houses.name,
-      price: p.price,
-    }))
+  function openPrintWindow(html: string) {
+    const win = window.open('', '_blank')
+    if (!win) return
+    win.document.write(html)
+    win.document.close()
+    win.focus()
+    win.print()
+    win.onafterprint = () => win.close()
   }
 
   async function printPO(po: PurchaseOrderWithItems) {
-    const escapeHtml = (s: string) => (s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
-    const title = escapeHtml(po.name)
-    const grandTotal = po.items.reduce((sum, item) => sum + item.price_at_time * item.quantity, 0)
-    let tableRows = ''
-    if (po.status === 'finalized') {
-      tableRows = po.items.map(item => {
-        const partName = escapeHtml(item.part.name ?? '')
-        const qty = item.quantity
-        const sh = item.supply_house?.name ? escapeHtml(item.supply_house.name) : '—'
-        const price = formatCurrency(item.price_at_time)
-        const total = formatCurrency(item.price_at_time * item.quantity)
-        return `<tr><td>${partName}</td><td>${qty}</td><td>${sh}</td><td>$${price}</td><td>$${total}</td></tr>`
-      }).join('')
-    } else {
-      const allPricesPerItem = await Promise.all(po.items.map(item => fetchPricesForPart(item.part.id)))
-      po.items.forEach((item, i) => {
-        const partName = escapeHtml(item.part.name ?? '')
-        const qty = item.quantity
-        const prices = allPricesPerItem[i] ?? []
-        const allPricesStr = prices.length === 0 ? '—' : prices.map(p => `${escapeHtml(p.supply_house_name)}: $${formatCurrency(p.price)}`).join('; ')
-        const chosenStr = item.supply_house?.name ? `${escapeHtml(item.supply_house.name)}: $${formatCurrency(item.price_at_time)}` : '—'
-        const total = formatCurrency(item.price_at_time * item.quantity)
-        tableRows += `<tr><td>${partName}</td><td>${qty}</td><td>${allPricesStr}</td><td>${chosenStr}</td><td>$${total}</td></tr>`
-      })
-    }
-    const statusLabel = po.status === 'finalized' ? 'Finalized' : 'Draft'
-    const dateStr = po.status === 'finalized' && po.finalized_at
-      ? new Date(po.finalized_at).toLocaleString()
-      : po.created_at ? new Date(po.created_at).toLocaleDateString() : ''
-    const theadFinalized = '<tr><th>Part</th><th>Qty</th><th>Supply House</th><th>Price</th><th>Total</th></tr>'
-    const theadDraft = '<tr><th>Part</th><th>Qty</th><th>All prices</th><th>Chosen</th><th>Total</th></tr>'
-    const thead = po.status === 'finalized' ? theadFinalized : theadDraft
-    const footerColspan = po.status === 'finalized' ? 4 : 4
-    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${title}</title><style>
-      body { font-family: sans-serif; margin: 1in; }
-      table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
-      th, td { border: 1px solid #ccc; padding: 0.5rem; text-align: left; }
-      th { background: #f5f5f5; }
-      .meta { margin-bottom: 0.5rem; color: #666; }
-      @media print { body { margin: 0.5in; } }
-    </style></head><body>
-      <h1>${title}</h1>
-      <div class="meta">${statusLabel}${dateStr ? ` · ${dateStr}` : ''}</div>
-      <table>
-        <thead>${thead}</thead>
-        <tbody>${tableRows}</tbody>
-        <tfoot><tr><td colspan="${footerColspan}" style="text-align:right; font-weight:600;">Grand Total</td><td style="font-weight:600;">$${formatCurrency(grandTotal)}</td></tr></tfoot>
-      </table>
-    </body></html>`
-    const win = window.open('', '_blank')
-    if (!win) return
-    win.document.write(html)
-    win.document.close()
-    win.focus()
-    win.print()
-    win.onafterprint = () => win.close()
+    // Drafts print an "All prices" comparison column — one price query per item
+    // (N+1 by design for drafts; finalized print is single-pass).
+    const allPricesPerItem = po.status === 'finalized'
+      ? null
+      : await Promise.all(po.items.map(item => fetchPricesForPart(supabase, item.part.id)))
+    openPrintWindow(buildPOPrintHtml(po, allPricesPerItem))
   }
 
   function printPOForSupplyHouse(po: PurchaseOrderWithItems, taxPercent: number) {
-    const escapeHtml = (s: string) => (s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
-    const title = escapeHtml(po.name)
-    const grandTotal = po.items.reduce((sum, item) => sum + item.price_at_time * item.quantity, 0)
-    const withTaxAmount = grandTotal * (1 + taxPercent / 100)
-    const tableRows = po.items.map(item => {
-      const partName = escapeHtml(item.part.name ?? '')
-      const qty = item.quantity
-      const price = formatCurrency(item.price_at_time)
-      const total = formatCurrency(item.price_at_time * item.quantity)
-      return `<tr><td>${partName}</td><td>${qty}</td><td>$${price}</td><td>$${total}</td></tr>`
-    }).join('')
-    const thead = '<tr><th>Part</th><th>Qty</th><th>Price</th><th>Total</th></tr>'
-    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${title}</title><style>
-      body { font-family: sans-serif; margin: 1in; }
-      table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
-      th, td { border: 1px solid #ccc; padding: 0.5rem; text-align: left; }
-      th { background: #f5f5f5; }
-      @media print { body { margin: 0.5in; } }
-    </style></head><body>
-      <h1>${title}</h1>
-      <table>
-        <thead>${thead}</thead>
-        <tbody>${tableRows}</tbody>
-        <tfoot><tr><td colspan="3" style="text-align:right; font-weight:600;">Grand Total:</td><td style="font-weight:600;">$${formatCurrency(grandTotal)}</td></tr><tr><td colspan="3" style="text-align:right; font-weight:600;">With Tax ${taxPercent}%:</td><td style="font-weight:600;">$${formatCurrency(withTaxAmount)}</td></tr></tfoot>
-      </table>
-    </body></html>`
-    const win = window.open('', '_blank')
-    if (!win) return
-    win.document.write(html)
-    win.document.close()
-    win.focus()
-    win.print()
-    win.onafterprint = () => win.close()
+    openPrintWindow(buildPOForSupplyHousePrintHtml(po, taxPercent))
   }
+
 
   async function updatePartPriceInBook(priceId: string, newPrice: number, partId?: string) {
     setUpdatingPriceId(priceId)
@@ -2312,25 +2139,6 @@ export default function Materials() {
     setEditingPricesByPriceId({})
     setAddPriceSupplyHouseId('')
     setAddPriceValue('')
-  }
-
-  function formatTimeSince(timestamp: string): string {
-    const now = new Date()
-    const then = new Date(timestamp)
-    const diffMs = now.getTime() - then.getTime()
-    const diffMins = Math.floor(diffMs / 60000)
-    const diffHours = Math.floor(diffMs / 3600000)
-    const diffDays = Math.floor(diffMs / 86400000)
-    const diffWeeks = Math.floor(diffMs / 604800000)
-    const diffMonths = Math.floor(diffMs / 2592000000)
-
-    if (diffMins < 1) return 'just now'
-    if (diffMins < 60) return `${diffMins} minute${diffMins !== 1 ? 's' : ''} ago`
-    if (diffHours < 24) return `${diffHours} hour${diffHours !== 1 ? 's' : ''} ago`
-    if (diffDays < 7) return `${diffDays} day${diffDays !== 1 ? 's' : ''} ago`
-    if (diffWeeks < 4) return `${diffWeeks} week${diffWeeks !== 1 ? 's' : ''} ago`
-    if (diffMonths < 12) return `${diffMonths} month${diffMonths !== 1 ? 's' : ''} ago`
-    return `${Math.floor(diffMonths / 12)} year${Math.floor(diffMonths / 12) !== 1 ? 's' : ''} ago`
   }
 
   async function confirmPOItemPrice(itemId: string, partId: string, supplyHouseId: string | null, price: number) {
@@ -5596,7 +5404,7 @@ export default function Materials() {
                                 </label>
                                 {item.price_confirmed_at && (
                                   <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginLeft: '1.5rem' }}>
-                                    {formatTimeSince(item.price_confirmed_at)}
+                                    {formatTimeSinceAgo(item.price_confirmed_at)}
                                   </span>
                                 )}
                               </div>
