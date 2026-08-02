@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1306',
+    date: '2026-08-02',
+    title: 'Behind the scenes: Takeoff assembly editors restructured',
+    kind: 'infra',
+    highlights: [
+      'The three assembly-editing popups on Bids → Takeoffs (Add Assembly, Add Parts, Edit Assembly) moved into their own component.',
+      'No visible changes; creating and editing assemblies — including Save as Assembly with a bundle price — works exactly as before.',
+    ],
+  },
+  {
     version: 'v2.1305',
     date: '2026-08-02',
     title: 'Behind the scenes: Team Summary popup restructured',
