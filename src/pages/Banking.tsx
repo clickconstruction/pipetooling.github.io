@@ -2385,7 +2385,7 @@ export default function Banking() {
                       onClick={() => setMercurySubTab('user_review')}
                       style={pageTabStyle(bankingView.mercuryTab === 'user_review')}
                     >
-                      User Review
+                      Card Review
                     </button>
                     <button
                       type="button"

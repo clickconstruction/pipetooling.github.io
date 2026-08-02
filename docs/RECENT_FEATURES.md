@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-01 (v2.1261)
+last_updated: 2026-08-01 (v2.1262)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1262)
+
+### Banking — Mercury "User Review" tab renamed "Card Review" (2026-08-01)
+Naming-audit decision N13 (the last open item): the Mercury spend-review tab is now **Card Review**, ending the collision with the Dashboard **User Review modal** (clock-strip schedule review), which keeps its name. Label-only in [`Banking.tsx`](../src/pages/Banking.tsx); the `user_review` tab slug and `BankingMercuryUserReview*` component/lib identifiers stay per the audit convention. [`GLOSSARY.md`](./GLOSSARY.md) heading + cross-references updated. Verified live with the dev test account: tab renders "Card Review", `?tab=user_review` deep links still land. `tsc -b` clean, vitest green. No DB / migration / RLS / RPC / Edge changes.
 
 ## Latest Updates (v2.1261)
 
