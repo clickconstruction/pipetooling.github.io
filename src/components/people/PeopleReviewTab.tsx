@@ -4,6 +4,7 @@ import type { User } from '@supabase/supabase-js'
 import { supabase } from '../../lib/supabase'
 import { formatCurrency } from '../../lib/format'
 import { DatabaseError, formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
+import { fetchAllRows, fetchAllRowsChunkedIn } from '../../lib/supabasePaging'
 import { ymdAddDays } from '../../utils/dateUtils'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useLedgerPrefixMap } from '../../contexts/LedgerDisplayPrefixContext'
@@ -61,6 +62,22 @@ function throwIfQueryError(
   for (const r of results) {
     if (r.error) throw new DatabaseError(`Failed to ${label}: ${r.error.message}`, r.error.code, r.error.details)
   }
+}
+
+/**
+ * Pages a query with {@link fetchAllRows} and wraps the rows back into a
+ * `{ data }` result so existing wave destructuring / `.data` reads are
+ * unchanged. Company-wide and multi-year fetches in this file cross
+ * PostgREST's silent `max_rows` (1000) cap (people_hours ≈ one row per
+ * person per day); un-paged they return an arbitrary subset with no error.
+ * `makePage` must build a FRESH query per call with a stable `.order()`.
+ * Person-scoped single-period queries stay single-shot.
+ */
+function paged<T>(
+  makePage: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: { message: string; code?: string; details?: string } | null }>,
+  label: string,
+): Promise<{ data: T[]; error: null }> {
+  return fetchAllRows<T>(makePage, label).then((rows) => ({ data: rows, error: null }))
 }
 
 export type PeopleReviewTabProps = {
@@ -297,36 +314,48 @@ export default function PeopleReviewTab({
         const today = new Date().toLocaleDateString('en-CA')
         const start = ymdAddDays(today, -89)
         const officeJobLedgerId = await fetchOverheadOfficeJobLedgerIdFromAppSettings()
-        let overheadQ = supabase
-          .from('clock_sessions')
-          .select(
-            'id, user_id, work_date, clocked_in_at, clocked_out_at, job_ledger_id, bid_id, approved_at, rejected_at, revoked_at, users!clock_sessions_user_id_fkey(name)',
-          )
-          .gte('work_date', start)
-          .lte('work_date', today)
-        if (officeJobLedgerId) {
-          overheadQ = overheadQ.or(`job_ledger_id.eq.${officeJobLedgerId},bid_id.not.is.null`)
-        } else {
-          overheadQ = overheadQ.not('bid_id', 'is', null)
+        // Paged fetches (fetchAllRows): these are company-wide 90-day scans
+        // that silently truncate at PostgREST max_rows (1000) if un-ranged —
+        // a truncated field-hours denominator inflates every Method A/B/C
+        // rate. Fresh builder per page; `.order('id')` keeps pages stable.
+        const sessionSelect =
+          'id, user_id, work_date, clocked_in_at, clocked_out_at, job_ledger_id, bid_id, approved_at, rejected_at, revoked_at, users!clock_sessions_user_id_fkey(name)'
+        const makeOverheadQ = () => {
+          let q = supabase.from('clock_sessions').select(sessionSelect).gte('work_date', start).lte('work_date', today)
+          if (officeJobLedgerId) {
+            q = q.or(`job_ledger_id.eq.${officeJobLedgerId},bid_id.not.is.null`)
+          } else {
+            q = q.not('bid_id', 'is', null)
+          }
+          return q.order('id')
         }
-        let fieldQ = supabase
-          .from('clock_sessions')
-          .select(
-            'id, user_id, work_date, clocked_in_at, clocked_out_at, job_ledger_id, bid_id, approved_at, rejected_at, revoked_at, users!clock_sessions_user_id_fkey(name)',
-          )
-          .gte('work_date', start)
-          .lte('work_date', today)
-          .not('job_ledger_id', 'is', null)
-        if (officeJobLedgerId) fieldQ = fieldQ.neq('job_ledger_id', officeJobLedgerId)
+        const makeFieldQ = () => {
+          let q = supabase
+            .from('clock_sessions')
+            .select(sessionSelect)
+            .gte('work_date', start)
+            .lte('work_date', today)
+            .not('job_ledger_id', 'is', null)
+          if (officeJobLedgerId) q = q.neq('job_ledger_id', officeJobLedgerId)
+          return q.order('id')
+        }
         const startIsoLow = `${start}T00:00:00-00:00`
         const endIsoHigh = `${ymdAddDays(today, 1)}T00:00:00-00:00`
         const [overheadSessionsRes, fieldSessionsRes, partsRes, invoiceRowsRes] = await Promise.all([
-          withSupabaseRetry(async () => overheadQ, 'load review 90d overhead sessions') as Promise<
-            OverheadClockSessionRow[] | null
-          >,
-          withSupabaseRetry(async () => fieldQ, 'load review 90d field sessions') as Promise<
-            OverheadClockSessionRow[] | null
-          >,
+          fetchAllRows(
+            async (f, t) => ({
+              data: (await withSupabaseRetry(async () => makeOverheadQ().range(f, t), 'load review 90d overhead sessions')) as unknown as OverheadClockSessionRow[] | null,
+              error: null,
+            }),
+            'load review 90d overhead sessions',
+          ),
+          fetchAllRows(
+            async (f, t) => ({
+              data: (await withSupabaseRetry(async () => makeFieldQ().range(f, t), 'load review 90d field sessions')) as unknown as OverheadClockSessionRow[] | null,
+              error: null,
+            }),
+            'load review 90d field sessions',
+          ),
           officeJobLedgerId
             ? fetchOverheadOfficePartsByDay({
                 officeJobLedgerId,
@@ -334,15 +363,23 @@ export default function PeopleReviewTab({
                 endYmd: today,
               }).then((r) => r.partsUsdByDay)
             : Promise.resolve(new Map<string, number>()),
-          withSupabaseRetry(
-            async () =>
-              supabase
-                .from('jobs_ledger_invoices')
-                .select('amount, sent_to_customer_at')
-                .gte('sent_to_customer_at', startIsoLow)
-                .lt('sent_to_customer_at', endIsoHigh),
+          fetchAllRows(
+            async (f, t) => ({
+              data: (await withSupabaseRetry(
+                async () =>
+                  supabase
+                    .from('jobs_ledger_invoices')
+                    .select('amount, sent_to_customer_at')
+                    .gte('sent_to_customer_at', startIsoLow)
+                    .lt('sent_to_customer_at', endIsoHigh)
+                    .order('id')
+                    .range(f, t),
+                'load review 90d invoices',
+              )) as Array<{ amount: number | null; sent_to_customer_at: string | null }> | null,
+              error: null,
+            }),
             'load review 90d invoices',
-          ) as Promise<Array<{ amount: number | null; sent_to_customer_at: string | null }> | null>,
+          ),
         ])
         if (cancelled) return
         const cfgRows = await withSupabaseRetry(
@@ -728,16 +765,21 @@ export default function PeopleReviewTab({
 
     const twoYearsAgo = new Date()
     twoYearsAgo.setFullYear(twoYearsAgo.getFullYear() - 2)
-    const lookbackStart = twoYearsAgo.toLocaleDateString('en-CA')
+    // Anchored to the selected period like loadTeamReviewUnion — see the
+    // comment there. Old custom ranges used to fall entirely outside the
+    // lookback and rendered '—' hours with 100%-of-job allocations.
+    const twoYearsAgoYmd = twoYearsAgo.toLocaleDateString('en-CA')
+    const lookbackStart = start < twoYearsAgoYmd ? start : twoYearsAgoYmd
 
     const [laborRes, allLaborResForCostAllTime, personLaborResAllTime, crewRes, allCrewResForCostAllTime, hoursRes, reportsRes, tasksRes, outstandingTasksRes, settingsRes, tallyRes, allHoursRes, allHoursResAllTime] = await Promise.all([
       supabase.from('people_labor_jobs').select('id, job_date, address, job_number, labor_rate, distance_miles').eq('assigned_to_name', personName).gte('job_date', start).lte('job_date', end),
-      supabase.from('people_labor_jobs').select('id, job_date, address, job_number, labor_rate, distance_miles, assigned_to_name').gte('job_date', lookbackStart),
-      forTeamSummary ? Promise.resolve({ data: [] }) : supabase.from('people_labor_jobs').select('id, job_date, address, job_number, labor_rate, distance_miles').eq('assigned_to_name', personName).gte('job_date', lookbackStart),
-      supabase.from('people_crew_jobs').select('work_date, person_name, job_assignments').gte('work_date', start).lte('work_date', end),
-      supabase.from('people_crew_jobs').select('work_date, person_name, job_assignments').gte('work_date', lookbackStart),
+      paged((f, t) => supabase.from('people_labor_jobs').select('id, job_date, address, job_number, labor_rate, distance_miles, assigned_to_name').gte('job_date', lookbackStart).order('id').range(f, t), 'load review lifetime labor jobs'),
+      forTeamSummary ? Promise.resolve({ data: [] }) : paged((f, t) => supabase.from('people_labor_jobs').select('id, job_date, address, job_number, labor_rate, distance_miles').eq('assigned_to_name', personName).gte('job_date', lookbackStart).order('id').range(f, t), 'load review person lifetime labor jobs'),
+      paged((f, t) => supabase.from('people_crew_jobs').select('work_date, person_name, job_assignments').gte('work_date', start).lte('work_date', end).order('work_date').order('person_name').range(f, t), 'load review period crew days'),
+      paged((f, t) => supabase.from('people_crew_jobs').select('work_date, person_name, job_assignments').gte('work_date', lookbackStart).order('work_date').order('person_name').range(f, t), 'load review lifetime crew days'),
       supabase.from('people_hours').select('work_date, hours').eq('person_name', personName).gte('work_date', start).lte('work_date', end),
-      forTeamSummary ? Promise.resolve({ data: [] }) : supabase.rpc('list_reports_with_job_info'),
+      // list_reports_with_job_info has a deterministic ORDER BY (created_at), so .range() pages are stable.
+      forTeamSummary ? Promise.resolve({ data: [] }) : paged((f, t) => supabase.rpc('list_reports_with_job_info').range(f, t), 'load review reports'),
       userId && !forTeamSummary
         ? supabase
             .from('checklist_instances')
@@ -756,9 +798,10 @@ export default function PeopleReviewTab({
             .order('scheduled_date', { ascending: true })
         : Promise.resolve({ data: [] }),
       supabase.from('app_settings').select('key, value_num').in('key', ['drive_mileage_cost', 'drive_time_per_mile']),
-      supabase.rpc('list_tally_parts_with_po'),
-      supabase.from('people_hours').select('person_name, work_date, hours').gte('work_date', start).lte('work_date', end),
-      supabase.from('people_hours').select('person_name, work_date, hours').gte('work_date', lookbackStart),
+      // list_tally_parts_with_po orders by created_at, so .range() pages are stable.
+      paged((f, t) => supabase.rpc('list_tally_parts_with_po').range(f, t), 'load review tally parts'),
+      paged((f, t) => supabase.from('people_hours').select('person_name, work_date, hours').gte('work_date', start).lte('work_date', end).order('work_date').order('person_name').range(f, t), 'load review period hours'),
+      paged((f, t) => supabase.from('people_hours').select('person_name, work_date, hours').gte('work_date', lookbackStart).order('work_date').order('person_name').range(f, t), 'load review lifetime hours'),
     ])
 
     throwIfQueryError(
@@ -798,13 +841,15 @@ export default function PeopleReviewTab({
       hoursMapAllTime[`${h.person_name}:${h.work_date}`] = h.hours
     }
 
+    // Chunked + paged: the id list here is every labor job company-wide in
+    // the lookback (unbounded .in() lists eventually 414, and one chunk can
+    // still return >1000 child rows).
     const allLaborJobIdsForCost = allLaborRowsForCostAllTime.map((r) => r.id)
-    const laborItemsRes =
-      allLaborJobIdsForCost.length > 0
-        ? await supabase.from('people_labor_job_items').select('job_id, count, hrs_per_unit, is_fixed').in('job_id', allLaborJobIdsForCost)
-        : { data: [] }
-    throwIfQueryError([laborItemsRes], 'load review labor items')
-    const laborItems = (laborItemsRes.data ?? []) as Array<{ job_id: string; count: number; hrs_per_unit: number; is_fixed: boolean }>
+    const laborItems = (await fetchAllRowsChunkedIn(
+      allLaborJobIdsForCost,
+      (chunk, f, t) => supabase.from('people_labor_job_items').select('job_id, count, hrs_per_unit, is_fixed').in('job_id', chunk).order('id').range(f, t),
+      'load review labor items',
+    )) as Array<{ job_id: string; count: number; hrs_per_unit: number; is_fixed: boolean }>
     const itemsByJob = new Map<string, typeof laborItems>()
     for (const i of laborItems) {
       const list = itemsByJob.get(i.job_id) ?? []
@@ -871,16 +916,27 @@ export default function PeopleReviewTab({
     const personLaborHcps = [...new Set(personLaborRowsAllTime.filter((r) => (r.job_number ?? '').trim()).map((r) => (r.job_number ?? '').trim().toLowerCase()))]
     const allLaborHcps = [...new Set([...laborHcps, ...personLaborHcps])]
     const usePaidOnly = onlyPaidJobs ?? reviewOnlyPaidInFull
+    // Both ledger RPCs have a deterministic ORDER BY, so .range() pages are stable.
     const [crewJobsRes, laborJobsRes] = await Promise.all([
       allJobIds.length > 0
-        ? usePaidOnly
-          ? supabase.rpc('get_jobs_ledger_by_ids_paid_only', { p_job_ids: allJobIds })
-          : supabase.rpc('get_jobs_ledger_by_ids', { p_job_ids: allJobIds })
+        ? paged(
+            (f, t) =>
+              (usePaidOnly
+                ? supabase.rpc('get_jobs_ledger_by_ids_paid_only', { p_job_ids: allJobIds })
+                : supabase.rpc('get_jobs_ledger_by_ids', { p_job_ids: allJobIds })
+              ).range(f, t),
+            'load review crew ledger jobs',
+          )
         : { data: [] },
       allLaborHcps.length > 0
-        ? usePaidOnly
-          ? supabase.rpc('get_jobs_ledger_by_hcp_numbers_paid_only', { p_hcp_numbers: allLaborHcps })
-          : supabase.rpc('get_jobs_ledger_by_hcp_numbers', { p_hcp_numbers: allLaborHcps })
+        ? paged(
+            (f, t) =>
+              (usePaidOnly
+                ? supabase.rpc('get_jobs_ledger_by_hcp_numbers_paid_only', { p_hcp_numbers: allLaborHcps })
+                : supabase.rpc('get_jobs_ledger_by_hcp_numbers', { p_hcp_numbers: allLaborHcps })
+              ).range(f, t),
+            'load review labor ledger jobs',
+          )
         : { data: [] },
     ])
     throwIfQueryError([crewJobsRes, laborJobsRes], 'load review ledger jobs')
@@ -1015,9 +1071,16 @@ export default function PeopleReviewTab({
     }
 
     const jobIds = Array.from(jobsById.keys())
+    // get_invoice_amounts_for_jobs aggregates one row per job (bounded by the
+    // period's job count, no ORDER BY) so it stays single-shot; materials is
+    // chunked+paged.
     const [invoiceRes, materialsRes] = await Promise.all([
       jobIds.length > 0 ? supabase.rpc('get_invoice_amounts_for_jobs', { p_job_ids: jobIds }) : Promise.resolve({ data: [] }),
-      jobIds.length > 0 ? supabase.from('jobs_ledger_materials').select('job_id, amount').in('job_id', jobIds) : Promise.resolve({ data: [] }),
+      fetchAllRowsChunkedIn(
+        jobIds,
+        (chunk, f, t) => supabase.from('jobs_ledger_materials').select('job_id, amount').in('job_id', chunk).order('id').range(f, t),
+        'load review billed materials',
+      ).then((rows) => ({ data: rows, error: null })),
     ])
     throwIfQueryError([invoiceRes, materialsRes], 'load review job invoices/materials')
     const invoiceAmountByJob: Record<string, number> = {}
@@ -1195,9 +1258,9 @@ export default function PeopleReviewTab({
     })()
 
     const [allLaborRes, allCrewRes, allHoursRes2] = await Promise.all([
-      forTeamSummary || !(laborHcps.length > 0 || crewJobIds.size > 0) ? Promise.resolve({ data: [] }) : supabase.from('people_labor_jobs').select('id, job_number, job_date').gte('job_date', lookbackStart2Y).lte('job_date', lookbackEnd),
-      forTeamSummary ? Promise.resolve({ data: [] }) : supabase.from('people_crew_jobs').select('work_date, person_name, job_assignments').gte('work_date', lookbackStart2Y).lte('work_date', lookbackEnd),
-      forTeamSummary ? Promise.resolve({ data: [] }) : supabase.from('people_hours').select('person_name, work_date, hours').gte('work_date', lookbackStart2Y).lte('work_date', lookbackEnd),
+      forTeamSummary || !(laborHcps.length > 0 || crewJobIds.size > 0) ? Promise.resolve({ data: [] }) : paged((f, t) => supabase.from('people_labor_jobs').select('id, job_number, job_date').gte('job_date', lookbackStart2Y).lte('job_date', lookbackEnd).order('id').range(f, t), 'load review windowed labor jobs'),
+      forTeamSummary ? Promise.resolve({ data: [] }) : paged((f, t) => supabase.from('people_crew_jobs').select('work_date, person_name, job_assignments').gte('work_date', lookbackStart2Y).lte('work_date', lookbackEnd).order('work_date').order('person_name').range(f, t), 'load review windowed crew days'),
+      forTeamSummary ? Promise.resolve({ data: [] }) : paged((f, t) => supabase.from('people_hours').select('person_name, work_date, hours').gte('work_date', lookbackStart2Y).lte('work_date', lookbackEnd).order('work_date').order('person_name').range(f, t), 'load review windowed hours'),
     ])
     throwIfQueryError([allLaborRes, allCrewRes, allHoursRes2], 'load review lifetime hours')
     const allLaborRows = (allLaborRes.data ?? []) as Array<{ id: string; job_number: string | null; job_date: string | null }>
@@ -1209,12 +1272,11 @@ export default function PeopleReviewTab({
     }
 
     const allLaborJobIds = allLaborRows.map((r) => r.id)
-    const allLaborItemsRes =
-      allLaborJobIds.length > 0
-        ? await supabase.from('people_labor_job_items').select('job_id, count, hrs_per_unit, is_fixed').in('job_id', allLaborJobIds)
-        : { data: [] }
-    throwIfQueryError([allLaborItemsRes], 'load review lifetime labor items')
-    const allLaborItems = (allLaborItemsRes.data ?? []) as Array<{ job_id: string; count: number; hrs_per_unit: number; is_fixed: boolean }>
+    const allLaborItems = (await fetchAllRowsChunkedIn(
+      allLaborJobIds,
+      (chunk, f, t) => supabase.from('people_labor_job_items').select('job_id, count, hrs_per_unit, is_fixed').in('job_id', chunk).order('id').range(f, t),
+      'load review lifetime labor items',
+    )) as Array<{ job_id: string; count: number; hrs_per_unit: number; is_fixed: boolean }>
     const itemsByLaborJobId = new Map<string, typeof allLaborItems>()
     for (const i of allLaborItems) {
       const list = itemsByLaborJobId.get(i.job_id) ?? []
@@ -1417,25 +1479,41 @@ export default function PeopleReviewTab({
   ): Promise<TeamReviewUnion> {
     const twoYearsAgo = new Date()
     twoYearsAgo.setFullYear(twoYearsAgo.getFullYear() - 2)
-    const lookbackStart = twoYearsAgo.toLocaleDateString('en-CA')
+    // Anchored to the SELECTED PERIOD, not just today: with a pure today−2y
+    // lookback, any period starting more than 2 years back had zero lifetime
+    // hours/cost rows, so the allocation-ratio fallback credited each person
+    // 100% of every job. YYYY-MM-DD compares lexicographically.
+    const twoYearsAgoYmd = twoYearsAgo.toLocaleDateString('en-CA')
+    const lookbackStart = start < twoYearsAgoYmd ? start : twoYearsAgoYmd
 
     const officeJobLedgerId = await fetchOverheadOfficeJobLedgerIdFromAppSettings()
 
     const overheadSessionsAllTimeFetchPromise = (async () => {
-      let q = supabase
-        .from('clock_sessions')
-        .select(
-          'id, user_id, work_date, clocked_in_at, clocked_out_at, job_ledger_id, bid_id, approved_at, rejected_at, revoked_at, users!clock_sessions_user_id_fkey(name)',
-        )
-        .gte('work_date', lookbackStart)
-      if (officeJobLedgerId) {
-        q = q.or(`job_ledger_id.eq.${officeJobLedgerId},bid_id.not.is.null`)
-      } else {
-        q = q.not('bid_id', 'is', null)
+      // Period-bounded (was an unbounded 2-year fetch): the consumer below
+      // discards everything outside [start, end], so the wider window only
+      // bought silent max_rows truncation — which zeroed office hours for
+      // whichever people fell past the 1000-row cap. Paged for the same
+      // reason.
+      const makeQ = () => {
+        let q = supabase
+          .from('clock_sessions')
+          .select(
+            'id, user_id, work_date, clocked_in_at, clocked_out_at, job_ledger_id, bid_id, approved_at, rejected_at, revoked_at, users!clock_sessions_user_id_fkey(name)',
+          )
+          .gte('work_date', start)
+          .lte('work_date', end)
+        if (officeJobLedgerId) {
+          q = q.or(`job_ledger_id.eq.${officeJobLedgerId},bid_id.not.is.null`)
+        } else {
+          q = q.not('bid_id', 'is', null)
+        }
+        return q.order('id')
       }
-      const res = await q
-      throwIfQueryError([res], 'load team summary overhead sessions')
-      return (res.data ?? []) as unknown as OverheadClockSessionRow[]
+      const rows = await fetchAllRows(
+        (f, t) => makeQ().range(f, t),
+        'load team summary overhead sessions',
+      )
+      return rows as unknown as OverheadClockSessionRow[]
     })()
 
     const [
@@ -1450,16 +1528,17 @@ export default function PeopleReviewTab({
       tallyRes,
       overheadSessionsAllTime,
     ] = await Promise.all([
-      supabase.from('people_labor_jobs').select('id, job_date, address, job_number, labor_rate, distance_miles, assigned_to_name').gte('job_date', start).lte('job_date', end),
-      supabase.from('people_labor_jobs').select('id, job_date, address, job_number, labor_rate, distance_miles, assigned_to_name').gte('job_date', lookbackStart),
-      supabase.from('people_crew_jobs').select('work_date, person_name, job_assignments').gte('work_date', start).lte('work_date', end),
-      supabase.from('people_crew_jobs').select('work_date, person_name, job_assignments').gte('work_date', lookbackStart),
+      paged((f, t) => supabase.from('people_labor_jobs').select('id, job_date, address, job_number, labor_rate, distance_miles, assigned_to_name').gte('job_date', start).lte('job_date', end).order('id').range(f, t), 'load team summary period labor jobs'),
+      paged((f, t) => supabase.from('people_labor_jobs').select('id, job_date, address, job_number, labor_rate, distance_miles, assigned_to_name').gte('job_date', lookbackStart).order('id').range(f, t), 'load team summary lifetime labor jobs'),
+      paged((f, t) => supabase.from('people_crew_jobs').select('work_date, person_name, job_assignments').gte('work_date', start).lte('work_date', end).order('work_date').order('person_name').range(f, t), 'load team summary period crew days'),
+      paged((f, t) => supabase.from('people_crew_jobs').select('work_date, person_name, job_assignments').gte('work_date', lookbackStart).order('work_date').order('person_name').range(f, t), 'load team summary lifetime crew days'),
       // Period-only bid crew rows -- modal display only, no all-time fetch needed.
-      supabase.from('people_crew_bids').select('work_date, person_name, bid_assignments').gte('work_date', start).lte('work_date', end),
-      supabase.from('people_hours').select('person_name, work_date, hours').gte('work_date', start).lte('work_date', end),
-      supabase.from('people_hours').select('person_name, work_date, hours').gte('work_date', lookbackStart),
+      paged((f, t) => supabase.from('people_crew_bids').select('work_date, person_name, bid_assignments').gte('work_date', start).lte('work_date', end).order('work_date').order('person_name').range(f, t), 'load team summary period crew bids'),
+      paged((f, t) => supabase.from('people_hours').select('person_name, work_date, hours').gte('work_date', start).lte('work_date', end).order('work_date').order('person_name').range(f, t), 'load team summary period hours'),
+      paged((f, t) => supabase.from('people_hours').select('person_name, work_date, hours').gte('work_date', lookbackStart).order('work_date').order('person_name').range(f, t), 'load team summary lifetime hours'),
       supabase.from('app_settings').select('key, value_num').in('key', ['drive_mileage_cost', 'drive_time_per_mile']),
-      supabase.rpc('list_tally_parts_with_po'),
+      // list_tally_parts_with_po orders by created_at, so .range() pages are stable.
+      paged((f, t) => supabase.rpc('list_tally_parts_with_po').range(f, t), 'load team summary tally parts'),
       overheadSessionsAllTimeFetchPromise,
     ])
     throwIfQueryError(
@@ -1547,10 +1626,13 @@ export default function PeopleReviewTab({
 
     // Items for all-time labor jobs (for laborCostByHcp lifetime calc).
     const allTimeLaborJobIds = allTimeLaborRows.map((r) => r.id)
-    const laborItemsRes = allTimeLaborJobIds.length > 0
-      ? await supabase.from('people_labor_job_items').select('job_id, count, hrs_per_unit, is_fixed').in('job_id', allTimeLaborJobIds)
-      : { data: [] }
-    throwIfQueryError([laborItemsRes], 'load team summary labor items')
+    const laborItemsRes = {
+      data: await fetchAllRowsChunkedIn(
+        allTimeLaborJobIds,
+        (chunk, f, t) => supabase.from('people_labor_job_items').select('job_id, count, hrs_per_unit, is_fixed').in('job_id', chunk).order('id').range(f, t),
+        'load team summary labor items',
+      ),
+    }
     const laborItems = (laborItemsRes.data ?? []) as Array<{ job_id: string; count: number; hrs_per_unit: number; is_fixed: boolean }>
     const laborItemsByJobId = new Map<string, TeamLaborItem[]>()
     for (const i of laborItems) {
@@ -1629,19 +1711,30 @@ export default function PeopleReviewTab({
       }
     }
     const allBidIds = [...unionCrewBidIds]
+    // The ledger RPCs have a deterministic ORDER BY, so .range() pages are stable.
     const [crewJobsRes, laborJobsRes, crewBidsRes] = await Promise.all([
       allJobIds.length > 0
-        ? onlyPaidJobs
-          ? supabase.rpc('get_jobs_ledger_by_ids_paid_only', { p_job_ids: allJobIds })
-          : supabase.rpc('get_jobs_ledger_by_ids', { p_job_ids: allJobIds })
+        ? paged(
+            (f, t) =>
+              (onlyPaidJobs
+                ? supabase.rpc('get_jobs_ledger_by_ids_paid_only', { p_job_ids: allJobIds })
+                : supabase.rpc('get_jobs_ledger_by_ids', { p_job_ids: allJobIds })
+              ).range(f, t),
+            'load team summary crew ledger jobs',
+          )
         : { data: [] },
       unionLaborHcps.length > 0
-        ? onlyPaidJobs
-          ? supabase.rpc('get_jobs_ledger_by_hcp_numbers_paid_only', { p_hcp_numbers: unionLaborHcps })
-          : supabase.rpc('get_jobs_ledger_by_hcp_numbers', { p_hcp_numbers: unionLaborHcps })
+        ? paged(
+            (f, t) =>
+              (onlyPaidJobs
+                ? supabase.rpc('get_jobs_ledger_by_hcp_numbers_paid_only', { p_hcp_numbers: unionLaborHcps })
+                : supabase.rpc('get_jobs_ledger_by_hcp_numbers', { p_hcp_numbers: unionLaborHcps })
+              ).range(f, t),
+            'load team summary labor ledger jobs',
+          )
         : { data: [] },
       allBidIds.length > 0
-        ? supabase.rpc('get_bids_by_ids', { p_bid_ids: allBidIds })
+        ? paged((f, t) => supabase.rpc('get_bids_by_ids', { p_bid_ids: allBidIds }).range(f, t), 'load team summary bids')
         : { data: [] },
     ])
     throwIfQueryError([crewJobsRes, laborJobsRes, crewBidsRes], 'load team summary ledger jobs')
@@ -1670,9 +1763,15 @@ export default function PeopleReviewTab({
     }
 
     const jobIds = Array.from(jobsById.keys())
+    // get_invoice_amounts_for_jobs aggregates one row per job (bounded, no
+    // ORDER BY) so it stays single-shot; materials is chunked+paged.
     const [invoiceRes, materialsRes] = await Promise.all([
       jobIds.length > 0 ? supabase.rpc('get_invoice_amounts_for_jobs', { p_job_ids: jobIds }) : Promise.resolve({ data: [] }),
-      jobIds.length > 0 ? supabase.from('jobs_ledger_materials').select('job_id, amount').in('job_id', jobIds) : Promise.resolve({ data: [] }),
+      fetchAllRowsChunkedIn(
+        jobIds,
+        (chunk, f, t) => supabase.from('jobs_ledger_materials').select('job_id, amount').in('job_id', chunk).order('id').range(f, t),
+        'load team summary billed materials',
+      ).then((rows) => ({ data: rows, error: null })),
     ])
     throwIfQueryError([invoiceRes, materialsRes], 'load team summary job invoices/materials')
     const invoiceAmountByJob: Record<string, number> = {}
