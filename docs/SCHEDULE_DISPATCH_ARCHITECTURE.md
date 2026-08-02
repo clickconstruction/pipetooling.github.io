@@ -3,17 +3,17 @@
 ---
 file: docs/SCHEDULE_DISPATCH_ARCHITECTURE.md
 type: Architecture Map / Decomposition
-purpose: Step-0 map (per PAGE_DECOMPOSITION_PLAYBOOK.md) for the Schedule Dispatch hub surface — ScheduleDispatchHub.tsx (~3,061 lines, presentational) + ScheduleDispatchHubPage.tsx (~2,358 lines, container), treated as one hot ~5.4k-line surface. Inventories every panel/region's state, memos, handlers, supabase tables/RPCs, and cross-region coupling so extraction can start without re-deriving the strategy.
+purpose: Step-0 map (per PAGE_DECOMPOSITION_PLAYBOOK.md) for the Schedule Dispatch hub surface — ScheduleDispatchHub.tsx (~3,302 lines, presentational) + ScheduleDispatchHubPage.tsx (~2,384 lines, container), treated as one hot ~5.7k-line surface. Inventories every panel/region's state, memos, handlers, supabase tables/RPCs, and cross-region coupling so extraction can start without re-deriving the strategy.
 audience: Developers, AI Agents
-last_updated: 2026-07-29
+last_updated: 2026-08-02
 ---
 
 ## What this surface is
 
 The Schedule Dispatch hub is the week-grid scheduling surface at `/schedule-dispatch`. It is **already split into the playbook's two layers**, but both halves are individually oversized and hot (both files rank in the repo's top churn — dozens of `RECENT_FEATURES.md` entries touch them):
 
-- [`src/components/schedule/ScheduleDispatchHubPage.tsx`](../src/components/schedule/ScheduleDispatchHubPage.tsx) (~2,358 lines) — the **container**: URL router, the `loadHub` data engine (all supabase IO), the interaction-mode state machine (card placement / linked copy / assign-job placement / multi-cell add), every mutation handler, and seven page-level modals. ~51 `useState`s.
-- [`src/components/schedule/ScheduleDispatchHub.tsx`](../src/components/schedule/ScheduleDispatchHub.tsx) (~3,061 lines) — the **presentational** layer: one exported orchestrator (`ScheduleDispatchHub`) plus four in-file components (`HubJobsPanel`, `HubPeopleBlockCard`, `HubPeopleDayCell`, `HubPeoplePanel`). **Zero supabase access** — everything arrives as props (the exported `Props` type is ~90 fields). ~11 `useState`s, all UI-local.
+- [`src/components/schedule/ScheduleDispatchHubPage.tsx`](../src/components/schedule/ScheduleDispatchHubPage.tsx) (~2,384 lines) — the **container**: URL router, the `loadHub` data engine (all supabase IO), the interaction-mode state machine (card placement / linked copy / assign-job placement / multi-cell add), every mutation handler, and seven page-level modals. ~51 `useState`s.
+- [`src/components/schedule/ScheduleDispatchHub.tsx`](../src/components/schedule/ScheduleDispatchHub.tsx) (~3,302 lines) — the **presentational** layer: one exported orchestrator (`ScheduleDispatchHub`) plus four in-file components (`HubJobsPanel`, `HubPeopleBlockCard`, `HubPeopleDayCell`, `HubPeoplePanel`). **Zero supabase access** — everything arrives as props (the exported `Props` type is ~90 fields). ~11 `useState`s, all UI-local.
 
 **Relationship:** `ScheduleDispatchHubPage` owns 100% of the data and mode state and renders `<ScheduleDispatchHub …/>` inside a `DndContext`. The Hub component never mutates anything itself; it calls `on*` callbacks. So decomposition here is **not** the usual "pull state out of a God page" — it is (a) splitting the Hub file into per-panel component files (pure file moves), and (b) carving the Page's state clusters into hooks.
 

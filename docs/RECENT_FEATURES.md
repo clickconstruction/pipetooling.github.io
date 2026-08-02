@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-02 (v2.1269)
+last_updated: 2026-08-02 (v2.1270)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1270)
+
+### Docs audit: Bids/People/Prospects/Quickfill doc refresh (2026-08-02)
+Final wave of the 2026-08-02 documentation audit — 12 docs. **BIDS_SYSTEM.md**: "Cost Estimate" tab → **Labor** everywhere (header, TOC, button texts per `BidsPricingTab`); stale Cost Estimate Indicator section removed; Change Order Tab promoted to a peer section + TOC entry; `bid_pricing_assignments` schema block completed and `people_crew_bids.person_id` added (per `src/types/database.ts`); frontmatter line hints removed. **BIDS_TABS_ARCHITECTURE.md**: master-table labels Takeoffs/Labor; dead pre-extraction numeric anchors stripped. **PEOPLE_TABS_ARCHITECTURE.md**: 16 tab keys incl. the missing `subs` row; `pay_stubs` tab labeled **Payroll**; pay-config modal moved to the Payroll dossier; dead anchors removed. **PROSPECTS**: Team tab → **Hiring**. **QUICKFILL**: section labels current ("Billed Awaiting Payment", "People Hours"). **CREW_PNL_DATA_FLOW**: default sub-labor rate corrected to $50; role gate corrected to dev+estimator. **PROJECTS_FORECAST**: "All Steps" label + re-measured counts. **DASHBOARD_SECTIONS / SCHEDULE_DISPATCH / PAGE_DECOMPOSITION_PLAYBOOK**: line counts re-measured (Dashboard 1,678; ScheduleDispatchHub 3,302; JobFormModal 4,096; JobsStagesTab 3,664). **GLOSSARY + PROJECT_DOCUMENTATION**: "Jobs Stages" residue → Pipeline (Dashboard "User Review modal" references correctly untouched); five dead AGENTS.md "See also" pointers repointed; dead references to TROUBLESHOOT_404.md / EMAIL_TEMPLATES_SETUP.md / WORKFLOW_EMAIL_TESTING.md / DATABASE_FIXES_TEST_PLAN.md removed or repointed. Docs only — no code, DB, or RLS changes.
 
 ## Latest Updates (v2.1269)
 

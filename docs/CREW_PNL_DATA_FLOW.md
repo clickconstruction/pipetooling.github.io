@@ -3,12 +3,12 @@
 ---
 file: docs/CREW_PNL_DATA_FLOW.md
 type: Engineering / Data-flow reference
-purpose: Every input, transform, and output behind Jobs → Crew P&L (dev-only), with the known weaknesses — written after the v2.976/v2.978 partial-data incidents so the next debugging session starts from a map instead of archaeology.
+purpose: Every input, transform, and output behind Jobs → Crew P&L (dev/estimator-gated), with the known weaknesses — written after the v2.976/v2.978 partial-data incidents so the next debugging session starts from a map instead of archaeology.
 audience: Developers, AI Agents
-last_updated: 2026-07-23
+last_updated: 2026-08-02
 ---
 
-Surface: [`src/components/jobs/JobsCrewPnlTab.tsx`](../src/components/jobs/JobsCrewPnlTab.tsx) (dev-only tab on `/jobs?tab=teams-summary`). Math kernel: [`src/lib/crewPnlSummary.ts`](../src/lib/crewPnlSummary.ts) (`buildCrewPnlSummary`, fully unit-tested). Per person: **hours, labor cost, billing (revenue credit), profit, billing/hr** + per-job drilldown.
+Surface: [`src/components/jobs/JobsCrewPnlTab.tsx`](../src/components/jobs/JobsCrewPnlTab.tsx) (tab on `/jobs?tab=teams-summary`; the `showTeamsTab` gate in `Jobs.tsx` excludes primary/master_technician/assistant-like/superintendent — in practice dev and estimator see it). Math kernel: [`src/lib/crewPnlSummary.ts`](../src/lib/crewPnlSummary.ts) (`buildCrewPnlSummary`, fully unit-tested). Per person: **hours, labor cost, billing (revenue credit), profit, billing/hr** + per-job drilldown.
 
 ## 1. Inputs (six sources)
 
@@ -47,7 +47,7 @@ Rows table (sortable), totals row, per-job drilldown (`crew` / `sub` / `billing-
 2. **`revenue` semantics**: the split uses `jobs_ledger.revenue` (job total), not payments collected — this is a *bid-value* P&L, not cash. Jobs with revenue unset contribute cost-only rows.
 3. **Exact-match sheet linking**: normalization beyond trim/lower (e.g. stripping an "HCP " prefix) is deliberate future work — decide after reading the audit's raw job # texts.
 4. **Employee cost is bare wage** (no burden/overhead) while sub cost is a market price — subs structurally look costlier per revenue dollar. A crew burden multiplier is a philosophical change, deliberately not done.
-5. **Rate calibration**: the $30 default should track the field crew's real loaded average; currently manual.
+5. **Rate calibration**: the $50 default should track the field crew's real loaded average; currently manual.
 6. **laborJobs load dependency**: sub data arrives via the Jobs page's Sub Labor loaders — if that load path ever becomes lazier, this tab starves silently (the audit total dropping to $0 is the tell).
 
 ## Incident log (why this doc exists)

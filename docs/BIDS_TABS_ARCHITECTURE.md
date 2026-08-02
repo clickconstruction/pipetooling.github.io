@@ -5,14 +5,14 @@ file: docs/BIDS_TABS_ARCHITECTURE.md
 type: Engineering / Refactor Map
 purpose: Inventory what every tab in src/pages/Bids.tsx touches (state, memos, handlers, sub-components, supabase tables, cross-tab coupling) to track the decomposition of the former ~18.8k-line God component (now ~3.8k lines, all tabs extracted).
 audience: Developers, AI Agents
-last_updated: 2026-07-17
+last_updated: 2026-08-02
 ---
 
 ## Overview
 
 [`src/pages/Bids.tsx`](../src/pages/Bids.tsx) was a ~18,800-line "God component"; after extracting every workflow tab it is now **~3,787 lines**. This map is a refactoring aid: for each tab it records what state, derived data, handlers, sub-components, and external systems the tab touches, plus its extraction status and risk. It is **coupling/refactor-oriented** — for feature/workflow/DB behavior, see [`BIDS_SYSTEM.md`](./BIDS_SYSTEM.md). **All 14 tabs are now extracted to their own components; the parent retains the shared bid pointer, URL deep-link router, the `useBidPricingEngine` seam, and a few shared page-level modals.**
 
-The tabs are switched on a single `activeTab` state ([`Bids.tsx:178`](../src/pages/Bids.tsx); the `BIDS_TABS` deep-link union lives further down — search `const BIDS_TABS`):
+The tabs are switched on a single `activeTab` state ([`Bids.tsx`](../src/pages/Bids.tsx); the `BIDS_TABS` deep-link union lives further down — search `const BIDS_TABS`):
 
 ```
 'bid-board' | 'builder-review' | 'working' | 'bid-costs' | 'estimators' | 'counts'
@@ -40,8 +40,8 @@ Each per-tab section lists: render location, **owned local state** (used only by
 | `bid-costs` | Bid Costs | thin wrapper | ~76 (dev-only) | extracted (`BidsBidCostsTab`) | 0 | low | No | Done |
 | `estimators` | Estimators | thin wrapper | ~11 | extracted (`BidsEstimatorsTab`) | 0 | low | No | Done |
 | `counts` | Counts | thin wrapper | ~289 | extracted (`BidsCountsTab`) | 1 (selection, in parent) | high | Yes (via hook props) | Done |
-| `takeoffs` | Takeoff | thin wrapper | ~52 | extracted (`BidsTakeoffTab`) | 2 (selection + shared tax, in parent) | high | Yes (via hook props) | Done |
-| `labor` | Cost Estimate | thin wrapper | ~70 | extracted (`BidsLaborTab`) | 3 (selection + shared tax/distance, in parent) | high | Yes (via hook props) | Done |
+| `takeoffs` | Takeoffs | thin wrapper | ~52 | extracted (`BidsTakeoffTab`) | 2 (selection + shared tax, in parent) | high | Yes (via hook props) | Done |
+| `labor` | Labor | thin wrapper | ~70 | extracted (`BidsLaborTab`) | 3 (selection + shared tax/distance, in parent) | high | Yes (via hook props) | Done |
 | `pricing` | Pricing | thin wrapper | ~47 | extracted (`BidsPricingTab`) | 2 (selection + shared tax, in parent) | high | Yes (via hook props) | Done |
 | `cover-letter` | Cover Letter | thin wrapper | ~37 | extracted (`BidsCoverLetterTab`) | 8 `*ByBid` maps (parent-owned, shared with `downloadApprovalPdf`) | high | Yes (via `coverLetterPricingRows` prop) | Done |
 | `submission-followup` | Submission & Followup | wrapper | ~1,260 | extracted (`BidSubmissionFollowupTab`) | 0 (parent keeps selection) | medium | No | Done |
@@ -55,16 +55,16 @@ Each per-tab section lists: render location, **owned local state** (used only by
 
 ## Per-tab dossiers
 
-> **Note on line numbers:** every tab is extracted, so the line ranges quoted inside these dossiers are **historical pre-extraction anchors** in the old monolithic `Bids.tsx` — a record of what moved where. They do not resolve in the current ~3,787-line parent; search by symbol name instead (e.g. `activeTab === 'bid-board'`, the state variable, the handler).
+> **Note on line numbers:** every tab is extracted. The historical pre-extraction line anchors that used to be quoted in these dossiers have been removed (they did not resolve in the current parent); search by symbol name instead (e.g. `activeTab === 'bid-board'`, the state variable, the handler).
 
 ### `bid-board` — Bid Board
 
 - **Render location:** parent renders a thin `<BidsBidBoardTab .../>` behind `activeTab === 'bid-board'` (pre-extraction: ~633 inline lines).
-- **Owned local state:** `bidBoardSearchQuery` (417), `expandedBidBoardBidId` (418), `bidBoardNotesTab` (419), `bidBoardNotesUnreadByBidId` (420), `bidBoardUnreadFetchSeqRef` (421), `bidsForBoardUnreadRef` (422), `staffOutcomeDrilldown` (424, modal at 9086-9265), `bidBoardSectionOpen` (536), `lostSummaryModalOpen` (537), `lostSummaryInitialStaffTab` (538), `bidBoardDeepLinkHighlightId`/`Gen` (539-540), `scoreboardDetailsExpanded` (541), `bidBoardDeepLinkTimeoutRef` (542), `bidBoardPendingScrollBidIdRef` (543). Also opened from here but rendered elsewhere: `evaluateModalOpen`/`evaluateChecked` (435-436, modal 17501-17564), `workingBoardArchivedModalOpen` (665).
-- **Cross-tab/shared state:** `activeTab` (read + write via deep links); `bids` (read, write via `loadBids`); `selectedServiceTypeId` (implicit filter — board is service-type-scoped); `editingBid`/`bidFormOpen` (write via `openEditBid`); `viewingCustomer`/`viewingGcBuilder` (write); `selectedBidForSubmission` + `scrollToContactFromBidBoard` (write via `handleLastContactClick` 7419); `ledgerPrefixMap` (read); URL params (`tab`, `bidId`, `lostSummary`).
-- **Derived memos:** `filteredBidsForBidBoard` (7739), `bidBoardBuckets` (8256, uses `getSubmissionSectionKey` + `compareBidsForBidBoardDueDate`), `lostBidsMissingLossReasonCount` (8274), `bidBoardStaffOutcomeByRole` (8280), `bidBoardWeeklySentSummaries` (8285), `staffOutcomeDrilldownBids` (8290), `workingBoardArchivedBids` (7879), `showLostModalLabor` (556).
-- **Handlers/functions:** `toggleBidBoardSection` (1009), `renderBidBoardTableRow` (8611, ~400-line inline row renderer), `applyBidBoardDeepLinkToBid` (577), `closeLostSummaryModal` (561), `saveLossReasonFromLostSummaryModal` (7123), `openEditBid` (7073), `openGcBuilderOrCustomerModal` (7729), `handleLastContactClick` (7419), `selectBidAndSyncUrl` (995), `loadBids` (1419), `getSubmissionSectionKey` (8190, shared). Imported analytics: `computeBidBoardStaffOutcomeStatsByRole` + siblings (150-155), `buildBidBoardWeeklySentSummaries` (78), `fetchBidBoardNotesUnreadCounts` (17), `upsertBidNotesReadWatermark` (18).
-- **Data dependencies:** `bids` (+ joins), `bidBoardSearchQuery`, submission entries + customer contacts (unread badges/notes), `lastContactFromEntries`, working-board archive fields, `evaluateChecklist` module const (274-320).
+- **Owned local state:** `bidBoardSearchQuery`, `expandedBidBoardBidId`, `bidBoardNotesTab`, `bidBoardNotesUnreadByBidId`, `bidBoardUnreadFetchSeqRef`, `bidsForBoardUnreadRef`, `staffOutcomeDrilldown` (modal), `bidBoardSectionOpen`, `lostSummaryModalOpen`, `lostSummaryInitialStaffTab`, `bidBoardDeepLinkHighlightId`/`Gen`, `scoreboardDetailsExpanded`, `bidBoardDeepLinkTimeoutRef`, `bidBoardPendingScrollBidIdRef`. Also opened from here but rendered elsewhere: `evaluateModalOpen`/`evaluateChecked` (modal), `workingBoardArchivedModalOpen`.
+- **Cross-tab/shared state:** `activeTab` (read + write via deep links); `bids` (read, write via `loadBids`); `selectedServiceTypeId` (implicit filter — board is service-type-scoped); `editingBid`/`bidFormOpen` (write via `openEditBid`); `viewingCustomer`/`viewingGcBuilder` (write); `selectedBidForSubmission` + `scrollToContactFromBidBoard` (write via `handleLastContactClick`); `ledgerPrefixMap` (read); URL params (`tab`, `bidId`, `lostSummary`).
+- **Derived memos:** `filteredBidsForBidBoard`, `bidBoardBuckets` (uses `getSubmissionSectionKey` + `compareBidsForBidBoardDueDate`), `lostBidsMissingLossReasonCount`, `bidBoardStaffOutcomeByRole`, `bidBoardWeeklySentSummaries`, `staffOutcomeDrilldownBids`, `workingBoardArchivedBids`, `showLostModalLabor`.
+- **Handlers/functions:** `toggleBidBoardSection`, `renderBidBoardTableRow` (~400-line inline row renderer), `applyBidBoardDeepLinkToBid`, `closeLostSummaryModal`, `saveLossReasonFromLostSummaryModal`, `openEditBid`, `openGcBuilderOrCustomerModal`, `handleLastContactClick`, `selectBidAndSyncUrl`, `loadBids`, `getSubmissionSectionKey` (shared). Imported analytics: `computeBidBoardStaffOutcomeStatsByRole` + siblings, `buildBidBoardWeeklySentSummaries`, `fetchBidBoardNotesUnreadCounts`, `upsertBidNotesReadWatermark`.
+- **Data dependencies:** `bids` (+ joins), `bidBoardSearchQuery`, submission entries + customer contacts (unread badges/notes), `lastContactFromEntries`, working-board archive fields, `evaluateChecklist` module const.
 - **Supabase tables:** `bids` (SELECT/UPDATE), `bids_submission_entries` (SELECT); via children: `user_bid_notes_read_state`, `customer_contacts`; lost-summary modal touches `clock_sessions`/`users`/`people_pay_config`; archived modal touches `bid_working_board_columns`/`_placements`.
 - **Sub-components (extracted):** `BidsBidBoardTab` (**extracted**, [`src/components/bids/BidsBidBoardTab.tsx`](../src/components/bids/BidsBidBoardTab.tsx)) — owns the search bar, section list, `bidBoardTableHead`, `renderBidBoardTableRow`, `toggleBidBoardSection`, and all board-local state/memos (search, expanded row, notes tab/unread state + effects, `filteredBidsForBidBoard`, `bidBoardBuckets`, `lostBidsMissingLossReasonCount`, the two analytics memos); it also renders the lost-summary + archived modals and the analytics section. `BidBoardEstimatingHealthSection` (**extracted**, [`src/components/bids/BidBoardEstimatingHealthSection.tsx`](../src/components/bids/BidBoardEstimatingHealthSection.tsx)) — Estimating Health + Scoreboard analytics plus the staff-outcome drilldown overlay (state + memo + Esc effect now internal). Still used inside: `BidBoardLostSummaryModal`, `BidWorkingBoardArchivedModal`, `BidBoardWeeklySentSection`, `BidBoardWeeklyEstimatorLaborDevSection`, `BidBoardEstimatingHealthWonPctSliders`, `StaffOutcomeDrilldownCountCell`, `BidBoardNotesExpandIcon`, `BidBoardBidNumberMark`, `BidBoardNotesPanel`.
 - **External coupling:** `useBidPreview`, `useLedgerPrefixMap`, React Router deep links, Google Maps links. No pricing engine, no jsPDF, no dnd.
@@ -73,10 +73,10 @@ Each per-tab section lists: render location, **owned local state** (used only by
 ### `builder-review` — Builder Review
 
 - **Render location:** parent renders a thin `<BidsBuilderReviewTab .../>` behind `activeTab === 'builder-review'` (pre-extraction: ~377 inline lines).
-- **Owned local state:** `builderReviewSectionOpen` (410), `builderReviewCardExpanded` (411), `builderReviewSearchQuery` (412), `builderReviewSortOrder` (413), `builderReviewPiaCustomerIds` (414, persisted to localStorage), `builderReviewDeepLinkHighlightCustomerId` (626), `builderReviewDeepLinkHighlightGen` (627), `builderReviewDeepLinkTimeoutRef` (628), `builderReviewPendingDeepLinkBidIdRef` (629), `builderReviewDeepLinkAppliedBidIdRef` (630). Contact-person modal state (403-409) is opened here, rendered at 17257-17390.
-- **Cross-tab/shared state:** `activeTab` (read + write); `bids` (read — **all trades** via `loadBids(null)` at 6379); `customers` (read/write); `customerContacts`, `customerContactPersons`, `lastContactFromEntries` (read); `selectedServiceTypeId` (read for new-bid prefill); `editingBid`/`bidFormOpen` (write via `openEditBid`/`openNewBidWithCustomer`); `selectedBidForSubmission` + `scrollToContactFromBidBoard` (write at 10618-10620); `narrowViewport640`.
-- **Derived memos:** `builderReviewCustomersSorted` (8428), `builderReviewCustomersFiltered` (8452), `builderReviewPiaCustomersExcluded` (8468). Per-card bid buckets computed inline at 10568-10573.
-- **Handlers/functions:** `toggleBuilderReviewSection` (1013), `toggleBuilderReviewCard` (1020), `renderBuilderReviewContactPersonsBlock` (1024, inline helper), `applyBuilderReviewDeepLinkFromBid` (632), `openEditBid` (7073), `openNewBidWithCustomer` (7058), `loadCustomers` (1321), `loadCustomerContacts` (1718), `loadCustomerContactPersons` (1730), `loadBids` (1419). Imported: `getBidStatusLabel` (142), `extractContactInfo` (141), `getCustomerDisplay` (127). Context modals: `newCustomerModal`/`editCustomerModal`.
+- **Owned local state:** `builderReviewSectionOpen`, `builderReviewCardExpanded`, `builderReviewSearchQuery`, `builderReviewSortOrder`, `builderReviewPiaCustomerIds` (persisted to localStorage), `builderReviewDeepLinkHighlightCustomerId`, `builderReviewDeepLinkHighlightGen`, `builderReviewDeepLinkTimeoutRef`, `builderReviewPendingDeepLinkBidIdRef`, `builderReviewDeepLinkAppliedBidIdRef`. Contact-person modal state is opened here.
+- **Cross-tab/shared state:** `activeTab` (read + write); `bids` (read — **all trades** via `loadBids(null)`); `customers` (read/write); `customerContacts`, `customerContactPersons`, `lastContactFromEntries` (read); `selectedServiceTypeId` (read for new-bid prefill); `editingBid`/`bidFormOpen` (write via `openEditBid`/`openNewBidWithCustomer`); `selectedBidForSubmission` + `scrollToContactFromBidBoard` (write); `narrowViewport640`.
+- **Derived memos:** `builderReviewCustomersSorted`, `builderReviewCustomersFiltered`, `builderReviewPiaCustomersExcluded`. Per-card bid buckets computed inline.
+- **Handlers/functions:** `toggleBuilderReviewSection`, `toggleBuilderReviewCard`, `renderBuilderReviewContactPersonsBlock` (inline helper), `applyBuilderReviewDeepLinkFromBid`, `openEditBid`, `openNewBidWithCustomer`, `loadCustomers`, `loadCustomerContacts`, `loadCustomerContactPersons`, `loadBids`. Imported: `getBidStatusLabel`, `extractContactInfo`, `getCustomerDisplay`. Context modals: `newCustomerModal`/`editCustomerModal`.
 - **Data dependencies:** `customers` (primary), `bids` (org-wide), `customerContacts`, `customerContactPersons`, `lastContactFromEntries`, `authUser` (PIA key + new-bid defaults).
 - **Supabase tables:** `customers` (SELECT), `bids` (SELECT all), `bids_submission_entries` (SELECT), `customer_contacts` (SELECT + via `CustomerNotesTable`), `customer_contact_persons` (SELECT/DELETE/INSERT/UPDATE).
 - **Sub-components:** `BidsBuilderReviewTab` (**extracted**, [`src/components/bids/BidsBuilderReviewTab.tsx`](../src/components/bids/BidsBuilderReviewTab.tsx)) — owns all builder-review UI state, the three sort/filter memos, `renderBuilderReviewContactPersonsBlock`, the PIA localStorage hydration effect, and the contact-person modal (state + save/delete) which moved with it. Uses `CustomerNotesTable` (extracted).
@@ -86,10 +86,10 @@ Each per-tab section lists: render location, **owned local state** (used only by
 ### `working` — Unsent / Working
 
 - **Render location:** ~22-line wrapper behind `activeTab === 'working' && authUser?.id`.
-- **Owned local state:** `workingBoardDeepLinkBidId` (664), `workingBoardPendingDeepLinkBidIdRef` (673), `workingDeepLinkAppliedBidIdRef` (674), `onWorkingBoardDeepLinkHandled` (675). Working-ecosystem state rendered elsewhere: `workingBoardArchivedModalOpen` (665, Bid Board), `archiveWorkingBoardBusyBidId` (666, `BidFormModal`), `workingBoardArchiveConfirmBidId`/`Label` (667-668, confirm dialog 9801-9869).
+- **Owned local state:** `workingBoardDeepLinkBidId`, `workingBoardPendingDeepLinkBidIdRef`, `workingDeepLinkAppliedBidIdRef`, `onWorkingBoardDeepLinkHandled`. Working-ecosystem state rendered elsewhere: `workingBoardArchivedModalOpen` (Bid Board), `archiveWorkingBoardBusyBidId` (`BidFormModal`), `workingBoardArchiveConfirmBidId`/`Label` (confirm dialog).
 - **Cross-tab/shared state:** `activeTab` + `authUser` (gate); `setError` (via `onLoadError`); `bids` (read in preview callback); URL `?tab=working&bidId=`; `editingBid` written indirectly by `archiveWorkingBoardBid`.
-- **Derived memos:** `workingBoardEligibleBids` (7866), `workingBoardVisibleBids` (7875), `workingBoardArchivedBids` (7879, used by Bid Board modal), `useWorkingBoardInboxCount(...)` (7924, tab badge).
-- **Handlers/functions:** `onWorkingBoardDeepLinkHandled` (675), `loadBids` (1419), `loadCustomerContacts` (1718), `archiveWorkingBoardBid` (1466), `promptArchiveWorkingBoardBid` (1503), inline preview/note callbacks (10896-10903). Imported eligibility: `bidEligibleForWorkingBoardArchive`/`isBidEligibleForWorkingBoard` (107-110).
+- **Derived memos:** `workingBoardEligibleBids`, `workingBoardVisibleBids`, `workingBoardArchivedBids` (used by Bid Board modal), `useWorkingBoardInboxCount(...)` (tab badge).
+- **Handlers/functions:** `onWorkingBoardDeepLinkHandled`, `loadBids`, `loadCustomerContacts`, `archiveWorkingBoardBid`, `promptArchiveWorkingBoardBid`, inline preview/note callbacks. Imported eligibility: `bidEligibleForWorkingBoardArchive`/`isBidEligibleForWorkingBoard`.
 - **Data dependencies:** `bids` (filtered into eligible/visible), `authUser`, `myRole` (dev sees org-wide archived). No direct customers/notes/books/pricing reads in this block.
 - **Supabase tables:** via `loadBids`: `bids`, `bids_submission_entries`, `customers`/`bids_gc_builders`/`users`/`service_types`; via `archiveWorkingBoardBid`: `bids` (UPDATE). The board component itself owns `bid_working_board_columns`/`_placements`.
 - **Sub-components:** `BidsWorkingBoard` (**extracted**, [`src/components/bids/BidsWorkingBoard.tsx`](../src/components/bids/BidsWorkingBoard.tsx)) + intro `<p>`. Related: archive-confirm dialog (**extracted** to page-level [`WorkingBoardArchiveConfirmDialog`](../src/components/bids/WorkingBoardArchiveConfirmDialog.tsx) — it is also triggered from `BidFormModal`, so its state/`promptArchiveWorkingBoardBid`/Esc-effect stay in the parent), `BidWorkingBoardArchivedModal` (Bid Board).
@@ -99,10 +99,10 @@ Each per-tab section lists: render location, **owned local state** (used only by
 ### `bid-costs` — Bid Costs (dev-only)
 
 - **Render location:** thin wrapper behind `myRole === 'dev' && activeTab === 'bid-costs'`; non-dev redirected away (search the `bid-costs` redirect effect).
-- **Owned local state:** `bidCostsSectionOpen` (679). Shared labor data loaded for it: `teamLaborDataForBids` (898, also used by Pricing).
+- **Owned local state:** `bidCostsSectionOpen`. Shared labor data loaded for it: `teamLaborDataForBids` (also used by Pricing).
 - **Cross-tab/shared state:** `activeTab` + `myRole` (gate + redirect); `setSharedBid(bid)` on row click (writes all `selectedBidFor*`); `bids` (read); URL `?tab=bid-costs`.
-- **Derived memos:** `teamLaborByBidId` (8082), `bidCostsUnsent`/`Pending`/`Won`/`StartedOrComplete`/`Lost` (inline filters 8169-8180).
-- **Handlers/functions:** `toggleBidCostsSection` (1016), `setSharedBid` (973), `formatBidCostsPeople` (8182), imported `formatBidNameWithValue` (121), `formatCurrency` (113), `decimalHoursToHhMm` (29). Fed by effect 7021-7024 calling `loadTeamLaborDataForBids`.
+- **Derived memos:** `teamLaborByBidId`, `bidCostsUnsent`/`Pending`/`Won`/`StartedOrComplete`/`Lost` (inline filters).
+- **Handlers/functions:** `toggleBidCostsSection`, `setSharedBid`, `formatBidCostsPeople`, imported `formatBidNameWithValue`, `formatCurrency`, `decimalHoursToHhMm`. Fed by an effect calling `loadTeamLaborDataForBids`.
 - **Data dependencies:** `bids` (partitioned by outcome), `teamLaborDataForBids` (per-bid cost + breakdown from clock sessions).
 - **Supabase tables:** none directly in the tab (read-only UI). Via `loadTeamLaborDataForBids` ([`utils/teamLabor.ts`](../src/utils/teamLabor.ts)): `people_crew_bids`, `people_hours`, `people_pay_config`.
 - **Sub-components:** `BidsBidCostsTab` (**extracted**, [`src/components/bids/BidsBidCostsTab.tsx`](../src/components/bids/BidsBidCostsTab.tsx)) — owns `bidCostsSectionOpen` + toggle, the five outcome buckets, `formatBidCostsPeople`, and a local `teamLaborByBidId` map built from the `teamLaborData` prop.
@@ -129,7 +129,7 @@ Each per-tab section lists: render location, **owned local state** (used only by
 - **Render location:** parent renders a thin `<BidsCountsTab .../>` behind `activeTab === 'counts'`.
 - **Owned local state (now in the child):** `countsSearchQuery`, `movingCountRow`, `lastMovedId`, `addingCountRow`, `countsImportOpen`/`Text`/`Error`, `clearAllCountsOpen`/`Confirm`/`Busy`, `countRowsSensors` (dnd), `clearAllCountsConfirmInputRef` + its focus effect, and a local `countsTableRef`. `filteredBidsForCounts` (search filter) is computed in the child.
 - **Engine values (from `useBidPricingEngine`, passed as props):** `countRows`, `setCountRows`, `refreshAfterCountsChange`, `skipNextLoadCountRowsRef`. The child triggers reloads only via `refreshAfterCountsChange` (the hook's selection effect does the initial load).
-- **Stays in the parent:** `selectedBidForCounts` (controlled prop, URL-synced via `selectBidAndSyncUrl`); callbacks `onSelectBid`/`onClose`/`onEditBid`. The `contactTableRef` (440) + the submission-followup scroll effect that reads it are left untouched (that effect also resets `scrollToContactFromBidBoard`, so it is not dead code); the child uses its own `countsTableRef`.
+- **Stays in the parent:** `selectedBidForCounts` (controlled prop, URL-synced via `selectBidAndSyncUrl`); callbacks `onSelectBid`/`onClose`/`onEditBid`. The `contactTableRef` + the submission-followup scroll effect that reads it are left untouched (that effect also resets `scrollToContactFromBidBoard`, so it is not dead code); the child uses its own `countsTableRef`.
 - **Handlers (now in the child):** `insertCountRows`, `saveCountRowsOrder` (RPC `update_bids_count_rows_order`), `handleCountsDragEnd`, `handleClearAllCounts`, `handleCountsImport`/`handleCountsImportClick` (uses `parseCountsImportText`), `exportCountsToCsv` (uses `buildCountsCsv`). Toast via `useToastContext()` in the child.
 - **Data dependencies:** `bids_count_rows` — the **root** of the pricing pipeline (takeoffs/labor/pricing all re-read it for the same bid). Count CRUD triggers `refreshAfterCountsChange`, which cascades to takeoffs + labor.
 - **Supabase tables:** `bids_count_rows` (SELECT/INSERT/DELETE + RPC reorder).
@@ -137,7 +137,7 @@ Each per-tab section lists: render location, **owned local state** (used only by
 - **External coupling:** producer for downstream tabs via `refreshAfterCountsChange` (passed in from the hook). Does not read takeoff/labor/pricing state in render.
 - **Extraction status + risk + approach:** **Extracted** (`BidsCountsTab`). The selection stays parent-owned; engine state/loaders are injected as props from `useBidPricingEngine`. First of the cluster tabs extracted now that the engine seam exists.
 
-### `takeoffs` — Takeoff
+### `takeoffs` — Takeoffs
 
 > **Extracted (2026-05-30)** to [`src/components/bids/BidsTakeoffTab.tsx`](../src/components/bids/BidsTakeoffTab.tsx) (**~5,641 lines** as of 2026-07-17 — it has kept growing post-extraction and is now the repo's largest bids component). Part of the **pricing-engine cluster** (`counts → takeoffs → labor → pricing`); engine data comes from `useBidPricingEngine`. This was the largest inline tab; extracting it dropped `Bids.tsx` from ~8,829 to ~4,119 lines (the parent is ~3,787 today).
 
@@ -152,7 +152,7 @@ Each per-tab section lists: render location, **owned local state** (used only by
 - **External coupling:** depends on Counts (needs count rows); feeds Labor/Pricing (PO IDs on `cost_estimates`, rough material totals). Reads cost-estimate state for the materials section (passed as props). Calls `openMaterialsModelSwitch()` (parent renders the shared modal). `@dnd-kit` for rough lines.
 - **Extraction status + risk + approach:** **Extracted** (`BidsTakeoffTab`). Engine state/loaders injected as props; selection + shared `taxPercent` stay parent-owned. The shared cost-estimate loader effect (gated on `labor || takeoffs`) stays in the parent. Largest single extraction of the project (~2,900 lines removed from the parent).
 
-### `labor` — Cost Estimate
+### `labor` — Labor (cost estimate)
 
 > **Extracted (2026-05-30)** to [`src/components/bids/BidsLaborTab.tsx`](../src/components/bids/BidsLaborTab.tsx). Part of the **pricing-engine cluster** (`counts → takeoffs → labor → pricing`); engine data comes from `useBidPricingEngine`. The labor print/PDF builders were first lifted into [`src/lib/bidDocuments/costEstimatePage.ts`](../src/lib/bidDocuments/costEstimatePage.ts). See [Pricing-engine shared layer](#pricing-engine-shared-layer) below.
 
@@ -204,32 +204,32 @@ Each per-tab section lists: render location, **owned local state** (used only by
 
 - **Render location (historical, pre-extraction):** ~1,260 inline lines.
 - **Owned local state** (used only by this tab):
-  - `submissionSearchQuery` (511) — string search filter.
-  - `submissionFollowupStaleDaysInput` (512) — string; "highlight no update in last N days".
-  - `submissionFollowupNotesTab` (514) — `'all' | 'bid' | 'customer'`.
-  - `submissionFollowupUnifiedAddingKind` (515) — adding-mode for the unified notes panel.
-  - `submissionFollowupBidTableAdding` (517) — bool.
-  - `submissionFollowupCustomerTableAdding` (518) — bool.
-  - `submissionSectionOpen` (535) — `{ unsent, pending, won, startedOrComplete, lost }` open/closed.
-  - `selectedAccountManagerForPrint` (680) — string; print/PDF target.
-  - `submissionSummaryCardRef` (529) — ref for scroll-to-summary.
+  - `submissionSearchQuery` — string search filter.
+  - `submissionFollowupStaleDaysInput` — string; "highlight no update in last N days".
+  - `submissionFollowupNotesTab` — `'all' | 'bid' | 'customer'`.
+  - `submissionFollowupUnifiedAddingKind` — adding-mode for the unified notes panel.
+  - `submissionFollowupBidTableAdding` — bool.
+  - `submissionFollowupCustomerTableAdding` — bool.
+  - `submissionSectionOpen` — `{ unsent, pending, won, startedOrComplete, lost }` open/closed.
+  - `selectedAccountManagerForPrint` — string; print/PDF target.
+  - `submissionSummaryCardRef` — ref for scroll-to-summary.
 - **Cross-tab/shared state:**
-  - `selectedBidForSubmission` / `setSelectedBidForSubmission` (513) — read + write; URL-driven and synced inside `saveBid`/`saveBidAndOpenCounts`. **Must stay in parent.**
-  - `activeTab` (337) — read; the stale-overlay effect ([`8055-8077`](../src/pages/Bids.tsx)) is gated on `activeTab === 'submission-followup'`.
+  - `selectedBidForSubmission` / `setSelectedBidForSubmission` — read + write; URL-driven and synced inside `saveBid`/`saveBidAndOpenCounts`. **Must stay in parent.**
+  - `activeTab` — read; the stale-overlay effect is gated on `activeTab === 'submission-followup'`.
 - **Derived memos:**
-  - `filteredBidsForSubmission` (7760) — `bids` filtered by `submissionSearchQuery`.
-  - `submissionUnsent`/`submissionPending`/`submissionWon`/`submissionStartedOrComplete`/`submissionLost` (8029-8045) — section buckets (used only here + `submissionFollowupNav`).
-  - `uniqueAccountManagers` (7833), `unassignedBidsCount` (7854), `totalBidsCount` (7862) — print dropdown.
-  - `submissionFollowupNav` (8198) — prev/next within the active section list.
-  - `submissionFollowupStaleDaysThresholdParsed` (8047) — drives stale-overlay effect.
+  - `filteredBidsForSubmission` — `bids` filtered by `submissionSearchQuery`.
+  - `submissionUnsent`/`submissionPending`/`submissionWon`/`submissionStartedOrComplete`/`submissionLost` — section buckets (used only here + `submissionFollowupNav`).
+  - `uniqueAccountManagers`, `unassignedBidsCount`, `totalBidsCount` — print dropdown.
+  - `submissionFollowupNav` — prev/next within the active section list.
+  - `submissionFollowupStaleDaysThresholdParsed` — drives stale-overlay effect.
 - **Handlers/functions:**
-  - `printFollowupSheet` (4919, local, ~110 lines), `downloadFollowupSheetPdf` (5029, local) — print/PDF; depend on `supabase` + pure formatters + jsPDF.
-  - `navigateSubmissionFollowup` (8250, local), `getSubmissionSectionKey` (8190, local — **also used by bid-board** `bidBoardBuckets`).
-  - `toggleSubmissionSection` (1005), `handleSubmissionFollowupNotesTabPillClick` (1174) + reset helper (~1112-1178).
-  - `selectBidAndSyncUrl` (995), `openEditBid` (7128), `openGcBuilderOrCustomerModal` (7729).
-  - `submissionFollowupListRowBackground` (8053, local).
-  - Imported: `submissionFollowupBidShareUrl` ([`44`](../src/pages/Bids.tsx)), `effectiveSubmissionBidLastNoteIso`/`isSubmissionBidStaleForThreshold` ([`43`](../src/pages/Bids.tsx)), `formatBidNameWithValue` (121), `formatDateYYMMDD`, `formatTimeSinceLastContact`, `openInExternalBrowser`.
-- **Data dependencies:** `bids`, `customers`, bid notes, customer notes, `lastContactFromEntries` (400), `customerContacts` (401), submission entries (loaded inside `printFollowupSheet`).
+  - `printFollowupSheet` (local, ~110 lines), `downloadFollowupSheetPdf` (local) — print/PDF; depend on `supabase` + pure formatters + jsPDF.
+  - `navigateSubmissionFollowup` (local), `getSubmissionSectionKey` (local — **also used by bid-board** `bidBoardBuckets`).
+  - `toggleSubmissionSection`, `handleSubmissionFollowupNotesTabPillClick` + reset helper.
+  - `selectBidAndSyncUrl`, `openEditBid`, `openGcBuilderOrCustomerModal`.
+  - `submissionFollowupListRowBackground` (local).
+  - Imported: `submissionFollowupBidShareUrl`, `effectiveSubmissionBidLastNoteIso`/`isSubmissionBidStaleForThreshold`, `formatBidNameWithValue`, `formatDateYYMMDD`, `formatTimeSinceLastContact`, `openInExternalBrowser`.
+- **Data dependencies:** `bids`, `customers`, bid notes, customer notes, `lastContactFromEntries`, `customerContacts`, submission entries (loaded inside `printFollowupSheet`).
 - **Supabase tables:** `bids_submission_entries` (read in `printFollowupSheet`); notes tables via the child note components.
 - **Sub-components rendered (all extracted):** `BidWorkflowTabTitleWithPreview`, `BidNotesTable`, `CustomerNotesTable`, `UnifiedBidCustomerNotes`.
 - **External coupling:** `bidPreview` hook (preview + `setSubmissionFollowupStaleOverlay`); `narrowViewport640`.
@@ -278,24 +278,24 @@ These primitives are touched by many tabs and are the main reason the component 
 
 A single click sets the selected bid for **every** workflow tab at once:
 
-| Symbol | Lines | Role |
+| Symbol | Where | Role |
 |---|---|---|
-| `setSharedBid` | [`Bids.tsx:607`](../src/pages/Bids.tsx) (anchors drift — search the symbol) | Atomically writes 8 selections: `selectedBidForCounts`, `selectedBidForTakeoff`, `selectedBidForCostEstimate`, `selectedBidForPricing`, `selectedBidForSubmission`, `selectedBidForRfi`, `selectedBidForChangeOrder`, `selectedBidForLienRelease`. **Cover Letter has no own selection — it reuses `selectedBidForPricing`.** |
-| `selectBidAndSyncUrl` | `Bids.tsx:629` | `setSharedBid(bid)` + writes URL `?tab=…&bidId=…` |
-| `closeSharedBidAndClearUrl` | `Bids.tsx:619` | Clears all `selectedBidFor*` + removes `bidId` from URL |
+| `setSharedBid` | [`Bids.tsx`](../src/pages/Bids.tsx) (search the symbol) | Atomically writes 8 selections: `selectedBidForCounts`, `selectedBidForTakeoff`, `selectedBidForCostEstimate`, `selectedBidForPricing`, `selectedBidForSubmission`, `selectedBidForRfi`, `selectedBidForChangeOrder`, `selectedBidForLienRelease`. **Cover Letter has no own selection — it reuses `selectedBidForPricing`.** |
+| `selectBidAndSyncUrl` | `Bids.tsx` (search the symbol) | `setSharedBid(bid)` + writes URL `?tab=…&bidId=…` |
+| `closeSharedBidAndClearUrl` | `Bids.tsx` (search the symbol) | Clears all `selectedBidFor*` + removes `bidId` from URL |
 | URL deep-link restore | search `const BIDS_TABS` / the `bidId` effect | On load, if `bidId` + a workflow `tab` present, calls `setSharedBid` + `setActiveTab` |
 
 **Implication:** each extracted tab should receive its `selectedBid` + `onSelectBid`/`onClose` as controlled props (the pattern already used by the RFI/CO/Lien tabs), not own it.
 
 ### Top-level shared state
 
-| Variable | Line | Used by |
+| Variable | Where | Used by |
 |---|---|---|
-| `activeTab` | 178 | All tabs (render gate + effect gates) |
-| `bids` | 239 | All tabs (master list, pickers, post-edit refresh) |
-| `editingBid` / `bidFormOpen` | 248 / — | All tabs via `openEditBid` → `BidFormModal` |
-| `selectedServiceTypeId` | 182 | bid-board, builder-review, takeoffs, labor, pricing (scopes books/templates/parts) |
-| `error` | 177 | All handlers |
+| `activeTab` | state in `Bids.tsx` | All tabs (render gate + effect gates) |
+| `bids` | state in `Bids.tsx` | All tabs (master list, pickers, post-edit refresh) |
+| `editingBid` / `bidFormOpen` | state in `Bids.tsx` | All tabs via `openEditBid` → `BidFormModal` |
+| `selectedServiceTypeId` | state in `Bids.tsx` | bid-board, builder-review, takeoffs, labor, pricing (scopes books/templates/parts) |
+| `error` | state in `Bids.tsx` | All handlers |
 | `authUser` / `myRole` | — | gates (`bid-costs` dev-only), new-bid defaults, role-based actions |
 | `narrowViewport640` (`useNarrowViewport640`) | hook | All detail layouts |
 | `bidPreview` (`useBidPreview`) | hook | All title bars + preview buttons |
@@ -303,13 +303,13 @@ A single click sets the selected bid for **every** workflow tab at once:
 
 ### Shared handlers / loaders
 
-| Function | Line | Notes |
+| Function | Where | Notes |
 |---|---|---|
-| `loadBids` | 830 | Master loader; `loadBids(null)` (all trades) forced by builder-review |
-| `openEditBid` | 1526 | Opens `BidFormModal`; used by every tab with a bid table |
-| `openNewBidWithCustomer` | 1511 | builder-review |
-| `openGcBuilderOrCustomerModal` | 2161 | bid-board, submission-followup |
-| `loadCustomers` / `loadCustomerContacts` / `loadCustomerContactPersons` | 763 / 939 / 951 | builder-review, working, submission-followup |
+| `loadBids` | `Bids.tsx` | Master loader; `loadBids(null)` (all trades) forced by builder-review |
+| `openEditBid` | `Bids.tsx` | Opens `BidFormModal`; used by every tab with a bid table |
+| `openNewBidWithCustomer` | `Bids.tsx` | builder-review |
+| `openGcBuilderOrCustomerModal` | `Bids.tsx` | bid-board, submission-followup |
+| `loadCustomers` / `loadCustomerContacts` / `loadCustomerContactPersons` | `Bids.tsx` | builder-review, working, submission-followup |
 | `getSubmissionSectionKey` | [`lib/bids/submissionSections.ts`](../src/lib/bids/submissionSections.ts) | **Shared by bid-board + submission-followup** (promoted to a lib during the submission-followup extraction) |
 | `useBidEditForm` | [`lib/bids/useBidEditForm.ts`](../src/lib/bids/useBidEditForm.ts) | Encapsulates the bid-edit modal form (already extracted) |
 

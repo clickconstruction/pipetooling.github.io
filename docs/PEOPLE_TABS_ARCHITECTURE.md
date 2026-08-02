@@ -5,25 +5,24 @@ file: docs/PEOPLE_TABS_ARCHITECTURE.md
 type: Engineering / Refactor Map
 purpose: Inventory what every tab in src/pages/People.tsx touches (state, loaders, handlers, sub-components, supabase tables, cross-tab coupling) to prioritize decomposition of the ~21.4k-line God component.
 audience: Developers, AI Agents
-last_updated_note: "v2.1214 added the Subs tab (PeopleSubsTab.tsx, self-contained loader + subsHqRows kernel) — not yet mapped below."
-last_updated: 2026-07-29
+last_updated: 2026-08-02
 ---
 
 ## Overview
 
-[`src/pages/People.tsx`](../src/pages/People.tsx) was a ~21,435-line "God component"; decomposition is essentially done and it is now **~4,269 lines**. This map is a refactoring aid: for each tab it records what state, derived data, handlers, sub-components, and external systems the tab touches, plus its extraction status and risk. It is **coupling/refactor-oriented**. It mirrors the approach proven on [`BIDS_TABS_ARCHITECTURE.md`](./BIDS_TABS_ARCHITECTURE.md), which took `Bids.tsx` from ~18,800 lines to ~3,787.
+[`src/pages/People.tsx`](../src/pages/People.tsx) was a ~21,435-line "God component"; decomposition is essentially done and it is now **~4,378 lines**. This map is a refactoring aid: for each tab it records what state, derived data, handlers, sub-components, and external systems the tab touches, plus its extraction status and risk. It is **coupling/refactor-oriented**. It mirrors the approach proven on [`BIDS_TABS_ARCHITECTURE.md`](./BIDS_TABS_ARCHITECTURE.md), which took `Bids.tsx` from ~18,800 lines to ~3,787.
 
 ### Progress
 - **Phase 1 (low/med-coupling tab extractions) — DONE.** `vehicles`, `housing`, `licenses`, `offsets`, `contracts` extracted to `src/components/people/People<Tab>Tab.tsx`; `activity` + `writeups` cleaned up (state/loaders moved into their existing components). With `teams`/`feedback` already thin, the tabs still inline are `users`, `hours` (the remaining pay/hours hub).
 - **Phase 2 (shared hooks) — DONE.** Extracted: `usePeopleAccess`, `usePeopleRoster`, `useCrewJobMap`, `usePayConfig`, `usePeopleHoursData` (under `src/hooks/`). `useTeamSummaryData` was folded into the `review` extraction (intricate review-UI orchestration) rather than a standalone hook; its pure kernel lives at `src/lib/people/derivePersonTeamSummary.ts`.
-- **Phase 3 (hub tabs) — IN PROGRESS.** ~~`overhead`~~ (`PeopleOverheadTab`), ~~`review`~~ (`PeopleReviewTab`), ~~`pay_stubs`~~ (`PeoplePayStubsTab`, the **Ledger** half only — see the dossier), and ~~`users`~~ (`PeopleUsersTab` + `useUsersTabTags`/`PeopleUserTagsPanel`) are extracted. The only inline tab left is `hours` (the pay/hours hub), which is too large for a single component — it is being decomposed **sub-section by sub-section**, each its own reviewable PR. Shared hours-section primitives (`HOURS_TAB_SECTION_*` styles, `hoursTabSectionHeaderGap`, `textColorForBackground`, `getDaysInRange`) now live in [`peopleHoursTabShared`](../src/components/people/peopleHoursTabShared.ts). Sub-sections extracted so far: **Teams** (incl. its delete-team modal) → [`PeopleHoursTeams`](../src/components/people/PeopleHoursTeams.tsx) (the `PeopleHoursTeam` type now lives there; `getCostForPersonDateTeams`/`addTeam`/`deleteTeam` etc. stay in the parent as props since they mutate shared hours state); **Due by Team** (formerly Due by Trade/Team, incl. its ledger modal) → [`PeopleHoursDueSummaries`](../src/components/people/PeopleHoursDueSummaries.tsx) (the `teamLedgerModalTeam` modal state moved into the component since nothing else reads it; the trade-tag half died with the cost-matrix retirement — see below); **Clock sessions** (active/pending/approved/rejected tables, search, the salaried-workdays button, and the nested rejected sub-section) → [`PeopleHoursSessions`](../src/components/people/PeopleHoursSessions.tsx) (the inline force-clock-out/approve/reject/revoke mutations moved into the component, which imports `supabase`/`approveClockSessions`/`useToastContext` directly; the parent passes the session lists, search state, `reloadSessions`/`reloadHours` callbacks wired to its load refs, and `setEditClockSession`/`setError`/`openHoursMyTimeFromSession`); **Week range** (the prev/next-week nav + custom start/end date inputs, with narrow vs wide layouts) → [`PeopleHoursWeekRange`](../src/components/people/PeopleHoursWeekRange.tsx) (a pure presentational section — props are `narrowViewport`, `hoursDateStart`/`hoursDateEnd` + setters, and `shiftHoursWeek`; it imports `formatDateRangeLabel` directly). Separately, the `WeekdayCostTable` totals math was lifted to the tested kernel [`computeWeekdayCostTotals`](../src/lib/people/computeWeekdayCostTotals.ts). The first vertical carved off the large **Hours grid** section is its **"Highlight by job" search** (the debounced `search_jobs_ledger` lookup + selected-job chip) → [`PeopleHoursGridJobHighlight`](../src/components/people/PeopleHoursGridJobHighlight.tsx) (owns its own search/results/list-open/blur-ref state + the debounce effect; the parent keeps `selectedJobHighlight` state — read by the `jobHighlightPeople`/`jobHighlightCells` memo and the grid render — and passes it down with its setter; the `HoursGridJobHighlightPick` type now lives in that component). The grid's **pending-hours warning banner** (the "N people · X h not yet in payroll" status + bulk Review &amp; approve CTA) also came out → [`PeopleHoursPendingBanner`](../src/components/people/PeopleHoursPendingBanner.tsx) (a pure presentational banner that returns null when nothing is pending; props are the `PeopleHoursPendingSummary`, `canAccessHours`/`canAccessPay`, and an `onReviewApprove` callback). **Cost matrix — RETIRED (2026-07-15, PRs #322/#324/#326, v2.671–v2.677):** the Cost matrix grid, per-person trade tags, and the view-sharing mechanism were removed entirely — `PeopleCostMatrix.tsx` and `PeopleHoursSharing.tsx` are **deleted**, and migrations `20260715090000`/`20260715120000` dropped the share/tag tables and `show_in_cost_matrix`. "See costs without pay admin" is now the **controller** role's job (v2.662). The only vestige in `People.tsx` is the `#cost-matrix` hash handler (~line 780) that still opens/scrolls the Hours-tab section for old deep links. The hard core — the **Hours grid `<table>`** itself (per-person daily-hours matrix with inline cell editing, pending badges, job-highlight/flash styling, and the totals/Correct footer) — is now extracted → [`PeopleHoursGrid`](../src/components/people/PeopleHoursGrid.tsx). The grid-local cell-edit state (`editingHoursCell`/`editingHoursValue`) moved **into** the component as local `useState`; the blur handler `openManualHoursDraftFromBlur` (kept in the parent and passed as a prop) no longer clears the edit cell since the grid clears its own. The shared helpers (`getHoursGridDisplayHours`/`canEditHours`/`isCorrectDayMissingJob`/`hasUnassignedCorrectDays`) stay parent-owned and pass as function props because other sections call them; `setPendingCellPopover` stays in the parent (its sync effect + the popover render live outside the grid). As prep, two pure kernels were lifted out first: the time formatters [`hoursGridTime`](../src/lib/people/hoursGridTime.ts) (`decimalToHms`/`hmsToDecimal`) and the blur predicate [`shouldOfferManualHoursSession`](../src/lib/people/shouldOfferManualHoursSession.ts); the Add-session people list is the tested kernel [`buildAddSessionPeople`](../src/lib/people/buildAddSessionPeople.ts). Remaining hours sub-section: only the trivial clock-strip wrapper.
+- **Phase 3 (hub tabs) — IN PROGRESS.** ~~`overhead`~~ (`PeopleOverheadTab`), ~~`review`~~ (`PeopleReviewTab`), ~~`pay_stubs`~~ (`PeoplePayStubsTab`, the **Ledger** half only — see the dossier), and ~~`users`~~ (`PeopleUsersTab` + `useUsersTabTags`/`PeopleUserTagsPanel`) are extracted. The only inline tab left is `hours` (the pay/hours hub), which is too large for a single component — it is being decomposed **sub-section by sub-section**, each its own reviewable PR. Shared hours-section primitives (`HOURS_TAB_SECTION_*` styles, `hoursTabSectionHeaderGap`, `textColorForBackground`, `getDaysInRange`) now live in [`peopleHoursTabShared`](../src/components/people/peopleHoursTabShared.ts). Sub-sections extracted so far: **Teams** (incl. its delete-team modal) → [`PeopleHoursTeams`](../src/components/people/PeopleHoursTeams.tsx) (the `PeopleHoursTeam` type now lives there; `getCostForPersonDateTeams`/`addTeam`/`deleteTeam` etc. stay in the parent as props since they mutate shared hours state); **Due by Team** (formerly Due by Trade/Team, incl. its ledger modal) → [`PeopleHoursDueSummaries`](../src/components/people/PeopleHoursDueSummaries.tsx) (the `teamLedgerModalTeam` modal state moved into the component since nothing else reads it; the trade-tag half died with the cost-matrix retirement — see below); **Clock sessions** (active/pending/approved/rejected tables, search, the salaried-workdays button, and the nested rejected sub-section) → [`PeopleHoursSessions`](../src/components/people/PeopleHoursSessions.tsx) (the inline force-clock-out/approve/reject/revoke mutations moved into the component, which imports `supabase`/`approveClockSessions`/`useToastContext` directly; the parent passes the session lists, search state, `reloadSessions`/`reloadHours` callbacks wired to its load refs, and `setEditClockSession`/`setError`/`openHoursMyTimeFromSession`); **Week range** (the prev/next-week nav + custom start/end date inputs, with narrow vs wide layouts) → [`PeopleHoursWeekRange`](../src/components/people/PeopleHoursWeekRange.tsx) (a pure presentational section — props are `narrowViewport`, `hoursDateStart`/`hoursDateEnd` + setters, and `shiftHoursWeek`; it imports `formatDateRangeLabel` directly). Separately, the `WeekdayCostTable` totals math was lifted to the tested kernel [`computeWeekdayCostTotals`](../src/lib/people/computeWeekdayCostTotals.ts). The first vertical carved off the large **Hours grid** section is its **"Highlight by job" search** (the debounced `search_jobs_ledger` lookup + selected-job chip) → [`PeopleHoursGridJobHighlight`](../src/components/people/PeopleHoursGridJobHighlight.tsx) (owns its own search/results/list-open/blur-ref state + the debounce effect; the parent keeps `selectedJobHighlight` state — read by the `jobHighlightPeople`/`jobHighlightCells` memo and the grid render — and passes it down with its setter; the `HoursGridJobHighlightPick` type now lives in that component). The grid's **pending-hours warning banner** (the "N people · X h not yet in payroll" status + bulk Review &amp; approve CTA) also came out → [`PeopleHoursPendingBanner`](../src/components/people/PeopleHoursPendingBanner.tsx) (a pure presentational banner that returns null when nothing is pending; props are the `PeopleHoursPendingSummary`, `canAccessHours`/`canAccessPay`, and an `onReviewApprove` callback). **Cost matrix — RETIRED (2026-07-15, PRs #322/#324/#326, v2.671–v2.677):** the Cost matrix grid, per-person trade tags, and the view-sharing mechanism were removed entirely — `PeopleCostMatrix.tsx` and `PeopleHoursSharing.tsx` are **deleted**, and migrations `20260715090000`/`20260715120000` dropped the share/tag tables and `show_in_cost_matrix`. "See costs without pay admin" is now the **controller** role's job (v2.662). The only vestige in `People.tsx` is the `#cost-matrix` hash handler that still opens/scrolls the Hours-tab section for old deep links. The hard core — the **Hours grid `<table>`** itself (per-person daily-hours matrix with inline cell editing, pending badges, job-highlight/flash styling, and the totals/Correct footer) — is now extracted → [`PeopleHoursGrid`](../src/components/people/PeopleHoursGrid.tsx). The grid-local cell-edit state (`editingHoursCell`/`editingHoursValue`) moved **into** the component as local `useState`; the blur handler `openManualHoursDraftFromBlur` (kept in the parent and passed as a prop) no longer clears the edit cell since the grid clears its own. The shared helpers (`getHoursGridDisplayHours`/`canEditHours`/`isCorrectDayMissingJob`/`hasUnassignedCorrectDays`) stay parent-owned and pass as function props because other sections call them; `setPendingCellPopover` stays in the parent (its sync effect + the popover render live outside the grid). As prep, two pure kernels were lifted out first: the time formatters [`hoursGridTime`](../src/lib/people/hoursGridTime.ts) (`decimalToHms`/`hmsToDecimal`) and the blur predicate [`shouldOfferManualHoursSession`](../src/lib/people/shouldOfferManualHoursSession.ts); the Add-session people list is the tested kernel [`buildAddSessionPeople`](../src/lib/people/buildAddSessionPeople.ts). Remaining hours sub-section: only the trivial clock-strip wrapper.
 
-Tabs switch on a single `activeTab` state ([`People.tsx:282`](../src/pages/People.tsx)), type `PeopleTab` at [lines 195-211](../src/pages/People.tsx) — **15 keys** since the **Employment** tab landed:
+Tabs switch on a single `activeTab` state ([`People.tsx`](../src/pages/People.tsx), search `useState<PeopleTab>`), type `PeopleTab` at [lines 200-216](../src/pages/People.tsx) — **16 keys** since the **Subs** tab landed (v2.1214):
 
 ```
-'review' | 'users' | 'teams' | 'overhead' | 'employment' | 'pay_stubs' | 'hours'
-| 'offsets' | 'vehicles' | 'housing' | 'licenses' | 'contracts' | 'writeups'
-| 'feedback' | 'activity'
+'review' | 'users' | 'subs' | 'teams' | 'overhead' | 'employment' | 'pay_stubs'
+| 'hours' | 'offsets' | 'vehicles' | 'housing' | 'licenses' | 'contracts'
+| 'writeups' | 'feedback' | 'activity'
 ```
 
 ### How to maintain this doc
@@ -31,7 +30,7 @@ Tabs switch on a single `activeTab` state ([`People.tsx:282`](../src/pages/Peopl
 - Treat line numbers as approximate anchors — they drift. Search for the symbol (`activeTab === '...'`, the state name, the modal name) when in doubt.
 
 ### Key structural difference from Bids
-**There is no single shared "person pointer."** Bids has one `setSharedBid` fanning a click out to 8 `selectedBidFor*` selections. People instead gives **each tab its own independent selection pointer**, and identity is keyed by **person name (string)**, not id. The real shared substrate is the `people`/`users` roster plus the `person_name` columns across `people_hours`/`people_pay_config`/`person_offsets`/`person_licenses`/`person_contract_*`. The name↔id bridge is `cascadePersonNameInPayTables` / `resolvePersonIdFromRosterName` (line 67-68). So there is no cross-tab UI selection to lift — only shared *data*.
+**There is no single shared "person pointer."** Bids has one `setSharedBid` fanning a click out to 8 `selectedBidFor*` selections. People instead gives **each tab its own independent selection pointer**, and identity is keyed by **person name (string)**, not id. The real shared substrate is the `people`/`users` roster plus the `person_name` columns across `people_hours`/`people_pay_config`/`person_offsets`/`person_licenses`/`person_contract_*`. The name↔id bridge is `cascadePersonNameInPayTables` / `resolvePersonIdFromRosterName`. So there is no cross-tab UI selection to lift — only shared *data*.
 
 ---
 
@@ -39,11 +38,12 @@ Tabs switch on a single `activeTab` state ([`People.tsx:282`](../src/pages/Peopl
 
 | Tab key | Render lines | ~Lines | Status | Owned state | Cross-tab coupling | Coupling / risk | Recommended action |
 |---|---|---|---|---|---|---|---|
+| `subs` | thin wrapper (`{activeTab === 'subs' && <PeopleSubsTab />}`) | ~293 (component) | extracted (`PeopleSubsTab`, self-contained, v2.1214) | 0 in parent | none — loads everything itself under the caller's RLS | low | Done (see dossier) |
 | `users` | `PeopleUsersTab` | ~3 (`{activeTab === 'users' && <PeopleUsersTab .../>}`) | extracted (`PeopleUsersTab` + `useUsersTabTags`/`PeopleUserTagsPanel`; shared consts/`byKind` in `peopleUsersTabShared`) | — | reads `people`/`users`, `contractSigningStatusByPersonName`, push/location | done | Person-edit form stays in `usePeopleRoster`; the edit-user-note modal stays in the parent |
-| `teams` | 12359-12361 | ~3 | extracted (`PeopleTeamsTab`) | 0 in parent | `authUser`/`authRole` | low | Done |
+| `teams` | thin wrapper | ~3 | extracted (`PeopleTeamsTab`) | 0 in parent | `authUser`/`authRole` | low | Done |
 | `overhead` | thin wrapper | ~1,989 | extracted (`PeopleOverheadTab`) | 0 in parent | reads `payConfig` only (NOT `crewJobsByDatePerson`) | low data / dev-master | Done |
 | `employment` | thin wrapper | ~1,151 (component) | extracted (`PeopleEmploymentTab`, self-loading) | 0 in parent | reads the `usePayConfig` cluster + `users` via props | low-med | Done (see dossier) |
-| `pay_stubs` | thin wrapper (Ledger) | ~883 | extracted (`PeoplePayStubsTab`, Ledger half) | draft-payroll + mark-paid clusters stay in parent | high | Done — conservative seam (see dossier) |
+| `pay_stubs` | thin wrapper (tab button reads **Payroll**, v2.1257; Ledger half) | ~1,331 | extracted (`PeoplePayStubsTab`, Ledger half) | draft-payroll + mark-paid clusters stay in parent | high | Done — conservative seam (see dossier) |
 | `hours` | inline (sub-sections extracting) | ~1,280 | partial | ~39 (`hours*`, clock sessions) | **owns** `payConfig`/`teams`/`crewJobsByDatePerson` | very high | Phase 3 — decomposing sub-section by sub-section; Teams → `PeopleHoursTeams`, Due-Summaries → `PeopleHoursDueSummaries`, Sessions → `PeopleHoursSessions`, Week → `PeopleHoursWeekRange`, Hours grid → `PeopleHoursGrid` done (Cost matrix + Sharing sections retired 2026-07-15); only the clock-strip wrapper left |
 | `vehicles` | thin wrapper | ~235 | extracted (`PeopleVehiclesTab`) | 0 in parent | `users` prop | low | Done (PR #19) |
 | `housing` | thin wrapper | ~200 | extracted (`PeopleHousingTab`) | 0 in parent | `users` prop | low | Done (PR #20) |
@@ -52,7 +52,7 @@ Tabs switch on a single `activeTab` state ([`People.tsx:282`](../src/pages/Peopl
 | `contracts` | thin wrapper | ~1,583 | extracted (`PeopleContractsTab`) | `contractSigningStatusByPersonName` stays in parent | `people`/`users`/`canDeletePeopleContracts` props | med-high lines / low data | Done (PR #23) |
 | `writeups` | thin wrapper | ~13 | extracted (`WriteupsContractsSubTab`, self-loads) | 0 | props only | low | Done (PR #24) |
 | `review` | thin wrapper | ~4,889 | extracted (`PeopleReviewTab` + `lib/people/derivePersonTeamSummary`) | bridge refs (Review↔Hours shared My-Time modal) passed as props | reads `payConfig`, `archivedUserNames`, `people` | med-high | Done |
-| `feedback` | 20496-20500 | ~5 | thin (`TeamFeedbackDevSettingsBlock`) | 0 | `isDev` | low | Done |
+| `feedback` | thin wrapper | ~5 | thin (`TeamFeedbackDevSettingsBlock`) | 0 | `isDev` | low | Done |
 | `activity` | thin wrapper | ~180 | extracted (`PeopleAppActivityPanel`) | `isActivityViewer`/`activityAccessResolved` stay in parent (feed `canSeeActivityTab`) | props only | low | Done (PR #24) |
 
 > Status legend: `inline` = rendered directly in `People.tsx`; `thin` = a few lines delegating to an imported component; `partial` = panel extracted but the tab still owns inline UI/state; `extracted` = fully moved.
@@ -61,27 +61,33 @@ Tabs switch on a single `activeTab` state ([`People.tsx:282`](../src/pages/Peopl
 
 ## Per-tab dossiers
 
-> For the **extracted** tabs (`vehicles`/`housing`/`licenses`/`offsets`/`contracts`/`activity`/`writeups`/`teams`/`feedback`), the dossier below is the **pre-extraction inventory** — a record of what each tab contained before it moved to its `src/components/people/*` component. Current status/owner is in the master summary table above. The remaining inline tabs (`overhead`/`pay_stubs`/`hours`/`review`) are still accurate as-is. Line numbers are pre-extraction anchors; search by symbol.
+> For the **extracted** tabs (`vehicles`/`housing`/`licenses`/`offsets`/`contracts`/`activity`/`writeups`/`teams`/`feedback`), the dossier below is the **pre-extraction inventory** — a record of what each tab contained before it moved to its `src/components/people/*` component. Current status/owner is in the master summary table above. The remaining inline tab (`hours`) is still accurate as-is. The pre-extraction line-number anchors were removed (they no longer resolve in the ~4,378-line file); search by symbol.
 
 ### `users` — Roster
 > **Fully extracted (Stage 1 + Stage 2).** Stage 1 moved the dev-only tag/label subsystem (~580 lines) into the [`useUsersTabTags`](../src/hooks/useUsersTabTags.ts) hook + presentational [`PeopleUserTagsPanel`](../src/components/people/PeopleUserTagsPanel.tsx). Stage 2 moved the **roster UI** (~890 lines: 7,132 → 6,243) into [`PeopleUsersTab`](../src/components/people/PeopleUsersTab.tsx): the full users render, the per-row `renderUsersTabRosterListItem`, the roster search vars (`usersTabSearch*`), and the tag-anchor builders (`resolvePersonIdForUsersRow`/`resolveUsersTabTagAnchor`). Shared roster constants (`KINDS`/`KIND_LABELS`/`KIND_TO_USER_ROLE`/`USERS_TAB_SECTIONS`), the contact-row style, the search matcher, and the pure `buildUsersTabKindRoster` (was `byKind`) live in [`peopleUsersTabShared`](../src/components/people/peopleUsersTabShared.ts) so the parent's `payConfigRosterSections` still consumes them.
 >
 > **Deliberately left in the parent:** the person create/edit form already lives in `usePeopleRoster` (the tab calls `openAdd`/`openEdit`); the edit-user-note modal and the invite-confirm modal still render in `People.tsx`; roster CRUD/invite/login-as handlers (`archivePerson`/`restorePerson`/`isAlreadyUser`/`loginAsUser` wiring) stay in the parent and are passed as props. The dossier below is the pre-extraction inventory.
 
-- **Render:** [`11845-12357`](../src/pages/People.tsx) (~513); tab button at 11617; person create/edit form modal at 20986-21025; invite-confirm modal at 21026.
-- **Owned state (~30):** person form (`formOpen` 518, `editing` 519, `kind` 520, `name`/`email`/`phone`/`notes`/`saving` 521-525), roster actions (`archivingId` 526, `archivedPeople` 527, `archivedSectionOpen` 528, `restoringId` 529, `invitingId` 530, `inviteConfirm` 531, `loggingInAsId` 532), `personProjects` 533, `creatorNames` 536, `editingUserNote`/`userNoteSaving` 832-833. **Tag subsystem (~17 vars, 552-579):** `showUsersTabTags`, `usersTabLabels*`, `usersTabMasterByUserId`, `usersTabTagSignalsByUserId`, `usersTabTags*`, `usersTabSearch`, etc. Push/location: `canSeePushStatus`/`pushEnabledUserIds`/`locationEnabledUserIds` (588-590).
-- **Cross-tab/shared:** owns/reads `people`(506)/`users`(498) (the master rosters used by nearly every tab); reads `contractSigningStatusByPersonName`(591) (written by the contracts loader) for the signing traffic light; reads `payConfig` for duplicate detection.
-- **Loaders:** `loadPeople`(1591), `loadPersonProjects`(1639), `loadArchivedPeople`(2263), `handleSave`(2196), `handleMergeDuplicate`(2359), push/location loader (2031).
+- **Render:** ~513 pre-extraction lines; person create/edit form modal + invite-confirm modal render at page level.
+- **Owned state (~30):** person form (`formOpen`, `editing`, `kind`, `name`/`email`/`phone`/`notes`/`saving`), roster actions (`archivingId`, `archivedPeople`, `archivedSectionOpen`, `restoringId`, `invitingId`, `inviteConfirm`, `loggingInAsId`), `personProjects`, `creatorNames`, `editingUserNote`/`userNoteSaving`. **Tag subsystem (~17 vars):** `showUsersTabTags`, `usersTabLabels*`, `usersTabMasterByUserId`, `usersTabTagSignalsByUserId`, `usersTabTags*`, `usersTabSearch`, etc. Push/location: `canSeePushStatus`/`pushEnabledUserIds`/`locationEnabledUserIds`.
+- **Cross-tab/shared:** owns/reads `people`/`users` (the master rosters used by nearly every tab); reads `contractSigningStatusByPersonName` (written by the contracts loader) for the signing traffic light; reads `payConfig` for duplicate detection.
+- **Loaders:** `loadPeople`, `loadPersonProjects`, `loadArchivedPeople`, `handleSave`, `handleMergeDuplicate`, push/location loader.
 - **Supabase:** `people`, `users`, `project_workflow*`/`projects`, `push_subscriptions`, `person_contract_documents`, label/tag tables.
 - **Coupling/risk:** **high** — owns the shared rosters + the person-edit form other tabs implicitly depend on. The tag subsystem is the cleanest sub-extraction. The `people`/`users` loaders must become `usePeopleRoster` first.
 
+### `subs` — Subs (added v2.1214)
+- **Render:** thin wrapper `{activeTab === 'subs' && <PeopleSubsTab />}`. Fully self-contained: [`PeopleSubsTab`](../src/components/people/PeopleSubsTab.tsx) (~293 lines) loads everything itself under the caller's RLS.
+- **What it shows:** one row per subcontractor relationship — roster, junction-attributed sub-sheet balances, open work orders, compliance badges (`agreement`/`coi`/`w9`/`license`/`other` doc types with expiry states), and a simple track record. The per-sub Documents expander is the compliance micro-editor (writes `person_contract_documents` directly); sending/signing stays on the Contracts tab.
+- **Kernels:** [`buildSubsHqRows`](../src/lib/people/subsHqRows.ts) + [`subCompliance`](../src/lib/people/subCompliance.ts).
+- **Coupling/risk:** **low** — 0 parent state; no props.
+
 ### `teams` — Teams
-- **Render:** [`12359-12361`](../src/pages/People.tsx) (~3). Thin wrapper around `PeopleTeamsTab` ([`src/components/people/PeopleTeamsTab.tsx`](../src/components/people/PeopleTeamsTab.tsx)). **Done.** Note: the parent still owns `teams` + `loadTeams` + team CRUD for the **Hours** tab's Teams / Due-by-Team sections, not for this tab.
+- **Render:** ~3 lines. Thin wrapper around `PeopleTeamsTab` ([`src/components/people/PeopleTeamsTab.tsx`](../src/components/people/PeopleTeamsTab.tsx)). **Done.** Note: the parent still owns `teams` + `loadTeams` + team CRUD for the **Hours** tab's Teams / Due-by-Team sections, not for this tab.
 
 ### `overhead` — Overhead
 > **Extracted** to [`src/components/people/PeopleOverheadTab.tsx`](../src/components/people/PeopleOverheadTab.tsx) (~2,037 lines). The parent renders a thin gate `{activeTab === 'overhead' && canAccessOverheadTab && <PeopleOverheadTab .../>}` and shrank ~1,989 lines (15,970 → 13,981). All ~28 `overhead*` state vars, the `useMercuryLedgerNicknames` call, the 2 daily-labor memos, the 8 load effects (their `activeTab !== 'overhead'` early-returns dropped since the component only mounts when active), and the render + breakdown modal moved into the child. **Props:** `payConfig`, `authUser`, `setError`, `canAccessOverheadTab`, `isDev`, `loadPayConfig`. **Correction:** it reads **`payConfig` only** — the earlier note that it reads `crewJobsByDatePerson` was stale (that symbol is Hours-tab-only). **Stayed in the parent:** the overhead tab-nav button, the `tab=overhead` URL deep-link guard, and the **`review` tab's 90-day overhead-rate calc** (which also imports `buildOverheadDailyLabor`). The dossier below is the pre-extraction inventory.
 
-- **Render:** [`12363-13633`](../src/pages/People.tsx) (~1,271). Dev/master only (`canAccessOverheadTab`).
+- **Render:** ~1,271 pre-extraction lines. Dev/master only (`canAccessOverheadTab`).
 - **Owned state (~28):** `overheadDateStart`/`End`, `overheadOfficeJob*`, `overheadSessions`, `overheadTableSimpleView`, `overheadOfficeParts*`, `overheadAvgDailyCost`, `overheadOtherJobs*`, `overheadBreakdownModal`.
 - **Cross-tab/shared:** reads `payConfig` (for the office/other-jobs daily-labor memos). Load effects gated on `activeTab === 'overhead'`.
 - **Supabase:** `clock_sessions`, `jobs_ledger*`, `people_pay_config`, `mercury_*`, `app_settings`, `people_crew_jobs`/`people_crew_bids`.
@@ -89,7 +95,7 @@ Tabs switch on a single `activeTab` state ([`People.tsx:282`](../src/pages/Peopl
 
 ### `employment` — Employment (extracted from day one)
 
-> Born as its own component — never inline in `People.tsx`. [`src/components/people/PeopleEmploymentTab.tsx`](../src/components/people/PeopleEmploymentTab.tsx) (~1,151 lines); the parent renders `{activeTab === 'employment' && canAccessPay && <PeopleEmploymentTab .../>}` at [`People.tsx:3774`](../src/pages/People.tsx). Major upgrade wave: v2.672–v2.674 (PR #322, 2026-07-15 — grouped roster, schedule/pay-history modals, header pay stats, safer Salaried toggle).
+> Born as its own component — never inline in `People.tsx`. [`src/components/people/PeopleEmploymentTab.tsx`](../src/components/people/PeopleEmploymentTab.tsx) (~1,151 lines); the parent renders `{activeTab === 'employment' && canAccessPay && <PeopleEmploymentTab .../>}` in [`People.tsx`](../src/pages/People.tsx). Major upgrade wave: v2.672–v2.674 (PR #322, 2026-07-15 — grouped roster, schedule/pay-history modals, header pay stats, safer Salaried toggle).
 
 - **Render:** thin gate in the parent; everything else lives in the component.
 - **Owned state (~20, all in the component):** roster `rows` + `loading`/`loadError`, `selectedKey`, `archivedOpen`, `search`, employment-date drafts (`draftStart`/`draftEnd`, `saving`), modal opens (`scheduleOpen`, `payHistoryOpen`), `salaryOffConfirm` (red-confirm before turning Salaried off), pay stats (`payTotals` + `payTotalsLoading`), and the time-off block (`timeOffRows`/`timeOffLoading`, `toStart`/`toEnd`/`toKind`/`toNote`/`toSaving`).
@@ -102,89 +108,91 @@ Tabs switch on a single `activeTab` state ([`People.tsx:282`](../src/pages/Peopl
 - **Pure kernels:** [`src/lib/employmentPayTotals.ts`](../src/lib/employmentPayTotals.ts) (`computeEmploymentStubTotals`, 7 tests) for the Avg/Paid/Due header stats; reuses [`upcomingPayrollSummary`](../src/lib/upcomingPayrollSummary.ts).
 - **Coupling/risk:** **low-med** — self-loading; the only shared surface is the pay-config prop cluster and the pay-report modal callback.
 
-### `pay_stubs` — Pay Stubs
-> **Extracted (conservative seam)** to [`src/components/people/PeoplePayStubsTab.tsx`](../src/components/people/PeoplePayStubsTab.tsx) (~883 lines). The parent renders a thin gate `{activeTab === 'pay_stubs' && canAccessPay && <PeoplePayStubsTab .../>}` and shrank ~886 lines (8,598 → 7,712). **Only the self-contained Ledger half moved** — the table, the **Less/Additional/Note/Calendar** modals + their tab-local state, the `ledgerFilteredPayStubs`/`ledgerOpenBalanceSummary` memos, the `ledgerPersonSearch`, the mount load effect (calls the injected `loadPayConfig`/`loadPayStubs`), and the calendar load effect. Stage A lifted the pure print-HTML builder to [`src/lib/peopleDocuments/buildPayStubHtml.ts`](../src/lib/peopleDocuments/buildPayStubHtml.ts) (+`openPayStubWindow`, with tests); the three callers (`printPayStub`/`viewPayStub`/`generatePayStub`) now call it.
+### `pay_stubs` — Payroll (key `pay_stubs`)
+
+> Tab button relabeled **Pay Stubs → Payroll** and the pay-config button moved from the Hours tab header to Payroll's (**v2.1257**); pay reports themselves were renamed **Pay Report** in v2.1254. Key, URL `tab=pay_stubs`, and table names are unchanged.
+> **Extracted (conservative seam)** to [`src/components/people/PeoplePayStubsTab.tsx`](../src/components/people/PeoplePayStubsTab.tsx) (~1,331 lines). The parent renders a thin gate `{activeTab === 'pay_stubs' && canAccessPay && <PeoplePayStubsTab .../>}` and shrank ~886 lines (8,598 → 7,712). **Only the self-contained Ledger half moved** — the table, the **Less/Additional/Note/Calendar** modals + their tab-local state, the `ledgerFilteredPayStubs`/`ledgerOpenBalanceSummary` memos, the `ledgerPersonSearch`, the mount load effect (calls the injected `loadPayConfig`/`loadPayStubs`), and the calendar load effect. Stage A lifted the pure print-HTML builder to [`src/lib/peopleDocuments/buildPayStubHtml.ts`](../src/lib/peopleDocuments/buildPayStubHtml.ts) (+`openPayStubWindow`, with tests); the three callers (`printPayStub`/`viewPayStub`/`generatePayStub`) now call it.
 >
 > **Props:** `payStubs` + the 3 `*ByStubId` maps + `loadPayStubs` (the shared data layer, parent-owned because `offsets` + draft-payroll also read it), `payConfig`, `users`, `authUser`, `isDev`, `error`/`onError`, `loadPayConfig`, `markingPayStubId`, `deletingPayStubId`, and callbacks `onPrintStub`, `onRecordPayment`, `onRequestDeleteStub`, `onOpenMyTimeForDay`, `onOpenForecast`/`forecastDisabled`, `onOpenDraftPayroll`/`draftPayrollDisabled`. It also **re-exports `type PayStubRow`** (the parent now imports it).
 >
 > **Stayed in the parent — two deliberate bridges (no tests cover these flows):** (1) the **Draft Payroll / Forecast** cluster — `DraftPayrollModal`/`PayrollForecastModal`/`DraftPayrollPersonHoursBreakdownModal` + their state + `generatePayStub`/`viewPayStub`/`bulkGenerateMissingPayStubsInModal`/`shiftPayStubWeek`/`getPriorWeekPayStubRangeEnCa` + the realtime `draftPayrollRealtimeSnapRef`/`loadDraftPayrollPendingApprovals` — because it consumes Hours-owned compute (`showPeopleForHours`/`getCostForPersonDate`/`getEffectiveHours`/`getRunPayrollReviewDayItems`) that moves to **Hours (last)**; the child opens it via `onOpenForecast`/`onOpenDraftPayroll` callbacks. (2) the **Record-payment / mark-paid** cluster — `payStubMarkPaid*` state + modal + `confirmPayStubMarkPaid` + `openEmployeeCreditFromRecordPayment` + `recordPaymentRefreshAfterEmployeeCreditRef` — because the "Record employee credit…" path is wired to the **parent-owned `PersonOffsetFormModal`** (shared with `offsets`), whose `onSaved` reaches back into the mark-paid target/amount; the child opens it via `onRecordPayment`. The **delete-confirm** modal also stays (its `deletePayStub` does an optimistic `setPayStubs` on parent state); the child requests deletes via `onRequestDeleteStub`. The dossier below is the pre-extraction inventory.
 
-- **Render:** [`13634-14388`](../src/pages/People.tsx) + modal cluster (PayStubLess/Additional/Delete/Note/MarkPaid 14030-14318, Forecast 14321, DraftPayroll 14330, breakdown 14374) + **calendar modal 21314-21431** (~870 total). `canAccessPay` only.
-- **Owned state (~35):** `payStubs`(752), `payStub*ByStubId` (753-755), modal stubs (756-757), `payStubsLoading`(768), period (769/776), calendar (783-786), action flags (787-796), confirm/mark-paid (807-814), `ledgerPersonSearch`(816).
-- **Cross-tab/shared:** reads `payConfig`(594), `peopleHours`(643) + `loadPeopleHours`, `hoursDaysCorrect`(717), rosters. `payStubCalendarPerson`(783) is a pay_stubs-local pointer.
-- **Loaders:** `loadPayStubs`(3487), `loadPayStubCalendarData`(3578), `generatePayStub`(~3897), print builders (4065-4287), `loadDraftPayrollPendingApprovals`(3385).
+- **Render:** pre-extraction: the stub table + modal cluster (PayStubLess/Additional/Delete/Note/MarkPaid, Forecast, DraftPayroll, breakdown) + the calendar modal (~870 total). `canAccessPay` only.
+- **Owned state (~35):** `payStubs`, `payStub*ByStubId`, modal stubs, `payStubsLoading`, period, calendar, action flags, confirm/mark-paid, `ledgerPersonSearch`.
+- **Cross-tab/shared:** reads `payConfig`, `peopleHours` + `loadPeopleHours`, `hoursDaysCorrect`, rosters. `payStubCalendarPerson` is a pay_stubs-local pointer.
+- **Loaders:** `loadPayStubs`, `loadPayStubCalendarData`, `generatePayStub`, print builders, `loadDraftPayrollPendingApprovals`.
 - **Sub-components (extracted):** `PayStubLessModal`, `PayStubAdditionalModal`, `DraftPayrollModal`, `PayrollForecastModal`, `DraftPayrollPersonHoursBreakdownModal`. Inline: stub table + mark-paid/note/delete + calendar modals.
 - **Supabase:** `pay_stubs`, `pay_stub_payments`/`_deductions`/`_additional_lines`/`_days`, `people_hours`, `people_crew_*`, `people_pay_config`.
 - **Coupling/risk:** **high.** Hard-depends on pay-config + people-hours layers. Extract after `usePayConfig` + `usePeopleHoursData`.
 
 ### `hours` — Hours / Pay grid (the hub)
-- **Render:** historical anchor [`14391-16725`](../src/pages/People.tsx) (~2,335 — **largest tab**). `canOpenHoursTab` = `canAccessPay || canAccessHours` ([`People.tsx:291`](../src/pages/People.tsx); the `canViewCostMatrixShared` term died with the cost-matrix retirement).
+- **Render:** ~2,335 pre-extraction lines — **largest tab**. `canOpenHoursTab` = `canAccessPay || canAccessHours` ([`People.tsx`](../src/pages/People.tsx), search the symbol; the `canViewCostMatrixShared` term died with the cost-matrix retirement).
 - **Owned state (~40):** `peopleHours`, clock-session queues (`pendingClockSessions`, approved/rejected, search), grid highlight/edit state, date range, various modals, and **shared-owner** state: `payConfig`/`payConfigDraft`/`payConfigSaving`, `teams`, `crewJobsByDatePerson`, `salaryTemplateByPersonName`. (All `costMatrix*` state removed in the 2026-07-15 retirement.)
 - **Cross-tab/shared (OWNS, others read):** `payConfig` (pay_stubs/overhead/review/employment read), `teams` (teams tab + the Hours Teams / Due-by-Team sections), `crewJobsByDatePerson` (overhead/pay_stubs read).
 - **Loaders:** `loadPeopleHours`, the clock-session loaders, `loadHoursReviewed`, `loadPayConfig`, `savePayConfig`, `saveHours` (line anchors dropped — search the symbols; the cost-matrix loaders are gone). **Realtime-subscribed** via `usePeopleHoursData`.
-- **Sub-components (extracted):** `ReviewHoursModal`, `TeamSummaryInline`, `PeoplePayConfigModal`, `SalariedWorkdaysBulkModal`, `PeopleHoursPendingCellPopover`, `PeopleHoursBulkApprovePendingModal`, `ClockSessionEditSplitModal`, `HoursUnassignedModal`, `PeopleHoursDayAuditModal`, `PeopleHoursGrid`, `PeopleHoursAlignModal` (v2.1098 — "Align hours" one-pass linker for the week's unmarked sessions; button in the Hours-grid section header, gated `canEditCrewJobs`; queue kernel in [`lib/people/alignHoursQueue.ts`](../src/lib/people/alignHoursQueue.ts), snapshot-on-mount, parent refetches via the load refs on close; opens the day editor through `openHoursMyTimeFromSession` as its escape hatch). Inline: only the clock-strip wrapper. (`PeopleCostMatrix` + `PeopleHoursSharing` deleted in the 2026-07-15 retirement; `PersonTimeDetailModal` deleted 2026-07-24 — its last importer had already gone, see v2.992.)
+- **Sub-components (extracted):** `ReviewHoursModal`, `TeamSummaryInline`, `SalariedWorkdaysBulkModal`, `PeopleHoursPendingCellPopover`, `PeopleHoursBulkApprovePendingModal`, `ClockSessionEditSplitModal`, `HoursUnassignedModal`, `PeopleHoursDayAuditModal`, `PeopleHoursGrid`, `PeopleHoursAlignModal` (v2.1098 — "Align hours" one-pass linker for the week's unmarked sessions; button in the Hours-grid section header, gated `canEditCrewJobs`; queue kernel in [`lib/people/alignHoursQueue.ts`](../src/lib/people/alignHoursQueue.ts), snapshot-on-mount, parent refetches via the load refs on close; opens the day editor through `openHoursMyTimeFromSession` as its escape hatch). Inline: only the clock-strip wrapper. (`PeoplePayConfigModal` is no longer opened from this tab — the pay-config button moved to the Payroll tab's header in v2.1257 and the modal mounts tab-independent, gated on `canAccessPay`. `PeopleCostMatrix` + `PeopleHoursSharing` deleted in the 2026-07-15 retirement; `PersonTimeDetailModal` deleted 2026-07-24 — its last importer had already gone, see v2.992.)
 - **Supabase:** `clock_sessions`, `people_hours`, `people_pay_config`, `hours_reviewed`, `hours_days_correct`, `people_hours_display_order`, `people_teams`/`_team_members`, `people_crew_*`, `salary_work_schedule_templates`. (The `people_cost_matrix_*` / share tables were dropped by migration `20260715090000`.)
 - **Coupling/risk:** **very high.** The central hub. Extract **last**, after the shared hooks exist.
 
 ### `vehicles` — Vehicles
-- **Render:** table [`16726-16855`](../src/pages/People.tsx) (~130) + form modals 20814-20918 (~105). Total ~235.
-- **Owned state (~23):** `vehicles`(945)/Loading/Error, `vehicleFormOpen`(948)/`editingVehicle`(949)/`selectedVehicleId`(950), `odometerEntries`(951)/`replacementValueEntries`(952)/`possessions`(953)/`vehicleAssignees`(954), form fields (955-981).
-- **Cross-tab/shared:** reads `users` only (assignee names). `selectedVehicleId`(950) local pointer.
-- **Loaders:** `loadVehicles`(4682), `loadOdometerEntries`(4724)/`loadReplacementValueEntries`(4734)/`loadPossessions`(4744); effect 6296.
+- **Render:** pre-extraction: table (~130) + form modals (~105). Total ~235.
+- **Owned state (~23):** `vehicles`/Loading/Error, `vehicleFormOpen`/`editingVehicle`/`selectedVehicleId`, `odometerEntries`/`replacementValueEntries`/`possessions`/`vehicleAssignees`, form fields.
+- **Cross-tab/shared:** reads `users` only (assignee names). `selectedVehicleId` local pointer.
+- **Loaders:** `loadVehicles`, `loadOdometerEntries`/`loadReplacementValueEntries`/`loadPossessions` + a load effect.
 - **Supabase:** `vehicles`, `vehicle_odometer_entries`, `vehicle_replacement_value_entries`, `vehicle_possessions`, `users`.
 - **Coupling/risk:** **low — best first target.** Fully domain-isolated. Establishes the `People<Domain>Tab` prop pattern.
 
 ### `housing` — Housing
-- **Render:** table [`16856-16989`](../src/pages/People.tsx) (~134) + form modals 20919-20985. Mirror of vehicles.
-- **Owned state (~16):** `housingUnits`(984)/Loading/Error, `housingFormOpen`(987)/`editingHousingUnit`(988)/`selectedHousingId`(989), `housingPossessions`(990)/`housingAssignees`(991), form fields (992-998).
-- **Loaders:** `loadHousingUnits`(4883)/`loadHousingPossessions`(4926); effect 6302.
+- **Render:** pre-extraction: table (~134) + form modals. Mirror of vehicles.
+- **Owned state (~16):** `housingUnits`/Loading/Error, `housingFormOpen`/`editingHousingUnit`/`selectedHousingId`, `housingPossessions`/`housingAssignees`, form fields.
+- **Loaders:** `loadHousingUnits`/`loadHousingPossessions` + a load effect.
 - **Supabase:** `housing_units`, `housing_possessions`, `users`.
 - **Coupling/risk:** **low — second target** (copy of the vehicles extraction).
 
 ### `offsets` — Offsets
-- **Render:** [`16990-17163`](../src/pages/People.tsx) (~174) + apply modal 20792; `PersonOffsetFormModal` (imported) opened via `offsetFormOpen`.
-- **Owned state (~10):** `offsets`(969)/Loading/Error, `offsetFormOpen`(972)/`offsetFormInitialCreateDraft`(973)/`editingOffset`(974), `offsetApplyModalOpen`(975)/`offsetToApply`(976)/`offsetApplyPayStubId`(977), `offsetsTabSearch`(978).
-- **Cross-tab/shared:** reads `payStubs` (apply-offset-to-stub; its effect 6309 also calls `loadPayStubs`), `offsetPersonNameOptions`(509).
-- **Loaders:** `loadOffsets`(5039).
+- **Render:** pre-extraction: ~174 lines + the apply modal; `PersonOffsetFormModal` (imported) opened via `offsetFormOpen`.
+- **Owned state (~10):** `offsets`/Loading/Error, `offsetFormOpen`/`offsetFormInitialCreateDraft`/`editingOffset`, `offsetApplyModalOpen`/`offsetToApply`/`offsetApplyPayStubId`, `offsetsTabSearch`.
+- **Cross-tab/shared:** reads `payStubs` (apply-offset-to-stub; its load effect also calls `loadPayStubs`), `offsetPersonNameOptions`.
+- **Loaders:** `loadOffsets`.
 - **Supabase:** `person_offsets`.
 - **Coupling/risk:** **low-med.** Self-contained except the pay-stub apply linkage — pass `payStubs` (or its loader) as a prop.
 
 ### `licenses` — Licenses
-- **Render:** [`17164-17376`](../src/pages/People.tsx) (~213) + form modals 20682-20791 (license + cost-line).
-- **Owned state (~18):** `licenses`(1002)/Loading/Error/`licensesExpiringSoon`(1005), `selectedLicensePersonName`(1006), `licenseFormOpen`(1007)/`editingLicense`(1008) + fields, `costLineFormOpen`(1013)/`editingCostLine`(1014) + fields, `expandedCostLinesLicenseId`(1019).
-- **Loaders:** `loadLicenses`(5099), cost-line CRUD (6192-6287); effect 6319.
+- **Render:** pre-extraction: ~213 lines + form modals (license + cost-line).
+- **Owned state (~18):** `licenses`/Loading/Error/`licensesExpiringSoon`, `selectedLicensePersonName`, `licenseFormOpen`/`editingLicense` + fields, `costLineFormOpen`/`editingCostLine` + fields, `expandedCostLinesLicenseId`.
+- **Loaders:** `loadLicenses`, cost-line CRUD + a load effect.
 - **Supabase:** `person_licenses`, `person_license_cost_lines`.
 - **Coupling/risk:** **low — third target.** `canAccessLicenses`-gated.
 
 ### `contracts` — Contracts
-- **Render:** main table [`17377-17891`](../src/pages/People.tsx) (~515) + **big inline modal cluster 17906-18974** (template 17906, assign 18098, document editor 18314, delete-confirm 18740, signed-record 18828, book 18836, send 18848) (~1,068). Total ~1,583.
-- **Owned state (~50):** `contractTemplates`(1062)/`contractTemplateDocuments`(1063)/`personContractAssignments`(1064)/`personContractDocuments`(1065), modal flags (1070-1097), `contractDocumentForm*` (1073-1112), `contractSend*` (1098-1102), `templateForm*` (1118-1125).
-- **Cross-tab/shared:** **writes `contractSigningStatusByPersonName`(591)** which the **users** tab reads (the only real cross-tab write). Reads `people` names.
-- **Loaders:** `loadContracts`(5116), template/assignment/document CRUD (5542-6140); effects 6328-6341.
+- **Render:** pre-extraction: main table (~515) + big inline modal cluster (template, assign, document editor, delete-confirm, signed-record, book, send) (~1,068). Total ~1,583.
+- **Owned state (~50):** `contractTemplates`/`contractTemplateDocuments`/`personContractAssignments`/`personContractDocuments`, modal flags, `contractDocumentForm*`, `contractSend*`, `templateForm*`.
+- **Cross-tab/shared:** **writes `contractSigningStatusByPersonName`** which the **users** tab reads (the only real cross-tab write). Reads `people` names.
+- **Loaders:** `loadContracts`, template/assignment/document CRUD + load effects.
 - **Sub-components (extracted):** `ContractBookModal`, `PersonContractSignedRecordModal`. Inline: template/assign/document/send modals.
-- **External coupling:** `checkGoogleDriveAttachmentUrl`, `hasContractSigningContent`, `buildContractSendEmailPreview`. `canAccessContracts` + `canDeletePeopleContracts`(839).
+- **External coupling:** `checkGoogleDriveAttachmentUrl`, `hasContractSigningContent`, `buildContractSendEmailPreview`. `canAccessContracts` + `canDeletePeopleContracts`.
 - **Coupling/risk:** **med-high by line count, low by data-coupling** — only the signing-status write escapes. Biggest cheap win; move the modal cluster into `PeopleContractsTab` and surface `contractSigningStatusByPersonName` as a callback.
 
 ### `writeups` — Writeups
-- **Render:** [`17892-17904`](../src/pages/People.tsx) (~13). Thin wrapper `WriteupsContractsSubTab`. **Mostly done** — remaining seam: move `loadWriteupsData`(5148) + its 5 rows (`writeupTemplatesRows`/`writeupsRows`/`ncnsRows`/`writeupsLoading`/`writeupsError`, 1126-1130) into the child.
+- **Render:** ~13 lines. Thin wrapper `WriteupsContractsSubTab`. **Mostly done** — remaining seam: move `loadWriteupsData` + its 5 rows (`writeupTemplatesRows`/`writeupsRows`/`ncnsRows`/`writeupsLoading`/`writeupsError`) into the child.
 
 ### `review` — Review (dev-only)
 > **Extracted** to [`src/components/people/PeopleReviewTab.tsx`](../src/components/people/PeopleReviewTab.tsx) (~4,980 lines) + the pure kernel [`src/lib/people/derivePersonTeamSummary.ts`](../src/lib/people/derivePersonTeamSummary.ts) (Stage A, with tests; shared types in [`src/lib/people/teamReviewTypes.ts`](../src/lib/people/teamReviewTypes.ts)). The parent shrank ~4,889 lines (13,487 → 8,598). **`useTeamSummaryData` folded in** (per the deferral note) — the team-summary load/derive lives in the component, not a standalone hook. **Props:** `payConfig`, `archivedUserNames`, `authUser`, `isDev`, `users`, `people`, plus the **Review↔Hours bridge** kept in the parent and passed down (Option 1): `onOpenDayEditor`/`onDrilldownOpenChange`, `teamSummaryInlineRef`, `teamSummaryDataCacheRef`/`teamSummaryModalOpenRef`/`teamSummaryRefreshPendingRef`/`reviewHoursReopenAfterLoadRef`, `teamSummaryDrainTick`, and the shared `getDaysInRange`. **Stayed in the parent:** the shared `DashboardMyTimeDayEditorModal` (also used by Hours) + its `onSaved`, `handleInlineOpenDayEditor`, the bridge refs/tick, `archivedUserNames` + `loadArchivedUserNames` (shared), `reviewHoursModalOpen` + `ReviewHoursModal` (a Hours feature despite the name), the draft-payroll `*Review*` helpers, the review tab-nav button, and the `tab=review` URL guard. `reviewOverheadRates` (left in the parent during the overhead extraction) moved out with this tab. The dossier below is the pre-extraction inventory.
 
-- **Render:** [`18975-20494`](../src/pages/People.tsx) (~1,520). Gate `activeTab === 'review' && isDev`.
-- **Owned state (~35):** `selectedReviewPersonIndex`(1411), `reviewPeriod`(1412)/range (1415-1416), `reviewLoading`(1417), `reviewLaborJobs`/`reviewCrewJobs`/`reviewAllocated*`/`reviewHours`/`reviewReports`/`reviewTasks*` (1478-1497), `teamSummaryRows`(1530)/Loading/Error + refs (1531-1563), `reviewLaborBreakdownContext`(1577)/`reviewOnlyPaidInFull`(1579).
-- **Cross-tab/shared:** reads `payConfig`, `archivedUserNames`; shares `TeamSummaryInline` + `loadTeamSummaryData`(9377) machinery with **hours**. `selectedReviewPersonIndex`(1411) local pointer.
-- **Loaders:** `loadReviewData`(7895), `loadTeamReviewUnion`(8721), `loadTeamSummaryData`(9377); effect 6351.
+- **Render:** ~1,520 pre-extraction lines. Gate `activeTab === 'review' && isDev`.
+- **Owned state (~35):** `selectedReviewPersonIndex`, `reviewPeriod`/range, `reviewLoading`, `reviewLaborJobs`/`reviewCrewJobs`/`reviewAllocated*`/`reviewHours`/`reviewReports`/`reviewTasks*`, `teamSummaryRows`/Loading/Error + refs, `reviewLaborBreakdownContext`/`reviewOnlyPaidInFull`.
+- **Cross-tab/shared:** reads `payConfig`, `archivedUserNames`; shares `TeamSummaryInline` + `loadTeamSummaryData` machinery with **hours**. `selectedReviewPersonIndex` local pointer.
+- **Loaders:** `loadReviewData`, `loadTeamReviewUnion`, `loadTeamSummaryData` + a load effect.
 - **Supabase:** `people_labor_job*`, `people_crew_*`, `people_hours`, `checklist_instances`, `app_settings`, `jobs_ledger_materials`, `clock_sessions`.
 - **Coupling/risk:** **med-high.** Big analytics block, dev-only (low blast radius) but tangled with the Team-Summary machinery shared with hours. Extract `useTeamSummaryData` first.
 
 ### `feedback` — Feedback (dev-only)
-- **Render:** [`20496-20500`](../src/pages/People.tsx) (~5). Thin wrapper `TeamFeedbackDevSettingsBlock`. **Done.**
+- **Render:** ~5 lines. Thin wrapper `TeamFeedbackDevSettingsBlock`. **Done.**
 
 ### `activity` — App Activity
-- **Render:** [`20502-20681`](../src/pages/People.tsx) (~180). Renders `PeopleAppActivityPanel` at 20676 but keeps inline **grant-management UI** above it.
-- **Owned state (6):** `activityAccessResolved`(581)/`isActivityViewer`(582)/`activityViewerGrantSet`(583)/`activityGrantListLoading`(584)/`activityGrantBusyId`(585)/`activityGrantsSectionOpen`(586).
-- **Loaders:** access-resolution 1953-1990; grant toggle 20602/20637.
+- **Render:** ~180 lines. Renders `PeopleAppActivityPanel` but keeps inline **grant-management UI** above it.
+- **Owned state (6):** `activityAccessResolved`/`isActivityViewer`/`activityViewerGrantSet`/`activityGrantListLoading`/`activityGrantBusyId`/`activityGrantsSectionOpen`.
+- **Loaders:** access-resolution + grant-toggle handlers.
 - **Supabase:** `user_app_activity_viewers`, `users`.
 - **Coupling/risk:** **low.** Move the inline grant UI + 6 vars into `PeopleAppActivityPanel` (or a `PeopleActivityGrantsSection`).
 
@@ -193,31 +201,31 @@ Tabs switch on a single `activeTab` state ([`People.tsx:282`](../src/pages/Peopl
 ## Shared infrastructure
 
 ### Per-tab selection pointers (no shared pointer)
-| Pointer | Line | Tab |
-|---|---|---|
-| `selectedVehicleId` | 950 | vehicles |
-| `selectedHousingId` | 989 | housing |
-| `selectedLicensePersonName` | 1006 | licenses |
-| `selectedContractsPersonName` | 1069 | contracts |
-| `payStubCalendarPerson` | 783 | pay_stubs |
-| `selectedReviewPersonIndex` | 1411 | review |
-| `offsetToApply` | 976 | offsets |
+| Pointer | Tab |
+|---|---|
+| `selectedVehicleId` | vehicles |
+| `selectedHousingId` | housing |
+| `selectedLicensePersonName` | licenses |
+| `selectedContractsPersonName` | contracts |
+| `payStubCalendarPerson` | pay_stubs |
+| `selectedReviewPersonIndex` | review |
+| `offsetToApply` | offsets |
 
 Each is tab-local; keep it that way during extraction.
 
 ### Top-level shared state
-| Variable | Line | Used by |
-|---|---|---|
-| `activeTab` | 537 | all tabs (render gate + ~40 effect gates) |
-| `users` / `people` (+ refs) | 498/506 | users, hours, pay_stubs, offsets, licenses, contracts, review, vehicles/housing (assignees) |
-| `payConfig` / `Draft` | 594/596 | hours (owner); pay_stubs/overhead/review (readers) |
-| `peopleHours` | 643 | hours (owner); pay_stubs |
-| `crewJobsByDatePerson` | 940 | hours, overhead, review, pay_stubs |
-| `teams` | — | teams tab + the Hours Teams / Due-by-Team sections |
-| Permission flags | 545-551, 835-840, 11372 | every tab (gates) |
+| Variable | Used by |
+|---|---|
+| `activeTab` | all tabs (render gate + ~40 effect gates) |
+| `users` / `people` (+ refs) | users, hours, pay_stubs, offsets, licenses, contracts, review, vehicles/housing (assignees) |
+| `payConfig` / `Draft` | hours (owner); pay_stubs/overhead/review (readers) |
+| `peopleHours` | hours (owner); pay_stubs |
+| `crewJobsByDatePerson` | hours, overhead, review, pay_stubs |
+| `teams` | teams tab + the Hours Teams / Due-by-Team sections |
+| Permission flags | every tab (gates) |
 
-### Permission / role flags (loaded once by `loadPayAccess` @1903)
-From [`usePeopleAccess`](../src/hooks/usePeopleAccess.ts) (**6 flags**, lines 11-16): `canAccessPay`, `canAccessHours`, `canAccessLicenses`, `canAccessContracts`, `isDev`, `canSeePushStatus` — no `canViewCostMatrixShared` anymore (retired 2026-07-15). Derived in the parent: `canOpenHoursTab` = `canAccessPay || canAccessHours` (People.tsx:291), `canSeeActivityTab`, `canAccessTeamsTab`, `canAccessOverheadTab`, `canDeletePeopleContracts`, `canEditUserNotes`. The URL deep-link router redirects unauthorized `tab=` values back to `users`.
+### Permission / role flags (loaded once by `loadPayAccess`)
+From [`usePeopleAccess`](../src/hooks/usePeopleAccess.ts) (**6 flags**): `canAccessPay`, `canAccessHours`, `canAccessLicenses`, `canAccessContracts`, `isDev`, `canSeePushStatus` — no `canViewCostMatrixShared` anymore (retired 2026-07-15). Derived in the parent: `canOpenHoursTab` = `canAccessPay || canAccessHours`, `canSeeActivityTab`, `canAccessTeamsTab`, `canAccessOverheadTab`, `canDeletePeopleContracts`, `canEditUserNotes`. The URL deep-link router redirects unauthorized `tab=` values back to `users`.
 
 ### Shared layers lifted into hooks (the `useBidPricingEngine` analog)
 | Hook | Status | Owns | Consumed by |

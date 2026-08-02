@@ -5,12 +5,12 @@ file: docs/QUICKFILL_ARCHITECTURE.md
 type: Architecture Map / Decomposition
 purpose: Step-0 map for the Quickfill billing-workflow surface (per PAGE_DECOMPOSITION_PLAYBOOK.md) — inventory what src/pages/Quickfill.tsx and src/components/quickfill/QuickfillScheduleSection.tsx own (state, handlers, supabase tables/RPCs, realtime, sub-components, coupling) so future extractions need no re-derivation. Sections: What this surface is; How to read a dossier; Master summary table; Quickfill.tsx region dossiers; QuickfillScheduleSection region dossiers; Shared substrate; Stage-A pure-logic inventory; Preserve-quirks list; Recommended extraction order; What stays in the parent.
 audience: Developers, AI Agents
-last_updated: 2026-07-29
+last_updated: 2026-08-02
 ---
 
 ## What this surface is
 
-Quickfill is the office billing-workflow checklist page: a single vertical page of ~24 collapsible **sections** (not tabs), each an operational review station ("Billing Awaiting Payments", "Jobs Billing", "Schedule", "Email Inbox", …) with an org-wide "Mark … up to date!" freshness system. Two files are in scope:
+Quickfill is the office billing-workflow checklist page: a single vertical page of ~24 collapsible **sections** (not tabs), each an operational review station ("Billed Awaiting Payment", "Jobs Billing", "Schedule", "Email Inbox", …) with an org-wide "Mark … up to date!" freshness system. Two files are in scope:
 
 | File | Lines (2026-07-29) | Churn | Role |
 |---|---|---|---|

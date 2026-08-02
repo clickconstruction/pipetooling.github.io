@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1270',
+    date: '2026-08-02',
+    title: 'Behind the scenes: Bids and People developer docs match the app again',
+    kind: 'infra',
+    highlights: [
+      'Internal docs for Bids, People, Prospects, Quickfill, and Projects now use the current names (Labor tab, Hiring, Payroll, Billed Awaiting Payment) and accurate schemas.',
+      'The glossary and main project documentation dropped references to renamed surfaces and long-gone files.',
+    ],
+  },
+  {
     version: 'v2.1269',
     date: '2026-08-02',
     title: 'Behind the scenes: incident and database runbooks no longer contradict each other',

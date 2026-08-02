@@ -5,7 +5,7 @@ file: docs/PROSPECTS_TABS_ARCHITECTURE.md
 type: Architecture Map / Decomposition
 purpose: Step-0 map for the Prospects surface (per PAGE_DECOMPOSITION_PLAYBOOK.md) — inventory what every tab of src/pages/Prospects.tsx (3,373 lines) and the already-extracted src/components/prospects/TeamProspectsTab.tsx (1,820 lines, high churn) touches (state, loaders, handlers, sub-components, supabase tables, cross-tab coupling), so extraction can proceed tab by tab without re-deriving the strategy.
 audience: Developers, AI Agents
-last_updated: 2026-07-29
+last_updated: 2026-08-02
 sections: What this surface is; Master summary table; Shared substrate; Per-tab dossiers; TeamProspectsTab sub-decomposition; Page-level modals; URL / navigation router; Stage-A pure-logic inventory; Preserve-quirks list; Recommended extraction order
 ---
 
@@ -22,9 +22,9 @@ topTab:    'customers' | 'team'                                  (ProspectsTopTa
 activeTab: 'follow-up' | 'prospect-list' | 'convert' | 'activity' (ProspectsTab, only under 'customers')
 ```
 
-Both are URL-synced through one `?tab=` param (`team` selects the top-level Team tab; the four `PROSPECTS_TABS` values select Customers sub-tabs). Inside TeamProspectsTab a third level exists: `stage: 'screen' | 'interview' | 'hire' | 'review'` (deep-linked once via `?stage=`, then stripped).
+Both are URL-synced through one `?tab=` param (`team` selects the top-level Hiring tab (label renamed Team → Hiring in v2.1253; key `team` unchanged); the four `PROSPECTS_TABS` values select Customers sub-tabs). Inside TeamProspectsTab a third level exists: `stage: 'screen' | 'interview' | 'hire' | 'review'` (deep-linked once via `?stage=`, then stripped).
 
-Access gates (all from `useAuth`): `canAccessFollowUp` (dev / master_technician / assistant / controller, or estimator with `estimatorProspectsAccess`) gates Follow Up / Prospect List / Convert; `canAccessActivityTab` (`authRole === 'dev' || isAssistantLike(authRole)`) gates Activity; `teamProspectsAccess` (per-user `users.team_prospects_access` flag, RLS-enforced server-side) gates Team.
+Access gates (all from `useAuth`): `canAccessFollowUp` (dev / master_technician / assistant / controller, or estimator with `estimatorProspectsAccess`) gates Follow Up / Prospect List / Convert; `canAccessActivityTab` (`authRole === 'dev' || isAssistantLike(authRole)`) gates Activity; `teamProspectsAccess` (per-user `users.team_prospects_access` flag, RLS-enforced server-side) gates the Hiring tab.
 
 **Line numbers below are as of 2026-07-29 and rot — always search the named symbol.**
 
@@ -36,7 +36,7 @@ Access gates (all from `useAuth`): `canAccessFollowUp` (dev / master_technician 
 | Prospect List | `activeTab === 'prospect-list'` (~2173–2462) | ~290 | inline | 5 states | med (writes shared caches, opens shared Edit modal, navigates to Follow Up) | med | Extract 3rd, after the data seam |
 | Convert | `activeTab === 'convert'` (~2464–2669) | ~205 + 4 effects | inline | 7 states (`convert*` cluster) | low (reads both caches + `currentProspect` default) | low | **Extract 2nd** → `ProspectsConvertTab` |
 | Activity | `activeTab === 'activity'` (~2671–2725) | ~55 | inline | 2 states | none (own loader, lib kernel already extracted) | lowest | **Extract 1st** → `ProspectsActivityTab` |
-| Team (hiring board) | `topTab === 'team'` wrapper (~1635–1637) | 3 (wrapper) | **extracted** (`TeamProspectsTab`) | 0 in parent | `resolveMasterId={getEffectiveMasterId}` callback only | — | Done at page level; needs its own sub-decomposition (below) |
+| Hiring (hiring board, key `team`) | `topTab === 'team'` wrapper (~1635–1637) | 3 (wrapper) | **extracted** (`TeamProspectsTab`) | 0 in parent | `resolveMasterId={getEffectiveMasterId}` callback only | — | Done at page level; needs its own sub-decomposition (below) |
 | Page-level modals | after the tabs (~2727–3370) | ~650 | inline | Edit/New Prospect + 5 follow-up modals | Edit Prospect + New Prospect opened from 2+ contexts | — | Edit + New Prospect stay in parent; the other 5 move with Follow Up |
 | — TeamProspectsTab: Screen board | `stage === 'screen'` DndContext (~1258–1300) + module components | ~450 | inline (in TPT) | drag/rank via lib kernel | shares `rows`/`roles`/`load`/`busy`/`setStatus` with all stages | med | Component per stage after a `useTeamProspectsData` seam |
 | — TeamProspectsTab: Interview | `stage === 'interview'` (~1302–1400) | ~100 | inline (in TPT) | review modal cluster | reads `reviews`/`reviewerNames`, `setStatus` | low-med | Extract with review modal |
@@ -101,7 +101,7 @@ The page **has** a Bids-style shared selection pointer, plus a two-cache data la
 - **Supabase tables (via the lib):** `users`, `prospect_timer_events`, `prospect_comments`.
 - **Extraction status + risk + approach:** Inline. **Lowest risk — extract first** → `ProspectsActivityTab`. Props: none beyond an optional `active` gate (the loader is role-gated inside `loadTeamActivity` already; pass `canAccess` or keep the parent render gate). This is the momentum-builder that validates the seam, exactly like `bid-costs` was for Bids.
 
-### `team` — Team (hiring board) — extracted wrapper
+### `team` — Hiring (hiring board) — extracted wrapper
 
 - **Render location:** `topTab === 'team' && teamProspectsAccess && authUser?.id` → `<TeamProspectsTab authUserId={authUser.id} isDev={authRole === 'dev'} resolveMasterId={getEffectiveMasterId} />` (~1635–1637).
 - **Owned state in parent:** none. `getEffectiveMasterId` (assistant → first `master_assistants.master_id` adoption; dev/master → self) stays in the parent because `saveNewProspect` also uses it.
