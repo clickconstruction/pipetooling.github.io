@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-01 (v2.1258)
+last_updated: 2026-08-01 (v2.1259)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1259)
+
+### Materials — Draft Purchase Orders show their created date (2026-08-01)
+On **Materials → Assemblies & Purchase Orders**, each Draft Purchase Order card's bottom line now ends with the PO's **created date** on the right (items • total stays on the left; hover shows the full created timestamp). The bottom line becomes a space-between flex row in [`Materials.tsx`](../src/pages/Materials.tsx); `purchase_orders.created_at` was already in the `select('*')` load, so no query changes. Verified live with the dev test account against real drafts (Electrical): `2/2 items • $55.68 total` left, `2/21/2026` right. `tsc -b` clean, vitest green. No DB / migration / RLS / RPC / Edge changes.
 
 ## Latest Updates (v2.1258)
 

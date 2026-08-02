@@ -4739,8 +4739,16 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
                           <div style={{ flex: 1 }}>
                             <div style={{ fontWeight: 600, marginBottom: '0.25rem' }}>{po.name}</div>
-                            <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-                              {po.items.filter(i => Number(i.price_at_time ?? 0) > 0).length}/{po.items.length} items • ${formatCurrency(total)} total
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '0.75rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
+                              <span>
+                                {po.items.filter(i => Number(i.price_at_time ?? 0) > 0).length}/{po.items.length} items • ${formatCurrency(total)} total
+                              </span>
+                              <span
+                                title={po.created_at ? `Created ${new Date(po.created_at).toLocaleString()}` : undefined}
+                                style={{ whiteSpace: 'nowrap' }}
+                              >
+                                {po.created_at ? new Date(po.created_at).toLocaleDateString() : ''}
+                              </span>
                             </div>
                           </div>
                         </div>
