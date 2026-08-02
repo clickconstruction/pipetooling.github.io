@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-02 (v2.1272)
+last_updated: 2026-08-02 (v2.1273)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1273)
+
+### Projects card rail: segmented Jobs control, ghost Edit, no dead Superintendents row (2026-08-02)
+Redesign of the project-card right rail in [`Projects.tsx`](../src/pages/Projects.tsx). **(1) Segmented Jobs control**: the "Jobs:" label, per-job chips, and "+ Create Job" link fuse into one bordered pill — a muted "Jobs" label cap, one segment per job (status dot + `hcp_number || job_name`, click opens Job Detail in place per v2.1193, `title` shows the Dashboard-style status label), and a trailing sky "+" segment linking to `/jobs?newJob=true&project=…`. Capped at 3 visible segments with a "+N more" expander (per-project `expandedJobChips` state) and 120px ellipsis on names so the pill can't overflow. Empty state = label cap + "+ Job" segment (replaces the bare "+ Create Job for this project" link). **(2)** Status dots via new kernel `jobsLedgerStatusDotColor()` in [`jobsLedgerStatusPipeline.ts`](../src/lib/jobsLedgerStatusPipeline.ts) (+ new test file, 6 tests — waiting amber, working blue, ready-to-bill teal, billed orange, paid green, unknown neutral). **(3)** "Superintendents: None" dead text is gone: the row renders only when someone is assigned or assignable; the empty-but-assignable state shows a dashed "+ Superintendent" button. **(4)** Edit is a ghost button with a lucide pencil instead of an underlined text link. Verified live on the dev server (3 cards: no "Superintendents: None", no "+ Create Job", segmented control renders on all). Typecheck/lint/theme-token check clean; 370 files / 3,356 tests green. No DB changes.
 
 ## Latest Updates (v2.1272)
 

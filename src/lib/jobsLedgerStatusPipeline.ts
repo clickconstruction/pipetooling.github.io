@@ -37,3 +37,17 @@ export function labelJobsLedgerStatusForDashboard(raw: string | null | undefined
   if (!k) return '—'
   return DASHBOARD_STATUS_LABELS[k] ?? '—'
 }
+
+/** Projects-card job chips: one saturated dot color per pipeline stage. */
+const STATUS_DOT_COLORS: Record<JobsLedgerPipelineStatus, string> = {
+  waiting: '#f59e0b',
+  working: '#3b82f6',
+  ready_to_bill: '#14b8a6',
+  billed: '#f97316',
+  paid: '#22c55e',
+}
+
+export function jobsLedgerStatusDotColor(raw: string | null | undefined): string {
+  const k = normalizeJobsLedgerStatus(raw)
+  return k ? STATUS_DOT_COLORS[k] : '#9ca3af'
+}
