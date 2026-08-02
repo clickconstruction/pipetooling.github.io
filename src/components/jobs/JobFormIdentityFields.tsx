@@ -125,8 +125,8 @@ export function JobFormIdentityFields({
               <button
                 type="button"
                 onClick={onTradePillClick}
-                title="Open this job in Jobs → Stages (closes Edit Job — your changes save automatically)"
-                aria-label="Open this job in Jobs → Stages. Closes Edit Job; your changes save automatically."
+                title="Open this job in Jobs → Pipeline (closes Edit Job — your changes save automatically)"
+                aria-label="Open this job in Jobs → Pipeline. Closes Edit Job; your changes save automatically."
                 style={{ ...tradePill.style, marginTop: 0, cursor: 'pointer', flexShrink: 0 }}
               >
                 {tradePill.label}

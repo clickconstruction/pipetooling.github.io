@@ -17,7 +17,7 @@ export default function StagesNoCustomerJobsModal({ open, onClose, jobs, onSelec
       onSelectJob={onSelectJob}
       titleId="stages-no-customer-modal-title"
       title="Jobs without a linked customer"
-      description="Jobs in the current Stages search that have no customer linked. Open Edit Job to link or create one."
+      description="Jobs in the current Pipeline search that have no customer linked. Open Edit Job to link or create one."
     />
   )
 }

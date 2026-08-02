@@ -585,7 +585,7 @@ function ItemsModal({
                 <th style={{ padding: '0.5rem 0.65rem', textAlign: 'left' }}>Item</th>
                 {showPctComplete ? (
                   <th
-                    title="% complete from Jobs → Stages"
+                    title="% complete from Jobs → Pipeline"
                     style={{ padding: '0.5rem 0.65rem', textAlign: 'center', whiteSpace: 'nowrap' }}
                   >
                     % Complete

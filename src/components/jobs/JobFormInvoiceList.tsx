@@ -341,11 +341,11 @@ export function JobFormInvoiceList({
                               onClose()
                               navigate(`/jobs?tab=stages&stagesInvoice=${encodeURIComponent(inv.id)}`)
                             }}
-                            title="Go to this invoice row on Stages"
+                            title="Go to this invoice row on Pipeline"
                             // Same green as the Stages board's invoice jump chips this lands on.
                             style={{ padding: '0.15rem 0.45rem', fontSize: '0.75rem', background: '#16a34a', border: 'none', borderRadius: 4, cursor: 'pointer', color: '#ffffff', fontWeight: 600 }}
                           >
-                            See in Stages
+                            See in Pipeline
                           </button>
                           {isDraft && inv.is_primary_rtb_bundle ? (
                             // The auto-maintained remainder bundle has no delete ✕ on

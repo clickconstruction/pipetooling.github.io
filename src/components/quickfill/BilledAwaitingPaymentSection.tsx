@@ -230,7 +230,7 @@ export function BilledAwaitingPaymentSection() {
           to="/jobs?tab=stages"
           style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', textDecoration: 'none', borderRadius: 4, fontSize: '0.875rem' }}
         >
-          View in Jobs Stages
+          View in Jobs Pipeline
         </Link>
       </div>
     </section>

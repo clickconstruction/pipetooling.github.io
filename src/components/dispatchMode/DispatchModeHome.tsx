@@ -144,7 +144,7 @@ export default function DispatchModeHome() {
 
       <section aria-label="Job stages">
         <h2 style={{ margin: '0 0 0.5rem', fontSize: '1rem', color: 'var(--text-strong)' }}>
-          Job Stages
+          Job Pipeline
         </h2>
         {loading ? (
           <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)' }}>Loading jobs…</p>
