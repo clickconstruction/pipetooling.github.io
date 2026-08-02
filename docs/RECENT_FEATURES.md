@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-02 (v2.1281)
+last_updated: 2026-08-02 (v2.1283)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1283)
+
+### People Overhead correctness: paging, invoice window, dual-rate wages, symmetric internal transfers, pay gate (2026-08-02)
+Five fixes from the Overhead deep-dive audit, in [`PeopleOverheadTab.tsx`](../src/components/people/PeopleOverheadTab.tsx) + kernels. **(1) Paging**: every query now uses `fetchAllRows`/server-side date predicates (`mercury_transactions!inner` on `posted_at`, `supply_house_invoices!inner` on `invoice_date`, paged tally RPC, paged 90-day session/invoice scans) — previously the field-materials query had NO date filter and truncated at PostgREST's 1,000 oldest rows, silently dropping current-week field materials and **inflating Overhead % everywhere** (the v2.976/v2.1246 incident class). **(2)** The per-$100-revenue KPI ports the v2.1249 Review-tab fix (fetch a day wide both sides, re-bucket in Chicago) — evening invoices no longer fall out of the window. **(3) Dual-rate wages**: the wage lookup returns `{fieldWage, officeWage}` gated by payroll's `shouldUseDualRate`; office+bid sessions price at the office rate, matching Pay Reports exactly; `PeopleReviewTab` feeds the same kernel so both tabs agree. **(4) Internal transfers** are excluded from ALL materials totals symmetrically (office + field, table + % + KPIs + modals, shared "(not counted in Materials)" treatment) — previously only the field-side modal excluded them, so numerator and denominator used different rules. **(5)** `canAccessOverheadTab` now requires payroll access for masters (`canAccessPay`) — a non-pay-approved master used to see a silently-zero tab (RLS filtered the data underneath). Docs: ACCESS_CONTROL overhead row → "If Pay Approved"; PEOPLE_CONTRACTS_OVERHEAD quirk 15 rewritten. 379 files / 3,425 tests green. Controllers remain without access (follow-up question).
 
 ## Latest Updates (v2.1281)
 
