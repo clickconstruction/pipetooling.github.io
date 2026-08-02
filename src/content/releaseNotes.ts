@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1246',
+    date: '2026-08-01',
+    title: 'People Review: numbers no longer silently truncate as history grows',
+    kind: 'fix',
+    highlights: [
+      'Large data loads now fetch every row instead of silently stopping at 1,000 — previously a person could be credited far too much (or too little) revenue depending on which rows happened to load.',
+      'Custom date ranges older than two years now show real hours and correct revenue shares instead of dashes and 100% allocations.',
+    ],
+  },
+  {
     version: 'v2.1245',
     date: '2026-08-01',
     title: 'People Review: load failures now show an error instead of wrong numbers',

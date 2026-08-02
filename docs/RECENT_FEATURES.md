@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-01 (v2.1245)
+last_updated: 2026-08-01 (v2.1246)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1246)
+
+### People → Review — bulk fetches paged + chunked; lookback anchored to the selected period (2026-08-01)
+Every company-wide / multi-year fetch in the Review tab now pages through PostgREST's silent `max_rows` (1000) cap instead of returning an arbitrary truncated subset — the Crew P&L v2.976/v2.978 incident class, here inflating allocation ratios (a truncated `people_hours` denominator falls back to **100% of a job's value** per person) and zeroing office hours for whoever fell past the cap. New tested kernel [`supabasePaging.ts`](../src/lib/supabasePaging.ts) (`fetchAllRows` — fresh query per page, stable `.order()`, throws on page error; `fetchAllRowsChunkedIn` — 150-id `.in()` chunks, paged per chunk, kills the 414 risk on unbounded id lists; 9 tests). Applied across the 90-day rate engine (overhead/field sessions + invoices), `loadTeamReviewUnion` (7 table fetches, tally RPC, both `.in()` fetches, the three ledger RPCs — which have deterministic ORDER BYs), and `loadReviewData` (same treatment). Two window fixes ride along: **(1)** the union's overhead-session fetch narrows from an unbounded 2-year scan to the selected period (the consumer always discarded the rest); **(2)** both loaders' 2-year "all-time" lookback is now anchored to `min(periodStart, today−2y)` — a custom range older than 2 years used to fall entirely outside the lookback, rendering `—` hours and crediting each person 100% of every job. Verified: `tsc -b` clean, zero new lints, vitest 3,336 green. Files: new [`supabasePaging.ts`](../src/lib/supabasePaging.ts) + tests; modified [`PeopleReviewTab.tsx`](../src/components/people/PeopleReviewTab.tsx). No DB / migration / RLS / RPC / Edge / type-gen changes.
 
 ## Latest Updates (v2.1245)
 
