@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-02 (v2.1295)
+last_updated: 2026-08-02 (v2.1297)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1297)
+
+### Takeoff decomposition T3: SortableRoughPartLineRow file move (2026-08-02)
+The architecture map's zero-risk opener: the ~650-line module-level `SortableRoughPartLineRow` (the Rough sheet's draggable line row — dnd handle, inline part picker, numpad wiring, catalog-price display) moves verbatim from [`BidsTakeoffTab.tsx`](../src/components/bids/BidsTakeoffTab.tsx) to [`components/bids/SortableRoughPartLineRow.tsx`](../src/components/bids/SortableRoughPartLineRow.tsx). The `PartType` / `RoughTakeoffMaterialPart` types move with it (the tab imports `PartType` back); tab imports slimmed (`useSortable`/`CSS`/`MoneyDecimalAmountInput`/`TakeoffPartEditIcon`/`roughCountMultiplier`/`catalogUnitPricesEffectivelyEqual` now live at the row). Pure file move — no logic change. BidsTakeoffTab.tsx 5,696 → 5,034 lines (5,765 at train start). 391 files / 3,506 tests green.
 
 ## Latest Updates (v2.1295)
 
