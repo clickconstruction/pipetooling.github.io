@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1250',
+    date: '2026-08-01',
+    title: 'People Review: negative amounts in Jobs Worked read -$244, not $-244',
+    kind: 'fix',
+    highlights: [
+      'The Jobs Worked list and its per-hour summaries now format negative dollars the standard way everywhere.',
+    ],
+  },
+  {
     version: 'v2.1249',
     date: '2026-08-01',
     title: 'People Review: display cleanup — times, totals, and date windows',
