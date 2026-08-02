@@ -25,6 +25,10 @@ export type SubsHqUserInput = { id: string; name: string | null; email: string |
 
 export type SubsHqSheetInput = Pick<LaborJob, 'id' | 'labor_rate' | 'items' | 'payments'> & {
   label: string
+  /** Raw `assigned_to_name` text — surfaced on unattributed entries so the panel can show/fix it. */
+  assignedToName?: string | null
+  /** Job number (HCP) — surfaced on unattributed entries for the #chip + deep link. */
+  jobNumber?: string | null
 }
 
 export type SubsHqCommitmentInput = {
@@ -51,10 +55,20 @@ export type SubsHqRow = {
   backchargeTotal: number
 }
 
+export type UnattributedSheet = {
+  sheetId: string
+  label: string
+  jobNumber: string | null
+  balance: number
+  reason: 'unmatched' | 'shared'
+  /** Raw `assigned_to_name` as written on the sheet ('' when blank). */
+  rawAssignedTo: string
+}
+
 export type SubsHqResult = {
   rows: SubsHqRow[]
   /** Sheets no single active sub owns (unresolved names, multi-assignee, archived people). */
-  unattributed: Array<{ sheetId: string; label: string; balance: number; reason: 'unmatched' | 'shared' }>
+  unattributed: UnattributedSheet[]
 }
 
 const OPEN_COMMITMENT_STATUSES = new Set(['offered', 'accepted', 'approved'])
@@ -122,8 +136,10 @@ export function buildSubsHqRows(input: {
       unattributed.push({
         sheetId: sheet.id,
         label: sheet.label,
+        jobNumber: sheet.jobNumber ?? null,
         balance: Math.max(0, balance.balance),
         reason: owners.length > 1 ? 'shared' : 'unmatched',
+        rawAssignedTo: (sheet.assignedToName ?? '').trim(),
       })
     }
   }
@@ -154,4 +170,57 @@ export function buildSubsHqRows(input: {
     (a, b) => b.balanceDue - a.balanceDue || b.committedTotal - a.committedTotal || a.name.localeCompare(b.name),
   )
   return { rows, unattributed }
+}
+
+export type UnattributedGroup = {
+  /** Stable key for React/UI state: label + raw name + reason. */
+  key: string
+  label: string
+  jobNumber: string | null
+  rawAssignedTo: string
+  reason: 'unmatched' | 'shared'
+  /** Sheet ids in the group, highest open balance first. */
+  sheetIds: string[]
+  sheetCount: number
+  totalBalance: number
+}
+
+/**
+ * Dedupe unattributed sheets into panel rows: one group per distinct
+ * (job label, raw assigned name, reason), sheets counted, balances summed,
+ * groups sorted by open balance desc (then label for stability).
+ */
+export function groupUnattributedSheets(entries: UnattributedSheet[]): UnattributedGroup[] {
+  const groups = new Map<string, UnattributedGroup & { balances: number[] }>()
+  for (const e of entries) {
+    const key = `${e.label}\u0000${e.rawAssignedTo.toLowerCase()}\u0000${e.reason}`
+    let g = groups.get(key)
+    if (!g) {
+      g = {
+        key,
+        label: e.label,
+        jobNumber: e.jobNumber,
+        rawAssignedTo: e.rawAssignedTo,
+        reason: e.reason,
+        sheetIds: [],
+        sheetCount: 0,
+        totalBalance: 0,
+        balances: [],
+      }
+      groups.set(key, g)
+    }
+    g.sheetIds.push(e.sheetId)
+    g.balances.push(e.balance)
+    g.sheetCount += 1
+    g.totalBalance += e.balance
+  }
+  return [...groups.values()]
+    .map(({ balances, ...g }) => ({
+      ...g,
+      sheetIds: g.sheetIds
+        .map((id, i) => ({ id, balance: balances[i]! }))
+        .sort((a, b) => b.balance - a.balance)
+        .map((s) => s.id),
+    }))
+    .sort((a, b) => b.totalBalance - a.totalBalance || a.label.localeCompare(b.label))
 }

@@ -29,4 +29,19 @@ Send the COI request from Contracts → when it's on file, open Subs → Documen
 
 ## Unattributed sheets
 
-A note at the bottom lists sheets that couldn't be tied to one sub — usually a misspelled name or a sheet naming several people. Fix the crew names in Jobs → Sub Labor and they'll fold into the right rows.
+An amber panel at the **top** of the tab lists sheets that couldn't be tied to one sub — their money is missing from every sub's balance until they're fixed. Each row shows the job, the raw name written on the sheet, why it didn't link, and the open balance:
+
+- {{chip:red|No roster match}} — the name on the sheet doesn't match anyone (usually a misspelling).
+- {{chip:blue|Multiple subs}} — the sheet names several people, so no single sub can own its balance.
+
+Fix a row without leaving the tab:
+
+- {{button:outline-amber|✨ Link to Jesse Ramos}} — one tap when the sheet's name is clearly one roster sub (e.g. "J Ramos"). Shown only when there's exactly one safe match.
+- {{button:outline|Assign…}} — pick the right sub from the roster. For a **Multiple subs** sheet this replaces the multi-name assignment with the one sub you pick.
+- {{button:outline|Open →}} — jump to the sheet in Jobs → Sub Labor to edit it directly.
+
+:::example Cleaning up a misspelled sheet
+The panel shows **#892** assigned to "MIke Rodrigez" with $1,240 open → tap {{button:outline-amber|✨ Link to Mike Rodriguez}} → the sheet folds into Mike's row and his Balance due grows by $1,240.
+:::
+
+The panel shows the three biggest balances first — **Show all N sheets** expands the rest. It disappears entirely once every sheet is linked.
