@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-01 (v2.1256)
+last_updated: 2026-08-01 (v2.1257)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1257)
+
+### People pay config moves to the Payroll tab (2026-08-01)
+Naming-audit decision N11 (option B): pay *setup* now lives with pay *history*. The **People pay config** button (wages, office rates, salary flags — the parent-owned [`PeoplePayConfigModal`](../src/components/people/PeoplePayConfigModal.tsx)) moves from the Hours tab's toolbar into the **Payroll tab's** header action cluster, first in the row before Forecast / Draft Payroll ([`PeoplePayStubsTab.tsx`](../src/components/people/PeoplePayStubsTab.tsx) gains an `onOpenPayConfig` prop). The modal mount is now tab-independent in [`People.tsx`](../src/pages/People.tsx), gated on `canAccessPay`; the `usePayConfig` hook and all state stay parent-owned and unchanged (no rekeying — the identity-plan C1-4 concern is untouched). Ride-alongs: the Draft Payroll disabled-tooltip no longer says "In Hours…", and the Review tab's empty-state points at the Payroll tab. Verified live with the dev test account: button renders on Payroll, modal opens with 23 populated wage rows + salary/office columns, Hours no longer shows the button, Review Hours untouched. `tsc -b` clean, vitest 3,336 green. No DB / migration / RLS / RPC / Edge changes.
 
 ## Latest Updates (v2.1256)
 

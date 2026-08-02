@@ -1965,7 +1965,7 @@ export default function PeopleReviewTab({
         setTeamSummaryError(null)
         setTeamSummaryLoading(false)
       } else {
-        showToast('No people in pay config. Add people in People pay config (Hours tab) first.', 'warning')
+        showToast('No people in pay config. Add people in People pay config (Payroll tab) first.', 'warning')
       }
       return
     }
@@ -3798,7 +3798,7 @@ export default function PeopleReviewTab({
           )}
 
           {showPeopleForReview.length === 0 ? (
-            <p style={{ color: 'var(--text-muted)', padding: '1rem', margin: 0 }}>No people in pay config. Add people in People pay config (Hours tab) first.</p>
+            <p style={{ color: 'var(--text-muted)', padding: '1rem', margin: 0 }}>No people in pay config. Add people in People pay config (Payroll tab) first.</p>
           ) : selectedReviewPersonIndex < 0 ? (
             // No one expanded yet — the Team Summary above acts as the
             // picker. Click a name to expand that person's panel here.

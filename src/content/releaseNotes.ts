@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1257',
+    date: '2026-08-01',
+    title: 'Pay setup now lives on the Payroll tab',
+    kind: 'feature',
+    highlights: [
+      'The People pay config button (wages, office rates, salary flags) moved from Hours to the Payroll tab \u2014 pay setup and pay history are finally in one place.',
+      'Nothing else changed: same modal, same fields, same permissions.',
+    ],
+  },
+  {
     version: 'v2.1256',
     date: '2026-08-01',
     title: 'Paste Fill is back on the Add customer form',

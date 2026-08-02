@@ -3224,6 +3224,7 @@ export default function People() {
             setHoursMyTimeEditor({ dateStr, subjectUserId, subjectDisplayName, saveableRange })
           }
           upcomingRefreshTick={ledgerUpcomingRefreshTick}
+          onOpenPayConfig={() => setPayConfigModalOpen(true)}
           onOpenForecast={() => setForecastModalOpen(true)}
           forecastDisabled={forecastUnpaidRows.length === 0}
           onOpenDraftPayroll={() => {
@@ -3235,6 +3236,25 @@ export default function People() {
           draftPayrollDisabled={showPeopleForHours.length === 0}
         />
       )}
+
+      {/* People pay config modal — opened from the Payroll tab's header (moved
+          from the Hours tab, v2.1257). Mounted tab-independent and gated on
+          canAccessPay so a deep-linked open never renders for pay-less roles. */}
+      {canAccessPay ? (
+        <PeoplePayConfigModal
+          open={payConfigModalOpen}
+          onClose={() => setPayConfigModalOpen(false)}
+          rosterSections={payConfigRosterSections}
+          payConfig={payConfig}
+          payConfigDraft={payConfigDraft}
+          payConfigOfficeWageDraft={payConfigOfficeWageDraft}
+          payConfigSaving={payConfigSaving}
+          salaryTemplateByPersonName={salaryTemplateByPersonName}
+          onUpsertPayConfig={upsertPayConfig}
+          onHourlyWageChange={updatePayConfigHourlyWage}
+          onOfficeHourlyWageChange={updatePayConfigOfficeHourlyWage}
+        />
+      ) : null}
 
       {payStubDeleteConfirm && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: Z_PEOPLE_PAY_MODAL_NESTED }}>
@@ -3553,38 +3573,8 @@ export default function People() {
                   >
                     Review Hours <span style={{ color: 'var(--text-green-600)' }}>✓</span>
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => setPayConfigModalOpen(true)}
-                    style={{
-                      padding: '0.45rem 0.85rem',
-                      margin: 0,
-                      marginLeft: 'auto',
-                      border: '1px solid var(--border-strong)',
-                      borderRadius: 4,
-                      background: 'var(--bg-subtle)',
-                      cursor: 'pointer',
-                      fontSize: '0.9375rem',
-                      fontWeight: 600,
-                    }}
-                  >
-                    People pay config
-                  </button>
                 </div>
               </div>
-              <PeoplePayConfigModal
-                open={payConfigModalOpen}
-                onClose={() => setPayConfigModalOpen(false)}
-                rosterSections={payConfigRosterSections}
-                payConfig={payConfig}
-                payConfigDraft={payConfigDraft}
-                payConfigOfficeWageDraft={payConfigOfficeWageDraft}
-                payConfigSaving={payConfigSaving}
-                salaryTemplateByPersonName={salaryTemplateByPersonName}
-                onUpsertPayConfig={upsertPayConfig}
-                onHourlyWageChange={updatePayConfigHourlyWage}
-                onOfficeHourlyWageChange={updatePayConfigOfficeHourlyWage}
-              />
               {reviewHoursModalOpen ? (
                 <ReviewHoursModal
                   people={showPeopleForMatrix}
