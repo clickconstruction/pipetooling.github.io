@@ -34,7 +34,7 @@ Marking a section also removes its chip from the **floating section bar** at the
 A **search box** sits between the jump buttons and the first section. Typing filters the section list live by name — for example `bill` leaves only the billing sections on the page:
 
 :::example Searching sections
-Search sections… `bill` → shows **Jobs Billing**, **Billing Awaiting Payments**, and **Complete, no Total Bill**; everything else hides until you clear the search (✕ or Escape).
+Search sections… `bill` → shows **Jobs Billing**, **Billed Awaiting Payment**, and **Complete, no Total Bill**; everything else hides until you clear the search (✕ or Escape).
 :::
 
 The jump buttons above the box always show every section, and the floating section bar follows the search. The filter resets when you leave the page.
@@ -45,7 +45,7 @@ The sections cover the office's recurring review surfaces — among them:
 
 - **Warnings** and **Office Arriving / Office Leaving** — start and end of day checks.
 - **People Hours** and **Unassigned field time** — time approval.
-- **Jobs Billing** and **Billing Awaiting Payments** — the billing loop (see the billing guide).
+- **Jobs Billing** and **Billed Awaiting Payment** — the billing loop (see the billing guide).
 - **Complete, no Total Bill** — jobs marked **100% complete** (latest field report %, or the Edit Job **% complete** field when no report has one) whose **Total Bill** is empty or $0, listed right in the section. Each job shows when work **started**, its **clock sessions** and hours (hover for every work date); {{button:outline-blue|Job Detail}} opens the Job Detail modal, {{button:red|Edit job}} opens Edit Job to set the Job Total, and {{button:outline|Activity ▾}} expands the same activity history you see in Job Detail. Uses the same 100% rule as the Job Summary **%** column and the same minimum-HCP cutoff as Jobs Billing.
 - **Dispatch inbox** — field requests, including Turnaway alerts with their {{button:outline-amber|Create trip charge}} button.
 - **Schedule** ("Are there any obvious schedule conflicts?") and **Tomorrow's Schedule** ("Who is on what job tomorrow?").
