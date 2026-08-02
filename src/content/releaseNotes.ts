@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1288',
+    date: '2026-08-02',
+    title: 'Behind the scenes: Materials assembly engine restructured',
+    kind: 'infra',
+    highlights: [
+      'The assembly data engine on the Materials page (templates, selection, filters, cost stats) moved into a shared engine used by both assembly tabs.',
+      'No visible changes; assemblies, filters, and cost badges work exactly as before.',
+    ],
+  },
+  {
     version: 'v2.1287',
     date: '2026-08-02',
     title: 'Projects: bids and estimates join the cards',

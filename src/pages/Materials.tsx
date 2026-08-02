@@ -8,7 +8,6 @@ import {
   type PurchaseOrderWithItems,
 } from '../lib/materials/poItemDetails'
 import { calculateAssemblyCost as calculateAssemblyCostKernel } from '../lib/materials/assemblyCost'
-import { fetchPricesForParts } from '../lib/materials/partPrices'
 import { groupSupplyHouseStats, type SupplyHouseStatsRow } from '../lib/materials/supplyHouseStats'
 import { formatCurrency } from '../lib/format'
 import {
@@ -25,6 +24,7 @@ import { MaterialsPurchaseOrdersTab } from '../components/materials/MaterialsPur
 import { MaterialsPartsBookTab } from '../components/materials/MaterialsPartsBookTab'
 import { useMaterialsPurchaseOrders } from '../hooks/useMaterialsPurchaseOrders'
 import { useMaterialsCatalog } from '../hooks/useMaterialsCatalog'
+import { useMaterialsAssemblies } from '../hooks/useMaterialsAssemblies'
 import { PartPricesManager } from '../components/materials/PartPricesManager'
 import { TemplatePricesManager } from '../components/materials/TemplatePricesManager'
 import { SupplyHouseForm } from '../components/SupplyHouseForm'
@@ -33,7 +33,6 @@ type SupplyHouse = Database['public']['Tables']['supply_houses']['Row']
 type MaterialPart = Database['public']['Tables']['material_parts']['Row']
 type MaterialPartPrice = Database['public']['Tables']['material_part_prices']['Row']
 type MaterialTemplate = Database['public']['Tables']['material_templates']['Row']
-type MaterialTemplateItem = Database['public']['Tables']['material_template_items']['Row']
 type PurchaseOrder = Database['public']['Tables']['purchase_orders']['Row']
 type UserRole = 'dev' | 'master_technician' | 'assistant' | 'estimator' | 'primary' | 'superintendent'
 
@@ -47,26 +46,6 @@ interface ServiceType {
   updated_at: string
 }
 
-interface PartType {
-  id: string
-  service_type_id: string
-  name: string
-  category: string | null
-  sequence_order: number
-  created_at: string
-  updated_at: string
-}
-
-
-type PartWithPrices = MaterialPart & {
-  prices: (MaterialPartPrice & { supply_house: SupplyHouse })[]
-  part_type?: PartType
-}
-
-type TemplateItemWithDetails = MaterialTemplateItem & {
-  part?: MaterialPart & { part_type?: PartType; prices?: PartWithPrices['prices'] }
-  nested_template?: MaterialTemplate
-}
 
 // POItemWithDetails / PurchaseOrderWithItems now live in lib/materials/poItemDetails
 
@@ -181,15 +160,29 @@ export default function Materials() {
   // "From assembly", Bids Takeoff). Code identifiers and the DB stay on the
   // original material_templates naming — DB is append-only and the
   // identifiers match it on purpose. See docs/GLOSSARY.md → Assembly.
-  const [materialTemplates, setMaterialTemplates] = useState<MaterialTemplate[]>([])
-  const [selectedTemplate, setSelectedTemplate] = useState<MaterialTemplate | null>(null)
-  const [templateSearchQuery, setTemplateSearchQuery] = useState('')
-  const [filterAssemblyTypeIds, setFilterAssemblyTypeIds] = useState<string[]>([])
-  const [filterIncludeEmpty, setFilterIncludeEmpty] = useState(false)
-  const [filterAssemblyTypeDropdownOpen, setFilterAssemblyTypeDropdownOpen] = useState(false)
-  const [templateItems, setTemplateItems] = useState<TemplateItemWithDetails[]>([])
-  const [allTemplateItemsForStats, setAllTemplateItemsForStats] = useState<Array<{ template_id: string; item_type: string; part_id: string | null; nested_template_id: string | null; quantity: number }>>([])
-  const [partIdToLowestPrice, setPartIdToLowestPrice] = useState<Record<string, number>>({})
+  // Assembly cluster engine (templates cache, shared selectedTemplate/templateItems,
+  // shared filters incl. the dual-tab dropdown ref, stats caches) — see the hook.
+  const {
+    materialTemplates,
+    selectedTemplate,
+    setSelectedTemplate,
+    templateSearchQuery,
+    setTemplateSearchQuery,
+    filterAssemblyTypeIds,
+    setFilterAssemblyTypeIds,
+    filterIncludeEmpty,
+    setFilterIncludeEmpty,
+    filterAssemblyTypeDropdownOpen,
+    setFilterAssemblyTypeDropdownOpen,
+    filterAssemblyTypeDropdownRef,
+    templateItems,
+    setTemplateItems,
+    allTemplateItemsForStats,
+    partIdToLowestPrice,
+    loadMaterialTemplates,
+    loadTemplateItems,
+    loadAllTemplateItemsForStats,
+  } = useMaterialsAssemblies({ selectedServiceTypeId, setError })
   const [draftPOSearch, setDraftPOSearch] = useState('')
   // PO engine (allPOs/draftPOs/selectedPO/editingPO/userNamesMap + loadPurchaseOrders)
   // now lives in useMaterialsPurchaseOrders, destructured below the error state.
@@ -246,7 +239,6 @@ export default function Materials() {
   const [addItemModalFilterAssemblyTypeId, setAddItemModalFilterAssemblyTypeId] = useState('')
 
   const templatePartPickerRef = useRef<HTMLDivElement>(null)
-  const filterAssemblyTypeDropdownRef = useRef<HTMLDivElement>(null)
   const templateItemsSectionRef = useRef<HTMLDivElement>(null)
   const editingPODetailRef = useRef<HTMLDivElement>(null)
   const selectedPODetailRef = useRef<HTMLDivElement>(null)
@@ -345,24 +337,6 @@ export default function Materials() {
   }
 
 
-  async function loadMaterialTemplates() {
-    if (!selectedServiceTypeId) {
-      // No service type selected yet, skip loading
-      return
-    }
-    
-    const { data, error } = await supabase
-      .from('material_templates')
-      .select('*')
-      .eq('service_type_id', selectedServiceTypeId)
-      .order('name')
-    if (error) {
-      setError(`Failed to load assemblies: ${error.message}`)
-      return
-    }
-    setMaterialTemplates((data as MaterialTemplate[]) ?? [])
-  }
-
   async function loadSupplyHouseStatsByServiceType() {
     const { data, error } = await supabase
       .rpc('get_supply_house_stats_by_service_type' as any)
@@ -374,112 +348,6 @@ export default function Materials() {
 
     const rows = (data as unknown as SupplyHouseStatsRow[] | null) ?? []
     setSupplyHouseStatsByServiceType(groupSupplyHouseStats(rows))
-  }
-  async function loadTemplateItems(templateId: string) {
-    const { data: itemsData, error: itemsError } = await supabase
-      .from('material_template_items')
-      .select('*')
-      .eq('template_id', templateId)
-      .order('sequence_order', { ascending: true })
-    
-    if (itemsError) {
-      setError(`Failed to load assembly items: ${itemsError.message}`)
-      return
-    }
-
-    const items = (itemsData as MaterialTemplateItem[]) ?? []
-    const partIds = [...new Set(items.filter(i => i.item_type === 'part' && i.part_id).map(i => i.part_id as string))]
-    const nestedTemplateIds = [...new Set(items.filter(i => i.item_type === 'template' && i.nested_template_id).map(i => i.nested_template_id as string))]
-
-    // Batch-fetch parts, prices, and nested templates
-    const [partsResult, pricesByPartId, templatesResult] = await Promise.all([
-      partIds.length > 0
-        ? supabase.from('material_parts').select('*, part_types(*)').in('id', partIds)
-        : Promise.resolve({ data: [] }),
-      partIds.length > 0 ? fetchPricesForParts(supabase, partIds) : Promise.resolve(new Map()),
-      nestedTemplateIds.length > 0
-        ? supabase.from('material_templates').select('*').in('id', nestedTemplateIds)
-        : Promise.resolve({ data: [] }),
-    ])
-
-    const partsMap = new Map<string, MaterialPart & { part_type?: PartType; prices?: PartWithPrices['prices'] }>()
-    const rawParts = (partsResult.data as (MaterialPart & { part_types?: PartType })[]) ?? []
-    for (const p of rawParts) {
-      const part: MaterialPart & { part_type?: PartType; prices?: PartWithPrices['prices'] } = {
-        ...p,
-        part_type: p.part_types,
-        prices: pricesByPartId.get(p.id) ?? [],
-      }
-      partsMap.set(p.id, part)
-    }
-
-    const templatesMap = new Map<string, MaterialTemplate>()
-    const templates = (templatesResult.data as MaterialTemplate[]) ?? []
-    for (const t of templates) {
-      templatesMap.set(t.id, t)
-    }
-
-    const itemsWithDetails: TemplateItemWithDetails[] = items.map(item => {
-      if (item.item_type === 'part' && item.part_id) {
-        const part = partsMap.get(item.part_id)
-        return { ...item, part }
-      }
-      if (item.item_type === 'template' && item.nested_template_id) {
-        const nested_template = templatesMap.get(item.nested_template_id)
-        return { ...item, nested_template }
-      }
-      return item
-    })
-
-    setTemplateItems(itemsWithDetails)
-  }
-
-  async function loadAllTemplateItemsForStats() {
-    // Only fetch template items for the selected service type to reduce disk IO
-    if (!selectedServiceTypeId) {
-      setAllTemplateItemsForStats([])
-      setPartIdToLowestPrice({})
-      return
-    }
-
-    const { data: templateIdsData } = await supabase
-      .from('material_templates')
-      .select('id')
-      .eq('service_type_id', selectedServiceTypeId)
-    const templateIds = (templateIdsData ?? []).map(t => t.id)
-    if (templateIds.length === 0) {
-      setAllTemplateItemsForStats([])
-      setPartIdToLowestPrice({})
-      return
-    }
-
-    const { data, error } = await supabase
-      .from('material_template_items')
-      .select('template_id, item_type, part_id, nested_template_id, quantity')
-      .in('template_id', templateIds)
-    if (!error && data) {
-      const items = data as Array<{ template_id: string; item_type: string; part_id: string | null; nested_template_id: string | null; quantity: number }>
-      setAllTemplateItemsForStats(items)
-      const partIds = [...new Set(items.filter(i => i.item_type === 'part' && i.part_id).map(i => i.part_id as string))]
-      if (partIds.length > 0) {
-        const { data: pricesData } = await supabase
-          .from('material_part_prices')
-          .select('part_id, price')
-          .in('part_id', partIds)
-        const map: Record<string, number> = {}
-        for (const row of (pricesData ?? []) as { part_id: string; price: number }[]) {
-          const pid = row.part_id
-          const existing = map[pid]
-          if (existing === undefined || row.price < existing) map[pid] = row.price
-        }
-        setPartIdToLowestPrice(map)
-      } else {
-        setPartIdToLowestPrice({})
-      }
-    } else {
-      setAllTemplateItemsForStats([])
-      setPartIdToLowestPrice({})
-    }
   }
 
   async function handleNavigateToPOFromSupplyHouses(poId: string) {
@@ -716,16 +584,6 @@ export default function Materials() {
     return () => document.removeEventListener('mousedown', onMouseDown)
   }, [templatePartDropdownOpen])
 
-  useEffect(() => {
-    if (!filterAssemblyTypeDropdownOpen) return
-    const onMouseDown = (e: MouseEvent) => {
-      if (filterAssemblyTypeDropdownRef.current && !filterAssemblyTypeDropdownRef.current.contains(e.target as Node)) {
-        setFilterAssemblyTypeDropdownOpen(false)
-      }
-    }
-    document.addEventListener('mousedown', onMouseDown)
-    return () => document.removeEventListener('mousedown', onMouseDown)
-  }, [filterAssemblyTypeDropdownOpen])
 
   // Infinite scroll for parts pagination
 
