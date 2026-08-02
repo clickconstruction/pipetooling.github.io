@@ -1,5 +1,7 @@
 import { useCallback, useMemo, useState, type Dispatch, type SetStateAction } from 'react'
 import { Link } from 'react-router-dom'
+import { useAuth } from '../../hooks/useAuth'
+import { isAssistantLike } from '../../lib/subcontractorLikeRole'
 import type { Person, PersonKind, UserRow } from '../../hooks/usePeopleRoster'
 import type { UsersTabTagAnchor, UsersTabTagsApi } from '../../hooks/useUsersTabTags'
 import { contractSigningIconTitle, type ContractSigningTrafficLight } from '../../lib/contractSigningRollup'
@@ -16,6 +18,7 @@ import {
   type UsersTabSection,
 } from './peopleUsersTabShared'
 import CombinePeopleModal from './CombinePeopleModal'
+import TeamLeadsModal from './TeamLeadsModal'
 
 type PersonActiveProject = { id: string; name: string }
 
@@ -111,6 +114,12 @@ export function PeopleUsersTab({
   const [linkSaving, setLinkSaving] = useState(false)
   // Combine-people modal (fold a duplicate roster identity into the keeper, v2.982).
   const [combineSource, setCombineSource] = useState<Person | null>(null)
+  // Team leads manager modal (moved here from Settings → Dashboard & alerts).
+  // Same gate the Settings manager had (dev|master|assistant-like), which also
+  // matches the People Teams tab gate (dev/master_technician/assistant/controller).
+  const { role: authRole } = useAuth()
+  const canManageTeamLeads = authRole === 'dev' || authRole === 'master_technician' || isAssistantLike(authRole)
+  const [teamLeadsModalOpen, setTeamLeadsModalOpen] = useState(false)
 
   const byKind = useCallback(
     (k: PersonKind) => buildUsersTabKindRoster(k, users, people),
@@ -524,6 +533,16 @@ export function PeopleUsersTab({
             boxSizing: 'border-box',
           }}
         />
+        {canManageTeamLeads && (
+          <button
+            type="button"
+            onClick={() => setTeamLeadsModalOpen(true)}
+            className="activeAccountsCard__btnSecondary"
+            style={{ whiteSpace: 'nowrap', padding: '0.3rem 0.75rem' }}
+          >
+            Team leads
+          </button>
+        )}
         {onOpenActiveAccounts && (
           <button
             type="button"
@@ -1074,6 +1093,7 @@ export function PeopleUsersTab({
           </div>
         )
       })()}
+      <TeamLeadsModal open={teamLeadsModalOpen} onClose={() => setTeamLeadsModalOpen(false)} />
       {combineSource && (
         <CombinePeopleModal
           source={{ id: combineSource.id, name: combineSource.name, account_user_id: combineSource.account_user_id ?? null }}

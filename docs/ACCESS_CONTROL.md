@@ -179,7 +179,7 @@ Pipetooling implements comprehensive role-based access control (RBAC) using nine
 - Claim dev role via Settings (enter promotion code from DEV_PROMOTION_CODE secret)
 - Manage Pay Approved Masters (**Settings → People & accounts**); only dev can change Show in Hours per person
 - Manage **Task Dispatch** group in **Settings → People & accounts**: choose which **assistants** receive dispatch pushes and see the Dispatch inbox on Dashboard
-- Manage **Team Hours Sharing** (Settings → Dashboard & alerts **or** **People → Teams**, `?tab=teams`): link leaders to members for My Team hours approval on Dashboard; **only dev** can set per-assignment **Leader dashboard** (full My Team vs clock strip only)
+- Manage **Team leads** (People → Users → **Team leads** modal **or** **People → Teams**, `?tab=teams`; formerly Settings → Dashboard & alerts "Team Hours Sharing" — Settings now shows only a pointer): link leaders to members for My Team hours approval on Dashboard; **only dev** can set per-assignment **Leader dashboard** (full My Team vs clock strip only)
 - **Dashboard → Rejected sessions (all users)**: org-wide rejected clock sessions for review (same delete as People → Hours)
 - **Dashboard → Clock strip — Email schedule** (`ScheduleDayEmailModal`): **dev** may queue a dispatch-schedule email for **any non-archived user** (`schedule_day_email_requests`; RLS **`schedule_day_email_requests_insert_dev_any_recipient`**); other staff may queue **only for self**. See **`RECENT_FEATURES.md`** (e.g. v2.523).
 - **People → Feedback** (`?tab=feedback`, dev-only): full team feedback admin (**`TeamFeedbackDevSettingsBlock`**) — **Enabled** persists to **`team_feedback_settings`**; **Settings** / **Eligibility** modals; raw submissions (detail modal, CSV, dev delete). Same surface as **Settings → People & accounts → Team feedback**
@@ -234,7 +234,7 @@ Pipetooling implements comprehensive role-based access control (RBAC) using nine
 - Jobs page — **Reports tab** — **Recurring Email Reports**: same as dev (schedules, recipients, optional **include costs** in digest emails)
 - **Hours** tab (dev, Pay Approved Masters, and all assistants — assistants see hours/rosters but **no wage data**; pay-config flags arrive via `list_people_pay_flags()`, wage columns are RLS-blocked for them since v2.660): Shared **week / date range**; **section jump** row; **Dashboard**-style clock strip; pending / approved / rejected sessions; timesheet grid; **Review Hours & pay config** (modal + **Hours reviewed** ledger + pay settings for dev and Pay Approved Masters); **Due by Team**; **Teams**. Legacy **`?tab=pay`** opens **Hours**. (The **Cost matrix** grid, trade tags, and the **Share Cost Matrix and Teams** view-grant retired in v2.673–v2.674 — “see costs without pay admin” is the controller role now.)
 - Payroll tab (dev and Pay Approved Masters only — assistants have no pay-stub access at the UI **or** DB level since v2.660; the Dashboard AP card shows them org-level totals via `get_dashboard_payroll_totals()`): Ledger of generated pay stubs with **Search** by person name; **Paid to date** / **Balance** from **`pay_stub_payments`**; **Record payment** (partial installments); **Generate Pay Reports** bulk modal (includes **Partial** / fully paid counts) and single-person generator; **Print** from ledger row; **View** (HTML preview) from bulk modal only; dev-only delete via red trash icon; **Draft Payroll** — **Cash Due**, clickable **Hours** breakdown (**v2.514**, **`RECENT_FEATURES.md`**), grey row **View**, optional dev stub delete in modal
-- **People → Teams** (`?tab=teams`): manage **`team_leader_assignments`** (leader→member links for Dashboard **My Team**); same capabilities as Settings **Team Hours Sharing**; per-link **Leader dashboard** visibility (**full** vs **strip only**) — **dev-only**
+- **People → Teams** (`?tab=teams`): manage **`team_leader_assignments`** (leader→member links for Dashboard **My Team**); same capabilities as the People → Users **Team leads** modal; per-link **Leader dashboard** visibility (**full** vs **strip only**) — **dev-only**
 - **People → Overhead** (`?tab=overhead`): daily **approved, closed** clock labor $ on the configured **office** job (**`app_settings`**) + **bid** time; dev sets office **`jobs_ledger`** id. Masters must be in **`pay_approved_masters`** (same gate as Hours / Payroll — the underlying `clock_sessions` RLS and `people_pay_config` wages require it, so a non-approved master would only see a silently-zero tab)
 
 **Bids**:
@@ -267,7 +267,7 @@ Pipetooling implements comprehensive role-based access control (RBAC) using nine
 
 **Access**:
 - Dashboard, Customers, Projects, People, Jobs, Calendar, Bids, Materials, Prospects
-- **Settings** (via gear menu): Change password, push notifications, Dashboard buttons, **Dashboard Page Pins** (Page pins card only—manage own pins, Clear all, Remove per pin), **Team Hours Sharing** (leader → member links for My Team; same data as **People → Teams**). Does NOT see dev-only sections (Pin Billed, Internal Team labor, Supply Houses AP, Sub Labor Due, user management, email templates, etc.). The PAGE_ACCESS table in Settings is a reference display; assistants can navigate to Settings.
+- **Settings** (via gear menu): Change password, push notifications, Dashboard buttons, **Dashboard Page Pins** (Page pins card only—manage own pins, Clear all, Remove per pin), a pointer to the **Team leads** manager (now the People → Users **Team leads** modal, which assistants can open; same data as **People → Teams**). Does NOT see dev-only sections (Pin Billed, Internal Team labor, Supply Houses AP, Sub Labor Due, user management, email templates, etc.). The PAGE_ACCESS table in Settings is a reference display; assistants can navigate to Settings.
 - **Blocked**: Templates
 
 **Permissions**:
@@ -305,7 +305,7 @@ Pipetooling implements comprehensive role-based access control (RBAC) using nine
 - Jobs page — Sub Sheet Ledger tab: View labor jobs (own and shared); Edit/Delete own jobs; shared jobs show "Created by [name]"
 - **Hours** tab (**all** assistants since **v2.661** — pay-master adoption confers nothing): timesheet, sessions, grid, **Hours reviewed** / day-correct markers; rosters and salaried-hours flags come from the wage-free **`list_people_pay_flags()`** RPC. **Never any wage data**: `people_pay_config` wage columns, pay stubs, and `person_offsets` are RLS-blocked for assistants (**v2.660**), (the cost-matrix view-share mechanism retired entirely in v2.674)
 - **No Payroll tab** (**v2.660**): assistants have no pay-stub access at the UI or DB level. The Dashboard AP card shows them **org-level totals only** via **`get_dashboard_payroll_totals()`** (one aggregate row, never per-person)
-- **People → Teams** (`?tab=teams`): manage **`team_leader_assignments`** (same as Settings **Team Hours Sharing**); per-link **Leader dashboard** — **dev-only**
+- **People → Teams** (`?tab=teams`): manage **`team_leader_assignments`** (same as the People → Users **Team leads** modal); per-link **Leader dashboard** — **dev-only**
 
 **Bids**:
 - Full access to all bids features (same as master/dev)
@@ -691,7 +691,7 @@ Route access for the restricted roles above comes from the per-role allowed-path
 | Feature | dev | master | assistant | sub | estimator | primary | superintendent |
 |---------|-----|--------|-----------|-----|-----------|---------|----------------|
 | People & accounts (`#settings-people`): adoption, master sharing, primaries/superintendents; dev-only user tools and Task Dispatch above sharing | ✅ | ✅ (sharing block only) | ❌ | ❌ | ❌ | ❌ | ❌ |
-| Team Hours Sharing (leader → member links for My Team; **Settings → Dashboard & alerts** and **People → Teams** `?tab=teams`); **Leader dashboard** column (full vs strip only) **editable dev-only** | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Team leads (leader → member links for My Team; **People → Users → Team leads** modal and **People → Teams** `?tab=teams`; formerly Settings "Team Hours Sharing"); **Leader dashboard** column (full vs strip only) **editable dev-only** | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
 | **Job Book** (`job_book_entries`): **SELECT** all **authenticated** (e.g. **Collect Payment** Step 1 catalog); **INSERT/UPDATE/DELETE** **dev** / **master_technician** / **assistant** only (**Settings → Job Book**) | ✅ | ✅ | ✅ | ✅ read | ✅ read | ✅ read | ✅ read |
 
 ### Customer Management
@@ -735,7 +735,7 @@ Route access for the restricted roles above comes from the per-role allowed-path
 | Contracts tab (templates, assignments, document status per person) | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
 | Writeups tab (`?tab=writeups`): custom form templates, writeups about a subject user, Discussed vs Withheld disclosure; submitted rows immutable; dev-only delete submitted; **unified list** also shows **read-only** NCNS rows from **`attendance_incidents`** (same RLS as incidents); legacy `?tab=contracts&contracts_sub=writeups` redirects to `tab=writeups` | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
 | Activity tab (first-party app usage: org-wide UTC table; dev grants assistant / master / primary) | ✅ + manage grants | ✅ if granted | ✅ if granted | ❌ | ❌ | ✅ if granted | ❌ |
-| **Teams** tab (`?tab=teams`): manage **`team_leader_assignments`** (add/remove leader→member links; leader-centric tree; search); **Leader dashboard** visibility **dev-only** (same RLS as Settings **Team Hours Sharing**) | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| **Teams** tab (`?tab=teams`): manage **`team_leader_assignments`** (add/remove leader→member links; leader-centric tree; search); **Leader dashboard** visibility **dev-only** (same RLS as the Users tab's **Team leads** modal) | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
 | **Overhead** tab (`?tab=overhead`): daily **approved, closed** clock labor $ — **office** job from **`app_settings`** **`overhead_office_job_ledger_id_v1`** (dev configures) + **bid** time; hours × **`people_pay_config.hourly_wage`** (office/bid time uses **`office_hourly_wage`** for dual-rate people, matching payroll) | ✅ | ✅ If Pay Approved | ❌ | ❌ | ❌ | ❌ | ❌ |
 
 **Contracts (assistants):** **assistant** may use the tab but **cannot delete** person documents, templates, Contract Book library entries, or remove template checklist lines on save (**`canDeletePeopleContracts`** in **`People.tsx`** — **dev** and **master_technician** only). **Unassign template** is limited the same way (DB **DELETE** on contract tables excludes plain **assistant** — migration **`20260502070926_contract_tables_assistant_no_delete.sql`**).

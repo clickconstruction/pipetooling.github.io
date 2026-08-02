@@ -12,14 +12,15 @@ export type TeamLeaderAssignmentRow = {
 }
 
 /**
- * Settings → Dashboard & alerts → Team Hours Sharing engine: the
+ * Team leads manager engine (People → Users → Team leads modal): the
  * team_leader_assignments rows + sort/filter/picker derivations. Extracted
- * verbatim from Settings.tsx (v2.858); loads on mount when `enabled`
- * (dev|master|assistant-like). Row insert/update/delete writes stay in
- * SettingsDashboardTab (map quirk #8) via the returned setter.
- * `setError` is the parent's shared error state (map quirk #4).
+ * verbatim from Settings.tsx (v2.858) as useSettingsTeamLeaderAssignments,
+ * renamed/rehomed when the manager moved off Settings → Dashboard & alerts.
+ * Loads on mount when `enabled` (dev|master|assistant-like). Row
+ * insert/update/delete writes stay in the caller (TeamLeadsModal) via the
+ * returned setter. `setError` is the caller's shared error state.
  */
-export function useSettingsTeamLeaderAssignments({
+export function useTeamLeaderAssignments({
   enabled,
   goalPickerUsers,
   setError,
