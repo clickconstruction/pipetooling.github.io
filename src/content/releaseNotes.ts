@@ -80,6 +80,16 @@ export const RELEASE_NOTES: ReleaseNote[] = [
     ],
   },
   {
+    version: 'v2.1274',
+    date: '2026-08-02',
+    title: 'Projects: cards put the everyday things first',
+    kind: 'feature',
+    highlights: [
+      'The Jobs control now sits at the top of each card’s right side — the most-used thing gets the prime spot, across from the project’s money line.',
+      'Edit moved up next to the project title as a small pencil, where editing-the-thing-itself belongs; superintendents follow below the jobs.',
+    ],
+  },
+  {
     version: 'v2.1273',
     date: '2026-08-02',
     title: 'Projects: cleaner cards with a combined Jobs control',

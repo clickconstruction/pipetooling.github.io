@@ -631,6 +631,20 @@ export default function Projects() {
                     {formatProjectNumberLabel(p.project_number)}
                   </span>
                 )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    editProjectModal?.openEditProjectModal(p.id, {
+                      onSaved: () => setRefreshKey((k) => k + 1),
+                      onDeleted: () => setRefreshKey((k) => k + 1),
+                    })
+                  }}
+                  title="Edit project"
+                  aria-label={`Edit ${p.name ?? 'project'}`}
+                  style={{ display: 'inline-flex', alignItems: 'center', background: 'none', border: 'none', padding: 2, marginLeft: 6, color: 'var(--text-faint)', cursor: 'pointer', verticalAlign: 'middle' }}
+                >
+                  <Pencil size={14} aria-hidden="true" />
+                </button>
                 <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>
                   {p.customers?.name ?? '—'}{' '}·{' '}
                   <span style={projectStatusPillStyle(p.status)}>{projectStatusLabel(p.status)}</span>
@@ -799,31 +813,66 @@ export default function Projects() {
                   width: narrow ? '100%' : undefined,
                 }}
               >
-                <button
-                  type="button"
-                  onClick={() => {
-                    editProjectModal?.openEditProjectModal(p.id, {
-                      onSaved: () => setRefreshKey((k) => k + 1),
-                      onDeleted: () => setRefreshKey((k) => k + 1),
-                    })
-                  }}
-                  style={{
+                {/* Rail order (v2.1274): most-used first — Jobs pill on top, superintendents below;
+                    Edit moved up beside the project title. Segmented jobs control per v2.1273. */}
+                {(() => {
+                  const jobs = jobsByProject[p.id] ?? []
+                  const expanded = expandedJobChips.has(p.id)
+                  const visible = expanded ? jobs : jobs.slice(0, 3)
+                  const hiddenCount = jobs.length - visible.length
+                  const segmentStyle = {
                     display: 'inline-flex',
                     alignItems: 'center',
-                    gap: '0.3rem',
-                    background: 'none',
-                    border: '1px solid var(--border)',
-                    borderRadius: 6,
-                    color: 'var(--text-700)',
-                    cursor: 'pointer',
-                    padding: '0.2rem 0.6rem',
-                    fontFamily: 'inherit',
+                    gap: '0.35rem',
+                    padding: '0.25rem 0.6rem',
+                    border: 'none',
+                    borderLeft: '1px solid var(--border)',
+                    background: 'var(--surface)',
                     fontSize: '0.8125rem',
-                  }}
-                >
-                  <Pencil size={13} aria-hidden="true" />
-                  Edit
-                </button>
+                    fontFamily: 'inherit',
+                    cursor: 'pointer',
+                  } as const
+                  return (
+                    <div style={{ display: 'inline-flex', alignItems: 'stretch', border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
+                      <span style={{ display: 'inline-flex', alignItems: 'center', padding: '0.25rem 0.6rem', fontSize: '0.75rem', color: 'var(--text-faint)', background: 'var(--bg-neutral-100)' }}>
+                        Jobs
+                      </span>
+                      {visible.map((j) => (
+                        <button
+                          key={j.id}
+                          type="button"
+                          onClick={() => jobDetailModal?.openJobDetail({ jobId: j.id })}
+                          title={`Open job detail — ${labelJobsLedgerStatusForDashboard(j.status)}`}
+                          style={{ ...segmentStyle, color: 'var(--text-link)' }}
+                        >
+                          <span aria-hidden="true" style={{ width: 8, height: 8, borderRadius: '50%', background: jobsLedgerStatusDotColor(j.status), flexShrink: 0 }} />
+                          <span style={{ maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {j.hcp_number || j.job_name || 'Job'}
+                          </span>
+                        </button>
+                      ))}
+                      {hiddenCount > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => setExpandedJobChips((prev) => new Set(prev).add(p.id))}
+                          title="Show all jobs"
+                          style={{ ...segmentStyle, color: 'var(--text-700)' }}
+                        >
+                          +{hiddenCount} more
+                        </button>
+                      )}
+                      <Link
+                        to={`/jobs?newJob=true&project=${p.id}&tab=stages`}
+                        title="Create job"
+                        aria-label={`Create job for ${p.name ?? 'project'}`}
+                        style={{ ...segmentStyle, textDecoration: 'none', color: 'var(--text-sky-700)', background: 'var(--bg-sky-100)' }}
+                      >
+                        <Plus size={14} aria-hidden="true" />
+                        {jobs.length === 0 && 'Job'}
+                      </Link>
+                    </div>
+                  )
+                })()}
                 {/* Empty + nobody to add renders nothing — "Superintendents: None" was dead text (v2.1273). */}
                 {canAssignSuperintendents && ((superintendentsByProject[p.id]?.length ?? 0) > 0 || allSuperintendents.some((s) => !(superintendentsByProject[p.id] ?? []).some((ps) => ps.id === s.id))) && (
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', justifyContent: narrow ? 'flex-start' : 'flex-end', alignItems: 'center' }}>
@@ -917,67 +966,6 @@ export default function Projects() {
                     ))}
                   </div>
                 )}
-                {/* Segmented jobs control (v2.1273): label cap + one segment per job (status dot,
-                    opens Job Detail in place per v2.1193) + trailing create segment. Capped at 3
-                    visible segments with a "+N more" expander so the pill can't overflow the card. */}
-                {(() => {
-                  const jobs = jobsByProject[p.id] ?? []
-                  const expanded = expandedJobChips.has(p.id)
-                  const visible = expanded ? jobs : jobs.slice(0, 3)
-                  const hiddenCount = jobs.length - visible.length
-                  const segmentStyle = {
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '0.35rem',
-                    padding: '0.25rem 0.6rem',
-                    border: 'none',
-                    borderLeft: '1px solid var(--border)',
-                    background: 'var(--surface)',
-                    fontSize: '0.8125rem',
-                    fontFamily: 'inherit',
-                    cursor: 'pointer',
-                  } as const
-                  return (
-                    <div style={{ display: 'inline-flex', alignItems: 'stretch', border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
-                      <span style={{ display: 'inline-flex', alignItems: 'center', padding: '0.25rem 0.6rem', fontSize: '0.75rem', color: 'var(--text-faint)', background: 'var(--bg-neutral-100)' }}>
-                        Jobs
-                      </span>
-                      {visible.map((j) => (
-                        <button
-                          key={j.id}
-                          type="button"
-                          onClick={() => jobDetailModal?.openJobDetail({ jobId: j.id })}
-                          title={`Open job detail — ${labelJobsLedgerStatusForDashboard(j.status)}`}
-                          style={{ ...segmentStyle, color: 'var(--text-link)' }}
-                        >
-                          <span aria-hidden="true" style={{ width: 8, height: 8, borderRadius: '50%', background: jobsLedgerStatusDotColor(j.status), flexShrink: 0 }} />
-                          <span style={{ maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                            {j.hcp_number || j.job_name || 'Job'}
-                          </span>
-                        </button>
-                      ))}
-                      {hiddenCount > 0 && (
-                        <button
-                          type="button"
-                          onClick={() => setExpandedJobChips((prev) => new Set(prev).add(p.id))}
-                          title="Show all jobs"
-                          style={{ ...segmentStyle, color: 'var(--text-700)' }}
-                        >
-                          +{hiddenCount} more
-                        </button>
-                      )}
-                      <Link
-                        to={`/jobs?newJob=true&project=${p.id}&tab=stages`}
-                        title="Create job"
-                        aria-label={`Create job for ${p.name ?? 'project'}`}
-                        style={{ ...segmentStyle, textDecoration: 'none', color: 'var(--text-sky-700)', background: 'var(--bg-sky-100)' }}
-                      >
-                        <Plus size={14} aria-hidden="true" />
-                        {jobs.length === 0 && 'Job'}
-                      </Link>
-                    </div>
-                  )
-                })()}
               </div>
             </li>
           ))}
