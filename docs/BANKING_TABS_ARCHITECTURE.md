@@ -3,20 +3,20 @@
 ---
 file: docs/BANKING_TABS_ARCHITECTURE.md
 type: Architecture Map / Decomposition
-purpose: Step-0 map for the Banking surface decomposition (per PAGE_DECOMPOSITION_PLAYBOOK.md) — inventory what every tab/region of the 3,104-line src/pages/Banking.tsx touches (state, loaders, handlers, sub-components, supabase tables/RPCs, cross-tab coupling), plus sub-decomposition dossiers for its two biggest already-extracted tabs, BankingMercuryAccountingTab (2,304 lines) and BankingMercuryDragSortTab (1,392 lines). MercuryTransactionAllocationsModal (1,540 lines) is noted as external coupling only — it is not mapped here.
+purpose: Step-0 map for the Banking surface decomposition (per PAGE_DECOMPOSITION_PLAYBOOK.md) — inventory what every tab/region of the 2,181-line src/pages/Banking.tsx touches (state, loaders, handlers, sub-components, supabase tables/RPCs, cross-tab coupling), plus sub-decomposition dossiers for its two biggest already-extracted tabs, BankingMercuryAccountingTab (2,304 lines) and BankingMercuryDragSortTab (1,392 lines). MercuryTransactionAllocationsModal (1,540 lines) is noted as external coupling only — it is not mapped here.
 audience: Developers, AI Agents
-last_updated: 2026-08-01
+last_updated: 2026-08-02
 ---
 
 ## What this surface is
 
-[`src/pages/Banking.tsx`](../src/pages/Banking.tsx) (**3,104 lines**) is the money-movement hub: a two-level tab switch (`product` × tab) over Mercury bank transactions and Stripe billing. Unlike Materials or pre-refactor Bids, Banking is **already half-decomposed**: 5 of the 7 Mercury tabs and both Stripe tabs render extracted components. What remains inline in the parent is the **Ledger** tab, the **Sorting (User Sort)** tab, ~630 lines of in-file module components (`BankingMercuryTable` and two dropdown menus), the master data engine (transaction list + allocation/attribution caches + nickname caches), the URL router, and nine page-level modals.
+[`src/pages/Banking.tsx`](../src/pages/Banking.tsx) (**2,181 lines**, down from 3,104 after the v2.1304 in-file component moves) is the money-movement hub: a two-level tab switch (`product` × tab) over Mercury bank transactions and Stripe billing. Unlike Materials or pre-refactor Bids, Banking is **already half-decomposed**: 5 of the 7 Mercury tabs and both Stripe tabs render extracted components. What remains inline in the parent is the **Ledger** tab, the **Sorting (User Sort)** tab, the master data engine (transaction list + allocation/attribution caches + nickname caches), the URL router, and nine page-level modals. The formerly in-file module components (`BankingMercuryTable` and the two dropdown menus) moved verbatim to `src/components/banking/` in v2.1304.
 
 The two biggest extracted tabs have themselves become God components and are mapped for sub-decomposition:
 
 | File | Lines | Role |
 |---|---|---|
-| [`src/pages/Banking.tsx`](../src/pages/Banking.tsx) | 3,104 | parent shell + Ledger + User Sort + data engine + modals |
+| [`src/pages/Banking.tsx`](../src/pages/Banking.tsx) | 2,181 | parent shell + Ledger + User Sort + data engine + modals |
 | [`src/components/banking/BankingMercuryAccountingTab.tsx`](../src/components/banking/BankingMercuryAccountingTab.tsx) | 2,304 | Accounting tab: rules engine, approvals queue, sorting ledger |
 | [`src/components/banking/BankingMercuryDragSortTab.tsx`](../src/components/banking/BankingMercuryDragSortTab.tsx) | 1,392 | Drag Sort tab: dnd-kit label buckets + quick-label focus flow |
 
@@ -48,8 +48,8 @@ Each section lists: render location (symbol/JSX anchor — line numbers are "as 
 
 | Region | Render anchor | Lines est. | Status | Coupling | Risk | Recommended action |
 |---|---|---|---|---|---|---|
-| In-file `BankingMercuryTable` (+ `SortTh`, `TransactionDetailPanel`) | module level, ~566–1096 | ~530 | in-file module components | low (props-only; rendered by Ledger + User Sort) | **low** | **Extract first** — verbatim file move to `src/components/banking/BankingMercuryTable.tsx` |
-| In-file `BankingNicknamesMenu`, `BankingLedgerAdvancedMenu` | module level, ~167–471 | ~305 | in-file module components | low (props-only) | low | Verbatim file move(s) |
+| `BankingMercuryTable` (+ `SortTh`, `TransactionDetailPanel`) | [`BankingMercuryTable.tsx`](../src/components/banking/BankingMercuryTable.tsx) | ~530 | **extracted** (v2.1304, verbatim file move) | low (props-only; rendered by Ledger + User Sort) | — | Done — `SortKey` + `formatCurrency` exported; the page imports them back |
+| `BankingNicknamesMenu`, `BankingLedgerAdvancedMenu` | [`BankingNicknamesMenu.tsx`](../src/components/banking/BankingNicknamesMenu.tsx) / [`BankingLedgerAdvancedMenu.tsx`](../src/components/banking/BankingLedgerAdvancedMenu.tsx) | ~305 | **extracted** (v2.1304, verbatim file moves) | low (props-only) | — | Done |
 | `sorting` — User Sort tab | `bankingView.mercuryTab === 'sorting'` panel | ~175 + header tools ~70 | inline | med (shares `rows` engine, `expandedRowId`, search, allocations, org notes) | low-med | Extract → `BankingMercurySortingTab` after the table component moves |
 | `ledger` — Ledger tab (dev-only) | `bankingView.mercuryTab === 'ledger'` panel | ~170 | inline | med-high (Advanced menu drives sync/backfill/import/manual-accounts; nickname CRUD) | med | Extract → `BankingMercuryLedgerTab`; sync/backfill/import handlers stay in parent |
 | `drag_sort` — Drag Sort tab | thin wrapper → `BankingMercuryDragSortTab` | ~29 (wrapper) / 1,392 (component) | **extracted** | med (16 props off the shared engine) | — | Sub-decompose later (bucket-stats kernel → lib; add-label modal → file) |
@@ -118,21 +118,21 @@ The parent destructures each hook so downstream references (and the ~23-prop Acc
 - **Supabase:** `users` (role).
 - **Stays in the parent forever:** the URL router, role gating, and every modal opened from 2+ tabs.
 
-### In-file module components (extract first — pure file moves)
+### In-file module components (extracted — v2.1304 pure file moves)
 
-| Component | Anchor | ~Lines | Notes |
+| Component | Now at | ~Lines | Notes |
 |---|---|---|---|
-| `BankingNicknamesMenu` | ~167–287 | 120 | click-outside/Escape dropdown; rendered in the User Sort header tools AND the Ledger toolbar |
-| `BankingLedgerAdvancedMenu` | ~289–471 | 183 | Ledger's Advanced dropdown (Refresh / Backfill / Import CSV / Manual accounts / Reload); role-gated items via optional-prop presence |
-| `SortTh` | ~566–596 | 30 | sortable `<th>` with `aria-sort` |
-| `TransactionDetailPanel` | ~598–693 | 96 | expanded-row detail grid + raw JSON `<pre>` |
-| `BankingMercuryTable` | ~695–1096 | 402 | the shared Ledger/User Sort table: expandable rows, notes preview/editor sub-rows (via `MercuryTxNotesDisclosure` pieces + `bankingMercuryNotesSubRowColSpans`), allocation Person/Jobs cells, excluded-duplicate strike-through badge, and 4 layout-variant flags (`allocationsAfterCounterparty`, `hideKindColumn`, `debitAndAccountAfterAmount`, `counterpartyNoteCombined`). Owns only `notesExpandedTxId` locally. |
+| `BankingNicknamesMenu` | [`BankingNicknamesMenu.tsx`](../src/components/banking/BankingNicknamesMenu.tsx) | 120 | click-outside/Escape dropdown; rendered in the User Sort header tools AND the Ledger toolbar |
+| `BankingLedgerAdvancedMenu` | [`BankingLedgerAdvancedMenu.tsx`](../src/components/banking/BankingLedgerAdvancedMenu.tsx) | 183 | Ledger's Advanced dropdown (Refresh / Backfill / Import CSV / Manual accounts / Reload); role-gated items via optional-prop presence |
+| `SortTh` | private in `BankingMercuryTable.tsx` | 30 | sortable `<th>` with `aria-sort` |
+| `TransactionDetailPanel` | private in `BankingMercuryTable.tsx` | 96 | expanded-row detail grid + raw JSON `<pre>` |
+| `BankingMercuryTable` | [`BankingMercuryTable.tsx`](../src/components/banking/BankingMercuryTable.tsx) | 402 | the shared Ledger/User Sort table: expandable rows, notes preview/editor sub-rows (via `MercuryTxNotesDisclosure` pieces + `bankingMercuryNotesSubRowColSpans`), allocation Person/Jobs cells, excluded-duplicate strike-through badge, and 4 layout-variant flags (`allocationsAfterCounterparty`, `hideKindColumn`, `debitAndAccountAfterAmount`, `counterpartyNoteCombined`). Owns only `notesExpandedTxId` locally. |
 
-All are props-only (no parent closure). Moving them to `src/components/banking/` is a verbatim cut/paste worth ~830 lines.
+All were props-only (no parent closure), so the moves were verbatim cut/paste (~830 lines off `Banking.tsx`, 3,104 → 2,181). `SortKey`, `formatCurrency`, and the private `formatDate`/`formatDateTime`/`formatMercuryCategory` helpers moved with the table (`SortKey` + `formatCurrency` are exported; the page imports them back, same pattern as the Takeoff T3 move). `sortMercuryRowsStable` and `parseBankingView` stayed in the page for their own Stage-A pass.
 
 ### Module-level pure helpers (Stage-A residue in Banking.tsx)
 
-`sortMercuryRowsStable(list, {key, dir})` (stable 3-key sort, NaN-date handling, id tiebreak), `formatCurrency`, `formatDate`, `formatDateTime`, `formatMercuryCategory`, `parseBankingView(params, role)`. All pure, all untested. See [Stage-A inventory](#stage-a-pure-logic-inventory).
+`sortMercuryRowsStable(list, {key, dir})` (stable 3-key sort, NaN-date handling, id tiebreak) and `parseBankingView(params, role)`. Both pure, both untested. (`formatCurrency`/`formatDate`/`formatDateTime`/`formatMercuryCategory` moved with the table to `BankingMercuryTable.tsx` in v2.1304 — still Stage-A consolidation candidates.) See [Stage-A inventory](#stage-a-pure-logic-inventory).
 
 ### `ledger` — Ledger tab (dev-only, inline)
 
@@ -142,7 +142,7 @@ All are props-only (no parent closure). Moving them to `src/components/banking/`
 - **Derived memos:** `filteredSorted` (accountFilter + kindFilter + search over `buildMercuryTxSearchHaystackWithJobPerson` → `sortMercuryRowsStable`), `booksFilteredSorted` (drops `duplicate_of_transaction_id` rows — feeds totals AND the Drag Sort/Accounting/Category Review wrappers), `totalAmount`, `accountOptions`, `kindOptions`, `nicknameManageIds`, `debitCardIdsFromRows`, `debitCardManageIds`.
 - **Handlers:** `handleSync` (edge fn `sync-mercury-transactions`, hardcoded `lookback_days: 90`, bumps `autoApplyResetTick`), `handleBackfill` (same fn with `{start, end}`), `handleImportCsv` (edge fn `import-manual-transactions`), nickname CRUD (see substrate §3).
 - **Supabase:** `mercury_transactions` (via engine), `mercury_account_nicknames`, `mercury_debit_card_nicknames`; edge functions `sync-mercury-transactions`, `import-manual-transactions`.
-- **Sub-components:** `BankingMercuryTable` (in-file), `BankingLedgerAdvancedMenu` (in-file), `BankingNicknamesMenu` (in-file); modals `MercuryBackfillModal`, `MercuryImportCsvModal`, `ManualAccountsModal` (all extracted).
+- **Sub-components:** `BankingMercuryTable`, `BankingLedgerAdvancedMenu`, `BankingNicknamesMenu` (all extracted, v2.1304); modals `MercuryBackfillModal`, `MercuryImportCsvModal`, `ManualAccountsModal` (all extracted).
 - **External coupling:** none inbound (no deep links carry ids).
 - **Extraction status + risk + approach:** Inline. **Medium risk.** The tab's JSX is thin once `BankingMercuryTable` is its own file; the weight is that its toolbar owns the page's sync/backfill/import entry points and the nickname CRUD, all of which mutate parent-owned caches. Approach: extract `BankingMercuryLedgerTab` receiving `filteredSorted`, filters + setters, sort + setter, the shared table props, and callbacks (`onSync`, `onOpenBackfill`, `onOpenImportCsv`, `onOpenManualAccounts`, `onReload`); `handleSync`/`handleBackfill`/`handleImportCsv` and the modals **stay in the parent** (backfill/import completion must call `loadRowsForActiveView` + bump `autoApplyResetTick`, which are parent concerns). Stage A: `sortMercuryRowsStable` → lib + tests first.
 
@@ -275,7 +275,7 @@ Extract to `src/lib/*` + colocated tests **before** any component moves. Note: B
 |---|---|---|
 | `sortMercuryRowsStable` (3-key stable sort, NaN-date ordering, id tiebreak) | module-level in `Banking.tsx` | `lib/bankingMercuryRowSort.ts` + tests |
 | `parseBankingView(params, role)` (role-dependent URL → view) | module-level in `Banking.tsx` | `lib/bankingViewRouting.ts` + tests (per-role defaults, legacy `invoices`/`data` → `ledger` fallback) |
-| `formatCurrency` / `formatDate` / `formatDateTime` / `formatMercuryCategory` | in-file in `Banking.tsx` | shared lib — **check first**: `formatUsd` / `formatBankingDate` already exist in [`bankingMercuryDragSortLedger.tsx`](../src/components/banking/bankingMercuryDragSortLedger.tsx); consolidate rather than duplicate |
+| `formatCurrency` / `formatDate` / `formatDateTime` / `formatMercuryCategory` | module-level in [`BankingMercuryTable.tsx`](../src/components/banking/BankingMercuryTable.tsx) (moved with the table in v2.1304; `formatCurrency` exported — the page imports it back) | shared lib — **check first**: `formatUsd` / `formatBankingDate` already exist in [`bankingMercuryDragSortLedger.tsx`](../src/components/banking/bankingMercuryDragSortLedger.tsx); consolidate rather than duplicate |
 | Bucket-stats kernel (`buildBucketStats`, `cloneBucketStats`, `applyAssignmentDelta`, `addToLabeled`, `subtractFromLabeled`) | module-level in `BankingMercuryDragSortTab.tsx` | `lib/bankingDragSortBucketStats.ts` + tests |
 | `fetchAccountingPendingRuleNames` / `…LabelNames` / `…TxsByIds` (200-id chunked fetchers) | module-level in `BankingMercuryAccountingTab.tsx` | `lib/fetchAccountingPendingRelations.ts` (IO helpers; test the chunk math) |
 | "Other matching rules" annotation inside `runTestFromCriteria` (sort by `sort_order, id`; exclude editing rule; clause-count filter) | closure in `BankingMercuryAccountingTab.tsx` | pure function + test (a parity test `matchingAccountingRulesForTx.test.ts` already exists — align with it) |
@@ -312,7 +312,7 @@ Extract to `src/lib/*` + colocated tests **before** any component moves. Note: B
 ## Recommended extraction order (value ÷ risk)
 
 1. **Stage-A sweep** — the [inventory](#stage-a-pure-logic-inventory) above; each independently shippable. Highest leverage: `sortMercuryRowsStable`, `parseBankingView`, the Drag Sort bucket-stats kernel.
-2. **In-file component file moves** — `BankingMercuryTable` (+ `SortTh` + `TransactionDetailPanel`) → `src/components/banking/BankingMercuryTable.tsx`; `BankingNicknamesMenu` + `BankingLedgerAdvancedMenu` → own files. Verbatim moves, ~830 lines off `Banking.tsx`, zero state relocation. **This is the single best first move.**
+2. ~~**In-file component file moves**~~ — **done (v2.1304)**: `BankingMercuryTable` (+ `SortTh` + `TransactionDetailPanel`) → [`src/components/banking/BankingMercuryTable.tsx`](../src/components/banking/BankingMercuryTable.tsx); `BankingNicknamesMenu` + `BankingLedgerAdvancedMenu` → own files. Verbatim moves, ~830 lines off `Banking.tsx` (3,104 → 2,181), zero state relocation.
 3. **Extract `sorting` → `BankingMercurySortingTab`** — lowest-coupling inline tab; validates the prop seam (like `po-generator` did for Materials / `bid-costs` for Bids).
 4. **Extract `ledger` → `BankingMercuryLedgerTab`** — after (2); sync/backfill/import handlers + their modals stay parent-owned, opened via callbacks.
 5. **Seam hooks in the parent** — `useBankingMercuryTransactions`, `useBankingMercuryRelations`, `useBankingNicknames`, `useBankingAccountingPrefs`. Parent destructures; child props unchanged. This is compression, not relocation — the hooks stay mounted in `Banking()`.

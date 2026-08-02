@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-02 (v2.1303)
+last_updated: 2026-08-02 (v2.1304)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1304)
+
+### Banking decomposition: in-file table components moved to own files (2026-08-02)
+The Banking map's "single best first move" (see [`BANKING_TABS_ARCHITECTURE.md`](./BANKING_TABS_ARCHITECTURE.md)): the ~830 lines of module-level components defined inside [`Banking.tsx`](../src/pages/Banking.tsx) move verbatim to `src/components/banking/` — [`BankingMercuryTable.tsx`](../src/components/banking/BankingMercuryTable.tsx) (~530 lines: the shared Ledger/User Sort table plus its private `SortTh`, `TransactionDetailPanel`, and the local `formatCurrency`/`formatDate`/`formatDateTime`/`formatMercuryCategory` helpers; `SortKey` and `formatCurrency` are exported and the page imports them back, T3-style), [`BankingNicknamesMenu.tsx`](../src/components/banking/BankingNicknamesMenu.tsx) (~120 lines), and [`BankingLedgerAdvancedMenu.tsx`](../src/components/banking/BankingLedgerAdvancedMenu.tsx) (~180 lines). Pure file move — zero state relocation: all shared filter/search state, the `rows` engine (and its three per-view meanings), `listLoadSeqRef` token discipline, caches, and modals stay in the page; `sortMercuryRowsStable` and `parseBankingView` stay put for their own Stage-A pass. Banking.tsx 3,104 → 2,181 lines. 393 files / 3,517 tests green.
 
 ## Latest Updates (v2.1303)
 

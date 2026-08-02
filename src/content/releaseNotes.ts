@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1304',
+    date: '2026-08-02',
+    title: 'Behind the scenes: Banking groundwork, part 1',
+    kind: 'infra',
+    highlights: [
+      'The shared Banking transaction table and the Nicknames and Advanced dropdown menus moved into their own component files.',
+      'No visible changes; the Ledger and User Sort tabs work exactly as before.',
+    ],
+  },
+  {
     version: 'v2.1303',
     date: '2026-08-02',
     title: 'Behind the scenes: Workflow step form restructured',
