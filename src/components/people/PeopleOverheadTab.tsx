@@ -14,8 +14,11 @@ import {
   bucketOverheadPartsLinesByAccountingLabel,
   overheadPartsAccountingBucketFromDefaultKey,
   sumMaterialsTotalUsdExcludingInternalTransfer,
+  sumPartsUsdByDayExcludingInternalTransfer,
   type OverheadPartsAccountingBucketKey,
+  type OverheadPartsAccountingSection,
 } from '../../lib/overheadPartsAccountingBuckets'
+import { fetchAllRows, fetchAllRowsChunkedIn } from '../../lib/supabasePaging'
 import {
   aggregateOtherJobsLaborByPerson,
   aggregateOverheadDetailByPerson,
@@ -53,6 +56,156 @@ function formatOverheadTabWorkDateLabel(workDateYmd: string): string {
     day: 'numeric',
     timeZone: APP_CALENDAR_TZ,
   }).format(d)
+}
+
+/** Unique Mercury transaction ids across every line of the given per-day detail maps. */
+function collectMercuryTxIds(
+  detailMaps: ReadonlyArray<ReadonlyMap<string, OverheadPartsDetailLine[]>>,
+): string[] {
+  const ids = new Set<string>()
+  for (const m of detailMaps) {
+    for (const lines of m.values()) {
+      for (const ln of lines) {
+        if (ln.source === 'mercury' && ln.mercuryTransactionId) ids.add(ln.mercuryTransactionId)
+      }
+    }
+  }
+  return [...ids]
+}
+
+/**
+ * Banking → Accounting drag-sort bucket per Mercury transaction id.
+ *
+ * Two-step query: assignment rows for the tx ids, then bulk-resolve label
+ * `default_key` for the assigned label ids. Chunked `.in()` + paged
+ * (`fetchAllRowsChunkedIn`) — the 90-day KPI window's id list is unbounded.
+ * Tx ids with no assignment row are absent from the map; renderers default
+ * those to the `'other'` bucket via `bucketForOverheadPartsLine`.
+ */
+async function fetchAccountingBucketByTxId(
+  txIds: readonly string[],
+): Promise<Map<string, OverheadPartsAccountingBucketKey>> {
+  if (txIds.length === 0) return new Map()
+  const assignments = (await fetchAllRowsChunkedIn(
+    [...txIds],
+    (chunk, from, to) =>
+      supabase
+        .from('mercury_transaction_drag_sort_assignments')
+        .select('mercury_transaction_id, label_id')
+        .in('mercury_transaction_id', chunk)
+        .order('mercury_transaction_id')
+        .range(from, to),
+    'load overhead accounting assignments',
+  )) as Array<{ mercury_transaction_id: string; label_id: string }>
+  if (assignments.length === 0) return new Map()
+  const labelIds = [...new Set(assignments.map((a) => a.label_id))]
+  const labels = (await fetchAllRowsChunkedIn(
+    labelIds,
+    (chunk, from, to) =>
+      supabase
+        .from('mercury_drag_sort_labels')
+        .select('id, default_key')
+        .in('id', chunk)
+        .order('id')
+        .range(from, to),
+    'load overhead accounting labels',
+  )) as Array<{ id: string; default_key: string | null }>
+  const defaultKeyByLabelId = new Map<string, string | null>()
+  for (const l of labels) defaultKeyByLabelId.set(l.id, l.default_key ?? null)
+  const out = new Map<string, OverheadPartsAccountingBucketKey>()
+  for (const a of assignments) {
+    const defaultKey = defaultKeyByLabelId.get(a.label_id) ?? null
+    out.set(a.mercury_transaction_id, overheadPartsAccountingBucketFromDefaultKey(defaultKey))
+  }
+  return out
+}
+
+/**
+ * Accounting-bucket sections list shared by the officeParts / total /
+ * otherJobs breakdown modal branches — one renderer so the Internal
+ * Transfers slate-accent "(not counted in Materials)" treatment stays
+ * identical across all three. `cardLabelForLine` (office branches only)
+ * appends the "· on <card>" suffix for Mercury debit-card lines.
+ */
+function OverheadPartsSectionsList({
+  sections,
+  cardLabelForLine,
+}: {
+  sections: readonly OverheadPartsAccountingSection[]
+  cardLabelForLine?: (line: OverheadPartsDetailLine) => string
+}) {
+  return (
+    <>
+      {sections.map((section) => {
+        const isInternalTransfer = section.key === 'internal_transfer'
+        if (isInternalTransfer && section.lines.length === 0) return null
+        return (
+          <div
+            key={section.key}
+            style={{
+              marginTop: '0.5rem',
+              ...(isInternalTransfer
+                ? {
+                    paddingLeft: '0.5rem',
+                    borderLeft: '3px solid #94a3b8',
+                    background: 'var(--bg-slate-tint)',
+                  }
+                : null),
+            }}
+          >
+            <div
+              style={{
+                fontWeight: 600,
+                color: 'var(--text-700)',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'baseline',
+                gap: '0.5rem',
+              }}
+            >
+              <span>
+                {section.label} ({section.lines.length})
+                {isInternalTransfer ? (
+                  <span
+                    style={{
+                      marginLeft: '0.4rem',
+                      fontWeight: 500,
+                      color: 'var(--text-slate-500)',
+                      fontStyle: 'italic',
+                      fontSize: '0.7rem',
+                    }}
+                  >
+                    (not counted in Materials)
+                  </span>
+                ) : null}
+              </span>
+              <span style={{ fontWeight: 500, color: 'var(--text-muted)' }}>
+                ${formatCurrency(section.totalUsd)}
+              </span>
+            </div>
+            {section.lines.length === 0 ? (
+              <p style={{ margin: '0.15rem 0 0 1.1rem', color: 'var(--text-faint)' }}>None</p>
+            ) : (
+              <ul style={{ margin: '0.15rem 0 0 0', paddingLeft: '1.1rem' }}>
+                {section.lines.map((ln) => {
+                  const cardLabel = cardLabelForLine?.(ln) ?? ''
+                  return (
+                    <li key={ln.sortKey} style={{ marginBottom: '0.25rem' }}>
+                      {ln.source === 'mercury' ? 'Mercury' : ln.source === 'supply' ? 'Supply' : 'Tally'} — {ln.label}
+                      {cardLabel ? (
+                        <span style={{ color: 'var(--text-muted)' }}> · on {cardLabel}</span>
+                      ) : null}
+                      {' — '}${formatCurrency(ln.amountUsd)}
+                    </li>
+                  )
+                })}
+              </ul>
+            )}
+          </div>
+        )
+      })}
+    </>
+  )
 }
 
 export type PeopleOverheadTabProps = {
@@ -117,7 +270,6 @@ export default function PeopleOverheadTab({
     Array<{ id: string; hcp_number: string; click_number?: string; job_name: string; job_address: string }>
   >([])
   const [overheadJobSaving, setOverheadJobSaving] = useState(false)
-  const [overheadOfficePartsUsdByDay, setOverheadOfficePartsUsdByDay] = useState<Map<string, number>>(() => new Map())
   const [overheadOfficePartsDetailByDay, setOverheadOfficePartsDetailByDay] = useState<
     Map<string, OverheadPartsDetailLine[]>
   >(() => new Map())
@@ -141,25 +293,24 @@ export default function PeopleOverheadTab({
   })
   const [overheadOtherJobsSessions, setOverheadOtherJobsSessions] = useState<OverheadClockSessionRow[]>([])
   const [overheadOtherJobsSessionsLoading, setOverheadOtherJobsSessionsLoading] = useState(false)
-  const [overheadOtherJobsPartsUsdByDay, setOverheadOtherJobsPartsUsdByDay] = useState<Map<string, number>>(
-    () => new Map(),
-  )
   const [overheadOtherJobsPartsDetailByDay, setOverheadOtherJobsPartsDetailByDay] = useState<
     Map<string, OverheadPartsDetailLine[]>
   >(() => new Map())
   const [overheadOtherJobsPartsLoading, setOverheadOtherJobsPartsLoading] = useState(false)
   /**
    * Banking → Accounting drag-sort label bucket for each Mercury transaction
-   * referenced by `overheadOtherJobsPartsDetailByDay` (i.e. every Mercury
-   * line that surfaces in the Field Total ($) / Hours modal's Materials
-   * (field / non-office jobs) dropdown for any day in the active window).
+   * referenced by `overheadOfficePartsDetailByDay` OR
+   * `overheadOtherJobsPartsDetailByDay` (i.e. every Mercury line that can
+   * surface in a Materials drilldown or feed a Materials $ column for any
+   * day in the active window). One symmetric map so the Internal-Transfer
+   * exclusion applies identically to office and field materials.
    *
-   * Computed once per change to the per-day detail map, not per-modal-open,
+   * Computed once per change to the per-day detail maps, not per-modal-open,
    * so flipping between days inside the modal is instant. Tx ids that have
    * no assignment row are absent from the map; the renderer defaults those
    * to the `'other'` bucket via `bucketForOverheadPartsLine`.
    */
-  const [overheadOtherJobsAccountingBucketByTxId, setOverheadOtherJobsAccountingBucketByTxId] = useState<
+  const [overheadPartsAccountingBucketByTxId, setOverheadPartsAccountingBucketByTxId] = useState<
     Map<string, OverheadPartsAccountingBucketKey>
   >(() => new Map())
   const [overheadBreakdownModal, setOverheadBreakdownModal] = useState<null | { workDate: string; scope: OverheadDetailScope }>(
@@ -218,21 +369,36 @@ export default function PeopleOverheadTab({
     setOverheadSessionsLoading(true)
     void (async () => {
       try {
-        let q = supabase
-          .from('clock_sessions')
-          .select(
-            'id, user_id, work_date, clocked_in_at, clocked_out_at, job_ledger_id, bid_id, approved_at, rejected_at, revoked_at, notes, users!clock_sessions_user_id_fkey(name)',
-          )
-          .gte('work_date', overheadDateStart)
-          .lte('work_date', overheadDateEnd)
-        if (overheadOfficeJobLedgerId) {
-          q = q.or(`job_ledger_id.eq.${overheadOfficeJobLedgerId},bid_id.not.is.null`)
-        } else {
-          q = q.not('bid_id', 'is', null)
+        // Paged (fetchAllRows): the date range is user-settable and unbounded,
+        // so a wide window crosses PostgREST max_rows (1000) and silently
+        // truncates. Fresh builder per page; `.order('id')` keeps pages stable.
+        const makeQ = () => {
+          let q = supabase
+            .from('clock_sessions')
+            .select(
+              'id, user_id, work_date, clocked_in_at, clocked_out_at, job_ledger_id, bid_id, approved_at, rejected_at, revoked_at, notes, users!clock_sessions_user_id_fkey(name)',
+            )
+            .gte('work_date', overheadDateStart)
+            .lte('work_date', overheadDateEnd)
+          if (overheadOfficeJobLedgerId) {
+            q = q.or(`job_ledger_id.eq.${overheadOfficeJobLedgerId},bid_id.not.is.null`)
+          } else {
+            q = q.not('bid_id', 'is', null)
+          }
+          return q.order('id')
         }
-        const data = await withSupabaseRetry(async () => q, 'load overhead clock sessions')
+        const data = await fetchAllRows(
+          async (from, to) => ({
+            data: (await withSupabaseRetry(
+              async () => makeQ().range(from, to),
+              'load overhead clock sessions',
+            )) as unknown as OverheadClockSessionRow[] | null,
+            error: null,
+          }),
+          'load overhead clock sessions',
+        )
         if (cancelled) return
-        setOverheadSessions((data ?? []) as OverheadClockSessionRow[])
+        setOverheadSessions(data)
       } catch {
         if (!cancelled) setOverheadSessions([])
       } finally {
@@ -256,20 +422,34 @@ export default function PeopleOverheadTab({
     setOverheadOtherJobsSessionsLoading(true)
     void (async () => {
       try {
-        let q = supabase
-          .from('clock_sessions')
-          .select(
-            'id, user_id, work_date, clocked_in_at, clocked_out_at, job_ledger_id, bid_id, approved_at, rejected_at, revoked_at, notes, users!clock_sessions_user_id_fkey(name)',
-          )
-          .gte('work_date', overheadDateStart)
-          .lte('work_date', overheadDateEnd)
-          .not('job_ledger_id', 'is', null)
-        if (overheadOfficeJobLedgerId) {
-          q = q.neq('job_ledger_id', overheadOfficeJobLedgerId)
+        // Paged (fetchAllRows): company-wide field sessions blow past 1000
+        // rows even in a normal week — see the office-scope effect above.
+        const makeQ = () => {
+          let q = supabase
+            .from('clock_sessions')
+            .select(
+              'id, user_id, work_date, clocked_in_at, clocked_out_at, job_ledger_id, bid_id, approved_at, rejected_at, revoked_at, notes, users!clock_sessions_user_id_fkey(name)',
+            )
+            .gte('work_date', overheadDateStart)
+            .lte('work_date', overheadDateEnd)
+            .not('job_ledger_id', 'is', null)
+          if (overheadOfficeJobLedgerId) {
+            q = q.neq('job_ledger_id', overheadOfficeJobLedgerId)
+          }
+          return q.order('id')
         }
-        const data = await withSupabaseRetry(async () => q, 'load overhead other jobs clock sessions')
+        const data = await fetchAllRows(
+          async (from, to) => ({
+            data: (await withSupabaseRetry(
+              async () => makeQ().range(from, to),
+              'load overhead other jobs clock sessions',
+            )) as unknown as OverheadClockSessionRow[] | null,
+            error: null,
+          }),
+          'load overhead other jobs clock sessions',
+        )
         if (cancelled) return
-        setOverheadOtherJobsSessions((data ?? []) as OverheadClockSessionRow[])
+        setOverheadOtherJobsSessions(data)
       } catch {
         if (!cancelled) setOverheadOtherJobsSessions([])
       } finally {
@@ -290,7 +470,6 @@ export default function PeopleOverheadTab({
   useEffect(() => {
     if (!canAccessOverheadTab || !authUser?.id) return
     if (!overheadOfficeJobLedgerId) {
-      setOverheadOfficePartsUsdByDay(new Map())
       setOverheadOfficePartsDetailByDay(new Map())
       setOverheadOfficePartsLoading(false)
       return
@@ -305,11 +484,9 @@ export default function PeopleOverheadTab({
           endYmd: overheadDateEnd,
         })
         if (cancelled) return
-        setOverheadOfficePartsUsdByDay(r.partsUsdByDay)
         setOverheadOfficePartsDetailByDay(r.partsDetailByDay)
       } catch {
         if (!cancelled) {
-          setOverheadOfficePartsUsdByDay(new Map())
           setOverheadOfficePartsDetailByDay(new Map())
         }
       } finally {
@@ -339,11 +516,9 @@ export default function PeopleOverheadTab({
           endYmd: overheadDateEnd,
         })
         if (cancelled) return
-        setOverheadOtherJobsPartsUsdByDay(r.partsUsdByDay)
         setOverheadOtherJobsPartsDetailByDay(r.partsDetailByDay)
       } catch {
         if (!cancelled) {
-          setOverheadOtherJobsPartsUsdByDay(new Map())
           setOverheadOtherJobsPartsDetailByDay(new Map())
         }
       } finally {
@@ -362,78 +537,34 @@ export default function PeopleOverheadTab({
   ])
 
   /**
-   * Resolve Banking → Accounting drag-sort label buckets for every
-   * Mercury transaction that surfaces as a field/non-office-job Materials
-   * line in the active overhead window. Runs whenever the per-day detail
-   * map is rebuilt (date range change, office job change, parts refresh).
-   *
-   * Two-step query: first read the assignment rows for the visible tx ids,
-   * then bulk-resolve label `default_key` for the assigned label ids. We
-   * skip the second fetch when there are no assignments (no in-clause on
-   * an empty array, no wasted RPC).
+   * Resolve Banking → Accounting drag-sort label buckets for every Mercury
+   * transaction that surfaces as an office-job OR field/non-office-job
+   * Materials line in the active overhead window (one symmetric map — the
+   * Internal-Transfer exclusion applies to both sides). Runs whenever the
+   * per-day detail maps are rebuilt (date range change, office job change,
+   * parts refresh).
    */
   useEffect(() => {
     if (!canAccessOverheadTab || !authUser?.id) return
-    const txIds: string[] = []
-    for (const lines of overheadOtherJobsPartsDetailByDay.values()) {
-      for (const ln of lines) {
-        if (ln.source === 'mercury' && ln.mercuryTransactionId) {
-          txIds.push(ln.mercuryTransactionId)
-        }
-      }
-    }
+    const txIds = collectMercuryTxIds([overheadOfficePartsDetailByDay, overheadOtherJobsPartsDetailByDay])
     if (txIds.length === 0) {
-      setOverheadOtherJobsAccountingBucketByTxId(new Map())
+      setOverheadPartsAccountingBucketByTxId(new Map())
       return
     }
-    const uniqueTxIds = Array.from(new Set(txIds))
     let cancelled = false
     void (async () => {
       try {
-        const assignmentsRaw = await withSupabaseRetry(
-          async () =>
-            supabase
-              .from('mercury_transaction_drag_sort_assignments')
-              .select('mercury_transaction_id, label_id')
-              .in('mercury_transaction_id', uniqueTxIds),
-          'load overhead other jobs accounting assignments',
-        )
+        const next = await fetchAccountingBucketByTxId(txIds)
         if (cancelled) return
-        const assignments = (assignmentsRaw ?? []) as Array<{
-          mercury_transaction_id: string
-          label_id: string
-        }>
-        if (assignments.length === 0) {
-          setOverheadOtherJobsAccountingBucketByTxId(new Map())
-          return
-        }
-        const labelIds = Array.from(new Set(assignments.map((a) => a.label_id)))
-        const labelsRaw = await withSupabaseRetry(
-          async () =>
-            supabase
-              .from('mercury_drag_sort_labels')
-              .select('id, default_key')
-              .in('id', labelIds),
-          'load overhead other jobs accounting labels',
-        )
-        if (cancelled) return
-        const labels = (labelsRaw ?? []) as Array<{ id: string; default_key: string | null }>
-        const defaultKeyByLabelId = new Map<string, string | null>()
-        for (const l of labels) defaultKeyByLabelId.set(l.id, l.default_key ?? null)
-        const next = new Map<string, OverheadPartsAccountingBucketKey>()
-        for (const a of assignments) {
-          const defaultKey = defaultKeyByLabelId.get(a.label_id) ?? null
-          next.set(a.mercury_transaction_id, overheadPartsAccountingBucketFromDefaultKey(defaultKey))
-        }
-        setOverheadOtherJobsAccountingBucketByTxId(next)
+        setOverheadPartsAccountingBucketByTxId(next)
       } catch {
-        if (!cancelled) setOverheadOtherJobsAccountingBucketByTxId(new Map())
+        if (!cancelled) setOverheadPartsAccountingBucketByTxId(new Map())
       }
     })()
     return () => {
       cancelled = true
     }
-  }, [canAccessOverheadTab, authUser?.id, overheadOtherJobsPartsDetailByDay])
+  }, [canAccessOverheadTab, authUser?.id, overheadOfficePartsDetailByDay, overheadOtherJobsPartsDetailByDay])
 
   useEffect(() => {
     if (!canAccessOverheadTab || !authUser?.id) return
@@ -443,22 +574,35 @@ export default function PeopleOverheadTab({
       try {
         const today = new Date().toLocaleDateString('en-CA')
         const start = ymdAddDays(today, -89)
-        let q = supabase
-          .from('clock_sessions')
-          .select(
-            'id, user_id, work_date, clocked_in_at, clocked_out_at, job_ledger_id, bid_id, approved_at, rejected_at, revoked_at, users!clock_sessions_user_id_fkey(name)',
-          )
-          .gte('work_date', start)
-          .lte('work_date', today)
-        if (overheadOfficeJobLedgerId) {
-          q = q.or(`job_ledger_id.eq.${overheadOfficeJobLedgerId},bid_id.not.is.null`)
-        } else {
-          q = q.not('bid_id', 'is', null)
+        // Paged (fetchAllRows): a company-wide 90-day scan silently truncates
+        // at PostgREST max_rows (1000) if un-ranged — a truncated day total
+        // deflates every trailing average. Fresh builder per page;
+        // `.order('id')` keeps pages stable.
+        const makeQ = () => {
+          let q = supabase
+            .from('clock_sessions')
+            .select(
+              'id, user_id, work_date, clocked_in_at, clocked_out_at, job_ledger_id, bid_id, approved_at, rejected_at, revoked_at, users!clock_sessions_user_id_fkey(name)',
+            )
+            .gte('work_date', start)
+            .lte('work_date', today)
+          if (overheadOfficeJobLedgerId) {
+            q = q.or(`job_ledger_id.eq.${overheadOfficeJobLedgerId},bid_id.not.is.null`)
+          } else {
+            q = q.not('bid_id', 'is', null)
+          }
+          return q.order('id')
         }
-        const sessionsRes = (await withSupabaseRetry(async () => q, 'load overhead 90d sessions')) as
-          | OverheadClockSessionRow[]
-          | null
-        const sessions = (sessionsRes ?? []) as OverheadClockSessionRow[]
+        const sessions = await fetchAllRows(
+          async (from, to) => ({
+            data: (await withSupabaseRetry(
+              async () => makeQ().range(from, to),
+              'load overhead 90d sessions',
+            )) as unknown as OverheadClockSessionRow[] | null,
+            error: null,
+          }),
+          'load overhead 90d sessions',
+        )
         let partsByDay: Map<string, number> = new Map()
         if (overheadOfficeJobLedgerId) {
           const r = await fetchOverheadOfficePartsByDay({
@@ -466,13 +610,25 @@ export default function PeopleOverheadTab({
             startYmd: start,
             endYmd: today,
           })
-          partsByDay = r.partsUsdByDay
+          // Same symmetric rule as the table: Internal Transfers are not an
+          // expense and stay out of the KPI numerator's office parts $. A
+          // bucket-fetch failure degrades to "everything counted" (empty map
+          // buckets to 'other') instead of nulling the KPIs.
+          let bucketByTxId = new Map<string, OverheadPartsAccountingBucketKey>()
+          try {
+            bucketByTxId = await fetchAccountingBucketByTxId(collectMercuryTxIds([r.partsDetailByDay]))
+          } catch {
+            /* RLS or network */
+          }
+          partsByDay = sumPartsUsdByDayExcludingInternalTransfer(r.partsDetailByDay, bucketByTxId)
         }
         if (cancelled) return
         const wageMap = buildOverheadWageLookup(
           Object.values(payConfig).map((r) => ({
             person_name: r.person_name,
             hourly_wage: r.hourly_wage ?? null,
+            office_hourly_wage: r.office_hourly_wage ?? null,
+            is_salary: r.is_salary,
           })),
         )
         const labor = buildOverheadDailyLabor({
@@ -483,26 +639,36 @@ export default function PeopleOverheadTab({
         const merged = mergeOverheadDayTableRows(labor.byDay, partsByDay, new Map(), new Map(), new Map())
         const totalsByDay = new Map<string, number>()
         for (const row of merged) totalsByDay.set(row.work_date, row.totalUsd)
-        const startIsoLow = `${start}T00:00:00-00:00`
-        const endIsoHigh = `${ymdAddDays(today, 1)}T00:00:00-00:00`
-        const invoiceRowsRes = await withSupabaseRetry(
-          async () =>
-            supabase
-              .from('jobs_ledger_invoices')
-              .select('amount, sent_to_customer_at')
-              .gte('sent_to_customer_at', startIsoLow)
-              .lt('sent_to_customer_at', endIsoHigh),
+        // Fetch a day wide on both sides, then re-bucket each invoice into
+        // its Chicago calendar day (calendarYmdInAppTzFromIso) — the old
+        // UTC-bounded window pulled in the previous evening's invoices and
+        // dropped everything sent after ~6pm on the last day (v2.1249 fix,
+        // same as the Review tab).
+        const startIsoLow = `${ymdAddDays(start, -1)}T00:00:00-00:00`
+        const endIsoHigh = `${ymdAddDays(today, 2)}T00:00:00-00:00`
+        const invoiceRows = await fetchAllRows(
+          async (from, to) => ({
+            data: (await withSupabaseRetry(
+              async () =>
+                supabase
+                  .from('jobs_ledger_invoices')
+                  .select('amount, sent_to_customer_at')
+                  .gte('sent_to_customer_at', startIsoLow)
+                  .lt('sent_to_customer_at', endIsoHigh)
+                  .order('id')
+                  .range(from, to),
+              'load overhead 90d revenue invoices',
+            )) as Array<{ amount: number | null; sent_to_customer_at: string | null }> | null,
+            error: null,
+          }),
           'load overhead 90d revenue invoices',
         )
-        const invoiceRows = (invoiceRowsRes ?? []) as Array<{
-          amount: number | null
-          sent_to_customer_at: string | null
-        }>
         if (cancelled) return
         const revenueByDay = new Map<string, number>()
         for (const r of invoiceRows) {
           if (!r.sent_to_customer_at) continue
           const ymd = calendarYmdInAppTzFromIso(r.sent_to_customer_at)
+          if (ymd < start || ymd > today) continue
           revenueByDay.set(ymd, (revenueByDay.get(ymd) ?? 0) + Number(r.amount ?? 0))
         }
         const sumWindow = (n: number) => {
@@ -567,27 +733,62 @@ export default function PeopleOverheadTab({
     return () => clearTimeout(t)
   }, [overheadJobSearch, overheadJobPickerOpen])
 
-  const overheadLabor = useMemo(() => {
-    const wageMap = buildOverheadWageLookup(
-      Object.values(payConfig).map((r) => ({ person_name: r.person_name, hourly_wage: r.hourly_wage ?? null })),
-    )
-    return buildOverheadDailyLabor({
-      sessions: overheadSessions,
-      officeJobLedgerId: overheadOfficeJobLedgerId,
-      wageByNormalizedName: wageMap,
-    })
-  }, [payConfig, overheadSessions, overheadOfficeJobLedgerId])
+  // Dual-rate people (office_hourly_wage set, hourly) price office/bid time
+  // at the office rate — matching payroll (officeJobRateSplit) — so pass the
+  // dual-rate fields through to the wage lookup.
+  const overheadWageMap = useMemo(
+    () =>
+      buildOverheadWageLookup(
+        Object.values(payConfig).map((r) => ({
+          person_name: r.person_name,
+          hourly_wage: r.hourly_wage ?? null,
+          office_hourly_wage: r.office_hourly_wage ?? null,
+          is_salary: r.is_salary,
+        })),
+      ),
+    [payConfig],
+  )
 
-  const overheadOtherJobsLabor = useMemo(() => {
-    const wageMap = buildOverheadWageLookup(
-      Object.values(payConfig).map((r) => ({ person_name: r.person_name, hourly_wage: r.hourly_wage ?? null })),
-    )
-    return buildOtherJobsLaborByDay({
-      sessions: overheadOtherJobsSessions,
-      officeJobLedgerId: overheadOfficeJobLedgerId,
-      wageByNormalizedName: wageMap,
-    })
-  }, [payConfig, overheadOtherJobsSessions, overheadOfficeJobLedgerId])
+  const overheadLabor = useMemo(
+    () =>
+      buildOverheadDailyLabor({
+        sessions: overheadSessions,
+        officeJobLedgerId: overheadOfficeJobLedgerId,
+        wageByNormalizedName: overheadWageMap,
+      }),
+    [overheadWageMap, overheadSessions, overheadOfficeJobLedgerId],
+  )
+
+  const overheadOtherJobsLabor = useMemo(
+    () =>
+      buildOtherJobsLaborByDay({
+        sessions: overheadOtherJobsSessions,
+        officeJobLedgerId: overheadOfficeJobLedgerId,
+        wageByNormalizedName: overheadWageMap,
+      }),
+    [overheadWageMap, overheadOtherJobsSessions, overheadOfficeJobLedgerId],
+  )
+
+  // Per-day Materials $ with Internal Transfers excluded on BOTH sides
+  // (office parts and field materials) — the same rule the breakdown modals
+  // apply, so table columns and modals always agree.
+  const overheadOfficePartsUsdByDay = useMemo(
+    () =>
+      sumPartsUsdByDayExcludingInternalTransfer(
+        overheadOfficePartsDetailByDay,
+        overheadPartsAccountingBucketByTxId,
+      ),
+    [overheadOfficePartsDetailByDay, overheadPartsAccountingBucketByTxId],
+  )
+
+  const overheadOtherJobsPartsUsdByDay = useMemo(
+    () =>
+      sumPartsUsdByDayExcludingInternalTransfer(
+        overheadOtherJobsPartsDetailByDay,
+        overheadPartsAccountingBucketByTxId,
+      ),
+    [overheadOtherJobsPartsDetailByDay, overheadPartsAccountingBucketByTxId],
+  )
 
   const overheadMergedByDay = useMemo(
     () =>
@@ -650,10 +851,20 @@ export default function PeopleOverheadTab({
     if (!overheadBreakdownModal) return null
     const { workDate, scope } = overheadBreakdownModal
     const dayLines = overheadLabor.detailByDay.get(workDate) ?? []
-    const totalPartsUsd = overheadOfficePartsUsdByDay.get(workDate) ?? 0
     const sortedPartLines = [...(overheadOfficePartsDetailByDay.get(workDate) ?? [])].sort((a, b) =>
       `${a.source} ${a.sortKey}`.localeCompare(`${b.source} ${b.sortKey}`),
     )
+    // Office-parts accounting sections, bucketed once for the officeParts and
+    // total scopes. Internal Transfers are not an expense: the Materials total
+    // excludes them (same symmetric rule as the table columns and the
+    // otherJobs branch below) and they render in a marked excluded section.
+    const officePartsSections = bucketOverheadPartsLinesByAccountingLabel(
+      sortedPartLines,
+      overheadPartsAccountingBucketByTxId,
+    )
+    const totalPartsUsd = sumMaterialsTotalUsdExcludingInternalTransfer(officePartsSections)
+    const internalTransferUsd =
+      officePartsSections.find((s) => s.key === 'internal_transfer')?.totalUsd ?? 0
 
     if (scope === 'officeParts') {
       return {
@@ -661,6 +872,8 @@ export default function PeopleOverheadTab({
         scope,
         title: 'Office parts ($)',
         totalPartsUsd,
+        internalTransferUsd,
+        partsSections: officePartsSections,
         sortedPartLines,
       } as const
     }
@@ -681,7 +894,7 @@ export default function PeopleOverheadTab({
       // labeled splits feeding the upstream RPC total.
       const partsSectionsOj = bucketOverheadPartsLinesByAccountingLabel(
         sortedPartLinesOj,
-        overheadOtherJobsAccountingBucketByTxId,
+        overheadPartsAccountingBucketByTxId,
       )
       const totalPartsUsdOj = sumMaterialsTotalUsdExcludingInternalTransfer(partsSectionsOj)
       const internalTransferUsdOj =
@@ -719,10 +932,12 @@ export default function PeopleOverheadTab({
         totalHours,
         totalLaborUsd,
         totalPartsUsd,
+        internalTransferUsd,
         grandTotalUsd,
         personTotal: aggregateOverheadDetailByPersonTotalScope(dayLines),
         sortedSessions,
         sortedPartLines,
+        partsSections: officePartsSections,
       } as const
     }
     return {
@@ -737,13 +952,22 @@ export default function PeopleOverheadTab({
   }, [
     overheadBreakdownModal,
     overheadLabor,
-    overheadOfficePartsUsdByDay,
     overheadOfficePartsDetailByDay,
     overheadOtherJobsLabor,
-    overheadOtherJobsPartsUsdByDay,
     overheadOtherJobsPartsDetailByDay,
-    overheadOtherJobsAccountingBucketByTxId,
+    overheadPartsAccountingBucketByTxId,
   ])
+
+  // Mercury lines carry an optional debit-card UUID from the transaction's
+  // raw JSON. Resolve via nickname map; fall back to a compact hex preview
+  // ("abc...xyz") so the user can still tell *which* card was used even when
+  // no nickname is saved. Non-Mercury (supply / tally) lines and Mercury
+  // lines with no card (ACH / wire / check) get no suffix.
+  const overheadCardLabelForLine = (ln: OverheadPartsDetailLine): string =>
+    ln.source === 'mercury' && ln.mercuryDebitCardId
+      ? overheadMercuryNicknameByDebitCard[ln.mercuryDebitCardId.toLowerCase()]?.trim() ||
+        `card ${formatMercuryDebitCardIdCompact(ln.mercuryDebitCardId)}`
+      : ''
 
   const overheadValueCellButtonStyle: CSSProperties = {
     border: 'none',
@@ -1345,6 +1569,20 @@ export default function PeopleOverheadTab({
                   <p style={{ margin: '0.35rem 0 0 0', fontSize: '0.875rem', fontWeight: 600 }}>
                     Total: {formatCurrency(overheadBreakdownModalModel.totalPartsUsd)}
                   </p>
+                  {overheadBreakdownModalModel.internalTransferUsd > 0 ? (
+                    <p
+                      style={{
+                        margin: '0.15rem 0 0 0',
+                        fontSize: '0.75rem',
+                        color: 'var(--text-muted)',
+                        fontStyle: 'italic',
+                      }}
+                      title="Movement between your own accounts; excluded from Materials."
+                    >
+                      Internal Transfers (excluded):{' '}
+                      {formatCurrency(overheadBreakdownModalModel.internalTransferUsd)}
+                    </p>
+                  ) : null}
                 </>
               ) : overheadBreakdownModalModel.scope === 'total' ? (
                 <>
@@ -1355,6 +1593,20 @@ export default function PeopleOverheadTab({
                   <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.875rem' }}>
                     Office materials: {formatCurrency(overheadBreakdownModalModel.totalPartsUsd)}
                   </p>
+                  {overheadBreakdownModalModel.internalTransferUsd > 0 ? (
+                    <p
+                      style={{
+                        margin: '0.15rem 0 0 0',
+                        fontSize: '0.75rem',
+                        color: 'var(--text-muted)',
+                        fontStyle: 'italic',
+                      }}
+                      title="Movement between your own accounts; excluded from Materials."
+                    >
+                      Internal Transfers (excluded):{' '}
+                      {formatCurrency(overheadBreakdownModalModel.internalTransferUsd)}
+                    </p>
+                  ) : null}
                   <p style={{ margin: '0.35rem 0 0 0', fontSize: '0.875rem', fontWeight: 600 }}>
                     Total: {formatCurrency(overheadBreakdownModalModel.grandTotalUsd)}
                   </p>
@@ -1403,26 +1655,12 @@ export default function PeopleOverheadTab({
                 overheadBreakdownModalModel.sortedPartLines.length === 0 ? (
                   <p style={{ margin: 0, color: 'var(--text-muted)' }}>No materials lines for this date.</p>
                 ) : (
-                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
-                    <thead>
-                      <tr style={{ background: 'var(--bg-muted)' }}>
-                        <th style={{ textAlign: 'left', padding: '0.45rem' }}>Source</th>
-                        <th style={{ textAlign: 'left', padding: '0.45rem' }}>Description</th>
-                        <th style={{ textAlign: 'right', padding: '0.45rem' }}>Amount ($)</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {overheadBreakdownModalModel.sortedPartLines.map((ln) => (
-                        <tr key={ln.sortKey} style={{ borderBottom: '1px solid var(--border)' }}>
-                          <td style={{ padding: '0.45rem' }}>
-                            {ln.source === 'mercury' ? 'Mercury' : ln.source === 'supply' ? 'Supply' : 'Tally'}
-                          </td>
-                          <td style={{ padding: '0.45rem' }}>{ln.label}</td>
-                          <td style={{ padding: '0.45rem', textAlign: 'right' }}>{formatCurrency(ln.amountUsd)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                  <div style={{ fontSize: '0.8125rem', color: 'var(--text-600)' }}>
+                    <OverheadPartsSectionsList
+                      sections={overheadBreakdownModalModel.partsSections}
+                      cardLabelForLine={overheadCardLabelForLine}
+                    />
+                  </div>
                 )
               ) : overheadBreakdownModalModel.scope === 'total' ? (
                 <>
@@ -1488,33 +1726,10 @@ export default function PeopleOverheadTab({
                     {overheadBreakdownModalModel.sortedPartLines.length === 0 ? (
                       <p style={{ margin: '0.5rem 0 0 0' }}>No materials lines for this date.</p>
                     ) : (
-                      <ul style={{ margin: '0.5rem 0 0 0', paddingLeft: '1.1rem' }}>
-                        {overheadBreakdownModalModel.sortedPartLines.map((ln) => {
-                          // Mercury lines carry an optional debit-card UUID from the
-                          // transaction's raw JSON. Resolve via nickname map; fall back
-                          // to a compact hex preview ("abc...xyz") so the user can still
-                          // tell *which* card was used even when no nickname is saved.
-                          // Non-Mercury (supply / tally) lines and Mercury lines with no
-                          // card (ACH / wire / check) render exactly as before.
-                          const cardLabel =
-                            ln.source === 'mercury' && ln.mercuryDebitCardId
-                              ? overheadMercuryNicknameByDebitCard[
-                                  ln.mercuryDebitCardId.toLowerCase()
-                                ]?.trim() ||
-                                `card ${formatMercuryDebitCardIdCompact(ln.mercuryDebitCardId)}`
-                              : ''
-                          return (
-                            <li key={ln.sortKey} style={{ marginBottom: '0.25rem' }}>
-                              {ln.source === 'mercury' ? 'Mercury' : ln.source === 'supply' ? 'Supply' : 'Tally'} — {ln.label}
-                              {cardLabel ? (
-                                <span style={{ color: 'var(--text-muted)' }}> · on {cardLabel}</span>
-                              ) : null}
-                              {' — '}
-                              ${formatCurrency(ln.amountUsd)}
-                            </li>
-                          )
-                        })}
-                      </ul>
+                      <OverheadPartsSectionsList
+                        sections={overheadBreakdownModalModel.partsSections}
+                        cardLabelForLine={overheadCardLabelForLine}
+                      />
                     )}
                   </details>
 
@@ -1596,70 +1811,7 @@ export default function PeopleOverheadTab({
                     {overheadBreakdownModalModel.sortedPartLines.length === 0 ? (
                       <p style={{ margin: '0.5rem 0 0 0' }}>No materials lines for this date.</p>
                     ) : (
-                      <>
-                        {overheadBreakdownModalModel.partsSections.map((section) => {
-                          const isInternalTransfer = section.key === 'internal_transfer'
-                          if (isInternalTransfer && section.lines.length === 0) return null
-                          return (
-                            <div
-                              key={section.key}
-                              style={{
-                                marginTop: '0.5rem',
-                                ...(isInternalTransfer
-                                  ? {
-                                      paddingLeft: '0.5rem',
-                                      borderLeft: '3px solid #94a3b8',
-                                      background: 'var(--bg-slate-tint)',
-                                    }
-                                  : null),
-                              }}
-                            >
-                              <div
-                                style={{
-                                  fontWeight: 600,
-                                  color: 'var(--text-700)',
-                                  display: 'flex',
-                                  justifyContent: 'space-between',
-                                  alignItems: 'baseline',
-                                  gap: '0.5rem',
-                                }}
-                              >
-                                <span>
-                                  {section.label} ({section.lines.length})
-                                  {isInternalTransfer ? (
-                                    <span
-                                      style={{
-                                        marginLeft: '0.4rem',
-                                        fontWeight: 500,
-                                        color: 'var(--text-slate-500)',
-                                        fontStyle: 'italic',
-                                        fontSize: '0.7rem',
-                                      }}
-                                    >
-                                      (not counted in Materials)
-                                    </span>
-                                  ) : null}
-                                </span>
-                                <span style={{ fontWeight: 500, color: 'var(--text-muted)' }}>
-                                  ${formatCurrency(section.totalUsd)}
-                                </span>
-                              </div>
-                              {section.lines.length === 0 ? (
-                                <p style={{ margin: '0.15rem 0 0 1.1rem', color: 'var(--text-faint)' }}>None</p>
-                              ) : (
-                                <ul style={{ margin: '0.15rem 0 0 0', paddingLeft: '1.1rem' }}>
-                                  {section.lines.map((ln) => (
-                                    <li key={ln.sortKey} style={{ marginBottom: '0.25rem' }}>
-                                      {ln.source === 'mercury' ? 'Mercury' : ln.source === 'supply' ? 'Supply' : 'Tally'} — {ln.label} —{' '}
-                                      ${formatCurrency(ln.amountUsd)}
-                                    </li>
-                                  ))}
-                                </ul>
-                              )}
-                            </div>
-                          )
-                        })}
-                      </>
+                      <OverheadPartsSectionsList sections={overheadBreakdownModalModel.partsSections} />
                     )}
                   </details>
 
@@ -1803,7 +1955,9 @@ export default function PeopleOverheadTab({
                 Daily labor overhead from <strong>approved, closed</strong> clock sessions: time on the office job below,
                 and time on <strong>bids</strong>. If both job and bid are set on a session, the <strong>office job</strong>{' '}
                 wins. Amounts use session hours × <strong>hourly wage</strong> from People pay config (same name as clock
-                user). <strong>Office parts ($)</strong> sums materials on the office job (Mercury allocations by posted
+                user); for dual-rate people (an <strong>office hourly wage</strong> set in pay config), office and bid
+                labor is valued at the <strong>office rate</strong> — matching what payroll pays for that time.{' '}
+                <strong>Office parts ($)</strong> sums materials on the office job (Mercury allocations by posted
                 date, supply invoice shares by invoice date, tally parts by entry date); these are separate from labor—no
                 automatic dedupe across sources.                     <strong>Office Total ($) / Hours</strong> shows overhead <strong>dollars</strong>{' '}
                 (labor plus office parts) and <strong>office + bid labor hours</strong> that day (materials add no hours).{' '}

@@ -1,9 +1,25 @@
-import {
-  buildHourlyWageLookupByNormalizedName,
-  hourlyWageForUserName,
-} from './bidBoardWeeklyEstimatorLaborCost'
+import { payConfigLookupKey } from './bidBoardWeeklyEstimatorLaborCost'
+// Benign import cycle (function-declaration only): officeJobRateSplit imports
+// approvedClosedSessionHours from this module.
+import { shouldUseDualRate } from './officeJobRateSplit'
 
-export type OverheadPayConfigInput = { person_name: string; hourly_wage: number | null }
+export type OverheadPayConfigInput = {
+  person_name: string
+  hourly_wage: number | null
+  /** Second hourly rate for office/bid time (dual-rate opt-in). Omitted/null = single rate. */
+  office_hourly_wage?: number | null
+  is_salary?: boolean | null
+}
+
+/**
+ * Per-person wage pair for overhead pricing. `officeWage` prices office- and
+ * bid-bucket sessions; `fieldWage` prices field (other-jobs) sessions. For
+ * dual-rate people (`shouldUseDualRate` — hourly with an office rate set)
+ * `officeWage` is `office_hourly_wage`, matching what payroll actually pays
+ * for that time (`officeJobRateSplit`); for everyone else both are
+ * `hourly_wage`.
+ */
+export type OverheadWageRates = { fieldWage: number | null; officeWage: number | null }
 
 export type OverheadClockSessionRow = {
   id: string
@@ -170,7 +186,7 @@ export type OtherJobsLaborDetailLine = {
 export function buildOtherJobsLaborByDay(args: {
   sessions: readonly OverheadClockSessionRow[]
   officeJobLedgerId: string | null
-  wageByNormalizedName: Map<string, number | null>
+  wageByNormalizedName: Map<string, OverheadWageRates>
 }): {
   laborUsdByDay: Map<string, number>
   laborHoursByDay: Map<string, number>
@@ -193,7 +209,7 @@ export function buildOtherJobsLaborByDay(args: {
     if (hours == null || hours <= 0) continue
 
     const displayName = (s.users?.name ?? '').trim() || 'Unknown'
-    const wage = hourlyWageForUserName(displayName, wageByNormalizedName)
+    const wage = overheadWageRatesForUserName(displayName, wageByNormalizedName)?.fieldWage ?? null
     const missingWage = wage == null || !Number.isFinite(wage)
     const laborUsd = missingWage ? 0 : hours * wage
 
@@ -318,8 +334,23 @@ function sessionIncludedForOverheadUsd(session: OverheadClockSessionRow): boolea
   return session.clocked_out_at != null
 }
 
-export function buildOverheadWageLookup(configs: readonly OverheadPayConfigInput[]): Map<string, number | null> {
-  return buildHourlyWageLookupByNormalizedName(configs)
+export function buildOverheadWageLookup(configs: readonly OverheadPayConfigInput[]): Map<string, OverheadWageRates> {
+  const m = new Map<string, OverheadWageRates>()
+  for (const c of configs) {
+    const officeWage = shouldUseDualRate(c) ? c.office_hourly_wage ?? null : c.hourly_wage
+    m.set(payConfigLookupKey(c.person_name), { fieldWage: c.hourly_wage, officeWage })
+  }
+  return m
+}
+
+/** `hourlyWageForUserName` analog for the wage-pair lookup (null when the name has no pay-config row). */
+export function overheadWageRatesForUserName(
+  userDisplayName: string | null | undefined,
+  wageByNormalizedName: Map<string, OverheadWageRates>,
+): OverheadWageRates | null {
+  const raw = userDisplayName?.trim() ?? ''
+  if (!raw) return null
+  return wageByNormalizedName.get(payConfigLookupKey(raw)) ?? null
 }
 
 export type OverheadDailyBuildResult = {
@@ -329,12 +360,14 @@ export type OverheadDailyBuildResult = {
 
 /**
  * Aggregates approved, closed sessions into per-day office vs bid labor $.
- * Labor $ = session hours × `hourly_wage` when wage is configured; otherwise $0 with `missingWage` on the detail line.
+ * Labor $ = session hours × the person's office-bucket wage (`OverheadWageRates.officeWage`:
+ * `office_hourly_wage` for dual-rate people, else `hourly_wage`) when configured;
+ * otherwise $0 with `missingWage` on the detail line.
  */
 export function buildOverheadDailyLabor(args: {
   sessions: readonly OverheadClockSessionRow[]
   officeJobLedgerId: string | null
-  wageByNormalizedName: Map<string, number | null>
+  wageByNormalizedName: Map<string, OverheadWageRates>
 }): OverheadDailyBuildResult {
   const { sessions, officeJobLedgerId, wageByNormalizedName } = args
 
@@ -353,7 +386,10 @@ export function buildOverheadDailyLabor(args: {
     if (hours == null || hours <= 0) continue
 
     const displayName = (s.users?.name ?? '').trim() || 'Unknown'
-    const wage = hourlyWageForUserName(displayName, wageByNormalizedName)
+    // Office AND bid buckets are office-rate time for dual-rate people —
+    // matches officeJobRateSplit.rateBucketForSession (only real field jobs
+    // pay the field rate), so overhead $ agrees with payroll.
+    const wage = overheadWageRatesForUserName(displayName, wageByNormalizedName)?.officeWage ?? null
     const missingWage = wage == null || !Number.isFinite(wage)
     const laborUsd = missingWage ? 0 : hours * wage
 

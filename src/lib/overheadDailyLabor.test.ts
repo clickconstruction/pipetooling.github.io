@@ -161,6 +161,85 @@ describe('buildOverheadDailyLabor', () => {
   })
 })
 
+describe('dual-rate wage lookup (office_hourly_wage)', () => {
+  const officeId = '11111111-1111-4111-8111-111111111111'
+  const otherJob = '22222222-2222-4222-8222-222222222222'
+  // Alice: dual-rate ($40 field / $25 office). Bob: single-rate $30.
+  // Sal: salaried with an office rate set — shouldUseDualRate gate ignores it.
+  const wages = buildOverheadWageLookup([
+    { person_name: 'Alice', hourly_wage: 40, office_hourly_wage: 25, is_salary: false },
+    { person_name: 'Bob', hourly_wage: 30 },
+    { person_name: 'Sal', hourly_wage: 50, office_hourly_wage: 20, is_salary: true },
+  ])
+
+  it('prices office AND bid buckets at the office rate for dual-rate people', () => {
+    const r = buildOverheadDailyLabor({
+      sessions: [
+        sess({ id: 'o', user_id: 'u1', work_date: '2026-06-02', job_ledger_id: officeId }),
+        sess({
+          id: 'b',
+          user_id: 'u1',
+          work_date: '2026-06-02',
+          job_ledger_id: null,
+          bid_id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+        }),
+      ],
+      officeJobLedgerId: officeId,
+      wageByNormalizedName: wages,
+    })
+    // 2h × $25 office rate each — NOT the $40 field rate.
+    expect(r.byDay[0]?.officeLaborUsd).toBe(50)
+    expect(r.byDay[0]?.bidLaborUsd).toBe(50)
+    expect(r.byDay[0]?.laborHours).toBe(4)
+  })
+
+  it('keeps hourly_wage for non-dual people in the office bucket', () => {
+    const r = buildOverheadDailyLabor({
+      sessions: [
+        sess({ id: 'o', user_id: 'u2', work_date: '2026-06-02', job_ledger_id: officeId, users: { name: 'Bob' } }),
+      ],
+      officeJobLedgerId: officeId,
+      wageByNormalizedName: wages,
+    })
+    expect(r.byDay[0]?.officeLaborUsd).toBe(60)
+  })
+
+  it('ignores the office rate for salaried people (shouldUseDualRate gate)', () => {
+    const r = buildOverheadDailyLabor({
+      sessions: [
+        sess({ id: 'o', user_id: 'u3', work_date: '2026-06-02', job_ledger_id: officeId, users: { name: 'Sal' } }),
+      ],
+      officeJobLedgerId: officeId,
+      wageByNormalizedName: wages,
+    })
+    expect(r.byDay[0]?.officeLaborUsd).toBe(100)
+  })
+
+  it('prices field (other-jobs) sessions at hourly_wage even for dual-rate people', () => {
+    const r = buildOtherJobsLaborByDay({
+      sessions: [sess({ id: 'f', user_id: 'u1', work_date: '2026-06-02', job_ledger_id: otherJob })],
+      officeJobLedgerId: officeId,
+      wageByNormalizedName: wages,
+    })
+    // 2h × $40 field rate — the office rate never applies to real field jobs.
+    expect(r.laborUsdByDay.get('2026-06-02')).toBe(80)
+    expect(r.laborHoursByDay.get('2026-06-02')).toBe(2)
+  })
+
+  it('still counts hours with $0 and missingWage when no pay-config row exists', () => {
+    const r = buildOverheadDailyLabor({
+      sessions: [
+        sess({ id: 'x', user_id: 'u9', work_date: '2026-06-02', job_ledger_id: officeId, users: { name: 'Nobody' } }),
+      ],
+      officeJobLedgerId: officeId,
+      wageByNormalizedName: wages,
+    })
+    expect(r.byDay[0]?.officeLaborUsd).toBe(0)
+    expect(r.byDay[0]?.laborHours).toBe(2)
+    expect((r.detailByDay.get('2026-06-02') ?? [])[0]?.missingWage).toBe(true)
+  })
+})
+
 describe('filterOverheadDetailLines', () => {
   const lines = [
     detailLine({ sessionId: '1', userName: 'A', bucket: 'office' }),

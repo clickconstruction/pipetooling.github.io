@@ -140,3 +140,28 @@ export function sumMaterialsTotalUsdExcludingInternalTransfer(
   }
   return total
 }
+
+/**
+ * Per-day Materials $ rebuilt from detail lines with Internal Transfers
+ * excluded — the day-keyed analog of
+ * {@link sumMaterialsTotalUsdExcludingInternalTransfer}. Feed this to the
+ * Overhead tab table/KPIs instead of the raw upstream `partsUsdByDay` so the
+ * columns agree with the breakdown modals (symmetric exclusion rule). Days
+ * whose lines are all Internal Transfers still appear, with $0.
+ */
+export function sumPartsUsdByDayExcludingInternalTransfer(
+  partsDetailByDay: ReadonlyMap<string, readonly OverheadPartsDetailLine[]>,
+  bucketByMercuryTxId: ReadonlyMap<string, OverheadPartsAccountingBucketKey>,
+): Map<string, number> {
+  const out = new Map<string, number>()
+  for (const [ymd, lines] of partsDetailByDay) {
+    let total = 0
+    for (const line of lines) {
+      if (isMaterialsBucketKey(bucketForOverheadPartsLine(line, bucketByMercuryTxId))) {
+        total += line.amountUsd
+      }
+    }
+    out.set(ymd, total)
+  }
+  return out
+}

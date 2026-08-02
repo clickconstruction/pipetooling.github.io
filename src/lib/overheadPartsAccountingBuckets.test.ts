@@ -7,6 +7,7 @@ import {
   OVERHEAD_PARTS_ACCOUNTING_BUCKET_ORDER,
   overheadPartsAccountingBucketFromDefaultKey,
   sumMaterialsTotalUsdExcludingInternalTransfer,
+  sumPartsUsdByDayExcludingInternalTransfer,
   type OverheadPartsAccountingBucketKey,
 } from './overheadPartsAccountingBuckets'
 
@@ -215,5 +216,42 @@ describe('sumMaterialsTotalUsdExcludingInternalTransfer', () => {
       ]),
     )
     expect(sumMaterialsTotalUsdExcludingInternalTransfer(sections)).toBe(350)
+  })
+})
+
+describe('sumPartsUsdByDayExcludingInternalTransfer', () => {
+  const bucketMap = new Map<string, OverheadPartsAccountingBucketKey>([
+    ['tx-a', 'fuel_gas'],
+    ['tx-it', 'internal_transfer'],
+  ])
+
+  it('returns an empty map for an empty detail map', () => {
+    expect(sumPartsUsdByDayExcludingInternalTransfer(new Map(), bucketMap).size).toBe(0)
+  })
+
+  it('sums per day excluding internal_transfer lines; unmapped tx ids count as other', () => {
+    const detailByDay = new Map<string, OverheadPartsDetailLine[]>([
+      [
+        '2026-06-02',
+        [
+          line({ source: 'mercury', sortKey: 'mercury:1', mercuryTransactionId: 'tx-a', amountUsd: 25 }),
+          line({ source: 'mercury', sortKey: 'mercury:2', mercuryTransactionId: 'tx-it', amountUsd: 1500 }),
+          line({ source: 'mercury', sortKey: 'mercury:3', mercuryTransactionId: 'tx-unmapped', amountUsd: 30 }),
+          line({ source: 'supply', sortKey: 'supply:1', amountUsd: 40 }),
+        ],
+      ],
+      ['2026-06-03', [line({ source: 'tally', sortKey: 'tally:1', amountUsd: 5.5 })]],
+    ])
+    const out = sumPartsUsdByDayExcludingInternalTransfer(detailByDay, bucketMap)
+    expect(out.get('2026-06-02')).toBe(95)
+    expect(out.get('2026-06-03')).toBe(5.5)
+  })
+
+  it('keeps a day whose lines are all internal transfers, with $0', () => {
+    const detailByDay = new Map<string, OverheadPartsDetailLine[]>([
+      ['2026-06-04', [line({ source: 'mercury', sortKey: 'mercury:1', mercuryTransactionId: 'tx-it', amountUsd: 700 })]],
+    ])
+    const out = sumPartsUsdByDayExcludingInternalTransfer(detailByDay, bucketMap)
+    expect(out.get('2026-06-04')).toBe(0)
   })
 })

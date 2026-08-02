@@ -394,17 +394,25 @@ export default function PeopleReviewTab({
         if (cancelled) return
         const cfgRows = await withSupabaseRetry(
           async () =>
-            supabase.from('people_pay_config').select('person_name, hourly_wage, is_salary'),
+            supabase.from('people_pay_config').select('person_name, hourly_wage, office_hourly_wage, is_salary'),
           'load review 90d pay config',
         )
         if (cancelled) return
         const cfgList = (cfgRows ?? []) as Array<{
           person_name: string
           hourly_wage: number | null
+          office_hourly_wage: number | null
           is_salary: boolean | null
         }>
+        // Dual-rate fields included so office/bid overhead $ uses the office
+        // rate — same pricing as the Overhead tab and payroll.
         const wageMap = buildOverheadWageLookup(
-          cfgList.map((r) => ({ person_name: r.person_name, hourly_wage: r.hourly_wage ?? null })),
+          cfgList.map((r) => ({
+            person_name: r.person_name,
+            hourly_wage: r.hourly_wage ?? null,
+            office_hourly_wage: r.office_hourly_wage ?? null,
+            is_salary: r.is_salary,
+          })),
         )
         const overheadLabor = buildOverheadDailyLabor({
           sessions: (overheadSessionsRes ?? []) as OverheadClockSessionRow[],

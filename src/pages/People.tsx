@@ -559,8 +559,12 @@ export default function People() {
   }
   const canAccessTeamsTab =
     authRole !== null && ['dev', 'master_technician', 'assistant', 'controller'].includes(authRole)
+  // Overhead reads pay-gated data (clock_sessions RLS + people_pay_config
+  // wages both require pay_approved_masters membership for masters), so a
+  // non-approved master would only ever see a silently-zero tab — gate on
+  // pay approval like the Payroll tab does.
   const canAccessOverheadTab =
-    authRole !== null && ['dev', 'master_technician'].includes(authRole)
+    authRole === 'dev' || (authRole === 'master_technician' && canAccessPay)
   const canDeletePeopleContracts =
     authRole !== null && ['dev', 'master_technician'].includes(authRole)
 
