@@ -11,6 +11,15 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1271',
+    date: '2026-08-02',
+    title: 'Behind the scenes: local dev sessions last as long as production ones',
+    kind: 'infra',
+    highlights: [
+      'The local development stack issued 1-hour sign-in tokens while production issues 10-hour ones — local now matches, so session behavior is the same in both.',
+    ],
+  },
+  {
     version: 'v2.1270',
     date: '2026-08-02',
     title: 'Behind the scenes: Bids and People developer docs match the app again',

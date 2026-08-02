@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-02 (v2.1270)
+last_updated: 2026-08-02 (v2.1271)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1271)
+
+### Local jwt_expiry aligned with prod (10h) (2026-08-02)
+`supabase/config.toml` set `jwt_expiry = 3600` (1h) while prod issues 10-hour tokens (36,000s — verified 2026-08-02 by measuring a live token's `exp - iat` via the dev test account; the dashboard Sessions setting agrees). `src/hooks/useAuth.ts`'s refresh windows (30-min proactive refresh, 15-min warning) were tuned for the 10-hour prod expiry, so local stacks exercised different session behavior. Local now matches prod: `jwt_expiry = 36000` with a comment citing the verification. Local-dev only — no prod change, no migration, no client code change.
 
 ## Latest Updates (v2.1270)
 
