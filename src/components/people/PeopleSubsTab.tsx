@@ -249,7 +249,7 @@ export default function PeopleSubsTab() {
           }}
         >
           <div style={{ fontWeight: 700, fontSize: '0.875rem', color: 'var(--text-amber-900)' }}>
-            ⚠ {result.unattributed.length} sub sheet{result.unattributed.length === 1 ? " isn't" : " aren't"} linked to anyone on the roster
+            ⚠ {result.unattributed.length} sub {result.unattributed.length === 1 ? "sheet isn't" : "sheets aren't"} linked to anyone on the roster
           </div>
           <div style={{ fontSize: '0.78rem', color: 'var(--text-amber-800)', margin: '0.15rem 0 0.5rem' }}>
             Their balances are missing from every sub's Owed column until they're fixed.
