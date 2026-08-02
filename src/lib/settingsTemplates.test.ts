@@ -96,9 +96,9 @@ describe('settings templates constants', () => {
 })
 
 describe('EMAIL_TEMPLATE_DEFAULTS', () => {
-  it('covers all 11 email template types with non-empty subject and body', () => {
+  it('covers all 14 email template types with non-empty subject and body', () => {
     const types = Object.keys(EMAIL_TEMPLATE_DEFAULTS)
-    expect(types).toHaveLength(11)
+    expect(types).toHaveLength(14)
     for (const [type, def] of Object.entries(EMAIL_TEMPLATE_DEFAULTS)) {
       expect(def.subject.length, type).toBeGreaterThan(0)
       expect(def.body.length, type).toBeGreaterThan(0)
@@ -132,6 +132,20 @@ describe('EMAIL_TEMPLATE_DEFAULTS', () => {
   it('rejection default carries the rejection reason; next-stage default the previous stage', () => {
     expect(EMAIL_TEMPLATE_DEFAULTS.stage_prior_rejected.body).toContain('{{rejection_reason}}')
     expect(EMAIL_TEMPLATE_DEFAULTS.stage_next_complete_or_approved.body).toContain('{{previous_stage_name}}')
+  })
+
+  it('work-order defaults mirror the dispatch migration seeds (20260801220000)', () => {
+    for (const type of ['work_order_offered', 'work_order_accepted', 'work_order_declined'] as const) {
+      const def = EMAIL_TEMPLATE_DEFAULTS[type]
+      expect(def.subject).toContain('{{stage_name}}')
+      expect(def.subject).toContain('{{project_name}}')
+      expect(def.body).toContain('{{amount}}')
+      expect(def.body).toContain('{{workflow_link}}')
+    }
+    expect(EMAIL_TEMPLATE_DEFAULTS.work_order_offered.body).toContain('{{offered_by}}')
+    expect(EMAIL_TEMPLATE_DEFAULTS.work_order_offered.body).toContain('{{window}}')
+    expect(EMAIL_TEMPLATE_DEFAULTS.work_order_accepted.subject).toContain('{{responder}}')
+    expect(EMAIL_TEMPLATE_DEFAULTS.work_order_declined.body).toContain('{{reason}}')
   })
 })
 

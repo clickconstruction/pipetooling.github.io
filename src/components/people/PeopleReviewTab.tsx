@@ -17,6 +17,7 @@ import type { PayConfigRow } from '../../types/peoplePayConfig'
 // minutes then rounded the remainder, rendering ':60' seconds on ~40% of
 // whole-minute values (e.g. 1:20 stored showed as 1:19:60).
 import { decimalToHms } from '../../lib/people/hoursGridTime'
+import { laborJobMatchesPerson } from '../../lib/people/laborJobPersonMatch'
 import type { Person, UserRow } from '../../hooks/usePeopleRoster'
 import {
   approvedClosedSessionHours,
@@ -786,6 +787,12 @@ export default function PeopleReviewTab({
     // trailing space here used to silently blank Tasks/Reports for the person.
     const personNameTrimmed = personName.trim()
     const userId = users.find((u) => (u.name ?? '').trim() === personNameTrimmed)?.id ?? null
+    // people.id for the junction-first sub-sheet read below (identity plan
+    // C1-7); pay config carries person_id post-Phase-B as a second source.
+    const personId =
+      people.find((p) => (p.name ?? '').trim() === personNameTrimmed)?.id ??
+      (payConfig[personName] ?? payConfig[personNameTrimmed])?.person_id ??
+      null
 
     // Same exclusion as derivePersonTeamSummary: the configured Office job is
     // overhead, not field revenue — without it the panel lists "Office" as a
@@ -809,10 +816,17 @@ export default function PeopleReviewTab({
     const twoYearsAgoYmd = twoYearsAgo.toLocaleDateString('en-CA')
     const lookbackStart = start < twoYearsAgoYmd ? start : twoYearsAgoYmd
 
-    const [laborRes, allLaborResForCostAllTime, personLaborResAllTime, crewRes, allCrewResForCostAllTime, hoursRes, reportsRes, tasksRes, outstandingTasksRes, settingsRes, tallyRes, allHoursRes, allHoursResAllTime] = await Promise.all([
-      supabase.from('people_labor_jobs').select('id, job_date, address, job_number, labor_rate, distance_miles').eq('assigned_to_name', personName).gte('job_date', start).lte('job_date', end),
+    const [assigneesRes, allLaborResForCostAllTime, crewRes, allCrewResForCostAllTime, hoursRes, reportsRes, tasksRes, outstandingTasksRes, settingsRes, tallyRes, allHoursRes, allHoursResAllTime] = await Promise.all([
+      // Junction-first sub-sheet attribution (identity plan C1-7): the old
+      // `.eq('assigned_to_name', personName)` reads silently returned zero
+      // rows for any sheet with 2+ assignees — the column is a ' | '-delimited
+      // multi-name string. The person's rows are derived below from the
+      // company-wide lookback fetch (a superset of both old windows) via
+      // laborJobMatchesPerson (junction row first, split-name fallback).
+      personId
+        ? paged((f, t) => supabase.from('people_labor_job_assignees').select('labor_job_id').eq('person_id', personId).order('labor_job_id').range(f, t), 'load review labor job assignees')
+        : Promise.resolve({ data: [] }),
       paged((f, t) => supabase.from('people_labor_jobs').select('id, job_date, address, job_number, labor_rate, distance_miles, assigned_to_name').gte('job_date', lookbackStart).order('id').range(f, t), 'load review lifetime labor jobs'),
-      forTeamSummary ? Promise.resolve({ data: [] }) : paged((f, t) => supabase.from('people_labor_jobs').select('id, job_date, address, job_number, labor_rate, distance_miles').eq('assigned_to_name', personName).gte('job_date', lookbackStart).order('id').range(f, t), 'load review person lifetime labor jobs'),
       paged((f, t) => supabase.from('people_crew_jobs').select('work_date, person_name, person_id, job_assignments').gte('work_date', start).lte('work_date', end).order('work_date').order('person_name').range(f, t), 'load review period crew days'),
       paged((f, t) => supabase.from('people_crew_jobs').select('work_date, person_name, person_id, job_assignments').gte('work_date', lookbackStart).order('work_date').order('person_name').range(f, t), 'load review lifetime crew days'),
       supabase.from('people_hours').select('work_date, hours').eq('person_name', personName).gte('work_date', start).lte('work_date', end),
@@ -846,12 +860,22 @@ export default function PeopleReviewTab({
     ])
 
     throwIfQueryError(
-      [laborRes, allLaborResForCostAllTime, personLaborResAllTime, crewRes, allCrewResForCostAllTime, hoursRes, reportsRes, tasksRes, outstandingTasksRes, settingsRes, tallyRes, allHoursRes, allHoursResAllTime],
+      [assigneesRes, allLaborResForCostAllTime, crewRes, allCrewResForCostAllTime, hoursRes, reportsRes, tasksRes, outstandingTasksRes, settingsRes, tallyRes, allHoursRes, allHoursResAllTime],
       'load review data',
     )
-    const laborRows = (laborRes.data ?? []) as Array<{ id: string; job_date: string | null; address: string; job_number: string | null; labor_rate: number | null; distance_miles: number | null }>
     const allLaborRowsForCostAllTime = (allLaborResForCostAllTime.data ?? []) as Array<{ id: string; job_date: string | null; address: string; job_number: string | null; labor_rate: number | null; distance_miles: number | null; assigned_to_name: string | null }>
-    const personLaborRowsAllTime = (personLaborResAllTime.data ?? []) as Array<{ id: string; job_date: string | null; address: string; job_number: string | null; labor_rate: number | null; distance_miles: number | null }>
+    const junctionJobIds: ReadonlySet<string> = new Set(
+      ((assigneesRes.data ?? []) as Array<{ labor_job_id: string }>).map((r) => r.labor_job_id),
+    )
+    // Derived person attributions (see the wave comment above). YMD strings
+    // compare lexicographically === chronologically; null job_date rows are
+    // excluded from the period window exactly as the old `.gte`/`.lte` did.
+    const laborRows = allLaborRowsForCostAllTime.filter(
+      (r) => laborJobMatchesPerson(r, junctionJobIds, personName) && r.job_date != null && r.job_date >= start && r.job_date <= end,
+    )
+    const personLaborRowsAllTime = forTeamSummary
+      ? ([] as typeof allLaborRowsForCostAllTime)
+      : allLaborRowsForCostAllTime.filter((r) => laborJobMatchesPerson(r, junctionJobIds, personName))
     const crewRows = (crewRes.data ?? []) as Array<{ work_date: string; person_name: string; person_id: string | null; job_assignments: CrewJobAssignment[] }>
     const allCrewRowsForCostAllTime = (allCrewResForCostAllTime.data ?? []) as Array<{ work_date: string; person_name: string; person_id: string | null; job_assignments: CrewJobAssignment[] }>
     const hoursRows = (hoursRes.data ?? []) as Array<{ work_date: string; hours: number }>
