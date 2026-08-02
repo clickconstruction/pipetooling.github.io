@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-01 (v2.1264)
+last_updated: 2026-08-02 (v2.1267)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1267)
+
+### Docs audit: entry docs refreshed, changelog de-bloated, plan docs caught up (2026-08-02)
+Entry/plan-doc wave of the 2026-08-02 documentation audit. **README.md** un-froze from its 2026-02-01 state: gen-types command corrected to `npm run gen-types:linked` (the `--local` form silently blanks `database.ts` with no local stack), Bids 10→14 tabs, per-role bullets replaced with one-liners + `ACCESS_CONTROL.md` pointer (the estimator bullet contradicted `layoutRouteAccess.ts`), deploy callout now covers all **three** tracks, five dead doc references removed, 44-line stale Features section replaced with a lean systems overview. **AGENTS.md / AI_CONTEXT.md**: ~234→~252 tables, ~58→~61 edge functions. **RECENT_FEATURES.md**: the 1,585-line frontmatter (527 line-hinted `key_sections` frozen at v2.670) replaced with a lean block, and the dead TOC (stopped at v2.641) deleted — body entries untouched. **Deleted** root scratch files `DECOMPOSITION_MAP.md` (superseded by `PAGE_DECOMPOSITION_PLAYBOOK.md`) and `SALARIED_RESEARCH.md` (superseded by `SALARY_CLOCK_SESSIONS.md`). **Plan docs**: RUN_SUBS_PLAN key-facts rewritten post-ship (the "Skip writes no ledger row" live-bug claim was fixed by `20260801113000`), FRAGILITY_REMEDIATION_PLAN tables gained per-row status (open: B6, C1-6, C2, C3), PERSON_IDENTITY_PLAN body updated to measured reality, C1-7 references cite v2.1266. **WORKFLOW_FEATURES.md** gained frontmatter plus the missing Sub Work Orders (step commitments), Skip action, schema catch-up, and 14 template types. Docs only — no code, DB, or RLS changes.
 
 ## Latest Updates (v2.1266)
 

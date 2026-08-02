@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1267',
+    date: '2026-08-02',
+    title: 'Behind the scenes: developer docs refreshed after a full audit',
+    kind: 'infra',
+    highlights: [
+      'The project README and internal planning docs were brought up to date with what actually shipped — stale commands, counts, and finished to-do lists corrected.',
+      'The workflow feature guide now documents sub work orders (offers, accept/decline, settlement) and the Skip action.',
+      'Two obsolete scratch documents were removed.',
+    ],
+  },
+  {
     version: 'v2.1266',
     date: '2026-08-02',
     title: 'People Review: sub sheets shared by several people now count for everyone on them',
