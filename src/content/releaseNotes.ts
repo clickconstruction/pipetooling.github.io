@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1266',
+    date: '2026-08-02',
+    title: 'People Review: sub sheets shared by several people now count for everyone on them',
+    kind: 'fix',
+    highlights: [
+      'The Review tab silently skipped any sub sheet assigned to two or more people — those sheets now show up in each person’s Jobs Worked, allocations, and lifetime labor.',
+      'The three work-order email templates (offered, accepted, declined) can now be edited in Settings → Email templates.',
+    ],
+  },
+  {
     version: 'v2.1265',
     date: '2026-08-02',
     title: 'Help guides: tidier ordering and current page names',
