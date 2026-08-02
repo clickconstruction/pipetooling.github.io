@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-01 (v2.1248)
+last_updated: 2026-08-01 (v2.1249)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1249)
+
+### People → Review — display fixes: ':60' seconds, self-contradicting totals, sign formatting, true 30/90-day windows (2026-08-01)
+Display-layer cleanup from the Review-tab audit. **(1) `:60` seconds gone** — the tab's local `decimalToHms` floored minutes then rounded the remainder, so ~40% of whole-minute values rendered like `1:19:60` (vs the Hours tab's `1:20:00`); swapped for the canonical [`hoursGridTime.ts`](../src/lib/people/hoursGridTime.ts) version. **(2) Hours & Pay totals stop contradicting their own rows** — under "Only Count Jobs Marked Paid in Full" the Hours total switched to a paid-job basis while the per-day rows and Pay stayed on all days; the total now always sums the rendered rows, with a separate muted "On paid jobs" figure (collapsed strip + tfoot). **(3) Headline-card money formatting** — negative values now render `-$1,200` (shared `fmtMoney`) instead of `$-1,200` under "−"-prefixed labels that made the displayed arithmetic read wrong; Overhead labor shows `…`/`—` while the Team Summary row loads instead of a hard `$0`; the two "% of" footnotes regain their `$`. **(4) True 30/90-day windows** — `last_30_days`/`last_90_days` were inclusive off-by-one (31/91 days); now `today−29`/`today−89`, matching the 90-day rate engine. **(5) Timezone windows** — the rate engine's invoice revenue is re-bucketed per Chicago calendar day ([`calendarYmdInAppTzFromIso`](../src/utils/dateUtils.ts), the Overhead-tab idiom) instead of a UTC-bounded window that dropped evening invoices on the last day; Tasks Completed uses local-midnight instants matching the Reports window beside it (was UTC-shifted ~6h). Verified: `tsc -b` clean, zero new lints, vitest 3,336 green. Files: modified [`PeopleReviewTab.tsx`](../src/components/people/PeopleReviewTab.tsx) only. No DB / migration / RLS / RPC / Edge / type-gen changes.
 
 ## Latest Updates (v2.1248)
 

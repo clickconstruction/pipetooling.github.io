@@ -5,7 +5,7 @@ import { supabase } from '../../lib/supabase'
 import { formatCurrency } from '../../lib/format'
 import { DatabaseError, formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
 import { fetchAllRows, fetchAllRowsChunkedIn } from '../../lib/supabasePaging'
-import { ymdAddDays } from '../../utils/dateUtils'
+import { calendarYmdInAppTzFromIso, ymdAddDays } from '../../utils/dateUtils'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useLedgerPrefixMap } from '../../contexts/LedgerDisplayPrefixContext'
 import { effectiveJobLedgerNumber, formatJobLedgerNumberLabel, resolveJobLedgerPrefix } from '../../lib/ledgerDisplayPrefixes'
@@ -13,6 +13,10 @@ import { useAuth } from '../../hooks/useAuth'
 import { displayReportTemplateName } from '../../lib/reportTemplateDisplayName'
 import { ChecklistTitleWithLinks } from '../ChecklistTitleWithLinks'
 import type { PayConfigRow } from '../../types/peoplePayConfig'
+// Canonical time formatter (rounds total seconds) — the local copy floored
+// minutes then rounded the remainder, rendering ':60' seconds on ~40% of
+// whole-minute values (e.g. 1:20 stored showed as 1:19:60).
+import { decimalToHms } from '../../lib/people/hoursGridTime'
 import type { Person, UserRow } from '../../hooks/usePeopleRoster'
 import {
   approvedClosedSessionHours,
@@ -33,7 +37,7 @@ import {
   TeamSummaryInline,
   type TeamSummaryInlineHandle,
 } from './teamSummary/TeamSummaryInline'
-import { enrichTeamSummaryRowsForInline } from './teamSummary/formatters'
+import { enrichTeamSummaryRowsForInline, fmtMoney } from './teamSummary/formatters'
 import type {
   OverheadRateDecomp,
   TeamSummaryBreakdown,
@@ -122,14 +126,6 @@ export default function PeopleReviewTab({
   // Shared HH:MM(:SS) formatter — a private verbatim copy of the parent's
   // `decimalToHms` (also duplicated in quickfill/HoursSection.tsx). Pure, no
   // closure deps; kept local so the review tab doesn't need it as a prop.
-  function decimalToHms(decimal: number): string {
-    if (!decimal || decimal <= 0) return ''
-    const h = Math.floor(decimal)
-    const m = Math.floor((decimal - h) * 60)
-    const s = Math.round(((decimal - h) * 60 - m) * 60)
-    if (s > 0) return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
-    return `${h}:${String(m).padStart(2, '0')}:00`
-  }
   // Review tab state. v2.542 — `last_month` was a misnomer (it's really 30 days
   // rolling back from today, not the previous calendar month) so we renamed the
   // value to `last_30_days` and added a few common period scopes plus a custom
@@ -339,8 +335,12 @@ export default function PeopleReviewTab({
           if (officeJobLedgerId) q = q.neq('job_ledger_id', officeJobLedgerId)
           return q.order('id')
         }
-        const startIsoLow = `${start}T00:00:00-00:00`
-        const endIsoHigh = `${ymdAddDays(today, 1)}T00:00:00-00:00`
+        // Fetch a day wide on both sides, then re-bucket each invoice into
+        // its Chicago calendar day (calendarYmdInAppTzFromIso) — the old
+        // UTC-bounded window pulled in the previous evening's invoices and
+        // dropped everything sent after ~6pm on the last day.
+        const startIsoLow = `${ymdAddDays(start, -1)}T00:00:00-00:00`
+        const endIsoHigh = `${ymdAddDays(today, 2)}T00:00:00-00:00`
         const [overheadSessionsRes, fieldSessionsRes, partsRes, invoiceRowsRes] = await Promise.all([
           fetchAllRows(
             async (f, t) => ({
@@ -439,6 +439,8 @@ export default function PeopleReviewTab({
         let revenueTotal = 0
         for (const r of invoiceRows) {
           if (!r.sent_to_customer_at) continue
+          const ymd = calendarYmdInAppTzFromIso(r.sent_to_customer_at)
+          if (ymd < start || ymd > today) continue
           revenueTotal += Number(r.amount ?? 0)
         }
         setReviewOverheadRates({
@@ -655,14 +657,17 @@ export default function PeopleReviewTab({
     }
     if (reviewPeriod === 'last_30_days') {
       // Rolling 30 days back from today (was previously labeled "Last month";
-      // the label was a misnomer — see ReviewPeriod doc above).
+      // the label was a misnomer — see ReviewPeriod doc above). −29 because
+      // the range is inclusive of today: [today−29, today] = 30 days (−30
+      // used to yield a 31-day window, ~1.1% off vs the true 90-day rate).
       const start = new Date(today)
-      start.setDate(today.getDate() - 30)
+      start.setDate(today.getDate() - 29)
       return [start.toLocaleDateString('en-CA'), todayStr]
     }
     if (reviewPeriod === 'last_90_days') {
+      // −89 for the same inclusive-range reason as last_30_days.
       const start = new Date(today)
-      start.setDate(today.getDate() - 90)
+      start.setDate(today.getDate() - 89)
       return [start.toLocaleDateString('en-CA'), todayStr]
     }
     if (reviewPeriod === 'this_year') {
@@ -810,8 +815,11 @@ export default function PeopleReviewTab({
             .select('id, checklist_item_id, scheduled_date, completed_at, checklist_items(title, links), checklist_instance_assignees!inner(user_id)')
             .eq('checklist_instance_assignees.user_id', userId)
             .not('completed_at', 'is', null)
-            .gte('completed_at', start + 'T00:00:00')
-            .lte('completed_at', end + 'T23:59:59')
+            // Local-midnight instants, matching the Reports window below —
+            // the previous zoneless strings resolved as UTC, shifting the
+            // Tasks window ~6h against the Reports list rendered beside it.
+            .gte('completed_at', new Date(start + 'T00:00:00').toISOString())
+            .lt('completed_at', new Date(new Date(end + 'T00:00:00').getTime() + 86_400_000).toISOString())
         : Promise.resolve({ data: [] }),
       userId && !forTeamSummary
         ? supabase
@@ -3842,7 +3850,9 @@ export default function PeopleReviewTab({
                 const totalProfit = tsRow ? tsRow.net : reviewAllocatedProfit
                 const revPerHour = tsRow ? tsRow.revPerHour : (totalHours > 0 ? totalRevenue / totalHours : 0)
                 const profitPerHour = tsRow ? tsRow.netPerHour : (totalHours > 0 ? totalProfit / totalHours : 0)
-                const overheadLaborCost = tsRow ? tsRow.overheadLaborCost : 0
+                // null (renders like its siblings) while the Team Summary row loads —
+                // a hard $0 was indistinguishable from a real zero.
+                const overheadLaborCost = tsRow ? tsRow.overheadLaborCost : null
                 const overheadBurden = tsRow ? tsRow.overheadBurden : null
                 const profitAfterOverhead = tsRow ? tsRow.profitAfterOverhead : null
                 const profitPerHourAfterOverhead = tsRow ? tsRow.profitPerHourAfterOverhead : null
@@ -3861,7 +3871,7 @@ export default function PeopleReviewTab({
                       </span>
                     </div>
                     <div style={{ borderLeft: '1px solid var(--border-strong)', paddingLeft: '1rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
-                      <strong>{`$${Math.round(totalRevenue).toLocaleString('en-US', { maximumFractionDigits: 0 })}`}</strong>
+                      <strong>{fmtMoney(totalRevenue)}</strong>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', paddingRight: '1rem' }}>
                       <span style={{ color: 'var(--text-muted)' }}>Net Revenue (before overhead) this period:</span>
@@ -3876,19 +3886,19 @@ export default function PeopleReviewTab({
                       </span>
                     </div>
                     <div style={{ borderLeft: '1px solid var(--border-strong)', paddingLeft: '1rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
-                      <strong>{`$${Math.round(totalProfit).toLocaleString('en-US', { maximumFractionDigits: 0 })}`}</strong>
+                      <strong style={{ color: totalProfit < 0 ? 'var(--text-red-700)' : undefined }}>{fmtMoney(totalProfit)}</strong>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', paddingRight: '1rem' }}>
                       <span style={{ color: 'var(--text-muted)' }}>&minus; Overhead labor (own office/bid wages):</span>
                     </div>
                     <div style={{ borderLeft: '1px solid var(--border-strong)', paddingLeft: '1rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
-                      <strong style={{ color: overheadLaborCost < 0 ? 'var(--text-red-700)' : undefined }}>{`$${Math.round(overheadLaborCost).toLocaleString('en-US', { maximumFractionDigits: 0 })}`}</strong>
+                      <strong style={{ color: overheadLaborCost != null && overheadLaborCost < 0 ? 'var(--text-red-700)' : undefined }}>{overheadLaborCost == null ? (reviewOverheadRates.loading ? '…' : '—') : fmtMoney(overheadLaborCost)}</strong>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', paddingRight: '1rem' }}>
                       <span style={{ color: 'var(--text-muted)' }}>&minus; Overhead burden (field-hr share of office parts):</span>
                     </div>
                     <div style={{ borderLeft: '1px solid var(--border-strong)', paddingLeft: '1rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
-                      <strong style={{ color: 'var(--text-red-700)' }}>{overheadBurden == null ? '—' : `$${Math.round(overheadBurden).toLocaleString('en-US', { maximumFractionDigits: 0 })}`}</strong>
+                      <strong style={{ color: 'var(--text-red-700)' }}>{overheadBurden == null ? (reviewOverheadRates.loading ? '…' : '—') : fmtMoney(overheadBurden)}</strong>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', paddingRight: '1rem' }}>
                       <span style={{ color: 'var(--text-muted)' }}>Profit (after overhead) this period:</span>
@@ -3905,7 +3915,7 @@ export default function PeopleReviewTab({
                     <div style={{ borderLeft: '1px solid var(--border-strong)', paddingLeft: '1rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
                       <strong>{(() => {
                         if (profitAfterOverhead == null) return reviewOverheadRates.loading ? '…' : '—'
-                        return <span style={{ color: profitAfterOverhead < 0 ? 'var(--text-red-700)' : undefined }}>{`$${Math.round(profitAfterOverhead).toLocaleString('en-US', { maximumFractionDigits: 0 })}`}</span>
+                        return <span style={{ color: profitAfterOverhead < 0 ? 'var(--text-red-700)' : undefined }}>{fmtMoney(profitAfterOverhead)}</span>
                       })()}</strong>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', paddingRight: '1rem' }}>
@@ -3921,7 +3931,7 @@ export default function PeopleReviewTab({
                       </span>
                     </div>
                     <div style={{ borderLeft: '1px solid var(--border-strong)', paddingLeft: '1rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
-                      <strong>{totalHours > 0 ? `$${Math.round(revPerHour).toLocaleString('en-US', { maximumFractionDigits: 0 })}` : '—'}</strong>
+                      <strong>{totalHours > 0 ? fmtMoney(revPerHour) : '—'}</strong>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', paddingRight: '1rem' }}>
                       <span style={{ color: 'var(--text-muted)' }}>Net Revenue/hr (before overhead):</span>
@@ -3936,7 +3946,7 @@ export default function PeopleReviewTab({
                       </span>
                     </div>
                     <div style={{ borderLeft: '1px solid var(--border-strong)', paddingLeft: '1rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
-                      <strong>{totalHours > 0 ? `$${Math.round(profitPerHour).toLocaleString('en-US', { maximumFractionDigits: 0 })}` : '—'}</strong>
+                      <strong style={{ color: profitPerHour < 0 ? 'var(--text-red-700)' : undefined }}>{totalHours > 0 ? fmtMoney(profitPerHour) : '—'}</strong>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', paddingRight: '1rem' }}>
                       <span style={{ color: 'var(--text-muted)' }}>Profit/hr (after overhead):</span>
@@ -3953,7 +3963,7 @@ export default function PeopleReviewTab({
                     <div style={{ borderLeft: '1px solid var(--border-strong)', paddingLeft: '1rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
                       <strong>{(() => {
                         if (profitPerHourAfterOverhead == null) return reviewOverheadRates.loading ? '…' : '—'
-                        return <span style={{ color: profitPerHourAfterOverhead < 0 ? 'var(--text-red-700)' : undefined }}>{`$${Math.round(profitPerHourAfterOverhead).toLocaleString('en-US', { maximumFractionDigits: 0 })}`}</span>
+                        return <span style={{ color: profitPerHourAfterOverhead < 0 ? 'var(--text-red-700)' : undefined }}>{fmtMoney(profitPerHourAfterOverhead)}</span>
                       })()}</strong>
                     </div>
                   </div>
@@ -4192,7 +4202,7 @@ export default function PeopleReviewTab({
                                         if (j.revenueBeforeOverhead === 0) return '—'
                                         const pct = Math.round((j.allocatedRevenueBeforeOverhead / j.revenueBeforeOverhead) * 100)
                                         if (pct === 100) return `${pct}%`
-                                        return `${pct}% of ${Math.round(j.revenueBeforeOverhead).toLocaleString('en-US')}`
+                                        return `${pct}% of $${Math.round(j.revenueBeforeOverhead).toLocaleString('en-US')}`
                                       })()}</div>
                                     </td>
                                     <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', verticalAlign: 'top' }}>
@@ -4534,7 +4544,7 @@ export default function PeopleReviewTab({
                                         if (j.revenueBeforeOverhead === 0) return '—'
                                         const pct = Math.round((j.allocatedRevenueBeforeOverhead / j.revenueBeforeOverhead) * 100)
                                         if (pct === 100) return `${pct}%`
-                                        return `${pct}% of ${Math.round(j.revenueBeforeOverhead).toLocaleString('en-US')}`
+                                        return `${pct}% of $${Math.round(j.revenueBeforeOverhead).toLocaleString('en-US')}`
                                       })()}</div>
                                     </td>
                                     <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', verticalAlign: 'top' }}>
@@ -4880,9 +4890,16 @@ export default function PeopleReviewTab({
                       ? (dayOfWeek >= 1 && dayOfWeek <= 5 ? 8 : 0)
                       : (reviewHours.find((h) => h.work_date === d)?.hours ?? 0)
                   }
-                  const totalHours = reviewOnlyPaidInFull
+                  // The Hours total ALWAYS sums the per-day rows rendered
+                  // below (clocked/salary basis) — under "Only paid in full"
+                  // it used to switch to a paid-job-hours basis while the
+                  // rows and Pay stayed on all days, so the tfoot
+                  // contradicted its own column. Paid-job hours render as a
+                  // separate labeled figure instead.
+                  const totalHours = days.reduce((s, d) => s + getHoursForDay(d), 0)
+                  const paidJobHours = reviewOnlyPaidInFull
                     ? [...reviewLaborJobs, ...reviewCrewJobs].reduce((s, j) => s + j.hours, 0)
-                    : days.reduce((s, d) => s + getHoursForDay(d), 0)
+                    : null
                   const totalPay = personName ? getReviewPeriodPay(personName) : 0
                   if (reviewHoursPayCollapsed) {
                     return (
@@ -4891,6 +4908,12 @@ export default function PeopleReviewTab({
                           <span style={{ color: 'var(--text-muted)', marginRight: '0.5rem' }}>Hours:</span>
                           <span style={{ fontWeight: 600 }}>{totalHours > 0 ? decimalToHms(totalHours).replace(/:00$/, '') || '-' : '-'}</span>
                         </div>
+                        {paidJobHours != null && (
+                          <div>
+                            <span style={{ color: 'var(--text-muted)', marginRight: '0.5rem' }}>On paid jobs:</span>
+                            <span style={{ fontWeight: 600 }}>{paidJobHours > 0 ? decimalToHms(paidJobHours).replace(/:00$/, '') || '-' : '-'}</span>
+                          </div>
+                        )}
                         <div>
                           <span style={{ color: 'var(--text-muted)', marginRight: '0.5rem' }}>Pay:</span>
                           <span style={{ fontWeight: 600 }}>{wage > 0 ? `$${Math.round(totalPay).toLocaleString('en-US', { maximumFractionDigits: 0 })}` : '—'}</span>
@@ -4927,6 +4950,13 @@ export default function PeopleReviewTab({
                             <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderTop: '2px solid var(--border)' }}>{totalHours > 0 ? decimalToHms(totalHours).replace(/:00$/, '') || '-' : '-'}</td>
                             <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderTop: '2px solid var(--border)' }}>{wage > 0 ? `$${Math.round(totalPay).toLocaleString('en-US', { maximumFractionDigits: 0 })}` : '—'}</td>
                           </tr>
+                          {paidJobHours != null && (
+                            <tr style={{ fontWeight: 400, color: 'var(--text-muted)' }}>
+                              <td style={{ padding: '0.25rem 0.75rem', textAlign: 'right' }}>On paid jobs</td>
+                              <td style={{ padding: '0.25rem 0.75rem', textAlign: 'right' }}>{paidJobHours > 0 ? decimalToHms(paidJobHours).replace(/:00$/, '') || '-' : '-'}</td>
+                              <td style={{ padding: '0.25rem 0.75rem', textAlign: 'right' }}>—</td>
+                            </tr>
+                          )}
                         </tfoot>
                       </table>
                     </div>

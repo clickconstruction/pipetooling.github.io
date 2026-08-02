@@ -11,6 +11,18 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1249',
+    date: '2026-08-01',
+    title: 'People Review: display cleanup — times, totals, and date windows',
+    kind: 'fix',
+    highlights: [
+      'Times no longer show ":60" seconds (1:20 displayed as 1:19:60 before).',
+      'With "Only Count Jobs Marked Paid in Full" on, the Hours total now matches the rows above it, with paid-job hours shown separately.',
+      'Negative amounts read -$1,200 instead of $-1,200, and "Last 30/90 days" are now exactly 30/90 days.',
+      'Evening invoices and late-day completed tasks no longer fall out of (or into) the wrong day.',
+    ],
+  },
+  {
     version: 'v2.1248',
     date: '2026-08-01',
     title: 'People Review: person panel now matches the Team Summary',
