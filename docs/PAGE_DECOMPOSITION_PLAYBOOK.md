@@ -5,7 +5,7 @@ file: docs/PAGE_DECOMPOSITION_PLAYBOOK.md
 type: Engineering / Refactor Process
 purpose: A repeatable, generic process for breaking a multi-thousand-line "God component" page into per-tab components + shared hooks + tested pure logic, without re-deriving the strategy each time. Generalizes the method proven on Bids.tsx (~18,800 → ~3,787 lines) and People.tsx (~21,435 → ~4,269).
 audience: Developers, AI Agents
-last_updated: 2026-07-29
+last_updated: 2026-08-02
 ---
 
 ## What this is
@@ -23,7 +23,7 @@ The repo still has several God components (line counts at 2026-07-29, the date o
 | `src/pages/Bids.tsx` | 3,791 | [`BIDS_TABS_ARCHITECTURE.md`](./BIDS_TABS_ARCHITECTURE.md) | decomposition done |
 | `src/pages/Prospects.tsx` (+ `TeamProspectsTab` 1,820) | 3,373 | [`PROSPECTS_TABS_ARCHITECTURE.md`](./PROSPECTS_TABS_ARCHITECTURE.md) | pointer + dual-cache substrate; Activity tab is a near-free first move |
 | `src/pages/Banking.tsx` (+ 2 oversized extracted tabs) | 3,104 | [`BANKING_TABS_ARCHITECTURE.md`](./BANKING_TABS_ARCHITECTURE.md) | 5 of 7 Mercury tabs already out; in-file table components are the first move |
-| `ScheduleDispatchHub` + `ScheduleDispatchHubPage` | 3,061 + 2,358 | [`SCHEDULE_DISPATCH_ARCHITECTURE.md`](./SCHEDULE_DISPATCH_ARCHITECTURE.md) | hot (churn 22/20); container/presentational split already in place |
+| `ScheduleDispatchHub` + `ScheduleDispatchHubPage` | 3,302 + 2,384 | [`SCHEDULE_DISPATCH_ARCHITECTURE.md`](./SCHEDULE_DISPATCH_ARCHITECTURE.md) | hot (churn 22/20); container/presentational split already in place |
 | `src/pages/Checklist.tsx` (+ `ChecklistTechTreeTab` 2,312) | 2,533 | [`CHECKLIST_TABS_ARCHITECTURE.md`](./CHECKLIST_TABS_ARCHITECTURE.md) | tabs are already in-file components — Stage B is mostly file moves |
 | `src/pages/JobTally.tsx` | 2,330 | [`JOB_TALLY_ARCHITECTURE.md`](./JOB_TALLY_ARCHITECTURE.md) | two nearly independent tabs |
 | `src/pages/Quickfill.tsx` (+ `QuickfillScheduleSection` 1,737) | 2,039 | [`QUICKFILL_ARCHITECTURE.md`](./QUICKFILL_ARCHITECTURE.md) | section bodies extracted; framework + schedule section remain |
@@ -37,18 +37,18 @@ The repo still has several God components (line counts at 2026-07-29, the date o
 |---|---|---|---|
 | `src/components/bids/BidsTakeoffTab.tsx` | 5,765 | [`BIDS_TAKEOFF_TAB_ARCHITECTURE.md`](./BIDS_TAKEOFF_TAB_ARCHITECTURE.md) | 9 regions; `SortableRoughPartLineRow` file move is the zero-risk opener |
 | `src/components/people/PeopleReviewTab.tsx` | 5,009 | [`PEOPLE_REVIEW_TAB_ARCHITECTURE.md`](./PEOPLE_REVIEW_TAB_ARCHITECTURE.md) | ~1,660-line popup HTML builder is a third of the file — Stage A first |
-| `src/components/jobs/JobsStagesTab.tsx` (+ 3,100 lines of table/row sub-files) | 3,299 | [`JOBS_STAGES_TAB_ARCHITECTURE.md`](./JOBS_STAGES_TAB_ARCHITECTURE.md) | hot (churn 18); always-mounted contract is the hazard |
+| `src/components/jobs/JobsStagesTab.tsx` (+ 3,100 lines of table/row sub-files) | 3,664 | [`JOBS_STAGES_TAB_ARCHITECTURE.md`](./JOBS_STAGES_TAB_ARCHITECTURE.md) | hot (churn 18); always-mounted contract is the hazard |
 | `src/components/people/PeopleContractsTab.tsx` + `PeopleOverheadTab.tsx` | 2,981 + 2,038 | [`PEOPLE_CONTRACTS_OVERHEAD_TABS_ARCHITECTURE.md`](./PEOPLE_CONTRACTS_OVERHEAD_TABS_ARCHITECTURE.md) | Overhead's calc already in tested libs |
 | `src/components/jobs/JobsJobSummaryTab.tsx` | 2,862 | [`JOBS_JOB_SUMMARY_TAB_ARCHITECTURE.md`](./JOBS_JOB_SUMMARY_TAB_ARCHITECTURE.md) | 100% presentational — pure JSX partition |
 | `src/components/bids/BidsPricingTab.tsx` + `BidsLaborTab.tsx` | 2,610 + 2,365 | [`BIDS_PRICING_LABOR_TABS_ARCHITECTURE.md`](./BIDS_PRICING_LABOR_TABS_ARCHITECTURE.md) | data lives in `useBidPricingEngine`; Labor's single autosave effect is the hazard |
 | `src/components/bids/BidSubmissionFollowupTab.tsx` | 2,081 | [`BID_SUBMISSION_FOLLOWUP_TAB_ARCHITECTURE.md`](./BID_SUBMISSION_FOLLOWUP_TAB_ARCHITECTURE.md) | two inline jsPDF builders are the bulk — Stage A first |
-| `src/components/projects/ProjectsForecastSpecificTab.tsx` (+ stage modal 1,465) | 2,012 | [`PROJECTS_FORECAST_TABS_ARCHITECTURE.md`](./PROJECTS_FORECAST_TABS_ARCHITECTURE.md) | low-churn; no extraction scheduled |
+| `src/components/projects/ProjectsForecastSpecificTab.tsx` (+ stage modal 1,465) | 2,326 | [`PROJECTS_FORECAST_TABS_ARCHITECTURE.md`](./PROJECTS_FORECAST_TABS_ARCHITECTURE.md) | low-churn; no extraction scheduled |
 
 **Modals and standalone components:**
 
 | File | Lines | Map | Notes |
 |---|---|---|---|
-| `src/components/jobs/JobFormModal.tsx` | 4,985 | [`JOB_FORM_MODAL_ARCHITECTURE.md`](./JOB_FORM_MODAL_ARCHITECTURE.md) | extraction underway — but regrowing (4,342 → 4,985 in 9 days); highest churn in the repo (62 commits in 6 weeks) |
+| `src/components/jobs/JobFormModal.tsx` | 4,096 | [`JOB_FORM_MODAL_ARCHITECTURE.md`](./JOB_FORM_MODAL_ARCHITECTURE.md) | extraction underway — peaked at ~4,985 before shrinking back to ~4,096; highest churn in the repo (62 commits in 6 weeks) |
 | `src/components/DashboardMyTimeDayEditorModal.tsx` | 3,948 | [`MY_TIME_DAY_EDITOR_MODAL_ARCHITECTURE.md`](./MY_TIME_DAY_EDITOR_MODAL_ARCHITECTURE.md) | 13 call sites; payroll-path save ladder moves verbatim behind Stage-A tests |
 | `src/components/jobs/SendRecordInvoiceModal.tsx` | 3,286 | [`SEND_RECORD_INVOICE_MODAL_ARCHITECTURE.md`](./SEND_RECORD_INVOICE_MODAL_ARCHITECTURE.md) | hot (churn 22); Stage B waits for the bill-to train (v2.1084–1087) to settle |
 | `src/components/DashboardTeamActiveClockStrip.tsx` + `ClockInOutButton.tsx` | 2,965 + 2,248 | [`CLOCK_SURFACES_ARCHITECTURE.md`](./CLOCK_SURFACES_ARCHITECTURE.md) | ~640 lines of closure-free pure helpers are the Stage-A opener |

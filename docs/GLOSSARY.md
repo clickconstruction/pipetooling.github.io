@@ -7,7 +7,7 @@ file: GLOSSARY.md
 type: Reference
 purpose: Comprehensive definitions of all domain-specific terms and technical concepts
 audience: All users (especially new developers and AI agents)
-last_updated: 2026-07-31
+last_updated: 2026-08-02
 estimated_read_time: 15-20 minutes (reference only)
 difficulty: Beginner
 
@@ -166,7 +166,7 @@ Short identifier for a project (e.g. "42") that mirrors the **Bid Number** patte
 
 **Editable** from the Edit Project modal as the first form field (free-text, blank allowed; **v2.557**, mirrors how Jobs' HCP # works). Save is **warn-but-allow on duplicates** — typing a number another project already uses surfaces *Already used by "{Other Project}". Save anyway?* in amber but Save still works (no DB uniqueness constraint on `project_number`, consistent with `hcp_number` / `housecallpro_number`). Cleared values stay cleared on UPDATE — the BEFORE INSERT trigger does not fire on UPDATE, so renumbering or blanking is sticky.
 
-**Visibility** (intentionally narrow): Edit Project modal title-row form field, Projects list rows (`Project #N` label inline next to the project-name link), Workflow header chip (`Project #N · {project.name}`), Dashboard subscribed-stages line (`Project #N: {project_name}`). Other surfaces showing project names (Jobs Stages, DetailJobModal, Calendar / ForecastSpecific, People active projects) are intentionally untouched — extend later if needed.
+**Visibility** (intentionally narrow): Edit Project modal title-row form field, Projects list rows (`Project #N` label inline next to the project-name link), Workflow header chip (`Project #N · {project.name}`), Dashboard subscribed-stages line (`Project #N: {project_name}`). Other surfaces showing project names (Pipeline, DetailJobModal, Calendar / ForecastSpecific, People active projects) are intentionally untouched — extend later if needed.
 
 **Database**: `projects.project_number` (TEXT, default `''`), `projects_project_number_seq` (org-global sequence), `projects_set_project_number` (BEFORE INSERT FOR EACH ROW trigger), `idx_projects_project_number` (lookup index for the duplicate-warning query).
 
@@ -184,7 +184,7 @@ Individual work phase in a project workflow (e.g., "Rough In", "Inspection", "To
 
 **Database**: `project_workflow_steps` table
 
-**Alias**: "Stage" and "Step" were historically used interchangeably. Since **v2.1190** the UI says **"Step"** everywhere for project-workflow work items (Workflow page, Projects Forecast, Dashboard Projects card) — disambiguating from **Jobs → Stages** (the billing pipeline board) and from Bids/Takeoff stages (Rough In / Top Out / Trim Set). Code identifiers, element ids, and DB names (`project_workflow_steps`, `sequence_order` helpers named `*Stage*`) are unchanged.
+**Alias**: "Stage" and "Step" were historically used interchangeably. Since **v2.1190** the UI says **"Step"** everywhere for project-workflow work items (Workflow page, Projects Forecast, Dashboard Projects card) — disambiguating from **Jobs → Pipeline** (the billing pipeline board; tab key `stages`) and from Bids/Takeoff stages (Rough In / Top Out / Trim Set). Code identifiers, element ids, and DB names (`project_workflow_steps`, `sequence_order` helpers named `*Stage*`) are unchanged.
 
 **Statuses**: pending, in_progress, completed, approved, rejected (rejected displays as "Previous work incomplete"), skipped
 
@@ -274,7 +274,7 @@ Prev / next chevrons step by one unit (day, week, or 30-day window); a **Today**
 
 **Schedule rail trim + stretch** — see **[Schedule rail trim / stretch (User Review modal)](#schedule-rail-trim--stretch-user-review-modal)** below.
 
-**See also** — **`RECENT_FEATURES.md`** v2.566 (User Day Summary), v2.567 (Switch user), v2.568 (rail trim), **v2.569** (rail stretch + 4 h floor); **`PROJECT_DOCUMENTATION.md`** Dashboard **User Review modal**; **`AGENTS.md`** "Where to Look For" → User Review modal rows.
+**See also** — **`RECENT_FEATURES.md`** v2.566 (User Day Summary), v2.567 (Switch user), v2.568 (rail trim), **v2.569** (rail stretch + 4 h floor); **`PROJECT_DOCUMENTATION.md`** Dashboard **User Review modal**.
 
 ### Schedule rail trim / stretch (User Review modal)
 The grey background rail under each per-day schedule strip in the User Review modal is **rescaled** to show only the active part of the day, edge-to-edge, instead of always spanning the full 4 AM – 8 PM track. Specific to the User Review modal — Quickfill and Schedule Dispatch keep the full-rail layout.
@@ -292,7 +292,7 @@ The grey background rail under each per-day schedule strip in the User Review mo
 
 **Opt-in prop** — **`railTrimWindow?: { loSlotIndex; hiSlotIndex } | null`** on **[`DispatchAddBlockTimeRange`](../src/components/schedule/DispatchAddBlockTimeRange.tsx)**. Default-`undefined` keeps the original `slotIndex / maxIdx` math byte-for-byte, so every non-User-Review caller (Quickfill, Schedule Dispatch hub / job week, schedule-block modals) stays on the full-rail layout with zero behavior change.
 
-**See also** — **`RECENT_FEATURES.md`** **v2.568** (trim), **v2.569** (stretch + floor); **`AGENTS.md`** User Review modal "Shared schedule-rail trim + stretch" row.
+**See also** — **`RECENT_FEATURES.md`** **v2.568** (trim), **v2.569** (stretch + floor); **`PROJECT_DOCUMENTATION.md`** Dashboard **User Review modal**.
 
 ### Crew lead inheritance (deprecated)
 Legacy feature on **`people_crew_jobs`** / **`people_crew_bids`** where a follower row could set **`crew_lead_person_name`** to inherit that lead's `job_assignments` / `bid_assignments` for the same `work_date`. Removed in **v2.538** because the business now drives crew hours and billing off clock sessions (hourly people get their own approved clock; salary people get sessions split across their paid hours), so inheritance no longer matches how time is allocated.
@@ -316,7 +316,7 @@ A single-day **`user_time_off`** row with **`kind='unpaid'`** + **`note='Not com
 
 **Database**: `user_time_off` — migration **`20270331170000`** (table); **`20270331190000`** (`kind='unpaid'` constraint); **`20270331192000`** (insert RPC); **`20260515233801`** (undo RPC).
 
-**See also**: **`AGENTS.md`** **Schedule dispatch** rows; **`RECENT_FEATURES.md`** **v2.535**.
+**See also**: **`SCHEDULE_DISPATCH_ARCHITECTURE.md`**; **`RECENT_FEATURES.md`** **v2.535**.
 
 ### Unassigned field time / Open day audit
 Per (person, work_date) cells where the org **paid for field-type time** that the team summary cannot tie to a specific revenue-generating job. Surfaced in **Quickfill** as a section gated to **dev** / **master_technician** / **assistant** (**v2.537**, **`quickfill_section_marks.section_id = 'unassigned-field-time'`**). The math mirrors **`derivePersonTeamSummary`** under **Convention 1** (**v2.539**) and is purely client-side.
@@ -360,7 +360,7 @@ Only rows with **`unallocatedHrs > thresholdHours`** emit (default **1 h**, conf
 
 **Database**: read-only at the audit-modal level — uses existing **`people_pay_config`**, **`people_hours`**, **`people_crew_jobs`**, **`people_crew_bids`**, **`clock_sessions`**, **`app_settings.overhead_office_job_ledger_id_v1`**. The v2.545 per-row **`Assign`** popover does `UPDATE clock_sessions SET job_ledger_id = …` (or `bid_id`) for the targeted row only; downstream `people_crew_jobs.job_assignments` writes are server-side via the existing trigger + RPC.
 
-**See also**: **`AGENTS.md`** **Quickfill Unassigned field time** row; **`PROJECT_DOCUMENTATION.md`** §6b Quickfill; **`RECENT_FEATURES.md`** **v2.546**, **v2.545**, **v2.543**, **v2.537**.
+**See also**: **`QUICKFILL_ARCHITECTURE.md`** (Unassigned field time section); **`PROJECT_DOCUMENTATION.md`** §6b Quickfill; **`RECENT_FEATURES.md`** **v2.546**, **v2.545**, **v2.543**, **v2.537**.
 
 ### Team Summary (People → Review)
 Dev-only per-person rollup table embedded in **People → Review** (and also openable in a fully-interactive popup via **Open in new window** — renamed from *Open in print view* in **v2.542** since the popup is interactive, printing is just one of many things you can do with it). Built by **`derivePersonTeamSummary`** in **[`src/pages/People.tsx`](../src/pages/People.tsx)** from a single shared **`TeamReviewUnion`** loaded by **`loadTeamReviewUnion`** (one snapshot fetched per period / paid toggle change, not per row; popup short-circuits to the cached inline rows when the cache key still matches — see `teamSummaryDataCacheRef` / `buildTeamSummaryCacheKey` from **v2.542**). Renders **11 columns**: **Name** · **Hours** · **Overhead hrs** · **Overhead labor** · **Field hrs** · **Gross Revenue** · **Net Revenue** · **Profit (after overhead)** · **Gross Revenue/hr** · **Net Revenue/hr** · **Profit/hr (after overhead)**, sorted by `r.profit` desc with name tiebreak; footer is the team total.
@@ -373,7 +373,7 @@ Every cell is click-to-drilldown (`data-type` attribute → modal HTML built by 
 
 **Profit (after overhead)** = `r.profit − r.fieldHours × overheadRate`, where `overheadRate = overheadTotal / fieldHours90d` (rolling 90-day window). Office and bid hours are not charged the rate (they fund it), so a pure office worker shows **$0** Profit (after overhead) — their cost shows in **Overhead labor** instead.
 
-**See also**: `Overhead labor (Team Summary column)`, **`PROJECT_DOCUMENTATION.md`** Review Tab, **`RECENT_FEATURES.md`** **v2.547** + **v2.542** + **v2.541** + **v2.540** + **v2.539**, **`AGENTS.md`** Team Summary row.
+**See also**: `Overhead labor (Team Summary column)`, **`PROJECT_DOCUMENTATION.md`** Review Tab, **`RECENT_FEATURES.md`** **v2.547** + **v2.542** + **v2.541** + **v2.540** + **v2.539**, **`PEOPLE_TABS_ARCHITECTURE.md`** `review` dossier.
 
 ### Overhead labor (Team Summary column)
 Per-person column in **People → Review → Team Summary** (**v2.540**) that displays **`-((officeHours + bidHours) × people_pay_config.hourly_wage)`** — i.e. the wage cost of the time a person spent on the configured Office job and on bid work. Stored as a **negative dollar amount** so it renders `-$X` red via `negStyle`, the team-total footer is negative, and the column reads visually like a P&L line item. Column position: between **Overhead hrs** and **Field hrs**.
@@ -512,8 +512,8 @@ Dev-only per-person profit rollup (tab key `teams-summary`): **billing credit we
 ### Merge users (Active Accounts)
 Dev-only: absorb one user account into another. Rules — same role; the merged-away account must be **archived or never signed in**; when one is live it must survive. **Preview merge** runs `merge_user_accounts` with `p_dry_run` (full merge, rolled back, per-table counts); commit reassigns every FK reference (dynamic sweep + zero-leftover assert) and bans the absorbed login (Edge `merge-users`). Absorbed account keeps its email as an archived tombstone. Cannot be undone. See `RECENT_FEATURES.md` v2.652.
 
-### Accounts Receivable Sorting (Jobs Stages → Bank payments)
-Org-wide Mercury transaction filter for applying customer bank deposits to billed work (**Jobs** → **Stages** → **Bank payments**). The active filter shape is **`BankingSortingConfigV1`**: kinds, accounts, debit cards, Chicago **start date**, and optional counterparty/note substring exclusions. Canonical storage is **`app_settings`** key **`bank_payments_sorting_config_v1`** (**`value_text`** JSON); only **dev** can upsert (RLS). All authenticated roles that can open Bank Payments read the same row; **`list_mercury_transactions_for_bank_payments`** and **`count_mercury_transactions_for_bank_payments`** use the same **`p_filter`**. If no server row exists yet, the client may fall back to legacy per-user **`localStorage`** or Banking/Quickfill **`banking_sorting_config_v1_<userId>`** until a dev publishes settings. A global browser cache key **`bank_payments_sorting_config_v1__cache`** mirrors the server after fetch/save. Distinct from per-user **Banking** page sorting (**`banking_sorting_config_v1_<userId>`**).
+### Accounts Receivable Sorting (Pipeline → Bank payments)
+Org-wide Mercury transaction filter for applying customer bank deposits to billed work (**Jobs** → **Pipeline** → **Bank payments**). The active filter shape is **`BankingSortingConfigV1`**: kinds, accounts, debit cards, Chicago **start date**, and optional counterparty/note substring exclusions. Canonical storage is **`app_settings`** key **`bank_payments_sorting_config_v1`** (**`value_text`** JSON); only **dev** can upsert (RLS). All authenticated roles that can open Bank Payments read the same row; **`list_mercury_transactions_for_bank_payments`** and **`count_mercury_transactions_for_bank_payments`** use the same **`p_filter`**. If no server row exists yet, the client may fall back to legacy per-user **`localStorage`** or Banking/Quickfill **`banking_sorting_config_v1_<userId>`** until a dev publishes settings. A global browser cache key **`bank_payments_sorting_config_v1__cache`** mirrors the server after fetch/save. Distinct from per-user **Banking** page sorting (**`banking_sorting_config_v1_<userId>`**).
 
 **Returned deposit (AR Bank Payments)**: Org flag on a Mercury **`mercury_transactions`** row for deposits that still appear in the feed after a return or bounce (e.g. cheque). Stored in **`mercury_transaction_ar_returned`** (not on the sync table). By default **`list_mercury_transactions_for_bank_payments`** / **`count_mercury_transactions_for_bank_payments`** hide rows marked returned, same as fully applied deposits, unless **`p_filter.includeHiddenArDeposits`** is true (legacy **`includeFullyApplied`** still maps to that behavior). Toggle via **`set_mercury_transaction_ar_returned`** and **Mark** mode in **[`BankPaymentsModal`](../src/components/jobs/BankPaymentsModal.tsx)**.
 
@@ -652,10 +652,10 @@ Customer in the bids context. The entity requesting the bid (can be actual GC, h
 **Alias**: "GC/Builder", "GC", "Builder", "Customer" all refer to same concept in Bids
 
 ### GC on jobs (v2.1175–v2.1178)
-Optional **second** customer link on a job — `jobs_ledger.gc_customer_id` (FK `customers`, ON DELETE SET NULL) — so office can manage work by General Contractor alongside the primary (billed) customer. Set in **Edit Job → Customer → GC/Builder (customer)** (one-click "Use bid's GC" when the job links a bid); shown with a hard-hat icon on **Jobs → Stages** (Job column, under the customer) and **Job Detail**; matched by the **Stages search**. Billing is unaffected — paying-as-GC is the per-invoice **bill-to override** (v2.1084). Same-master invariant enforced by trigger `jobs_ledger_gc_customer_master_match` + client kernel `resolveGcCustomerIdForJobPayload`. **Gotcha**: `jobs_ledger` now has TWO FKs to `customers` — PostgREST embeds must name the FK (`customers!jobs_ledger_customer_id_fkey` or the `gc_customer:gc_customer_id(...)` alias); a bare `customers(...)` embed 400s (PGRST201).
+Optional **second** customer link on a job — `jobs_ledger.gc_customer_id` (FK `customers`, ON DELETE SET NULL) — so office can manage work by General Contractor alongside the primary (billed) customer. Set in **Edit Job → Customer → GC/Builder (customer)** (one-click "Use bid's GC" when the job links a bid); shown with a hard-hat icon on **Jobs → Pipeline** (Job column, under the customer) and **Job Detail**; matched by the **Stages search**. Billing is unaffected — paying-as-GC is the per-invoice **bill-to override** (v2.1084). Same-master invariant enforced by trigger `jobs_ledger_gc_customer_master_match` + client kernel `resolveGcCustomerIdForJobPayload`. **Gotcha**: `jobs_ledger` now has TWO FKs to `customers` — PostgREST embeds must name the FK (`customers!jobs_ledger_customer_id_fkey` or the `gc_customer:gc_customer_id(...)` alias); a bare `customers(...)` embed 400s (PGRST201).
 
 ### Development (v2.1198 + v2.1203–v2.1204)
-A named **group of jobs** — a subdivision/builder development like "Sagebrush Phase 2" — for finding and reviewing many jobs as one unit. A real row (`public.developments`, master-scoped, optional default GC + soft archive), NOT a free-text tag, so grouping can't fragment on typos; jobs link via `jobs_ledger.development_id` (FK, ON DELETE SET NULL — deleting a development un-groups its jobs). Set in **Edit Job → Project | Plans | Bid | Development** (select + inline "+ New development"; autosaves via the identity slice like Plans); shown with a house icon on **Jobs → Stages** (Job column, sharing the GC's muted line) and **Job Detail**; matched by the **Stages search**. Purely display/review — billing, scheduling, and the customer are untouched, and it's independent of **Projects** (multi-phase billing workflows). Same-master invariant: trigger `jobs_ledger_development_master_match` + client kernel `resolveDevelopmentIdForJobPayload` (`src/lib/jobs/jobDevelopments.ts`). Managed (rename / default GC / archive / delete) in **Settings → Jobs & dispatch → Manage developments** (dev-only tab, v2.1218).
+A named **group of jobs** — a subdivision/builder development like "Sagebrush Phase 2" — for finding and reviewing many jobs as one unit. A real row (`public.developments`, master-scoped, optional default GC + soft archive), NOT a free-text tag, so grouping can't fragment on typos; jobs link via `jobs_ledger.development_id` (FK, ON DELETE SET NULL — deleting a development un-groups its jobs). Set in **Edit Job → Project | Plans | Bid | Development** (select + inline "+ New development"; autosaves via the identity slice like Plans); shown with a house icon on **Jobs → Pipeline** (Job column, sharing the GC's muted line) and **Job Detail**; matched by the **Stages search**. Purely display/review — billing, scheduling, and the customer are untouched, and it's independent of **Projects** (multi-phase billing workflows). Same-master invariant: trigger `jobs_ledger_development_master_match` + client kernel `resolveDevelopmentIdForJobPayload` (`src/lib/jobs/jobDevelopments.ts`). Managed (rename / default GC / archive / delete) in **Settings → Jobs & dispatch → Manage developments** (dev-only tab, v2.1218).
 
 ### Fixture / Fixture Type
 Installed plumbing fixture in a project (toilet, sink, faucet, shower, tub, water heater, etc.). Service-type-specific categorization used in Bids system for labor and pricing calculations.
@@ -1027,10 +1027,10 @@ For jobs in **Ready to Bill**, **`jobs_ledger_invoices`** can have **multiple** 
 ### Other job charges (Jobs — manual materials)
 User-facing label for **manual job materials** lines stored on **`jobs_ledger_materials`** in **Edit Job** and **Job Detail** materials cost accordions (and in Jobs **Parts** totals / Quickfill copy). Replaces the older **Billed materials** wording. See **`RECENT_FEATURES.md`** → v2.277; **`JobFormModal.tsx`**, **`JobDetailMaterialsCostSection.tsx`**.
 
-### Stages lines `j:` and `b:` (Jobs Stages tab)
+### Stages lines `j:` and `b:` (Pipeline tab)
 Read-only **T±n (weekday)** summaries under **Assigned / HCP**: **`j:`** (job / field) = calendar-latest of **`last_work_date`** (approved clock sessions cache) and max **`job_schedule_blocks.work_date`** for the job; **`b:`** (billing reference) = calendar-**latest** of invoice **`sent_to_customer_at`** / **`billed_at`** and payment **`paid_on`** (the manual `last_bill_date` input retired in v2.1154); **`—`** only when all of those are empty. **Implementation**: **[`src/lib/stagesJobReferenceDates.ts`](../src/lib/stagesJobReferenceDates.ts)**.
 
-### Stages line "man-hours applied" (Jobs Stages tab) — **v2.592**
+### Stages line "man-hours applied" (Pipeline tab) — **v2.592**
 Read-only clock-icon line on each Stages-board card, directly under **`b:`**, showing **total man-hours applied** to the job as a compact `8h 15m` / `45m` label (via **`formatDecimalWorkHoursToHhMm`**, which returns **`—`** for non-positive values), with a **per-person breakdown on hover** (`title` tooltip, descending). Backed by the **`SECURITY INVOKER`** RPC **`get_man_hours_by_job()`** (migration **`20260607234914`**), which mirrors the canonical **[`teamLabor.ts`](../src/utils/teamLabor.ts)** allocation kernel — salaried = **8h Mon–Fri**, hourly = **`people_hours`** (last 2 years), each crew day split across that day's **`job_assignments`** by **`pct`** — so totals reconcile with the **Combined Labor / Teams Summary** tabs. Loaded **once per Stages visit** in **[`Jobs.tsx`](../src/pages/Jobs.tsx)** (`loadStagesManHours`, load-once `useRef`, retry on error); shows **`…`** while loading and **`—`** when the job has no allocated hours or the caller's role has no RLS read access to the labor tables. See **`RECENT_FEATURES.md`** → v2.592.
 
 ### Clock sessions in Job activity / notes (v2.593)
@@ -1179,7 +1179,7 @@ Static site hosting service. Pipetooling deploys here via GitHub Actions.
 
 **Deployment**: Automatic on push to main branch
 
-**SPA note**: Deep links (e.g. `/dashboard`) have no static file; the host may return **HTTP 404** for the document while still serving **`404.html`** (copy of `index.html`). **Hard Reload** in the app loads **`/`** first then restores the path in the browser (`TROUBLESHOOT_404.md`, [`src/lib/hardReload.ts`](../src/lib/hardReload.ts)).
+**SPA note**: Deep links (e.g. `/dashboard`) have no static file; the host may return **HTTP 404** for the document while still serving **`404.html`** (copy of `index.html`). **Hard Reload** in the app loads **`/`** first then restores the path in the browser ([`TROUBLESHOOTING.md`](./TROUBLESHOOTING.md) SPA document-404 note, [`src/lib/hardReload.ts`](../src/lib/hardReload.ts)).
 
 ### GitHub Actions
 CI/CD automation running workflows on GitHub events.

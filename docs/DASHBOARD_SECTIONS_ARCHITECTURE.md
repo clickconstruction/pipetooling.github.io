@@ -5,12 +5,12 @@ file: docs/DASHBOARD_SECTIONS_ARCHITECTURE.md
 type: Engineering / Refactor Map
 purpose: Step-0 map for the Dashboard.tsx decomposition (per PAGE_DECOMPOSITION_PLAYBOOK.md) — inventory what every role-gated section of src/pages/Dashboard.tsx touches (state, loaders, handlers, sub-components, supabase tables/RPCs, realtime, cross-section coupling) to drive the multi-PR extraction.
 audience: Developers, AI Agents
-last_updated: 2026-07-20
+last_updated: 2026-08-02
 ---
 
 ## Overview
 
-[`src/pages/Dashboard.tsx`](../src/pages/Dashboard.tsx) is now ~2,144 lines (as of v2.782: ~29 `useState` declarations, 14 `useEffect`, 9 `useMemo`, 16 `useCallback`) — down from the ~8,899-line "God component" (v2.715) this map was written against; most sections are extracted, tracked in the summary table below. This map follows the process in [`PAGE_DECOMPOSITION_PLAYBOOK.md`](./PAGE_DECOMPOSITION_PLAYBOOK.md) and the format of [`BIDS_TABS_ARCHITECTURE.md`](./BIDS_TABS_ARCHITECTURE.md) / [`PEOPLE_TABS_ARCHITECTURE.md`](./PEOPLE_TABS_ARCHITECTURE.md).
+[`src/pages/Dashboard.tsx`](../src/pages/Dashboard.tsx) is now ~1,678 lines (v2.782 snapshot: ~29 `useState` declarations, 14 `useEffect`, 9 `useMemo`, 16 `useCallback`) — down from the ~8,899-line "God component" (v2.715) this map was written against; most sections are extracted, tracked in the summary table below. This map follows the process in [`PAGE_DECOMPOSITION_PLAYBOOK.md`](./PAGE_DECOMPOSITION_PLAYBOOK.md) and the format of [`BIDS_TABS_ARCHITECTURE.md`](./BIDS_TABS_ARCHITECTURE.md) / [`PEOPLE_TABS_ARCHITECTURE.md`](./PEOPLE_TABS_ARCHITECTURE.md).
 
 ### Key structural differences from Bids/People
 
@@ -36,12 +36,12 @@ Sections in order of first JSX appearance in the main return (Job Mode variant f
 
 | # | Section | Anchor symbol / heading | Status | Owned state | Coupling | Risk | Recommended action |
 |---|---|---|---|---|---|---|---|
-| 0 | Job Mode variant | `jobModeEnabled && !jobModeShowFullDashboard` early return (~4591) | mostly extracted (`DashboardJobModeCard`) | 2 (`jobModeShowFullDashboard`, `turnawayJob`) | low (shares `leaveReportJob`, banners block) | low | Leave in parent; it's the page-level role fork |
-| 1 | Section dock | `dockSections` / `SectionDock` (~4657/5204) | extracted component; config inline | 0 (derived array) | reads every section's visibility gate | low | Stays in parent permanently (spans sections) |
-| 2 | Financial notifications | `DashboardFinancialsSection` (~5206) | extracted | 0 | none | none | Done |
+| 0 | Job Mode variant | `jobModeEnabled && !jobModeShowFullDashboard` early return | mostly extracted (`DashboardJobModeCard`) | 2 (`jobModeShowFullDashboard`, `turnawayJob`) | low (shares `leaveReportJob`, banners block) | low | Leave in parent; it's the page-level role fork |
+| 1 | Section dock | `dockSections` / `SectionDock` | extracted component; config inline | 0 (derived array) | reads every section's visibility gate | low | Stays in parent permanently (spans sections) |
+| 2 | Financial notifications | `DashboardFinancialsSection` | extracted | 0 | none | none | Done |
 | 3 | Banners + tally + quick actions + pins | [`DashboardPinnedQuickRow`](../src/components/dashboard/DashboardPinnedQuickRow.tsx) (×2 positions) | **extracted (v2.723)** | 0 in parent beyond `pinnedRoutes` + quick-button state (both shared — see dossier) | low (parent passes visiblePins + quickActionDefs + financial totals; `renderModals={false}` at the Job Mode mount) | — | Done (tally counts, lost-bids count, banner hooks, NewReportModal + staff follow-up modal moved with the block) |
-| 4 | Clock-in button + contract prompt + team feedback | `ClockInOutButton` (~5217) | components extracted; glue inline | ~7 | med (`hoursDaysCorrectSet`, `stripMyTimeEditor`, salary flags) | med | Extract contract-prompt glue into a hook; keep button wiring in parent |
-| 5 | Clocked-In strip cluster | `DashboardTeamActiveClockStrip` (×2, ~5266/5716) + `DashboardMyTeamPendingBanner` (×2) + `DashboardMyTimeDayEditorModal` (~5758) | components extracted; orchestration inline | ~5 + 6 memos | **high** (`myTeam` hook shared with My Team section; `hoursDaysCorrectSet` shared with My Time/ClockInOut) | high | Extract `DashboardClockStripCluster` taking `myTeam` as prop; `myTeam` stays in parent |
+| 4 | Clock-in button + contract prompt + team feedback | `ClockInOutButton` | components extracted; glue inline | ~7 | med (`hoursDaysCorrectSet`, `stripMyTimeEditor`, salary flags) | med | Extract contract-prompt glue into a hook; keep button wiring in parent |
+| 5 | Clocked-In strip cluster | `DashboardTeamActiveClockStrip` (×2) + `DashboardMyTeamPendingBanner` (×2) + `DashboardMyTimeDayEditorModal` | components extracted; orchestration inline | ~5 + 6 memos | **high** (`myTeam` hook shared with My Team section; `hoursDaysCorrectSet` shared with My Time/ClockInOut) | high | Extract `DashboardClockStripCluster` taking `myTeam` as prop; `myTeam` stays in parent |
 | 6 | My Inbox (checklist) | [`DashboardMyInboxCard`](../src/components/dashboard/DashboardMyInboxCard.tsx) (one element, ×3 role positions) | **extracted (v2.722)** | 0 in parent beyond `myInboxDockVisible` (today-checklist seed lives in `useDashboardBoot`) | low (parent passes boot outputs + `getCurrentUserName`; dock gate reported up via callback) | — | Done (checklist CRUD engine + fwd/mute modals moved with the card) |
 | 7 | Teams Inbox | [`DashboardTeamsInboxCard`](../src/components/dashboard/DashboardTeamsInboxCard.tsx) (×2 positions) | **extracted (v2.719)** | 0 in parent beyond `dispatchDismissedModalOpen`/`tripChargeTarget` (modals render once, outside the branches) | low (parent passes both inbox engines + modal openers) | — | Done (inline estimator engine replaced by `useEstimatorInbox`; duplicate render collapsed) |
 | 8 | Billing Pipeline (field queue + Ready to Bill + Billed) | [`DashboardBillingPipelineSection`](../src/components/dashboard/DashboardBillingPipelineSection.tsx) (one component, ×2 role positions) | **extracted (v2.728)**; data seam [`useDashboardBillingInvoices`](../src/hooks/useDashboardBillingInvoices.ts) (v2.727) stays in the parent | 0 in parent beyond `sendRecordJobMeta` + `readyForBillingJob` (shared with parent glue / job-row sections) | low (parent passes seam outputs + context glue via `billingPipelineSectionProps`) | — | Done (quirk #1 collapsed; mark-paid + send-back modal cluster moved with it) |
@@ -49,13 +49,13 @@ Sections in order of first JSX appearance in the main return (Job Mode variant f
 | 10 | My Bids | [`DashboardMyBidsSection`](../src/components/dashboard/DashboardMyBidsSection.tsx) | **extracted (v2.718)** | 0 | none (parent passes `authUserId` + `role` + `isMobile`; dock gate's data half reported up via callback) | — | Done |
 | 11 | Recent Reports | [`DashboardRecentReportsSection`](../src/components/dashboard/DashboardRecentReportsSection.tsx) | **extracted (v2.717)** | 0 | none (parent passes `authUserId` + `role`; `showRecent` stays in parent for the dock) | — | Done |
 | 12 | Team Ready to Bill (assigned RTB jobs) | [`DashboardTeamReadyToBillSection`](../src/components/dashboard/DashboardTeamReadyToBillSection.tsx) | **extracted (v2.726)** | 0 in parent (`Expanded` + `collectPaymentJob` moved with it; data in `useDashboardAssignedJobs`) | low (parent passes seam outputs + shared modal openers) | — | Done (CollectPaymentModal moved with it — single opener) |
-| 13 | Assigned Jobs | `DashboardGroupCard title="Assigned Jobs"` (~7779) | render inline; data in `useDashboardAssignedJobs` (v2.725) | 0 | med (writes `readyForBillingJob`; shared modals; `updateJobStatus` refreshes it) | med | Extract with the job-row family |
+| 13 | Assigned Jobs | `DashboardGroupCard title="Assigned Jobs"` | render inline; data in `useDashboardAssignedJobs` (v2.725) | 0 | med (writes `readyForBillingJob`; shared modals; `updateJobStatus` refreshes it) | med | Extract with the job-row family |
 | 14 | Upcoming inspection | [`DashboardUpcomingInspectionsSection`](../src/components/dashboard/DashboardUpcomingInspectionsSection.tsx) | **extracted (v2.716)** | 0 | none (parent passes `role` + `inspectionsButtonVisible`) | — | Done |
-| 15 | Superintendent Jobs | h2 "Superintendent Jobs" (~8108) | render inline; data in `useDashboardAssignedJobs` (v2.725) | 1 (`Expanded`) | med (dedupes against `assignedJobs`; shared modals) | med | Extract with the job-row family |
+| 15 | Superintendent Jobs | h2 "Superintendent Jobs" | render inline; data in `useDashboardAssignedJobs` (v2.725) | 1 (`Expanded`) | med (dedupes against `assignedJobs`; shared modals) | med | Extract with the job-row family |
 | 16 | Projects (Assigned + Subscribed Stages) | [`DashboardProjectsCard`](../src/components/dashboard/DashboardProjectsCard.tsx) | **extracted (v2.721)** | 0 in parent (step data lives in `useDashboardBoot`) | low (parent passes boot outputs + `getCurrentUserName`; visibility gates stay parent-side for the dock) | — | Done (action engine + 3 step modals moved with the card) |
-| 17 | My Team | `DashboardMyTeamSection` (lazy, ~8515) | extracted | 0 (hook in parent) | high (shares `myTeam` with strip cluster) | n/a | Done; `myTeam` hook stays in parent |
-| 18 | Me / My Time | `id="dash-me"` / `DashboardMyTimeSection` (~8525) | extracted | 0 | low (`hoursDaysCorrectSet`, `dashboardSelfIsSalary` props) | n/a | Done |
-| 19 | Modal tail | `ApplyScheduleApprovedConfirmModal` → send-back job modal (~8532–8896) | mixed | (owned by opener sections) | shared modals opened from 2+ sections stay | — | Inline confirm modals (Send to Billing, send-back ×2, fwd; reject/skip/set-start moved with the Projects card v2.721) extract as components; openers stay in parent |
+| 17 | My Team | `DashboardMyTeamSection` (lazy) | extracted | 0 (hook in parent) | high (shares `myTeam` with strip cluster) | n/a | Done; `myTeam` hook stays in parent |
+| 18 | Me / My Time | `id="dash-me"` / `DashboardMyTimeSection` | extracted | 0 | low (`hoursDaysCorrectSet`, `dashboardSelfIsSalary` props) | n/a | Done |
+| 19 | Modal tail | `ApplyScheduleApprovedConfirmModal` → send-back job modal | mixed | (owned by opener sections) | shared modals opened from 2+ sections stay | — | Inline confirm modals (Send to Billing, send-back ×2, fwd; reject/skip/set-start moved with the Projects card v2.721) extract as components; openers stay in parent |
 
 > Status legend: `inline` = rendered directly in `Dashboard.tsx`; `partial` = major children extracted but section state/JSX still inline; `extracted` = section is a thin wrapper around an imported component.
 
@@ -98,7 +98,7 @@ Cross-checked against [`src/lib/canLeaveJobFieldReport.ts`](../src/lib/canLeaveJ
 
 ### 0. Job Mode variant (early return)
 
-- **Render location:** gate `if (jobModeEnabled && !jobModeShowFullDashboard && authUser?.id)` (~4591–4653). Renders `tallyAndPinnedBlock` + `DashboardJobModeCard` + "Show full dashboard" button + its own `AdditionalReportModal` (`leaveReportJob`) + `TurnawayModal` (`turnawayJob`).
+- **Render location:** gate `if (jobModeEnabled && !jobModeShowFullDashboard && authUser?.id)`. Renders `tallyAndPinnedBlock` + `DashboardJobModeCard` + "Show full dashboard" button + its own `AdditionalReportModal` (`leaveReportJob`) + `TurnawayModal` (`turnawayJob`).
 - **Owned local state:** `jobModeShowFullDashboard` (~1186, resets each load — the gear-menu toggle is the persistent setting), `turnawayJob` (~1181 — **only settable/renderable in this branch**).
 - **Cross-section/shared state:** `leaveReportJob` (shared with My Schedule / job-row sections), `refreshDashboardAssignedJobLists`, the whole `tallyAndPinnedBlock`.
 - **Data deps / supabase:** `useJobModeEnabled(authUser.id)`; `DashboardJobModeCard` self-loads its data.
@@ -107,13 +107,13 @@ Cross-checked against [`src/lib/canLeaveJobFieldReport.ts`](../src/lib/canLeaveJ
 
 ### 1. Section dock
 
-- **Render location:** `dockSections` array (~4657–4681) + `<SectionDock>` (~5204). Anchor divs (`dash-notifications`, `dash-clocked-in`, `dash-my-inbox`, `dash-teams-inbox`, `dash-billing`, `dash-bids`, `dash-reports`, `dash-projects`, `dash-me`) are sprinkled through the JSX with `dockAnchorStyle` (`scrollMarginTop: 8`).
+- **Render location:** `dockSections` array + `<SectionDock>`. Anchor divs (`dash-notifications`, `dash-clocked-in`, `dash-my-inbox`, `dash-teams-inbox`, `dash-billing`, `dash-bids`, `dash-reports`, `dash-projects`, `dash-me`) are sprinkled through the JSX with `dockAnchorStyle` (`scrollMarginTop: 8`).
 - **Owned state:** none — each entry's `visible` mirrors its section's render gate (`showFinancials`, `showClockActivityStrip`, `showMyInboxCard`, inbox eligibility, billing role gate, My Bids gate, `showRecent`, `projectsCardVisible`, `authUser`).
 - **Extraction status + approach:** `SectionDock` is extracted. The config **must stay in the parent** (it reads every gate). As sections extract, keep the anchor `id`s stable — several live *inside* what will become child components (`dash-bids`, `dash-reports` are on the section's own wrapper div; the rest are sibling anchor divs the parent keeps).
 
 ### 2. Financial notifications
 
-- **Render location:** `{showFinancials && <DashboardFinancialsSection />}` (~5206).
+- **Render location:** `{showFinancials && <DashboardFinancialsSection />}`.
 - **Owned state:** none in parent. Fully self-contained component.
 - **Extraction status:** **Done.**
 
@@ -128,7 +128,7 @@ Cross-checked against [`src/lib/canLeaveJobFieldReport.ts`](../src/lib/canLeaveJ
 
 ### 4. Clock-in button + contract-signing prompt + team feedback
 
-- **Render location:** `ClockInOutButton` (~5217), quick-feedback button + `TeamFeedbackWizard` (~5226–5254), `DashboardContractSigningPromptModal` (~5255).
+- **Render location:** `ClockInOutButton`, quick-feedback button + `TeamFeedbackWizard`, `DashboardContractSigningPromptModal`.
 - **Owned local state:** `userName` (~1215, also feeds `clockDisplayName` memo), `dashboardSelfIsSalary` (~1220), `dashboardSalaryScheduleClockActive` (~1222), `teamFeedbackHomeEnabled`/`teamFeedbackWizardOpen` (~1294–1295), `contractSigningPromptOpen`/`Rows`/`OpeningId` + `contractSigningVisitPromptEpochRef` (~1296–1302).
 - **Cross-section/shared state:** `clockDisplayName` (userName from the boot loader); `hoursDaysCorrectSet` + `stripSalariedUserIds` + `setStripMyTimeEditor` (strip cluster) — `openMyTimePreviewFromClock` (~1279) opens the *shared* day-editor modal; `dashboardSelfIsSalary` also passed to `DashboardMyTimeSection`; `refreshDashboardAssignedJobLists` on field-report save.
 - **Handlers:** `fetchContractDashboardPromptRows` (RPC `list_my_contract_dashboard_prompts`), `runContractSigningPromptFromRpc`, `handleClockInSuccessContractPrompt`, `openContractSigningPageForDoc` (edge fn `get-contract-signing-link-for-self`), salaried-visit prompt effect (~1328, epoch-guarded against Strict Mode).
@@ -138,9 +138,9 @@ Cross-checked against [`src/lib/canLeaveJobFieldReport.ts`](../src/lib/canLeaveJ
 
 ### 5. Clocked-In strip cluster
 
-- **Render location:** rendered **twice** with identical props: assistant branch (~5262–5306) and non-assistant branch (~5712–5756); `DashboardMyTeamPendingBanner` follows each (assistant-like, then dev/master). The shared `DashboardMyTimeDayEditorModal` (`stripMyTimeEditor`) at ~5757–5787.
+- **Render location:** rendered **twice** with identical props: assistant branch and non-assistant branch; `DashboardMyTeamPendingBanner` follows each (assistant-like, then dev/master). The shared `DashboardMyTimeDayEditorModal` (`stripMyTimeEditor`).
 - **Owned local state:** `clockStripScope` (~886, localStorage-backed), `stripSalariedUserIds` (~973), `stripMyTimeEditor` (~1018), plus derived flags `showClockStripScopeToggle`/`showStripSubjectMyTimeEditor`/`pendingClockBannerAtMyTeamTop`/`orgWideStripEnabled` (~881–908).
-- **Cross-section/shared state:** **`myTeam` = `useDashboardMyTeamSectionState(...)`** (~909) — the page's biggest shared engine (1,464-line hook), also consumed by `DashboardMyTeamSection` (~8515) and the pending banners; `applySchedule` = `useApplyScheduleProportions` (+ `ApplyScheduleApprovedConfirmModal` in the tail); `hoursDaysCorrectSet` + `hoursDaysCorrectRange` (~989–1016, `fetchHoursDaysCorrectWorkDates`) — also read by `openMyTimePreviewFromClock` and passed to `DashboardMyTimeSection`.
+- **Cross-section/shared state:** **`myTeam` = `useDashboardMyTeamSectionState(...)`** (~909) — the page's biggest shared engine (1,464-line hook), also consumed by `DashboardMyTeamSection` and the pending banners; `applySchedule` = `useApplyScheduleProportions` (+ `ApplyScheduleApprovedConfirmModal` in the tail); `hoursDaysCorrectSet` + `hoursDaysCorrectRange` (~989–1016, `fetchHoursDaysCorrectWorkDates`) — also read by `openMyTimePreviewFromClock` and passed to `DashboardMyTimeSection`.
 - **Derived memos:** `sessionsForStrip` (~928, merges real open sessions + synthetic salary sessions, sorted by name), `hoursTodayForStrip` (~952), `showClockActivityStrip` (~959), `stripPayGateUserIds` (~964).
 - **Handlers:** `setClockStripScopePersist` (~889), scope-default effect (~897), `openStripMyTimeEditor` (~1025, blocks on `hoursDaysCorrectSet` with `HOURS_DAY_CORRECT_BLOCK_TOAST`), `openMyTimePreviewFromClock` (~1279), `materializeSalarySessionForStrip` (~1451, `syncSalaryClockSessionsForUserDay`), `handleStripMarkNotComingIn` (~1462, `recordNotComingInForUserAsStaff`), `goToPendingSessionsInMyTeam` (~917, scrolls to `dashboard-my-team-pending-sessions`), `reloadMyTeamPendingSilent`.
 - **Supabase:** via libs/hook — `clock_sessions` etc. inside `useDashboardMyTeamSectionState`; `fetchSalariedUserIdSetFromUserIds` (`people_pay_config`); `hours_days_correct` via `fetchHoursDaysCorrectWorkDates`.
@@ -209,7 +209,7 @@ Cross-checked against [`src/lib/canLeaveJobFieldReport.ts`](../src/lib/canLeaveJ
 
 ### 13. Assigned Jobs
 
-- **Render location:** `DashboardGroupCard title="Assigned Jobs (…)"` (~7779), block ~7778–8037.
+- **Render location:** `DashboardGroupCard title="Assigned Jobs (…)"`.
 - **Owned local state:** none in the parent — `assignedJobs`/`assignedJobsLoading` live in [`useDashboardAssignedJobs`](../src/hooks/useDashboardAssignedJobs.ts) (v2.725).
 - **Cross-section/shared state:** writes `viewReportsJob`, `leaveReportJob`, `subcontractorJobActivityModalJob`, **`readyForBillingJob` + `readyForBillingChecked1/2`** (Send-to-Billing confirm modal, shared with Superintendent Jobs; confirm runs `moveJobToReadyToBillWithStripePrep` from the billing engine); `assignedJobs` is read by My Schedule (labels/reminders), `detailModalAssignedJobsRows`, Superintendent-Jobs dedupe, and reloaded by `updateJobStatus`/`refreshDashboardAssignedJobLists`/`resyncDashboardAfterUpdateJobStatusFailureRef`.
 - **Handlers/loaders:** loader effect (RPC `list_assigned_jobs_for_dashboard`) + `refreshDashboardAssignedJobLists` (reloads all three job lists; also triggered by report modals + ClockInOutButton field-report save) — in `useDashboardAssignedJobs` as of v2.725.
@@ -226,7 +226,7 @@ Cross-checked against [`src/lib/canLeaveJobFieldReport.ts`](../src/lib/canLeaveJ
 
 ### 15. Superintendent Jobs
 
-- **Render location:** gate `role === 'superintendent'`, h2 "Superintendent Jobs" (~8108), block ~8099–8251. Rows are `superintendentJobs` **minus** any id already in `assignedJobs`.
+- **Render location:** gate `role === 'superintendent'`, h2 "Superintendent Jobs". Rows are `superintendentJobs` **minus** any id already in `assignedJobs`.
 - **Owned local state:** `superintendentJobsExpanded` (parent render state); the list + loading live in `useDashboardAssignedJobs` (v2.725).
 - **Cross-section/shared state:** dedupes against `assignedJobs`; writes `viewReportsJob` + `readyForBillingJob`; reloaded by `updateJobStatus`/`refreshDashboardAssignedJobLists`.
 - **Handlers/loaders:** loader effect (RPC `list_superintendent_jobs_for_dashboard`) — in `useDashboardAssignedJobs` as of v2.725.
@@ -242,30 +242,30 @@ Cross-checked against [`src/lib/canLeaveJobFieldReport.ts`](../src/lib/canLeaveJ
 
 ### 17. My Team
 
-- **Render location:** lazy `DashboardMyTeamSection` in `Suspense` (~8513–8521), fed `myTeam` + `pendingClockBannerAtMyTeamTop` + `goToPendingSessionsInMyTeam`.
+- **Render location:** lazy `DashboardMyTeamSection` in `Suspense`, fed `myTeam` + `pendingClockBannerAtMyTeamTop` + `goToPendingSessionsInMyTeam`.
 - **Extraction status:** **Done.** The `useDashboardMyTeamSectionState` hook stays in the parent (shared with the clock strip cluster and pending banners).
 
 ### 18. Me / My Time
 
-- **Render location:** `id="dash-me"` anchor + `DashboardMyTimeSection` (~8523–8530), props `hoursDaysCorrect={hoursDaysCorrectSet}` and `disableDayEditor={dashboardSelfIsSalary}`.
+- **Render location:** `id="dash-me"` anchor + `DashboardMyTimeSection`, props `hoursDaysCorrect={hoursDaysCorrectSet}` and `disableDayEditor={dashboardSelfIsSalary}`.
 - **Extraction status:** **Done.** Parent keeps `hoursDaysCorrectSet` (shared with the strip editors) and `dashboardSelfIsSalary` (shared with ClockInOutButton wiring).
 
-### 19. Modal tail (~8532–8896)
+### 19. Modal tail
 
 Shared modals that stay page-level (opened from 2+ sections) vs single-opener modals that can move with their section:
 
 | Modal | Anchor | Opened from | Stays / moves |
 |---|---|---|---|
-| `ApplyScheduleApprovedConfirmModal` | ~8532 | clock strip (`applySchedule`) | stays (hook-owned) |
+| `ApplyScheduleApprovedConfirmModal` | — | clock strip (`applySchedule`) | stays (hook-owned) |
 | `NewReportModal` | (moved v2.723) | banner block "Job Report" button | moved into `DashboardPinnedQuickRow` (`renderModals` prop) |
 | `DashboardStaleTallyStaffFollowUpModal` | (moved v2.723) | staff tally banner | moved into `DashboardPinnedQuickRow` (`renderModals` prop) |
-| `ReportEditModal` | ~8549 | **nothing** (dead — see quirks) | note only |
+| `ReportEditModal` | — | **nothing** (dead — see quirks) | note only |
 | `ChecklistItemMuteModal` | (moved v2.722) | My Inbox | moved into `DashboardMyInboxCard` |
-| `JobReportsModal` (`viewReportsJob`) | ~8570 | Billing ×2, Team RTB, Assigned, Superintendent | **stays** |
-| `SubcontractorJobActivityModal` | ~8583 | Team RTB + Assigned rows | stays (job-row family) |
-| `AdditionalReportModal` (`leaveReportJob`) | ~8591 | My Schedule, Team RTB, Assigned, Job Mode | **stays** |
+| `JobReportsModal` (`viewReportsJob`) | — | Billing ×2, Team RTB, Assigned, Superintendent | **stays** |
+| `SubcontractorJobActivityModal` | — | Team RTB + Assigned rows | stays (job-row family) |
+| `AdditionalReportModal` (`leaveReportJob`) | — | My Schedule, Team RTB, Assigned, Job Mode | **stays** |
 | `CollectPaymentModal` | (moved v2.726) | Team RTB rows | moved into `DashboardTeamReadyToBillSection` (single opener) |
-| Send-to-Billing confirm (`readyForBillingJob`, inline) | h2 "Send to Billing" ~8629 | Assigned + Superintendent rows | **stays** (uses billing engine) |
+| Send-to-Billing confirm (`readyForBillingJob`, inline) | h2 "Send to Billing" | Assigned + Superintendent rows | **stays** (uses billing engine) |
 | `sendRecordJobMeta` loading overlay | (parent) | billing section render + parent `handlePrepareBillFromFieldQueue` | **stays** (an opener is parent-side glue) |
 | `BilledPaymentConfirmationModal` ×2 (job / invoice) | (moved v2.728) | Billing Stage 3 | moved into `DashboardBillingPipelineSection` |
 | Send-back invoice confirm (inline) | (moved v2.728) | Billing Stages 2+3 | moved into `DashboardBillingPipelineSection` |
@@ -300,7 +300,7 @@ Shared modals that stay page-level (opened from 2+ sections) vs single-opener mo
 | Estimator inbox engine | **replaced (v2.719)** by the existing `useEstimatorInbox` hook (called in the parent, passed into `DashboardTeamsInboxCard`) | Teams Inbox | done |
 | Checklist CRUD (today/outstanding/completed loaders + toggles + fwd + notifications) | **moved (v2.722)** into [`DashboardMyInboxCard`](../src/components/dashboard/DashboardMyInboxCard.tsx) (mutates the boot seam's today checklist via the parent-passed setter) | My Inbox | done |
 | My Bids loader + unread computation | **moved (v2.718)** into `DashboardMyBidsSection` (pure core in `lib/dashboardMyBids.ts`) | My Bids only | done |
-| Recent reports loader + realtime + hide-on-refresh | ~1935–2428 | Recent Reports only | move with the section |
+| Recent reports loader + realtime + hide-on-refresh | — | Recent Reports only | move with the section |
 | Sub-schedule blocks loader (+labels/phones) | **extracted (v2.724)** → [`useDashboardSubSchedule`](../src/hooks/useDashboardSubSchedule.ts) — **hook stays in the parent** (its `leaveReportReminderForJobRow` feeds the job-row sections; quirk #11) | `DashboardMyScheduleSection` (props) + `leaveReportReminderForJobRow` (job-row family) | done |
 | Workflow-step action engine | **moved (v2.721)** into [`DashboardProjectsCard`](../src/components/dashboard/DashboardProjectsCard.tsx) (calls the parent-passed `getCurrentUserName` + hook-owned `loadAssignedSteps`) | Projects card | done |
 | Tally counts / pins / button-visibility loaders | tally + lost-bids loaders **moved (v2.723)** into [`DashboardPinnedQuickRow`](../src/components/dashboard/DashboardPinnedQuickRow.tsx); pins (`refreshPinned`) + button-visibility/placement loaders + `financialRefreshKey` realtime stay in the parent (see dossier §3) | banner/pins block | done |
@@ -320,10 +320,10 @@ Per the playbook's behavior-preserving rule, note these — do not "clean them u
 
 1. **The Billing Pipeline renders twice, as two literal ~350-line copies** — assistant/controller branch and dev/master branch. Only one mounts for a given user (mutually exclusive role gates); they differ only in *position within the page flow* (assistants see inboxes+billing *before* the clock strip; dev/master after). Same state, handlers, keys. (**Collapsed as of v2.728**: one [`DashboardBillingPipelineSection`](../src/components/dashboard/DashboardBillingPipelineSection.tsx) mounted at both positions — copies re-verified byte-identical under whitespace normalization before deletion; page ordering per branch NOT unified, per this quirk's instruction.)
 2. **Teams Inbox renders twice** with real differences: the dev/master/non-assistant copy adds `HelpFeedbackInboxSection` (dev-only) and gates `onCreateTripCharge` to dev/master, while the assistant copy always passes `onCreateTripCharge`. (**Collapsed as of v2.719**: one `DashboardTeamsInboxCard` rendered at both positions, the differences expressed as `showHelpFeedback`/`onCreateTripCharge` props — positions and per-branch behavior unchanged.)
-3. **The clock strip + day-editor cluster renders twice** (~5266 vs ~5716) with *identical* props — pure position fork on `isAssistantLike(role)`.
+3. **The clock strip + day-editor cluster renders twice** with *identical* props — pure position fork on `isAssistantLike(role)`.
 4. **`myInboxCard` is one JSX const rendered at three role positions** — already single-sourced; only the mount position varies. (**Preserved as of v2.722**: the const now holds one `<DashboardMyInboxCard/>` element mounted at the same three positions; the role gates are mutually exclusive and exhaustive, so exactly one copy always mounts — required, since the component's loaders drive the dock gate it reports up.)
 5. **Three different "Ready to Bill" headings exist**: Billing Stage 2 (invoice units — one heading since v2.728 collapsed the two copies into `DashboardBillingPipelineSection`) and the Team Ready to Bill section (`DashboardTeamReadyToBillSection`, assigned-jobs RPC). They are different features that share a name.
-6. **Dead wiring: `ReportEditModal`** (~8549) — `editReportModalOpen`/`reportForEdit` (~1113–1114) are declared and rendered but **no code ever sets them open** (only the modal's own `onClose` resets them). Dead state; note for a separate cleanup PR, keep during decomposition.
+6. **Dead wiring: `ReportEditModal`** — `editReportModalOpen`/`reportForEdit` (~1113–1114) are declared and rendered but **no code ever sets them open** (only the modal's own `onClose` resets them). Dead state; note for a separate cleanup PR, keep during decomposition.
 7. **`turnawayJob`/`TurnawayModal` exist only in the Job Mode early return** — after "Show full dashboard" there is no turnaway entry point.
 8. **My Bids gate vs loader mismatch:** the loader includes `superintendent` in `hasBidsAccess`, the render gate and dock entry do not — superintendents fetch bids that never display. (Preserved verbatim in `DashboardMyBidsSection` as of v2.718.)
 9. **Upcoming inspection is hidden by the `inspections` quick-button visibility flag** (`dashboardButtonVisibility?.inspections !== false`) even though the section is not a button. (**Seam as of v2.723:** `dashboardButtonVisibility` + its loader stayed in the parent when the pins/quick-actions block extracted — the parent passes `quickActionDefs` down to `DashboardPinnedQuickRow` and keeps passing `inspectionsButtonVisible` to `DashboardUpcomingInspectionsSection` unchanged.) Related quirk preserved by the same extraction: the block's tail modals (`NewReportModal`, staff tally follow-up) never mounted in the Job Mode early return, so their openers are inert there — kept via `renderModals={false}` at that mount.

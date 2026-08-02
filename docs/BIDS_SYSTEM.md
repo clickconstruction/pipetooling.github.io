@@ -5,59 +5,51 @@ file: BIDS_SYSTEM.md
 type: System Documentation
 purpose: Complete documentation of the 14-tab Bids system including workflows, book systems, and integrations
 audience: Developers, Estimators, AI Agents
-last_updated: 2026-07-17
+last_updated: 2026-08-02
 estimated_read_time: 30-40 minutes
 difficulty: Intermediate to Advanced
 
 system_components:
-  - "14 Tabs: Bid Board, Builder Review, Unsent/Working (kanban), Bid Costs, Estimators, Counts, Takeoff, Labor (Cost Estimate), Pricing, Cover Letter, Submission & Followup, RFI, Change Order, Lien Release"
+  - "14 Tabs: Bid Board, Builder Review, Unsent/Working (kanban), Bid Costs, Estimators, Counts, Takeoffs, Labor, Pricing, Cover Letter, Submission & Followup, RFI, Change Order, Lien Release"
   - "3 Book Systems: Takeoff Book, Labor Book, Price Book (Price Book templates are cloned into bid-scoped Pricings)"
   - "Bid Versions: named per-bid variants (takeoff + pricing facets)"
   - "Integration with Materials (PO creation)"
 
 key_sections:
   - name: "Overview"
-    line: ~17
     anchor: "#overview"
     description: "System purpose and workflow summary"
   - name: "Bid Board Tab"
-    line: ~35
     anchor: "#bid-board-tab"
     description: "Main bid list, search, and management"
   - name: "Counts Tab"
-    line: ~97
     anchor: "#counts-tab"
     description: "Fixture quantity entry with number pad"
   - name: "Takeoff Tab"
-    line: ~184
     anchor: "#takeoff-tab"
     description: "Map counts to assemblies, create POs"
-  - name: "Cost Estimate Tab"
-    line: ~333
-    anchor: "#cost-estimate-tab"
+  - name: "Labor Tab (cost estimate)"
+    anchor: "#labor-tab-cost-estimate"
     description: "Materials + labor + driving costs"
   - name: "Pricing Tab"
-    line: ~503
     anchor: "#pricing-tab"
     description: "Compare costs to price book, margins"
   - name: "Cover Letter Tab"
-    line: ~681
     anchor: "#cover-letter-tab"
     description: "Generate proposal documents"
   - name: "Submission & Followup Tab"
-    line: ~732
     anchor: "#submission--followup-tab"
     description: "Track bid outcomes and follow-ups"
   - name: "RFI Tab"
-    line: ~1350
     anchor: "#rfi-tab"
     description: "Generate RFI documents"
+  - name: "Change Order Tab"
+    anchor: "#change-order-tab"
+    description: "Generate change-order documents"
   - name: "Lien Release Tab"
-    line: ~1370
     anchor: "#lien-release-tab"
     description: "Generate conditional waiver and lien release documents"
   - name: "Database Schema"
-    line: ~897
     anchor: "#database-schema"
     description: "All bids-related tables"
 
@@ -92,15 +84,16 @@ when_to_read:
 5. [Estimators Tab](#estimators-tab)
 6. [Counts Tab](#counts-tab)
 7. [Takeoff Tab](#takeoff-tab)
-8. [Cost Estimate Tab](#cost-estimate-tab)
+8. [Labor Tab (cost estimate)](#labor-tab-cost-estimate)
 9. [Pricing Tab](#pricing-tab)
 10. [Bid Versions & Pricings](#bid-versions--pricings)
 11. [Cover Letter Tab](#cover-letter-tab)
 12. [Submission & Followup Tab](#submission--followup-tab)
 13. [RFI Tab](#rfi-tab)
-14. [Lien Release Tab](#lien-release-tab)
-15. [Database Schema](#database-schema)
-16. [Integration with Materials](#integration-with-materials)
+14. [Change Order Tab](#change-order-tab)
+15. [Lien Release Tab](#lien-release-tab)
+16. [Database Schema](#database-schema)
+17. [Integration with Materials](#integration-with-materials)
 
 ---
 
@@ -111,7 +104,7 @@ The Bids system is a comprehensive bidding and estimation tool for plumbing cont
 > **Refactoring / decomposing `Bids.tsx`?** See [`docs/BIDS_TABS_ARCHITECTURE.md`](./BIDS_TABS_ARCHITECTURE.md) — a per-tab coupling/refactor map (state, memos, handlers, supabase tables, extraction status, and a recommended extraction order). This file (`BIDS_SYSTEM.md`) covers feature/workflow/DB behavior; the architecture map covers internal structure.
 
 ### Key Features
-- **Fourteen integrated tabs** covering the complete bid lifecycle (`BIDS_TABS` in [`Bids.tsx`](../src/pages/Bids.tsx)): **Bid Board, Builder Review, Unsent/Working (kanban), Bid Costs, Estimators, Counts, Takeoffs, Labor (Cost Estimate), Pricing, Cover Letter, Submission & Followup, RFI, Change Order, Lien Release**. **Estimators** (**v2.530+**) is a cross-bid pivot, and **Builder Review** / **Unsent/Working** / **Bid Costs** are list/analytics surfaces — none of these four are part of the linear per-bid workflow below.
+- **Fourteen integrated tabs** covering the complete bid lifecycle (`BIDS_TABS` in [`Bids.tsx`](../src/pages/Bids.tsx)): **Bid Board, Builder Review, Unsent/Working (kanban), Bid Costs, Estimators, Counts, Takeoffs, Labor, Pricing, Cover Letter, Submission & Followup, RFI, Change Order, Lien Release**. **Estimators** (**v2.530+**) is a cross-bid pivot, and **Builder Review** / **Unsent/Working** / **Bid Costs** are list/analytics surfaces — none of these four are part of the linear per-bid workflow below.
 - **Three book systems** (Takeoff, Labor, Price) for standardizing estimates
 - **Bid Versions** — named per-bid variants, each owning its own takeoff materials and optional pricing (see [Bid Versions & Pricings](#bid-versions--pricings))
 - **Automatic cost calculations** including driving costs
@@ -133,8 +126,8 @@ The page gate (see the `UserRole` union and the render guard in [`Bids.tsx`](../
 ### Workflow
 1. **Bid Board** - Create and manage bids
 2. **Counts** - Enter fixture/tie-in counts per stage
-3. **Takeoff** - Map counts to material assemblies
-4. **Labor (Cost Estimate)** - Calculate material and labor costs with driving expenses
+3. **Takeoffs** - Map counts to material assemblies
+4. **Labor** (cost estimate) - Calculate material and labor costs with driving expenses
 5. **Pricing** - Compare costs to price book and analyze margins
 6. **Cover Letter** - Generate proposal documents with inclusions/exclusions
 7. **Submission & Followup** - Track bid submissions and outcomes
@@ -621,7 +614,7 @@ When applying this entry to a count row with Fixture="WC" and Count=5:
 **Behavior**:
 - Disabled when no assemblies are mapped
 - Opens print preview in new window; closes after print/cancel
-- Uses same print styling as Cost Estimate
+- Uses same print styling as the Labor tab's cost estimate
 
 #### View Purchase Order Link
 
@@ -666,7 +659,9 @@ created_at (timestamptz)
 
 ---
 
-## Cost Estimate Tab
+## Labor Tab (cost estimate)
+
+> Tab label renamed **Cost Estimate → Labor** in **v2.588** (tab key `labor`, URL `?tab=labor`; the underlying `cost_estimates` tables kept their names).
 
 ### Purpose
 Calculate total project costs including materials, labor, and driving expenses. Provides detailed breakdown by stage and fixture.
@@ -692,12 +687,12 @@ The Labor Book provides standardized labor hours for common fixtures across the 
 **Versions Management**:
 - Create, edit, and delete named labor book versions
 - Each version has independent set of entries
-- **Auto-selection**: First labor book version automatically selected when opening Cost Estimate tab
+- **Auto-selection**: First labor book version automatically selected when opening the Labor tab
 - Preserves previously saved selection for the bid
 
 **Bid-level persistence**:
 - Selected version stored in `bids.selected_labor_book_version_id`
-- Version dropdown in Cost Estimate tab header
+- Version dropdown in Labor tab header
 
 **Labor Book Entries**:
 - **Delete entries**: Delete is available only inside the edit modal for each entry (no in-row delete button).
@@ -778,7 +773,7 @@ UNIQUE (version_id, fixture_type_id)
 - Shows success message inline next to button for 3 seconds
 
 **Auto-selection**:
-- First labor book version selected when opening Cost Estimate tab
+- First labor book version selected when opening the Labor tab
 - Button immediately clickable without manual selection
 - Preserves previously saved labor book selection for bid
 
@@ -838,7 +833,7 @@ Driving Cost = (Total Man Hours / Hours Per Trip) × Rate Per Mile × Distance t
 - Shows $0.00 if distance not set (always visible)
 
 **PDF Export / Print Preview**:
-- Includes in Cost Estimate PDF and print preview
+- Included in the cost estimate PDF and print preview
 - Shows breakdown: "Driving cost: 20.0 trips × $0.70/mi × 50mi = $700.00"
 - Appears in Labor section (Manhours, Driving, Labor total) and Summary with Labor and Materials totals
 
@@ -1100,7 +1095,7 @@ created_at (timestamptz)
 **Total Cost per Fixture**: Labor Cost + Allocated Material Cost
 
 **Driving Cost in Pricing**:
-- Total cost includes driving cost (same formula as Cost Estimate: trips × rate/mi × distance)
+- Total cost includes driving cost (same formula as the Labor tab: trips × rate/mi × distance)
 - **Cost breakdown box**: Right-aligned yellow box showing Materials, Manhours, Driving, and Total cost
 - **Percentage of total**: Each line shows its share (e.g., "Manhours: $330.00 | 91.3%")
 - Uses bid's `distance_from_office` and cost estimate's `driving_cost_rate`, `hours_per_trip`
@@ -1171,7 +1166,7 @@ bid_count_row_submission_hides:
 
 **Cost Split**:
 Previously showed combined "Our Cost" column. Now splits into:
-- **Our Labor**: Direct labor costs from Cost Estimate
+- **Our Labor**: Direct labor costs from the cost estimate (Labor tab)
 - **Our Materials**: Allocated material costs
 
 **Benefits**:
@@ -1184,16 +1179,16 @@ Previously showed combined "Our Cost" column. Now splits into:
 - Combined revenue total
 - Overall margin calculation
 
-### Create Cost Estimate Prompt
+### Go to Labor Prompt
 
 **When Displayed**:
 - Selected bid has count rows
 - Selected bid has no cost estimate
 
 **Content**:
-- Message explaining cost estimate needed for pricing analysis
-- **"Go to Cost Estimate" button**
-- Switches to Cost Estimate tab with bid preselected
+- Inline message: "Add fixtures in Counts and set up Labor first to see margin comparison."
+- **"Go to Labor" button** ([`BidsPricingTab.tsx`](../src/components/bids/BidsPricingTab.tsx))
+- Switches to the Labor tab with bid preselected
 
 ---
 
@@ -1481,22 +1476,6 @@ Each section has clickable header with:
 
 **Note**: Project contact fields NOT shown in Bid Board table (only in Submission panel)
 
-### Cost Estimate Indicator
-
-**Location**: Selected bid panel in Submission & Followup tab
-
-**Display**:
-- **Cost estimate:** Shows amount or status
-- **Amount format**: Comma-formatted (e.g., "$12,345.67") when estimate exists
-- **Status**: "Not yet created" when no estimate
-- **Loading state**: "Loading cost estimate info…"
-
-**Button**:
-- **"View cost estimate"** (when exists): Switches to Cost Estimate tab with bid preselected
-- **"Create cost estimate"** (when missing): Switches to Cost Estimate tab for creation
-
-**Purpose**: Quick navigation to cost estimate without leaving Submission view
-
 ### Edit Column
 
 **Display**: Gear icon button in last column
@@ -1647,7 +1626,9 @@ Generate Request for Information (RFI) documents for bids. RFIs formalize questi
 - **Copy to clipboard**: HTML + plain text
 - **Open in Google Docs**: Copies content, opens template copy URL (Plumbing/Electrical/HVAC by service type), title format `ClickRFI_YYMMDD_ProjectName`
 
-### Change Order Tab
+---
+
+## Change Order Tab
 
 A working change-order document generator — [`src/components/bids/BidChangeOrderTab.tsx`](../src/components/bids/BidChangeOrderTab.tsx) (~285 lines), same pattern as RFI / Lien Release:
 
@@ -1899,6 +1880,9 @@ bid_pricing_assignments:
   bid_id (uuid, FK → bids ON DELETE CASCADE)
   count_row_id (uuid, FK → bids_count_rows ON DELETE CASCADE)
   price_book_entry_id (uuid, FK → price_book_entries ON DELETE CASCADE)
+  price_book_version_id (uuid, FK → price_book_versions ON DELETE CASCADE)
+  is_fixed_price (boolean, default false) -- When true, revenue = price (ignores count)
+  unit_price_override (numeric, nullable)
   created_at (timestamptz)
   UNIQUE (bid_id, count_row_id)
 ```
@@ -1909,6 +1893,7 @@ bid_pricing_assignments:
 people_crew_bids:
   work_date (date, PK)
   person_name (text, PK)
+  person_id (uuid, FK → people, nullable)
   crew_lead_person_name (text, nullable, DEPRECATED — always NULL after v2.538 freeze)
   bid_assignments (jsonb) -- [{ bid_id: uuid, pct: number }], sum to 100
 ```
@@ -1952,9 +1937,9 @@ Bids table access:
 - `getTemplatePartsPreview(templateId)`: Preview parts before adding
 - `addExpandedPartsToPO(poId, parts)`: Add parts to existing PO
 
-### Linking POs to Cost Estimate
+### Linking POs to the Cost Estimate
 
-**In Cost Estimate**:
+**In the Labor tab**:
 - User can link up to 3 POs per stage:
   - Rough In PO
   - Top Out PO
