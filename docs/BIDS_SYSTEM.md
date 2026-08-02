@@ -103,6 +103,8 @@ The Bids system is a comprehensive bidding and estimation tool for plumbing cont
 
 > **Refactoring / decomposing `Bids.tsx`?** See [`docs/BIDS_TABS_ARCHITECTURE.md`](./BIDS_TABS_ARCHITECTURE.md) — a per-tab coupling/refactor map (state, memos, handlers, supabase tables, extraction status, and a recommended extraction order). This file (`BIDS_SYSTEM.md`) covers feature/workflow/DB behavior; the architecture map covers internal structure.
 
+Bids now carry an **optional `project_id`** (FK → `projects`, `ON DELETE SET NULL`) alongside the historical free-text `project_name`. It links a bid to a Project for the Projects-card **Bids pill** ([`Projects.tsx`](../src/pages/Projects.tsx)); it is set via the New/Edit Bid modal's **Project** picker ([`BidFormModal.tsx`](../src/components/bids/BidFormModal.tsx), with a one-tap "Suggested" link when `project_name` exactly matches a project) or pre-filled by the `/bids?newBid=true&project=<id>` deep link from a project card's "+ Bid" segment. Nothing else keys off it — `project_name` remains the display/grouping field everywhere.
+
 ### Key Features
 - **Fourteen integrated tabs** covering the complete bid lifecycle (`BIDS_TABS` in [`Bids.tsx`](../src/pages/Bids.tsx)): **Bid Board, Builder Review, Unsent/Working (kanban), Bid Costs, Estimators, Counts, Takeoffs, Labor, Pricing, Cover Letter, Submission & Followup, RFI, Change Order, Lien Release**. **Estimators** (**v2.530+**) is a cross-bid pivot, and **Builder Review** / **Unsent/Working** / **Bid Costs** are list/analytics surfaces — none of these four are part of the linear per-bid workflow below.
 - **Three book systems** (Takeoff, Labor, Price) for standardizing estimates
@@ -1703,6 +1705,7 @@ Generate conditional waiver and lien release documents for progress payments. Ba
 bids:
   id (uuid, PK)
   project_name (text, required)
+  project_id (uuid, FK → projects ON DELETE SET NULL, nullable) -- optional link to a Project
   address (text, nullable)
   customer_id (uuid, FK → customers, nullable)
   gc_builder_id (uuid, FK → bids_gc_builders, nullable) -- Legacy

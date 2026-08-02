@@ -34,6 +34,16 @@ test('?newJob=true&tab=sub_sheet_ledger opens the New Sub Labor modal (v2.835 re
   await expect.poll(() => new URL(page.url()).searchParams.get('newJob')).toBeNull()
 })
 
+test('?newBid=true&project= opens the New Bid modal (Projects card "+ Bid" deep link)', async ({ page }) => {
+  // Unknown project id on purpose: the handler opens the modal regardless, and
+  // nothing is created until the form is submitted (read-only safe). The matching
+  // ?newEstimate=true&project= link has NO spec here — its handler INSERTS a row.
+  await page.goto('/bids?newBid=true&project=00000000-0000-0000-0000-000000000000')
+  await expect(page.getByRole('heading', { name: 'New Bid' })).toBeVisible()
+  await expect.poll(() => new URL(page.url()).searchParams.get('newBid')).toBeNull()
+  await expect.poll(() => new URL(page.url()).searchParams.get('project')).toBeNull()
+})
+
 test('?stagesSection=billed opens and anchors the Billed section', async ({ page }) => {
   await page.goto('/jobs?stagesSection=billed')
   await expect(page.locator('#stages-billed')).toBeVisible()

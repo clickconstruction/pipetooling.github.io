@@ -1975,6 +1975,7 @@ user_id = auth.uid()
   - **Forecast** (added **v2.554**, two sub-tabs `?forecastSub=specific|all-stages`) — forward-looking Gantt driven by `project_workflow_steps.scheduled_start_date` / `scheduled_end_date` plus actual `started_at` / `ended_at`. See "Forecast Tab" subsection.
 - **Features (Overview tab)**:
   - List projects with status, customer, active stage, **project owner (master)**
+  - **Card-rail pills** (segmented, shared styling in [`Projects.tsx`](../src/pages/Projects.tsx)): the **Jobs** pill (all roles) plus **Bids** and **Estimates** pills (dev/master_technician/assistant-like only — hidden from superintendents). Each pill = label cap + one segment per linked row (status dot + label) + trailing sky "+" segment. Bid segments open the Bid Preview modal (dot from `bidOutcomeDotColor` — pending grey / won green / lost red / started-or-complete teal, off `bids.outcome`); estimate segments navigate to `/estimates/{number}` (dot from `estimateStatusDotColor` — draft/superseded grey, sent blue, accepted green, declined red). "+" segments deep-link to `/bids?newBid=true&project=<id>` (opens New Bid pre-linked, name seeded) and `/estimates?newEstimate=true&project=<id>` (creates a pre-linked draft and navigates to it). Data batch-fetched via `bids`/`estimates` `.in('project_id', …)` alongside the jobs fetch.
   - Create/edit projects
   - **Project owner automatically matches customer owner** - cannot be changed or selected separately
   - Delete projects (with confirmation)

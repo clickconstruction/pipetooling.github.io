@@ -717,6 +717,7 @@ export type Database = {
           plan_pages: string | null
           plans_link: string | null
           profit: number | null
+          project_id: string | null
           project_name: string | null
           selected_bid_version_id: string | null
           selected_labor_book_version_id: string | null
@@ -770,6 +771,7 @@ export type Database = {
           plan_pages?: string | null
           plans_link?: string | null
           profit?: number | null
+          project_id?: string | null
           project_name?: string | null
           selected_bid_version_id?: string | null
           selected_labor_book_version_id?: string | null
@@ -823,6 +825,7 @@ export type Database = {
           plan_pages?: string | null
           plans_link?: string | null
           profit?: number | null
+          project_id?: string | null
           project_name?: string | null
           selected_bid_version_id?: string | null
           selected_labor_book_version_id?: string | null
@@ -896,6 +899,13 @@ export type Database = {
             columns: ["gc_builder_id"]
             isOneToOne: false
             referencedRelation: "bids_gc_builders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bids_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
             referencedColumns: ["id"]
           },
           {
