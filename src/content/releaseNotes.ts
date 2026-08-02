@@ -11,6 +11,46 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1281',
+    date: '2026-08-02',
+    title: 'Behind the scenes: Materials Purchase Orders tab restructured',
+    kind: 'infra',
+    highlights: [
+      'The Purchase Orders tab on the Materials page moved into its own component, backed by a shared purchase-order engine.',
+      'No visible changes; viewing, finalizing, duplicating, printing, and price-confirming POs all work exactly as before, and search/filter state still survives switching tabs.',
+    ],
+  },
+  {
+    version: 'v2.1280',
+    date: '2026-08-02',
+    title: 'Behind the scenes: Materials price editors restructured',
+    kind: 'infra',
+    highlights: [
+      'The part-price and assembly-bundle-price editors on the Materials page moved into their own components.',
+      'No visible changes; editing prices works exactly as before.',
+    ],
+  },
+  {
+    version: 'v2.1279',
+    date: '2026-08-02',
+    title: 'Behind the scenes: Materials PO Generator tab restructured',
+    kind: 'infra',
+    highlights: [
+      'The PO Generator tab on the Materials page now lives in its own component — the first tab extraction of the Materials cleanup.',
+      'No visible changes; generating PO numbers and the ledger work exactly as before, and your in-progress form survives switching tabs just like it always did.',
+    ],
+  },
+  {
+    version: 'v2.1277',
+    date: '2026-08-02',
+    title: 'Behind the scenes: Materials page groundwork, part 3',
+    kind: 'infra',
+    highlights: [
+      'Purchase-order printing, part-price loading, and the supply-house stats header on the Materials page moved into shared, tested routines.',
+      'No visible changes; printouts and stats render exactly as before.',
+    ],
+  },
+  {
     version: 'v2.1276',
     date: '2026-08-02',
     title: 'Behind the scenes: Materials page groundwork, part 2',
