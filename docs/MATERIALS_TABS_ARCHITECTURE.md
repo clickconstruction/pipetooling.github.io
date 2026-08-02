@@ -15,7 +15,7 @@ last_updated: 2026-07-19
 The page is tab-switched on a single `activeTab` state (search `const [activeTab, setActiveTab]`; the deep-link union is `const MATERIALS_TABS`):
 
 ```
-'parts-book' | 'assembly-book' | 'templates-po' | 'purchase-orders' | 'supply-houses' | 'po-generator'
+'parts-book' | 'assembly-book' | 'assemblies-po (was templates-po until v2.1258)' | 'purchase-orders' | 'supply-houses' | 'po-generator'
 ```
 
 Labels differ from keys: `parts-book` renders as **Parts Book** (the GLOSSARY's "Price Book" — the legacy `?tab=price-book` slug is rewritten to `parts-book` in the URL effect), `templates-po` renders as **Assemblies & Purchase Orders**, `po-generator` renders as **PO Generator**. Tab order in the UI is Supply Houses | PO Generator ‖ Parts Book | Assembly Book | Assemblies & POs | Purchase Orders.

@@ -146,7 +146,7 @@ function formatCurrency(n: number): string {
   return n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
-const MATERIALS_TABS = ['parts-book', 'assembly-book', 'templates-po', 'purchase-orders', 'supply-houses', 'po-generator'] as const
+const MATERIALS_TABS = ['parts-book', 'assembly-book', 'assemblies-po', 'purchase-orders', 'supply-houses', 'po-generator'] as const
 
 export default function Materials() {
   const { user: authUser } = useAuth()
@@ -156,7 +156,7 @@ export default function Materials() {
   const [searchParams, setSearchParams] = useSearchParams()
   const [myRole, setMyRole] = useState<UserRole | null>(null)
   const [activeTab, setActiveTab] = useState<
-    'parts-book' | 'assembly-book' | 'templates-po' | 'purchase-orders' | 'supply-houses' | 'po-generator'
+    'parts-book' | 'assembly-book' | 'assemblies-po' | 'purchase-orders' | 'supply-houses' | 'po-generator'
   >('parts-book')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -226,6 +226,10 @@ export default function Materials() {
   const [savingSupplyHouse, setSavingSupplyHouse] = useState(false)
 
   // Templates & PO Builder state
+  // NAMING: the UI calls these ASSEMBLIES everywhere (Assembly Book,
+  // "From assembly", Bids Takeoff). Code identifiers and the DB stay on the
+  // original material_templates naming — DB is append-only and the
+  // identifiers match it on purpose. See docs/GLOSSARY.md → Assembly.
   const [materialTemplates, setMaterialTemplates] = useState<MaterialTemplate[]>([])
   const [selectedTemplate, setSelectedTemplate] = useState<MaterialTemplate | null>(null)
   const [templateSearchQuery, setTemplateSearchQuery] = useState('')
@@ -1021,10 +1025,22 @@ export default function Materials() {
       }, { replace: true })
       return
     }
+    // Back-compat: the "Templates & PO" tab slug was renamed to "assemblies-po"
+    // when the Assembly vocabulary converged (v2.1258). Old pins keep working.
+    if (tab === 'templates-po') {
+      tab = 'assemblies-po'
+      setActiveTab('assemblies-po')
+      setSearchParams((p) => {
+        const next = new URLSearchParams(p)
+        next.set('tab', 'assemblies-po')
+        return next
+      }, { replace: true })
+      return
+    }
     const restrictedPrimarySuper =
       tab === 'supply-houses' ||
       tab === 'po-generator' ||
-      tab === 'templates-po' ||
+      tab === 'assemblies-po' ||
       tab === 'purchase-orders'
     if ((myRole === 'primary' || myRole === 'superintendent') && restrictedPrimarySuper) {
       setActiveTab('parts-book')
@@ -1153,7 +1169,7 @@ export default function Materials() {
   }, [selectedTemplate])
 
   useEffect(() => {
-    if (activeTab === 'templates-po' || activeTab === 'assembly-book') {
+    if (activeTab === 'assemblies-po' || activeTab === 'assembly-book') {
       loadAllTemplateItemsForStats()
     }
   }, [activeTab, selectedServiceTypeId])
@@ -2766,12 +2782,12 @@ export default function Materials() {
         const poWithItems: PurchaseOrderWithItems = { ...newPO as PurchaseOrder, items: itemsWithDetails }
         setEditingPO(poWithItems)
         setSelectedPO(null) // Close the view modal
-        setActiveTab('templates-po') // Switch to Assemblies & Purchase Orders tab
+        setActiveTab('assemblies-po') // Switch to Assemblies & Purchase Orders tab
       } else {
         const poWithItems: PurchaseOrderWithItems = { ...newPO as PurchaseOrder, items: [] }
         setEditingPO(poWithItems)
         setSelectedPO(null)
-        setActiveTab('templates-po')
+        setActiveTab('assemblies-po')
       }
     }
 
@@ -3060,14 +3076,14 @@ export default function Materials() {
           <button
             type="button"
             onClick={() => {
-              setActiveTab('templates-po')
+              setActiveTab('assemblies-po')
               setSearchParams((p) => {
                 const next = new URLSearchParams(p)
-                next.set('tab', 'templates-po')
+                next.set('tab', 'assemblies-po')
                 return next
               })
             }}
-            style={pageTabStyle(activeTab === 'templates-po')}
+            style={pageTabStyle(activeTab === 'assemblies-po')}
           >
             Assemblies & Purchase Orders
           </button>
@@ -4127,7 +4143,7 @@ export default function Materials() {
       )}
 
       {/* Assemblies & PO Builder Tab */}
-      {activeTab === 'templates-po' && (
+      {activeTab === 'assemblies-po' && (
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
           {/* Left Panel: Material Assemblies */}
           <div>
@@ -4656,7 +4672,7 @@ export default function Materials() {
                   disabled={addingTemplateToPO}
                   style={{ width: '100%', padding: '0.75rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 600 }}
                 >
-                  {addingTemplateToPO ? 'Adding Template...' : `Add "${selectedTemplate.name}" Template to PO`}
+                  {addingTemplateToPO ? 'Adding Assembly...' : `Add "${selectedTemplate.name}" Assembly to PO`}
                 </button>
               </div>
             )}

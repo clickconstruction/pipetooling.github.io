@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-01 (v2.1257)
+last_updated: 2026-08-01 (v2.1258)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1258)
+
+### "Assembly" becomes official — last template strings converge + the assemblies-po slug (2026-08-01)
+Naming-audit decision N12: **Assembly** is the canonical word for material kits (the app had already mostly converged — Assembly Book, "Assemblies & Purchase Orders", "From assembly" PO headers all predate this). **Phase 1** finishes the visible-string convergence: the "Add … Template to PO" / "Adding Template…" button on [`Materials.tsx`](../src/pages/Materials.tsx) and three Takeoff strings ("Nested Assembly" option, "No parts in this assembly.", "nested assemblies") in [`BidsTakeoffTab.tsx`](../src/components/bids/BidsTakeoffTab.tsx). **Phase 2**: the tab's URL slug renames `templates-po` → **`assemblies-po`** following the v2.587 parts-book pattern — a back-compat branch rewrites the old slug in place so saved pins keep working; a NAMING comment at the `materialTemplates` state + a new **Assembly** entry in [`GLOSSARY.md`](./GLOSSARY.md) codify the convention (DB `material_templates` and code identifiers deliberately keep the original naming; the other template families — workflow/contract/email/report/salary — are unrelated and untouched). Verified live with the dev test account: `?tab=templates-po` self-rewrites to `assemblies-po` and opens the right tab; zero visible "template" text on the Assemblies tab or Takeoffs. `tsc -b` clean, vitest 3,336 green. No DB / migration / RLS / RPC / Edge changes.
 
 ## Latest Updates (v2.1257)
 

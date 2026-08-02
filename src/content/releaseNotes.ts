@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1258',
+    date: '2026-08-01',
+    title: 'Assemblies everywhere \u2014 the last "template" leftovers are gone',
+    kind: 'feature',
+    highlights: [
+      'The material kits you build in the Assembly Book are now called assemblies in every remaining spot \u2014 including the Add to PO button and the Takeoff nested-item labels.',
+      'The Assemblies & Purchase Orders tab has a matching web address; old pinned links redirect themselves.',
+    ],
+  },
+  {
     version: 'v2.1257',
     date: '2026-08-01',
     title: 'Pay setup now lives on the Payroll tab',
