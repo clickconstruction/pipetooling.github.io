@@ -222,7 +222,7 @@ export function usePeopleHoursData(deps: UsePeopleHoursDataDeps): UsePeopleHours
     if (error) setError(error.message)
   }
 
-  // Realtime: live people_hours + clock_sessions changes on the Hours/Pay Stubs tabs.
+  // Realtime: live people_hours + clock_sessions changes on the Hours/Pay Reports tabs.
   const peopleHoursClockRealtimeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   useEffect(() => {
     const hasAccess = canAccessHours || canAccessPay

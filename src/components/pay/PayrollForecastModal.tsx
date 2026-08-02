@@ -12,7 +12,7 @@ export type PayrollForecastUnpaidRow = {
   stubId: string
   personName: string
   /** YMD (en-CA) for the date the balance "came into existence" — we
-   *  use `period_end` from the pay stub since that's when the obligation
+   *  use `period_end` from the pay report since that's when the obligation
    *  crystallizes; created_at would also be reasonable but period_end
    *  reads more naturally as "balance from {date}". */
   balanceCreatedYmd: string
@@ -212,7 +212,7 @@ export function PayrollForecastModal(props: {
               Add bars for upcoming allowances, then check the unpaid balances you plan to pay from each bar.
               Bars fill as you check rows.
               <span style={{ display: 'inline-block', marginLeft: '0.4rem', fontStyle: 'italic' }}>
-                (Planning only — nothing here changes pay stubs.)
+                (Planning only — nothing here changes pay reports.)
               </span>
             </p>
           </div>

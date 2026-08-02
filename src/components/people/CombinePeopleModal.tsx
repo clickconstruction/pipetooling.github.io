@@ -93,7 +93,7 @@ export default function CombinePeopleModal({
           </button>
         </div>
         <p style={{ margin: '0.25rem 0 0.75rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-          Their hours, pay config, crew records, pay stubs, and sub sheets are rewritten onto the person you pick; this
+          Their hours, pay config, crew records, pay reports, and sub sheets are rewritten onto the person you pick; this
           duplicate row is then <strong>archived</strong> (never deleted).
         </p>
 

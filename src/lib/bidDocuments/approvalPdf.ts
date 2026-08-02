@@ -386,7 +386,7 @@ export async function downloadApprovalPdf(ctx: ApprovalPdfContext): Promise<void
   const { data: estData } = await supabase.from('cost_estimates').select('*').eq('bid_id', bidId).maybeSingle()
   const est = estData as CostEstimate | null
   if (!est) {
-    push('No cost estimate created.')
+    push('No labor costs created.')
   } else {
     const [laborRes, roughTotal, topTotal, trimTotal, countRes] = await Promise.all([
       supabase.from('cost_estimate_labor_rows').select('*').eq('cost_estimate_id', est.id).order('sequence_order', { ascending: true }),

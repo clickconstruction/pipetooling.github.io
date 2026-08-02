@@ -11,6 +11,17 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1254',
+    date: '2026-08-01',
+    title: 'Pay Reports, not pay stubs \u2014 plus Job # column headers',
+    kind: 'feature',
+    highlights: [
+      'Everything that said "pay stub" now says "Pay Report" \u2014 the crew are 1099 contractors, and pay stub read too much like a W-2 paycheck.',
+      'Columns showing job numbers are headed "Job #" whether the job uses an HCP or a Click number.',
+      'The last few "cost estimate" leftovers on Bids now match the Labor tab\u2019s name.',
+    ],
+  },
+  {
     version: 'v2.1253',
     date: '2026-08-01',
     title: 'Clearer names: Schedule, Hiring, and Paste Fill',

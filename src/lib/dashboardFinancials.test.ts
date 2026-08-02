@@ -161,7 +161,7 @@ describe('buildApBucketFromAggregates', () => {
     expect(bucket.total).toBeCloseTo(750)
     const agg = bucket.items.find((i) => i.key === 'payroll:aggregate')
     expect(agg?.amount).toBeCloseTo(500)
-    expect(agg?.sublabel).toBe('3 open pay stubs')
+    expect(agg?.sublabel).toBe('3 open pay reports')
   })
 
   it('omits the payroll line when due total is zero', () => {
@@ -254,7 +254,7 @@ describe('redactApPayrollItems', () => {
     const aggregate = redacted.items.find((i) => i.key === 'payroll:aggregate')
     expect(aggregate?.amount).toBeCloseTo(1200)
     expect(aggregate?.label).toBe('Payroll')
-    expect(aggregate?.sublabel).toBe('2 open pay stubs')
+    expect(aggregate?.sublabel).toBe('2 open pay reports')
     expect(aggregate?.dateYmd).toBe('2026-06-20') // oldest replaced stub period_end
     expect(redacted.items.find((i) => i.key === 'supply:s1')?.amount).toBeCloseTo(250)
     expect(redacted.total).toBeCloseTo(ap.total)

@@ -25,7 +25,7 @@ const CARD_META: Record<CardKey, { title: string; hint: string; linkTo: string; 
   },
   ap: {
     title: 'Accounts Payable',
-    hint: 'Unpaid supply-house invoices, sub labor, and all team labor owed — open pay stubs plus estimated unreported weeks.',
+    hint: 'Unpaid supply-house invoices, sub labor, and all team labor owed — open pay reports plus estimated unreported weeks.',
     linkTo: '/materials?tab=supply-houses',
     linkLabel: 'Open Supply Houses',
   },

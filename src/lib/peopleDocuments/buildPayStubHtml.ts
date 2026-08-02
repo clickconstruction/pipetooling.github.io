@@ -1,5 +1,5 @@
 /**
- * Pay-report (pay stub) print/preview HTML builder for People → Pay.
+ * Pay-report (pay report) print/preview HTML builder for People → Pay.
  *
  * Pure: this takes an explicit `PayStubHtmlContext` (including the resolved
  * person `contact`, so it does not depend on the People roster) and returns a

@@ -195,7 +195,7 @@ export function PayStubAdditionalModal({
                 rate: patch.rate,
               })
               .eq('id', id),
-          'update pay stub additional line',
+          'update pay report additional line',
         )
         showToast('Line saved.', 'success')
         await onSaved()
@@ -239,7 +239,7 @@ export function PayStubAdditionalModal({
             created_by: authUserId,
             ...(opts?.source_clock_session_id ? { source_clock_session_id: opts.source_clock_session_id } : {}),
           }),
-        'add pay stub additional line',
+        'add pay report additional line',
       )
       showToast('Line added.', 'success')
       await onSaved()
@@ -317,7 +317,7 @@ export function PayStubAdditionalModal({
     try {
       await withSupabaseRetry(
         async () => await supabase.from('pay_stub_additional_lines').delete().eq('id', id),
-        'delete pay stub additional line',
+        'delete pay report additional line',
       )
       showToast('Line removed.', 'success')
       await onSaved()

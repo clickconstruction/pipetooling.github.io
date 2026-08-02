@@ -1761,7 +1761,7 @@ export default function PeopleReviewTab({
     // `payReportAssignmentsBreakdown.ts`). Multiply by `dayHoursRaw` so this
     // lifetime denominator stays on the same convention as the period
     // numerator in `derivePersonTeamSummary` and as the cost figures shown
-    // on pay stubs / Person Review.
+    // on pay reports / Person Review.
     const teamLaborCostByJobId = new Map<string, number>()
     for (const r of allTimeCrewRows) {
       const row = crewByDatePersonAllTime[`${r.work_date}:${r.person_name}`]
@@ -2731,7 +2731,7 @@ export default function PeopleReviewTab({
             }
             if (hb.subLaborRows.length > 0) {
               html += '<h3>Sub labor jobs</h3>';
-              html += '<table><thead><tr><th>Date</th><th>HCP</th><th class="num">Hours</th></tr></thead><tbody>';
+              html += '<table><thead><tr><th>Date</th><th>Job #</th><th class="num">Hours</th></tr></thead><tbody>';
               var sub = hb.subLaborRows.slice().sort(function(a,b){ return (a.date || '').localeCompare(b.date || ''); });
               for (var k=0; k<sub.length; k++) {
                 var s = sub[k];
@@ -2752,7 +2752,7 @@ export default function PeopleReviewTab({
             }
             if (hb.subLaborRows.length > 0) {
               html += '<h3 style="margin-top:1.5rem;">Sub labor jobs (informational \u2014 not counted in this mode)</h3>';
-              html += '<table><thead><tr><th>Date</th><th>HCP</th><th class="num">Hours</th></tr></thead><tbody>';
+              html += '<table><thead><tr><th>Date</th><th>Job #</th><th class="num">Hours</th></tr></thead><tbody>';
               var sub2 = hb.subLaborRows.slice().sort(function(a,b){ return (a.date || '').localeCompare(b.date || ''); });
               for (var k2=0; k2<sub2.length; k2++) {
                 var s2 = sub2[k2];
@@ -2778,7 +2778,7 @@ export default function PeopleReviewTab({
           // centered grid (numbers still tabular-aligned via font-variant).
           html += '<table>';
           html += '<thead><tr>';
-          html += '<th class="num" style="text-align:center;">HCP</th>';
+          html += '<th class="num" style="text-align:center;">Job #</th>';
           html += '<th style="text-align:center;">Job</th>';
           html += '<th class="num" style="text-align:center;">Total Bill</th>';
           html += '<th class="num" style="text-align:center;">% Complete</th>';
@@ -2819,7 +2819,7 @@ export default function PeopleReviewTab({
           }
           html += '<table>';
           html += '<thead><tr>';
-          html += '<th class="num">HCP</th>';
+          html += '<th class="num">Job #</th>';
           html += '<th>Job</th>';
           html += '<th class="num">Value<br>Created</th>';
           html += '<th class="num">&minus; Parts</th>';
@@ -2924,7 +2924,7 @@ export default function PeopleReviewTab({
           rows.sort(function(a, b){ return (b.perHr == null ? -1 : b.perHr) - (a.perHr == null ? -1 : a.perHr); });
           html += '<table>';
           html += '<thead><tr>';
-          html += '<th class="num">HCP</th>';
+          html += '<th class="num">Job #</th>';
           html += '<th>Job</th>';
           html += '<th class="num">Allocated<br>Gross Rev</th>';
           html += '<th class="num">Your hours<br>(period)</th>';
@@ -2988,7 +2988,7 @@ export default function PeopleReviewTab({
           rows.sort(function(a, b){ return (b.perHr == null ? -Infinity : b.perHr) - (a.perHr == null ? -Infinity : a.perHr); });
           html += '<table>';
           html += '<thead><tr>';
-          html += '<th class="num">HCP</th>';
+          html += '<th class="num">Job #</th>';
           html += '<th>Job</th>';
           html += '<th class="num">Allocated<br>Net Rev</th>';
           html += '<th class="num">Your hours<br>(period)</th>';
@@ -3237,7 +3237,7 @@ export default function PeopleReviewTab({
             html += '<p class="caption">No field hours were recorded against any job in this period.</p>';
           } else {
             html += '<table>';
-            html += '<thead><tr><th class="num">HCP</th><th>Job</th><th class="num">Your field hrs<br>(period)</th><th class="num" style="text-align:left;">Share of<br>field hrs</th></tr></thead><tbody>';
+            html += '<thead><tr><th class="num">Job #</th><th>Job</th><th class="num">Your field hrs<br>(period)</th><th class="num" style="text-align:left;">Share of<br>field hrs</th></tr></thead><tbody>';
             var jobsForDisplay = jobs.slice().sort(function(a, b){ return (b.hoursInPeriod || 0) - (a.hoursInPeriod || 0); });
             for (var k = 0; k < jobsForDisplay.length; k++) {
               var j = jobsForDisplay[k];
@@ -4048,7 +4048,7 @@ export default function PeopleReviewTab({
                           <thead style={{ background: 'var(--bg-subtle)' }}>
                             <tr>
                               <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>
-                                <div style={{ fontWeight: 600 }}>HCP #</div>
+                                <div style={{ fontWeight: 600 }}>Job #</div>
                                 <div style={{ fontSize: '0.8em', color: 'var(--text-muted)', fontWeight: 400 }}>Date</div>
                               </th>
                               <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>

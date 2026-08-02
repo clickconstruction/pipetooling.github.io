@@ -1,5 +1,5 @@
 /**
- * Prevailing-wage top-up lines on pay stubs: dedup via `source_clock_session_id`;
+ * Prevailing-wage top-up lines on pay reports: dedup via `source_clock_session_id`;
  * legacy rows may still have `[pw:<uuid>]` prefix in `description` (parse for migration).
  */
 

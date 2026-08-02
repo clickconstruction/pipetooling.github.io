@@ -156,7 +156,7 @@ export function PayStubLessModal({
             description: desc,
             created_by: authUserId,
           }),
-        'add pay stub deduction',
+        'add pay report deduction',
       )
       setManualAmount('')
       setManualDescription('')
