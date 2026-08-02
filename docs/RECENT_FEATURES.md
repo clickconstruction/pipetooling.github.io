@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-02 (v2.1279)
+last_updated: 2026-08-02 (v2.1280)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1280)
+
+### Materials decomposition: PartPricesManager + TemplatePricesManager file moves (2026-08-02)
+The two in-file module components at the bottom of Materials.tsx move verbatim to their own files: [`components/materials/PartPricesManager.tsx`](../src/components/materials/PartPricesManager.tsx) (~370 lines — part price CRUD + per-supply-house price history viewer, takes the `PriceHistory` type with it) and [`components/materials/TemplatePricesManager.tsx`](../src/components/materials/TemplatePricesManager.tsx) (~185 lines — assembly bundle-price editor rendered by BOTH the Assembly Book and PO Builder detail panels). Both were already fully self-contained; the `onPricesUpdated` callback that patches `parts`/`allParts`/`templateItems` stays parent-owned exactly as the architecture map prescribes. Pure file moves — no logic, prop, or behavior change. Materials.tsx 5,983 → 5,448 lines (7,033 at train start). 379 files / 3,417 tests green.
 
 ## Latest Updates (v2.1279)
 

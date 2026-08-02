@@ -11,6 +11,16 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1280',
+    date: '2026-08-02',
+    title: 'Behind the scenes: Materials price editors restructured',
+    kind: 'infra',
+    highlights: [
+      'The part-price and assembly-bundle-price editors on the Materials page moved into their own components.',
+      'No visible changes; editing prices works exactly as before.',
+    ],
+  },
+  {
     version: 'v2.1279',
     date: '2026-08-02',
     title: 'Behind the scenes: Materials PO Generator tab restructured',
