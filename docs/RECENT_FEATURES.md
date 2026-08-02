@@ -7,10 +7,15 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates, one v2.NNN entry per PR
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-02 (v2.1286)
+last_updated: 2026-08-02 (v2.1287)
 format: "Reverse chronological, newest first"
 navigation: "No table of contents — find entries by grepping for the version (v2.NNN) or a feature name"
 ---
+
+## Latest Updates (v2.1287)
+
+### Projects cards: Bids + Estimates pills, create-prelinked flows, Edit Bid project picker (2026-08-02)
+Part 2 of the project commercial rail (migration in v2.1278). **(1) Two always-visible pills** under the Jobs pill on every Projects card (dev/master/assistant-like; hidden from superintendents): segmented Bids and Estimates controls sharing the Jobs pill's anatomy via a new `ProjectRailPill` extraction (Jobs pill behavior unchanged). Bid segments open Bid Preview; estimate segments navigate to the estimate. **(2) Status dots**: `bids.outcome` exists on the row so bids got outcome dots without a join ([`bidOutcomeDotColor.ts`](../src/lib/bidOutcomeDotColor.ts)); estimates dot by `status` ([`estimateStatusDotColor.ts`](../src/lib/estimateStatusDotColor.ts)); both kernels tested. **(3) Create pre-linked**: `?newBid=true&project=` handler in Bids.tsx (seeds Project Name, persists `project_id`, params self-strip) and `?newEstimate=true&project=` in Estimates.tsx (reuses the inline draft insert). **(4) Link existing**: Project picker + "Suggested" name-match affordance in `BidFormModal`; estimate drafts got the picker too. **(5)** e2e cold-load spec for `?newBid=` only — `?newEstimate=` inserts a row on load, so a nightly prod spec would create data (documented in E2E_SMOKE). New help guide `link-bids-and-estimates-to-a-project`. `src/types/database.ts` carries a surgical `bids.project_id` patch (full `gen-types:linked` pulled unrelated prod drift; next regen reconciles). 381 files / 3,429 tests green.
 
 ## Latest Updates (v2.1286)
 

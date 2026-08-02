@@ -11,6 +11,18 @@ import type { ReleaseNote } from '../lib/releaseNotes'
  */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: 'v2.1287',
+    date: '2026-08-02',
+    title: 'Projects: bids and estimates join the cards',
+    kind: 'feature',
+    highlights: [
+      'Every project card now has Bids and Estimates pills under the Jobs pill — linked items as clickable segments with status dots, plus a "+" that creates one already linked to the project.',
+      'Bid dots show outcome (won, lost, in progress); estimate dots show unsent, sent, or accepted.',
+      'Existing bids can be linked from the Edit Bid form’s new Project picker, with a one-tap suggestion when the bid’s project name matches; estimate drafts got the same picker.',
+      'A new help guide covers linking bids and estimates to a project.',
+    ],
+  },
+  {
     version: 'v2.1286',
     date: '2026-08-02',
     title: 'Behind the scenes: Materials Parts Book tab restructured',
