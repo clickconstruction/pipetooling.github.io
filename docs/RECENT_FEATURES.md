@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-08-01 (v2.1255)
+last_updated: 2026-08-01 (v2.1256)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -2045,6 +2045,11 @@ when_to_read:
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
 ---
+
+## Latest Updates (v2.1256)
+
+### Paste Fill returns to the new-customer flow (2026-08-01)
+The paste-to-autofill widget (renamed Paste Fill in v2.1253) had been unreachable — every live caller of `NewCustomerForm` passed `showQuickFill={false}` and the one `true` path (`CustomerForm.tsx`) is unrouted (`/customers/new` redirects into the modal). The shared **[`NewCustomerModal`](../src/components/NewCustomerModal.tsx)** now enables it, which restores Paste Fill everywhere a customer is created through the modal: Customers → Add customer, and both Bids add-customer flows. Collapsed by default — a small **Paste Fill ▶** toggle next to the title; expanding shows the tab-separated `Name  Address  Email  Phone  Date` textarea and **Fill Fields**. Verified live with the dev test account: toggle renders in the modal, a pasted sample fills name/address/email/phone and normalizes the date (8/1/2026 → 2026-08-01), textarea clears after applying; cancelled without creating anything. One-line change. `tsc -b` clean, vitest green. No DB / migration / RLS / RPC / Edge changes.
 
 ## Latest Updates (v2.1255)
 
