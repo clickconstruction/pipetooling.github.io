@@ -1,10 +1,10 @@
-import { useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { Link } from 'react-router-dom'
 import type { User } from '@supabase/supabase-js'
 import { supabase } from '../../lib/supabase'
 import { formatCurrency } from '../../lib/format'
 import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
-import { APP_CALENDAR_TZ, calendarYmdInAppTzFromIso, referenceDateForWorkDateYmd, ymdAddDays } from '../../utils/dateUtils'
+import { APP_CALENDAR_TZ, referenceDateForWorkDateYmd, ymdAddDays } from '../../utils/dateUtils'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useMercuryLedgerNicknames } from '../../hooks/useMercuryLedgerNicknames'
 import { formatMercuryDebitCardIdCompact } from '../../lib/mercuryRawDebitCard'
@@ -26,12 +26,19 @@ import {
   buildOtherJobsLaborByDay,
   buildOverheadDailyLabor,
   buildOverheadWageLookup,
+  buildOverheadWageLookupByPersonId,
   filterOverheadDetailLines,
   mergeOverheadDayTableRows,
   overheadFactorTotalOverOtherJobs,
   type OverheadClockSessionRow,
   type OverheadDetailScope,
+  type OverheadPayConfigInput,
 } from '../../lib/overheadDailyLabor'
+import {
+  bucketInvoiceRevenueByAppTzDay,
+  computeOverheadTrailingAverages,
+} from '../../lib/overheadAvgDailyCost'
+import { computeOverheadRateMethods } from '../../lib/overheadRateMethods'
 import {
   fetchOtherJobsPartsByDay,
   fetchOverheadOfficePartsByDay,
@@ -220,6 +227,7 @@ export type PeopleOverheadTabProps = {
 export default function PeopleOverheadTab({
   payConfig,
   authUser,
+  setError,
   canAccessOverheadTab,
   isDev,
   loadPayConfig,
@@ -229,9 +237,10 @@ export default function PeopleOverheadTab({
   /**
    * Mercury debit-card nicknames used by the Overhead tab's Materials
    * drilldowns to display which card a Mercury allocation was purchased
-   * on (e.g. "Mercury · Lowes — Robert's card · $123.45"). Gated on the
-   * tab being active so we don't fetch nickname maps for users sitting
-   * on other tabs. The hook itself is also role-gated internally and
+   * on (e.g. "Mercury · Lowes — Robert's card · $123.45"). `enabled: true`
+   * does not gate anything by itself — the fetch is effectively gated by
+   * conditional MOUNTING: People.tsx only renders this component while the
+   * Overhead tab is active. The hook is also role-gated internally and
    * returns empty maps for roles outside dev/master/assistant.
    */
   const { nicknameByDebitCard: overheadMercuryNicknameByDebitCard } = useMercuryLedgerNicknames({
@@ -316,6 +325,52 @@ export default function PeopleOverheadTab({
   const [overheadBreakdownModal, setOverheadBreakdownModal] = useState<null | { workDate: string; scope: OverheadDetailScope }>(
     null,
   )
+  /**
+   * "Three lenses" strip state — Methods A/B/C over the SAME 90-day pool the
+   * KPI cards use (shared kernel `overheadRateMethods`, also consumed by the
+   * Review tab). Computed inside the 90-day KPI effect below, not a second
+   * fetch pass.
+   */
+  const [overheadRateLenses, setOverheadRateLenses] = useState<{
+    methodA: number | null
+    methodB: number | null
+    methodC: number | null
+    windowStart: string | null
+    windowEnd: string | null
+    loading: boolean
+  }>({ methodA: null, methodB: null, methodC: null, windowStart: null, windowEnd: null, loading: false })
+  /**
+   * `users.id` → `people.id` (via `people.account_user_id`) for the
+   * person-id-first wage join (C1). `null` until loaded so the 90-day scan
+   * can wait for it instead of running twice.
+   */
+  const [overheadPersonIdByUserId, setOverheadPersonIdByUserId] = useState<ReadonlyMap<string, string> | null>(null)
+  /** True once the mount `loadPayConfig()` settles — gates the 90-day scan (single run). */
+  const [overheadPayConfigLoaded, setOverheadPayConfigLoaded] = useState(false)
+  /**
+   * Per-source fetch failures (item: the tab used to swallow every error
+   * into empty maps, rendering "No rows in this range" for an RLS/network
+   * failure). Keyed by source so one source's recovery doesn't clear
+   * another's banner. Also forwarded to the page-level `setError` prop.
+   */
+  const [overheadLoadErrorBySource, setOverheadLoadErrorBySource] = useState<Record<string, string>>({})
+
+  const reportOverheadLoadError = useCallback(
+    (source: string, e: unknown) => {
+      const msg = `Failed to load ${source} — ${formatErrorMessage(e)}`
+      setOverheadLoadErrorBySource((prev) => ({ ...prev, [source]: msg }))
+      setError(msg)
+    },
+    [setError],
+  )
+  const clearOverheadLoadError = useCallback((source: string) => {
+    setOverheadLoadErrorBySource((prev) => {
+      if (!(source in prev)) return prev
+      const next = { ...prev }
+      delete next[source]
+      return next
+    })
+  }, [])
 
   useEffect(() => {
     if (!canAccessOverheadTab) return
@@ -360,8 +415,51 @@ export default function PeopleOverheadTab({
 
   useEffect(() => {
     if (!canAccessOverheadTab) return
-    void loadPayConfig()
+    // Flag when the load settles (success OR failure) so the 90-day scan can
+    // wait for real pay-config content instead of running once against the
+    // initial `{}` and again after the reload swaps the object identity.
+    void loadPayConfig().finally(() => setOverheadPayConfigLoaded(true))
   }, [canAccessOverheadTab])
+
+  useEffect(() => {
+    if (!canAccessOverheadTab || !authUser?.id) return
+    let cancelled = false
+    void (async () => {
+      try {
+        // users.id → people.id link rows (C1 person-id-first wage join; the
+        // salaryPayConfigGate pattern). Paged for safety, tiny in practice.
+        const rows = await fetchAllRows(
+          async (from, to) => ({
+            data: (await withSupabaseRetry(
+              async () =>
+                supabase
+                  .from('people')
+                  .select('id, account_user_id')
+                  .not('account_user_id', 'is', null)
+                  .is('archived_at', null)
+                  .order('id')
+                  .range(from, to),
+              'load overhead person links',
+            )) as Array<{ id: string; account_user_id: string | null }> | null,
+            error: null,
+          }),
+          'load overhead person links',
+        )
+        if (cancelled) return
+        const m = new Map<string, string>()
+        for (const r of rows) {
+          if (r.account_user_id) m.set(r.account_user_id, r.id)
+        }
+        setOverheadPersonIdByUserId(m)
+      } catch {
+        // Degrade to the name-fallback join (empty map) — not banner-worthy.
+        if (!cancelled) setOverheadPersonIdByUserId(new Map())
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [canAccessOverheadTab, authUser?.id])
 
   useEffect(() => {
     if (!canAccessOverheadTab || !authUser?.id) return
@@ -399,8 +497,12 @@ export default function PeopleOverheadTab({
         )
         if (cancelled) return
         setOverheadSessions(data)
-      } catch {
-        if (!cancelled) setOverheadSessions([])
+        clearOverheadLoadError('overhead clock sessions')
+      } catch (e) {
+        if (!cancelled) {
+          setOverheadSessions([])
+          reportOverheadLoadError('overhead clock sessions', e)
+        }
       } finally {
         if (!cancelled) setOverheadSessionsLoading(false)
       }
@@ -414,6 +516,8 @@ export default function PeopleOverheadTab({
     overheadDateStart,
     overheadDateEnd,
     overheadOfficeJobLedgerId,
+    reportOverheadLoadError,
+    clearOverheadLoadError,
   ])
 
   useEffect(() => {
@@ -450,8 +554,12 @@ export default function PeopleOverheadTab({
         )
         if (cancelled) return
         setOverheadOtherJobsSessions(data)
-      } catch {
-        if (!cancelled) setOverheadOtherJobsSessions([])
+        clearOverheadLoadError('field clock sessions')
+      } catch (e) {
+        if (!cancelled) {
+          setOverheadOtherJobsSessions([])
+          reportOverheadLoadError('field clock sessions', e)
+        }
       } finally {
         if (!cancelled) setOverheadOtherJobsSessionsLoading(false)
       }
@@ -465,6 +573,8 @@ export default function PeopleOverheadTab({
     overheadDateStart,
     overheadDateEnd,
     overheadOfficeJobLedgerId,
+    reportOverheadLoadError,
+    clearOverheadLoadError,
   ])
 
   useEffect(() => {
@@ -485,9 +595,11 @@ export default function PeopleOverheadTab({
         })
         if (cancelled) return
         setOverheadOfficePartsDetailByDay(r.partsDetailByDay)
-      } catch {
+        clearOverheadLoadError('office materials')
+      } catch (e) {
         if (!cancelled) {
           setOverheadOfficePartsDetailByDay(new Map())
+          reportOverheadLoadError('office materials', e)
         }
       } finally {
         if (!cancelled) setOverheadOfficePartsLoading(false)
@@ -502,6 +614,8 @@ export default function PeopleOverheadTab({
     overheadOfficeJobLedgerId,
     overheadDateStart,
     overheadDateEnd,
+    reportOverheadLoadError,
+    clearOverheadLoadError,
   ])
 
   useEffect(() => {
@@ -517,9 +631,11 @@ export default function PeopleOverheadTab({
         })
         if (cancelled) return
         setOverheadOtherJobsPartsDetailByDay(r.partsDetailByDay)
-      } catch {
+        clearOverheadLoadError('field materials')
+      } catch (e) {
         if (!cancelled) {
           setOverheadOtherJobsPartsDetailByDay(new Map())
+          reportOverheadLoadError('field materials', e)
         }
       } finally {
         if (!cancelled) setOverheadOtherJobsPartsLoading(false)
@@ -534,6 +650,8 @@ export default function PeopleOverheadTab({
     overheadOfficeJobLedgerId,
     overheadDateStart,
     overheadDateEnd,
+    reportOverheadLoadError,
+    clearOverheadLoadError,
   ])
 
   /**
@@ -566,10 +684,42 @@ export default function PeopleOverheadTab({
     }
   }, [canAccessOverheadTab, authUser?.id, overheadOfficePartsDetailByDay, overheadOtherJobsPartsDetailByDay])
 
+  // Dual-rate people (office_hourly_wage set, hourly) price office/bid time
+  // at the office rate — matching payroll (officeJobRateSplit). ONE shared
+  // lookup (name-keyed + person-id-keyed, C1) feeds the weekly table memos
+  // AND the 90-day KPI/lenses effect. The JSON key keeps identity stable
+  // across pay-config refetches with identical content, so the 90-day scan
+  // no longer re-runs on a mere object-identity change.
+  const overheadWageInputsKey = useMemo(
+    () =>
+      JSON.stringify(
+        Object.values(payConfig).map((r) => ({
+          person_name: r.person_name,
+          person_id: r.person_id ?? null,
+          hourly_wage: r.hourly_wage ?? null,
+          office_hourly_wage: r.office_hourly_wage ?? null,
+          is_salary: r.is_salary,
+        })),
+      ),
+    [payConfig],
+  )
+  const overheadWageLookup = useMemo(() => {
+    const inputs = JSON.parse(overheadWageInputsKey) as OverheadPayConfigInput[]
+    return {
+      byName: buildOverheadWageLookup(inputs),
+      byPersonId: buildOverheadWageLookupByPersonId(inputs),
+    }
+  }, [overheadWageInputsKey])
+
   useEffect(() => {
     if (!canAccessOverheadTab || !authUser?.id) return
+    // Single-run gate: wait for pay config AND the person-id link map before
+    // the first 90-day scan — running early would burn a full company-wide
+    // scan on empty wage inputs and immediately re-run when they arrive.
+    if (!overheadPayConfigLoaded || overheadPersonIdByUserId == null) return
     let cancelled = false
     setOverheadAvgDailyCost((prev) => ({ ...prev, loading: true }))
+    setOverheadRateLenses((prev) => ({ ...prev, loading: true }))
     void (async () => {
       try {
         const today = new Date().toLocaleDateString('en-CA')
@@ -578,12 +728,12 @@ export default function PeopleOverheadTab({
         // at PostgREST max_rows (1000) if un-ranged — a truncated day total
         // deflates every trailing average. Fresh builder per page;
         // `.order('id')` keeps pages stable.
+        const sessionSelect =
+          'id, user_id, work_date, clocked_in_at, clocked_out_at, job_ledger_id, bid_id, approved_at, rejected_at, revoked_at, users!clock_sessions_user_id_fkey(name)'
         const makeQ = () => {
           let q = supabase
             .from('clock_sessions')
-            .select(
-              'id, user_id, work_date, clocked_in_at, clocked_out_at, job_ledger_id, bid_id, approved_at, rejected_at, revoked_at, users!clock_sessions_user_id_fkey(name)',
-            )
+            .select(sessionSelect)
             .gte('work_date', start)
             .lte('work_date', today)
           if (overheadOfficeJobLedgerId) {
@@ -593,16 +743,41 @@ export default function PeopleOverheadTab({
           }
           return q.order('id')
         }
-        const sessions = await fetchAllRows(
-          async (from, to) => ({
-            data: (await withSupabaseRetry(
-              async () => makeQ().range(from, to),
-              'load overhead 90d sessions',
-            )) as unknown as OverheadClockSessionRow[] | null,
-            error: null,
-          }),
-          'load overhead 90d sessions',
-        )
+        // Field (non-office jobs-ledger) sessions for the three-lenses
+        // denominators — Method A needs field hours, Method C field labor $.
+        // Same paged pattern, same 90-day window, same fetch pass.
+        const makeFieldQ = () => {
+          let q = supabase
+            .from('clock_sessions')
+            .select(sessionSelect)
+            .gte('work_date', start)
+            .lte('work_date', today)
+            .not('job_ledger_id', 'is', null)
+          if (overheadOfficeJobLedgerId) q = q.neq('job_ledger_id', overheadOfficeJobLedgerId)
+          return q.order('id')
+        }
+        const [sessions, fieldSessions] = await Promise.all([
+          fetchAllRows(
+            async (from, to) => ({
+              data: (await withSupabaseRetry(
+                async () => makeQ().range(from, to),
+                'load overhead 90d sessions',
+              )) as unknown as OverheadClockSessionRow[] | null,
+              error: null,
+            }),
+            'load overhead 90d sessions',
+          ),
+          fetchAllRows(
+            async (from, to) => ({
+              data: (await withSupabaseRetry(
+                async () => makeFieldQ().range(from, to),
+                'load overhead 90d field sessions',
+              )) as unknown as OverheadClockSessionRow[] | null,
+              error: null,
+            }),
+            'load overhead 90d field sessions',
+          ),
+        ])
         let partsByDay: Map<string, number> = new Map()
         if (overheadOfficeJobLedgerId) {
           const r = await fetchOverheadOfficePartsByDay({
@@ -623,24 +798,31 @@ export default function PeopleOverheadTab({
           partsByDay = sumPartsUsdByDayExcludingInternalTransfer(r.partsDetailByDay, bucketByTxId)
         }
         if (cancelled) return
-        const wageMap = buildOverheadWageLookup(
-          Object.values(payConfig).map((r) => ({
-            person_name: r.person_name,
-            hourly_wage: r.hourly_wage ?? null,
-            office_hourly_wage: r.office_hourly_wage ?? null,
-            is_salary: r.is_salary,
-          })),
-        )
         const labor = buildOverheadDailyLabor({
           sessions,
           officeJobLedgerId: overheadOfficeJobLedgerId,
-          wageByNormalizedName: wageMap,
+          wageByNormalizedName: overheadWageLookup.byName,
+          wageByPersonId: overheadWageLookup.byPersonId,
+          personIdByUserId: overheadPersonIdByUserId,
         })
+        // Field denominators via the same kernel the weekly table uses (field
+        // wage, id-first join): hours always count; missing wage prices $0.
+        const fieldLabor = buildOtherJobsLaborByDay({
+          sessions: fieldSessions,
+          officeJobLedgerId: overheadOfficeJobLedgerId,
+          wageByNormalizedName: overheadWageLookup.byName,
+          wageByPersonId: overheadWageLookup.byPersonId,
+          personIdByUserId: overheadPersonIdByUserId,
+        })
+        let fieldHours90 = 0
+        for (const v of fieldLabor.laborHoursByDay.values()) fieldHours90 += v
+        let fieldLaborUsd90 = 0
+        for (const v of fieldLabor.laborUsdByDay.values()) fieldLaborUsd90 += v
         const merged = mergeOverheadDayTableRows(labor.byDay, partsByDay, new Map(), new Map(), new Map())
         const totalsByDay = new Map<string, number>()
         for (const row of merged) totalsByDay.set(row.work_date, row.totalUsd)
         // Fetch a day wide on both sides, then re-bucket each invoice into
-        // its Chicago calendar day (calendarYmdInAppTzFromIso) — the old
+        // its Chicago calendar day (bucketInvoiceRevenueByAppTzDay) — the old
         // UTC-bounded window pulled in the previous evening's invoices and
         // dropped everything sent after ~6pm on the last day (v2.1249 fix,
         // same as the Review tab).
@@ -664,37 +846,41 @@ export default function PeopleOverheadTab({
           'load overhead 90d revenue invoices',
         )
         if (cancelled) return
-        const revenueByDay = new Map<string, number>()
-        for (const r of invoiceRows) {
-          if (!r.sent_to_customer_at) continue
-          const ymd = calendarYmdInAppTzFromIso(r.sent_to_customer_at)
-          if (ymd < start || ymd > today) continue
-          revenueByDay.set(ymd, (revenueByDay.get(ymd) ?? 0) + Number(r.amount ?? 0))
-        }
-        const sumWindow = (n: number) => {
-          let cost = 0
-          let revenue = 0
-          for (let i = 0; i < n; i++) {
-            const ymd = ymdAddDays(today, -i)
-            cost += totalsByDay.get(ymd) ?? 0
-            revenue += revenueByDay.get(ymd) ?? 0
-          }
-          return { avg: cost / n, per100: revenue > 0 ? (cost / revenue) * 100 : null }
-        }
-        const w7 = sumWindow(7)
-        const w30 = sumWindow(30)
-        const w90 = sumWindow(90)
+        const revenueByDay = bucketInvoiceRevenueByAppTzDay(invoiceRows, start, today)
+        const { w7, w30, w90 } = computeOverheadTrailingAverages({
+          totalsByDay,
+          revenueByDay,
+          todayYmd: today,
+        })
+        // Three lenses: the w90 cost sum IS the 90-day pool (office labor +
+        // bid labor + office parts) — one pool, three denominators.
+        const rates = computeOverheadRateMethods({
+          overheadPoolUsd: w90.costUsd,
+          fieldHours: fieldHours90,
+          invoicedRevenueUsd: w90.revenueUsd,
+          fieldLaborUsd: fieldLaborUsd90,
+        })
         setOverheadAvgDailyCost({
-          avg7: w7.avg,
-          avg30: w30.avg,
-          avg90: w90.avg,
-          per100_7: w7.per100,
-          per100_30: w30.per100,
-          per100_90: w90.per100,
+          avg7: w7.avgDailyCostUsd,
+          avg30: w30.avgDailyCostUsd,
+          avg90: w90.avgDailyCostUsd,
+          per100_7: w7.per100RevenueUsd,
+          per100_30: w30.per100RevenueUsd,
+          per100_90: w90.per100RevenueUsd,
           loading: false,
         })
-      } catch {
+        setOverheadRateLenses({
+          methodA: rates.methodA,
+          methodB: rates.methodB,
+          methodC: rates.methodC,
+          windowStart: start,
+          windowEnd: today,
+          loading: false,
+        })
+        clearOverheadLoadError('90-day averages')
+      } catch (e) {
         if (!cancelled) {
+          reportOverheadLoadError('90-day averages', e)
           setOverheadAvgDailyCost({
             avg7: null,
             avg30: null,
@@ -704,13 +890,30 @@ export default function PeopleOverheadTab({
             per100_90: null,
             loading: false,
           })
+          setOverheadRateLenses({
+            methodA: null,
+            methodB: null,
+            methodC: null,
+            windowStart: null,
+            windowEnd: null,
+            loading: false,
+          })
         }
       }
     })()
     return () => {
       cancelled = true
     }
-  }, [canAccessOverheadTab, authUser?.id, overheadOfficeJobLedgerId, payConfig])
+  }, [
+    canAccessOverheadTab,
+    authUser?.id,
+    overheadOfficeJobLedgerId,
+    overheadPayConfigLoaded,
+    overheadPersonIdByUserId,
+    overheadWageLookup,
+    reportOverheadLoadError,
+    clearOverheadLoadError,
+  ])
 
   useEffect(() => {
     if (!overheadJobPickerOpen) {
@@ -733,30 +936,16 @@ export default function PeopleOverheadTab({
     return () => clearTimeout(t)
   }, [overheadJobSearch, overheadJobPickerOpen])
 
-  // Dual-rate people (office_hourly_wage set, hourly) price office/bid time
-  // at the office rate — matching payroll (officeJobRateSplit) — so pass the
-  // dual-rate fields through to the wage lookup.
-  const overheadWageMap = useMemo(
-    () =>
-      buildOverheadWageLookup(
-        Object.values(payConfig).map((r) => ({
-          person_name: r.person_name,
-          hourly_wage: r.hourly_wage ?? null,
-          office_hourly_wage: r.office_hourly_wage ?? null,
-          is_salary: r.is_salary,
-        })),
-      ),
-    [payConfig],
-  )
-
   const overheadLabor = useMemo(
     () =>
       buildOverheadDailyLabor({
         sessions: overheadSessions,
         officeJobLedgerId: overheadOfficeJobLedgerId,
-        wageByNormalizedName: overheadWageMap,
+        wageByNormalizedName: overheadWageLookup.byName,
+        wageByPersonId: overheadWageLookup.byPersonId,
+        personIdByUserId: overheadPersonIdByUserId ?? undefined,
       }),
-    [overheadWageMap, overheadSessions, overheadOfficeJobLedgerId],
+    [overheadWageLookup, overheadSessions, overheadOfficeJobLedgerId, overheadPersonIdByUserId],
   )
 
   const overheadOtherJobsLabor = useMemo(
@@ -764,9 +953,11 @@ export default function PeopleOverheadTab({
       buildOtherJobsLaborByDay({
         sessions: overheadOtherJobsSessions,
         officeJobLedgerId: overheadOfficeJobLedgerId,
-        wageByNormalizedName: overheadWageMap,
+        wageByNormalizedName: overheadWageLookup.byName,
+        wageByPersonId: overheadWageLookup.byPersonId,
+        personIdByUserId: overheadPersonIdByUserId ?? undefined,
       }),
-    [overheadWageMap, overheadOtherJobsSessions, overheadOfficeJobLedgerId],
+    [overheadWageLookup, overheadOtherJobsSessions, overheadOfficeJobLedgerId, overheadPersonIdByUserId],
   )
 
   // Per-day Materials $ with Internal Transfers excluded on BOTH sides
@@ -969,6 +1160,13 @@ export default function PeopleOverheadTab({
         `card ${formatMercuryDebitCardIdCompact(ln.mercuryDebitCardId)}`
       : ''
 
+  // Close (reset) the day-breakdown modal whenever the visible range moves —
+  // Previous/Next week or a manual Start/End edit. Left open, it would keep
+  // showing an out-of-range empty state for a day no longer in the table.
+  useEffect(() => {
+    setOverheadBreakdownModal(null)
+  }, [overheadDateStart, overheadDateEnd])
+
   const overheadValueCellButtonStyle: CSSProperties = {
     border: 'none',
     background: 'none',
@@ -989,8 +1187,76 @@ export default function PeopleOverheadTab({
     setOverheadDateEnd(e.toLocaleDateString('en-CA'))
   }
 
+  // ——— "Three lenses" strip view model (Methods A/B/C, shared kernel) ———
+  const lensLoading = overheadRateLenses.loading
+  const lensWindowLabel =
+    overheadRateLenses.windowStart && overheadRateLenses.windowEnd
+      ? `${overheadRateLenses.windowStart} → ${overheadRateLenses.windowEnd}`
+      : 'trailing 90 days'
+  const lensPoolLabel = `the 90-day overhead pool (office labor + bid labor + office parts, ${lensWindowLabel})`
+  const lensInclusionRule = 'Sessions counted: approved, not revoked, not rejected, clocked out.'
+  const fmtLens = (v: number | null, render: (n: number) => string) =>
+    lensLoading ? '…' : v == null ? '—' : render(v)
+  // Live cents interpolation for the Method C blurb ("…"/"—" fallbacks).
+  const lensCentsC = lensLoading
+    ? '…'
+    : overheadRateLenses.methodC == null
+      ? '—'
+      : String(Math.round(overheadRateLenses.methodC * 100))
+  const overheadLensCards = [
+    {
+      key: 'A',
+      color: 'var(--text-blue-500)',
+      label: 'A · per field hour',
+      value: fmtLens(overheadRateLenses.methodA, (n) => `$${n.toFixed(2)}/hr`),
+      formula: 'pool ÷ billable field hours',
+      blurb:
+        'Best for pricing labor. Every field hour must carry this much overhead — steady even when billing is lumpy, and it maps directly onto your hourly rates.',
+      title: `Method A = ${lensPoolLabel} ÷ billable field hours: approved clock hours on non-office jobs-ledger work in the same 90-day window. ${lensInclusionRule}`,
+    },
+    {
+      key: 'B',
+      color: '#22c55e',
+      label: 'B · per revenue $',
+      value: fmtLens(overheadRateLenses.methodB, (n) => `${(n * 100).toFixed(1)}% of revenue`),
+      formula: 'pool ÷ invoices sent',
+      blurb:
+        'Best for bidding. Add this percentage to any quote regardless of labor mix — it ties overhead to money actually invoiced, but swings when invoicing is uneven.',
+      title: `Method B = ${lensPoolLabel} ÷ invoices sent: jobs_ledger_invoices.amount sent to customers in the same 90-day window (Chicago calendar days). ${lensInclusionRule}`,
+    },
+    {
+      key: 'C',
+      color: '#f59e0b',
+      label: 'C · per labor $',
+      value: fmtLens(overheadRateLenses.methodC, (n) => `$${n.toFixed(2)} / $1 labor`),
+      formula: 'pool ÷ direct field labor $',
+      blurb: `Best as a labor burden. Every wage dollar carries ${lensCentsC}¢ of overhead — the classic construction multiplier, and it scales with crew cost, so expensive crews carry more.`,
+      title: `Method C = ${lensPoolLabel} ÷ direct field labor $: the same field sessions × each person's hourly wage from pay config. ${lensInclusionRule}`,
+    },
+  ]
+
   return (
     <div style={{ marginBottom: '2rem' }}>
+      {Object.keys(overheadLoadErrorBySource).length > 0 ? (
+        <div
+          role="alert"
+          style={{
+            marginBottom: '1rem',
+            padding: '0.5rem 0.75rem',
+            border: '1px solid #fecaca',
+            borderRadius: 6,
+            background: 'var(--bg-red-tint)',
+            color: 'var(--text-red-700)',
+            fontSize: '0.875rem',
+          }}
+        >
+          {Object.values(overheadLoadErrorBySource).map((msg) => (
+            <p key={msg} style={{ margin: 0 }}>
+              {msg}
+            </p>
+          ))}
+        </div>
+      ) : null}
       <div
         style={{
           display: 'flex',
@@ -1063,6 +1329,58 @@ export default function PeopleOverheadTab({
             )
           })()}
         </div>
+      </div>
+      <div style={{ marginBottom: '1rem' }}>
+        <div style={{ marginBottom: '0.5rem' }}>
+          <strong style={{ color: 'var(--text-strong)', fontSize: '0.9375rem' }}>
+            Overhead rate — three lenses
+          </strong>
+          <span style={{ marginLeft: '0.5rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+            same 90-day pool (office labor + bid labor + office parts), three denominators
+          </span>
+        </div>
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))',
+            gap: '0.5rem',
+          }}
+        >
+          {overheadLensCards.map((card) => (
+            <div
+              key={card.key}
+              title={card.title}
+              style={{
+                border: '1px solid var(--border)',
+                borderRadius: 6,
+                background: 'var(--bg-page)',
+                padding: '0.6rem 0.75rem',
+              }}
+            >
+              <div
+                style={{
+                  color: card.color,
+                  fontWeight: 700,
+                  fontSize: '0.75rem',
+                  letterSpacing: '0.02em',
+                }}
+              >
+                {card.label}
+              </div>
+              <div style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--text-strong)', margin: '0.15rem 0' }}>
+                {card.value}
+              </div>
+              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{card.formula}</div>
+              <p style={{ margin: '0.35rem 0 0 0', fontSize: '0.75rem', color: 'var(--text-faint)', lineHeight: 1.4 }}>
+                {card.blurb}
+              </p>
+            </div>
+          ))}
+        </div>
+        <p style={{ margin: '0.4rem 0 0 0', fontSize: '0.75rem', color: 'var(--text-faint)' }}>
+          These are reference rates — Team Summary&rsquo;s &ldquo;Profit (after overhead)&rdquo; uses the split model,
+          not these.
+        </p>
       </div>
       <div
         style={{
@@ -1346,7 +1664,7 @@ export default function PeopleOverheadTab({
                             >
                               <button
                                 type="button"
-                                aria-label={`Office total for ${row.work_date}: ${formatCurrency(row.totalUsd)}, ${row.totalLaborHours.toFixed(2)} hours office and bid labor`}
+                                aria-label={`Office total for ${row.work_date}: $${formatCurrency(row.totalUsd)}, ${row.totalLaborHours.toFixed(2)} hours office and bid labor`}
                                 onClick={() => setOverheadBreakdownModal({ workDate: row.work_date, scope: 'total' })}
                                 style={{ ...overheadValueCellButtonStyle, fontWeight: 600 }}
                               >
@@ -1357,7 +1675,7 @@ export default function PeopleOverheadTab({
                             <td style={{ padding: '0.5rem', borderBottom: '1px solid var(--border)', borderLeft: '1px solid var(--border-strong)' }}>
                               <button
                                 type="button"
-                                aria-label={`Field total for ${row.work_date}: ${formatCurrency(row.otherJobsUsd)}, ${row.otherJobsLaborHours.toFixed(2)} hours jobs-ledger labor`}
+                                aria-label={`Field total for ${row.work_date}: $${formatCurrency(row.otherJobsUsd)}, ${row.otherJobsLaborHours.toFixed(2)} hours jobs-ledger labor`}
                                 onClick={() => setOverheadBreakdownModal({ workDate: row.work_date, scope: 'otherJobs' })}
                                 style={{ ...overheadValueCellButtonStyle, fontWeight: 600 }}
                               >
@@ -1376,7 +1694,7 @@ export default function PeopleOverheadTab({
                             >
                               <button
                                 type="button"
-                                aria-label={`Office total for ${row.work_date}: ${formatCurrency(row.totalUsd)}, ${row.totalLaborHours.toFixed(2)} hours office and bid labor`}
+                                aria-label={`Office total for ${row.work_date}: $${formatCurrency(row.totalUsd)}, ${row.totalLaborHours.toFixed(2)} hours office and bid labor`}
                                 onClick={() => setOverheadBreakdownModal({ workDate: row.work_date, scope: 'total' })}
                                 style={{ ...overheadValueCellButtonStyle, fontWeight: 600 }}
                               >
@@ -1401,7 +1719,7 @@ export default function PeopleOverheadTab({
                             <td style={{ padding: '0.5rem', borderBottom: '1px solid var(--border)', borderLeft: '1px solid var(--border-strong)' }}>
                               <button
                                 type="button"
-                                aria-label={`Field total for ${row.work_date}: ${formatCurrency(row.otherJobsUsd)}, ${row.otherJobsLaborHours.toFixed(2)} hours jobs-ledger labor`}
+                                aria-label={`Field total for ${row.work_date}: $${formatCurrency(row.otherJobsUsd)}, ${row.otherJobsLaborHours.toFixed(2)} hours jobs-ledger labor`}
                                 onClick={() => setOverheadBreakdownModal({ workDate: row.work_date, scope: 'otherJobs' })}
                                 style={{ ...overheadValueCellButtonStyle, fontWeight: 600 }}
                               >
@@ -1567,7 +1885,7 @@ export default function PeopleOverheadTab({
                     sources.
                   </p>
                   <p style={{ margin: '0.35rem 0 0 0', fontSize: '0.875rem', fontWeight: 600 }}>
-                    Total: {formatCurrency(overheadBreakdownModalModel.totalPartsUsd)}
+                    Total: ${formatCurrency(overheadBreakdownModalModel.totalPartsUsd)}
                   </p>
                   {overheadBreakdownModalModel.internalTransferUsd > 0 ? (
                     <p
@@ -1579,7 +1897,7 @@ export default function PeopleOverheadTab({
                       }}
                       title="Movement between your own accounts; excluded from Materials."
                     >
-                      Internal Transfers (excluded):{' '}
+                      Internal Transfers (excluded): $
                       {formatCurrency(overheadBreakdownModalModel.internalTransferUsd)}
                     </p>
                   ) : null}
@@ -1587,11 +1905,11 @@ export default function PeopleOverheadTab({
               ) : overheadBreakdownModalModel.scope === 'total' ? (
                 <>
                   <p style={{ margin: '0.5rem 0 0 0', fontSize: '0.875rem' }}>
-                    Labor: {overheadBreakdownModalModel.totalHours.toFixed(2)}h —{' '}
+                    Labor: {overheadBreakdownModalModel.totalHours.toFixed(2)}h — $
                     {formatCurrency(overheadBreakdownModalModel.totalLaborUsd)}
                   </p>
                   <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.875rem' }}>
-                    Office materials: {formatCurrency(overheadBreakdownModalModel.totalPartsUsd)}
+                    Office materials: ${formatCurrency(overheadBreakdownModalModel.totalPartsUsd)}
                   </p>
                   {overheadBreakdownModalModel.internalTransferUsd > 0 ? (
                     <p
@@ -1603,22 +1921,22 @@ export default function PeopleOverheadTab({
                       }}
                       title="Movement between your own accounts; excluded from Materials."
                     >
-                      Internal Transfers (excluded):{' '}
+                      Internal Transfers (excluded): $
                       {formatCurrency(overheadBreakdownModalModel.internalTransferUsd)}
                     </p>
                   ) : null}
                   <p style={{ margin: '0.35rem 0 0 0', fontSize: '0.875rem', fontWeight: 600 }}>
-                    Total: {formatCurrency(overheadBreakdownModalModel.grandTotalUsd)}
+                    Total: ${formatCurrency(overheadBreakdownModalModel.grandTotalUsd)}
                   </p>
                 </>
               ) : overheadBreakdownModalModel.scope === 'otherJobs' ? (
                 <>
                   <p style={{ margin: '0.5rem 0 0 0', fontSize: '0.875rem' }}>
-                    Labor: {overheadBreakdownModalModel.totalHours.toFixed(2)}h —{' '}
+                    Labor: {overheadBreakdownModalModel.totalHours.toFixed(2)}h — $
                     {formatCurrency(overheadBreakdownModalModel.totalLaborUsd)}
                   </p>
                   <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.875rem' }}>
-                    Materials: {formatCurrency(overheadBreakdownModalModel.totalPartsUsd)}
+                    Materials: ${formatCurrency(overheadBreakdownModalModel.totalPartsUsd)}
                   </p>
                   {overheadBreakdownModalModel.internalTransferUsd > 0 ? (
                     <p
@@ -1630,12 +1948,12 @@ export default function PeopleOverheadTab({
                       }}
                       title="Movement between your own accounts; excluded from Materials."
                     >
-                      Internal Transfers (excluded):{' '}
+                      Internal Transfers (excluded): $
                       {formatCurrency(overheadBreakdownModalModel.internalTransferUsd)}
                     </p>
                   ) : null}
                   <p style={{ margin: '0.35rem 0 0 0', fontSize: '0.875rem', fontWeight: 600 }}>
-                    Combined: {formatCurrency(overheadBreakdownModalModel.grandTotalUsd)}
+                    Combined: ${formatCurrency(overheadBreakdownModalModel.grandTotalUsd)}
                   </p>
                 </>
               ) : (
@@ -1644,7 +1962,7 @@ export default function PeopleOverheadTab({
                     Approved, closed sessions in this category. Labor $ = hours × hourly wage from pay config.
                   </p>
                   <p style={{ margin: '0.35rem 0 0 0', fontSize: '0.875rem', fontWeight: 600 }}>
-                    Totals: {overheadBreakdownModalModel.totalHours.toFixed(2)}h —{' '}
+                    Totals: {overheadBreakdownModalModel.totalHours.toFixed(2)}h — $
                     {formatCurrency(overheadBreakdownModalModel.totalLaborUsd)}
                   </p>
                 </>

@@ -21,12 +21,15 @@ import { laborJobMatchesPerson } from '../../lib/people/laborJobPersonMatch'
 import type { Person, UserRow } from '../../hooks/usePeopleRoster'
 import {
   approvedClosedSessionHours,
+  buildOtherJobsLaborByDay,
   buildOverheadDailyLabor,
   buildOverheadWageLookup,
+  buildOverheadWageLookupByPersonId,
   mergeOverheadDayTableRows,
   overheadBucketForSession,
   type OverheadClockSessionRow,
 } from '../../lib/overheadDailyLabor'
+import { computeOverheadRateMethods } from '../../lib/overheadRateMethods'
 import { fetchOverheadOfficePartsByDay } from '../../lib/fetchOverheadOfficePartsByDay'
 import { fetchOverheadOfficeJobLedgerIdFromAppSettings } from '../../lib/overheadOfficeJobSettings'
 import type {
@@ -351,7 +354,7 @@ export default function PeopleReviewTab({
         // dropped everything sent after ~6pm on the last day.
         const startIsoLow = `${ymdAddDays(start, -1)}T00:00:00-00:00`
         const endIsoHigh = `${ymdAddDays(today, 2)}T00:00:00-00:00`
-        const [overheadSessionsRes, fieldSessionsRes, partsRes, invoiceRowsRes] = await Promise.all([
+        const [overheadSessionsRes, fieldSessionsRes, partsRes, invoiceRowsRes, personLinkRows] = await Promise.all([
           fetchAllRows(
             async (f, t) => ({
               data: (await withSupabaseRetry(async () => makeOverheadQ().range(f, t), 'load review 90d overhead sessions')) as unknown as OverheadClockSessionRow[] | null,
@@ -390,34 +393,64 @@ export default function PeopleReviewTab({
             }),
             'load review 90d invoices',
           ),
+          // users.id → people.id link rows for the person-id-first wage join
+          // (C1): a rename between users.name and pay-config person_name no
+          // longer zeroes that person's labor $ in the pool / Method C.
+          fetchAllRows(
+            async (f, t) => ({
+              data: (await withSupabaseRetry(
+                async () =>
+                  supabase
+                    .from('people')
+                    .select('id, account_user_id')
+                    .not('account_user_id', 'is', null)
+                    .is('archived_at', null)
+                    .order('id')
+                    .range(f, t),
+                'load review 90d person links',
+              )) as Array<{ id: string; account_user_id: string | null }> | null,
+              error: null,
+            }),
+            'load review 90d person links',
+          ),
         ])
         if (cancelled) return
         const cfgRows = await withSupabaseRetry(
           async () =>
-            supabase.from('people_pay_config').select('person_name, hourly_wage, office_hourly_wage, is_salary'),
+            supabase
+              .from('people_pay_config')
+              .select('person_name, person_id, hourly_wage, office_hourly_wage, is_salary'),
           'load review 90d pay config',
         )
         if (cancelled) return
         const cfgList = (cfgRows ?? []) as Array<{
           person_name: string
+          person_id: string | null
           hourly_wage: number | null
           office_hourly_wage: number | null
           is_salary: boolean | null
         }>
         // Dual-rate fields included so office/bid overhead $ uses the office
         // rate — same pricing as the Overhead tab and payroll.
-        const wageMap = buildOverheadWageLookup(
-          cfgList.map((r) => ({
-            person_name: r.person_name,
-            hourly_wage: r.hourly_wage ?? null,
-            office_hourly_wage: r.office_hourly_wage ?? null,
-            is_salary: r.is_salary,
-          })),
-        )
+        const cfgInputs = cfgList.map((r) => ({
+          person_name: r.person_name,
+          person_id: r.person_id ?? null,
+          hourly_wage: r.hourly_wage ?? null,
+          office_hourly_wage: r.office_hourly_wage ?? null,
+          is_salary: r.is_salary,
+        }))
+        const wageMap = buildOverheadWageLookup(cfgInputs)
+        const wageByPersonId = buildOverheadWageLookupByPersonId(cfgInputs)
+        const personIdByUserId = new Map<string, string>()
+        for (const p of personLinkRows) {
+          if (p.account_user_id) personIdByUserId.set(p.account_user_id, p.id)
+        }
         const overheadLabor = buildOverheadDailyLabor({
           sessions: (overheadSessionsRes ?? []) as OverheadClockSessionRow[],
           officeJobLedgerId,
           wageByNormalizedName: wageMap,
+          wageByPersonId,
+          personIdByUserId,
         })
         const merged = mergeOverheadDayTableRows(overheadLabor.byDay, partsRes, new Map(), new Map(), new Map())
         let overheadTotal = 0
@@ -430,26 +463,22 @@ export default function PeopleReviewTab({
         }
         let officeParts90d = 0
         for (const v of partsRes.values()) officeParts90d += v
-        const fieldSessions = (fieldSessionsRes ?? []) as OverheadClockSessionRow[]
-        const wageByName = new Map<string, number>()
-        for (const r of cfgList) {
-          if (r.hourly_wage != null) wageByName.set(r.person_name.trim().toLowerCase(), Number(r.hourly_wage))
-        }
+        // Field hours + field labor $ via the shared kernel (same math the
+        // Overhead tab's three-lenses strip uses): approved, closed sessions
+        // on non-office jobs-ledger work; hours always count, labor $ prices
+        // at the person's FIELD wage (id-first join, name fallback) and $0
+        // when no wage is configured — identical to the old inline loop.
+        const fieldLabor = buildOtherJobsLaborByDay({
+          sessions: (fieldSessionsRes ?? []) as OverheadClockSessionRow[],
+          officeJobLedgerId,
+          wageByNormalizedName: wageMap,
+          wageByPersonId,
+          personIdByUserId,
+        })
         let fieldHours = 0
+        for (const v of fieldLabor.laborHoursByDay.values()) fieldHours += v
         let fieldLaborUsd = 0
-        for (const s of fieldSessions) {
-          if (s.rejected_at || s.revoked_at) continue
-          if (s.approved_at == null) continue
-          if (!s.clocked_in_at || !s.clocked_out_at) continue
-          const t0 = new Date(s.clocked_in_at).getTime()
-          const t1 = new Date(s.clocked_out_at).getTime()
-          if (!Number.isFinite(t0) || !Number.isFinite(t1) || t1 <= t0) continue
-          const hrs = (t1 - t0) / 3_600_000
-          fieldHours += hrs
-          const userName = ((s as unknown as { users?: { name?: string | null } }).users?.name ?? '').trim().toLowerCase()
-          const wage = userName ? wageByName.get(userName) ?? 0 : 0
-          fieldLaborUsd += hrs * wage
-        }
+        for (const v of fieldLabor.laborUsdByDay.values()) fieldLaborUsd += v
         const invoiceRows = (invoiceRowsRes ?? []) as Array<{
           amount: number | null
           sent_to_customer_at: string | null
@@ -461,10 +490,18 @@ export default function PeopleReviewTab({
           if (ymd < start || ymd > today) continue
           revenueTotal += Number(r.amount ?? 0)
         }
+        // Shared three-lenses kernel — the SAME code that renders the
+        // Overhead tab's rate strip, so the two surfaces cannot drift.
+        const rates = computeOverheadRateMethods({
+          overheadPoolUsd: overheadTotal,
+          fieldHours,
+          invoicedRevenueUsd: revenueTotal,
+          fieldLaborUsd,
+        })
         setReviewOverheadRates({
-          ratePerHour: fieldHours > 0 ? overheadTotal / fieldHours : null,
-          ratePerRevenueDecimal: revenueTotal > 0 ? overheadTotal / revenueTotal : null,
-          ratePerLaborDollar: fieldLaborUsd > 0 ? overheadTotal / fieldLaborUsd : null,
+          ratePerHour: rates.methodA,
+          ratePerRevenueDecimal: rates.methodB,
+          ratePerLaborDollar: rates.methodC,
           loading: false,
           windowStart: start,
           windowEnd: today,
@@ -3347,7 +3384,7 @@ export default function PeopleReviewTab({
           html += '<tr><td>Method B &mdash; per revenue $ (invoices sent)</td><td class="num">' + (ratePerRevenueDecimal == null ? '<span style="color:#9ca3af;">&mdash;</span>' : (Number(ratePerRevenueDecimal) * 100).toFixed(1) + '% of revenue') + '</td><td>Reference only: invoices sent in window = ' + fmtMoney(invoices) + '. Matches the &ldquo;B. Overhead by revenue&rdquo; rows in Jobs Worked.</td></tr>';
           html += '<tr><td>Method C &mdash; per field labor $</td><td class="num">' + (ratePerLaborDollar == null ? '<span style="color:#9ca3af;">&mdash;</span>' : '$' + Number(ratePerLaborDollar).toFixed(2) + ' / $1 labor') + '</td><td>Reference only: ratio of overhead pool to field labor dollars. Matches the &ldquo;C. Overhead by direct labor cost&rdquo; rows in Jobs Worked.</td></tr>';
           html += '</tbody></table>';
-          html += '<p class="caption">Method A is the headline rate. Sessions used: approved, not revoked, not rejected, with a clock-out. Wages come from <code>people_pay_config.hourly_wage</code>. Office job is the one configured in People &rarr; Overhead settings.</p>';
+          html += '<p class="caption">Method A is the headline rate. Sessions used: approved, not revoked, not rejected, with a clock-out. Wages come from <code>people_pay_config.hourly_wage</code>. Office job is the one configured in People &rarr; Overhead settings. All three rates are computed by the shared kernel <code>src/lib/overheadRateMethods.ts</code> &mdash; the same code behind the Overhead tab&rsquo;s &ldquo;three lenses&rdquo; strip, so the two surfaces always agree.</p>';
           return html;
         }
         // Track which cell opened the modal so we can return focus to it on close

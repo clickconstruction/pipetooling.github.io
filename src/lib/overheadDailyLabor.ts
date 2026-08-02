@@ -5,6 +5,8 @@ import { shouldUseDualRate } from './officeJobRateSplit'
 
 export type OverheadPayConfigInput = {
   person_name: string
+  /** Canonical roster id (`people_pay_config.person_id`) — preferred join key when provided. */
+  person_id?: string | null
   hourly_wage: number | null
   /** Second hourly rate for office/bid time (dual-rate opt-in). Omitted/null = single rate. */
   office_hourly_wage?: number | null
@@ -187,12 +189,16 @@ export function buildOtherJobsLaborByDay(args: {
   sessions: readonly OverheadClockSessionRow[]
   officeJobLedgerId: string | null
   wageByNormalizedName: Map<string, OverheadWageRates>
+  /** Person-id-first join (C1): `people.id` → rates. Used before the name path when provided. */
+  wageByPersonId?: ReadonlyMap<string, OverheadWageRates>
+  /** `users.id` → `people.id` (via `people.account_user_id`). Required for the id-first path. */
+  personIdByUserId?: ReadonlyMap<string, string>
 }): {
   laborUsdByDay: Map<string, number>
   laborHoursByDay: Map<string, number>
   detailByDay: Map<string, OtherJobsLaborDetailLine[]>
 } {
-  const { sessions, officeJobLedgerId, wageByNormalizedName } = args
+  const { sessions, officeJobLedgerId, wageByNormalizedName, wageByPersonId, personIdByUserId } = args
   const laborUsdByDay = new Map<string, number>()
   const laborHoursByDay = new Map<string, number>()
   const detailByDay = new Map<string, OtherJobsLaborDetailLine[]>()
@@ -209,7 +215,11 @@ export function buildOtherJobsLaborByDay(args: {
     if (hours == null || hours <= 0) continue
 
     const displayName = (s.users?.name ?? '').trim() || 'Unknown'
-    const wage = overheadWageRatesForUserName(displayName, wageByNormalizedName)?.fieldWage ?? null
+    const wage =
+      overheadWageRatesForSession(
+        { userId: s.user_id, userDisplayName: displayName },
+        { wageByNormalizedName, wageByPersonId, personIdByUserId },
+      )?.fieldWage ?? null
     const missingWage = wage == null || !Number.isFinite(wage)
     const laborUsd = missingWage ? 0 : hours * wage
 
@@ -269,7 +279,11 @@ export function mergeOverheadDayTableRows(
   otherJobsPartsUsdByDay: ReadonlyMap<string, number>,
 ): OverheadDayMergedRow[] {
   const keys = new Set<string>()
-  for (const r of laborByDay) keys.add(r.work_date)
+  const laborByDate = new Map<string, OverheadDayAggregate>()
+  for (const r of laborByDay) {
+    keys.add(r.work_date)
+    laborByDate.set(r.work_date, r)
+  }
   for (const k of officePartsUsdByDay.keys()) keys.add(k)
   for (const k of otherJobsLaborUsdByDay.keys()) keys.add(k)
   for (const k of otherJobsLaborHoursByDay.keys()) keys.add(k)
@@ -278,7 +292,7 @@ export function mergeOverheadDayTableRows(
   return [...keys]
     .sort((a, b) => a.localeCompare(b))
     .map((work_date) => {
-      const labor = laborByDay.find((d) => d.work_date === work_date)
+      const labor = laborByDate.get(work_date)
       const officeLaborUsd = labor?.officeLaborUsd ?? 0
       const bidLaborUsd = labor?.bidLaborUsd ?? 0
       const officePartsUsd = officePartsUsdByDay.get(work_date) ?? 0
@@ -296,14 +310,6 @@ export function mergeOverheadDayTableRows(
         otherJobsLaborHours: ojHours,
       }
     })
-}
-
-/** @deprecated Use mergeOverheadDayTableRows with empty other-jobs maps. */
-export function mergeOfficePartsIntoOverheadDays(
-  laborByDay: readonly OverheadDayAggregate[],
-  partsUsdByDay: ReadonlyMap<string, number>,
-): OverheadDayMergedRow[] {
-  return mergeOverheadDayTableRows(laborByDay, partsUsdByDay, new Map(), new Map(), new Map())
 }
 
 /** Office job wins when it matches; else bid-only overhead when `bid_id` is set. */
@@ -334,11 +340,30 @@ function sessionIncludedForOverheadUsd(session: OverheadClockSessionRow): boolea
   return session.clocked_out_at != null
 }
 
+function overheadWageRatesFromConfig(c: OverheadPayConfigInput): OverheadWageRates {
+  const officeWage = shouldUseDualRate(c) ? c.office_hourly_wage ?? null : c.hourly_wage
+  return { fieldWage: c.hourly_wage, officeWage }
+}
+
 export function buildOverheadWageLookup(configs: readonly OverheadPayConfigInput[]): Map<string, OverheadWageRates> {
   const m = new Map<string, OverheadWageRates>()
   for (const c of configs) {
-    const officeWage = shouldUseDualRate(c) ? c.office_hourly_wage ?? null : c.hourly_wage
-    m.set(payConfigLookupKey(c.person_name), { fieldWage: c.hourly_wage, officeWage })
+    m.set(payConfigLookupKey(c.person_name), overheadWageRatesFromConfig(c))
+  }
+  return m
+}
+
+/**
+ * Person-id-keyed companion to {@link buildOverheadWageLookup} (identity plan
+ * C1 — see `payFlagsIndex`): `people.id` → rates. Configs without a
+ * `person_id` are simply absent here and resolve via the name fallback.
+ */
+export function buildOverheadWageLookupByPersonId(
+  configs: readonly OverheadPayConfigInput[],
+): Map<string, OverheadWageRates> {
+  const m = new Map<string, OverheadWageRates>()
+  for (const c of configs) {
+    if (c.person_id) m.set(c.person_id, overheadWageRatesFromConfig(c))
   }
   return m
 }
@@ -351,6 +376,33 @@ export function overheadWageRatesForUserName(
   const raw = userDisplayName?.trim() ?? ''
   if (!raw) return null
   return wageByNormalizedName.get(payConfigLookupKey(raw)) ?? null
+}
+
+/**
+ * Person-id-FIRST wage resolution for a clock session (identity plan C1,
+ * mirroring `payFlagsIndex`): `user_id` → `people.account_user_id` →
+ * pay-config `person_id`, with the historical trimmed/lowercased-name match
+ * as the fallback. A rename between `users.name` and
+ * `people_pay_config.person_name` used to zero the session's labor $ while
+ * keeping its hours; with an id hit the rename no longer matters.
+ */
+export function overheadWageRatesForSession(
+  session: { userId?: string | null; userDisplayName?: string | null },
+  lookups: {
+    wageByNormalizedName: Map<string, OverheadWageRates>
+    wageByPersonId?: ReadonlyMap<string, OverheadWageRates>
+    personIdByUserId?: ReadonlyMap<string, string>
+  },
+): OverheadWageRates | null {
+  const { wageByNormalizedName, wageByPersonId, personIdByUserId } = lookups
+  if (session.userId && wageByPersonId && personIdByUserId) {
+    const personId = personIdByUserId.get(session.userId)
+    if (personId) {
+      const viaId = wageByPersonId.get(personId)
+      if (viaId) return viaId
+    }
+  }
+  return overheadWageRatesForUserName(session.userDisplayName, wageByNormalizedName)
 }
 
 export type OverheadDailyBuildResult = {
@@ -368,8 +420,12 @@ export function buildOverheadDailyLabor(args: {
   sessions: readonly OverheadClockSessionRow[]
   officeJobLedgerId: string | null
   wageByNormalizedName: Map<string, OverheadWageRates>
+  /** Person-id-first join (C1): `people.id` → rates. Used before the name path when provided. */
+  wageByPersonId?: ReadonlyMap<string, OverheadWageRates>
+  /** `users.id` → `people.id` (via `people.account_user_id`). Required for the id-first path. */
+  personIdByUserId?: ReadonlyMap<string, string>
 }): OverheadDailyBuildResult {
-  const { sessions, officeJobLedgerId, wageByNormalizedName } = args
+  const { sessions, officeJobLedgerId, wageByNormalizedName, wageByPersonId, personIdByUserId } = args
 
   const dayOffice = new Map<string, number>()
   const dayBid = new Map<string, number>()
@@ -389,7 +445,11 @@ export function buildOverheadDailyLabor(args: {
     // Office AND bid buckets are office-rate time for dual-rate people —
     // matches officeJobRateSplit.rateBucketForSession (only real field jobs
     // pay the field rate), so overhead $ agrees with payroll.
-    const wage = overheadWageRatesForUserName(displayName, wageByNormalizedName)?.officeWage ?? null
+    const wage =
+      overheadWageRatesForSession(
+        { userId: s.user_id, userDisplayName: displayName },
+        { wageByNormalizedName, wageByPersonId, personIdByUserId },
+      )?.officeWage ?? null
     const missingWage = wage == null || !Number.isFinite(wage)
     const laborUsd = missingWage ? 0 : hours * wage
 

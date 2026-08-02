@@ -7,8 +7,8 @@ import {
   buildOtherJobsLaborByDay,
   buildOverheadDailyLabor,
   buildOverheadWageLookup,
+  buildOverheadWageLookupByPersonId,
   filterOverheadDetailLines,
-  mergeOfficePartsIntoOverheadDays,
   mergeOverheadDayTableRows,
   overheadBucketForSession,
   overheadFactorTotalOverOtherJobs,
@@ -240,6 +240,87 @@ describe('dual-rate wage lookup (office_hourly_wage)', () => {
   })
 })
 
+describe('person-id-first wage join (C1)', () => {
+  const officeId = '11111111-1111-4111-8111-111111111111'
+  const otherJob = '22222222-2222-4222-8222-222222222222'
+  // Pay config knows this person as "Roberta Douglas" (post-rename) with
+  // person_id p1; the users row still says "Robbie Douglas".
+  const configs = [
+    { person_name: 'Roberta Douglas', person_id: 'p1', hourly_wage: 40, office_hourly_wage: 25, is_salary: false },
+    { person_name: 'Bob', person_id: null, hourly_wage: 30 },
+  ]
+  const wageByNormalizedName = buildOverheadWageLookup(configs)
+  const wageByPersonId = buildOverheadWageLookupByPersonId(configs)
+  const personIdByUserId = new Map([['u1', 'p1']])
+
+  it('id-match wins over a name mismatch (rename no longer zeroes labor $)', () => {
+    const r = buildOverheadDailyLabor({
+      sessions: [
+        sess({ id: 'o', user_id: 'u1', work_date: '2026-06-02', job_ledger_id: officeId, users: { name: 'Robbie Douglas' } }),
+      ],
+      officeJobLedgerId: officeId,
+      wageByNormalizedName,
+      wageByPersonId,
+      personIdByUserId,
+    })
+    // 2h × $25 office rate via the person-id join; the stale users.name
+    // matches no pay-config row, so the name-only path would have priced $0.
+    expect(r.byDay[0]?.officeLaborUsd).toBe(50)
+    expect((r.detailByDay.get('2026-06-02') ?? [])[0]?.missingWage).toBe(false)
+  })
+
+  it('same rename resolves for field (other-jobs) labor at the field rate', () => {
+    const r = buildOtherJobsLaborByDay({
+      sessions: [
+        sess({ id: 'f', user_id: 'u1', work_date: '2026-06-02', job_ledger_id: otherJob, users: { name: 'Robbie Douglas' } }),
+      ],
+      officeJobLedgerId: officeId,
+      wageByNormalizedName,
+      wageByPersonId,
+      personIdByUserId,
+    })
+    expect(r.laborUsdByDay.get('2026-06-02')).toBe(80)
+  })
+
+  it('name fallback still works when the user has no roster person link', () => {
+    const r = buildOverheadDailyLabor({
+      sessions: [
+        sess({ id: 'o', user_id: 'u-unlinked', work_date: '2026-06-02', job_ledger_id: officeId, users: { name: 'Bob' } }),
+      ],
+      officeJobLedgerId: officeId,
+      wageByNormalizedName,
+      wageByPersonId,
+      personIdByUserId,
+    })
+    expect(r.byDay[0]?.officeLaborUsd).toBe(60)
+  })
+
+  it('name fallback also covers a linked person whose pay config row lacks person_id', () => {
+    const r = buildOverheadDailyLabor({
+      sessions: [
+        sess({ id: 'o', user_id: 'u2', work_date: '2026-06-02', job_ledger_id: officeId, users: { name: 'Bob' } }),
+      ],
+      officeJobLedgerId: officeId,
+      wageByNormalizedName,
+      wageByPersonId,
+      personIdByUserId: new Map([['u2', 'p-no-config']]),
+    })
+    expect(r.byDay[0]?.officeLaborUsd).toBe(60)
+  })
+
+  it('behaves exactly like before when the id-first maps are omitted', () => {
+    const r = buildOverheadDailyLabor({
+      sessions: [
+        sess({ id: 'o', user_id: 'u1', work_date: '2026-06-02', job_ledger_id: officeId, users: { name: 'Robbie Douglas' } }),
+      ],
+      officeJobLedgerId: officeId,
+      wageByNormalizedName,
+    })
+    expect(r.byDay[0]?.officeLaborUsd).toBe(0)
+    expect((r.detailByDay.get('2026-06-02') ?? [])[0]?.missingWage).toBe(true)
+  })
+})
+
 describe('filterOverheadDetailLines', () => {
   const lines = [
     detailLine({ sessionId: '1', userName: 'A', bucket: 'office' }),
@@ -312,8 +393,8 @@ describe('aggregateOverheadDetailByPersonTotalScope', () => {
   })
 })
 
-describe('mergeOfficePartsIntoOverheadDays', () => {
-  it('unions labor and parts days and sums total', () => {
+describe('mergeOverheadDayTableRows', () => {
+  it('unions labor-only and parts-only days (ex-mergeOfficePartsIntoOverheadDays coverage)', () => {
     const labor = [
       { work_date: '2026-06-02', officeLaborUsd: 10, bidLaborUsd: 20, totalUsd: 30, laborHours: 2.5 },
       { work_date: '2026-06-03', officeLaborUsd: 0, bidLaborUsd: 5, totalUsd: 5, laborHours: 1 },
@@ -322,59 +403,14 @@ describe('mergeOfficePartsIntoOverheadDays', () => {
       ['2026-06-02', 3],
       ['2026-06-04', 100],
     ])
-    const rows = mergeOfficePartsIntoOverheadDays(labor, parts)
-    expect(rows).toEqual([
-      {
-        work_date: '2026-06-02',
-        officeLaborUsd: 10,
-        bidLaborUsd: 20,
-        officePartsUsd: 3,
-        totalUsd: 33,
-        totalLaborHours: 2.5,
-        otherJobsUsd: 0,
-        otherJobsLaborHours: 0,
-      },
-      {
-        work_date: '2026-06-03',
-        officeLaborUsd: 0,
-        bidLaborUsd: 5,
-        officePartsUsd: 0,
-        totalUsd: 5,
-        totalLaborHours: 1,
-        otherJobsUsd: 0,
-        otherJobsLaborHours: 0,
-      },
-      {
-        work_date: '2026-06-04',
-        officeLaborUsd: 0,
-        bidLaborUsd: 0,
-        officePartsUsd: 100,
-        totalUsd: 100,
-        totalLaborHours: 0,
-        otherJobsUsd: 0,
-        otherJobsLaborHours: 0,
-      },
+    const rows = mergeOverheadDayTableRows(labor, parts, new Map(), new Map(), new Map())
+    expect(rows.map((r) => [r.work_date, r.totalUsd, r.totalLaborHours])).toEqual([
+      ['2026-06-02', 33, 2.5],
+      ['2026-06-03', 5, 1],
+      ['2026-06-04', 100, 0],
     ])
   })
 
-  it('handles empty labor', () => {
-    const parts = new Map([['2026-06-01', 42]])
-    expect(mergeOfficePartsIntoOverheadDays([], parts)).toEqual([
-      {
-        work_date: '2026-06-01',
-        officeLaborUsd: 0,
-        bidLaborUsd: 0,
-        officePartsUsd: 42,
-        totalUsd: 42,
-        totalLaborHours: 0,
-        otherJobsUsd: 0,
-        otherJobsLaborHours: 0,
-      },
-    ])
-  })
-})
-
-describe('mergeOverheadDayTableRows', () => {
   it('adds other jobs labor and parts without changing overhead totalUsd', () => {
     const labor = [{ work_date: '2026-06-02', officeLaborUsd: 10, bidLaborUsd: 20, totalUsd: 30, laborHours: 4 }]
     const officeParts = new Map([['2026-06-02', 3]])
