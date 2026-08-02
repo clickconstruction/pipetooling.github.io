@@ -3,14 +3,14 @@
 ---
 file: docs/BIDS_TAKEOFF_TAB_ARCHITECTURE.md
 type: Architecture Map / Decomposition
-purpose: Step-0 map for the sub-decomposition of src/components/bids/BidsTakeoffTab.tsx (per PAGE_DECOMPOSITION_PLAYBOOK.md). The tab was extracted from Bids.tsx in 2026-05 but kept growing (now ~5,765 lines) — this map inventories each logical region (state, handlers, supabase tables, modals, coupling) so future extractions can proceed without re-reading the whole file. It goes one level DEEPER than BIDS_TABS_ARCHITECTURE.md, which maps the parent page and stays authoritative for what Bids.tsx passes in.
+purpose: Step-0 map for the sub-decomposition of src/components/bids/BidsTakeoffTab.tsx (per PAGE_DECOMPOSITION_PLAYBOOK.md). The tab was extracted from Bids.tsx in 2026-05 but kept growing (5,765 lines at the 2026-07-29 sweep; ~3,982 after decomposition steps T0–T6 — see the Decomposition log) — this map inventories each logical region (state, handlers, supabase tables, modals, coupling) so future extractions can proceed without re-reading the whole file. It goes one level DEEPER than BIDS_TABS_ARCHITECTURE.md, which maps the parent page and stays authoritative for what Bids.tsx passes in.
 audience: Developers, AI Agents
-last_updated: 2026-07-29
+last_updated: 2026-08-02
 ---
 
 ## What this surface is
 
-[`src/components/bids/BidsTakeoffTab.tsx`](../src/components/bids/BidsTakeoffTab.tsx) is the Bids page's **Takeoffs** workflow tab — already an extracted component (see [`BIDS_TABS_ARCHITECTURE.md`](./BIDS_TABS_ARCHITECTURE.md) §takeoffs), but at **~5,765 lines** it is the repo's largest bids component and a decomposition target in its own right. Counts at 2026-07-29: **~106 `useState`**, **~18 `useEffect`**, 2 `useMemo` + 1 `useCallback`, one exported component (`BidsTakeoffTab`, lines ~150–5115) and one **module-level component** at the bottom of the file (`SortableRoughPartLineRow`, ~5117–5765, ~650 lines).
+[`src/components/bids/BidsTakeoffTab.tsx`](../src/components/bids/BidsTakeoffTab.tsx) is the Bids page's **Takeoffs** workflow tab — already an extracted component (see [`BIDS_TABS_ARCHITECTURE.md`](./BIDS_TABS_ARCHITECTURE.md) §takeoffs), but it grew to **5,765 lines** (2026-07-29) and became a decomposition target in its own right — **now ~3,982 lines** after train steps T0–T6 (see the Decomposition log below). Counts at 2026-07-29: **~106 `useState`**, **~18 `useEffect`**, 2 `useMemo` + 1 `useCallback`, one exported component (`BidsTakeoffTab`); the former module-level `SortableRoughPartLineRow` moved to its own file in v2.1297.
 
 The tab has **no internal tab switcher**. Its regions are gated by:
 
@@ -33,15 +33,15 @@ Each region lists: render location (state gate; line ranges approximate), **owne
 | Region | Render gate | Lines est. (state+handlers+JSX) | Coupling | Risk | Status | Recommended action |
 |---|---|---|---|---|---|---|
 | Bid picker | `!selectedBidForTakeoff` | ~100 | low (props only) | low | inline | extract with header or leave (small) |
-| Header + model toggle + book selector | `selectedBidForTakeoff` | ~250 | med (engine setters, print, book apply) | low-med | inline | extract after Stage A |
-| Exact ("By Stage") mappings table | model `'exact'` | ~800 | high (mappings engine, template picker portal, PO creation, modal openers) | med | inline | extract 6th, after parts-catalog seam |
-| Rough ("Combined") part-line sheet | model `'rough'` | ~1,800 (incl. `SortableRoughPartLineRow` ~650) | highest (rough-lines engine, numpad, dnd, 4 modals, catalog-price effects) | high | inline | extract last; move `SortableRoughPartLineRow` to its own file first |
-| Takeoff-book admin section | always (collapsible) | ~440 | low-med (engine book state/loaders) | low | inline | **extract first** (component move) |
-| Assembly authoring modal cluster (Add Assembly / Add Parts / Edit Template / preview) | modal-open flags | ~1,270 | high (opened from BOTH models; writes materials catalog) | med-high | inline | extract 5th, as one cluster |
-| Part Prices modal | `partPricesModal != null` | ~190 | med (opened from both models + 2 modals; close refreshes rough catalog prices) | low-med | inline | extract 3rd |
-| Bundle breakdown modal | `bundleBreakdownModal != null` | ~150 | low-med (rough lines + Edit Template opener) | low | inline | extract 4th |
-| Cost-estimate materials section + PO review modal | `selectedBidForCostEstimate && costEstimateCountRows.length > 0` | ~330 | med (engine cost-estimate values, shared tax prop) | low-med | inline | extract 2nd |
-| Shared substrate (parts catalog + persistence engines + shared modals) | — | ~450 | — | — | in-component | becomes the seam; see below |
+| Header + model toggle + book selector | `selectedBidForTakeoff` | ~250 | med (engine setters, print, book apply — `applyTakeoffBookTemplates` lives here) | low-med | inline | extract after Stage A |
+| Exact ("By Stage") mappings table | model `'exact'` | ~800 | high (mappings engine, template picker portal, PO creation, modal openers) | med | inline | **NEXT after T7**: extract after parts-catalog seam (T8) |
+| Rough ("Combined") part-line sheet | model `'rough'` | ~1,150 (row component already out) | highest (rough-lines engine, numpad, dnd, catalog-price effects) | high | inline | extract last (T9); `SortableRoughPartLineRow` **done (v2.1297)** → [own file](../src/components/bids/SortableRoughPartLineRow.tsx) |
+| Takeoff-book admin section | always (collapsible) | ~10 (thin render) | low | — | **extracted (v2.1298)** → [`TakeoffBookAdminSection`](../src/components/bids/TakeoffBookAdminSection.tsx) | Done — delete-cascade quirk preserved via engine props; Apply stays in header |
+| Assembly authoring modal cluster (Add Assembly / Add Parts / Edit Template / preview) | modal-open flags | ~1,270 | high (opened from BOTH models; writes materials catalog) | med-high | inline | **NEXT (T7)**: extract as one cluster |
+| Part Prices modal | `partPricesModal != null` | ~5 (thin render) | — | — | **extracted (v2.1300)** → [`TakeoffPartPricesModal`](../src/components/bids/TakeoffPartPricesModal.tsx) | Done — pointer + close-edge refresh effect stay parent-owned |
+| Bundle breakdown modal | `bundleBreakdownModal != null` | ~7 (thin render) | — | — | **extracted (v2.1300)** → [`TakeoffBundleBreakdownModal`](../src/components/bids/TakeoffBundleBreakdownModal.tsx) | Done — pointer + `applyBundleQuoteToLine`/`openEditTemplateModal` stay parent |
+| Cost-estimate materials section + PO review modal | inside workspace wrapper | ~14 (thin render) | — | — | **extracted (v2.1299)** → [`BidsTakeoffMaterialsSummarySection`](../src/components/bids/BidsTakeoffMaterialsSummarySection.tsx) | Done — tax stays a controlled prop shared with Labor |
+| Shared substrate (parts catalog + persistence engines + shared modals) | — | ~450 | — | — | in-component | becomes the `useTakeoffPartsCatalog` seam at T8; see below |
 
 ---
 
@@ -179,6 +179,27 @@ There is **no additional selection pointer inside the tab** — every region key
 
 ---
 
+## Decomposition log (train state as of 2026-08-02)
+
+Executed with the [`PAGE_DECOMPOSITION_PLAYBOOK.md`](./PAGE_DECOMPOSITION_PLAYBOOK.md) process, mirroring the completed 12-PR Materials train (v2.1275–v2.1293). **BidsTakeoffTab.tsx: 5,765 → ~3,982 lines so far.**
+
+| Step | PR | Version | What |
+|---|---|---|---|
+| T0 | #995 | — | Render-smoke safety net (`BidsTakeoffTab.render.test.tsx`, 4 tests over the ~53-prop seam) |
+| T1 | #996 | v2.1294 | `lib/bids/poItemsSummary.ts` — the 3-copy PO-items summary |
+| T2 | #997 | v2.1295 | `lib/bids/mergeTemplateItemDrafts.ts` — quirk-15's 4 merge variants |
+| T3 | #999 | v2.1297 | `SortableRoughPartLineRow` → own file (+`PartType`/`RoughTakeoffMaterialPart` types) |
+| T4 | #1000 | v2.1298 | `TakeoffBookAdminSection` (+2 modals, 11 states, CRUD; cascade quirk intact) |
+| T5 | #1001 | v2.1299 | `BidsTakeoffMaterialsSummarySection` (+PO review modal; tax stays controlled prop) |
+| T6 | #1002 | v2.1300 | `TakeoffPartPricesModal` + `TakeoffBundleBreakdownModal` (pointers stay parent-owned) |
+
+**Remaining (in order):**
+- **T7 — Assembly authoring modal cluster** (~1,270 lines, one unit: Add Assembly / Add Parts to Template / Edit Template / preview cache). Trap doors: `handleBidsPartFormSave` routes on which of FOUR contexts opened PartFormModal — it and the `PartFormModal` wiring STAY in the tab; the Save-as-Assembly bridge state (`saveAsAssemblyCountRowId`, `takeoffNewTemplateApplyPriceIndex`) spans rough↔Add Assembly and stays; `takeoffAddTemplateParts` loading effect is shared with the rough body (stays until T8's catalog seam).
+- **T8 — `useTakeoffPartsCatalog` seam, then the Exact body** (~800 lines). Seam owns `takeoffAddTemplateParts` + its two load effects, `supplyHouses`/`partTypes` mount effect, `takeoffTemplatePreviewCache`. Fold in the remaining Stage-A kernels as touched: `computeTakeoffBookMappingsToAdd`, `takeoffPickerFilters`, the exact-print row assembler.
+- **T9 — the Rough body, last** (~1,150 lines). The `queueMicrotask` persistence pairs (`updateTakeoffRoughPartLine`/`persistTakeoffRoughPartLine` etc.) must move together or stay together; `takeoffRemoveConfirm` + modal stay tab-level (both models open it).
+
+**Process notes for whoever continues:** one behavior-preserving PR per step; gates (`typecheck`/`lint`/`npm test` incl. the T0 smokes) before every push; check version claims against open AND recently-merged PRs (an untitled PR once took a claimed number); changelog conflicts are routine — slot your `v2.NNN` around what landed; branch protection requires up-to-date branches, so pair auto-merge with a loop that runs `gh pr update-branch` whenever `mergeStateStatus` goes `BEHIND`, and verify merges by polling for `state == MERGED` explicitly.
+
 ## Recommended extraction order (value ÷ risk)
 
 1. **Stage A sweep** (each independently shippable; see table below). Highest-leverage: `loadPOItemsSummary` (3 call sites), `computeTakeoffBookMappingsToAdd`, `mergeTemplateItemDrafts`.
@@ -196,9 +217,9 @@ There is **no additional selection pointer inside the tab** — every region key
 
 | Candidate | Currently | Target |
 |---|---|---|
-| Takeoff-book fixture/alias matching + dedupe (`applyTakeoffBookTemplates` core loop) | inline async handler | `lib/bids/takeoffBookApply.ts` `computeTakeoffBookMappingsToAdd(...)` + tests |
-| `purchase_order_items` → `{part_name, quantity, price_at_time, template_name}` mapping (3 copies: existing-PO effect, `addTakeoffToExistingPO`, cost-estimate PO modal effect) | copy-pasted | `lib/bids/poItemsSummary.ts` `loadPOItemsSummary(supabase, poId)` (IO wrapper + pure row mapper, tested) |
-| Part-merge-by-`part_id` rule (4 implementations, see quirk 15) | inline in each save/add handler | `lib/bids/mergeTemplateItemDrafts.ts` + tests |
+| Takeoff-book fixture/alias matching + dedupe (`applyTakeoffBookTemplates` core loop) | inline async handler (still in tab header region) | `lib/bids/takeoffBookApply.ts` `computeTakeoffBookMappingsToAdd(...)` + tests — fold into T8 |
+| `purchase_order_items` → `{part_name, quantity, price_at_time, template_name}` mapping (3 copies) | **done (v2.1294)** — [`lib/bids/poItemsSummary.ts`](../src/lib/bids/poItemsSummary.ts), all 3 call sites migrated | — |
+| Part-merge-by-`part_id` rule (4 implementations, see quirk 15) | **done (v2.1295)** — [`lib/bids/mergeTemplateItemDrafts.ts`](../src/lib/bids/mergeTemplateItemDrafts.ts) (batch, updater, and DB-quantity forms) | — |
 | `filterTemplatesByQuery`, `filterPartsByQuery`, `takeoffTemplatePickerOptions` | pure functions defined inside the component body | `lib/bids/takeoffPickerFilters.ts` + tests (note: near-duplicates exist in `Materials.tsx` — extract, don't unify, in this pass) |
 | Exact-print stage/row shaping in `printTakeoffBreakdown` (post-`expandTemplate` sort + name mapping) | inline | pure builder-input assembler next to `lib/bidDocuments/takeoffBreakdown.ts` + test |
 | PO naming ``` `${projectName} – Takeoff ${date} – ${stageLabel}` ``` + per-stage grouping in `createPOFromTakeoff` | inline | small pure helpers in `lib/bids/` (low value; optional) |
